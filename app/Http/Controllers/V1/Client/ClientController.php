@@ -13,6 +13,7 @@ use App\Services\UserService;
 use App\Services\RiskLogService;
 use App\Utils\Helper;
 use Illuminate\Http\Request;
+use ReflectionClass;
 
 class ClientController extends Controller
 {
@@ -21,6 +22,7 @@ class ClientController extends Controller
         $riskLogService = new RiskLogService();
         $requestedFlag = strtolower((string) $request->input('flag', ''));
         $flag = $requestedFlag ?: strtolower((string) ($_SERVER['HTTP_USER_AGENT'] ?? ''));
+        $resolvedClientType = null;
         $user = $request->user;
         // account not expired and is not banned.
         $userService = new UserService();
@@ -35,10 +37,11 @@ class ClientController extends Controller
                             $file = 'App\\Protocols\\' . basename($file, '.php');
                             $class = new $file($user, $servers);
                             if (strpos($flag, $class->flag) !== false) {
+                                $resolvedClientType = $class->flag;
                                 $riskLogService->createSubscribeLog($this->buildSubscribeLogPayload(
                                     $request,
                                     $user,
-                                    $class->flag,
+                                    $resolvedClientType,
                                     'success'
                                 ));
                                 return $class->handle();
@@ -55,30 +58,44 @@ class ClientController extends Controller
                         } else {
                             $class = new SingboxOld($user, $servers);
                         }
+                        $resolvedClientType = $class->flag;
                         $riskLogService->createSubscribeLog($this->buildSubscribeLogPayload(
                             $request,
                             $user,
-                            $class->flag,
+                            $resolvedClientType,
                             'success'
                         ));
                         return $class->handle();
                     }
                 }
                 $class = new General($user, $servers);
+                $resolvedClientType = $class->flag;
                 $riskLogService->createSubscribeLog($this->buildSubscribeLogPayload(
                     $request,
                     $user,
-                    $class->flag,
+                    $resolvedClientType,
                     'success'
                 ));
                 return $class->handle();
             } catch (\Throwable $e) {
-                $riskLogService->createSubscribeLog($this->buildSubscribeLogPayload($request, $user, $requestedFlag ?: null, 'failed', $e->getMessage()));
+                $riskLogService->createSubscribeLog($this->buildSubscribeLogPayload(
+                    $request,
+                    $user,
+                    $resolvedClientType ?: $this->resolveProtocolFlag($requestedFlag ?: $flag),
+                    'failed',
+                    $e->getMessage()
+                ));
                 throw $e;
             }
         }
 
-        $riskLogService->createSubscribeLog($this->buildSubscribeLogPayload($request, $user, $requestedFlag ?: null, 'failed', 'user_unavailable'));
+        $riskLogService->createSubscribeLog($this->buildSubscribeLogPayload(
+            $request,
+            $user,
+            $this->resolveProtocolFlag($requestedFlag ?: $flag),
+            'failed',
+            'user_unavailable'
+        ));
 
         abort(403, 'user is not available');
     }
@@ -121,5 +138,54 @@ class ClientController extends Controller
         array_unshift($servers, array_merge($servers[0], [
             'name' => "剩余流量：{$remainingTraffic}",
         ]));
+    }
+
+    private function resolveProtocolFlag(?string $input): ?string
+    {
+        if (!$input) {
+            return null;
+        }
+
+        $input = strtolower($input);
+        foreach ($this->getProtocolFlags() as $flag) {
+            if (strpos($input, $flag) !== false) {
+                return $flag;
+            }
+        }
+
+        return null;
+    }
+
+    private function getProtocolFlags(): array
+    {
+        static $flags = null;
+        if (!is_null($flags)) {
+            return $flags;
+        }
+
+        $flags = [];
+        $iterator = new \RecursiveIteratorIterator(
+            new \RecursiveDirectoryIterator(app_path('Protocols'))
+        );
+
+        foreach ($iterator as $file) {
+            if (!$file->isFile() || $file->getExtension() !== 'php') {
+                continue;
+            }
+
+            $relativePath = str_replace(app_path() . DIRECTORY_SEPARATOR, '', $file->getPathname());
+            $class = 'App\\' . str_replace([DIRECTORY_SEPARATOR, '.php'], ['\\', ''], $relativePath);
+            if (!class_exists($class)) {
+                continue;
+            }
+
+            $defaultProperties = (new ReflectionClass($class))->getDefaultProperties();
+            $flag = strtolower((string) ($defaultProperties['flag'] ?? ''));
+            if ($flag) {
+                $flags[$flag] = $flag;
+            }
+        }
+
+        return $flags;
     }
 }

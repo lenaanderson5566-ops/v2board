@@ -140,10 +140,10 @@ class ClientController extends Controller
         ]));
     }
 
-    private function resolveProtocolFlag(?string $input): ?string
+    private function resolveProtocolFlag(?string $input): string
     {
         if (!$input) {
-            return null;
+            return $this->getGeneralFlag();
         }
 
         $input = strtolower($input);
@@ -153,7 +153,13 @@ class ClientController extends Controller
             }
         }
 
-        return null;
+        return $this->getGeneralFlag();
+    }
+
+    private function getGeneralFlag(): string
+    {
+        $defaultProperties = (new ReflectionClass(General::class))->getDefaultProperties();
+        return strtolower((string) ($defaultProperties['flag'] ?? 'general'));
     }
 
     private function getProtocolFlags(): array

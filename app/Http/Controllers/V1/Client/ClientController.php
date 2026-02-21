@@ -19,9 +19,8 @@ class ClientController extends Controller
     public function subscribe(Request $request)
     {
         $riskLogService = new RiskLogService();
-        $flag = $request->input('flag')
-            ?? ($_SERVER['HTTP_USER_AGENT'] ?? '');
-        $flag = strtolower($flag);
+        $requestedFlag = strtolower((string) $request->input('flag', ''));
+        $flag = $requestedFlag ?: strtolower((string) ($_SERVER['HTTP_USER_AGENT'] ?? ''));
         $user = $request->user;
         // account not expired and is not banned.
         $userService = new UserService();
@@ -36,7 +35,12 @@ class ClientController extends Controller
                             $file = 'App\\Protocols\\' . basename($file, '.php');
                             $class = new $file($user, $servers);
                             if (strpos($flag, $class->flag) !== false) {
-                                $riskLogService->createSubscribeLog($this->buildSubscribeLogPayload($request, $user, $flag, 'success'));
+                                $riskLogService->createSubscribeLog($this->buildSubscribeLogPayload(
+                                    $request,
+                                    $user,
+                                    $class->flag,
+                                    'success'
+                                ));
                                 return $class->handle();
                             }
                         }
@@ -51,20 +55,30 @@ class ClientController extends Controller
                         } else {
                             $class = new SingboxOld($user, $servers);
                         }
-                        $riskLogService->createSubscribeLog($this->buildSubscribeLogPayload($request, $user, $flag, 'success'));
+                        $riskLogService->createSubscribeLog($this->buildSubscribeLogPayload(
+                            $request,
+                            $user,
+                            $class->flag,
+                            'success'
+                        ));
                         return $class->handle();
                     }
                 }
-                $riskLogService->createSubscribeLog($this->buildSubscribeLogPayload($request, $user, $flag, 'success'));
                 $class = new General($user, $servers);
+                $riskLogService->createSubscribeLog($this->buildSubscribeLogPayload(
+                    $request,
+                    $user,
+                    $class->flag,
+                    'success'
+                ));
                 return $class->handle();
             } catch (\Throwable $e) {
-                $riskLogService->createSubscribeLog($this->buildSubscribeLogPayload($request, $user, $flag, 'failed', $e->getMessage()));
+                $riskLogService->createSubscribeLog($this->buildSubscribeLogPayload($request, $user, $requestedFlag ?: null, 'failed', $e->getMessage()));
                 throw $e;
             }
         }
 
-        $riskLogService->createSubscribeLog($this->buildSubscribeLogPayload($request, $user, $flag, 'failed', 'user_unavailable'));
+        $riskLogService->createSubscribeLog($this->buildSubscribeLogPayload($request, $user, $requestedFlag ?: null, 'failed', 'user_unavailable'));
 
         abort(403, 'user is not available');
     }

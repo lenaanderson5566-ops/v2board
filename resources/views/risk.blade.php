@@ -10,21 +10,45 @@
         th, td { border: 1px solid #ddd; padding: 8px; text-align: left; font-size: 12px; }
         th { background: #f3f3f3; }
         .row { margin: 8px 0; }
-        input { padding: 6px; margin-right: 8px; }
         button { padding: 6px 10px; margin-right: 6px; }
+        .ok { color: #389e0d; }
+        .warn { color: #cf1322; }
     </style>
 </head>
 <body>
 <h2>Risk Control Console</h2>
-<div class="row">Authorization: <input id="token" placeholder="粘贴 auth_data" style="width: 420px"></div>
+<div id="authState" class="row"></div>
 <div class="row">
     <button onclick="fetchLoginLogs()">查询登录日志</button>
     <button onclick="fetchSubscribeLogs()">查询订阅日志</button>
 </div>
-<div id="filters" class="row"></div>
 <div id="result"></div>
 <script>
 const apiBase = '/api/v1/{{ $api_path }}';
+const adminPath = '/{{ config('v2board.secure_path', config('v2board.frontend_admin_path', hash('crc32b', config('app.key')))) }}';
+
+function getAuthorization() {
+  const fromStorage = window.localStorage.getItem('authorization');
+  if (fromStorage) return fromStorage;
+
+  const fromQuery = new URLSearchParams(window.location.search).get('auth_data');
+  if (fromQuery) {
+    window.localStorage.setItem('authorization', fromQuery);
+    return fromQuery;
+  }
+
+  return '';
+}
+
+const authorization = getAuthorization();
+const authStateEl = document.getElementById('authState');
+if (authorization) {
+  authStateEl.className = 'row ok';
+  authStateEl.textContent = '已自动读取后台登录态（authorization），可直接查询日志。';
+} else {
+  authStateEl.className = 'row warn';
+  authStateEl.innerHTML = `未检测到后台登录态，请先前往 <a href="${adminPath}">管理员后台登录</a> 后再访问风控页面。`;
+}
 
 function renderTable(rows) {
   if (!rows || !rows.length) {
@@ -38,9 +62,12 @@ function renderTable(rows) {
 }
 
 async function request(path) {
-  const token = document.getElementById('token').value.trim();
-  if (!token) return alert('请先输入 auth_data');
-  const res = await fetch(apiBase + path, { headers: { 'Authorization': token } });
+  if (!authorization) {
+    alert('未检测到登录态，请先登录管理员后台');
+    return null;
+  }
+
+  const res = await fetch(apiBase + path, { headers: { 'Authorization': authorization } });
   const data = await res.json();
   if (!res.ok) {
     alert(data.message || '请求失败');

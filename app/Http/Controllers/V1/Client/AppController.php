@@ -63,35 +63,18 @@ class AppController extends Controller
 
     public function getVersion(Request $request)
     {
-        if (strpos($request->header('user-agent'), 'tidalab/4.0.0') !== false
-            || strpos($request->header('user-agent'), 'tunnelab/4.0.0') !== false
-        ) {
-            if (strpos($request->header('user-agent'), 'Win64') !== false) {
-                return response([
-                    'data' => [
-                        'version' => config('v2board.windows_version'),
-                        'download_url' => config('v2board.windows_download_url')
-                    ]
-                ]);
-            } else {
-                return response([
-                    'data' => [
-                        'version' => config('v2board.macos_version'),
-                        'download_url' => config('v2board.macos_download_url')
-                    ]
-                ]);
-            }
-            return;
+        $platform = strtolower((string)$request->header('X-Client-Platform'));
+        if (!$platform) {
+            $platform = 'windows';
         }
+
         return response([
             'data' => [
-                'windows_version' => config('v2board.windows_version'),
-                'windows_download_url' => config('v2board.windows_download_url'),
-                'macos_version' => config('v2board.macos_version'),
-                'macos_download_url' => config('v2board.macos_download_url'),
-                'android_version' => config('v2board.android_version'),
-                'android_download_url' => config('v2board.android_download_url')
+                'platform' => $platform,
+                'version' => config("v2board.{$platform}_version"),
+                'download_url' => config("v2board.{$platform}_download_url"),
             ]
         ]);
     }
+
 }

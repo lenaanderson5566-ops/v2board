@@ -67,6 +67,15 @@ class LogController extends Controller
                 ],
                 [
                     'scene' => 'subscribe',
+                    'rule_key' => 'subscribe_high_pull_low_traffic_24h',
+                    'risk_level' => 'high',
+                    'description' => '同一用户 24 小时内订阅成功次数 >= 20 且已用流量增长 <= 50MB',
+                    'subscribe_threshold' => 20,
+                    'traffic_growth_threshold_bytes' => 52428800,
+                    'window_seconds' => 86400,
+                ],
+                [
+                    'scene' => 'subscribe',
                     'rule_key' => 'subscribe_client_type_spread_24h',
                     'risk_level' => 'low',
                     'description' => '同一用户 24 小时内订阅客户端类型数量 >= 5',

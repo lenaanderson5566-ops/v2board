@@ -13,6 +13,9 @@ class SubscribeLog extends Model
     protected $guarded = ['id'];
     protected $casts = [
         'expired_at' => 'timestamp',
+        'traffic_used' => 'integer',
+        'traffic_total' => 'integer',
+        'traffic_remaining' => 'integer',
         'created_at' => 'timestamp',
         'updated_at' => 'timestamp'
     ];

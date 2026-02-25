@@ -39,6 +39,9 @@ class RiskLogService
             'plan_name' => null,
             'expired_at' => null,
             'client_type' => null,
+            'traffic_used' => null,
+            'traffic_total' => null,
+            'traffic_remaining' => null,
             'ip' => $ip,
             'subscribe_domain' => request()->getHost(),
             'user_agent' => $userAgent,
@@ -102,6 +105,26 @@ class RiskLogService
                     'threshold' => 20,
                     'window_seconds' => 600,
                     'request_count' => $subscribeByUserIn10m,
+                ]);
+            }
+
+            $subscribeSuccessIn24h = SubscribeLog::query()
+                ->where('user_id', $log->user_id)
+                ->where('status', 'success')
+                ->where('created_at', '>=', $now - 86400);
+
+            $subscribeCountIn24h = (clone $subscribeSuccessIn24h)->count();
+            $trafficUsedMaxIn24h = (clone $subscribeSuccessIn24h)->max('traffic_used');
+            $trafficUsedMinIn24h = (clone $subscribeSuccessIn24h)->min('traffic_used');
+            $trafficGrowthIn24h = max((int) $trafficUsedMaxIn24h - (int) $trafficUsedMinIn24h, 0);
+
+            if ($subscribeCountIn24h >= 20 && $trafficGrowthIn24h <= 50 * 1024 * 1024) {
+                $this->recordRuleHit('subscribe', 'subscribe_high_pull_low_traffic_24h', 'high', $log, [
+                    'subscribe_threshold' => 20,
+                    'traffic_growth_threshold_bytes' => 50 * 1024 * 1024,
+                    'window_seconds' => 86400,
+                    'subscribe_count' => $subscribeCountIn24h,
+                    'traffic_growth_bytes' => $trafficGrowthIn24h,
                 ]);
             }
 

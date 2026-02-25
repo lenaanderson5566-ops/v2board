@@ -18,7 +18,35 @@
         }
         * { box-sizing: border-box; }
         body { font-family: Arial, sans-serif; margin: 0; background: var(--bg); color: var(--text); }
-        .container { max-width: 1400px; margin: 0 auto; padding: 20px; }
+
+        .layout { display: flex; min-height: 100vh; }
+        .sidebar {
+            width: 240px;
+            background: #111827;
+            color: #e5e7eb;
+            padding: 20px 16px;
+            border-right: 1px solid #1f2937;
+        }
+        .sidebar h3 { margin: 0 0 8px; font-size: 18px; color: #fff; }
+        .sidebar p { margin: 0 0 16px; color: #9ca3af; font-size: 12px; }
+        .menu-section { margin-bottom: 18px; }
+        .menu-title { font-size: 11px; color: #9ca3af; margin-bottom: 8px; text-transform: uppercase; letter-spacing: .4px; }
+        .menu-list { display: flex; flex-direction: column; gap: 8px; }
+        .menu-btn {
+            width: 100%;
+            text-align: left;
+            border: 1px solid #374151;
+            background: #1f2937;
+            color: #e5e7eb;
+            border-radius: 8px;
+            padding: 9px 10px;
+            font-size: 12px;
+            cursor: pointer;
+        }
+        .menu-btn:hover { background: #2563eb; border-color: #2563eb; }
+
+        .content { flex: 1; padding: 20px; }
+        .container { max-width: 1200px; margin: 0 auto; }
         .header { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 14px; }
         .title { margin: 0; font-size: 24px; }
         .subtitle { margin: 4px 0 0; color: var(--muted); font-size: 13px; }
@@ -26,10 +54,6 @@
         .status.ok { color: var(--success); border-color: #bbf7d0; background: #f0fdf4; }
         .status.warn { color: var(--danger); border-color: #fecaca; background: #fef2f2; }
 
-        .toolbar { display: grid; grid-template-columns: repeat(3, minmax(0,1fr)); gap: 12px; margin-bottom: 14px; }
-        .group { background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 10px; }
-        .group-title { font-size: 12px; color: var(--muted); margin-bottom: 8px; font-weight: bold; }
-        .group-buttons { display: flex; flex-wrap: wrap; gap: 8px; }
         button {
             padding: 7px 12px;
             border: 1px solid var(--border);
@@ -56,46 +80,55 @@
         .rule-textarea { min-height: 72px; }
 
         @media (max-width: 1100px) {
-            .toolbar { grid-template-columns: 1fr; }
+            .layout { flex-direction: column; }
+            .sidebar { width: 100%; border-right: 0; border-bottom: 1px solid #1f2937; }
             .cards { grid-template-columns: repeat(2, minmax(120px, 1fr)); }
         }
     </style>
 </head>
 <body>
-<div class="container">
-    <div class="header">
-        <div>
-            <h2 class="title">Risk Control Console</h2>
-            <p class="subtitle">风控总览、日志检索、规则管理</p>
-        </div>
-    </div>
+<div class="layout">
+    <aside class="sidebar">
+        <h3>Risk Console</h3>
+        <p>风控后台导航</p>
 
-    <div id="authState" class="status"></div>
-
-    <div class="toolbar">
-        <div class="group">
-            <div class="group-title">总览</div>
-            <div class="group-buttons">
-                <button onclick="fetchOverview()">查看总览</button>
+        <div class="menu-section">
+            <div class="menu-title">总览</div>
+            <div class="menu-list">
+                <button class="menu-btn" onclick="fetchOverview()">查看总览</button>
             </div>
         </div>
-        <div class="group">
-            <div class="group-title">日志</div>
-            <div class="group-buttons">
-                <button onclick="fetchLoginLogs()">登录日志</button>
-                <button onclick="fetchSubscribeLogs()">订阅日志</button>
-            </div>
-        </div>
-        <div class="group">
-            <div class="group-title">风控</div>
-            <div class="group-buttons">
-                <button onclick="fetchRules()">规则配置</button>
-                <button onclick="fetchRuleHits()">规则触发记录</button>
-            </div>
-        </div>
-    </div>
 
-    <div id="result" class="result-panel"></div>
+        <div class="menu-section">
+            <div class="menu-title">日志</div>
+            <div class="menu-list">
+                <button class="menu-btn" onclick="fetchLoginLogs()">登录日志</button>
+                <button class="menu-btn" onclick="fetchSubscribeLogs()">订阅日志</button>
+            </div>
+        </div>
+
+        <div class="menu-section">
+            <div class="menu-title">风控</div>
+            <div class="menu-list">
+                <button class="menu-btn" onclick="fetchRules()">规则配置</button>
+                <button class="menu-btn" onclick="fetchRuleHits()">规则触发记录</button>
+            </div>
+        </div>
+    </aside>
+
+    <main class="content">
+        <div class="container">
+            <div class="header">
+                <div>
+                    <h2 class="title">Risk Control Console</h2>
+                    <p class="subtitle">风控总览、日志检索、规则管理</p>
+                </div>
+            </div>
+
+            <div id="authState" class="status"></div>
+            <div id="result" class="result-panel"></div>
+        </div>
+    </main>
 </div>
 
 <script>

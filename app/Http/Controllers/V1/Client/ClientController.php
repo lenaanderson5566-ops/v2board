@@ -117,8 +117,9 @@ class ClientController extends Controller
 
         $tip = $tipMap[$reason] ?? $tipMap['user_unavailable'];
         $base = [
-            'host' => '127.0.0.1',
-            'port' => 1,
+            // Avoid localhost placeholders because some clients (e.g. Shadowrocket)
+            // may silently drop loopback/private-address subscription nodes.
+            'host' => '203.0.113.10',
             'network' => 'tcp',
             'network_settings' => [],
             'created_at' => time(),
@@ -128,17 +129,20 @@ class ClientController extends Controller
             array_merge($base, [
                 'name' => "{$tip} [SS]",
                 'type' => 'shadowsocks',
+                'port' => 61001,
                 'cipher' => 'aes-128-gcm',
                 'password' => 'invalid-password',
             ]),
             array_merge($base, [
                 'name' => "{$tip} [VMESS]",
                 'type' => 'vmess',
+                'port' => 61002,
                 'tls' => 0,
             ]),
             array_merge($base, [
                 'name' => "{$tip} [TROJAN]",
                 'type' => 'trojan',
+                'port' => 61003,
                 'tls' => 0,
                 'allow_insecure' => 0,
                 'server_name' => 'invalid.local',

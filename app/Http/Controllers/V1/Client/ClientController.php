@@ -131,6 +131,9 @@ class ClientController extends Controller
                 'type' => 'shadowsocks',
                 'port' => 61001,
                 'cipher' => 'aes-128-gcm',
+                'obfs' => null,
+                'obfs-host' => null,
+                'obfs-path' => null,
                 'password' => 'invalid-password',
             ]),
             array_merge($base, [

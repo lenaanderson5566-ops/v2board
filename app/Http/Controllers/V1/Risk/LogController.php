@@ -5,6 +5,7 @@ namespace App\Http\Controllers\V1\Risk;
 use App\Http\Controllers\Controller;
 use App\Models\LoginLog;
 use App\Models\RiskRuleHit;
+use App\Models\RiskRuleConfig;
 use App\Models\SubscribeLog;
 use App\Services\RiskLogService;
 use Illuminate\Http\Request;
@@ -51,6 +52,56 @@ class LogController extends Controller
 
         return response([
             'data' => $rules
+        ]);
+    }
+
+
+    public function updateRule(Request $request)
+    {
+        $params = $request->validate([
+            'rule_key' => 'required|string',
+            'name' => 'nullable|string',
+            'description' => 'nullable|string',
+            'risk_level' => 'nullable|string',
+            'enabled' => 'nullable',
+            'sort' => 'nullable|integer',
+            'thresholds' => 'nullable',
+        ]);
+
+        $definitions = RiskLogService::defaultRuleDefinitions();
+        $ruleKey = $params['rule_key'];
+        if (!isset($definitions[$ruleKey])) {
+            abort(422, 'unknown rule_key');
+        }
+
+        $default = $definitions[$ruleKey];
+        $thresholds = $params['thresholds'] ?? null;
+        if (is_string($thresholds)) {
+            $decoded = json_decode($thresholds, true);
+            if (!is_array($decoded)) {
+                abort(422, 'thresholds must be a valid json object');
+            }
+            $thresholds = $decoded;
+        }
+        if (!is_null($thresholds) && !is_array($thresholds)) {
+            abort(422, 'thresholds must be an array');
+        }
+
+        RiskRuleConfig::updateOrCreate(
+            ['rule_key' => $ruleKey],
+            [
+                'scene' => $default['scene'],
+                'name' => $params['name'] ?? $default['name'],
+                'description' => array_key_exists('description', $params) ? $params['description'] : $default['description'],
+                'risk_level' => $params['risk_level'] ?? $default['risk_level'],
+                'thresholds' => is_null($thresholds) ? $default['thresholds'] : array_merge($default['thresholds'], $thresholds),
+                'enabled' => array_key_exists('enabled', $params) ? (int) (bool) $params['enabled'] : 1,
+                'sort' => $params['sort'] ?? $default['sort'],
+            ]
+        );
+
+        return response([
+            'data' => (new RiskLogService())->getRuleDefinitions()
         ]);
     }
 

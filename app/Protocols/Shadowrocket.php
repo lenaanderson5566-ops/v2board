@@ -42,15 +42,19 @@ class Shadowrocket
 
     private function shouldRenderStatusLine(): bool
     {
-        if (count($this->servers) !== 1) {
+        if (!$this->servers) {
             return true;
         }
 
-        $server = $this->servers[0];
-        $name = (string) ($server['name'] ?? '');
+        foreach ($this->servers as $server) {
+            $name = (string) ($server['name'] ?? '');
+            if (strpos($name, '⚠') !== 0) {
+                return true;
+            }
+        }
 
-        // Warning-only placeholder node: keep the node name as the primary message.
-        return strpos($name, '⚠') !== 0;
+        // Warning-only placeholder nodes: keep node names as the primary message.
+        return false;
     }
 
     public static function buildVmess($uuid, $server)

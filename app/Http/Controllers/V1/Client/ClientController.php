@@ -115,17 +115,35 @@ class ClientController extends Controller
             'user_unavailable' => '⚠ 订阅暂不可用，请稍后重试',
         ];
 
-        return [[
-            'name' => $tipMap[$reason] ?? $tipMap['user_unavailable'],
-            'type' => 'shadowsocks',
+        $tip = $tipMap[$reason] ?? $tipMap['user_unavailable'];
+        $base = [
             'host' => '127.0.0.1',
             'port' => 1,
-            'cipher' => 'aes-128-gcm',
-            'password' => 'invalid-password',
-            'network' => null,
+            'network' => 'tcp',
             'network_settings' => [],
             'created_at' => time(),
-        ]];
+        ];
+
+        return [
+            array_merge($base, [
+                'name' => "{$tip} [SS]",
+                'type' => 'shadowsocks',
+                'cipher' => 'aes-128-gcm',
+                'password' => 'invalid-password',
+            ]),
+            array_merge($base, [
+                'name' => "{$tip} [VMESS]",
+                'type' => 'vmess',
+                'tls' => 0,
+            ]),
+            array_merge($base, [
+                'name' => "{$tip} [TROJAN]",
+                'type' => 'trojan',
+                'tls' => 0,
+                'allow_insecure' => 0,
+                'server_name' => 'invalid.local',
+            ]),
+        ];
     }
 
     private function resolveProtocolHandler(string $resolvedFlag, $user, array $servers)

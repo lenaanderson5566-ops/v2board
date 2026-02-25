@@ -30,19 +30,6 @@ class ClientController extends Controller
                 $serverService = new ServerService();
                 $servers = $serverService->getAvailableServers($user);
 
-                if ($this->isTrafficExhausted($user)) {
-                    $class = $this->resolveProtocolHandler($flag, $user, $this->buildTrafficExhaustedServers($servers));
-                    $resolvedClientType = $class->flag;
-                    $riskLogService->createSubscribeLog($this->buildSubscribeLogPayload(
-                        $request,
-                        $user,
-                        $resolvedClientType,
-                        'failed',
-                        'traffic_exhausted'
-                    ));
-                    return $class->handle();
-                }
-
                 if (!strpos($flag, 'sing')) {
                     $this->setSubscribeInfoToServers($servers, $user);
                 }
@@ -76,14 +63,8 @@ class ClientController extends Controller
             $reason
         ));
 
-        if ($reason === 'no_plan') {
-            abort(403, '当前账户暂无可用订阅，请先购买套餐');
-        }
-        if ($reason === 'expired') {
-            abort(403, '订阅已到期，请续费后重试');
-        }
-
-        abort(403, 'subscription unavailable');
+        $class = $this->resolveProtocolHandler($flag, $user, $this->buildUnavailableServers($reason));
+        return $class->handle();
     }
 
     private function buildSubscribeLogPayload(Request $request, $user, ?string $flag, string $status, ?string $reason = null): array
@@ -123,24 +104,25 @@ class ClientController extends Controller
         return 'user_unavailable';
     }
 
-    private function isTrafficExhausted($user): bool
+    private function buildUnavailableServers(string $reason): array
     {
-        return (int) (($user['u'] ?? 0) + ($user['d'] ?? 0)) >= (int) ($user['transfer_enable'] ?? 0)
-            && (int) ($user['transfer_enable'] ?? 0) > 0;
-    }
+        $tipMap = [
+            'no_plan' => '⚠ 当前账户暂无可用订阅，请先购买套餐',
+            'expired' => '⚠ 订阅已到期，请续费后重试',
+            'user_unavailable' => '⚠ 订阅暂不可用，请稍后重试',
+        ];
 
-    private function buildTrafficExhaustedServers(array $servers): array
-    {
-        if (!isset($servers[0])) {
-            return $servers;
-        }
-
-        $invalidServer = $servers[0];
-        $invalidServer['name'] = '⚠ 流量已用尽，请先购买/重置流量';
-        $invalidServer['host'] = '127.0.0.1';
-        $invalidServer['port'] = 1;
-
-        return [$invalidServer];
+        return [[
+            'name' => $tipMap[$reason] ?? $tipMap['user_unavailable'],
+            'type' => 'shadowsocks',
+            'host' => '127.0.0.1',
+            'port' => 1,
+            'cipher' => 'aes-128-gcm',
+            'password' => 'invalid-password',
+            'network' => null,
+            'network_settings' => [],
+            'created_at' => time(),
+        ]];
     }
 
     private function resolveProtocolHandler(string $flag, $user, array $servers)

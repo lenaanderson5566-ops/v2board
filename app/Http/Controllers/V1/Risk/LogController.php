@@ -4,11 +4,117 @@ namespace App\Http\Controllers\V1\Risk;
 
 use App\Http\Controllers\Controller;
 use App\Models\LoginLog;
+use App\Models\RiskRuleHit;
 use App\Models\SubscribeLog;
 use Illuminate\Http\Request;
 
 class LogController extends Controller
 {
+    public function getOverview(Request $request)
+    {
+        $now = time();
+
+        $loginToday = LoginLog::query()->where('created_at', '>=', $now - 86400);
+        $subscribeToday = SubscribeLog::query()->where('created_at', '>=', $now - 86400);
+
+        return response([
+            'data' => [
+                'login_total_24h' => (clone $loginToday)->count(),
+                'login_failed_24h' => (clone $loginToday)->where('is_success', 0)->count(),
+                'login_failed_rate_24h' => $this->percent(
+                    (clone $loginToday)->count(),
+                    (clone $loginToday)->where('is_success', 0)->count()
+                ),
+                'subscribe_total_24h' => (clone $subscribeToday)->count(),
+                'subscribe_failed_24h' => (clone $subscribeToday)->where('status', 'failed')->count(),
+                'subscribe_failed_rate_24h' => $this->percent(
+                    (clone $subscribeToday)->count(),
+                    (clone $subscribeToday)->where('status', 'failed')->count()
+                ),
+                'rule_hit_total_24h' => RiskRuleHit::query()->where('hit_at', '>=', $now - 86400)->count(),
+                'latest_rule_hits' => RiskRuleHit::query()->orderBy('id', 'desc')->limit(10)->get(),
+            ]
+        ]);
+    }
+
+    public function getRules(Request $request)
+    {
+        return response([
+            'data' => [
+                [
+                    'scene' => 'login',
+                    'rule_key' => 'login_failed_burst_by_ip_10m',
+                    'risk_level' => 'high',
+                    'description' => '同一 IP 10 分钟内登录失败次数 >= 5',
+                    'threshold' => 5,
+                    'window_seconds' => 600,
+                ],
+                [
+                    'scene' => 'login',
+                    'rule_key' => 'login_account_multi_ip_1h',
+                    'risk_level' => 'medium',
+                    'description' => '同一账号 1 小时内出现的不同登录 IP 数 >= 5',
+                    'threshold' => 5,
+                    'window_seconds' => 3600,
+                ],
+                [
+                    'scene' => 'subscribe',
+                    'rule_key' => 'subscribe_high_frequency_by_user_10m',
+                    'risk_level' => 'medium',
+                    'description' => '同一用户 10 分钟内订阅拉取次数 >= 20',
+                    'threshold' => 20,
+                    'window_seconds' => 600,
+                ],
+                [
+                    'scene' => 'subscribe',
+                    'rule_key' => 'subscribe_client_type_spread_24h',
+                    'risk_level' => 'low',
+                    'description' => '同一用户 24 小时内订阅客户端类型数量 >= 5',
+                    'threshold' => 5,
+                    'window_seconds' => 86400,
+                ],
+                [
+                    'scene' => 'subscribe',
+                    'rule_key' => 'subscribe_failed_burst_by_ip_10m',
+                    'risk_level' => 'high',
+                    'description' => '同一 IP 10 分钟内订阅失败次数 >= 10',
+                    'threshold' => 10,
+                    'window_seconds' => 600,
+                ],
+            ]
+        ]);
+    }
+
+    public function getRuleHits(Request $request)
+    {
+        $current = max((int)$request->input('current', 1), 1);
+        $pageSize = min(max((int)$request->input('page_size', 10), 1), 100);
+
+        $builder = RiskRuleHit::query();
+        if ($request->filled('scene')) {
+            $builder->where('scene', $request->input('scene'));
+        }
+        if ($request->filled('rule_key')) {
+            $builder->where('rule_key', $request->input('rule_key'));
+        }
+        if ($request->filled('email')) {
+            $builder->where('email', 'like', '%' . $request->input('email') . '%');
+        }
+        if ($request->filled('ip')) {
+            $builder->where('ip', $request->input('ip'));
+        }
+
+        $total = $builder->count();
+        $data = $builder->orderBy('id', 'desc')
+            ->forPage($current, $pageSize)
+            ->get();
+
+        return response([
+            'data' => $data,
+            'total' => $total,
+        ]);
+    }
+
     public function getLoginLogs(Request $request)
     {
         $current = max((int)$request->input('current', 1), 1);
@@ -64,5 +170,14 @@ class LogController extends Controller
             'data' => $data,
             'total' => $total,
         ]);
+    }
+
+    private function percent(int $total, int $sub): string
+    {
+        if ($total <= 0) {
+            return '0%';
+        }
+
+        return round(($sub / $total) * 100, 2) . '%';
     }
 }

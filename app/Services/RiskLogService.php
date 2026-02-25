@@ -10,9 +10,11 @@ use App\Models\SubscribeLog;
 class RiskLogService
 {
     private static $ruleConfigMap = null;
+    private const MAX_REASON_LENGTH = 190;
 
     public function createLoginLog(array $payload): void
     {
+        $payload = $this->sanitizePayload($payload);
         $ip = $payload['ip'] ?? request()->ip();
         $geo = (new GeoIpService())->lookup($ip);
 
@@ -31,6 +33,7 @@ class RiskLogService
 
     public function createSubscribeLog(array $payload): void
     {
+        $payload = $this->sanitizePayload($payload);
         $ip = $payload['ip'] ?? request()->ip();
         $userAgent = $payload['user_agent'] ?? request()->header('user-agent');
         $geo = (new GeoIpService())->lookup($ip);
@@ -159,11 +162,11 @@ class RiskLogService
 
                 $subscribeCount = (clone $subscribeSuccess)->count();
                 $trafficUsageMax = (clone $subscribeSuccess)
-                    ->selectRaw('MAX(COALESCE(traffic_u, 0) + COALESCE(traffic_d, 0)) as usage')
-                    ->value('usage');
+                    ->selectRaw('MAX(COALESCE(traffic_u, 0) + COALESCE(traffic_d, 0)) as traffic_usage')
+                    ->value('traffic_usage');
                 $trafficUsageMin = (clone $subscribeSuccess)
-                    ->selectRaw('MIN(COALESCE(traffic_u, 0) + COALESCE(traffic_d, 0)) as usage')
-                    ->value('usage');
+                    ->selectRaw('MIN(COALESCE(traffic_u, 0) + COALESCE(traffic_d, 0)) as traffic_usage')
+                    ->value('traffic_usage');
                 $trafficGrowth = max((int) $trafficUsageMax - (int) $trafficUsageMin, 0);
 
                 if ($subscribeCount >= $subscribeThreshold && $trafficGrowth <= $trafficThresholdBytes) {
@@ -372,9 +375,31 @@ class RiskLogService
             'ip' => $log->ip,
             'client_type' => $log->client_type ?? null,
             'status' => $log->status ?? null,
-            'reason' => $log->reason ?? null,
+            'reason' => $this->normalizeReason($log->reason ?? null),
             'payload' => $payload,
             'hit_at' => $hitAt,
         ]);
+    }
+
+    private function sanitizePayload(array $payload): array
+    {
+        if (array_key_exists('reason', $payload)) {
+            $payload['reason'] = $this->normalizeReason($payload['reason']);
+        }
+
+        return $payload;
+    }
+
+    private function normalizeReason(?string $reason): ?string
+    {
+        if (is_null($reason) || $reason === '') {
+            return null;
+        }
+
+        if (function_exists('mb_substr')) {
+            return mb_substr($reason, 0, self::MAX_REASON_LENGTH);
+        }
+
+        return substr($reason, 0, self::MAX_REASON_LENGTH);
     }
 }

@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\LoginLog;
 use App\Models\RiskRuleHit;
 use App\Models\SubscribeLog;
+use App\Services\RiskLogService;
 use Illuminate\Http\Request;
 
 class LogController extends Controller
@@ -39,58 +40,17 @@ class LogController extends Controller
 
     public function getRules(Request $request)
     {
+        $rules = (new RiskLogService())->getRuleDefinitions();
+
+        if ($request->has('enabled') && $request->input('enabled') !== '') {
+            $enabled = (int) $request->input('enabled');
+            $rules = array_values(array_filter($rules, function ($rule) use ($enabled) {
+                return (int) $rule['enabled'] === $enabled;
+            }));
+        }
+
         return response([
-            'data' => [
-                [
-                    'scene' => 'login',
-                    'rule_key' => 'login_failed_burst_by_ip_10m',
-                    'risk_level' => 'high',
-                    'description' => '同一 IP 10 分钟内登录失败次数 >= 5',
-                    'threshold' => 5,
-                    'window_seconds' => 600,
-                ],
-                [
-                    'scene' => 'login',
-                    'rule_key' => 'login_account_multi_ip_1h',
-                    'risk_level' => 'medium',
-                    'description' => '同一账号 1 小时内出现的不同登录 IP 数 >= 5',
-                    'threshold' => 5,
-                    'window_seconds' => 3600,
-                ],
-                [
-                    'scene' => 'subscribe',
-                    'rule_key' => 'subscribe_high_frequency_by_user_10m',
-                    'risk_level' => 'medium',
-                    'description' => '同一用户 10 分钟内订阅拉取次数 >= 20',
-                    'threshold' => 20,
-                    'window_seconds' => 600,
-                ],
-                [
-                    'scene' => 'subscribe',
-                    'rule_key' => 'subscribe_high_pull_low_traffic_24h',
-                    'risk_level' => 'high',
-                    'description' => '同一用户 24 小时内订阅成功次数 >= 20 且上下行总流量增长 <= 50MB',
-                    'subscribe_threshold' => 20,
-                    'traffic_growth_threshold_bytes' => 52428800,
-                    'window_seconds' => 86400,
-                ],
-                [
-                    'scene' => 'subscribe',
-                    'rule_key' => 'subscribe_client_type_spread_24h',
-                    'risk_level' => 'low',
-                    'description' => '同一用户 24 小时内订阅客户端类型数量 >= 5',
-                    'threshold' => 5,
-                    'window_seconds' => 86400,
-                ],
-                [
-                    'scene' => 'subscribe',
-                    'rule_key' => 'subscribe_failed_burst_by_ip_10m',
-                    'risk_level' => 'high',
-                    'description' => '同一 IP 10 分钟内订阅失败次数 >= 10',
-                    'threshold' => 10,
-                    'window_seconds' => 600,
-                ],
-            ]
+            'data' => $rules
         ]);
     }
 

@@ -93,10 +93,13 @@ class ClientController extends Controller
 
     private function unavailableReason($user): string
     {
-        if (empty($user->plan_id) || (int) ($user->transfer_enable ?? 0) <= 0) {
+        // Keep classification aligned with original availability semantics.
+        // New users: plan is not assigned yet.
+        if (is_null($user->plan_id)) {
             return 'no_plan';
         }
 
+        // Expired users: plan exists, and expiration timestamp is reached.
         if (!is_null($user->expired_at) && (int) $user->expired_at > 0 && (int) $user->expired_at <= time()) {
             return 'expired';
         }

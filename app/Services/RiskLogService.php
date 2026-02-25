@@ -39,9 +39,9 @@ class RiskLogService
             'plan_name' => null,
             'expired_at' => null,
             'client_type' => null,
-            'traffic_used' => null,
+            'traffic_u' => null,
+            'traffic_d' => null,
             'traffic_total' => null,
-            'traffic_remaining' => null,
             'ip' => $ip,
             'subscribe_domain' => request()->getHost(),
             'user_agent' => $userAgent,
@@ -114,9 +114,9 @@ class RiskLogService
                 ->where('created_at', '>=', $now - 86400);
 
             $subscribeCountIn24h = (clone $subscribeSuccessIn24h)->count();
-            $trafficUsedMaxIn24h = (clone $subscribeSuccessIn24h)->max('traffic_used');
-            $trafficUsedMinIn24h = (clone $subscribeSuccessIn24h)->min('traffic_used');
-            $trafficGrowthIn24h = max((int) $trafficUsedMaxIn24h - (int) $trafficUsedMinIn24h, 0);
+            $trafficUsageMaxIn24h = (clone $subscribeSuccessIn24h)->selectRaw('MAX(COALESCE(traffic_u, 0) + COALESCE(traffic_d, 0)) as usage')->value('usage');
+            $trafficUsageMinIn24h = (clone $subscribeSuccessIn24h)->selectRaw('MIN(COALESCE(traffic_u, 0) + COALESCE(traffic_d, 0)) as usage')->value('usage');
+            $trafficGrowthIn24h = max((int) $trafficUsageMaxIn24h - (int) $trafficUsageMinIn24h, 0);
 
             if ($subscribeCountIn24h >= 20 && $trafficGrowthIn24h <= 50 * 1024 * 1024) {
                 $this->recordRuleHit('subscribe', 'subscribe_high_pull_low_traffic_24h', 'high', $log, [

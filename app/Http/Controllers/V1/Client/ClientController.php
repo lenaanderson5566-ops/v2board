@@ -102,7 +102,8 @@ class ClientController extends Controller
 
     private function buildSubscribeLogPayload(Request $request, $user, ?string $flag, string $status, ?string $reason = null): array
     {
-        $trafficUsed = (int) (($user['u'] ?? 0) + ($user['d'] ?? 0));
+        $trafficU = (int) ($user['u'] ?? 0);
+        $trafficD = (int) ($user['d'] ?? 0);
         $trafficTotal = (int) ($user['transfer_enable'] ?? 0);
 
         return [
@@ -112,9 +113,9 @@ class ClientController extends Controller
             'plan_name' => $user->plan_id ? optional(Plan::find($user->plan_id))->name : null,
             'expired_at' => $user->expired_at,
             'client_type' => $flag,
-            'traffic_used' => $trafficUsed,
+            'traffic_u' => $trafficU,
+            'traffic_d' => $trafficD,
             'traffic_total' => $trafficTotal,
-            'traffic_remaining' => max($trafficTotal - $trafficUsed, 0),
             'ip' => $request->ip(),
             'subscribe_domain' => $request->getHost(),
             'user_agent' => $request->header('user-agent'),

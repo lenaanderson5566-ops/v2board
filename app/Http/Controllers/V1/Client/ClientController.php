@@ -5,7 +5,7 @@ namespace App\Http\Controllers\V1\Client;
 use App\Http\Controllers\Controller;
 use App\Models\Plan;
 use App\Protocols\General;
-use App\Protocols\Singbox\Singbox;
+use App\Protocols\Singbox;
 use App\Protocols\ClashMeta;
 use App\Services\ServerService;
 use App\Services\UserService;

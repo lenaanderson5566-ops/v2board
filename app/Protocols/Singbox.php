@@ -1,5 +1,5 @@
 <?php
-namespace App\Protocols\Singbox;
+namespace App\Protocols;
 
 use App\Utils\Helper;
 

@@ -21,12 +21,14 @@ class Shadowrocket
         $user = $this->user;
 
         $uri = '';
-        //display remaining traffic and expire date
-        $upload = round($user['u'] / (1024*1024*1024), 2);
-        $download = round($user['d'] / (1024*1024*1024), 2);
-        $totalTraffic = round($user['transfer_enable'] / (1024*1024*1024), 2);
-        $expiredDate = date('Y-m-d', $user['expired_at']);
-        $uri .= "STATUS=🚀↑:{$upload}GB,↓:{$download}GB,TOT:{$totalTraffic}GB💡Expires:{$expiredDate}\r\n";
+        if ($this->shouldRenderStatusLine()) {
+            // display remaining traffic and expire date
+            $upload = round($user['u'] / (1024 * 1024 * 1024), 2);
+            $download = round($user['d'] / (1024 * 1024 * 1024), 2);
+            $totalTraffic = round($user['transfer_enable'] / (1024 * 1024 * 1024), 2);
+            $expiredDate = date('Y-m-d', $user['expired_at']);
+            $uri .= "STATUS=🚀↑:{$upload}GB,↓:{$download}GB,TOT:{$totalTraffic}GB💡Expires:{$expiredDate}\r\n";
+        }
 
         foreach ($this->servers as $server) {
             if ($server['type'] === 'vmess' || ($server['type'] === 'v2node' && $server['protocol'] === 'vmess')) {
@@ -36,6 +38,19 @@ class Shadowrocket
             }
         }
         return base64_encode($uri);
+    }
+
+    private function shouldRenderStatusLine(): bool
+    {
+        if (count($this->servers) !== 1) {
+            return true;
+        }
+
+        $server = $this->servers[0];
+        $name = (string) ($server['name'] ?? '');
+
+        // Warning-only placeholder node: keep the node name as the primary message.
+        return strpos($name, '⚠') !== 0;
     }
 
     public static function buildVmess($uuid, $server)

@@ -5,33 +5,99 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>{{ $title }} - Risk Control</title>
     <style>
-        body { font-family: Arial, sans-serif; margin: 20px; }
-        table { width: 100%; border-collapse: collapse; margin-top: 12px; }
-        th, td { border: 1px solid #ddd; padding: 8px; text-align: left; font-size: 12px; vertical-align: top; }
-        th { background: #f3f3f3; }
-        .row { margin: 8px 0; }
-        button { padding: 6px 10px; margin-right: 6px; margin-bottom: 6px; }
-        .ok { color: #389e0d; }
-        .warn { color: #cf1322; }
-        .cards { display: grid; grid-template-columns: repeat(4, minmax(140px, 1fr)); gap: 12px; margin-top: 12px; }
-        .card { border: 1px solid #ddd; border-radius: 6px; padding: 10px; background: #fafafa; }
-        .card .label { color: #666; font-size: 12px; }
-        .card .value { font-size: 20px; font-weight: bold; margin-top: 6px; }
-        .rule-input, .rule-select, .rule-textarea { width: 100%; box-sizing: border-box; font-size: 12px; }
+        :root {
+            --bg: #f6f8fb;
+            --card: #ffffff;
+            --text: #1f2937;
+            --muted: #6b7280;
+            --border: #e5e7eb;
+            --primary: #2563eb;
+            --primary-soft: #eff6ff;
+            --success: #16a34a;
+            --danger: #dc2626;
+        }
+        * { box-sizing: border-box; }
+        body { font-family: Arial, sans-serif; margin: 0; background: var(--bg); color: var(--text); }
+        .container { max-width: 1400px; margin: 0 auto; padding: 20px; }
+        .header { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 14px; }
+        .title { margin: 0; font-size: 24px; }
+        .subtitle { margin: 4px 0 0; color: var(--muted); font-size: 13px; }
+        .status { padding: 10px 12px; border-radius: 8px; font-size: 13px; border: 1px solid var(--border); background: var(--card); margin-bottom: 14px; }
+        .status.ok { color: var(--success); border-color: #bbf7d0; background: #f0fdf4; }
+        .status.warn { color: var(--danger); border-color: #fecaca; background: #fef2f2; }
+
+        .toolbar { display: grid; grid-template-columns: repeat(3, minmax(0,1fr)); gap: 12px; margin-bottom: 14px; }
+        .group { background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 10px; }
+        .group-title { font-size: 12px; color: var(--muted); margin-bottom: 8px; font-weight: bold; }
+        .group-buttons { display: flex; flex-wrap: wrap; gap: 8px; }
+        button {
+            padding: 7px 12px;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            background: #fff;
+            color: var(--text);
+            cursor: pointer;
+            font-size: 12px;
+        }
+        button:hover { border-color: #bfdbfe; background: var(--primary-soft); }
+
+        .result-panel { background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 14px; min-height: 220px; }
+        .cards { display: grid; grid-template-columns: repeat(5, minmax(120px, 1fr)); gap: 12px; margin-top: 12px; }
+        .card { border: 1px solid var(--border); border-radius: 8px; padding: 10px; background: #fafafa; }
+        .card .label { color: var(--muted); font-size: 12px; }
+        .card .value { font-size: 18px; font-weight: bold; margin-top: 6px; }
+
+        table { width: 100%; border-collapse: collapse; margin-top: 12px; background: #fff; }
+        th, td { border: 1px solid var(--border); padding: 8px; text-align: left; font-size: 12px; vertical-align: top; }
+        th { background: #f9fafb; position: sticky; top: 0; }
+        .table-wrap { max-height: 620px; overflow: auto; border: 1px solid var(--border); border-radius: 8px; }
+
+        .rule-input, .rule-select, .rule-textarea { width: 100%; box-sizing: border-box; font-size: 12px; border: 1px solid var(--border); border-radius: 6px; padding: 6px; }
         .rule-textarea { min-height: 72px; }
+
+        @media (max-width: 1100px) {
+            .toolbar { grid-template-columns: 1fr; }
+            .cards { grid-template-columns: repeat(2, minmax(120px, 1fr)); }
+        }
     </style>
 </head>
 <body>
-<h2>Risk Control Console</h2>
-<div id="authState" class="row"></div>
-<div class="row">
-    <button onclick="fetchOverview()">总览</button>
-    <button onclick="fetchRules()">风控规则（可编辑）</button>
-    <button onclick="fetchRuleHits()">规则触发记录</button>
-    <button onclick="fetchLoginLogs()">登录日志</button>
-    <button onclick="fetchSubscribeLogs()">订阅日志</button>
+<div class="container">
+    <div class="header">
+        <div>
+            <h2 class="title">Risk Control Console</h2>
+            <p class="subtitle">风控总览、日志检索、规则管理</p>
+        </div>
+    </div>
+
+    <div id="authState" class="status"></div>
+
+    <div class="toolbar">
+        <div class="group">
+            <div class="group-title">总览</div>
+            <div class="group-buttons">
+                <button onclick="fetchOverview()">查看总览</button>
+            </div>
+        </div>
+        <div class="group">
+            <div class="group-title">日志</div>
+            <div class="group-buttons">
+                <button onclick="fetchLoginLogs()">登录日志</button>
+                <button onclick="fetchSubscribeLogs()">订阅日志</button>
+            </div>
+        </div>
+        <div class="group">
+            <div class="group-title">风控</div>
+            <div class="group-buttons">
+                <button onclick="fetchRules()">规则配置</button>
+                <button onclick="fetchRuleHits()">规则触发记录</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="result" class="result-panel"></div>
 </div>
-<div id="result"></div>
+
 <script>
 const apiBase = '/api/v1/{{ $api_path }}';
 const adminPath = '/{{ config('v2board.secure_path', config('v2board.frontend_admin_path', hash('crc32b', config('app.key')))) }}';
@@ -52,10 +118,10 @@ function getAuthorization() {
 const authorization = getAuthorization();
 const authStateEl = document.getElementById('authState');
 if (authorization) {
-  authStateEl.className = 'row ok';
+  authStateEl.className = 'status ok';
   authStateEl.textContent = '已自动读取后台登录态（authorization），可直接查询风控信息。';
 } else {
-  authStateEl.className = 'row warn';
+  authStateEl.className = 'status warn';
   authStateEl.innerHTML = `未检测到后台登录态，请先前往 <a href="${adminPath}">管理员后台登录</a> 后再访问风控页面。`;
 }
 
@@ -66,7 +132,7 @@ function buildTable(rows) {
   const keys = Object.keys(rows[0]);
   const thead = '<tr>' + keys.map(k => `<th>${k}</th>`).join('') + '</tr>';
   const body = rows.map(r => '<tr>' + keys.map(k => `<td>${typeof r[k] === 'object' ? JSON.stringify(r[k]) : (r[k] ?? '')}</td>`).join('') + '</tr>').join('');
-  return `<table><thead>${thead}</thead><tbody>${body}</tbody></table>`;
+  return `<div class="table-wrap"><table><thead>${thead}</thead><tbody>${body}</tbody></table></div>`;
 }
 
 function renderTable(rows) {
@@ -88,7 +154,7 @@ function renderOverview(data) {
   ];
 
   const cardHtml = cards.map(item => `<div class="card"><div class="label">${item.label}</div><div class="value">${item.value ?? 0}</div></div>`).join('');
-  const latestTitle = '<h4 style="margin-top: 18px;">最近规则触发</h4>';
+  const latestTitle = '<h4 style="margin-top: 18px; margin-bottom: 6px;">最近规则触发</h4>';
   const latestTable = buildTable(data.latest_rule_hits || []);
 
   document.getElementById('result').innerHTML = `<div class="cards">${cardHtml}</div>${latestTitle}${latestTable}`;
@@ -139,7 +205,7 @@ function renderRuleEditor(rows) {
       </tr>`;
   }).join('');
 
-  document.getElementById('result').innerHTML = `<table><thead>${thead}</thead><tbody>${body}</tbody></table>`;
+  document.getElementById('result').innerHTML = `<div class="table-wrap"><table><thead>${thead}</thead><tbody>${body}</tbody></table></div>`;
 }
 
 async function request(path, options = {}) {

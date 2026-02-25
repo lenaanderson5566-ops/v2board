@@ -29,37 +29,24 @@ class ClientController extends Controller
             try {
                 $serverService = new ServerService();
                 $servers = $serverService->getAvailableServers($user);
-                if($flag) {
-                    if (!strpos($flag, 'sing')) {
-                        $this->setSubscribeInfoToServers($servers, $user);
-                        foreach (array_reverse(glob(app_path('Protocols') . '/*.php')) as $file) {
-                            $file = 'App\\Protocols\\' . basename($file, '.php');
-                            $class = new $file($user, $servers);
-                            if (strpos($flag, $class->flag) !== false) {
-                                $resolvedClientType = $class->flag;
-                                $riskLogService->createSubscribeLog($this->buildSubscribeLogPayload(
-                                    $request,
-                                    $user,
-                                    $resolvedClientType,
-                                    'success'
-                                ));
-                                return $class->handle();
-                            }
-                        }
-                    }
-                    if (strpos($flag, 'sing') !== false) {
-                        $class = new Singbox($user, $servers);
-                        $resolvedClientType = $class->flag;
-                        $riskLogService->createSubscribeLog($this->buildSubscribeLogPayload(
-                            $request,
-                            $user,
-                            $resolvedClientType,
-                            'success'
-                        ));
-                        return $class->handle();
-                    }
+
+                if ($this->isTrafficExhausted($user)) {
+                    $class = $this->resolveProtocolHandler($flag, $user, $this->buildTrafficExhaustedServers($servers));
+                    $resolvedClientType = $class->flag;
+                    $riskLogService->createSubscribeLog($this->buildSubscribeLogPayload(
+                        $request,
+                        $user,
+                        $resolvedClientType,
+                        'failed',
+                        'traffic_exhausted'
+                    ));
+                    return $class->handle();
                 }
-                $class = new General($user, $servers);
+
+                if (!strpos($flag, 'sing')) {
+                    $this->setSubscribeInfoToServers($servers, $user);
+                }
+                $class = $this->resolveProtocolHandler($flag, $user, $servers);
                 $resolvedClientType = $class->flag;
                 $riskLogService->createSubscribeLog($this->buildSubscribeLogPayload(
                     $request,
@@ -80,15 +67,23 @@ class ClientController extends Controller
             }
         }
 
+        $reason = $this->unavailableReason($user);
         $riskLogService->createSubscribeLog($this->buildSubscribeLogPayload(
             $request,
             $user,
             $this->resolveProtocolFlag($requestedFlag ?: $flag),
             'failed',
-            'user_unavailable'
+            $reason
         ));
 
-        abort(403, 'user is not available');
+        if ($reason === 'no_plan') {
+            abort(403, '当前账户暂无可用订阅，请先购买套餐');
+        }
+        if ($reason === 'expired') {
+            abort(403, '订阅已到期，请续费后重试');
+        }
+
+        abort(403, 'subscription unavailable');
     }
 
     private function buildSubscribeLogPayload(Request $request, $user, ?string $flag, string $status, ?string $reason = null): array
@@ -113,6 +108,58 @@ class ClientController extends Controller
             'status' => $status,
             'reason' => $reason,
         ];
+    }
+
+    private function unavailableReason($user): string
+    {
+        if (empty($user->plan_id) || (int) ($user->transfer_enable ?? 0) <= 0) {
+            return 'no_plan';
+        }
+
+        if (!is_null($user->expired_at) && (int) $user->expired_at > 0 && (int) $user->expired_at <= time()) {
+            return 'expired';
+        }
+
+        return 'user_unavailable';
+    }
+
+    private function isTrafficExhausted($user): bool
+    {
+        return (int) (($user['u'] ?? 0) + ($user['d'] ?? 0)) >= (int) ($user['transfer_enable'] ?? 0)
+            && (int) ($user['transfer_enable'] ?? 0) > 0;
+    }
+
+    private function buildTrafficExhaustedServers(array $servers): array
+    {
+        if (!isset($servers[0])) {
+            return $servers;
+        }
+
+        $invalidServer = $servers[0];
+        $invalidServer['name'] = '⚠ 流量已用尽，请先购买/重置流量';
+        $invalidServer['host'] = '127.0.0.1';
+        $invalidServer['port'] = 1;
+
+        return [$invalidServer];
+    }
+
+    private function resolveProtocolHandler(string $flag, $user, array $servers)
+    {
+        if (strpos($flag, 'sing') !== false) {
+            return new Singbox($user, $servers);
+        }
+
+        if ($flag && !strpos($flag, 'sing')) {
+            foreach (array_reverse(glob(app_path('Protocols') . '/*.php')) as $file) {
+                $file = 'App\\Protocols\\' . basename($file, '.php');
+                $class = new $file($user, $servers);
+                if (strpos($flag, $class->flag) !== false) {
+                    return $class;
+                }
+            }
+        }
+
+        return new General($user, $servers);
     }
 
     private function setSubscribeInfoToServers(&$servers, $user)

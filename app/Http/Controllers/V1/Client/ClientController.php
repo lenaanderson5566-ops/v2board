@@ -5,8 +5,6 @@ namespace App\Http\Controllers\V1\Client;
 use App\Http\Controllers\Controller;
 use App\Models\Plan;
 use App\Protocols\General;
-use App\Protocols\Singbox;
-use App\Protocols\ClashMeta;
 use App\Services\ServerService;
 use App\Services\UserService;
 use App\Services\RiskLogService;
@@ -30,10 +28,11 @@ class ClientController extends Controller
                 $serverService = new ServerService();
                 $servers = $serverService->getAvailableServers($user);
 
-                if (!strpos($flag, 'sing')) {
+                $resolvedFlag = $this->resolveProtocolFlag($flag);
+                if ($resolvedFlag !== 'sing') {
                     $this->setSubscribeInfoToServers($servers, $user);
                 }
-                $class = $this->resolveProtocolHandler($flag, $user, $servers);
+                $class = $this->resolveProtocolHandler($resolvedFlag, $user, $servers);
                 $resolvedClientType = $class->flag;
                 $riskLogService->createSubscribeLog($this->buildSubscribeLogPayload(
                     $request,
@@ -63,7 +62,8 @@ class ClientController extends Controller
             $reason
         ));
 
-        $class = $this->resolveProtocolHandler($flag, $user, $this->buildUnavailableServers($reason));
+        $resolvedFlag = $this->resolveProtocolFlag($requestedFlag ?: $flag);
+        $class = $this->resolveProtocolHandler($resolvedFlag, $user, $this->buildUnavailableServers($reason));
         return $class->handle();
     }
 
@@ -128,19 +128,13 @@ class ClientController extends Controller
         ]];
     }
 
-    private function resolveProtocolHandler(string $flag, $user, array $servers)
+    private function resolveProtocolHandler(string $resolvedFlag, $user, array $servers)
     {
-        if (strpos($flag, 'sing') !== false) {
-            return new Singbox($user, $servers);
-        }
-
-        if ($flag && !strpos($flag, 'sing')) {
-            foreach (array_reverse(glob(app_path('Protocols') . '/*.php')) as $file) {
-                $file = 'App\\Protocols\\' . basename($file, '.php');
-                $class = new $file($user, $servers);
-                if (strpos($flag, $class->flag) !== false) {
-                    return $class;
-                }
+        foreach (array_reverse(glob(app_path('Protocols') . '/*.php')) as $file) {
+            $file = 'App\\Protocols\\' . basename($file, '.php');
+            $class = new $file($user, $servers);
+            if (strtolower((string) $class->flag) === $resolvedFlag) {
+                return $class;
             }
         }
 

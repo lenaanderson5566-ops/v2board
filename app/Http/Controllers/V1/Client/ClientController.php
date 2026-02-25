@@ -110,45 +110,54 @@ class ClientController extends Controller
     private function buildUnavailableServers(string $reason): array
     {
         $tipMap = [
-            'no_plan' => '⚠ 当前账户暂无可用订阅，请先购买套餐',
-            'expired' => '⚠ 订阅已到期，请续费后重试',
-            'user_unavailable' => '⚠ 订阅暂不可用，请稍后重试',
+            'no_plan' => [
+                'en' => '⚠ No active plan',
+                'ja' => '⚠ 有効なプランなし',
+                'ko' => '⚠ 활성 플랜 없음',
+                'zh' => '⚠ 暂无有效套餐',
+            ],
+            'expired' => [
+                'en' => '⚠ Plan expired',
+                'ja' => '⚠ プラン期限切れ',
+                'ko' => '⚠ 플랜 만료됨',
+                'zh' => '⚠ 套餐已过期',
+            ],
+            'user_unavailable' => [
+                'en' => '⚠ Subscription unavailable',
+                'ja' => '⚠ 購読は利用不可',
+                'ko' => '⚠ 구독 사용 불가',
+                'zh' => '⚠ 订阅暂不可用',
+            ],
         ];
 
-        $tip = $tipMap[$reason] ?? $tipMap['user_unavailable'];
+        $tips = $tipMap[$reason] ?? $tipMap['user_unavailable'];
         $base = [
             // Avoid localhost placeholders because some clients (e.g. Shadowrocket)
             // may silently drop loopback/private-address subscription nodes.
             'host' => '203.0.113.10',
+            'type' => 'vmess',
             'network' => 'tcp',
             'network_settings' => [],
             'created_at' => time(),
+            'tls' => 0,
         ];
 
         return [
             array_merge($base, [
-                'name' => "{$tip} [SS]",
-                'type' => 'shadowsocks',
+                'name' => $tips['en'],
                 'port' => 61001,
-                'cipher' => 'aes-128-gcm',
-                'obfs' => null,
-                'obfs-host' => null,
-                'obfs-path' => null,
-                'password' => 'invalid-password',
             ]),
             array_merge($base, [
-                'name' => "{$tip} [VMESS]",
-                'type' => 'vmess',
+                'name' => $tips['ja'],
                 'port' => 61002,
-                'tls' => 0,
             ]),
             array_merge($base, [
-                'name' => "{$tip} [TROJAN]",
-                'type' => 'trojan',
+                'name' => $tips['ko'],
                 'port' => 61003,
-                'tls' => 0,
-                'allow_insecure' => 0,
-                'server_name' => 'invalid.local',
+            ]),
+            array_merge($base, [
+                'name' => $tips['zh'],
+                'port' => 61004,
             ]),
         ];
     }

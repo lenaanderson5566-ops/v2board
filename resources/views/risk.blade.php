@@ -384,53 +384,62 @@ async function deleteClientStrategy(clientType) {
 
 
 function renderBlacklistEditor(rows) {
-  const thead = `
-    <tr>
-      <th>ID</th>
-      <th>type</th>
-      <th>value</th>
-      <th>remark</th>
-      <th>enabled</th>
-      <th>action</th>
-    </tr>`;
-
   const safe = (v) => String(v ?? '').replace(/"/g, '&quot;');
-  const body = (rows || []).map((item, idx) => `
+  const allRows = rows || [];
+  const ipRows = allRows.filter(item => item.type === 'ip');
+  const uaRows = allRows.filter(item => item.type === 'ua_hash');
+
+  const renderTable = (type, title, rows, withHashButton = false) => {
+    const body = rows.map((item, idx) => `
       <tr>
         <td>${safe(item.id)}</td>
-        <td>
-          <select id="bl_type_${idx}" class="rule-select">
-            <option value="ip" ${item.type === 'ip' ? 'selected' : ''}>ip</option>
-            <option value="ua_hash" ${item.type === 'ua_hash' ? 'selected' : ''}>ua_hash</option>
-          </select>
-        </td>
-        <td><div style="display:flex;gap:6px;"><input id="bl_value_${idx}" class="rule-input" value="${safe(item.value || '')}"><button onclick="convertRowUaToHash(${idx})">UA→HASH</button></div></td>
-        <td><input id="bl_remark_${idx}" class="rule-input" value="${safe(item.remark || '')}"></td>
-        <td><input id="bl_enabled_${idx}" type="checkbox" ${item.is_enabled ? 'checked' : ''}></td>
+        <td><input id="bl_${type}_value_${idx}" class="rule-input" value="${safe(item.value || '')}"></td>
+        <td><input id="bl_${type}_remark_${idx}" class="rule-input" value="${safe(item.remark || '')}"></td>
+        <td><input id="bl_${type}_enabled_${idx}" type="checkbox" ${item.is_enabled ? 'checked' : ''}></td>
         <td style="display:flex;gap:6px;">
-          <button onclick="saveBlacklist(${idx})">保存</button>
-          <button style="border-color:#fecaca;color:#dc2626;" onclick="deleteBlacklist(${safe(item.id)})">删除</button>
+          ${withHashButton ? `<button onclick="convertRowUaToHash('${type}', ${idx})">UA→HASH</button>` : ''}
+          <button onclick="saveBlacklist('${type}', ${idx})">保存</button>
+          <button style="border-color:#fecaca;color:#dc2626;" onclick="deleteBlacklist('${safe(item.id)}')">删除</button>
         </td>
       </tr>
-  `).join('');
+    `).join('');
 
-  const createRow = `
-    <tr>
-      <td>new</td>
-      <td>
-        <select id="bl_new_type" class="rule-select">
-          <option value="ip">ip</option>
-          <option value="ua_hash">ua_hash</option>
-        </select>
-      </td>
-      <td><div style="display:flex;gap:6px;"><input id="bl_new_value" class="rule-input" placeholder="IP 或 UA SHA256"><button onclick="convertNewUaToHash()">UA→HASH</button></div></td>
-      <td><input id="bl_new_remark" class="rule-input" placeholder="备注"></td>
-      <td><input id="bl_new_enabled" type="checkbox" checked></td>
-      <td><button onclick="createBlacklist()">新增</button></td>
-    </tr>
-  `;
+    const createRow = `
+      <tr>
+        <td>new</td>
+        <td><input id="bl_${type}_new_value" class="rule-input" placeholder="${type === 'ip' ? 'IP' : 'UA SHA256'}"></td>
+        <td><input id="bl_${type}_new_remark" class="rule-input" placeholder="备注"></td>
+        <td><input id="bl_${type}_new_enabled" type="checkbox" checked></td>
+        <td style="display:flex;gap:6px;">
+          ${withHashButton ? `<button onclick="convertNewUaToHash('${type}')">UA→HASH</button>` : ''}
+          <button onclick="createBlacklist('${type}')">新增</button>
+        </td>
+      </tr>
+    `;
 
-  document.getElementById('result').innerHTML = `<div class="table-wrap"><table><thead>${thead}</thead><tbody>${createRow}${body}</tbody></table></div>`;
+    return `
+      <h4 style="margin: 10px 0 6px;">${title}</h4>
+      <div class="table-wrap" style="margin-bottom:12px;">
+        <table>
+          <thead>
+            <tr>
+              <th>ID</th>
+              <th>value</th>
+              <th>remark</th>
+              <th>enabled</th>
+              <th>action</th>
+            </tr>
+          </thead>
+          <tbody>${createRow}${body}</tbody>
+        </table>
+      </div>
+    `;
+  };
+
+  const html = renderTable('ip', 'IP 黑名单', ipRows, false)
+    + renderTable('ua_hash', 'UA Hash 黑名单', uaRows, true);
+
+  document.getElementById('result').innerHTML = html;
 }
 
 async function fetchBlacklists() {
@@ -438,12 +447,12 @@ async function fetchBlacklists() {
   if (rows) renderBlacklistEditor(rows);
 }
 
-async function createBlacklist() {
+async function createBlacklist(type) {
   const payload = {
-    type: document.getElementById('bl_new_type').value,
-    value: document.getElementById('bl_new_value').value,
-    remark: document.getElementById('bl_new_remark').value,
-    is_enabled: document.getElementById('bl_new_enabled').checked,
+    type,
+    value: document.getElementById(`bl_${type}_new_value`).value,
+    remark: document.getElementById(`bl_${type}_new_remark`).value,
+    is_enabled: document.getElementById(`bl_${type}_new_enabled`).checked,
   };
   const rows = await request('/blacklist/update', {
     method: 'POST',
@@ -456,12 +465,12 @@ async function createBlacklist() {
   }
 }
 
-async function saveBlacklist(idx) {
+async function saveBlacklist(type, idx) {
   const payload = {
-    type: document.getElementById(`bl_type_${idx}`).value,
-    value: document.getElementById(`bl_value_${idx}`).value,
-    remark: document.getElementById(`bl_remark_${idx}`).value,
-    is_enabled: document.getElementById(`bl_enabled_${idx}`).checked,
+    type,
+    value: document.getElementById(`bl_${type}_value_${idx}`).value,
+    remark: document.getElementById(`bl_${type}_remark_${idx}`).value,
+    is_enabled: document.getElementById(`bl_${type}_enabled_${idx}`).checked,
   };
   const rows = await request('/blacklist/update', {
     method: 'POST',
@@ -495,14 +504,13 @@ async function sha256Hex(input) {
   return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
 }
 
-async function convertNewUaToHash() {
-  const typeEl = document.getElementById('bl_new_type');
-  const valueEl = document.getElementById('bl_new_value');
-  if (!typeEl || !valueEl) return;
-  if (typeEl.value !== 'ua_hash') {
-    alert('请先将 type 选择为 ua_hash');
+async function convertNewUaToHash(type) {
+  if (type !== 'ua_hash') {
+    alert('仅 ua_hash 支持 UA→HASH');
     return;
   }
+  const valueEl = document.getElementById(`bl_${type}_new_value`);
+  if (!valueEl) return;
   const ua = valueEl.value.trim();
   if (!ua) {
     alert('请输入原始 UA 字符串');
@@ -511,14 +519,13 @@ async function convertNewUaToHash() {
   valueEl.value = await sha256Hex(ua);
 }
 
-async function convertRowUaToHash(idx) {
-  const typeEl = document.getElementById(`bl_type_${idx}`);
-  const valueEl = document.getElementById(`bl_value_${idx}`);
-  if (!typeEl || !valueEl) return;
-  if (typeEl.value !== 'ua_hash') {
-    alert('请先将 type 选择为 ua_hash');
+async function convertRowUaToHash(type, idx) {
+  if (type !== 'ua_hash') {
+    alert('仅 ua_hash 支持 UA→HASH');
     return;
   }
+  const valueEl = document.getElementById(`bl_${type}_value_${idx}`);
+  if (!valueEl) return;
   const ua = valueEl.value.trim();
   if (!ua) {
     alert('请输入原始 UA 字符串');

@@ -113,6 +113,12 @@
                 <button class="menu-btn" onclick="fetchRules()">规则配置</button>
                 <button class="menu-btn" onclick="fetchRuleHits()">规则触发记录</button>
                 <button class="menu-btn" onclick="fetchBlacklists()">黑名单设置</button>
+            </div>
+        </div>
+
+        <div class="menu-section">
+            <div class="menu-title">策略中心</div>
+            <div class="menu-list">
                 <button class="menu-btn" onclick="fetchClientStrategies()">客户端策略</button>
             </div>
         </div>
@@ -123,7 +129,7 @@
             <div class="header">
                 <div>
                     <h2 class="title">Risk Control Console</h2>
-                    <p class="subtitle">风控总览、日志检索、规则管理</p>
+                    <p class="subtitle">风控总览、日志检索、规则管理与策略中心</p>
                 </div>
             </div>
 

@@ -301,19 +301,6 @@ class LogController extends Controller
             }
 
             if (empty($onlineIps)) {
-                $rows[] = [
-                    'user_id' => $user->id,
-                    'email' => $user->email,
-                    'online_ip' => null,
-                    'node' => null,
-                    'alive_count' => (int) ($ipsArray['alive_ip'] ?? 0),
-                    'online_at' => (int) $user->t,
-                    'country' => null,
-                    'region' => null,
-                    'city' => null,
-                    'asn' => null,
-                    'isp' => null,
-                ];
                 continue;
             }
 

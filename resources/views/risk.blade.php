@@ -44,6 +44,7 @@
             cursor: pointer;
         }
         .menu-btn:hover { background: #2563eb; border-color: #2563eb; }
+        .menu-btn.active { background: #2563eb; border-color: #2563eb; color: #fff; }
 
         .content { flex: 1; padding: 20px; }
         .container { max-width: 1200px; margin: 0 auto; }
@@ -93,36 +94,36 @@
         <p>风控后台导航</p>
 
         <div class="menu-section">
-            <div class="menu-title">总览</div>
+            <div class="menu-title">控制台</div>
             <div class="menu-list">
-                <button class="menu-btn" onclick="fetchOverview()">查看总览</button>
+                <button class="menu-btn" onclick="fetchOverview(this)">运营总览</button>
             </div>
         </div>
 
         <div class="menu-section">
-            <div class="menu-title">日志</div>
+            <div class="menu-title">用户行为</div>
             <div class="menu-list">
-                <button class="menu-btn" onclick="fetchOnlineUsers()">在线用户IP</button>
-                <button class="menu-btn" onclick="fetchUserUsage()">用户使用情况</button>
-                <button class="menu-btn" onclick="fetchUserConnectionLogs()">连接记录</button>
-                <button class="menu-btn" onclick="fetchLoginLogs()">登录日志</button>
-                <button class="menu-btn" onclick="fetchSubscribeLogs()">订阅日志</button>
+                <button class="menu-btn" onclick="fetchOnlineUsers(this)">实时在线IP</button>
+                <button class="menu-btn" onclick="fetchUserUsage(this)">用户画像总览</button>
+                <button class="menu-btn" onclick="fetchUserConnectionLogs(this)">连接历史</button>
+                <button class="menu-btn" onclick="fetchLoginLogs(this)">登录记录</button>
+                <button class="menu-btn" onclick="fetchSubscribeLogs(this)">订阅记录</button>
             </div>
         </div>
 
         <div class="menu-section">
-            <div class="menu-title">风控</div>
+            <div class="menu-title">风控规则</div>
             <div class="menu-list">
-                <button class="menu-btn" onclick="fetchRules()">规则配置</button>
-                <button class="menu-btn" onclick="fetchRuleHits()">规则触发记录</button>
-                <button class="menu-btn" onclick="fetchBlacklists()">黑名单设置</button>
+                <button class="menu-btn" onclick="fetchRules(this)">规则配置</button>
+                <button class="menu-btn" onclick="fetchRuleHits(this)">命中记录</button>
+                <button class="menu-btn" onclick="fetchBlacklists(this)">黑名单管理</button>
             </div>
         </div>
 
         <div class="menu-section">
-            <div class="menu-title">策略中心</div>
+            <div class="menu-title">客户端策略</div>
             <div class="menu-list">
-                <button class="menu-btn" onclick="fetchClientStrategies()">客户端策略</button>
+                <button class="menu-btn" onclick="fetchClientStrategies(this)">客户端策略管理</button>
             </div>
         </div>
     </aside>
@@ -137,6 +138,7 @@
             </div>
 
             <div id="authState" class="status"></div>
+            <div id="viewTitle" style="font-size:13px;color:#6b7280;margin-bottom:10px;">当前模块：运营总览</div>
             <div id="result" class="result-panel"></div>
         </div>
     </main>
@@ -171,16 +173,43 @@ if (authorization) {
 
 function buildTable(rows) {
   if (!rows || !rows.length) {
-    return '<p>暂无数据</p>';
+    return '<p style="color:#6b7280;">暂无数据</p>';
   }
+  const alias = {
+    user_id: '用户ID', email: '邮箱', register_at: '注册时间',
+    last_subscribe_at: '上次订阅时间', last_subscribe_ip: '上次订阅IP', last_subscribe_ua: '上次订阅UA',
+    last_online_at: '上次在线时间', last_online_ip: '上次在线IP', last_online_node: '上次在线节点',
+    last_login_at: '上次登录时间', last_login_ip: '上次登录IP', subscription_plan: '订阅', group_name: '权限组',
+    recharge_total: '累计充值', balance: '余额', expired_at: '到期时间', connected_at: '连接时间', ip: 'IP', node: '节点', source: '来源'
+  };
+  const formatTs = (v) => {
+    const n = Number(v);
+    if (!Number.isFinite(n) || n < 1000000000 || n > 4102444800) return v ?? '';
+    const d = new Date(n * 1000);
+    const p = (x) => String(x).padStart(2, '0');
+    return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}:${p(d.getSeconds())}`;
+  };
+  const formatCell = (k, v) => {
+    if (v === null || typeof v === 'undefined') return '';
+    if (typeof v === 'object') return JSON.stringify(v);
+    if (/_at$/.test(k) || ['created_at', 'updated_at', 'connected_at'].includes(k)) return formatTs(v);
+    return String(v);
+  };
   const keys = Object.keys(rows[0]);
-  const thead = '<tr>' + keys.map(k => `<th>${k}</th>`).join('') + '</tr>';
-  const body = rows.map(r => '<tr>' + keys.map(k => `<td>${typeof r[k] === 'object' ? JSON.stringify(r[k]) : (r[k] ?? '')}</td>`).join('') + '</tr>').join('');
+  const thead = '<tr>' + keys.map(k => `<th title="${k}">${alias[k] || k}</th>`).join('') + '</tr>';
+  const body = rows.map((r, i) => `<tr style="background:${i % 2 ? '#fcfcfd' : '#fff'}">` + keys.map(k => `<td>${formatCell(k, r[k])}</td>`).join('') + '</tr>').join('');
   return `<div class="table-wrap"><table><thead>${thead}</thead><tbody>${body}</tbody></table></div>`;
 }
 
 function renderTable(rows) {
   document.getElementById('result').innerHTML = buildTable(rows);
+}
+
+function setView(btn, title) {
+  const titleEl = document.getElementById('viewTitle');
+  if (titleEl) titleEl.textContent = `当前模块：${title}`;
+  document.querySelectorAll('.menu-btn').forEach(el => el.classList.remove('active'));
+  if (btn) btn.classList.add('active');
 }
 
 function renderOverview(data) {
@@ -268,14 +297,16 @@ async function request(path, options = {}) {
   return data.data || [];
 }
 
-async function fetchOverview() {
+async function fetchOverview(btn) {
+  setView(btn, '运营总览');
   const data = await request('/overview');
   if (data) {
     renderOverview(data);
   }
 }
 
-async function fetchRules() {
+async function fetchRules(btn) {
+  setView(btn, '规则配置');
   const rows = await request('/rule/fetch');
   if (rows) renderRuleEditor(rows);
 }
@@ -347,7 +378,8 @@ function renderClientStrategyEditor(rows) {
   document.getElementById('result').innerHTML = `<div class="table-wrap"><table><thead>${thead}</thead><tbody>${body}</tbody></table></div>`;
 }
 
-async function fetchClientStrategies() {
+async function fetchClientStrategies(btn) {
+  setView(btn, '客户端策略管理');
   const rows = await request('/client-strategy/fetch');
   if (rows) renderClientStrategyEditor(rows);
 }
@@ -462,7 +494,8 @@ function renderBlacklistEditor(rows, activeType = 'ip') {
   document.getElementById('result').innerHTML = `<h4 style="margin:10px 0 6px;">黑名单管理</h4>${tabs}${panel}`;
 }
 
-async function fetchBlacklists() {
+async function fetchBlacklists(btn) {
+  setView(btn, '黑名单管理');
   const rows = await request('/blacklist/fetch');
   if (rows) renderBlacklistEditor(rows, 'ip');
 }
@@ -562,32 +595,38 @@ async function convertRowUaToHash(idx) {
   hashEl.value = await sha256Hex(ua);
 }
 
-async function fetchRuleHits() {
+async function fetchRuleHits(btn) {
+  setView(btn, '规则命中记录');
   const rows = await request('/rule-hit/fetch?page_size=50');
   if (rows) renderTable(rows);
 }
 
-async function fetchOnlineUsers() {
+async function fetchOnlineUsers(btn) {
+  setView(btn, '实时在线IP');
   const rows = await request('/online-user/fetch?page_size=200');
   if (rows) renderTable(rows);
 }
 
-async function fetchUserUsage() {
+async function fetchUserUsage(btn) {
+  setView(btn, '用户画像总览');
   const rows = await request('/user-usage/fetch?page_size=200');
   if (rows) renderTable(rows);
 }
 
-async function fetchUserConnectionLogs() {
+async function fetchUserConnectionLogs(btn) {
+  setView(btn, '连接历史');
   const rows = await request('/user-connection-log/fetch?page_size=200');
   if (rows) renderTable(rows);
 }
 
-async function fetchLoginLogs() {
+async function fetchLoginLogs(btn) {
+  setView(btn, '登录记录');
   const rows = await request('/login-log/fetch?page_size=50');
   if (rows) renderTable(rows);
 }
 
-async function fetchSubscribeLogs() {
+async function fetchSubscribeLogs(btn) {
+  setView(btn, '订阅记录');
   const rows = await request('/subscribe-log/fetch?page_size=50');
   if (rows) renderTable(rows);
 }

@@ -16,7 +16,7 @@ class RiskBlacklistService
                 'id' => 'ip:' . $row->id,
                 'type' => 'ip',
                 'value' => $row->value,
-                'ua_raw' => $row->ua_raw,
+                'ua_raw' => null,
                 'remark' => $row->remark,
                 'is_enabled' => (bool) $row->is_enabled,
                 'created_at' => $row->created_at,

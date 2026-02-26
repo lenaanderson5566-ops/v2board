@@ -112,6 +112,7 @@
             <div class="menu-list">
                 <button class="menu-btn" onclick="fetchRules()">规则配置</button>
                 <button class="menu-btn" onclick="fetchRuleHits()">规则触发记录</button>
+                <button class="menu-btn" onclick="fetchBlacklists()">黑名单设置</button>
                 <button class="menu-btn" onclick="fetchClientStrategies()">客户端策略</button>
             </div>
         </div>
@@ -378,6 +379,111 @@ async function deleteClientStrategy(clientType) {
   if (rows) {
     alert('删除成功');
     renderClientStrategyEditor(rows);
+  }
+}
+
+
+function renderBlacklistEditor(rows) {
+  const thead = `
+    <tr>
+      <th>ID</th>
+      <th>type</th>
+      <th>value</th>
+      <th>remark</th>
+      <th>enabled</th>
+      <th>action</th>
+    </tr>`;
+
+  const safe = (v) => String(v ?? '').replace(/"/g, '&quot;');
+  const body = (rows || []).map((item, idx) => `
+      <tr>
+        <td>${safe(item.id)}</td>
+        <td>
+          <select id="bl_type_${idx}" class="rule-select">
+            <option value="ip" ${item.type === 'ip' ? 'selected' : ''}>ip</option>
+            <option value="ua_hash" ${item.type === 'ua_hash' ? 'selected' : ''}>ua_hash</option>
+          </select>
+        </td>
+        <td><input id="bl_value_${idx}" class="rule-input" value="${safe(item.value || '')}"></td>
+        <td><input id="bl_remark_${idx}" class="rule-input" value="${safe(item.remark || '')}"></td>
+        <td><input id="bl_enabled_${idx}" type="checkbox" ${item.is_enabled ? 'checked' : ''}></td>
+        <td style="display:flex;gap:6px;">
+          <button onclick="saveBlacklist(${idx})">保存</button>
+          <button style="border-color:#fecaca;color:#dc2626;" onclick="deleteBlacklist(${safe(item.id)})">删除</button>
+        </td>
+      </tr>
+  `).join('');
+
+  const createRow = `
+    <tr>
+      <td>new</td>
+      <td>
+        <select id="bl_new_type" class="rule-select">
+          <option value="ip">ip</option>
+          <option value="ua_hash">ua_hash</option>
+        </select>
+      </td>
+      <td><input id="bl_new_value" class="rule-input" placeholder="IP 或 UA SHA256"></td>
+      <td><input id="bl_new_remark" class="rule-input" placeholder="备注"></td>
+      <td><input id="bl_new_enabled" type="checkbox" checked></td>
+      <td><button onclick="createBlacklist()">新增</button></td>
+    </tr>
+  `;
+
+  document.getElementById('result').innerHTML = `<div class="table-wrap"><table><thead>${thead}</thead><tbody>${createRow}${body}</tbody></table></div>`;
+}
+
+async function fetchBlacklists() {
+  const rows = await request('/blacklist/fetch');
+  if (rows) renderBlacklistEditor(rows);
+}
+
+async function createBlacklist() {
+  const payload = {
+    type: document.getElementById('bl_new_type').value,
+    value: document.getElementById('bl_new_value').value,
+    remark: document.getElementById('bl_new_remark').value,
+    is_enabled: document.getElementById('bl_new_enabled').checked,
+  };
+  const rows = await request('/blacklist/update', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  });
+  if (rows) {
+    alert('新增成功');
+    renderBlacklistEditor(rows);
+  }
+}
+
+async function saveBlacklist(idx) {
+  const payload = {
+    type: document.getElementById(`bl_type_${idx}`).value,
+    value: document.getElementById(`bl_value_${idx}`).value,
+    remark: document.getElementById(`bl_remark_${idx}`).value,
+    is_enabled: document.getElementById(`bl_enabled_${idx}`).checked,
+  };
+  const rows = await request('/blacklist/update', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  });
+  if (rows) {
+    alert('保存成功');
+    renderBlacklistEditor(rows);
+  }
+}
+
+async function deleteBlacklist(id) {
+  if (!confirm(`确定删除黑名单记录 ${id} 吗？`)) return;
+  const rows = await request('/blacklist/delete', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ id }),
+  });
+  if (rows) {
+    alert('删除成功');
+    renderBlacklistEditor(rows);
   }
 }
 

@@ -9,6 +9,7 @@ use App\Models\RiskRuleConfig;
 use App\Models\SubscribeLog;
 use App\Services\RiskLogService;
 use App\Services\ClientStrategyService;
+use App\Services\RiskBlacklistService;
 use Illuminate\Http\Request;
 
 class LogController extends Controller
@@ -170,6 +171,66 @@ class LogController extends Controller
 
         return response([
             'data' => (new ClientStrategyService())->getStrategies()
+        ]);
+    }
+
+
+    public function getBlacklists(Request $request)
+    {
+        return response([
+            'data' => (new RiskBlacklistService())->fetch()
+        ]);
+    }
+
+    public function updateBlacklist(Request $request)
+    {
+        $rawItems = $request->input('items');
+        if (is_null($rawItems)) {
+            $rawItems = [$request->all()];
+        }
+        if (!is_array($rawItems)) {
+            abort(422, 'items must be an array');
+        }
+
+        $items = [];
+        foreach ($rawItems as $item) {
+            if (!is_array($item)) {
+                abort(422, 'each item must be an object');
+            }
+            if (empty($item['type']) || !is_string($item['type'])) {
+                abort(422, 'type is required');
+            }
+            if (empty($item['value']) || !is_string($item['value'])) {
+                abort(422, 'value is required');
+            }
+            if (array_key_exists('remark', $item) && !is_null($item['remark']) && !is_string($item['remark'])) {
+                abort(422, 'remark must be string');
+            }
+            if (array_key_exists('is_enabled', $item)) {
+                $enabled = filter_var($item['is_enabled'], FILTER_VALIDATE_BOOLEAN, FILTER_NULL_ON_FAILURE);
+                if (is_null($enabled)) {
+                    abort(422, 'is_enabled must be boolean');
+                }
+                $item['is_enabled'] = $enabled;
+            }
+            $item['type'] = strtolower($item['type']);
+            $items[] = $item;
+        }
+
+        return response([
+            'data' => (new RiskBlacklistService())->save($items)
+        ]);
+    }
+
+    public function deleteBlacklist(Request $request)
+    {
+        $id = (int) $request->input('id', 0);
+        if ($id <= 0) {
+            abort(422, 'id is required');
+        }
+
+        return response([
+            'data' => (new RiskBlacklistService())->delete($id)
         ]);
     }
 

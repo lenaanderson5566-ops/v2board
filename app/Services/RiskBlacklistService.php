@@ -2,13 +2,44 @@
 
 namespace App\Services;
 
-use App\Models\RiskBlacklist;
+use App\Models\RiskBlacklistIp;
+use App\Models\RiskBlacklistUaHash;
 
 class RiskBlacklistService
 {
     public function fetch()
     {
-        return RiskBlacklist::query()->orderBy('type')->orderBy('id', 'desc')->get();
+        $rows = [];
+
+        foreach (RiskBlacklistIp::query()->orderBy('id', 'desc')->get() as $row) {
+            $rows[] = [
+                'id' => 'ip:' . $row->id,
+                'type' => 'ip',
+                'value' => $row->value,
+                'remark' => $row->remark,
+                'is_enabled' => (bool) $row->is_enabled,
+                'created_at' => $row->created_at,
+                'updated_at' => $row->updated_at,
+            ];
+        }
+
+        foreach (RiskBlacklistUaHash::query()->orderBy('id', 'desc')->get() as $row) {
+            $rows[] = [
+                'id' => 'ua_hash:' . $row->id,
+                'type' => 'ua_hash',
+                'value' => $row->value,
+                'remark' => $row->remark,
+                'is_enabled' => (bool) $row->is_enabled,
+                'created_at' => $row->created_at,
+                'updated_at' => $row->updated_at,
+            ];
+        }
+
+        usort($rows, function ($a, $b) {
+            return [$a['type'], $b['id']] <=> [$b['type'], $a['id']];
+        });
+
+        return $rows;
     }
 
     public function save(array $items)
@@ -20,21 +51,34 @@ class RiskBlacklistService
                 abort(422, 'invalid blacklist item');
             }
 
-            RiskBlacklist::query()->updateOrCreate(
-                ['type' => $type, 'value' => $value],
-                [
-                    'remark' => array_key_exists('remark', $item) ? trim((string) ($item['remark'] ?? '')) : null,
-                    'is_enabled' => array_key_exists('is_enabled', $item) ? (int) ((bool) $item['is_enabled']) : 1,
-                ]
-            );
+            $payload = [
+                'remark' => array_key_exists('remark', $item) ? trim((string) ($item['remark'] ?? '')) : null,
+                'is_enabled' => array_key_exists('is_enabled', $item) ? (int) ((bool) $item['is_enabled']) : 1,
+            ];
+
+            if ($type === 'ip') {
+                RiskBlacklistIp::query()->updateOrCreate(['value' => $value], $payload);
+            } else {
+                RiskBlacklistUaHash::query()->updateOrCreate(['value' => $value], $payload);
+            }
         }
 
         return $this->fetch();
     }
 
-    public function delete(int $id)
+    public function delete(string $id)
     {
-        RiskBlacklist::query()->where('id', $id)->delete();
+        $id = trim($id);
+        if (strpos($id, 'ip:') === 0) {
+            $rid = (int) substr($id, 3);
+            if ($rid > 0) RiskBlacklistIp::query()->where('id', $rid)->delete();
+        } elseif (strpos($id, 'ua_hash:') === 0) {
+            $rid = (int) substr($id, 8);
+            if ($rid > 0) RiskBlacklistUaHash::query()->where('id', $rid)->delete();
+        } else {
+            abort(422, 'invalid id');
+        }
+
         return $this->fetch();
     }
 
@@ -46,11 +90,14 @@ class RiskBlacklistService
             return false;
         }
 
-        return RiskBlacklist::query()
-            ->where('type', $type)
-            ->where('value', $value)
-            ->where('is_enabled', 1)
-            ->exists();
+        if ($type === 'ip') {
+            return RiskBlacklistIp::query()->where('value', $value)->where('is_enabled', 1)->exists();
+        }
+        if ($type === 'ua_hash') {
+            return RiskBlacklistUaHash::query()->where('value', $value)->where('is_enabled', 1)->exists();
+        }
+
+        return false;
     }
 
     private function normalizeValue(string $type, string $value): ?string

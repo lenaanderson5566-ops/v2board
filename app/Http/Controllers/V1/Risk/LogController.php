@@ -224,8 +224,8 @@ class LogController extends Controller
 
     public function deleteBlacklist(Request $request)
     {
-        $id = (int) $request->input('id', 0);
-        if ($id <= 0) {
+        $id = (string) $request->input('id', '');
+        if (!$id) {
             abort(422, 'id is required');
         }
 

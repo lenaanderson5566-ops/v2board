@@ -15,7 +15,6 @@ use App\Services\RiskLogService;
 use App\Services\ClientStrategyService;
 use App\Services\RiskBlacklistService;
 use App\Services\GeoIpService;
-use App\Utils\Helper;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
 
@@ -382,7 +381,7 @@ class LogController extends Controller
         $subscribeLogs = SubscribeLog::query()
             ->whereIn('user_id', $userIds)
             ->orderBy('id', 'desc')
-            ->get(['user_id', 'created_at', 'ip']);
+            ->get(['user_id', 'created_at', 'ip', 'user_agent']);
         foreach ($subscribeLogs as $log) {
             if (!isset($latestSubscribeMap[$log->user_id])) {
                 $latestSubscribeMap[$log->user_id] = $log;
@@ -440,12 +439,12 @@ class LogController extends Controller
                 'register_at' => (int) ($user->created_at ?? 0),
                 'last_subscribe_at' => $latestSubscribe ? (int) $latestSubscribe->created_at : null,
                 'last_subscribe_ip' => $latestSubscribe ? $this->formatIp($latestSubscribe->ip) : null,
+                'last_subscribe_ua' => $latestSubscribe ? (string) ($latestSubscribe->user_agent ?? '') : null,
                 'last_online_at' => $user->t ? (int) $user->t : null,
                 'last_online_ip' => $lastOnlineIp,
                 'last_online_node' => $lastOnlineNode,
-                'last_login_at' => $user->last_login_at ? (int) $user->last_login_at : null,
-                'last_login_ip' => $this->formatIp($user->last_login_ip),
-                'subscribe_url' => Helper::getSubscribeUrl($user->token),
+                'last_login_at' => $user->getRawOriginal('last_login_at') ? (int) $user->getRawOriginal('last_login_at') : null,
+                'last_login_ip' => $this->formatIp($user->getRawOriginal('last_login_ip')),
                 'subscription_plan' => $planNames[$user->plan_id] ?? null,
                 'group_name' => $groupNames[$user->group_id] ?? null,
                 'recharge_total' => round($orderStat['paid_total_amount'] / 100, 2),

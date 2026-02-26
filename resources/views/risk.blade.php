@@ -325,7 +325,10 @@ function renderClientStrategyEditor(rows) {
         <td><input id="client_name_${idx}" class="rule-input" value="${safe(item.client_name || '')}"></td>
         <td><input id="client_enabled_${idx}" type="checkbox" ${item.is_enabled ? 'checked' : ''}></td>
         <td><input id="client_sort_${idx}" class="rule-input" type="number" value="${safe(item.sort ?? 0)}"></td>
-        <td><button onclick="saveClientStrategy(${idx}, '${safe(item.client_type)}')">保存</button></td>
+        <td style="display:flex;gap:6px;">
+          <button onclick="saveClientStrategy(${idx}, '${safe(item.client_type)}')">保存</button>
+          <button style="border-color:#fecaca;color:#dc2626;" onclick="deleteClientStrategy('${safe(item.client_type)}')">删除</button>
+        </td>
       </tr>`;
   }).join('');
 
@@ -353,6 +356,24 @@ async function saveClientStrategy(idx, clientType) {
 
   if (rows) {
     alert('保存成功');
+    renderClientStrategyEditor(rows);
+  }
+}
+
+
+async function deleteClientStrategy(clientType) {
+  if (!confirm(`确定删除客户端策略 ${clientType} 吗？`)) {
+    return;
+  }
+
+  const rows = await request('/client-strategy/delete', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ client_type: clientType }),
+  });
+
+  if (rows) {
+    alert('删除成功');
     renderClientStrategyEditor(rows);
   }
 }

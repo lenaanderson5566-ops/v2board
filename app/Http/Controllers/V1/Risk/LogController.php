@@ -155,6 +155,21 @@ class LogController extends Controller
         ]);
     }
 
+
+    public function deleteClientStrategy(Request $request)
+    {
+        $clientType = strtolower((string) $request->input('client_type', ''));
+        if (!$clientType) {
+            abort(422, 'client_type is required');
+        }
+
+        (new ClientStrategyService())->deleteStrategy($clientType);
+
+        return response([
+            'data' => (new ClientStrategyService())->getStrategies()
+        ]);
+    }
+
     public function getRuleHits(Request $request)
     {
         $current = max((int)$request->input('current', 1), 1);

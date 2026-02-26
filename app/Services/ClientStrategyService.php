@@ -68,6 +68,22 @@ class ClientStrategyService
         return $strategy ? (bool) $strategy->is_enabled : true;
     }
 
+
+    public function deleteStrategy(string $clientType): bool
+    {
+        $clientType = strtolower(trim($clientType));
+        if (!$clientType) {
+            abort(422, 'invalid client_type');
+        }
+
+        $protocols = $this->scanProtocols();
+        if (isset($protocols[$clientType])) {
+            abort(422, 'client_type exists in protocols, remove protocol file first');
+        }
+
+        return (bool) ClientStrategy::query()->where('client_type', $clientType)->delete();
+    }
+
     public function updateStrategies(array $items)
     {
         $protocols = $this->syncStrategies();

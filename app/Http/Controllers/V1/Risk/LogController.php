@@ -206,6 +206,9 @@ class LogController extends Controller
             if (array_key_exists('remark', $item) && !is_null($item['remark']) && !is_string($item['remark'])) {
                 abort(422, 'remark must be string');
             }
+            if (array_key_exists('ua_raw', $item) && !is_null($item['ua_raw']) && !is_string($item['ua_raw'])) {
+                abort(422, 'ua_raw must be string');
+            }
             if (array_key_exists('is_enabled', $item)) {
                 $enabled = filter_var($item['is_enabled'], FILTER_VALIDATE_BOOLEAN, FILTER_NULL_ON_FAILURE);
                 if (is_null($enabled)) {

@@ -16,6 +16,7 @@ class RiskBlacklistService
                 'id' => 'ip:' . $row->id,
                 'type' => 'ip',
                 'value' => $row->value,
+                'ua_raw' => $row->ua_raw,
                 'remark' => $row->remark,
                 'is_enabled' => (bool) $row->is_enabled,
                 'created_at' => $row->created_at,
@@ -28,6 +29,7 @@ class RiskBlacklistService
                 'id' => 'ua_hash:' . $row->id,
                 'type' => 'ua_hash',
                 'value' => $row->value,
+                'ua_raw' => $row->ua_raw,
                 'remark' => $row->remark,
                 'is_enabled' => (bool) $row->is_enabled,
                 'created_at' => $row->created_at,
@@ -46,7 +48,7 @@ class RiskBlacklistService
     {
         foreach ($items as $item) {
             $type = strtolower((string) ($item['type'] ?? ''));
-            $value = $this->normalizeValue($type, (string) ($item['value'] ?? ''));
+            $value = $this->normalizeValue($type, (string) ($item['value'] ?? ''), $item);
             if (!$type || !$value || !in_array($type, ['ip', 'ua_hash'])) {
                 abort(422, 'invalid blacklist item');
             }
@@ -59,6 +61,7 @@ class RiskBlacklistService
             if ($type === 'ip') {
                 RiskBlacklistIp::query()->updateOrCreate(['value' => $value], $payload);
             } else {
+                $payload['ua_raw'] = array_key_exists('ua_raw', $item) ? trim((string) ($item['ua_raw'] ?? '')) : null;
                 RiskBlacklistUaHash::query()->updateOrCreate(['value' => $value], $payload);
             }
         }
@@ -85,7 +88,7 @@ class RiskBlacklistService
     public function exists(string $type, ?string $value): bool
     {
         $type = strtolower(trim($type));
-        $value = $this->normalizeValue($type, (string) $value);
+        $value = $this->normalizeValue($type, (string) $value, []);
         if (!$type || !$value) {
             return false;
         }
@@ -100,19 +103,25 @@ class RiskBlacklistService
         return false;
     }
 
-    private function normalizeValue(string $type, string $value): ?string
+    private function normalizeValue(string $type, string $value, array $item = []): ?string
     {
         $value = trim($value);
-        if (!$value) {
-            return null;
-        }
-
         if ($type === 'ua_hash') {
-            $value = strtolower($value);
-            if (!preg_match('/^[a-f0-9]{64}$/', $value)) {
+            $uaRaw = trim((string) ($item['ua_raw'] ?? ''));
+            if (!$value && $uaRaw) {
+                return hash('sha256', $uaRaw);
+            }
+            if ($value && !preg_match('/^[a-f0-9]{64}$/', strtolower($value))) {
+                if ($uaRaw) {
+                    return hash('sha256', $uaRaw);
+                }
                 return null;
             }
-            return $value;
+            return strtolower($value);
+        }
+
+        if (!$value) {
+            return null;
         }
 
         return $value;

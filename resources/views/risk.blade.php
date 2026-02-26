@@ -383,22 +383,21 @@ async function deleteClientStrategy(clientType) {
 }
 
 
-function renderBlacklistEditor(rows) {
+function renderBlacklistEditor(rows, activeType = 'ip') {
   const safe = (v) => String(v ?? '').replace(/"/g, '&quot;');
   const allRows = rows || [];
   const ipRows = allRows.filter(item => item.type === 'ip');
   const uaRows = allRows.filter(item => item.type === 'ua_hash');
 
-  const renderTable = (type, title, rows, withHashButton = false) => {
-    const body = rows.map((item, idx) => `
+  const renderIpTable = () => {
+    const body = ipRows.map((item, idx) => `
       <tr>
         <td>${safe(item.id)}</td>
-        <td><input id="bl_${type}_value_${idx}" class="rule-input" value="${safe(item.value || '')}"></td>
-        <td><input id="bl_${type}_remark_${idx}" class="rule-input" value="${safe(item.remark || '')}"></td>
-        <td><input id="bl_${type}_enabled_${idx}" type="checkbox" ${item.is_enabled ? 'checked' : ''}></td>
+        <td><input id="bl_ip_value_${idx}" class="rule-input" value="${safe(item.value || '')}"></td>
+        <td><input id="bl_ip_remark_${idx}" class="rule-input" value="${safe(item.remark || '')}"></td>
+        <td><input id="bl_ip_enabled_${idx}" type="checkbox" ${item.is_enabled ? 'checked' : ''}></td>
         <td style="display:flex;gap:6px;">
-          ${withHashButton ? `<button onclick="convertRowUaToHash('${type}', ${idx})">UA→HASH</button>` : ''}
-          <button onclick="saveBlacklist('${type}', ${idx})">保存</button>
+          <button onclick="saveBlacklist('ip', ${idx})">保存</button>
           <button style="border-color:#fecaca;color:#dc2626;" onclick="deleteBlacklist('${safe(item.id)}')">删除</button>
         </td>
       </tr>
@@ -407,53 +406,72 @@ function renderBlacklistEditor(rows) {
     const createRow = `
       <tr>
         <td>new</td>
-        <td><input id="bl_${type}_new_value" class="rule-input" placeholder="${type === 'ip' ? 'IP' : 'UA SHA256'}"></td>
-        <td><input id="bl_${type}_new_remark" class="rule-input" placeholder="备注"></td>
-        <td><input id="bl_${type}_new_enabled" type="checkbox" checked></td>
-        <td style="display:flex;gap:6px;">
-          ${withHashButton ? `<button onclick="convertNewUaToHash('${type}')">UA→HASH</button>` : ''}
-          <button onclick="createBlacklist('${type}')">新增</button>
-        </td>
+        <td><input id="bl_ip_new_value" class="rule-input" placeholder="IP"></td>
+        <td><input id="bl_ip_new_remark" class="rule-input" placeholder="备注"></td>
+        <td><input id="bl_ip_new_enabled" type="checkbox" checked></td>
+        <td><button onclick="createBlacklist('ip')">新增</button></td>
       </tr>
     `;
 
-    return `
-      <h4 style="margin: 10px 0 6px;">${title}</h4>
-      <div class="table-wrap" style="margin-bottom:12px;">
-        <table>
-          <thead>
-            <tr>
-              <th>ID</th>
-              <th>value</th>
-              <th>remark</th>
-              <th>enabled</th>
-              <th>action</th>
-            </tr>
-          </thead>
-          <tbody>${createRow}${body}</tbody>
-        </table>
-      </div>
-    `;
+    return `<div class="table-wrap"><table><thead><tr><th>ID</th><th>IP</th><th>remark</th><th>enabled</th><th>action</th></tr></thead><tbody>${createRow}${body}</tbody></table></div>`;
   };
 
-  const html = renderTable('ip', 'IP 黑名单', ipRows, false)
-    + renderTable('ua_hash', 'UA Hash 黑名单', uaRows, true);
+  const renderUaTable = () => {
+    const body = uaRows.map((item, idx) => `
+      <tr>
+        <td>${safe(item.id)}</td>
+        <td><input id="bl_ua_hash_${idx}" class="rule-input" value="${safe(item.value || '')}" placeholder="SHA256"></td>
+        <td><div style="display:flex;gap:6px;"><input id="bl_ua_raw_${idx}" class="rule-input" value="${safe(item.ua_raw || '')}" placeholder="原始UA"><button onclick="convertRowUaToHash(${idx})">UA→HASH</button></div></td>
+        <td><input id="bl_ua_remark_${idx}" class="rule-input" value="${safe(item.remark || '')}"></td>
+        <td><input id="bl_ua_enabled_${idx}" type="checkbox" ${item.is_enabled ? 'checked' : ''}></td>
+        <td style="display:flex;gap:6px;"><button onclick="saveBlacklist('ua_hash', ${idx})">保存</button><button style="border-color:#fecaca;color:#dc2626;" onclick="deleteBlacklist('${safe(item.id)}')">删除</button></td>
+      </tr>
+    `).join('');
 
-  document.getElementById('result').innerHTML = html;
+    const createRow = `
+      <tr>
+        <td>new</td>
+        <td><input id="bl_ua_new_hash" class="rule-input" placeholder="SHA256（可留空，自动从UA计算）"></td>
+        <td><div style="display:flex;gap:6px;"><input id="bl_ua_new_raw" class="rule-input" placeholder="原始UA"><button onclick="convertNewUaToHash()">UA→HASH</button></div></td>
+        <td><input id="bl_ua_new_remark" class="rule-input" placeholder="备注"></td>
+        <td><input id="bl_ua_new_enabled" type="checkbox" checked></td>
+        <td><button onclick="createBlacklist('ua_hash')">新增</button></td>
+      </tr>
+    `;
+
+    return `<div class="table-wrap"><table><thead><tr><th>ID</th><th>ua_hash</th><th>ua_raw</th><th>remark</th><th>enabled</th><th>action</th></tr></thead><tbody>${createRow}${body}</tbody></table></div>`;
+  };
+
+  const tabs = `
+    <div style="display:flex;gap:8px;margin-bottom:8px;">
+      <button onclick="renderBlacklistEditor(window.__blacklistRows || [], 'ip')" ${activeType === 'ip' ? 'style="background:#eff6ff;border-color:#2563eb;"' : ''}>IP黑名单</button>
+      <button onclick="renderBlacklistEditor(window.__blacklistRows || [], 'ua_hash')" ${activeType === 'ua_hash' ? 'style="background:#eff6ff;border-color:#2563eb;"' : ''}>UA黑名单</button>
+    </div>`;
+
+  window.__blacklistRows = allRows;
+  const panel = activeType === 'ua_hash' ? renderUaTable() : renderIpTable();
+  document.getElementById('result').innerHTML = `<h4 style="margin:10px 0 6px;">黑名单管理</h4>${tabs}${panel}`;
 }
 
 async function fetchBlacklists() {
   const rows = await request('/blacklist/fetch');
-  if (rows) renderBlacklistEditor(rows);
+  if (rows) renderBlacklistEditor(rows, 'ip');
 }
 
 async function createBlacklist(type) {
-  const payload = {
+  const payload = type === 'ip' ? {
     type,
-    value: document.getElementById(`bl_${type}_new_value`).value,
-    remark: document.getElementById(`bl_${type}_new_remark`).value,
-    is_enabled: document.getElementById(`bl_${type}_new_enabled`).checked,
+    value: document.getElementById('bl_ip_new_value').value,
+    remark: document.getElementById('bl_ip_new_remark').value,
+    is_enabled: document.getElementById('bl_ip_new_enabled').checked,
+  } : {
+    type,
+    value: document.getElementById('bl_ua_new_hash').value,
+    ua_raw: document.getElementById('bl_ua_new_raw').value,
+    remark: document.getElementById('bl_ua_new_remark').value,
+    is_enabled: document.getElementById('bl_ua_new_enabled').checked,
   };
+
   const rows = await request('/blacklist/update', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -461,17 +479,24 @@ async function createBlacklist(type) {
   });
   if (rows) {
     alert('新增成功');
-    renderBlacklistEditor(rows);
+    renderBlacklistEditor(rows, type);
   }
 }
 
 async function saveBlacklist(type, idx) {
-  const payload = {
+  const payload = type === 'ip' ? {
     type,
-    value: document.getElementById(`bl_${type}_value_${idx}`).value,
-    remark: document.getElementById(`bl_${type}_remark_${idx}`).value,
-    is_enabled: document.getElementById(`bl_${type}_enabled_${idx}`).checked,
+    value: document.getElementById(`bl_ip_value_${idx}`).value,
+    remark: document.getElementById(`bl_ip_remark_${idx}`).value,
+    is_enabled: document.getElementById(`bl_ip_enabled_${idx}`).checked,
+  } : {
+    type,
+    value: document.getElementById(`bl_ua_hash_${idx}`).value,
+    ua_raw: document.getElementById(`bl_ua_raw_${idx}`).value,
+    remark: document.getElementById(`bl_ua_remark_${idx}`).value,
+    is_enabled: document.getElementById(`bl_ua_enabled_${idx}`).checked,
   };
+
   const rows = await request('/blacklist/update', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -479,7 +504,7 @@ async function saveBlacklist(type, idx) {
   });
   if (rows) {
     alert('保存成功');
-    renderBlacklistEditor(rows);
+    renderBlacklistEditor(rows, type);
   }
 }
 
@@ -492,7 +517,7 @@ async function deleteBlacklist(id) {
   });
   if (rows) {
     alert('删除成功');
-    renderBlacklistEditor(rows);
+    renderBlacklistEditor(rows, 'ip');
   }
 }
 
@@ -504,34 +529,28 @@ async function sha256Hex(input) {
   return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
 }
 
-async function convertNewUaToHash(type) {
-  if (type !== 'ua_hash') {
-    alert('仅 ua_hash 支持 UA→HASH');
-    return;
-  }
-  const valueEl = document.getElementById(`bl_${type}_new_value`);
-  if (!valueEl) return;
-  const ua = valueEl.value.trim();
+async function convertNewUaToHash() {
+  const rawEl = document.getElementById('bl_ua_new_raw');
+  const hashEl = document.getElementById('bl_ua_new_hash');
+  if (!rawEl || !hashEl) return;
+  const ua = rawEl.value.trim();
   if (!ua) {
     alert('请输入原始 UA 字符串');
     return;
   }
-  valueEl.value = await sha256Hex(ua);
+  hashEl.value = await sha256Hex(ua);
 }
 
-async function convertRowUaToHash(type, idx) {
-  if (type !== 'ua_hash') {
-    alert('仅 ua_hash 支持 UA→HASH');
-    return;
-  }
-  const valueEl = document.getElementById(`bl_${type}_value_${idx}`);
-  if (!valueEl) return;
-  const ua = valueEl.value.trim();
+async function convertRowUaToHash(idx) {
+  const rawEl = document.getElementById(`bl_ua_raw_${idx}`);
+  const hashEl = document.getElementById(`bl_ua_hash_${idx}`);
+  if (!rawEl || !hashEl) return;
+  const ua = rawEl.value.trim();
   if (!ua) {
     alert('请输入原始 UA 字符串');
     return;
   }
-  valueEl.value = await sha256Hex(ua);
+  hashEl.value = await sha256Hex(ua);
 }
 
 async function fetchRuleHits() {

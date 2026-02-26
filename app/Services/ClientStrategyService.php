@@ -36,10 +36,16 @@ class ClientStrategyService
     {
         $protocols = $this->scanProtocols();
         foreach ($protocols as $protocol) {
-            ClientStrategy::query()->updateOrCreate(
+            $strategy = ClientStrategy::query()->firstOrCreate(
                 ['client_type' => $protocol['client_type']],
                 ['client_name' => $protocol['client_name']]
             );
+
+            // Keep administrator custom name unchanged.
+            if (!$strategy->client_name) {
+                $strategy->client_name = $protocol['client_name'];
+                $strategy->save();
+            }
         }
 
         return $protocols;

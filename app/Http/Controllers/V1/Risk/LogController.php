@@ -11,6 +11,7 @@ use App\Models\User;
 use App\Services\RiskLogService;
 use App\Services\ClientStrategyService;
 use App\Services\RiskBlacklistService;
+use App\Services\GeoIpService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
 
@@ -280,6 +281,7 @@ class LogController extends Controller
             ->limit(1000)
             ->get();
 
+        $geoIpService = new GeoIpService();
         $rows = [];
         foreach ($users as $user) {
             $ipsArray = Cache::get('ALIVE_IP_USER_' . $user->id) ?? [];
@@ -298,6 +300,31 @@ class LogController extends Controller
                 }
             }
 
+            // Fallback for short-lived sessions that may have already expired from ALIVE cache.
+            if (empty($onlineIps)) {
+                $recentIps = SubscribeLog::query()
+                    ->where('user_id', $user->id)
+                    ->where('created_at', '>=', $since)
+                    ->whereNotNull('ip')
+                    ->orderBy('created_at', 'desc')
+                    ->limit(10)
+                    ->pluck('ip')
+                    ->toArray();
+
+                $seen = [];
+                foreach ($recentIps as $ip) {
+                    $ip = (string) $ip;
+                    if (!$ip || isset($seen[$ip])) {
+                        continue;
+                    }
+                    $seen[$ip] = true;
+                    $onlineIps[] = [
+                        'ip' => $ip,
+                        'node' => 'recent_subscribe',
+                    ];
+                }
+            }
+
             if (empty($onlineIps)) {
                 $rows[] = [
                     'user_id' => $user->id,
@@ -306,11 +333,17 @@ class LogController extends Controller
                     'node' => null,
                     'alive_count' => (int) ($ipsArray['alive_ip'] ?? 0),
                     'online_at' => (int) $user->t,
+                    'country' => null,
+                    'region' => null,
+                    'city' => null,
+                    'asn' => null,
+                    'isp' => null,
                 ];
                 continue;
             }
 
             foreach ($onlineIps as $item) {
+                $geo = $geoIpService->lookup($item['ip']);
                 $rows[] = [
                     'user_id' => $user->id,
                     'email' => $user->email,
@@ -318,6 +351,11 @@ class LogController extends Controller
                     'node' => $item['node'],
                     'alive_count' => (int) ($ipsArray['alive_ip'] ?? count($onlineIps)),
                     'online_at' => (int) $user->t,
+                    'country' => $geo['country'] ?? null,
+                    'region' => $geo['region'] ?? null,
+                    'city' => $geo['city'] ?? null,
+                    'asn' => $geo['asn'] ?? null,
+                    'isp' => $geo['isp'] ?? null,
                 ];
             }
         }

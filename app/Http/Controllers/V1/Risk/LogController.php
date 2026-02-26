@@ -353,17 +353,10 @@ class LogController extends Controller
                 't',
                 'last_login_at',
                 'last_login_ip',
-                'u',
-                'd',
-                'transfer_enable',
                 'expired_at',
                 'plan_id',
                 'group_id',
-                'banned',
-                'is_admin',
                 'balance',
-                'commission_balance',
-                'invite_user_id',
             ]);
 
         if ($users->isEmpty()) {
@@ -411,17 +404,12 @@ class LogController extends Controller
         }
 
         $rows = [];
-        $now = time();
         foreach ($users as $user) {
             $latestSubscribe = $latestSubscribeMap[$user->id] ?? null;
             $orderStat = $orderStatsMap[$user->id] ?? [
                 'paid_order_count' => 0,
                 'paid_total_amount' => 0,
             ];
-
-            $usedTraffic = (int) ($user->u + $user->d);
-            $totalTraffic = (int) $user->transfer_enable;
-            $usageRate = $totalTraffic > 0 ? round(($usedTraffic / $totalTraffic) * 100, 2) : 0;
 
             $ipsArray = Cache::get('ALIVE_IP_USER_' . $user->id) ?? [];
             $onlineIps = [];
@@ -450,7 +438,6 @@ class LogController extends Controller
                 'user_id' => $user->id,
                 'email' => $user->email,
                 'register_at' => (int) ($user->created_at ?? 0),
-                'account_age_days' => $user->created_at ? max(0, floor(($now - (int) $user->created_at) / 86400)) : 0,
                 'last_subscribe_at' => $latestSubscribe ? (int) $latestSubscribe->created_at : null,
                 'last_subscribe_ip' => $latestSubscribe ? $this->formatIp($latestSubscribe->ip) : null,
                 'last_online_at' => $user->t ? (int) $user->t : null,
@@ -459,22 +446,11 @@ class LogController extends Controller
                 'last_login_at' => $user->last_login_at ? (int) $user->last_login_at : null,
                 'last_login_ip' => $this->formatIp($user->last_login_ip),
                 'subscribe_url' => Helper::getSubscribeUrl($user->token),
-                'group_id' => $user->group_id,
+                'subscription_plan' => $planNames[$user->plan_id] ?? null,
                 'group_name' => $groupNames[$user->group_id] ?? null,
-                'plan_id' => $user->plan_id,
-                'plan_name' => $planNames[$user->plan_id] ?? null,
                 'recharge_total' => round($orderStat['paid_total_amount'] / 100, 2),
-                'paid_order_count' => $orderStat['paid_order_count'],
                 'balance' => round(((int) $user->balance) / 100, 2),
-                'commission_balance' => round(((int) $user->commission_balance) / 100, 2),
-                'traffic_used_gb' => round($usedTraffic / 1073741824, 2),
-                'traffic_total_gb' => round($totalTraffic / 1073741824, 2),
-                'traffic_usage_rate' => $usageRate . '%',
                 'expired_at' => $user->expired_at ? (int) $user->expired_at : null,
-                'days_to_expire' => $user->expired_at ? floor((((int) $user->expired_at) - $now) / 86400) : null,
-                'invite_user_id' => $user->invite_user_id,
-                'is_banned' => (int) ($user->banned ?? 0),
-                'is_admin' => (int) ($user->is_admin ?? 0),
             ];
         }
 

@@ -9,10 +9,13 @@ use App\Models\RiskRuleConfig;
 use App\Models\SubscribeLog;
 use App\Models\User;
 use App\Models\Order;
+use App\Models\Plan;
+use App\Models\ServerGroup;
 use App\Services\RiskLogService;
 use App\Services\ClientStrategyService;
 use App\Services\RiskBlacklistService;
 use App\Services\GeoIpService;
+use App\Utils\Helper;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
 
@@ -345,7 +348,9 @@ class LogController extends Controller
             ->get([
                 'id',
                 'email',
+                'token',
                 'created_at',
+                't',
                 'last_login_at',
                 'last_login_ip',
                 'u',
@@ -353,6 +358,7 @@ class LogController extends Controller
                 'transfer_enable',
                 'expired_at',
                 'plan_id',
+                'group_id',
                 'banned',
                 'is_admin',
                 'balance',
@@ -368,6 +374,16 @@ class LogController extends Controller
         }
 
         $userIds = $users->pluck('id')->toArray();
+
+        $planNames = Plan::query()
+            ->whereIn('id', array_values(array_filter($users->pluck('plan_id')->unique()->toArray())))
+            ->pluck('name', 'id')
+            ->toArray();
+
+        $groupNames = ServerGroup::query()
+            ->whereIn('id', array_values(array_filter($users->pluck('group_id')->unique()->toArray())))
+            ->pluck('name', 'id')
+            ->toArray();
 
         $latestSubscribeMap = [];
         $subscribeLogs = SubscribeLog::query()
@@ -407,6 +423,29 @@ class LogController extends Controller
             $totalTraffic = (int) $user->transfer_enable;
             $usageRate = $totalTraffic > 0 ? round(($usedTraffic / $totalTraffic) * 100, 2) : 0;
 
+            $ipsArray = Cache::get('ALIVE_IP_USER_' . $user->id) ?? [];
+            $onlineIps = [];
+            foreach ($ipsArray as $nodeTypeId => $data) {
+                if (!is_int($data) && isset($data['aliveips']) && is_array($data['aliveips'])) {
+                    foreach ($data['aliveips'] as $ipNodeId) {
+                        $ip = explode('_', (string) $ipNodeId)[0] ?? '';
+                        if ($ip) {
+                            $onlineIps[] = [
+                                'ip' => $ip,
+                                'node' => (string) $nodeTypeId,
+                            ];
+                        }
+                    }
+                }
+            }
+
+            $lastOnlineIp = null;
+            $lastOnlineNode = null;
+            if (!empty($onlineIps)) {
+                $lastOnlineIp = $onlineIps[0]['ip'];
+                $lastOnlineNode = $onlineIps[0]['node'];
+            }
+
             $rows[] = [
                 'user_id' => $user->id,
                 'email' => $user->email,
@@ -414,8 +453,16 @@ class LogController extends Controller
                 'account_age_days' => $user->created_at ? max(0, floor(($now - (int) $user->created_at) / 86400)) : 0,
                 'last_subscribe_at' => $latestSubscribe ? (int) $latestSubscribe->created_at : null,
                 'last_subscribe_ip' => $latestSubscribe ? $this->formatIp($latestSubscribe->ip) : null,
+                'last_online_at' => $user->t ? (int) $user->t : null,
+                'last_online_ip' => $lastOnlineIp,
+                'last_online_node' => $lastOnlineNode,
                 'last_login_at' => $user->last_login_at ? (int) $user->last_login_at : null,
                 'last_login_ip' => $this->formatIp($user->last_login_ip),
+                'subscribe_url' => Helper::getSubscribeUrl($user->token),
+                'group_id' => $user->group_id,
+                'group_name' => $groupNames[$user->group_id] ?? null,
+                'plan_id' => $user->plan_id,
+                'plan_name' => $planNames[$user->plan_id] ?? null,
                 'recharge_total' => round($orderStat['paid_total_amount'] / 100, 2),
                 'paid_order_count' => $orderStat['paid_order_count'],
                 'balance' => round(((int) $user->balance) / 100, 2),
@@ -425,7 +472,6 @@ class LogController extends Controller
                 'traffic_usage_rate' => $usageRate . '%',
                 'expired_at' => $user->expired_at ? (int) $user->expired_at : null,
                 'days_to_expire' => $user->expired_at ? floor((((int) $user->expired_at) - $now) / 86400) : null,
-                'plan_id' => $user->plan_id,
                 'invite_user_id' => $user->invite_user_id,
                 'is_banned' => (int) ($user->banned ?? 0),
                 'is_admin' => (int) ($user->is_admin ?? 0),

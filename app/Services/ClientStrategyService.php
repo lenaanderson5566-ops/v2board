@@ -75,6 +75,52 @@ class ClientStrategyService
     }
 
 
+
+    public function isVersionAllowed(?string $clientType, ?string $clientVersion): bool
+    {
+        $clientType = strtolower((string) $clientType);
+        if (!$clientType) {
+            return true;
+        }
+
+        $this->syncStrategies();
+        $strategy = ClientStrategy::query()->where('client_type', $clientType)->first();
+        if (!$strategy) {
+            return true;
+        }
+
+        $minVersion = $this->normalizeVersion((string) ($strategy->min_version ?? ''));
+        if (!$minVersion) {
+            return true;
+        }
+
+        $currentVersion = $this->normalizeVersion((string) $clientVersion);
+        if (!$currentVersion) {
+            return false;
+        }
+
+        return version_compare($currentVersion, $minVersion, '>=');
+    }
+
+    public function resolveClientVersion(string $clientType, string $requestedFlag, string $userAgent): ?string
+    {
+        $candidates = [trim((string) $requestedFlag), trim((string) $userAgent)];
+        foreach ($candidates as $raw) {
+            if (!$raw) {
+                continue;
+            }
+
+            if (preg_match('/(?:^|[^a-z0-9])' . preg_quote($clientType, '/') . '[\/\s_-]*v?(\d+(?:\.\d+){0,3})/i', $raw, $m)) {
+                return $m[1];
+            }
+            if (preg_match('/\bv?(\d+(?:\.\d+){1,3})\b/i', $raw, $m)) {
+                return $m[1];
+            }
+        }
+
+        return null;
+    }
+
     public function deleteStrategy(string $clientType): bool
     {
         $clientType = strtolower(trim($clientType));
@@ -111,6 +157,9 @@ class ClientStrategyService
             if (array_key_exists('client_name', $item) && !is_null($item['client_name'])) {
                 $payload['client_name'] = trim((string) $item['client_name']);
             }
+            if (array_key_exists('min_version', $item)) {
+                $payload['min_version'] = trim((string) ($item['min_version'] ?? '')) ?: null;
+            }
 
             if ($payload) {
                 ClientStrategy::query()->where('client_type', $clientType)->update($payload);
@@ -118,6 +167,20 @@ class ClientStrategyService
         }
 
         return $this->getStrategies();
+    }
+
+    private function normalizeVersion(string $version): ?string
+    {
+        $version = trim(strtolower($version));
+        if (!$version) {
+            return null;
+        }
+
+        if (!preg_match('/v?(\d+(?:\.\d+){0,3})/', $version, $m)) {
+            return null;
+        }
+
+        return $m[1];
     }
 
     private function defaultClientName(string $className): string

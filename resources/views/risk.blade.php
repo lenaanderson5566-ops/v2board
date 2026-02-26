@@ -314,6 +314,7 @@ function renderClientStrategyEditor(rows) {
       <th>client_name</th>
       <th>is_enabled</th>
       <th>sort</th>
+      <th>min_version</th>
       <th>action</th>
     </tr>`;
 
@@ -325,6 +326,7 @@ function renderClientStrategyEditor(rows) {
         <td><input id="client_name_${idx}" class="rule-input" value="${safe(item.client_name || '')}"></td>
         <td><input id="client_enabled_${idx}" type="checkbox" ${item.is_enabled ? 'checked' : ''}></td>
         <td><input id="client_sort_${idx}" class="rule-input" type="number" value="${safe(item.sort ?? 0)}"></td>
+        <td><input id="client_min_version_${idx}" class="rule-input" placeholder="例如: 1.8.0" value="${safe(item.min_version || '')}"></td>
         <td style="display:flex;gap:6px;">
           <button onclick="saveClientStrategy(${idx}, '${safe(item.client_type)}')">保存</button>
           <button style="border-color:#fecaca;color:#dc2626;" onclick="deleteClientStrategy('${safe(item.client_type)}')">删除</button>
@@ -346,6 +348,7 @@ async function saveClientStrategy(idx, clientType) {
     client_name: document.getElementById(`client_name_${idx}`).value,
     is_enabled: document.getElementById(`client_enabled_${idx}`).checked,
     sort: Number(document.getElementById(`client_sort_${idx}`).value || 0),
+    min_version: document.getElementById(`client_min_version_${idx}`).value,
   };
 
   const rows = await request('/client-strategy/update', {

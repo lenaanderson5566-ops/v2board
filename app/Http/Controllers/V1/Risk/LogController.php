@@ -146,6 +146,9 @@ class LogController extends Controller
             if (array_key_exists('client_name', $item) && !is_null($item['client_name']) && !is_string($item['client_name'])) {
                 abort(422, 'client_name must be string');
             }
+            if (array_key_exists('min_version', $item) && !is_null($item['min_version']) && !is_string($item['min_version'])) {
+                abort(422, 'min_version must be string');
+            }
             $item['client_type'] = strtolower($item['client_type']);
             $items[] = $item;
         }

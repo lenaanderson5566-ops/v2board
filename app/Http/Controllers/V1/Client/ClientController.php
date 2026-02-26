@@ -39,6 +39,23 @@ class ClientController extends Controller
                 return $class->handle();
             }
 
+            $resolvedVersion = $clientStrategyService->resolveClientVersion(
+                $resolvedFlag,
+                (string) $request->input('flag', ''),
+                (string) $request->header('user-agent', '')
+            );
+            if (!$clientStrategyService->isVersionAllowed($resolvedFlag, $resolvedVersion)) {
+                $riskLogService->createSubscribeLog($this->buildSubscribeLogPayload(
+                    $request,
+                    $user,
+                    $resolvedFlag,
+                    'failed',
+                    'client_version_too_low'
+                ));
+                $class = $this->resolveProtocolHandler($resolvedFlag, $user, $this->buildUnavailableServers('client_version_too_low'));
+                return $class->handle();
+            }
+
             try {
                 $serverService = new ServerService();
                 $servers = $serverService->getAvailableServers($user);
@@ -146,6 +163,12 @@ class ClientController extends Controller
                 'ja' => '⚠ 管理者によりクライアント種別が無効化されています',
                 'ko' => '⚠ 관리자에 의해 클라이언트 유형이 비활성화되었습니다',
                 'zh' => '⚠ 该客户端类型已被管理员禁用',
+            ],
+            'client_version_too_low' => [
+                'en' => '⚠ Client version is lower than required minimum',
+                'ja' => '⚠ クライアントのバージョンが最低要件を満たしていません',
+                'ko' => '⚠ 클라이언트 버전이 최소 요구 버전보다 낮습니다',
+                'zh' => '⚠ 客户端版本低于最低要求，请升级客户端',
             ],
         ];
 

@@ -14,6 +14,7 @@ class ClientStrategy extends Model
     protected $casts = [
         'is_enabled' => 'boolean',
         'sort' => 'integer',
+        'min_version' => 'string',
         'created_at' => 'timestamp',
         'updated_at' => 'timestamp',
     ];

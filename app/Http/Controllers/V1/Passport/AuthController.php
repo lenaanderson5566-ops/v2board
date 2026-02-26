@@ -11,6 +11,7 @@ use App\Models\InviteCode;
 use App\Models\Plan;
 use App\Models\User;
 use App\Services\AuthService;
+use App\Services\RiskLogService;
 use App\Utils\CacheKey;
 use App\Utils\Dict;
 use App\Utils\Helper;
@@ -190,6 +191,7 @@ class AuthController extends Controller
     {
         $email = $request->input('email');
         $password = $request->input('password');
+        $riskLogService = new RiskLogService();
 
         if ((int)config('v2board.password_limit_enable', 1)) {
             $passwordErrorCount = (int)Cache::get(CacheKey::get('PASSWORD_ERROR_LIMIT', $email), 0);
@@ -202,6 +204,11 @@ class AuthController extends Controller
 
         $user = User::where('email', $email)->first();
         if (!$user) {
+            $riskLogService->createLoginLog([
+                'email' => $email,
+                'is_success' => false,
+                'reason' => 'user_not_found'
+            ]);
             abort(500, __('Incorrect email or password'));
         }
         if (!Helper::multiPasswordVerify(
@@ -217,12 +224,31 @@ class AuthController extends Controller
                     60 * (int)config('v2board.password_limit_expire', 60)
                 );
             }
+            $riskLogService->createLoginLog([
+                'user_id' => $user->id,
+                'email' => $email,
+                'is_success' => false,
+                'reason' => 'password_error'
+            ]);
             abort(500, __('Incorrect email or password'));
         }
 
         if ($user->banned) {
+            $riskLogService->createLoginLog([
+                'user_id' => $user->id,
+                'email' => $email,
+                'is_success' => false,
+                'reason' => 'user_banned'
+            ]);
             abort(500, __('Your account has been suspended'));
         }
+
+        $riskLogService->createLoginLog([
+            'user_id' => $user->id,
+            'email' => $email,
+            'is_success' => true,
+            'reason' => 'success'
+        ]);
 
         $authService = new AuthService($user);
         return response([

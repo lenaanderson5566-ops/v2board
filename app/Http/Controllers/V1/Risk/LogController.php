@@ -11,6 +11,7 @@ use App\Models\User;
 use App\Models\Order;
 use App\Models\Plan;
 use App\Models\ServerGroup;
+use App\Models\UserOnlineSnapshot;
 use App\Services\RiskLogService;
 use App\Services\ClientStrategyService;
 use App\Services\RiskBlacklistService;
@@ -402,6 +403,12 @@ class LogController extends Controller
             ];
         }
 
+        $latestOnlineMap = UserOnlineSnapshot::query()
+            ->whereIn('user_id', $userIds)
+            ->orderBy('online_at', 'desc')
+            ->get(['user_id', 'online_at', 'ip', 'node'])
+            ->keyBy('user_id');
+
         $rows = [];
         foreach ($users as $user) {
             $latestSubscribe = $latestSubscribeMap[$user->id] ?? null;
@@ -409,29 +416,7 @@ class LogController extends Controller
                 'paid_order_count' => 0,
                 'paid_total_amount' => 0,
             ];
-
-            $ipsArray = Cache::get('ALIVE_IP_USER_' . $user->id) ?? [];
-            $onlineIps = [];
-            foreach ($ipsArray as $nodeTypeId => $data) {
-                if (!is_int($data) && isset($data['aliveips']) && is_array($data['aliveips'])) {
-                    foreach ($data['aliveips'] as $ipNodeId) {
-                        $ip = explode('_', (string) $ipNodeId)[0] ?? '';
-                        if ($ip) {
-                            $onlineIps[] = [
-                                'ip' => $ip,
-                                'node' => (string) $nodeTypeId,
-                            ];
-                        }
-                    }
-                }
-            }
-
-            $lastOnlineIp = null;
-            $lastOnlineNode = null;
-            if (!empty($onlineIps)) {
-                $lastOnlineIp = $onlineIps[0]['ip'];
-                $lastOnlineNode = $onlineIps[0]['node'];
-            }
+            $latestOnline = $latestOnlineMap[$user->id] ?? null;
 
             $rows[] = [
                 'user_id' => $user->id,
@@ -440,9 +425,9 @@ class LogController extends Controller
                 'last_subscribe_at' => $latestSubscribe ? (int) $latestSubscribe->created_at : null,
                 'last_subscribe_ip' => $latestSubscribe ? $this->formatIp($latestSubscribe->ip) : null,
                 'last_subscribe_ua' => $latestSubscribe ? (string) ($latestSubscribe->user_agent ?? '') : null,
-                'last_online_at' => $user->t ? (int) $user->t : null,
-                'last_online_ip' => $lastOnlineIp,
-                'last_online_node' => $lastOnlineNode,
+                'last_online_at' => $latestOnline ? (int) $latestOnline->online_at : null,
+                'last_online_ip' => $latestOnline ? $this->formatIp($latestOnline->ip) : null,
+                'last_online_node' => $latestOnline ? $latestOnline->node : null,
                 'last_login_at' => $user->getRawOriginal('last_login_at') ? (int) $user->getRawOriginal('last_login_at') : null,
                 'last_login_ip' => $this->formatIp($user->getRawOriginal('last_login_ip')),
                 'subscription_plan' => $planNames[$user->plan_id] ?? null,

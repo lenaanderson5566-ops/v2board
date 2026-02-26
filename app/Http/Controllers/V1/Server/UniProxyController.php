@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\V1\Server;
 
 use App\Http\Controllers\Controller;
+use App\Models\UserOnlineSnapshot;
 use App\Services\ServerService;
 use App\Services\UserService;
 use App\Utils\CacheKey;
@@ -140,6 +141,27 @@ class UniProxyController extends Controller
             $ips_array = Cache::get('ALIVE_IP_USER_' . $uid) ?? [];
             // 更新节点数据
             $ips_array[$this->nodeType . $this->nodeId] = ['aliveips' => $ips, 'lastupdateAt' => $updateAt];
+
+            $seen = [];
+            foreach ($ips as $ipNodeId) {
+                $ip = explode('_', (string) $ipNodeId)[0] ?? '';
+                if (!$ip || isset($seen[$ip])) {
+                    continue;
+                }
+                $seen[$ip] = true;
+                UserOnlineSnapshot::query()->updateOrCreate(
+                    [
+                        'user_id' => (int) $uid,
+                        'ip' => $ip,
+                        'node' => $this->nodeType . $this->nodeId,
+                        'source' => 'alive',
+                    ],
+                    [
+                        'online_at' => $updateAt,
+                    ]
+                );
+            }
+
             // 清理过期数据
             foreach ($ips_array as $nodetypeid => $oldips) {
                 if (!is_int($oldips) && ($updateAt - $oldips['lastupdateAt'] > 100)) {

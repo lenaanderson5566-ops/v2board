@@ -23,6 +23,7 @@ class SeedDefaultUaBlacklist extends Migration
             "v2rayN/6.23",
             "ClashR/1.4.0",
             "clash-verge/v1.3.8",
+            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
         ];
 
         $now = time();
@@ -57,6 +58,7 @@ class SeedDefaultUaBlacklist extends Migration
             "v2rayN/6.23",
             "ClashR/1.4.0",
             "clash-verge/v1.3.8",
+            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
         ];
 
         foreach ($defaultUas as $ua) {

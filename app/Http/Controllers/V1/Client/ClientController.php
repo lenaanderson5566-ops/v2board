@@ -24,22 +24,21 @@ class ClientController extends Controller
         $resolvedFlag = $this->resolveProtocolFlag($requestedFlag ?: $flag);
         $clientStrategyService = new ClientStrategyService();
         $user = $request->user;
-
-        if (!$clientStrategyService->isEnabled($resolvedFlag)) {
-            $riskLogService->createSubscribeLog($this->buildSubscribeLogPayload(
-                $request,
-                $user,
-                $resolvedFlag,
-                'failed',
-                'client_disabled'
-            ));
-            $class = $this->resolveProtocolHandler($resolvedFlag, $user, $this->buildUnavailableServers('client_disabled'));
-            return $class->handle();
-        }
-
         // account not expired and is not banned.
         $userService = new UserService();
         if ($userService->isAvailable($user)) {
+            if (!$clientStrategyService->isEnabled($resolvedFlag)) {
+                $riskLogService->createSubscribeLog($this->buildSubscribeLogPayload(
+                    $request,
+                    $user,
+                    $resolvedFlag,
+                    'failed',
+                    'client_disabled'
+                ));
+                $class = $this->resolveProtocolHandler($resolvedFlag, $user, $this->buildUnavailableServers('client_disabled'));
+                return $class->handle();
+            }
+
             try {
                 $serverService = new ServerService();
                 $servers = $serverService->getAvailableServers($user);

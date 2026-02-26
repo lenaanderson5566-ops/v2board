@@ -404,7 +404,7 @@ function renderBlacklistEditor(rows) {
             <option value="ua_hash" ${item.type === 'ua_hash' ? 'selected' : ''}>ua_hash</option>
           </select>
         </td>
-        <td><input id="bl_value_${idx}" class="rule-input" value="${safe(item.value || '')}"></td>
+        <td><div style="display:flex;gap:6px;"><input id="bl_value_${idx}" class="rule-input" value="${safe(item.value || '')}"><button onclick="convertRowUaToHash(${idx})">UA→HASH</button></div></td>
         <td><input id="bl_remark_${idx}" class="rule-input" value="${safe(item.remark || '')}"></td>
         <td><input id="bl_enabled_${idx}" type="checkbox" ${item.is_enabled ? 'checked' : ''}></td>
         <td style="display:flex;gap:6px;">
@@ -423,7 +423,7 @@ function renderBlacklistEditor(rows) {
           <option value="ua_hash">ua_hash</option>
         </select>
       </td>
-      <td><input id="bl_new_value" class="rule-input" placeholder="IP 或 UA SHA256"></td>
+      <td><div style="display:flex;gap:6px;"><input id="bl_new_value" class="rule-input" placeholder="IP 或 UA SHA256"><button onclick="convertNewUaToHash()">UA→HASH</button></div></td>
       <td><input id="bl_new_remark" class="rule-input" placeholder="备注"></td>
       <td><input id="bl_new_enabled" type="checkbox" checked></td>
       <td><button onclick="createBlacklist()">新增</button></td>
@@ -485,6 +485,46 @@ async function deleteBlacklist(id) {
     alert('删除成功');
     renderBlacklistEditor(rows);
   }
+}
+
+
+async function sha256Hex(input) {
+  const data = new TextEncoder().encode(String(input || ''));
+  const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+  const hashArray = Array.from(new Uint8Array(hashBuffer));
+  return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+}
+
+async function convertNewUaToHash() {
+  const typeEl = document.getElementById('bl_new_type');
+  const valueEl = document.getElementById('bl_new_value');
+  if (!typeEl || !valueEl) return;
+  if (typeEl.value !== 'ua_hash') {
+    alert('请先将 type 选择为 ua_hash');
+    return;
+  }
+  const ua = valueEl.value.trim();
+  if (!ua) {
+    alert('请输入原始 UA 字符串');
+    return;
+  }
+  valueEl.value = await sha256Hex(ua);
+}
+
+async function convertRowUaToHash(idx) {
+  const typeEl = document.getElementById(`bl_type_${idx}`);
+  const valueEl = document.getElementById(`bl_value_${idx}`);
+  if (!typeEl || !valueEl) return;
+  if (typeEl.value !== 'ua_hash') {
+    alert('请先将 type 选择为 ua_hash');
+    return;
+  }
+  const ua = valueEl.value.trim();
+  if (!ua) {
+    alert('请输入原始 UA 字符串');
+    return;
+  }
+  valueEl.value = await sha256Hex(ua);
 }
 
 async function fetchRuleHits() {

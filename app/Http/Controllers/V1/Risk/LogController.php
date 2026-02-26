@@ -8,6 +8,7 @@ use App\Models\RiskRuleHit;
 use App\Models\RiskRuleConfig;
 use App\Models\SubscribeLog;
 use App\Models\User;
+use App\Models\Order;
 use App\Services\RiskLogService;
 use App\Services\ClientStrategyService;
 use App\Services\RiskBlacklistService;
@@ -328,6 +329,115 @@ class LogController extends Controller
         ]);
     }
 
+    public function getUserUsage(Request $request)
+    {
+        $current = max((int)$request->input('current', 1), 1);
+        $pageSize = min(max((int)$request->input('page_size', 50), 1), 200);
+
+        $userBuilder = User::query();
+        if ($request->filled('email')) {
+            $userBuilder->where('email', 'like', '%' . $request->input('email') . '%');
+        }
+
+        $total = $userBuilder->count();
+        $users = $userBuilder->orderBy('id', 'desc')
+            ->forPage($current, $pageSize)
+            ->get([
+                'id',
+                'email',
+                'created_at',
+                'last_login_at',
+                'last_login_ip',
+                'u',
+                'd',
+                'transfer_enable',
+                'expired_at',
+                'plan_id',
+                'banned',
+                'is_admin',
+                'balance',
+                'commission_balance',
+                'invite_user_id',
+            ]);
+
+        if ($users->isEmpty()) {
+            return response([
+                'data' => [],
+                'total' => $total,
+            ]);
+        }
+
+        $userIds = $users->pluck('id')->toArray();
+
+        $latestSubscribeMap = [];
+        $subscribeLogs = SubscribeLog::query()
+            ->whereIn('user_id', $userIds)
+            ->orderBy('id', 'desc')
+            ->get(['user_id', 'created_at', 'ip']);
+        foreach ($subscribeLogs as $log) {
+            if (!isset($latestSubscribeMap[$log->user_id])) {
+                $latestSubscribeMap[$log->user_id] = $log;
+            }
+        }
+
+        $orderStatsMap = [];
+        $orderStats = Order::query()
+            ->whereIn('user_id', $userIds)
+            ->where('status', 3)
+            ->selectRaw('user_id, COUNT(*) as paid_order_count, COALESCE(SUM(total_amount), 0) as paid_total_amount')
+            ->groupBy('user_id')
+            ->get();
+        foreach ($orderStats as $item) {
+            $orderStatsMap[$item->user_id] = [
+                'paid_order_count' => (int) $item->paid_order_count,
+                'paid_total_amount' => (int) $item->paid_total_amount,
+            ];
+        }
+
+        $rows = [];
+        $now = time();
+        foreach ($users as $user) {
+            $latestSubscribe = $latestSubscribeMap[$user->id] ?? null;
+            $orderStat = $orderStatsMap[$user->id] ?? [
+                'paid_order_count' => 0,
+                'paid_total_amount' => 0,
+            ];
+
+            $usedTraffic = (int) ($user->u + $user->d);
+            $totalTraffic = (int) $user->transfer_enable;
+            $usageRate = $totalTraffic > 0 ? round(($usedTraffic / $totalTraffic) * 100, 2) : 0;
+
+            $rows[] = [
+                'user_id' => $user->id,
+                'email' => $user->email,
+                'register_at' => (int) ($user->created_at ?? 0),
+                'account_age_days' => $user->created_at ? max(0, floor(($now - (int) $user->created_at) / 86400)) : 0,
+                'last_subscribe_at' => $latestSubscribe ? (int) $latestSubscribe->created_at : null,
+                'last_subscribe_ip' => $latestSubscribe ? $this->formatIp($latestSubscribe->ip) : null,
+                'last_login_at' => $user->last_login_at ? (int) $user->last_login_at : null,
+                'last_login_ip' => $this->formatIp($user->last_login_ip),
+                'recharge_total' => round($orderStat['paid_total_amount'] / 100, 2),
+                'paid_order_count' => $orderStat['paid_order_count'],
+                'balance' => round(((int) $user->balance) / 100, 2),
+                'commission_balance' => round(((int) $user->commission_balance) / 100, 2),
+                'traffic_used_gb' => round($usedTraffic / 1073741824, 2),
+                'traffic_total_gb' => round($totalTraffic / 1073741824, 2),
+                'traffic_usage_rate' => $usageRate . '%',
+                'expired_at' => $user->expired_at ? (int) $user->expired_at : null,
+                'days_to_expire' => $user->expired_at ? floor((((int) $user->expired_at) - $now) / 86400) : null,
+                'plan_id' => $user->plan_id,
+                'invite_user_id' => $user->invite_user_id,
+                'is_banned' => (int) ($user->banned ?? 0),
+                'is_admin' => (int) ($user->is_admin ?? 0),
+            ];
+        }
+
+        return response([
+            'data' => $rows,
+            'total' => $total,
+        ]);
+    }
+
     public function getLoginLogs(Request $request)
     {
         $current = max((int)$request->input('current', 1), 1);
@@ -392,5 +502,19 @@ class LogController extends Controller
         }
 
         return round(($sub / $total) * 100, 2) . '%';
+    }
+
+    private function formatIp($ip): ?string
+    {
+        if (is_null($ip) || $ip === '') {
+            return null;
+        }
+
+        if (is_numeric($ip) && strpos((string) $ip, '.') === false && strpos((string) $ip, ':') === false) {
+            $converted = long2ip((int) $ip);
+            return $converted ?: (string) $ip;
+        }
+
+        return (string) $ip;
     }
 }

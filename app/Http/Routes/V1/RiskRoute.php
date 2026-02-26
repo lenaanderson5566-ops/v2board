@@ -23,6 +23,7 @@ class RiskRoute
             $router->post('/client-strategy/update', 'V1\\Risk\\LogController@updateClientStrategy');
             $router->post('/client-strategy/delete', 'V1\\Risk\\LogController@deleteClientStrategy');
             $router->get('/online-user/fetch', 'V1\\Risk\\LogController@getOnlineUsers');
+            $router->get('/user-usage/fetch', 'V1\\Risk\\LogController@getUserUsage');
             $router->get('/login-log/fetch', 'V1\\Risk\\LogController@getLoginLogs');
             $router->get('/subscribe-log/fetch', 'V1\\Risk\\LogController@getSubscribeLogs');
         });

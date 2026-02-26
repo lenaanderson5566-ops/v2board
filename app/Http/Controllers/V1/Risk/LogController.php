@@ -7,10 +7,12 @@ use App\Models\LoginLog;
 use App\Models\RiskRuleHit;
 use App\Models\RiskRuleConfig;
 use App\Models\SubscribeLog;
+use App\Models\User;
 use App\Services\RiskLogService;
 use App\Services\ClientStrategyService;
 use App\Services\RiskBlacklistService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 
 class LogController extends Controller
 {
@@ -264,6 +266,65 @@ class LogController extends Controller
         return response([
             'data' => $data,
             'total' => $total,
+        ]);
+    }
+
+
+    public function getOnlineUsers(Request $request)
+    {
+        $since = time() - 600;
+        $users = User::query()
+            ->where('t', '>=', $since)
+            ->select(['id', 'email', 't'])
+            ->orderBy('t', 'desc')
+            ->limit(1000)
+            ->get();
+
+        $rows = [];
+        foreach ($users as $user) {
+            $ipsArray = Cache::get('ALIVE_IP_USER_' . $user->id) ?? [];
+            $onlineIps = [];
+            foreach ($ipsArray as $nodeTypeId => $data) {
+                if (!is_int($data) && isset($data['aliveips']) && is_array($data['aliveips'])) {
+                    foreach ($data['aliveips'] as $ipNodeId) {
+                        $ip = explode('_', (string) $ipNodeId)[0] ?? '';
+                        if ($ip) {
+                            $onlineIps[] = [
+                                'ip' => $ip,
+                                'node' => (string) $nodeTypeId,
+                            ];
+                        }
+                    }
+                }
+            }
+
+            if (empty($onlineIps)) {
+                $rows[] = [
+                    'user_id' => $user->id,
+                    'email' => $user->email,
+                    'online_ip' => null,
+                    'node' => null,
+                    'alive_count' => (int) ($ipsArray['alive_ip'] ?? 0),
+                    'online_at' => (int) $user->t,
+                ];
+                continue;
+            }
+
+            foreach ($onlineIps as $item) {
+                $rows[] = [
+                    'user_id' => $user->id,
+                    'email' => $user->email,
+                    'online_ip' => $item['ip'],
+                    'node' => $item['node'],
+                    'alive_count' => (int) ($ipsArray['alive_ip'] ?? count($onlineIps)),
+                    'online_at' => (int) $user->t,
+                ];
+            }
+        }
+
+        return response([
+            'data' => $rows,
+            'total' => count($rows),
         ]);
     }
 

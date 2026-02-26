@@ -102,6 +102,7 @@
         <div class="menu-section">
             <div class="menu-title">日志</div>
             <div class="menu-list">
+                <button class="menu-btn" onclick="fetchOnlineUsers()">在线用户IP</button>
                 <button class="menu-btn" onclick="fetchLoginLogs()">登录日志</button>
                 <button class="menu-btn" onclick="fetchSubscribeLogs()">订阅日志</button>
             </div>
@@ -561,6 +562,11 @@ async function convertRowUaToHash(idx) {
 
 async function fetchRuleHits() {
   const rows = await request('/rule-hit/fetch?page_size=50');
+  if (rows) renderTable(rows);
+}
+
+async function fetchOnlineUsers() {
+  const rows = await request('/online-user/fetch?page_size=200');
   if (rows) renderTable(rows);
 }
 

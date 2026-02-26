@@ -223,21 +223,10 @@ class ClientController extends Controller
             return $this->getGeneralFlag();
         }
 
-        $input = strtolower(trim($input));
-        $flags = $this->getProtocolFlags();
-
-        // Strict mode: only exact client_type or exact token hit, no substring fuzzy match.
-        if (isset($flags[$input])) {
-            return $input;
-        }
-
-        $tokens = preg_split('/[^a-z0-9%]+/', $input);
-        foreach ($tokens as $token) {
-            if (!$token) {
-                continue;
-            }
-            if (isset($flags[$token])) {
-                return $token;
+        $input = strtolower($input);
+        foreach ($this->getProtocolFlags() as $flag) {
+            if (strpos($input, $flag) !== false) {
+                return $flag;
             }
         }
 

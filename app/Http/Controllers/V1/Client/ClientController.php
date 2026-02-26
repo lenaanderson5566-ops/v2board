@@ -224,13 +224,32 @@ class ClientController extends Controller
         }
 
         $input = strtolower($input);
+        $matches = [];
         foreach ($this->getProtocolFlags() as $flag) {
-            if (strpos($input, $flag) !== false) {
-                return $flag;
+            $pos = strpos($input, $flag);
+            if ($pos !== false) {
+                $matches[$flag] = $pos;
             }
         }
 
-        return $this->getGeneralFlag();
+        if (!$matches) {
+            return $this->getGeneralFlag();
+        }
+
+        // Clash family strings (e.g. clash-verge/clash-meta) may contain both
+        // "clash" and a specific client marker. Prefer the specific one.
+        if (count($matches) > 1 && isset($matches['clash'])) {
+            unset($matches['clash']);
+        }
+
+        uasort($matches, function ($aPos, $bPos) use ($matches) {
+            if ($aPos === $bPos) {
+                return 0;
+            }
+            return $aPos <=> $bPos;
+        });
+
+        return array_key_first($matches) ?: $this->getGeneralFlag();
     }
 
     private function getGeneralFlag(): string

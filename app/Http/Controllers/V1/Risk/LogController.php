@@ -11,6 +11,7 @@ use App\Models\User;
 use App\Models\Order;
 use App\Models\Plan;
 use App\Models\ServerGroup;
+use App\Models\UserConnectionLog;
 use App\Models\UserOnlineSnapshot;
 use App\Services\RiskLogService;
 use App\Services\ClientStrategyService;
@@ -462,6 +463,30 @@ class LogController extends Controller
 
         $total = $builder->count();
         $data = $builder->orderBy('id', 'desc')
+            ->forPage($current, $pageSize)
+            ->get();
+
+        return response([
+            'data' => $data,
+            'total' => $total,
+        ]);
+    }
+
+    public function getUserConnectionLogs(Request $request)
+    {
+        $current = max((int)$request->input('current', 1), 1);
+        $pageSize = min(max((int)$request->input('page_size', 50), 1), 200);
+
+        $builder = UserConnectionLog::query();
+        if ($request->filled('user_id')) {
+            $builder->where('user_id', (int) $request->input('user_id'));
+        }
+        if ($request->filled('ip')) {
+            $builder->where('ip', $request->input('ip'));
+        }
+
+        $total = $builder->count();
+        $data = $builder->orderBy('connected_at', 'desc')
             ->forPage($current, $pageSize)
             ->get();
 

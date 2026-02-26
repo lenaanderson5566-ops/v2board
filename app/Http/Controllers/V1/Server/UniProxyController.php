@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\V1\Server;
 
 use App\Http\Controllers\Controller;
+use App\Models\UserConnectionLog;
 use App\Models\UserOnlineSnapshot;
 use App\Services\ServerService;
 use App\Services\UserService;
@@ -160,6 +161,23 @@ class UniProxyController extends Controller
                         'online_at' => $updateAt,
                     ]
                 );
+
+                $connectionLogThrottleKey = sprintf(
+                    'USER_CONNECTION_LOG:%d:%s:%s',
+                    (int) $uid,
+                    md5($ip),
+                    $this->nodeType . $this->nodeId
+                );
+                if (!Cache::has($connectionLogThrottleKey)) {
+                    UserConnectionLog::query()->create([
+                        'user_id' => (int) $uid,
+                        'ip' => $ip,
+                        'node' => $this->nodeType . $this->nodeId,
+                        'source' => 'alive',
+                        'connected_at' => $updateAt,
+                    ]);
+                    Cache::put($connectionLogThrottleKey, 1, 120);
+                }
             }
 
             // 清理过期数据

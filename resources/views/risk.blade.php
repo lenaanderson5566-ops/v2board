@@ -104,6 +104,7 @@
             <div class="menu-list">
                 <button class="menu-btn" onclick="fetchOnlineUsers()">在线用户IP</button>
                 <button class="menu-btn" onclick="fetchUserUsage()">用户使用情况</button>
+                <button class="menu-btn" onclick="fetchUserConnectionLogs()">连接记录</button>
                 <button class="menu-btn" onclick="fetchLoginLogs()">登录日志</button>
                 <button class="menu-btn" onclick="fetchSubscribeLogs()">订阅日志</button>
             </div>
@@ -573,6 +574,11 @@ async function fetchOnlineUsers() {
 
 async function fetchUserUsage() {
   const rows = await request('/user-usage/fetch?page_size=200');
+  if (rows) renderTable(rows);
+}
+
+async function fetchUserConnectionLogs() {
+  const rows = await request('/user-connection-log/fetch?page_size=200');
   if (rows) renderTable(rows);
 }
 

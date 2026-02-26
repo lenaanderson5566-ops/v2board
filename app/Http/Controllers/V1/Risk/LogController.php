@@ -300,31 +300,6 @@ class LogController extends Controller
                 }
             }
 
-            // Fallback for short-lived sessions that may have already expired from ALIVE cache.
-            if (empty($onlineIps)) {
-                $recentIps = SubscribeLog::query()
-                    ->where('user_id', $user->id)
-                    ->where('created_at', '>=', $since)
-                    ->whereNotNull('ip')
-                    ->orderBy('created_at', 'desc')
-                    ->limit(10)
-                    ->pluck('ip')
-                    ->toArray();
-
-                $seen = [];
-                foreach ($recentIps as $ip) {
-                    $ip = (string) $ip;
-                    if (!$ip || isset($seen[$ip])) {
-                        continue;
-                    }
-                    $seen[$ip] = true;
-                    $onlineIps[] = [
-                        'ip' => $ip,
-                        'node' => 'recent_subscribe',
-                    ];
-                }
-            }
-
             if (empty($onlineIps)) {
                 $rows[] = [
                     'user_id' => $user->id,

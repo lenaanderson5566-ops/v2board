@@ -16,6 +16,8 @@ class RiskRoute
             $router->get('/rule/fetch', 'V1\\Risk\\LogController@getRules');
             $router->post('/rule/update', 'V1\\Risk\\LogController@updateRule');
             $router->get('/rule-hit/fetch', 'V1\\Risk\\LogController@getRuleHits');
+            $router->get('/client-strategy/fetch', 'V1\\Risk\\LogController@getClientStrategies');
+            $router->post('/client-strategy/update', 'V1\\Risk\\LogController@updateClientStrategy');
             $router->get('/login-log/fetch', 'V1\\Risk\\LogController@getLoginLogs');
             $router->get('/subscribe-log/fetch', 'V1\\Risk\\LogController@getSubscribeLogs');
         });

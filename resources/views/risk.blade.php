@@ -112,6 +112,7 @@
             <div class="menu-list">
                 <button class="menu-btn" onclick="fetchRules()">规则配置</button>
                 <button class="menu-btn" onclick="fetchRuleHits()">规则触发记录</button>
+                <button class="menu-btn" onclick="fetchClientStrategies()">客户端策略</button>
             </div>
         </div>
     </aside>
@@ -297,6 +298,62 @@ async function saveRule(idx, ruleKey) {
   if (rows) {
     alert('保存成功');
     renderRuleEditor(rows);
+  }
+}
+
+
+function renderClientStrategyEditor(rows) {
+  if (!rows || !rows.length) {
+    document.getElementById('result').innerHTML = '<p>暂无客户端策略</p>';
+    return;
+  }
+
+  const thead = `
+    <tr>
+      <th>client_type</th>
+      <th>client_name</th>
+      <th>is_enabled</th>
+      <th>sort</th>
+      <th>action</th>
+    </tr>`;
+
+  const body = rows.map((item, idx) => {
+    const safe = (v) => String(v ?? '').replace(/"/g, '&quot;');
+    return `
+      <tr>
+        <td>${safe(item.client_type)}</td>
+        <td><input id="client_name_${idx}" class="rule-input" value="${safe(item.client_name || '')}"></td>
+        <td><input id="client_enabled_${idx}" type="checkbox" ${item.is_enabled ? 'checked' : ''}></td>
+        <td><input id="client_sort_${idx}" class="rule-input" type="number" value="${safe(item.sort ?? 0)}"></td>
+        <td><button onclick="saveClientStrategy(${idx}, '${safe(item.client_type)}')">保存</button></td>
+      </tr>`;
+  }).join('');
+
+  document.getElementById('result').innerHTML = `<div class="table-wrap"><table><thead>${thead}</thead><tbody>${body}</tbody></table></div>`;
+}
+
+async function fetchClientStrategies() {
+  const rows = await request('/client-strategy/fetch');
+  if (rows) renderClientStrategyEditor(rows);
+}
+
+async function saveClientStrategy(idx, clientType) {
+  const payload = {
+    client_type: clientType,
+    client_name: document.getElementById(`client_name_${idx}`).value,
+    is_enabled: document.getElementById(`client_enabled_${idx}`).checked,
+    sort: Number(document.getElementById(`client_sort_${idx}`).value || 0),
+  };
+
+  const rows = await request('/client-strategy/update', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  });
+
+  if (rows) {
+    alert('保存成功');
+    renderClientStrategyEditor(rows);
   }
 }
 

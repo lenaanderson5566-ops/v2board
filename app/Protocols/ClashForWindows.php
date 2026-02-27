@@ -4,5 +4,5 @@ namespace App\Protocols;
 
 class ClashForWindows extends ClashMeta
 {
-    public $flag = 'clash for windows';
+    public $flag = 'clashforwindows';
 }

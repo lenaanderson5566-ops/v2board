@@ -556,6 +556,27 @@ function renderClientStrategyEditor(rows) {
     return;
   }
 
+  const toNum = (v) => Number(v || 0);
+  const totalFlags24h = rows.reduce((sum, item) => sum + toNum(item.subscribe_flag_count_24h), 0);
+  const totalFlagsAll = rows.reduce((sum, item) => sum + toNum(item.subscribe_flag_count_total), 0);
+  const totalUa24h = rows.reduce((sum, item) => sum + toNum(item.subscribe_ua_unique_count_24h), 0);
+  const totalUaAll = rows.reduce((sum, item) => sum + toNum(item.subscribe_ua_unique_count_total), 0);
+  const activeClientCount = rows.filter(item => !!item.is_enabled).length;
+  const topClientBy24h = rows.slice().sort((a, b) => toNum(b.subscribe_flag_count_24h) - toNum(a.subscribe_flag_count_24h))[0] || null;
+
+  const summaryHtml = `
+    <div class="cards" style="margin-bottom:12px;">
+      <div class="card"><div class="label">客户端总数</div><div class="value">${rows.length}</div></div>
+      <div class="card"><div class="label">已启用客户端</div><div class="value">${activeClientCount}</div></div>
+      <div class="card"><div class="label">Flag触发(24h)</div><div class="value">${totalFlags24h}</div></div>
+      <div class="card"><div class="label">Flag触发(累计)</div><div class="value">${totalFlagsAll}</div></div>
+      <div class="card"><div class="label">原始UA数(24h)</div><div class="value">${totalUa24h}</div></div>
+      <div class="card"><div class="label">原始UA数(累计)</div><div class="value">${totalUaAll}</div></div>
+    </div>
+    <div style="font-size:12px;color:#6b7280;margin-bottom:10px;">` +
+      (topClientBy24h ? `24小时最活跃客户端：<b>${String(topClientBy24h.client_type || '-')}</b>（${toNum(topClientBy24h.subscribe_flag_count_24h)} 次）` : '暂无24小时活跃客户端数据') +
+    `</div>`;
+
   const thead = `
     <tr>
       <th>客户端标识</th>
@@ -594,7 +615,7 @@ function renderClientStrategyEditor(rows) {
       </tr>`;
   }).join('');
 
-  document.getElementById('result').innerHTML = `<div class="table-wrap"><table><thead>${thead}</thead><tbody>${body}</tbody></table></div>`;
+  document.getElementById('result').innerHTML = `${summaryHtml}<div class="table-wrap"><table><thead>${thead}</thead><tbody>${body}</tbody></table></div>`;
 }
 
 async function fetchClientStrategies(btn) {

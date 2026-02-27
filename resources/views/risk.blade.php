@@ -198,7 +198,7 @@ if (authorization) {
   layoutEl.style.display = 'none';
 }
 
-function buildTable(rows) {
+function buildTable(rows, options = {}) {
   if (!rows || !rows.length) {
     return '<p style="color:#6b7280;">暂无数据</p>';
   }
@@ -279,14 +279,15 @@ function buildTable(rows) {
     if (/_at$/.test(k) || ['created_at', 'updated_at', 'connected_at'].includes(k)) return formatTs(v);
     return String(v);
   };
-  const keys = Object.keys(rows[0]);
+  const hiddenKeys = new Set(options.hiddenKeys || []);
+  const keys = Object.keys(rows[0]).filter(k => !hiddenKeys.has(k));
   const thead = '<tr>' + keys.map(k => `<th title="${k}">${alias[k] || k}</th>`).join('') + '</tr>';
   const body = rows.map((r, i) => `<tr style="background:${i % 2 ? '#fcfcfd' : '#fff'}">` + keys.map(k => `<td>${formatCell(k, r[k])}</td>`).join('') + '</tr>').join('');
   return `<div class="table-wrap"><table><thead>${thead}</thead><tbody>${body}</tbody></table></div>`;
 }
 
-function renderTable(rows, pagerHtml = '') {
-  document.getElementById('result').innerHTML = `${pagerHtml}${buildTable(rows)}${pagerHtml}`;
+function renderTable(rows, pagerHtml = '', options = {}) {
+  document.getElementById('result').innerHTML = `${pagerHtml}${buildTable(rows, options)}${pagerHtml}`;
 }
 
 function buildPager(current, pageSize, total, fetcherName) {
@@ -900,42 +901,42 @@ async function convertRowUaToHash(idx) {
 async function fetchRuleHits(btn, current = 1, pageSize = 50) {
   setView(btn, '规则命中记录');
   const { rows, total } = await requestWithMeta(`/rule-hit/fetch?page_size=${pageSize}&current=${current}`);
-  renderTable(rows, buildPager(current, pageSize, total, 'fetchRuleHitsPage'));
+  renderTable(rows, buildPager(current, pageSize, total, 'fetchRuleHitsPage'), { hiddenKeys: ['created_at', 'updated_at'] });
 }
 function fetchRuleHitsPage(current, pageSize){ fetchRuleHits(null, current, pageSize); }
 
 async function fetchOnlineUsers(btn, current = 1, pageSize = 200) {
   setView(btn, '实时在线IP');
   const { rows, total } = await requestWithMeta(`/online-user/fetch?page_size=${pageSize}&current=${current}`);
-  renderTable(rows, buildPager(current, pageSize, total, 'fetchOnlineUsersPage'));
+  renderTable(rows, buildPager(current, pageSize, total, 'fetchOnlineUsersPage'), { hiddenKeys: ['created_at', 'updated_at'] });
 }
 function fetchOnlineUsersPage(current, pageSize){ fetchOnlineUsers(null, current, pageSize); }
 
 async function fetchUserUsage(btn, current = 1, pageSize = 200) {
   setView(btn, '用户画像总览');
   const { rows, total } = await requestWithMeta(`/user-usage/fetch?page_size=${pageSize}&current=${current}`);
-  renderTable(rows, buildPager(current, pageSize, total, 'fetchUserUsagePage'));
+  renderTable(rows, buildPager(current, pageSize, total, 'fetchUserUsagePage'), { hiddenKeys: ['created_at', 'updated_at'] });
 }
 function fetchUserUsagePage(current, pageSize){ fetchUserUsage(null, current, pageSize); }
 
 async function fetchUserConnectionLogs(btn, current = 1, pageSize = 200) {
   setView(btn, '连接历史');
   const { rows, total } = await requestWithMeta(`/user-connection-log/fetch?page_size=${pageSize}&current=${current}`);
-  renderTable(rows, buildPager(current, pageSize, total, 'fetchUserConnectionLogsPage'));
+  renderTable(rows, buildPager(current, pageSize, total, 'fetchUserConnectionLogsPage'), { hiddenKeys: ['created_at', 'updated_at'] });
 }
 function fetchUserConnectionLogsPage(current, pageSize){ fetchUserConnectionLogs(null, current, pageSize); }
 
 async function fetchLoginLogs(btn, current = 1, pageSize = 50) {
   setView(btn, '登录记录');
   const { rows, total } = await requestWithMeta(`/login-log/fetch?page_size=${pageSize}&current=${current}`);
-  renderTable(rows, buildPager(current, pageSize, total, 'fetchLoginLogsPage'));
+  renderTable(rows, buildPager(current, pageSize, total, 'fetchLoginLogsPage'), { hiddenKeys: ['updated_at'] });
 }
 function fetchLoginLogsPage(current, pageSize){ fetchLoginLogs(null, current, pageSize); }
 
 async function fetchSubscribeLogs(btn, current = 1, pageSize = 50) {
   setView(btn, '订阅记录');
   const { rows, total } = await requestWithMeta(`/subscribe-log/fetch?page_size=${pageSize}&current=${current}`);
-  renderTable(rows, buildPager(current, pageSize, total, 'fetchSubscribeLogsPage'));
+  renderTable(rows, buildPager(current, pageSize, total, 'fetchSubscribeLogsPage'), { hiddenKeys: ['updated_at'] });
 }
 function fetchSubscribeLogsPage(current, pageSize){ fetchSubscribeLogs(null, current, pageSize); }
 

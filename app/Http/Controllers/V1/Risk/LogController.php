@@ -286,15 +286,17 @@ class LogController extends Controller
             ->get();
 
 
-        $uaListRows = SubscribeLog::query()
-            ->selectRaw('LOWER(TRIM(client_type)) as normalized_client_type, user_agent')
+        $uaStatRows = SubscribeLog::query()
+            ->selectRaw('LOWER(TRIM(client_type)) as normalized_client_type, user_agent, SUM(CASE WHEN created_at >= ? THEN 1 ELSE 0 END) as count_24h, COUNT(*) as count_30d', [$cutoff24h])
             ->whereNotNull('client_type')
             ->where('client_type', '<>', '')
             ->whereNotNull('user_agent')
             ->where('user_agent', '<>', '')
             ->where('created_at', '>=', $cutoff30d)
             ->whereIn(DB::raw('LOWER(TRIM(client_type))'), $clientTypes)
-            ->orderBy('id', 'desc')
+            ->groupBy(DB::raw('LOWER(TRIM(client_type))'), 'user_agent')
+            ->orderBy('count_30d', 'desc')
+            ->orderBy('count_24h', 'desc')
             ->get();
 
         $flag24hMap = [];
@@ -328,22 +330,24 @@ class LogController extends Controller
             }
         }
 
-        $uaListMap = [];
-        foreach ($uaListRows as $row) {
+        $uaStatMap = [];
+        foreach ($uaStatRows as $row) {
             $type = (string) $row->normalized_client_type;
             $ua = trim((string) $row->user_agent);
             if (!$ua) {
                 continue;
             }
-            if (!isset($uaListMap[$type])) {
-                $uaListMap[$type] = [];
+            if (!isset($uaStatMap[$type])) {
+                $uaStatMap[$type] = [];
             }
-            if (!in_array($ua, $uaListMap[$type], true)) {
-                $uaListMap[$type][] = $ua;
-            }
+            $uaStatMap[$type][] = [
+                'ua' => $ua,
+                'count_24h' => (int) $row->count_24h,
+                'count_30d' => (int) $row->count_30d,
+            ];
         }
 
-        return $items->map(function ($item) use ($flag24hMap, $flag30dMap, $ua24hMap, $ua30dMap, $uaTopMap, $uaListMap) {
+        return $items->map(function ($item) use ($flag24hMap, $flag30dMap, $ua24hMap, $ua30dMap, $uaTopMap, $uaStatMap) {
             $type = strtolower(trim((string) ($item['client_type'] ?? '')));
             $item['subscribe_flag_count_24h'] = $flag24hMap[$type] ?? 0;
             $item['subscribe_flag_count_30d'] = $flag30dMap[$type] ?? 0;
@@ -351,7 +355,8 @@ class LogController extends Controller
             $item['subscribe_ua_unique_count_30d'] = $ua30dMap[$type] ?? 0;
             $item['top_raw_ua'] = $uaTopMap[$type]['ua'] ?? '';
             $item['top_raw_ua_count'] = $uaTopMap[$type]['count'] ?? 0;
-            $item['raw_ua_list'] = $uaListMap[$type] ?? [];
+            $item['raw_ua_stats'] = $uaStatMap[$type] ?? [];
+            $item['raw_ua_list'] = array_column($item['raw_ua_stats'], 'ua');
             return $item;
         });
     }

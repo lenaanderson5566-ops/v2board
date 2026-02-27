@@ -42,14 +42,17 @@
             padding: 9px 10px;
             font-size: 12px;
             line-height: 1.2;
-            min-height: 36px;
+            height: 36px;
             display: flex;
             align-items: center;
             white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            font-weight: 400;
             cursor: pointer;
         }
         .menu-btn:hover { background: #2563eb; border-color: #2563eb; }
-        .menu-btn.active { background: #2563eb; border-color: #2563eb; color: #fff; }
+        .menu-btn.active { background: #2563eb; border-color: #2563eb; color: #fff; font-weight: 400; }
 
         .content { flex: 1; padding: 16px; }
         .container { max-width: 1680px; margin: 0 auto; }
@@ -250,6 +253,7 @@ function buildTable(rows) {
     top_raw_ua: 'Top原始UA',
     top_raw_ua_count: 'Top原始UA次数',
     raw_ua_list: '原始UA列表',
+    raw_ua_stats: '原始UA统计',
     plan_name: '套餐名称',
     subscribe_domain: '订阅域名',
     reason: '原因',
@@ -607,10 +611,15 @@ function renderClientStrategyOverview(rows) {
     topFlagRows.map(item => `<tr><td>${esc(item.client_type || '')}</td><td>${esc(item.client_name || '')}</td><td>${toNum(item.subscribe_flag_count_24h)}</td><td>${toNum(item.subscribe_flag_count_30d)}</td></tr>`).join('') +
     `</tbody></table></div>`;
 
-  const uaAllRows = activeRows.filter(item => Array.isArray(item.raw_ua_list) && item.raw_ua_list.length > 0);
+  const uaAllRows = activeRows.filter(item => Array.isArray(item.raw_ua_stats) && item.raw_ua_stats.length > 0);
   const uaTable = uaAllRows.length
-    ? `<div class="table-wrap"><table><thead><tr><th>客户端标识</th><th>客户端名称</th><th>订阅次数(24h)</th><th>订阅次数(30天)</th><th>全部原始UA（30天）</th></tr></thead><tbody>`
-      + uaAllRows.map(item => `<tr><td>${esc(item.client_type || '')}</td><td>${esc(item.client_name || '')}</td><td>${toNum(item.subscribe_flag_count_24h)}</td><td>${toNum(item.subscribe_flag_count_30d)}</td><td>${item.raw_ua_list.map(v => `<div style="margin-bottom:4px;word-break:break-all;">${esc(v)}</div>`).join('')}</td></tr>`).join('')
+    ? `<div class="table-wrap"><table><thead><tr><th>客户端标识</th><th>客户端名称</th><th>订阅次数(24h)</th><th>订阅次数(30天)</th><th>原始UA</th><th>UA订阅次数(24h)</th><th>UA订阅次数(30天)</th></tr></thead><tbody>`
+      + uaAllRows.map(item => {
+          const uaCells = item.raw_ua_stats.map(stat => `<div style="margin-bottom:4px;word-break:break-all;">${esc(stat.ua || '')}</div>`).join('');
+          const ua24hCells = item.raw_ua_stats.map(stat => `<div style="margin-bottom:4px;">${toNum(stat.count_24h)}</div>`).join('');
+          const ua30dCells = item.raw_ua_stats.map(stat => `<div style="margin-bottom:4px;">${toNum(stat.count_30d)}</div>`).join('');
+          return `<tr><td>${esc(item.client_type || '')}</td><td>${esc(item.client_name || '')}</td><td>${toNum(item.subscribe_flag_count_24h)}</td><td>${toNum(item.subscribe_flag_count_30d)}</td><td>${uaCells}</td><td>${ua24hCells}</td><td>${ua30dCells}</td></tr>`;
+        }).join('')
       + `</tbody></table></div>`
     : '<p style="color:#6b7280;">暂无原始UA明细</p>';
 

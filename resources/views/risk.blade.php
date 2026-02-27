@@ -170,6 +170,7 @@ function getAuthorization() {
 }
 
 const authorization = getAuthorization();
+let currentRuleRows = [];
 const authStateEl = document.getElementById('authState');
 const guestBlockEl = document.getElementById('guestBlock');
 const layoutEl = document.querySelector('.layout');
@@ -258,7 +259,8 @@ function renderOverview(data) {
 }
 
 function renderRuleEditor(rows) {
-  if (!rows || !rows.length) {
+  currentRuleRows = rows || [];
+  if (!currentRuleRows.length) {
     document.getElementById('result').innerHTML = '<p>暂无规则</p>';
     return;
   }
@@ -276,7 +278,7 @@ function renderRuleEditor(rows) {
       <th>action</th>
     </tr>`;
 
-  const body = rows.map((rule, idx) => {
+  const body = currentRuleRows.map((rule, idx) => {
     const safe = (v) => String(v ?? '').replace(/"/g, '&quot;');
     const thresholds = JSON.stringify(rule.thresholds || {}, null, 2);
     return `
@@ -298,11 +300,21 @@ function renderRuleEditor(rows) {
         </td>
         <td><input id="sort_${idx}" class="rule-input" type="number" value="${safe(rule.sort ?? 0)}"></td>
         <td><textarea id="thresholds_${idx}" class="rule-textarea">${thresholds}</textarea></td>
-        <td><button onclick="saveRule(${idx}, '${safe(rule.rule_key)}')">保存</button></td>
+        <td style="display:flex;gap:6px;">
+          <button onclick="saveRule(${idx}, '${safe(rule.rule_key)}')">保存</button>
+          <button onclick="resetRule('${safe(rule.rule_key)}')">重置</button>
+        </td>
       </tr>`;
   }).join('');
 
-  document.getElementById('result').innerHTML = `<div class="table-wrap"><table><thead>${thead}</thead><tbody>${body}</tbody></table></div>`;
+  const actionBar = `
+    <div style="display:flex;gap:8px;align-items:center;margin-bottom:10px;">
+      <button onclick="saveAllRules()">批量保存全部规则</button>
+      <button onclick="resetRule('')">恢复全部默认规则</button>
+      <span class="muted">生产建议：变更后先在低峰期灰度观察 10~30 分钟。</span>
+    </div>`;
+
+  document.getElementById('result').innerHTML = `${actionBar}<div class="table-wrap"><table><thead>${thead}</thead><tbody>${body}</tbody></table></div>`;
 }
 
 async function request(path, options = {}) {
@@ -356,6 +368,7 @@ function renderRiskSettings(data) {
         <button onclick="saveRiskSettings()">保存配置</button>
         <span style="font-size:12px;color:#6b7280;">间隔范围：60 ~ 86400 秒；保留范围：1 ~ 365 天</span>
       </div>
+      <div style="font-size:12px;color:#6b7280;">生产建议：连接历史建议保留 7~30 天；若需长期审计请异步归档，不建议无限保留在在线库。</div>
     </div>`;
 }
 
@@ -368,6 +381,14 @@ async function fetchRiskSettings(btn) {
 async function saveRiskSettings() {
   const connectionLogInterval = Number(document.getElementById('risk_connection_log_interval').value || 3600);
   const connectionLogRetentionDays = Number(document.getElementById('risk_connection_log_retention_days').value || 30);
+  if (connectionLogInterval < 60 || connectionLogInterval > 86400) {
+    alert('记录间隔必须在 60~86400 秒');
+    return;
+  }
+  if (connectionLogRetentionDays < 1 || connectionLogRetentionDays > 365) {
+    alert('保留时长必须在 1~365 天');
+    return;
+  }
   const data = await request('/settings/update', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -388,16 +409,15 @@ async function fetchRules(btn) {
   if (rows) renderRuleEditor(rows);
 }
 
-async function saveRule(idx, ruleKey) {
+function buildRulePayload(idx, ruleKey) {
   let thresholds;
   try {
     thresholds = JSON.parse(document.getElementById(`thresholds_${idx}`).value || '{}');
   } catch (e) {
-    alert('thresholds JSON 格式错误');
-    return;
+    throw new Error(`规则 ${ruleKey} 的 thresholds JSON 格式错误`);
   }
 
-  const payload = {
+  return {
     rule_key: ruleKey,
     name: document.getElementById(`name_${idx}`).value,
     description: document.getElementById(`desc_${idx}`).value,
@@ -406,6 +426,16 @@ async function saveRule(idx, ruleKey) {
     sort: Number(document.getElementById(`sort_${idx}`).value || 0),
     thresholds,
   };
+}
+
+async function saveRule(idx, ruleKey) {
+  let payload;
+  try {
+    payload = buildRulePayload(idx, ruleKey);
+  } catch (err) {
+    alert(err.message);
+    return;
+  }
 
   const rows = await request('/rule/update', {
     method: 'POST',
@@ -415,6 +445,51 @@ async function saveRule(idx, ruleKey) {
 
   if (rows) {
     alert('保存成功');
+    renderRuleEditor(rows);
+  }
+}
+
+async function saveAllRules() {
+  if (!currentRuleRows.length) return;
+  if (!confirm('确认保存全部规则？')) return;
+
+  for (let i = 0; i < currentRuleRows.length; i++) {
+    const rule = currentRuleRows[i];
+    let payload;
+    try {
+      payload = buildRulePayload(i, rule.rule_key);
+    } catch (err) {
+      alert(err.message);
+      return;
+    }
+
+    const rows = await request('/rule/update', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+    if (!rows) {
+      return;
+    }
+    currentRuleRows = rows;
+  }
+
+  alert('全部规则保存成功');
+  renderRuleEditor(currentRuleRows);
+}
+
+async function resetRule(ruleKey) {
+  const isAll = !ruleKey;
+  if (!confirm(isAll ? '确认恢复全部规则到默认？' : `确认将规则 ${ruleKey} 恢复为默认？`)) return;
+
+  const rows = await request('/rule/reset', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(ruleKey ? { rule_key: ruleKey } : {}),
+  });
+
+  if (rows) {
+    alert('重置成功');
     renderRuleEditor(rows);
   }
 }

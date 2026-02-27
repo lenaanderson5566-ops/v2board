@@ -15,6 +15,7 @@ class RiskRoute
             $router->get('/overview', 'V1\\Risk\\LogController@getOverview');
             $router->get('/rule/fetch', 'V1\\Risk\\LogController@getRules');
             $router->post('/rule/update', 'V1\\Risk\\LogController@updateRule');
+            $router->post('/rule/reset', 'V1\\Risk\\LogController@resetRule');
             $router->get('/rule-hit/fetch', 'V1\\Risk\\LogController@getRuleHits');
             $router->get('/settings/fetch', 'V1\\Risk\\LogController@getRiskSettings');
             $router->post('/settings/update', 'V1\\Risk\\LogController@updateRiskSettings');

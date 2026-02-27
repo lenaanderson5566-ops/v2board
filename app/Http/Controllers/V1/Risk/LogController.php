@@ -117,6 +117,26 @@ class LogController extends Controller
     }
 
 
+
+    public function resetRule(Request $request)
+    {
+        $definitions = RiskLogService::defaultRuleDefinitions();
+        $ruleKey = (string) $request->input('rule_key', '');
+
+        if ($ruleKey !== '') {
+            if (!isset($definitions[$ruleKey])) {
+                abort(422, 'unknown rule_key');
+            }
+            RiskRuleConfig::query()->where('rule_key', $ruleKey)->delete();
+        } else {
+            RiskRuleConfig::query()->whereIn('rule_key', array_keys($definitions))->delete();
+        }
+
+        return response([
+            'data' => (new RiskLogService())->getRuleDefinitions()
+        ]);
+    }
+
     public function getClientStrategies(Request $request)
     {
         return response([

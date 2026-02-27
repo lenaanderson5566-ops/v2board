@@ -131,6 +131,7 @@
         <div class="menu-section">
             <div class="menu-title">客户端策略</div>
             <div class="menu-list">
+                <button class="menu-btn" onclick="fetchClientStrategyOverview(this)">客户端策略总览</button>
                 <button class="menu-btn" onclick="fetchClientStrategies(this)">客户端策略管理</button>
             </div>
         </div>
@@ -550,12 +551,8 @@ async function resetRule(ruleKey) {
 }
 
 
-function renderClientStrategyEditor(rows) {
-  if (!rows || !rows.length) {
-    document.getElementById('result').innerHTML = '<p>暂无客户端策略</p>';
-    return;
-  }
 
+function buildClientStrategySummary(rows) {
   const toNum = (v) => Number(v || 0);
   const totalFlags24h = rows.reduce((sum, item) => sum + toNum(item.subscribe_flag_count_24h), 0);
   const totalFlagsAll = rows.reduce((sum, item) => sum + toNum(item.subscribe_flag_count_total), 0);
@@ -564,7 +561,7 @@ function renderClientStrategyEditor(rows) {
   const activeClientCount = rows.filter(item => !!item.is_enabled).length;
   const topClientBy24h = rows.slice().sort((a, b) => toNum(b.subscribe_flag_count_24h) - toNum(a.subscribe_flag_count_24h))[0] || null;
 
-  const summaryHtml = `
+  return `
     <div class="cards" style="margin-bottom:12px;">
       <div class="card"><div class="label">客户端总数</div><div class="value">${rows.length}</div></div>
       <div class="card"><div class="label">已启用客户端</div><div class="value">${activeClientCount}</div></div>
@@ -576,6 +573,29 @@ function renderClientStrategyEditor(rows) {
     <div style="font-size:12px;color:#6b7280;margin-bottom:10px;">` +
       (topClientBy24h ? `24小时最活跃客户端：<b>${String(topClientBy24h.client_type || '-')}</b>（${toNum(topClientBy24h.subscribe_flag_count_24h)} 次）` : '暂无24小时活跃客户端数据') +
     `</div>`;
+}
+
+function renderClientStrategyOverview(rows) {
+  if (!rows || !rows.length) {
+    document.getElementById('result').innerHTML = '<p>暂无客户端策略数据</p>';
+    return;
+  }
+
+  const esc = (v) => String(v ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+  const summaryHtml = buildClientStrategySummary(rows);
+  const topRows = rows.slice().sort((a, b) => Number(b.subscribe_flag_count_24h || 0) - Number(a.subscribe_flag_count_24h || 0)).slice(0, 10);
+  const rankTable = `<div class="table-wrap"><table><thead><tr><th>客户端标识</th><th>客户端名称</th><th>Flag触发(24h)</th><th>原始UA数(24h)</th><th>Top原始UA</th></tr></thead><tbody>` +
+    topRows.map(item => `<tr><td>${esc(item.client_type || '')}</td><td>${esc(item.client_name || '')}</td><td>${Number(item.subscribe_flag_count_24h || 0)}</td><td>${Number(item.subscribe_ua_unique_count_24h || 0)}</td><td title="${esc(item.top_raw_ua || '')}">${esc(item.top_raw_ua || '-')}</td></tr>`).join('') +
+    `</tbody></table></div>`;
+
+  document.getElementById('result').innerHTML = summaryHtml + '<h4 style="margin:4px 0 8px;">客户端活跃排行（24h）</h4>' + rankTable;
+}
+
+function renderClientStrategyEditor(rows) {
+  if (!rows || !rows.length) {
+    document.getElementById('result').innerHTML = '<p>暂无客户端策略</p>';
+    return;
+  }
 
   const thead = `
     <tr>
@@ -615,7 +635,13 @@ function renderClientStrategyEditor(rows) {
       </tr>`;
   }).join('');
 
-  document.getElementById('result').innerHTML = `${summaryHtml}<div class="table-wrap"><table><thead>${thead}</thead><tbody>${body}</tbody></table></div>`;
+  document.getElementById('result').innerHTML = `<div class="table-wrap"><table><thead>${thead}</thead><tbody>${body}</tbody></table></div>`;
+}
+
+async function fetchClientStrategyOverview(btn) {
+  setView(btn, '客户端策略总览');
+  const rows = await request('/client-strategy/fetch');
+  if (rows) renderClientStrategyOverview(rows);
 }
 
 async function fetchClientStrategies(btn) {

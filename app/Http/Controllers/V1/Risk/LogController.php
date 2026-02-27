@@ -231,7 +231,7 @@ class LogController extends Controller
             ->values()
             ->toArray();
 
-        $totalRows = SubscribeLog::query()
+        $flagTotalRows = SubscribeLog::query()
             ->selectRaw('LOWER(TRIM(client_type)) as normalized_client_type, COUNT(*) as total_count')
             ->whereNotNull('client_type')
             ->where('client_type', '<>', '')
@@ -239,7 +239,7 @@ class LogController extends Controller
             ->groupBy(DB::raw('LOWER(TRIM(client_type))'))
             ->get();
 
-        $recentRows = SubscribeLog::query()
+        $flagRecentRows = SubscribeLog::query()
             ->selectRaw('LOWER(TRIM(client_type)) as normalized_client_type, COUNT(*) as recent_count')
             ->whereNotNull('client_type')
             ->where('client_type', '<>', '')
@@ -248,20 +248,77 @@ class LogController extends Controller
             ->groupBy(DB::raw('LOWER(TRIM(client_type))'))
             ->get();
 
-        $totalMap = [];
-        foreach ($totalRows as $row) {
-            $totalMap[(string) $row->normalized_client_type] = (int) $row->total_count;
+        $uaUniqueTotalRows = SubscribeLog::query()
+            ->selectRaw('LOWER(TRIM(client_type)) as normalized_client_type, COUNT(DISTINCT user_agent) as total_count')
+            ->whereNotNull('client_type')
+            ->where('client_type', '<>', '')
+            ->whereNotNull('user_agent')
+            ->where('user_agent', '<>', '')
+            ->whereIn(DB::raw('LOWER(TRIM(client_type))'), $clientTypes)
+            ->groupBy(DB::raw('LOWER(TRIM(client_type))'))
+            ->get();
+
+        $uaUniqueRecentRows = SubscribeLog::query()
+            ->selectRaw('LOWER(TRIM(client_type)) as normalized_client_type, COUNT(DISTINCT user_agent) as recent_count')
+            ->whereNotNull('client_type')
+            ->where('client_type', '<>', '')
+            ->whereNotNull('user_agent')
+            ->where('user_agent', '<>', '')
+            ->where('created_at', '>=', $now - 86400)
+            ->whereIn(DB::raw('LOWER(TRIM(client_type))'), $clientTypes)
+            ->groupBy(DB::raw('LOWER(TRIM(client_type))'))
+            ->get();
+
+        $uaTopRows = SubscribeLog::query()
+            ->selectRaw('LOWER(TRIM(client_type)) as normalized_client_type, user_agent, COUNT(*) as ua_count')
+            ->whereNotNull('client_type')
+            ->where('client_type', '<>', '')
+            ->whereNotNull('user_agent')
+            ->where('user_agent', '<>', '')
+            ->whereIn(DB::raw('LOWER(TRIM(client_type))'), $clientTypes)
+            ->groupBy(DB::raw('LOWER(TRIM(client_type))'), 'user_agent')
+            ->orderBy('ua_count', 'desc')
+            ->get();
+
+        $flagTotalMap = [];
+        foreach ($flagTotalRows as $row) {
+            $flagTotalMap[(string) $row->normalized_client_type] = (int) $row->total_count;
         }
 
-        $recentMap = [];
-        foreach ($recentRows as $row) {
-            $recentMap[(string) $row->normalized_client_type] = (int) $row->recent_count;
+        $flagRecentMap = [];
+        foreach ($flagRecentRows as $row) {
+            $flagRecentMap[(string) $row->normalized_client_type] = (int) $row->recent_count;
         }
 
-        return $items->map(function ($item) use ($totalMap, $recentMap) {
+        $uaTotalMap = [];
+        foreach ($uaUniqueTotalRows as $row) {
+            $uaTotalMap[(string) $row->normalized_client_type] = (int) $row->total_count;
+        }
+
+        $uaRecentMap = [];
+        foreach ($uaUniqueRecentRows as $row) {
+            $uaRecentMap[(string) $row->normalized_client_type] = (int) $row->recent_count;
+        }
+
+        $uaTopMap = [];
+        foreach ($uaTopRows as $row) {
+            $type = (string) $row->normalized_client_type;
+            if (!isset($uaTopMap[$type])) {
+                $uaTopMap[$type] = [
+                    'ua' => (string) $row->user_agent,
+                    'count' => (int) $row->ua_count,
+                ];
+            }
+        }
+
+        return $items->map(function ($item) use ($flagTotalMap, $flagRecentMap, $uaTotalMap, $uaRecentMap, $uaTopMap) {
             $type = strtolower(trim((string) ($item['client_type'] ?? '')));
-            $item['subscribe_import_count_total'] = $totalMap[$type] ?? 0;
-            $item['subscribe_import_count_24h'] = $recentMap[$type] ?? 0;
+            $item['subscribe_flag_count_24h'] = $flagRecentMap[$type] ?? 0;
+            $item['subscribe_flag_count_total'] = $flagTotalMap[$type] ?? 0;
+            $item['subscribe_ua_unique_count_24h'] = $uaRecentMap[$type] ?? 0;
+            $item['subscribe_ua_unique_count_total'] = $uaTotalMap[$type] ?? 0;
+            $item['top_raw_ua'] = $uaTopMap[$type]['ua'] ?? '';
+            $item['top_raw_ua_count'] = $uaTopMap[$type]['count'] ?? 0;
             return $item;
         });
     }

@@ -237,8 +237,19 @@ function buildTable(rows) {
     risk_level: '风险等级',
     thresholds: '阈值配置',
     sort: '排序',
-    subscribe_import_count_24h: '导入次数(24h)',
-    subscribe_import_count_total: '导入次数(累计)'
+    subscribe_flag_count_24h: 'Flag触发次数(24h)',
+    subscribe_flag_count_total: 'Flag触发次数(累计)',
+    subscribe_ua_unique_count_24h: '原始UA数(24h)',
+    subscribe_ua_unique_count_total: '原始UA数(累计)',
+    top_raw_ua: 'Top原始UA',
+    top_raw_ua_count: 'Top原始UA次数',
+    plan_name: '套餐名称',
+    subscribe_domain: '订阅域名',
+    reason: '原因',
+    ua_hash: 'UA哈希',
+    traffic_u: '上行流量',
+    traffic_d: '下行流量',
+    traffic_total: '总流量'
   };
   const formatTs = (v) => {
     const n = Number(v);
@@ -552,8 +563,12 @@ function renderClientStrategyEditor(rows) {
       <th>是否启用</th>
       <th>排序</th>
       <th>最低版本</th>
-      <th>导入次数(24h)</th>
-      <th>导入次数(累计)</th>
+      <th>Flag触发(24h)</th>
+      <th>Flag触发(累计)</th>
+      <th>原始UA数(24h)</th>
+      <th>原始UA数(累计)</th>
+      <th>Top原始UA</th>
+      <th>Top原始UA次数</th>
       <th>操作</th>
     </tr>`;
 
@@ -566,8 +581,12 @@ function renderClientStrategyEditor(rows) {
         <td><input id="client_enabled_${idx}" type="checkbox" ${item.is_enabled ? 'checked' : ''}></td>
         <td><input id="client_sort_${idx}" class="rule-input" type="number" value="${safe(item.sort ?? 0)}"></td>
         <td><input id="client_min_version_${idx}" class="rule-input" placeholder="例如: 1.8.0" value="${safe(item.min_version || '')}"></td>
-        <td>${safe(item.subscribe_import_count_24h ?? 0)}</td>
-        <td>${safe(item.subscribe_import_count_total ?? 0)}</td>
+        <td>${safe(item.subscribe_flag_count_24h ?? 0)}</td>
+        <td>${safe(item.subscribe_flag_count_total ?? 0)}</td>
+        <td>${safe(item.subscribe_ua_unique_count_24h ?? 0)}</td>
+        <td>${safe(item.subscribe_ua_unique_count_total ?? 0)}</td>
+        <td title="${safe(item.top_raw_ua || '')}" style="max-width:320px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${safe(item.top_raw_ua || '-')}</td>
+        <td>${safe(item.top_raw_ua_count ?? 0)}</td>
         <td style="display:flex;gap:6px;">
           <button onclick="saveClientStrategy(${idx}, '${safe(item.client_type)}')">保存</button>
           <button style="border-color:#fecaca;color:#dc2626;" onclick="deleteClientStrategy('${safe(item.client_type)}')">删除</button>

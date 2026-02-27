@@ -613,12 +613,12 @@ function renderClientStrategyOverview(rows) {
 
   const uaAllRows = activeRows.filter(item => Array.isArray(item.raw_ua_stats) && item.raw_ua_stats.length > 0);
   const uaTable = uaAllRows.length
-    ? `<div class="table-wrap"><table><thead><tr><th>客户端标识</th><th>客户端名称</th><th>订阅次数(24h)</th><th>订阅次数(30天)</th><th>原始UA</th><th>UA订阅次数(24h)</th><th>UA订阅次数(30天)</th></tr></thead><tbody>`
+    ? `<div class="table-wrap"><table><thead><tr><th>客户端标识</th><th>原始UA</th><th>UA订阅次数(24h)</th><th>UA订阅次数(30天)</th></tr></thead><tbody>`
       + uaAllRows.map(item => {
           const uaCells = item.raw_ua_stats.map(stat => `<div style="margin-bottom:4px;word-break:break-all;">${esc(stat.ua || '')}</div>`).join('');
           const ua24hCells = item.raw_ua_stats.map(stat => `<div style="margin-bottom:4px;">${toNum(stat.count_24h)}</div>`).join('');
           const ua30dCells = item.raw_ua_stats.map(stat => `<div style="margin-bottom:4px;">${toNum(stat.count_30d)}</div>`).join('');
-          return `<tr><td>${esc(item.client_type || '')}</td><td>${esc(item.client_name || '')}</td><td>${toNum(item.subscribe_flag_count_24h)}</td><td>${toNum(item.subscribe_flag_count_30d)}</td><td>${uaCells}</td><td>${ua24hCells}</td><td>${ua30dCells}</td></tr>`;
+          return `<tr><td>${esc(item.client_type || '')}</td><td>${uaCells}</td><td>${ua24hCells}</td><td>${ua30dCells}</td></tr>`;
         }).join('')
       + `</tbody></table></div>`
     : '<p style="color:#6b7280;">暂无原始UA明细</p>';

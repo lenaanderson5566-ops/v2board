@@ -87,6 +87,15 @@ class LogController extends Controller
         }
 
         $default = $definitions[$ruleKey];
+        $existing = RiskRuleConfig::query()->where('rule_key', $ruleKey)->first();
+
+        if (array_key_exists('risk_level', $params) && !is_null($params['risk_level'])) {
+            $allowedRiskLevels = ['low', 'medium', 'high'];
+            if (!in_array($params['risk_level'], $allowedRiskLevels, true)) {
+                abort(422, 'risk_level must be one of: low, medium, high');
+            }
+        }
+
         $thresholds = $params['thresholds'] ?? null;
         if (is_string($thresholds)) {
             $decoded = json_decode($thresholds, true);
@@ -98,17 +107,38 @@ class LogController extends Controller
         if (!is_null($thresholds) && !is_array($thresholds)) {
             abort(422, 'thresholds must be an array');
         }
+        if (is_array($thresholds)) {
+            $allowedThresholdKeys = array_keys($default['thresholds']);
+            foreach ($thresholds as $thresholdKey => $thresholdValue) {
+                if (!in_array($thresholdKey, $allowedThresholdKeys, true)) {
+                    abort(422, 'thresholds contains unknown key: ' . $thresholdKey);
+                }
+                if (filter_var($thresholdValue, FILTER_VALIDATE_INT) === false) {
+                    abort(422, 'thresholds.' . $thresholdKey . ' must be integer');
+                }
+                if ((int) $thresholdValue < 0) {
+                    abort(422, 'thresholds.' . $thresholdKey . ' must be >= 0');
+                }
+                $thresholds[$thresholdKey] = (int) $thresholdValue;
+            }
+        }
 
         RiskRuleConfig::updateOrCreate(
             ['rule_key' => $ruleKey],
             [
                 'scene' => $default['scene'],
-                'name' => $params['name'] ?? $default['name'],
-                'description' => array_key_exists('description', $params) ? $params['description'] : $default['description'],
-                'risk_level' => $params['risk_level'] ?? $default['risk_level'],
-                'thresholds' => is_null($thresholds) ? $default['thresholds'] : array_merge($default['thresholds'], $thresholds),
-                'enabled' => array_key_exists('enabled', $params) ? (int) (bool) $params['enabled'] : 1,
-                'sort' => $params['sort'] ?? $default['sort'],
+                'name' => $params['name'] ?? ($existing->name ?? $default['name']),
+                'description' => array_key_exists('description', $params)
+                    ? $params['description']
+                    : ($existing->description ?? $default['description']),
+                'risk_level' => $params['risk_level'] ?? ($existing->risk_level ?? $default['risk_level']),
+                'thresholds' => is_null($thresholds)
+                    ? (($existing && is_array($existing->thresholds)) ? array_merge($default['thresholds'], $existing->thresholds) : $default['thresholds'])
+                    : array_merge($default['thresholds'], $thresholds),
+                'enabled' => array_key_exists('enabled', $params)
+                    ? (int) (bool) $params['enabled']
+                    : (($existing && !is_null($existing->enabled)) ? (int) $existing->enabled : 1),
+                'sort' => $params['sort'] ?? ($existing->sort ?? $default['sort']),
             ]
         );
 
@@ -274,18 +304,6 @@ class LogController extends Controller
             ->groupBy(DB::raw('LOWER(TRIM(client_type))'))
             ->get();
 
-        $uaTopRows = SubscribeLog::query()
-            ->selectRaw('LOWER(TRIM(client_type)) as normalized_client_type, user_agent, COUNT(*) as ua_count')
-            ->whereNotNull('client_type')
-            ->where('client_type', '<>', '')
-            ->whereNotNull('user_agent')
-            ->where('user_agent', '<>', '')
-            ->whereIn(DB::raw('LOWER(TRIM(client_type))'), $clientTypes)
-            ->groupBy(DB::raw('LOWER(TRIM(client_type))'), 'user_agent')
-            ->orderBy('ua_count', 'desc')
-            ->get();
-
-
         $uaStatRows = SubscribeLog::query()
             ->selectRaw('LOWER(TRIM(client_type)) as normalized_client_type, user_agent, SUM(CASE WHEN created_at >= ? THEN 1 ELSE 0 END) as count_24h, COUNT(*) as count_30d', [$cutoff24h])
             ->whereNotNull('client_type')
@@ -320,12 +338,12 @@ class LogController extends Controller
         }
 
         $uaTopMap = [];
-        foreach ($uaTopRows as $row) {
+        foreach ($uaStatRows as $row) {
             $type = (string) $row->normalized_client_type;
-            if (!isset($uaTopMap[$type])) {
+            if (!isset($uaTopMap[$type]) || (int) $row->count_30d > $uaTopMap[$type]['count']) {
                 $uaTopMap[$type] = [
                     'ua' => (string) $row->user_agent,
-                    'count' => (int) $row->ua_count,
+                    'count' => (int) $row->count_30d,
                 ];
             }
         }

@@ -38,7 +38,7 @@ class RiskBlacklistService
         }
 
         usort($rows, function ($a, $b) {
-            return [$a['type'], $b['id']] <=> [$b['type'], $a['id']];
+            return [$a['type'], $a['id']] <=> [$b['type'], $b['id']];
         });
 
         return $rows;

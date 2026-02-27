@@ -239,9 +239,9 @@ function buildTable(rows) {
     thresholds: '阈值配置',
     sort: '排序',
     subscribe_flag_count_24h: 'Flag触发次数(24h)',
-    subscribe_flag_count_total: 'Flag触发次数(累计)',
+    subscribe_flag_count_30d: 'Flag触发次数(30天)',
     subscribe_ua_unique_count_24h: '原始UA数(24h)',
-    subscribe_ua_unique_count_total: '原始UA数(累计)',
+    subscribe_ua_unique_count_30d: '原始UA数(30天)',
     top_raw_ua: 'Top原始UA',
     top_raw_ua_count: 'Top原始UA次数',
     plan_name: '套餐名称',
@@ -555,9 +555,9 @@ async function resetRule(ruleKey) {
 function buildClientStrategySummary(rows) {
   const toNum = (v) => Number(v || 0);
   const totalFlags24h = rows.reduce((sum, item) => sum + toNum(item.subscribe_flag_count_24h), 0);
-  const totalFlagsAll = rows.reduce((sum, item) => sum + toNum(item.subscribe_flag_count_total), 0);
+  const totalFlags30d = rows.reduce((sum, item) => sum + toNum(item.subscribe_flag_count_30d), 0);
   const totalUa24h = rows.reduce((sum, item) => sum + toNum(item.subscribe_ua_unique_count_24h), 0);
-  const totalUaAll = rows.reduce((sum, item) => sum + toNum(item.subscribe_ua_unique_count_total), 0);
+  const totalUa30d = rows.reduce((sum, item) => sum + toNum(item.subscribe_ua_unique_count_30d), 0);
   const activeClientCount = rows.filter(item => !!item.is_enabled).length;
   const topClientBy24h = rows.slice().sort((a, b) => toNum(b.subscribe_flag_count_24h) - toNum(a.subscribe_flag_count_24h))[0] || null;
 
@@ -566,9 +566,9 @@ function buildClientStrategySummary(rows) {
       <div class="card"><div class="label">客户端总数</div><div class="value">${rows.length}</div></div>
       <div class="card"><div class="label">已启用客户端</div><div class="value">${activeClientCount}</div></div>
       <div class="card"><div class="label">Flag触发(24h)</div><div class="value">${totalFlags24h}</div></div>
-      <div class="card"><div class="label">Flag触发(累计)</div><div class="value">${totalFlagsAll}</div></div>
+      <div class="card"><div class="label">Flag触发(30天)</div><div class="value">${totalFlags30d}</div></div>
       <div class="card"><div class="label">原始UA数(24h)</div><div class="value">${totalUa24h}</div></div>
-      <div class="card"><div class="label">原始UA数(累计)</div><div class="value">${totalUaAll}</div></div>
+      <div class="card"><div class="label">原始UA数(30天)</div><div class="value">${totalUa30d}</div></div>
     </div>
     <div style="font-size:12px;color:#6b7280;margin-bottom:10px;">` +
       (topClientBy24h ? `24小时最活跃客户端：<b>${String(topClientBy24h.client_type || '-')}</b>（${toNum(topClientBy24h.subscribe_flag_count_24h)} 次）` : '暂无24小时活跃客户端数据') +
@@ -583,12 +583,13 @@ function renderClientStrategyOverview(rows) {
 
   const esc = (v) => String(v ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
   const summaryHtml = buildClientStrategySummary(rows);
-  const topRows = rows.slice().sort((a, b) => Number(b.subscribe_flag_count_24h || 0) - Number(a.subscribe_flag_count_24h || 0)).slice(0, 10);
+  const topRows = rows.slice().sort((a, b) => Number(b.subscribe_flag_count_24h || 0) - Number(a.subscribe_flag_count_24h || 0));
   const rankTable = `<div class="table-wrap"><table><thead><tr><th>客户端标识</th><th>客户端名称</th><th>Flag触发(24h)</th><th>原始UA数(24h)</th><th>Top原始UA</th></tr></thead><tbody>` +
     topRows.map(item => `<tr><td>${esc(item.client_type || '')}</td><td>${esc(item.client_name || '')}</td><td>${Number(item.subscribe_flag_count_24h || 0)}</td><td>${Number(item.subscribe_ua_unique_count_24h || 0)}</td><td title="${esc(item.top_raw_ua || '')}">${esc(item.top_raw_ua || '-')}</td></tr>`).join('') +
     `</tbody></table></div>`;
 
-  document.getElementById('result').innerHTML = summaryHtml + '<h4 style="margin:4px 0 8px;">客户端活跃排行（24h）</h4>' + rankTable;
+  const explain = '<div style="font-size:12px;color:#6b7280;margin:0 0 8px;">分析建议：Flag反映命中策略维度，原始UA反映实际客户端来源。建议按“高Flag触发 + 高UA多样性”优先排查，按“高Flag触发 + 低UA多样性”识别脚本化或固定端行为。</div>';
+  document.getElementById('result').innerHTML = summaryHtml + explain + '<h4 style="margin:4px 0 8px;">客户端活跃排行（24h，展示全部Flag客户端）</h4>' + rankTable;
 }
 
 function renderClientStrategyEditor(rows) {
@@ -605,9 +606,9 @@ function renderClientStrategyEditor(rows) {
       <th>排序</th>
       <th>最低版本</th>
       <th>Flag触发(24h)</th>
-      <th>Flag触发(累计)</th>
+      <th>Flag触发(30天)</th>
       <th>原始UA数(24h)</th>
-      <th>原始UA数(累计)</th>
+      <th>原始UA数(30天)</th>
       <th>Top原始UA</th>
       <th>Top原始UA次数</th>
       <th>操作</th>
@@ -623,9 +624,9 @@ function renderClientStrategyEditor(rows) {
         <td><input id="client_sort_${idx}" class="rule-input" type="number" value="${safe(item.sort ?? 0)}"></td>
         <td><input id="client_min_version_${idx}" class="rule-input" placeholder="例如: 1.8.0" value="${safe(item.min_version || '')}"></td>
         <td>${safe(item.subscribe_flag_count_24h ?? 0)}</td>
-        <td>${safe(item.subscribe_flag_count_total ?? 0)}</td>
+        <td>${safe(item.subscribe_flag_count_30d ?? 0)}</td>
         <td>${safe(item.subscribe_ua_unique_count_24h ?? 0)}</td>
-        <td>${safe(item.subscribe_ua_unique_count_total ?? 0)}</td>
+        <td>${safe(item.subscribe_ua_unique_count_30d ?? 0)}</td>
         <td title="${safe(item.top_raw_ua || '')}" style="max-width:320px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${safe(item.top_raw_ua || '-')}</td>
         <td>${safe(item.top_raw_ua_count ?? 0)}</td>
         <td style="display:flex;gap:6px;">

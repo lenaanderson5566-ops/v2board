@@ -222,6 +222,9 @@ class LogController extends Controller
         }
 
         $now = time();
+        $cutoff24h = $now - 86400;
+        $cutoff30d = $now - (30 * 86400);
+
         $clientTypes = $items->pluck('client_type')
             ->map(function ($type) {
                 return strtolower(trim((string) $type));
@@ -231,40 +234,42 @@ class LogController extends Controller
             ->values()
             ->toArray();
 
-        $flagTotalRows = SubscribeLog::query()
-            ->selectRaw('LOWER(TRIM(client_type)) as normalized_client_type, COUNT(*) as total_count')
+        $flag24hRows = SubscribeLog::query()
+            ->selectRaw('LOWER(TRIM(client_type)) as normalized_client_type, COUNT(*) as hit_count')
             ->whereNotNull('client_type')
             ->where('client_type', '<>', '')
+            ->where('created_at', '>=', $cutoff24h)
             ->whereIn(DB::raw('LOWER(TRIM(client_type))'), $clientTypes)
             ->groupBy(DB::raw('LOWER(TRIM(client_type))'))
             ->get();
 
-        $flagRecentRows = SubscribeLog::query()
-            ->selectRaw('LOWER(TRIM(client_type)) as normalized_client_type, COUNT(*) as recent_count')
+        $flag30dRows = SubscribeLog::query()
+            ->selectRaw('LOWER(TRIM(client_type)) as normalized_client_type, COUNT(*) as hit_count')
             ->whereNotNull('client_type')
             ->where('client_type', '<>', '')
-            ->where('created_at', '>=', $now - 86400)
+            ->where('created_at', '>=', $cutoff30d)
             ->whereIn(DB::raw('LOWER(TRIM(client_type))'), $clientTypes)
             ->groupBy(DB::raw('LOWER(TRIM(client_type))'))
             ->get();
 
-        $uaUniqueTotalRows = SubscribeLog::query()
-            ->selectRaw('LOWER(TRIM(client_type)) as normalized_client_type, COUNT(DISTINCT user_agent) as total_count')
+        $ua24hRows = SubscribeLog::query()
+            ->selectRaw('LOWER(TRIM(client_type)) as normalized_client_type, COUNT(DISTINCT user_agent) as ua_count')
             ->whereNotNull('client_type')
             ->where('client_type', '<>', '')
             ->whereNotNull('user_agent')
             ->where('user_agent', '<>', '')
+            ->where('created_at', '>=', $cutoff24h)
             ->whereIn(DB::raw('LOWER(TRIM(client_type))'), $clientTypes)
             ->groupBy(DB::raw('LOWER(TRIM(client_type))'))
             ->get();
 
-        $uaUniqueRecentRows = SubscribeLog::query()
-            ->selectRaw('LOWER(TRIM(client_type)) as normalized_client_type, COUNT(DISTINCT user_agent) as recent_count')
+        $ua30dRows = SubscribeLog::query()
+            ->selectRaw('LOWER(TRIM(client_type)) as normalized_client_type, COUNT(DISTINCT user_agent) as ua_count')
             ->whereNotNull('client_type')
             ->where('client_type', '<>', '')
             ->whereNotNull('user_agent')
             ->where('user_agent', '<>', '')
-            ->where('created_at', '>=', $now - 86400)
+            ->where('created_at', '>=', $cutoff30d)
             ->whereIn(DB::raw('LOWER(TRIM(client_type))'), $clientTypes)
             ->groupBy(DB::raw('LOWER(TRIM(client_type))'))
             ->get();
@@ -280,24 +285,24 @@ class LogController extends Controller
             ->orderBy('ua_count', 'desc')
             ->get();
 
-        $flagTotalMap = [];
-        foreach ($flagTotalRows as $row) {
-            $flagTotalMap[(string) $row->normalized_client_type] = (int) $row->total_count;
+        $flag24hMap = [];
+        foreach ($flag24hRows as $row) {
+            $flag24hMap[(string) $row->normalized_client_type] = (int) $row->hit_count;
         }
 
-        $flagRecentMap = [];
-        foreach ($flagRecentRows as $row) {
-            $flagRecentMap[(string) $row->normalized_client_type] = (int) $row->recent_count;
+        $flag30dMap = [];
+        foreach ($flag30dRows as $row) {
+            $flag30dMap[(string) $row->normalized_client_type] = (int) $row->hit_count;
         }
 
-        $uaTotalMap = [];
-        foreach ($uaUniqueTotalRows as $row) {
-            $uaTotalMap[(string) $row->normalized_client_type] = (int) $row->total_count;
+        $ua24hMap = [];
+        foreach ($ua24hRows as $row) {
+            $ua24hMap[(string) $row->normalized_client_type] = (int) $row->ua_count;
         }
 
-        $uaRecentMap = [];
-        foreach ($uaUniqueRecentRows as $row) {
-            $uaRecentMap[(string) $row->normalized_client_type] = (int) $row->recent_count;
+        $ua30dMap = [];
+        foreach ($ua30dRows as $row) {
+            $ua30dMap[(string) $row->normalized_client_type] = (int) $row->ua_count;
         }
 
         $uaTopMap = [];
@@ -311,12 +316,12 @@ class LogController extends Controller
             }
         }
 
-        return $items->map(function ($item) use ($flagTotalMap, $flagRecentMap, $uaTotalMap, $uaRecentMap, $uaTopMap) {
+        return $items->map(function ($item) use ($flag24hMap, $flag30dMap, $ua24hMap, $ua30dMap, $uaTopMap) {
             $type = strtolower(trim((string) ($item['client_type'] ?? '')));
-            $item['subscribe_flag_count_24h'] = $flagRecentMap[$type] ?? 0;
-            $item['subscribe_flag_count_total'] = $flagTotalMap[$type] ?? 0;
-            $item['subscribe_ua_unique_count_24h'] = $uaRecentMap[$type] ?? 0;
-            $item['subscribe_ua_unique_count_total'] = $uaTotalMap[$type] ?? 0;
+            $item['subscribe_flag_count_24h'] = $flag24hMap[$type] ?? 0;
+            $item['subscribe_flag_count_30d'] = $flag30dMap[$type] ?? 0;
+            $item['subscribe_ua_unique_count_24h'] = $ua24hMap[$type] ?? 0;
+            $item['subscribe_ua_unique_count_30d'] = $ua30dMap[$type] ?? 0;
             $item['top_raw_ua'] = $uaTopMap[$type]['ua'] ?? '';
             $item['top_raw_ua_count'] = $uaTopMap[$type]['count'] ?? 0;
             return $item;

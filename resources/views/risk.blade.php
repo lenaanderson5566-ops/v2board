@@ -561,8 +561,6 @@ async function resetRule(ruleKey) {
 function buildClientStrategySummary(rows) {
   const toNum = (v) => Number(v || 0);
   const metrics = [
-    { label: '客户端总数', value: rows.length },
-    { label: '已启用客户端', value: rows.filter(item => !!item.is_enabled).length },
     { label: 'Flag触发(24h)', value: rows.reduce((sum, item) => sum + toNum(item.subscribe_flag_count_24h), 0) },
     { label: 'Flag触发(30天)', value: rows.reduce((sum, item) => sum + toNum(item.subscribe_flag_count_30d), 0) },
     { label: '原始UA数(24h)', value: rows.reduce((sum, item) => sum + toNum(item.subscribe_ua_unique_count_24h), 0) },
@@ -611,8 +609,8 @@ function renderClientStrategyOverview(rows) {
 
   const uaAllRows = activeRows.filter(item => Array.isArray(item.raw_ua_list) && item.raw_ua_list.length > 0);
   const uaTable = uaAllRows.length
-    ? `<div class="table-wrap"><table><thead><tr><th>客户端标识</th><th>客户端名称</th><th>全部原始UA（30天）</th></tr></thead><tbody>`
-      + uaAllRows.map(item => `<tr><td>${esc(item.client_type || '')}</td><td>${esc(item.client_name || '')}</td><td>${item.raw_ua_list.map(v => `<div style="margin-bottom:4px;word-break:break-all;">${esc(v)}</div>`).join('')}</td></tr>`).join('')
+    ? `<div class="table-wrap"><table><thead><tr><th>客户端标识</th><th>客户端名称</th><th>订阅次数(24h)</th><th>订阅次数(30天)</th><th>全部原始UA（30天）</th></tr></thead><tbody>`
+      + uaAllRows.map(item => `<tr><td>${esc(item.client_type || '')}</td><td>${esc(item.client_name || '')}</td><td>${toNum(item.subscribe_flag_count_24h)}</td><td>${toNum(item.subscribe_flag_count_30d)}</td><td>${item.raw_ua_list.map(v => `<div style="margin-bottom:4px;word-break:break-all;">${esc(v)}</div>`).join('')}</td></tr>`).join('')
       + `</tbody></table></div>`
     : '<p style="color:#6b7280;">暂无原始UA明细</p>';
 

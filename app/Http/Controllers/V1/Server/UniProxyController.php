@@ -153,11 +153,11 @@ class UniProxyController extends Controller
                 UserOnlineSnapshot::query()->updateOrCreate(
                     [
                         'user_id' => (int) $uid,
-                        'ip' => $ip,
-                        'node' => $this->nodeType . $this->nodeId,
                         'source' => 'alive',
                     ],
                     [
+                        'ip' => $ip,
+                        'node' => $this->nodeType . $this->nodeId,
                         'online_at' => $updateAt,
                     ]
                 );

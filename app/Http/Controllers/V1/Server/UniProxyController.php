@@ -5,6 +5,7 @@ namespace App\Http\Controllers\V1\Server;
 use App\Http\Controllers\Controller;
 use App\Models\UserConnectionLog;
 use App\Models\UserOnlineSnapshot;
+use App\Models\RiskSetting;
 use App\Services\ServerService;
 use App\Services\UserService;
 use App\Utils\CacheKey;
@@ -138,6 +139,7 @@ class UniProxyController extends Controller
             ], 400);
         }
         $updateAt = time();
+        $connectionLogInterval = $this->getConnectionLogInterval();
         foreach ($data as $uid => $ips) {
             $ips_array = Cache::get('ALIVE_IP_USER_' . $uid) ?? [];
             // 更新节点数据
@@ -176,7 +178,7 @@ class UniProxyController extends Controller
                         'source' => 'alive',
                         'connected_at' => $updateAt,
                     ]);
-                    Cache::put($connectionLogThrottleKey, 1, 120);
+                    Cache::put($connectionLogThrottleKey, 1, $connectionLogInterval);
                 }
             }
 
@@ -212,6 +214,18 @@ class UniProxyController extends Controller
         return response([
             'data' => true
         ]);
+    }
+
+    private function getConnectionLogInterval(): int
+    {
+        return (int) Cache::remember('RISK_CONNECTION_LOG_INTERVAL', 60, function () {
+            $raw = RiskSetting::query()->where('key', 'connection_log_interval')->value('value');
+            $value = (int) $raw;
+            if ($value < 60) {
+                $value = 3600;
+            }
+            return min($value, 86400);
+        });
     }
 
     // 后端获取配置

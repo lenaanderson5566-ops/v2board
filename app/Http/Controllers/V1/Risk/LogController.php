@@ -13,6 +13,7 @@ use App\Models\Plan;
 use App\Models\ServerGroup;
 use App\Models\UserConnectionLog;
 use App\Models\UserOnlineSnapshot;
+use App\Models\RiskSetting;
 use App\Services\RiskLogService;
 use App\Services\ClientStrategyService;
 use App\Services\RiskBlacklistService;
@@ -523,6 +524,36 @@ class LogController extends Controller
         return response([
             'data' => $data,
             'total' => $total,
+        ]);
+    }
+
+    public function getRiskSettings(Request $request)
+    {
+        $rows = RiskSetting::query()->whereIn('key', ['connection_log_interval'])->get()->keyBy('key');
+        return response([
+            'data' => [
+                'connection_log_interval' => (int) ($rows['connection_log_interval']->value ?? 3600),
+            ]
+        ]);
+    }
+
+    public function updateRiskSettings(Request $request)
+    {
+        $interval = (int) $request->input('connection_log_interval', 3600);
+        if ($interval < 60 || $interval > 86400) {
+            abort(422, 'connection_log_interval must be between 60 and 86400 seconds');
+        }
+
+        RiskSetting::query()->updateOrCreate(
+            ['key' => 'connection_log_interval'],
+            ['value' => (string) $interval]
+        );
+        Cache::forget('RISK_CONNECTION_LOG_INTERVAL');
+
+        return response([
+            'data' => [
+                'connection_log_interval' => $interval,
+            ]
         ]);
     }
 

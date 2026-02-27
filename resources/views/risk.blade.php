@@ -104,6 +104,7 @@
             <div class="menu-title">控制台</div>
             <div class="menu-list">
                 <button class="menu-btn" onclick="fetchOverview(this)">运营总览</button>
+                <button class="menu-btn" onclick="fetchRiskSettings(this)">风控后台配置</button>
             </div>
         </div>
 
@@ -337,6 +338,40 @@ async function fetchOverview(btn) {
   const data = await request('/overview');
   if (data) {
     renderOverview(data);
+  }
+}
+
+function renderRiskSettings(data) {
+  const interval = Number(data.connection_log_interval || 3600);
+  document.getElementById('result').innerHTML = `
+    <div style="max-width:680px;display:flex;flex-direction:column;gap:10px;">
+      <h4 style="margin:0;">连接日志配置</h4>
+      <div style="color:#6b7280;font-size:12px;">控制同一用户+IP+节点在连接历史中的最小记录间隔，建议 3600 秒（1小时）。</div>
+      <label style="font-size:12px;color:#374151;">记录间隔（秒）</label>
+      <input id="risk_connection_log_interval" class="rule-input" type="number" min="60" max="86400" value="${interval}">
+      <div style="display:flex;gap:8px;align-items:center;">
+        <button onclick="saveRiskSettings()">保存配置</button>
+        <span style="font-size:12px;color:#6b7280;">范围：60 ~ 86400 秒</span>
+      </div>
+    </div>`;
+}
+
+async function fetchRiskSettings(btn) {
+  setView(btn, '风控后台配置');
+  const data = await request('/settings/fetch');
+  if (data) renderRiskSettings(data);
+}
+
+async function saveRiskSettings() {
+  const connectionLogInterval = Number(document.getElementById('risk_connection_log_interval').value || 3600);
+  const data = await request('/settings/update', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ connection_log_interval: connectionLogInterval }),
+  });
+  if (data) {
+    alert('保存成功');
+    renderRiskSettings(data);
   }
 }
 

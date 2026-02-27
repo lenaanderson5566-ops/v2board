@@ -46,8 +46,8 @@
         .menu-btn:hover { background: #2563eb; border-color: #2563eb; }
         .menu-btn.active { background: #2563eb; border-color: #2563eb; color: #fff; }
 
-        .content { flex: 1; padding: 20px; }
-        .container { max-width: 1200px; margin: 0 auto; }
+        .content { flex: 1; padding: 16px; }
+        .container { max-width: 1680px; margin: 0 auto; }
         .header { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 14px; }
         .title { margin: 0; font-size: 24px; }
         .subtitle { margin: 4px 0 0; color: var(--muted); font-size: 13px; }
@@ -66,7 +66,7 @@
         }
         button:hover { border-color: #bfdbfe; background: var(--primary-soft); }
 
-        .result-panel { background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 14px; min-height: 220px; }
+        .result-panel { background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 14px; min-height: 360px; }
         .cards { display: grid; grid-template-columns: repeat(5, minmax(120px, 1fr)); gap: 12px; margin-top: 12px; }
         .card { border: 1px solid var(--border); border-radius: 8px; padding: 10px; background: #fafafa; }
         .card .label { color: var(--muted); font-size: 12px; }
@@ -75,7 +75,9 @@
         table { width: 100%; border-collapse: collapse; margin-top: 12px; background: #fff; }
         th, td { border: 1px solid var(--border); padding: 8px; text-align: left; font-size: 12px; vertical-align: top; }
         th { background: #f9fafb; position: sticky; top: 0; }
-        .table-wrap { max-height: 620px; overflow: auto; border: 1px solid var(--border); border-radius: 8px; }
+        .table-wrap { max-height: 78vh; overflow: auto; border: 1px solid var(--border); border-radius: 8px; }
+        .pager { display: flex; gap: 8px; align-items: center; margin: 10px 0 2px; }
+        .pager .muted { color: #6b7280; font-size: 12px; }
 
         .rule-input, .rule-select, .rule-textarea { width: 100%; box-sizing: border-box; font-size: 12px; border: 1px solid var(--border); border-radius: 6px; padding: 6px; }
         .rule-textarea { min-height: 72px; }
@@ -88,6 +90,11 @@
     </style>
 </head>
 <body>
+<div id="guestBlock" style="display:none;max-width:680px;margin:80px auto;padding:24px;background:#fff;border:1px solid #e5e7eb;border-radius:12px;">
+    <h3 style="margin-top:0;">请先登录管理员后台</h3>
+    <p style="color:#6b7280;line-height:1.7;">当前页面为风控后台，仅管理员可访问。检测到未登录状态，已隐藏全部风控数据界面。</p>
+    <a id="guestLoginLink" href="#" style="display:inline-block;margin-top:8px;padding:8px 12px;border:1px solid #2563eb;border-radius:8px;color:#2563eb;text-decoration:none;">前往登录</a>
+</div>
 <div class="layout">
     <aside class="sidebar">
         <h3>Risk Console</h3>
@@ -163,12 +170,17 @@ function getAuthorization() {
 
 const authorization = getAuthorization();
 const authStateEl = document.getElementById('authState');
+const guestBlockEl = document.getElementById('guestBlock');
+const layoutEl = document.querySelector('.layout');
+document.getElementById('guestLoginLink').setAttribute('href', adminPath);
 if (authorization) {
   authStateEl.className = 'status ok';
   authStateEl.textContent = '已自动读取后台登录态（authorization），可直接查询风控信息。';
+  guestBlockEl.style.display = 'none';
+  layoutEl.style.display = 'flex';
 } else {
-  authStateEl.className = 'status warn';
-  authStateEl.innerHTML = `未检测到后台登录态，请先前往 <a href="${adminPath}">管理员后台登录</a> 后再访问风控页面。`;
+  guestBlockEl.style.display = 'block';
+  layoutEl.style.display = 'none';
 }
 
 function buildTable(rows) {
@@ -201,8 +213,19 @@ function buildTable(rows) {
   return `<div class="table-wrap"><table><thead>${thead}</thead><tbody>${body}</tbody></table></div>`;
 }
 
-function renderTable(rows) {
-  document.getElementById('result').innerHTML = buildTable(rows);
+function renderTable(rows, pagerHtml = '') {
+  document.getElementById('result').innerHTML = `${pagerHtml}${buildTable(rows)}${pagerHtml}`;
+}
+
+function buildPager(current, pageSize, total, fetcherName) {
+  if (!total || total <= pageSize) return '';
+  const pages = Math.max(1, Math.ceil(total / pageSize));
+  const safeCurrent = Math.min(Math.max(1, current), pages);
+  return `<div class="pager">
+    <button ${safeCurrent <= 1 ? 'disabled' : ''} onclick="${fetcherName}(${safeCurrent - 1}, ${pageSize})">上一页</button>
+    <button ${safeCurrent >= pages ? 'disabled' : ''} onclick="${fetcherName}(${safeCurrent + 1}, ${pageSize})">下一页</button>
+    <span class="muted">第 ${safeCurrent}/${pages} 页，共 ${total} 条</span>
+  </div>`;
 }
 
 function setView(btn, title) {
@@ -295,6 +318,18 @@ async function request(path, options = {}) {
     return null;
   }
   return data.data || [];
+}
+
+async function requestWithMeta(path, options = {}) {
+  if (!authorization) return { rows: [], total: 0 };
+  const headers = Object.assign({ 'Authorization': authorization }, options.headers || {});
+  const res = await fetch(apiBase + path, Object.assign({}, options, { headers }));
+  const payload = await res.json();
+  if (!res.ok) {
+    alert(payload.message || '请求失败');
+    return { rows: [], total: 0 };
+  }
+  return { rows: payload.data || [], total: payload.total || 0 };
 }
 
 async function fetchOverview(btn) {
@@ -595,43 +630,49 @@ async function convertRowUaToHash(idx) {
   hashEl.value = await sha256Hex(ua);
 }
 
-async function fetchRuleHits(btn) {
+async function fetchRuleHits(btn, current = 1, pageSize = 50) {
   setView(btn, '规则命中记录');
-  const rows = await request('/rule-hit/fetch?page_size=50');
-  if (rows) renderTable(rows);
+  const { rows, total } = await requestWithMeta(`/rule-hit/fetch?page_size=${pageSize}&current=${current}`);
+  renderTable(rows, buildPager(current, pageSize, total, 'fetchRuleHitsPage'));
 }
+function fetchRuleHitsPage(current, pageSize){ fetchRuleHits(null, current, pageSize); }
 
-async function fetchOnlineUsers(btn) {
+async function fetchOnlineUsers(btn, current = 1, pageSize = 200) {
   setView(btn, '实时在线IP');
-  const rows = await request('/online-user/fetch?page_size=200');
-  if (rows) renderTable(rows);
+  const { rows, total } = await requestWithMeta(`/online-user/fetch?page_size=${pageSize}&current=${current}`);
+  renderTable(rows, buildPager(current, pageSize, total, 'fetchOnlineUsersPage'));
 }
+function fetchOnlineUsersPage(current, pageSize){ fetchOnlineUsers(null, current, pageSize); }
 
-async function fetchUserUsage(btn) {
+async function fetchUserUsage(btn, current = 1, pageSize = 200) {
   setView(btn, '用户画像总览');
-  const rows = await request('/user-usage/fetch?page_size=200');
-  if (rows) renderTable(rows);
+  const { rows, total } = await requestWithMeta(`/user-usage/fetch?page_size=${pageSize}&current=${current}`);
+  renderTable(rows, buildPager(current, pageSize, total, 'fetchUserUsagePage'));
 }
+function fetchUserUsagePage(current, pageSize){ fetchUserUsage(null, current, pageSize); }
 
-async function fetchUserConnectionLogs(btn) {
+async function fetchUserConnectionLogs(btn, current = 1, pageSize = 200) {
   setView(btn, '连接历史');
-  const rows = await request('/user-connection-log/fetch?page_size=200');
-  if (rows) renderTable(rows);
+  const { rows, total } = await requestWithMeta(`/user-connection-log/fetch?page_size=${pageSize}&current=${current}`);
+  renderTable(rows, buildPager(current, pageSize, total, 'fetchUserConnectionLogsPage'));
 }
+function fetchUserConnectionLogsPage(current, pageSize){ fetchUserConnectionLogs(null, current, pageSize); }
 
-async function fetchLoginLogs(btn) {
+async function fetchLoginLogs(btn, current = 1, pageSize = 50) {
   setView(btn, '登录记录');
-  const rows = await request('/login-log/fetch?page_size=50');
-  if (rows) renderTable(rows);
+  const { rows, total } = await requestWithMeta(`/login-log/fetch?page_size=${pageSize}&current=${current}`);
+  renderTable(rows, buildPager(current, pageSize, total, 'fetchLoginLogsPage'));
 }
+function fetchLoginLogsPage(current, pageSize){ fetchLoginLogs(null, current, pageSize); }
 
-async function fetchSubscribeLogs(btn) {
+async function fetchSubscribeLogs(btn, current = 1, pageSize = 50) {
   setView(btn, '订阅记录');
-  const rows = await request('/subscribe-log/fetch?page_size=50');
-  if (rows) renderTable(rows);
+  const { rows, total } = await requestWithMeta(`/subscribe-log/fetch?page_size=${pageSize}&current=${current}`);
+  renderTable(rows, buildPager(current, pageSize, total, 'fetchSubscribeLogsPage'));
 }
+function fetchSubscribeLogsPage(current, pageSize){ fetchSubscribeLogs(null, current, pageSize); }
 
-fetchOverview();
+if (authorization) fetchOverview(document.querySelector('.menu-btn'));
 </script>
 </body>
 </html>

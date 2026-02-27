@@ -247,8 +247,14 @@ class ClientController extends Controller
         }
 
         $input = strtolower($input);
+        $normalizedInput = preg_replace('/[^a-z0-9]/', '', $input);
         foreach ($this->getProtocolFlags() as $flag) {
             if (strpos($input, $flag) !== false) {
+                return $flag;
+            }
+
+            $normalizedFlag = preg_replace('/[^a-z0-9]/', '', (string) $flag);
+            if ($normalizedFlag && strpos($normalizedInput, $normalizedFlag) !== false) {
                 return $flag;
             }
         }

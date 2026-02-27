@@ -249,6 +249,7 @@ function buildTable(rows) {
     subscribe_ua_unique_count_30d: '原始UA数(30天)',
     top_raw_ua: 'Top原始UA',
     top_raw_ua_count: 'Top原始UA次数',
+    raw_ua_list: '原始UA列表',
     plan_name: '套餐名称',
     subscribe_domain: '订阅域名',
     reason: '原因',
@@ -559,26 +560,27 @@ async function resetRule(ruleKey) {
 
 function buildClientStrategySummary(rows) {
   const toNum = (v) => Number(v || 0);
-  const totalFlags24h = rows.reduce((sum, item) => sum + toNum(item.subscribe_flag_count_24h), 0);
-  const totalFlags30d = rows.reduce((sum, item) => sum + toNum(item.subscribe_flag_count_30d), 0);
-  const totalUa24h = rows.reduce((sum, item) => sum + toNum(item.subscribe_ua_unique_count_24h), 0);
-  const totalUa30d = rows.reduce((sum, item) => sum + toNum(item.subscribe_ua_unique_count_30d), 0);
-  const activeClientCount = rows.filter(item => !!item.is_enabled).length;
-  const topClientBy24h = rows.slice().sort((a, b) => toNum(b.subscribe_flag_count_24h) - toNum(a.subscribe_flag_count_24h))[0] || null;
+  const metrics = [
+    { label: '客户端总数', value: rows.length },
+    { label: '已启用客户端', value: rows.filter(item => !!item.is_enabled).length },
+    { label: 'Flag触发(24h)', value: rows.reduce((sum, item) => sum + toNum(item.subscribe_flag_count_24h), 0) },
+    { label: 'Flag触发(30天)', value: rows.reduce((sum, item) => sum + toNum(item.subscribe_flag_count_30d), 0) },
+    { label: '原始UA数(24h)', value: rows.reduce((sum, item) => sum + toNum(item.subscribe_ua_unique_count_24h), 0) },
+    { label: '原始UA数(30天)', value: rows.reduce((sum, item) => sum + toNum(item.subscribe_ua_unique_count_30d), 0) },
+  ].filter(item => Number(item.value) > 0);
 
-  return `
-    <div class="cards" style="margin-bottom:12px;">
-      <div class="card"><div class="label">客户端总数</div><div class="value">${rows.length}</div></div>
-      <div class="card"><div class="label">已启用客户端</div><div class="value">${activeClientCount}</div></div>
-      <div class="card"><div class="label">Flag触发(24h)</div><div class="value">${totalFlags24h}</div></div>
-      <div class="card"><div class="label">Flag触发(30天)</div><div class="value">${totalFlags30d}</div></div>
-      <div class="card"><div class="label">原始UA数(24h)</div><div class="value">${totalUa24h}</div></div>
-      <div class="card"><div class="label">原始UA数(30天)</div><div class="value">${totalUa30d}</div></div>
-    </div>
-    <div style="font-size:12px;color:#6b7280;margin-bottom:10px;">` +
-      (topClientBy24h ? `24小时最活跃客户端：<b>${String(topClientBy24h.client_type || '-')}</b>（${toNum(topClientBy24h.subscribe_flag_count_24h)} 次）` : '暂无24小时活跃客户端数据') +
-    `</div>`;
+  const cardsHtml = metrics.length
+    ? `<div class="cards" style="margin-bottom:12px;">${metrics.map(item => `<div class="card"><div class="label">${item.label}</div><div class="value">${item.value}</div></div>`).join('')}</div>`
+    : '<p style="color:#6b7280;margin-bottom:10px;">总览统计均为 0，暂无可展示指标。</p>';
+
+  const topClientBy24h = rows.slice().sort((a, b) => toNum(b.subscribe_flag_count_24h) - toNum(a.subscribe_flag_count_24h))[0] || null;
+  const hintHtml = topClientBy24h && toNum(topClientBy24h.subscribe_flag_count_24h) > 0
+    ? `<div style="font-size:12px;color:#6b7280;margin-bottom:10px;">24小时最活跃客户端：<b>${String(topClientBy24h.client_type || '-')}</b>（${toNum(topClientBy24h.subscribe_flag_count_24h)} 次）</div>`
+    : '';
+
+  return cardsHtml + hintHtml;
 }
+
 
 function renderClientStrategyOverview(rows) {
   if (!rows || !rows.length) {
@@ -587,24 +589,40 @@ function renderClientStrategyOverview(rows) {
   }
 
   const esc = (v) => String(v ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
-  const summaryHtml = buildClientStrategySummary(rows);
-  const topFlagRows = rows.slice().sort((a, b) => Number(b.subscribe_flag_count_24h || 0) - Number(a.subscribe_flag_count_24h || 0));
-  const topUaRows = rows.slice().sort((a, b) => Number(b.top_raw_ua_count || 0) - Number(a.top_raw_ua_count || 0));
+  const toNum = (v) => Number(v || 0);
+  const activeRows = rows.filter(item => {
+    return toNum(item.subscribe_flag_count_24h) > 0
+      || toNum(item.subscribe_flag_count_30d) > 0
+      || toNum(item.subscribe_ua_unique_count_24h) > 0
+      || toNum(item.subscribe_ua_unique_count_30d) > 0
+      || (Array.isArray(item.raw_ua_list) && item.raw_ua_list.length > 0);
+  });
 
+  if (!activeRows.length) {
+    document.getElementById('result').innerHTML = '<p>暂无触发数据（全部为0）</p>';
+    return;
+  }
+
+  const summaryHtml = buildClientStrategySummary(activeRows);
+  const topFlagRows = activeRows.slice().sort((a, b) => Number(b.subscribe_flag_count_24h || 0) - Number(a.subscribe_flag_count_24h || 0));
   const flagRankTable = `<div class="table-wrap"><table><thead><tr><th>客户端标识</th><th>客户端名称</th><th>Flag触发(24h)</th><th>Flag触发(30天)</th></tr></thead><tbody>` +
-    topFlagRows.map(item => `<tr><td>${esc(item.client_type || '')}</td><td>${esc(item.client_name || '')}</td><td>${Number(item.subscribe_flag_count_24h || 0)}</td><td>${Number(item.subscribe_flag_count_30d || 0)}</td></tr>`).join('') +
+    topFlagRows.map(item => `<tr><td>${esc(item.client_type || '')}</td><td>${esc(item.client_name || '')}</td><td>${toNum(item.subscribe_flag_count_24h)}</td><td>${toNum(item.subscribe_flag_count_30d)}</td></tr>`).join('') +
     `</tbody></table></div>`;
 
-  const uaRankTable = `<div class="table-wrap"><table><thead><tr><th>客户端标识</th><th>客户端名称</th><th>Top原始UA</th><th>Top原始UA次数</th><th>原始UA数(24h)</th><th>原始UA数(30天)</th></tr></thead><tbody>` +
-    topUaRows.map(item => `<tr><td>${esc(item.client_type || '')}</td><td>${esc(item.client_name || '')}</td><td title="${esc(item.top_raw_ua || '')}">${esc(item.top_raw_ua || '-')}</td><td>${Number(item.top_raw_ua_count || 0)}</td><td>${Number(item.subscribe_ua_unique_count_24h || 0)}</td><td>${Number(item.subscribe_ua_unique_count_30d || 0)}</td></tr>`).join('') +
-    `</tbody></table></div>`;
+  const uaAllRows = activeRows.filter(item => Array.isArray(item.raw_ua_list) && item.raw_ua_list.length > 0);
+  const uaTable = uaAllRows.length
+    ? `<div class="table-wrap"><table><thead><tr><th>客户端标识</th><th>客户端名称</th><th>全部原始UA（30天）</th></tr></thead><tbody>`
+      + uaAllRows.map(item => `<tr><td>${esc(item.client_type || '')}</td><td>${esc(item.client_name || '')}</td><td>${item.raw_ua_list.map(v => `<div style="margin-bottom:4px;word-break:break-all;">${esc(v)}</div>`).join('')}</td></tr>`).join('')
+      + `</tbody></table></div>`
+    : '<p style="color:#6b7280;">暂无原始UA明细</p>';
 
-  const explain = '<div style="font-size:12px;color:#6b7280;margin:0 0 8px;">分析建议：Flag排名用于判断命中强度，UA排名用于判断具体客户端来源与集中度。两者结合可更快识别异常客户端行为。</div>';
+  const explain = '<div style="font-size:12px;color:#6b7280;margin:0 0 8px;">分析建议：先看 Top Flag 快速定位热点客户端，再结合全部原始UA明细判断具体客户端版本、分发渠道与自动化特征。</div>';
   document.getElementById('result').innerHTML = summaryHtml
     + explain
-    + '<h4 style="margin:4px 0 8px;">Top Flag 排名（展示全部客户端）</h4>' + flagRankTable
-    + '<h4 style="margin:12px 0 8px;">Top 原始UA 排名（展示全部客户端）</h4>' + uaRankTable;
+    + '<h4 style="margin:4px 0 8px;">Top Flag 排名（仅显示有数据客户端）</h4>' + flagRankTable
+    + '<h4 style="margin:12px 0 8px;">原始UA明细（30天，不做归类）</h4>' + uaTable;
 }
+
 
 function renderClientStrategyEditor(rows) {
   if (!rows || !rows.length) {

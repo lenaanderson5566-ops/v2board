@@ -285,6 +285,18 @@ class LogController extends Controller
             ->orderBy('ua_count', 'desc')
             ->get();
 
+
+        $uaListRows = SubscribeLog::query()
+            ->selectRaw('LOWER(TRIM(client_type)) as normalized_client_type, user_agent')
+            ->whereNotNull('client_type')
+            ->where('client_type', '<>', '')
+            ->whereNotNull('user_agent')
+            ->where('user_agent', '<>', '')
+            ->where('created_at', '>=', $cutoff30d)
+            ->whereIn(DB::raw('LOWER(TRIM(client_type))'), $clientTypes)
+            ->orderBy('id', 'desc')
+            ->get();
+
         $flag24hMap = [];
         foreach ($flag24hRows as $row) {
             $flag24hMap[(string) $row->normalized_client_type] = (int) $row->hit_count;
@@ -316,7 +328,22 @@ class LogController extends Controller
             }
         }
 
-        return $items->map(function ($item) use ($flag24hMap, $flag30dMap, $ua24hMap, $ua30dMap, $uaTopMap) {
+        $uaListMap = [];
+        foreach ($uaListRows as $row) {
+            $type = (string) $row->normalized_client_type;
+            $ua = trim((string) $row->user_agent);
+            if (!$ua) {
+                continue;
+            }
+            if (!isset($uaListMap[$type])) {
+                $uaListMap[$type] = [];
+            }
+            if (!in_array($ua, $uaListMap[$type], true)) {
+                $uaListMap[$type][] = $ua;
+            }
+        }
+
+        return $items->map(function ($item) use ($flag24hMap, $flag30dMap, $ua24hMap, $ua30dMap, $uaTopMap, $uaListMap) {
             $type = strtolower(trim((string) ($item['client_type'] ?? '')));
             $item['subscribe_flag_count_24h'] = $flag24hMap[$type] ?? 0;
             $item['subscribe_flag_count_30d'] = $flag30dMap[$type] ?? 0;
@@ -324,6 +351,7 @@ class LogController extends Controller
             $item['subscribe_ua_unique_count_30d'] = $ua30dMap[$type] ?? 0;
             $item['top_raw_ua'] = $uaTopMap[$type]['ua'] ?? '';
             $item['top_raw_ua_count'] = $uaTopMap[$type]['count'] ?? 0;
+            $item['raw_ua_list'] = $uaListMap[$type] ?? [];
             return $item;
         });
     }

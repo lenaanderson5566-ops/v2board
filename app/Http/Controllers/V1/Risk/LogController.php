@@ -20,6 +20,7 @@ use App\Services\RiskBlacklistService;
 use App\Services\GeoIpService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\DB;
 
 class LogController extends Controller
 {
@@ -139,8 +140,10 @@ class LogController extends Controller
 
     public function getClientStrategies(Request $request)
     {
+        $strategies = (new ClientStrategyService())->getStrategies();
+
         return response([
-            'data' => (new ClientStrategyService())->getStrategies()
+            'data' => $this->appendClientSubscribeStats($strategies)
         ]);
     }
 
@@ -183,8 +186,10 @@ class LogController extends Controller
             $items[] = $item;
         }
 
+        $strategies = (new ClientStrategyService())->updateStrategies($items);
+
         return response([
-            'data' => (new ClientStrategyService())->updateStrategies($items)
+            'data' => $this->appendClientSubscribeStats($strategies)
         ]);
     }
 
@@ -198,9 +203,67 @@ class LogController extends Controller
 
         (new ClientStrategyService())->deleteStrategy($clientType);
 
+        $strategies = (new ClientStrategyService())->getStrategies();
+
         return response([
-            'data' => (new ClientStrategyService())->getStrategies()
+            'data' => $this->appendClientSubscribeStats($strategies)
         ]);
+    }
+
+
+    private function appendClientSubscribeStats($strategies)
+    {
+        $items = collect($strategies)->map(function ($item) {
+            return is_array($item) ? $item : $item->toArray();
+        });
+
+        if ($items->isEmpty()) {
+            return $items;
+        }
+
+        $now = time();
+        $clientTypes = $items->pluck('client_type')
+            ->map(function ($type) {
+                return strtolower(trim((string) $type));
+            })
+            ->filter()
+            ->unique()
+            ->values()
+            ->toArray();
+
+        $totalRows = SubscribeLog::query()
+            ->selectRaw('LOWER(TRIM(client_type)) as normalized_client_type, COUNT(*) as total_count')
+            ->whereNotNull('client_type')
+            ->where('client_type', '<>', '')
+            ->whereIn(DB::raw('LOWER(TRIM(client_type))'), $clientTypes)
+            ->groupBy(DB::raw('LOWER(TRIM(client_type))'))
+            ->get();
+
+        $recentRows = SubscribeLog::query()
+            ->selectRaw('LOWER(TRIM(client_type)) as normalized_client_type, COUNT(*) as recent_count')
+            ->whereNotNull('client_type')
+            ->where('client_type', '<>', '')
+            ->where('created_at', '>=', $now - 86400)
+            ->whereIn(DB::raw('LOWER(TRIM(client_type))'), $clientTypes)
+            ->groupBy(DB::raw('LOWER(TRIM(client_type))'))
+            ->get();
+
+        $totalMap = [];
+        foreach ($totalRows as $row) {
+            $totalMap[(string) $row->normalized_client_type] = (int) $row->total_count;
+        }
+
+        $recentMap = [];
+        foreach ($recentRows as $row) {
+            $recentMap[(string) $row->normalized_client_type] = (int) $row->recent_count;
+        }
+
+        return $items->map(function ($item) use ($totalMap, $recentMap) {
+            $type = strtolower(trim((string) ($item['client_type'] ?? '')));
+            $item['subscribe_import_count_total'] = $totalMap[$type] ?? 0;
+            $item['subscribe_import_count_24h'] = $recentMap[$type] ?? 0;
+            return $item;
+        });
     }
 
 

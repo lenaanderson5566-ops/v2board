@@ -236,7 +236,9 @@ function buildTable(rows) {
     description: '说明',
     risk_level: '风险等级',
     thresholds: '阈值配置',
-    sort: '排序'
+    sort: '排序',
+    subscribe_import_count_24h: '导入次数(24h)',
+    subscribe_import_count_total: '导入次数(累计)'
   };
   const formatTs = (v) => {
     const n = Number(v);
@@ -550,6 +552,8 @@ function renderClientStrategyEditor(rows) {
       <th>是否启用</th>
       <th>排序</th>
       <th>最低版本</th>
+      <th>导入次数(24h)</th>
+      <th>导入次数(累计)</th>
       <th>操作</th>
     </tr>`;
 
@@ -562,6 +566,8 @@ function renderClientStrategyEditor(rows) {
         <td><input id="client_enabled_${idx}" type="checkbox" ${item.is_enabled ? 'checked' : ''}></td>
         <td><input id="client_sort_${idx}" class="rule-input" type="number" value="${safe(item.sort ?? 0)}"></td>
         <td><input id="client_min_version_${idx}" class="rule-input" placeholder="例如: 1.8.0" value="${safe(item.min_version || '')}"></td>
+        <td>${safe(item.subscribe_import_count_24h ?? 0)}</td>
+        <td>${safe(item.subscribe_import_count_total ?? 0)}</td>
         <td style="display:flex;gap:6px;">
           <button onclick="saveClientStrategy(${idx}, '${safe(item.client_type)}')">保存</button>
           <button style="border-color:#fecaca;color:#dc2626;" onclick="deleteClientStrategy('${safe(item.client_type)}')">删除</button>

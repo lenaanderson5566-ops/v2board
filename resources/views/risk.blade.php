@@ -41,6 +41,11 @@
             border-radius: 8px;
             padding: 9px 10px;
             font-size: 12px;
+            line-height: 1.2;
+            min-height: 36px;
+            display: flex;
+            align-items: center;
+            white-space: nowrap;
             cursor: pointer;
         }
         .menu-btn:hover { background: #2563eb; border-color: #2563eb; }
@@ -583,13 +588,22 @@ function renderClientStrategyOverview(rows) {
 
   const esc = (v) => String(v ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
   const summaryHtml = buildClientStrategySummary(rows);
-  const topRows = rows.slice().sort((a, b) => Number(b.subscribe_flag_count_24h || 0) - Number(a.subscribe_flag_count_24h || 0));
-  const rankTable = `<div class="table-wrap"><table><thead><tr><th>客户端标识</th><th>客户端名称</th><th>Flag触发(24h)</th><th>原始UA数(24h)</th><th>Top原始UA</th></tr></thead><tbody>` +
-    topRows.map(item => `<tr><td>${esc(item.client_type || '')}</td><td>${esc(item.client_name || '')}</td><td>${Number(item.subscribe_flag_count_24h || 0)}</td><td>${Number(item.subscribe_ua_unique_count_24h || 0)}</td><td title="${esc(item.top_raw_ua || '')}">${esc(item.top_raw_ua || '-')}</td></tr>`).join('') +
+  const topFlagRows = rows.slice().sort((a, b) => Number(b.subscribe_flag_count_24h || 0) - Number(a.subscribe_flag_count_24h || 0));
+  const topUaRows = rows.slice().sort((a, b) => Number(b.top_raw_ua_count || 0) - Number(a.top_raw_ua_count || 0));
+
+  const flagRankTable = `<div class="table-wrap"><table><thead><tr><th>客户端标识</th><th>客户端名称</th><th>Flag触发(24h)</th><th>Flag触发(30天)</th></tr></thead><tbody>` +
+    topFlagRows.map(item => `<tr><td>${esc(item.client_type || '')}</td><td>${esc(item.client_name || '')}</td><td>${Number(item.subscribe_flag_count_24h || 0)}</td><td>${Number(item.subscribe_flag_count_30d || 0)}</td></tr>`).join('') +
     `</tbody></table></div>`;
 
-  const explain = '<div style="font-size:12px;color:#6b7280;margin:0 0 8px;">分析建议：Flag反映命中策略维度，原始UA反映实际客户端来源。建议按“高Flag触发 + 高UA多样性”优先排查，按“高Flag触发 + 低UA多样性”识别脚本化或固定端行为。</div>';
-  document.getElementById('result').innerHTML = summaryHtml + explain + '<h4 style="margin:4px 0 8px;">客户端活跃排行（24h，展示全部Flag客户端）</h4>' + rankTable;
+  const uaRankTable = `<div class="table-wrap"><table><thead><tr><th>客户端标识</th><th>客户端名称</th><th>Top原始UA</th><th>Top原始UA次数</th><th>原始UA数(24h)</th><th>原始UA数(30天)</th></tr></thead><tbody>` +
+    topUaRows.map(item => `<tr><td>${esc(item.client_type || '')}</td><td>${esc(item.client_name || '')}</td><td title="${esc(item.top_raw_ua || '')}">${esc(item.top_raw_ua || '-')}</td><td>${Number(item.top_raw_ua_count || 0)}</td><td>${Number(item.subscribe_ua_unique_count_24h || 0)}</td><td>${Number(item.subscribe_ua_unique_count_30d || 0)}</td></tr>`).join('') +
+    `</tbody></table></div>`;
+
+  const explain = '<div style="font-size:12px;color:#6b7280;margin:0 0 8px;">分析建议：Flag排名用于判断命中强度，UA排名用于判断具体客户端来源与集中度。两者结合可更快识别异常客户端行为。</div>';
+  document.getElementById('result').innerHTML = summaryHtml
+    + explain
+    + '<h4 style="margin:4px 0 8px;">Top Flag 排名（展示全部客户端）</h4>' + flagRankTable
+    + '<h4 style="margin:12px 0 8px;">Top 原始UA 排名（展示全部客户端）</h4>' + uaRankTable;
 }
 
 function renderClientStrategyEditor(rows) {
@@ -607,10 +621,6 @@ function renderClientStrategyEditor(rows) {
       <th>最低版本</th>
       <th>Flag触发(24h)</th>
       <th>Flag触发(30天)</th>
-      <th>原始UA数(24h)</th>
-      <th>原始UA数(30天)</th>
-      <th>Top原始UA</th>
-      <th>Top原始UA次数</th>
       <th>操作</th>
     </tr>`;
 
@@ -625,10 +635,6 @@ function renderClientStrategyEditor(rows) {
         <td><input id="client_min_version_${idx}" class="rule-input" placeholder="例如: 1.8.0" value="${safe(item.min_version || '')}"></td>
         <td>${safe(item.subscribe_flag_count_24h ?? 0)}</td>
         <td>${safe(item.subscribe_flag_count_30d ?? 0)}</td>
-        <td>${safe(item.subscribe_ua_unique_count_24h ?? 0)}</td>
-        <td>${safe(item.subscribe_ua_unique_count_30d ?? 0)}</td>
-        <td title="${safe(item.top_raw_ua || '')}" style="max-width:320px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${safe(item.top_raw_ua || '-')}</td>
-        <td>${safe(item.top_raw_ua_count ?? 0)}</td>
         <td style="display:flex;gap:6px;">
           <button onclick="saveClientStrategy(${idx}, '${safe(item.client_type)}')">保存</button>
           <button style="border-color:#fecaca;color:#dc2626;" onclick="deleteClientStrategy('${safe(item.client_type)}')">删除</button>

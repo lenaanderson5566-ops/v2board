@@ -343,15 +343,18 @@ async function fetchOverview(btn) {
 
 function renderRiskSettings(data) {
   const interval = Number(data.connection_log_interval || 3600);
+  const retentionDays = Number(data.connection_log_retention_days || 30);
   document.getElementById('result').innerHTML = `
     <div style="max-width:680px;display:flex;flex-direction:column;gap:10px;">
       <h4 style="margin:0;">连接日志配置</h4>
-      <div style="color:#6b7280;font-size:12px;">控制同一用户+IP+节点在连接历史中的最小记录间隔，建议 3600 秒（1小时）。</div>
+      <div style="color:#6b7280;font-size:12px;">控制同一用户+IP+节点在连接历史中的最小记录间隔，以及连接日志保留时长。仅影响“连接历史”页面，不影响在线用户、订阅日志、登录日志展示。</div>
       <label style="font-size:12px;color:#374151;">记录间隔（秒）</label>
       <input id="risk_connection_log_interval" class="rule-input" type="number" min="60" max="86400" value="${interval}">
+      <label style="font-size:12px;color:#374151;">连接日志保留时长（天）</label>
+      <input id="risk_connection_log_retention_days" class="rule-input" type="number" min="1" max="365" value="${retentionDays}">
       <div style="display:flex;gap:8px;align-items:center;">
         <button onclick="saveRiskSettings()">保存配置</button>
-        <span style="font-size:12px;color:#6b7280;">范围：60 ~ 86400 秒</span>
+        <span style="font-size:12px;color:#6b7280;">间隔范围：60 ~ 86400 秒；保留范围：1 ~ 365 天</span>
       </div>
     </div>`;
 }
@@ -364,10 +367,14 @@ async function fetchRiskSettings(btn) {
 
 async function saveRiskSettings() {
   const connectionLogInterval = Number(document.getElementById('risk_connection_log_interval').value || 3600);
+  const connectionLogRetentionDays = Number(document.getElementById('risk_connection_log_retention_days').value || 30);
   const data = await request('/settings/update', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ connection_log_interval: connectionLogInterval }),
+    body: JSON.stringify({
+      connection_log_interval: connectionLogInterval,
+      connection_log_retention_days: connectionLogRetentionDays,
+    }),
   });
   if (data) {
     alert('保存成功');

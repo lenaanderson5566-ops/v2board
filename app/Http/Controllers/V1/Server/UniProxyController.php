@@ -140,6 +140,7 @@ class UniProxyController extends Controller
         }
         $updateAt = time();
         $connectionLogInterval = $this->getConnectionLogInterval();
+        $this->cleanupExpiredConnectionLogs($updateAt);
         foreach ($data as $uid => $ips) {
             $ips_array = Cache::get('ALIVE_IP_USER_' . $uid) ?? [];
             // 更新节点数据
@@ -226,6 +227,32 @@ class UniProxyController extends Controller
             }
             return min($value, 86400);
         });
+    }
+
+
+    private function getConnectionLogRetentionDays(): int
+    {
+        return (int) Cache::remember('RISK_CONNECTION_LOG_RETENTION_DAYS', 60, function () {
+            $raw = RiskSetting::query()->where('key', 'connection_log_retention_days')->value('value');
+            $value = (int) $raw;
+            if ($value < 1) {
+                $value = 30;
+            }
+            return min($value, 365);
+        });
+    }
+
+    private function cleanupExpiredConnectionLogs(int $now): void
+    {
+        $cleanupLockKey = 'RISK_CONNECTION_LOG_CLEANUP_LOCK';
+        if (Cache::has($cleanupLockKey)) {
+            return;
+        }
+
+        Cache::put($cleanupLockKey, 1, 3600);
+        $retentionDays = $this->getConnectionLogRetentionDays();
+        $expiredBefore = $now - ($retentionDays * 86400);
+        UserConnectionLog::query()->where('connected_at', '<', $expiredBefore)->delete();
     }
 
     // 后端获取配置

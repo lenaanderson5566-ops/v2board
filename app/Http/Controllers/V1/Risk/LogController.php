@@ -478,7 +478,10 @@ class LogController extends Controller
         $current = max((int)$request->input('current', 1), 1);
         $pageSize = min(max((int)$request->input('page_size', 50), 1), 200);
 
-        $builder = UserConnectionLog::query();
+        $retentionDays = $this->getConnectionLogRetentionDays();
+        $minConnectedAt = time() - ($retentionDays * 86400);
+
+        $builder = UserConnectionLog::query()->where('connected_at', '>=', $minConnectedAt);
         if ($request->filled('user_id')) {
             $builder->where('user_id', (int) $request->input('user_id'));
         }
@@ -529,10 +532,11 @@ class LogController extends Controller
 
     public function getRiskSettings(Request $request)
     {
-        $rows = RiskSetting::query()->whereIn('key', ['connection_log_interval'])->get()->keyBy('key');
+        $rows = RiskSetting::query()->whereIn('key', ['connection_log_interval', 'connection_log_retention_days'])->get()->keyBy('key');
         return response([
             'data' => [
                 'connection_log_interval' => (int) ($rows['connection_log_interval']->value ?? 3600),
+                'connection_log_retention_days' => (int) ($rows['connection_log_retention_days']->value ?? 30),
             ]
         ]);
     }
@@ -544,17 +548,41 @@ class LogController extends Controller
             abort(422, 'connection_log_interval must be between 60 and 86400 seconds');
         }
 
+        $retentionDays = (int) $request->input('connection_log_retention_days', 30);
+        if ($retentionDays < 1 || $retentionDays > 365) {
+            abort(422, 'connection_log_retention_days must be between 1 and 365 days');
+        }
+
         RiskSetting::query()->updateOrCreate(
             ['key' => 'connection_log_interval'],
             ['value' => (string) $interval]
         );
+        RiskSetting::query()->updateOrCreate(
+            ['key' => 'connection_log_retention_days'],
+            ['value' => (string) $retentionDays]
+        );
         Cache::forget('RISK_CONNECTION_LOG_INTERVAL');
+        Cache::forget('RISK_CONNECTION_LOG_RETENTION_DAYS');
 
         return response([
             'data' => [
                 'connection_log_interval' => $interval,
+                'connection_log_retention_days' => $retentionDays,
             ]
         ]);
+    }
+
+
+    private function getConnectionLogRetentionDays(): int
+    {
+        return (int) Cache::remember('RISK_CONNECTION_LOG_RETENTION_DAYS', 60, function () {
+            $raw = RiskSetting::query()->where('key', 'connection_log_retention_days')->value('value');
+            $value = (int) $raw;
+            if ($value < 1) {
+                $value = 30;
+            }
+            return min($value, 365);
+        });
     }
 
     private function percent(int $total, int $sub): string

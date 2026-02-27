@@ -17,11 +17,13 @@
             --danger: #dc2626;
         }
         * { box-sizing: border-box; }
-        body { font-family: Arial, sans-serif; margin: 0; background: var(--bg); color: var(--text); }
+        html { height: 100%; overflow-y: scroll; }
+        body { font-family: Arial, sans-serif; margin: 0; background: var(--bg); color: var(--text); min-height: 100%; }
 
         .layout { display: flex; min-height: 100vh; }
         .sidebar {
             width: 240px;
+            flex: 0 0 240px;
             background: #111827;
             color: #e5e7eb;
             padding: 20px 16px;
@@ -43,6 +45,8 @@
             font-size: 12px;
             line-height: 1.2;
             height: 36px;
+            min-height: 36px;
+            max-height: 36px;
             display: flex;
             align-items: center;
             white-space: nowrap;

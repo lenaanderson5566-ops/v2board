@@ -287,7 +287,9 @@ function buildTable(rows, options = {}) {
 }
 
 function renderTable(rows, pagerHtml = '', options = {}) {
-  document.getElementById('result').innerHTML = `${pagerHtml}${buildTable(rows, options)}${pagerHtml}`;
+  const topHtml = options.topHtml || '';
+  const bottomHtml = options.bottomHtml || '';
+  document.getElementById('result').innerHTML = `${topHtml}${pagerHtml}${buildTable(rows, options)}${pagerHtml}${bottomHtml}`;
 }
 
 function buildPager(current, pageSize, total, fetcherName) {
@@ -898,45 +900,144 @@ async function convertRowUaToHash(idx) {
   hashEl.value = await sha256Hex(ua);
 }
 
+
+const logFilters = {
+  ruleHits: { scene: '', rule_key: '', email: '', ip: '' },
+  onlineUsers: { email: '', ip: '' },
+  userUsage: { email: '' },
+  connectionLogs: { user_id: '', ip: '' },
+  loginLogs: { email: '', ip: '', is_success: '' },
+  subscribeLogs: { email: '', ip: '', client_type: '', status: '' },
+};
+
+function toQuery(params) {
+  const usp = new URLSearchParams();
+  Object.keys(params).forEach(k => {
+    const v = params[k];
+    if (v !== null && v !== undefined && String(v) !== '') usp.set(k, String(v));
+  });
+  const q = usp.toString();
+  return q ? `&${q}` : '';
+}
+
+function buildFilterBar(items, applyFn, resetFn) {
+  return `<div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:0 0 10px;">`
+    + items.map(i => `<input id="${i.id}" class="rule-input" style="width:180px;" placeholder="${i.placeholder}" value="${String(i.value || '').replace(/"/g, '&quot;')}">`).join('')
+    + `<button onclick="${applyFn}()">筛选</button><button onclick="${resetFn}()">重置</button></div>`;
+}
+
+function applyRuleHitsFilter(){
+  logFilters.ruleHits.scene = document.getElementById('f_rule_scene').value.trim();
+  logFilters.ruleHits.rule_key = document.getElementById('f_rule_key').value.trim();
+  logFilters.ruleHits.email = document.getElementById('f_rule_email').value.trim();
+  logFilters.ruleHits.ip = document.getElementById('f_rule_ip').value.trim();
+  fetchRuleHits(null, 1);
+}
+function resetRuleHitsFilter(){ logFilters.ruleHits = { scene:'', rule_key:'', email:'', ip:'' }; fetchRuleHits(null, 1); }
+
+function applyOnlineUsersFilter(){
+  logFilters.onlineUsers.email = document.getElementById('f_online_email').value.trim();
+  logFilters.onlineUsers.ip = document.getElementById('f_online_ip').value.trim();
+  fetchOnlineUsers(null, 1);
+}
+function resetOnlineUsersFilter(){ logFilters.onlineUsers = { email:'', ip:'' }; fetchOnlineUsers(null, 1); }
+
+function applyUserUsageFilter(){
+  logFilters.userUsage.email = document.getElementById('f_usage_email').value.trim();
+  fetchUserUsage(null, 1);
+}
+function resetUserUsageFilter(){ logFilters.userUsage = { email:'' }; fetchUserUsage(null, 1); }
+
+function applyConnectionLogsFilter(){
+  logFilters.connectionLogs.user_id = document.getElementById('f_conn_user_id').value.trim();
+  logFilters.connectionLogs.ip = document.getElementById('f_conn_ip').value.trim();
+  fetchUserConnectionLogs(null, 1);
+}
+function resetConnectionLogsFilter(){ logFilters.connectionLogs = { user_id:'', ip:'' }; fetchUserConnectionLogs(null, 1); }
+
+function applyLoginLogsFilter(){
+  logFilters.loginLogs.email = document.getElementById('f_login_email').value.trim();
+  logFilters.loginLogs.ip = document.getElementById('f_login_ip').value.trim();
+  logFilters.loginLogs.is_success = document.getElementById('f_login_success').value.trim();
+  fetchLoginLogs(null, 1);
+}
+function resetLoginLogsFilter(){ logFilters.loginLogs = { email:'', ip:'', is_success:'' }; fetchLoginLogs(null, 1); }
+
+function applySubscribeLogsFilter(){
+  logFilters.subscribeLogs.email = document.getElementById('f_sub_email').value.trim();
+  logFilters.subscribeLogs.ip = document.getElementById('f_sub_ip').value.trim();
+  logFilters.subscribeLogs.client_type = document.getElementById('f_sub_client').value.trim();
+  logFilters.subscribeLogs.status = document.getElementById('f_sub_status').value.trim();
+  fetchSubscribeLogs(null, 1);
+}
+function resetSubscribeLogsFilter(){ logFilters.subscribeLogs = { email:'', ip:'', client_type:'', status:'' }; fetchSubscribeLogs(null, 1); }
+
 async function fetchRuleHits(btn, current = 1, pageSize = 50) {
   setView(btn, '规则命中记录');
-  const { rows, total } = await requestWithMeta(`/rule-hit/fetch?page_size=${pageSize}&current=${current}`);
-  renderTable(rows, buildPager(current, pageSize, total, 'fetchRuleHitsPage'), { hiddenKeys: ['created_at', 'updated_at'] });
+  const bar = buildFilterBar([
+    { id:'f_rule_scene', placeholder:'场景(scene)', value:logFilters.ruleHits.scene },
+    { id:'f_rule_key', placeholder:'规则键(rule_key)', value:logFilters.ruleHits.rule_key },
+    { id:'f_rule_email', placeholder:'邮箱', value:logFilters.ruleHits.email },
+    { id:'f_rule_ip', placeholder:'IP', value:logFilters.ruleHits.ip },
+  ], 'applyRuleHitsFilter', 'resetRuleHitsFilter');
+  const { rows, total } = await requestWithMeta(`/rule-hit/fetch?page_size=${pageSize}&current=${current}${toQuery(logFilters.ruleHits)}`);
+  renderTable(rows, buildPager(current, pageSize, total, 'fetchRuleHitsPage'), { hiddenKeys: ['created_at', 'updated_at'], topHtml: bar });
 }
 function fetchRuleHitsPage(current, pageSize){ fetchRuleHits(null, current, pageSize); }
 
 async function fetchOnlineUsers(btn, current = 1, pageSize = 200) {
   setView(btn, '实时在线IP');
+  const bar = buildFilterBar([
+    { id:'f_online_email', placeholder:'邮箱(前端过滤)', value:logFilters.onlineUsers.email },
+    { id:'f_online_ip', placeholder:'在线IP(前端过滤)', value:logFilters.onlineUsers.ip },
+  ], 'applyOnlineUsersFilter', 'resetOnlineUsersFilter');
   const { rows, total } = await requestWithMeta(`/online-user/fetch?page_size=${pageSize}&current=${current}`);
-  renderTable(rows, buildPager(current, pageSize, total, 'fetchOnlineUsersPage'), { hiddenKeys: ['created_at', 'updated_at'] });
+  const filtered = rows.filter(r => (!logFilters.onlineUsers.email || String(r.email || '').includes(logFilters.onlineUsers.email)) && (!logFilters.onlineUsers.ip || String(r.online_ip || '').includes(logFilters.onlineUsers.ip)));
+  renderTable(filtered, buildPager(current, pageSize, total, 'fetchOnlineUsersPage'), { hiddenKeys: ['created_at', 'updated_at'], topHtml: bar });
 }
 function fetchOnlineUsersPage(current, pageSize){ fetchOnlineUsers(null, current, pageSize); }
 
 async function fetchUserUsage(btn, current = 1, pageSize = 200) {
   setView(btn, '用户画像总览');
-  const { rows, total } = await requestWithMeta(`/user-usage/fetch?page_size=${pageSize}&current=${current}`);
-  renderTable(rows, buildPager(current, pageSize, total, 'fetchUserUsagePage'), { hiddenKeys: ['created_at', 'updated_at'] });
+  const bar = buildFilterBar([{ id:'f_usage_email', placeholder:'邮箱', value:logFilters.userUsage.email }], 'applyUserUsageFilter', 'resetUserUsageFilter');
+  const { rows, total } = await requestWithMeta(`/user-usage/fetch?page_size=${pageSize}&current=${current}${toQuery(logFilters.userUsage)}`);
+  renderTable(rows, buildPager(current, pageSize, total, 'fetchUserUsagePage'), { hiddenKeys: ['created_at', 'updated_at'], topHtml: bar });
 }
 function fetchUserUsagePage(current, pageSize){ fetchUserUsage(null, current, pageSize); }
 
 async function fetchUserConnectionLogs(btn, current = 1, pageSize = 200) {
   setView(btn, '连接历史');
-  const { rows, total } = await requestWithMeta(`/user-connection-log/fetch?page_size=${pageSize}&current=${current}`);
-  renderTable(rows, buildPager(current, pageSize, total, 'fetchUserConnectionLogsPage'), { hiddenKeys: ['created_at', 'updated_at'] });
+  const bar = buildFilterBar([
+    { id:'f_conn_user_id', placeholder:'用户ID', value:logFilters.connectionLogs.user_id },
+    { id:'f_conn_ip', placeholder:'IP', value:logFilters.connectionLogs.ip },
+  ], 'applyConnectionLogsFilter', 'resetConnectionLogsFilter');
+  const { rows, total } = await requestWithMeta(`/user-connection-log/fetch?page_size=${pageSize}&current=${current}${toQuery(logFilters.connectionLogs)}`);
+  renderTable(rows, buildPager(current, pageSize, total, 'fetchUserConnectionLogsPage'), { hiddenKeys: ['created_at', 'updated_at'], topHtml: bar });
 }
 function fetchUserConnectionLogsPage(current, pageSize){ fetchUserConnectionLogs(null, current, pageSize); }
 
 async function fetchLoginLogs(btn, current = 1, pageSize = 50) {
   setView(btn, '登录记录');
-  const { rows, total } = await requestWithMeta(`/login-log/fetch?page_size=${pageSize}&current=${current}`);
-  renderTable(rows, buildPager(current, pageSize, total, 'fetchLoginLogsPage'), { hiddenKeys: ['updated_at'] });
+  const bar = `<div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:0 0 10px;">
+    <input id="f_login_email" class="rule-input" style="width:180px;" placeholder="邮箱" value="${String(logFilters.loginLogs.email || '').replace(/"/g, '&quot;')}">
+    <input id="f_login_ip" class="rule-input" style="width:180px;" placeholder="IP" value="${String(logFilters.loginLogs.ip || '').replace(/"/g, '&quot;')}">
+    <input id="f_login_success" class="rule-input" style="width:180px;" placeholder="成功状态(0/1)" value="${String(logFilters.loginLogs.is_success || '').replace(/"/g, '&quot;')}">
+    <button onclick="applyLoginLogsFilter()">筛选</button><button onclick="resetLoginLogsFilter()">重置</button></div>`;
+  const { rows, total } = await requestWithMeta(`/login-log/fetch?page_size=${pageSize}&current=${current}${toQuery(logFilters.loginLogs)}`);
+  renderTable(rows, buildPager(current, pageSize, total, 'fetchLoginLogsPage'), { hiddenKeys: ['updated_at'], topHtml: bar });
 }
 function fetchLoginLogsPage(current, pageSize){ fetchLoginLogs(null, current, pageSize); }
 
 async function fetchSubscribeLogs(btn, current = 1, pageSize = 50) {
   setView(btn, '订阅记录');
-  const { rows, total } = await requestWithMeta(`/subscribe-log/fetch?page_size=${pageSize}&current=${current}`);
-  renderTable(rows, buildPager(current, pageSize, total, 'fetchSubscribeLogsPage'), { hiddenKeys: ['updated_at'] });
+  const bar = buildFilterBar([
+    { id:'f_sub_email', placeholder:'邮箱', value:logFilters.subscribeLogs.email },
+    { id:'f_sub_ip', placeholder:'IP', value:logFilters.subscribeLogs.ip },
+    { id:'f_sub_client', placeholder:'客户端标识', value:logFilters.subscribeLogs.client_type },
+    { id:'f_sub_status', placeholder:'状态(success/failed)', value:logFilters.subscribeLogs.status },
+  ], 'applySubscribeLogsFilter', 'resetSubscribeLogsFilter');
+  const { rows, total } = await requestWithMeta(`/subscribe-log/fetch?page_size=${pageSize}&current=${current}${toQuery(logFilters.subscribeLogs)}`);
+  renderTable(rows, buildPager(current, pageSize, total, 'fetchSubscribeLogsPage'), { hiddenKeys: ['updated_at'], topHtml: bar });
 }
 function fetchSubscribeLogsPage(current, pageSize){ fetchSubscribeLogs(null, current, pageSize); }
 

@@ -190,11 +190,53 @@ function buildTable(rows) {
     return '<p style="color:#6b7280;">暂无数据</p>';
   }
   const alias = {
-    user_id: '用户ID', email: '邮箱', register_at: '注册时间',
-    last_subscribe_at: '上次订阅时间', last_subscribe_ip: '上次订阅IP', last_subscribe_ua: '上次订阅UA',
-    last_online_at: '上次在线时间', last_online_ip: '上次在线IP', last_online_node: '上次在线节点',
-    last_login_at: '上次登录时间', last_login_ip: '上次登录IP', subscription_plan: '订阅', group_name: '权限组',
-    recharge_total: '累计充值', balance: '余额', expired_at: '到期时间', connected_at: '连接时间', ip: 'IP', node: '节点', source: '来源'
+    id: '编号',
+    user_id: '用户ID',
+    email: '邮箱',
+    ip: 'IP地址',
+    node: '节点',
+    source: '来源',
+    status: '状态',
+    type: '类型',
+    value: '值',
+    remark: '备注',
+    ua_raw: '原始UA',
+    user_agent: '用户代理',
+    client_type: '客户端标识',
+    is_enabled: '是否启用',
+    created_at: '创建时间',
+    updated_at: '更新时间',
+    hit_at: '触发时间',
+    online_at: '在线时间',
+    connected_at: '连接时间',
+    register_at: '注册时间',
+    last_subscribe_at: '上次订阅时间',
+    last_subscribe_ip: '上次订阅IP',
+    last_subscribe_ua: '上次订阅UA',
+    last_online_at: '上次在线时间',
+    last_online_ip: '上次在线IP',
+    last_online_node: '上次在线节点',
+    last_login_at: '上次登录时间',
+    last_login_ip: '上次登录IP',
+    subscription_plan: '订阅计划',
+    group_name: '权限组',
+    recharge_total: '累计充值',
+    balance: '余额',
+    expired_at: '到期时间',
+    alive_count: '在线连接数',
+    online_ip: '在线IP',
+    country: '国家',
+    region: '省/州',
+    city: '城市',
+    asn: 'ASN',
+    isp: '运营商',
+    rule_key: '规则键',
+    scene: '场景',
+    name: '名称',
+    description: '说明',
+    risk_level: '风险等级',
+    thresholds: '阈值配置',
+    sort: '排序'
   };
   const formatTs = (v) => {
     const n = Number(v);
@@ -606,7 +648,7 @@ function renderBlacklistEditor(rows, activeType = 'ip') {
       </tr>
     `;
 
-    return `<div class="table-wrap"><table><thead><tr><th>ID</th><th>IP地址</th><th>备注</th><th>是否启用</th><th>操作</th></tr></thead><tbody>${createRow}${body}</tbody></table></div>`;
+    return `<div class="table-wrap"><table><thead><tr><th>编号</th><th>IP地址</th><th>备注</th><th>是否启用</th><th>操作</th></tr></thead><tbody>${createRow}${body}</tbody></table></div>`;
   };
 
   const renderUaTable = () => {
@@ -632,7 +674,7 @@ function renderBlacklistEditor(rows, activeType = 'ip') {
       </tr>
     `;
 
-    return `<div class="table-wrap"><table><thead><tr><th>ID</th><th>UA哈希</th><th>原始UA</th><th>备注</th><th>是否启用</th><th>操作</th></tr></thead><tbody>${createRow}${body}</tbody></table></div>`;
+    return `<div class="table-wrap"><table><thead><tr><th>编号</th><th>UA哈希</th><th>原始UA</th><th>备注</th><th>是否启用</th><th>操作</th></tr></thead><tbody>${createRow}${body}</tbody></table></div>`;
   };
 
   const tabs = `

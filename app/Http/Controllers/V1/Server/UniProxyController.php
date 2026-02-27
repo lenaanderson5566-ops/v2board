@@ -3,6 +3,9 @@
 namespace App\Http\Controllers\V1\Server;
 
 use App\Http\Controllers\Controller;
+use App\Models\UserConnectionLog;
+use App\Models\UserOnlineSnapshot;
+use App\Models\RiskSetting;
 use App\Services\ServerService;
 use App\Services\UserService;
 use App\Utils\CacheKey;
@@ -136,10 +139,50 @@ class UniProxyController extends Controller
             ], 400);
         }
         $updateAt = time();
+        $connectionLogInterval = $this->getConnectionLogInterval();
+        $this->cleanupExpiredConnectionLogs($updateAt);
         foreach ($data as $uid => $ips) {
             $ips_array = Cache::get('ALIVE_IP_USER_' . $uid) ?? [];
             // 更新节点数据
             $ips_array[$this->nodeType . $this->nodeId] = ['aliveips' => $ips, 'lastupdateAt' => $updateAt];
+
+            $seen = [];
+            foreach ($ips as $ipNodeId) {
+                $ip = explode('_', (string) $ipNodeId)[0] ?? '';
+                if (!$ip || isset($seen[$ip])) {
+                    continue;
+                }
+                $seen[$ip] = true;
+                UserOnlineSnapshot::query()->updateOrCreate(
+                    [
+                        'user_id' => (int) $uid,
+                        'source' => 'alive',
+                    ],
+                    [
+                        'ip' => $ip,
+                        'node' => $this->nodeType . $this->nodeId,
+                        'online_at' => $updateAt,
+                    ]
+                );
+
+                $connectionLogThrottleKey = sprintf(
+                    'USER_CONNECTION_LOG:%d:%s:%s',
+                    (int) $uid,
+                    md5($ip),
+                    $this->nodeType . $this->nodeId
+                );
+                if (!Cache::has($connectionLogThrottleKey)) {
+                    UserConnectionLog::query()->create([
+                        'user_id' => (int) $uid,
+                        'ip' => $ip,
+                        'node' => $this->nodeType . $this->nodeId,
+                        'source' => 'alive',
+                        'connected_at' => $updateAt,
+                    ]);
+                    Cache::put($connectionLogThrottleKey, 1, $connectionLogInterval);
+                }
+            }
+
             // 清理过期数据
             foreach ($ips_array as $nodetypeid => $oldips) {
                 if (!is_int($oldips) && ($updateAt - $oldips['lastupdateAt'] > 100)) {
@@ -172,6 +215,44 @@ class UniProxyController extends Controller
         return response([
             'data' => true
         ]);
+    }
+
+    private function getConnectionLogInterval(): int
+    {
+        return (int) Cache::remember('RISK_CONNECTION_LOG_INTERVAL', 60, function () {
+            $raw = RiskSetting::query()->where('key', 'connection_log_interval')->value('value');
+            $value = (int) $raw;
+            if ($value < 60) {
+                $value = 3600;
+            }
+            return min($value, 86400);
+        });
+    }
+
+
+    private function getConnectionLogRetentionDays(): int
+    {
+        return (int) Cache::remember('RISK_CONNECTION_LOG_RETENTION_DAYS', 60, function () {
+            $raw = RiskSetting::query()->where('key', 'connection_log_retention_days')->value('value');
+            $value = (int) $raw;
+            if ($value < 1) {
+                $value = 30;
+            }
+            return min($value, 365);
+        });
+    }
+
+    private function cleanupExpiredConnectionLogs(int $now): void
+    {
+        $cleanupLockKey = 'RISK_CONNECTION_LOG_CLEANUP_LOCK';
+        if (Cache::has($cleanupLockKey)) {
+            return;
+        }
+
+        Cache::put($cleanupLockKey, 1, 3600);
+        $retentionDays = $this->getConnectionLogRetentionDays();
+        $expiredBefore = $now - ($retentionDays * 86400);
+        UserConnectionLog::query()->where('connected_at', '<', $expiredBefore)->delete();
     }
 
     // 后端获取配置

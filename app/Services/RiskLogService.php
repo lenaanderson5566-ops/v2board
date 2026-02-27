@@ -6,6 +6,7 @@ use App\Models\LoginLog;
 use App\Models\RiskRuleConfig;
 use App\Models\RiskRuleHit;
 use App\Models\SubscribeLog;
+use App\Services\RiskBlacklistService;
 
 class RiskLogService
 {
@@ -124,11 +125,48 @@ class RiskLogService
                 ]);
             }
         }
+
+        $rule = $this->getRule('login_ua_hash_blacklist_hit');
+        if ($rule['enabled']) {
+            $uaHash = !empty($log->user_agent) ? hash('sha256', $log->user_agent) : null;
+            if ($this->isBlacklisted('ua_hash', $uaHash)) {
+                $this->recordRuleHit('login', $rule['rule_key'], $rule['risk_level'], $log, [
+                    'ua_hash' => $uaHash,
+                ]);
+            }
+        }
+
+        $rule = $this->getRule('login_ip_blacklist_hit');
+        if ($rule['enabled']) {
+            if ($this->isBlacklisted('ip', $log->ip)) {
+                $this->recordRuleHit('login', $rule['rule_key'], $rule['risk_level'], $log, [
+                    'ip' => $log->ip,
+                ]);
+            }
+        }
     }
 
     private function evaluateSubscribeRules(SubscribeLog $log): void
     {
         $now = time();
+
+        $rule = $this->getRule('subscribe_ua_hash_blacklist_hit');
+        if ($rule['enabled']) {
+            if ($this->isBlacklisted('ua_hash', $log->ua_hash)) {
+                $this->recordRuleHit('subscribe', $rule['rule_key'], $rule['risk_level'], $log, [
+                    'ua_hash' => $log->ua_hash,
+                ]);
+            }
+        }
+
+        $rule = $this->getRule('subscribe_ip_blacklist_hit');
+        if ($rule['enabled']) {
+            if ($this->isBlacklisted('ip', $log->ip)) {
+                $this->recordRuleHit('subscribe', $rule['rule_key'], $rule['risk_level'], $log, [
+                    'ip' => $log->ip,
+                ]);
+            }
+        }
 
         if (!empty($log->user_id)) {
             $rule = $this->getRule('subscribe_high_frequency_by_user_10m');
@@ -293,6 +331,26 @@ class RiskLogService
                 'enabled' => 1,
                 'sort' => 20,
             ],
+            'login_ip_blacklist_hit' => [
+                'scene' => 'login',
+                'rule_key' => 'login_ip_blacklist_hit',
+                'name' => '登录IP黑名单命中',
+                'risk_level' => 'high',
+                'description' => '登录请求命中IP黑名单',
+                'thresholds' => [],
+                'enabled' => 1,
+                'sort' => 25,
+            ],
+            'login_ua_hash_blacklist_hit' => [
+                'scene' => 'login',
+                'rule_key' => 'login_ua_hash_blacklist_hit',
+                'name' => '登录UA哈希黑名单命中',
+                'risk_level' => 'high',
+                'description' => '登录请求命中UA哈希黑名单',
+                'thresholds' => [],
+                'enabled' => 1,
+                'sort' => 26,
+            ],
             'subscribe_high_frequency_by_user_10m' => [
                 'scene' => 'subscribe',
                 'rule_key' => 'subscribe_high_frequency_by_user_10m',
@@ -346,7 +404,32 @@ class RiskLogService
                 'enabled' => 1,
                 'sort' => 60,
             ],
+            'subscribe_ip_blacklist_hit' => [
+                'scene' => 'subscribe',
+                'rule_key' => 'subscribe_ip_blacklist_hit',
+                'name' => '订阅IP黑名单命中',
+                'risk_level' => 'high',
+                'description' => '订阅请求命中IP黑名单',
+                'thresholds' => [],
+                'enabled' => 1,
+                'sort' => 65,
+            ],
+            'subscribe_ua_hash_blacklist_hit' => [
+                'scene' => 'subscribe',
+                'rule_key' => 'subscribe_ua_hash_blacklist_hit',
+                'name' => '订阅UA哈希黑名单命中',
+                'risk_level' => 'high',
+                'description' => '订阅请求命中UA哈希黑名单',
+                'thresholds' => [],
+                'enabled' => 1,
+                'sort' => 66,
+            ],
         ];
+    }
+
+    private function isBlacklisted(string $type, ?string $value): bool
+    {
+        return (new RiskBlacklistService())->exists($type, $value);
     }
 
     private function recordRuleHit(string $scene, string $ruleKey, string $riskLevel, $log, array $payload): void

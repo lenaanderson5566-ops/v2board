@@ -8,6 +8,7 @@ use App\Protocols\General;
 use App\Services\ServerService;
 use App\Services\UserService;
 use App\Services\RiskLogService;
+use App\Services\ClientStrategyService;
 use App\Utils\Helper;
 use Illuminate\Http\Request;
 use ReflectionClass;
@@ -20,15 +21,45 @@ class ClientController extends Controller
         $requestedFlag = strtolower((string) $request->input('flag', ''));
         $flag = $requestedFlag ?: strtolower((string) ($_SERVER['HTTP_USER_AGENT'] ?? ''));
         $resolvedClientType = null;
+        $resolvedFlag = $this->resolveProtocolFlag($requestedFlag ?: $flag);
+        $clientStrategyService = new ClientStrategyService();
         $user = $request->user;
         // account not expired and is not banned.
         $userService = new UserService();
         if ($userService->isAvailable($user)) {
+            if (!$clientStrategyService->isEnabled($resolvedFlag)) {
+                $riskLogService->createSubscribeLog($this->buildSubscribeLogPayload(
+                    $request,
+                    $user,
+                    $resolvedFlag,
+                    'failed',
+                    'client_disabled'
+                ));
+                $class = $this->resolveProtocolHandler($resolvedFlag, $user, $this->buildUnavailableServers('client_disabled'));
+                return $class->handle();
+            }
+
+            $resolvedVersion = $clientStrategyService->resolveClientVersion(
+                $resolvedFlag,
+                (string) $request->input('flag', ''),
+                (string) $request->header('user-agent', '')
+            );
+            if (!$clientStrategyService->isVersionAllowed($resolvedFlag, $resolvedVersion)) {
+                $riskLogService->createSubscribeLog($this->buildSubscribeLogPayload(
+                    $request,
+                    $user,
+                    $resolvedFlag,
+                    'failed',
+                    'client_version_too_low'
+                ));
+                $class = $this->resolveProtocolHandler($resolvedFlag, $user, $this->buildUnavailableServers('client_version_too_low'));
+                return $class->handle();
+            }
+
             try {
                 $serverService = new ServerService();
                 $servers = $serverService->getAvailableServers($user);
 
-                $resolvedFlag = $this->resolveProtocolFlag($flag);
                 if ($resolvedFlag !== 'sing') {
                     $this->setSubscribeInfoToServers($servers, $user);
                 }
@@ -57,12 +88,11 @@ class ClientController extends Controller
         $riskLogService->createSubscribeLog($this->buildSubscribeLogPayload(
             $request,
             $user,
-            $this->resolveProtocolFlag($requestedFlag ?: $flag),
+            $resolvedFlag,
             'failed',
             $reason
         ));
 
-        $resolvedFlag = $this->resolveProtocolFlag($requestedFlag ?: $flag);
         $class = $this->resolveProtocolHandler($resolvedFlag, $user, $this->buildUnavailableServers($reason));
         return $class->handle();
     }
@@ -127,6 +157,18 @@ class ClientController extends Controller
                 'ja' => '⚠ 購読は利用不可',
                 'ko' => '⚠ 구독 사용 불가',
                 'zh' => '⚠ 订阅暂不可用',
+            ],
+            'client_disabled' => [
+                'en' => '⚠ Client type disabled by administrator',
+                'ja' => '⚠ 管理者によりクライアント種別が無効化されています',
+                'ko' => '⚠ 관리자에 의해 클라이언트 유형이 비활성화되었습니다',
+                'zh' => '⚠ 该客户端类型已被管理员禁用',
+            ],
+            'client_version_too_low' => [
+                'en' => '⚠ Client version is lower than required minimum',
+                'ja' => '⚠ クライアントのバージョンが最低要件を満たしていません',
+                'ko' => '⚠ 클라이언트 버전이 최소 요구 버전보다 낮습니다',
+                'zh' => '⚠ 客户端版本低于最低要求，请升级客户端',
             ],
         ];
 
@@ -227,29 +269,9 @@ class ClientController extends Controller
             return $flags;
         }
 
-        $flags = [];
-        $iterator = new \RecursiveIteratorIterator(
-            new \RecursiveDirectoryIterator(app_path('Protocols'))
-        );
+        $flags = array_keys((new ClientStrategyService())->scanProtocols());
 
-        foreach ($iterator as $file) {
-            if (!$file->isFile() || $file->getExtension() !== 'php') {
-                continue;
-            }
-
-            $relativePath = str_replace(app_path() . DIRECTORY_SEPARATOR, '', $file->getPathname());
-            $class = 'App\\' . str_replace([DIRECTORY_SEPARATOR, '.php'], ['\\', ''], $relativePath);
-            if (!class_exists($class)) {
-                continue;
-            }
-
-            $defaultProperties = (new ReflectionClass($class))->getDefaultProperties();
-            $flag = strtolower((string) ($defaultProperties['flag'] ?? ''));
-            if ($flag) {
-                $flags[$flag] = $flag;
-            }
-        }
-
-        return $flags;
+        return array_combine($flags, $flags) ?: [];
     }
+
 }

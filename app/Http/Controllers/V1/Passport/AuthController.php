@@ -170,6 +170,7 @@ class AuthController extends Controller
         }
 
         $user->last_login_at = time();
+        $user->last_login_ip = $this->encodeIp($request->ip());
         $user->save();
 
         if ((int)config('v2board.register_limit_by_ip_enable', 0)) {
@@ -250,6 +251,10 @@ class AuthController extends Controller
             'reason' => 'success'
         ]);
 
+        $user->last_login_at = time();
+        $user->last_login_ip = $this->encodeIp($request->ip());
+        $user->save();
+
         $authService = new AuthService($user);
         return response([
             'data' => $authService->generateAuthData($request)
@@ -282,6 +287,9 @@ class AuthController extends Controller
                 abort(500, __('Your account has been suspended'));
             }
             Cache::forget($key);
+            $user->last_login_at = time();
+            $user->last_login_ip = $this->encodeIp($request->ip());
+            $user->save();
             $authService = new AuthService($user);
             return response([
                 'data' => $authService->generateAuthData($request)
@@ -336,5 +344,19 @@ class AuthController extends Controller
         return response([
             'data' => true
         ]);
+    }
+
+    private function encodeIp(?string $ip): ?int
+    {
+        if (!$ip) {
+            return null;
+        }
+
+        $encoded = ip2long($ip);
+        if ($encoded === false) {
+            return null;
+        }
+
+        return (int) $encoded;
     }
 }

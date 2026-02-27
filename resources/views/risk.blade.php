@@ -267,15 +267,15 @@ function renderRuleEditor(rows) {
 
   const thead = `
     <tr>
-      <th>rule_key</th>
-      <th>scene</th>
-      <th>name</th>
-      <th>description</th>
-      <th>risk_level</th>
-      <th>enabled</th>
-      <th>sort</th>
-      <th>thresholds(JSON)</th>
-      <th>action</th>
+      <th>规则键</th>
+      <th>场景</th>
+      <th>规则名称</th>
+      <th>规则说明</th>
+      <th>风险等级</th>
+      <th>是否启用</th>
+      <th>排序</th>
+      <th>阈值配置(JSON)</th>
+      <th>操作</th>
     </tr>`;
 
   const body = currentRuleRows.map((rule, idx) => {
@@ -289,13 +289,13 @@ function renderRuleEditor(rows) {
         <td><input id="desc_${idx}" class="rule-input" value="${safe(rule.description || '')}"></td>
         <td>
           <select id="risk_${idx}" class="rule-select">
-            ${['low','medium','high'].map(level => `<option value="${level}" ${rule.risk_level === level ? 'selected' : ''}>${level}</option>`).join('')}
+            ${['low','medium','high'].map(level => `<option value="${level}" ${rule.risk_level === level ? 'selected' : ''}>${({low:'低',medium:'中',high:'高'}[level] || level)}</option>`).join('')}
           </select>
         </td>
         <td>
           <select id="enabled_${idx}" class="rule-select">
-            <option value="1" ${Number(rule.enabled) === 1 ? 'selected' : ''}>1</option>
-            <option value="0" ${Number(rule.enabled) === 0 ? 'selected' : ''}>0</option>
+            <option value="1" ${Number(rule.enabled) === 1 ? 'selected' : ''}>启用</option>
+            <option value="0" ${Number(rule.enabled) === 0 ? 'selected' : ''}>停用</option>
           </select>
         </td>
         <td><input id="sort_${idx}" class="rule-input" type="number" value="${safe(rule.sort ?? 0)}"></td>
@@ -414,7 +414,7 @@ function buildRulePayload(idx, ruleKey) {
   try {
     thresholds = JSON.parse(document.getElementById(`thresholds_${idx}`).value || '{}');
   } catch (e) {
-    throw new Error(`规则 ${ruleKey} 的 thresholds JSON 格式错误`);
+    throw new Error(`规则 ${ruleKey} 的阈值 JSON 格式错误`);
   }
 
   return {
@@ -503,12 +503,12 @@ function renderClientStrategyEditor(rows) {
 
   const thead = `
     <tr>
-      <th>client_type</th>
-      <th>client_name</th>
-      <th>is_enabled</th>
-      <th>sort</th>
-      <th>min_version</th>
-      <th>action</th>
+      <th>客户端标识</th>
+      <th>客户端名称</th>
+      <th>是否启用</th>
+      <th>排序</th>
+      <th>最低版本</th>
+      <th>操作</th>
     </tr>`;
 
   const body = rows.map((item, idx) => {
@@ -606,7 +606,7 @@ function renderBlacklistEditor(rows, activeType = 'ip') {
       </tr>
     `;
 
-    return `<div class="table-wrap"><table><thead><tr><th>ID</th><th>IP</th><th>remark</th><th>enabled</th><th>action</th></tr></thead><tbody>${createRow}${body}</tbody></table></div>`;
+    return `<div class="table-wrap"><table><thead><tr><th>ID</th><th>IP地址</th><th>备注</th><th>是否启用</th><th>操作</th></tr></thead><tbody>${createRow}${body}</tbody></table></div>`;
   };
 
   const renderUaTable = () => {
@@ -632,7 +632,7 @@ function renderBlacklistEditor(rows, activeType = 'ip') {
       </tr>
     `;
 
-    return `<div class="table-wrap"><table><thead><tr><th>ID</th><th>ua_hash</th><th>ua_raw</th><th>remark</th><th>enabled</th><th>action</th></tr></thead><tbody>${createRow}${body}</tbody></table></div>`;
+    return `<div class="table-wrap"><table><thead><tr><th>ID</th><th>UA哈希</th><th>原始UA</th><th>备注</th><th>是否启用</th><th>操作</th></tr></thead><tbody>${createRow}${body}</tbody></table></div>`;
   };
 
   const tabs = `

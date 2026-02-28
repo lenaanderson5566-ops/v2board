@@ -14,6 +14,7 @@ use App\Models\ServerGroup;
 use App\Models\UserConnectionLog;
 use App\Models\UserOnlineSnapshot;
 use App\Models\RiskSetting;
+use App\Models\StatServer;
 use App\Services\RiskLogService;
 use App\Services\ClientStrategyService;
 use App\Services\RiskBlacklistService;
@@ -41,9 +42,12 @@ class LogController extends Controller
             $activeUsers = (clone $activeBuilder)->distinct('user_id')->count('user_id');
             $activeHits = (clone $activeBuilder)->count();
 
-            $trafficBuilder = SubscribeLog::query()->where('created_at', '>=', $cutoff);
-            $trafficUp = (int) (clone $trafficBuilder)->sum('traffic_u');
-            $trafficDown = (int) (clone $trafficBuilder)->sum('traffic_d');
+            $trafficRecordAtStart = strtotime(date('Y-m-d', $cutoff));
+            $trafficBuilder = StatServer::query()
+                ->where('record_type', 'd')
+                ->where('record_at', '>=', $trafficRecordAtStart);
+            $trafficUp = (int) (clone $trafficBuilder)->sum('u');
+            $trafficDown = (int) (clone $trafficBuilder)->sum('d');
 
             $topUa = SubscribeLog::query()
                 ->selectRaw('user_agent, COUNT(*) as hits')

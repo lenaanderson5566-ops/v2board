@@ -856,3 +856,16 @@ CREATE TABLE `v2_server_v2node` (
 
 ALTER TABLE `v2_server_route`
 CHANGE `action_value` `action_value` text NULL AFTER `action`;
+CREATE TABLE IF NOT EXISTS `v2_plan_translation` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `plan_id` int(11) NOT NULL,
+  `locale` varchar(16) NOT NULL,
+  `name` varchar(255) DEFAULT NULL,
+  `content` text,
+  `created_at` int(11) NOT NULL,
+  `updated_at` int(11) NOT NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `idx_plan_locale_unique` (`plan_id`,`locale`),
+  KEY `idx_locale` (`locale`),
+  CONSTRAINT `fk_plan_translation_plan` FOREIGN KEY (`plan_id`) REFERENCES `v2_plan` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;

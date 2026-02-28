@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Plan;
 use App\Models\User;
 use Illuminate\Http\Request;
+use App\Services\PlanTranslationService;
 use Illuminate\Support\Facades\DB;
 
 class PlanController extends Controller
@@ -30,6 +31,9 @@ class PlanController extends Controller
                 if ($plans[$k]->id === $counts[$kk]->plan_id) $plans[$k]->count = $counts[$kk]->count;
             }
         }
+        $translationService = new PlanTranslationService();
+        $translationService->translateCollection($plans, app()->getLocale());
+
         return response([
             'data' => $plans
         ]);

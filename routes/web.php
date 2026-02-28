@@ -3,17 +3,6 @@
 use App\Services\ThemeService;
 use Illuminate\Http\Request;
 
-/*
-|--------------------------------------------------------------------------
-| Web Routes
-|--------------------------------------------------------------------------
-|
-| Here is where you can register web routes for your application. These
-| routes are loaded by the RouteServiceProvider within a group which
-| contains the "web" middleware group. Now create something great!
-|
-*/
-
 Route::get('/', function (Request $request) {
     if (config('v2board.app_url') && config('v2board.safe_mode_enable', 0)) {
         if ($request->server('HTTP_HOST') !== parse_url(config('v2board.app_url'))['host']) {
@@ -37,8 +26,10 @@ Route::get('/', function (Request $request) {
     return view('theme::' . config('v2board.frontend_theme', 'default') . '.dashboard', $renderParams);
 });
 
-//TODO:: 兼容
-Route::get('/' . config('v2board.secure_path', config('v2board.frontend_admin_path', hash('crc32b', config('app.key')))), function () {
+$securePath = config('v2board.secure_path', config('v2board.frontend_admin_path', hash('crc32b', config('app.key'))));
+$opsPath = $securePath . '/ops-center';
+
+Route::get('/' . $securePath, function () use ($securePath) {
     return view('admin', [
         'title' => config('v2board.app_name', 'V2Board'),
         'theme_sidebar' => config('v2board.frontend_theme_sidebar', 'light'),
@@ -47,16 +38,40 @@ Route::get('/' . config('v2board.secure_path', config('v2board.frontend_admin_pa
         'background_url' => config('v2board.frontend_background_url'),
         'version' => config('app.version'),
         'logo' => config('v2board.logo'),
-        'secure_path' => config('v2board.secure_path', config('v2board.frontend_admin_path', hash('crc32b', config('app.key'))))
+        'secure_path' => $securePath
+    ]);
+});
+
+Route::get('/' . $opsPath, function () use ($securePath, $opsPath) {
+    return view('admin-extension', [
+        'secure_path' => $securePath,
+        'ops_path' => $opsPath
+    ]);
+});
+
+Route::get('/' . $opsPath . '/i18n', function () use ($securePath, $opsPath) {
+    return view('i18n-center', [
+        'secure_path' => $securePath,
+        'ops_path' => $opsPath
     ]);
 });
 
 
-Route::get('/' . config('v2board.risk_control_path', 'risk-control'), function () {
-    return view('risk', [
-        'title' => config('v2board.app_name', 'V2Board'),
-        'api_path' => config('v2board.risk_control_api_path', 'risk-control')
-    ]);
+
+Route::get('/' . $opsPath . '/overview', function () {
+    return view('ops.overview-center');
+});
+
+Route::get('/' . $opsPath . '/risk', function () {
+    return view('ops.risk-center');
+});
+
+Route::get('/' . $opsPath . '/client', function () {
+    return view('ops.client-center');
+});
+
+Route::get('/' . $opsPath . '/logs', function () {
+    return view('ops.log-center');
 });
 
 if (!empty(config('v2board.subscribe_path'))) {

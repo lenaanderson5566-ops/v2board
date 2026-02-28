@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Plan;
 use App\Models\User;
 use App\Services\PlanService;
+use App\Services\PlanTranslationService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
@@ -22,6 +23,9 @@ class PlanController extends Controller
             if ((!$plan->show && !$plan->renew) || (!$plan->show && $user->plan_id !== $plan->id)) {
                 abort(500, __('Subscription plan does not exist'));
             }
+            $translationService = new PlanTranslationService();
+            $translationService->translateSingle($plan, app()->getLocale());
+
             return response([
                 'data' => $plan
             ]);
@@ -36,6 +40,9 @@ class PlanController extends Controller
             if (!isset($counts[$plans[$k]->id])) continue;
             $plans[$k]->capacity_limit = $plans[$k]->capacity_limit - $counts[$plans[$k]->id]->count;
         }
+        $translationService = new PlanTranslationService();
+        $translationService->translateCollection($plans, app()->getLocale());
+
         return response([
             'data' => $plans
         ]);

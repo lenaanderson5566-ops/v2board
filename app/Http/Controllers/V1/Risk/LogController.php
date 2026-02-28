@@ -14,6 +14,7 @@ use App\Models\ServerGroup;
 use App\Models\UserConnectionLog;
 use App\Models\UserOnlineSnapshot;
 use App\Models\RiskSetting;
+use App\Models\StatServer;
 use App\Services\RiskLogService;
 use App\Services\ClientStrategyService;
 use App\Services\RiskBlacklistService;
@@ -27,26 +28,189 @@ class LogController extends Controller
     public function getOverview(Request $request)
     {
         $now = time();
+        $windows = [
+            'today' => ['label' => '当日', 'seconds' => 86400],
+            '7d' => ['label' => '近7天', 'seconds' => 7 * 86400],
+            '30d' => ['label' => '近30天', 'seconds' => 30 * 86400],
+        ];
 
-        $loginToday = LoginLog::query()->where('created_at', '>=', $now - 86400);
-        $subscribeToday = SubscribeLog::query()->where('created_at', '>=', $now - 86400);
+        $overview = [];
+        foreach ($windows as $key => $item) {
+            $cutoff = $now - $item['seconds'];
+
+            $activeBuilder = SubscribeLog::query()->where('created_at', '>=', $cutoff);
+            $activeUsers = (clone $activeBuilder)->distinct('user_id')->count('user_id');
+            $activeHits = (clone $activeBuilder)->count();
+
+            $trafficRecordAtStart = strtotime(date('Y-m-d', $cutoff));
+            $trafficBuilder = StatServer::query()
+                ->where('record_type', 'd')
+                ->where('record_at', '>=', $trafficRecordAtStart);
+            $trafficUp = (int) (clone $trafficBuilder)->sum('u');
+            $trafficDown = (int) (clone $trafficBuilder)->sum('d');
+
+            $topUa = SubscribeLog::query()
+                ->selectRaw('user_agent, COUNT(*) as hits')
+                ->where('created_at', '>=', $cutoff)
+                ->whereNotNull('user_agent')
+                ->where('user_agent', '<>', '')
+                ->groupBy('user_agent')
+                ->orderByDesc('hits')
+                ->get();
+
+            $topFlags = SubscribeLog::query()
+                ->selectRaw('client_type as flag, COUNT(*) as hits')
+                ->where('created_at', '>=', $cutoff)
+                ->whereNotNull('client_type')
+                ->where('client_type', '<>', '')
+                ->groupBy('client_type')
+                ->orderByDesc('hits')
+                ->get();
+
+            $ruleHitBuilder = RiskRuleHit::query()->where('hit_at', '>=', $cutoff);
+            $blockedBuilder = (clone $ruleHitBuilder)->whereIn('status', ['blocked', 'block', 'deny', 'rejected']);
+            $blockedHits = (clone $blockedBuilder)->count();
+            $totalRuleHits = (clone $ruleHitBuilder)->count();
+            $totalRuleUsers = (clone $ruleHitBuilder)->distinct('user_id')->count('user_id');
+            $blockedUsers = (clone $blockedBuilder)->distinct('user_id')->count('user_id');
+
+            $overview[$key] = [
+                'label' => $item['label'],
+                'active_users' => [
+                    'users' => $activeUsers,
+                    'hits' => $activeHits,
+                ],
+                'traffic' => [
+                    'up_bytes' => $trafficUp,
+                    'down_bytes' => $trafficDown,
+                    'total_bytes' => $trafficUp + $trafficDown,
+                ],
+                'ua_top' => $topUa,
+                'flag_top' => $topFlags,
+                'risk_result' => [
+                    'blocked_hits' => $blockedHits,
+                    'blocked_users' => $blockedUsers,
+                    'pass_hits' => max($totalRuleHits - $blockedHits, 0),
+                    'pass_users' => max($totalRuleUsers - $blockedUsers, 0),
+                    'blocked_rate' => $this->percent($totalRuleHits, $blockedHits),
+                ],
+            ];
+        }
+
+
+        $cutoff24h = $now - 86400;
+        $cutoff30d = $now - (30 * 86400);
+
+        $strategyMap = collect((new ClientStrategyService())->getStrategies())
+            ->mapWithKeys(function ($item) {
+                $row = is_array($item) ? $item : $item->toArray();
+                $type = strtolower(trim((string) ($row['client_type'] ?? '')));
+                if (!$type) {
+                    return [];
+                }
+                $name = trim((string) ($row['client_name'] ?? ''));
+                return [$type => ($name ?: $type)];
+            })->toArray();
+
+        $flag24hMap = SubscribeLog::query()
+            ->selectRaw('LOWER(TRIM(client_type)) as client_type, COUNT(*) as hits_24h')
+            ->where('created_at', '>=', $cutoff24h)
+            ->whereNotNull('client_type')
+            ->where('client_type', '<>', '')
+            ->groupBy(DB::raw('LOWER(TRIM(client_type))'))
+            ->pluck('hits_24h', 'client_type')
+            ->toArray();
+
+        $flag30dRows = SubscribeLog::query()
+            ->selectRaw('LOWER(TRIM(client_type)) as client_type, COUNT(*) as hits_30d')
+            ->where('created_at', '>=', $cutoff30d)
+            ->whereNotNull('client_type')
+            ->where('client_type', '<>', '')
+            ->groupBy(DB::raw('LOWER(TRIM(client_type))'))
+            ->orderByDesc('hits_30d')
+            ->get();
+
+        $flagClientRanking = $flag30dRows->map(function ($row) use ($flag24hMap, $strategyMap) {
+            $type = strtolower(trim((string) $row->client_type));
+            $displayType = urldecode($type);
+            $displayName = $strategyMap[$type] ?? ucfirst($displayType);
+            return [
+                'client_type' => $displayType,
+                'client_name' => $displayName,
+                'hits_24h' => (int) ($flag24hMap[$type] ?? 0),
+                'hits_30d' => (int) ($row->hits_30d ?? 0),
+            ];
+        })->values();
+
+        $ua24hMap = SubscribeLog::query()
+            ->selectRaw('LOWER(TRIM(client_type)) as client_type, user_agent, COUNT(*) as hits_24h')
+            ->where('created_at', '>=', $cutoff24h)
+            ->whereNotNull('client_type')
+            ->where('client_type', '<>', '')
+            ->whereNotNull('user_agent')
+            ->where('user_agent', '<>', '')
+            ->groupBy(DB::raw('LOWER(TRIM(client_type))'), 'user_agent')
+            ->get()
+            ->mapWithKeys(function ($row) {
+                $key = strtolower(trim((string) $row->client_type)) . '||' . trim((string) $row->user_agent);
+                return [$key => (int) ($row->hits_24h ?? 0)];
+            })
+            ->toArray();
+
+        $ua30dRows = SubscribeLog::query()
+            ->selectRaw('LOWER(TRIM(client_type)) as client_type, user_agent, COUNT(*) as hits_30d')
+            ->where('created_at', '>=', $cutoff30d)
+            ->whereNotNull('client_type')
+            ->where('client_type', '<>', '')
+            ->whereNotNull('user_agent')
+            ->where('user_agent', '<>', '')
+            ->groupBy(DB::raw('LOWER(TRIM(client_type))'), 'user_agent')
+            ->orderBy(DB::raw('LOWER(TRIM(client_type))'))
+            ->orderByDesc('hits_30d')
+            ->get();
+
+        $uaRawDetails30d = [];
+        foreach ($ua30dRows as $row) {
+            $type = strtolower(trim((string) $row->client_type));
+            if (!isset($uaRawDetails30d[$type])) {
+                $uaRawDetails30d[$type] = [
+                    'client_type' => urldecode($type),
+                    'client_name' => $strategyMap[$type] ?? ucfirst(urldecode($type)),
+                    'ua_rows' => [],
+                ];
+            }
+            $ua = trim((string) $row->user_agent);
+            $k = $type . '||' . $ua;
+            $uaRawDetails30d[$type]['ua_rows'][] = [
+                'user_agent' => $ua,
+                'hits_24h' => (int) ($ua24hMap[$k] ?? 0),
+                'hits_30d' => (int) ($row->hits_30d ?? 0),
+            ];
+        }
+        $uaRawDetails30d = array_values($uaRawDetails30d);
 
         return response([
             'data' => [
-                'login_total_24h' => (clone $loginToday)->count(),
-                'login_failed_24h' => (clone $loginToday)->where('is_success', 0)->count(),
-                'login_failed_rate_24h' => $this->percent(
-                    (clone $loginToday)->count(),
-                    (clone $loginToday)->where('is_success', 0)->count()
-                ),
-                'subscribe_total_24h' => (clone $subscribeToday)->count(),
-                'subscribe_failed_24h' => (clone $subscribeToday)->where('status', 'failed')->count(),
-                'subscribe_failed_rate_24h' => $this->percent(
-                    (clone $subscribeToday)->count(),
-                    (clone $subscribeToday)->where('status', 'failed')->count()
-                ),
-                'rule_hit_total_24h' => RiskRuleHit::query()->where('hit_at', '>=', $now - 86400)->count(),
-                'latest_rule_hits' => RiskRuleHit::query()->orderBy('id', 'desc')->limit(10)->get(),
+                'windows' => $overview,
+                'metrics' => [
+                    'active_users' => [
+                        'today' => $overview['today']['active_users'] ?? ['users' => 0, 'hits' => 0],
+                        '7d' => $overview['7d']['active_users'] ?? ['users' => 0, 'hits' => 0],
+                        '30d' => $overview['30d']['active_users'] ?? ['users' => 0, 'hits' => 0],
+                    ],
+                    'traffic' => [
+                        'today' => $overview['today']['traffic'] ?? ['up_bytes' => 0, 'down_bytes' => 0, 'total_bytes' => 0],
+                        '7d' => $overview['7d']['traffic'] ?? ['up_bytes' => 0, 'down_bytes' => 0, 'total_bytes' => 0],
+                        '30d' => $overview['30d']['traffic'] ?? ['up_bytes' => 0, 'down_bytes' => 0, 'total_bytes' => 0],
+                    ],
+                    'risk_result' => [
+                        'today' => $overview['today']['risk_result'] ?? [],
+                        '7d' => $overview['7d']['risk_result'] ?? [],
+                        '30d' => $overview['30d']['risk_result'] ?? [],
+                    ],
+                ],
+                'flag_client_ranking' => $flagClientRanking,
+                'ua_raw_details_30d' => $uaRawDetails30d,
             ]
         ]);
     }
@@ -381,14 +545,47 @@ class LogController extends Controller
     }
 
 
-    public function getBlacklists(Request $request)
+    public function getIpBlacklists(Request $request)
     {
         return response([
-            'data' => (new RiskBlacklistService())->fetch()
+            'data' => $this->fetchBlacklistsByType('ip')
         ]);
     }
 
-    public function updateBlacklist(Request $request)
+    public function getUaBlacklists(Request $request)
+    {
+        return response([
+            'data' => $this->fetchBlacklistsByType('ua_hash')
+        ]);
+    }
+
+    public function updateIpBlacklist(Request $request)
+    {
+        return $this->handleBlacklistUpdate($request, 'ip');
+    }
+
+    public function updateUaBlacklist(Request $request)
+    {
+        return $this->handleBlacklistUpdate($request, 'ua_hash');
+    }
+
+    public function deleteIpBlacklist(Request $request)
+    {
+        return $this->handleBlacklistDelete($request, 'ip:');
+    }
+
+    public function deleteUaBlacklist(Request $request)
+    {
+        return $this->handleBlacklistDelete($request, 'ua_hash:');
+    }
+
+    private function fetchBlacklistsByType(string $type)
+    {
+        $rows = (new RiskBlacklistService())->fetch();
+        return collect($rows)->where('type', $type)->values();
+    }
+
+    private function handleBlacklistUpdate(Request $request, string $forceType)
     {
         $rawItems = $request->input('items');
         if (is_null($rawItems)) {
@@ -403,17 +600,24 @@ class LogController extends Controller
             if (!is_array($item)) {
                 abort(422, 'each item must be an object');
             }
-            if (empty($item['type']) || !is_string($item['type'])) {
-                abort(422, 'type is required');
+            $item['type'] = $forceType;
+            if (array_key_exists('value', $item) && !is_null($item['value']) && !is_string($item['value'])) {
+                abort(422, 'value must be string');
             }
-            if (empty($item['value']) || !is_string($item['value'])) {
-                abort(422, 'value is required');
+            if (!array_key_exists('value', $item)) {
+                $item['value'] = '';
             }
             if (array_key_exists('remark', $item) && !is_null($item['remark']) && !is_string($item['remark'])) {
                 abort(422, 'remark must be string');
             }
             if (array_key_exists('ua_raw', $item) && !is_null($item['ua_raw']) && !is_string($item['ua_raw'])) {
                 abort(422, 'ua_raw must be string');
+            }
+            if ($item['type'] === 'ua_hash' && empty(trim((string) $item['value'])) && empty(trim((string) ($item['ua_raw'] ?? '')))) {
+                abort(422, 'ua_raw is required when value is empty');
+            }
+            if ($item['type'] === 'ip' && empty(trim((string) $item['value']))) {
+                abort(422, 'value is required');
             }
             if (array_key_exists('is_enabled', $item)) {
                 $enabled = filter_var($item['is_enabled'], FILTER_VALIDATE_BOOLEAN, FILTER_NULL_ON_FAILURE);
@@ -422,7 +626,6 @@ class LogController extends Controller
                 }
                 $item['is_enabled'] = $enabled;
             }
-            $item['type'] = strtolower($item['type']);
             $items[] = $item;
         }
 
@@ -431,11 +634,14 @@ class LogController extends Controller
         ]);
     }
 
-    public function deleteBlacklist(Request $request)
+    private function handleBlacklistDelete(Request $request, string $prefix)
     {
         $id = (string) $request->input('id', '');
         if (!$id) {
             abort(422, 'id is required');
+        }
+        if (strpos($id, $prefix) !== 0) {
+            abort(422, "id must be {$prefix}*");
         }
 
         return response([

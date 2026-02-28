@@ -24,6 +24,9 @@ class AdminRoute
             $router->post('/plan/drop', 'V1\\Admin\\PlanController@drop');
             $router->post('/plan/update', 'V1\\Admin\\PlanController@update');
             $router->post('/plan/sort', 'V1\\Admin\\PlanController@sort');
+            $router->get ('/ops/i18n/plan/locales', 'V1\Admin\PlanI18nController@locales');
+            $router->get ('/ops/i18n/plan/fetch', 'V1\Admin\PlanI18nController@fetch');
+            $router->post('/ops/i18n/plan/save', 'V1\Admin\PlanI18nController@save');
             // Server
             $router->get ('/server/group/fetch', 'V1\\Admin\\Server\\GroupController@fetch');
             $router->post('/server/group/save', 'V1\\Admin\\Server\\GroupController@save');

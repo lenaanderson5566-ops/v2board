@@ -455,6 +455,9 @@ class LogController extends Controller
         if ($request->filled('rule_key')) {
             $builder->where('rule_key', $request->input('rule_key'));
         }
+        if ($request->filled('risk_level')) {
+            $builder->where('risk_level', $request->input('risk_level'));
+        }
         if ($request->filled('email')) {
             $builder->where('email', 'like', '%' . $request->input('email') . '%');
         }

@@ -93,6 +93,12 @@
 
         .rule-input, .rule-select, .rule-textarea { width: 100%; box-sizing: border-box; font-size: 12px; border: 1px solid var(--border); border-radius: 6px; padding: 6px; }
         .rule-textarea { min-height: 72px; }
+        .risk-badge { display:inline-flex; align-items:center; justify-content:center; min-width:52px; border-radius:999px; padding:2px 8px; font-size:11px; font-weight:700; border:1px solid transparent; }
+        .risk-badge.high { color:#991b1b; background:#fee2e2; border-color:#fecaca; }
+        .risk-badge.medium { color:#92400e; background:#fef3c7; border-color:#fde68a; }
+        .risk-badge.low { color:#166534; background:#dcfce7; border-color:#bbf7d0; }
+        .kv-list { margin:0; padding-left:16px; color:#4b5563; line-height:1.55; }
+        .payload-pre { margin:0; white-space:pre-wrap; word-break:break-word; font-family:ui-monospace,SFMono-Regular,Menlo,monospace; font-size:11px; line-height:1.4; color:#374151; }
 
         @media (max-width: 1100px) {
             .layout { flex-direction: column; }
@@ -902,7 +908,7 @@ async function convertRowUaToHash(idx) {
 
 
 const logFilters = {
-  ruleHits: { scene: '', rule_key: '', email: '', ip: '' },
+  ruleHits: { scene: '', rule_key: '', risk_level: '', email: '', ip: '' },
   onlineUsers: { email: '', ip: '' },
   userUsage: { email: '' },
   connectionLogs: { user_id: '', ip: '' },
@@ -929,11 +935,12 @@ function buildFilterBar(items, applyFn, resetFn) {
 function applyRuleHitsFilter(){
   logFilters.ruleHits.scene = document.getElementById('f_rule_scene').value.trim();
   logFilters.ruleHits.rule_key = document.getElementById('f_rule_key').value.trim();
+  logFilters.ruleHits.risk_level = document.getElementById('f_rule_risk_level').value.trim();
   logFilters.ruleHits.email = document.getElementById('f_rule_email').value.trim();
   logFilters.ruleHits.ip = document.getElementById('f_rule_ip').value.trim();
   fetchRuleHits(null, 1);
 }
-function resetRuleHitsFilter(){ logFilters.ruleHits = { scene:'', rule_key:'', email:'', ip:'' }; fetchRuleHits(null, 1); }
+function resetRuleHitsFilter(){ logFilters.ruleHits = { scene:'', rule_key:'', risk_level:'', email:'', ip:'' }; fetchRuleHits(null, 1); }
 
 function applyOnlineUsersFilter(){
   logFilters.onlineUsers.email = document.getElementById('f_online_email').value.trim();
@@ -972,16 +979,82 @@ function applySubscribeLogsFilter(){
 }
 function resetSubscribeLogsFilter(){ logFilters.subscribeLogs = { email:'', ip:'', client_type:'', status:'' }; fetchSubscribeLogs(null, 1); }
 
+function buildRuleHitFilterBar() {
+  return `<div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:0 0 10px;">
+    <select id="f_rule_scene" class="rule-select" style="width:180px;">
+      <option value="" ${!logFilters.ruleHits.scene ? 'selected' : ''}>场景(全部)</option>
+      <option value="login" ${logFilters.ruleHits.scene === 'login' ? 'selected' : ''}>login</option>
+      <option value="subscribe" ${logFilters.ruleHits.scene === 'subscribe' ? 'selected' : ''}>subscribe</option>
+    </select>
+    <input id="f_rule_key" class="rule-input" style="width:220px;" placeholder="规则键(rule_key)" value="${String(logFilters.ruleHits.rule_key || '').replace(/"/g, '&quot;')}">
+    <select id="f_rule_risk_level" class="rule-select" style="width:180px;">
+      <option value="" ${!logFilters.ruleHits.risk_level ? 'selected' : ''}>风险等级(全部)</option>
+      <option value="high" ${logFilters.ruleHits.risk_level === 'high' ? 'selected' : ''}>high</option>
+      <option value="medium" ${logFilters.ruleHits.risk_level === 'medium' ? 'selected' : ''}>medium</option>
+      <option value="low" ${logFilters.ruleHits.risk_level === 'low' ? 'selected' : ''}>low</option>
+    </select>
+    <input id="f_rule_email" class="rule-input" style="width:220px;" placeholder="邮箱" value="${String(logFilters.ruleHits.email || '').replace(/"/g, '&quot;')}">
+    <input id="f_rule_ip" class="rule-input" style="width:180px;" placeholder="IP" value="${String(logFilters.ruleHits.ip || '').replace(/"/g, '&quot;')}">
+    <button onclick="applyRuleHitsFilter()">筛选</button><button onclick="resetRuleHitsFilter()">重置</button>
+  </div>`;
+}
+
+function renderRuleHitsTable(rows, pagerHtml, topHtml = '') {
+  const esc = (v) => String(v ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+  const levelText = { high: '高', medium: '中', low: '低' };
+  const formatTs = (v) => {
+    const n = Number(v);
+    if (!Number.isFinite(n) || n < 1000000000 || n > 4102444800) return v ?? '';
+    const d = new Date(n * 1000);
+    const p = (x) => String(x).padStart(2, '0');
+    return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}:${p(d.getSeconds())}`;
+  };
+
+  if (!rows || !rows.length) {
+    document.getElementById('result').innerHTML = `${topHtml}${pagerHtml}<p style="color:#6b7280;">暂无规则命中记录</p>${pagerHtml}`;
+    return;
+  }
+
+  const stats = { high: 0, medium: 0, low: 0 };
+  rows.forEach(row => { const level = String(row.risk_level || '').toLowerCase(); if (stats[level] !== undefined) stats[level] += 1; });
+  const statHtml = `<div style="display:flex;gap:10px;flex-wrap:wrap;margin:0 0 8px;">
+    <div class="card" style="min-width:150px;"><div class="label">当前页命中数</div><div class="value">${rows.length}</div></div>
+    <div class="card" style="min-width:150px;"><div class="label">高风险</div><div class="value" style="color:#b91c1c;">${stats.high}</div></div>
+    <div class="card" style="min-width:150px;"><div class="label">中风险</div><div class="value" style="color:#b45309;">${stats.medium}</div></div>
+    <div class="card" style="min-width:150px;"><div class="label">低风险</div><div class="value" style="color:#15803d;">${stats.low}</div></div>
+  </div>`;
+
+  const thead = `<tr>
+    <th>命中时间</th><th>场景</th><th>规则键</th><th>风险等级</th><th>用户ID</th><th>邮箱</th><th>IP</th><th>客户端</th><th>状态</th><th>原因</th><th>触发明细</th>
+  </tr>`;
+  const tbody = rows.map((row, idx) => {
+    const level = String(row.risk_level || '').toLowerCase();
+    const payload = row.payload && typeof row.payload === 'object' ? row.payload : {};
+    const payloadText = Object.keys(payload).length ? JSON.stringify(payload, null, 2) : '-';
+    return `<tr style="background:${idx % 2 ? '#fcfcfd' : '#fff'};">
+      <td>${esc(formatTs(row.hit_at || row.created_at || ''))}</td>
+      <td>${esc(row.scene || '')}</td>
+      <td><code>${esc(row.rule_key || '')}</code></td>
+      <td><span class="risk-badge ${esc(level)}">${esc(levelText[level] || level || '-')}</span></td>
+      <td>${esc(row.user_id ?? '-')}</td>
+      <td>${esc(row.email || '-')}</td>
+      <td>${esc(row.ip || '-')}</td>
+      <td>${esc(row.client_type || '-')}</td>
+      <td>${esc(row.status || '-')}</td>
+      <td><div style="max-width:260px;word-break:break-word;">${esc(row.reason || '-')}</div></td>
+      <td><pre class="payload-pre">${esc(payloadText)}</pre></td>
+    </tr>`;
+  }).join('');
+
+  const table = `<div class="table-wrap"><table><thead>${thead}</thead><tbody>${tbody}</tbody></table></div>`;
+  document.getElementById('result').innerHTML = `${topHtml}${statHtml}${pagerHtml}${table}${pagerHtml}`;
+}
+
 async function fetchRuleHits(btn, current = 1, pageSize = 50) {
   setView(btn, '规则命中记录');
-  const bar = buildFilterBar([
-    { id:'f_rule_scene', placeholder:'场景(scene)', value:logFilters.ruleHits.scene },
-    { id:'f_rule_key', placeholder:'规则键(rule_key)', value:logFilters.ruleHits.rule_key },
-    { id:'f_rule_email', placeholder:'邮箱', value:logFilters.ruleHits.email },
-    { id:'f_rule_ip', placeholder:'IP', value:logFilters.ruleHits.ip },
-  ], 'applyRuleHitsFilter', 'resetRuleHitsFilter');
+  const bar = buildRuleHitFilterBar();
   const { rows, total } = await requestWithMeta(`/rule-hit/fetch?page_size=${pageSize}&current=${current}${toQuery(logFilters.ruleHits)}`);
-  renderTable(rows, buildPager(current, pageSize, total, 'fetchRuleHitsPage'), { hiddenKeys: ['created_at', 'updated_at'], topHtml: bar });
+  renderRuleHitsTable(rows, buildPager(current, pageSize, total, 'fetchRuleHitsPage'), bar);
 }
 function fetchRuleHitsPage(current, pageSize){ fetchRuleHits(null, current, pageSize); }
 

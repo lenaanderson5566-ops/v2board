@@ -37,18 +37,23 @@
     <aside class="sidebar">
         <h2>管理补充中心</h2>
         <p>V2Board Admin Extension</p>
-        <div class="menu">
-            <button data-key="risk-control" onclick="openModule('risk-control', this)">风控后台</button>
-            <button data-key="plan-i18n" onclick="openModule('plan-i18n', this)">套餐国际化设置</button>
-        </div>
     </aside>
     <main class="main">
         <div class="header">
-            <h3 id="title">风控后台</h3>
-            <p id="desc">用于风控规则、订阅行为和连接日志分析。</p>
+            <h3>管理补充中心</h3>
+            <p>统一入口，点击进入具体模块。</p>
         </div>
         <div class="frame-wrap">
-            <iframe id="contentFrame" referrerpolicy="same-origin"></iframe>
+            <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:12px;">
+                <button onclick="openModule('risk-control')" style="text-align:left;padding:14px;border:1px solid #d1d5db;border-radius:10px;background:#fff;cursor:pointer;">
+                    <div style="font-weight:700;margin-bottom:6px;">风控后台</div>
+                    <div style="color:#6b7280;font-size:12px;">用于风控规则、订阅行为和连接日志分析。</div>
+                </button>
+                <button onclick="openModule('plan-i18n')" style="text-align:left;padding:14px;border:1px solid #d1d5db;border-radius:10px;background:#fff;cursor:pointer;">
+                    <div style="font-weight:700;margin-bottom:6px;">套餐国际化设置</div>
+                    <div style="color:#6b7280;font-size:12px;">配置套餐名称与内容的多语言翻译。</div>
+                </button>
+            </div>
         </div>
     </main>
 </div>
@@ -85,22 +90,12 @@ function getAuthorization() {
     return '';
 }
 
-function setActive(key) {
-    document.querySelectorAll('.menu button').forEach(btn => {
-        btn.classList.toggle('active', btn.dataset.key === key);
-    });
-}
-
-function openModule(key, btn) {
+function openModule(key) {
     const item = modules[key];
     if (!item) return;
-    setActive(key);
-    document.getElementById('title').textContent = item.title;
-    document.getElementById('desc').textContent = item.desc;
     const auth = encodeURIComponent(getAuthorization());
     const url = auth ? `${item.path}?auth_data=${auth}` : item.path;
-    document.getElementById('contentFrame').src = url;
-    location.hash = key;
+    window.location.href = url;
 }
 
 function verifyAdmin() {
@@ -122,8 +117,6 @@ function verifyAdmin() {
     if (!ok) return;
 
     document.getElementById('layout').style.display = 'flex';
-    const key = (location.hash || '#risk-control').replace('#', '');
-    openModule(modules[key] ? key : 'risk-control');
 })();
 </script>
 </body>

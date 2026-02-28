@@ -27,10 +27,6 @@
 <p class="muted">复用管理员 API。请先在当前浏览器登录后台后再使用（默认读取 localStorage.token）。</p>
 
 <div class="row">
-    <label>Token:</label>
-    <input id="token" style="min-width:420px" />
-</div>
-<div class="row">
     <label>套餐:</label>
     <select id="plan"></select>
     <label>语言:</label>
@@ -62,9 +58,6 @@ const securePath = @json($secure_path);
 const apiPrefix = `/api/v1/${securePath}`;
 
 function getAuthorization() {
-    const custom = document.getElementById('token').value.trim();
-    if (custom) return custom;
-
     const fromAuthorization = window.localStorage.getItem('authorization');
     if (fromAuthorization) return fromAuthorization;
 
@@ -121,7 +114,6 @@ async function init() {
     }
 
     document.getElementById('content').style.display = 'block';
-    document.getElementById('token').value = window.localStorage.getItem('authorization') || window.localStorage.getItem('token') || '';
     const [plans, locales] = await Promise.all([
         api(`${apiPrefix}/plan/fetch`),
         api(`${apiPrefix}/plan/i18n/locales`)

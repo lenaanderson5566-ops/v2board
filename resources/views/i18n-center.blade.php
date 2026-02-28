@@ -121,7 +121,7 @@ async function init() {
     document.getElementById('contentArea').style.display = 'block';
     const [plans, locales] = await Promise.all([
         api(`${apiPrefix}/plan/fetch`),
-        api(`${apiPrefix}/plan/i18n/locales`)
+        api(`${apiPrefix}/ops/i18n/plan/locales`)
     ]);
 
     document.getElementById('plan').innerHTML = plans.map(p => `<option value="${p.id}">${p.id} - ${escapeHtml(p.name)}</option>`).join('');
@@ -137,7 +137,7 @@ async function loadTranslation() {
     try {
         const planId = parseInt(document.getElementById('plan').value, 10);
         const locale = document.getElementById('locale').value;
-        const data = await api(`${apiPrefix}/plan/i18n/fetch?plan_id=${planId}`);
+        const data = await api(`${apiPrefix}/ops/i18n/plan/fetch?plan_id=${planId}`);
         const row = data.translations[locale] || {};
         document.getElementById('defaultName').textContent = data.default.name || '';
         document.getElementById('defaultContent').textContent = data.default.content || '';
@@ -155,7 +155,7 @@ async function saveTranslation() {
         const locale = document.getElementById('locale').value;
         const name = document.getElementById('name').value;
         const content = document.getElementById('content_text').value;
-        await api(`${apiPrefix}/plan/i18n/save`, 'POST', { plan_id, locale, name, content });
+        await api(`${apiPrefix}/ops/i18n/plan/save`, 'POST', { plan_id, locale, name, content });
         setStatus('保存成功', 'ok');
     } catch (e) {
         setStatus(e.message, 'err');

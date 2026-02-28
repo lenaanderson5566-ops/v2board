@@ -251,7 +251,7 @@ function renderRiskSettings(data) {
 
 async function fetchRiskSettings(btn) {
   setView(btn, '风控后台配置');
-  const data = await request('/settings/fetch');
+  const data = await request('/risk/settings/fetch');
   if (data) renderRiskSettings(data);
 }
 
@@ -266,7 +266,7 @@ async function saveRiskSettings() {
     alert('保留时长必须在 1~365 天');
     return;
   }
-  const data = await request('/settings/update', {
+  const data = await request('/risk/settings/update', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
@@ -282,7 +282,7 @@ async function saveRiskSettings() {
 
 async function fetchRules(btn) {
   setView(btn, '规则配置');
-  const rows = await request('/rule/fetch');
+  const rows = await request('/risk/rule/fetch');
   if (rows) renderRuleEditor(rows);
 }
 
@@ -314,7 +314,7 @@ async function saveRule(idx, ruleKey) {
     return;
   }
 
-  const rows = await request('/rule/update', {
+  const rows = await request('/risk/rule/update', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(payload),
@@ -340,7 +340,7 @@ async function saveAllRules() {
       return;
     }
 
-    const rows = await request('/rule/update', {
+    const rows = await request('/risk/rule/update', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload),
@@ -359,7 +359,7 @@ async function resetRule(ruleKey) {
   const isAll = !ruleKey;
   if (!confirm(isAll ? '确认恢复全部规则到默认？' : `确认将规则 ${ruleKey} 恢复为默认？`)) return;
 
-  const rows = await request('/rule/reset', {
+  const rows = await request('/risk/rule/reset', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(ruleKey ? { rule_key: ruleKey } : {}),
@@ -479,13 +479,13 @@ function renderClientStrategyEditor(rows) {
 
 async function fetchClientStrategyOverview(btn) {
   setView(btn, '客户端策略总览');
-  const rows = await request('/client-strategy/fetch');
+  const rows = await request('/client/strategy/fetch');
   if (rows) renderClientStrategyOverview(rows);
 }
 
 async function fetchClientStrategies(btn) {
   setView(btn, '客户端策略管理');
-  const rows = await request('/client-strategy/fetch');
+  const rows = await request('/client/strategy/fetch');
   if (rows) renderClientStrategyEditor(rows);
 }
 
@@ -498,7 +498,7 @@ async function saveClientStrategy(idx, clientType) {
     min_version: document.getElementById(`client_min_version_${idx}`).value,
   };
 
-  const rows = await request('/client-strategy/update', {
+  const rows = await request('/client/strategy/update', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(payload),
@@ -515,7 +515,7 @@ async function deleteClientStrategy(clientType) {
     return;
   }
 
-  const rows = await request('/client-strategy/delete', {
+  const rows = await request('/client/strategy/delete', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ client_type: clientType }),
@@ -599,7 +599,7 @@ function renderBlacklistEditor(rows, activeType = 'ip') {
 
 async function fetchBlacklists(btn) {
   setView(btn, '黑名单管理');
-  const rows = await request('/blacklist/fetch');
+  const rows = await request('/risk/blacklist/fetch');
   if (rows) renderBlacklistEditor(rows, 'ip');
 }
 
@@ -617,7 +617,7 @@ async function createBlacklist(type) {
     is_enabled: document.getElementById('bl_ua_new_enabled').checked,
   };
 
-  const rows = await request('/blacklist/update', {
+  const rows = await request('/risk/blacklist/update', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(payload),
@@ -642,7 +642,7 @@ async function saveBlacklist(type, idx) {
     is_enabled: document.getElementById(`bl_ua_enabled_${idx}`).checked,
   };
 
-  const rows = await request('/blacklist/update', {
+  const rows = await request('/risk/blacklist/update', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(payload),
@@ -655,7 +655,7 @@ async function saveBlacklist(type, idx) {
 
 async function deleteBlacklist(id) {
   if (!confirm(`确定删除黑名单记录 ${id} 吗？`)) return;
-  const rows = await request('/blacklist/delete', {
+  const rows = await request('/risk/blacklist/delete', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ id }),
@@ -843,7 +843,7 @@ function renderRuleHitsTable(rows, pagerHtml, topHtml = '') {
 async function fetchRuleHits(btn, current = 1, pageSize = 50) {
   setView(btn, '规则命中记录');
   const bar = buildRuleHitFilterBar();
-  const { rows, total } = await requestWithMeta(`/rule-hit/fetch?page_size=${pageSize}&current=${current}${toQuery(logFilters.ruleHits)}`);
+  const { rows, total } = await requestWithMeta(`/log/rule-hit/fetch?page_size=${pageSize}&current=${current}${toQuery(logFilters.ruleHits)}`);
   renderRuleHitsTable(rows, buildPager(current, pageSize, total, 'fetchRuleHitsPage'), bar);
 }
 function fetchRuleHitsPage(current, pageSize){ fetchRuleHits(null, current, pageSize); }
@@ -854,7 +854,7 @@ async function fetchOnlineUsers(btn, current = 1, pageSize = 200) {
     { id:'f_online_email', placeholder:'邮箱(前端过滤)', value:logFilters.onlineUsers.email },
     { id:'f_online_ip', placeholder:'在线IP(前端过滤)', value:logFilters.onlineUsers.ip },
   ], 'applyOnlineUsersFilter', 'resetOnlineUsersFilter');
-  const { rows, total } = await requestWithMeta(`/online-user/fetch?page_size=${pageSize}&current=${current}`);
+  const { rows, total } = await requestWithMeta(`/risk/online-user/fetch?page_size=${pageSize}&current=${current}`);
   const filtered = rows.filter(r => (!logFilters.onlineUsers.email || String(r.email || '').includes(logFilters.onlineUsers.email)) && (!logFilters.onlineUsers.ip || String(r.online_ip || '').includes(logFilters.onlineUsers.ip)));
   renderTable(filtered, buildPager(current, pageSize, total, 'fetchOnlineUsersPage'), { hiddenKeys: ['created_at', 'updated_at'], topHtml: bar });
 }
@@ -863,7 +863,7 @@ function fetchOnlineUsersPage(current, pageSize){ fetchOnlineUsers(null, current
 async function fetchUserUsage(btn, current = 1, pageSize = 200) {
   setView(btn, '用户画像总览');
   const bar = buildFilterBar([{ id:'f_usage_email', placeholder:'邮箱', value:logFilters.userUsage.email }], 'applyUserUsageFilter', 'resetUserUsageFilter');
-  const { rows, total } = await requestWithMeta(`/user-usage/fetch?page_size=${pageSize}&current=${current}${toQuery(logFilters.userUsage)}`);
+  const { rows, total } = await requestWithMeta(`/risk/user-usage/fetch?page_size=${pageSize}&current=${current}${toQuery(logFilters.userUsage)}`);
   renderTable(rows, buildPager(current, pageSize, total, 'fetchUserUsagePage'), { hiddenKeys: ['created_at', 'updated_at'], topHtml: bar });
 }
 function fetchUserUsagePage(current, pageSize){ fetchUserUsage(null, current, pageSize); }
@@ -874,7 +874,7 @@ async function fetchUserConnectionLogs(btn, current = 1, pageSize = 200) {
     { id:'f_conn_user_id', placeholder:'用户ID', value:logFilters.connectionLogs.user_id },
     { id:'f_conn_ip', placeholder:'IP', value:logFilters.connectionLogs.ip },
   ], 'applyConnectionLogsFilter', 'resetConnectionLogsFilter');
-  const { rows, total } = await requestWithMeta(`/user-connection-log/fetch?page_size=${pageSize}&current=${current}${toQuery(logFilters.connectionLogs)}`);
+  const { rows, total } = await requestWithMeta(`/log/user-connection/fetch?page_size=${pageSize}&current=${current}${toQuery(logFilters.connectionLogs)}`);
   renderTable(rows, buildPager(current, pageSize, total, 'fetchUserConnectionLogsPage'), { hiddenKeys: ['created_at', 'updated_at'], topHtml: bar });
 }
 function fetchUserConnectionLogsPage(current, pageSize){ fetchUserConnectionLogs(null, current, pageSize); }
@@ -886,7 +886,7 @@ async function fetchLoginLogs(btn, current = 1, pageSize = 50) {
     <input id="f_login_ip" class="rule-input" style="width:180px;" placeholder="IP" value="${String(logFilters.loginLogs.ip || '').replace(/"/g, '&quot;')}">
     <input id="f_login_success" class="rule-input" style="width:180px;" placeholder="成功状态(0/1)" value="${String(logFilters.loginLogs.is_success || '').replace(/"/g, '&quot;')}">
     <button onclick="applyLoginLogsFilter()">筛选</button><button onclick="resetLoginLogsFilter()">重置</button></div>`;
-  const { rows, total } = await requestWithMeta(`/login-log/fetch?page_size=${pageSize}&current=${current}${toQuery(logFilters.loginLogs)}`);
+  const { rows, total } = await requestWithMeta(`/log/login/fetch?page_size=${pageSize}&current=${current}${toQuery(logFilters.loginLogs)}`);
   renderTable(rows, buildPager(current, pageSize, total, 'fetchLoginLogsPage'), { hiddenKeys: ['updated_at'], topHtml: bar });
 }
 function fetchLoginLogsPage(current, pageSize){ fetchLoginLogs(null, current, pageSize); }
@@ -899,7 +899,7 @@ async function fetchSubscribeLogs(btn, current = 1, pageSize = 50) {
     { id:'f_sub_client', placeholder:'客户端标识', value:logFilters.subscribeLogs.client_type },
     { id:'f_sub_status', placeholder:'状态(success/failed)', value:logFilters.subscribeLogs.status },
   ], 'applySubscribeLogsFilter', 'resetSubscribeLogsFilter');
-  const { rows, total } = await requestWithMeta(`/subscribe-log/fetch?page_size=${pageSize}&current=${current}${toQuery(logFilters.subscribeLogs)}`);
+  const { rows, total } = await requestWithMeta(`/log/subscribe/fetch?page_size=${pageSize}&current=${current}${toQuery(logFilters.subscribeLogs)}`);
   renderTable(rows, buildPager(current, pageSize, total, 'fetchSubscribeLogsPage'), { hiddenKeys: ['updated_at'], topHtml: bar });
 }
 function fetchSubscribeLogsPage(current, pageSize){ fetchSubscribeLogs(null, current, pageSize); }

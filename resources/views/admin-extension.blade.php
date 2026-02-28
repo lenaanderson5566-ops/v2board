@@ -50,15 +50,15 @@
         </div>
 
         <section id="panel-risk" class="panel active">
-            <iframe src="/{{ $ops_path }}/risk-center"></iframe>
+            <iframe src="/{{ $ops_path }}/risk"></iframe>
         </section>
 
         <section id="panel-client" class="panel">
-            <iframe src="/{{ $ops_path }}/client-center"></iframe>
+            <iframe src="/{{ $ops_path }}/client"></iframe>
         </section>
 
         <section id="panel-logs" class="panel">
-            <iframe src="/{{ $ops_path }}/log-center"></iframe>
+            <iframe src="/{{ $ops_path }}/logs"></iframe>
         </section>
 
         <section id="panel-i18n" class="panel">

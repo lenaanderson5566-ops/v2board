@@ -46,6 +46,8 @@
             <button class="menu-btn" data-center="overview" onclick="switchCenter('overview')">运维概览</button>
             <div id="submenu-overview" class="submenu">
                 <button class="sub-btn" title="查看运维关键指标看板" data-key="overview:dashboard" data-src="/{{ $ops_path }}/overview?embedded=1&section=overview" onclick="openSub(this)">运维概览看板</button>
+                <button class="sub-btn" title="查看当前在线IP用户情况" data-key="overview:online" data-src="/{{ $ops_path }}/overview?embedded=1&section=online" onclick="openSub(this)">实时在线IP</button>
+                <button class="sub-btn" title="查看用户使用画像与活跃特征" data-key="overview:profile" data-src="/{{ $ops_path }}/overview?embedded=1&section=profile" onclick="openSub(this)">用户画像总览</button>
             </div>
 
             <button class="menu-btn" data-center="risk" onclick="switchCenter('risk')">风控中心</button>
@@ -53,8 +55,6 @@
                 <button class="sub-btn" title="调整风控核心阈值配置" data-key="risk:settings" data-src="/{{ $ops_path }}/risk?embedded=1&section=settings" onclick="openSub(this)">风控参数配置</button>
                 <button class="sub-btn" title="管理风控规则与触发条件" data-key="risk:rules" data-src="/{{ $ops_path }}/risk?embedded=1&section=rules" onclick="openSub(this)">风控规则配置</button>
                 <button class="sub-btn" title="维护风险黑名单" data-key="risk:blacklist" data-src="/{{ $ops_path }}/risk?embedded=1&section=blacklist" onclick="openSub(this)">风控黑名单</button>
-                <button class="sub-btn" title="实时查看在线IP分布" data-key="risk:online" data-src="/{{ $ops_path }}/risk?embedded=1&section=online" onclick="openSub(this)">实时在线IP</button>
-                <button class="sub-btn" title="查看用户使用画像" data-key="risk:profile" data-src="/{{ $ops_path }}/risk?embedded=1&section=profile" onclick="openSub(this)">用户画像总览</button>
             </div>
 
             <button class="menu-btn" data-center="client" onclick="switchCenter('client')">客户端中心</button>

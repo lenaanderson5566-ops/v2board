@@ -100,12 +100,12 @@ async function resetRule(ruleKey) { const rows = await request('/risk/rule/reset
 function buildBlacklistRow(item = {}) {
   const rowId = item.id || '';
   const type = String(item.type || 'ip').toLowerCase();
-  return `<tr><td>${rowId || '-'}</td><td><select id="blacklist_type_${rowId}" class="rule-select"><option value="ip" ${type==='ip'?'selected':''}>IP</option><option value="ua" ${type==='ua'?'selected':''}>UA</option></select></td><td><input id="blacklist_value_${rowId}" class="rule-input" value="${String(item.value || '').replace(/"/g, '&quot;')}"></td><td><input id="blacklist_ua_${rowId}" class="rule-input" value="${String(item.ua_raw || '').replace(/"/g, '&quot;')}"></td><td><input id="blacklist_remark_${rowId}" class="rule-input" value="${String(item.remark || '').replace(/"/g, '&quot;')}"></td><td><input id="blacklist_enabled_${rowId}" type="checkbox" ${Number(item.is_enabled) === 0 ? '' : 'checked'}></td><td><button onclick="saveBlacklist('${rowId}')">保存</button><button style="background:#dc2626;margin-left:6px;" onclick="deleteBlacklist('${rowId}')">删除</button></td></tr>`;
+  return `<tr><td>${rowId || '-'}</td><td><select id="blacklist_type_${rowId}" class="rule-select"><option value="ip" ${type==='ip'?'selected':''}>IP</option><option value="ua_hash" ${type==='ua_hash'?'selected':''}>UA</option></select></td><td><input id="blacklist_value_${rowId}" class="rule-input" value="${String(item.value || '').replace(/"/g, '&quot;')}"></td><td><input id="blacklist_ua_${rowId}" class="rule-input" value="${String(item.ua_raw || '').replace(/"/g, '&quot;')}"></td><td><input id="blacklist_remark_${rowId}" class="rule-input" value="${String(item.remark || '').replace(/"/g, '&quot;')}"></td><td><input id="blacklist_enabled_${rowId}" type="checkbox" ${Number(item.is_enabled) === 0 ? '' : 'checked'}></td><td><button onclick="saveBlacklist('${rowId}')">保存</button><button style="background:#dc2626;margin-left:6px;" onclick="deleteBlacklist('${rowId}')">删除</button></td></tr>`;
 }
 
 function renderBlacklistEditor(rows) {
   const body = (rows || []).map((item) => buildBlacklistRow(item)).join('');
-  document.getElementById('result').innerHTML = `<div style="display:flex;gap:8px;align-items:center;margin-bottom:10px;"><button onclick="appendBlacklistForm()">新增黑名单</button></div><div class="table-wrap"><table><thead><tr><th>ID</th><th>类型</th><th>值</th><th>UA原文</th><th>备注</th><th>启用</th><th>操作</th></tr></thead><tbody id="blacklist_table_body">${body}</tbody></table></div>`;
+  document.getElementById('result').innerHTML = `<div style="display:flex;gap:8px;align-items:center;margin-bottom:10px;"><button onclick="appendBlacklistForm()">新增黑名单</button></div><div class="table-wrap"><table><thead><tr><th>ID</th><th>类型</th><th>值(IP/UA Hash)</th><th>UA原文(自动转Hash)</th><th>备注</th><th>启用</th><th>操作</th></tr></thead><tbody id="blacklist_table_body">${body}</tbody></table></div>`;
 }
 
 function appendBlacklistForm() {
@@ -114,7 +114,7 @@ function appendBlacklistForm() {
   const tempId = `new_${Date.now()}`;
   const row = document.createElement('tr');
   row.id = `row_${tempId}`;
-  row.innerHTML = `<td>新</td><td><select id="blacklist_type_${tempId}" class="rule-select"><option value="ip">IP</option><option value="ua">UA</option></select></td><td><input id="blacklist_value_${tempId}" class="rule-input" placeholder="请输入IP或UA关键字"></td><td><input id="blacklist_ua_${tempId}" class="rule-input" placeholder="可选：UA原文"></td><td><input id="blacklist_remark_${tempId}" class="rule-input" placeholder="备注"></td><td><input id="blacklist_enabled_${tempId}" type="checkbox" checked></td><td><button onclick="saveBlacklist('${tempId}')">保存</button><button style="background:#6b7280;margin-left:6px;" onclick="removeTempBlacklist('${tempId}')">取消</button></td>`;
+  row.innerHTML = `<td>新</td><td><select id="blacklist_type_${tempId}" class="rule-select"><option value="ip">IP</option><option value="ua_hash">UA</option></select></td><td><input id="blacklist_value_${tempId}" class="rule-input" placeholder="IP或UA Hash(可留空由UA原文自动计算)"></td><td><input id="blacklist_ua_${tempId}" class="rule-input" placeholder="可选：UA原文"></td><td><input id="blacklist_remark_${tempId}" class="rule-input" placeholder="备注"></td><td><input id="blacklist_enabled_${tempId}" type="checkbox" checked></td><td><button onclick="saveBlacklist('${tempId}')">保存</button><button style="background:#6b7280;margin-left:6px;" onclick="removeTempBlacklist('${tempId}')">取消</button></td>`;
   tableBody.prepend(row);
 }
 
@@ -131,8 +131,15 @@ async function saveBlacklist(rowId) {
     remark: (document.getElementById(`blacklist_remark_${rowId}`)?.value || '').trim(),
     is_enabled: !!document.getElementById(`blacklist_enabled_${rowId}`)?.checked,
   };
-  if (!payload.value) {
-    alert('黑名单值不能为空');
+  if (payload.type === 'ua_hash' && payload.ua_raw) {
+    payload.value = '';
+  }
+  if (payload.type === 'ip' && !payload.value) {
+    alert('IP黑名单值不能为空');
+    return;
+  }
+  if (payload.type === 'ua_hash' && !payload.value && !payload.ua_raw) {
+    alert('UA黑名单请填写UA原文或Hash');
     return;
   }
   const rows = await request('/risk/blacklist/update', {

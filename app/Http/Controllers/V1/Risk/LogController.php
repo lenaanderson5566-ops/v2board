@@ -566,14 +566,27 @@ class LogController extends Controller
             if (empty($item['type']) || !is_string($item['type'])) {
                 abort(422, 'type is required');
             }
-            if (empty($item['value']) || !is_string($item['value'])) {
-                abort(422, 'value is required');
+            $item['type'] = strtolower(trim((string) $item['type']));
+            if ($item['type'] === 'ua') {
+                $item['type'] = 'ua_hash';
+            }
+            if (array_key_exists('value', $item) && !is_null($item['value']) && !is_string($item['value'])) {
+                abort(422, 'value must be string');
+            }
+            if (!array_key_exists('value', $item)) {
+                $item['value'] = '';
             }
             if (array_key_exists('remark', $item) && !is_null($item['remark']) && !is_string($item['remark'])) {
                 abort(422, 'remark must be string');
             }
             if (array_key_exists('ua_raw', $item) && !is_null($item['ua_raw']) && !is_string($item['ua_raw'])) {
                 abort(422, 'ua_raw must be string');
+            }
+            if ($item['type'] === 'ua_hash' && empty(trim((string) $item['value'])) && empty(trim((string) ($item['ua_raw'] ?? '')))) {
+                abort(422, 'ua_raw is required when value is empty');
+            }
+            if ($item['type'] === 'ip' && empty(trim((string) $item['value']))) {
+                abort(422, 'value is required');
             }
             if (array_key_exists('is_enabled', $item)) {
                 $enabled = filter_var($item['is_enabled'], FILTER_VALIDATE_BOOLEAN, FILTER_NULL_ON_FAILURE);
@@ -582,7 +595,6 @@ class LogController extends Controller
                 }
                 $item['is_enabled'] = $enabled;
             }
-            $item['type'] = strtolower($item['type']);
             $items[] = $item;
         }
 

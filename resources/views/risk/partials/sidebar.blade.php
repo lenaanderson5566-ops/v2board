@@ -1,13 +1,20 @@
 <aside class="sidebar">
         
+        <div class="menu-section" data-group="overview">
+            <div class="menu-group-title">运维概览</div>
+            <div class="menu-list">
+                <button class="menu-btn" data-section="overview" onclick="fetchRiskOverview(this)">运维概览看板</button>
+                <button class="menu-btn" data-section="overview" onclick="fetchOnlineUsers(this)">实时在线IP</button>
+                <button class="menu-btn" data-section="overview" onclick="fetchUserUsage(this)">用户画像总览</button>
+            </div>
+        </div>
+
         <div class="menu-section" data-group="risk">
             <div class="menu-group-title">风控中心</div>
             <div class="menu-list">
                 <button class="menu-btn" data-section="risk" onclick="fetchRiskSettings(this)">风控参数配置</button>
                 <button class="menu-btn" data-section="risk" onclick="fetchRules(this)">风控规则配置</button>
                 <button class="menu-btn" data-section="risk" onclick="fetchBlacklists(this)">风控黑名单</button>
-                <button class="menu-btn" data-section="risk" onclick="fetchOnlineUsers(this)">实时在线IP</button>
-                <button class="menu-btn" data-section="risk" onclick="fetchUserUsage(this)">用户画像总览</button>
             </div>
         </div>
 

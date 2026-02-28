@@ -108,18 +108,19 @@ class LogController extends Controller
             abort(422, 'thresholds must be an array');
         }
         if (is_array($thresholds)) {
-            $allowedThresholdKeys = array_keys($default['thresholds']);
-            foreach ($thresholds as $thresholdKey => $thresholdValue) {
-                if (!in_array($thresholdKey, $allowedThresholdKeys, true)) {
-                    abort(422, 'thresholds contains unknown key: ' . $thresholdKey);
-                }
-                if (filter_var($thresholdValue, FILTER_VALIDATE_INT) === false) {
-                    abort(422, 'thresholds.' . $thresholdKey . ' must be integer');
-                }
-                if ((int) $thresholdValue < 0) {
-                    abort(422, 'thresholds.' . $thresholdKey . ' must be >= 0');
-                }
-                $thresholds[$thresholdKey] = (int) $thresholdValue;
+            $thresholds = $this->normalizeRuleThresholds($default['thresholds'], $thresholds);
+        }
+
+        $mergedExistingThresholds = $this->normalizeRuleThresholds(
+            $default['thresholds'],
+            ($existing && is_array($existing->thresholds)) ? $existing->thresholds : []
+        );
+
+        $enabled = null;
+        if (array_key_exists('enabled', $params)) {
+            $enabled = filter_var($params['enabled'], FILTER_VALIDATE_BOOLEAN, FILTER_NULL_ON_FAILURE);
+            if (is_null($enabled)) {
+                abort(422, 'enabled must be boolean');
             }
         }
 
@@ -133,10 +134,10 @@ class LogController extends Controller
                     : ($existing->description ?? $default['description']),
                 'risk_level' => $params['risk_level'] ?? ($existing->risk_level ?? $default['risk_level']),
                 'thresholds' => is_null($thresholds)
-                    ? (($existing && is_array($existing->thresholds)) ? array_merge($default['thresholds'], $existing->thresholds) : $default['thresholds'])
-                    : array_merge($default['thresholds'], $thresholds),
-                'enabled' => array_key_exists('enabled', $params)
-                    ? (int) (bool) $params['enabled']
+                    ? $mergedExistingThresholds
+                    : $thresholds,
+                'enabled' => !is_null($enabled)
+                    ? (int) $enabled
                     : (($existing && !is_null($existing->enabled)) ? (int) $existing->enabled : 1),
                 'sort' => $params['sort'] ?? ($existing->sort ?? $default['sort']),
             ]
@@ -768,6 +769,31 @@ class LogController extends Controller
         ]);
     }
 
+
+
+    private function normalizeRuleThresholds(array $defaultThresholds, array $thresholds): array
+    {
+        $allowedThresholdKeys = array_keys($defaultThresholds);
+        $normalized = [];
+
+        foreach ($thresholds as $thresholdKey => $thresholdValue) {
+            if (!in_array($thresholdKey, $allowedThresholdKeys, true)) {
+                abort(422, 'thresholds contains unknown key: ' . $thresholdKey);
+            }
+            if (filter_var($thresholdValue, FILTER_VALIDATE_INT) === false) {
+                abort(422, 'thresholds.' . $thresholdKey . ' must be integer');
+            }
+
+            $thresholdValue = (int) $thresholdValue;
+            if ($thresholdValue < 0) {
+                abort(422, 'thresholds.' . $thresholdKey . ' must be >= 0');
+            }
+
+            $normalized[$thresholdKey] = $thresholdValue;
+        }
+
+        return array_merge($defaultThresholds, $normalized);
+    }
 
     private function getConnectionLogRetentionDays(): int
     {

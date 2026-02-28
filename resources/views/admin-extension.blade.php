@@ -30,8 +30,6 @@
         .card h3 { margin:0 0 8px; font-size:16px; }
         .card p { margin:0; color:#6b7280; font-size:12px; line-height:1.6; }
 
-        .module-title { margin: 0 0 10px; font-size: 18px; }
-        .module-desc { margin: 0 0 12px; color:#6b7280; font-size: 13px; }
         iframe { width: 100%; min-height: 82vh; border: 1px solid #d1d5db; border-radius: 10px; background: #fff; }
 
         .placeholder { border:1px dashed #cbd5e1; border-radius:10px; background:#f8fafc; padding:16px; color:#475569; }
@@ -81,24 +79,20 @@
         </section>
 
         <section id="panel-risk" class="panel">
-            <h3 class="module-title">风控中心</h3>
-            <p class="module-desc">该页面已集成进运营中台，沿用原风控模块能力。</p>
             <iframe id="riskFrame" src="/{{ $ops_path }}/risk-control"></iframe>
         </section>
 
         <section id="panel-i18n" class="panel">
-            <h3 class="module-title">国际化中心</h3>
-            <p class="module-desc">包含套餐翻译等国际化能力，避免功能分散入口。</p>
             <iframe id="i18nFrame" src="/{{ $ops_path }}/i18n"></iframe>
         </section>
 
         <section id="panel-mail" class="panel">
-            <h3 class="module-title">营销邮件（占位）</h3>
+            <h3>营销邮件（占位）</h3>
             <div class="placeholder">后续将在此集成营销邮件活动配置、模板管理、分群发送与数据回流看板。</div>
         </section>
 
         <section id="panel-points" class="panel">
-            <h3 class="module-title">用户积分（占位）</h3>
+            <h3>用户积分（占位）</h3>
             <div class="placeholder">后续将在此集成积分发放规则、积分流水、兑换与风控联动能力。</div>
         </section>
     </div>

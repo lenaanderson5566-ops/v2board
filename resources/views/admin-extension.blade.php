@@ -14,17 +14,18 @@
 
         .layout { display:flex; min-height:100vh; }
         .sidebar {
-            width:240px;
-            flex:0 0 240px;
+            width:260px;
+            flex:0 0 260px;
             background:#111827;
             color:#e5e7eb;
-            padding:20px 16px;
+            padding:18px 14px;
             border-right:1px solid #1f2937;
+            overflow-y:auto;
         }
         .brand { color:#fff; font-size:18px; font-weight:700; margin:0 0 14px; }
         .menu-group-title { font-size:11px; color:#9ca3af; margin:0 0 8px; letter-spacing:.4px; text-transform:uppercase; }
         .menu-list { display:flex; flex-direction:column; gap:8px; }
-        .menu-btn {
+        .menu-btn, .sub-btn {
             width:100%;
             text-align:left;
             border:1px solid #374151;
@@ -34,13 +35,17 @@
             padding:9px 10px;
             font-size:12px;
             line-height:1.2;
-            height:36px;
+            min-height:36px;
             display:flex;
             align-items:center;
             cursor:pointer;
         }
-        .menu-btn:hover { background:#2563eb; border-color:#2563eb; }
-        .menu-btn.active { background:#2563eb; border-color:#2563eb; color:#fff; }
+        .menu-btn:hover, .sub-btn:hover { background:#2563eb; border-color:#2563eb; }
+        .menu-btn.active, .sub-btn.active { background:#2563eb; border-color:#2563eb; color:#fff; }
+
+        .submenu { display:none; margin:2px 0 10px 8px; padding-left:10px; border-left:1px dashed #374151; }
+        .submenu.active { display:block; }
+        .submenu .sub-btn { margin-top:6px; font-size:12px; background:#172033; }
 
         .content { flex:1; padding:12px; }
         .hero { background:#fff; border:1px solid #e5e7eb; border-radius:12px; padding:12px 14px; margin-bottom:10px; }
@@ -72,31 +77,48 @@
         <h2 class="brand">运营中台</h2>
         <div class="menu-group-title">模块导航</div>
         <div class="menu-list">
-            <button class="menu-btn active" data-tab="risk" onclick="switchTab('risk')">风控中心</button>
-            <button class="menu-btn" data-tab="client" onclick="switchTab('client')">客户端中心</button>
-            <button class="menu-btn" data-tab="logs" onclick="switchTab('logs')">日志中心</button>
-            <button class="menu-btn" data-tab="i18n" onclick="switchTab('i18n')">国际化中心</button>
-            <button class="menu-btn" data-tab="marketing" onclick="switchTab('marketing')">营销中心</button>
+            <button class="menu-btn" data-center="risk" onclick="switchCenter('risk')">风控中心</button>
+            <div id="submenu-risk" class="submenu">
+                <button class="sub-btn" data-src="/{{ $ops_path }}/risk?embedded=1&section=settings" onclick="openSub(this)">风控参数配置</button>
+                <button class="sub-btn" data-src="/{{ $ops_path }}/risk?embedded=1&section=rules" onclick="openSub(this)">风控规则配置</button>
+                <button class="sub-btn" data-src="/{{ $ops_path }}/risk?embedded=1&section=blacklist" onclick="openSub(this)">风控黑名单</button>
+                <button class="sub-btn" data-src="/{{ $ops_path }}/risk?embedded=1&section=online" onclick="openSub(this)">实时在线IP</button>
+                <button class="sub-btn" data-src="/{{ $ops_path }}/risk?embedded=1&section=profile" onclick="openSub(this)">用户画像总览</button>
+            </div>
+
+            <button class="menu-btn" data-center="client" onclick="switchCenter('client')">客户端中心</button>
+            <div id="submenu-client" class="submenu">
+                <button class="sub-btn" data-src="/{{ $ops_path }}/client?embedded=1&section=client_overview" onclick="openSub(this)">客户端策略总览</button>
+                <button class="sub-btn" data-src="/{{ $ops_path }}/client?embedded=1&section=client_manage" onclick="openSub(this)">客户端策略管理</button>
+            </div>
+
+            <button class="menu-btn" data-center="logs" onclick="switchCenter('logs')">日志中心</button>
+            <div id="submenu-logs" class="submenu">
+                <button class="sub-btn" data-src="/{{ $ops_path }}/logs?embedded=1&section=log_connection" onclick="openSub(this)">连接日志</button>
+                <button class="sub-btn" data-src="/{{ $ops_path }}/logs?embedded=1&section=log_login" onclick="openSub(this)">登录日志</button>
+                <button class="sub-btn" data-src="/{{ $ops_path }}/logs?embedded=1&section=log_subscribe" onclick="openSub(this)">订阅日志</button>
+                <button class="sub-btn" data-src="/{{ $ops_path }}/logs?embedded=1&section=log_hit" onclick="openSub(this)">命中日志</button>
+            </div>
+
+            <button class="menu-btn" data-center="i18n" onclick="switchCenter('i18n')">国际化中心</button>
+            <div id="submenu-i18n" class="submenu">
+                <button class="sub-btn" data-src="/{{ $ops_path }}/i18n?embedded=1&tab=plan" onclick="openSub(this)">套餐翻译</button>
+                <button class="sub-btn" data-src="/{{ $ops_path }}/i18n?embedded=1&tab=copy" onclick="openSub(this)">站点文案翻译</button>
+            </div>
+
+            <button class="menu-btn" data-center="marketing" onclick="switchCenter('marketing')">营销中心</button>
+            <div id="submenu-marketing" class="submenu">
+                <button class="sub-btn" onclick="openMarketing(this)">营销邮件（占位）</button>
+                <button class="sub-btn" onclick="openMarketing(this)">用户积分（占位）</button>
+            </div>
         </div>
     </aside>
 
     <main class="content">
         <div class="hero"><h2>V2Board 运营中台</h2></div>
 
-        <section id="panel-risk" class="panel active">
-            <iframe src="/{{ $ops_path }}/risk?embedded=1"></iframe>
-        </section>
-
-        <section id="panel-client" class="panel">
-            <iframe src="/{{ $ops_path }}/client?embedded=1"></iframe>
-        </section>
-
-        <section id="panel-logs" class="panel">
-            <iframe src="/{{ $ops_path }}/logs?embedded=1"></iframe>
-        </section>
-
-        <section id="panel-i18n" class="panel">
-            <iframe src="/{{ $ops_path }}/i18n?embedded=1"></iframe>
+        <section id="panel-frame" class="panel active">
+            <iframe id="centerFrame" src=""></iframe>
         </section>
 
         <section id="panel-marketing" class="panel">
@@ -129,16 +151,41 @@ function verifyAdmin() {
     return true;
 }
 
-function switchTab(tab) {
-    document.querySelectorAll('.menu-btn').forEach(btn => btn.classList.toggle('active', btn.dataset.tab === tab));
-    document.querySelectorAll('.panel').forEach(panel => panel.classList.remove('active'));
-    const target = document.getElementById(`panel-${tab}`);
-    if (target) target.classList.add('active');
+function switchCenter(center) {
+    document.querySelectorAll('.menu-btn').forEach(btn => btn.classList.toggle('active', btn.dataset.center === center));
+    document.querySelectorAll('.submenu').forEach(el => el.classList.remove('active'));
+    const submenu = document.getElementById(`submenu-${center}`);
+    if (submenu) submenu.classList.add('active');
+
+    const firstSub = submenu ? submenu.querySelector('.sub-btn') : null;
+    if (firstSub) {
+        if (center === 'marketing') {
+            openMarketing(firstSub);
+        } else {
+            openSub(firstSub);
+        }
+    }
+}
+
+function openSub(btn) {
+    document.querySelectorAll('.sub-btn').forEach(el => el.classList.remove('active'));
+    btn.classList.add('active');
+    document.getElementById('panel-marketing').classList.remove('active');
+    document.getElementById('panel-frame').classList.add('active');
+    document.getElementById('centerFrame').src = btn.dataset.src || '';
+}
+
+function openMarketing(btn) {
+    document.querySelectorAll('.sub-btn').forEach(el => el.classList.remove('active'));
+    btn.classList.add('active');
+    document.getElementById('panel-frame').classList.remove('active');
+    document.getElementById('panel-marketing').classList.add('active');
 }
 
 (function init() {
     if (!verifyAdmin()) return;
     document.getElementById('content').style.display = 'flex';
+    switchCenter('risk');
 })();
 </script>
 </body>

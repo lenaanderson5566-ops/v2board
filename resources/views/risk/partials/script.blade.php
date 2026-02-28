@@ -933,6 +933,25 @@ if (authorization) {
     sectionEl.style.display = hasVisibleButton ? '' : 'none';
   });
 
-  const firstVisible = Array.from(document.querySelectorAll('.menu-btn')).find((btn) => btn.style.display !== 'none');
-  if (firstVisible) firstVisible.click();
+  const section = new URLSearchParams(window.location.search).get('section');
+  const sectionActions = {
+    settings: () => fetchRiskSettings(null),
+    rules: () => fetchRules(null),
+    blacklist: () => fetchBlacklists(null),
+    online: () => fetchOnlineUsers(null),
+    profile: () => fetchUserUsage(null),
+    client_overview: () => fetchClientStrategyOverview(null),
+    client_manage: () => fetchClientStrategies(null),
+    log_connection: () => fetchUserConnectionLogs(null),
+    log_login: () => fetchLoginLogs(null),
+    log_subscribe: () => fetchSubscribeLogs(null),
+    log_hit: () => fetchRuleHits(null),
+  };
+
+  if (section && sectionActions[section]) {
+    sectionActions[section]();
+  } else {
+    const firstVisible = Array.from(document.querySelectorAll('.menu-btn')).find((btn) => btn.style.display !== 'none');
+    if (firstVisible) firstVisible.click();
+  }
 }

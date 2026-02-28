@@ -143,8 +143,10 @@ const securePath = @json($secure_path);
 const apiPrefix = `/api/v1/${securePath}`;
 
 function switchTab(tab) {
-    document.getElementById('tab-plan').classList.toggle('active', tab === 'plan');
-    document.getElementById('tab-copy').classList.toggle('active', tab === 'copy');
+    const tabPlan = document.getElementById('tab-plan');
+    const tabCopy = document.getElementById('tab-copy');
+    if (tabPlan) tabPlan.classList.toggle('active', tab === 'plan');
+    if (tabCopy) tabCopy.classList.toggle('active', tab === 'copy');
     document.getElementById('panel-plan').style.display = tab === 'plan' ? 'block' : 'none';
     document.getElementById('panel-copy').style.display = tab === 'copy' ? 'block' : 'none';
 }
@@ -193,7 +195,13 @@ async function init() {
 
     document.getElementById('plan').innerHTML = plans.map(p => `<option value="${p.id}">${p.id} - ${escapeHtml(p.name)}</option>`).join('');
     document.getElementById('locale').innerHTML = locales.map(l => `<option value="${l}">${l}</option>`).join('');
-    if (plans.length && locales.length) await loadTranslation();
+    const tab = new URLSearchParams(window.location.search).get('tab');
+    if (tab === 'copy') {
+        switchTab('copy');
+    } else {
+        switchTab('plan');
+        if (plans.length && locales.length) await loadTranslation();
+    }
 }
 
 function escapeHtml(str) {

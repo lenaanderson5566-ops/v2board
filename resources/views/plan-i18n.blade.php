@@ -22,7 +22,7 @@
     <a id="guestLoginLink" href="#" style="color:#2563eb;">前往管理员登录</a>
 </div>
 
-<div id="content" style="display:none;">
+<div id="contentArea" style="display:none;">
 <h2>套餐国际化管理（名称/内容）</h2>
 <p class="muted">复用管理员 API。请先在当前浏览器登录后台后再使用（默认读取 localStorage.token）。</p>
 
@@ -38,12 +38,12 @@
     <div><strong>默认名称</strong></div>
     <div id="defaultName" class="muted"></div>
     <div style="margin-top:10px"><strong>翻译名称</strong></div>
-    <input id="name" style="width:100%" />
+    <input id="name" style="width:100%" placeholder="请输入该语言的套餐名称" />
 
     <div style="margin-top:10px"><strong>默认内容</strong></div>
     <div id="defaultContent" class="muted"></div>
     <div style="margin-top:10px"><strong>翻译内容</strong></div>
-    <textarea id="content"></textarea>
+    <textarea id="content_text" placeholder="请输入该语言的套餐内容"></textarea>
 
     <div class="row" style="margin-top:10px">
         <button onclick="saveTranslation()">保存翻译</button>
@@ -113,7 +113,7 @@ async function init() {
         return;
     }
 
-    document.getElementById('content').style.display = 'block';
+    document.getElementById('contentArea').style.display = 'block';
     const [plans, locales] = await Promise.all([
         api(`${apiPrefix}/plan/fetch`),
         api(`${apiPrefix}/plan/i18n/locales`)
@@ -144,7 +144,7 @@ async function loadTranslation() {
         document.getElementById('defaultName').textContent = data.default.name || '';
         document.getElementById('defaultContent').textContent = data.default.content || '';
         document.getElementById('name').value = row.name || '';
-        document.getElementById('content').value = row.content || '';
+        document.getElementById('content_text').value = row.content || '';
         setStatus('已加载', 'ok');
     } catch (e) {
         setStatus(e.message, 'err');
@@ -156,7 +156,7 @@ async function saveTranslation() {
         const plan_id = parseInt(document.getElementById('plan').value, 10);
         const locale = document.getElementById('locale').value;
         const name = document.getElementById('name').value;
-        const content = document.getElementById('content').value;
+        const content = document.getElementById('content_text').value;
         await api(`${apiPrefix}/plan/i18n/save`, 'POST', { plan_id, locale, name, content });
         setStatus('保存成功', 'ok');
     } catch (e) {
@@ -166,14 +166,14 @@ async function saveTranslation() {
 
 async function clearTranslation() {
     document.getElementById('name').value = '';
-    document.getElementById('content').value = '';
+    document.getElementById('content_text').value = '';
     await saveTranslation();
 }
 
 function setStatus(text, cls) {
     const node = document.getElementById('status');
     node.textContent = text;
-    node.className = cls;
+    node.className = `muted ${cls}`;
 }
 
 init().catch((e) => setStatus(e.message, 'err'));

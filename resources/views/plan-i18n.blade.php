@@ -16,6 +16,13 @@
     </style>
 </head>
 <body>
+<div id="guestBlock" style="display:none;max-width:680px;margin:40px auto;padding:24px;background:#fff;border:1px solid #e5e7eb;border-radius:12px;">
+    <h3 style="margin-top:0;">请先登录管理员后台</h3>
+    <p style="color:#6b7280;line-height:1.7;">当前页面为套餐国际化设置，仅管理员可访问。</p>
+    <a id="guestLoginLink" href="#" style="color:#2563eb;">前往管理员登录</a>
+</div>
+
+<div id="content" style="display:none;">
 <h2>套餐国际化管理（名称/内容）</h2>
 <p class="muted">复用管理员 API。请先在当前浏览器登录后台后再使用（默认读取 localStorage.token）。</p>
 
@@ -48,6 +55,7 @@
         <span id="status" class="muted"></span>
     </div>
 </div>
+</div>
 
 <script>
 const securePath = @json($secure_path);
@@ -77,7 +85,38 @@ async function api(url, method = 'GET', body = null) {
     return json.data;
 }
 
+
+async function verifyAdmin() {
+    const token = getToken();
+    const loginUrl = `/${securePath}`;
+    const loginLink = document.getElementById('guestLoginLink');
+    loginLink.href = loginUrl;
+
+    if (!token) {
+        document.getElementById('guestBlock').style.display = 'block';
+        return false;
+    }
+
+    try {
+        const res = await fetch(`/api/v1/${securePath}/stat/getStat`, {
+            headers: { Authorization: token }
+        });
+        if (!res.ok) return false;
+        const json = await res.json();
+        return !!(json && json.data);
+    } catch (e) {
+        return false;
+    }
+}
+
 async function init() {
+    const ok = await verifyAdmin();
+    if (!ok) {
+        document.getElementById('guestBlock').style.display = 'block';
+        return;
+    }
+
+    document.getElementById('content').style.display = 'block';
     document.getElementById('token').value = localStorage.getItem('token') || '';
     const [plans, locales] = await Promise.all([
         api(`${apiPrefix}/plan/fetch`),

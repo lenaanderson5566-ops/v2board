@@ -37,8 +37,11 @@ Route::get('/', function (Request $request) {
     return view('theme::' . config('v2board.frontend_theme', 'default') . '.dashboard', $renderParams);
 });
 
+$securePath = config('v2board.secure_path', config('v2board.frontend_admin_path', hash('crc32b', config('app.key'))));
+$adminExtensionPath = $securePath . '/admin-extension';
+
 //TODO:: 兼容
-Route::get('/' . config('v2board.secure_path', config('v2board.frontend_admin_path', hash('crc32b', config('app.key')))), function () {
+Route::get('/' . $securePath, function () use ($securePath) {
     return view('admin', [
         'title' => config('v2board.app_name', 'V2Board'),
         'theme_sidebar' => config('v2board.frontend_theme_sidebar', 'light'),
@@ -47,14 +50,20 @@ Route::get('/' . config('v2board.secure_path', config('v2board.frontend_admin_pa
         'background_url' => config('v2board.frontend_background_url'),
         'version' => config('app.version'),
         'logo' => config('v2board.logo'),
-        'secure_path' => config('v2board.secure_path', config('v2board.frontend_admin_path', hash('crc32b', config('app.key'))))
+        'secure_path' => $securePath
     ]);
 });
 
+Route::get('/' . $adminExtensionPath, function () use ($securePath, $adminExtensionPath) {
+    return view('admin-extension', [
+        'secure_path' => $securePath,
+        'admin_extension_path' => $adminExtensionPath
+    ]);
+});
 
-Route::get('/' . config('v2board.secure_path', config('v2board.frontend_admin_path', hash('crc32b', config('app.key')))) . '/plan-i18n', function () {
+Route::get('/' . $adminExtensionPath . '/plan-i18n', function () use ($securePath) {
     return view('plan-i18n', [
-        'secure_path' => config('v2board.secure_path', config('v2board.frontend_admin_path', hash('crc32b', config('app.key'))))
+        'secure_path' => $securePath
     ]);
 });
 
@@ -65,7 +74,16 @@ $riskView = function () {
     ]);
 };
 
-Route::get('/' . config('v2board.secure_path', config('v2board.frontend_admin_path', hash('crc32b', config('app.key')))) . '/risk-control', $riskView);
+Route::get('/' . $adminExtensionPath . '/risk-control', $riskView);
+
+// legacy urls -> unified extension page
+Route::get('/' . $securePath . '/plan-i18n', function () use ($adminExtensionPath) {
+    return redirect('/' . $adminExtensionPath . '#plan-i18n');
+});
+
+Route::get('/' . $securePath . '/risk-control', function () use ($adminExtensionPath) {
+    return redirect('/' . $adminExtensionPath . '#risk-control');
+});
 
 if (!empty(config('v2board.subscribe_path'))) {
     Route::get(config('v2board.subscribe_path'), 'V1\\Client\\ClientController@subscribe')->middleware('client');

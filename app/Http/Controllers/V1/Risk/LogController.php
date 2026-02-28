@@ -545,64 +545,47 @@ class LogController extends Controller
     }
 
 
-    public function getBlacklists(Request $request)
-    {
-        return response([
-            'data' => (new RiskBlacklistService())->fetch()
-        ]);
-    }
-
     public function getIpBlacklists(Request $request)
     {
-        $rows = (new RiskBlacklistService())->fetch();
         return response([
-            'data' => collect($rows)->where('type', 'ip')->values()
+            'data' => $this->fetchBlacklistsByType('ip')
         ]);
     }
 
     public function getUaBlacklists(Request $request)
     {
-        $rows = (new RiskBlacklistService())->fetch();
         return response([
-            'data' => collect($rows)->where('type', 'ua_hash')->values()
+            'data' => $this->fetchBlacklistsByType('ua_hash')
         ]);
     }
 
     public function updateIpBlacklist(Request $request)
     {
-        $payload = $request->all();
-        $payload['type'] = 'ip';
-        $request->replace($payload);
-        return $this->updateBlacklist($request);
+        return $this->handleBlacklistUpdate($request, 'ip');
     }
 
     public function updateUaBlacklist(Request $request)
     {
-        $payload = $request->all();
-        $payload['type'] = 'ua_hash';
-        $request->replace($payload);
-        return $this->updateBlacklist($request);
+        return $this->handleBlacklistUpdate($request, 'ua_hash');
     }
 
     public function deleteIpBlacklist(Request $request)
     {
-        $id = (string) $request->input('id', '');
-        if (strpos($id, 'ip:') !== 0) {
-            abort(422, 'id must be ip:*');
-        }
-        return $this->deleteBlacklist($request);
+        return $this->handleBlacklistDelete($request, 'ip:');
     }
 
     public function deleteUaBlacklist(Request $request)
     {
-        $id = (string) $request->input('id', '');
-        if (strpos($id, 'ua_hash:') !== 0) {
-            abort(422, 'id must be ua_hash:*');
-        }
-        return $this->deleteBlacklist($request);
+        return $this->handleBlacklistDelete($request, 'ua_hash:');
     }
 
-    public function updateBlacklist(Request $request)
+    private function fetchBlacklistsByType(string $type)
+    {
+        $rows = (new RiskBlacklistService())->fetch();
+        return collect($rows)->where('type', $type)->values();
+    }
+
+    private function handleBlacklistUpdate(Request $request, string $forceType)
     {
         $rawItems = $request->input('items');
         if (is_null($rawItems)) {
@@ -617,13 +600,7 @@ class LogController extends Controller
             if (!is_array($item)) {
                 abort(422, 'each item must be an object');
             }
-            if (empty($item['type']) || !is_string($item['type'])) {
-                abort(422, 'type is required');
-            }
-            $item['type'] = strtolower(trim((string) $item['type']));
-            if ($item['type'] === 'ua') {
-                $item['type'] = 'ua_hash';
-            }
+            $item['type'] = $forceType;
             if (array_key_exists('value', $item) && !is_null($item['value']) && !is_string($item['value'])) {
                 abort(422, 'value must be string');
             }
@@ -657,11 +634,14 @@ class LogController extends Controller
         ]);
     }
 
-    public function deleteBlacklist(Request $request)
+    private function handleBlacklistDelete(Request $request, string $prefix)
     {
         $id = (string) $request->input('id', '');
         if (!$id) {
             abort(422, 'id is required');
+        }
+        if (strpos($id, $prefix) !== 0) {
+            abort(422, "id must be {$prefix}*");
         }
 
         return response([

@@ -49,19 +49,11 @@ Route::get('/' . $opsPath, function () use ($securePath, $opsPath) {
     ]);
 });
 
-Route::get('/' . $securePath . '/addon', function () use ($opsPath) {
-    return redirect('/' . $opsPath);
-});
-
 Route::get('/' . $opsPath . '/i18n', function () use ($securePath, $opsPath) {
     return view('i18n-center', [
         'secure_path' => $securePath,
         'ops_path' => $opsPath
     ]);
-});
-
-Route::get('/' . $opsPath . '/plan-i18n', function () use ($opsPath) {
-    return redirect('/' . $opsPath . '/i18n');
 });
 
 Route::get('/' . $opsPath . '/marketing-email', function () use ($opsPath) {
@@ -88,19 +80,6 @@ $riskView = function () {
 };
 
 Route::get('/' . $opsPath . '/risk-control', $riskView);
-
-// legacy urls -> unified ops center
-Route::get('/' . $securePath . '/plan-i18n', function () use ($opsPath) {
-    return redirect('/' . $opsPath . '/i18n');
-});
-
-Route::get('/' . $securePath . '/risk-control', function () use ($opsPath) {
-    return redirect('/' . $opsPath . '/risk-control');
-});
-
-Route::get('/' . $securePath . '/admin-extension', function () use ($opsPath) {
-    return redirect('/' . $opsPath);
-});
 
 if (!empty(config('v2board.subscribe_path'))) {
     Route::get(config('v2board.subscribe_path'), 'V1\\Client\\ClientController@subscribe')->middleware('client');

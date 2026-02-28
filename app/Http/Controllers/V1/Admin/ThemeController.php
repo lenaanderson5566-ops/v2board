@@ -37,7 +37,7 @@ class ThemeController extends Controller
         return response([
             'data' => [
                 'themes' => $themeConfigs,
-                'active' => config('v2board.frontend_theme', 'v2board')
+                'active' => (config('v2board.frontend_theme', 'v2board') === 'default' ? 'd1' : config('v2board.frontend_theme', 'v2board'))
             ]
         ]);
     }

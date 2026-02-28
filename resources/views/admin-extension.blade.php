@@ -13,19 +13,14 @@
         .brand { color:#fff; font-size:18px; font-weight:700; margin:0 0 14px; }
         .menu-group-title { font-size:11px; color:#9ca3af; margin:0 0 8px; letter-spacing:.4px; text-transform:uppercase; }
         .menu-list { display:flex; flex-direction:column; gap:8px; }
-        .menu-btn, .sub-btn, .recent-btn {
+        .menu-btn, .sub-btn {
             width:100%; text-align:left; border:1px solid #374151; background:#1f2937; color:#e5e7eb; border-radius:8px; padding:9px 10px; font-size:12px; min-height:36px; display:flex; align-items:center; cursor:pointer;
         }
-        .menu-btn:hover, .sub-btn:hover, .recent-btn:hover { background:#2563eb; border-color:#2563eb; }
+        .menu-btn:hover, .sub-btn:hover { background:#2563eb; border-color:#2563eb; }
         .menu-btn.active, .sub-btn.active { background:#2563eb; border-color:#2563eb; color:#fff; }
         .submenu { display:none; margin:2px 0 10px 8px; padding-left:10px; border-left:1px dashed #374151; }
         .submenu.active { display:block; }
         .submenu .sub-btn { margin-top:6px; font-size:12px; background:#172033; }
-        details.more { margin-top:6px; }
-        details.more summary { list-style:none; cursor:pointer; color:#9ca3af; font-size:12px; }
-        details.more[open] summary { color:#cbd5e1; }
-        .recent-box { margin-bottom:14px; }
-        .recent-btn { background:#172033; margin-top:6px; }
         .content { flex:1; padding:12px; }
         .hero { background:#fff; border:1px solid #e5e7eb; border-radius:12px; padding:12px 14px; margin-bottom:10px; }
         .panel { display:none; background:#fff; border:1px solid #e5e7eb; border-radius:12px; padding:12px; }
@@ -46,12 +41,6 @@
 <div id="content" style="display:none;" class="layout">
     <aside class="sidebar">
         <h2 class="brand">运营中台</h2>
-
-        <div class="recent-box">
-            <div class="menu-group-title">最近使用</div>
-            <div id="recentList"></div>
-        </div>
-
         <div class="menu-group-title">模块导航</div>
         <div class="menu-list">
             <button class="menu-btn" data-center="risk" onclick="switchCenter('risk')">风控中心</button>
@@ -59,10 +48,8 @@
                 <button class="sub-btn" title="调整风控核心阈值配置" data-key="risk:settings" data-src="/{{ $ops_path }}/risk?embedded=1&section=settings" onclick="openSub(this)">风控参数配置</button>
                 <button class="sub-btn" title="管理风控规则与触发条件" data-key="risk:rules" data-src="/{{ $ops_path }}/risk?embedded=1&section=rules" onclick="openSub(this)">风控规则配置</button>
                 <button class="sub-btn" title="维护风险黑名单" data-key="risk:blacklist" data-src="/{{ $ops_path }}/risk?embedded=1&section=blacklist" onclick="openSub(this)">风控黑名单</button>
-                <details class="more"><summary>更多…</summary>
-                    <button class="sub-btn" title="实时查看在线IP分布" data-key="risk:online" data-src="/{{ $ops_path }}/risk?embedded=1&section=online" onclick="openSub(this)">实时在线IP</button>
-                    <button class="sub-btn" title="查看用户使用画像" data-key="risk:profile" data-src="/{{ $ops_path }}/risk?embedded=1&section=profile" onclick="openSub(this)">用户画像总览</button>
-                </details>
+                <button class="sub-btn" title="实时查看在线IP分布" data-key="risk:online" data-src="/{{ $ops_path }}/risk?embedded=1&section=online" onclick="openSub(this)">实时在线IP</button>
+                <button class="sub-btn" title="查看用户使用画像" data-key="risk:profile" data-src="/{{ $ops_path }}/risk?embedded=1&section=profile" onclick="openSub(this)">用户画像总览</button>
             </div>
 
             <button class="menu-btn" data-center="client" onclick="switchCenter('client')">客户端中心</button>
@@ -76,17 +63,13 @@
                 <button class="sub-btn" title="查看用户连接行为日志" data-key="logs:connection" data-src="/{{ $ops_path }}/logs?embedded=1&section=log_connection" onclick="openSub(this)">连接日志</button>
                 <button class="sub-btn" title="查看管理员/用户登录日志" data-key="logs:login" data-src="/{{ $ops_path }}/logs?embedded=1&section=log_login" onclick="openSub(this)">登录日志</button>
                 <button class="sub-btn" title="查看订阅请求日志" data-key="logs:subscribe" data-src="/{{ $ops_path }}/logs?embedded=1&section=log_subscribe" onclick="openSub(this)">订阅日志</button>
-                <details class="more"><summary>更多…</summary>
-                    <button class="sub-btn" title="查看风控命中明细" data-key="logs:hit" data-src="/{{ $ops_path }}/logs?embedded=1&section=log_hit" onclick="openSub(this)">命中日志</button>
-                </details>
+                <button class="sub-btn" title="查看风控命中明细" data-key="logs:hit" data-src="/{{ $ops_path }}/logs?embedded=1&section=log_hit" onclick="openSub(this)">命中日志</button>
             </div>
 
             <button class="menu-btn" data-center="i18n" onclick="switchCenter('i18n')">国际化中心</button>
             <div id="submenu-i18n" class="submenu">
                 <button class="sub-btn" title="管理套餐名称与内容翻译" data-key="i18n:plan" data-src="/{{ $ops_path }}/i18n?embedded=1&tab=plan" onclick="openSub(this)">套餐翻译</button>
-                <details class="more"><summary>更多…</summary>
-                    <button class="sub-btn" title="管理站点文案翻译占位" data-key="i18n:copy" data-src="/{{ $ops_path }}/i18n?embedded=1&tab=copy" onclick="openSub(this)">站点文案翻译</button>
-                </details>
+                <button class="sub-btn" title="管理站点文案翻译占位" data-key="i18n:copy" data-src="/{{ $ops_path }}/i18n?embedded=1&tab=copy" onclick="openSub(this)">站点文案翻译</button>
             </div>
 
             <button class="menu-btn" data-center="marketing" onclick="switchCenter('marketing')">营销中心</button>
@@ -106,7 +89,6 @@
 
 <script>
 const securePath = @json($secure_path);
-const recentKey = 'ops_recent_subs';
 
 function getAuthorization() { return localStorage.getItem('authorization') || localStorage.getItem('token') || ''; }
 function verifyAdmin() {
@@ -116,26 +98,6 @@ function verifyAdmin() {
     return true;
 }
 
-function saveRecent(item) {
-    const list = JSON.parse(localStorage.getItem(recentKey) || '[]').filter(i => i.key !== item.key);
-    list.unshift(item);
-    localStorage.setItem(recentKey, JSON.stringify(list.slice(0, 5)));
-    renderRecent();
-}
-
-function renderRecent() {
-    const list = JSON.parse(localStorage.getItem(recentKey) || '[]');
-    const box = document.getElementById('recentList');
-    if (!list.length) { box.innerHTML = '<div style="font-size:12px;color:#9ca3af;">暂无</div>'; return; }
-    box.innerHTML = list.map(item => `<button class="recent-btn" title="${item.tip || ''}" onclick="openRecent('${item.center}','${item.key}')">${item.label}</button>`).join('');
-}
-
-function openRecent(center, key) {
-    switchCenter(center);
-    const target = document.querySelector(`.sub-btn[data-key="${key}"]`);
-    if (!target) return;
-    if (center === 'marketing') openMarketing(target); else openSub(target);
-}
 
 function switchCenter(center) {
     document.querySelectorAll('.menu-btn').forEach(btn => btn.classList.toggle('active', btn.dataset.center === center));
@@ -153,7 +115,6 @@ function openSub(btn) {
     document.getElementById('panel-marketing').classList.remove('active');
     document.getElementById('panel-frame').classList.add('active');
     document.getElementById('centerFrame').src = btn.dataset.src || '';
-    saveRecent({ key: btn.dataset.key || '', center: document.querySelector('.menu-btn.active')?.dataset.center || '', label: btn.textContent.trim(), tip: btn.title || '' });
 }
 
 function openMarketing(btn) {
@@ -161,13 +122,11 @@ function openMarketing(btn) {
     btn.classList.add('active');
     document.getElementById('panel-frame').classList.remove('active');
     document.getElementById('panel-marketing').classList.add('active');
-    saveRecent({ key: btn.dataset.key || '', center: 'marketing', label: btn.textContent.trim(), tip: btn.title || '' });
 }
 
 (function init() {
     if (!verifyAdmin()) return;
     document.getElementById('content').style.display = 'flex';
-    renderRecent();
     switchCenter('risk');
 })();
 </script>

@@ -38,7 +38,10 @@ class RiskBlacklistService
         }
 
         usort($rows, function ($a, $b) {
-            return [$a['type'], $b['id']] <=> [$b['type'], $a['id']];
+            $aId = (int) substr((string) $a['id'], strpos((string) $a['id'], ':') + 1);
+            $bId = (int) substr((string) $b['id'], strpos((string) $b['id'], ':') + 1);
+
+            return [$a['type'], -$aId] <=> [$b['type'], -$bId];
         });
 
         return $rows;
@@ -121,6 +124,10 @@ class RiskBlacklistService
         }
 
         if (!$value) {
+            return null;
+        }
+
+        if (filter_var($value, FILTER_VALIDATE_IP) === false) {
             return null;
         }
 

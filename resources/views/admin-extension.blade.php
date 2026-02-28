@@ -12,14 +12,39 @@
         #guestBlock p { color:#6b7280; line-height:1.7; }
         #guestBlock a { display:inline-block; margin-top:8px; color:#2563eb; }
 
-        .page { width: calc(100vw - 24px); margin: 12px auto; padding: 0 8px 12px; }
+        .layout { display:flex; min-height:100vh; }
+        .sidebar {
+            width:240px;
+            flex:0 0 240px;
+            background:#111827;
+            color:#e5e7eb;
+            padding:20px 16px;
+            border-right:1px solid #1f2937;
+        }
+        .brand { color:#fff; font-size:18px; font-weight:700; margin:0 0 14px; }
+        .menu-group-title { font-size:11px; color:#9ca3af; margin:0 0 8px; letter-spacing:.4px; text-transform:uppercase; }
+        .menu-list { display:flex; flex-direction:column; gap:8px; }
+        .menu-btn {
+            width:100%;
+            text-align:left;
+            border:1px solid #374151;
+            background:#1f2937;
+            color:#e5e7eb;
+            border-radius:8px;
+            padding:9px 10px;
+            font-size:12px;
+            line-height:1.2;
+            height:36px;
+            display:flex;
+            align-items:center;
+            cursor:pointer;
+        }
+        .menu-btn:hover { background:#2563eb; border-color:#2563eb; }
+        .menu-btn.active { background:#2563eb; border-color:#2563eb; color:#fff; }
+
+        .content { flex:1; padding:12px; }
         .hero { background:#fff; border:1px solid #e5e7eb; border-radius:12px; padding:12px 14px; margin-bottom:10px; }
         .hero h2 { margin:0; font-size:20px; }
-
-        .tabs { display:grid; grid-template-columns:repeat(5, minmax(0, 1fr)); gap:8px; position:sticky; top:0; z-index:2; background:#f3f4f6; padding:6px 0 10px; }
-        .tab-btn { border:1px solid #d1d5db; background:#fff; color:#374151; border-radius:10px; padding:10px 12px; cursor:pointer; font-size:13px; text-align:center; height:40px; font-weight:600; }
-        .tab-btn.active { background:#eff6ff; color:#1d4ed8; border-color:#93c5fd; box-shadow: inset 0 0 0 1px #bfdbfe; }
-        @media (max-width: 980px) { .tabs { grid-template-columns:repeat(2, minmax(0, 1fr)); } }
 
         .panel { display:none; background:#fff; border:1px solid #e5e7eb; border-radius:12px; padding:12px; }
         .panel.active { display:block; }
@@ -28,6 +53,11 @@
         .marketing-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(220px,1fr)); gap:10px; }
         .marketing-card { border:1px dashed #cbd5e1; border-radius:10px; background:#f8fafc; padding:14px; font-size:13px; color:#475569; }
         .marketing-card strong { display:block; color:#1f2937; margin-bottom:6px; }
+
+        @media (max-width: 1100px) {
+            .layout { flex-direction:column; }
+            .sidebar { width:100%; border-right:0; border-bottom:1px solid #1f2937; }
+        }
     </style>
 </head>
 <body>
@@ -37,17 +67,21 @@
     <a id="guestLoginLink" href="#">前往管理员登录</a>
 </div>
 
-<div id="content" style="display:none;">
-    <div class="page">
-        <div class="hero"><h2>V2Board 运营中台</h2></div>
-
-        <div class="tabs">
-            <button class="tab-btn active" data-tab="risk" onclick="switchTab('risk')">风控中心</button>
-            <button class="tab-btn" data-tab="client" onclick="switchTab('client')">客户端中心</button>
-            <button class="tab-btn" data-tab="logs" onclick="switchTab('logs')">日志中心</button>
-            <button class="tab-btn" data-tab="i18n" onclick="switchTab('i18n')">国际化中心</button>
-            <button class="tab-btn" data-tab="marketing" onclick="switchTab('marketing')">营销中心</button>
+<div id="content" style="display:none;" class="layout">
+    <aside class="sidebar">
+        <h2 class="brand">运营中台</h2>
+        <div class="menu-group-title">模块导航</div>
+        <div class="menu-list">
+            <button class="menu-btn active" data-tab="risk" onclick="switchTab('risk')">风控中心</button>
+            <button class="menu-btn" data-tab="client" onclick="switchTab('client')">客户端中心</button>
+            <button class="menu-btn" data-tab="logs" onclick="switchTab('logs')">日志中心</button>
+            <button class="menu-btn" data-tab="i18n" onclick="switchTab('i18n')">国际化中心</button>
+            <button class="menu-btn" data-tab="marketing" onclick="switchTab('marketing')">营销中心</button>
         </div>
+    </aside>
+
+    <main class="content">
+        <div class="hero"><h2>V2Board 运营中台</h2></div>
 
         <section id="panel-risk" class="panel active">
             <iframe src="/{{ $ops_path }}/risk"></iframe>
@@ -71,7 +105,7 @@
                 <div class="marketing-card"><strong>用户积分</strong>模块建设中。</div>
             </div>
         </section>
-    </div>
+    </main>
 </div>
 
 <script>
@@ -96,7 +130,7 @@ function verifyAdmin() {
 }
 
 function switchTab(tab) {
-    document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.toggle('active', btn.dataset.tab === tab));
+    document.querySelectorAll('.menu-btn').forEach(btn => btn.classList.toggle('active', btn.dataset.tab === tab));
     document.querySelectorAll('.panel').forEach(panel => panel.classList.remove('active'));
     const target = document.getElementById(`panel-${tab}`);
     if (target) target.classList.add('active');
@@ -104,7 +138,7 @@ function switchTab(tab) {
 
 (function init() {
     if (!verifyAdmin()) return;
-    document.getElementById('content').style.display = 'block';
+    document.getElementById('content').style.display = 'flex';
 })();
 </script>
 </body>

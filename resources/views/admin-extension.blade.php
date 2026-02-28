@@ -69,8 +69,20 @@ const modules = {
     }
 };
 
-function getToken() {
-    return localStorage.getItem('token') || '';
+function getAuthorization() {
+    const fromAuthorization = localStorage.getItem('authorization');
+    if (fromAuthorization) return fromAuthorization;
+
+    const fromToken = localStorage.getItem('token');
+    if (fromToken) return fromToken;
+
+    const fromQuery = new URLSearchParams(window.location.search).get('auth_data');
+    if (fromQuery) {
+        localStorage.setItem('authorization', fromQuery);
+        return fromQuery;
+    }
+
+    return '';
 }
 
 function setActive(key) {
@@ -85,12 +97,14 @@ function openModule(key, btn) {
     setActive(key);
     document.getElementById('title').textContent = item.title;
     document.getElementById('desc').textContent = item.desc;
-    document.getElementById('contentFrame').src = item.path;
+    const auth = encodeURIComponent(getAuthorization());
+    const url = auth ? `${item.path}?auth_data=${auth}` : item.path;
+    document.getElementById('contentFrame').src = url;
     location.hash = key;
 }
 
 async function verifyAdmin() {
-    const token = getToken();
+    const token = getAuthorization();
     const loginUrl = `/${securePath}`;
     const loginLink = document.getElementById('guestLoginLink');
     loginLink.href = loginUrl;

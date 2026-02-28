@@ -61,14 +61,27 @@
 const securePath = @json($secure_path);
 const apiPrefix = `/api/v1/${securePath}`;
 
-function getToken() {
+function getAuthorization() {
     const custom = document.getElementById('token').value.trim();
     if (custom) return custom;
-    return localStorage.getItem('token') || '';
+
+    const fromAuthorization = window.localStorage.getItem('authorization');
+    if (fromAuthorization) return fromAuthorization;
+
+    const fromToken = window.localStorage.getItem('token');
+    if (fromToken) return fromToken;
+
+    const fromQuery = new URLSearchParams(window.location.search).get('auth_data');
+    if (fromQuery) {
+        window.localStorage.setItem('authorization', fromQuery);
+        return fromQuery;
+    }
+
+    return '';
 }
 
 async function api(url, method = 'GET', body = null) {
-    const token = getToken();
+    const token = getAuthorization();
     const headers = {
         'Authorization': token,
         'Content-Type': 'application/json'
@@ -87,7 +100,7 @@ async function api(url, method = 'GET', body = null) {
 
 
 async function verifyAdmin() {
-    const token = getToken();
+    const token = getAuthorization();
     const loginUrl = `/${securePath}`;
     const loginLink = document.getElementById('guestLoginLink');
     loginLink.href = loginUrl;
@@ -117,7 +130,7 @@ async function init() {
     }
 
     document.getElementById('content').style.display = 'block';
-    document.getElementById('token').value = localStorage.getItem('token') || '';
+    document.getElementById('token').value = window.localStorage.getItem('authorization') || window.localStorage.getItem('token') || '';
     const [plans, locales] = await Promise.all([
         api(`${apiPrefix}/plan/fetch`),
         api(`${apiPrefix}/plan/i18n/locales`)

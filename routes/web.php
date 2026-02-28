@@ -61,6 +61,11 @@ Route::get('/' . $adminExtensionPath, function () use ($securePath, $adminExtens
     ]);
 });
 
+
+Route::get('/' . $securePath . '/addon', function () use ($adminExtensionPath) {
+    return redirect('/' . $adminExtensionPath);
+});
+
 Route::get('/' . $adminExtensionPath . '/plan-i18n', function () use ($securePath) {
     return view('plan-i18n', [
         'secure_path' => $securePath

@@ -103,7 +103,7 @@ function openModule(key, btn) {
     location.hash = key;
 }
 
-async function verifyAdmin() {
+function verifyAdmin() {
     const token = getAuthorization();
     const loginUrl = `/${securePath}`;
     const loginLink = document.getElementById('guestLoginLink');
@@ -114,25 +114,11 @@ async function verifyAdmin() {
         return false;
     }
 
-    try {
-        const res = await fetch(`/api/v1/${securePath}/stat/getStat`, {
-            headers: { Authorization: token }
-        });
-        if (!res.ok) {
-            throw new Error('unauthorized');
-        }
-        const json = await res.json();
-        if (json && json.data) {
-            return true;
-        }
-    } catch (e) {}
-
-    document.getElementById('guestBlock').style.display = 'block';
-    return false;
+    return true;
 }
 
 (async function init() {
-    const ok = await verifyAdmin();
+    const ok = verifyAdmin();
     if (!ok) return;
 
     document.getElementById('layout').style.display = 'flex';

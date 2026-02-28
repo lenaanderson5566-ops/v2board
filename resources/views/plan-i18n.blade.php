@@ -99,7 +99,7 @@ async function api(url, method = 'GET', body = null) {
 }
 
 
-async function verifyAdmin() {
+function verifyAdmin() {
     const token = getAuthorization();
     const loginUrl = `/${securePath}`;
     const loginLink = document.getElementById('guestLoginLink');
@@ -110,20 +110,11 @@ async function verifyAdmin() {
         return false;
     }
 
-    try {
-        const res = await fetch(`/api/v1/${securePath}/stat/getStat`, {
-            headers: { Authorization: token }
-        });
-        if (!res.ok) return false;
-        const json = await res.json();
-        return !!(json && json.data);
-    } catch (e) {
-        return false;
-    }
+    return true;
 }
 
 async function init() {
-    const ok = await verifyAdmin();
+    const ok = verifyAdmin();
     if (!ok) {
         document.getElementById('guestBlock').style.display = 'block';
         return;

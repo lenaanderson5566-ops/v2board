@@ -56,22 +56,6 @@ Route::get('/' . $opsPath . '/i18n', function () use ($securePath, $opsPath) {
     ]);
 });
 
-Route::get('/' . $opsPath . '/marketing-email', function () use ($opsPath) {
-    return view('module-placeholder', [
-        'title' => '营销邮件模块（占位）',
-        'description' => '该模块用于营销邮件模板、分群发送、自动化触达等能力，当前为功能占位。',
-        'ops_path' => $opsPath,
-    ]);
-});
-
-Route::get('/' . $opsPath . '/user-points', function () use ($opsPath) {
-    return view('module-placeholder', [
-        'title' => '用户积分模块（占位）',
-        'description' => '该模块用于积分规则、积分流水、积分兑换等能力，当前为功能占位。',
-        'ops_path' => $opsPath,
-    ]);
-});
-
 $riskView = function () {
     return view('risk', [
         'title' => config('v2board.app_name', 'V2Board'),

@@ -89,12 +89,6 @@ function getAuthorization() {
     const fromToken = window.localStorage.getItem('token');
     if (fromToken) return fromToken;
 
-    const fromQuery = new URLSearchParams(window.location.search).get('auth_data');
-    if (fromQuery) {
-        window.localStorage.setItem('authorization', fromQuery);
-        return fromQuery;
-    }
-
     return '';
 }
 

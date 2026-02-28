@@ -64,6 +64,9 @@
         .ok { color: #059669; }
         .err { color: #dc2626; }
 
+        .layout.embedded .content { padding: 0; }
+        .layout.embedded .container { max-width: none; }
+
         @media (max-width: 1100px) {
             .layout { flex-direction: column; }
             .sidebar { width: 100%; border-right: 0; border-bottom: 1px solid #1f2937; }
@@ -71,13 +74,15 @@
     </style>
 </head>
 <body>
+@php($embedded = request()->boolean('embedded'))
 <div id="guestBlock" style="display:none;max-width:680px;margin:40px auto;padding:24px;background:#fff;border:1px solid #e5e7eb;border-radius:12px;">
     <h3 style="margin-top:0;">请先登录管理员后台</h3>
     <p style="color:#6b7280;line-height:1.7;">当前页面为国际化中心，仅管理员可访问。</p>
     <a id="guestLoginLink" href="#" style="color:#2563eb;">前往管理员登录</a>
 </div>
 
-<div id="contentArea" style="display:none;" class="layout">
+<div id="contentArea" style="display:none;" class="layout{{ $embedded ? ' embedded' : '' }}">
+    @unless($embedded)
     <aside class="sidebar">
         <div class="menu-group-title">国际化中心</div>
         <div class="menu-list">
@@ -85,6 +90,7 @@
             <button id="tab-copy" class="menu-btn" onclick="switchTab('copy')">站点文案翻译（占位）</button>
         </div>
     </aside>
+    @endunless
 
     <main class="content">
         <div class="container">

@@ -84,19 +84,19 @@
         <div class="hero"><h2>V2Board 运营中台</h2></div>
 
         <section id="panel-risk" class="panel active">
-            <iframe src="/{{ $ops_path }}/risk"></iframe>
+            <iframe src="/{{ $ops_path }}/risk?embedded=1"></iframe>
         </section>
 
         <section id="panel-client" class="panel">
-            <iframe src="/{{ $ops_path }}/client"></iframe>
+            <iframe src="/{{ $ops_path }}/client?embedded=1"></iframe>
         </section>
 
         <section id="panel-logs" class="panel">
-            <iframe src="/{{ $ops_path }}/logs"></iframe>
+            <iframe src="/{{ $ops_path }}/logs?embedded=1"></iframe>
         </section>
 
         <section id="panel-i18n" class="panel">
-            <iframe src="/{{ $ops_path }}/i18n"></iframe>
+            <iframe src="/{{ $ops_path }}/i18n?embedded=1"></iframe>
         </section>
 
         <section id="panel-marketing" class="panel">

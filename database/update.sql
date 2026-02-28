@@ -869,3 +869,7 @@ CREATE TABLE IF NOT EXISTS `v2_plan_translation` (
   KEY `idx_locale` (`locale`),
   CONSTRAINT `fk_plan_translation_plan` FOREIGN KEY (`plan_id`) REFERENCES `v2_plan` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+
+-- Ensure last_login_ip supports full IPv4 unsigned range
+ALTER TABLE `v2_user` MODIFY `last_login_ip` bigint(20) unsigned NULL;

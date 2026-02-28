@@ -14,7 +14,6 @@
         <div class="menu-section" data-group="client">
             <div class="menu-group-title">客户端中心</div>
             <div class="menu-list">
-                <button class="menu-btn" data-section="client" onclick="fetchClientStrategyOverview(this)">客户端策略总览</button>
                 <button class="menu-btn" data-section="client" onclick="fetchClientStrategies(this)">客户端策略管理</button>
             </div>
         </div>

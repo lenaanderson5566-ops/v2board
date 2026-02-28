@@ -57,6 +57,11 @@ Route::get('/' . $opsPath . '/i18n', function () use ($securePath, $opsPath) {
 });
 
 
+
+Route::get('/' . $opsPath . '/overview', function () {
+    return view('ops.overview-center');
+});
+
 Route::get('/' . $opsPath . '/risk', function () {
     return view('ops.risk-center');
 });

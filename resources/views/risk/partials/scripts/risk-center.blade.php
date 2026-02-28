@@ -90,10 +90,66 @@ async function saveRule(idx, ruleKey) { const rows = await request('/risk/rule/u
 async function saveAllRules() { for (let i = 0; i < currentRuleRows.length; i++) { const rows = await request('/risk/rule/update', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(buildRulePayload(i, currentRuleRows[i].rule_key)) }); if (rows) currentRuleRows = rows; } renderRuleEditor(currentRuleRows); }
 async function resetRule(ruleKey) { const rows = await request('/risk/rule/reset', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(ruleKey ? { rule_key: ruleKey } : {}) }); if (rows) renderRuleEditor(rows); }
 
-function renderBlacklistEditor(rows) {
-  const body = (rows || []).map((item) => `<tr><td>${item.id || ''}</td><td>${item.type || ''}</td><td>${item.value || ''}</td><td>${item.remark || ''}</td></tr>`).join('');
-  document.getElementById('result').innerHTML = `<div class="table-wrap"><table><thead><tr><th>ID</th><th>类型</th><th>值</th><th>备注</th></tr></thead><tbody>${body}</tbody></table></div>`;
+function buildBlacklistRow(item = {}) {
+  const rowId = item.id || '';
+  const type = String(item.type || 'ip').toLowerCase();
+  return `<tr><td>${rowId || '-'}</td><td><select id="blacklist_type_${rowId}" class="rule-select"><option value="ip" ${type==='ip'?'selected':''}>IP</option><option value="ua" ${type==='ua'?'selected':''}>UA</option></select></td><td><input id="blacklist_value_${rowId}" class="rule-input" value="${String(item.value || '').replace(/"/g, '&quot;')}"></td><td><input id="blacklist_ua_${rowId}" class="rule-input" value="${String(item.ua_raw || '').replace(/"/g, '&quot;')}"></td><td><input id="blacklist_remark_${rowId}" class="rule-input" value="${String(item.remark || '').replace(/"/g, '&quot;')}"></td><td><input id="blacklist_enabled_${rowId}" type="checkbox" ${Number(item.is_enabled) === 0 ? '' : 'checked'}></td><td><button onclick="saveBlacklist('${rowId}')">保存</button><button style="background:#dc2626;margin-left:6px;" onclick="deleteBlacklist('${rowId}')">删除</button></td></tr>`;
 }
+
+function renderBlacklistEditor(rows) {
+  const body = (rows || []).map((item) => buildBlacklistRow(item)).join('');
+  document.getElementById('result').innerHTML = `<div style="display:flex;gap:8px;align-items:center;margin-bottom:10px;"><button onclick="appendBlacklistForm()">新增黑名单</button></div><div class="table-wrap"><table><thead><tr><th>ID</th><th>类型</th><th>值</th><th>UA原文</th><th>备注</th><th>启用</th><th>操作</th></tr></thead><tbody id="blacklist_table_body">${body}</tbody></table></div>`;
+}
+
+function appendBlacklistForm() {
+  const tableBody = document.getElementById('blacklist_table_body');
+  if (!tableBody) return;
+  const tempId = `new_${Date.now()}`;
+  const row = document.createElement('tr');
+  row.id = `row_${tempId}`;
+  row.innerHTML = `<td>新</td><td><select id="blacklist_type_${tempId}" class="rule-select"><option value="ip">IP</option><option value="ua">UA</option></select></td><td><input id="blacklist_value_${tempId}" class="rule-input" placeholder="请输入IP或UA关键字"></td><td><input id="blacklist_ua_${tempId}" class="rule-input" placeholder="可选：UA原文"></td><td><input id="blacklist_remark_${tempId}" class="rule-input" placeholder="备注"></td><td><input id="blacklist_enabled_${tempId}" type="checkbox" checked></td><td><button onclick="saveBlacklist('${tempId}')">保存</button><button style="background:#6b7280;margin-left:6px;" onclick="removeTempBlacklist('${tempId}')">取消</button></td>`;
+  tableBody.prepend(row);
+}
+
+function removeTempBlacklist(tempId) {
+  const row = document.getElementById(`row_${tempId}`);
+  if (row) row.remove();
+}
+
+async function saveBlacklist(rowId) {
+  const payload = {
+    type: (document.getElementById(`blacklist_type_${rowId}`)?.value || 'ip').trim(),
+    value: (document.getElementById(`blacklist_value_${rowId}`)?.value || '').trim(),
+    ua_raw: (document.getElementById(`blacklist_ua_${rowId}`)?.value || '').trim(),
+    remark: (document.getElementById(`blacklist_remark_${rowId}`)?.value || '').trim(),
+    is_enabled: !!document.getElementById(`blacklist_enabled_${rowId}`)?.checked,
+  };
+  if (!payload.value) {
+    alert('黑名单值不能为空');
+    return;
+  }
+  const rows = await request('/risk/blacklist/update', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  });
+  if (rows) renderBlacklistEditor(rows);
+}
+
+async function deleteBlacklist(id) {
+  if (!id || String(id).startsWith('new_')) {
+    removeTempBlacklist(id);
+    return;
+  }
+  if (!confirm('确定删除该黑名单记录吗？')) return;
+  const rows = await request('/risk/blacklist/delete', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ id }),
+  });
+  if (rows) renderBlacklistEditor(rows);
+}
+
 async function fetchBlacklists(btn) { setView(btn, '风控黑名单'); const rows = await request('/risk/blacklist/fetch'); if (rows) renderBlacklistEditor(rows); }
 
 function applyOnlineUsersFilter(){ riskFilters.onlineUsers.email = document.getElementById('f_online_email').value.trim(); riskFilters.onlineUsers.ip = document.getElementById('f_online_ip').value.trim(); fetchOnlineUsers(null, 1); }
@@ -118,6 +174,7 @@ async function fetchUserUsage(btn, current = 1, pageSize = 200) {
 function fetchUserUsagePage(current, pageSize){ fetchUserUsage(null, current, pageSize); }
 
 Object.assign(window.CenterActions, {
+  overview: () => fetchRiskOverview(null),
   settings: () => fetchRiskSettings(null),
   rules: () => fetchRules(null),
   blacklist: () => fetchBlacklists(null),

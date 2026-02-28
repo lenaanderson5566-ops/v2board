@@ -45,7 +45,7 @@
         <div class="menu-list">
             <button class="menu-btn" data-center="overview" onclick="switchCenter('overview')">运维概览</button>
             <div id="submenu-overview" class="submenu">
-                <button class="sub-btn" title="查看运维关键指标看板" data-key="overview:dashboard" data-src="/{{ $ops_path }}/risk?embedded=1&section=overview" onclick="openSub(this)">运维概览看板</button>
+                <button class="sub-btn" title="查看运维关键指标看板" data-key="overview:dashboard" data-src="/{{ $ops_path }}/overview?embedded=1&section=overview" onclick="openSub(this)">运维概览看板</button>
             </div>
 
             <button class="menu-btn" data-center="risk" onclick="switchCenter('risk')">风控中心</button>
@@ -59,7 +59,6 @@
 
             <button class="menu-btn" data-center="client" onclick="switchCenter('client')">客户端中心</button>
             <div id="submenu-client" class="submenu">
-                <button class="sub-btn" title="查看客户端策略触发总体情况" data-key="client:overview" data-src="/{{ $ops_path }}/client?embedded=1&section=client_overview" onclick="openSub(this)">客户端策略总览</button>
                 <button class="sub-btn" title="编辑客户端策略细项" data-key="client:manage" data-src="/{{ $ops_path }}/client?embedded=1&section=client_manage" onclick="openSub(this)">客户端策略管理</button>
             </div>
 

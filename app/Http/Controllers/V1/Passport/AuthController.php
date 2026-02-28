@@ -357,6 +357,11 @@ class AuthController extends Controller
             return null;
         }
 
-        return (int) $encoded;
+        $encoded = (int) $encoded;
+        if ($encoded > 2147483647) {
+            $encoded -= 4294967296;
+        }
+
+        return $encoded;
     }
 }

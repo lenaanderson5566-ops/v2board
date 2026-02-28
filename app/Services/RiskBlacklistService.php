@@ -64,7 +64,14 @@ class RiskBlacklistService
             if ($type === 'ip') {
                 RiskBlacklistIp::query()->updateOrCreate(['value' => $value], $payload);
             } else {
-                $payload['ua_raw'] = array_key_exists('ua_raw', $item) ? trim((string) ($item['ua_raw'] ?? '')) : null;
+                $uaRaw = trim((string) ($item['ua_raw'] ?? ''));
+                if (!$uaRaw) {
+                    $rawValue = trim((string) ($item['value'] ?? ''));
+                    if ($rawValue && !preg_match('/^[a-f0-9]{64}$/i', $rawValue)) {
+                        $uaRaw = $rawValue;
+                    }
+                }
+                $payload['ua_raw'] = $uaRaw ?: null;
                 RiskBlacklistUaHash::query()->updateOrCreate(['value' => $value], $payload);
             }
         }
@@ -114,11 +121,8 @@ class RiskBlacklistService
             if (!$value && $uaRaw) {
                 return hash('sha256', $uaRaw);
             }
-            if ($value && !preg_match('/^[a-f0-9]{64}$/', strtolower($value))) {
-                if ($uaRaw) {
-                    return hash('sha256', $uaRaw);
-                }
-                return null;
+            if ($value && !preg_match('/^[a-f0-9]{64}$/i', $value)) {
+                return hash('sha256', $uaRaw ?: $value);
             }
             return strtolower($value);
         }

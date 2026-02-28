@@ -27,26 +27,71 @@ class LogController extends Controller
     public function getOverview(Request $request)
     {
         $now = time();
+        $windows = [
+            'today' => ['label' => '当日', 'seconds' => 86400],
+            '7d' => ['label' => '近7天', 'seconds' => 7 * 86400],
+            '30d' => ['label' => '近30天', 'seconds' => 30 * 86400],
+        ];
 
-        $loginToday = LoginLog::query()->where('created_at', '>=', $now - 86400);
-        $subscribeToday = SubscribeLog::query()->where('created_at', '>=', $now - 86400);
+        $overview = [];
+        foreach ($windows as $key => $item) {
+            $cutoff = $now - $item['seconds'];
+
+            $activeUsersBuilder = SubscribeLog::query()->where('created_at', '>=', $cutoff);
+            $activeUsers = (clone $activeUsersBuilder)->distinct('user_id')->count('user_id');
+            $activeHits = (clone $activeUsersBuilder)->count();
+
+            $totalTraffic = (int) SubscribeLog::query()->where('created_at', '>=', $cutoff)->sum('traffic_total');
+
+            $topUa = SubscribeLog::query()
+                ->selectRaw('user_agent, COUNT(*) as hits, COUNT(DISTINCT user_id) as users, COUNT(DISTINCT ip) as ips')
+                ->where('created_at', '>=', $cutoff)
+                ->whereNotNull('user_agent')
+                ->where('user_agent', '<>', '')
+                ->groupBy('user_agent')
+                ->orderByDesc('hits')
+                ->limit(10)
+                ->get();
+
+            $topFlags = SubscribeLog::query()
+                ->selectRaw('subscribe_domain as flag, COUNT(*) as hits, COUNT(DISTINCT user_id) as users, COUNT(DISTINCT ip) as ips')
+                ->where('created_at', '>=', $cutoff)
+                ->whereNotNull('subscribe_domain')
+                ->where('subscribe_domain', '<>', '')
+                ->groupBy('subscribe_domain')
+                ->orderByDesc('hits')
+                ->limit(10)
+                ->get();
+
+            $ruleHitBuilder = RiskRuleHit::query()->where('hit_at', '>=', $cutoff);
+            $blockedBuilder = (clone $ruleHitBuilder)->whereIn('status', ['blocked', 'block', 'deny', 'rejected']);
+            $blockedHits = $blockedBuilder->count();
+            $totalRuleHits = (clone $ruleHitBuilder)->count();
+
+            $overview[$key] = [
+                'label' => $item['label'],
+                'active_users' => [
+                    'users' => $activeUsers,
+                    'hits' => $activeHits,
+                ],
+                'traffic' => [
+                    'total_bytes' => $totalTraffic,
+                ],
+                'ua_top' => $topUa,
+                'flag_top' => $topFlags,
+                'risk_result' => [
+                    'blocked_hits' => $blockedHits,
+                    'blocked_users' => (clone $blockedBuilder)->distinct('user_id')->count('user_id'),
+                    'pass_hits' => max($totalRuleHits - $blockedHits, 0),
+                    'pass_users' => max((clone $ruleHitBuilder)->distinct('user_id')->count('user_id') - (clone $blockedBuilder)->distinct('user_id')->count('user_id'), 0),
+                    'blocked_rate' => $this->percent($totalRuleHits, $blockedHits),
+                ],
+            ];
+        }
 
         return response([
             'data' => [
-                'login_total_24h' => (clone $loginToday)->count(),
-                'login_failed_24h' => (clone $loginToday)->where('is_success', 0)->count(),
-                'login_failed_rate_24h' => $this->percent(
-                    (clone $loginToday)->count(),
-                    (clone $loginToday)->where('is_success', 0)->count()
-                ),
-                'subscribe_total_24h' => (clone $subscribeToday)->count(),
-                'subscribe_failed_24h' => (clone $subscribeToday)->where('status', 'failed')->count(),
-                'subscribe_failed_rate_24h' => $this->percent(
-                    (clone $subscribeToday)->count(),
-                    (clone $subscribeToday)->where('status', 'failed')->count()
-                ),
-                'rule_hit_total_24h' => RiskRuleHit::query()->where('hit_at', '>=', $now - 86400)->count(),
-                'latest_rule_hits' => RiskRuleHit::query()->orderBy('id', 'desc')->limit(10)->get(),
+                'windows' => $overview,
             ]
         ]);
     }

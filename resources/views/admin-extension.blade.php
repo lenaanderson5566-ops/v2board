@@ -45,6 +45,7 @@
         <div class="menu-list">
             <button class="menu-btn" data-center="risk" onclick="switchCenter('risk')">风控中心</button>
             <div id="submenu-risk" class="submenu">
+                <button class="sub-btn" title="查看运维关键指标看板" data-key="risk:overview" data-src="/{{ $ops_path }}/risk?embedded=1&section=overview" onclick="openSub(this)">运维概览</button>
                 <button class="sub-btn" title="调整风控核心阈值配置" data-key="risk:settings" data-src="/{{ $ops_path }}/risk?embedded=1&section=settings" onclick="openSub(this)">风控参数配置</button>
                 <button class="sub-btn" title="管理风控规则与触发条件" data-key="risk:rules" data-src="/{{ $ops_path }}/risk?embedded=1&section=rules" onclick="openSub(this)">风控规则配置</button>
                 <button class="sub-btn" title="维护风险黑名单" data-key="risk:blacklist" data-src="/{{ $ops_path }}/risk?embedded=1&section=blacklist" onclick="openSub(this)">风控黑名单</button>

@@ -3,6 +3,7 @@
         <div class="menu-section" data-group="risk">
             <div class="menu-group-title">风控中心</div>
             <div class="menu-list">
+                <button class="menu-btn" data-section="risk" onclick="fetchRiskOverview(this)">运维概览</button>
                 <button class="menu-btn" data-section="risk" onclick="fetchRiskSettings(this)">风控参数配置</button>
                 <button class="menu-btn" data-section="risk" onclick="fetchRules(this)">风控规则配置</button>
                 <button class="menu-btn" data-section="risk" onclick="fetchBlacklists(this)">风控黑名单</button>

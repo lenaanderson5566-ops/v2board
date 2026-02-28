@@ -1,6 +1,40 @@
 let currentRuleRows = [];
 const riskFilters = { onlineUsers: { email: '', ip: '' }, userUsage: { email: '' } };
 
+
+function formatBytes(bytes) {
+  const n = Number(bytes || 0);
+  if (n < 1024) return `${n} B`;
+  if (n < 1024 * 1024) return `${(n / 1024).toFixed(2)} KB`;
+  if (n < 1024 * 1024 * 1024) return `${(n / 1024 / 1024).toFixed(2)} MB`;
+  return `${(n / 1024 / 1024 / 1024).toFixed(2)} GB`;
+}
+
+function renderTopTable(title, rows, keyName = 'name') {
+  if (!rows || !rows.length) return `<h4 style="margin:8px 0;">${title}</h4><p style="color:#6b7280;">暂无数据</p>`;
+  const body = rows.map((r) => `<tr><td>${r[keyName] || r.flag || r.user_agent || '-'}</td><td>${r.hits || 0}</td><td>${r.users || 0}</td><td>${r.ips || 0}</td></tr>`).join('');
+  return `<h4 style="margin:8px 0;">${title}</h4><div class="table-wrap"><table><thead><tr><th>项</th><th>次数(hits)</th><th>去重用户</th><th>去重IP</th></tr></thead><tbody>${body}</tbody></table></div>`;
+}
+
+function renderRiskOverview(data) {
+  const windows = data.windows || {};
+  const order = ['today', '7d', '30d'];
+  const blocks = order.map((k) => {
+    const w = windows[k] || {};
+    const active = w.active_users || {};
+    const traffic = w.traffic || {};
+    const risk = w.risk_result || {};
+    return `<div class="card"><div class="label">${w.label || k}</div><div class="value">活跃用户 ${active.users || 0}</div><div style="font-size:12px;color:#6b7280;">请求 ${active.hits || 0} · 总流量 ${formatBytes(traffic.total_bytes || 0)} · 拦截率 ${risk.blocked_rate || '0%'}</div></div>`;
+  }).join('');
+
+  const today = windows['today'] || {};
+  document.getElementById('result').innerHTML = `<div class="cards">${blocks}</div>`
+    + renderTopTable('Top 原始 UA（当日）', today.ua_top || [], 'user_agent')
+    + renderTopTable('Top Flag（当日）', today.flag_top || [], 'flag');
+}
+
+async function fetchRiskOverview(btn) { setView(btn, '运维概览'); const data = await request('/risk/overview/fetch'); if (data) renderRiskOverview(data); }
+
 function renderRiskSettings(data) {
   const interval = Number(data.connection_log_interval || 3600);
   const retentionDays = Number(data.connection_log_retention_days || 30);
@@ -54,6 +88,7 @@ async function fetchUserUsage(btn, current = 1, pageSize = 200) {
 function fetchUserUsagePage(current, pageSize){ fetchUserUsage(null, current, pageSize); }
 
 Object.assign(window.CenterActions, {
+  overview: () => fetchRiskOverview(null),
   settings: () => fetchRiskSettings(null),
   rules: () => fetchRules(null),
   blacklist: () => fetchBlacklists(null),

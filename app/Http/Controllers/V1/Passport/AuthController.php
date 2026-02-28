@@ -346,17 +346,12 @@ class AuthController extends Controller
         ]);
     }
 
-    private function encodeIp(?string $ip): ?int
+    private function encodeIp(?string $ip): ?string
     {
-        if (!$ip) {
+        if (!$ip || !filter_var($ip, FILTER_VALIDATE_IP)) {
             return null;
         }
 
-        $encoded = ip2long($ip);
-        if ($encoded === false) {
-            return null;
-        }
-
-        return (int) sprintf('%u', $encoded);
+        return $ip;
     }
 }

@@ -37,11 +37,13 @@ class LogController extends Controller
         foreach ($windows as $key => $item) {
             $cutoff = $now - $item['seconds'];
 
-            $activeUsersBuilder = SubscribeLog::query()->where('created_at', '>=', $cutoff);
-            $activeUsers = (clone $activeUsersBuilder)->distinct('user_id')->count('user_id');
-            $activeHits = (clone $activeUsersBuilder)->count();
+            $activeBuilder = SubscribeLog::query()->where('created_at', '>=', $cutoff);
+            $activeUsers = (clone $activeBuilder)->distinct('user_id')->count('user_id');
+            $activeHits = (clone $activeBuilder)->count();
 
-            $totalTraffic = (int) SubscribeLog::query()->where('created_at', '>=', $cutoff)->sum('traffic_total');
+            $trafficBuilder = SubscribeLog::query()->where('created_at', '>=', $cutoff);
+            $trafficUp = (int) (clone $trafficBuilder)->sum('traffic_u');
+            $trafficDown = (int) (clone $trafficBuilder)->sum('traffic_d');
 
             $topUa = SubscribeLog::query()
                 ->selectRaw('user_agent, COUNT(*) as hits, COUNT(DISTINCT user_id) as users, COUNT(DISTINCT ip) as ips')
@@ -50,23 +52,23 @@ class LogController extends Controller
                 ->where('user_agent', '<>', '')
                 ->groupBy('user_agent')
                 ->orderByDesc('hits')
-                ->limit(10)
                 ->get();
 
             $topFlags = SubscribeLog::query()
-                ->selectRaw('subscribe_domain as flag, COUNT(*) as hits, COUNT(DISTINCT user_id) as users, COUNT(DISTINCT ip) as ips')
+                ->selectRaw('client_type as flag, COUNT(*) as hits, COUNT(DISTINCT user_id) as users, COUNT(DISTINCT ip) as ips')
                 ->where('created_at', '>=', $cutoff)
-                ->whereNotNull('subscribe_domain')
-                ->where('subscribe_domain', '<>', '')
-                ->groupBy('subscribe_domain')
+                ->whereNotNull('client_type')
+                ->where('client_type', '<>', '')
+                ->groupBy('client_type')
                 ->orderByDesc('hits')
-                ->limit(10)
                 ->get();
 
             $ruleHitBuilder = RiskRuleHit::query()->where('hit_at', '>=', $cutoff);
             $blockedBuilder = (clone $ruleHitBuilder)->whereIn('status', ['blocked', 'block', 'deny', 'rejected']);
-            $blockedHits = $blockedBuilder->count();
+            $blockedHits = (clone $blockedBuilder)->count();
             $totalRuleHits = (clone $ruleHitBuilder)->count();
+            $totalRuleUsers = (clone $ruleHitBuilder)->distinct('user_id')->count('user_id');
+            $blockedUsers = (clone $blockedBuilder)->distinct('user_id')->count('user_id');
 
             $overview[$key] = [
                 'label' => $item['label'],
@@ -75,15 +77,17 @@ class LogController extends Controller
                     'hits' => $activeHits,
                 ],
                 'traffic' => [
-                    'total_bytes' => $totalTraffic,
+                    'up_bytes' => $trafficUp,
+                    'down_bytes' => $trafficDown,
+                    'total_bytes' => $trafficUp + $trafficDown,
                 ],
                 'ua_top' => $topUa,
                 'flag_top' => $topFlags,
                 'risk_result' => [
                     'blocked_hits' => $blockedHits,
-                    'blocked_users' => (clone $blockedBuilder)->distinct('user_id')->count('user_id'),
+                    'blocked_users' => $blockedUsers,
                     'pass_hits' => max($totalRuleHits - $blockedHits, 0),
-                    'pass_users' => max((clone $ruleHitBuilder)->distinct('user_id')->count('user_id') - (clone $blockedBuilder)->distinct('user_id')->count('user_id'), 0),
+                    'pass_users' => max($totalRuleUsers - $blockedUsers, 0),
                     'blocked_rate' => $this->percent($totalRuleHits, $blockedHits),
                 ],
             ];
@@ -92,6 +96,23 @@ class LogController extends Controller
         return response([
             'data' => [
                 'windows' => $overview,
+                'metrics' => [
+                    'active_users' => [
+                        'today' => $overview['today']['active_users'] ?? ['users' => 0, 'hits' => 0],
+                        '7d' => $overview['7d']['active_users'] ?? ['users' => 0, 'hits' => 0],
+                        '30d' => $overview['30d']['active_users'] ?? ['users' => 0, 'hits' => 0],
+                    ],
+                    'traffic' => [
+                        'today' => $overview['today']['traffic'] ?? ['up_bytes' => 0, 'down_bytes' => 0, 'total_bytes' => 0],
+                        '7d' => $overview['7d']['traffic'] ?? ['up_bytes' => 0, 'down_bytes' => 0, 'total_bytes' => 0],
+                        '30d' => $overview['30d']['traffic'] ?? ['up_bytes' => 0, 'down_bytes' => 0, 'total_bytes' => 0],
+                    ],
+                    'risk_result' => [
+                        'today' => $overview['today']['risk_result'] ?? [],
+                        '7d' => $overview['7d']['risk_result'] ?? [],
+                        '30d' => $overview['30d']['risk_result'] ?? [],
+                    ],
+                ],
             ]
         ]);
     }

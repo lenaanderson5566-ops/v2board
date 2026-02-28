@@ -21,10 +21,10 @@ if (authorization) {
 
   const section = new URLSearchParams(window.location.search).get('section');
   const defaultActions = {
-    risk: 'overview',
+    risk: 'settings',
     client: 'client_overview',
     logs: 'log_connection',
-    all: 'overview',
+    all: 'settings',
   };
   const target = (section && window.CenterActions[section]) ? section : defaultActions[bootMode] || 'settings';
   if (window.CenterActions[target]) {

@@ -16,21 +16,51 @@ function renderTopTable(title, rows, keyName = 'name') {
   return `<h4 style="margin:8px 0;">${title}</h4><div class="table-wrap"><table><thead><tr><th>项</th><th>次数(hits)</th><th>去重用户</th><th>去重IP</th></tr></thead><tbody>${body}</tbody></table></div>`;
 }
 
-function renderRiskOverview(data) {
-  const windows = data.windows || {};
-  const order = ['today', '7d', '30d'];
-  const blocks = order.map((k) => {
-    const w = windows[k] || {};
-    const active = w.active_users || {};
-    const traffic = w.traffic || {};
-    const risk = w.risk_result || {};
-    return `<div class="card"><div class="label">${w.label || k}</div><div class="value">活跃用户 ${active.users || 0}</div><div style="font-size:12px;color:#6b7280;">请求 ${active.hits || 0} · 总流量 ${formatBytes(traffic.total_bytes || 0)} · 拦截率 ${risk.blocked_rate || '0%'}</div></div>`;
-  }).join('');
+function metricCell(label, values) {
+  const t = values.today || {};
+  const d7 = values['7d'] || {};
+  const d30 = values['30d'] || {};
+  return `<div class="card"><div class="label">${label}</div><div style="font-size:12px;color:#374151;line-height:1.8;">当日：${t}<br>近7天：${d7}<br>近30天：${d30}</div></div>`;
+}
 
-  const today = windows['today'] || {};
-  document.getElementById('result').innerHTML = `<div class="cards">${blocks}</div>`
-    + renderTopTable('Top 原始 UA（当日）', today.ua_top || [], 'user_agent')
-    + renderTopTable('Top Flag（当日）', today.flag_top || [], 'flag');
+function renderRankTable(title, rows, keyName) {
+  if (!rows || !rows.length) return `<h4 style="margin:8px 0;">${title}</h4><p style="color:#6b7280;">暂无数据</p>`;
+  const body = rows.map((r, i) => `<tr><td>${i + 1}</td><td>${r[keyName] || r.flag || r.user_agent || '-'}</td><td>${r.hits || 0}</td><td>${r.users || 0}</td><td>${r.ips || 0}</td></tr>`).join('');
+  return `<h4 style="margin:8px 0;">${title}</h4><div class="table-wrap"><table><thead><tr><th>排名</th><th>项</th><th>次数(hits)</th><th>去重用户</th><th>去重IP</th></tr></thead><tbody>${body}</tbody></table></div>`;
+}
+
+function renderRiskOverview(data) {
+  const metrics = data.metrics || {};
+  const active = metrics.active_users || {};
+  const traffic = metrics.traffic || {};
+  const risk = metrics.risk_result || {};
+
+  const cards = [
+    metricCell('活跃用户（去重用户 / hits）', {
+      today: `${active.today?.users || 0} / ${active.today?.hits || 0}`,
+      '7d': `${active['7d']?.users || 0} / ${active['7d']?.hits || 0}`,
+      '30d': `${active['30d']?.users || 0} / ${active['30d']?.hits || 0}`,
+    }),
+    metricCell('上下行流量（上行 / 下行 / 总计）', {
+      today: `${formatBytes(traffic.today?.up_bytes || 0)} / ${formatBytes(traffic.today?.down_bytes || 0)} / ${formatBytes(traffic.today?.total_bytes || 0)}`,
+      '7d': `${formatBytes(traffic['7d']?.up_bytes || 0)} / ${formatBytes(traffic['7d']?.down_bytes || 0)} / ${formatBytes(traffic['7d']?.total_bytes || 0)}`,
+      '30d': `${formatBytes(traffic['30d']?.up_bytes || 0)} / ${formatBytes(traffic['30d']?.down_bytes || 0)} / ${formatBytes(traffic['30d']?.total_bytes || 0)}`,
+    }),
+    metricCell('拦截结果（拦截hits / 拦截率）', {
+      today: `${risk.today?.blocked_hits || 0} / ${risk.today?.blocked_rate || '0%'}`,
+      '7d': `${risk['7d']?.blocked_hits || 0} / ${risk['7d']?.blocked_rate || '0%'}`,
+      '30d': `${risk['30d']?.blocked_hits || 0} / ${risk['30d']?.blocked_rate || '0%'}`,
+    }),
+  ].join('');
+
+  const windows = data.windows || {};
+  document.getElementById('result').innerHTML = `<div class="cards">${cards}</div>`
+    + renderRankTable('Top 原始 UA（当日）', windows.today?.ua_top || [], 'user_agent')
+    + renderRankTable('Top 原始 UA（近7天）', windows['7d']?.ua_top || [], 'user_agent')
+    + renderRankTable('Top 原始 UA（近30天）', windows['30d']?.ua_top || [], 'user_agent')
+    + renderRankTable('Top 订阅 Flag（当日）', windows.today?.flag_top || [], 'flag')
+    + renderRankTable('Top 订阅 Flag（近7天）', windows['7d']?.flag_top || [], 'flag')
+    + renderRankTable('Top 订阅 Flag（近30天）', windows['30d']?.flag_top || [], 'flag');
 }
 
 async function fetchRiskOverview(btn) { setView(btn, '运维概览'); const data = await request('/risk/overview/fetch'); if (data) renderRiskOverview(data); }
@@ -88,7 +118,6 @@ async function fetchUserUsage(btn, current = 1, pageSize = 200) {
 function fetchUserUsagePage(current, pageSize){ fetchUserUsage(null, current, pageSize); }
 
 Object.assign(window.CenterActions, {
-  overview: () => fetchRiskOverview(null),
   settings: () => fetchRiskSettings(null),
   rules: () => fetchRules(null),
   blacklist: () => fetchBlacklists(null),

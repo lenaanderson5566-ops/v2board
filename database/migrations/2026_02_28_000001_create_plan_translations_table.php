@@ -14,7 +14,7 @@ class CreatePlanTranslationsTable extends Migration
 
         Schema::create('v2_plan_translation', function (Blueprint $table) {
             $table->increments('id');
-            $table->unsignedInteger('plan_id');
+            $table->integer('plan_id');
             $table->string('locale', 16);
             $table->string('name', 255)->nullable();
             $table->text('content')->nullable();

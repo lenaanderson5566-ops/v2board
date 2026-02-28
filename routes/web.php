@@ -52,12 +52,21 @@ Route::get('/' . config('v2board.secure_path', config('v2board.frontend_admin_pa
 });
 
 
-Route::get('/' . config('v2board.risk_control_path', 'risk-control'), function () {
+Route::get('/' . config('v2board.secure_path', config('v2board.frontend_admin_path', hash('crc32b', config('app.key')))) . '/plan-i18n', function () {
+    return view('plan-i18n', [
+        'secure_path' => config('v2board.secure_path', config('v2board.frontend_admin_path', hash('crc32b', config('app.key'))))
+    ]);
+});
+
+$riskView = function () {
     return view('risk', [
         'title' => config('v2board.app_name', 'V2Board'),
         'api_path' => config('v2board.risk_control_api_path', 'risk-control')
     ]);
-});
+};
+
+Route::get('/' . config('v2board.risk_control_path', 'risk-control'), $riskView);
+Route::get('/' . config('v2board.secure_path', config('v2board.frontend_admin_path', hash('crc32b', config('app.key')))) . '/' . config('v2board.risk_control_path', 'risk-control'), $riskView);
 
 if (!empty(config('v2board.subscribe_path'))) {
     Route::get(config('v2board.subscribe_path'), 'V1\\Client\\ClientController@subscribe')->middleware('client');

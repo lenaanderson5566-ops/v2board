@@ -16,9 +16,10 @@
         .hero { background:#fff; border:1px solid #e5e7eb; border-radius:12px; padding:12px 14px; margin-bottom:10px; }
         .hero h2 { margin:0; font-size:20px; }
 
-        .tabs { display:flex; gap:8px; flex-wrap:wrap; position:sticky; top:0; z-index:2; background:#f3f4f6; padding:6px 0 10px; }
-        .tab-btn { border:1px solid #d1d5db; background:#fff; color:#374151; border-radius:8px; padding:8px 14px; cursor:pointer; font-size:13px; min-width:110px; text-align:center; }
-        .tab-btn.active { background:#eff6ff; color:#1d4ed8; border-color:#93c5fd; }
+        .tabs { display:grid; grid-template-columns:repeat(5, minmax(0, 1fr)); gap:8px; position:sticky; top:0; z-index:2; background:#f3f4f6; padding:6px 0 10px; }
+        .tab-btn { border:1px solid #d1d5db; background:#fff; color:#374151; border-radius:10px; padding:10px 12px; cursor:pointer; font-size:13px; text-align:center; height:40px; font-weight:600; }
+        .tab-btn.active { background:#eff6ff; color:#1d4ed8; border-color:#93c5fd; box-shadow: inset 0 0 0 1px #bfdbfe; }
+        @media (max-width: 980px) { .tabs { grid-template-columns:repeat(2, minmax(0, 1fr)); } }
 
         .panel { display:none; background:#fff; border:1px solid #e5e7eb; border-radius:12px; padding:12px; }
         .panel.active { display:block; }

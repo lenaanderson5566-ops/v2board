@@ -552,6 +552,56 @@ class LogController extends Controller
         ]);
     }
 
+    public function getIpBlacklists(Request $request)
+    {
+        $rows = (new RiskBlacklistService())->fetch();
+        return response([
+            'data' => collect($rows)->where('type', 'ip')->values()
+        ]);
+    }
+
+    public function getUaBlacklists(Request $request)
+    {
+        $rows = (new RiskBlacklistService())->fetch();
+        return response([
+            'data' => collect($rows)->where('type', 'ua_hash')->values()
+        ]);
+    }
+
+    public function updateIpBlacklist(Request $request)
+    {
+        $payload = $request->all();
+        $payload['type'] = 'ip';
+        $request->replace($payload);
+        return $this->updateBlacklist($request);
+    }
+
+    public function updateUaBlacklist(Request $request)
+    {
+        $payload = $request->all();
+        $payload['type'] = 'ua_hash';
+        $request->replace($payload);
+        return $this->updateBlacklist($request);
+    }
+
+    public function deleteIpBlacklist(Request $request)
+    {
+        $id = (string) $request->input('id', '');
+        if (strpos($id, 'ip:') !== 0) {
+            abort(422, 'id must be ip:*');
+        }
+        return $this->deleteBlacklist($request);
+    }
+
+    public function deleteUaBlacklist(Request $request)
+    {
+        $id = (string) $request->input('id', '');
+        if (strpos($id, 'ua_hash:') !== 0) {
+            abort(422, 'id must be ua_hash:*');
+        }
+        return $this->deleteBlacklist($request);
+    }
+
     public function updateBlacklist(Request $request)
     {
         $rawItems = $request->input('items');

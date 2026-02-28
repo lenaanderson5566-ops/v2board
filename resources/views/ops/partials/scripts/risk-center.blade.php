@@ -154,7 +154,7 @@ async function saveIpBlacklist(rowId) {
     alert('IP黑名单值不能为空');
     return;
   }
-  const rows = await request('/risk/blacklist/update', {
+  const rows = await request('/risk/blacklist/ip/update', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(payload),
@@ -175,7 +175,7 @@ async function saveUaBlacklist(rowId) {
     alert('UA黑名单请填写UA原文或Hash');
     return;
   }
-  const rows = await request('/risk/blacklist/update', {
+  const rows = await request('/risk/blacklist/ua/update', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(payload),
@@ -189,7 +189,8 @@ async function deleteBlacklist(id) {
     return;
   }
   if (!confirm('确定删除该黑名单记录吗？')) return;
-  const rows = await request('/risk/blacklist/delete', {
+  const endpoint = String(id).startsWith('ip:') ? '/risk/blacklist/ip/delete' : '/risk/blacklist/ua/delete';
+  const rows = await request(endpoint, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ id }),
@@ -205,13 +206,13 @@ async function deleteBlacklist(id) {
 
 async function fetchIpBlacklists(btn) {
   setView(btn, 'IP黑名单配置');
-  const rows = await request('/risk/blacklist/fetch');
+  const rows = await request('/risk/blacklist/ip/fetch');
   if (rows) renderIpBlacklistEditor(rows);
 }
 
 async function fetchUaBlacklists(btn) {
   setView(btn, 'UA黑名单配置');
-  const rows = await request('/risk/blacklist/fetch');
+  const rows = await request('/risk/blacklist/ua/fetch');
   if (rows) renderUaBlacklistEditor(rows);
 }
 function applyOnlineUsersFilter(){ riskFilters.onlineUsers.email = document.getElementById('f_online_email').value.trim(); riskFilters.onlineUsers.ip = document.getElementById('f_online_ip').value.trim(); fetchOnlineUsers(null, 1); }

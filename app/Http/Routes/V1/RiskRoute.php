@@ -21,6 +21,12 @@ class RiskRoute
             $router->get('/risk/blacklist/fetch', 'V1\Risk\LogController@getBlacklists');
             $router->post('/risk/blacklist/update', 'V1\Risk\LogController@updateBlacklist');
             $router->post('/risk/blacklist/delete', 'V1\Risk\LogController@deleteBlacklist');
+            $router->get('/risk/blacklist/ip/fetch', 'V1\Risk\LogController@getIpBlacklists');
+            $router->post('/risk/blacklist/ip/update', 'V1\Risk\LogController@updateIpBlacklist');
+            $router->post('/risk/blacklist/ip/delete', 'V1\Risk\LogController@deleteIpBlacklist');
+            $router->get('/risk/blacklist/ua/fetch', 'V1\Risk\LogController@getUaBlacklists');
+            $router->post('/risk/blacklist/ua/update', 'V1\Risk\LogController@updateUaBlacklist');
+            $router->post('/risk/blacklist/ua/delete', 'V1\Risk\LogController@deleteUaBlacklist');
             $router->get('/risk/online-user/fetch', 'V1\Risk\LogController@getOnlineUsers');
             $router->get('/risk/user-usage/fetch', 'V1\Risk\LogController@getUserUsage');
 

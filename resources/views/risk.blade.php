@@ -29,10 +29,7 @@
             padding: 20px 16px;
             border-right: 1px solid #1f2937;
         }
-        .sidebar h3 { margin: 0 0 8px; font-size: 18px; color: #fff; }
-        .sidebar p { margin: 0 0 16px; color: #9ca3af; font-size: 12px; }
-        .menu-section { margin-bottom: 18px; }
-        .menu-title { font-size: 11px; color: #9ca3af; margin-bottom: 8px; text-transform: uppercase; letter-spacing: .4px; }
+        .menu-section { margin-bottom: 12px; }
         .menu-list { display: flex; flex-direction: column; gap: 8px; }
         .menu-btn {
             width: 100%;
@@ -62,7 +59,6 @@
         .container { max-width: 1680px; margin: 0 auto; }
         .header { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 14px; }
         .title { margin: 0; font-size: 24px; }
-        .subtitle { margin: 4px 0 0; color: var(--muted); font-size: 13px; }
         .status { padding: 10px 12px; border-radius: 8px; font-size: 13px; border: 1px solid var(--border); background: var(--card); margin-bottom: 14px; }
         .status.ok { color: var(--success); border-color: #bbf7d0; background: #f0fdf4; }
         .status.warn { color: var(--danger); border-color: #fecaca; background: #fef2f2; }
@@ -115,20 +111,16 @@
 </div>
 <div class="layout">
     <aside class="sidebar">
-        <h3>Risk Console</h3>
-        <p>风控后台导航</p>
-
+        
         <div class="menu-section">
-            <div class="menu-title">控制台</div>
-            <div class="menu-list">
+                        <div class="menu-list">
                 <button class="menu-btn" onclick="fetchOverview(this)">运营总览</button>
                 <button class="menu-btn" onclick="fetchRiskSettings(this)">风控后台配置</button>
             </div>
         </div>
 
         <div class="menu-section">
-            <div class="menu-title">用户行为</div>
-            <div class="menu-list">
+                        <div class="menu-list">
                 <button class="menu-btn" onclick="fetchOnlineUsers(this)">实时在线IP</button>
                 <button class="menu-btn" onclick="fetchUserUsage(this)">用户画像总览</button>
                 <button class="menu-btn" onclick="fetchUserConnectionLogs(this)">连接历史</button>
@@ -138,8 +130,7 @@
         </div>
 
         <div class="menu-section">
-            <div class="menu-title">风控规则</div>
-            <div class="menu-list">
+                        <div class="menu-list">
                 <button class="menu-btn" onclick="fetchRules(this)">规则配置</button>
                 <button class="menu-btn" onclick="fetchRuleHits(this)">命中记录</button>
                 <button class="menu-btn" onclick="fetchBlacklists(this)">黑名单管理</button>
@@ -147,8 +138,7 @@
         </div>
 
         <div class="menu-section">
-            <div class="menu-title">客户端策略</div>
-            <div class="menu-list">
+                        <div class="menu-list">
                 <button class="menu-btn" onclick="fetchClientStrategyOverview(this)">客户端策略总览</button>
                 <button class="menu-btn" onclick="fetchClientStrategies(this)">客户端策略管理</button>
             </div>
@@ -159,8 +149,7 @@
         <div class="container">
             <div class="header">
                 <div>
-                    <h2 class="title">Risk Control Console</h2>
-                    <p class="subtitle">风控总览、日志检索、规则管理与策略中心</p>
+                    <h2 class="title">风控中心</h2>
                 </div>
             </div>
 

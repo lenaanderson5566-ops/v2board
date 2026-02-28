@@ -176,7 +176,15 @@ async function deleteBlacklist(id) {
   if (rows) renderBlacklistEditor(rows);
 }
 
-async function fetchBlacklists(btn) { setView(btn, '风控黑名单'); const rows = await request('/risk/blacklist/fetch'); if (rows) renderBlacklistEditor(rows); }
+async function fetchBlacklists(btn, type = 'all') {
+  blacklistFilterType = type;
+  setView(btn, type === 'ip' ? 'IP黑名单' : (type === 'ua_hash' ? 'UA黑名单' : '风控黑名单'));
+  const rows = await request('/risk/blacklist/fetch');
+  if (rows) renderBlacklistEditor(rows);
+}
+
+async function fetchIpBlacklists(btn) { return fetchBlacklists(btn, 'ip'); }
+async function fetchUaBlacklists(btn) { return fetchBlacklists(btn, 'ua_hash'); }
 
 function applyOnlineUsersFilter(){ riskFilters.onlineUsers.email = document.getElementById('f_online_email').value.trim(); riskFilters.onlineUsers.ip = document.getElementById('f_online_ip').value.trim(); fetchOnlineUsers(null, 1); }
 function resetOnlineUsersFilter(){ riskFilters.onlineUsers = { email:'', ip:'' }; fetchOnlineUsers(null, 1); }
@@ -204,6 +212,8 @@ Object.assign(window.CenterActions, {
   settings: () => fetchRiskSettings(null),
   rules: () => fetchRules(null),
   blacklist: () => fetchBlacklists(null),
+  blacklist_ip: () => fetchIpBlacklists(null),
+  blacklist_ua: () => fetchUaBlacklists(null),
   online: () => fetchOnlineUsers(null),
   profile: () => fetchUserUsage(null),
 });

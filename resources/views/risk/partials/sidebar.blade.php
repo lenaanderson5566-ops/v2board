@@ -14,7 +14,8 @@
             <div class="menu-list">
                 <button class="menu-btn" data-section="risk" onclick="fetchRiskSettings(this)">风控参数配置</button>
                 <button class="menu-btn" data-section="risk" onclick="fetchRules(this)">风控规则配置</button>
-                <button class="menu-btn" data-section="risk" onclick="fetchBlacklists(this)">风控黑名单</button>
+                <button class="menu-btn" data-section="risk" onclick="fetchIpBlacklists(this)">IP黑名单</button>
+                <button class="menu-btn" data-section="risk" onclick="fetchUaBlacklists(this)">UA黑名单</button>
             </div>
         </div>
 

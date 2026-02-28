@@ -12,11 +12,8 @@ class ThemeService
 
     public function __construct($theme)
     {
-        if ($theme === 'default') {
-            $theme = 'd1';
-        }
         $this->theme = $theme;
-        $this->path = $path = public_path('t1/');
+        $this->path = $path = public_path('theme/');
     }
 
     public function init()

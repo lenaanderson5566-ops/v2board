@@ -9,14 +9,9 @@ Route::get('/', function (Request $request) {
             abort(403);
         }
     }
-    $frontendTheme = config('v2board.frontend_theme', 'd1');
-    if ($frontendTheme === 'default') {
-        $frontendTheme = 'd1';
-    }
-
     $renderParams = [
         'title' => config('v2board.app_name', 'V2Board'),
-        'theme' => $frontendTheme,
+        'theme' => config('v2board.frontend_theme', 'default'),
         'version' => config('app.version'),
         'description' => config('v2board.app_description', 'V2Board is best'),
         'logo' => config('v2board.logo')
@@ -27,8 +22,8 @@ Route::get('/', function (Request $request) {
         $themeService->init();
     }
 
-    $renderParams['theme_config'] = config("theme.{$frontendTheme}");
-    return view("theme::{$frontendTheme}.dashboard", $renderParams);
+    $renderParams['theme_config'] = config('theme.' . config('v2board.frontend_theme', 'default'));
+    return view('theme::' . config('v2board.frontend_theme', 'default') . '.dashboard', $renderParams);
 });
 
 $securePath = config('v2board.secure_path', config('v2board.frontend_admin_path', hash('crc32b', config('app.key'))));

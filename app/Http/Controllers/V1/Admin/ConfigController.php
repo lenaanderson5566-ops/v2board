@@ -14,12 +14,6 @@ use Illuminate\Support\Facades\Cache;
 
 class ConfigController extends Controller
 {
-    private function getFrontendThemeName(): string
-    {
-        $theme = config('v2board.frontend_theme', 'd1');
-        return $theme === 'default' ? 'd1' : $theme;
-    }
-
     public function getEmailTemplate()
     {
         $path = resource_path('views/mail/');
@@ -33,7 +27,7 @@ class ConfigController extends Controller
 
     public function getThemeTemplate()
     {
-        $path = public_path('t1/');
+        $path = public_path('theme/');
         $files = array_map(function ($item) use ($path) {
             return str_replace($path, '', $item);
         }, glob($path . '*'));
@@ -124,7 +118,7 @@ class ConfigController extends Controller
                 'show_subscribe_expire' => (int)config('v2board.show_subscribe_expire', 5),
             ],
             'frontend' => [
-                'frontend_theme' => $this->getFrontendThemeName(),
+                'frontend_theme' => config('v2board.frontend_theme', 'v2board'),
                 'frontend_theme_sidebar' => config('v2board.frontend_theme_sidebar', 'light'),
                 'frontend_theme_header' => config('v2board.frontend_theme_header', 'dark'),
                 'frontend_theme_color' => config('v2board.frontend_theme_color', 'default'),

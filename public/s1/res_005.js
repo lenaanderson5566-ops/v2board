@@ -26196,7 +26196,7 @@
           , c = s.host
           , u = document.createElement("link");
         u.rel = "stylesheet",
-        u.href = c ? "./theme/".concat(l.color, ".css") : "/assets/admin/theme/".concat(l.color, ".css"),
+        u.href = c ? "./theme/".concat(l.color, ".css") : "/s1/theme/".concat(l.color, ".css"),
         document.getElementsByTagName("head")[0].appendChild(u),
         a.a.locale("zh-cn"),
         "1" === Object(r["d"])("dark_mode") && Object(i["enable"])({

@@ -12,12 +12,12 @@
         #guestBlock p { color:#6b7280; line-height:1.7; }
         #guestBlock a { display:inline-block; margin-top:8px; color:#2563eb; }
 
-        .page { max-width: 1280px; margin: 18px auto; padding: 0 14px 18px; }
+        .page { width: calc(100vw - 24px); max-width: 100%; margin: 12px auto; padding: 0 8px 12px; }
         .hero { background: #fff; border: 1px solid #e5e7eb; border-radius: 12px; padding: 14px 16px; margin-bottom: 12px; }
         .hero h2 { margin: 0 0 6px; font-size: 22px; }
         .hero p { margin: 0; color: #6b7280; font-size: 13px; }
 
-        .tabs { display: flex; gap: 8px; margin-bottom: 12px; flex-wrap: wrap; }
+        .tabs { display: flex; gap: 8px; margin-bottom: 12px; flex-wrap: wrap; position: sticky; top: 0; background: #f3f4f6; padding: 6px 0; z-index: 2; }
         .tab-btn { border: 1px solid #d1d5db; background: #fff; color: #374151; border-radius: 8px; padding: 8px 12px; cursor: pointer; }
         .tab-btn.active { background: #eff6ff; color: #1d4ed8; border-color: #93c5fd; }
 
@@ -32,7 +32,7 @@
 
         .module-title { margin: 0 0 10px; font-size: 18px; }
         .module-desc { margin: 0 0 12px; color:#6b7280; font-size: 13px; }
-        iframe { width: 100%; min-height: 78vh; border: 1px solid #d1d5db; border-radius: 10px; background: #fff; }
+        iframe { width: 100%; min-height: 82vh; border: 1px solid #d1d5db; border-radius: 10px; background: #fff; }
 
         .placeholder { border:1px dashed #cbd5e1; border-radius:10px; background:#f8fafc; padding:16px; color:#475569; }
     </style>

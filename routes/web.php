@@ -3,17 +3,6 @@
 use App\Services\ThemeService;
 use Illuminate\Http\Request;
 
-/*
-|--------------------------------------------------------------------------
-| Web Routes
-|--------------------------------------------------------------------------
-|
-| Here is where you can register web routes for your application. These
-| routes are loaded by the RouteServiceProvider within a group which
-| contains the "web" middleware group. Now create something great!
-|
-*/
-
 Route::get('/', function (Request $request) {
     if (config('v2board.app_url') && config('v2board.safe_mode_enable', 0)) {
         if ($request->server('HTTP_HOST') !== parse_url(config('v2board.app_url'))['host']) {
@@ -38,9 +27,8 @@ Route::get('/', function (Request $request) {
 });
 
 $securePath = config('v2board.secure_path', config('v2board.frontend_admin_path', hash('crc32b', config('app.key'))));
-$adminExtensionPath = $securePath . '/admin-extension';
+$opsPath = $securePath . '/ops-center';
 
-//TODO:: 兼容
 Route::get('/' . $securePath, function () use ($securePath) {
     return view('admin', [
         'title' => config('v2board.app_name', 'V2Board'),
@@ -54,21 +42,41 @@ Route::get('/' . $securePath, function () use ($securePath) {
     ]);
 });
 
-Route::get('/' . $adminExtensionPath, function () use ($securePath, $adminExtensionPath) {
+Route::get('/' . $opsPath, function () use ($securePath, $opsPath) {
     return view('admin-extension', [
         'secure_path' => $securePath,
-        'admin_extension_path' => $adminExtensionPath
+        'ops_path' => $opsPath
     ]);
 });
 
-
-Route::get('/' . $securePath . '/addon', function () use ($adminExtensionPath) {
-    return redirect('/' . $adminExtensionPath);
+Route::get('/' . $securePath . '/addon', function () use ($opsPath) {
+    return redirect('/' . $opsPath);
 });
 
-Route::get('/' . $adminExtensionPath . '/plan-i18n', function () use ($securePath) {
-    return view('plan-i18n', [
-        'secure_path' => $securePath
+Route::get('/' . $opsPath . '/i18n', function () use ($securePath, $opsPath) {
+    return view('i18n-center', [
+        'secure_path' => $securePath,
+        'ops_path' => $opsPath
+    ]);
+});
+
+Route::get('/' . $opsPath . '/plan-i18n', function () use ($opsPath) {
+    return redirect('/' . $opsPath . '/i18n');
+});
+
+Route::get('/' . $opsPath . '/marketing-email', function () use ($opsPath) {
+    return view('module-placeholder', [
+        'title' => '营销邮件模块（占位）',
+        'description' => '该模块用于营销邮件模板、分群发送、自动化触达等能力，当前为功能占位。',
+        'ops_path' => $opsPath,
+    ]);
+});
+
+Route::get('/' . $opsPath . '/user-points', function () use ($opsPath) {
+    return view('module-placeholder', [
+        'title' => '用户积分模块（占位）',
+        'description' => '该模块用于积分规则、积分流水、积分兑换等能力，当前为功能占位。',
+        'ops_path' => $opsPath,
     ]);
 });
 
@@ -79,15 +87,19 @@ $riskView = function () {
     ]);
 };
 
-Route::get('/' . $adminExtensionPath . '/risk-control', $riskView);
+Route::get('/' . $opsPath . '/risk-control', $riskView);
 
-// legacy urls -> unified extension page
-Route::get('/' . $securePath . '/plan-i18n', function () use ($adminExtensionPath) {
-    return redirect('/' . $adminExtensionPath . '#plan-i18n');
+// legacy urls -> unified ops center
+Route::get('/' . $securePath . '/plan-i18n', function () use ($opsPath) {
+    return redirect('/' . $opsPath . '/i18n');
 });
 
-Route::get('/' . $securePath . '/risk-control', function () use ($adminExtensionPath) {
-    return redirect('/' . $adminExtensionPath . '#risk-control');
+Route::get('/' . $securePath . '/risk-control', function () use ($opsPath) {
+    return redirect('/' . $opsPath . '/risk-control');
+});
+
+Route::get('/' . $securePath . '/admin-extension', function () use ($opsPath) {
+    return redirect('/' . $opsPath);
 });
 
 if (!empty(config('v2board.subscribe_path'))) {

@@ -56,14 +56,29 @@ Route::get('/' . $opsPath . '/i18n', function () use ($securePath, $opsPath) {
     ]);
 });
 
-$riskView = function () {
+$riskView = function ($mode = 'all') {
     return view('risk', [
         'title' => config('v2board.app_name', 'V2Board'),
-        'api_path' => config('v2board.risk_control_api_path', 'risk-control')
+        'api_path' => config('v2board.risk_control_api_path', 'risk-control'),
+        'mode' => $mode
     ]);
 };
 
-Route::get('/' . $opsPath . '/risk-control', $riskView);
+Route::get('/' . $opsPath . '/overview', function () use ($riskView) {
+    return $riskView('overview');
+});
+
+Route::get('/' . $opsPath . '/risk-center', function () use ($riskView) {
+    return $riskView('risk');
+});
+
+Route::get('/' . $opsPath . '/client-center', function () use ($riskView) {
+    return $riskView('client');
+});
+
+Route::get('/' . $opsPath . '/risk-control', function () use ($riskView) {
+    return $riskView('risk');
+});
 
 if (!empty(config('v2board.subscribe_path'))) {
     Route::get(config('v2board.subscribe_path'), 'V1\\Client\\ClientController@subscribe')->middleware('client');

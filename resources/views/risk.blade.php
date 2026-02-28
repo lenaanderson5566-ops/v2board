@@ -114,33 +114,33 @@
         
         <div class="menu-section">
                         <div class="menu-list">
-                <button class="menu-btn" onclick="fetchOverview(this)">运营总览</button>
-                <button class="menu-btn" onclick="fetchRiskSettings(this)">风控后台配置</button>
+                <button class="menu-btn" data-section="overview" onclick="fetchOverview(this)">运营总览</button>
+                <button class="menu-btn" data-section="risk" onclick="fetchRiskSettings(this)">风控后台配置</button>
             </div>
         </div>
 
         <div class="menu-section">
                         <div class="menu-list">
-                <button class="menu-btn" onclick="fetchOnlineUsers(this)">实时在线IP</button>
-                <button class="menu-btn" onclick="fetchUserUsage(this)">用户画像总览</button>
-                <button class="menu-btn" onclick="fetchUserConnectionLogs(this)">连接历史</button>
-                <button class="menu-btn" onclick="fetchLoginLogs(this)">登录记录</button>
-                <button class="menu-btn" onclick="fetchSubscribeLogs(this)">订阅记录</button>
+                <button class="menu-btn" data-section="overview" onclick="fetchOnlineUsers(this)">实时在线IP</button>
+                <button class="menu-btn" data-section="overview" onclick="fetchUserUsage(this)">用户画像总览</button>
+                <button class="menu-btn" data-section="risk" onclick="fetchUserConnectionLogs(this)">连接历史</button>
+                <button class="menu-btn" data-section="risk" onclick="fetchLoginLogs(this)">登录记录</button>
+                <button class="menu-btn" data-section="risk" onclick="fetchSubscribeLogs(this)">订阅记录</button>
             </div>
         </div>
 
         <div class="menu-section">
                         <div class="menu-list">
-                <button class="menu-btn" onclick="fetchRules(this)">规则配置</button>
-                <button class="menu-btn" onclick="fetchRuleHits(this)">命中记录</button>
-                <button class="menu-btn" onclick="fetchBlacklists(this)">黑名单管理</button>
+                <button class="menu-btn" data-section="risk" onclick="fetchRules(this)">规则配置</button>
+                <button class="menu-btn" data-section="risk" onclick="fetchRuleHits(this)">命中记录</button>
+                <button class="menu-btn" data-section="risk" onclick="fetchBlacklists(this)">黑名单管理</button>
             </div>
         </div>
 
         <div class="menu-section">
                         <div class="menu-list">
-                <button class="menu-btn" onclick="fetchClientStrategyOverview(this)">客户端策略总览</button>
-                <button class="menu-btn" onclick="fetchClientStrategies(this)">客户端策略管理</button>
+                <button class="menu-btn" data-section="client" onclick="fetchClientStrategyOverview(this)">客户端策略总览</button>
+                <button class="menu-btn" data-section="client" onclick="fetchClientStrategies(this)">客户端策略管理</button>
             </div>
         </div>
     </aside>
@@ -163,6 +163,7 @@
 <script>
 const apiBase = '/api/v1/{{ $api_path }}';
 const adminPath = '/{{ config('v2board.secure_path', config('v2board.frontend_admin_path', hash('crc32b', config('app.key')))) }}';
+const bootMode = '{{ $mode ?? 'all' }}';
 
 function getAuthorization() {
   const fromStorage = window.localStorage.getItem('authorization');
@@ -1103,7 +1104,16 @@ async function fetchSubscribeLogs(btn, current = 1, pageSize = 50) {
 }
 function fetchSubscribeLogsPage(current, pageSize){ fetchSubscribeLogs(null, current, pageSize); }
 
-if (authorization) fetchOverview(document.querySelector('.menu-btn'));
+if (authorization) {
+  if (bootMode !== 'all') {
+    document.querySelectorAll('.menu-btn').forEach((btn) => {
+      const section = btn.getAttribute('data-section') || 'risk';
+      btn.style.display = section === bootMode ? '' : 'none';
+    });
+  }
+  const firstVisible = Array.from(document.querySelectorAll('.menu-btn')).find((btn) => btn.style.display !== 'none');
+  if (firstVisible) firstVisible.click();
+}
 </script>
 </body>
 </html>

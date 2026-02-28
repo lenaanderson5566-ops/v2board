@@ -64,16 +64,16 @@ $riskView = function ($mode = 'all') {
     ]);
 };
 
-Route::get('/' . $opsPath . '/overview', function () use ($riskView) {
-    return $riskView('overview');
-});
-
 Route::get('/' . $opsPath . '/risk-center', function () use ($riskView) {
     return $riskView('risk');
 });
 
 Route::get('/' . $opsPath . '/client-center', function () use ($riskView) {
     return $riskView('client');
+});
+
+Route::get('/' . $opsPath . '/log-center', function () use ($riskView) {
+    return $riskView('logs');
 });
 
 Route::get('/' . $opsPath . '/risk-control', function () use ($riskView) {

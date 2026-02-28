@@ -41,23 +41,23 @@
         <div class="hero"><h2>V2Board 运营中台</h2></div>
 
         <div class="tabs">
-            <button class="tab-btn active" data-tab="overview" onclick="switchTab('overview')">总览</button>
-            <button class="tab-btn" data-tab="risk" onclick="switchTab('risk')">风控中心</button>
+            <button class="tab-btn active" data-tab="risk" onclick="switchTab('risk')">风控中心</button>
             <button class="tab-btn" data-tab="client" onclick="switchTab('client')">客户端中心</button>
+            <button class="tab-btn" data-tab="logs" onclick="switchTab('logs')">日志中心</button>
             <button class="tab-btn" data-tab="i18n" onclick="switchTab('i18n')">国际化中心</button>
             <button class="tab-btn" data-tab="marketing" onclick="switchTab('marketing')">营销中心</button>
         </div>
 
-        <section id="panel-overview" class="panel active">
-            <iframe src="/{{ $ops_path }}/overview"></iframe>
-        </section>
-
-        <section id="panel-risk" class="panel">
+        <section id="panel-risk" class="panel active">
             <iframe src="/{{ $ops_path }}/risk-center"></iframe>
         </section>
 
         <section id="panel-client" class="panel">
             <iframe src="/{{ $ops_path }}/client-center"></iframe>
+        </section>
+
+        <section id="panel-logs" class="panel">
+            <iframe src="/{{ $ops_path }}/log-center"></iframe>
         </section>
 
         <section id="panel-i18n" class="panel">

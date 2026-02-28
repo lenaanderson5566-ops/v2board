@@ -114,11 +114,12 @@
     <aside class="sidebar">
         
         <div class="menu-section">
-                        <div class="menu-group-title">总览中心</div>
+                        <div class="menu-group-title">客户端中心</div>
             <div class="menu-list">
-                <button class="menu-btn" data-section="overview" onclick="fetchOverview(this)">风控总览</button>
-                <button class="menu-btn" data-section="overview" onclick="fetchOnlineUsers(this)">实时在线IP</button>
-                <button class="menu-btn" data-section="overview" onclick="fetchUserUsage(this)">用户画像总览</button>
+                <button class="menu-btn" data-section="client" onclick="fetchOnlineUsers(this)">实时在线IP</button>
+                <button class="menu-btn" data-section="client" onclick="fetchUserUsage(this)">用户画像总览</button>
+                <button class="menu-btn" data-section="client" onclick="fetchClientStrategyOverview(this)">客户端策略总览</button>
+                <button class="menu-btn" data-section="client" onclick="fetchClientStrategies(this)">客户端策略管理</button>
             </div>
         </div>
 
@@ -134,20 +135,14 @@
         <div class="menu-section">
                         <div class="menu-group-title">日志中心</div>
             <div class="menu-list">
-                <button class="menu-btn" data-section="risk" onclick="fetchUserConnectionLogs(this)">连接日志</button>
-                <button class="menu-btn" data-section="risk" onclick="fetchLoginLogs(this)">登录日志</button>
-                <button class="menu-btn" data-section="risk" onclick="fetchSubscribeLogs(this)">订阅日志</button>
-                <button class="menu-btn" data-section="risk" onclick="fetchRuleHits(this)">命中日志</button>
+                <button class="menu-btn" data-section="logs" onclick="fetchUserConnectionLogs(this)">连接日志</button>
+                <button class="menu-btn" data-section="logs" onclick="fetchLoginLogs(this)">登录日志</button>
+                <button class="menu-btn" data-section="logs" onclick="fetchSubscribeLogs(this)">订阅日志</button>
+                <button class="menu-btn" data-section="logs" onclick="fetchRuleHits(this)">命中日志</button>
             </div>
         </div>
 
-        <div class="menu-section">
-                        <div class="menu-group-title">策略中心</div>
-            <div class="menu-list">
-                <button class="menu-btn" data-section="client" onclick="fetchClientStrategyOverview(this)">客户端策略总览</button>
-                <button class="menu-btn" data-section="client" onclick="fetchClientStrategies(this)">客户端策略管理</button>
-            </div>
-        </div>
+        
     </aside>
 
     <main class="content">
@@ -159,7 +154,7 @@
             </div>
 
             <div id="authState" class="status"></div>
-            <div id="viewTitle" style="font-size:13px;color:#6b7280;margin-bottom:10px;">当前模块：运营总览</div>
+            <div id="viewTitle" style="font-size:13px;color:#6b7280;margin-bottom:10px;">当前模块：风控参数配置</div>
             <div id="result" class="result-panel"></div>
         </div>
     </main>
@@ -311,27 +306,6 @@ function setView(btn, title) {
   if (btn) btn.classList.add('active');
 }
 
-function renderOverview(data) {
-  if (!data) {
-    document.getElementById('result').innerHTML = '<p>暂无数据</p>';
-    return;
-  }
-
-  const cards = [
-    { label: '登录总量(24h)', value: data.login_total_24h },
-    { label: '登录失败(24h)', value: `${data.login_failed_24h} (${data.login_failed_rate_24h})` },
-    { label: '订阅总量(24h)', value: data.subscribe_total_24h },
-    { label: '订阅失败(24h)', value: `${data.subscribe_failed_24h} (${data.subscribe_failed_rate_24h})` },
-    { label: '规则触发(24h)', value: data.rule_hit_total_24h },
-  ];
-
-  const cardHtml = cards.map(item => `<div class="card"><div class="label">${item.label}</div><div class="value">${item.value ?? 0}</div></div>`).join('');
-  const latestTitle = '<h4 style="margin-top: 18px; margin-bottom: 6px;">最近规则触发</h4>';
-  const latestTable = buildTable(data.latest_rule_hits || []);
-
-  document.getElementById('result').innerHTML = `<div class="cards">${cardHtml}</div>${latestTitle}${latestTable}`;
-}
-
 function renderRuleEditor(rows) {
   currentRuleRows = rows || [];
   if (!currentRuleRows.length) {
@@ -417,14 +391,6 @@ async function requestWithMeta(path, options = {}) {
     return { rows: [], total: 0 };
   }
   return { rows: payload.data || [], total: payload.total || 0 };
-}
-
-async function fetchOverview(btn) {
-  setView(btn, '运营总览');
-  const data = await request('/overview');
-  if (data) {
-    renderOverview(data);
-  }
 }
 
 function renderRiskSettings(data) {
@@ -568,8 +534,6 @@ async function resetRule(ruleKey) {
   }
 }
 
-
-
 function buildClientStrategySummary(rows) {
   const toNum = (v) => Number(v || 0);
   const metrics = [
@@ -590,7 +554,6 @@ function buildClientStrategySummary(rows) {
 
   return cardsHtml + hintHtml;
 }
-
 
 function renderClientStrategyOverview(rows) {
   if (!rows || !rows.length) {
@@ -637,7 +600,6 @@ function renderClientStrategyOverview(rows) {
     + '<h4 style="margin:4px 0 8px;">Top Flag 排名（仅显示有数据客户端）</h4>' + flagRankTable
     + '<h4 style="margin:12px 0 8px;">原始UA明细（30天，不做归类）</h4>' + uaTable;
 }
-
 
 function renderClientStrategyEditor(rows) {
   if (!rows || !rows.length) {
@@ -711,7 +673,6 @@ async function saveClientStrategy(idx, clientType) {
   }
 }
 
-
 async function deleteClientStrategy(clientType) {
   if (!confirm(`确定删除客户端策略 ${clientType} 吗？`)) {
     return;
@@ -728,7 +689,6 @@ async function deleteClientStrategy(clientType) {
     renderClientStrategyEditor(rows);
   }
 }
-
 
 function renderBlacklistEditor(rows, activeType = 'ip') {
   const safe = (v) => String(v ?? '').replace(/"/g, '&quot;');
@@ -869,7 +829,6 @@ async function deleteBlacklist(id) {
   }
 }
 
-
 async function sha256Hex(input) {
   const data = new TextEncoder().encode(String(input || ''));
   const hashBuffer = await crypto.subtle.digest('SHA-256', data);
@@ -900,7 +859,6 @@ async function convertRowUaToHash(idx) {
   }
   hashEl.value = await sha256Hex(ua);
 }
-
 
 const logFilters = {
   ruleHits: { scene: '', rule_key: '', risk_level: '', email: '', ip: '' },

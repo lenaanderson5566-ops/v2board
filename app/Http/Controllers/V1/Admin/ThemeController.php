@@ -15,7 +15,7 @@ class ThemeController extends Controller
 
     public function __construct()
     {
-        $this->path = $path = public_path('theme/');
+        $this->path = $path = public_path('t1/');
         $this->themes = array_map(function ($item) use ($path) {
             return str_replace($path, '', $item);
         }, glob($path . '*'));
@@ -60,7 +60,7 @@ class ThemeController extends Controller
         ]);
         $payload['config'] = json_decode(base64_decode($payload['config']), true);
         if (!$payload['config'] || !is_array($payload['config'])) abort(500, '参数有误');
-        $themeConfigFile = public_path("theme/{$payload['name']}/config.json");
+        $themeConfigFile = public_path("t1/{$payload['name']}/config.json");
         if (!File::exists($themeConfigFile)) abort(500, '主题不存在');
         $themeConfig = json_decode(File::get($themeConfigFile), true);
         if (!isset($themeConfig['configs']) || !is_array($themeConfig)) abort(500, '主题配置文件有误');

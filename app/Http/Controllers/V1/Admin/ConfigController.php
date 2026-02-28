@@ -27,7 +27,7 @@ class ConfigController extends Controller
 
     public function getThemeTemplate()
     {
-        $path = public_path('theme/');
+        $path = public_path('t1/');
         $files = array_map(function ($item) use ($path) {
             return str_replace($path, '', $item);
         }, glob($path . '*'));

@@ -13,7 +13,7 @@ class ThemeService
     public function __construct($theme)
     {
         $this->theme = $theme;
-        $this->path = $path = public_path('theme/');
+        $this->path = $path = public_path('t1/');
     }
 
     public function init()

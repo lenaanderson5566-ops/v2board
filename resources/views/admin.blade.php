@@ -2,9 +2,9 @@
 <html>
 
 <head>
-    <link rel="stylesheet" href="/s1/res_002.css?v={{$version}}">
-    <link rel="stylesheet" href="/s1/res_004.css?v={{$version}}">
-    <link rel="stylesheet" href="/s1/custom.css?v={{$version}}">
+    <link rel="stylesheet" href="/assets/admin/res_002.css?v={{$version}}">
+    <link rel="stylesheet" href="/assets/admin/res_004.css?v={{$version}}">
+    <link rel="stylesheet" href="/assets/admin/custom.css?v={{$version}}">
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,minimum-scale=1,user-scalable=no">
     <title>{{$title}}</title>
@@ -28,9 +28,9 @@
 
 <body>
 <div id="root"></div>
-<script src="/s1/res_006.js?v={{$version}}"></script>
-<script src="/s1/res_001.js?v={{$version}}"></script>
-<script src="/s1/res_005.js?v={{$version}}"></script>
+<script src="/assets/admin/res_006.js?v={{$version}}"></script>
+<script src="/assets/admin/res_001.js?v={{$version}}"></script>
+<script src="/assets/admin/res_005.js?v={{$version}}"></script>
 </body>
 
 </html>

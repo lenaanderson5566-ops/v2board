@@ -2,10 +2,10 @@
 <html>
 
 <head>
-    <link rel="stylesheet" href="/t1/d1/s1/res_002.css?v={{$version}}">
-    <link rel="stylesheet" href="/t1/d1/s1/res_004.css?v={{$version}}">
-    @if (file_exists(public_path("/t1/d1/s1/custom.css")))
-        <link rel="stylesheet" href="/t1/d1/s1/custom.css?v={{$version}}">
+    <link rel="stylesheet" href="/theme/{{$theme}}/assets/res_002.css?v={{$version}}">
+    <link rel="stylesheet" href="/theme/{{$theme}}/assets/res_004.css?v={{$version}}">
+    @if (file_exists(public_path("/theme/{$theme}/assets/custom.css")))
+        <link rel="stylesheet" href="/theme/{{$theme}}/assets/custom.css?v={{$version}}">
     @endif
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,minimum-scale=1,user-scalable=no">
@@ -23,7 +23,7 @@
     <script>
         window.settings = {
             title: '{{$title}}',
-            assets_path: '/t1/d1/s1',
+            assets_path: '/theme/{{$theme}}/assets',
             theme: {
                 sidebar: '{{$theme_config['theme_sidebar']}}',
                 header: '{{$theme_config['theme_header']}}',
@@ -44,23 +44,23 @@
             logo: '{{$logo}}'
         }
     </script>
-    <script src="/t1/d1/s1/i18n/res_006.js?v={{$version}}"></script>
-    <script src="/t1/d1/s1/i18n/res_007.js?v={{$version}}"></script>
-    <script src="/t1/d1/s1/i18n/res_001.js?v={{$version}}"></script>
-    <script src="/t1/d1/s1/i18n/res_003.js?v={{$version}}"></script>
-    <script src="/t1/d1/s1/i18n/res_005.js?v={{$version}}"></script>
-    <script src="/t1/d1/s1/i18n/res_004.js?v={{$version}}"></script>
-    <script src="/t1/d1/s1/i18n/res_002.js?v={{$version}}"></script>
+    <script src="/theme/{{$theme}}/assets/i18n/res_006.js?v={{$version}}"></script>
+    <script src="/theme/{{$theme}}/assets/i18n/res_007.js?v={{$version}}"></script>
+    <script src="/theme/{{$theme}}/assets/i18n/res_001.js?v={{$version}}"></script>
+    <script src="/theme/{{$theme}}/assets/i18n/res_003.js?v={{$version}}"></script>
+    <script src="/theme/{{$theme}}/assets/i18n/res_005.js?v={{$version}}"></script>
+    <script src="/theme/{{$theme}}/assets/i18n/res_004.js?v={{$version}}"></script>
+    <script src="/theme/{{$theme}}/assets/i18n/res_002.js?v={{$version}}"></script>
 </head>
 
 <body>
 <div id="root"></div>
 {!! $theme_config['custom_html'] !!}
-<script src="/t1/d1/s1/res_006.js?v={{$version}}"></script>
-<script src="/t1/d1/s1/res_001.js?v={{$version}}"></script>
-<script src="/t1/d1/s1/res_005.js?v={{$version}}"></script>
-@if (file_exists(public_path("/t1/d1/s1/custom.js")))
-    <script src="/t1/d1/s1/custom.js?v={{$version}}"></script>
+<script src="/theme/{{$theme}}/assets/res_006.js?v={{$version}}"></script>
+<script src="/theme/{{$theme}}/assets/res_001.js?v={{$version}}"></script>
+<script src="/theme/{{$theme}}/assets/res_005.js?v={{$version}}"></script>
+@if (file_exists(public_path("/theme/{$theme}/assets/custom.js")))
+    <script src="/theme/{{$theme}}/assets/custom.js?v={{$version}}"></script>
 @endif
 </body>
 

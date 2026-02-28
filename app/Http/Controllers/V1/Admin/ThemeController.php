@@ -13,6 +13,12 @@ class ThemeController extends Controller
     private $themes;
     private $path;
 
+    private function getFrontendThemeName(): string
+    {
+        $theme = config('v2board.frontend_theme', 'd1');
+        return $theme === 'default' ? 'd1' : $theme;
+    }
+
     public function __construct()
     {
         $this->path = $path = public_path('t1/');
@@ -37,7 +43,7 @@ class ThemeController extends Controller
         return response([
             'data' => [
                 'themes' => $themeConfigs,
-                'active' => config('v2board.frontend_theme', 'd1')
+                'active' => $this->getFrontendThemeName()
             ]
         ]);
     }

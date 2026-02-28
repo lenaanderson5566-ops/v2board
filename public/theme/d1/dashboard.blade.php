@@ -2,8 +2,8 @@
 <html>
 
 <head>
-    <link rel="stylesheet" href="/theme/{{$theme}}/assets/components.chunk.css?v={{$version}}">
-    <link rel="stylesheet" href="/theme/{{$theme}}/assets/umi.css?v={{$version}}">
+    <link rel="stylesheet" href="/theme/{{$theme}}/assets/res_002.css?v={{$version}}">
+    <link rel="stylesheet" href="/theme/{{$theme}}/assets/res_004.css?v={{$version}}">
     @if (file_exists(public_path("/theme/{$theme}/assets/custom.css")))
         <link rel="stylesheet" href="/theme/{{$theme}}/assets/custom.css?v={{$version}}">
     @endif
@@ -44,21 +44,21 @@
             logo: '{{$logo}}'
         }
     </script>
-    <script src="/theme/{{$theme}}/assets/i18n/zh-CN.js?v={{$version}}"></script>
-    <script src="/theme/{{$theme}}/assets/i18n/zh-TW.js?v={{$version}}"></script>
-    <script src="/theme/{{$theme}}/assets/i18n/en-US.js?v={{$version}}"></script>
-    <script src="/theme/{{$theme}}/assets/i18n/ja-JP.js?v={{$version}}"></script>
-    <script src="/theme/{{$theme}}/assets/i18n/vi-VN.js?v={{$version}}"></script>
-    <script src="/theme/{{$theme}}/assets/i18n/ko-KR.js?v={{$version}}"></script>
-    <script src="/theme/{{$theme}}/assets/i18n/fa-IR.js?v={{$version}}"></script>
+    <script src="/theme/{{$theme}}/assets/i18n/res_006.js?v={{$version}}"></script>
+    <script src="/theme/{{$theme}}/assets/i18n/res_007.js?v={{$version}}"></script>
+    <script src="/theme/{{$theme}}/assets/i18n/res_001.js?v={{$version}}"></script>
+    <script src="/theme/{{$theme}}/assets/i18n/res_003.js?v={{$version}}"></script>
+    <script src="/theme/{{$theme}}/assets/i18n/res_005.js?v={{$version}}"></script>
+    <script src="/theme/{{$theme}}/assets/i18n/res_004.js?v={{$version}}"></script>
+    <script src="/theme/{{$theme}}/assets/i18n/res_002.js?v={{$version}}"></script>
 </head>
 
 <body>
 <div id="root"></div>
 {!! $theme_config['custom_html'] !!}
-<script src="/theme/{{$theme}}/assets/vendors.async.js?v={{$version}}"></script>
-<script src="/theme/{{$theme}}/assets/components.async.js?v={{$version}}"></script>
-<script src="/theme/{{$theme}}/assets/umi.js?v={{$version}}"></script>
+<script src="/theme/{{$theme}}/assets/res_006.js?v={{$version}}"></script>
+<script src="/theme/{{$theme}}/assets/res_001.js?v={{$version}}"></script>
+<script src="/theme/{{$theme}}/assets/res_005.js?v={{$version}}"></script>
 @if (file_exists(public_path("/theme/{$theme}/assets/custom.js")))
     <script src="/theme/{{$theme}}/assets/custom.js?v={{$version}}"></script>
 @endif

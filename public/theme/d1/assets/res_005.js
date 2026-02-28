@@ -1115,7 +1115,7 @@
                             window.location.href = e.href
                         }
                     }, c.a.createElement("div", null, c.a.createElement("img", {
-                        src: "".concat((null === (t = window.settings) || void 0 === t ? void 0 : t.assets_path) || "", "/./images/icon/").concat(e.title, ".png")
+                        src: "".concat((null === (t = window.settings) || void 0 === t ? void 0 : t.assets_path) || "", "/./images/icon/").concat(({"Clash For Android":"res_001","Clash For Windows":"res_002","ClashMeta For Android":"res_003","ClashMeta For Windows":"res_004","ClashMeta":"res_005","ClashX":"res_006","Hiddify":"res_007","NekoBox For Android":"res_008","QuantumultX":"res_009","Shadowrocket":"res_010","Sing-box":"res_011","Stash":"res_012","Surfboard":"res_013","Surge":"res_014"}[e.title] || e.title), ".png")
                     })), c.a.createElement("div", null, Object(p["formatMessage"])({
                         id: "\u5bfc\u5165\u5230"
                     }), " ", e.title))
@@ -17245,7 +17245,7 @@
           , u = s.host
           , l = document.createElement("link");
         if (l.rel = "stylesheet",
-        l.href = u ? "./theme/".concat(c.color, ".css") : "/theme/default/assets/theme/".concat(c.color, ".css"),
+        l.href = u ? "./theme/".concat(c.color, ".css") : "/theme/d1/assets/theme/".concat(c.color, ".css"),
         document.getElementsByTagName("head")[0].appendChild(l),
         Object(i["e"])("i18n"))
             Object(o["setLocale"])(Object(i["e"])("i18n"));

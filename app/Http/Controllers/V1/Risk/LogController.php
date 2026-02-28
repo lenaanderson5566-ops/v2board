@@ -46,7 +46,7 @@ class LogController extends Controller
             $trafficDown = (int) (clone $trafficBuilder)->sum('traffic_d');
 
             $topUa = SubscribeLog::query()
-                ->selectRaw('user_agent, COUNT(*) as hits, COUNT(DISTINCT user_id) as users, COUNT(DISTINCT ip) as ips')
+                ->selectRaw('user_agent, COUNT(*) as hits')
                 ->where('created_at', '>=', $cutoff)
                 ->whereNotNull('user_agent')
                 ->where('user_agent', '<>', '')
@@ -55,7 +55,7 @@ class LogController extends Controller
                 ->get();
 
             $topFlags = SubscribeLog::query()
-                ->selectRaw('client_type as flag, COUNT(*) as hits, COUNT(DISTINCT user_id) as users, COUNT(DISTINCT ip) as ips')
+                ->selectRaw('client_type as flag, COUNT(*) as hits')
                 ->where('created_at', '>=', $cutoff)
                 ->whereNotNull('client_type')
                 ->where('client_type', '<>', '')
@@ -93,6 +93,98 @@ class LogController extends Controller
             ];
         }
 
+
+        $cutoff24h = $now - 86400;
+        $cutoff30d = $now - (30 * 86400);
+
+        $strategyMap = collect((new ClientStrategyService())->getStrategies())
+            ->mapWithKeys(function ($item) {
+                $row = is_array($item) ? $item : $item->toArray();
+                $type = strtolower(trim((string) ($row['client_type'] ?? '')));
+                if (!$type) {
+                    return [];
+                }
+                $name = trim((string) ($row['client_name'] ?? ''));
+                return [$type => ($name ?: $type)];
+            })->toArray();
+
+        $flag24hMap = SubscribeLog::query()
+            ->selectRaw('LOWER(TRIM(client_type)) as client_type, COUNT(*) as hits_24h')
+            ->where('created_at', '>=', $cutoff24h)
+            ->whereNotNull('client_type')
+            ->where('client_type', '<>', '')
+            ->groupBy(DB::raw('LOWER(TRIM(client_type))'))
+            ->pluck('hits_24h', 'client_type')
+            ->toArray();
+
+        $flag30dRows = SubscribeLog::query()
+            ->selectRaw('LOWER(TRIM(client_type)) as client_type, COUNT(*) as hits_30d')
+            ->where('created_at', '>=', $cutoff30d)
+            ->whereNotNull('client_type')
+            ->where('client_type', '<>', '')
+            ->groupBy(DB::raw('LOWER(TRIM(client_type))'))
+            ->orderByDesc('hits_30d')
+            ->get();
+
+        $flagClientRanking = $flag30dRows->map(function ($row) use ($flag24hMap, $strategyMap) {
+            $type = strtolower(trim((string) $row->client_type));
+            $displayType = urldecode($type);
+            $displayName = $strategyMap[$type] ?? ucfirst($displayType);
+            return [
+                'client_type' => $displayType,
+                'client_name' => $displayName,
+                'hits_24h' => (int) ($flag24hMap[$type] ?? 0),
+                'hits_30d' => (int) ($row->hits_30d ?? 0),
+            ];
+        })->values();
+
+        $ua24hMap = SubscribeLog::query()
+            ->selectRaw('LOWER(TRIM(client_type)) as client_type, user_agent, COUNT(*) as hits_24h')
+            ->where('created_at', '>=', $cutoff24h)
+            ->whereNotNull('client_type')
+            ->where('client_type', '<>', '')
+            ->whereNotNull('user_agent')
+            ->where('user_agent', '<>', '')
+            ->groupBy(DB::raw('LOWER(TRIM(client_type))'), 'user_agent')
+            ->get()
+            ->mapWithKeys(function ($row) {
+                $key = strtolower(trim((string) $row->client_type)) . '||' . trim((string) $row->user_agent);
+                return [$key => (int) ($row->hits_24h ?? 0)];
+            })
+            ->toArray();
+
+        $ua30dRows = SubscribeLog::query()
+            ->selectRaw('LOWER(TRIM(client_type)) as client_type, user_agent, COUNT(*) as hits_30d')
+            ->where('created_at', '>=', $cutoff30d)
+            ->whereNotNull('client_type')
+            ->where('client_type', '<>', '')
+            ->whereNotNull('user_agent')
+            ->where('user_agent', '<>', '')
+            ->groupBy(DB::raw('LOWER(TRIM(client_type))'), 'user_agent')
+            ->orderBy(DB::raw('LOWER(TRIM(client_type))'))
+            ->orderByDesc('hits_30d')
+            ->get();
+
+        $uaRawDetails30d = [];
+        foreach ($ua30dRows as $row) {
+            $type = strtolower(trim((string) $row->client_type));
+            if (!isset($uaRawDetails30d[$type])) {
+                $uaRawDetails30d[$type] = [
+                    'client_type' => urldecode($type),
+                    'client_name' => $strategyMap[$type] ?? ucfirst(urldecode($type)),
+                    'ua_rows' => [],
+                ];
+            }
+            $ua = trim((string) $row->user_agent);
+            $k = $type . '||' . $ua;
+            $uaRawDetails30d[$type]['ua_rows'][] = [
+                'user_agent' => $ua,
+                'hits_24h' => (int) ($ua24hMap[$k] ?? 0),
+                'hits_30d' => (int) ($row->hits_30d ?? 0),
+            ];
+        }
+        $uaRawDetails30d = array_values($uaRawDetails30d);
+
         return response([
             'data' => [
                 'windows' => $overview,
@@ -113,6 +205,8 @@ class LogController extends Controller
                         '30d' => $overview['30d']['risk_result'] ?? [],
                     ],
                 ],
+                'flag_client_ranking' => $flagClientRanking,
+                'ua_raw_details_30d' => $uaRawDetails30d,
             ]
         ]);
     }

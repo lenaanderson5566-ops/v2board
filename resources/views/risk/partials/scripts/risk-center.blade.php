@@ -10,11 +10,6 @@ function formatBytes(bytes) {
   return `${(n / 1024 / 1024 / 1024).toFixed(2)} GB`;
 }
 
-function renderTopTable(title, rows, keyName = 'name') {
-  if (!rows || !rows.length) return `<h4 style="margin:8px 0;">${title}</h4><p style="color:#6b7280;">暂无数据</p>`;
-  const body = rows.map((r) => `<tr><td>${r[keyName] || r.flag || r.user_agent || '-'}</td><td>${r.hits || 0}</td><td>${r.users || 0}</td><td>${r.ips || 0}</td></tr>`).join('');
-  return `<h4 style="margin:8px 0;">${title}</h4><div class="table-wrap"><table><thead><tr><th>项</th><th>次数(hits)</th><th>去重用户</th><th>去重IP</th></tr></thead><tbody>${body}</tbody></table></div>`;
-}
 
 function metricCell(label, values) {
   const t = values.today || {};
@@ -23,11 +18,28 @@ function metricCell(label, values) {
   return `<div class="card"><div class="label">${label}</div><div style="font-size:12px;color:#374151;line-height:1.8;">当日：${t}<br>近7天：${d7}<br>近30天：${d30}</div></div>`;
 }
 
-function renderRankTable(title, rows, keyName) {
-  if (!rows || !rows.length) return `<h4 style="margin:8px 0;">${title}</h4><p style="color:#6b7280;">暂无数据</p>`;
-  const body = rows.map((r, i) => `<tr><td>${i + 1}</td><td>${r[keyName] || r.flag || r.user_agent || '-'}</td><td>${r.hits || 0}</td><td>${r.users || 0}</td><td>${r.ips || 0}</td></tr>`).join('');
-  return `<h4 style="margin:8px 0;">${title}</h4><div class="table-wrap"><table><thead><tr><th>排名</th><th>项</th><th>次数(hits)</th><th>去重用户</th><th>去重IP</th></tr></thead><tbody>${body}</tbody></table></div>`;
+
+function renderFlagClientRanking(rows) {
+  if (!rows || !rows.length) {
+    return '<h4 style="margin:8px 0;">Top Flag 排名（仅显示有数据客户端）</h4><p style="color:#6b7280;">暂无数据</p>';
+  }
+  const body = rows.map((r) => `<tr><td>${r.client_type || '-'}</td><td>${r.client_name || '-'}</td><td>${r.hits_24h || 0}</td><td>${r.hits_30d || 0}</td></tr>`).join('');
+  return `<h4 style="margin:8px 0;">Top Flag 排名（仅显示有数据客户端）</h4><div class="table-wrap"><table><thead><tr><th>客户端标识</th><th>客户端名称</th><th>Flag触发(24h)</th><th>Flag触发(30天)</th></tr></thead><tbody>${body}</tbody></table></div>`;
 }
+
+function renderUaRawDetails(rows) {
+  if (!rows || !rows.length) {
+    return '<h4 style="margin:8px 0;">原始UA明细（30天，不做归类）</h4><p style="color:#6b7280;">暂无数据</p>';
+  }
+  const body = rows.map((group) => {
+    const uaRows = (group.ua_rows || []).map((ua) => `<div style="padding:2px 0;border-bottom:1px dashed #e5e7eb;">${ua.user_agent || '-'}</div>`).join('');
+    const hit24Rows = (group.ua_rows || []).map((ua) => `<div style="padding:2px 0;border-bottom:1px dashed #e5e7eb;">${ua.hits_24h || 0}</div>`).join('');
+    const hit30Rows = (group.ua_rows || []).map((ua) => `<div style="padding:2px 0;border-bottom:1px dashed #e5e7eb;">${ua.hits_30d || 0}</div>`).join('');
+    return `<tr><td>${group.client_type || '-'}</td><td>${uaRows || '-'}</td><td>${hit24Rows || '-'}</td><td>${hit30Rows || '-'}</td></tr>`;
+  }).join('');
+  return `<h4 style="margin:8px 0;">原始UA明细（30天，不做归类）</h4><div class="table-wrap"><table><thead><tr><th>客户端标识</th><th>原始UA</th><th>UA订阅次数(24h)</th><th>UA订阅次数(30天)</th></tr></thead><tbody>${body}</tbody></table></div>`;
+}
+
 
 function renderRiskOverview(data) {
   const metrics = data.metrics || {};
@@ -53,14 +65,9 @@ function renderRiskOverview(data) {
     }),
   ].join('');
 
-  const windows = data.windows || {};
   document.getElementById('result').innerHTML = `<div class="cards">${cards}</div>`
-    + renderRankTable('Top 原始 UA（当日）', windows.today?.ua_top || [], 'user_agent')
-    + renderRankTable('Top 原始 UA（近7天）', windows['7d']?.ua_top || [], 'user_agent')
-    + renderRankTable('Top 原始 UA（近30天）', windows['30d']?.ua_top || [], 'user_agent')
-    + renderRankTable('Top 订阅 Flag（当日）', windows.today?.flag_top || [], 'flag')
-    + renderRankTable('Top 订阅 Flag（近7天）', windows['7d']?.flag_top || [], 'flag')
-    + renderRankTable('Top 订阅 Flag（近30天）', windows['30d']?.flag_top || [], 'flag');
+    + renderFlagClientRanking(data.flag_client_ranking || [])
+    + renderUaRawDetails(data.ua_raw_details_30d || []);
 }
 
 async function fetchRiskOverview(btn) { setView(btn, '运维概览'); const data = await request('/risk/overview/fetch'); if (data) renderRiskOverview(data); }

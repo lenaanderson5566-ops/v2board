@@ -30,6 +30,7 @@
             border-right: 1px solid #1f2937;
         }
         .menu-section { margin-bottom: 12px; }
+        .menu-group-title { font-size:11px; color:#9ca3af; margin:0 0 8px; letter-spacing:.4px; text-transform:uppercase; }
         .menu-list { display: flex; flex-direction: column; gap: 8px; }
         .menu-btn {
             width: 100%;
@@ -113,32 +114,36 @@
     <aside class="sidebar">
         
         <div class="menu-section">
-                        <div class="menu-list">
-                <button class="menu-btn" data-section="overview" onclick="fetchOverview(this)">运营总览</button>
-                <button class="menu-btn" data-section="risk" onclick="fetchRiskSettings(this)">风控后台配置</button>
-            </div>
-        </div>
-
-        <div class="menu-section">
-                        <div class="menu-list">
+                        <div class="menu-group-title">总览中心</div>
+            <div class="menu-list">
+                <button class="menu-btn" data-section="overview" onclick="fetchOverview(this)">风控总览</button>
                 <button class="menu-btn" data-section="overview" onclick="fetchOnlineUsers(this)">实时在线IP</button>
                 <button class="menu-btn" data-section="overview" onclick="fetchUserUsage(this)">用户画像总览</button>
-                <button class="menu-btn" data-section="risk" onclick="fetchUserConnectionLogs(this)">连接历史</button>
-                <button class="menu-btn" data-section="risk" onclick="fetchLoginLogs(this)">登录记录</button>
-                <button class="menu-btn" data-section="risk" onclick="fetchSubscribeLogs(this)">订阅记录</button>
             </div>
         </div>
 
         <div class="menu-section">
-                        <div class="menu-list">
-                <button class="menu-btn" data-section="risk" onclick="fetchRules(this)">规则配置</button>
-                <button class="menu-btn" data-section="risk" onclick="fetchRuleHits(this)">命中记录</button>
-                <button class="menu-btn" data-section="risk" onclick="fetchBlacklists(this)">黑名单管理</button>
+                        <div class="menu-group-title">配置中心</div>
+            <div class="menu-list">
+                <button class="menu-btn" data-section="risk" onclick="fetchRiskSettings(this)">风控参数配置</button>
+                <button class="menu-btn" data-section="risk" onclick="fetchRules(this)">风控规则配置</button>
+                <button class="menu-btn" data-section="risk" onclick="fetchBlacklists(this)">风控黑名单</button>
             </div>
         </div>
 
         <div class="menu-section">
-                        <div class="menu-list">
+                        <div class="menu-group-title">日志中心</div>
+            <div class="menu-list">
+                <button class="menu-btn" data-section="risk" onclick="fetchUserConnectionLogs(this)">连接日志</button>
+                <button class="menu-btn" data-section="risk" onclick="fetchLoginLogs(this)">登录日志</button>
+                <button class="menu-btn" data-section="risk" onclick="fetchSubscribeLogs(this)">订阅日志</button>
+                <button class="menu-btn" data-section="risk" onclick="fetchRuleHits(this)">命中日志</button>
+            </div>
+        </div>
+
+        <div class="menu-section">
+                        <div class="menu-group-title">策略中心</div>
+            <div class="menu-list">
                 <button class="menu-btn" data-section="client" onclick="fetchClientStrategyOverview(this)">客户端策略总览</button>
                 <button class="menu-btn" data-section="client" onclick="fetchClientStrategies(this)">客户端策略管理</button>
             </div>

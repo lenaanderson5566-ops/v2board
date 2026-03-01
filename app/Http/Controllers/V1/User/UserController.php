@@ -424,6 +424,9 @@ class UserController extends Controller
         if ($request->input('transfer_amount') > $user->commission_balance) {
             abort(500, __('Insufficient commission balance'));
         }
+        $currencyRateService = new CurrencyRateService();
+        $commissionCurrency = $currencyRateService->normalizeCurrency($user->commission_currency ?: $currencyRateService->getBusinessBaseCurrency());
+
         DB::beginTransaction();
         $order = new Order();
         $orderService = new OrderService($order);
@@ -431,14 +434,14 @@ class UserController extends Controller
         $order->plan_id = 0;
         $order->period = 'deposit';
         $order->trade_no = Helper::generateOrderNo();
-        $order->pricing_currency = (new CurrencyRateService())->getBusinessBaseCurrency();
+        $order->pricing_currency = $commissionCurrency;
         $order->total_amount = $request->input('transfer_amount');
 
         $orderService->setOrderType($user);
         $orderService->setInvite($user);
 
         $user->commission_balance = $user->commission_balance - $request->input('transfer_amount');
-        if (!(new UserService())->addBalance($user->id, (int)$request->input('transfer_amount'), $order->pricing_currency ?: 'CNY')) {
+        if (!(new UserService())->addBalance($user->id, (int)$request->input('transfer_amount'), $commissionCurrency)) {
             DB::rollback();
             abort(500, __('transfer failed'));
         }

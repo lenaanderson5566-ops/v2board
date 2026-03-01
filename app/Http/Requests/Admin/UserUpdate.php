@@ -29,6 +29,7 @@ class UserUpdate extends FormRequest
             'd' => 'integer',
             'commission_type' => 'integer',
             'commission_balance' => 'integer',
+            'commission_currency' => 'nullable|alpha|size:3',
             'remarks' => 'nullable',
             'speed_limit' => 'nullable|integer'
         ];
@@ -60,6 +61,8 @@ class UserUpdate extends FormRequest
             'u.integer' => '上行流量格式不正确',
             'd.integer' => '下行流量格式不正确',
             'commission_balance.integer' => '佣金格式不正确',
+            'commission_currency.alpha' => '佣金币种格式不正确',
+            'commission_currency.size' => '佣金币种格式不正确',
             'password.min' => '密码长度最小8位',
             'speed_limit.integer' => '限速格式不正确'
         ];

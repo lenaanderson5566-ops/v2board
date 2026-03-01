@@ -557,6 +557,7 @@ CREATE TABLE `v2_user` (
                            `commission_type` tinyint(4) NOT NULL DEFAULT '0' COMMENT '0: system 1: period 2: onetime',
                            `commission_rate` int(11) DEFAULT NULL,
                            `commission_balance` int(11) NOT NULL DEFAULT '0',
+                           `commission_currency` varchar(8) NOT NULL DEFAULT 'CNY',
                            `t` int(11) NOT NULL DEFAULT '0',
                            `u` bigint(20) NOT NULL DEFAULT '0',
                            `d` bigint(20) NOT NULL DEFAULT '0',

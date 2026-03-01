@@ -139,6 +139,10 @@ class UserController extends Controller
         } else {
             unset($params['password']);
         }
+        if (isset($params['commission_currency'])) {
+            $params['commission_currency'] = strtoupper($params['commission_currency']);
+        }
+
         if (isset($params['plan_id'])) {
             $plan = Plan::find($params['plan_id']);
             if (!$plan) {

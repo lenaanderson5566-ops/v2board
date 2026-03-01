@@ -76,13 +76,14 @@ class InviteController extends Controller
         }
         $currencyRateService = new CurrencyRateService();
         $baseCurrency = $currencyRateService->getBusinessBaseCurrency();
+        $commissionCurrency = $currencyRateService->normalizeCurrency($user->commission_currency ?: $baseCurrency);
         $effectiveCommission = 0;
         $commissionGroups = CommissionLog::where('invite_user_id', $request->user['id'])
             ->selectRaw('COALESCE(get_currency, "CNY") as get_currency, SUM(get_amount) as total_amount')
             ->groupBy('get_currency')
             ->get();
         foreach ($commissionGroups as $group) {
-            $effectiveCommission += $currencyRateService->convertMinor((int)$group->total_amount, strtoupper($group->get_currency ?: 'CNY'), $baseCurrency);
+            $effectiveCommission += $currencyRateService->convertMinor((int)$group->total_amount, strtoupper($group->get_currency ?: 'CNY'), $commissionCurrency);
         }
 
         $stat = [
@@ -91,7 +92,7 @@ class InviteController extends Controller
             //有效的佣金
             (int)$effectiveCommission,
             //确认中的佣金
-            $currencyRateService->convertMinor((int)$uncheck_commission_balance, 'CNY', $baseCurrency),
+            $currencyRateService->convertMinor((int)$uncheck_commission_balance, 'CNY', $commissionCurrency),
             //佣金比例
             (int)$commission_rate,
             //可用佣金（新逻辑按基准币种记账）
@@ -100,7 +101,7 @@ class InviteController extends Controller
         return response([
             'data' => [
                 'codes' => $codes,
-                'wallet_currency' => $baseCurrency,
+                'wallet_currency' => $commissionCurrency,
                 'stat' => $stat
             ]
         ]);

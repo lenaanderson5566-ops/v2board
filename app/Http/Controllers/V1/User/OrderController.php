@@ -238,18 +238,21 @@ class OrderController extends Controller
         }
         $order->payment_id = $method;
         $amountByPricingCurrency = isset($order->handling_amount) ? ($order->total_amount + $order->handling_amount) : $order->total_amount;
-        $amountCny = $currencyRateService->convertMinorToCnyMinor($amountByPricingCurrency, $order->pricing_currency ?: 'CNY');
+        $pricingCurrency = $order->pricing_currency ?: 'CNY';
         $paymentCurrency = $currencyRateService->getPaymentCurrencyByGateway($payment);
-        $converted = $currencyRateService->convertCnyAmountToTargetMinor($amountCny, $paymentCurrency);
+        $convertedAmount = $currencyRateService->convertMinor($amountByPricingCurrency, $pricingCurrency, $paymentCurrency);
+        $paymentRateToBase = $currencyRateService->getRateToBase($paymentCurrency);
+        $pricingRateToBase = $currencyRateService->getRateToBase($pricingCurrency);
+        $exchangeRate = ($paymentRateToBase && $pricingRateToBase) ? ($paymentRateToBase / $pricingRateToBase) : null;
         $order->payment_currency = $paymentCurrency;
-        $order->payment_amount = $converted['amount_minor'];
-        $order->exchange_rate = $converted['rate_to_cny'];
-        $order->exchange_rate_at = $converted['fetched_at'];
+        $order->payment_amount = $convertedAmount;
+        $order->exchange_rate = $exchangeRate;
+        $order->exchange_rate_at = time();
         if (!$order->save()) abort(500, __('Request failed, please try again later'));
         $result = $paymentService->pay([
             'trade_no' => $tradeNo,
-            'total_amount' => $amountCny,
-            'locked_payment_amount' => $converted['amount_minor'],
+            'total_amount' => $amountByPricingCurrency,
+            'locked_payment_amount' => $convertedAmount,
             'locked_payment_currency' => $paymentCurrency,
             'user_id' => $order->user_id,
             'stripe_token' => $request->input('token')

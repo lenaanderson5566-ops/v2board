@@ -29,7 +29,6 @@ class AddCurrencyCenterTablesAndColumns extends Migration
                 $table->string('base_currency', 8);
                 $table->string('quote_currency', 8);
                 $table->decimal('rate_to_base', 18, 8)->comment('1 quote = ? base');
-                $table->decimal('rate_to_cny', 18, 8)->comment('1 quote = ? CNY');
                 $table->integer('fetched_at');
                 $table->integer('created_at');
                 $table->integer('updated_at');
@@ -54,7 +53,7 @@ class AddCurrencyCenterTablesAndColumns extends Migration
                 $table->integer('payment_amount')->nullable()->after('payment_currency')->comment('锁定支付金额(最小货币单位)');
             }
             if (!Schema::hasColumn('v2_order', 'exchange_rate')) {
-                $table->decimal('exchange_rate', 18, 8)->nullable()->after('payment_amount')->comment('锁定汇率: 1支付币种=?CNY');
+                $table->decimal('exchange_rate', 18, 8)->nullable()->after('payment_amount')->comment('锁定汇率: 1支付币种=?计价币种');
             }
             if (!Schema::hasColumn('v2_order', 'exchange_rate_at')) {
                 $table->integer('exchange_rate_at')->nullable()->after('exchange_rate')->comment('锁定汇率时间');

@@ -14,6 +14,5 @@ class CurrencyRate extends Model
         'updated_at' => 'timestamp',
         'fetched_at' => 'timestamp',
         'rate_to_base' => 'float',
-        'rate_to_cny' => 'float',
     ];
 }

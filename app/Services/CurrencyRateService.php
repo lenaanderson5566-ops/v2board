@@ -27,29 +27,25 @@ class CurrencyRateService
         return $this->normalizeCurrency($payment->currency ?? 'CNY');
     }
 
-    public function getRateToCny(string $currency): ?float
+    public function getRateToBase(string $currency): ?float
     {
         $currency = $this->normalizeCurrency($currency);
-        if ($currency === 'CNY') {
+        $baseCurrency = $this->getBusinessBaseCurrency();
+        if ($currency === $baseCurrency) {
             return 1.0;
         }
         if (!Schema::hasTable('v2_currency_rate')) return null;
-        $row = CurrencyRate::where('quote_currency', $currency)->orderBy('fetched_at', 'DESC')->first();
-        return $row ? (float)$row->rate_to_cny : null;
+        $row = CurrencyRate::where('base_currency', $baseCurrency)
+            ->where('quote_currency', $currency)
+            ->orderBy('fetched_at', 'DESC')
+            ->first();
+        return $row ? (float)$row->rate_to_base : null;
     }
 
 
     public function convertMinorToCnyMinor(int $amountMinor, string $fromCurrency): int
     {
-        $fromCurrency = $this->normalizeCurrency($fromCurrency);
-        if ($fromCurrency === 'CNY') {
-            return $amountMinor;
-        }
-        $rateToCny = $this->getRateToCny($fromCurrency);
-        if (!$rateToCny || $rateToCny <= 0) {
-            abort(500, __('Currency rate not found, please contact administrator'));
-        }
-        return (int)max(1, round($amountMinor * $rateToCny));
+        return $this->convertMinor($amountMinor, $fromCurrency, 'CNY');
     }
 
 
@@ -59,28 +55,27 @@ class CurrencyRateService
         $toCurrency = $this->normalizeCurrency($toCurrency);
         if ($fromCurrency === $toCurrency) return $amountMinor;
 
-        $amountCny = $this->convertMinorToCnyMinor($amountMinor, $fromCurrency);
-        if ($toCurrency === 'CNY') return $amountCny;
+        $fromRateToBase = $this->getRateToBase($fromCurrency);
+        $toRateToBase = $this->getRateToBase($toCurrency);
 
-        $rateToCny = $this->getRateToCny($toCurrency);
-        if (!$rateToCny || $rateToCny <= 0) {
+        if (!$fromRateToBase || $fromRateToBase <= 0 || !$toRateToBase || $toRateToBase <= 0) {
             abort(500, __('Currency rate not found, please contact administrator'));
         }
-        return (int)max(1, round($amountCny / $rateToCny));
+
+        $amountInBase = $amountMinor * $fromRateToBase;
+        return (int)max(1, round($amountInBase / $toRateToBase));
     }
 
     public function convertCnyAmountToTargetMinor(int $cnyMinor, string $targetCurrency): array
     {
         $targetCurrency = $this->normalizeCurrency($targetCurrency);
-        $rateToCny = $this->getRateToCny($targetCurrency);
-        if (!$rateToCny || $rateToCny <= 0) {
-            abort(500, __('Currency rate not found, please contact administrator'));
-        }
-        $targetMinor = (int)max(1, round($cnyMinor / $rateToCny));
+        $targetMinor = $this->convertMinor($cnyMinor, 'CNY', $targetCurrency);
         return [
             'amount_minor' => $targetMinor,
-            'rate_to_cny' => $rateToCny,
-            'fetched_at' => CurrencyRate::where('quote_currency', $targetCurrency)->max('fetched_at') ?: time()
+            'rate_to_base' => $this->getRateToBase($targetCurrency),
+            'fetched_at' => CurrencyRate::where('base_currency', $this->getBusinessBaseCurrency())
+                ->where('quote_currency', $targetCurrency)
+                ->max('fetched_at') ?: time()
         ];
     }
 
@@ -96,15 +91,11 @@ class CurrencyRateService
             return false;
         }
         $payload = json_decode($json, true);
-        if (!is_array($payload) || empty($payload['rates']) || !isset($payload['rates']['CNY'])) {
+        if (!is_array($payload) || empty($payload['rates'])) {
             return false;
         }
 
         $rates = $payload['rates'];
-        $cnyPerBase = (float)$rates['CNY']; // 1 base = ? CNY
-        if ($cnyPerBase <= 0) {
-            return false;
-        }
 
         $now = time();
         foreach ($rates as $quote => $rateToBase) {
@@ -113,7 +104,8 @@ class CurrencyRateService
             if ($rateToBase <= 0) {
                 continue;
             }
-            $rateToCny = $cnyPerBase / $rateToBase;
+            // API response is: 1 base = ? quote, we store: 1 quote = ? base
+            $rateToBase = 1 / $rateToBase;
             CurrencyRate::updateOrCreate(
                 [
                     'base_currency' => $base,
@@ -121,7 +113,6 @@ class CurrencyRateService
                 ],
                 [
                     'rate_to_base' => $rateToBase,
-                    'rate_to_cny' => $rateToCny,
                     'fetched_at' => $now,
                 ]
             );

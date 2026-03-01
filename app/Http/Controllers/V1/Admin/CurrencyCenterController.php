@@ -22,7 +22,7 @@ class CurrencyCenterController extends Controller
         if (Schema::hasTable('v2_currency_rate')) {
             $rates = CurrencyRate::where('base_currency', $base)
                 ->orderBy('quote_currency', 'ASC')
-                ->get(['quote_currency', 'rate_to_base', 'rate_to_cny', 'fetched_at']);
+                ->get(['quote_currency', 'rate_to_base', 'fetched_at']);
             $latestFetchedAt = CurrencyRate::where('base_currency', $base)->max('fetched_at');
         }
 

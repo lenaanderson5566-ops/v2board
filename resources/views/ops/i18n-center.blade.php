@@ -169,14 +169,13 @@
                     </div>
 
                     <div class="card">
-                        <strong>最新汇率列表（折算人民币）</strong>
+                        <strong>最新汇率列表（相对基准币）</strong>
                         <div class="muted" id="latest_fetched_at" style="margin-top:8px;"></div>
                         <table class="table" id="rate_table">
                             <thead>
                             <tr>
                                 <th>币种</th>
                                 <th>1该币种=基准币</th>
-                                <th>1该币种=CNY</th>
                                 <th>更新时间</th>
                             </tr>
                             </thead>
@@ -352,7 +351,6 @@ async function loadCurrencyCenter() {
             <tr>
                 <td>${escapeHtml(r.quote_currency || '')}</td>
                 <td>${r.rate_to_base ?? '-'}</td>
-                <td>${r.rate_to_cny ?? '-'}</td>
                 <td>${formatTimestamp(r.fetched_at)}</td>
             </tr>
         `).join('');

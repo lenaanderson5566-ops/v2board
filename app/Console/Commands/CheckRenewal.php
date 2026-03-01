@@ -9,6 +9,7 @@ use Illuminate\Console\Command;
 use App\Models\User;
 use App\Models\Order;
 use App\Utils\Helper;
+use App\Services\UserService;
 use Illuminate\Support\Facades\DB;
 
 use Exception;
@@ -89,7 +90,11 @@ class CheckRenewal extends Command
                     $orderService->setVipDiscount($user);
                     $order->type = 2;
                     
-                    $user->balance = $user->balance - $plan[$latestPeriod];
+                    if (!(new UserService())->addBalance($user->id, -$plan[$latestPeriod])) {
+                        DB::rollback();
+                        throw new Exception('自动续费失败');
+                    }
+                    $user = User::find($user->id);
                     $user->expired_at = $this->getTime($latestPeriod, $user->expired_at);
                     if (!$user->save()) {
                         DB::rollback();

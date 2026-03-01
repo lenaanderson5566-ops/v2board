@@ -32,9 +32,8 @@ class OrderService
         $this->user = User::find($order->user_id);
         if ($order->type == 9) {
             DB::beginTransaction();
-            $this->user->balance += $order->total_amount + $this->getbounus($order->total_amount);
-
-            if (!$this->user->save()) {
+            $userService = new UserService();
+            if (!$userService->addBalance($order->user_id, $order->total_amount + $this->getbounus($order->total_amount))) {
                 DB::rollBack();
                 abort(500, '充值失败');
             }
@@ -50,7 +49,11 @@ class OrderService
         $plan = Plan::find($order->plan_id);
 
         if ($order->refund_amount) {
-            $this->user->balance = $this->user->balance + $order->refund_amount;
+            $userService = new UserService();
+            if (!$userService->addBalance($order->user_id, $order->refund_amount)) {
+                abort(500, '开通失败');
+            }
+            $this->user = User::find($order->user_id);
         }
         DB::beginTransaction();
         if ($order->surplus_order_ids) {

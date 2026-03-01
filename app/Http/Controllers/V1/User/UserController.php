@@ -199,7 +199,11 @@ class UserController extends Controller
 
             switch ($giftcard->type) {
                 case 1:
-                    $user->balance += $giftcard->value;
+                    if (!(new UserService())->addBalance($user->id, $giftcard->value)) {
+                        DB::rollBack();
+                        abort(500, __('Operation failed'));
+                    }
+                    $user = User::find($user->id);
                     break;
                 case 2:
                     if ($user->expired_at !== null) {
@@ -429,7 +433,11 @@ class UserController extends Controller
         $orderService->setInvite($user);
 
         $user->commission_balance = $user->commission_balance - $request->input('transfer_amount');
-        $user->balance = $user->balance + $request->input('transfer_amount');
+        if (!(new UserService())->addBalance($user->id, (int)$request->input('transfer_amount'))) {
+            DB::rollback();
+            abort(500, __('transfer failed'));
+        }
+        $user = User::find($user->id);
         $order->status = 3;
         $order->total_amount = 0;
         $order->surplus_amount = $request->input('transfer_amount');

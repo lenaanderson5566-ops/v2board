@@ -431,13 +431,14 @@ class UserController extends Controller
         $order->plan_id = 0;
         $order->period = 'deposit';
         $order->trade_no = Helper::generateOrderNo();
+        $order->pricing_currency = (new CurrencyRateService())->getBusinessBaseCurrency();
         $order->total_amount = $request->input('transfer_amount');
 
         $orderService->setOrderType($user);
         $orderService->setInvite($user);
 
         $user->commission_balance = $user->commission_balance - $request->input('transfer_amount');
-        if (!(new UserService())->addBalance($user->id, (int)$request->input('transfer_amount'))) {
+        if (!(new UserService())->addBalance($user->id, (int)$request->input('transfer_amount'), $order->pricing_currency ?: 'CNY')) {
             DB::rollback();
             abort(500, __('transfer failed'));
         }

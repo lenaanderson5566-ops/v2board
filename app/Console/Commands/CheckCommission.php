@@ -7,6 +7,7 @@ use Illuminate\Console\Command;
 use App\Models\Order;
 use App\Models\User;
 use App\Services\UserService;
+use App\Services\CurrencyRateService;
 use Illuminate\Support\Facades\DB;
 
 class CheckCommission extends Command
@@ -93,14 +94,19 @@ class CheckCommission extends Command
                 0 => 100
             ];
         }
+        $currencyRateService = new CurrencyRateService();
+        $baseCurrency = $currencyRateService->getBusinessBaseCurrency();
+
         for ($l = 0; $l < $level; $l++) {
             $inviter = User::find($inviteUserId);
             if (!$inviter) continue;
             if (!isset($commissionShareLevels[$l])) continue;
-            $commissionBalance = $order->commission_balance * ($commissionShareLevels[$l] / 100);
-            if (!$commissionBalance) continue;
+            $commissionBalanceCny = $order->commission_balance * ($commissionShareLevels[$l] / 100);
+            if (!$commissionBalanceCny) continue;
+            $commissionBalance = $currencyRateService->convertMinor((int)$commissionBalanceCny, 'CNY', $baseCurrency);
+
             if ((int)config('v2board.withdraw_close_enable', 0)) {
-                if (!(new UserService())->addBalance($inviter->id, (int)$commissionBalance)) {
+                if (!(new UserService())->addBalance($inviter->id, (int)$commissionBalance, $baseCurrency)) {
                     DB::rollBack();
                     return false;
                 }
@@ -119,14 +125,14 @@ class CheckCommission extends Command
                 'order_amount' => $order->total_amount,
                 'order_currency' => strtoupper($order->pricing_currency ?? 'CNY'),
                 'get_amount' => $commissionBalance,
-                'get_currency' => 'CNY'
+                'get_currency' => $baseCurrency
             ])) {
                 DB::rollBack();
                 return false;
             }
             $inviteUserId = $inviter->invite_user_id;
             // update order actual commission balance
-            $order->actual_commission_balance = $order->actual_commission_balance + $commissionBalance;
+            $order->actual_commission_balance = $order->actual_commission_balance + $commissionBalanceCny;
         }
         return true;
     }

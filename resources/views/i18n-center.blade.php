@@ -245,23 +245,26 @@ async function init() {
     const ok = verifyAdmin();
     if (!ok) return;
     document.getElementById('contentArea').style.display = 'flex';
+
+    const tab = new URLSearchParams(window.location.search).get('tab');
+    if (tab === 'copy') {
+        switchTab('copy');
+        return;
+    }
+    if (tab === 'currency') {
+        switchTab('currency');
+        await loadCurrencyCenter();
+        return;
+    }
+
     const [plans, locales] = await Promise.all([
         api(`${apiPrefix}/plan/fetch`),
         api(`${apiPrefix}/ops/i18n/plan/locales`)
     ]);
-
     document.getElementById('plan').innerHTML = plans.map(p => `<option value="${p.id}">${p.id} - ${escapeHtml(p.name)}</option>`).join('');
     document.getElementById('locale').innerHTML = locales.map(l => `<option value="${l}">${l}</option>`).join('');
-    const tab = new URLSearchParams(window.location.search).get('tab');
-    if (tab === 'copy') {
-        switchTab('copy');
-    } else if (tab === 'currency') {
-        switchTab('currency');
-        await loadCurrencyCenter();
-    } else {
-        switchTab('plan');
-        if (plans.length && locales.length) await loadTranslation();
-    }
+    switchTab('plan');
+    if (plans.length && locales.length) await loadTranslation();
 }
 
 function escapeHtml(str) {

@@ -37,7 +37,9 @@ class InviteController extends Controller
                 'id',
                 'trade_no',
                 'order_amount',
+                'order_currency',
                 'get_amount',
+                'get_currency',
                 'created_at'
             ])
             ->orderBy('created_at', 'DESC');

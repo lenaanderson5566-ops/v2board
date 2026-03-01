@@ -22,7 +22,7 @@ class MigrateBalanceToWalletAndDropColumn extends Migration
 
             DB::statement("\n                INSERT INTO v2_user_wallet (user_id, currency, balance, created_at, updated_at)\n                SELECT u.id, 'CNY', u.balance, {$now}, {$now}\n                FROM v2_user u\n                LEFT JOIN v2_user_wallet w ON w.user_id = u.id AND w.currency = 'CNY'\n                WHERE w.id IS NULL\n            ");
 
-            DB::statement("\n                UPDATE v2_user_wallet w\n                INNER JOIN v2_user u ON u.id = w.user_id\n                SET w.balance = CASE WHEN u.balance > w.balance THEN u.balance ELSE w.balance END,\n                    w.updated_at = {$now}\n                WHERE w.currency = 'CNY'\n            ");
+            DB::statement("\n                UPDATE v2_user_wallet w\n                INNER JOIN v2_user u ON u.id = w.user_id\n                SET w.balance = u.balance,\n                    w.updated_at = {$now}\n                WHERE w.currency = 'CNY'\n            ");
         }
 
         Schema::table('v2_user', function (Blueprint $table) {

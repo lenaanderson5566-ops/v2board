@@ -117,7 +117,9 @@ class CheckCommission extends Command
                 'user_id' => $order->user_id,
                 'trade_no' => $order->trade_no,
                 'order_amount' => $order->total_amount,
-                'get_amount' => $commissionBalance
+                'order_currency' => strtoupper($order->pricing_currency ?? 'CNY'),
+                'get_amount' => $commissionBalance,
+                'get_currency' => 'CNY'
             ])) {
                 DB::rollBack();
                 return false;

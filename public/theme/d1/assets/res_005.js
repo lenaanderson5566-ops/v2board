@@ -59738,7 +59738,7 @@
                         arrow: "horizontal",
                         multipleLine: !0,
                         onClick: ()=>F.a.push("/order/" + e.trade_no),
-                        extra: b.a.createElement("div", null, b.a.createElement("div", null, ((e.total_amount / 100).toFixed(2)+" "+(e.pricing_currency||"CNY"))), b.a.createElement("div", null, b.a.createElement(N["a"], {
+                        extra: b.a.createElement("div", null, b.a.createElement("div", null, ((e.total_amount / 100).toFixed(2)+" "+(e.pricing_currency||"CNY"))), b.a.createElement("div", null, "支付币种: "+(e.payment_currency||e.pricing_currency||"CNY")), b.a.createElement("div", null, b.a.createElement(N["a"], {
                             status: r[e.status]
                         }), W["a"].orderStatusText[e.status] && W["a"].orderStatusText[e.status]()))
                     }, null === (t = e.plan) || void 0 === t ? void 0 : t.name, " ", b.a.createElement(T.Item.Brief, null, z()(1e3 * e.created_at).format("YYYY-MM-DD HH:mm:ss")))

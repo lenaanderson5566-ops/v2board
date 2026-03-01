@@ -66,6 +66,8 @@
         .muted { color: var(--muted); font-size: 12px; }
         .ok { color: #059669; }
         .err { color: #dc2626; }
+        .locale-picker { max-height: 130px; overflow:auto; border:1px solid #e5e7eb; border-radius:8px; padding:8px; background:#fafafa; }
+        .locale-tag { display:inline-flex; align-items:center; gap:4px; margin:4px 8px 4px 0; font-size:12px; }
 
         .layout.embedded .content { padding: 0; }
         .layout.embedded .container { max-width: none; }
@@ -109,18 +111,29 @@
                         <select id="plan"></select>
                         <label>语言:</label>
                         <select id="locale"></select>
+                        <button onclick="prevLocale()">上一语言</button>
+                        <button onclick="nextLocale()">下一语言</button>
                         <button onclick="loadTranslation()">加载</button>
+                    </div>
+                    <div class="card" style="margin-top:0;">
+                        <div class="row" style="margin-bottom:8px;">
+                            <strong>可编辑语言（勾选后出现在下拉）</strong>
+                            <button onclick="setLocalePreset('recommended')">推荐语言</button>
+                            <button onclick="setLocalePreset('all')">全选</button>
+                            <button onclick="setLocalePreset('none')">清空</button>
+                        </div>
+                        <div id="localePicker" class="locale-picker"></div>
                     </div>
 
                     <div class="card">
                         <div><strong>默认名称</strong></div>
                         <div id="defaultName" class="muted"></div>
-                        <div style="margin-top:10px"><strong>翻译名称</strong></div>
+                        <div style="margin-top:10px" class="row"><strong>翻译名称</strong><button onclick="copyDefaultName()">复制默认名称</button></div>
                         <input id="name" style="width:100%" placeholder="请输入该语言的套餐名称" />
 
                         <div style="margin-top:10px"><strong>默认内容</strong></div>
                         <div id="defaultContent" class="muted"></div>
-                        <div style="margin-top:10px"><strong>翻译内容</strong></div>
+                        <div style="margin-top:10px" class="row"><strong>翻译内容</strong><button onclick="copyDefaultContent()">复制默认内容</button></div>
                         <textarea id="content_text" placeholder="请输入该语言的套餐内容"></textarea>
 
                         <div class="row" style="margin-top:10px">
@@ -191,6 +204,8 @@
 <script>
 const securePath = @json($secure_path);
 const apiPrefix = `/api/v1/${securePath}`;
+let allLocales = [];
+let recommendedLocales = [];
 
 function switchTab(tab) {
     const tabPlan = document.getElementById('tab-plan');
@@ -256,14 +271,78 @@ async function init() {
         return;
     }
 
-    const [plans, locales] = await Promise.all([
+    const [plans, localeMeta] = await Promise.all([
         api(`${apiPrefix}/plan/fetch`),
         api(`${apiPrefix}/ops/i18n/plan/locales`)
     ]);
+    allLocales = localeMeta.all || [];
+    recommendedLocales = localeMeta.recommended || [];
     document.getElementById('plan').innerHTML = plans.map(p => `<option value="${p.id}">${p.id} - ${escapeHtml(p.name)}</option>`).join('');
-    document.getElementById('locale').innerHTML = locales.map(l => `<option value="${l}">${l}</option>`).join('');
+    renderLocalePicker();
+    setLocalePreset('recommended');
     switchTab('plan');
-    if (plans.length && locales.length) await loadTranslation();
+    if (plans.length && allLocales.length) await loadTranslation();
+}
+
+
+
+function renderLocalePicker() {
+    const node = document.getElementById('localePicker');
+    node.innerHTML = (allLocales || []).map((l) => `
+        <label class="locale-tag">
+            <input type="checkbox" class="locale-checkbox" value="${escapeHtml(l)}" />
+            <span>${escapeHtml(l)}</span>
+        </label>
+    `).join('');
+
+    node.querySelectorAll('.locale-checkbox').forEach((checkbox) => {
+        checkbox.addEventListener('change', refreshLocaleSelectFromPicker);
+    });
+}
+
+function refreshLocaleSelectFromPicker(preferredLocale = '') {
+    const checked = Array.from(document.querySelectorAll('.locale-checkbox:checked')).map((n) => n.value);
+    const localeSelect = document.getElementById('locale');
+    localeSelect.innerHTML = checked.map((l) => `<option value="${l}">${l}</option>`).join('');
+    if (!checked.length) {
+        setStatus('请至少勾选一种语言', 'err');
+        return;
+    }
+    if (preferredLocale && checked.includes(preferredLocale)) {
+        localeSelect.value = preferredLocale;
+    }
+}
+
+function setLocalePreset(mode) {
+    const checkedSet = new Set(mode === 'all' ? allLocales : (mode === 'recommended' ? recommendedLocales : []));
+    document.querySelectorAll('.locale-checkbox').forEach((checkbox) => {
+        checkbox.checked = checkedSet.has(checkbox.value);
+    });
+    refreshLocaleSelectFromPicker();
+}
+
+function prevLocale() {
+    const localeSelect = document.getElementById('locale');
+    if (!localeSelect.options.length) return;
+    const idx = Math.max(0, localeSelect.selectedIndex - 1);
+    localeSelect.selectedIndex = idx;
+    loadTranslation();
+}
+
+function nextLocale() {
+    const localeSelect = document.getElementById('locale');
+    if (!localeSelect.options.length) return;
+    const idx = Math.min(localeSelect.options.length - 1, localeSelect.selectedIndex + 1);
+    localeSelect.selectedIndex = idx;
+    loadTranslation();
+}
+
+function copyDefaultName() {
+    document.getElementById('name').value = document.getElementById('defaultName').textContent || '';
+}
+
+function copyDefaultContent() {
+    document.getElementById('content_text').value = document.getElementById('defaultContent').textContent || '';
 }
 
 function escapeHtml(str) {
@@ -274,6 +353,10 @@ async function loadTranslation() {
     try {
         const planId = parseInt(document.getElementById('plan').value, 10);
         const locale = document.getElementById('locale').value;
+        if (!locale) {
+            setStatus('请先勾选语言', 'err');
+            return;
+        }
         const data = await api(`${apiPrefix}/ops/i18n/plan/fetch?plan_id=${planId}`);
         const row = data.translations[locale] || {};
         document.getElementById('defaultName').textContent = data.default.name || '';
@@ -290,6 +373,10 @@ async function saveTranslation() {
     try {
         const plan_id = parseInt(document.getElementById('plan').value, 10);
         const locale = document.getElementById('locale').value;
+        if (!locale) {
+            setStatus('请先勾选语言', 'err');
+            return;
+        }
         const name = document.getElementById('name').value;
         const content = document.getElementById('content_text').value;
         await api(`${apiPrefix}/ops/i18n/plan/save`, 'POST', { plan_id, locale, name, content });

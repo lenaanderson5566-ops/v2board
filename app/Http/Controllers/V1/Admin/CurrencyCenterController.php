@@ -9,6 +9,7 @@ use App\Models\CurrencySetting;
 use App\Services\CurrencyRateService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Facades\DB;
 
 class CurrencyCenterController extends Controller
 {
@@ -68,8 +69,19 @@ class CurrencyCenterController extends Controller
             'currency_rate_api' => 'nullable|string'
         ]);
 
-        CurrencySetting::setValue('business_base_currency', strtoupper($params['business_base_currency']));
+        $baseCurrency = strtoupper($params['business_base_currency']);
+        CurrencySetting::setValue('business_base_currency', $baseCurrency);
         CurrencySetting::setValue('currency_rate_api', $params['currency_rate_api'] ?? 'https://open.er-api.com/v6/latest/{base}');
+
+        if (Schema::hasTable('v2_user') && Schema::hasColumn('v2_user', 'commission_currency')) {
+            DB::table('v2_user')
+                ->where(function ($query) {
+                    $query->whereNull('commission_currency')
+                        ->orWhere('commission_currency', '')
+                        ->orWhereRaw('UPPER(commission_currency) = ?', ['CNY']);
+                })
+                ->update(['commission_currency' => $baseCurrency]);
+        }
 
         return response(['data' => true]);
     }

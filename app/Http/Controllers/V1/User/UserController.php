@@ -442,7 +442,6 @@ class UserController extends Controller
             DB::rollback();
             abort(500, __('transfer failed'));
         }
-        $user = User::find($user->id);
         $order->status = 3;
         $order->total_amount = 0;
         $order->surplus_amount = $request->input('transfer_amount');

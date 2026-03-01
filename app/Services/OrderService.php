@@ -50,7 +50,7 @@ class OrderService
 
         if ($order->refund_amount) {
             $userService = new UserService();
-            if (!$userService->addBalance($order->user_id, $order->refund_amount)) {
+            if (!$userService->addBalance($order->user_id, $order->refund_amount, $order->pricing_currency ?? 'CNY')) {
                 abort(500, '开通失败');
             }
             $this->user = User::find($order->user_id);
@@ -300,7 +300,7 @@ class OrderService
         }
         if ($order->balance_amount) {
             $userService = new UserService();
-            if (!$userService->addBalance($order->user_id, $order->balance_amount)) {
+            if (!$userService->addBalance($order->user_id, $order->balance_amount, $order->pricing_currency ?? 'CNY')) {
                 DB::rollBack();
                 return false;
             }

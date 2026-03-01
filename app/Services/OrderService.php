@@ -33,7 +33,7 @@ class OrderService
         if ($order->type == 9) {
             DB::beginTransaction();
             $userService = new UserService();
-            if (!$userService->addBalance($order->user_id, $order->total_amount + $this->getbounus($order->total_amount))) {
+            if (!$userService->addBalance($order->user_id, $order->total_amount + $this->getbounus($order->total_amount), $order->pricing_currency ?? 'CNY')) {
                 DB::rollBack();
                 abort(500, '充值失败');
             }

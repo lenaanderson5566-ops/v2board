@@ -201,16 +201,18 @@ class UserService
         return User::all();
     }
 
-    public function addBalance(int $userId, int $balance):bool
+    public function addBalance(int $userId, int $balance, string $currency = 'CNY'):bool
     {
         $user = User::lockForUpdate()->find($userId);
         if (!$user) {
             return false;
         }
 
+        $currency = strtoupper($currency ?: 'CNY');
+
         $wallet = UserWallet::firstOrNew([
             'user_id' => $userId,
-            'currency' => 'CNY'
+            'currency' => $currency
         ]);
 
         if (!$wallet->exists) {

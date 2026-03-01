@@ -294,12 +294,8 @@ class UserController extends Controller
             abort(500, __('The user does not exist'));
         }
         $user['avatar_url'] = 'https://cravatar.cn/avatar/' . md5($user->email) . '?s=64&d=identicon';
-        $currencyRateService = new CurrencyRateService();
         $userService = new UserService();
-        $baseCurrency = $currencyRateService->getBusinessBaseCurrency();
-        $user['wallet_currency'] = $baseCurrency;
-        $user['balance'] = $userService->getUserWalletTotalInCurrency($request->user['id'], $baseCurrency, $currencyRateService);
-        $user['commission_balance'] = $currencyRateService->convertMinor((int)$user['commission_balance'], 'CNY', $baseCurrency);
+        $user['wallets'] = $userService->getUserWalletsRaw($request->user['id']);
 
         return response([
             'data' => $user

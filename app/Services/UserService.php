@@ -275,6 +275,27 @@ class UserService
     }
 
 
+
+    public function getUserWalletsRaw(int $userId): array
+    {
+        if (!Schema::hasTable('v2_user_wallet')) {
+            $user = User::find($userId);
+            if (!$user) return [];
+            return [
+                ['currency' => 'CNY', 'balance' => (int)$user->balance]
+            ];
+        }
+        $wallets = UserWallet::where('user_id', $userId)->orderBy('currency', 'ASC')->get(['currency', 'balance']);
+        if ($wallets->isEmpty()) {
+            $user = User::find($userId);
+            if (!$user) return [];
+            return [
+                ['currency' => 'CNY', 'balance' => (int)$user->balance]
+            ];
+        }
+        return $wallets->toArray();
+    }
+
     public function getUserWalletTotalInCurrency(int $userId, string $targetCurrency, CurrencyRateService $currencyRateService): int
     {
         $targetCurrency = $currencyRateService->normalizeCurrency($targetCurrency);

@@ -16038,9 +16038,9 @@
                     id: "\u6211\u7684\u94b1\u5305(\u4ec5\u6d88\u8d39)"
                 })), l.a.createElement("p", {
                     className: "display-4 text-black font-w300 mb-2"
-                }, void 0 !== t.balance ? (parseInt(t.balance) / 100).toFixed(2) : "--.--", l.a.createElement("span", {
+                }, void 0 !== t.balance ? (void 0!==t.wallets&&t.wallets.length?t.wallets.map(function(e){return(e.balance/100).toFixed(2)+" "+e.currency}).join(" | "):(parseInt(t.balance)/100).toFixed(2)) : "--.--", l.a.createElement("span", {
                     className: "font-size-h5 text-muted ml-4"
-                }, r.currency)), l.a.createElement("span", {
+                }, void 0!==t.wallets&&t.wallets.length?"":r.currency)), l.a.createElement("span", {
                     className: "text-muted",
                     style: {
                         cursor: "pointer"
@@ -59738,7 +59738,7 @@
                         arrow: "horizontal",
                         multipleLine: !0,
                         onClick: ()=>F.a.push("/order/" + e.trade_no),
-                        extra: b.a.createElement("div", null, b.a.createElement("div", null, (e.total_amount / 100).toFixed(2)), b.a.createElement("div", null, b.a.createElement(N["a"], {
+                        extra: b.a.createElement("div", null, b.a.createElement("div", null, ((e.total_amount / 100).toFixed(2)+" "+(e.pricing_currency||"CNY"))), b.a.createElement("div", null, b.a.createElement(N["a"], {
                             status: r[e.status]
                         }), W["a"].orderStatusText[e.status] && W["a"].orderStatusText[e.status]()))
                     }, null === (t = e.plan) || void 0 === t ? void 0 : t.name, " ", b.a.createElement(T.Item.Brief, null, z()(1e3 * e.created_at).format("YYYY-MM-DD HH:mm:ss")))

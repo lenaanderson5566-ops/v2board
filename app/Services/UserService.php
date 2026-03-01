@@ -214,10 +214,17 @@ class UserService
         if (!$user->save()) {
             return false;
         }
-        UserWallet::updateOrCreate(
-            ['user_id' => $userId, 'currency' => 'CNY'],
-            ['balance' => $user->balance]
-        );
+        $wallet = UserWallet::firstOrNew([
+            'user_id' => $userId,
+            'currency' => 'CNY'
+        ]);
+        $wallet->balance = (int)$wallet->balance + $balance;
+        if ($wallet->balance < 0) {
+            return false;
+        }
+        if (!$wallet->save()) {
+            return false;
+        }
         return true;
     }
 
@@ -265,12 +272,6 @@ class UserService
                 $consume($wallet, $needByWallet);
             }
         }
-
-        // sync legacy CNY balance field for backward compatibility
-        $cnyWallet = UserWallet::where('user_id', $userId)->where('currency', 'CNY')->lockForUpdate()->first();
-        $user->balance = $cnyWallet ? $cnyWallet->balance : 0;
-        $user->save();
-
         return $orderAmountMinor - $need;
     }
 

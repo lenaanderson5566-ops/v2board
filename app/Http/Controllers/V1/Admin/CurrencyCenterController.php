@@ -8,22 +8,37 @@ use App\Models\Payment;
 use App\Models\CurrencySetting;
 use App\Services\CurrencyRateService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Schema;
 
 class CurrencyCenterController extends Controller
 {
     public function fetch(Request $request)
     {
         $base = strtoupper(CurrencySetting::getValue('business_base_currency', 'CNY'));
-        $rates = CurrencyRate::where('base_currency', $base)
-            ->orderBy('quote_currency', 'ASC')
-            ->get(['quote_currency', 'rate_to_base', 'rate_to_cny', 'fetched_at']);
-        $payments = Payment::orderBy('sort', 'ASC')->get(['id', 'name', 'payment', 'currency']);
+
+        $rates = collect();
+        $latestFetchedAt = null;
+        if (Schema::hasTable('v2_currency_rate')) {
+            $rates = CurrencyRate::where('base_currency', $base)
+                ->orderBy('quote_currency', 'ASC')
+                ->get(['quote_currency', 'rate_to_base', 'rate_to_cny', 'fetched_at']);
+            $latestFetchedAt = CurrencyRate::where('base_currency', $base)->max('fetched_at');
+        }
+
+        if (Schema::hasColumn('v2_payment', 'currency')) {
+            $payments = Payment::orderBy('sort', 'ASC')->get(['id', 'name', 'payment', 'currency']);
+        } else {
+            $payments = Payment::orderBy('sort', 'ASC')->get(['id', 'name', 'payment'])->map(function ($item) {
+                $item['currency'] = 'CNY';
+                return $item;
+            });
+        }
 
         return response([
             'data' => [
                 'business_base_currency' => $base,
                 'currency_rate_api' => CurrencySetting::getValue('currency_rate_api', 'https://open.er-api.com/v6/latest/{base}'),
-                'latest_fetched_at' => CurrencyRate::where('base_currency', $base)->max('fetched_at'),
+                'latest_fetched_at' => $latestFetchedAt,
                 'rates' => $rates,
                 'payments' => $payments,
             ]
@@ -69,6 +84,10 @@ class CurrencyCenterController extends Controller
         $payment = Payment::find($params['id']);
         if (!$payment) {
             abort(500, '支付方式不存在');
+        }
+
+        if (!Schema::hasColumn('v2_payment', 'currency')) {
+            abort(500, '请先执行数据库迁移以启用支付币种设置');
         }
 
         $payment->currency = strtoupper($params['currency']);

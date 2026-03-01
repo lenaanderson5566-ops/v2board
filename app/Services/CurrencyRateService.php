@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\CurrencyRate;
 use App\Models\CurrencySetting;
+use Illuminate\Support\Facades\Schema;
 
 class CurrencyRateService
 {
@@ -32,6 +33,7 @@ class CurrencyRateService
         if ($currency === 'CNY') {
             return 1.0;
         }
+        if (!Schema::hasTable('v2_currency_rate')) return null;
         $row = CurrencyRate::where('quote_currency', $currency)->orderBy('fetched_at', 'DESC')->first();
         return $row ? (float)$row->rate_to_cny : null;
     }
@@ -53,6 +55,7 @@ class CurrencyRateService
 
     public function refreshAllRates(): bool
     {
+        if (!Schema::hasTable('v2_currency_rate')) return false;
         $base = $this->getBusinessBaseCurrency();
         $endpoint = CurrencySetting::getValue('currency_rate_api', 'https://open.er-api.com/v6/latest/{base}');
         $url = str_replace('{base}', $base, $endpoint);

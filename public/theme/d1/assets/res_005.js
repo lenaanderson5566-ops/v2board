@@ -59675,6 +59675,16 @@
                     }
                 }, {
                     title: Object(B["formatMessage"])({
+                        id: "\u8ba2\u5355\u5e01\u79cd"
+                    }),
+                    dataIndex: "order_currency",
+                    key: "order_currency",
+                    align: "center",
+                    render: (e,t)=>{
+                        return t.order_currency || t.pricing_currency || "CNY"
+                    }
+                }, {
+                    title: Object(B["formatMessage"])({
                         id: "\u8ba2\u5355\u72b6\u6001"
                     }),
                     dataIndex: "status",

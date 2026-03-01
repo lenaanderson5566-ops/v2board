@@ -174,23 +174,17 @@ class OrderController extends Controller
         $orderService->setVipDiscount($user);
         $orderService->setOrderType($user);
 
-        if ($user->balance > 0 && $order->total_amount > 0) {
-            $remainingBalance = $user->balance - $order->total_amount;
+        if ($order->total_amount > 0) {
             $userService = new UserService();
-            if ($remainingBalance > 0) {
-                if (!$userService->addBalance($order->user_id, - $order->total_amount)) {
-                    DB::rollBack();
-                    abort(500, __('Insufficient balance'));
-                }
-                $order->balance_amount = $order->total_amount;
-                $order->total_amount = 0;
-            } else {
-                if (!$userService->addBalance($order->user_id, - $user->balance)) {
-                    DB::rollBack();
-                    abort(500, __('Insufficient balance'));
-                }
-                $order->balance_amount = $user->balance;
-                $order->total_amount -= $user->balance;
+            $deducted = $userService->deductByMultiCurrencyWallet(
+                $order->user_id,
+                (int)$order->total_amount,
+                $order->pricing_currency ?: 'CNY',
+                $currencyRateService
+            );
+            if ($deducted > 0) {
+                $order->balance_amount = $deducted;
+                $order->total_amount = max(0, $order->total_amount - $deducted);
             }
         }
 

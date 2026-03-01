@@ -52,6 +52,23 @@ class CurrencyRateService
         return (int)max(1, round($amountMinor * $rateToCny));
     }
 
+
+    public function convertMinor(int $amountMinor, string $fromCurrency, string $toCurrency): int
+    {
+        $fromCurrency = $this->normalizeCurrency($fromCurrency);
+        $toCurrency = $this->normalizeCurrency($toCurrency);
+        if ($fromCurrency === $toCurrency) return $amountMinor;
+
+        $amountCny = $this->convertMinorToCnyMinor($amountMinor, $fromCurrency);
+        if ($toCurrency === 'CNY') return $amountCny;
+
+        $rateToCny = $this->getRateToCny($toCurrency);
+        if (!$rateToCny || $rateToCny <= 0) {
+            abort(500, __('Currency rate not found, please contact administrator'));
+        }
+        return (int)max(1, round($amountCny / $rateToCny));
+    }
+
     public function convertCnyAmountToTargetMinor(int $cnyMinor, string $targetCurrency): array
     {
         $targetCurrency = $this->normalizeCurrency($targetCurrency);

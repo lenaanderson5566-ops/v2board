@@ -165,14 +165,25 @@ class OrderController extends Controller
         $order->plan_id = $plan->id;
         $order->period = $request->input('period');
         $order->trade_no = Helper::generateOrderNo();
-        $order->total_amount = $plan[$request->input('period')];
         $order->pricing_currency = $currencyRateService->getBusinessBaseCurrency();
+        $order->total_amount = $currencyRateService->convertMinor(
+            (int)$plan[$request->input('period')],
+            'CNY',
+            $order->pricing_currency ?: 'CNY'
+        );
 
         if ($request->input('coupon_code')) {
             $couponService = new CouponService($request->input('coupon_code'));
             if (!$couponService->use($order)) {
                 DB::rollBack();
                 abort(500, __('Coupon failed'));
+            }
+            $coupon = $couponService->getCoupon();
+            if (($order->pricing_currency ?: 'CNY') !== 'CNY' && (int)$coupon->type === 1) {
+                $order->discount_amount = $currencyRateService->convertMinor((int)$coupon->value, 'CNY', $order->pricing_currency ?: 'CNY');
+                if ($order->discount_amount > $order->total_amount) {
+                    $order->discount_amount = $order->total_amount;
+                }
             }
             $order->coupon_id = $couponService->getId();
         }

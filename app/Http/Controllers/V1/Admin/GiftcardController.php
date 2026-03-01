@@ -5,6 +5,7 @@ namespace App\Http\Controllers\V1\Admin;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\GiftcardGenerate;
 use App\Models\Giftcard;
+use App\Services\CurrencyRateService;
 use App\Utils\Helper;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -20,11 +21,18 @@ class GiftcardController extends Controller
         
         $builder = Giftcard::orderBy($sort, $sortType);
         $total = $builder->count();
-        $giftcards = $builder->forPage($current, $pageSize)->get();
+        $baseCurrency = (new CurrencyRateService())->getBusinessBaseCurrency();
+        $giftcards = $builder->forPage($current, $pageSize)->get()->map(function ($item) use ($baseCurrency) {
+            if ((int)$item->type === 1) {
+                $item->value_currency = $baseCurrency;
+            }
+            return $item;
+        });
 
         return response([
             'data' => $giftcards,
-            'total' => $total
+            'total' => $total,
+            'business_base_currency' => $baseCurrency
         ]);
     }
 
@@ -84,10 +92,11 @@ class GiftcardController extends Controller
             abort(500, $e->getMessage());
         }
         $giftcardvalue = $giftcard['value'] ?? 0;
+        $baseCurrency = (new CurrencyRateService())->getBusinessBaseCurrency();
         $data = "名称,类型,数值,开始时间,结束时间,可用次数,礼品卡卡密,生成时间\r\n";
         foreach ($giftcards as $giftcard) {
             $type = ['', '金额', '时长', '流量', '重置', '套餐'][$giftcard['type']];
-            $value = ['', round($giftcardvalue/100, 2), $giftcardvalue . '天', $giftcardvalue . 'GB', '-', $giftcardvalue . '天'][$giftcard['type']];
+            $value = ['', round($giftcardvalue/100, 2) . ' ' . $baseCurrency, $giftcardvalue . '天', $giftcardvalue . 'GB', '-', $giftcardvalue . '天'][$giftcard['type']];
             $startTime = date('Y-m-d H:i:s', $giftcard['started_at']);
             $endTime = date('Y-m-d H:i:s', $giftcard['ended_at']);
             $limitUse = $giftcard['limit_use'] ?? '不限制';

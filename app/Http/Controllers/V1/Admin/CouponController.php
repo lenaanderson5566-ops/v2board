@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\CouponGenerate;
 use App\Http\Requests\Admin\CouponSave;
 use App\Models\Coupon;
+use App\Services\CurrencyRateService;
 use App\Utils\Helper;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -20,11 +21,19 @@ class CouponController extends Controller
         $sort = $request->input('sort') ? $request->input('sort') : 'id';
         $builder = Coupon::orderBy($sort, $sortType);
         $total = $builder->count();
+        $baseCurrency = (new CurrencyRateService())->getBusinessBaseCurrency();
         $coupons = $builder->forPage($current, $pageSize)
-            ->get();
+            ->get()
+            ->map(function ($item) use ($baseCurrency) {
+                if ((int)$item->type === 1) {
+                    $item->value_currency = $baseCurrency;
+                }
+                return $item;
+            });
         return response([
             'data' => $coupons,
-            'total' => $total
+            'total' => $total,
+            'business_base_currency' => $baseCurrency
         ]);
     }
 
@@ -101,10 +110,11 @@ class CouponController extends Controller
             abort(500, '生成失败');
         }
         DB::commit();
+        $baseCurrency = (new CurrencyRateService())->getBusinessBaseCurrency();
         $data = "名称,类型,金额或比例,开始时间,结束时间,可用次数,可用于订阅,券码,生成时间\r\n";
         foreach($coupons as $coupon) {
             $type = ['', '金额', '比例'][$coupon['type']];
-            $value = ['', ($coupon['value'] / 100),$coupon['value']][$coupon['type']];
+            $value = ['', ($coupon['value'] / 100) . ' ' . $baseCurrency,$coupon['value']][$coupon['type']];
             $startTime = date('Y-m-d H:i:s', $coupon['started_at']);
             $endTime = date('Y-m-d H:i:s', $coupon['ended_at']);
             $limitUse = $coupon['limit_use'] ?? '不限制';

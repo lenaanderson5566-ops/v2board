@@ -200,7 +200,8 @@ class UserController extends Controller
 
             switch ($giftcard->type) {
                 case 1:
-                    if (!(new UserService())->addBalance($user->id, $giftcard->value)) {
+                    $baseCurrency = (new CurrencyRateService())->getBusinessBaseCurrency();
+                    if (!(new UserService())->addBalance($user->id, $giftcard->value, $baseCurrency)) {
                         DB::rollBack();
                         abort(500, __('Operation failed'));
                     }

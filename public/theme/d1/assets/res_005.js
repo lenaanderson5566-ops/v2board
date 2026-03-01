@@ -18983,9 +18983,9 @@
                     id: "\u65e7\u8ba2\u9605\u6298\u62b5\u91d1\u989d"
                 }), "\uff1a"), f.a.createElement("span", null, (t.surplus_amount / 100).toFixed(2))) : "", t.refund_amount ? f.a.createElement("div", null, f.a.createElement("span", null, Object(b["formatMessage"])({
                     id: "\u9000\u6b3e\u91d1\u989d"
-                }), "\uff1a"), f.a.createElement("span", null, (t.refund_amount / 100).toFixed(2))) : "", t.balance_amount ? f.a.createElement("div", null, f.a.createElement("span", null, Object(b["formatMessage"])({
+                }), "\uff1a"), f.a.createElement("span", null, (t.refund_amount / 100).toFixed(2)+" "+(t.pricing_currency||"CNY"))) : "", t.balance_amount ? f.a.createElement("div", null, f.a.createElement("span", null, Object(b["formatMessage"])({
                     id: "\u4f59\u989d\u652f\u4ed8"
-                }), "\uff1a"), f.a.createElement("span", null, (t.balance_amount / 100).toFixed(2))) : "", t.pre_handling_amount ? f.a.createElement("div", null, f.a.createElement("span", null, Object(b["formatMessage"])({
+                }), "\uff1a"), f.a.createElement("span", null, (t.balance_amount / 100).toFixed(2)+" "+(t.pricing_currency||"CNY"))) : "", t.pre_handling_amount ? f.a.createElement("div", null, f.a.createElement("span", null, Object(b["formatMessage"])({
                     id: "\u652f\u4ed8\u624b\u7eed\u8d39"
                 }), "\uff1a"), f.a.createElement("span", null, (t.pre_handling_amount / 100).toFixed(2))) : "", f.a.createElement("div", null, f.a.createElement("span", null, Object(b["formatMessage"])({
                     id: "\u521b\u5efa\u65f6\u95f4"
@@ -19129,7 +19129,7 @@
                     className: "col-8"
                 }), f.a.createElement("div", {
                     className: "col-4 text-right"
-                }, "- ", g.currency_symbol, (t.refund_amount / 100).toFixed(2)))) : "", t.pre_handling_amount ? f.a.createElement("div", null, f.a.createElement("div", {
+                }, "- ", g.currency_symbol, (t.refund_amount / 100).toFixed(2)+" "+(t.pricing_currency||"CNY")))) : "", t.pre_handling_amount ? f.a.createElement("div", null, f.a.createElement("div", {
                     className: "pt-3",
                     style: {
                         color: "#646669"
@@ -19154,7 +19154,7 @@
                     id: "\u603b\u8ba1"
                 })), f.a.createElement("h1", {
                     className: "text-light mt-3 mb-3"
-                }, g.currency_symbol, " ", ((t.total_amount + (t.pre_handling_amount || 0)) / 100).toFixed(2), " ", g.currency), f.a.createElement("button", {
+                }, g.currency_symbol, " ", ((t.total_amount + (t.pre_handling_amount || 0)) / 100).toFixed(2), " ", (t.pricing_currency||"CNY")), f.a.createElement("button", {
                     type: "button",
                     className: "btn btn-block btn-primary",
                     disabled: d || "StripeCredit" === E.payment && !w.token,

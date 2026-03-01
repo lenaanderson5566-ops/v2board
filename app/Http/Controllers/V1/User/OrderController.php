@@ -30,6 +30,9 @@ class OrderController extends Controller
         $order = $model->get();
         $plan = Plan::get();
         for ($i = 0; $i < count($order); $i++) {
+            if (empty($order[$i]['pricing_currency'])) {
+                $order[$i]['pricing_currency'] = 'CNY';
+            }
             for ($x = 0; $x < count($plan); $x++) {
                 if ($order[$i]['plan_id'] === $plan[$x]['id']) {
                     $order[$i]['plan'] = $plan[$x];
@@ -49,6 +52,7 @@ class OrderController extends Controller
         if (!$order) {
             abort(500, __('Order does not exist or has been paid'));
         }
+        if (empty($order->pricing_currency)) $order->pricing_currency = 'CNY';
         if ($order->plan_id == 0) {
             $order['plan'] = [
                 'id' => 0,

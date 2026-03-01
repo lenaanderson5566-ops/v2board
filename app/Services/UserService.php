@@ -207,17 +207,16 @@ class UserService
         if (!$user) {
             return false;
         }
-        $user->balance = $user->balance + $balance;
-        if ($user->balance < 0) {
-            return false;
-        }
-        if (!$user->save()) {
-            return false;
-        }
+
         $wallet = UserWallet::firstOrNew([
             'user_id' => $userId,
             'currency' => 'CNY'
         ]);
+
+        if (!$wallet->exists) {
+            $wallet->balance = (int)$user->balance;
+        }
+
         $wallet->balance = (int)$wallet->balance + $balance;
         if ($wallet->balance < 0) {
             return false;

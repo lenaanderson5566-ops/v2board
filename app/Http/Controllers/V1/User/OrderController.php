@@ -34,9 +34,6 @@ class OrderController extends Controller
                 $order[$i]['pricing_currency'] = 'CNY';
             }
             $order[$i]['order_currency'] = $order[$i]['pricing_currency'] ?: 'CNY';
-            if (empty($order[$i]['payment_currency'])) {
-                $order[$i]['payment_currency'] = $order[$i]['pricing_currency'] ?: 'CNY';
-            }
             for ($x = 0; $x < count($plan); $x++) {
                 if ($order[$i]['plan_id'] === $plan[$x]['id']) {
                     $order[$i]['plan'] = $plan[$x];
@@ -58,7 +55,6 @@ class OrderController extends Controller
         }
         if (empty($order->pricing_currency)) $order->pricing_currency = 'CNY';
         $order->order_currency = $order->pricing_currency ?: 'CNY';
-        if (empty($order->payment_currency)) $order->payment_currency = $order->pricing_currency ?: 'CNY';
         if ($order->plan_id == 0) {
             $order['plan'] = [
                 'id' => 0,

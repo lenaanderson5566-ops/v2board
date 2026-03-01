@@ -9,6 +9,7 @@ use App\Models\Payment;
 use App\Models\Plan;
 use App\Models\User;
 use App\Services\CouponService;
+use App\Services\CurrencyRateService;
 use App\Services\OrderService;
 use App\Services\PaymentService;
 use App\Services\PlanService;
@@ -96,6 +97,7 @@ class OrderController extends Controller
             $order->period = 'deposit';
             $order->trade_no = Helper::generateOrderNo();
             $order->total_amount = $amount;
+            $order->pricing_currency = 'CNY';
             
             $orderService->setOrderType($user);
             $orderService->setInvite($user);
@@ -157,6 +159,7 @@ class OrderController extends Controller
         $order->period = $request->input('period');
         $order->trade_no = Helper::generateOrderNo();
         $order->total_amount = $plan[$request->input('period')];
+        $order->pricing_currency = 'CNY';
 
         if ($request->input('coupon_code')) {
             $couponService = new CouponService($request->input('coupon_code'));
@@ -227,15 +230,25 @@ class OrderController extends Controller
         $payment = Payment::find($method);
         if (!$payment || $payment->enable !== 1) abort(500, __('Payment method is not available'));
         $paymentService = new PaymentService($payment->payment, $payment->id);
+        $currencyRateService = new CurrencyRateService();
         $order->handling_amount = NULL;
         if ($payment->handling_fee_fixed || $payment->handling_fee_percent) {
             $order->handling_amount = round(($order->total_amount * ($payment->handling_fee_percent / 100)) + $payment->handling_fee_fixed);
         }
         $order->payment_id = $method;
+        $amountCny = isset($order->handling_amount) ? ($order->total_amount + $order->handling_amount) : $order->total_amount;
+        $paymentCurrency = $currencyRateService->getPaymentCurrencyByGateway($payment);
+        $converted = $currencyRateService->convertCnyAmountToTargetMinor($amountCny, $paymentCurrency);
+        $order->payment_currency = $paymentCurrency;
+        $order->payment_amount = $converted['amount_minor'];
+        $order->exchange_rate = $converted['rate_to_cny'];
+        $order->exchange_rate_at = $converted['fetched_at'];
         if (!$order->save()) abort(500, __('Request failed, please try again later'));
         $result = $paymentService->pay([
             'trade_no' => $tradeNo,
-            'total_amount' => isset($order->handling_amount) ? ($order->total_amount + $order->handling_amount) : $order->total_amount,
+            'total_amount' => $amountCny,
+            'locked_payment_amount' => $converted['amount_minor'],
+            'locked_payment_currency' => $paymentCurrency,
             'user_id' => $order->user_id,
             'stripe_token' => $request->input('token')
         ]);
@@ -267,7 +280,8 @@ class OrderController extends Controller
             'payment',
             'icon',
             'handling_fee_fixed',
-            'handling_fee_percent'
+            'handling_fee_percent',
+            'currency'
         ])
             ->where('enable', 1)
             ->orderBy('sort', 'ASC')

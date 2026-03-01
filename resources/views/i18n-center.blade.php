@@ -69,6 +69,7 @@
 
         .layout.embedded .content { padding: 0; }
         .layout.embedded .container { max-width: none; }
+        .embedded-tabs { display:flex; gap:8px; margin-bottom:10px; }
 
         @media (max-width: 1100px) {
             .layout { flex-direction: column; }
@@ -101,6 +102,14 @@
             <div class="header">
                 <h2 class="title">国际化中心</h2>
             </div>
+
+            @if($embedded)
+            <div class="embedded-tabs">
+                <button id="embedded-tab-plan" class="menu-btn active" style="width:auto;min-width:100px;background:#fff;color:#111827;border-color:#d1d5db;" onclick="switchTab('plan')">套餐翻译</button>
+                <button id="embedded-tab-currency" class="menu-btn" style="width:auto;min-width:140px;background:#fff;color:#111827;border-color:#d1d5db;" onclick="switchTab('currency')">汇率与币种设置</button>
+                <button id="embedded-tab-copy" class="menu-btn" style="width:auto;min-width:140px;background:#fff;color:#111827;border-color:#d1d5db;" onclick="switchTab('copy')">站点文案翻译</button>
+            </div>
+            @endif
 
             <div class="panel">
                 <div id="panel-plan">
@@ -200,6 +209,12 @@ function switchTab(tab) {
     if (tabPlan) tabPlan.classList.toggle('active', tab === 'plan');
     if (tabCurrency) tabCurrency.classList.toggle('active', tab === 'currency');
     if (tabCopy) tabCopy.classList.toggle('active', tab === 'copy');
+    const ePlan = document.getElementById('embedded-tab-plan');
+    const eCurrency = document.getElementById('embedded-tab-currency');
+    const eCopy = document.getElementById('embedded-tab-copy');
+    if (ePlan) ePlan.classList.toggle('active', tab === 'plan');
+    if (eCurrency) eCurrency.classList.toggle('active', tab === 'currency');
+    if (eCopy) eCopy.classList.toggle('active', tab === 'copy');
     document.getElementById('panel-plan').style.display = tab === 'plan' ? 'block' : 'none';
     document.getElementById('panel-currency').style.display = tab === 'currency' ? 'block' : 'none';
     document.getElementById('panel-copy').style.display = tab === 'copy' ? 'block' : 'none';

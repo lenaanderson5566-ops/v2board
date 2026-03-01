@@ -99,7 +99,16 @@ class CheckCommission extends Command
             if (!isset($commissionShareLevels[$l])) continue;
             $commissionBalance = $order->commission_balance * ($commissionShareLevels[$l] / 100);
             if (!$commissionBalance) continue;
-            if (!(new UserService())->addBalance($inviter->id, (int)$commissionBalance)) {
+            if ((int)config('v2board.withdraw_close_enable', 0)) {
+                if (!(new UserService())->addBalance($inviter->id, (int)$commissionBalance)) {
+                    DB::rollBack();
+                    return false;
+                }
+                $inviter = User::find($inviter->id);
+            } else {
+                $inviter->commission_balance = $inviter->commission_balance + $commissionBalance;
+            }
+            if (!$inviter->save()) {
                 DB::rollBack();
                 return false;
             }

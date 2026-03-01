@@ -104,6 +104,9 @@ class ConfigController extends Controller
                 'tos_url' => config('v2board.tos_url'),
                 'currency' => config('v2board.currency', 'CNY'),
                 'currency_symbol' => config('v2board.currency_symbol', '¥'),
+                'billing_currency' => strtoupper(config('v2board.billing_currency', config('v2board.currency', 'CNY'))),
+                'billing_currency_symbol' => config('v2board.billing_currency_symbol', config('v2board.currency_symbol', '¥')),
+                'currency_support_list' => config('v2board.currency_support_list', ['CNY', 'USD', 'EUR', 'HKD', 'JPY']),
             ],
             'subscribe' => [
                 'plan_change_enable' => (int)config('v2board.plan_change_enable', 1),

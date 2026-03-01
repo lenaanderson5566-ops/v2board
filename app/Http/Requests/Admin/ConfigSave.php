@@ -42,6 +42,9 @@ class ConfigSave extends FormRequest
         'tos_url' => 'nullable|url',
         'currency' => '',
         'currency_symbol' => '',
+        'billing_currency' => 'nullable|alpha|size:3',
+        'billing_currency_symbol' => 'nullable|string|max:8',
+        'currency_support_list' => 'nullable|array',
         // subscribe
         'plan_change_enable' => 'in:0,1',
         'reset_traffic_method' => 'in:0,1,2,3,4',

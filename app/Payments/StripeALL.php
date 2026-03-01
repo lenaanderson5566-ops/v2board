@@ -38,10 +38,14 @@ class StripeALL {
     
     public function pay($order)
     {
-        $currency = $this->config['currency'];
-        $exchange = $this->exchange('CNY', strtoupper($currency));
-        if (!$exchange) {
-            throw new abort('Currency conversion API failed', 500);
+        $currency = strtoupper($order['payment_currency'] ?? ($this->config['currency'] ?? 'CNY'));
+        $convertedAmount = $order['payment_amount'] ?? null;
+        if (!$convertedAmount) {
+            $exchange = $this->exchange('CNY', $currency);
+            if (!$exchange) {
+                throw new abort('Currency conversion API failed', 500);
+            }
+            $convertedAmount = floor($order['total_amount'] * $exchange);
         }
         //jump url
         $jumpUrl = null;
@@ -55,7 +59,7 @@ class StripeALL {
         ]);
         // 准备支付意图的基础参数
         $params = [
-            'amount' => floor($order['total_amount'] * $exchange),
+            'amount' => $convertedAmount,
             'currency' => $currency,
             'confirm' => true,
             'payment_method' => $stripePaymentMethod->id,
@@ -113,7 +117,7 @@ class StripeALL {
                 [
                     'price_data' => [
                         'currency' => $currency,
-                        'unit_amount' => floor($order['total_amount'] * $exchange),
+                        'unit_amount' => $convertedAmount,
                         'product_data' => [
                             'name' => 'user-#' . $order['user_id'] . '-' . substr($order['trade_no'], -8),
                         ]

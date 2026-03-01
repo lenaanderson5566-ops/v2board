@@ -43,15 +43,19 @@ class StripeCredit {
     public function pay($order)
     {
         info($order);
-        $currency = $this->config['currency'];
-        $exchange = $this->exchange('CNY', strtoupper($currency));
-        if (!$exchange) {
-            abort(500, __('Currency conversion has timed out, please try again later'));
+        $currency = strtoupper($order['payment_currency'] ?? ($this->config['currency'] ?? 'CNY'));
+        $convertedAmount = $order['payment_amount'] ?? null;
+        if (!$convertedAmount) {
+            $exchange = $this->exchange('CNY', $currency);
+            if (!$exchange) {
+                abort(500, __('Currency conversion has timed out, please try again later'));
+            }
+            $convertedAmount = floor($order['total_amount'] * $exchange);
         }
         Stripe::setApiKey($this->config['stripe_sk_live']);
         try {
             $charge = \Stripe\Charge::create([
-                'amount' => floor($order['total_amount'] * $exchange),
+                'amount' => $convertedAmount,
                 'currency' => $currency,
                 'source' => $order['stripe_token'],
                 'metadata' => [

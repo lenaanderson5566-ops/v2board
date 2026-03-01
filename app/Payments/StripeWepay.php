@@ -37,14 +37,18 @@ class StripeWepay {
 
     public function pay($order)
     {
-        $currency = $this->config['currency'];
-        $exchange = $this->exchange('CNY', strtoupper($currency));
-        if (!$exchange) {
-            abort(500, __('Currency conversion has timed out, please try again later'));
+        $currency = strtoupper($order['payment_currency'] ?? ($this->config['currency'] ?? 'CNY'));
+        $convertedAmount = $order['payment_amount'] ?? null;
+        if (!$convertedAmount) {
+            $exchange = $this->exchange('CNY', $currency);
+            if (!$exchange) {
+                abort(500, __('Currency conversion has timed out, please try again later'));
+            }
+            $convertedAmount = floor($order['total_amount'] * $exchange);
         }
         Stripe::setApiKey($this->config['stripe_sk_live']);
         $source = Source::create([
-            'amount' => floor($order['total_amount'] * $exchange),
+            'amount' => $convertedAmount,
             'currency' => $currency,
             'type' => 'wechat',
             'statement_descriptor' => $order['trade_no'],

@@ -44,10 +44,14 @@ class StripeCheckout {
 
     public function pay($order)
     {
-        $currency = $this->config['currency'];
-        $exchange = $this->exchange('CNY', strtoupper($currency));
-        if (!$exchange) {
-            abort(500, __('Currency conversion has timed out, please try again later'));
+        $currency = strtoupper($order['payment_currency'] ?? ($this->config['currency'] ?? 'CNY'));
+        $convertedAmount = $order['payment_amount'] ?? null;
+        if (!$convertedAmount) {
+            $exchange = $this->exchange('CNY', $currency);
+            if (!$exchange) {
+                abort(500, __('Currency conversion has timed out, please try again later'));
+            }
+            $convertedAmount = floor($order['total_amount'] * $exchange);
         }
         $customFieldName = isset($this->config['stripe_custom_field_name']) ? $this->config['stripe_custom_field_name'] : 'Contact Infomation';
 
@@ -62,7 +66,7 @@ class StripeCheckout {
                         'product_data' => [
                             'name' => $order['trade_no']
                         ],
-                        'unit_amount' => floor($order['total_amount'] * $exchange)
+                        'unit_amount' => $convertedAmount
                     ],
                     'quantity' => 1
                 ]

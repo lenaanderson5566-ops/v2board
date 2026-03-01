@@ -51,7 +51,12 @@ class PaymentService
             'trade_no' => $order['trade_no'],
             'total_amount' => $order['total_amount'],
             'user_id' => $order['user_id'],
-            'stripe_token' => $order['stripe_token']
+            'stripe_token' => $order['stripe_token'],
+            'payment_currency' => $order['payment_currency'] ?? null,
+            'payment_amount' => $order['payment_amount'] ?? null,
+            'pricing_currency' => $order['pricing_currency'] ?? null,
+            'pricing_amount' => $order['pricing_amount'] ?? null,
+            'pricing_to_payment_rate' => $order['pricing_to_payment_rate'] ?? null
         ]);
     }
 

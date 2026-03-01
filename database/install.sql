@@ -151,12 +151,18 @@ CREATE TABLE `v2_order` (
                             `plan_id` int(11) NOT NULL,
                             `coupon_id` int(11) DEFAULT NULL,
                             `payment_id` int(11) DEFAULT NULL,
+                            `payment_currency` varchar(8) DEFAULT NULL,
                             `type` int(11) NOT NULL COMMENT '1新购2续费3升级',
                             `period` varchar(255) NOT NULL,
+                            `pricing_currency` varchar(8) NOT NULL DEFAULT 'CNY',
                             `trade_no` varchar(36) NOT NULL,
                             `callback_no` varchar(255) DEFAULT NULL,
                             `total_amount` int(11) NOT NULL,
+                            `pricing_amount` int(11) DEFAULT NULL,
+                            `pricing_to_cny_rate` decimal(18,8) NOT NULL DEFAULT '1.00000000',
+                            `pricing_to_payment_rate` decimal(18,8) DEFAULT NULL,
                             `handling_amount` int(11) DEFAULT NULL,
+                            `payment_amount` int(11) DEFAULT NULL,
                             `discount_amount` int(11) DEFAULT NULL,
                             `surplus_amount` int(11) DEFAULT NULL COMMENT '剩余价值',
                             `refund_amount` int(11) DEFAULT NULL COMMENT '退款金额',
@@ -167,6 +173,7 @@ CREATE TABLE `v2_order` (
                             `commission_balance` int(11) NOT NULL DEFAULT '0',
                             `actual_commission_balance` int(11) DEFAULT NULL COMMENT '实际支付佣金',
                             `paid_at` int(11) DEFAULT NULL,
+                            `rate_locked_at` int(11) DEFAULT NULL,
                             `created_at` int(11) NOT NULL,
                             `updated_at` int(11) NOT NULL,
                             PRIMARY KEY (`id`),
@@ -176,12 +183,29 @@ CREATE TABLE `v2_order` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8;
 
 
+DROP TABLE IF EXISTS `v2_currency_rate`;
+CREATE TABLE `v2_currency_rate` (
+                                     `id` int(11) NOT NULL AUTO_INCREMENT,
+                                     `base_currency` varchar(8) NOT NULL,
+                                     `quote_currency` varchar(8) NOT NULL,
+                                     `rate` decimal(18,8) NOT NULL,
+                                     `source` varchar(64) DEFAULT NULL,
+                                     `fetched_at` int(11) NOT NULL,
+                                     `created_at` int(11) NOT NULL,
+                                     `updated_at` int(11) NOT NULL,
+                                     PRIMARY KEY (`id`),
+                                     KEY `idx_currency_pair` (`base_currency`,`quote_currency`),
+                                     KEY `idx_fetched_at` (`fetched_at`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+
 DROP TABLE IF EXISTS `v2_payment`;
 CREATE TABLE `v2_payment` (
                               `id` int(11) NOT NULL AUTO_INCREMENT,
                               `uuid` char(32) NOT NULL,
                               `payment` varchar(16) NOT NULL,
                               `name` varchar(255) NOT NULL,
+                              `currency` varchar(8) DEFAULT NULL,
                               `icon` varchar(255) DEFAULT NULL,
                               `config` text NOT NULL,
                               `notify_domain` varchar(128) DEFAULT NULL,

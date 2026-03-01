@@ -9,6 +9,7 @@ use App\Models\Payment;
 use App\Models\Plan;
 use App\Models\User;
 use App\Services\CouponService;
+use App\Services\CurrencyRateService;
 use App\Services\OrderService;
 use App\Services\PaymentService;
 use App\Services\PlanService;
@@ -76,6 +77,8 @@ class OrderController extends Controller
     public function save(OrderSave $request)
     {
         $userService = new UserService();
+        $currencyRateService = new CurrencyRateService();
+        $billingCurrency = strtoupper(config('v2board.billing_currency', config('v2board.currency', 'CNY')));
         if ($userService->isNotCompleteOrderByUserId($request->user['id'])) {
             abort(500, __('You have an unpaid or pending order, please try again later or cancel it'));
         }
@@ -96,7 +99,10 @@ class OrderController extends Controller
             $order->period = 'deposit';
             $order->trade_no = Helper::generateOrderNo();
             $order->total_amount = $amount;
-            
+            $order->pricing_currency = $billingCurrency;
+            $order->pricing_amount = $currencyRateService->convert($order->total_amount, 'CNY', $billingCurrency);
+            $order->pricing_to_cny_rate = $currencyRateService->resolveCrossRate($billingCurrency, 'CNY') ?? 1;
+
             $orderService->setOrderType($user);
             $orderService->setInvite($user);
 
@@ -190,6 +196,10 @@ class OrderController extends Controller
             }
         }
 
+        $order->pricing_currency = $billingCurrency;
+        $order->pricing_amount = $currencyRateService->convert($order->total_amount, 'CNY', $billingCurrency);
+        $order->pricing_to_cny_rate = $currencyRateService->resolveCrossRate($billingCurrency, 'CNY') ?? 1;
+
         $orderService->setInvite($user);
 
         if (!$order->save()) {
@@ -227,17 +237,31 @@ class OrderController extends Controller
         $payment = Payment::find($method);
         if (!$payment || $payment->enable !== 1) abort(500, __('Payment method is not available'));
         $paymentService = new PaymentService($payment->payment, $payment->id);
+        $currencyRateService = new CurrencyRateService();
         $order->handling_amount = NULL;
         if ($payment->handling_fee_fixed || $payment->handling_fee_percent) {
             $order->handling_amount = round(($order->total_amount * ($payment->handling_fee_percent / 100)) + $payment->handling_fee_fixed);
         }
+        $paymentCurrency = strtoupper($payment->currency ?: ($payment->config['currency'] ?? $order->pricing_currency ?? 'CNY'));
         $order->payment_id = $method;
+        $order->payment_currency = $paymentCurrency;
+        $payingAmount = isset($order->handling_amount) ? ($order->total_amount + $order->handling_amount) : $order->total_amount;
+        $pricingAmount = $currencyRateService->convert($payingAmount, 'CNY', $order->pricing_currency ?: 'CNY');
+        $pricingToPaymentRate = $currencyRateService->resolveCrossRate($order->pricing_currency ?: 'CNY', $paymentCurrency) ?? 1;
+        $order->pricing_to_payment_rate = $pricingToPaymentRate;
+        $order->payment_amount = (int) round($pricingAmount * (float) $pricingToPaymentRate);
+        $order->rate_locked_at = time();
         if (!$order->save()) abort(500, __('Request failed, please try again later'));
         $result = $paymentService->pay([
             'trade_no' => $tradeNo,
-            'total_amount' => isset($order->handling_amount) ? ($order->total_amount + $order->handling_amount) : $order->total_amount,
+            'total_amount' => $payingAmount,
             'user_id' => $order->user_id,
-            'stripe_token' => $request->input('token')
+            'stripe_token' => $request->input('token'),
+            'payment_currency' => $paymentCurrency,
+            'payment_amount' => $order->payment_amount,
+            'pricing_currency' => $order->pricing_currency,
+            'pricing_amount' => $pricingAmount,
+            'pricing_to_payment_rate' => $pricingToPaymentRate
         ]);
         return response([
             'type' => $result['type'],

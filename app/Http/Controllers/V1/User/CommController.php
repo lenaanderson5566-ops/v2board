@@ -20,6 +20,8 @@ class CommController extends Controller
                 'withdraw_close' => (int)config('v2board.withdraw_close_enable', 0),
                 'currency' => config('v2board.currency', 'CNY'),
                 'currency_symbol' => config('v2board.currency_symbol', '¥'),
+                'billing_currency' => strtoupper(config('v2board.billing_currency', config('v2board.currency', 'CNY'))),
+                'billing_currency_symbol' => config('v2board.billing_currency_symbol', config('v2board.currency_symbol', '¥')),
                 'commission_distribution_enable' => (int)config('v2board.commission_distribution_enable', 0),
                 'commission_distribution_l1' => config('v2board.commission_distribution_l1'),
                 'commission_distribution_l2' => config('v2board.commission_distribution_l2'),

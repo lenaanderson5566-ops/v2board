@@ -66,6 +66,7 @@ class PaymentController extends Controller
         $params = $request->validate([
             'name' => 'required',
             'icon' => 'nullable',
+            'currency' => 'nullable|alpha|size:3',
             'payment' => 'required',
             'config' => 'required',
             'notify_domain' => 'nullable|url',
@@ -75,10 +76,16 @@ class PaymentController extends Controller
             'name.required' => '显示名称不能为空',
             'payment.required' => '网关参数不能为空',
             'config.required' => '配置参数不能为空',
+            'currency.alpha' => '支付币种格式错误',
+            'currency.size' => '支付币种必须为3位ISO代码',
             'notify_domain.url' => '自定义通知域名格式有误',
             'handling_fee_fixed.integer' => '固定手续费格式有误',
             'handling_fee_percent.between' => '百分比手续费范围须在0.1-100之间'
         ]);
+        if (!empty($params['currency'])) {
+            $params['currency'] = strtoupper($params['currency']);
+        }
+
         if ($request->input('id')) {
             $payment = Payment::find($request->input('id'));
             if (!$payment) abort(500, '支付方式不存在');

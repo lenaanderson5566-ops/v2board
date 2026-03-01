@@ -95,7 +95,7 @@ class CheckCommission extends Command
             ];
         }
         $currencyRateService = new CurrencyRateService();
-        $baseCurrency = $currencyRateService->getBusinessBaseCurrency();
+        $commissionCurrency = $currencyRateService->normalizeCurrency($order->pricing_currency ?: $currencyRateService->getBusinessBaseCurrency());
 
         for ($l = 0; $l < $level; $l++) {
             $inviter = User::find($inviteUserId);
@@ -103,10 +103,10 @@ class CheckCommission extends Command
             if (!isset($commissionShareLevels[$l])) continue;
             $commissionBalanceCny = $order->commission_balance * ($commissionShareLevels[$l] / 100);
             if (!$commissionBalanceCny) continue;
-            $commissionBalance = $currencyRateService->convertMinor((int)$commissionBalanceCny, 'CNY', $baseCurrency);
+            $commissionBalance = $currencyRateService->convertMinor((int)$commissionBalanceCny, 'CNY', $commissionCurrency);
 
             if ((int)config('v2board.withdraw_close_enable', 0)) {
-                if (!(new UserService())->addBalance($inviter->id, (int)$commissionBalance, $baseCurrency)) {
+                if (!(new UserService())->addBalance($inviter->id, (int)$commissionBalance, $commissionCurrency)) {
                     DB::rollBack();
                     return false;
                 }
@@ -125,7 +125,7 @@ class CheckCommission extends Command
                 'order_amount' => $order->total_amount,
                 'order_currency' => strtoupper($order->pricing_currency ?? 'CNY'),
                 'get_amount' => $commissionBalance,
-                'get_currency' => $baseCurrency
+                'get_currency' => $commissionCurrency
             ])) {
                 DB::rollBack();
                 return false;

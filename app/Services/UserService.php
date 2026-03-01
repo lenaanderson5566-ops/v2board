@@ -9,6 +9,7 @@ use App\Models\Order;
 use App\Models\Plan;
 use App\Models\User;
 use App\Models\UserWallet;
+use Illuminate\Support\Facades\Schema;
 
 class UserService
 {
@@ -271,6 +272,31 @@ class UserService
         $user->save();
 
         return $orderAmountMinor - $need;
+    }
+
+
+    public function getUserWalletTotalInCurrency(int $userId, string $targetCurrency, CurrencyRateService $currencyRateService): int
+    {
+        $targetCurrency = $currencyRateService->normalizeCurrency($targetCurrency);
+
+        if (!Schema::hasTable('v2_user_wallet')) {
+            $user = User::find($userId);
+            if (!$user) return 0;
+            return $currencyRateService->convertMinor((int)$user->balance, 'CNY', $targetCurrency);
+        }
+
+        $wallets = UserWallet::where('user_id', $userId)->get();
+        if ($wallets->isEmpty()) {
+            $user = User::find($userId);
+            if (!$user) return 0;
+            return $currencyRateService->convertMinor((int)$user->balance, 'CNY', $targetCurrency);
+        }
+
+        $total = 0;
+        foreach ($wallets as $wallet) {
+            $total += $currencyRateService->convertMinor((int)$wallet->balance, $wallet->currency, $targetCurrency);
+        }
+        return (int)$total;
     }
 
     public function isNotCompleteOrderByUserId(int $userId): bool

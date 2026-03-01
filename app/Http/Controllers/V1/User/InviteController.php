@@ -8,6 +8,8 @@ use App\Models\InviteCode;
 use App\Models\Order;
 use App\Models\User;
 use App\Utils\Helper;
+use App\Services\CurrencyRateService;
+use App\Services\UserService;
 use Illuminate\Http\Request;
 
 class InviteController extends Controller
@@ -65,22 +67,25 @@ class InviteController extends Controller
         if (config('v2board.commission_distribution_enable', 0)) {
             $uncheck_commission_balance = $uncheck_commission_balance * (config('v2board.commission_distribution_l1') / 100);
         }
+        $currencyRateService = new CurrencyRateService();
+        $baseCurrency = $currencyRateService->getBusinessBaseCurrency();
         $stat = [
             //已注册用户数
             (int)User::where('invite_user_id', $request->user['id'])->count(),
             //有效的佣金
-            (int)CommissionLog::where('invite_user_id', $request->user['id'])
-                ->sum('get_amount'),
+            $currencyRateService->convertMinor((int)CommissionLog::where('invite_user_id', $request->user['id'])
+                ->sum('get_amount'), 'CNY', $baseCurrency),
             //确认中的佣金
-            $uncheck_commission_balance,
+            $currencyRateService->convertMinor((int)$uncheck_commission_balance, 'CNY', $baseCurrency),
             //佣金比例
             (int)$commission_rate,
             //可用佣金
-            (int)$user->commission_balance
+            $currencyRateService->convertMinor((int)$user->commission_balance, 'CNY', $baseCurrency)
         ];
         return response([
             'data' => [
                 'codes' => $codes,
+                'wallet_currency' => $baseCurrency,
                 'stat' => $stat
             ]
         ]);

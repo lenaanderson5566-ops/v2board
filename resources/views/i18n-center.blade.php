@@ -60,6 +60,9 @@
         button:hover { border-color:#93c5fd; }
         textarea { width: 100%; min-height: 120px; }
         .card { border: 1px solid #e5e7eb; border-radius: 8px; padding: 16px; margin-top: 12px; }
+        .table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+        .table th, .table td { border: 1px solid #e5e7eb; padding: 8px; font-size: 12px; text-align: left; }
+        .table th { background: #f9fafb; }
         .muted { color: var(--muted); font-size: 12px; }
         .ok { color: #059669; }
         .err { color: #dc2626; }
@@ -87,6 +90,7 @@
         <div class="menu-group-title">国际化中心</div>
         <div class="menu-list">
             <button id="tab-plan" class="menu-btn active" onclick="switchTab('plan')">套餐翻译</button>
+            <button id="tab-currency" class="menu-btn" onclick="switchTab('currency')">汇率与币种设置</button>
             <button id="tab-copy" class="menu-btn" onclick="switchTab('copy')">站点文案翻译（占位）</button>
         </div>
     </aside>
@@ -133,6 +137,53 @@
                         <p class="muted" style="margin-top:8px;">预留给后续站点 UI 文案、邮件模板文案的集中翻译管理。</p>
                     </div>
                 </div>
+
+                <div id="panel-currency" style="display:none;">
+                    <div class="card">
+                        <strong>业务基准币种与汇率源</strong>
+                        <div class="row" style="margin-top:10px;">
+                            <label>业务基准币种:</label>
+                            <input id="business_base_currency" placeholder="例如 CNY / USD" style="width:140px; text-transform:uppercase;" />
+                            <label>汇率API:</label>
+                            <input id="currency_rate_api" placeholder="https://open.er-api.com/v6/latest/{base}" style="width:420px;" />
+                            <button onclick="saveCurrencySettings()">保存设置</button>
+                            <button onclick="syncCurrencyRates()">立即同步汇率</button>
+                        </div>
+                        <div id="currency_status" class="muted"></div>
+                    </div>
+
+                    <div class="card">
+                        <strong>支付网关币种设置</strong>
+                        <table class="table" id="payment_table">
+                            <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>名称</th>
+                                <th>网关</th>
+                                <th>支付币种</th>
+                                <th>操作</th>
+                            </tr>
+                            </thead>
+                            <tbody></tbody>
+                        </table>
+                    </div>
+
+                    <div class="card">
+                        <strong>最新汇率列表（折算人民币）</strong>
+                        <div class="muted" id="latest_fetched_at" style="margin-top:8px;"></div>
+                        <table class="table" id="rate_table">
+                            <thead>
+                            <tr>
+                                <th>币种</th>
+                                <th>1该币种=基准币</th>
+                                <th>1该币种=CNY</th>
+                                <th>更新时间</th>
+                            </tr>
+                            </thead>
+                            <tbody></tbody>
+                        </table>
+                    </div>
+                </div>
             </div>
         </div>
     </main>
@@ -144,11 +195,17 @@ const apiPrefix = `/api/v1/${securePath}`;
 
 function switchTab(tab) {
     const tabPlan = document.getElementById('tab-plan');
+    const tabCurrency = document.getElementById('tab-currency');
     const tabCopy = document.getElementById('tab-copy');
     if (tabPlan) tabPlan.classList.toggle('active', tab === 'plan');
+    if (tabCurrency) tabCurrency.classList.toggle('active', tab === 'currency');
     if (tabCopy) tabCopy.classList.toggle('active', tab === 'copy');
     document.getElementById('panel-plan').style.display = tab === 'plan' ? 'block' : 'none';
+    document.getElementById('panel-currency').style.display = tab === 'currency' ? 'block' : 'none';
     document.getElementById('panel-copy').style.display = tab === 'copy' ? 'block' : 'none';
+    if (tab === 'currency') {
+        loadCurrencyCenter();
+    }
 }
 
 function getAuthorization() {
@@ -198,6 +255,9 @@ async function init() {
     const tab = new URLSearchParams(window.location.search).get('tab');
     if (tab === 'copy') {
         switchTab('copy');
+    } else if (tab === 'currency') {
+        switchTab('currency');
+        await loadCurrencyCenter();
     } else {
         switchTab('plan');
         if (plans.length && locales.length) await loadTranslation();
@@ -247,6 +307,92 @@ function setStatus(text, cls) {
     const node = document.getElementById('status');
     node.textContent = text;
     node.className = `muted ${cls}`;
+}
+
+function setCurrencyStatus(text, cls) {
+    const node = document.getElementById('currency_status');
+    node.textContent = text;
+    node.className = `muted ${cls}`;
+}
+
+function formatTimestamp(ts) {
+    if (!ts) return '-';
+    try {
+        return new Date(ts * 1000).toLocaleString();
+    } catch (e) {
+        return String(ts);
+    }
+}
+
+async function loadCurrencyCenter() {
+    try {
+        const data = await api(`${apiPrefix}/ops/i18n/currency/fetch`);
+        document.getElementById('business_base_currency').value = data.business_base_currency || 'CNY';
+        document.getElementById('currency_rate_api').value = data.currency_rate_api || '';
+        document.getElementById('latest_fetched_at').textContent = `最后同步时间：${formatTimestamp(data.latest_fetched_at)}`;
+
+        const paymentTbody = document.querySelector('#payment_table tbody');
+        paymentTbody.innerHTML = (data.payments || []).map((p) => `
+            <tr>
+                <td>${p.id}</td>
+                <td>${escapeHtml(p.name || '')}</td>
+                <td>${escapeHtml(p.payment || '')}</td>
+                <td>
+                    <input id="pay_currency_${p.id}" value="${escapeHtml((p.currency || 'CNY').toUpperCase())}" style="width:90px;text-transform:uppercase;" />
+                </td>
+                <td><button onclick="savePaymentCurrency(${p.id})">保存</button></td>
+            </tr>
+        `).join('');
+
+        const rateTbody = document.querySelector('#rate_table tbody');
+        rateTbody.innerHTML = (data.rates || []).map((r) => `
+            <tr>
+                <td>${escapeHtml(r.quote_currency || '')}</td>
+                <td>${r.rate_to_base ?? '-'}</td>
+                <td>${r.rate_to_cny ?? '-'}</td>
+                <td>${formatTimestamp(r.fetched_at)}</td>
+            </tr>
+        `).join('');
+        setCurrencyStatus('已加载汇率与币种设置', 'ok');
+    } catch (e) {
+        setCurrencyStatus(e.message, 'err');
+    }
+}
+
+async function saveCurrencySettings() {
+    try {
+        const business_base_currency = (document.getElementById('business_base_currency').value || '').trim().toUpperCase();
+        const currency_rate_api = (document.getElementById('currency_rate_api').value || '').trim();
+        await api(`${apiPrefix}/ops/i18n/currency/settings/save`, 'POST', { business_base_currency, currency_rate_api });
+        setCurrencyStatus('设置保存成功', 'ok');
+        await loadCurrencyCenter();
+    } catch (e) {
+        setCurrencyStatus(e.message, 'err');
+    }
+}
+
+async function syncCurrencyRates() {
+    try {
+        const data = await api(`${apiPrefix}/ops/i18n/currency/sync`, 'POST', {});
+        if (data === false) {
+            setCurrencyStatus('拉取失败，已使用上次有效汇率', 'err');
+        } else {
+            setCurrencyStatus('汇率同步成功', 'ok');
+        }
+        await loadCurrencyCenter();
+    } catch (e) {
+        setCurrencyStatus(e.message, 'err');
+    }
+}
+
+async function savePaymentCurrency(id) {
+    try {
+        const currency = (document.getElementById(`pay_currency_${id}`).value || '').trim().toUpperCase();
+        await api(`${apiPrefix}/ops/i18n/currency/payment/set`, 'POST', { id, currency });
+        setCurrencyStatus(`支付网关 #${id} 币种保存成功`, 'ok');
+    } catch (e) {
+        setCurrencyStatus(e.message, 'err');
+    }
 }
 
 init().catch((e) => setStatus(e.message, 'err'));

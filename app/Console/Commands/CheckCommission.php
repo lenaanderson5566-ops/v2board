@@ -6,6 +6,7 @@ use App\Models\CommissionLog;
 use Illuminate\Console\Command;
 use App\Models\Order;
 use App\Models\User;
+use App\Services\UserService;
 use Illuminate\Support\Facades\DB;
 
 class CheckCommission extends Command
@@ -98,16 +99,7 @@ class CheckCommission extends Command
             if (!isset($commissionShareLevels[$l])) continue;
             $commissionBalance = $order->commission_balance * ($commissionShareLevels[$l] / 100);
             if (!$commissionBalance) continue;
-            if ((int)config('v2board.withdraw_close_enable', 0)) {
-                if (!(new UserService())->addBalance($inviter->id, (int)$commissionBalance)) {
-                    DB::rollBack();
-                    return false;
-                }
-                $inviter = User::find($inviter->id);
-            } else {
-                $inviter->commission_balance = $inviter->commission_balance + $commissionBalance;
-            }
-            if (!$inviter->save()) {
+            if (!(new UserService())->addBalance($inviter->id, (int)$commissionBalance)) {
                 DB::rollBack();
                 return false;
             }

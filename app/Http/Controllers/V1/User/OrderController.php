@@ -77,6 +77,7 @@ class OrderController extends Controller
     public function save(OrderSave $request)
     {
         $userService = new UserService();
+        $currencyRateService = new CurrencyRateService();
         if ($userService->isNotCompleteOrderByUserId($request->user['id'])) {
             abort(500, __('You have an unpaid or pending order, please try again later or cancel it'));
         }
@@ -97,7 +98,7 @@ class OrderController extends Controller
             $order->period = 'deposit';
             $order->trade_no = Helper::generateOrderNo();
             $order->total_amount = $amount;
-            $order->pricing_currency = 'CNY';
+            $order->pricing_currency = $currencyRateService->getBusinessBaseCurrency();
             
             $orderService->setOrderType($user);
             $orderService->setInvite($user);
@@ -159,7 +160,7 @@ class OrderController extends Controller
         $order->period = $request->input('period');
         $order->trade_no = Helper::generateOrderNo();
         $order->total_amount = $plan[$request->input('period')];
-        $order->pricing_currency = 'CNY';
+        $order->pricing_currency = $currencyRateService->getBusinessBaseCurrency();
 
         if ($request->input('coupon_code')) {
             $couponService = new CouponService($request->input('coupon_code'));
@@ -236,7 +237,8 @@ class OrderController extends Controller
             $order->handling_amount = round(($order->total_amount * ($payment->handling_fee_percent / 100)) + $payment->handling_fee_fixed);
         }
         $order->payment_id = $method;
-        $amountCny = isset($order->handling_amount) ? ($order->total_amount + $order->handling_amount) : $order->total_amount;
+        $amountByPricingCurrency = isset($order->handling_amount) ? ($order->total_amount + $order->handling_amount) : $order->total_amount;
+        $amountCny = $currencyRateService->convertMinorToCnyMinor($amountByPricingCurrency, $order->pricing_currency ?: 'CNY');
         $paymentCurrency = $currencyRateService->getPaymentCurrencyByGateway($payment);
         $converted = $currencyRateService->convertCnyAmountToTargetMinor($amountCny, $paymentCurrency);
         $order->payment_currency = $paymentCurrency;

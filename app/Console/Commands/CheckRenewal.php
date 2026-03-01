@@ -51,6 +51,7 @@ class CheckRenewal extends Command
         $users = User::all();
 
         //$mailService = new MailService();
+        $userService = new UserService();
         foreach ($users as $user) {
             if ($user->auto_renewal && $user->plan_id !== NULL && $user->expired_at !== NULL && $user->expired_at > time() && $user->expired_at - time() < 86400 * 2) {
                 try {
@@ -74,7 +75,8 @@ class CheckRenewal extends Command
                     if (!$plan->renew) {
                         throw new Exception('This subscription cannot be renewed');
                     }
-                    if($user->balance < $plan[$latestPeriod]) {
+                    $cnyBalance = $userService->getWalletBalanceByCurrency($user->id, 'CNY');
+                    if($cnyBalance < $plan[$latestPeriod]) {
                         throw new Exception('No enough balance');
                     }
 

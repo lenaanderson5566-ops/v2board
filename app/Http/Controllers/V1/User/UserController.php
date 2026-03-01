@@ -281,7 +281,6 @@ class UserController extends Controller
                 'remind_expire',
                 'remind_traffic',
                 'expired_at',
-                'balance',
                 'commission_balance',
                 'plan_id',
                 'discount',
@@ -296,6 +295,7 @@ class UserController extends Controller
         $user['avatar_url'] = 'https://cravatar.cn/avatar/' . md5($user->email) . '?s=64&d=identicon';
         $userService = new UserService();
         $user['wallets'] = $userService->getUserWalletsRaw($request->user['id']);
+        $user['balance'] = $userService->getWalletBalanceByCurrency($request->user['id'], 'CNY');
 
         return response([
             'data' => $user

@@ -214,7 +214,7 @@ class UserService
         ]);
 
         if (!$wallet->exists) {
-            $wallet->balance = (int)$user->balance;
+            $wallet->balance = 0;
         }
 
         $wallet->balance = (int)$wallet->balance + $balance;
@@ -239,7 +239,7 @@ class UserService
         if ($wallets->isEmpty()) {
             UserWallet::updateOrCreate(
                 ['user_id' => $userId, 'currency' => 'CNY'],
-                ['balance' => (int)$user->balance]
+                ['balance' => 0]
             );
             $wallets = UserWallet::where('user_id', $userId)->lockForUpdate()->get();
         }
@@ -279,18 +279,12 @@ class UserService
     public function getUserWalletsRaw(int $userId): array
     {
         if (!Schema::hasTable('v2_user_wallet')) {
-            $user = User::find($userId);
-            if (!$user) return [];
-            return [
-                ['currency' => 'CNY', 'balance' => (int)$user->balance]
-            ];
+            return [];
         }
         $wallets = UserWallet::where('user_id', $userId)->orderBy('currency', 'ASC')->get(['currency', 'balance']);
         if ($wallets->isEmpty()) {
-            $user = User::find($userId);
-            if (!$user) return [];
             return [
-                ['currency' => 'CNY', 'balance' => (int)$user->balance]
+                ['currency' => 'CNY', 'balance' => 0]
             ];
         }
         return $wallets->toArray();
@@ -301,16 +295,12 @@ class UserService
         $targetCurrency = $currencyRateService->normalizeCurrency($targetCurrency);
 
         if (!Schema::hasTable('v2_user_wallet')) {
-            $user = User::find($userId);
-            if (!$user) return 0;
-            return $currencyRateService->convertMinor((int)$user->balance, 'CNY', $targetCurrency);
+            return 0;
         }
 
         $wallets = UserWallet::where('user_id', $userId)->get();
         if ($wallets->isEmpty()) {
-            $user = User::find($userId);
-            if (!$user) return 0;
-            return $currencyRateService->convertMinor((int)$user->balance, 'CNY', $targetCurrency);
+            return 0;
         }
 
         $total = 0;
@@ -318,6 +308,20 @@ class UserService
             $total += $currencyRateService->convertMinor((int)$wallet->balance, $wallet->currency, $targetCurrency);
         }
         return (int)$total;
+    }
+
+
+    public function getWalletBalanceByCurrency(int $userId, string $currency = 'CNY'): int
+    {
+        if (!Schema::hasTable('v2_user_wallet')) {
+            return 0;
+        }
+
+        $wallet = UserWallet::where('user_id', $userId)
+            ->where('currency', strtoupper($currency))
+            ->first();
+
+        return $wallet ? (int)$wallet->balance : 0;
     }
 
     public function isNotCompleteOrderByUserId(int $userId): bool

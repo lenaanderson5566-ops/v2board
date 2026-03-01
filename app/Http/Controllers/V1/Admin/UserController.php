@@ -15,6 +15,7 @@ use App\Models\Plan;
 use App\Models\TicketMessage;
 use App\Models\User;
 use App\Services\AuthService;
+use App\Services\UserService;
 use App\Utils\Helper;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -186,9 +187,10 @@ class UserController extends Controller
         }
 
         $data = "邮箱,余额,推广佣金,总流量,设备数限制,剩余流量,套餐到期时间,订阅计划,订阅地址\r\n";
+        $userService = new UserService();
         foreach($res as $user) {
             $expireDate = $user['expired_at'] === NULL ? '长期有效' : date('Y-m-d H:i:s', $user['expired_at']);
-            $balance = $user['balance'] / 100;
+            $balance = $userService->getWalletBalanceByCurrency($user['id'], 'CNY') / 100;
             $commissionBalance = $user['commission_balance'] / 100;
             $transferEnable = $user['transfer_enable'] ? $user['transfer_enable'] / 1073741824 : 0;
             $deviceLimit = $user['devce_limit'] ? $user['devce_limit'] : NULL;

@@ -100,10 +100,11 @@ class CheckCommission extends Command
             $inviter = User::find($inviteUserId);
             if (!$inviter) continue;
             if (!isset($commissionShareLevels[$l])) continue;
-            $commissionBalanceCny = $order->commission_balance * ($commissionShareLevels[$l] / 100);
-            if (!$commissionBalanceCny) continue;
-            $commissionCurrency = $currencyRateService->normalizeCurrency($inviter->commission_currency ?: $currencyRateService->getBusinessBaseCurrency());
-            $commissionBalance = $currencyRateService->convertMinor((int)$commissionBalanceCny, 'CNY', $commissionCurrency);
+            $commissionBaseAmount = $order->commission_balance * ($commissionShareLevels[$l] / 100);
+            if (!$commissionBaseAmount) continue;
+            $baseCurrency = $currencyRateService->getBusinessBaseCurrency();
+            $commissionCurrency = $currencyRateService->normalizeCurrency($inviter->commission_currency ?: $baseCurrency);
+            $commissionBalance = $currencyRateService->convertMinor((int)$commissionBaseAmount, $baseCurrency, $commissionCurrency);
 
             if ((int)config('v2board.withdraw_close_enable', 0)) {
                 if (!(new UserService())->addBalance($inviter->id, (int)$commissionBalance, $commissionCurrency)) {
@@ -133,7 +134,7 @@ class CheckCommission extends Command
             }
             $inviteUserId = $inviter->invite_user_id;
             // update order actual commission balance
-            $order->actual_commission_balance = $order->actual_commission_balance + $commissionBalanceCny;
+            $order->actual_commission_balance = $order->actual_commission_balance + $commissionBaseAmount;
         }
         return true;
     }

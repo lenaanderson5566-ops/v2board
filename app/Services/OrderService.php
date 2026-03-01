@@ -160,7 +160,7 @@ class OrderService
         }
 
         if (!$isCommission) return;
-        $commissionBaseAmount = $this->getCommissionBaseAmountInCnyMinor($order);
+        $commissionBaseAmount = $this->getCommissionBaseAmountInBaseMinor($order);
         if ($inviter && $inviter->commission_rate) {
             $order->commission_balance = $commissionBaseAmount * ($inviter->commission_rate / 100);
         } else {
@@ -168,16 +168,18 @@ class OrderService
         }
     }
 
-    private function getCommissionBaseAmountInCnyMinor(Order $order): int
+    private function getCommissionBaseAmountInBaseMinor(Order $order): int
     {
-        $pricingCurrency = strtoupper($order->pricing_currency ?? 'CNY');
-        if ($pricingCurrency === 'CNY') {
+        $currencyRateService = new CurrencyRateService();
+        $pricingCurrency = strtoupper($order->pricing_currency ?: 'CNY');
+        $baseCurrency = $currencyRateService->getBusinessBaseCurrency();
+
+        if ($pricingCurrency === $baseCurrency) {
             return (int)$order->total_amount;
         }
 
         try {
-            $currencyRateService = new CurrencyRateService();
-            return $currencyRateService->convertMinorToCnyMinor((int)$order->total_amount, $pricingCurrency);
+            return $currencyRateService->convertMinor((int)$order->total_amount, $pricingCurrency, $baseCurrency);
         } catch (\Throwable $e) {
             return (int)$order->total_amount;
         }

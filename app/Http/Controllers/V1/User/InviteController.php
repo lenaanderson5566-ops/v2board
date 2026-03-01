@@ -67,12 +67,12 @@ class InviteController extends Controller
         if ($user->commission_rate) {
             $commission_rate = $user->commission_rate;
         }
-        $uncheck_commission_balance = (int)Order::where('status', 3)
+        $uncheckCommissionBalance = (int)Order::where('status', 3)
             ->where('commission_status', 0)
             ->where('invite_user_id', $request->user['id'])
             ->sum('commission_balance');
         if (config('v2board.commission_distribution_enable', 0)) {
-            $uncheck_commission_balance = $uncheck_commission_balance * (config('v2board.commission_distribution_l1') / 100);
+            $uncheckCommissionBalance = $uncheckCommissionBalance * (config('v2board.commission_distribution_l1') / 100);
         }
         $currencyRateService = new CurrencyRateService();
         $baseCurrency = $currencyRateService->getBusinessBaseCurrency();
@@ -92,7 +92,7 @@ class InviteController extends Controller
             //有效的佣金
             (int)$effectiveCommission,
             //确认中的佣金
-            $currencyRateService->convertMinor((int)$uncheck_commission_balance, 'CNY', $commissionCurrency),
+            $currencyRateService->convertMinor((int)$uncheckCommissionBalance, $baseCurrency, $commissionCurrency),
             //佣金比例
             (int)$commission_rate,
             //可用佣金（新逻辑按基准币种记账）

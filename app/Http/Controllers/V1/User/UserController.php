@@ -296,7 +296,9 @@ class UserController extends Controller
         $user['avatar_url'] = 'https://cravatar.cn/avatar/' . md5($user->email) . '?s=64&d=identicon';
         $userService = new UserService();
         $user['wallets'] = $userService->getUserWalletsRaw($request->user['id']);
-        $user['balance'] = $userService->getWalletBalanceByCurrency($request->user['id'], 'CNY');
+        $baseCurrency = (new CurrencyRateService())->getBusinessBaseCurrency();
+        $user['balance'] = $userService->getWalletBalanceByCurrency($request->user['id'], $baseCurrency);
+        $user['balance_currency'] = $baseCurrency;
 
         return response([
             'data' => $user

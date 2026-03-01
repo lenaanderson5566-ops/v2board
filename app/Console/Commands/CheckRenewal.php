@@ -10,6 +10,7 @@ use App\Models\User;
 use App\Models\Order;
 use App\Utils\Helper;
 use App\Services\UserService;
+use App\Services\CurrencyRateService;
 use Illuminate\Support\Facades\DB;
 
 use Exception;
@@ -75,8 +76,9 @@ class CheckRenewal extends Command
                     if (!$plan->renew) {
                         throw new Exception('This subscription cannot be renewed');
                     }
-                    $cnyBalance = $userService->getWalletBalanceByCurrency($user->id, 'CNY');
-                    if($cnyBalance < $plan[$latestPeriod]) {
+                    $baseCurrency = (new CurrencyRateService())->getBusinessBaseCurrency();
+                    $baseBalance = $userService->getWalletBalanceByCurrency($user->id, $baseCurrency);
+                    if($baseBalance < $plan[$latestPeriod]) {
                         throw new Exception('No enough balance');
                     }
 
@@ -92,7 +94,7 @@ class CheckRenewal extends Command
                     $orderService->setVipDiscount($user);
                     $order->type = 2;
                     
-                    if (!(new UserService())->addBalance($user->id, -$plan[$latestPeriod])) {
+                    if (!(new UserService())->addBalance($user->id, -$plan[$latestPeriod], $baseCurrency)) {
                         DB::rollback();
                         throw new Exception('自动续费失败');
                     }

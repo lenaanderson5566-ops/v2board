@@ -46,6 +46,13 @@ class InviteController extends Controller
         $total = $builder->count();
         $details = $builder->forPage($current, $pageSize)
             ->get();
+        $details->transform(function ($item) {
+            $item->order_currency = strtoupper($item->order_currency ?: 'CNY');
+            $item->get_currency = strtoupper($item->get_currency ?: 'CNY');
+            $item->order_amount_with_currency = sprintf('%s %d', $item->order_currency, (int)$item->order_amount);
+            $item->get_amount_with_currency = sprintf('%s %d', $item->get_currency, (int)$item->get_amount);
+            return $item;
+        });
         return response([
             'data' => $details,
             'total' => $total

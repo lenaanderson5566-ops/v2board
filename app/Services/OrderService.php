@@ -160,10 +160,26 @@ class OrderService
         }
 
         if (!$isCommission) return;
+        $commissionBaseAmount = $this->getCommissionBaseAmountInCnyMinor($order);
         if ($inviter && $inviter->commission_rate) {
-            $order->commission_balance = $order->total_amount * ($inviter->commission_rate / 100);
+            $order->commission_balance = $commissionBaseAmount * ($inviter->commission_rate / 100);
         } else {
-            $order->commission_balance = $order->total_amount * (config('v2board.invite_commission', 10) / 100);
+            $order->commission_balance = $commissionBaseAmount * (config('v2board.invite_commission', 10) / 100);
+        }
+    }
+
+    private function getCommissionBaseAmountInCnyMinor(Order $order): int
+    {
+        $pricingCurrency = strtoupper($order->pricing_currency ?? 'CNY');
+        if ($pricingCurrency === 'CNY') {
+            return (int)$order->total_amount;
+        }
+
+        try {
+            $currencyRateService = new CurrencyRateService();
+            return $currencyRateService->convertMinorToCnyMinor((int)$order->total_amount, $pricingCurrency);
+        } catch (\Throwable $e) {
+            return (int)$order->total_amount;
         }
     }
 

@@ -8,6 +8,18 @@ use Illuminate\Support\Facades\Schema;
 
 class CurrencyRateService
 {
+    private const DEFAULT_CURRENCY_SYMBOL_MAP = [
+        'CNY' => '¥',
+        'USD' => '$',
+        'EUR' => '€',
+        'GBP' => '£',
+        'JPY' => '¥',
+        'KRW' => '₩',
+        'RUB' => '₽',
+        'INR' => '₹',
+        'THB' => '฿',
+    ];
+
     public function normalizeCurrency(?string $currency): string
     {
         $currency = strtoupper((string)$currency);
@@ -17,6 +29,20 @@ class CurrencyRateService
     public function getBusinessBaseCurrency(): string
     {
         return $this->normalizeCurrency(CurrencySetting::getValue('business_base_currency', 'CNY'));
+    }
+
+    public function getDisplayCurrency(): string
+    {
+        return $this->normalizeCurrency(
+            CurrencySetting::getValue('display_currency', $this->getBusinessBaseCurrency())
+        );
+    }
+
+    public function getDisplayCurrencySymbol(?string $currency = null): string
+    {
+        $displayCurrency = $this->normalizeCurrency($currency ?: $this->getDisplayCurrency());
+        $defaultSymbol = self::DEFAULT_CURRENCY_SYMBOL_MAP[$displayCurrency] ?? $displayCurrency;
+        return (string)CurrencySetting::getValue('display_currency_symbol', $defaultSymbol);
     }
 
     public function getPaymentCurrencyByGateway($payment): string

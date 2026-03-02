@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\ConfigSave;
 use App\Jobs\SendEmailJob;
 use App\Models\CurrencySetting;
+use App\Services\CurrencyRateService;
 use App\Services\TelegramService;
 use App\Utils\Dict;
 use Illuminate\Http\Request;
@@ -68,6 +69,9 @@ class ConfigController extends Controller
 
     public function fetch(Request $request)
     {
+        $currencyRateService = new CurrencyRateService();
+        $displayCurrency = $currencyRateService->getDisplayCurrency();
+
         $key = $request->input('key');
         $data = [
             'ticket' => [
@@ -103,8 +107,8 @@ class ConfigController extends Controller
                 'try_out_plan_id' => (int)config('v2board.try_out_plan_id', 0),
                 'try_out_hour' => (int)config('v2board.try_out_hour', 1),
                 'tos_url' => config('v2board.tos_url'),
-                'currency' => CurrencySetting::getValue('display_currency', config('v2board.currency', 'CNY')),
-                'currency_symbol' => CurrencySetting::getValue('display_currency_symbol', config('v2board.currency_symbol', '¥')),
+                'currency' => $displayCurrency,
+                'currency_symbol' => $currencyRateService->getDisplayCurrencySymbol($displayCurrency),
             ],
             'subscribe' => [
                 'plan_change_enable' => (int)config('v2board.plan_change_enable', 1),

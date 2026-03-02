@@ -27,6 +27,10 @@ class AdminRoute
             $router->get ('/ops/i18n/plan/locales', 'V1\Admin\PlanI18nController@locales');
             $router->get ('/ops/i18n/plan/fetch', 'V1\Admin\PlanI18nController@fetch');
             $router->post('/ops/i18n/plan/save', 'V1\Admin\PlanI18nController@save');
+            $router->get ('/ops/i18n/currency/fetch', 'V1\Admin\CurrencyCenterController@fetch');
+            $router->post('/ops/i18n/currency/sync', 'V1\Admin\CurrencyCenterController@sync');
+            $router->post('/ops/i18n/currency/settings/save', 'V1\Admin\CurrencyCenterController@saveSettings');
+            $router->post('/ops/i18n/currency/payment/set', 'V1\Admin\CurrencyCenterController@setPaymentCurrency');
             // Server
             $router->get ('/server/group/fetch', 'V1\\Admin\\Server\\GroupController@fetch');
             $router->post('/server/group/save', 'V1\\Admin\\Server\\GroupController@save');

@@ -74,6 +74,7 @@
             <button class="menu-btn" data-center="i18n" onclick="switchCenter('i18n')">国际化中心</button>
             <div id="submenu-i18n" class="submenu">
                 <button class="sub-btn" title="管理套餐名称与内容翻译" data-key="i18n:plan" data-src="/{{ $ops_path }}/i18n?embedded=1&tab=plan" onclick="openSub(this)">套餐翻译</button>
+                <button class="sub-btn" title="管理业务基准币种、汇率与支付网关币种" data-key="i18n:currency" data-src="/{{ $ops_path }}/i18n?embedded=1&tab=currency" onclick="openSub(this)">汇率与支付币种设置</button>
                 <button class="sub-btn" title="管理站点文案翻译占位" data-key="i18n:copy" data-src="/{{ $ops_path }}/i18n?embedded=1&tab=copy" onclick="openSub(this)">站点文案翻译</button>
             </div>
 

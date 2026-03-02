@@ -32,9 +32,8 @@ class OrderService
         $this->user = User::find($order->user_id);
         if ($order->type == 9) {
             DB::beginTransaction();
-            $this->user->balance += $order->total_amount + $this->getbounus($order->total_amount);
-
-            if (!$this->user->save()) {
+            $userService = new UserService();
+            if (!$userService->addBalance($order->user_id, $order->total_amount + $this->getbounus($order->total_amount), $order->pricing_currency ?? 'CNY')) {
                 DB::rollBack();
                 abort(500, '充值失败');
             }
@@ -50,7 +49,11 @@ class OrderService
         $plan = Plan::find($order->plan_id);
 
         if ($order->refund_amount) {
-            $this->user->balance = $this->user->balance + $order->refund_amount;
+            $userService = new UserService();
+            if (!$userService->addBalance($order->user_id, $order->refund_amount, $order->pricing_currency ?? 'CNY')) {
+                abort(500, '开通失败');
+            }
+            $this->user = User::find($order->user_id);
         }
         DB::beginTransaction();
         if ($order->surplus_order_ids) {
@@ -157,10 +160,28 @@ class OrderService
         }
 
         if (!$isCommission) return;
+        $commissionBaseAmount = $this->getCommissionBaseAmountInBaseMinor($order);
         if ($inviter && $inviter->commission_rate) {
-            $order->commission_balance = $order->total_amount * ($inviter->commission_rate / 100);
+            $order->commission_balance = $commissionBaseAmount * ($inviter->commission_rate / 100);
         } else {
-            $order->commission_balance = $order->total_amount * (config('v2board.invite_commission', 10) / 100);
+            $order->commission_balance = $commissionBaseAmount * (config('v2board.invite_commission', 10) / 100);
+        }
+    }
+
+    private function getCommissionBaseAmountInBaseMinor(Order $order): int
+    {
+        $currencyRateService = new CurrencyRateService();
+        $pricingCurrency = strtoupper($order->pricing_currency ?: 'CNY');
+        $baseCurrency = $currencyRateService->getBusinessBaseCurrency();
+
+        if ($pricingCurrency === $baseCurrency) {
+            return (int)$order->total_amount;
+        }
+
+        try {
+            return $currencyRateService->convertMinor((int)$order->total_amount, $pricingCurrency, $baseCurrency);
+        } catch (\Throwable $e) {
+            return (int)$order->total_amount;
         }
     }
 
@@ -281,7 +302,7 @@ class OrderService
         }
         if ($order->balance_amount) {
             $userService = new UserService();
-            if (!$userService->addBalance($order->user_id, $order->balance_amount)) {
+            if (!$userService->addBalance($order->user_id, $order->balance_amount, $order->pricing_currency ?? 'CNY')) {
                 DB::rollBack();
                 return false;
             }

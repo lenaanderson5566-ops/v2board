@@ -8,6 +8,7 @@ use App\Models\RiskRuleHit;
 use App\Models\RiskRuleConfig;
 use App\Models\SubscribeLog;
 use App\Models\User;
+use App\Models\UserWallet;
 use App\Models\Order;
 use App\Models\Plan;
 use App\Models\ServerGroup;
@@ -764,7 +765,6 @@ class LogController extends Controller
                 'expired_at',
                 'plan_id',
                 'group_id',
-                'balance',
             ]);
 
         if ($users->isEmpty()) {
@@ -811,6 +811,13 @@ class LogController extends Controller
             ];
         }
 
+
+        $walletBalanceMap = UserWallet::query()
+            ->whereIn('user_id', $userIds)
+            ->where('currency', 'CNY')
+            ->pluck('balance', 'user_id')
+            ->toArray();
+
         $latestOnlineMap = UserOnlineSnapshot::query()
             ->whereIn('user_id', $userIds)
             ->orderBy('online_at', 'desc')
@@ -841,7 +848,7 @@ class LogController extends Controller
                 'subscription_plan' => $planNames[$user->plan_id] ?? null,
                 'group_name' => $groupNames[$user->group_id] ?? null,
                 'recharge_total' => round($orderStat['paid_total_amount'] / 100, 2),
-                'balance' => round(((int) $user->balance) / 100, 2),
+                'balance' => round(((int) ($walletBalanceMap[$user->id] ?? 0)) / 100, 2),
                 'expired_at' => $user->expired_at ? (int) $user->expired_at : null,
             ];
         }

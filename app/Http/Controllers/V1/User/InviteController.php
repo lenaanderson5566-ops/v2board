@@ -8,6 +8,8 @@ use App\Models\InviteCode;
 use App\Models\Order;
 use App\Models\User;
 use App\Utils\Helper;
+use App\Services\CurrencyRateService;
+use App\Services\UserService;
 use Illuminate\Http\Request;
 
 class InviteController extends Controller
@@ -35,13 +37,20 @@ class InviteController extends Controller
                 'id',
                 'trade_no',
                 'order_amount',
+                'order_currency',
                 'get_amount',
+                'get_currency',
                 'created_at'
             ])
             ->orderBy('created_at', 'DESC');
         $total = $builder->count();
         $details = $builder->forPage($current, $pageSize)
             ->get();
+        $details->transform(function ($item) {
+            $item->order_currency = strtoupper($item->order_currency ?: 'CNY');
+            $item->get_currency = strtoupper($item->get_currency ?: 'CNY');
+            return $item;
+        });
         return response([
             'data' => $details,
             'total' => $total
@@ -58,29 +67,41 @@ class InviteController extends Controller
         if ($user->commission_rate) {
             $commission_rate = $user->commission_rate;
         }
-        $uncheck_commission_balance = (int)Order::where('status', 3)
+        $uncheckCommissionBalance = (int)Order::where('status', 3)
             ->where('commission_status', 0)
             ->where('invite_user_id', $request->user['id'])
             ->sum('commission_balance');
         if (config('v2board.commission_distribution_enable', 0)) {
-            $uncheck_commission_balance = $uncheck_commission_balance * (config('v2board.commission_distribution_l1') / 100);
+            $uncheckCommissionBalance = $uncheckCommissionBalance * (config('v2board.commission_distribution_l1') / 100);
         }
+        $currencyRateService = new CurrencyRateService();
+        $baseCurrency = $currencyRateService->getBusinessBaseCurrency();
+        $commissionCurrency = $currencyRateService->normalizeCurrency($user->commission_currency ?: $baseCurrency);
+        $effectiveCommission = 0;
+        $commissionGroups = CommissionLog::where('invite_user_id', $request->user['id'])
+            ->selectRaw('COALESCE(get_currency, "CNY") as get_currency, SUM(get_amount) as total_amount')
+            ->groupBy('get_currency')
+            ->get();
+        foreach ($commissionGroups as $group) {
+            $effectiveCommission += $currencyRateService->convertMinor((int)$group->total_amount, strtoupper($group->get_currency ?: 'CNY'), $commissionCurrency);
+        }
+
         $stat = [
             //已注册用户数
             (int)User::where('invite_user_id', $request->user['id'])->count(),
             //有效的佣金
-            (int)CommissionLog::where('invite_user_id', $request->user['id'])
-                ->sum('get_amount'),
+            (int)$effectiveCommission,
             //确认中的佣金
-            $uncheck_commission_balance,
+            $currencyRateService->convertMinor((int)$uncheckCommissionBalance, $baseCurrency, $commissionCurrency),
             //佣金比例
             (int)$commission_rate,
-            //可用佣金
+            //可用佣金（新逻辑按基准币种记账）
             (int)$user->commission_balance
         ];
         return response([
             'data' => [
                 'codes' => $codes,
+                'wallet_currency' => $commissionCurrency,
                 'stat' => $stat
             ]
         ]);

@@ -50,7 +50,7 @@ Route::get('/' . $opsPath, function () use ($securePath, $opsPath) {
 });
 
 Route::get('/' . $opsPath . '/i18n', function () use ($securePath, $opsPath) {
-    return view('i18n-center', [
+    return view('ops.i18n-center', [
         'secure_path' => $securePath,
         'ops_path' => $opsPath
     ]);

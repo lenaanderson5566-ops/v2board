@@ -67,6 +67,7 @@ class PaymentController extends Controller
             'name' => 'required',
             'icon' => 'nullable',
             'payment' => 'required',
+            'currency' => 'nullable|string|max:8',
             'config' => 'required',
             'notify_domain' => 'nullable|url',
             'handling_fee_fixed' => 'nullable|integer',
@@ -74,11 +75,13 @@ class PaymentController extends Controller
         ], [
             'name.required' => '显示名称不能为空',
             'payment.required' => '网关参数不能为空',
+            'currency.max' => '支付币种长度不能超过8位',
             'config.required' => '配置参数不能为空',
             'notify_domain.url' => '自定义通知域名格式有误',
             'handling_fee_fixed.integer' => '固定手续费格式有误',
             'handling_fee_percent.between' => '百分比手续费范围须在0.1-100之间'
         ]);
+        $params['currency'] = strtoupper($params['currency'] ?? 'CNY');
         if ($request->input('id')) {
             $payment = Payment::find($request->input('id'));
             if (!$payment) abort(500, '支付方式不存在');

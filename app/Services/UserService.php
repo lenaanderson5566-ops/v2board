@@ -9,6 +9,7 @@ use App\Models\Order;
 use App\Models\Plan;
 use App\Models\User;
 use App\Models\UserWallet;
+use App\Services\CurrencyRateService;
 use Illuminate\Support\Facades\Schema;
 
 class UserService
@@ -239,8 +240,9 @@ class UserService
         $wallets = UserWallet::where('user_id', $userId)->lockForUpdate()->get();
 
         if ($wallets->isEmpty()) {
+            $baseCurrency = (new CurrencyRateService())->getBusinessBaseCurrency();
             UserWallet::updateOrCreate(
-                ['user_id' => $userId, 'currency' => 'CNY'],
+                ['user_id' => $userId, 'currency' => $baseCurrency],
                 ['balance' => 0]
             );
             $wallets = UserWallet::where('user_id', $userId)->lockForUpdate()->get();
@@ -286,7 +288,7 @@ class UserService
         $wallets = UserWallet::where('user_id', $userId)->orderBy('currency', 'ASC')->get(['currency', 'balance']);
         if ($wallets->isEmpty()) {
             return [
-                ['currency' => 'CNY', 'balance' => 0]
+                ['currency' => (new CurrencyRateService())->getBusinessBaseCurrency(), 'balance' => 0]
             ];
         }
         return $wallets->toArray();

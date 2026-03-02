@@ -43,9 +43,15 @@ class CurrencyRateService
     }
 
 
+    public function convertMinorToCurrencyMinor(int $amountMinor, string $fromCurrency, string $targetCurrency): int
+    {
+        return $this->convertMinor($amountMinor, $fromCurrency, $targetCurrency);
+    }
+
+    // Backward-compat wrapper, avoid using CNY-specific naming in new code
     public function convertMinorToCnyMinor(int $amountMinor, string $fromCurrency): int
     {
-        return $this->convertMinor($amountMinor, $fromCurrency, 'CNY');
+        return $this->convertMinorToCurrencyMinor($amountMinor, $fromCurrency, 'CNY');
     }
 
 
@@ -66,17 +72,35 @@ class CurrencyRateService
         return (int)max(1, round($amountInBase / $toRateToBase));
     }
 
-    public function convertCnyAmountToTargetMinor(int $cnyMinor, string $targetCurrency): array
+    public function convertFromCurrencyAmountToTargetMinor(int $amountMinor, string $fromCurrency, string $targetCurrency): array
     {
+        $fromCurrency = $this->normalizeCurrency($fromCurrency);
         $targetCurrency = $this->normalizeCurrency($targetCurrency);
-        $targetMinor = $this->convertMinor($cnyMinor, 'CNY', $targetCurrency);
+        $targetMinor = $this->convertMinor($amountMinor, $fromCurrency, $targetCurrency);
+
+        $baseCurrency = $this->getBusinessBaseCurrency();
+        $targetRateToBase = $this->getRateToBase($targetCurrency);
+        $fromRateToBase = $this->getRateToBase($fromCurrency);
+
+        $rateFromTargetToFrom = null;
+        if ($targetRateToBase && $targetRateToBase > 0 && $fromRateToBase && $fromRateToBase > 0) {
+            $rateFromTargetToFrom = $targetRateToBase / $fromRateToBase;
+        }
+
         return [
             'amount_minor' => $targetMinor,
-            'rate_to_base' => $this->getRateToBase($targetCurrency),
-            'fetched_at' => CurrencyRate::where('base_currency', $this->getBusinessBaseCurrency())
+            'rate_from_target_to_from' => $rateFromTargetToFrom,
+            'base_currency' => $baseCurrency,
+            'fetched_at' => CurrencyRate::where('base_currency', $baseCurrency)
                 ->where('quote_currency', $targetCurrency)
                 ->max('fetched_at') ?: time()
         ];
+    }
+
+    // Backward-compat wrapper, avoid using CNY-specific naming in new code
+    public function convertCnyAmountToTargetMinor(int $cnyMinor, string $targetCurrency): array
+    {
+        return $this->convertFromCurrencyAmountToTargetMinor($cnyMinor, 'CNY', $targetCurrency);
     }
 
     public function refreshAllRates(): bool

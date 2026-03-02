@@ -29,11 +29,12 @@ class OrderController extends Controller
         }
         $order = $model->get();
         $plan = Plan::get();
+        $baseCurrency = (new CurrencyRateService())->getBusinessBaseCurrency();
         for ($i = 0; $i < count($order); $i++) {
             if (empty($order[$i]['pricing_currency'])) {
-                $order[$i]['pricing_currency'] = 'CNY';
+                $order[$i]['pricing_currency'] = $baseCurrency;
             }
-            $order[$i]['order_currency'] = $order[$i]['pricing_currency'] ?: 'CNY';
+            $order[$i]['order_currency'] = $order[$i]['pricing_currency'] ?: $baseCurrency;
             for ($x = 0; $x < count($plan); $x++) {
                 if ($order[$i]['plan_id'] === $plan[$x]['id']) {
                     $order[$i]['plan'] = $plan[$x];
@@ -53,8 +54,9 @@ class OrderController extends Controller
         if (!$order) {
             abort(500, __('Order does not exist or has been paid'));
         }
-        if (empty($order->pricing_currency)) $order->pricing_currency = 'CNY';
-        $order->order_currency = $order->pricing_currency ?: 'CNY';
+        $baseCurrency = (new CurrencyRateService())->getBusinessBaseCurrency();
+        if (empty($order->pricing_currency)) $order->pricing_currency = $baseCurrency;
+        $order->order_currency = $order->pricing_currency ?: $baseCurrency;
         if ($order->plan_id == 0) {
             $order['plan'] = [
                 'id' => 0,

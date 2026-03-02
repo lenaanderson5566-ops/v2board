@@ -5,6 +5,8 @@ namespace App\Http\Controllers\V1\Admin;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\ConfigSave;
 use App\Jobs\SendEmailJob;
+use App\Models\CurrencySetting;
+use App\Services\CurrencyRateService;
 use App\Services\TelegramService;
 use App\Utils\Dict;
 use Illuminate\Http\Request;
@@ -67,6 +69,9 @@ class ConfigController extends Controller
 
     public function fetch(Request $request)
     {
+        $currencyRateService = new CurrencyRateService();
+        $displayCurrency = $currencyRateService->getDisplayCurrency();
+
         $key = $request->input('key');
         $data = [
             'ticket' => [
@@ -102,8 +107,8 @@ class ConfigController extends Controller
                 'try_out_plan_id' => (int)config('v2board.try_out_plan_id', 0),
                 'try_out_hour' => (int)config('v2board.try_out_hour', 1),
                 'tos_url' => config('v2board.tos_url'),
-                'currency' => config('v2board.currency', 'CNY'),
-                'currency_symbol' => config('v2board.currency_symbol', '¥'),
+                'currency' => $displayCurrency,
+                'currency_symbol' => $currencyRateService->getDisplayCurrencySymbol($displayCurrency),
             ],
             'subscribe' => [
                 'plan_change_enable' => (int)config('v2board.plan_change_enable', 1),
@@ -189,6 +194,17 @@ class ConfigController extends Controller
     public function save(ConfigSave $request)
     {
         $data = $request->validated();
+
+        // Display-only currency config is persisted in DB.
+        if (array_key_exists('currency', $data)) {
+            CurrencySetting::setValue('display_currency', strtoupper((string)$data['currency']));
+            unset($data['currency']);
+        }
+        if (array_key_exists('currency_symbol', $data)) {
+            CurrencySetting::setValue('display_currency_symbol', (string)$data['currency_symbol']);
+            unset($data['currency_symbol']);
+        }
+
         $config = config('v2board');
         foreach (ConfigSave::RULES as $k => $v) {
             if (!in_array($k, array_keys(ConfigSave::RULES))) {

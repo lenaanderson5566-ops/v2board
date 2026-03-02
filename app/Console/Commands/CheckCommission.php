@@ -6,6 +6,8 @@ use App\Models\CommissionLog;
 use Illuminate\Console\Command;
 use App\Models\Order;
 use App\Models\User;
+use App\Services\UserService;
+use App\Services\CurrencyRateService;
 use Illuminate\Support\Facades\DB;
 
 class CheckCommission extends Command
@@ -92,16 +94,27 @@ class CheckCommission extends Command
                 0 => 100
             ];
         }
+        $currencyRateService = new CurrencyRateService();
+
         for ($l = 0; $l < $level; $l++) {
             $inviter = User::find($inviteUserId);
             if (!$inviter) continue;
             if (!isset($commissionShareLevels[$l])) continue;
-            $commissionBalance = $order->commission_balance * ($commissionShareLevels[$l] / 100);
-            if (!$commissionBalance) continue;
+            $commissionBaseAmount = $order->commission_balance * ($commissionShareLevels[$l] / 100);
+            if (!$commissionBaseAmount) continue;
+            $baseCurrency = $currencyRateService->getBusinessBaseCurrency();
+            $commissionCurrency = $currencyRateService->normalizeCurrency($inviter->commission_currency ?: $baseCurrency);
+            $commissionBalance = $currencyRateService->convertMinor((int)$commissionBaseAmount, $baseCurrency, $commissionCurrency);
+
             if ((int)config('v2board.withdraw_close_enable', 0)) {
-                $inviter->balance = $inviter->balance + $commissionBalance;
+                if (!(new UserService())->addBalance($inviter->id, (int)$commissionBalance, $commissionCurrency)) {
+                    DB::rollBack();
+                    return false;
+                }
+                $inviter = User::find($inviter->id);
             } else {
                 $inviter->commission_balance = $inviter->commission_balance + $commissionBalance;
+                $inviter->commission_currency = $commissionCurrency;
             }
             if (!$inviter->save()) {
                 DB::rollBack();
@@ -112,14 +125,16 @@ class CheckCommission extends Command
                 'user_id' => $order->user_id,
                 'trade_no' => $order->trade_no,
                 'order_amount' => $order->total_amount,
-                'get_amount' => $commissionBalance
+                'order_currency' => strtoupper($order->pricing_currency ?? 'CNY'),
+                'get_amount' => $commissionBalance,
+                'get_currency' => $commissionCurrency
             ])) {
                 DB::rollBack();
                 return false;
             }
             $inviteUserId = $inviter->invite_user_id;
             // update order actual commission balance
-            $order->actual_commission_balance = $order->actual_commission_balance + $commissionBalance;
+            $order->actual_commission_balance = $order->actual_commission_balance + $commissionBaseAmount;
         }
         return true;
     }

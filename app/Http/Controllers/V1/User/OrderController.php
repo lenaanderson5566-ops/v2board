@@ -9,6 +9,7 @@ use App\Models\Payment;
 use App\Models\Plan;
 use App\Models\User;
 use App\Services\CouponService;
+use App\Services\CurrencyRateService;
 use App\Services\OrderService;
 use App\Services\PaymentService;
 use App\Services\PlanService;
@@ -28,7 +29,12 @@ class OrderController extends Controller
         }
         $order = $model->get();
         $plan = Plan::get();
+        $baseCurrency = (new CurrencyRateService())->getBusinessBaseCurrency();
         for ($i = 0; $i < count($order); $i++) {
+            if (empty($order[$i]['pricing_currency'])) {
+                $order[$i]['pricing_currency'] = $baseCurrency;
+            }
+            $order[$i]['order_currency'] = $order[$i]['pricing_currency'] ?: $baseCurrency;
             for ($x = 0; $x < count($plan); $x++) {
                 if ($order[$i]['plan_id'] === $plan[$x]['id']) {
                     $order[$i]['plan'] = $plan[$x];
@@ -48,6 +54,9 @@ class OrderController extends Controller
         if (!$order) {
             abort(500, __('Order does not exist or has been paid'));
         }
+        $baseCurrency = (new CurrencyRateService())->getBusinessBaseCurrency();
+        if (empty($order->pricing_currency)) $order->pricing_currency = $baseCurrency;
+        $order->order_currency = $order->pricing_currency ?: $baseCurrency;
         if ($order->plan_id == 0) {
             $order['plan'] = [
                 'id' => 0,
@@ -76,6 +85,7 @@ class OrderController extends Controller
     public function save(OrderSave $request)
     {
         $userService = new UserService();
+        $currencyRateService = new CurrencyRateService();
         if ($userService->isNotCompleteOrderByUserId($request->user['id'])) {
             abort(500, __('You have an unpaid or pending order, please try again later or cancel it'));
         }
@@ -96,6 +106,7 @@ class OrderController extends Controller
             $order->period = 'deposit';
             $order->trade_no = Helper::generateOrderNo();
             $order->total_amount = $amount;
+            $order->pricing_currency = $currencyRateService->getBusinessBaseCurrency();
             
             $orderService->setOrderType($user);
             $orderService->setInvite($user);
@@ -157,6 +168,7 @@ class OrderController extends Controller
         $order->period = $request->input('period');
         $order->trade_no = Helper::generateOrderNo();
         $order->total_amount = $plan[$request->input('period')];
+        $order->pricing_currency = $currencyRateService->getBusinessBaseCurrency();
 
         if ($request->input('coupon_code')) {
             $couponService = new CouponService($request->input('coupon_code'));
@@ -170,23 +182,17 @@ class OrderController extends Controller
         $orderService->setVipDiscount($user);
         $orderService->setOrderType($user);
 
-        if ($user->balance > 0 && $order->total_amount > 0) {
-            $remainingBalance = $user->balance - $order->total_amount;
+        if ($order->total_amount > 0) {
             $userService = new UserService();
-            if ($remainingBalance > 0) {
-                if (!$userService->addBalance($order->user_id, - $order->total_amount)) {
-                    DB::rollBack();
-                    abort(500, __('Insufficient balance'));
-                }
-                $order->balance_amount = $order->total_amount;
-                $order->total_amount = 0;
-            } else {
-                if (!$userService->addBalance($order->user_id, - $user->balance)) {
-                    DB::rollBack();
-                    abort(500, __('Insufficient balance'));
-                }
-                $order->balance_amount = $user->balance;
-                $order->total_amount -= $user->balance;
+            $deducted = $userService->deductByMultiCurrencyWallet(
+                $order->user_id,
+                (int)$order->total_amount,
+                $order->pricing_currency ?: 'CNY',
+                $currencyRateService
+            );
+            if ($deducted > 0) {
+                $order->balance_amount = $deducted;
+                $order->total_amount = max(0, $order->total_amount - $deducted);
             }
         }
 
@@ -227,15 +233,29 @@ class OrderController extends Controller
         $payment = Payment::find($method);
         if (!$payment || $payment->enable !== 1) abort(500, __('Payment method is not available'));
         $paymentService = new PaymentService($payment->payment, $payment->id);
+        $currencyRateService = new CurrencyRateService();
         $order->handling_amount = NULL;
         if ($payment->handling_fee_fixed || $payment->handling_fee_percent) {
             $order->handling_amount = round(($order->total_amount * ($payment->handling_fee_percent / 100)) + $payment->handling_fee_fixed);
         }
         $order->payment_id = $method;
+        $amountByPricingCurrency = isset($order->handling_amount) ? ($order->total_amount + $order->handling_amount) : $order->total_amount;
+        $pricingCurrency = $order->pricing_currency ?: 'CNY';
+        $paymentCurrency = $currencyRateService->getPaymentCurrencyByGateway($payment);
+        $convertedAmount = $currencyRateService->convertMinor($amountByPricingCurrency, $pricingCurrency, $paymentCurrency);
+        $paymentRateToBase = $currencyRateService->getRateToBase($paymentCurrency);
+        $pricingRateToBase = $currencyRateService->getRateToBase($pricingCurrency);
+        $exchangeRate = ($paymentRateToBase && $pricingRateToBase) ? ($paymentRateToBase / $pricingRateToBase) : null;
+        $order->payment_currency = $paymentCurrency;
+        $order->payment_amount = $convertedAmount;
+        $order->exchange_rate = $exchangeRate;
+        $order->exchange_rate_at = time();
         if (!$order->save()) abort(500, __('Request failed, please try again later'));
         $result = $paymentService->pay([
             'trade_no' => $tradeNo,
-            'total_amount' => isset($order->handling_amount) ? ($order->total_amount + $order->handling_amount) : $order->total_amount,
+            'total_amount' => $amountByPricingCurrency,
+            'locked_payment_amount' => $convertedAmount,
+            'locked_payment_currency' => $paymentCurrency,
             'user_id' => $order->user_id,
             'stripe_token' => $request->input('token')
         ]);
@@ -267,7 +287,8 @@ class OrderController extends Controller
             'payment',
             'icon',
             'handling_fee_fixed',
-            'handling_fee_percent'
+            'handling_fee_percent',
+            'currency'
         ])
             ->where('enable', 1)
             ->orderBy('sort', 'ASC')

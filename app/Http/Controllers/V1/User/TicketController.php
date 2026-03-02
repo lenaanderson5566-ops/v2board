@@ -11,6 +11,8 @@ use App\Models\Plan;
 use App\Models\Order;
 use App\Services\TelegramService;
 use App\Services\TicketService;
+use App\Services\UserService;
+use App\Services\CurrencyRateService;
 use App\Models\Ticket;
 use App\Models\TicketMessage;
 use App\Utils\Dict;
@@ -252,7 +254,8 @@ class TicketController extends Controller
 				$plan = Plan::where('id', $user->plan_id)->first();
 				$planName = $plan ? $plan->name : '未找到套餐信息'; // Check if plan data is available
 
-				$money = $user->balance / 100;
+				$baseCurrency = (new CurrencyRateService())->getBusinessBaseCurrency();
+				$money = (new UserService())->getWalletBalanceByCurrency($user->id, $baseCurrency) / 100;
 				$affmoney = $user->commission_balance / 100;
 				$telegramService->sendMessageWithAdmin("📮工单提醒 #{$ticket->id}\n———————————————\n邮箱：\n`{$user->email}`\n用户位置：\n`{$location}`\nIP:\n{$ip_address}\n套餐与流量：\n`{$planName} of {$transfer_enable}/{$remaining_traffic}`\n上传/下载：\n`{$u}/{$d}`\n到期时间：\n`{$expired_at}`\n余额/佣金余额：\n`{$money}/{$affmoney}`\n主题：\n`{$ticket->subject}`\n内容：\n {$message} ", true);
 			} else {

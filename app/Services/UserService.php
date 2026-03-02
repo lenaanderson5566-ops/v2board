@@ -8,9 +8,13 @@ use App\Jobs\TrafficFetchJob;
 use App\Models\Order;
 use App\Models\Plan;
 use App\Models\User;
+use App\Models\UserWallet;
+use App\Services\CurrencyRateService;
+use Illuminate\Support\Facades\Schema;
 
 class UserService
 {
+
     private function calcResetDayByMonthFirstDay()
     {
         $today = date('d');
@@ -198,20 +202,130 @@ class UserService
         return User::all();
     }
 
-    public function addBalance(int $userId, int $balance):bool
+    public function addBalance(int $userId, int $balance, string $currency = 'CNY'):bool
     {
         $user = User::lockForUpdate()->find($userId);
         if (!$user) {
             return false;
         }
-        $user->balance = $user->balance + $balance;
-        if ($user->balance < 0) {
+
+        $currency = strtoupper($currency ?: 'CNY');
+
+        $wallet = UserWallet::firstOrNew([
+            'user_id' => $userId,
+            'currency' => $currency
+        ]);
+
+        if (!$wallet->exists) {
+            $wallet->balance = 0;
+        }
+
+        $wallet->balance = (int)$wallet->balance + $balance;
+        if ($wallet->balance < 0) {
             return false;
         }
-        if (!$user->save()) {
+        if (!$wallet->save()) {
             return false;
         }
         return true;
+    }
+
+
+    public function deductByMultiCurrencyWallet(int $userId, int $orderAmountMinor, string $pricingCurrency, CurrencyRateService $currencyRateService): int
+    {
+        $pricingCurrency = $currencyRateService->normalizeCurrency($pricingCurrency);
+        $user = User::lockForUpdate()->find($userId);
+        if (!$user) return 0;
+
+        $wallets = UserWallet::where('user_id', $userId)->lockForUpdate()->get();
+
+        if ($wallets->isEmpty()) {
+            $baseCurrency = (new CurrencyRateService())->getBusinessBaseCurrency();
+            UserWallet::updateOrCreate(
+                ['user_id' => $userId, 'currency' => $baseCurrency],
+                ['balance' => 0]
+            );
+            $wallets = UserWallet::where('user_id', $userId)->lockForUpdate()->get();
+        }
+
+        $need = $orderAmountMinor;
+
+        $consume = function (UserWallet $wallet, int $consumeInWalletMinor) use (&$need, $pricingCurrency, $currencyRateService) {
+            if ($consumeInWalletMinor <= 0) return;
+            if ($wallet->balance < $consumeInWalletMinor) {
+                $consumeInWalletMinor = $wallet->balance;
+            }
+            if ($consumeInWalletMinor <= 0) return;
+            $wallet->balance -= $consumeInWalletMinor;
+            $wallet->save();
+            $converted = $currencyRateService->convertMinor($consumeInWalletMinor, $wallet->currency, $pricingCurrency);
+            $need = max(0, $need - $converted);
+        };
+
+        $sameCurrencyWallet = $wallets->firstWhere('currency', $pricingCurrency);
+        if ($sameCurrencyWallet) {
+            $consume($sameCurrencyWallet, $need);
+        }
+
+        if ($need > 0) {
+            foreach ($wallets as $wallet) {
+                if ($wallet->currency === $pricingCurrency) continue;
+                if ($need <= 0) break;
+                $needByWallet = $currencyRateService->convertMinor($need, $pricingCurrency, $wallet->currency);
+                $consume($wallet, $needByWallet);
+            }
+        }
+        return $orderAmountMinor - $need;
+    }
+
+
+
+    public function getUserWalletsRaw(int $userId): array
+    {
+        if (!Schema::hasTable('v2_user_wallet')) {
+            return [];
+        }
+        $wallets = UserWallet::where('user_id', $userId)->orderBy('currency', 'ASC')->get(['currency', 'balance']);
+        if ($wallets->isEmpty()) {
+            return [
+                ['currency' => (new CurrencyRateService())->getBusinessBaseCurrency(), 'balance' => 0]
+            ];
+        }
+        return $wallets->toArray();
+    }
+
+    public function getUserWalletTotalInCurrency(int $userId, string $targetCurrency, CurrencyRateService $currencyRateService): int
+    {
+        $targetCurrency = $currencyRateService->normalizeCurrency($targetCurrency);
+
+        if (!Schema::hasTable('v2_user_wallet')) {
+            return 0;
+        }
+
+        $wallets = UserWallet::where('user_id', $userId)->get();
+        if ($wallets->isEmpty()) {
+            return 0;
+        }
+
+        $total = 0;
+        foreach ($wallets as $wallet) {
+            $total += $currencyRateService->convertMinor((int)$wallet->balance, $wallet->currency, $targetCurrency);
+        }
+        return (int)$total;
+    }
+
+
+    public function getWalletBalanceByCurrency(int $userId, string $currency = 'CNY'): int
+    {
+        if (!Schema::hasTable('v2_user_wallet')) {
+            return 0;
+        }
+
+        $wallet = UserWallet::where('user_id', $userId)
+            ->where('currency', strtoupper($currency))
+            ->first();
+
+        return $wallet ? (int)$wallet->balance : 0;
     }
 
     public function isNotCompleteOrderByUserId(int $userId): bool

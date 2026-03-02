@@ -9,6 +9,11 @@ use Illuminate\Http\Request;
 
 class PlanI18nController extends Controller
 {
+    private const RECOMMENDED_LOCALES = [
+        'zh-CN', 'zh-TW', 'zh-HK', 'en', 'ja', 'ko', 'fr', 'de', 'es', 'pt-BR', 'ru',
+        'ar', 'tr', 'vi', 'th', 'id', 'ms', 'hi', 'it', 'nl', 'pl', 'uk'
+    ];
+
     public function locales()
     {
         $files = glob(resource_path('lang') . '/*.json');
@@ -16,10 +21,19 @@ class PlanI18nController extends Controller
         foreach ($files as $file) {
             $locales[] = basename($file, '.json');
         }
-        sort($locales);
+
+        $dbLocales = PlanTranslation::query()->distinct()->pluck('locale')->toArray();
+
+        $all = array_values(array_unique(array_filter(array_merge($locales, self::RECOMMENDED_LOCALES, $dbLocales))));
+        sort($all);
 
         return response([
-            'data' => $locales
+            'data' => [
+                'all' => $all,
+                'recommended' => self::RECOMMENDED_LOCALES,
+                'from_filesystem' => $locales,
+                'from_db' => $dbLocales
+            ]
         ]);
     }
 
@@ -59,9 +73,11 @@ class PlanI18nController extends Controller
     {
         $params = $request->validate([
             'plan_id' => 'required|integer',
-            'locale' => 'required|string|max:16',
+            'locale' => ['required', 'string', 'max:16', 'regex:/^[A-Za-z0-9_-]+$/'],
             'name' => 'nullable|string|max:255',
             'content' => 'nullable|string'
+        ], [
+            'locale.regex' => '语言标识格式不正确'
         ]);
 
         $plan = Plan::find($params['plan_id']);
@@ -69,10 +85,7 @@ class PlanI18nController extends Controller
             abort(500, '订阅不存在');
         }
 
-        $localeFile = resource_path('lang/' . $params['locale'] . '.json');
-        if (!is_file($localeFile)) {
-            abort(500, '语言不存在');
-        }
+        $params['locale'] = trim($params['locale']);
 
         $name = $params['name'] ?? null;
         $content = $params['content'] ?? null;

@@ -9,6 +9,8 @@ use Illuminate\Console\Command;
 use App\Models\User;
 use App\Models\Order;
 use App\Utils\Helper;
+use App\Services\UserService;
+use App\Services\CurrencyRateService;
 use Illuminate\Support\Facades\DB;
 
 use Exception;
@@ -50,6 +52,7 @@ class CheckRenewal extends Command
         $users = User::all();
 
         //$mailService = new MailService();
+        $userService = new UserService();
         foreach ($users as $user) {
             if ($user->auto_renewal && $user->plan_id !== NULL && $user->expired_at !== NULL && $user->expired_at > time() && $user->expired_at - time() < 86400 * 2) {
                 try {
@@ -73,7 +76,9 @@ class CheckRenewal extends Command
                     if (!$plan->renew) {
                         throw new Exception('This subscription cannot be renewed');
                     }
-                    if($user->balance < $plan[$latestPeriod]) {
+                    $baseCurrency = (new CurrencyRateService())->getBusinessBaseCurrency();
+                    $baseBalance = $userService->getWalletBalanceByCurrency($user->id, $baseCurrency);
+                    if($baseBalance < $plan[$latestPeriod]) {
                         throw new Exception('No enough balance');
                     }
 
@@ -89,7 +94,11 @@ class CheckRenewal extends Command
                     $orderService->setVipDiscount($user);
                     $order->type = 2;
                     
-                    $user->balance = $user->balance - $plan[$latestPeriod];
+                    if (!(new UserService())->addBalance($user->id, -$plan[$latestPeriod], $baseCurrency)) {
+                        DB::rollback();
+                        throw new Exception('自动续费失败');
+                    }
+                    $user = User::find($user->id);
                     $user->expired_at = $this->getTime($latestPeriod, $user->expired_at);
                     if (!$user->save()) {
                         DB::rollback();

@@ -14,6 +14,7 @@ use App\Models\Ticket;
 use App\Models\User;
 use App\Services\AuthService;
 use App\Services\OrderService;
+use App\Services\CurrencyRateService;
 use App\Services\UserService;
 use App\Utils\CacheKey;
 use App\Utils\Helper;
@@ -199,7 +200,12 @@ class UserController extends Controller
 
             switch ($giftcard->type) {
                 case 1:
-                    $user->balance += $giftcard->value;
+                    $baseCurrency = (new CurrencyRateService())->getBusinessBaseCurrency();
+                    if (!(new UserService())->addBalance($user->id, $giftcard->value, $baseCurrency)) {
+                        DB::rollBack();
+                        abort(500, __('Operation failed'));
+                    }
+                    $user = User::find($user->id);
                     break;
                 case 2:
                     if ($user->expired_at !== null) {
@@ -276,7 +282,6 @@ class UserController extends Controller
                 'remind_expire',
                 'remind_traffic',
                 'expired_at',
-                'balance',
                 'commission_balance',
                 'plan_id',
                 'discount',
@@ -289,6 +294,12 @@ class UserController extends Controller
             abort(500, __('The user does not exist'));
         }
         $user['avatar_url'] = 'https://cravatar.cn/avatar/' . md5($user->email) . '?s=64&d=identicon';
+        $userService = new UserService();
+        $user['wallets'] = $userService->getUserWalletsRaw($request->user['id']);
+        $baseCurrency = (new CurrencyRateService())->getBusinessBaseCurrency();
+        $user['balance'] = $userService->getWalletBalanceByCurrency($request->user['id'], $baseCurrency);
+        $user['balance_currency'] = $baseCurrency;
+
         return response([
             'data' => $user
         ]);
@@ -416,6 +427,9 @@ class UserController extends Controller
         if ($request->input('transfer_amount') > $user->commission_balance) {
             abort(500, __('Insufficient commission balance'));
         }
+        $currencyRateService = new CurrencyRateService();
+        $commissionCurrency = $currencyRateService->normalizeCurrency($user->commission_currency ?: $currencyRateService->getBusinessBaseCurrency());
+
         DB::beginTransaction();
         $order = new Order();
         $orderService = new OrderService($order);
@@ -423,13 +437,17 @@ class UserController extends Controller
         $order->plan_id = 0;
         $order->period = 'deposit';
         $order->trade_no = Helper::generateOrderNo();
+        $order->pricing_currency = $commissionCurrency;
         $order->total_amount = $request->input('transfer_amount');
 
         $orderService->setOrderType($user);
         $orderService->setInvite($user);
 
         $user->commission_balance = $user->commission_balance - $request->input('transfer_amount');
-        $user->balance = $user->balance + $request->input('transfer_amount');
+        if (!(new UserService())->addBalance($user->id, (int)$request->input('transfer_amount'), $commissionCurrency)) {
+            DB::rollback();
+            abort(500, __('transfer failed'));
+        }
         $order->status = 3;
         $order->total_amount = 0;
         $order->surplus_amount = $request->input('transfer_amount');

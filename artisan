@@ -15,7 +15,15 @@ define('LARAVEL_START', microtime(true));
 |
 */
 
-require __DIR__.'/vendor/autoload.php';
+$autoload = __DIR__.'/vendor/autoload.php';
+
+if (! file_exists($autoload)) {
+    fwrite(STDERR, "Composer dependencies are missing. Run `composer install` in the project root before using artisan.\n");
+
+    exit(1);
+}
+
+require $autoload;
 
 $app = require_once __DIR__.'/bootstrap/app.php';
 

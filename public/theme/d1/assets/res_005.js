@@ -16040,7 +16040,7 @@
                     className: "display-4 text-black font-w300 mb-2"
                 }, void 0 !== t.balance ? (void 0!==t.wallets&&t.wallets.length?t.wallets.map(function(e){return(e.balance/100).toFixed(2)+" "+e.currency}).join(" | "):(parseInt(t.balance)/100).toFixed(2)) : "--.--", l.a.createElement("span", {
                     className: "font-size-h5 text-muted ml-4"
-                }, void 0!==t.wallets&&t.wallets.length?"":r.currency)), l.a.createElement("span", {
+                }, void 0!==t.wallets&&t.wallets.length?"":(t.balance_currency||r.currency))), l.a.createElement("span", {
                     className: "text-muted",
                     style: {
                         cursor: "pointer"
@@ -18983,9 +18983,9 @@
                     id: "\u65e7\u8ba2\u9605\u6298\u62b5\u91d1\u989d"
                 }), "\uff1a"), f.a.createElement("span", null, (t.surplus_amount / 100).toFixed(2))) : "", t.refund_amount ? f.a.createElement("div", null, f.a.createElement("span", null, Object(b["formatMessage"])({
                     id: "\u9000\u6b3e\u91d1\u989d"
-                }), "\uff1a"), f.a.createElement("span", null, (t.refund_amount / 100).toFixed(2)+" "+(t.order_currency||t.pricing_currency||"CNY"))) : "", t.balance_amount ? f.a.createElement("div", null, f.a.createElement("span", null, Object(b["formatMessage"])({
+                }), "\uff1a"), f.a.createElement("span", null, (t.refund_amount / 100).toFixed(2)+" "+(t.order_currency||t.pricing_currency||(window.config&&window.config.currency)||"CNY"))) : "", t.balance_amount ? f.a.createElement("div", null, f.a.createElement("span", null, Object(b["formatMessage"])({
                     id: "\u4f59\u989d\u652f\u4ed8"
-                }), "\uff1a"), f.a.createElement("span", null, (t.balance_amount / 100).toFixed(2)+" "+(t.order_currency||t.pricing_currency||"CNY"))) : "", t.pre_handling_amount ? f.a.createElement("div", null, f.a.createElement("span", null, Object(b["formatMessage"])({
+                }), "\uff1a"), f.a.createElement("span", null, (t.balance_amount / 100).toFixed(2)+" "+(t.order_currency||t.pricing_currency||(window.config&&window.config.currency)||"CNY"))) : "", t.pre_handling_amount ? f.a.createElement("div", null, f.a.createElement("span", null, Object(b["formatMessage"])({
                     id: "\u652f\u4ed8\u624b\u7eed\u8d39"
                 }), "\uff1a"), f.a.createElement("span", null, (t.pre_handling_amount / 100).toFixed(2))) : "", f.a.createElement("div", null, f.a.createElement("span", null, Object(b["formatMessage"])({
                     id: "\u521b\u5efa\u65f6\u95f4"
@@ -19129,7 +19129,7 @@
                     className: "col-8"
                 }), f.a.createElement("div", {
                     className: "col-4 text-right"
-                }, "- ", g.currency_symbol, (t.refund_amount / 100).toFixed(2)+" "+(t.order_currency||t.pricing_currency||"CNY")))) : "", t.pre_handling_amount ? f.a.createElement("div", null, f.a.createElement("div", {
+                }, "- ", g.currency_symbol, (t.refund_amount / 100).toFixed(2)+" "+(t.order_currency||t.pricing_currency||(window.config&&window.config.currency)||"CNY")))) : "", t.pre_handling_amount ? f.a.createElement("div", null, f.a.createElement("div", {
                     className: "pt-3",
                     style: {
                         color: "#646669"
@@ -19154,7 +19154,7 @@
                     id: "\u603b\u8ba1"
                 })), f.a.createElement("h1", {
                     className: "text-light mt-3 mb-3"
-                }, g.currency_symbol, " ", ((t.total_amount + (t.pre_handling_amount || 0)) / 100).toFixed(2), " ", (t.order_currency||t.pricing_currency||"CNY")), f.a.createElement("button", {
+                }, g.currency_symbol, " ", ((t.total_amount + (t.pre_handling_amount || 0)) / 100).toFixed(2), " ", (t.order_currency||t.pricing_currency||(window.config&&window.config.currency)||"CNY")), f.a.createElement("button", {
                     type: "button",
                     className: "btn btn-block btn-primary",
                     disabled: d || "StripeCredit" === E.payment && !w.token,
@@ -59681,7 +59681,7 @@
                     key: "order_currency",
                     align: "center",
                     render: (e,t)=>{
-                        return t.order_currency || t.pricing_currency || "CNY"
+                        return t.order_currency || t.pricing_currency || (window.config&&window.config.currency) || "CNY"
                     }
                 }, {
                     title: Object(B["formatMessage"])({

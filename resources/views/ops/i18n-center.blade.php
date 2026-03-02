@@ -68,6 +68,7 @@
         .err { color: #dc2626; }
         .locale-picker { max-height: 130px; overflow:auto; border:1px solid #e5e7eb; border-radius:8px; padding:8px; background:#fafafa; }
         .locale-tag { display:inline-flex; align-items:center; gap:4px; margin:4px 8px 4px 0; font-size:12px; }
+        .currency-chip { display:inline-block; margin-left:8px; padding:2px 8px; border-radius:999px; background:#eef2ff; color:#3730a3; font-size:12px; }
 
         .layout.embedded .content { padding: 0; }
         .layout.embedded .container { max-width: none; }
@@ -182,7 +183,7 @@
                     </div>
 
                     <div class="card">
-                        <strong>最新汇率列表（相对基准币）</strong>
+                        <strong>最新汇率列表（相对基准币）<span id="rate_base_chip" class="currency-chip">BASE</span></strong>
                         <div class="muted" id="latest_fetched_at" style="margin-top:8px;"></div>
                         <table class="table" id="rate_table">
                             <thead>
@@ -419,6 +420,7 @@ async function loadCurrencyCenter() {
         document.getElementById('business_base_currency').value = data.business_base_currency || 'CNY';
         document.getElementById('currency_rate_api').value = data.currency_rate_api || '';
         document.getElementById('latest_fetched_at').textContent = `最后同步时间：${formatTimestamp(data.latest_fetched_at)}`;
+        document.getElementById('rate_base_chip').textContent = data.business_base_currency || 'BASE';
 
         const paymentTbody = document.querySelector('#payment_table tbody');
         paymentTbody.innerHTML = (data.payments || []).map((p) => `

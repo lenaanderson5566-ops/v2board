@@ -40,6 +40,8 @@ class OrderController extends Controller
                     $order[$i]['plan'] = $plan[$x];
                 }
             }
+            $order[$i]['type_text'] = Order::typeText((int) $order[$i]['type']);
+            $order[$i]['change_apply_mode_text'] = Order::changeApplyModeText(isset($order[$i]['change_apply_mode']) ? (int) $order[$i]['change_apply_mode'] : null);
         }
         return response([
             'data' => $order->makeHidden(['id', 'user_id'])
@@ -57,6 +59,9 @@ class OrderController extends Controller
         $baseCurrency = (new CurrencyRateService())->getBusinessBaseCurrency();
         if (empty($order->pricing_currency)) $order->pricing_currency = $baseCurrency;
         $order->order_currency = $order->pricing_currency ?: $baseCurrency;
+        $order->type_text = Order::typeText((int) $order->type);
+        $order->change_apply_mode_text = Order::changeApplyModeText(isset($order->change_apply_mode) ? (int) $order->change_apply_mode : null);
+
         if ($order->plan_id == 0) {
             $order['plan'] = [
                 'id' => 0,
@@ -142,6 +147,13 @@ class OrderController extends Controller
         if ($request->input('period') === 'reset_price') {
             if (!$userService->isAvailable($user) || $plan->id !== $user->plan_id) {
                 abort(500, __('Subscription has expired or no active subscription, unable to purchase Data Reset Package'));
+            }
+        }
+
+
+        if ($request->input('period') === 'onetime_price') {
+            if (!$userService->isAvailable($user) || is_null($user->plan_id)) {
+                abort(500, __('An active monthly subscription is required before purchasing a Quota Package'));
             }
         }
 

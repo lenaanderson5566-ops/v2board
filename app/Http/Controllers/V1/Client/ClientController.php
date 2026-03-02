@@ -7,6 +7,7 @@ use App\Models\Plan;
 use App\Protocols\General;
 use App\Services\ServerService;
 use App\Services\UserService;
+use App\Services\QuotaPackageService;
 use App\Services\RiskLogService;
 use App\Services\ClientStrategyService;
 use App\Utils\Helper;
@@ -223,10 +224,15 @@ class ClientController extends Controller
         if (!(int)config('v2board.show_info_to_server_enable', 0)) return;
         $useTraffic = $user['u'] + $user['d'];
         $totalTraffic = $user['transfer_enable'];
-        $remainingTraffic = Helper::trafficConvert($totalTraffic - $useTraffic);
+        $remainingBytes = max((int) $totalTraffic - (int) $useTraffic, 0);
+        $remainingTraffic = Helper::trafficConvert($remainingBytes);
         $expiredDate = $user['expired_at'] ? date('Y-m-d', $user['expired_at']) : '长期有效';
         $userService = new UserService();
         $resetDay = $userService->getResetDay($user);
+        $quotaService = new QuotaPackageService();
+        $packageRemainingBytes = $quotaService->getRemainingBytes((int) $user['id']);
+        $quotaBar = $this->buildQuotaPercentBar($remainingBytes, (int) $totalTraffic);
+        $packageBar = $this->buildQuotaPercentBar($packageRemainingBytes, max($remainingBytes, 1));
         array_unshift($servers, array_merge($servers[0], [
             'name' => "套餐到期：{$expiredDate}",
         ]));
@@ -236,8 +242,28 @@ class ClientController extends Controller
             ]));
         }
         array_unshift($servers, array_merge($servers[0], [
+            'name' => "额度进度：{$quotaBar}",
+        ]));
+        array_unshift($servers, array_merge($servers[0], [
+            'name' => "额度包占比：{$packageBar}",
+        ]));
+        array_unshift($servers, array_merge($servers[0], [
             'name' => "剩余流量：{$remainingTraffic}",
         ]));
+    }
+
+    private function buildQuotaPercentBar(int $remainingBytes, int $totalBytes): string
+    {
+        if ($totalBytes <= 0) {
+            return '[----------] 0%';
+        }
+
+        $percent = max(min(($remainingBytes / $totalBytes) * 100, 100), 0);
+        $slots = 10;
+        $filled = (int) floor(($percent / 100) * $slots);
+        $bar = str_repeat('█', $filled) . str_repeat('░', $slots - $filled);
+
+        return "[{$bar}] " . round($percent, 1) . '%';
     }
 
     private function resolveProtocolFlag(?string $input): string

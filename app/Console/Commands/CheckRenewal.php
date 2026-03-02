@@ -11,6 +11,7 @@ use App\Models\Order;
 use App\Utils\Helper;
 use App\Services\UserService;
 use App\Services\CurrencyRateService;
+use App\Services\QuotaPackageService;
 use Illuminate\Support\Facades\DB;
 
 use Exception;
@@ -52,6 +53,7 @@ class CheckRenewal extends Command
         $users = User::all();
 
         //$mailService = new MailService();
+        $this->applyPendingDowngradeOrders();
         $userService = new UserService();
         foreach ($users as $user) {
             if ($user->auto_renewal && $user->plan_id !== NULL && $user->expired_at !== NULL && $user->expired_at > time() && $user->expired_at - time() < 86400 * 2) {
@@ -92,7 +94,7 @@ class CheckRenewal extends Command
                     $order->balance_amount = $plan[$latestPeriod];
                     $order->total_amount = 0;
                     $orderService->setVipDiscount($user);
-                    $order->type = 2;
+                    $order->type = Order::TYPE_RENEW;
                     
                     if (!(new UserService())->addBalance($user->id, -$plan[$latestPeriod], $baseCurrency)) {
                         DB::rollback();
@@ -104,6 +106,7 @@ class CheckRenewal extends Command
                         DB::rollback();
                         throw new Exception('自动续费失败');
                     }
+                    (new QuotaPackageService())->syncUserTransferEnable($user);
                     $order->status = 3;
                     if (!$order->save()) {
                         DB::rollback();
@@ -118,6 +121,57 @@ class CheckRenewal extends Command
                     };
                 }
             }
+        }
+    }
+
+
+    private function applyPendingDowngradeOrders(): void
+    {
+        $orders = Order::where('type', Order::TYPE_DOWNGRADE)
+            ->where('status', 3)
+            ->where('change_direction', Order::CHANGE_DIRECTION_DOWNGRADE)
+            ->where('change_apply_mode', Order::CHANGE_APPLY_NEXT_CYCLE)
+            ->whereNull('change_applied_at')
+            ->whereNotNull('change_effective_at')
+            ->where('change_effective_at', '<=', time())
+            ->orderBy('id', 'asc')
+            ->get();
+
+        $latestByUser = [];
+        foreach ($orders as $order) {
+            $latestByUser[$order->user_id] = $order;
+        }
+
+        foreach ($latestByUser as $order) {
+            $user = User::find($order->user_id);
+            if (!$user) {
+                continue;
+            }
+
+            if ($user->expired_at !== null && $user->expired_at > time()) {
+                continue;
+            }
+
+            $plan = (new PlanService($order->plan_id))->plan;
+            if (!$plan) {
+                continue;
+            }
+
+            DB::transaction(function () use ($user, $order, $plan) {
+                $user->u = 0;
+                $user->d = 0;
+                $user->transfer_enable = $plan->transfer_enable * 1073741824;
+                $user->plan_id = $plan->id;
+                $user->group_id = $plan->group_id;
+                $user->device_limit = $plan->device_limit;
+                $user->speed_limit = $plan->speed_limit;
+                $user->expired_at = $this->getTime($order->period, $user->expired_at);
+                $user->save();
+                (new QuotaPackageService())->syncUserTransferEnable($user);
+
+                $order->change_applied_at = time();
+                $order->save();
+            });
         }
     }
 

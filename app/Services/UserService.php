@@ -149,7 +149,13 @@ class UserService
 
     public function isAvailable(User $user)
     {
-        if (!$user->banned && $user->transfer_enable && ($user->expired_at > time() || $user->expired_at === NULL)) {
+        if (
+            !$user->banned
+            && !is_null($user->plan_id)
+            && $user->transfer_enable
+            && !is_null($user->expired_at)
+            && $user->expired_at > time()
+        ) {
             return true;
         }
         return false;
@@ -158,10 +164,9 @@ class UserService
     public function getAvailableUsers()
     {
         return User::whereRaw('u + d < transfer_enable')
-            ->where(function ($query) {
-                $query->where('expired_at', '>=', time())
-                ->orWhereNull('expired_at');
-            })
+            ->whereNotNull('plan_id')
+            ->whereNotNull('expired_at')
+            ->where('expired_at', '>=', time())
             ->where('banned', 0)
             ->get();
     }
@@ -169,10 +174,9 @@ class UserService
     public function getDeviceLimitedUsers()
     {
         return User::whereRaw('u + d < transfer_enable')
-            ->where(function ($query) {
-                $query->where('expired_at', '>=', time())
-                ->orWhereNull('expired_at');
-            })
+            ->whereNotNull('plan_id')
+            ->whereNotNull('expired_at')
+            ->where('expired_at', '>=', time())
             ->where('banned', 0)
             ->where('device_limit','>', 0)
             ->select('id')

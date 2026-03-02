@@ -6,6 +6,7 @@ use App\Jobs\OrderHandleJob;
 use App\Models\Order;
 use App\Models\Plan;
 use App\Models\User;
+use App\Services\QuotaPackageService;
 use Illuminate\Support\Facades\DB;
 
 class OrderService
@@ -18,6 +19,7 @@ class OrderService
         'two_year_price' => 24,
         'three_year_price' => 36
     ];
+
     public $order;
     public $user;
 
@@ -29,8 +31,11 @@ class OrderService
     public function open()
     {
         $order = $this->order;
+        if (!Order::isValidType((int) $order->type)) {
+            abort(500, '订单类型异常');
+        }
         $this->user = User::find($order->user_id);
-        if ($order->type == 9) {
+        if ((int) $order->type === Order::TYPE_DEPOSIT) {
             DB::beginTransaction();
             $userService = new UserService();
             if (!$userService->addBalance($order->user_id, $order->total_amount + $this->getbounus($order->total_amount), $order->pricing_currency ?? 'CNY')) {
@@ -56,11 +61,16 @@ class OrderService
             $this->user = User::find($order->user_id);
         }
         DB::beginTransaction();
-        if ($order->surplus_order_ids) {
+        if ($order->surplus_order_ids && is_array($order->surplus_order_ids)) {
             try {
-                Order::whereIn('id', $order->surplus_order_ids)->update([
-                    'status' => 4
-                ]);
+                $surplusOrderIds = array_values(array_filter($order->surplus_order_ids, function ($item) {
+                    return is_numeric($item);
+                }));
+                if (!empty($surplusOrderIds)) {
+                    Order::whereIn('id', $surplusOrderIds)->update([
+                        'status' => 4
+                    ]);
+                }
             } catch (\Exception $e) {
                 DB::rollback();
                 abort(500, '开通失败');
@@ -74,22 +84,32 @@ class OrderService
                 $this->buyByResetTraffic();
                 break;
             default:
-                $this->buyByPeriod($order, $plan);
+                $downgradeAppliedNow = true;
+                if ((int) $order->type === Order::TYPE_DOWNGRADE) {
+                    $downgradeAppliedNow = $this->scheduleDowngrade($order);
+                } else {
+                    $this->buyByPeriod($order, $plan);
+                }
         }
 
         switch ((int)$order->type) {
-            case 1:
+            case Order::TYPE_DOWNGRADE:
+                $this->openEvent(config('v2board.change_order_event_id', 0));
+                break;
+            case Order::TYPE_NEW:
                 $this->openEvent(config('v2board.new_order_event_id', 0));
                 break;
-            case 2:
+            case Order::TYPE_RENEW:
                 $this->openEvent(config('v2board.renew_order_event_id', 0));
                 break;
-            case 3:
+            case Order::TYPE_UPGRADE:
                 $this->openEvent(config('v2board.change_order_event_id', 0));
                 break;
         }
 
-        $this->setSpeedLimit($plan->speed_limit);
+        if ((int) $order->type !== Order::TYPE_DOWNGRADE || ($downgradeAppliedNow ?? true)) {
+            $this->setSpeedLimit($plan->speed_limit);
+        }
 
         if (!$this->user->save()) {
             DB::rollBack();
@@ -108,24 +128,38 @@ class OrderService
     public function setOrderType(User $user)
     {
         $order = $this->order;
+        $order->change_direction = null;
+        $order->change_apply_mode = null;
+        $order->change_effective_at = null;
+        $order->change_applied_at = null;
         if ($order->period === 'deposit'){
-            $order->type = 9;
+            $order->type = Order::TYPE_DEPOSIT;
         } else if ($order->period === 'reset_price') {
-            $order->type = 4;
+            $order->type = Order::TYPE_RESET;
         } else if ($user->plan_id !== NULL && $order->plan_id !== $user->plan_id && ($user->expired_at > time() || $user->expired_at === NULL)) {
             if (!(int)config('v2board.plan_change_enable', 1)) abort(500, '目前不允许更改订阅，请联系客服或提交工单操作');
-            $order->type = 3;
-            if ((int)config('v2board.surplus_enable', 1)) $this->getSurplusValue($user, $order);
-            if ($order->surplus_amount >= $order->total_amount) {
-                $order->refund_amount = $order->surplus_amount - $order->total_amount;
-                $order->total_amount = 0;
+            $changeDirection = $this->detectChangeDirection($user, $order);
+            if ($changeDirection === Order::CHANGE_DIRECTION_DOWNGRADE) {
+                $order->type = Order::TYPE_DOWNGRADE;
+                $order->change_direction = Order::CHANGE_DIRECTION_DOWNGRADE;
+                $order->change_apply_mode = Order::CHANGE_APPLY_NEXT_CYCLE;
+                $order->change_effective_at = $user->expired_at;
             } else {
-                $order->total_amount = $order->total_amount - $order->surplus_amount;
+                $order->type = Order::TYPE_UPGRADE;
+                $order->change_direction = $changeDirection;
+                $order->change_apply_mode = Order::CHANGE_APPLY_IMMEDIATE;
+                if ((int)config('v2board.surplus_enable', 1)) $this->getSurplusValue($user, $order);
+                if ($order->surplus_amount >= $order->total_amount) {
+                    $order->refund_amount = $order->surplus_amount - $order->total_amount;
+                    $order->total_amount = 0;
+                } else {
+                    $order->total_amount = $order->total_amount - $order->surplus_amount;
+                }
             }
         } else if ($user->expired_at > time() && $order->plan_id == $user->plan_id) { // 用户订阅未过期且购买订阅与当前订阅相同 === 续费
-            $order->type = 2;
+            $order->type = Order::TYPE_RENEW;
         } else { // 新购
-            $order->type = 1;
+            $order->type = Order::TYPE_NEW;
         }
     }
 
@@ -151,10 +185,10 @@ class OrderService
                 $commissionFirstTime = (int)config('v2board.commission_first_time_enable', 1);
                 $isCommission = (!$commissionFirstTime || ($commissionFirstTime && !$this->haveValidOrder($user)));
                 break;
-            case 1:
+            case Order::TYPE_NEW:
                 $isCommission = true;
                 break;
-            case 2:
+            case Order::TYPE_RENEW:
                 $isCommission = !$this->haveValidOrder($user);
                 break;
         }
@@ -325,7 +359,7 @@ class OrderService
     private function buyByPeriod(Order $order, Plan $plan)
     {
         // change plan process
-        if ((int)$order->type === 3) {
+        if ((int)$order->type === Order::TYPE_UPGRADE) {
             $this->user->expired_at = time();
         }
         $this->user->transfer_enable = $plan->transfer_enable * 1073741824;
@@ -333,37 +367,35 @@ class OrderService
         // 从一次性转换到循环
         if ($this->user->expired_at === NULL) $this->buyByResetTraffic();
         // 新购
-        if ($order->type === 1) $this->buyByResetTraffic();
+        if ($order->type === Order::TYPE_NEW) $this->buyByResetTraffic();
 
         // 到期当天续费刷新流量
         $expireDay = date('d', $this->user->expired_at);
         $expireMonth = date('m', $this->user->expired_at);
         $today = date('d');
         $currentMonth = date('m');
-        if ($order->type === 2 && $expireMonth == $currentMonth && $expireDay === $today ) {
+        if ($order->type === Order::TYPE_RENEW && $expireMonth == $currentMonth && $expireDay === $today ) {
             $this->buyByResetTraffic();
         }
 
         $this->user->plan_id = $plan->id;
         $this->user->group_id = $plan->group_id;
         $this->user->expired_at = $this->getTime($order->period, $this->user->expired_at);
+
+        (new QuotaPackageService())->syncUserTransferEnable($this->user);
     }
 
     private function buyByOneTime(Order $order, Plan $plan)
     {
-        $transfer_enable = $plan->transfer_enable;
-        if (!$order->surplus_order_ids) {
-            $notUsedTraffic = ($this->user->transfer_enable - ($this->user->u + $this->user->d)) / 1073741824;
-            if ($notUsedTraffic > 0 && $this->user->expired_at == NULL) {
-                $transfer_enable += $notUsedTraffic;
-            }
+        // 对齐 Codex：额度包必须依附有效月度订阅，禁止仅买额度包。
+        if ($this->user->plan_id === NULL || ($this->user->expired_at !== NULL && $this->user->expired_at <= time())) {
+            abort(500, '购买额度包前需要先开通有效的月度订阅');
         }
-        $this->buyByResetTraffic();
-        $this->user->transfer_enable = $transfer_enable * 1073741824;
-        $this->user->device_limit = $plan->device_limit;
-        $this->user->plan_id = $plan->id;
-        $this->user->group_id = $plan->group_id;
-        $this->user->expired_at = NULL;
+
+        $packageBytes = max((int) $plan->transfer_enable, 0) * 1073741824;
+        $quotaService = new QuotaPackageService();
+        $quotaService->grantByOnetimeOrder($this->user, $packageBytes, $order->id, $plan->id);
+        $quotaService->syncUserTransferEnable($this->user);
     }
 
     private function getTime($str, $timestamp)
@@ -392,10 +424,69 @@ class OrderService
         switch ((int) $eventId) {
             case 0:
                 break;
-            case 1:
+            case Order::TYPE_NEW:
                 $this->buyByResetTraffic();
                 break;
         }
+    }
+
+
+    private function scheduleDowngrade(Order $order): bool
+    {
+        if ($this->user->expired_at === NULL) {
+            $plan = Plan::find($order->plan_id);
+            if ($plan) {
+                $this->buyByPeriod($order, $plan);
+                return true;
+            }
+            return false;
+        }
+
+        $order->change_direction = Order::CHANGE_DIRECTION_DOWNGRADE;
+        $order->change_apply_mode = Order::CHANGE_APPLY_NEXT_CYCLE;
+        $order->change_effective_at = $this->user->expired_at;
+        $order->change_applied_at = null;
+
+        return false;
+    }
+
+    private function detectChangeDirection(User $user, Order $order): int
+    {
+        $currentPlan = Plan::find($user->plan_id);
+        $targetPlan = Plan::find($order->plan_id);
+
+        if (!$currentPlan || !$targetPlan) {
+            return Order::CHANGE_DIRECTION_UPGRADE;
+        }
+
+        $currentUnitPrice = $this->getMonthlyUnitPrice($currentPlan, $order->period);
+        $targetUnitPrice = $this->getMonthlyUnitPrice($targetPlan, $order->period);
+
+        if ($currentUnitPrice === null || $targetUnitPrice === null) {
+            return Order::CHANGE_DIRECTION_UPGRADE;
+        }
+
+        if ($targetUnitPrice < $currentUnitPrice) {
+            return Order::CHANGE_DIRECTION_DOWNGRADE;
+        }
+
+        if ($targetUnitPrice > $currentUnitPrice) {
+            return Order::CHANGE_DIRECTION_UPGRADE;
+        }
+
+        return Order::CHANGE_DIRECTION_LATERAL;
+    }
+
+    private function getMonthlyUnitPrice(Plan $plan, string $period): ?float
+    {
+        $periodMonths = self::STR_TO_TIME[$period] ?? null;
+        $periodPrice = $plan->{$period} ?? null;
+
+        if (!$periodMonths || $periodPrice === null) {
+            return null;
+        }
+
+        return (float) $periodPrice / $periodMonths;
     }
 
     private function getbounus($total_amount) {

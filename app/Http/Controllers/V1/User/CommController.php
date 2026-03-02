@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\V1\User;
 
 use App\Http\Controllers\Controller;
+use App\Models\CurrencySetting;
 use App\Models\Payment;
 use App\Utils\Dict;
 use Illuminate\Http\Request;
@@ -18,8 +19,8 @@ class CommController extends Controller
                 'stripe_pk' => config('v2board.stripe_pk_live'),
                 'withdraw_methods' => config('v2board.commission_withdraw_method', Dict::WITHDRAW_METHOD_WHITELIST_DEFAULT),
                 'withdraw_close' => (int)config('v2board.withdraw_close_enable', 0),
-                'currency' => config('v2board.currency', 'CNY'),
-                'currency_symbol' => config('v2board.currency_symbol', '¥'),
+                'currency' => CurrencySetting::getValue('display_currency', config('v2board.currency', 'CNY')),
+                'currency_symbol' => CurrencySetting::getValue('display_currency_symbol', config('v2board.currency_symbol', '¥')),
                 'commission_distribution_enable' => (int)config('v2board.commission_distribution_enable', 0),
                 'commission_distribution_l1' => config('v2board.commission_distribution_l1'),
                 'commission_distribution_l2' => config('v2board.commission_distribution_l2'),

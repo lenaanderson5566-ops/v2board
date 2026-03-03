@@ -18,6 +18,18 @@
     return `${value.toFixed(2)} ${units[idx]}`;
   }
 
+
+  function formatDate(ts) {
+    const t = Number(ts || 0);
+    if (!t) return '-';
+    const d = new Date(t * 1000);
+    if (Number.isNaN(d.getTime())) return '-';
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${y}/${m}/${day}`;
+  }
+
   function ratio(used, total) {
     const t = Number(total || 0);
     const u = Number(used || 0);
@@ -55,6 +67,19 @@
     return null;
   }
 
+
+  function hideLegacyTrafficBlock(container) {
+    const children = Array.from(container.children || []);
+    for (const node of children) {
+      if (!node || node.id === PANEL_ID) continue;
+      const text = (node.innerText || '').replace(/\s+/g, ' ');
+      if (!text) continue;
+      if (text.indexOf('已用') !== -1 && text.indexOf('总计') !== -1 && text.indexOf('在线设备') !== -1) {
+        node.style.display = 'none';
+      }
+    }
+  }
+
   function buildHtml(data) {
     const totalUsed = Number(data.total_used_bytes || (Number(data.u || 0) + Number(data.d || 0)) || 0);
     const totalQuota = Number(data.transfer_enable || 0);
@@ -63,6 +88,9 @@
     const subscriptionTotal = Number(data.subscription_quota_total_bytes || 0);
     const subscriptionUsed = Number(data.subscription_quota_used_bytes || 0);
     const subscriptionRemaining = Number(data.subscription_quota_remaining_bytes || Math.max(subscriptionTotal - subscriptionUsed, 0));
+
+    const expiredAtText = formatDate(data.expired_at);
+    const resetDay = data.reset_day === null || data.reset_day === undefined ? '-' : `${data.reset_day} 天后`;
 
     const packageTotal = Number(data.quota_package_total_bytes || 0);
     const packageUsed = Number(data.quota_package_used_bytes || 0);
@@ -78,6 +106,11 @@
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
           <strong style="font-size:13px;color:#111827;">流量看板</strong>
           <span style="font-size:12px;color:${hasPackage ? '#059669' : '#6b7280'};">${hasPackage ? '已购买流量额度包' : '未购买流量额度包'}</span>
+        </div>
+
+        <div style="margin-bottom:10px;padding:8px 10px;background:#fff;border:1px solid #edf2f7;border-radius:8px;font-size:12px;color:#4b5563;line-height:1.6;">
+          <div>到期时间：${expiredAtText}</div>
+          <div>重置时间：${resetDay}</div>
         </div>
 
         <div style="display:grid;gap:10px;">
@@ -125,6 +158,7 @@
       container.appendChild(panel);
     }
 
+    hideLegacyTrafficBlock(container);
     panel.innerHTML = buildHtml(data);
     return true;
   }

@@ -1,8 +1,9 @@
 (function () {
-  const API_PATH = '/api/v1/user/getSubscribe';
   const PANEL_ID = 'quota-dashboard-panel';
-  let latestData = null;
-  let rendered = false;
+  const MAX_TRIES = 120;
+  const INTERVAL_MS = 1000;
+  let timer = null;
+  let tries = 0;
 
   function formatBytes(bytes) {
     const num = Number(bytes || 0);
@@ -78,62 +79,34 @@
       document.body.appendChild(panel);
     }
     panel.innerHTML = html;
-    rendered = true;
   }
 
-  function applyData(data) {
-    if (!data || typeof data !== 'object') return;
-    latestData = data;
-    mountPanel(buildPanel(data));
+  function getSubscribeFromStore() {
+    try {
+      const app = window.g_app;
+      const store = app && app._store;
+      const state = store && store.getState && store.getState();
+      const data = state && state.user && state.user.subscribe;
+      if (data && typeof data === 'object' && Object.keys(data).length) {
+        return data;
+      }
+    } catch (e) {}
+    return null;
   }
 
-  function tryParseSubscribePayload(payload) {
-    if (!payload || typeof payload !== 'object' || !payload.data) return;
-    applyData(payload.data);
+  function tick() {
+    tries += 1;
+    const data = getSubscribeFromStore();
+    if (data) {
+      mountPanel(buildPanel(data));
+    }
+    if (tries >= MAX_TRIES && timer) {
+      clearInterval(timer);
+      timer = null;
+    }
   }
 
-  function hookFetch() {
-    if (!window.fetch) return;
-    const rawFetch = window.fetch.bind(window);
-    window.fetch = async function (...args) {
-      const resp = await rawFetch(...args);
-      try {
-        const url = typeof args[0] === 'string' ? args[0] : (args[0] && args[0].url) || '';
-        if (String(url).indexOf(API_PATH) !== -1 && resp.ok) {
-          const cloned = resp.clone();
-          const payload = await cloned.json();
-          tryParseSubscribePayload(payload);
-        }
-      } catch (e) {}
-      return resp;
-    };
-  }
-
-  function hookXHR() {
-    const RawXHR = window.XMLHttpRequest;
-    if (!RawXHR) return;
-    const open = RawXHR.prototype.open;
-    const send = RawXHR.prototype.send;
-
-    RawXHR.prototype.open = function (method, url) {
-      this.__quota_url = url;
-      return open.apply(this, arguments);
-    };
-
-    RawXHR.prototype.send = function () {
-      this.addEventListener('readystatechange', function () {
-        try {
-          if (this.readyState !== 4 || this.status < 200 || this.status >= 300) return;
-          if (String(this.__quota_url || '').indexOf(API_PATH) === -1) return;
-          const payload = JSON.parse(this.responseText || '{}');
-          tryParseSubscribePayload(payload);
-        } catch (e) {}
-      });
-      return send.apply(this, arguments);
-    };
-  }
-
-  // 只复用并解析前端已有的 getSubscribe 响应，不主动发起额外请求
-  hookFetch();
-  hookXHR();
+  // 仅消费前端现有 store 数据，不拦截/不发起任何网络请求。
+  timer = setInterval(tick, INTERVAL_MS);
+  tick();
 })();

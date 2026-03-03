@@ -371,13 +371,6 @@ class UserController extends Controller
         $user['monthly_remaining_bytes'] = max($baseQuotaBytes - $user['monthly_used_bytes'], 0);
         $user['package_remaining_bytes'] = $packageRemainingBytes;
 
-        // 更可读的别名字段（保留旧字段以兼容前端）
-        $user['subscription_quota_total_bytes'] = $baseQuotaBytes;
-        $user['subscription_quota_used_bytes'] = $user['monthly_used_bytes'];
-        $user['subscription_quota_remaining_bytes'] = $user['monthly_remaining_bytes'];
-        $user['quota_package_remaining_bytes'] = $packageRemainingBytes;
-        $user['overall_quota_remaining_bytes'] = $user['total_remaining_bytes'];
-
         $user['reset_day'] = $userService->getResetDay($user);
         $user['allow_new_period'] = config('v2board.allow_new_period', 0);
         return response([

@@ -25,6 +25,10 @@
     return Math.max(0, Math.min(100, (u / t) * 100));
   }
 
+  function bar(percent, color) {
+    return `<div style="height:8px;background:#eef2f7;border-radius:999px;overflow:hidden;"><div style="height:100%;width:${percent.toFixed(2)}%;background:${color};"></div></div>`;
+  }
+
   function getSubscribeFromStore() {
     try {
       const app = window.g_app;
@@ -52,23 +56,57 @@
   }
 
   function buildHtml(data) {
-    const packageTotal = Number(data.quota_package_total_bytes || 0);
-    const packageUsed = Number(data.quota_package_used_bytes || 0);
-    const packageRemain = Number(data.quota_package_remaining_bytes || 0);
-    const hasPackage = Number(data.has_quota_package || 0) === 1;
+    const totalUsed = Number(data.total_used_bytes || (Number(data.u || 0) + Number(data.d || 0)) || 0);
+    const totalQuota = Number(data.transfer_enable || 0);
+    const totalRemaining = Number(data.total_remaining_bytes || Math.max(totalQuota - totalUsed, 0));
 
     const subscriptionTotal = Number(data.subscription_quota_total_bytes || 0);
     const subscriptionUsed = Number(data.subscription_quota_used_bytes || 0);
+    const subscriptionRemaining = Number(data.subscription_quota_remaining_bytes || Math.max(subscriptionTotal - subscriptionUsed, 0));
 
-    const packagePercent = ratio(packageUsed, packageTotal);
+    const packageTotal = Number(data.quota_package_total_bytes || 0);
+    const packageUsed = Number(data.quota_package_used_bytes || 0);
+    const packageRemain = Number(data.quota_package_remaining_bytes || Math.max(packageTotal - packageUsed, 0));
+    const hasPackage = Number(data.has_quota_package || 0) === 1;
+
+    const totalPercent = ratio(totalUsed, totalQuota);
     const subPercent = ratio(subscriptionUsed, subscriptionTotal);
+    const packagePercent = ratio(packageUsed, packageTotal);
 
     return `
-      <div style="margin-top:10px;padding:10px 12px;border:1px dashed #d1d5db;border-radius:8px;background:#f9fafb;">
-        <div style="font-size:12px;color:#374151;line-height:1.7;">
-          <div><strong>流量额度包：</strong>${hasPackage ? '已购买' : '未购买'}</div>
-          <div>已用 ${formatBytes(packageUsed)} / 总计 ${formatBytes(packageTotal)} / 剩余 ${formatBytes(packageRemain)}（${packagePercent.toFixed(1)}%）</div>
-          <div><strong>套餐月流量：</strong>已用 ${formatBytes(subscriptionUsed)} / 总计 ${formatBytes(subscriptionTotal)}（${subPercent.toFixed(1)}%）</div>
+      <div style="margin-top:10px;padding:12px;border:1px solid #e5e7eb;border-radius:10px;background:#f8fafc;">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
+          <strong style="font-size:13px;color:#111827;">流量看板</strong>
+          <span style="font-size:12px;color:${hasPackage ? '#059669' : '#6b7280'};">${hasPackage ? '已购买流量额度包' : '未购买流量额度包'}</span>
+        </div>
+
+        <div style="display:grid;gap:10px;">
+          <div style="padding:10px;background:#fff;border:1px solid #edf2f7;border-radius:8px;">
+            <div style="display:flex;justify-content:space-between;font-size:12px;color:#374151;margin-bottom:6px;">
+              <span>总流量（套餐 + 流量包）</span>
+              <span>${formatBytes(totalUsed)} / ${formatBytes(totalQuota)}（${totalPercent.toFixed(1)}%）</span>
+            </div>
+            ${bar(totalPercent, '#2563eb')}
+            <div style="margin-top:6px;font-size:12px;color:#6b7280;">剩余 ${formatBytes(totalRemaining)}</div>
+          </div>
+
+          <div style="padding:10px;background:#fff;border:1px solid #edf2f7;border-radius:8px;">
+            <div style="display:flex;justify-content:space-between;font-size:12px;color:#374151;margin-bottom:6px;">
+              <span>套餐月流量</span>
+              <span>${formatBytes(subscriptionUsed)} / ${formatBytes(subscriptionTotal)}（${subPercent.toFixed(1)}%）</span>
+            </div>
+            ${bar(subPercent, '#7c3aed')}
+            <div style="margin-top:6px;font-size:12px;color:#6b7280;">剩余 ${formatBytes(subscriptionRemaining)}</div>
+          </div>
+
+          <div style="padding:10px;background:#fff;border:1px solid #edf2f7;border-radius:8px;">
+            <div style="display:flex;justify-content:space-between;font-size:12px;color:#374151;margin-bottom:6px;">
+              <span>流量额度包</span>
+              <span>${formatBytes(packageUsed)} / ${formatBytes(packageTotal)}（${packagePercent.toFixed(1)}%）</span>
+            </div>
+            ${bar(packagePercent, '#f59e0b')}
+            <div style="margin-top:6px;font-size:12px;color:#6b7280;">剩余 ${formatBytes(packageRemain)}</div>
+          </div>
         </div>
       </div>
     `;

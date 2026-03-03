@@ -1,22 +1,9 @@
 (function () {
   const API_PATH = '/api/v1/user/getSubscribe';
   const PANEL_ID = 'quota-dashboard-panel';
-
-  function findToken() {
-    const keys = ['token', 'TOKEN', 'user_token', 'v2board_token', 'auth_data'];
-    for (const key of keys) {
-      const value = localStorage.getItem(key);
-      if (!value) continue;
-      if (key === 'auth_data') {
-        try {
-          const parsed = JSON.parse(value);
-          if (parsed && typeof parsed.token === 'string' && parsed.token) return parsed.token;
-        } catch (e) {}
-      }
-      if (typeof value === 'string' && value.length > 10) return value;
-    }
-    return null;
-  }
+  let latestData = null;
+  let rendered = false;
+  let fallbackRequested = false;
 
   function formatBytes(bytes) {
     const num = Number(bytes || 0);
@@ -54,23 +41,23 @@
     const pkgPercent = ratio(pkgUsed, pkgTotal);
 
     return `
-      <section style="margin:16px 0;padding:16px;border-radius:10px;background:#fff;box-shadow:0 2px 8px rgba(0,0,0,.06);">
-        <h3 style="margin:0 0 12px 0;font-size:16px;color:#111827;">流量看板（订阅 + 流量包）</h3>
-        <div style="display:grid;gap:12px;">
+      <section style="padding:14px;border-radius:10px;background:#fff;box-shadow:0 2px 14px rgba(0,0,0,.1);border:1px solid #e5e7eb;min-width:320px;max-width:380px;">
+        <h3 style="margin:0 0 10px 0;font-size:14px;color:#111827;">流量看板（订阅 + 流量包）</h3>
+        <div style="display:grid;gap:10px;">
           <div>
-            <div style="display:flex;justify-content:space-between;font-size:13px;color:#374151;">
+            <div style="display:flex;justify-content:space-between;font-size:12px;color:#374151;">
               <span>套餐月流量使用</span><span>${formatBytes(subUsed)} / ${formatBytes(subTotal)} (${subPercent.toFixed(1)}%)</span>
             </div>
             ${progressBar(subPercent)}
           </div>
           <div>
-            <div style="display:flex;justify-content:space-between;font-size:13px;color:#374151;">
+            <div style="display:flex;justify-content:space-between;font-size:12px;color:#374151;">
               <span>流量额度包状态</span><span>${hasPackage ? '已购买' : '未购买'}</span>
             </div>
-            <div style="display:flex;justify-content:space-between;font-size:13px;color:#6b7280;margin-top:6px;">
+            <div style="display:flex;justify-content:space-between;font-size:12px;color:#6b7280;margin-top:4px;">
               <span>剩余流量包</span><span>${formatBytes(pkgRemain)}</span>
             </div>
-            <div style="display:flex;justify-content:space-between;font-size:13px;color:#6b7280;">
+            <div style="display:flex;justify-content:space-between;font-size:12px;color:#6b7280;">
               <span>累计使用 / 累计购买</span><span>${formatBytes(pkgUsed)} / ${formatBytes(pkgTotal)} (${pkgPercent.toFixed(1)}%)</span>
             </div>
             ${progressBar(pkgPercent)}
@@ -81,38 +68,85 @@
   }
 
   function mountPanel(html) {
-    const root = document.querySelector('#root');
-    if (!root) return;
-
     let panel = document.getElementById(PANEL_ID);
     if (!panel) {
       panel = document.createElement('div');
       panel.id = PANEL_ID;
-      panel.style.maxWidth = '1200px';
-      panel.style.margin = '0 auto';
-      root.prepend(panel);
+      panel.style.position = 'fixed';
+      panel.style.right = '16px';
+      panel.style.bottom = '16px';
+      panel.style.zIndex = '9999';
+      document.body.appendChild(panel);
     }
     panel.innerHTML = html;
+    rendered = true;
   }
 
-  async function load() {
-    const token = findToken();
-    const headers = token ? { Authorization: `Bearer ${token}` } : {};
-    const resp = await fetch(API_PATH, { credentials: 'include', headers });
-    if (!resp.ok) return;
-    const result = await resp.json();
-    if (!result || !result.data) return;
-    mountPanel(buildPanel(result.data));
+  function applyData(data) {
+    if (!data || typeof data !== 'object') return;
+    latestData = data;
+    mountPanel(buildPanel(data));
   }
 
-  let retries = 0;
-  const timer = setInterval(async function () {
-    retries += 1;
+  function tryParseSubscribePayload(payload) {
+    if (!payload || typeof payload !== 'object' || !payload.data) return;
+    applyData(payload.data);
+  }
+
+  function hookFetch() {
+    if (!window.fetch) return;
+    const rawFetch = window.fetch.bind(window);
+    window.fetch = async function (...args) {
+      const resp = await rawFetch(...args);
+      try {
+        const url = typeof args[0] === 'string' ? args[0] : (args[0] && args[0].url) || '';
+        if (String(url).indexOf(API_PATH) !== -1 && resp.ok) {
+          const cloned = resp.clone();
+          const payload = await cloned.json();
+          tryParseSubscribePayload(payload);
+        }
+      } catch (e) {}
+      return resp;
+    };
+  }
+
+  function hookXHR() {
+    const RawXHR = window.XMLHttpRequest;
+    if (!RawXHR) return;
+    const open = RawXHR.prototype.open;
+    const send = RawXHR.prototype.send;
+
+    RawXHR.prototype.open = function (method, url) {
+      this.__quota_url = url;
+      return open.apply(this, arguments);
+    };
+
+    RawXHR.prototype.send = function () {
+      this.addEventListener('readystatechange', function () {
+        try {
+          if (this.readyState !== 4 || this.status < 200 || this.status >= 300) return;
+          if (String(this.__quota_url || '').indexOf(API_PATH) === -1) return;
+          const payload = JSON.parse(this.responseText || '{}');
+          tryParseSubscribePayload(payload);
+        } catch (e) {}
+      });
+      return send.apply(this, arguments);
+    };
+  }
+
+  async function requestOnceFallback() {
+    if (fallbackRequested || rendered || latestData) return;
+    fallbackRequested = true;
     try {
-      await load();
-      clearInterval(timer);
-    } catch (e) {
-      if (retries > 10) clearInterval(timer);
-    }
-  }, 1200);
+      const resp = await fetch(API_PATH, { credentials: 'include' });
+      if (!resp.ok) return;
+      const payload = await resp.json();
+      tryParseSubscribePayload(payload);
+    } catch (e) {}
+  }
+
+  hookFetch();
+  hookXHR();
+
+  setTimeout(requestOnceFallback, 3000);
 })();

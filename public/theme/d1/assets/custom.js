@@ -81,7 +81,7 @@
     const packagePercent = ratio(packageUsed, packageTotal);
 
     return `
-      <div style="padding:12px;border:1px solid #e5e7eb;border-radius:10px;background:#f8fafc;box-shadow:0 10px 30px rgba(15,23,42,.18);">
+      <div style="padding:12px;border:1px solid #e5e7eb;border-radius:10px;background:#f8fafc;box-shadow:0 10px 20px rgba(15,23,42,.16);pointer-events:auto;">
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
           <strong style="font-size:13px;color:#111827;">流量看板</strong>
           <span style="font-size:12px;color:${hasPackage ? '#059669' : '#6b7280'};">${hasPackage ? '已购买流量额度包' : '未购买流量额度包'}</span>
@@ -134,8 +134,10 @@
       panel.style.position = 'fixed';
       panel.style.right = '16px';
       panel.style.bottom = '16px';
-      panel.style.zIndex = '9999';
-      panel.style.width = 'min(420px, calc(100vw - 24px))';
+      panel.style.zIndex = '99';
+      panel.style.width = '360px';
+      panel.style.maxWidth = 'calc(100vw - 32px)';
+      panel.style.pointerEvents = 'none';
       document.body.appendChild(panel);
     }
 
@@ -149,6 +151,11 @@
 
   function tick() {
     tries += 1;
+
+    const path = window.location && window.location.pathname ? window.location.pathname : '';
+    if (path && path !== '/' && path !== '/dashboard') {
+      return;
+    }
     const data = getSubscribeFromStore();
     if (data) {
       renderIntoSubscriptionCard(data);

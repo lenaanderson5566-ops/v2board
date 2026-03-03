@@ -54,17 +54,8 @@
     return null;
   }
 
-  function findSubscriptionContainer() {
-    const root = document.getElementById('root') || document.body;
-    const candidates = root.querySelectorAll('div,section,article');
-    for (const node of candidates) {
-      const text = (node.innerText || '').replace(/\s+/g, ' ');
-      if (!text) continue;
-      if (text.indexOf('我的订阅') !== -1) {
-        return node;
-      }
-    }
-    return null;
+  function getRoot() {
+    return document.getElementById('root') || document.body;
   }
 
 
@@ -90,7 +81,7 @@
     const packagePercent = ratio(packageUsed, packageTotal);
 
     return `
-      <div style="margin-top:10px;padding:12px;border:1px solid #e5e7eb;border-radius:10px;background:#f8fafc;">
+      <div style="padding:12px;border:1px solid #e5e7eb;border-radius:10px;background:#f8fafc;box-shadow:0 10px 30px rgba(15,23,42,.18);">
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
           <strong style="font-size:13px;color:#111827;">流量看板</strong>
           <span style="font-size:12px;color:${hasPackage ? '#059669' : '#6b7280'};">${hasPackage ? '已购买流量额度包' : '未购买流量额度包'}</span>
@@ -134,24 +125,24 @@
   }
 
   function renderIntoSubscriptionCard(data) {
-    const root = document.getElementById('root') || document.body;
-    const subscription = findSubscriptionContainer();
+    const root = getRoot();
 
     let panel = document.getElementById(PANEL_ID);
     if (!panel) {
       panel = document.createElement('div');
       panel.id = PANEL_ID;
+      panel.style.position = 'fixed';
+      panel.style.right = '16px';
+      panel.style.bottom = '16px';
+      panel.style.zIndex = '9999';
+      panel.style.width = 'min(420px, calc(100vw - 24px))';
+      document.body.appendChild(panel);
     }
 
-    if (subscription) {
-      if (panel.parentElement !== subscription.parentElement) {
-        subscription.parentElement && subscription.parentElement.insertBefore(panel, subscription.nextSibling);
-      }
-    } else if (!panel.parentElement) {
-      root.appendChild(panel);
+    if (!panel.parentElement) {
+      (document.body || root).appendChild(panel);
     }
 
-    panel.style.marginTop = '10px';
     panel.innerHTML = buildHtml(data);
     return true;
   }
@@ -168,7 +159,7 @@
     }
   }
 
-  // 仅消费前端现有 store 数据，不发起网络请求；独立渲染看板避免被原区块重绘清空。
+  // 仅消费前端现有 store 数据，不发起网络请求；固定渲染在右下角。
   timer = setInterval(tick, INTERVAL_MS);
   tick();
 })();

@@ -1,13 +1,13 @@
 (function () {
-  const PANEL_ID = 'quota-dashboard-panel';
-  const MAX_TRIES = 120;
+  const PANEL_ID = 'quota-dashboard-panel-inline';
+  const MAX_TRIES = 180;
   const INTERVAL_MS = 1000;
   let timer = null;
   let tries = 0;
 
   function formatBytes(bytes) {
     const num = Number(bytes || 0);
-    if (!Number.isFinite(num) || num <= 0) return '0 B';
+    if (!Number.isFinite(num) || num <= 0) return '0.00 B';
     const units = ['B', 'KB', 'MB', 'GB', 'TB', 'PB'];
     let value = num;
     let idx = 0;
@@ -15,7 +15,7 @@
       value /= 1024;
       idx++;
     }
-    return `${value.toFixed(value >= 100 ? 0 : value >= 10 ? 1 : 2)} ${units[idx]}`;
+    return `${value.toFixed(2)} ${units[idx]}`;
   }
 
   function ratio(used, total) {
@@ -23,62 +23,6 @@
     const u = Number(used || 0);
     if (t <= 0) return 0;
     return Math.max(0, Math.min(100, (u / t) * 100));
-  }
-
-  function progressBar(percent) {
-    return `<div style="background:#e5e7eb;border-radius:999px;height:8px;overflow:hidden;"><div style="width:${percent.toFixed(2)}%;height:100%;background:#2563eb;"></div></div>`;
-  }
-
-  function buildPanel(data) {
-    const subUsed = Number(data.subscription_quota_used_bytes || 0);
-    const subTotal = Number(data.subscription_quota_total_bytes || 0);
-    const pkgUsed = Number(data.quota_package_used_bytes || 0);
-    const pkgTotal = Number(data.quota_package_total_bytes || 0);
-    const pkgRemain = Number(data.quota_package_remaining_bytes || 0);
-    const hasPackage = Number(data.has_quota_package || 0) === 1;
-
-    const subPercent = ratio(subUsed, subTotal);
-    const pkgPercent = ratio(pkgUsed, pkgTotal);
-
-    return `
-      <section style="padding:14px;border-radius:10px;background:#fff;box-shadow:0 2px 14px rgba(0,0,0,.1);border:1px solid #e5e7eb;min-width:320px;max-width:380px;">
-        <h3 style="margin:0 0 10px 0;font-size:14px;color:#111827;">流量看板（订阅 + 流量包）</h3>
-        <div style="display:grid;gap:10px;">
-          <div>
-            <div style="display:flex;justify-content:space-between;font-size:12px;color:#374151;">
-              <span>套餐月流量使用</span><span>${formatBytes(subUsed)} / ${formatBytes(subTotal)} (${subPercent.toFixed(1)}%)</span>
-            </div>
-            ${progressBar(subPercent)}
-          </div>
-          <div>
-            <div style="display:flex;justify-content:space-between;font-size:12px;color:#374151;">
-              <span>流量额度包状态</span><span>${hasPackage ? '已购买' : '未购买'}</span>
-            </div>
-            <div style="display:flex;justify-content:space-between;font-size:12px;color:#6b7280;margin-top:4px;">
-              <span>剩余流量包</span><span>${formatBytes(pkgRemain)}</span>
-            </div>
-            <div style="display:flex;justify-content:space-between;font-size:12px;color:#6b7280;">
-              <span>累计使用 / 累计购买</span><span>${formatBytes(pkgUsed)} / ${formatBytes(pkgTotal)} (${pkgPercent.toFixed(1)}%)</span>
-            </div>
-            ${progressBar(pkgPercent)}
-          </div>
-        </div>
-      </section>
-    `;
-  }
-
-  function mountPanel(html) {
-    let panel = document.getElementById(PANEL_ID);
-    if (!panel) {
-      panel = document.createElement('div');
-      panel.id = PANEL_ID;
-      panel.style.position = 'fixed';
-      panel.style.right = '16px';
-      panel.style.bottom = '16px';
-      panel.style.zIndex = '9999';
-      document.body.appendChild(panel);
-    }
-    panel.innerHTML = html;
   }
 
   function getSubscribeFromStore() {
@@ -94,11 +38,64 @@
     return null;
   }
 
+  function findSubscriptionContainer() {
+    const root = document.getElementById('root') || document.body;
+    const candidates = root.querySelectorAll('div,section,article');
+    for (const node of candidates) {
+      const text = (node.innerText || '').replace(/\s+/g, ' ');
+      if (!text) continue;
+      if (text.indexOf('我的订阅') !== -1 && text.indexOf('已用') !== -1 && text.indexOf('总计') !== -1) {
+        return node;
+      }
+    }
+    return null;
+  }
+
+  function buildHtml(data) {
+    const packageTotal = Number(data.quota_package_total_bytes || 0);
+    const packageUsed = Number(data.quota_package_used_bytes || 0);
+    const packageRemain = Number(data.quota_package_remaining_bytes || 0);
+    const hasPackage = Number(data.has_quota_package || 0) === 1;
+
+    const subscriptionTotal = Number(data.subscription_quota_total_bytes || 0);
+    const subscriptionUsed = Number(data.subscription_quota_used_bytes || 0);
+
+    const packagePercent = ratio(packageUsed, packageTotal);
+    const subPercent = ratio(subscriptionUsed, subscriptionTotal);
+
+    return `
+      <div style="margin-top:10px;padding:10px 12px;border:1px dashed #d1d5db;border-radius:8px;background:#f9fafb;">
+        <div style="font-size:12px;color:#374151;line-height:1.7;">
+          <div><strong>流量额度包：</strong>${hasPackage ? '已购买' : '未购买'}</div>
+          <div>已用 ${formatBytes(packageUsed)} / 总计 ${formatBytes(packageTotal)} / 剩余 ${formatBytes(packageRemain)}（${packagePercent.toFixed(1)}%）</div>
+          <div><strong>套餐月流量：</strong>已用 ${formatBytes(subscriptionUsed)} / 总计 ${formatBytes(subscriptionTotal)}（${subPercent.toFixed(1)}%）</div>
+        </div>
+      </div>
+    `;
+  }
+
+  function renderIntoSubscriptionCard(data) {
+    const container = findSubscriptionContainer();
+    if (!container) return false;
+
+    let panel = document.getElementById(PANEL_ID);
+    if (!panel) {
+      panel = document.createElement('div');
+      panel.id = PANEL_ID;
+      container.appendChild(panel);
+    } else if (panel.parentElement !== container) {
+      container.appendChild(panel);
+    }
+
+    panel.innerHTML = buildHtml(data);
+    return true;
+  }
+
   function tick() {
     tries += 1;
     const data = getSubscribeFromStore();
     if (data) {
-      mountPanel(buildPanel(data));
+      renderIntoSubscriptionCard(data);
     }
     if (tries >= MAX_TRIES && timer) {
       clearInterval(timer);
@@ -106,7 +103,7 @@
     }
   }
 
-  // 仅消费前端现有 store 数据，不拦截/不发起任何网络请求。
+  // 仅消费前端现有 store 数据，不发起网络请求。
   timer = setInterval(tick, INTERVAL_MS);
   tick();
 })();

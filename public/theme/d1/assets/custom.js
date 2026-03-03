@@ -3,7 +3,6 @@
   const PANEL_ID = 'quota-dashboard-panel';
   let latestData = null;
   let rendered = false;
-  let fallbackRequested = false;
 
   function formatBytes(bytes) {
     const num = Number(bytes || 0);
@@ -134,19 +133,7 @@
     };
   }
 
-  async function requestOnceFallback() {
-    if (fallbackRequested || rendered || latestData) return;
-    fallbackRequested = true;
-    try {
-      const resp = await fetch(API_PATH, { credentials: 'include' });
-      if (!resp.ok) return;
-      const payload = await resp.json();
-      tryParseSubscribePayload(payload);
-    } catch (e) {}
-  }
-
+  // 只复用并解析前端已有的 getSubscribe 响应，不主动发起额外请求
   hookFetch();
   hookXHR();
-
-  setTimeout(requestOnceFallback, 3000);
 })();

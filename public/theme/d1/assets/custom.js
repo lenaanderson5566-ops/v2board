@@ -60,25 +60,13 @@
     for (const node of candidates) {
       const text = (node.innerText || '').replace(/\s+/g, ' ');
       if (!text) continue;
-      if (text.indexOf('我的订阅') !== -1 && text.indexOf('已用') !== -1 && text.indexOf('总计') !== -1) {
+      if (text.indexOf('我的订阅') !== -1) {
         return node;
       }
     }
     return null;
   }
 
-
-  function hideLegacyTrafficBlock(container) {
-    const children = Array.from(container.children || []);
-    for (const node of children) {
-      if (!node || node.id === PANEL_ID) continue;
-      const text = (node.innerText || '').replace(/\s+/g, ' ');
-      if (!text) continue;
-      if (text.indexOf('已用') !== -1 && text.indexOf('总计') !== -1 && text.indexOf('在线设备') !== -1) {
-        node.style.display = 'none';
-      }
-    }
-  }
 
   function buildHtml(data) {
     const totalUsed = Number(data.total_used_bytes || (Number(data.u || 0) + Number(data.d || 0)) || 0);
@@ -146,19 +134,24 @@
   }
 
   function renderIntoSubscriptionCard(data) {
-    const container = findSubscriptionContainer();
-    if (!container) return false;
+    const root = document.getElementById('root') || document.body;
+    const subscription = findSubscriptionContainer();
 
     let panel = document.getElementById(PANEL_ID);
     if (!panel) {
       panel = document.createElement('div');
       panel.id = PANEL_ID;
-      container.appendChild(panel);
-    } else if (panel.parentElement !== container) {
-      container.appendChild(panel);
     }
 
-    hideLegacyTrafficBlock(container);
+    if (subscription) {
+      if (panel.parentElement !== subscription.parentElement) {
+        subscription.parentElement && subscription.parentElement.insertBefore(panel, subscription.nextSibling);
+      }
+    } else if (!panel.parentElement) {
+      root.appendChild(panel);
+    }
+
+    panel.style.marginTop = '10px';
     panel.innerHTML = buildHtml(data);
     return true;
   }
@@ -175,7 +168,7 @@
     }
   }
 
-  // 仅消费前端现有 store 数据，不发起网络请求。
+  // 仅消费前端现有 store 数据，不发起网络请求；独立渲染看板避免被原区块重绘清空。
   timer = setInterval(tick, INTERVAL_MS);
   tick();
 })();

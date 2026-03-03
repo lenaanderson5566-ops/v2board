@@ -362,6 +362,8 @@ class UserController extends Controller
         $quotaPackageService = new QuotaPackageService();
         $usedBytes = (int) $user['u'] + (int) $user['d'];
         $baseQuotaBytes = $quotaPackageService->getCurrentBaseQuotaBytes($user);
+        $packageTotalBytes = $quotaPackageService->getTotalBytes((int) $user['id']);
+        $packageUsedBytes = $quotaPackageService->getUsedBytes((int) $user['id']);
         $packageRemainingBytes = $quotaPackageService->getRemainingBytes((int) $user['id']);
 
         $user['total_used_bytes'] = $usedBytes;
@@ -369,7 +371,10 @@ class UserController extends Controller
         $user['subscription_quota_total_bytes'] = $baseQuotaBytes;
         $user['subscription_quota_used_bytes'] = min($usedBytes, $baseQuotaBytes);
         $user['subscription_quota_remaining_bytes'] = max($baseQuotaBytes - $user['subscription_quota_used_bytes'], 0);
+        $user['quota_package_total_bytes'] = $packageTotalBytes;
+        $user['quota_package_used_bytes'] = $packageUsedBytes;
         $user['quota_package_remaining_bytes'] = $packageRemainingBytes;
+        $user['has_quota_package'] = $packageTotalBytes > 0 ? 1 : 0;
 
         $user['reset_day'] = $userService->getResetDay($user);
         $user['allow_new_period'] = config('v2board.allow_new_period', 0);

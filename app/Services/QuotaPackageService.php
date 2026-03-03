@@ -61,6 +61,18 @@ class QuotaPackageService
             ->sum('remaining_bytes');
     }
 
+    public function getTotalBytes(int $userId): int
+    {
+        return (int) UserQuotaPackage::where('user_id', $userId)
+            ->sum('total_bytes');
+    }
+
+    public function getUsedBytes(int $userId): int
+    {
+        return (int) UserQuotaPackage::where('user_id', $userId)
+            ->sum('used_bytes');
+    }
+
     public function syncUserTransferEnable(User $user): void
     {
         $baseBytes = $this->getCurrentBaseQuotaBytes($user);

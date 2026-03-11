@@ -65,6 +65,72 @@
 
 
 
+
+  function getSupportedLocaleList() {
+    const i18n = (window.settings && window.settings.i18n) || {};
+    if (Array.isArray(i18n)) return i18n.map((x) => String(x));
+    if (i18n && typeof i18n === 'object') return Object.keys(i18n);
+    return [];
+  }
+
+  function normalizeLocale(locale) {
+    const raw = String(locale || '').trim().replace('_', '-');
+    if (!raw) return '';
+    return raw;
+  }
+
+  function matchSupportedLocale(locale) {
+    const normalized = normalizeLocale(locale);
+    if (!normalized) return '';
+
+    const supported = getSupportedLocaleList();
+    if (!supported.length) return normalized;
+
+    const lowerMap = new Map(supported.map((x) => [String(x).toLowerCase(), x]));
+    const direct = lowerMap.get(normalized.toLowerCase());
+    if (direct) return direct;
+
+    const langOnly = normalized.split('-')[0].toLowerCase();
+    const fallback = supported.find((x) => String(x).toLowerCase().startsWith(langOnly + '-'));
+    return fallback || '';
+  }
+
+  let persistingLanguage = false;
+  function bindLanguagePersistence() {
+    window.addEventListener('languagechange', function () {
+      if (persistingLanguage) return;
+
+      const locale = matchSupportedLocale(localStorage.getItem('umi_locale') || '');
+      if (!locale) return;
+
+      try {
+        const app = window.g_app;
+        const store = app && app._store;
+        const state = store && store.getState && store.getState();
+        const profileLocale = matchSupportedLocale(state && state.user && state.user.userInfo ? state.user.userInfo.language : '');
+        if (profileLocale && profileLocale === locale) return;
+        if (!store || typeof store.dispatch !== 'function') return;
+
+        persistingLanguage = true;
+        const dispatchResult = store.dispatch({
+          type: 'user/update',
+          key: 'language',
+          value: locale
+        });
+
+        if (dispatchResult && typeof dispatchResult.finally === 'function') {
+          dispatchResult.finally(function () {
+            persistingLanguage = false;
+          });
+        } else {
+          setTimeout(function () { persistingLanguage = false; }, 500);
+        }
+      } catch (e) {
+        persistingLanguage = false;
+      }
+    });
+  }
+
   function loadCollapsedState() {
     try {
       collapsed = localStorage.getItem(COLLAPSE_KEY) === '1';
@@ -206,6 +272,7 @@
 
   // 基于现有 store 数据渲染右下角看板。
   loadCollapsedState();
+  bindLanguagePersistence();
   timer = setInterval(tick, INTERVAL_MS);
   tick();
 })();

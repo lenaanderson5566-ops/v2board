@@ -5,22 +5,17 @@ namespace App\Services;
 class LocaleService
 {
     private $fallbackLocale;
+    private $themeI18nPath;
 
     public function __construct()
     {
         $this->fallbackLocale = $this->normalize((string) config('app.fallback_locale', 'zh-CN')) ?: 'zh-CN';
+        $this->themeI18nPath = public_path('theme/d1/assets/i18n');
     }
 
     public function getSupportedLocales(): array
     {
-        $locales = [];
-        foreach (glob(resource_path('lang/*.json')) as $file) {
-            $locale = basename($file, '.json');
-            $normalized = $this->normalize($locale);
-            if ($normalized) {
-                $locales[$normalized] = true;
-            }
-        }
+        $locales = $this->getThemeI18nLocales();
 
         $appLocale = $this->normalize((string) config('app.locale', ''));
         if ($appLocale) {
@@ -29,6 +24,29 @@ class LocaleService
         $locales[$this->fallbackLocale] = true;
 
         return array_keys($locales);
+    }
+
+    private function getThemeI18nLocales(): array
+    {
+        $locales = [];
+
+        foreach (glob($this->themeI18nPath . '/*.js') as $file) {
+            $content = @file_get_contents($file);
+            if ($content === false) {
+                continue;
+            }
+
+            if (!preg_match("/window\\.settings\\.i18n\\[['\"]([^'\"]+)['\"]\\]/", $content, $matches)) {
+                continue;
+            }
+
+            $normalized = $this->normalize($matches[1]);
+            if ($normalized) {
+                $locales[$normalized] = true;
+            }
+        }
+
+        return $locales;
     }
 
     public function resolveToSupported($locale): ?string

@@ -87,11 +87,23 @@
     return raw;
   }
 
+
+  function getSupportedLocaleList() {
+    const i18n = (window.settings && window.settings.i18n) || {};
+    if (Array.isArray(i18n)) {
+      return i18n.map((x) => String(x));
+    }
+    if (i18n && typeof i18n === 'object') {
+      return Object.keys(i18n);
+    }
+    return [];
+  }
+
   function matchSupportedLocale(locale) {
     const normalized = normalizeLocale(locale);
     if (!normalized) return '';
 
-    const supported = (window.settings && window.settings.i18n) || [];
+    const supported = getSupportedLocaleList();
     if (!supported.length) {
       return normalized;
     }

@@ -16,7 +16,8 @@ class UserUpdate extends FormRequest
         return [
             'auto_renewal' => 'in:0,1',
             'remind_expire' => 'in:0,1',
-            'remind_traffic' => 'in:0,1'
+            'remind_traffic' => 'in:0,1',
+            'language' => 'nullable|string|max:16|regex:/^[A-Za-z0-9_-]+$/'
         ];
     }
 
@@ -24,7 +25,8 @@ class UserUpdate extends FormRequest
     {
         return [
             'show.in' => __('Incorrect format of expiration reminder'),
-            'renew.in' => __('Incorrect traffic alert format')
+            'renew.in' => __('Incorrect traffic alert format'),
+            'language.regex' => __('Incorrect language format')
         ];
     }
 }

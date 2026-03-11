@@ -132,6 +132,8 @@ class AuthController extends Controller
         $user->password = password_hash($password, PASSWORD_DEFAULT);
         $user->uuid = Helper::guid(true);
         $user->token = Helper::guid();
+        $locale = str_replace('_', '-', trim((string)app()->getLocale()));
+        $user->language = $locale ?: 'zh-CN';
         if ($request->input('invite_code')) {
             $inviteCode = InviteCode::where('code', $request->input('invite_code'))
                 ->where('status', 0)

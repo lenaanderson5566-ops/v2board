@@ -288,6 +288,7 @@ class UserController extends Controller
                 'discount',
                 'commission_rate',
                 'telegram_id',
+                'language',
                 'uuid'
             ])
             ->first();
@@ -419,13 +420,19 @@ class UserController extends Controller
         $updateData = $request->only([
             'auto_renewal',
             'remind_expire',
-            'remind_traffic'
+            'remind_traffic',
+            'language'
         ]);
 
         $user = User::find($request->user['id']);
         if (!$user) {
             abort(500, __('The user does not exist'));
         }
+
+        if (array_key_exists('language', $updateData) && $updateData['language'] !== null) {
+            $updateData['language'] = str_replace('_', '-', trim((string)$updateData['language']));
+        }
+
         try {
             $user->update($updateData);
         } catch (\Exception $e) {

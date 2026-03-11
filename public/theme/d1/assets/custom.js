@@ -63,6 +63,54 @@
   }
 
 
+  function getUserInfoFromStore() {
+    try {
+      const app = window.g_app;
+      const store = app && app._store;
+      const state = store && store.getState && store.getState();
+      const data = state && state.user && state.user.userInfo;
+      if (data && typeof data === 'object' && Object.keys(data).length) {
+        return data;
+      }
+    } catch (e) {}
+    return null;
+  }
+
+  function normalizeLocale(locale) {
+    const raw = String(locale || '').trim().replace('_', '-');
+    if (!raw) return '';
+    return raw;
+  }
+
+  function syncLocaleByUserInfo() {
+    const userInfo = getUserInfoFromStore();
+    if (!userInfo || !userInfo.language) return;
+
+    const locale = normalizeLocale(userInfo.language);
+    if (!locale) return;
+
+    const supported = (window.settings && window.settings.i18n) || [];
+    let target = locale;
+    if (supported.length) {
+      const lowerMap = new Map(supported.map((x) => [String(x).toLowerCase(), x]));
+      const direct = lowerMap.get(locale.toLowerCase());
+      if (direct) {
+        target = direct;
+      } else {
+        const langOnly = locale.split('-')[0].toLowerCase();
+        const fallback = supported.find((x) => String(x).toLowerCase().startsWith(langOnly + '-'));
+        if (!fallback) return;
+        target = fallback;
+      }
+    }
+
+    const current = localStorage.getItem('umi_locale') || '';
+    if (current === target) return;
+    localStorage.setItem('umi_locale', target);
+    window.dispatchEvent(new Event('languagechange'));
+  }
+
+
   function loadCollapsedState() {
     try {
       collapsed = localStorage.getItem(COLLAPSE_KEY) === '1';
@@ -192,6 +240,7 @@
     if (path && path !== '/' && path !== '/dashboard') {
       return;
     }
+    syncLocaleByUserInfo();
     const data = getSubscribeFromStore();
     if (data) {
       renderIntoSubscriptionCard(data);

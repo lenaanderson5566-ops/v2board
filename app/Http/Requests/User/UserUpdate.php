@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests\User;
 
+use App\Services\LocaleService;
 use Illuminate\Foundation\Http\FormRequest;
 
 class UserUpdate extends FormRequest
@@ -16,7 +17,18 @@ class UserUpdate extends FormRequest
         return [
             'auto_renewal' => 'in:0,1',
             'remind_expire' => 'in:0,1',
-            'remind_traffic' => 'in:0,1'
+            'remind_traffic' => 'in:0,1',
+            'language' => [
+                'nullable',
+                'string',
+                'max:16',
+                function ($attribute, $value, $fail) {
+                    $localeService = new LocaleService();
+                    if (!$localeService->resolveToSupported($value)) {
+                        $fail(__('Unsupported language'));
+                    }
+                }
+            ]
         ];
     }
 

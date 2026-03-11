@@ -96,5 +96,16 @@
     "Sending frequently, please try again later": "发送频繁，请稍后再试",
     "Current product is sold out": "当前商品已售罄",
     "There are too many password errors, please try again after :minute minutes.": "密码错误次数过多，请 :minute 分钟后再试",
-    "Reset failed, Please try again later": "重置失败，请稍后再试"
+    "Reset failed, Please try again later": "重置失败，请稍后再试",
+    "An active monthly subscription is required before purchasing a Quota Package": "购买额度包前需要先拥有有效月度套餐",
+    "Order Type New": "新购",
+    "Order Type Renew": "续费",
+    "Order Type Upgrade": "升级",
+    "Order Type Reset": "重置流量包",
+    "Order Type Downgrade": "降级（下周期生效）",
+    "Order Type Deposit": "充值",
+    "Order Type Unknown": "未知订单类型",
+    "Change Apply Immediate": "立即生效",
+    "Change Apply Next Cycle": "下周期生效",
+    "Change Apply Unknown": "未设置生效方式"
 }

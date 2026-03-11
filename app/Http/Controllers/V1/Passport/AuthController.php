@@ -11,6 +11,7 @@ use App\Models\InviteCode;
 use App\Models\Plan;
 use App\Models\User;
 use App\Services\AuthService;
+use App\Services\LocaleService;
 use App\Services\RiskLogService;
 use App\Utils\CacheKey;
 use App\Utils\Dict;
@@ -132,6 +133,8 @@ class AuthController extends Controller
         $user->password = password_hash($password, PASSWORD_DEFAULT);
         $user->uuid = Helper::guid(true);
         $user->token = Helper::guid();
+        $localeService = new LocaleService();
+        $user->language = $localeService->resolveToSupported(app()->getLocale()) ?: $localeService->defaultLocale();
         if ($request->input('invite_code')) {
             $inviteCode = InviteCode::where('code', $request->input('invite_code'))
                 ->where('status', 0)

@@ -15,6 +15,8 @@ use App\Models\User;
 use App\Services\AuthService;
 use App\Services\OrderService;
 use App\Services\CurrencyRateService;
+use App\Services\LocaleService;
+use App\Services\QuotaPackageService;
 use App\Services\UserService;
 use App\Utils\CacheKey;
 use App\Utils\Helper;
@@ -287,6 +289,7 @@ class UserController extends Controller
                 'discount',
                 'commission_rate',
                 'telegram_id',
+                'language',
                 'uuid'
             ])
             ->first();
@@ -326,6 +329,7 @@ class UserController extends Controller
     {
         $user = User::where('id', $request->user['id'])
             ->select([
+                'id',
                 'plan_id',
                 'token',
                 'expired_at',
@@ -358,6 +362,23 @@ class UserController extends Controller
         $user['subscribe_url'] = Helper::getSubscribeUrl($user['token']);
 
         $userService = new UserService();
+        $quotaPackageService = new QuotaPackageService();
+        $usedBytes = (int) $user['u'] + (int) $user['d'];
+        $baseQuotaBytes = $quotaPackageService->getCurrentBaseQuotaBytes($user);
+        $packageTotalBytes = $quotaPackageService->getTotalBytes((int) $user['id']);
+        $packageUsedBytes = $quotaPackageService->getUsedBytes((int) $user['id']);
+        $packageRemainingBytes = $quotaPackageService->getRemainingBytes((int) $user['id']);
+
+        $user['total_used_bytes'] = $usedBytes;
+        $user['total_remaining_bytes'] = max((int) $user['transfer_enable'] - $usedBytes, 0);
+        $user['subscription_quota_total_bytes'] = $baseQuotaBytes;
+        $user['subscription_quota_used_bytes'] = min($usedBytes, $baseQuotaBytes);
+        $user['subscription_quota_remaining_bytes'] = max($baseQuotaBytes - $user['subscription_quota_used_bytes'], 0);
+        $user['quota_package_total_bytes'] = $packageTotalBytes;
+        $user['quota_package_used_bytes'] = $packageUsedBytes;
+        $user['quota_package_remaining_bytes'] = $packageRemainingBytes;
+        $user['has_quota_package'] = $packageTotalBytes > 0 ? 1 : 0;
+
         $user['reset_day'] = $userService->getResetDay($user);
         $user['allow_new_period'] = config('v2board.allow_new_period', 0);
         return response([
@@ -400,13 +421,24 @@ class UserController extends Controller
         $updateData = $request->only([
             'auto_renewal',
             'remind_expire',
-            'remind_traffic'
+            'remind_traffic',
+            'language'
         ]);
 
         $user = User::find($request->user['id']);
         if (!$user) {
             abort(500, __('The user does not exist'));
         }
+
+        if (array_key_exists('language', $updateData) && $updateData['language'] !== null) {
+            $localeService = new LocaleService();
+            $resolvedLocale = $localeService->resolveToSupported($updateData['language']);
+            if (!$resolvedLocale) {
+                abort(500, __('Unsupported language'));
+            }
+            $updateData['language'] = $resolvedLocale;
+        }
+
         try {
             $user->update($updateData);
         } catch (\Exception $e) {

@@ -96,9 +96,63 @@
   }
 
   let persistingLanguage = false;
+  let initializingLocale = false;
+  let localeInitialized = false;
+
+  function getBrowserLocale() {
+    try {
+      if (typeof navigator !== 'undefined' && navigator.language) {
+        return normalizeLocale(navigator.language);
+      }
+    } catch (e) {}
+    return '';
+  }
+
+  function resolveInitialLocale(profileLocale) {
+    const fromProfile = matchSupportedLocale(profileLocale || '');
+    if (fromProfile) return fromProfile;
+
+    const fromBrowser = matchSupportedLocale(getBrowserLocale());
+    if (fromBrowser) return fromBrowser;
+
+    const fromEnglish = matchSupportedLocale('en-US');
+    if (fromEnglish) return fromEnglish;
+
+    const supported = getSupportedLocaleList();
+    return supported.length ? String(supported[0]) : 'en-US';
+  }
+
+  function initLocaleByPriority() {
+    if (localeInitialized) return;
+
+    try {
+      const app = window.g_app;
+      const store = app && app._store;
+      const state = store && store.getState && store.getState();
+      const userInfo = state && state.user && state.user.userInfo;
+      if (!userInfo || typeof userInfo !== 'object' || !Object.keys(userInfo).length) {
+        return;
+      }
+
+      const target = resolveInitialLocale(userInfo.language);
+      if (!target) return;
+
+      const current = matchSupportedLocale(localStorage.getItem('umi_locale') || '');
+      localeInitialized = true;
+      if (current === target) return;
+
+      initializingLocale = true;
+      localStorage.setItem('umi_locale', target);
+      window.dispatchEvent(new Event('languagechange'));
+      initializingLocale = false;
+    } catch (e) {
+      initializingLocale = false;
+    }
+  }
+
   function bindLanguagePersistence() {
     window.addEventListener('languagechange', function () {
-      if (persistingLanguage) return;
+      if (persistingLanguage || initializingLocale) return;
 
       const locale = matchSupportedLocale(localStorage.getItem('umi_locale') || '');
       if (!locale) return;
@@ -260,6 +314,7 @@
     if (path && path !== '/' && path !== '/dashboard') {
       return;
     }
+    initLocaleByPriority();
     const data = getSubscribeFromStore();
     if (data) {
       renderIntoSubscriptionCard(data);

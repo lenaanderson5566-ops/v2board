@@ -1,10 +1,6 @@
-import { Alert, Button, Layout, Spin, Typography } from 'antd'
 import { useEffect, useState } from 'react'
 import QuotaDashboardCard from './components/QuotaDashboardCard'
 import { fetchSubscribe } from './api'
-
-const { Header, Content } = Layout
-const { Title, Text } = Typography
 
 export default function App() {
   const [loading, setLoading] = useState(true)
@@ -29,20 +25,30 @@ export default function App() {
   }, [])
 
   return (
-    <Layout style={{ minHeight: '100vh' }}>
-      <Header style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-        <Title level={4} style={{ color: '#fff', margin: 0 }}>V2Board Frontend Next</Title>
-        <Button onClick={load}>刷新</Button>
-      </Header>
-      <Content style={{ maxWidth: 960, margin: '24px auto', width: '100%', padding: '0 16px' }}>
-        <Alert type="info" showIcon message="这是基于编译产物重建的现代源码骨架（Vite + React + Ant Design）。" style={{ marginBottom: 16 }} />
-        {loading && <Spin />}
-        {!loading && error && <Alert type="error" showIcon message={error} />}
+    <div style={{ minHeight: '100vh', background: '#f5f7fb', color: '#1f2937' }}>
+      <header style={{ height: 64, background: '#0b2239', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 24px' }}>
+        <h2 style={{ margin: 0, fontSize: 30 }}>V2Board Frontend Next</h2>
+        <button onClick={load} style={{ border: '1px solid #d1d5db', borderRadius: 8, padding: '6px 12px', cursor: 'pointer' }}>刷新</button>
+      </header>
+
+      <main style={{ maxWidth: 960, margin: '24px auto', padding: '0 16px' }}>
+        <div style={{ marginBottom: 16, padding: 12, border: '1px solid #cfe3ff', background: '#ecf5ff', borderRadius: 8 }}>
+          这是基于编译产物重建的现代源码骨架（Vite + React，无 Ant Design）。
+        </div>
+
+        {loading && <div>加载中...</div>}
+        {!loading && error && (
+          <div style={{ marginBottom: 12, padding: 12, border: '1px solid #fecaca', background: '#fef2f2', borderRadius: 8, color: '#991b1b' }}>
+            {error}
+          </div>
+        )}
+
         {!loading && !error && data && <QuotaDashboardCard data={data} />}
-        <Text type="secondary" style={{ display: 'block', marginTop: 16 }}>
+
+        <div style={{ marginTop: 16, color: '#6b7280', fontSize: 14 }}>
           默认读取 /api/v1/user/getSubscribe，可通过 VITE_API_BASE 配置后端前缀。
-        </Text>
-      </Content>
-    </Layout>
+        </div>
+      </main>
+    </div>
   )
 }

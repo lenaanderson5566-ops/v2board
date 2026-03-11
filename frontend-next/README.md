@@ -5,7 +5,7 @@
 ## 技术栈
 - Vite 5
 - React 18
-- Ant Design 5
+- 原生 React 组件（不依赖 Ant Design / 阿里系组件库）
 
 ## 启动
 ```bash

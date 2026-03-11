@@ -1,9 +1,13 @@
 (function () {
   const PANEL_ID = 'quota-dashboard-panel-inline';
+  const TOGGLE_ID = 'quota-dashboard-toggle-btn';
+  const BODY_ID = 'quota-dashboard-body';
+  const COLLAPSE_KEY = 'quota_dashboard_collapsed';
   const MAX_TRIES = 180;
   const INTERVAL_MS = 1000;
   let timer = null;
   let tries = 0;
+  let collapsed = false;
 
   function formatBytes(bytes) {
     const num = Number(bytes || 0);
@@ -59,6 +63,25 @@
   }
 
 
+  function loadCollapsedState() {
+    try {
+      collapsed = localStorage.getItem(COLLAPSE_KEY) === '1';
+    } catch (e) {
+      collapsed = false;
+    }
+  }
+
+  function saveCollapsedState() {
+    try {
+      localStorage.setItem(COLLAPSE_KEY, collapsed ? '1' : '0');
+    } catch (e) {}
+  }
+
+  function toggleCollapsed() {
+    collapsed = !collapsed;
+    saveCollapsedState();
+  }
+
   function buildHtml(data) {
     const totalUsed = Number(data.total_used_bytes || (Number(data.u || 0) + Number(data.d || 0)) || 0);
     const totalQuota = Number(data.transfer_enable || 0);
@@ -82,11 +105,15 @@
 
     return `
       <div style="padding:12px;border:1px solid #e5e7eb;border-radius:10px;background:#f8fafc;box-shadow:0 10px 20px rgba(15,23,42,.16);pointer-events:auto;">
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;gap:8px;">
           <strong style="font-size:13px;color:#111827;">流量看板</strong>
-          <span style="font-size:12px;color:${hasPackage ? '#059669' : '#6b7280'};">${hasPackage ? '已购买流量额度包' : '未购买流量额度包'}</span>
+          <div style="display:flex;align-items:center;gap:8px;">
+            <span style="font-size:12px;color:${hasPackage ? '#059669' : '#6b7280'};">${hasPackage ? '已购买流量额度包' : '未购买流量额度包'}</span>
+            <button id="${TOGGLE_ID}" style="border:1px solid #d1d5db;background:#fff;border-radius:6px;font-size:12px;padding:2px 8px;cursor:pointer;">${collapsed ? '展开' : '折叠'}</button>
+          </div>
         </div>
 
+        <div id="${BODY_ID}" style="display:${collapsed ? 'none' : 'block'};">
         <div style="margin-bottom:10px;padding:8px 10px;background:#fff;border:1px solid #edf2f7;border-radius:8px;font-size:12px;color:#4b5563;line-height:1.6;">
           <div>到期时间：${expiredAtText}</div>
           <div>重置时间：${resetDay}</div>
@@ -120,6 +147,7 @@
             <div style="margin-top:6px;font-size:12px;color:#6b7280;">剩余 ${formatBytes(packageRemain)}</div>
           </div>
         </div>
+        </div>
       </div>
     `;
   }
@@ -146,6 +174,14 @@
     }
 
     panel.innerHTML = buildHtml(data);
+
+    const btn = panel.querySelector(`#${TOGGLE_ID}`);
+    if (btn) {
+      btn.onclick = function () {
+        toggleCollapsed();
+        panel.innerHTML = buildHtml(data);
+      };
+    }
     return true;
   }
 
@@ -167,6 +203,7 @@
   }
 
   // 仅消费前端现有 store 数据，不发起网络请求；固定渲染在右下角。
+  loadCollapsedState();
   timer = setInterval(tick, INTERVAL_MS);
   tick();
 })();

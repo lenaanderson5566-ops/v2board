@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests\User;
 
+use App\Services\LocaleService;
 use Illuminate\Foundation\Http\FormRequest;
 
 class UserUpdate extends FormRequest
@@ -17,7 +18,17 @@ class UserUpdate extends FormRequest
             'auto_renewal' => 'in:0,1',
             'remind_expire' => 'in:0,1',
             'remind_traffic' => 'in:0,1',
-            'language' => 'nullable|string|max:16|regex:/^[A-Za-z0-9_-]+$/'
+            'language' => [
+                'nullable',
+                'string',
+                'max:16',
+                function ($attribute, $value, $fail) {
+                    $localeService = new LocaleService();
+                    if (!$localeService->resolveToSupported($value)) {
+                        $fail(__('Unsupported language'));
+                    }
+                }
+            ]
         ];
     }
 
@@ -25,8 +36,7 @@ class UserUpdate extends FormRequest
     {
         return [
             'show.in' => __('Incorrect format of expiration reminder'),
-            'renew.in' => __('Incorrect traffic alert format'),
-            'language.regex' => __('Incorrect language format')
+            'renew.in' => __('Incorrect traffic alert format')
         ];
     }
 }

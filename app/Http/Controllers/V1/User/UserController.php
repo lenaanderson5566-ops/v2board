@@ -15,6 +15,7 @@ use App\Models\User;
 use App\Services\AuthService;
 use App\Services\OrderService;
 use App\Services\CurrencyRateService;
+use App\Services\LocaleService;
 use App\Services\QuotaPackageService;
 use App\Services\UserService;
 use App\Utils\CacheKey;
@@ -430,7 +431,12 @@ class UserController extends Controller
         }
 
         if (array_key_exists('language', $updateData) && $updateData['language'] !== null) {
-            $updateData['language'] = str_replace('_', '-', trim((string)$updateData['language']));
+            $localeService = new LocaleService();
+            $resolvedLocale = $localeService->resolveToSupported($updateData['language']);
+            if (!$resolvedLocale) {
+                abort(500, __('Unsupported language'));
+            }
+            $updateData['language'] = $resolvedLocale;
         }
 
         try {

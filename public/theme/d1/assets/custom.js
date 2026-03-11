@@ -5,9 +5,14 @@
   const COLLAPSE_KEY = 'quota_dashboard_collapsed';
   const MAX_TRIES = 180;
   const INTERVAL_MS = 1000;
+  const LOCALE_KEY = 'umi_locale';
+  const USER_UPDATE_API = '/api/v1/user/update';
   let timer = null;
   let tries = 0;
   let collapsed = false;
+  let syncingLocaleFromProfile = false;
+  let localePersisting = false;
+  let lastPersistedLocale = '';
 
   function formatBytes(bytes) {
     const num = Number(bytes || 0);
@@ -82,6 +87,76 @@
     return raw;
   }
 
+  function matchSupportedLocale(locale) {
+    const normalized = normalizeLocale(locale);
+    if (!normalized) return '';
+
+    const supported = (window.settings && window.settings.i18n) || [];
+    if (!supported.length) {
+      return normalized;
+    }
+
+    const lowerMap = new Map(supported.map((x) => [String(x).toLowerCase(), x]));
+    const direct = lowerMap.get(normalized.toLowerCase());
+    if (direct) return direct;
+
+    const langOnly = normalized.split('-')[0].toLowerCase();
+    const fallback = supported.find((x) => String(x).toLowerCase().startsWith(langOnly + '-'));
+    return fallback || '';
+  }
+
+  function getCurrentLocale() {
+    try {
+      return localStorage.getItem(LOCALE_KEY) || '';
+    } catch (e) {
+      return '';
+    }
+  }
+
+  function setCurrentLocale(locale) {
+    try {
+      localStorage.setItem(LOCALE_KEY, locale || '');
+    } catch (e) {}
+  }
+
+  function getApiBase() {
+    try {
+      let origin = new URL(window.location.href).origin;
+      if (window.settings && window.settings.host) {
+        origin = window.settings.host;
+      }
+      return `${origin}${USER_UPDATE_API}`;
+    } catch (e) {
+      return USER_UPDATE_API;
+    }
+  }
+
+  async function persistLanguage(locale) {
+    const target = matchSupportedLocale(locale);
+    if (!target) return false;
+
+    const res = await fetch(getApiBase(), {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json'
+      },
+      credentials: 'include',
+      body: JSON.stringify({ language: target })
+    });
+
+    let data = null;
+    try {
+      data = await res.json();
+    } catch (e) {}
+
+    if (!res.ok || !data || data.code !== 200) {
+      throw new Error((data && data.message) || `Request failed (${res.status})`);
+    }
+
+    return true;
+  }
+
   function syncLocaleByUserInfo() {
     const userInfo = getUserInfoFromStore();
     if (!userInfo || !userInfo.language) return;
@@ -89,25 +164,47 @@
     const locale = normalizeLocale(userInfo.language);
     if (!locale) return;
 
-    const supported = (window.settings && window.settings.i18n) || [];
-    let target = locale;
-    if (supported.length) {
-      const lowerMap = new Map(supported.map((x) => [String(x).toLowerCase(), x]));
-      const direct = lowerMap.get(locale.toLowerCase());
-      if (direct) {
-        target = direct;
-      } else {
-        const langOnly = locale.split('-')[0].toLowerCase();
-        const fallback = supported.find((x) => String(x).toLowerCase().startsWith(langOnly + '-'));
-        if (!fallback) return;
-        target = fallback;
-      }
-    }
+    const target = matchSupportedLocale(locale);
+    if (!target) return;
 
-    const current = localStorage.getItem('umi_locale') || '';
+    const current = getCurrentLocale();
     if (current === target) return;
-    localStorage.setItem('umi_locale', target);
+    syncingLocaleFromProfile = true;
+    setCurrentLocale(target);
     window.dispatchEvent(new Event('languagechange'));
+    syncingLocaleFromProfile = false;
+    lastPersistedLocale = target;
+  }
+
+  function bindLanguagePersistence() {
+    window.addEventListener('languagechange', async function () {
+      if (syncingLocaleFromProfile || localePersisting) return;
+
+      const selected = matchSupportedLocale(getCurrentLocale());
+      if (!selected) return;
+
+      const userInfo = getUserInfoFromStore();
+      const profileLocale = matchSupportedLocale(userInfo && userInfo.language ? userInfo.language : '');
+      if (!profileLocale || selected === profileLocale || selected === lastPersistedLocale) {
+        return;
+      }
+
+      localePersisting = true;
+      try {
+        await persistLanguage(selected);
+        lastPersistedLocale = selected;
+      } catch (error) {
+        setCurrentLocale(profileLocale);
+        window.dispatchEvent(new Event('languagechange'));
+        if (window.$message && typeof window.$message.error === 'function') {
+          window.$message.error('语言保存失败，已回滚到原语言');
+        } else {
+          alert('语言保存失败，已回滚到原语言');
+        }
+      } finally {
+        localePersisting = false;
+      }
+    });
   }
 
 
@@ -251,8 +348,9 @@
     }
   }
 
-  // 仅消费前端现有 store 数据，不发起网络请求；固定渲染在右下角。
+  // 基于现有 store 数据渲染右下角看板，并在语言切换时同步持久化到后端。
   loadCollapsedState();
+  bindLanguagePersistence();
   timer = setInterval(tick, INTERVAL_MS);
   tick();
 })();

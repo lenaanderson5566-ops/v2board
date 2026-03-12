@@ -8,6 +8,7 @@ use App\Models\Plan;
 use App\Models\User;
 use App\Services\QuotaPackageService;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 
 class OrderService
 {
@@ -47,6 +48,7 @@ class OrderService
                 DB::rollBack();
                 abort(500, '充值失败');
             }
+            $this->grantPointsForOrder($order);
             DB::commit();
             return;
         }
@@ -121,6 +123,7 @@ class OrderService
             abort(500, '开通失败');
         }
 
+        $this->grantPointsForOrder($order);
         DB::commit();
     }
 
@@ -166,9 +169,16 @@ class OrderService
     public function setVipDiscount(User $user)
     {
         $order = $this->order;
+        $couponDiscountAmount = (int) ($order->coupon_discount_amount ?? 0);
+        $vipDiscountAmount = 0;
+
         if ($user->discount) {
-            $order->discount_amount = $order->discount_amount + ($order->total_amount * ($user->discount / 100));
+            $vipDiscountAmount = (int) round($order->total_amount * ($user->discount / 100));
         }
+
+        $order->coupon_discount_amount = $couponDiscountAmount;
+        $order->user_discount_amount = $vipDiscountAmount;
+        $order->discount_amount = $couponDiscountAmount + $vipDiscountAmount;
         $order->total_amount = $order->total_amount - $order->discount_amount;
     }
 
@@ -218,6 +228,99 @@ class OrderService
             return (int)$order->total_amount;
         }
     }
+
+
+    private function grantPointsForOrder(Order $order): void
+    {
+        if (!Schema::hasTable('v2_user_points') || !Schema::hasTable('v2_user_point_logs')) {
+            return;
+        }
+
+        $points = $this->calculateRewardPointsByOrder($order);
+        if ($points <= 0) {
+            return;
+        }
+
+        $userId = (int) $order->user_id;
+        $now = time();
+        $logType = 'order_reward';
+        $description = sprintf('Points reward for order %s', $order->trade_no);
+
+        $alreadyRewarded = DB::table('v2_user_point_logs')
+            ->where('user_id', $userId)
+            ->where('type', $logType)
+            ->where('description', $description)
+            ->exists();
+        if ($alreadyRewarded) {
+            return;
+        }
+
+        $userPoints = DB::table('v2_user_points')->where('user_id', $userId)->first();
+        if (!$userPoints) {
+            DB::table('v2_user_points')->insert([
+                'user_id' => $userId,
+                'points' => 0,
+                'tier_id' => 1,
+                'created_at' => $now,
+                'updated_at' => $now,
+            ]);
+            $currentPoints = 0;
+        } else {
+            $currentPoints = (int) $userPoints->points;
+        }
+
+        $newPoints = $currentPoints + $points;
+        $tierId = 1;
+        if (Schema::hasTable('v2_tiers')) {
+            $tier = DB::table('v2_tiers')
+                ->where('points_required', '<=', $newPoints)
+                ->orderBy('level', 'desc')
+                ->first();
+            if ($tier) {
+                $tierId = (int) $tier->id;
+            }
+        }
+
+        DB::table('v2_user_points')
+            ->where('user_id', $userId)
+            ->update([
+                'points' => $newPoints,
+                'tier_id' => $tierId,
+                'updated_at' => $now,
+            ]);
+
+        DB::table('v2_user_point_logs')->insert([
+            'user_id' => $userId,
+            'points' => $points,
+            'type' => $logType,
+            'description' => $description,
+            'created_at' => $now,
+            'updated_at' => $now,
+        ]);
+    }
+
+    private function calculateRewardPointsByOrder(Order $order): int
+    {
+        $amountMinor = (int) $order->total_amount;
+        if ($amountMinor <= 0) {
+            return 0;
+        }
+
+        $currencyRateService = new CurrencyRateService();
+        $pricingCurrency = strtoupper((string) ($order->pricing_currency ?: 'CNY'));
+
+        if ($pricingCurrency === 'USD') {
+            return max($amountMinor, 0);
+        }
+
+        try {
+            $usdMinor = $currencyRateService->convertMinor($amountMinor, $pricingCurrency, 'USD');
+            return max((int) $usdMinor, 0);
+        } catch (\Throwable $e) {
+            return 0;
+        }
+    }
+
 
     private function haveValidOrder(User $user)
     {

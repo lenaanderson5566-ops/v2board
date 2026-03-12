@@ -23,6 +23,7 @@ use App\Utils\Helper;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 
 class UserController extends Controller
 {
@@ -302,10 +303,57 @@ class UserController extends Controller
         $baseCurrency = (new CurrencyRateService())->getBusinessBaseCurrency();
         $user['balance'] = $userService->getWalletBalanceByCurrency($request->user['id'], $baseCurrency);
         $user['balance_currency'] = $baseCurrency;
+        $user['tier'] = $this->buildTierInfo((int) $request->user['id']);
 
         return response([
             'data' => $user
         ]);
+    }
+
+    private function buildTierInfo(int $userId): array
+    {
+        $defaultTier = [
+            'key' => 'member',
+            'level' => 1,
+            'points' => 0,
+            'next_tier_key' => null,
+            'next_points_required' => null,
+            'points_to_next_tier' => 0,
+        ];
+
+        if (!Schema::hasTable('v2_tiers') || !Schema::hasTable('v2_user_points')) {
+            return $defaultTier;
+        }
+
+        $userPoint = DB::table('v2_user_points')->where('user_id', $userId)->first();
+        $points = (int) optional($userPoint)->points;
+        $currentTierId = (int) optional($userPoint)->tier_id;
+
+        $currentTier = null;
+        if ($currentTierId > 0) {
+            $currentTier = DB::table('v2_tiers')->where('id', $currentTierId)->first();
+        }
+        if (!$currentTier) {
+            $currentTier = DB::table('v2_tiers')->orderBy('level', 'asc')->first();
+        }
+        if (!$currentTier) {
+            $defaultTier['points'] = $points;
+            return $defaultTier;
+        }
+
+        $nextTier = DB::table('v2_tiers')
+            ->where('level', '>', (int) $currentTier->level)
+            ->orderBy('level', 'asc')
+            ->first();
+
+        return [
+            'key' => (string) $currentTier->name,
+            'level' => (int) $currentTier->level,
+            'points' => $points,
+            'next_tier_key' => $nextTier ? (string) $nextTier->name : null,
+            'next_points_required' => $nextTier ? (int) $nextTier->points_required : null,
+            'points_to_next_tier' => $nextTier ? max((int) $nextTier->points_required - $points, 0) : 0,
+        ];
     }
 
     public function getStat(Request $request)

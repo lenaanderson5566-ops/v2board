@@ -44,11 +44,6 @@ class OrderController extends Controller
             $order[$i]['change_apply_mode_text'] = Order::changeApplyModeText(isset($order[$i]['change_apply_mode']) ? (int) $order[$i]['change_apply_mode'] : null);
             $order[$i]['coupon_discount_amount'] = (int) ($order[$i]['coupon_discount_amount'] ?? 0);
             $order[$i]['user_discount_amount'] = (int) ($order[$i]['user_discount_amount'] ?? 0);
-            $order[$i]['discount_breakdown'] = [
-                'coupon_discount_amount' => $order[$i]['coupon_discount_amount'],
-                'user_discount_amount' => $order[$i]['user_discount_amount'],
-                'total_discount_amount' => (int) ($order[$i]['discount_amount'] ?? 0),
-            ];
         }
         return response([
             'data' => $order->makeHidden(['id', 'user_id'])
@@ -70,11 +65,6 @@ class OrderController extends Controller
         $order->change_apply_mode_text = Order::changeApplyModeText(isset($order->change_apply_mode) ? (int) $order->change_apply_mode : null);
         $order->coupon_discount_amount = (int) ($order->coupon_discount_amount ?? 0);
         $order->user_discount_amount = (int) ($order->user_discount_amount ?? 0);
-        $order->discount_breakdown = [
-            'coupon_discount_amount' => $order->coupon_discount_amount,
-            'user_discount_amount' => $order->user_discount_amount,
-            'total_discount_amount' => (int) ($order->discount_amount ?? 0),
-        ];
 
         if ($order->plan_id == 0) {
             $order['plan'] = [

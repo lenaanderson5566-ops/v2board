@@ -45,6 +45,13 @@ class OrderController extends Controller
         if ($order->surplus_order_ids) {
             $order['surplus_orders'] = Order::whereIn('id', $order->surplus_order_ids)->get();
         }
+        $order['coupon_discount_amount'] = (int) ($order['coupon_discount_amount'] ?? 0);
+        $order['user_discount_amount'] = (int) ($order['user_discount_amount'] ?? 0);
+        $order['discount_breakdown'] = [
+            'coupon_discount_amount' => $order['coupon_discount_amount'],
+            'user_discount_amount' => $order['user_discount_amount'],
+            'total_discount_amount' => (int) ($order['discount_amount'] ?? 0),
+        ];
         return response([
             'data' => $order
         ]);
@@ -71,6 +78,13 @@ class OrderController extends Controller
                     $res[$i]['plan_name'] = $plan[$k]['name'];
                 }
             }
+            $res[$i]['coupon_discount_amount'] = (int) ($res[$i]['coupon_discount_amount'] ?? 0);
+            $res[$i]['user_discount_amount'] = (int) ($res[$i]['user_discount_amount'] ?? 0);
+            $res[$i]['discount_breakdown'] = [
+                'coupon_discount_amount' => $res[$i]['coupon_discount_amount'],
+                'user_discount_amount' => $res[$i]['user_discount_amount'],
+                'total_discount_amount' => (int) ($res[$i]['discount_amount'] ?? 0),
+            ];
         }
         return response([
             'data' => $res,

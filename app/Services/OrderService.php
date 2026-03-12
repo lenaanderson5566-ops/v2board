@@ -169,9 +169,16 @@ class OrderService
     public function setVipDiscount(User $user)
     {
         $order = $this->order;
+        $couponDiscountAmount = (int) ($order->coupon_discount_amount ?? 0);
+        $vipDiscountAmount = 0;
+
         if ($user->discount) {
-            $order->discount_amount = $order->discount_amount + ($order->total_amount * ($user->discount / 100));
+            $vipDiscountAmount = (int) round($order->total_amount * ($user->discount / 100));
         }
+
+        $order->coupon_discount_amount = $couponDiscountAmount;
+        $order->user_discount_amount = $vipDiscountAmount;
+        $order->discount_amount = $couponDiscountAmount + $vipDiscountAmount;
         $order->total_amount = $order->total_amount - $order->discount_amount;
     }
 

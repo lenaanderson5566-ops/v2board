@@ -42,6 +42,13 @@ class OrderController extends Controller
             }
             $order[$i]['type_text'] = Order::typeText((int) $order[$i]['type']);
             $order[$i]['change_apply_mode_text'] = Order::changeApplyModeText(isset($order[$i]['change_apply_mode']) ? (int) $order[$i]['change_apply_mode'] : null);
+            $order[$i]['coupon_discount_amount'] = (int) ($order[$i]['coupon_discount_amount'] ?? 0);
+            $order[$i]['user_discount_amount'] = (int) ($order[$i]['user_discount_amount'] ?? 0);
+            $order[$i]['discount_breakdown'] = [
+                'coupon_discount_amount' => $order[$i]['coupon_discount_amount'],
+                'user_discount_amount' => $order[$i]['user_discount_amount'],
+                'total_discount_amount' => (int) ($order[$i]['discount_amount'] ?? 0),
+            ];
         }
         return response([
             'data' => $order->makeHidden(['id', 'user_id'])
@@ -61,6 +68,13 @@ class OrderController extends Controller
         $order->order_currency = $order->pricing_currency ?: $baseCurrency;
         $order->type_text = Order::typeText((int) $order->type);
         $order->change_apply_mode_text = Order::changeApplyModeText(isset($order->change_apply_mode) ? (int) $order->change_apply_mode : null);
+        $order->coupon_discount_amount = (int) ($order->coupon_discount_amount ?? 0);
+        $order->user_discount_amount = (int) ($order->user_discount_amount ?? 0);
+        $order->discount_breakdown = [
+            'coupon_discount_amount' => $order->coupon_discount_amount,
+            'user_discount_amount' => $order->user_discount_amount,
+            'total_discount_amount' => (int) ($order->discount_amount ?? 0),
+        ];
 
         if ($order->plan_id == 0) {
             $order['plan'] = [
@@ -112,6 +126,8 @@ class OrderController extends Controller
             $order->trade_no = Helper::generateOrderNo();
             $order->total_amount = $amount;
             $order->pricing_currency = $currencyRateService->getBusinessBaseCurrency();
+            $order->coupon_discount_amount = 0;
+            $order->user_discount_amount = 0;
             
             $orderService->setOrderType($user);
             $orderService->setInvite($user);
@@ -181,6 +197,8 @@ class OrderController extends Controller
         $order->trade_no = Helper::generateOrderNo();
         $order->total_amount = $plan[$request->input('period')];
         $order->pricing_currency = $currencyRateService->getBusinessBaseCurrency();
+        $order->coupon_discount_amount = 0;
+        $order->user_discount_amount = 0;
 
         if ($request->input('coupon_code')) {
             $couponService = new CouponService($request->input('coupon_code'));
@@ -189,6 +207,7 @@ class OrderController extends Controller
                 abort(500, __('Coupon failed'));
             }
             $order->coupon_id = $couponService->getId();
+            $order->coupon_discount_amount = (int) ($order->discount_amount ?? 0);
         }
 
         $orderService->setVipDiscount($user);

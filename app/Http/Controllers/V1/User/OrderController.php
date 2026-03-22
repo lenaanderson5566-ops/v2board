@@ -255,10 +255,21 @@ class OrderController extends Controller
         if (!$payment || $payment->enable !== 1) abort(500, __('Payment method is not available'));
         $paymentService = new PaymentService($payment->payment, $payment->id);
         $currencyRateService = new CurrencyRateService();
+        $previousPaymentId = (int)($order->payment_id ?? 0);
+        $isSwitchingPaymentMethod = $previousPaymentId > 0 && $previousPaymentId !== (int)$method;
         $order->handling_amount = NULL;
         if ($payment->handling_fee_fixed || $payment->handling_fee_percent) {
             $order->handling_amount = round(($order->total_amount * ($payment->handling_fee_percent / 100)) + $payment->handling_fee_fixed);
         }
+
+        // 用户切换支付方式时，重写锁定支付币种与金额，避免沿用上一次网关的换算结果
+        if ($isSwitchingPaymentMethod) {
+            $order->payment_currency = null;
+            $order->payment_amount = null;
+            $order->exchange_rate = null;
+            $order->exchange_rate_at = null;
+        }
+
         $order->payment_id = $method;
         $amountByPricingCurrency = isset($order->handling_amount) ? ($order->total_amount + $order->handling_amount) : $order->total_amount;
         $pricingCurrency = $order->pricing_currency ?: 'CNY';
@@ -275,6 +286,7 @@ class OrderController extends Controller
         $result = $paymentService->pay([
             'trade_no' => $tradeNo,
             'total_amount' => $amountByPricingCurrency,
+            'pricing_currency' => $pricingCurrency,
             'locked_payment_amount' => $convertedAmount,
             'locked_payment_currency' => $paymentCurrency,
             'user_id' => $order->user_id,

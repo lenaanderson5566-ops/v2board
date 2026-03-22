@@ -45,14 +45,33 @@ class PaymentService
             $notifyUrl = $this->config['notify_domain'] . $parseUrl['path'];
         }
 
+        $gatewayChargeAmount = $this->resolveGatewayChargeAmount($order);
+
         return $this->payment->pay([
             'notify_url' => $notifyUrl,
             'return_url' => url('/#/order/' . $order['trade_no']),
             'trade_no' => $order['trade_no'],
-            'total_amount' => $order['total_amount'],
+            'total_amount' => $gatewayChargeAmount,
             'user_id' => $order['user_id'],
             'stripe_token' => $order['stripe_token']
         ]);
+    }
+
+    private function resolveGatewayChargeAmount(array $order): int
+    {
+        $currencyRateService = new CurrencyRateService();
+        $pricingCurrency = $currencyRateService->normalizeCurrency($order['pricing_currency'] ?? 'CNY');
+        $gateway = (string)$this->method;
+
+        if ($currencyRateService->isGatewaySelfConvertingFromCny($gateway)) {
+            return $currencyRateService->convertMinor((int)$order['total_amount'], $pricingCurrency, 'CNY');
+        }
+
+        if (isset($order['locked_payment_amount']) && (int)$order['locked_payment_amount'] > 0) {
+            return (int)$order['locked_payment_amount'];
+        }
+
+        return (int)$order['total_amount'];
     }
 
     public function form()

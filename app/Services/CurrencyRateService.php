@@ -53,6 +53,17 @@ class CurrencyRateService
         return $this->normalizeCurrency($payment->currency ?? 'CNY');
     }
 
+    public function isGatewaySelfConvertingFromCny(string $gateway): bool
+    {
+        return in_array($gateway, [
+            'StripeCheckout',
+            'StripeCredit',
+            'StripeAlipay',
+            'StripeWepay',
+            'StripeALL',
+        ], true);
+    }
+
     public function getRateToBase(string $currency): ?float
     {
         $currency = $this->normalizeCurrency($currency);

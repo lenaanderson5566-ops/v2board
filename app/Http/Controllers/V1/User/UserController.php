@@ -51,6 +51,34 @@ class UserController extends Controller
         ]);
     }
 
+    public function logout(Request $request)
+    {
+        $user = User::find($request->user['id']);
+        if (!$user) {
+            abort(500, __('The user does not exist'));
+        }
+        $authorization = $request->input('auth_data') ?? $request->header('authorization');
+        if (!$authorization) {
+            abort(500, __('Not logged in or login expired'));
+        }
+        $authService = new AuthService($user);
+        return response([
+            'data' => $authService->removeSessionByAuthData($authorization)
+        ]);
+    }
+
+    public function logoutAll(Request $request)
+    {
+        $user = User::find($request->user['id']);
+        if (!$user) {
+            abort(500, __('The user does not exist'));
+        }
+        $authService = new AuthService($user);
+        return response([
+            'data' => $authService->removeAllSession()
+        ]);
+    }
+
     public function checkLogin(Request $request)
     {
         $data = [

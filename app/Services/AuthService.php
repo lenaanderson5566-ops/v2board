@@ -97,6 +97,27 @@ class AuthService
         return true;
     }
 
+    public function removeSessionByAuthData(string $jwt)
+    {
+        try {
+            $payload = (array)JWT::decode($jwt, new Key(config('app.key'), 'HS256'));
+            if ((int)($payload['id'] ?? 0) !== (int)$this->user->id) {
+                return false;
+            }
+            $sessionId = $payload['session'] ?? null;
+            if (!$sessionId) {
+                return false;
+            }
+            if (!$this->removeSession($sessionId)) {
+                return false;
+            }
+            Cache::forget($jwt);
+            return true;
+        } catch (\Throwable $e) {
+            return false;
+        }
+    }
+
     public function removeAllSession()
     {
         $cacheKey = CacheKey::get("USER_SESSIONS", $this->user->id);

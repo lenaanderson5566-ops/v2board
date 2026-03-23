@@ -89,11 +89,15 @@ class AuthService
     {
         $cacheKey = CacheKey::get("USER_SESSIONS", $this->user->id);
         $sessions = (array)Cache::get($cacheKey, []);
+        $sessionMeta = $sessions[$sessionId] ?? null;
         unset($sessions[$sessionId]);
         if (!Cache::put(
             $cacheKey,
             $sessions
         )) return false;
+        if (is_array($sessionMeta) && isset($sessionMeta['auth_data'])) {
+            Cache::forget($sessionMeta['auth_data']);
+        }
         return true;
     }
 

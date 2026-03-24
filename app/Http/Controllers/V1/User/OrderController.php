@@ -275,6 +275,8 @@ class OrderController extends Controller
         $result = $paymentService->pay([
             'trade_no' => $tradeNo,
             'total_amount' => $amountByPricingCurrency,
+            'payment_amount' => $order->payment_amount,
+            'payment_currency' => $order->payment_currency,
             'locked_payment_amount' => $convertedAmount,
             'locked_payment_currency' => $paymentCurrency,
             'user_id' => $order->user_id,

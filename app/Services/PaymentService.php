@@ -45,11 +45,16 @@ class PaymentService
             $notifyUrl = $this->config['notify_domain'] . $parseUrl['path'];
         }
 
+        $amountForGateway = $order['locked_payment_amount'] ?? $order['payment_amount'] ?? $order['total_amount'];
+        $currencyForGateway = $order['locked_payment_currency'] ?? $order['payment_currency'] ?? null;
+
         return $this->payment->pay([
             'notify_url' => $notifyUrl,
             'return_url' => url('/#/order/' . $order['trade_no']),
             'trade_no' => $order['trade_no'],
-            'total_amount' => $order['total_amount'],
+            'total_amount' => $amountForGateway,
+            'payment_amount' => $amountForGateway,
+            'payment_currency' => $currencyForGateway,
             'user_id' => $order['user_id'],
             'stripe_token' => $order['stripe_token']
         ]);

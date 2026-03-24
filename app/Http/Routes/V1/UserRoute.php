@@ -26,6 +26,8 @@ class UserRoute
             $router->post('/getQuickLoginUrl', 'V1\\User\\UserController@getQuickLoginUrl');
             $router->get ('/getActiveSession', 'V1\\User\\UserController@getActiveSession');
             $router->post('/removeActiveSession', 'V1\\User\\UserController@removeActiveSession');
+            $router->post('/logout', 'V1\\User\\UserController@logout');
+            $router->post('/logoutAll', 'V1\\User\\UserController@logoutAll');
             // Order
             $router->post('/order/save', 'V1\\User\\OrderController@save');
             $router->post('/order/checkout', 'V1\\User\\OrderController@checkout');

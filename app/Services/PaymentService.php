@@ -75,11 +75,6 @@ class PaymentService
         if ($currencyRateService->isGatewaySelfConvertingFromCny($this->paymentMeta)) {
             return $currencyRateService->convertMinor($totalAmount, $pricingCurrency, 'CNY');
         }
-
-        if ($currencyRateService->isCnySettledGateway($this->paymentMeta) && $lockedCurrency !== 'CNY') {
-            return $currencyRateService->convertMinor($lockedAmount, $lockedCurrency, 'CNY');
-        }
-
         return $lockedAmount;
     }
 
@@ -89,11 +84,6 @@ class PaymentService
         $lockedCurrency = $currencyRateService->normalizeCurrency(
             $order['locked_payment_currency'] ?? $order['payment_currency'] ?? 'CNY'
         );
-
-        if ($currencyRateService->isCnySettledGateway($this->paymentMeta)) {
-            return 'CNY';
-        }
-
         return $lockedCurrency;
     }
 

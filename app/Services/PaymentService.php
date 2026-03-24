@@ -11,6 +11,7 @@ class PaymentService
     protected $class;
     protected $config;
     protected $payment;
+    protected $paymentMeta = [];
 
     public function __construct($method, $id = NULL, $uuid = NULL)
     {
@@ -21,6 +22,7 @@ class PaymentService
         if ($uuid) $payment = Payment::where('uuid', $uuid)->first()->toArray();
         $this->config = [];
         if (isset($payment)) {
+            $this->paymentMeta = $payment;
             $this->config = $payment['config'];
             $this->config['enable'] = $payment['enable'];
             $this->config['id'] = $payment['id'];
@@ -45,8 +47,8 @@ class PaymentService
             $notifyUrl = $this->config['notify_domain'] . $parseUrl['path'];
         }
 
-        $amountForGateway = $order['locked_payment_amount'] ?? $order['payment_amount'] ?? $order['total_amount'];
-        $currencyForGateway = $order['locked_payment_currency'] ?? $order['payment_currency'] ?? null;
+        $amountForGateway = $this->resolveGatewayChargeAmount($order);
+        $currencyForGateway = $this->resolveGatewayChargeCurrency($order);
 
         return $this->payment->pay([
             'notify_url' => $notifyUrl,
@@ -58,6 +60,41 @@ class PaymentService
             'user_id' => $order['user_id'],
             'stripe_token' => $order['stripe_token']
         ]);
+    }
+
+    protected function resolveGatewayChargeAmount(array $order): int
+    {
+        $currencyRateService = new CurrencyRateService();
+        $pricingCurrency = $currencyRateService->normalizeCurrency($order['pricing_currency'] ?? 'CNY');
+        $lockedCurrency = $currencyRateService->normalizeCurrency(
+            $order['locked_payment_currency'] ?? $order['payment_currency'] ?? $pricingCurrency
+        );
+        $lockedAmount = (int)($order['locked_payment_amount'] ?? $order['payment_amount'] ?? $order['total_amount']);
+        $totalAmount = (int)($order['total_amount'] ?? $lockedAmount);
+
+        if ($currencyRateService->isGatewaySelfConvertingFromCny($this->paymentMeta)) {
+            return $currencyRateService->convertMinor($totalAmount, $pricingCurrency, 'CNY');
+        }
+
+        if ($currencyRateService->isCnySettledGateway($this->paymentMeta) && $lockedCurrency !== 'CNY') {
+            return $currencyRateService->convertMinor($lockedAmount, $lockedCurrency, 'CNY');
+        }
+
+        return $lockedAmount;
+    }
+
+    protected function resolveGatewayChargeCurrency(array $order): string
+    {
+        $currencyRateService = new CurrencyRateService();
+        $lockedCurrency = $currencyRateService->normalizeCurrency(
+            $order['locked_payment_currency'] ?? $order['payment_currency'] ?? 'CNY'
+        );
+
+        if ($currencyRateService->isCnySettledGateway($this->paymentMeta)) {
+            return 'CNY';
+        }
+
+        return $lockedCurrency;
     }
 
     public function form()

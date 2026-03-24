@@ -260,6 +260,10 @@ class OrderController extends Controller
             $order->handling_amount = round(($order->total_amount * ($payment->handling_fee_percent / 100)) + $payment->handling_fee_fixed);
         }
         $order->payment_id = $method;
+        $order->payment_currency = null;
+        $order->payment_amount = null;
+        $order->exchange_rate = null;
+        $order->exchange_rate_at = null;
         $amountByPricingCurrency = isset($order->handling_amount) ? ($order->total_amount + $order->handling_amount) : $order->total_amount;
         $pricingCurrency = $order->pricing_currency ?: 'CNY';
         $paymentCurrency = $currencyRateService->getPaymentCurrencyByGateway($payment);
@@ -275,6 +279,9 @@ class OrderController extends Controller
         $result = $paymentService->pay([
             'trade_no' => $tradeNo,
             'total_amount' => $amountByPricingCurrency,
+            'pricing_currency' => $pricingCurrency,
+            'payment_amount' => $order->payment_amount,
+            'payment_currency' => $order->payment_currency,
             'locked_payment_amount' => $convertedAmount,
             'locked_payment_currency' => $paymentCurrency,
             'user_id' => $order->user_id,

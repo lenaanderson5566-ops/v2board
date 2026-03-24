@@ -349,7 +349,14 @@ class OrderService
         if (!$lastOneTimeOrder) return;
         $nowUserTraffic = $user->transfer_enable / 1073741824;
         if ($nowUserTraffic == 0) return;
-        $paidTotalAmount = ($lastOneTimeOrder->total_amount + $lastOneTimeOrder->balance_amount);
+        $targetCurrency = strtoupper((string)($order->pricing_currency ?: 'CNY'));
+        $sourceCurrency = strtoupper((string)$lastOneTimeOrder->pricing_currency);
+        if (empty($sourceCurrency)) return;
+        $paidTotalAmount = (int)($lastOneTimeOrder->total_amount + $lastOneTimeOrder->balance_amount);
+        $currencyRateService = new CurrencyRateService();
+        if ($sourceCurrency !== $targetCurrency) {
+            $paidTotalAmount = $currencyRateService->convertMinor($paidTotalAmount, $sourceCurrency, $targetCurrency);
+        }
         if ($paidTotalAmount == 0) return;
         $notUsedTraffic = $nowUserTraffic - (($user->u + $user->d) / 1073741824);
         $remainingTrafficRatio = $notUsedTraffic / $nowUserTraffic;
@@ -372,13 +379,21 @@ class OrderService
         $orderAmountSum = 0;
         $orderMonthSum = 0;
         $lastValidateAt = null;
+        $targetCurrency = strtoupper((string)($order->pricing_currency ?: 'CNY'));
+        $currencyRateService = new CurrencyRateService();
         foreach ($orders as $item) {
             $period = self::STR_TO_TIME[$item['period']];
             $orderEndTime = strtotime("+{$period} month", $item['created_at']);
             if ($orderEndTime < time()) continue;
+            $sourceCurrency = strtoupper((string)($item['pricing_currency'] ?? ''));
+            if (empty($sourceCurrency)) continue;
             $lastValidateAt = $item['created_at'] > $lastValidateAt ? $item['created_at'] : $lastValidateAt;
             $orderMonthSum += $period;
-            $orderAmountSum += $item['total_amount'] + $item['balance_amount'] + $item['surplus_amount'] - $item['refund_amount'];
+            $itemAmount = (int)($item['total_amount'] + $item['balance_amount'] + $item['surplus_amount'] - $item['refund_amount']);
+            if ($sourceCurrency !== $targetCurrency) {
+                $itemAmount = $currencyRateService->convertMinor($itemAmount, $sourceCurrency, $targetCurrency);
+            }
+            $orderAmountSum += $itemAmount;
         }
         if ($lastValidateAt === null) return;
     

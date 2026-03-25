@@ -15,12 +15,13 @@ class GeoIpService
         }
 
         $result = $this->emptyResult();
+        $locale = 'en';
 
         $countryReader = $this->getReader('country');
         if ($countryReader) {
             try {
                 $record = $countryReader->country($ip);
-                $result['country'] = $record->country->names['zh-CN'] ?? $record->country->name;
+                $result['country'] = $record->country->names[$locale] ?? $record->country->name;
             } catch (\Throwable $e) {
             }
         }
@@ -29,10 +30,10 @@ class GeoIpService
         if ($cityReader) {
             try {
                 $record = $cityReader->city($ip);
-                $result['region'] = $record->mostSpecificSubdivision->names['zh-CN'] ?? $record->mostSpecificSubdivision->name;
-                $result['city'] = $record->city->names['zh-CN'] ?? $record->city->name;
+                $result['region'] = $record->mostSpecificSubdivision->names[$locale] ?? $record->mostSpecificSubdivision->name;
+                $result['city'] = $record->city->names[$locale] ?? $record->city->name;
                 if (!$result['country']) {
-                    $result['country'] = $record->country->names['zh-CN'] ?? $record->country->name;
+                    $result['country'] = $record->country->names[$locale] ?? $record->country->name;
                 }
             } catch (\Throwable $e) {
             }

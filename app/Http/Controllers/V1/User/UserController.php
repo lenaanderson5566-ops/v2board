@@ -600,6 +600,7 @@ class UserController extends Controller
         $userId = (int) $request->user['id'];
         $data = LoginLog::query()
             ->where('user_id', $userId)
+            ->where('is_success', 1)
             ->select(['created_at as login_at', 'ip'])
             ->orderBy('created_at', 'desc')
             ->limit(5)

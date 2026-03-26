@@ -600,7 +600,7 @@ class UserController extends Controller
         $data = LoginLog::query()
             ->where('user_id', $userId)
             ->where('is_success', 1)
-            ->select(['created_at as login_at', 'ip'])
+            ->select(['created_at as login_at', 'ip', 'country', 'city'])
             ->orderBy('created_at', 'desc')
             ->limit(5)
             ->get();

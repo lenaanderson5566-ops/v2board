@@ -2,7 +2,7 @@
 
 本文档描述新增的用户日志接口：
 
-- `GET /api/v1/user/log/login/recent`：返回当前登录用户最近 5 次“成功登录”时间与 IP
+- `GET /api/v1/user/log/login/recent`：返回当前登录用户最近 5 次“成功登录”时间、IP、国家与城市
 
 > 接口在 `user` 中间件下，需要携带有效登录态。
 
@@ -34,11 +34,15 @@ curl -X GET 'https://example.com/api/v1/user/log/login/recent' \
   "data": [
     {
       "login_at": 1760000000,
-      "ip": "198.51.100.10"
+      "ip": "198.51.100.10",
+      "country": "United States",
+      "city": "Los Angeles"
     },
     {
       "login_at": 1759999000,
-      "ip": "203.0.113.20"
+      "ip": "203.0.113.20",
+      "country": "Japan",
+      "city": "Tokyo"
     }
   ]
 }
@@ -51,10 +55,12 @@ curl -X GET 'https://example.com/api/v1/user/log/login/recent' \
 | `data` | array | 最近 5 次成功登录记录（按时间倒序） |
 | `data[].login_at` | integer\|null | 登录时间戳（Unix 秒） |
 | `data[].ip` | string\|null | 登录 IP |
+| `data[].country` | string\|null | 登录 IP 归属国家 |
+| `data[].city` | string\|null | 登录 IP 归属城市 |
 
 ---
 
 ## 说明
 
 - 登录日志来自 `v2_login_log`，通过当前用户 `user_id` + `is_success=1` 过滤，并限制最多 5 条。
-- 返回数据只包含时间与 IP 字段，便于前端用户中心直接渲染。
+- 返回数据包含时间、IP、国家、城市字段，便于前端用户中心直接渲染。

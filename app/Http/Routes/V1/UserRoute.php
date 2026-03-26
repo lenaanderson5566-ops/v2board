@@ -29,7 +29,6 @@ class UserRoute
             $router->post('/logout', 'V1\\User\\UserController@logout');
             $router->post('/logoutAll', 'V1\\User\\UserController@logoutAll');
             $router->get ('/log/login/recent', 'V1\\User\\UserController@getRecentLoginLogs');
-            $router->get ('/log/connection/recent-24h', 'V1\\User\\UserController@getRecent24hConnectionLogs');
             // Order
             $router->post('/order/save', 'V1\\User\\OrderController@save');
             $router->post('/order/checkout', 'V1\\User\\OrderController@checkout');

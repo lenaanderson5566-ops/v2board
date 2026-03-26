@@ -13,7 +13,6 @@ use App\Models\Order;
 use App\Models\Plan;
 use App\Models\Ticket;
 use App\Models\User;
-use App\Models\UserConnectionLog;
 use App\Services\AuthService;
 use App\Services\OrderService;
 use App\Services\CurrencyRateService;
@@ -604,22 +603,6 @@ class UserController extends Controller
             ->select(['created_at as login_at', 'ip'])
             ->orderBy('created_at', 'desc')
             ->limit(5)
-            ->get();
-
-        return response([
-            'data' => $data,
-        ]);
-    }
-
-    public function getRecent24hConnectionLogs(Request $request)
-    {
-        $userId = (int) $request->user['id'];
-        $from = time() - 86400;
-        $data = UserConnectionLog::query()
-            ->where('user_id', $userId)
-            ->where('connected_at', '>=', $from)
-            ->select(['connected_at', 'ip'])
-            ->orderBy('connected_at', 'desc')
             ->get();
 
         return response([

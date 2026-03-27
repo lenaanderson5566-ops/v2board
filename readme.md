@@ -40,6 +40,9 @@
 ## Document
 [Click](https://v2board.com)
 
+### API Docs (Repo)
+- [用户登出接口文档](docs/api/user-logout.md)
+
 ## Sponsors
 Thanks to the open source project license provided by [Jetbrains](https://www.jetbrains.com/)
 

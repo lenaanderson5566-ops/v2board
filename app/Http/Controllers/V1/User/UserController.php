@@ -8,6 +8,7 @@ use App\Http\Requests\User\UserRedeemGiftCard;
 use App\Http\Requests\User\UserTransfer;
 use App\Http\Requests\User\UserUpdate;
 use App\Models\Giftcard;
+use App\Models\LoginLog;
 use App\Models\Order;
 use App\Models\Plan;
 use App\Models\Ticket;
@@ -590,6 +591,22 @@ class UserController extends Controller
         }
         return response([
             'data' => $url
+        ]);
+    }
+
+    public function getRecentLoginLogs(Request $request)
+    {
+        $userId = (int) $request->user['id'];
+        $data = LoginLog::query()
+            ->where('user_id', $userId)
+            ->where('is_success', 1)
+            ->select(['created_at as login_at', 'ip', 'country', 'city'])
+            ->orderBy('created_at', 'desc')
+            ->limit(5)
+            ->get();
+
+        return response([
+            'data' => $data,
         ]);
     }
 }

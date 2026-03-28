@@ -20,6 +20,144 @@ use Illuminate\Support\Facades\DB;
 
 class OrderController extends Controller
 {
+    public function preview(OrderSave $request)
+    {
+        $userService = new UserService();
+        $currencyRateService = new CurrencyRateService();
+
+        if ($request->input('plan_id') == 0) {
+            $amount = (int) $request->input('deposit_amount');
+            if ($amount <= 0) {
+                abort(500, __('Failed to create order, deposit amount must be greater than 0'));
+            }
+            if ($amount >= 9999999) {
+                abort(500, __('Deposit amount too large, please contact the administrator'));
+            }
+
+            return response([
+                'data' => [
+                    'plan_id' => 0,
+                    'period' => 'deposit',
+                    'pricing_currency' => $currencyRateService->getBusinessBaseCurrency(),
+                    'total_amount' => $amount,
+                    'discount_amount' => 0,
+                    'coupon_discount_amount' => 0,
+                    'user_discount_amount' => 0,
+                    'surplus_amount' => 0,
+                    'balance_amount' => 0,
+                ],
+            ]);
+        }
+
+        $planService = new PlanService($request->input('plan_id'));
+        $plan = $planService->plan;
+        $user = User::find($request->user['id']);
+
+        if (!$plan) {
+            abort(500, __('Subscription plan does not exist'));
+        }
+
+        if ($user->plan_id !== $plan->id && !$planService->haveCapacity() && $request->input('period') !== 'reset_price') {
+            abort(500, __('Current product is sold out'));
+        }
+
+        if ($plan[$request->input('period')] === NULL) {
+            abort(500, __('This payment period cannot be purchased, please choose another period'));
+        }
+
+        if ($request->input('period') === 'reset_price') {
+            if (!$userService->isAvailable($user) || $plan->id !== $user->plan_id) {
+                abort(500, __('Subscription has expired or no active subscription, unable to purchase Data Reset Package'));
+            }
+        }
+
+        if ($request->input('period') === 'onetime_price') {
+            if (!$userService->isAvailable($user) || is_null($user->plan_id)) {
+                abort(500, __('An active monthly subscription is required before purchasing a Quota Package'));
+            }
+        }
+
+        if ((!$plan->show && !$plan->renew) || (!$plan->show && $user->plan_id !== $plan->id)) {
+            if ($request->input('period') !== 'reset_price') {
+                abort(500, __('This subscription has been sold out, please choose another subscription'));
+            }
+        }
+
+        if (!$plan->renew && $user->plan_id == $plan->id && $request->input('period') !== 'reset_price') {
+            abort(500, __('This subscription cannot be renewed, please change to another subscription'));
+        }
+
+        if (!$plan->show && $plan->renew && !$userService->isAvailable($user)) {
+            abort(500, __('This subscription has expired, please change to another subscription'));
+        }
+
+        $order = new Order();
+        $orderService = new OrderService($order);
+        $order->user_id = $request->user['id'];
+        $order->plan_id = $plan->id;
+        $order->period = $request->input('period');
+        $order->total_amount = (int) $plan[$request->input('period')];
+        $order->pricing_currency = $currencyRateService->getBusinessBaseCurrency();
+        $order->coupon_discount_amount = 0;
+        $order->user_discount_amount = 0;
+        $order->surplus_amount = 0;
+        $order->balance_amount = 0;
+
+        if ($request->input('coupon_code')) {
+            $couponService = new CouponService($request->input('coupon_code'));
+            $couponService->setPlanId($order->plan_id);
+            $couponService->setUserId($order->user_id);
+            $couponService->setPeriod($order->period);
+            $couponService->check();
+            $coupon = $couponService->getCoupon();
+            if (!$coupon) {
+                abort(500, __('Invalid coupon'));
+            }
+
+            $couponDiscountAmount = 0;
+            switch ((int) $coupon->type) {
+                case 1:
+                    $couponDiscountAmount = (int) $coupon->value;
+                    break;
+                case 2:
+                    $couponDiscountAmount = (int) round($order->total_amount * ($coupon->value / 100));
+                    break;
+            }
+            if ($couponDiscountAmount > $order->total_amount) {
+                $couponDiscountAmount = (int) $order->total_amount;
+            }
+            $order->coupon_discount_amount = $couponDiscountAmount;
+            $order->discount_amount = $couponDiscountAmount;
+            $order->coupon_id = $coupon->id;
+        }
+
+        $orderService->setVipDiscount($user);
+        $orderService->setOrderType($user);
+        $orderService->setInvite($user);
+
+        $walletTotal = $userService->getUserWalletTotalInCurrency(
+            (int) $order->user_id,
+            (string) ($order->pricing_currency ?: 'CNY'),
+            $currencyRateService
+        );
+        $order->balance_amount = max(0, min((int) $order->total_amount, (int) $walletTotal));
+        $order->total_amount = max(0, (int) $order->total_amount - (int) $order->balance_amount);
+
+        return response([
+            'data' => [
+                'plan_id' => (int) $order->plan_id,
+                'period' => (string) $order->period,
+                'pricing_currency' => (string) ($order->pricing_currency ?: 'CNY'),
+                'total_amount' => (int) $order->total_amount,
+                'discount_amount' => (int) ($order->discount_amount ?? 0),
+                'coupon_discount_amount' => (int) ($order->coupon_discount_amount ?? 0),
+                'user_discount_amount' => (int) ($order->user_discount_amount ?? 0),
+                'surplus_amount' => (int) ($order->surplus_amount ?? 0),
+                'balance_amount' => (int) ($order->balance_amount ?? 0),
+            ],
+        ]);
+    }
+
     public function fetch(Request $request)
     {
         $model = Order::where('user_id', $request->user['id'])

@@ -28,8 +28,10 @@ class UserRoute
             $router->post('/removeActiveSession', 'V1\\User\\UserController@removeActiveSession');
             $router->post('/logout', 'V1\\User\\UserController@logout');
             $router->post('/logoutAll', 'V1\\User\\UserController@logoutAll');
+            $router->get ('/log/login/recent', 'V1\\User\\UserController@getRecentLoginLogs');
             // Order
             $router->post('/order/save', 'V1\\User\\OrderController@save');
+            $router->post('/order/preview', 'V1\\User\\OrderController@preview');
             $router->post('/order/checkout', 'V1\\User\\OrderController@checkout');
             $router->get ('/order/check', 'V1\\User\\OrderController@check');
             $router->get ('/order/detail', 'V1\\User\\OrderController@detail');

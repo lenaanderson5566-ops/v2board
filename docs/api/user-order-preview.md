@@ -21,7 +21,7 @@
 
 ## 出参
 
-返回字段：`plan_id`、`period`、`pricing_currency`、`total_amount`、`discount_amount`、`coupon_discount_amount`、`user_discount_amount`、`surplus_amount`、`balance_amount`、`handling_amount`。
+返回字段：`plan_id`、`period`、`pricing_currency`、`total_amount`、`discount_amount`、`coupon_discount_amount`、`user_discount_amount`、`surplus_amount`、`balance_amount`。
 
 ```json
 {
@@ -34,8 +34,7 @@
     "coupon_discount_amount": 100,
     "user_discount_amount": 200,
     "surplus_amount": 0,
-    "balance_amount": 500,
-    "handling_amount": 0
+    "balance_amount": 500
   }
 }
 ```
@@ -43,5 +42,4 @@
 ## 说明
 
 - `total_amount` 为预览后的待支付金额（已扣除折扣与钱包抵扣预估）。
-- `handling_amount` 预览阶段固定返回 `0`（实际手续费在 checkout 阶段按支付方式计算）。
 - `balance_amount` 为钱包可抵扣金额预估值。

@@ -45,7 +45,6 @@ class OrderController extends Controller
                     'user_discount_amount' => 0,
                     'surplus_amount' => 0,
                     'balance_amount' => 0,
-                    'handling_amount' => 0,
                 ],
             ]);
         }
@@ -103,7 +102,6 @@ class OrderController extends Controller
         $order->user_discount_amount = 0;
         $order->surplus_amount = 0;
         $order->balance_amount = 0;
-        $order->handling_amount = 0;
 
         if ($request->input('coupon_code')) {
             $couponService = new CouponService($request->input('coupon_code'));
@@ -156,7 +154,6 @@ class OrderController extends Controller
                 'user_discount_amount' => (int) ($order->user_discount_amount ?? 0),
                 'surplus_amount' => (int) ($order->surplus_amount ?? 0),
                 'balance_amount' => (int) ($order->balance_amount ?? 0),
-                'handling_amount' => (int) ($order->handling_amount ?? 0),
             ],
         ]);
     }

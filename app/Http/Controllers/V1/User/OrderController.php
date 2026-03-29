@@ -382,11 +382,17 @@ class OrderController extends Controller
         }
         // free process
         if ($order->total_amount <= 0) {
+            $currencyRateService = new CurrencyRateService();
+            $pricingCurrency = $order->pricing_currency ?: $currencyRateService->getBusinessBaseCurrency();
             $orderService = new OrderService($order);
             if (!$orderService->paid($order->trade_no)) abort(500, '');
             return response([
                 'type' => -1,
-                'data' => true
+                'data' => true,
+                'total_amount' => (int)$order->total_amount,
+                'pricing_currency' => $pricingCurrency,
+                'payment_amount' => 0,
+                'payment_currency' => $pricingCurrency
             ]);
         }
         $payment = Payment::find($method);
@@ -403,7 +409,7 @@ class OrderController extends Controller
         $order->exchange_rate = null;
         $order->exchange_rate_at = null;
         $amountByPricingCurrency = isset($order->handling_amount) ? ($order->total_amount + $order->handling_amount) : $order->total_amount;
-        $pricingCurrency = $order->pricing_currency ?: 'CNY';
+        $pricingCurrency = $order->pricing_currency ?: $currencyRateService->getBusinessBaseCurrency();
         $paymentCurrency = $currencyRateService->getPaymentCurrencyByGateway($payment);
         $convertedAmount = $currencyRateService->convertMinor($amountByPricingCurrency, $pricingCurrency, $paymentCurrency);
         $paymentRateToBase = $currencyRateService->getRateToBase($paymentCurrency);
@@ -427,7 +433,11 @@ class OrderController extends Controller
         ]);
         return response([
             'type' => $result['type'],
-            'data' => $result['data']
+            'data' => $result['data'],
+            'total_amount' => (int)$amountByPricingCurrency,
+            'pricing_currency' => $pricingCurrency,
+            'payment_amount' => (int)$order->payment_amount,
+            'payment_currency' => $order->payment_currency
         ]);
     }
 

@@ -94,19 +94,22 @@ class OrderService
                 }
         }
 
-        switch ((int)$order->type) {
-            case Order::TYPE_DOWNGRADE:
-                $this->openEvent(config('v2board.change_order_event_id', 0));
-                break;
-            case Order::TYPE_NEW:
-                $this->openEvent(config('v2board.new_order_event_id', 0));
-                break;
-            case Order::TYPE_RENEW:
-                $this->openEvent(config('v2board.renew_order_event_id', 0));
-                break;
-            case Order::TYPE_UPGRADE:
-                $this->openEvent(config('v2board.change_order_event_id', 0));
-                break;
+        // 通用流量包不参与订阅事件钩子，避免触发“新购事件=重置流量”等副作用
+        if ($order->period !== 'onetime_price') {
+            switch ((int)$order->type) {
+                case Order::TYPE_DOWNGRADE:
+                    $this->openEvent(config('v2board.change_order_event_id', 0));
+                    break;
+                case Order::TYPE_NEW:
+                    $this->openEvent(config('v2board.new_order_event_id', 0));
+                    break;
+                case Order::TYPE_RENEW:
+                    $this->openEvent(config('v2board.renew_order_event_id', 0));
+                    break;
+                case Order::TYPE_UPGRADE:
+                    $this->openEvent(config('v2board.change_order_event_id', 0));
+                    break;
+            }
         }
 
         if ((int) $order->type !== Order::TYPE_DOWNGRADE || ($downgradeAppliedNow ?? true)) {

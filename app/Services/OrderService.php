@@ -135,6 +135,14 @@ class OrderService
         $order->change_apply_mode = null;
         $order->change_effective_at = null;
         $order->change_applied_at = null;
+        // 通用流量包：独立商品，不参与任何旧套餐抵折/变更逻辑
+        if ($order->period === 'onetime_price') {
+            $order->type = Order::TYPE_NEW;
+            $order->surplus_amount = 0;
+            $order->surplus_order_ids = null;
+            $order->refund_amount = 0;
+            return;
+        }
         if ($order->period === 'deposit'){
             $order->type = Order::TYPE_DEPOSIT;
         } else if ($order->period === 'reset_price') {

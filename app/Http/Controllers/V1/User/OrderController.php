@@ -72,7 +72,7 @@ class OrderController extends Controller
         }
 
         if ($request->input('period') === 'onetime_price') {
-            if (!$userService->isAvailable($user) || is_null($user->plan_id)) {
+            if (!$userService->isAvailable($user)) {
                 abort(500, __('An active monthly subscription is required before purchasing a Quota Package'));
             }
         }
@@ -294,12 +294,12 @@ class OrderController extends Controller
             }
         }
 
-
         if ($request->input('period') === 'onetime_price') {
-            if (!$userService->isAvailable($user) || is_null($user->plan_id)) {
+            if (!$userService->isAvailable($user)) {
                 abort(500, __('An active monthly subscription is required before purchasing a Quota Package'));
             }
         }
+
 
         if ((!$plan->show && !$plan->renew) || (!$plan->show && $user->plan_id !== $plan->id)) {
             if ($request->input('period') !== 'reset_price') {

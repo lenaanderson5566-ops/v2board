@@ -90,9 +90,6 @@ class PlanI18nController extends Controller
         if (!preg_match('/^[a-z]{2}-[A-Z]{2}$/', $params['locale'])) {
             abort(500, '语言标识请使用 xx-YY 格式，如 zh-CN、en-US');
         }
-        if (!in_array($params['locale'], self::RECOMMENDED_LOCALES, true)) {
-            abort(500, '暂不支持该语言，仅支持：' . implode('、', self::RECOMMENDED_LOCALES));
-        }
 
         $name = $params['name'] ?? null;
         $content = $params['content'] ?? null;

@@ -5,13 +5,14 @@ namespace App\Http\Controllers\V1\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\Plan;
 use App\Models\PlanTranslation;
+use App\Services\LocaleService;
 use Illuminate\Http\Request;
 
 class PlanI18nController extends Controller
 {
     private const RECOMMENDED_LOCALES = [
-        'zh-CN', 'zh-TW', 'zh-HK', 'en', 'ja', 'ko', 'fr', 'de', 'es', 'pt-BR', 'ru',
-        'ar', 'tr', 'vi', 'th', 'id', 'ms', 'hi', 'it', 'nl', 'pl', 'uk'
+        'zh-CN', 'zh-TW', 'zh-HK', 'en-US', 'ja-JP', 'ko-KR', 'fr-FR', 'de-DE', 'es-ES', 'pt-BR', 'ru-RU',
+        'ar-SA', 'tr-TR', 'vi-VN', 'th-TH', 'id-ID', 'ms-MY', 'hi-IN', 'it-IT', 'nl-NL', 'pl-PL', 'uk-UA'
     ];
 
     public function locales()
@@ -85,7 +86,11 @@ class PlanI18nController extends Controller
             abort(500, '订阅不存在');
         }
 
-        $params['locale'] = trim($params['locale']);
+        $localeService = new LocaleService();
+        $params['locale'] = $localeService->normalize(trim($params['locale']));
+        if (!preg_match('/^[a-z]{2}-[A-Z]{2}$/', $params['locale'])) {
+            abort(500, '语言标识请使用 xx-YY 格式，如 zh-CN、en-US');
+        }
 
         $name = $params['name'] ?? null;
         $content = $params['content'] ?? null;

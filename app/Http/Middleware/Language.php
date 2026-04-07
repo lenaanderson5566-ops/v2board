@@ -9,15 +9,9 @@ class Language
 {
     public function handle($request, Closure $next)
     {
-        $locale = $request->query('language')
-            ?: $request->query('lang')
-            ?: $request->query('locale');
+        $locale = $request->query('lang');
         if (!$locale) {
             $locale = $this->parseAcceptLanguage($request->header('accept-language'));
-        }
-        // Backward compatibility: keep supporting request-side content-language
-        if (!$locale) {
-            $locale = $request->header('content-language');
         }
 
         if ($locale) {

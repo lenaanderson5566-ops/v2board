@@ -27,19 +27,23 @@ class PlanTranslationService
             ->get();
 
         $translationMap = [];
+        $priorityMap = array_flip(array_values($candidates));
         foreach ($translations as $translation) {
             $planId = $translation->plan_id;
-            if (isset($translationMap[$planId])) {
-                continue;
+            $priority = $priorityMap[$translation->locale] ?? PHP_INT_MAX;
+            if (!isset($translationMap[$planId]) || $priority < $translationMap[$planId]['priority']) {
+                $translationMap[$planId] = [
+                    'priority' => $priority,
+                    'translation' => $translation
+                ];
             }
-            $translationMap[$planId] = $translation;
         }
 
         foreach ($plans as $plan) {
             if (!isset($translationMap[$plan->id])) {
                 continue;
             }
-            $translation = $translationMap[$plan->id];
+            $translation = $translationMap[$plan->id]['translation'];
             if ($translation->name) {
                 $plan->name = $translation->name;
             }
@@ -64,6 +68,11 @@ class PlanTranslationService
 
         $translation = PlanTranslation::where('plan_id', $plan->id)
             ->whereIn('locale', $candidates)
+            ->get()
+            ->sortBy(function ($item) use ($candidates) {
+                $index = array_search($item->locale, $candidates, true);
+                return $index === false ? PHP_INT_MAX : $index;
+            })
             ->first();
 
         if (!$translation) {
@@ -89,7 +98,7 @@ class PlanTranslationService
 
         $available = $this->getAvailableLocales();
         if (!$available) {
-            return [$locale];
+            return array_values(array_unique([$locale, 'en-US', 'en']));
         }
 
         $normalized = str_replace('_', '-', $locale);
@@ -116,16 +125,25 @@ class PlanTranslationService
             }
         }
 
+        $add('en-US');
+        $add('en');
+        foreach ($available as $v) {
+            if (stripos($v, 'en-') === 0 && !in_array($v, $candidates, true)) {
+                $candidates[] = $v;
+            }
+        }
+
         return $candidates;
     }
 
     private function getAvailableLocales()
     {
+        $dbLocales = PlanTranslation::query()->distinct()->pluck('locale')->toArray();
         $files = glob(resource_path('lang') . '/*.json');
-        $locales = [];
+        $fileLocales = [];
         foreach ($files as $file) {
-            $locales[] = basename($file, '.json');
+            $fileLocales[] = basename($file, '.json');
         }
-        return $locales;
+        return array_values(array_unique(array_merge($dbLocales, $fileLocales)));
     }
 }

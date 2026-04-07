@@ -11,8 +11,7 @@ use Illuminate\Http\Request;
 class PlanI18nController extends Controller
 {
     private const RECOMMENDED_LOCALES = [
-        'zh-CN', 'zh-TW', 'zh-HK', 'en-US', 'ja-JP', 'ko-KR', 'fr-FR', 'de-DE', 'es-ES', 'pt-BR', 'ru-RU',
-        'ar-SA', 'tr-TR', 'vi-VN', 'th-TH', 'id-ID', 'ms-MY', 'hi-IN', 'it-IT', 'nl-NL', 'pl-PL', 'uk-UA'
+        'en-US', 'zh-CN', 'zh-TW', 'ja-JP', 'ko-KR', 'ru-RU', 'fa-IR', 'vi-VN'
     ];
 
     public function locales()
@@ -90,6 +89,9 @@ class PlanI18nController extends Controller
         $params['locale'] = $localeService->normalize(trim($params['locale']));
         if (!preg_match('/^[a-z]{2}-[A-Z]{2}$/', $params['locale'])) {
             abort(500, '语言标识请使用 xx-YY 格式，如 zh-CN、en-US');
+        }
+        if (!in_array($params['locale'], self::RECOMMENDED_LOCALES, true)) {
+            abort(500, '暂不支持该语言，仅支持：' . implode('、', self::RECOMMENDED_LOCALES));
         }
 
         $name = $params['name'] ?? null;

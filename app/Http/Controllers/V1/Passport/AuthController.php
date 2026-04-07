@@ -200,9 +200,12 @@ class AuthController extends Controller
         if ((int)config('v2board.password_limit_enable', 1)) {
             $passwordErrorCount = (int)Cache::get(CacheKey::get('PASSWORD_ERROR_LIMIT', $email), 0);
             if ($passwordErrorCount >= (int)config('v2board.password_limit_count', 5)) {
-                abort(500, __('There are too many password errors, please try again after :minute minutes.', [
-                    'minute' => config('v2board.password_limit_expire', 60)
-                ]));
+                return response()->json([
+                    'code' => 'AUTH_LOGIN_PASSWORD_RETRY_LIMITED',
+                    'message' => __('There are too many password errors, please try again after :minute minutes.', [
+                        'minute' => config('v2board.password_limit_expire', 60)
+                    ])
+                ], 500);
             }
         }
 
@@ -213,7 +216,10 @@ class AuthController extends Controller
                 'is_success' => false,
                 'reason' => 'user_not_found'
             ]);
-            abort(500, __('Incorrect email or password'));
+            return response()->json([
+                'code' => 'AUTH_LOGIN_INVALID_CREDENTIALS',
+                'message' => __('Incorrect email or password')
+            ], 500);
         }
         if (!Helper::multiPasswordVerify(
             $user->password_algo,
@@ -234,7 +240,10 @@ class AuthController extends Controller
                 'is_success' => false,
                 'reason' => 'password_error'
             ]);
-            abort(500, __('Incorrect email or password'));
+            return response()->json([
+                'code' => 'AUTH_LOGIN_INVALID_CREDENTIALS',
+                'message' => __('Incorrect email or password')
+            ], 500);
         }
 
         if ($user->banned) {
@@ -244,7 +253,10 @@ class AuthController extends Controller
                 'is_success' => false,
                 'reason' => 'user_banned'
             ]);
-            abort(500, __('Your account has been suspended'));
+            return response()->json([
+                'code' => 'AUTH_LOGIN_ACCOUNT_SUSPENDED',
+                'message' => __('Your account has been suspended')
+            ], 500);
         }
 
         $riskLogService->createLoginLog([
@@ -259,7 +271,8 @@ class AuthController extends Controller
         $user->save();
 
         $authService = new AuthService($user);
-        return response([
+        return response()->json([
+            'code' => 'OK',
             'data' => $authService->generateAuthData($request)
         ]);
     }

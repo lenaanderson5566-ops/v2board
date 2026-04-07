@@ -12,25 +12,20 @@ class PlanTranslationService
             return $plans;
         }
 
-        $candidates = $this->buildLocaleCandidates($locale);
-        if (!$candidates) {
-            return $plans;
-        }
-
         $planIds = [];
         foreach ($plans as $plan) {
             $planIds[] = $plan->id;
         }
 
-        $translations = PlanTranslation::whereIn('plan_id', $planIds)
-            ->whereIn('locale', $candidates)
-            ->get();
+        $translations = PlanTranslation::whereIn('plan_id', $planIds)->get();
 
         $translationMap = [];
-        $priorityMap = array_flip(array_values($candidates));
         foreach ($translations as $translation) {
             $planId = $translation->plan_id;
-            $priority = $priorityMap[$translation->locale] ?? PHP_INT_MAX;
+            $priority = $this->resolveLocalePriority($translation->locale, $locale);
+            if ($priority === null) {
+                continue;
+            }
             if (!isset($translationMap[$planId]) || $priority < $translationMap[$planId]['priority']) {
                 $translationMap[$planId] = [
                     'priority' => $priority,
@@ -61,19 +56,19 @@ class PlanTranslationService
             return $plan;
         }
 
-        $candidates = $this->buildLocaleCandidates($locale);
-        if (!$candidates) {
-            return $plan;
+        $translations = PlanTranslation::where('plan_id', $plan->id)->get();
+        $translation = null;
+        $bestPriority = null;
+        foreach ($translations as $item) {
+            $priority = $this->resolveLocalePriority($item->locale, $locale);
+            if ($priority === null) {
+                continue;
+            }
+            if ($translation === null || $priority < $bestPriority) {
+                $translation = $item;
+                $bestPriority = $priority;
+            }
         }
-
-        $translation = PlanTranslation::where('plan_id', $plan->id)
-            ->whereIn('locale', $candidates)
-            ->get()
-            ->sortBy(function ($item) use ($candidates) {
-                $index = array_search($item->locale, $candidates, true);
-                return $index === false ? PHP_INT_MAX : $index;
-            })
-            ->first();
 
         if (!$translation) {
             return $plan;
@@ -89,61 +84,59 @@ class PlanTranslationService
         return $plan;
     }
 
-    private function buildLocaleCandidates($locale)
+    private function resolveLocalePriority(?string $translationLocale, ?string $requestedLocale): ?int
     {
-        $locale = trim((string) $locale);
-        if ($locale === '') {
-            return [];
+        $translation = $this->normalizeLocale($translationLocale);
+        if ($translation === '') {
+            return null;
         }
+        $requested = $this->normalizeLocale($requestedLocale);
 
-        $available = $this->getAvailableLocales();
-        if (!$available) {
-            return array_values(array_unique([$locale, 'en-US', 'en']));
-        }
-
-        $normalized = str_replace('_', '-', $locale);
-        $langOnly = explode('-', $normalized)[0];
-
-        $candidates = [];
-
-        $add = function ($item) use (&$candidates, $available) {
-            if (!$item) return;
-            foreach ($available as $v) {
-                if (strtolower($v) === strtolower($item) && !in_array($v, $candidates, true)) {
-                    $candidates[] = $v;
-                }
+        if ($requested !== '') {
+            if (strcasecmp($translation, $requested) === 0) {
+                return 0;
             }
-        };
 
-        $add($locale);
-        $add($normalized);
-        $add($langOnly);
-
-        foreach ($available as $v) {
-            if (stripos($v, $langOnly . '-') === 0 && !in_array($v, $candidates, true)) {
-                $candidates[] = $v;
+            $requestedLang = explode('-', $requested)[0];
+            if (strcasecmp($translation, $requestedLang) === 0) {
+                return 1;
+            }
+            if (stripos($translation, $requestedLang . '-') === 0) {
+                return 2;
             }
         }
 
-        $add('en-US');
-        $add('en');
-        foreach ($available as $v) {
-            if (stripos($v, 'en-') === 0 && !in_array($v, $candidates, true)) {
-                $candidates[] = $v;
-            }
+        // English fallback
+        if (strcasecmp($translation, 'en-US') === 0) {
+            return 100;
+        }
+        if (strcasecmp($translation, 'en') === 0) {
+            return 101;
+        }
+        if (stripos($translation, 'en-') === 0) {
+            return 102;
         }
 
-        return $candidates;
+        return null;
     }
 
-    private function getAvailableLocales()
+    private function normalizeLocale(?string $locale): string
     {
-        $dbLocales = PlanTranslation::query()->distinct()->pluck('locale')->toArray();
-        $files = glob(resource_path('lang') . '/*.json');
-        $fileLocales = [];
-        foreach ($files as $file) {
-            $fileLocales[] = basename($file, '.json');
+        $raw = str_replace('_', '-', trim((string) $locale));
+        if ($raw === '') {
+            return '';
         }
-        return array_values(array_unique(array_merge($dbLocales, $fileLocales)));
+
+        $parts = explode('-', $raw);
+        $language = strtolower(array_shift($parts));
+        if (count($parts) === 0) {
+            return $language;
+        }
+
+        $regions = array_map(function ($part) {
+            return strtoupper($part);
+        }, $parts);
+
+        return $language . '-' . implode('-', $regions);
     }
 }

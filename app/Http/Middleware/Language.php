@@ -9,17 +9,15 @@ class Language
 {
     public function handle($request, Closure $next)
     {
-        $locale = $request->header('content-language');
+        $locale = $request->query('language')
+            ?: $request->query('lang')
+            ?: $request->query('locale');
         if (!$locale) {
-            $locale = $request->query('language')
-                ?: $request->query('lang')
-                ?: $request->query('locale');
+            $locale = $this->parseAcceptLanguage($request->header('accept-language'));
         }
+        // Backward compatibility: keep supporting request-side content-language
         if (!$locale) {
-            $acceptLanguage = $request->header('accept-language');
-            if ($acceptLanguage) {
-                $locale = explode(',', $acceptLanguage)[0];
-            }
+            $locale = $request->header('content-language');
         }
 
         if ($locale) {
@@ -29,6 +27,52 @@ class Language
             }
         }
 
-        return $next($request);
+        $response = $next($request);
+        $response->headers->set('Content-Language', App::getLocale());
+        return $response;
+    }
+
+    private function parseAcceptLanguage(?string $value): ?string
+    {
+        if (!$value) {
+            return null;
+        }
+
+        $languages = [];
+        foreach (explode(',', $value) as $part) {
+            $part = trim($part);
+            if ($part === '') {
+                continue;
+            }
+
+            $segments = array_map('trim', explode(';', $part));
+            $tag = $segments[0] ?? '';
+            if ($tag === '') {
+                continue;
+            }
+
+            $q = 1.0;
+            foreach (array_slice($segments, 1) as $segment) {
+                if (stripos($segment, 'q=') === 0) {
+                    $qValue = (float)substr($segment, 2);
+                    if ($qValue >= 0 && $qValue <= 1) {
+                        $q = $qValue;
+                    }
+                    break;
+                }
+            }
+
+            $languages[] = ['tag' => $tag, 'q' => $q];
+        }
+
+        if (!$languages) {
+            return null;
+        }
+
+        usort($languages, function ($a, $b) {
+            return $b['q'] <=> $a['q'];
+        });
+
+        return $languages[0]['tag'] ?? null;
     }
 }

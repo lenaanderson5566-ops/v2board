@@ -42,8 +42,11 @@ class KnowledgeController extends Controller
                 'data' => $knowledge
             ]);
         }
+        $language = $request->input('lang')
+            ?? $request->input('language')
+            ?? app()->getLocale();
         $builder = Knowledge::select(['id', 'category', 'title', 'updated_at'])
-            ->where('language', $request->input('language'))
+            ->where('language', $language)
             ->where('show', 1)
             ->orderBy('sort', 'ASC');
         $keyword = $request->input('keyword');

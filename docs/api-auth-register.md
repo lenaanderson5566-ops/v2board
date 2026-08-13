@@ -23,7 +23,6 @@
 
 ```json
 {
-  "code": "OK",
   "data": {
     "token": "user-token",
     "is_admin": 0,

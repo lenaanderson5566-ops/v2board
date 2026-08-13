@@ -31,7 +31,6 @@
 
 ```json
 {
-  "code": "OK",
   "data": true
 }
 ```

@@ -220,7 +220,6 @@ class AuthController extends Controller
         $authService = new AuthService($user);
 
         return response()->json([
-            'code' => 'OK',
             'data' => $authService->generateAuthData($request)
         ]);
     }
@@ -306,7 +305,6 @@ class AuthController extends Controller
 
         $authService = new AuthService($user);
         return response()->json([
-            'code' => 'OK',
             'data' => $authService->generateAuthData($request)
         ]);
     }
@@ -404,7 +402,6 @@ class AuthController extends Controller
         $authService = new AuthService($user);
         $authService->removeAllSession();
         return response()->json([
-            'code' => 'OK',
             'data' => true
         ]);
     }

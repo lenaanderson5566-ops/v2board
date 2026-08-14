@@ -80,16 +80,22 @@ class AuthController extends Controller
         if ((int)config('v2board.register_limit_by_ip_enable', 0)) {
             $registerCountByIP = Cache::get(CacheKey::get('REGISTER_IP_RATE_LIMIT', $request->ip())) ?? 0;
             if ((int)$registerCountByIP >= (int)config('v2board.register_limit_count', 3)) {
-                abort(500, __('Register frequently, please try again after :minute minute', [
-                    'minute' => config('v2board.register_limit_expire', 60)
-                ]));
+                return response()->json([
+                    'code' => 'AUTH_REGISTER_IP_RATE_LIMITED',
+                    'message' => __('Register frequently, please try again after :minute minute', [
+                        'minute' => config('v2board.register_limit_expire', 60)
+                    ])
+                ], 500);
             }
         }
         if ((int)config('v2board.recaptcha_enable', 0)) {
             $recaptcha = new ReCaptcha(config('v2board.recaptcha_key'));
             $recaptchaResp = $recaptcha->verify($request->input('recaptcha_data'));
             if (!$recaptchaResp->isSuccess()) {
-                abort(500, __('Invalid code is incorrect'));
+                return response()->json([
+                    'code' => 'AUTH_REGISTER_RECAPTCHA_INVALID',
+                    'message' => __('Invalid code is incorrect')
+                ], 500);
             }
         }
         if ((int)config('v2board.email_whitelist_enable', 0)) {
@@ -97,36 +103,57 @@ class AuthController extends Controller
                 $request->input('email'),
                 config('v2board.email_whitelist_suffix', Dict::EMAIL_WHITELIST_SUFFIX_DEFAULT))
             ) {
-                abort(500, __('Email suffix is not in the Whitelist'));
+                return response()->json([
+                    'code' => 'AUTH_REGISTER_EMAIL_SUFFIX_NOT_ALLOWED',
+                    'message' => __('Email suffix is not in the Whitelist')
+                ], 500);
             }
         }
         if ((int)config('v2board.email_gmail_limit_enable', 0)) {
             $prefix = explode('@', $request->input('email'))[0];
             if (strpos($prefix, '.') !== false || strpos($prefix, '+') !== false) {
-                abort(500, __('Gmail alias is not supported'));
+                return response()->json([
+                    'code' => 'AUTH_REGISTER_GMAIL_ALIAS_NOT_SUPPORTED',
+                    'message' => __('Gmail alias is not supported')
+                ], 500);
             }
         }
         if ((int)config('v2board.stop_register', 0)) {
-            abort(500, __('Registration has closed'));
+            return response()->json([
+                'code' => 'AUTH_REGISTER_CLOSED',
+                'message' => __('Registration has closed')
+            ], 500);
         }
         if ((int)config('v2board.invite_force', 0)) {
             if (empty($request->input('invite_code'))) {
-                abort(500, __('You must use the invitation code to register'));
+                return response()->json([
+                    'code' => 'AUTH_REGISTER_INVITE_CODE_REQUIRED',
+                    'message' => __('You must use the invitation code to register')
+                ], 500);
             }
         }
         if ((int)config('v2board.email_verify', 0)) {
             if (empty($request->input('email_code'))) {
-                abort(500, __('Email verification code cannot be empty'));
+                return response()->json([
+                    'code' => 'AUTH_REGISTER_EMAIL_CODE_REQUIRED',
+                    'message' => __('Email verification code cannot be empty')
+                ], 500);
             }
             if ((string)Cache::get(CacheKey::get('EMAIL_VERIFY_CODE', $request->input('email'))) !== (string)$request->input('email_code')) {
-                abort(500, __('Incorrect email verification code'));
+                return response()->json([
+                    'code' => 'AUTH_REGISTER_EMAIL_CODE_INVALID',
+                    'message' => __('Incorrect email verification code')
+                ], 500);
             }
         }
         $email = $request->input('email');
         $password = $request->input('password');
         $exist = User::where('email', $email)->first();
         if ($exist) {
-            abort(500, __('Email already exists'));
+            return response()->json([
+                'code' => 'AUTH_REGISTER_EMAIL_ALREADY_EXISTS',
+                'message' => __('Email already exists')
+            ], 500);
         }
         $user = new User();
         $user->email = $email;
@@ -141,7 +168,10 @@ class AuthController extends Controller
                 ->first();
             if (!$inviteCode) {
                 if ((int)config('v2board.invite_force', 0)) {
-                    abort(500, __('Invalid invitation code'));
+                    return response()->json([
+                        'code' => 'AUTH_REGISTER_INVITE_CODE_INVALID',
+                        'message' => __('Invalid invitation code')
+                    ], 500);
                 }
             } else {
                 $user->invite_user_id = $inviteCode->user_id ? $inviteCode->user_id : null;
@@ -166,7 +196,10 @@ class AuthController extends Controller
         }
 
         if (!$user->save()) {
-            abort(500, __('Register failed'));
+            return response()->json([
+                'code' => 'AUTH_REGISTER_FAILED',
+                'message' => __('Register failed')
+            ], 500);
         }
         if ((int)config('v2board.email_verify', 0)) {
             Cache::forget(CacheKey::get('EMAIL_VERIFY_CODE', $request->input('email')));
@@ -200,9 +233,12 @@ class AuthController extends Controller
         if ((int)config('v2board.password_limit_enable', 1)) {
             $passwordErrorCount = (int)Cache::get(CacheKey::get('PASSWORD_ERROR_LIMIT', $email), 0);
             if ($passwordErrorCount >= (int)config('v2board.password_limit_count', 5)) {
-                abort(500, __('There are too many password errors, please try again after :minute minutes.', [
-                    'minute' => config('v2board.password_limit_expire', 60)
-                ]));
+                return response()->json([
+                    'code' => 'AUTH_LOGIN_PASSWORD_RETRY_LIMITED',
+                    'message' => __('There are too many password errors, please try again after :minute minutes.', [
+                        'minute' => config('v2board.password_limit_expire', 60)
+                    ])
+                ], 500);
             }
         }
 
@@ -213,7 +249,10 @@ class AuthController extends Controller
                 'is_success' => false,
                 'reason' => 'user_not_found'
             ]);
-            abort(500, __('Incorrect email or password'));
+            return response()->json([
+                'code' => 'AUTH_LOGIN_INVALID_CREDENTIALS',
+                'message' => __('Incorrect email or password')
+            ], 500);
         }
         if (!Helper::multiPasswordVerify(
             $user->password_algo,
@@ -234,7 +273,10 @@ class AuthController extends Controller
                 'is_success' => false,
                 'reason' => 'password_error'
             ]);
-            abort(500, __('Incorrect email or password'));
+            return response()->json([
+                'code' => 'AUTH_LOGIN_INVALID_CREDENTIALS',
+                'message' => __('Incorrect email or password')
+            ], 500);
         }
 
         if ($user->banned) {
@@ -244,7 +286,10 @@ class AuthController extends Controller
                 'is_success' => false,
                 'reason' => 'user_banned'
             ]);
-            abort(500, __('Your account has been suspended'));
+            return response()->json([
+                'code' => 'AUTH_LOGIN_ACCOUNT_SUSPENDED',
+                'message' => __('Your account has been suspended')
+            ], 500);
         }
 
         $riskLogService->createLoginLog([
@@ -259,7 +304,7 @@ class AuthController extends Controller
         $user->save();
 
         $authService = new AuthService($user);
-        return response([
+        return response()->json([
             'data' => $authService->generateAuthData($request)
         ]);
     }
@@ -326,25 +371,37 @@ class AuthController extends Controller
     {
         $forgetRequestLimitKey = CacheKey::get('FORGET_REQUEST_LIMIT', $request->input('email'));
         $forgetRequestLimit = (int)Cache::get($forgetRequestLimitKey);
-        if ($forgetRequestLimit >= 3) abort(500, __('Reset failed, Please try again later'));
+        if ($forgetRequestLimit >= 3) return response()->json([
+            'code' => 'AUTH_FORGET_REQUEST_RATE_LIMITED',
+            'message' => __('Reset failed, Please try again later')
+        ], 500);
         if ((string)Cache::get(CacheKey::get('EMAIL_VERIFY_CODE', $request->input('email'))) !== (string)$request->input('email_code')) {
             Cache::put($forgetRequestLimitKey, $forgetRequestLimit ? $forgetRequestLimit + 1 : 1, 300);
-            abort(500, __('Incorrect email verification code'));
+            return response()->json([
+                'code' => 'AUTH_FORGET_EMAIL_CODE_INVALID',
+                'message' => __('Incorrect email verification code')
+            ], 500);
         }
         $user = User::where('email', $request->input('email'))->first();
         if (!$user) {
-            abort(500, __('This email is not registered in the system'));
+            return response()->json([
+                'code' => 'AUTH_FORGET_EMAIL_NOT_REGISTERED',
+                'message' => __('This email is not registered in the system')
+            ], 500);
         }
         $user->password = password_hash($request->input('password'), PASSWORD_DEFAULT);
         $user->password_algo = NULL;
         $user->password_salt = NULL;
         if (!$user->save()) {
-            abort(500, __('Reset failed'));
+            return response()->json([
+                'code' => 'AUTH_FORGET_RESET_FAILED',
+                'message' => __('Reset failed')
+            ], 500);
         }
         Cache::forget(CacheKey::get('EMAIL_VERIFY_CODE', $request->input('email')));
         $authService = new AuthService($user);
         $authService->removeAllSession();
-        return response([
+        return response()->json([
             'data' => true
         ]);
     }

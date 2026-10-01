@@ -240,12 +240,20 @@ export function Editor({
     onSave,
     submit = tx("保存"),
     children,
+    resolveFields,
+    linkValues,
+    validate,
+    onDirty,
 }: {
     fields: Field[];
     initial: Row;
     onSave: (data: Row) => Promise<void>;
     submit?: string;
     children?: ReactNode;
+    resolveFields?: (fields: Field[], values: Row) => Field[];
+    linkValues?: (key: string, next: unknown, values: Row) => Row;
+    validate?: (values: Row) => string | undefined;
+    onDirty?: () => void;
 }) {
     const [value, setValue] = useState<Row>(() => ({
             ...Object.fromEntries(
@@ -275,6 +283,17 @@ export function Editor({
         [busy, setBusy] = useState(false),
         [saved, setSaved] = useState(false),
         [revealed, setRevealed] = useState<Record<string, boolean>>({});
+    const activeFields = resolveFields ? resolveFields(fields, value) : fields;
+    function updateValue(key: string, next: unknown) {
+        onDirty?.();
+        setValue((current) =>
+            linkValues
+                ? linkValues(key, next, current)
+                : { ...current, [key]: next },
+        );
+        setSaved(false);
+        setError("");
+    }
     async function save(e: React.FormEvent) {
         e.preventDefault();
         setError("");
@@ -282,14 +301,24 @@ export function Editor({
         setBusy(true);
         try {
             const body = { ...value };
-            for (const f of fields) {
+            for (const field of fields)
+                if (!activeFields.some((f) => f.key === field.key))
+                    delete body[field.key];
+            const validationError = validate?.(value);
+            if (validationError) throw new Error(validationError);
+            for (const f of activeFields) {
                 if (
                     f.type === "multiselect" &&
                     f.required &&
                     !body[f.key]?.length
                 )
                     throw new Error(tx(f.label) + " *");
-                if (!(f.key in body)) continue;
+                if (!(f.key in body)) {
+                    if (f.type === "select")
+                        body[f.key] = f.options?.[0]?.[0] ?? "";
+                    else if (f.type === "switch") body[f.key] = 0;
+                    else continue;
+                }
                 if (f.type === "select" && f.nullable && body[f.key] === "")
                     body[f.key] = null;
                 if (
@@ -325,7 +354,7 @@ export function Editor({
             aria-busy={busy}
         >
             <fieldset className="field-grid" disabled={busy}>
-                {fields.map((f) => (
+                {activeFields.map((f) => (
                     <label
                         className={
                             f.type === "textarea" ||
@@ -348,11 +377,10 @@ export function Editor({
                                 aria-label={tx(f.label)}
                                 className="toggle-control"
                                 onClick={() => {
-                                    setValue({
-                                        ...value,
-                                        [f.key]:
-                                            Number(value[f.key]) === 1 ? 0 : 1,
-                                    });
+                                    updateValue(
+                                        f.key,
+                                        Number(value[f.key]) === 1 ? 0 : 1,
+                                    );
                                     setSaved(false);
                                 }}
                             >
@@ -398,15 +426,14 @@ export function Editor({
                                                               v !== key,
                                                       )
                                                     : [...selected, key];
-                                                setValue({
-                                                    ...value,
-                                                    [f.key]: next.map(
-                                                        (v: string) =>
-                                                            /^\d+$/.test(v)
-                                                                ? Number(v)
-                                                                : v,
+                                                updateValue(
+                                                    f.key,
+                                                    next.map((v: string) =>
+                                                        /^\d+$/.test(v)
+                                                            ? Number(v)
+                                                            : v,
                                                     ),
-                                                });
+                                                );
                                                 setSaved(false);
                                             }}
                                         >
@@ -425,7 +452,7 @@ export function Editor({
                                         type="button"
                                         className="option-clear"
                                         onClick={() => {
-                                            setValue({ ...value, [f.key]: [] });
+                                            updateValue(f.key, []);
                                             setSaved(false);
                                         }}
                                     >
@@ -436,12 +463,11 @@ export function Editor({
                         ) : f.type === "select" ? (
                             <select
                                 required={f.required}
-                                value={value[f.key] ?? ""}
+                                value={
+                                    value[f.key] ?? f.options?.[0]?.[0] ?? ""
+                                }
                                 onChange={(e) =>
-                                    setValue({
-                                        ...value,
-                                        [f.key]: e.target.value,
-                                    })
+                                    updateValue(f.key, e.target.value)
                                 }
                             >
                                 {value[f.key] != null &&
@@ -469,10 +495,7 @@ export function Editor({
                                 }
                                 required={f.required}
                                 onChange={(e) =>
-                                    setValue({
-                                        ...value,
-                                        [f.key]: e.target.value,
-                                    })
+                                    updateValue(f.key, e.target.value)
                                 }
                             />
                         ) : (
@@ -484,8 +507,8 @@ export function Editor({
                                 }
                             >
                                 <input
-                                aria-label={tx(f.label)}
-                                type={
+                                    aria-label={tx(f.label)}
+                                    type={
                                         f.type === "password" && revealed[f.key]
                                             ? "text"
                                             : f.type || "text"
@@ -511,10 +534,7 @@ export function Editor({
                                     value={value[f.key] ?? ""}
                                     required={f.required}
                                     onChange={(e) =>
-                                        setValue({
-                                            ...value,
-                                            [f.key]: e.target.value,
-                                        })
+                                        updateValue(f.key, e.target.value)
                                     }
                                 />
                                 {f.type === "password" && (

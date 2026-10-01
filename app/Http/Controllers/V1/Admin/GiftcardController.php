@@ -31,8 +31,7 @@ class GiftcardController extends Controller
     public function generate(GiftcardGenerate $request)
     {
         if ($request->input('generate_count')) {
-            $this->multiGenerate($request);
-            return;
+            return $this->multiGenerate($request);
         }
 
         $params = $request->validated();
@@ -96,7 +95,8 @@ class GiftcardController extends Controller
         }
 
         // Return the CSV data as a response
-       echo($data);
+        if ($request->expectsJson()) return response(['data' => true, 'generated_count' => count($giftcards)]);
+        return response($data, 200, ['Content-Type' => 'text/csv; charset=UTF-8']);
     }
 
     public function drop(Request $request)

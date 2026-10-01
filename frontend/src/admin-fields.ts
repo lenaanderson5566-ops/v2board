@@ -65,7 +65,7 @@ export function configField(
             type: "select",
             options: enumValues.map((v) => [v, v]),
         };
-    const secret = /password|token/.test(key) || key === "recaptcha_key";
+    const secret = /(?:password|token)$/.test(key) || key === "recaptcha_key";
     const type: Field["type"] =
         key === "custom_footer_html"
             ? "textarea"

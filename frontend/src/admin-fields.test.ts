@@ -1,6 +1,14 @@
 import { describe, it, expect } from "vitest";
 import { configField } from "./admin-fields";
 describe("configuration API contracts", () => {
+    it("keeps password rate limits numeric rather than treating them as credentials", () => {
+        expect(
+            configField("password_limit_count", 5, "integer", "Limit").type,
+        ).toBe("number");
+        expect(
+            configField("password_limit_expire", 60, "integer", "Minutes").type,
+        ).toBe("number");
+    });
     it("uses explicit switches for server boolean enums", () =>
         expect(configField("email_verify", 0, "in:0,1", "Verify").type).toBe(
             "switch",

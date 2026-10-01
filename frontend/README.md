@@ -14,6 +14,15 @@ Boolean settings use switches; event modes and reset periods use explicit choice
 Node group and route arrays use multi-select controls, and related plans and groups
 use options loaded from existing admin APIs.
 
+Dependent settings appear only when their controlling feature is active; hidden
+values are retained and settings saves submit only changed active fields. SMTP
+encryption suggests a standard port while preserving custom ports. Gift-card and
+coupon forms adjust units, required plans and batch options by type. Assigning a
+user plan fills its limits without changing the entered balance or expiration.
+Node protocol, TLS, Reality/ECH and transport selections control their structured
+fields; advanced JSON parameters are preserved. Payment gateway changes load the
+selected gateway's schema without carrying over another gateway's credentials.
+
 ## Build
 
 ```sh

@@ -61,6 +61,28 @@ try {
         $rules = json_decode($response->getContent(), true)['data'] ?? [];
         $assert($response->getStatusCode() === 200 && isset($rules['host'], $rules['name'], $rules['group_id']), 'Node schema failed: ' . $type);
     }
+    $group = new App\Models\ServerGroup();
+    $group->name = 'console-smoke-group';
+    $group->save();
+    $nodeParams = ['name' => 'console-smoke-node', 'group_id' => [$group->id], 'host' => 'example.invalid', 'port' => '443', 'server_port' => 443, 'rate' => 1, 'protocol' => 'vless', 'tls' => 1, 'network' => 'ws', 'disable_sni' => 0, 'zero_rtt_handshake' => 0, 'show' => 0, 'tls_settings' => ['server_name' => 'example.invalid', 'allow_insecure' => 0], 'network_settings' => ['path' => '/test', 'headers' => ['Host' => 'example.invalid']]];
+    $response = $call('/api/v1/' . $securePath . '/server/v2node/save', $nodeParams, $token);
+    $assert($response->getStatusCode() === 200, 'Structured node save failed: ' . $response->getContent());
+    $node = App\Models\ServerV2node::where('name', 'console-smoke-node')->first();
+    $assert($node && $node->tls_settings['server_name'] === 'example.invalid' && $node->network_settings['headers']['Host'] === 'example.invalid', 'Structured node values did not persist');
+    $nodeParams['id'] = $node->id;
+    $nodeParams['tls'] = 2;
+    $nodeParams['network'] = 'grpc';
+    $nodeParams['tls_settings'] = ['server_name' => 'example.invalid'];
+    $nodeParams['network_settings'] = ['serviceName' => 'test-service'];
+    $response = $call('/api/v1/' . $securePath . '/server/v2node/save', $nodeParams, $token);
+    $node->refresh();
+    $assert($response->getStatusCode() === 200 && !empty($node->tls_settings['public_key']) && !empty($node->tls_settings['private_key']) && $node->network_settings['serviceName'] === 'test-service', 'Reality/gRPC mode transition failed');
+    foreach (['coupon' => ['type' => 2, 'value' => 20, 'limit_plan_ids' => [], 'limit_period' => ['month_price']], 'giftcard' => ['type' => 4]] as $kind => $params) {
+        $params += ['name' => 'console-smoke-' . $kind, 'generate_count' => 2, 'started_at' => time(), 'ended_at' => time() + 86400];
+        $response = $call('/api/v1/' . $securePath . '/' . $kind . '/generate', $params, $token);
+        $payload = json_decode($response->getContent(), true);
+        $assert($response->getStatusCode() === 200 && ($payload['generated_count'] ?? 0) === 2 && ($payload['data'] ?? null) === true, 'Batch JSON generation failed: ' . $kind);
+    }
     foreach (['risk/overview/fetch', 'risk/rule/fetch', 'risk/settings/fetch', 'client/strategy/fetch', 'log/login/fetch'] as $endpoint) {
         $assert($call('/api/v1/' . $opsPath . '/' . $endpoint, null, $token)->getStatusCode() === 200, 'Unified operations endpoint failed: ' . $endpoint);
     }
@@ -74,6 +96,7 @@ try {
     $footer = '<div data-console-smoke="footer">Footer smoke test</div>';
     $response = $call('/api/v1/' . $securePath . '/config/save', ['custom_footer_html' => $footer], $token);
     $assert($response->getStatusCode() === 200, 'Footer save failed: ' . $response->getContent());
+    $assert(config('v2board.password_limit_enable', 1) === ($originalConfig['password_limit_enable'] ?? 1), 'Partial settings update changed an unrelated switch');
     config(['v2board.custom_footer_html' => $footer]);
     $assert(strpos($call('/app')->getContent(), $footer) !== false, 'Footer was not rendered in user shell');
     $assert(strpos($call('/')->getContent(), '<title>Studio</title>') !== false && strpos($call('/')->getContent(), $footer) === false, 'Public landing metadata or footer isolation failed');

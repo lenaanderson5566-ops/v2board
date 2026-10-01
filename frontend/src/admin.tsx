@@ -25,6 +25,22 @@ import {
     type Field,
 } from "./ui";
 import { configField, resetOptions } from "./admin-fields";
+import {
+    settingsFields,
+    linkSettings,
+    validateSettings,
+    changedSettings,
+    resourceFields,
+    linkResource,
+    validateResource,
+    nodeFields,
+    linkNode,
+} from "./admin-linkage";
+import {
+    nodeSettingsFields,
+    nodeSettingsInitial,
+    nodeSettingsPayload,
+} from "./node-settings";
 const f = (
     key: string,
     label: string,
@@ -116,7 +132,7 @@ export const resources: Record<string, Resource> = {
             },
             f("content", "套餐说明 HTML", "textarea"),
         ],
-        defaults: { transfer_enable: 100, group_id: 1 },
+        defaults: { transfer_enable: 100 },
         actions: [
             ["展示", admin("plan/update"), { show: 1 }],
             ["隐藏", admin("plan/update"), { show: 0 }],
@@ -520,7 +536,9 @@ export function ResourcePage({ resource }: { resource: Resource }) {
             : "",
     );
     const plans = useData<Row[]>(
-        resource.fields.some((f) => f.key === "plan_id")
+        resource.fields.some((f) =>
+            ["plan_id", "limit_plan_ids"].includes(f.key),
+        )
             ? admin("plan/fetch")
             : "",
     );
@@ -528,6 +546,7 @@ export function ResourcePage({ resource }: { resource: Resource }) {
         field.key === "group_id"
             ? {
                   ...field,
+                  label: "权限组",
                   type: "select" as const,
                   options: rows(groups.data).map(
                       (r) => [String(r.id), r.name] as [string, string],
@@ -536,6 +555,13 @@ export function ResourcePage({ resource }: { resource: Resource }) {
             : field.key === "plan_id"
               ? {
                     ...field,
+                    label: "套餐",
+                    hint:
+                        resource === resources.users
+                            ? "选择套餐会同步流量、设备和速率限制；到期时间与余额保持当前输入。"
+                            : !rows(plans.data).length
+                              ? "请先到套餐管理创建套餐。"
+                              : undefined,
                     type: "select" as const,
                     nullable: true,
                     options: [
@@ -545,7 +571,32 @@ export function ResourcePage({ resource }: { resource: Resource }) {
                         ),
                     ],
                 }
-              : field,
+              : field.key === "limit_plan_ids"
+                ? {
+                      ...field,
+                      label: "适用套餐（不选择表示全部）",
+                      type: "multiselect" as const,
+                      options: rows(plans.data).map(
+                          (r) => [String(r.id), r.name] as [string, string],
+                      ),
+                  }
+                : field.key === "limit_period"
+                  ? {
+                        ...field,
+                        label: "适用周期（不选择表示全部）",
+                        type: "multiselect" as const,
+                        options: [
+                            ["month_price", "月付"],
+                            ["quarter_price", "季付"],
+                            ["half_year_price", "半年付"],
+                            ["year_price", "年付"],
+                            ["two_year_price", "两年付"],
+                            ["three_year_price", "三年付"],
+                            ["onetime_price", "一次性"],
+                            ["reset_price", "重置流量"],
+                        ] as [string, string][],
+                    }
+                  : field,
     );
     const [page, setPage] = useState(1),
         [search, setSearch] = useState(""),
@@ -739,38 +790,74 @@ export function ResourcePage({ resource }: { resource: Resource }) {
                     }
                     close={() => setEditing(null)}
                 >
-                    <Editor
-                        fields={editorFields}
-                        initial={editing}
-                        onSave={async (body) => {
-                            const clean: Row = {};
-                            resource.fields.forEach((field) => {
-                                if (
-                                    body[field.key] !== undefined &&
-                                    !(
-                                        field.key === "password" &&
-                                        !body.password
-                                    )
-                                )
-                                    clean[field.key] = body[field.key];
-                            });
-                            if (editing[key]) clean[key] = editing[key];
-                            if (
-                                resource.title === "用户管理" &&
-                                clean.transfer_enable !== undefined
-                            )
-                                clean.transfer_enable *= 1073741824;
-                            if (resource.defaults)
-                                Object.entries(resource.defaults).forEach(
-                                    ([k, v]) => {
-                                        if (!(k in clean)) clean[k] = v;
-                                    },
-                                );
-                            await request(resource.save!, clean);
-                            setEditing(null);
-                            d.reload();
+                    <State
+                        loading={groups.loading || plans.loading}
+                        error={groups.error || plans.error}
+                        retry={() => {
+                            groups.reload();
+                            plans.reload();
                         }}
-                    />
+                    >
+                        <Editor
+                            fields={editorFields}
+                            initial={editing}
+                            resolveFields={(fields, values) =>
+                                resourceFields(
+                                    Object.keys(resources).find(
+                                        (k) => resources[k] === resource,
+                                    ) || "",
+                                    fields,
+                                    values,
+                                )
+                            }
+                            linkValues={(key, next, values) =>
+                                linkResource(
+                                    resource === resources.users ? "users" : "",
+                                    rows(plans.data),
+                                    key,
+                                    next,
+                                    values,
+                                )
+                            }
+                            validate={validateResource}
+                            onSave={async (body) => {
+                                const clean: Row = {};
+                                resource.fields.forEach((field) => {
+                                    if (
+                                        body[field.key] !== undefined &&
+                                        !(
+                                            field.key === "password" &&
+                                            !body.password
+                                        )
+                                    )
+                                        clean[field.key] = body[field.key];
+                                });
+                                if (editing[key]) clean[key] = editing[key];
+                                if (
+                                    resource.title === "用户管理" &&
+                                    clean.transfer_enable !== undefined
+                                )
+                                    clean.transfer_enable *= 1073741824;
+                                if (resource.defaults)
+                                    Object.entries(resource.defaults).forEach(
+                                        ([k, v]) => {
+                                            if (!(k in clean)) clean[k] = v;
+                                        },
+                                    );
+                                if (
+                                    ["coupons", "giftcards"].some(
+                                        (k) => resources[k] === resource,
+                                    ) &&
+                                    (editing[key] ||
+                                        Number(clean.generate_count) <= 1)
+                                )
+                                    delete clean.generate_count;
+                                await request(resource.save!, clean);
+                                setEditing(null);
+                                d.reload();
+                            }}
+                        />
+                    </State>
                 </Modal>
             )}
         </>
@@ -1034,8 +1121,14 @@ export function Settings() {
                     key={group + JSON.stringify(raw)}
                     fields={fields}
                     initial={raw}
+                    resolveFields={settingsFields}
+                    linkValues={linkSettings}
+                    onDirty={() => setSaved("")}
+                    validate={validateSettings}
                     onSave={async (body) => {
-                        await request(admin("config/save"), body);
+                        const changes = changedSettings(body, raw);
+                        if (Object.keys(changes).length)
+                            await request(admin("config/save"), changes);
                         setSaved("设置已保存");
                         d.reload();
                     }}
@@ -1263,7 +1356,7 @@ function PaymentEditor({
     const [method, setMethod] = useState(initial.payment || methods[0] || "");
     const d = useData(admin("payment/getPaymentForm"), {
         payment: method,
-        id: initial.id,
+        id: method === initial.payment ? initial.id : undefined,
     });
     return (
         <>
@@ -1289,31 +1382,50 @@ function PaymentEditor({
                         f("notify_domain", "通知域名"),
                         f("handling_fee_fixed", "固定手续费（分）", "number"),
                         f("handling_fee_percent", "手续费比例 (%)", "number"),
-                        ...Object.entries(d.data || {}).map(([k, v]) =>
-                            f(
+                        ...Object.entries(d.data || {}).map(([k, v]) => ({
+                            ...f(
                                 "config." + k,
                                 v.label || k,
-                                v.type === "textarea" ? "textarea" : "text",
+                                v.type === "textarea"
+                                    ? "textarea"
+                                    : /secret|password|token|key|sk_live/i.test(
+                                            k,
+                                        )
+                                      ? "password"
+                                      : "text",
                             ),
-                        ),
+                            hint: v.description,
+                            required: Boolean(v.required),
+                        })),
                     ]}
                     initial={{
                         ...initial,
                         ...Object.fromEntries(
-                            Object.entries(initial.config || {}).map(
-                                ([k, v]) => ["config." + k, v],
-                            ),
+                            Object.entries(
+                                method === initial.payment
+                                    ? initial.config || {}
+                                    : {},
+                            ).map(([k, v]) => ["config." + k, v]),
                         ),
                     }}
                     onSave={async (b) => {
                         const config: Row = {};
-                        Object.entries(b).forEach(([k, v]) => {
-                            if (k.startsWith("config.")) {
-                                config[k.slice(7)] = v;
-                                delete b[k];
-                            }
+                        Object.keys(d.data || {}).forEach((k) => {
+                            config[k] = b["config." + k] ?? "";
                         });
-                        await onSave({ ...b, payment: method, config });
+                        const common = Object.fromEntries(
+                            [
+                                "id",
+                                "name",
+                                "icon",
+                                "notify_domain",
+                                "handling_fee_fixed",
+                                "handling_fee_percent",
+                            ]
+                                .filter((k) => b[k] !== undefined)
+                                .map((k) => [k, b[k]]),
+                        );
+                        await onSave({ ...common, payment: method, config });
                     }}
                 />
             </State>
@@ -1353,6 +1465,10 @@ export function Nodes() {
                                     group_id: [],
                                     route_id: [],
                                     rate: 1,
+                                    tls: 0,
+                                    network: "tcp",
+                                    disable_sni: 0,
+                                    zero_rtt_handshake: 0,
                                 })
                             }
                         >
@@ -1461,76 +1577,161 @@ export function Nodes() {
                             </label>
                         </div>
                     )}
-                    <State {...schema}>
+                    <State
+                        loading={
+                            schema.loading || groups.loading || routes.loading
+                        }
+                        error={schema.error || groups.error || routes.error}
+                        retry={() => {
+                            schema.reload();
+                            groups.reload();
+                            routes.reload();
+                        }}
+                    >
                         <Editor
                             key={type}
-                            fields={Object.entries(schema.data || {})
-                                .filter(([k]) => !k.includes(".") && k !== "id")
-                                .map(([k, rule]) => {
-                                    if (k === "group_id" || k === "route_id")
-                                        return {
-                                            key: k,
-                                            label: nodeLabels[k] || k,
-                                            type: "multiselect",
-                                            required: k === "group_id",
-                                            options: rows(
-                                                k === "group_id"
-                                                    ? groups.data
-                                                    : routes.data,
-                                            ).map((r) => [
-                                                String(r.id),
-                                                r.name ||
-                                                    r.remarks ||
+                            resolveFields={(fields, values) =>
+                                nodeFields(
+                                    type,
+                                    fields.map((field) =>
+                                        field.key === "parent_id"
+                                            ? {
+                                                  ...field,
+                                                  label: "父节点",
+                                                  type: "select",
+                                                  nullable: true,
+                                                  options: [
+                                                      ["", "不设置父节点"],
+                                                      ...rows(d.data)
+                                                          .filter(
+                                                              (r) =>
+                                                                  r.type ===
+                                                                      type &&
+                                                                  String(
+                                                                      r.id,
+                                                                  ) !==
+                                                                      String(
+                                                                          editing.id,
+                                                                      ) &&
+                                                                  (type !==
+                                                                      "v2node" ||
+                                                                      r.protocol ===
+                                                                          values.protocol),
+                                                          )
+                                                          .map(
+                                                              (r) =>
+                                                                  [
+                                                                      String(
+                                                                          r.id,
+                                                                      ),
+                                                                      r.name,
+                                                                  ] as [
+                                                                      string,
+                                                                      string,
+                                                                  ],
+                                                          ),
+                                                  ] as [string, string][],
+                                                  hint: "可选择同类型、同协议的节点。切换协议时会清除当前选择。",
+                                              }
+                                            : field,
+                                    ),
+                                    values,
+                                )
+                            }
+                            linkValues={linkNode}
+                            fields={nodeSettingsFields(
+                                Object.entries(schema.data || {})
+                                    .filter(
+                                        ([k]) => !k.includes(".") && k !== "id",
+                                    )
+                                    .map(([k, rule]) => {
+                                        if (
+                                            k === "group_id" ||
+                                            k === "route_id"
+                                        )
+                                            return {
+                                                key: k,
+                                                label: nodeLabels[k] || k,
+                                                type: "multiselect",
+                                                required: k === "group_id",
+                                                options: rows(
+                                                    k === "group_id"
+                                                        ? groups.data
+                                                        : routes.data,
+                                                ).map((r) => [
                                                     String(r.id),
-                                            ]),
-                                        } as Field;
-                                    const str = Array.isArray(rule)
-                                        ? rule.join("|")
-                                        : String(rule);
-                                    const enumRule =
-                                        str.match(/(?:^|\|)in:([^|]+)/);
-                                    if (enumRule)
-                                        return {
-                                            key: k,
-                                            label: nodeLabels[k] || k,
-                                            type:
-                                                enumRule[1] === "0,1" &&
-                                                [
-                                                    "show",
-                                                    "tls",
-                                                    "allow_insecure",
-                                                    "tls_allow_insecure",
-                                                    "is_shield",
-                                                    "insecure",
-                                                ].includes(k)
-                                                    ? "switch"
-                                                    : "select",
-                                            required: str.includes("required"),
-                                            options: enumRule[1]
-                                                .split(",")
-                                                .map((v) => [v, v]),
-                                        } as Field;
-                                    return f(
-                                        k,
-                                        nodeLabels[k] || k,
-                                        str.includes("array") ||
-                                            k.endsWith("_settings")
-                                            ? "json"
-                                            : str.includes("integer") ||
-                                                str.includes("numeric")
-                                              ? "number"
-                                              : "text",
-                                        str.includes("required"),
-                                    );
-                                })}
-                            initial={editing}
+                                                    r.name ||
+                                                        r.remarks ||
+                                                        String(r.id),
+                                                ]),
+                                            } as Field;
+                                        const str = Array.isArray(rule)
+                                            ? rule.join("|")
+                                            : String(rule);
+                                        if (k === "flow")
+                                            return {
+                                                key: k,
+                                                label: "VLESS Flow",
+                                                type: "select",
+                                                nullable: true,
+                                                options: [
+                                                    ["", "不设置"],
+                                                    [
+                                                        "xtls-rprx-vision",
+                                                        "XTLS Vision",
+                                                    ],
+                                                ],
+                                            } as Field;
+                                        const enumRule =
+                                            str.match(/(?:^|\|)in:([^|]+)/);
+                                        if (enumRule)
+                                            return {
+                                                key: k,
+                                                label: nodeLabels[k] || k,
+                                                type:
+                                                    enumRule[1] === "0,1" &&
+                                                    [
+                                                        "show",
+                                                        "tls",
+                                                        "allow_insecure",
+                                                        "tls_allow_insecure",
+                                                        "is_shield",
+                                                        "insecure",
+                                                    ].includes(k)
+                                                        ? "switch"
+                                                        : "select",
+                                                required:
+                                                    str.includes("required"),
+                                                options: enumRule[1]
+                                                    .split(",")
+                                                    .map((v) => [v, v]),
+                                            } as Field;
+                                        return f(
+                                            k,
+                                            nodeLabels[k] || k,
+                                            str.includes("array") ||
+                                                k.endsWith("_settings")
+                                                ? "json"
+                                                : str.includes("integer") ||
+                                                    str.includes("numeric")
+                                                  ? "number"
+                                                  : "text",
+                                            str.includes("required"),
+                                        );
+                                    }),
+                            )}
+                            initial={nodeSettingsInitial(editing)}
                             onSave={async (b) => {
+                                b = nodeSettingsPayload(b);
                                 const clean: Row = {};
                                 Object.keys(schema.data || {}).forEach((k) => {
                                     if (!k.includes(".") && b[k] !== undefined)
                                         clean[k] = b[k];
                                 });
                                 if (editing.id) clean.id = editing.id;
+                                if (type === "v2node")
+                                    clean.zero_rtt_handshake ??=
+                                        editing.zero_rtt_handshake ?? 0;
                                 await request(
                                     admin(`server/${type}/save`),
                                     clean,
@@ -1546,12 +1747,30 @@ export function Nodes() {
     );
 }
 const nodeLabels: Record<string, string> = {
+    listen_ip: "监听地址",
+    disable_sni: "禁用 SNI",
+    cipher: "加密算法",
+    encryption: "VLESS 加密参数",
+    encryption_settings: "VLESS 加密设置",
+    zero_rtt_handshake: "启用 0-RTT 握手",
+    congestion_control: "拥塞控制算法",
+    udp_relay_mode: "UDP 中继模式",
+    padding_scheme: "填充策略",
+    version: "协议版本",
+    server_name: "TLS 服务器名称（SNI）",
+    insecure: "跳过证书校验",
+    allow_insecure: "跳过证书校验",
+    obfs_password: "混淆密码",
+    networkSettings: "传输设置",
+    tlsSettings: "TLS 设置",
+    ruleSettings: "路由设置",
+    dnsSettings: "DNS 设置",
     name: "节点名称",
     host: "连接主机",
     port: "连接端口",
     server_port: "服务端口",
-    group_id: "权限组 ID 数组",
-    route_id: "路由规则 ID 数组",
+    group_id: "权限组",
+    route_id: "路由规则",
     rate: "流量倍率",
     tags: "标签数组",
     parent_id: "父节点 ID",

@@ -11,7 +11,8 @@ vi.stubGlobal("localStorage", {
     getItem: (key: string) => storage.get(key) || null,
     removeItem: (key: string) => storage.delete(key),
 });
-const { request, rows, query, bytes, storageKey } = await import("./api");
+const { request, rows, query, bytes, storageKey, download } =
+    await import("./api");
 describe("API client", () => {
     beforeEach(() => {
         storage.clear();
@@ -84,5 +85,73 @@ describe("API client", () => {
         ]);
         expect(bytes(1073741824)).toBe("1.00 GB");
         expect(rows(null)).toEqual([]);
+    });
+});
+
+it("encodes nested PHP filter arrays and preserves zero", () => {
+    const params = new URLSearchParams(
+        query("admin/user/fetch", {
+            filter: [{ key: "banned", condition: "=", value: 0 }],
+            sort: "id",
+        }).split("?")[1],
+    );
+    expect(params.get("filter[0][key]")).toBe("banned");
+    expect(params.get("filter[0][value]")).toBe("0");
+    expect(params.get("sort")).toBe("id");
+});
+
+describe("CSV download", () => {
+    it("rejects successful JSON responses instead of saving a false CSV", async () => {
+        vi.stubGlobal(
+            "fetch",
+            vi
+                .fn()
+                .mockResolvedValue(
+                    new Response(JSON.stringify({ data: true }), {
+                        headers: { "Content-Type": "application/json" },
+                    }),
+                ),
+        );
+        await expect(
+            download("admin/user/dumpCSV", {}, "users.csv"),
+        ).rejects.toThrow("CSV");
+    });
+    it("sends filters with authentication and downloads the returned CSV", async () => {
+        storage.set(storageKey, "csv-session");
+        const click = vi.fn(),
+            remove = vi.fn(),
+            link = { href: "", download: "", click, remove };
+        vi.stubGlobal("document", {
+            documentElement: { lang: "", dir: "" },
+            createElement: () => link,
+            body: { append: vi.fn() },
+        });
+        const create = vi
+            .spyOn(URL, "createObjectURL")
+            .mockReturnValue("blob:test");
+        vi.spyOn(URL, "revokeObjectURL").mockImplementation(() => {});
+        const fetchMock = vi
+            .fn()
+            .mockResolvedValue(
+                new Response("email\nuser@example.com", {
+                    headers: { "Content-Type": "text/csv; charset=UTF-8" },
+                }),
+            );
+        vi.stubGlobal("fetch", fetchMock);
+        await download(
+            "admin/user/dumpCSV",
+            { filter: [{ key: "banned", condition: "=", value: 0 }] },
+            "users.csv",
+        );
+        expect(fetchMock.mock.calls[0][1].headers.Authorization).toBe(
+            "csv-session",
+        );
+        expect(
+            JSON.parse(fetchMock.mock.calls[0][1].body).filter[0].value,
+        ).toBe(0);
+        expect(create).toHaveBeenCalled();
+        expect(link.download).toBe("users.csv");
+        expect(click).toHaveBeenCalled();
+        expect(remove).toHaveBeenCalled();
     });
 });

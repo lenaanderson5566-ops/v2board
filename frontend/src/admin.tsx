@@ -1,9 +1,10 @@
-import { useState } from "react";
+import { useState, useEffect, type ReactNode } from "react";
 import { Plus, Search } from "lucide-react";
 import {
     admin,
     ops,
     request,
+    download,
     query,
     rows,
     bytes,
@@ -193,10 +194,19 @@ export const resources: Record<string, Resource> = {
             ["id", "ID"],
             ["email", "邮箱"],
             ["plan_name", "套餐"],
+            ["group_id", "权限组 ID"],
             ["balance", "余额", (r) => money(r.balance)],
             ["total_used", "已用流量", (r) => bytes(r.total_used)],
+            ["transfer_enable", "流量限额", (r) => bytes(r.transfer_enable)],
+            [
+                "device_limit",
+                "在线 / 限额",
+                (r) => `${r.alive_ip || 0} / ${r.device_limit || "不限"}`,
+            ],
             ["expired_at", "到期时间", (r) => date(r.expired_at)],
-            ["banned", "禁用"],
+            ["banned", "状态", (r) => (r.banned ? "封禁" : "正常")],
+            ["commission_balance", "佣金", (r) => money(r.commission_balance)],
+            created,
         ],
         fields: [
             f("email", "邮箱", "text", true),
@@ -548,7 +558,23 @@ export const resources: Record<string, Resource> = {
         fields: [],
     },
 };
-export function ResourcePage({ resource }: { resource: Resource }) {
+export function ResourcePage({
+    resource,
+    queryParams = {},
+    toolbar,
+    extraActions,
+    searchable = true,
+    pageSize = 20,
+    onTotal,
+}: {
+    resource: Resource;
+    queryParams?: Row;
+    toolbar?: ReactNode;
+    extraActions?: (row: Row) => ReactNode;
+    searchable?: boolean;
+    pageSize?: number;
+    onTotal?: (total: number) => void;
+}) {
     const groups = useData<Row[]>(
         resource.fields.some((f) => f.key === "group_id")
             ? admin("server/group/fetch")
@@ -625,15 +651,28 @@ export function ResourcePage({ resource }: { resource: Resource }) {
         query(resource.fetch, {
             current: page,
             page: page,
-            pageSize: 20,
-            page_size: 20,
+            pageSize,
+            page_size: pageSize,
             email: resource.title.includes("日志") ? search : undefined,
             keyword: resource.title.includes("黑名单") ? search : undefined,
+            ...queryParams,
         }),
     );
+    useEffect(() => {
+        onTotal?.(d.total);
+    }, [d.total, onTotal]);
     const key = resource.key || "id";
     async function action(path: string, r: Row, extra: Row = {}) {
-        if (!confirm("确认执行此操作？")) return;
+        if (
+            !confirm(
+                resource === resources.users
+                    ? path.endsWith("resetSecret")
+                        ? `重置 ${r.email} 的 UUID 和订阅链接？旧链接和客户端凭据将失效。`
+                        : `删除 ${r.email}？该用户的订单、邀请码和工单也会被永久删除。`
+                    : "确认执行此操作？",
+            )
+        )
+            return;
         try {
             await request(path, {
                 [key]: r[key],
@@ -661,15 +700,17 @@ export function ResourcePage({ resource }: { resource: Resource }) {
                 title={resource.title}
                 actions={
                     <>
-                        <div className="search">
-                            <Search size={16} />
-                            <input
-                                placeholder="搜索当前列表…"
-                                value={search}
-                                onChange={(e) => setSearch(e.target.value)}
-                                aria-label="搜索列表"
-                            />
-                        </div>
+                        {searchable && (
+                            <div className="search">
+                                <Search size={16} />
+                                <input
+                                    placeholder="搜索当前列表…"
+                                    value={search}
+                                    onChange={(e) => setSearch(e.target.value)}
+                                    aria-label="搜索列表"
+                                />
+                            </div>
+                        )}
                         <Reload onClick={d.reload} />
                         {resource.save && resource.create !== false && (
                             <button
@@ -685,6 +726,7 @@ export function ResourcePage({ resource }: { resource: Resource }) {
                     </>
                 }
             >
+                {toolbar}
                 <State {...d} retry={d.reload}>
                     {error && <div className="alert">{error}</div>}
                     <Table
@@ -836,13 +878,19 @@ export function ResourcePage({ resource }: { resource: Resource }) {
                                                   删除
                                               </button>
                                           )}
+                                          {extraActions?.(r)}
                                       </>
                                   )
                                 : undefined
                         }
                     />
                     {d.total > 0 && (
-                        <Pager page={page} total={d.total} onChange={setPage} />
+                        <Pager
+                            page={page}
+                            total={d.total}
+                            size={pageSize}
+                            onChange={setPage}
+                        />
                     )}
                 </State>
             </Panel>
@@ -1384,24 +1432,73 @@ export function Translations() {
         </Panel>
     );
 }
-export function GenerateUsers() {
+export function GenerateUsers({ onCreated }: { onCreated?: () => void }) {
+    const plans = useData<Row[]>(admin("plan/fetch"));
+    const [notice, setNotice] = useState("");
     return (
         <Panel title="生成用户">
-            <Editor
-                fields={[
-                    f("email_prefix", "邮箱前缀"),
-                    f("email_suffix", "邮箱域名", "text", true),
-                    f("generate_count", "生成数量（最多 500）", "number"),
-                    f("password", "初始密码", "password"),
-                    f("plan_id", "套餐 ID", "number"),
-                    f("expired_at", "到期时间", "datetime-local"),
-                ]}
-                initial={{ generate_count: 1 }}
-                onSave={async (b) => {
-                    await request(admin("user/generate"), b);
-                    alert("用户已生成");
-                }}
-            />
+            <p className="pad muted">
+                填写邮箱前缀时创建一个用户；留空时批量生成并下载账号
+                CSV。密码留空时使用完整邮箱作为初始密码。
+            </p>
+            <State {...plans} retry={plans.reload}>
+                <Editor
+                    fields={[
+                        f("email_prefix", "邮箱前缀（单个用户）"),
+                        f("email_suffix", "邮箱域名", "text", true),
+                        {
+                            ...f(
+                                "generate_count",
+                                "生成数量（1–500）",
+                                "number",
+                            ),
+                            min: 1,
+                            max: 500,
+                            step: 1,
+                        },
+                        f("password", "初始密码", "password"),
+                        {
+                            ...f("plan_id", "套餐", "select"),
+                            nullable: true,
+                            options: (plans.data || []).map((p) => [
+                                String(p.id),
+                                p.name,
+                            ]),
+                        },
+                        f("expired_at", "到期时间", "datetime-local"),
+                    ]}
+                    initial={{ generate_count: 1 }}
+                    validate={(b) =>
+                        !b.email_prefix &&
+                        (!Number.isInteger(Number(b.generate_count)) ||
+                            Number(b.generate_count) < 1 ||
+                            Number(b.generate_count) > 500)
+                            ? "生成数量必须为 1–500 的整数"
+                            : undefined
+                    }
+                    onSave={async (b) => {
+                        if (b.email_prefix)
+                            await request(admin("user/generate"), b);
+                        else
+                            await download(
+                                admin("user/generate"),
+                                b,
+                                "generated-users.csv",
+                            );
+                        setNotice(
+                            b.email_prefix
+                                ? "用户已生成"
+                                : "用户已生成，账号 CSV 已下载",
+                        );
+                        onCreated?.();
+                    }}
+                />
+                {notice && (
+                    <p className="pad" role="status">
+                        {notice}
+                    </p>
+                )}
+            </State>
         </Panel>
     );
 }

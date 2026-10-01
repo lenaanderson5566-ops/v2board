@@ -73,10 +73,53 @@ export async function request<T = Row>(
 }
 export function query(path: string, params: Row): string {
     const q = new URLSearchParams();
-    Object.entries(params).forEach(([k, v]) => {
-        if (v !== "" && v !== null && v !== undefined) q.set(k, String(v));
-    });
+    function append(key: string, value: unknown) {
+        if (value === "" || value == null) return;
+        if (typeof value === "object")
+            Object.entries(value).forEach(([k, v]) =>
+                append(`${key}[${k}]`, v),
+            );
+        else q.append(key, String(value));
+    }
+    Object.entries(params).forEach(([k, v]) => append(k, v));
     return path + "?" + q;
+}
+export async function download(path: string, body: Row, filename: string) {
+    const token = localStorage.getItem(storageKey);
+    const response = await fetch(`/api/v1/${path}`, {
+        method: "POST",
+        headers: {
+            Accept: "text/csv, application/json",
+            "Content-Language": locale(),
+            "Content-Type": "application/json",
+            ...(token ? { Authorization: token } : {}),
+        },
+        body: JSON.stringify(body),
+    });
+    if (!response.ok) {
+        if ((response.status === 401 || response.status === 403) && token) {
+            localStorage.removeItem(storageKey);
+            window.dispatchEvent(new Event("auth-expired"));
+        }
+        const payload = await response.json().catch(() => ({}));
+        throw new Error(
+            Object.values(payload.errors || {})
+                .flat()
+                .join("；") ||
+                payload.message ||
+                tx("请求失败 ({{value0}})", { value0: response.status }),
+        );
+    }
+    if (!response.headers.get("Content-Type")?.includes("text/csv"))
+        throw new Error(tx("服务没有返回 CSV 文件"));
+    const url = URL.createObjectURL(await response.blob()),
+        link = document.createElement("a");
+    link.href = url;
+    link.download = filename;
+    document.body.append(link);
+    link.click();
+    link.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 export function rows(data: unknown): Row[] {
     if (Array.isArray(data)) return data;

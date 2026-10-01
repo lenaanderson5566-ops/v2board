@@ -1,36 +1,36 @@
 {
-  "_plus-ZWEB1FZQ.js": {
-    "file": "assets/plus-ZWEB1FZQ.js",
+  "_plus-BJPaNWZa.js": {
+    "file": "assets/plus-BJPaNWZa.js",
     "name": "plus",
     "imports": [
       "src/main.tsx"
     ]
   },
   "src/Landing.tsx": {
-    "file": "assets/Landing-DMSY8hiQ.js",
+    "file": "assets/Landing-ztzeuzyW.js",
     "name": "Landing",
     "src": "src/Landing.tsx",
     "isDynamicEntry": true,
     "imports": [
       "src/main.tsx",
-      "_plus-ZWEB1FZQ.js"
+      "_plus-BJPaNWZa.js"
     ],
     "css": [
       "assets/Landing-LdxGN_YO.css"
     ]
   },
   "src/admin-entry.tsx": {
-    "file": "assets/admin-entry-5UeVM59Y.js",
+    "file": "assets/admin-entry-DtjvqLqb.js",
     "name": "admin-entry",
     "src": "src/admin-entry.tsx",
     "isDynamicEntry": true,
     "imports": [
       "src/main.tsx",
-      "_plus-ZWEB1FZQ.js"
+      "_plus-BJPaNWZa.js"
     ]
   },
   "src/main.tsx": {
-    "file": "assets/main-C9oy110d.js",
+    "file": "assets/main-DjHUwqfL.js",
     "name": "main",
     "src": "src/main.tsx",
     "isEntry": true,
@@ -39,7 +39,7 @@
       "src/Landing.tsx"
     ],
     "css": [
-      "assets/main-BVdyjq8I.css"
+      "assets/main-BhC1micb.css"
     ]
   }
 }

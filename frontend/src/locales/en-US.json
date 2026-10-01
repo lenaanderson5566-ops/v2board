@@ -256,5 +256,6 @@
   "订阅链接和二维码包含访问凭据，请勿分享。": "Your link and QR code contain access credentials. Do not share them.",
   "{{count}} 台设备": "{{count}} devices",
   "{{count}} 台设备_one": "{{count}} device",
-  "{{count}} 台设备_other": "{{count}} devices"
+  "{{count}} 台设备_other": "{{count}} devices",
+  "服务没有返回 CSV 文件": "The server did not return a CSV file"
 }

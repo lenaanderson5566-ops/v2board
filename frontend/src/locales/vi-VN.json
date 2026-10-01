@@ -254,5 +254,6 @@
   "在另一台设备上扫描，或复制链接到客户端。": "Quét trên thiết bị khác hoặc sao chép liên kết vào ứng dụng.",
   "订阅二维码": "Mã QR đăng ký",
   "订阅链接和二维码包含访问凭据，请勿分享。": "Liên kết và mã QR chứa thông tin truy cập. Không chia sẻ.",
-  "{{count}} 台设备": "{{count}} thiết bị"
+  "{{count}} 台设备": "{{count}} thiết bị",
+  "服务没有返回 CSV 文件": "Máy chủ không trả về tệp CSV"
 }

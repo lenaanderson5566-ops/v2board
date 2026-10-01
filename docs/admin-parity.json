@@ -85,8 +85,8 @@
     {
       "module": "原后台菜单",
       "item": "用户管理 (/user)",
-      "status": "部分迁移",
-      "note": "用户管理：编辑字段逐项核对；高级筛选、批量操作、邮件和 CSV 待补齐。",
+      "status": "已迁移",
+      "note": "用户管理：八项行操作、四项批量操作、高级筛选、排序分页与生成用户已补齐；详见用户按钮核对报告。",
       "evidence": "public/assets/admin/res_005.js:21089"
     },
     {
@@ -855,29 +855,29 @@
     {
       "module": "操作入口",
       "item": "用户管理 / 导出用户 CSV",
-      "status": "缺失",
-      "note": "原后台引用此接口，当前前端未找到操作入口。",
+      "status": "已保留",
+      "note": "当前前端已引用该管理员接口；不代表外部服务已配置。",
       "evidence": "public/assets/admin/res_005.js:70799"
     },
     {
       "module": "操作入口",
       "item": "用户管理 / 发送用户邮件",
-      "status": "缺失",
-      "note": "原后台引用此接口，当前前端未找到操作入口。",
+      "status": "已保留",
+      "note": "当前前端已引用该管理员接口；不代表外部服务已配置。",
       "evidence": "public/assets/admin/res_005.js:81958"
     },
     {
       "module": "操作入口",
       "item": "用户管理 / 批量封禁",
-      "status": "缺失",
-      "note": "原后台引用此接口，当前前端未找到操作入口。",
+      "status": "已保留",
+      "note": "当前前端已引用该管理员接口；不代表外部服务已配置。",
       "evidence": "public/assets/admin/res_005.js:70808"
     },
     {
       "module": "操作入口",
       "item": "用户管理 / 批量删除",
-      "status": "缺失",
-      "note": "原后台引用此接口，当前前端未找到操作入口。",
+      "status": "已保留",
+      "note": "当前前端已引用该管理员接口；不代表外部服务已配置。",
       "evidence": "public/assets/admin/res_005.js:70819"
     },
     {
@@ -890,15 +890,15 @@
     {
       "module": "操作入口",
       "item": "订单管理 / 订单详情",
-      "status": "缺失",
-      "note": "原后台引用此接口，当前前端未找到操作入口。",
+      "status": "已保留",
+      "note": "当前前端已引用该管理员接口；不代表外部服务已配置。",
       "evidence": "public/assets/admin/res_005.js:95454"
     },
     {
       "module": "操作入口",
       "item": "订单管理 / 分配订单",
-      "status": "缺失",
-      "note": "原后台引用此接口，当前前端未找到操作入口。",
+      "status": "已保留",
+      "note": "当前前端已引用该管理员接口；不代表外部服务已配置。",
       "evidence": "public/assets/admin/res_005.js:13442"
     },
     {

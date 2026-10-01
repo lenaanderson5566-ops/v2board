@@ -11,7 +11,9 @@ import {
     System,
 } from "./admin";
 import { Tickets } from "./user";
+import { UsersPage } from "./admin-users";
 export default function AdminContent({ current }: { current: string }) {
+    if (current === "users") return <UsersPage />;
     if (resources[current])
         return <ResourcePage key={current} resource={resources[current]} />;
     switch (current) {

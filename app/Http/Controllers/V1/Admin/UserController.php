@@ -35,6 +35,7 @@ class UserController extends Controller
 
     private function filter(Request $request, $builder)
     {
+        $request->validate((new UserFetch())->rules());
         $filters = $request->input('filter');
         if ($filters) {
             foreach ($filters as $k => $filter) {
@@ -46,9 +47,7 @@ class UserController extends Controller
                     $filter['value'] = $filter['value'] * 1073741824;
                 }
                 if ($filter['key'] === 'invite_by_email') {
-                    $user = User::where('email', $filter['condition'], $filter['value'])->first();
-                    $inviteUserId = isset($user->id) ? $user->id : 0;
-                    $builder->where('invite_user_id', $inviteUserId);
+                    $builder->whereIn('invite_user_id', User::where('email', $filter['condition'], $filter['value'])->select('id'));
                     unset($filters[$k]);
                     continue;
                 }
@@ -114,6 +113,7 @@ class UserController extends Controller
             abort(500, '参数错误');
         }
         $user = User::find($request->input('id'));
+        if (!$user) abort(404, '用户不存在');
         if ($user->invite_user_id) {
             $user['invite_user'] = User::find($user->invite_user_id);
         }
@@ -185,20 +185,45 @@ class UserController extends Controller
             }
         }
 
-        $data = "邮箱,余额,推广佣金,总流量,设备数限制,剩余流量,套餐到期时间,订阅计划,订阅地址\r\n";
+        $rows = [];
         foreach($res as $user) {
             $expireDate = $user['expired_at'] === NULL ? '长期有效' : date('Y-m-d H:i:s', $user['expired_at']);
             $balance = $user['balance'] / 100;
             $commissionBalance = $user['commission_balance'] / 100;
             $transferEnable = $user['transfer_enable'] ? $user['transfer_enable'] / 1073741824 : 0;
-            $deviceLimit = $user['devce_limit'] ? $user['devce_limit'] : NULL;
+            $deviceLimit = $user['device_limit'] ? $user['device_limit'] : NULL;
             $notUseFlow = (($user['transfer_enable'] - ($user['u'] + $user['d'])) / 1073741824) ?? 0;
             $planName = $user['plan_name'] ?? '无订阅';
             $subscribeUrl =  Helper::getSubscribeUrl($user['token']);
-            $data .= "{$user['email']},{$balance},{$commissionBalance},{$transferEnable}, {$deviceLimit}, {$notUseFlow},{$expireDate},{$planName},{$subscribeUrl}\r\n";
+            $rows[] = [$user['email'], $balance, $commissionBalance, $transferEnable, $deviceLimit, $notUseFlow, $expireDate, $planName, $subscribeUrl];
 
         }
-        echo "\xEF\xBB\xBF" . $data;
+        return $this->csvResponse(['邮箱', '余额', '推广佣金', '总流量', '设备数限制', '剩余流量', '套餐到期时间', '订阅计划', '订阅地址'], $rows, 'users.csv');
+    }
+
+    private function checkScope(Request $request, $builder)
+    {
+        $request->validate(['expected_count' => 'nullable|integer|min:1']);
+        if ($request->has('expected_count') && $builder->count() != $request->input('expected_count')) {
+            abort(409, '匹配人数已变化，请刷新列表后重新确认');
+        }
+    }
+
+    private function csvResponse(array $headers, array $rows, string $filename)
+    {
+        $stream = fopen('php://temp', 'r+');
+        fwrite($stream, "\xEF\xBB\xBF");
+        foreach (array_merge([$headers], $rows) as $row) {
+            $row = array_map(function ($value) {
+                $value = (string) $value;
+                return preg_match('/^[=+@\-\t\r]/', $value) ? "'" . $value : $value;
+            }, $row);
+            fputcsv($stream, $row, ',', '"', '');
+        }
+        rewind($stream);
+        $content = stream_get_contents($stream);
+        fclose($stream);
+        return response($content, 200, ['Content-Type' => 'text/csv; charset=UTF-8', 'Content-Disposition' => 'attachment; filename="' . $filename . '"']);
     }
 
     public function generate(UserGenerate $request)
@@ -232,7 +257,7 @@ class UserController extends Controller
             ]);
         }
         if ($request->input('generate_count')) {
-            $this->multiGenerate($request);
+            return $this->multiGenerate($request);
         }
     }
 
@@ -267,15 +292,15 @@ class UserController extends Controller
             abort(500, '生成失败');
         }
         DB::commit();
-        $data = "账号,密码,过期时间,UUID,创建时间,订阅地址\r\n";
+        $rows = [];
         foreach($users as $user) {
             $expireDate = $user['expired_at'] === NULL ? '长期有效' : date('Y-m-d H:i:s', $user['expired_at']);
             $createDate = date('Y-m-d H:i:s', $user['created_at']);
             $password = $request->input('password') ?? $user['email'];
             $subscribeUrl = Helper::getSubscribeUrl($user['token']);
-            $data .= "{$user['email']},{$password},{$expireDate},{$user['uuid']},{$createDate},{$subscribeUrl}\r\n";
+            $rows[] = [$user['email'], $password, $expireDate, $user['uuid'], $createDate, $subscribeUrl];
         }
-        echo $data;
+        return $this->csvResponse(['账号', '密码', '过期时间', 'UUID', '创建时间', '订阅地址'], $rows, 'generated-users.csv');
     }
 
     public function sendMail(UserSendMail $request)
@@ -284,6 +309,7 @@ class UserController extends Controller
         $sort = $request->input('sort') ? $request->input('sort') : 'created_at';
         $builder = User::orderBy($sort, $sortType);
         $this->filter($request, $builder);
+        $this->checkScope($request, $builder);
         foreach ($builder->cursor() as $user) {
             SendEmailJob::dispatch([
                 'email' => $user->email,
@@ -304,10 +330,12 @@ class UserController extends Controller
 
     public function ban(Request $request)
     {
+        $request->validate(['filter' => 'required|array|min:1']);
         $sortType = in_array($request->input('sort_type'), ['ASC', 'DESC']) ? $request->input('sort_type') : 'DESC';
         $sort = $request->input('sort') ? $request->input('sort') : 'created_at';
         $builder = User::orderBy($sort, $sortType);
         $this->filter($request, $builder);
+        $this->checkScope($request, $builder);
         try {
             $builder->each(function ($user){
                 $authService = new AuthService($user);
@@ -327,10 +355,12 @@ class UserController extends Controller
 
     public function allDel(Request $request)
     {
+        $request->validate(['filter' => 'required|array|min:1']);
         $sortType = in_array($request->input('sort_type'), ['ASC', 'DESC']) ? $request->input('sort_type') : 'DESC';
         $sort = $request->input('sort') ? $request->input('sort') : 'created_at';
         $builder = User::orderBy($sort, $sortType);
         $this->filter($request, $builder);
+        $this->checkScope($request, $builder);
 
         DB::beginTransaction();
         try {

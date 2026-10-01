@@ -240,8 +240,8 @@ const routes = {
     ],
     "/user": [
         "用户管理",
-        "部分迁移",
-        "编辑字段逐项核对；高级筛选、批量操作、邮件和 CSV 待补齐。",
+        "已迁移",
+        "八项行操作、四项批量操作、高级筛选、排序分页与生成用户已补齐；详见用户按钮核对报告。",
     ],
     "/notice": ["公告管理", "已迁移", "新增、编辑、删除、展示已保留。"],
     "/ticket": [
@@ -401,7 +401,11 @@ const actions = [
     ["队列监控", "system/getQueueMasters", "队列主进程"],
 ];
 const adminEndpoints = new Set();
-for (const file of ["frontend/src/admin.tsx", "frontend/src/user.tsx"]) {
+for (const file of [
+    "frontend/src/admin.tsx",
+    "frontend/src/admin-users.tsx",
+    "frontend/src/user.tsx",
+]) {
     const source = ts.createSourceFile(
         file,
         read(file),

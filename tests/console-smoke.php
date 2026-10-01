@@ -46,6 +46,55 @@ try {
     $assert($response->getStatusCode() === 200 && $subject->refresh()->invite_user_id === null, 'Explicit inviter removal failed');
     $response = $call('/api/v1/' . $securePath . '/user/update', $editUser + ['invite_user_email' => $user->email], $token);
     $assert($response->getStatusCode() === 200 && $subject->refresh()->invite_user_id == $user->id, 'Inviter email assignment failed');
+    // Disposable users and orders remain inside the surrounding rollback transaction.
+    $scope = [['key' => 'id', 'condition' => '=', 'value' => $subject->id]];
+    $subject->device_limit = 7;
+    $subject->save();
+    $response = $call('/api/v1/' . $securePath . '/user/fetch?' . http_build_query(['filter' => $scope, 'sort' => 'total_used', 'sort_type' => 'ASC']), null, $token);
+    $payload = json_decode($response->getContent(), true);
+    $assert($response->getStatusCode() === 200 && $payload['total'] === 1 && $payload['data'][0]['id'] === $subject->id, 'Nested user filtering/sorting failed');
+    $response = $call('/api/v1/' . $securePath . '/user/dumpCSV', ['filter' => $scope], $token);
+    $csv = array_map('str_getcsv', explode("\n", trim(substr($response->getContent(), 3))));
+    $assert($response->getStatusCode() === 200 && strpos($response->headers->get('Content-Type'), 'text/csv') === 0 && count($csv) === 2 && $csv[1][4] === '7', 'Scoped CSV or device count failed');
+    foreach (['ban', 'allDel'] as $method) {
+        $assert($call('/api/v1/' . $securePath . '/user/' . $method, [], $token)->getStatusCode() === 422, 'Unfiltered destructive operation accepted: ' . $method);
+        $assert($call('/api/v1/' . $securePath . '/user/' . $method, ['filter' => $scope, 'expected_count' => 2], $token)->getStatusCode() === 409, 'Changed operation scope accepted: ' . $method);
+    }
+    $assert($subject->refresh()->banned === 0 && App\Models\User::find($subject->id), 'Rejected operation changed the user');
+    Illuminate\Support\Facades\Bus::fake();
+    $response = $call('/api/v1/' . $securePath . '/user/sendMail', ['filter' => $scope, 'expected_count' => 1, 'subject' => 'test', 'content' => '<p>test</p>'], $token);
+    $jobs = Illuminate\Support\Facades\Bus::dispatched(App\Jobs\SendEmailJob::class);
+    $assert($response->getStatusCode() === 200 && $jobs->count() === 1 && $jobs->first()->queue === 'send_email_mass', 'Scoped mail did not reach the mass-mail queue');
+    $suffix = 'console-batch-' . bin2hex(random_bytes(5)) . '.invalid';
+    $response = $call('/api/v1/' . $securePath . '/user/generate', ['email_suffix' => $suffix, 'generate_count' => 2, 'password' => '=test,quoted'], $token);
+    $csv = array_map('str_getcsv', explode("\n", trim(substr($response->getContent(), 3))));
+    $assert($response->getStatusCode() === 200 && strpos($response->headers->get('Content-Type'), 'text/csv') === 0 && count($csv) === 3 && $csv[1][1] === "'=test,quoted" && App\Models\User::where('email', 'like', '%@' . $suffix)->count() === 2, 'Batch account CSV/escaping failed');
+    $response = $call('/api/v1/' . $securePath . '/user/generate', ['email_prefix' => 'single', 'email_suffix' => $suffix], $token);
+    $assert($response->getStatusCode() === 200 && json_decode($response->getContent(), true)['data'] === true, 'Single account generation failed');
+    $assert($call('/api/v1/' . $securePath . '/user/generate', ['email_suffix' => $suffix, 'generate_count' => 0], $token)->getStatusCode() === 422, 'Zero account count accepted');
+    $oldUuid = $subject->uuid; $oldToken = $subject->token;
+    $response = $call('/api/v1/' . $securePath . '/user/resetSecret', ['id' => $subject->id], $token);
+    $subject->refresh();
+    $assert($response->getStatusCode() === 200 && $subject->uuid !== $oldUuid && $subject->token !== $oldToken, 'Reset did not replace both credentials');
+    $response = $call('/api/v1/' . $securePath . '/user/ban', ['filter' => $scope, 'expected_count' => 1], $token);
+    $assert($response->getStatusCode() === 200 && $subject->refresh()->banned === 1 && $user->refresh()->banned === 0, 'Scoped ban changed unrelated users');
+    $subject->banned = 0; $subject->save();
+    $plan = App\Models\Plan::create(['name' => 'console-user-order', 'group_id' => 1, 'transfer_enable' => 10, 'month_price' => 1000]);
+    $response = $call('/api/v1/' . $securePath . '/order/assign', ['email' => $subject->email, 'plan_id' => $plan->id, 'period' => 'month_price', 'total_amount' => 123], $token);
+    $order = App\Models\Order::where('user_id', $subject->id)->first();
+    $assert($response->getStatusCode() === 200 && $order && $order->status === 0 && $order->total_amount === 123 && $subject->refresh()->plan_id === null, 'Assigned order was not unpaid or changed the subscription');
+    $response = $call('/api/v1/' . $securePath . '/order/detail', ['id' => $order->id], $token);
+    $assert($response->getStatusCode() === 200 && json_decode($response->getContent(), true)['data']['trade_no'] === $order->trade_no, 'User order detail failed');
+    $response = $call('/api/v1/' . $securePath . '/order/fetch?' . http_build_query(['filter' => [['key' => 'user_id', 'condition' => '=', 'value' => $subject->id]]]), null, $token);
+    $assert(json_decode($response->getContent(), true)['total'] === 1, 'User order scope failed');
+    App\Models\StatUser::create(['user_id' => $subject->id, 'server_rate' => 1, 'u' => 1024, 'd' => 2048, 'record_type' => 'd', 'record_at' => time()]);
+    $response = $call('/api/v1/' . $securePath . '/stat/getStatUser?user_id=' . $subject->id, null, $token);
+    $assert($response->getStatusCode() === 200 && json_decode($response->getContent(), true)['total'] === 1, 'User traffic records failed');
+    $batchScope = [['key' => 'email', 'condition' => '模糊', 'value' => '@' . $suffix]];
+    $response = $call('/api/v1/' . $securePath . '/user/allDel', ['filter' => $batchScope, 'expected_count' => 3], $token);
+    $assert($response->getStatusCode() === 200 && App\Models\User::where('email', 'like', '%@' . $suffix)->count() === 0 && App\Models\User::find($subject->id), 'Scoped deletion changed unrelated users');
+    $response = $call('/api/v1/' . $securePath . '/user/delUser', ['id' => $subject->id], $token);
+    $assert($response->getStatusCode() === 200 && !App\Models\User::find($subject->id) && !App\Models\Order::find($order->id), 'Single-user deletion did not clean up the assigned order');
     foreach (['/', '/app', '/' . $securePath] as $path) {
         $response = $call($path);
         $assert($response->getStatusCode() === 200 && strpos($response->getContent(), '/console/assets/') !== false, 'React shell failed: ' . $path);

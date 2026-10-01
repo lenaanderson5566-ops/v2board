@@ -14,7 +14,7 @@ class UserGenerate extends FormRequest
     public function rules()
     {
         return [
-            'generate_count' => 'nullable|integer|max:500',
+            'generate_count' => 'required_without:email_prefix|nullable|integer|min:1|max:500',
             'expired_at' => 'nullable|integer',
             'plan_id' => 'nullable|integer',
             'email_prefix' => 'nullable',

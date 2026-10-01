@@ -412,7 +412,7 @@ for (const file of ["frontend/src/admin.tsx", "frontend/src/user.tsx"]) {
     walk(source, (node) => {
         if (
             ts.isCallExpression(node) &&
-            node.expression.getText(source) === "admin" &&
+            ["admin", "runAction"].includes(node.expression.getText(source)) &&
             text(node.arguments[0])
         )
             adminEndpoints.add(text(node.arguments[0]));

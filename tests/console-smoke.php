@@ -84,6 +84,43 @@ try {
     $assert($response->getStatusCode() === 200, 'Structured node save failed: ' . $response->getContent());
     $node = App\Models\ServerV2node::where('name', 'console-smoke-node')->first();
     $assert($node && $node->tls_settings['server_name'] === 'example.invalid' && $node->network_settings['headers']['Host'] === 'example.invalid', 'Structured node values did not persist');
+    $nodeVariants = [
+        'vmess' => ['tls' => 1, 'network' => 'xhttp', 'networkSettings' => ['path' => '/test', 'mode' => 'auto', 'security' => 'auto']],
+        'vless' => ['tls' => 1, 'network' => 'tcp', 'tls_settings' => ['server_name' => 'example.invalid']],
+        'trojan' => ['network' => 'tcp', 'allow_insecure' => 0, 'server_name' => 'example.invalid'],
+        'shadowsocks' => ['cipher' => 'aes-128-gcm'],
+        'hysteria' => ['version' => 2, 'insecure' => 0, 'obfs' => 'salamander', 'obfs_password' => 'test-only'],
+        'tuic' => ['insecure' => 0, 'disable_sni' => 0, 'zero_rtt_handshake' => 0, 'udp_relay_mode' => 'quic', 'congestion_control' => 'bbr'],
+        'anytls' => ['insecure' => 0, 'padding_scheme' => '["stop=8","0=30-30"]'],
+    ];
+    foreach ($nodeVariants as $kind => $variant) {
+        $body = ['name' => 'console-smoke-' . $kind, 'group_id' => [$group->id], 'route_id' => [], 'host' => 'example.invalid', 'port' => '443', 'server_port' => 443, 'rate' => 1, 'show' => 0] + $variant;
+        $response = $call('/api/v1/' . $securePath . '/server/' . $kind . '/save', $body, $token);
+        $assert($response->getStatusCode() === 200, 'Node variant save failed: ' . $kind . ': ' . $response->getContent());
+    }
+    $assert(App\Models\ServerAnytls::where('name', 'console-smoke-anytls')->first()->padding_scheme === ['stop=8', '0=30-30'], 'AnyTLS padding JSON failed to round-trip');
+    $assert(App\Models\ServerTuic::where('name', 'console-smoke-tuic')->first()->congestion_control === 'bbr', 'TUIC option did not persist');
+    $response = $call('/api/v1/' . $securePath . '/server/manage/getNodes', null, $token);
+    $savedNodes = json_decode($response->getContent(), true)['data'] ?? [];
+    foreach (array_merge(['v2node'], array_keys($nodeVariants)) as $kind) {
+        $matches = array_filter($savedNodes, function ($item) use ($kind) { return $item['type'] === $kind && strpos($item['name'], 'console-smoke-') === 0; });
+        $assert($response->getStatusCode() === 200 && count($matches) > 0, 'Saved node did not reload: ' . $kind);
+    }
+    $methodsResponse = $call('/api/v1/' . $securePath . '/payment/getPaymentMethods', null, $token);
+    $paymentMethods = json_decode($methodsResponse->getContent(), true)['data'] ?? [];
+    $assert(count($paymentMethods) > 0, 'No payment methods returned');
+    foreach ($paymentMethods as $method) {
+        $response = $call('/api/v1/' . $securePath . '/payment/getPaymentForm', ['payment' => $method], $token);
+        $assert($response->getStatusCode() === 200 && is_array(json_decode($response->getContent(), true)['data'] ?? null), 'Payment form failed: ' . $method);
+    }
+    $paymentBody = ['name' => 'console-smoke-payment', 'payment' => 'Paytaro', 'config' => ['pid' => 'test-only', 'key' => 'test-only'], 'handling_fee_fixed' => 0, 'handling_fee_percent' => 0, 'notify_domain' => 'https://example.invalid'];
+    $response = $call('/api/v1/' . $securePath . '/payment/save', $paymentBody, $token);
+    $assert($response->getStatusCode() === 200, 'Zero-fee payment configuration failed: ' . $response->getContent());
+    $payment = App\Models\Payment::where('name', 'console-smoke-payment')->first();
+    $response = $call('/api/v1/' . $securePath . '/payment/getPaymentForm', ['payment' => 'Paytaro', 'id' => $payment->id], $token);
+    $assert((json_decode($response->getContent(), true)['data']['key']['value'] ?? '') === 'test-only', 'Saved gateway value did not reload');
+    $response = $call('/api/v1/' . $securePath . '/config/save', ['show_subscribe_expire' => 0], $token);
+    $assert($response->getStatusCode() === 422, 'Zero subscription interval should be rejected');
     $nodeParams['id'] = $node->id;
     $nodeParams['tls'] = 2;
     $nodeParams['network'] = 'grpc';

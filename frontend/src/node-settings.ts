@@ -2,6 +2,39 @@ import type { Row } from "./api";
 import type { Field } from "./ui";
 const nested: Record<string, Field[]> = {
     tls_settings: [
+        {
+            key: "cert_mode",
+            label: "证书模式",
+            type: "select",
+            options: [
+                ["self", "自签名"],
+                ["http", "HTTP 申请"],
+                ["dns", "DNS 申请"],
+                ["remote", "面板生成并下发"],
+                ["none", "不使用证书"],
+            ],
+        },
+        { key: "provider", label: "DNS 提供商", hint: "例如 cloudflare。" },
+        {
+            key: "dns_env",
+            label: "DNS 环境参数",
+            type: "password",
+            hint: "例如 CF_DNS_API_TOKEN=xxx；多条用逗号分隔。",
+        },
+        {
+            key: "cert_file",
+            label: "证书文件路径",
+            hint: "留空使用服务端默认路径。",
+        },
+        {
+            key: "key_file",
+            label: "证书私钥文件路径",
+            hint: "留空使用服务端默认路径。",
+        },
+        {
+            key: "pinned_peer_cert_sha256",
+            label: "证书 SHA256 指纹（留空自动生成）",
+        },
         { key: "server_name", label: "TLS 服务器名称（SNI）" },
         { key: "allow_insecure", label: "跳过证书校验", type: "switch" },
         {
@@ -22,6 +55,17 @@ const nested: Record<string, Field[]> = {
             type: "password",
         },
         { key: "short_id", label: "Reality Short ID（留空自动生成）" },
+        { key: "dest", label: "Reality 目标地址" },
+        {
+            key: "xver",
+            label: "Reality Proxy Protocol 版本",
+            type: "select",
+            options: [
+                ["0", "关闭"],
+                ["1", "v1"],
+                ["2", "v2"],
+            ],
+        },
         {
             key: "server_port",
             label: "Reality 目标端口",
@@ -50,6 +94,11 @@ const nested: Record<string, Field[]> = {
         { key: "fingerprint", label: "客户端指纹" },
     ],
     network_settings: [
+        {
+            key: "acceptProxyProtocol",
+            label: "接收 Proxy Protocol",
+            type: "switch",
+        },
         { key: "path", label: "传输路径" },
         { key: "headers.Host", label: "传输 Host" },
         { key: "serviceName", label: "gRPC 服务名称" },
@@ -67,9 +116,26 @@ const nested: Record<string, Field[]> = {
         },
     ],
     networkSettings: [
+        {
+            key: "security",
+            label: "VMess 加密方式",
+            type: "select",
+            options: ["auto", "aes-128-gcm", "chacha20-poly1305", "none"].map(
+                (v) => [v, v],
+            ),
+        },
         { key: "path", label: "传输路径" },
         { key: "headers.Host", label: "传输 Host" },
         { key: "serviceName", label: "gRPC 服务名称" },
+        { key: "host", label: "XHTTP Host" },
+        {
+            key: "mode",
+            label: "XHTTP 模式",
+            type: "select",
+            options: ["auto", "packet-up", "stream-up", "stream-one"].map(
+                (v) => [v, v],
+            ),
+        },
     ],
     obfs_settings: [
         { key: "host", label: "混淆 Host" },

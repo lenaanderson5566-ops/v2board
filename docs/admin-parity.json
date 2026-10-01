@@ -373,7 +373,7 @@
       "module": "系统设置字段",
       "item": "subscribe.show_subscribe_method",
       "status": "已保留",
-      "note": "原控件：订阅链接生效模式 / select [0=永久有效、1=一次性有效、2=限时有效]。当前：select [0=固定访问令牌、1=每日轮换访问令牌、2=按时间轮换访问令牌]。联动按 admin-linkage.ts 定义；自定义组件需结合浏览器确认。",
+      "note": "原控件：订阅链接生效模式 / select [0=永久有效、1=一次性有效、2=限时有效]。当前：select [0=固定访问令牌、1=一次性有效（使用后失效）、2=按时间轮换访问令牌]。联动按 admin-linkage.ts 定义；自定义组件需结合浏览器确认。",
       "evidence": "public/assets/admin/res_005.js:6007"
     },
     {
@@ -576,7 +576,7 @@
       "module": "系统设置字段",
       "item": "email.email_port",
       "status": "已保留",
-      "note": "原控件：SMTP服务端口 / text。当前：text。联动按 admin-linkage.ts 定义；自定义组件需结合浏览器确认。",
+      "note": "原控件：SMTP服务端口 / text。当前：number。联动按 admin-linkage.ts 定义；自定义组件需结合浏览器确认。",
       "evidence": "public/assets/admin/res_005.js:6334"
     },
     {
@@ -813,15 +813,15 @@
     {
       "module": "操作入口",
       "item": "系统设置 / 发送测试邮件",
-      "status": "缺失",
-      "note": "原后台引用此接口，当前前端未找到操作入口。",
+      "status": "已保留",
+      "note": "当前前端已引用该管理员接口；不代表外部服务已配置。",
       "evidence": "public/assets/admin/res_005.js:6391"
     },
     {
       "module": "操作入口",
       "item": "系统设置 / 设置 Telegram Webhook",
-      "status": "缺失",
-      "note": "原后台引用此接口，当前前端未找到操作入口。",
+      "status": "已保留",
+      "note": "当前前端已引用该管理员接口；不代表外部服务已配置。",
       "evidence": "public/assets/admin/res_005.js:6414"
     },
     {

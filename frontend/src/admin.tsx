@@ -22,9 +22,15 @@ import {
     Pager,
     Reload,
     Empty,
+    Html,
     type Field,
 } from "./ui";
 import { configField, resetOptions } from "./admin-fields";
+import {
+    paymentFields,
+    paymentInitial,
+    paymentPayload,
+} from "./payment-fields";
 import {
     settingsFields,
     linkSettings,
@@ -1111,9 +1117,9 @@ const labels: Record<string, string> = {
     surplus_enable: "折抵剩余价值",
     reset_traffic_method: "流量重置模式",
     allow_new_period: "允许新周期",
-    show_subscribe_method: "订阅状态展示",
-    show_subscribe_expire: "令牌轮换间隔（分钟）",
-    show_info_to_server_enable: "节点接收用户信息",
+    show_subscribe_method: "订阅链接生效模式",
+    show_subscribe_expire: "限时链接有效时间（分钟）",
+    show_info_to_server_enable: "在订阅中展示订阅信息",
     paid_total: "总收入",
     order_count: "订单数",
     user_count: "用户数",
@@ -1138,6 +1144,25 @@ export function Settings() {
     const plans = useData<Row[]>(admin("plan/fetch"));
     const [group, setGroup] = useState("site"),
         [saved, setSaved] = useState("");
+    const [dirty, setDirty] = useState(false),
+        [actionBusy, setActionBusy] = useState(false),
+        [actionResult, setActionResult] = useState("");
+    async function runAction(endpoint: string) {
+        setActionBusy(true);
+        setActionResult("");
+        try {
+            const response = await request(admin(endpoint), {});
+            const log = (
+                response as typeof response & { log?: { error?: string } }
+            ).log;
+            if (log?.error) throw new Error(log.error);
+            setActionResult("操作成功");
+        } catch (e) {
+            setActionResult((e as Error).message);
+        } finally {
+            setActionBusy(false);
+        }
+    }
     const raw = d.data?.[group] || {};
     const fields = Object.entries(raw)
         .filter(([k]) => !k.startsWith("frontend_") && k !== "email_template")
@@ -1166,6 +1191,8 @@ export function Settings() {
                         onClick={() => {
                             setGroup(k);
                             setSaved("");
+                            setDirty(false);
+                            setActionResult("");
                         }}
                     >
                         {groupNames[k]}
@@ -1187,16 +1214,68 @@ export function Settings() {
                     initial={raw}
                     resolveFields={settingsFields}
                     linkValues={linkSettings}
-                    onDirty={() => setSaved("")}
+                    onDirty={() => {
+                        setSaved("");
+                        setDirty(true);
+                        setActionResult("");
+                    }}
                     validate={validateSettings}
                     onSave={async (body) => {
                         const changes = changedSettings(body, raw);
                         if (Object.keys(changes).length)
                             await request(admin("config/save"), changes);
                         setSaved("设置已保存");
+                        setDirty(false);
                         d.reload();
                     }}
                 />
+                {group === "email" && (
+                    <div className="pad">
+                        <p className="muted">
+                            测试邮件发往当前管理员邮箱，使用已保存的 SMTP
+                            配置。修改邮件配置后需重启队列服务。
+                        </p>
+                        <button
+                            disabled={
+                                dirty ||
+                                actionBusy ||
+                                !raw.email_host ||
+                                !raw.email_from_address
+                            }
+                            onClick={() => runAction("config/testSendMail")}
+                        >
+                            发送测试邮件
+                        </button>
+                    </div>
+                )}
+                {group === "telegram" && (
+                    <div className="pad">
+                        <p className="muted">
+                            使用已保存的机器人 Token 在 Telegram 注册本站
+                            Webhook；站点需有可访问的 HTTPS 地址。
+                        </p>
+                        <button
+                            disabled={
+                                dirty || actionBusy || !raw.telegram_bot_token
+                            }
+                            onClick={() =>
+                                runAction("config/setTelegramWebhook")
+                            }
+                        >
+                            设置 Telegram Webhook
+                        </button>
+                    </div>
+                )}
+                {dirty && ["email", "telegram"].includes(group) && (
+                    <p className="pad muted">
+                        请先保存配置，再执行测试或连接操作。
+                    </p>
+                )}
+                {actionResult && (
+                    <p className="pad" role="status">
+                        {actionResult}
+                    </p>
+                )}
                 {saved && (
                     <p className="success-message" role="status">
                         {saved}
@@ -1335,12 +1414,27 @@ export function Payments() {
             <Panel
                 title="支付方式"
                 actions={
-                    <button className="primary" onClick={() => setEditing({})}>
+                    <button
+                        className="primary"
+                        disabled={
+                            methods.loading ||
+                            Boolean(methods.error) ||
+                            !methods.data?.length
+                        }
+                        onClick={() => setEditing({})}
+                    >
                         添加支付方式
                     </button>
                 }
             >
-                <State {...d}>
+                <State
+                    loading={d.loading || methods.loading}
+                    error={d.error || methods.error}
+                    retry={() => {
+                        d.reload();
+                        methods.reload();
+                    }}
+                >
                     <Table
                         data={d.data || []}
                         columns={[
@@ -1418,7 +1512,8 @@ function PaymentEditor({
     onSave: (b: Row) => Promise<void>;
 }) {
     const [method, setMethod] = useState(initial.payment || methods[0] || "");
-    const d = useData(admin("payment/getPaymentForm"), {
+    const [commonDraft, setCommonDraft] = useState(initial);
+    const d = useData(method ? admin("payment/getPaymentForm") : "", {
         payment: method,
         id: method === initial.payment ? initial.id : undefined,
     });
@@ -1437,59 +1532,62 @@ function PaymentEditor({
                     </select>
                 </label>
             </div>
-            <State {...d}>
+            <State {...d} retry={d.reload}>
+                {Object.entries(d.data || {})
+                    .filter(([, v]) => v.type === "alert")
+                    .map(([key, v]) => (
+                        <div className="pad muted" key={key}>
+                            <Html value={v.content} />
+                        </div>
+                    ))}
                 <Editor
                     key={method}
                     fields={[
                         f("name", "显示名称", "text", true),
                         f("icon", "图标 URL"),
-                        f("notify_domain", "通知域名"),
-                        f("handling_fee_fixed", "固定手续费（分）", "number"),
-                        f("handling_fee_percent", "手续费比例 (%)", "number"),
-                        ...Object.entries(d.data || {}).map(([k, v]) => ({
+                        f("notify_domain", "通知域名", "url"),
+                        {
                             ...f(
-                                "config." + k,
-                                v.label || k,
-                                v.type === "textarea"
-                                    ? "textarea"
-                                    : /secret|password|token|key|sk_live/i.test(
-                                            k,
-                                        )
-                                      ? "password"
-                                      : "text",
-                            ),
-                            hint: v.description,
-                            required: Boolean(v.required),
-                        })),
-                    ]}
-                    initial={{
-                        ...initial,
-                        ...Object.fromEntries(
-                            Object.entries(
-                                method === initial.payment
-                                    ? initial.config || {}
-                                    : {},
-                            ).map(([k, v]) => ["config." + k, v]),
-                        ),
-                    }}
-                    onSave={async (b) => {
-                        const config: Row = {};
-                        Object.keys(d.data || {}).forEach((k) => {
-                            config[k] = b["config." + k] ?? "";
-                        });
-                        const common = Object.fromEntries(
-                            [
-                                "id",
-                                "name",
-                                "icon",
-                                "notify_domain",
                                 "handling_fee_fixed",
+                                "固定手续费（分）",
+                                "number",
+                            ),
+                            min: 0,
+                            step: 1,
+                        },
+                        {
+                            ...f(
                                 "handling_fee_percent",
-                            ]
-                                .filter((k) => b[k] !== undefined)
-                                .map((k) => [k, b[k]]),
+                                "手续费比例 (%)",
+                                "number",
+                            ),
+                            min: 0,
+                            max: 100,
+                        },
+                        ...paymentFields(d.data || {}),
+                    ]}
+                    initial={paymentInitial(
+                        { ...initial, ...commonDraft },
+                        d.data || {},
+                        method === initial.payment,
+                    )}
+                    onValuesChange={(values) =>
+                        setCommonDraft(
+                            Object.fromEntries(
+                                [
+                                    "name",
+                                    "icon",
+                                    "notify_domain",
+                                    "handling_fee_fixed",
+                                    "handling_fee_percent",
+                                ].map((key) => [key, values[key]]),
+                            ),
+                        )
+                    }
+                    onSave={async (b) => {
+                        await onSave(
+                            paymentPayload(b, d.data || {}, method, initial),
                         );
-                        await onSave({ ...common, payment: method, config });
                     }}
                 />
             </State>
@@ -1787,6 +1885,13 @@ export function Nodes() {
                             initial={nodeSettingsInitial(editing)}
                             onSave={async (b) => {
                                 b = nodeSettingsPayload(b);
+                                if (
+                                    b.padding_scheme != null &&
+                                    typeof b.padding_scheme !== "string"
+                                )
+                                    b.padding_scheme = JSON.stringify(
+                                        b.padding_scheme,
+                                    );
                                 const clean: Row = {};
                                 Object.keys(schema.data || {}).forEach((k) => {
                                     if (!k.includes(".") && b[k] !== undefined)
@@ -1814,7 +1919,7 @@ const nodeLabels: Record<string, string> = {
     listen_ip: "监听地址",
     disable_sni: "禁用 SNI",
     cipher: "加密算法",
-    encryption: "VLESS 加密参数",
+    encryption: "VLESS 加密方式",
     encryption_settings: "VLESS 加密设置",
     zero_rtt_handshake: "启用 0-RTT 握手",
     congestion_control: "拥塞控制算法",

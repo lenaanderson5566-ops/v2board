@@ -15,7 +15,7 @@ const choices: Record<string, [string, string][]> = {
     ],
     show_subscribe_method: [
         ["0", "固定访问令牌"],
-        ["1", "每日轮换访问令牌"],
+        ["1", "一次性有效（使用后失效）"],
         ["2", "按时间轮换访问令牌"],
     ],
     device_limit_mode: [
@@ -69,30 +69,50 @@ export function configField(
     const type: Field["type"] =
         key === "custom_footer_html"
             ? "textarea"
-            : secret
-              ? "password"
-              : Array.isArray(value) || validation.includes("array")
-                ? "json"
-                : /integer|numeric/.test(validation) ||
-                    typeof value === "number"
-                  ? "number"
-                  : validation.includes("url")
-                    ? "url"
-                    : "text";
+            : key === "email_port"
+              ? "number"
+              : secret
+                ? "password"
+                : Array.isArray(value) || validation.includes("array")
+                  ? "json"
+                  : /integer|numeric/.test(validation) ||
+                      typeof value === "number"
+                    ? "number"
+                    : validation.includes("url")
+                      ? "url"
+                      : "text";
     return {
         key,
         label,
         type,
-        step: validation.includes("integer") ? 1 : undefined,
-        min: type === "number" ? 0 : undefined,
+        step:
+            validation.includes("integer") || key === "email_port"
+                ? 1
+                : undefined,
+        min:
+            key === "email_port" || key === "show_subscribe_expire"
+                ? 1
+                : type === "number"
+                  ? 0
+                  : undefined,
         max: /commission_distribution_l|invite_commission/.test(key)
             ? 100
-            : undefined,
+            : key === "email_port"
+              ? 65535
+              : undefined,
         hint:
             key === "custom_footer_html"
                 ? "支持 HTML 和管理员自定义脚本，展示在用户端页面底部。"
-                : type === "json"
-                  ? "填写 JSON 数组或对象；留空将清除当前内容。"
-                  : undefined,
+                : key === "deposit_bounus"
+                  ? 'JSON 数组，例如 ["100:10", "200:30"]，表示充值金额:奖励金额。'
+                  : key === "email_whitelist_suffix"
+                    ? 'JSON 数组，例如 ["gmail.com", "outlook.com"]。'
+                    : key === "commission_withdraw_method"
+                      ? 'JSON 数组，例如 ["支付宝", "USDT"]。'
+                      : key === "subscribe_url"
+                        ? "多个地址使用逗号分隔；留空使用站点地址。"
+                        : type === "json"
+                          ? "填写 JSON 数组或对象；留空将清除当前内容。"
+                          : undefined,
     };
 }

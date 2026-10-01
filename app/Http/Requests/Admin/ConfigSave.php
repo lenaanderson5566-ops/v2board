@@ -52,7 +52,7 @@ class ConfigSave extends FormRequest
         'change_order_event_id' => 'in:0,1',
         'show_info_to_server_enable' => 'in:0,1',
         'show_subscribe_method' => 'in:0,1,2',
-        'show_subscribe_expire' => 'nullable|integer',
+        'show_subscribe_expire' => 'nullable|integer|min:1',
         // server
         'server_api_url' => 'nullable|string',
         'server_token' => 'nullable|min:16',

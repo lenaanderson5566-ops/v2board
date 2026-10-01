@@ -244,6 +244,7 @@ export function Editor({
     linkValues,
     validate,
     onDirty,
+    onValuesChange,
 }: {
     fields: Field[];
     initial: Row;
@@ -254,6 +255,7 @@ export function Editor({
     linkValues?: (key: string, next: unknown, values: Row) => Row;
     validate?: (values: Row) => string | undefined;
     onDirty?: () => void;
+    onValuesChange?: (values: Row) => void;
 }) {
     const [value, setValue] = useState<Row>(() => ({
             ...Object.fromEntries(
@@ -286,6 +288,11 @@ export function Editor({
     const activeFields = resolveFields ? resolveFields(fields, value) : fields;
     function updateValue(key: string, next: unknown) {
         onDirty?.();
+        onValuesChange?.(
+            linkValues
+                ? linkValues(key, next, value)
+                : { ...value, [key]: next },
+        );
         setValue((current) =>
             linkValues
                 ? linkValues(key, next, current)
@@ -307,6 +314,9 @@ export function Editor({
             const validationError = validate?.(value);
             if (validationError) throw new Error(validationError);
             for (const f of activeFields) {
+                if (f.type === "select" && body[f.key] == null && !f.nullable)
+                    body[f.key] = f.options?.[0]?.[0] ?? "";
+                if (f.type === "switch" && body[f.key] == null) body[f.key] = 0;
                 if (
                     f.type === "multiselect" &&
                     f.required &&

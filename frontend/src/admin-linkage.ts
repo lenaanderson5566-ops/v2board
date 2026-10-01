@@ -45,6 +45,12 @@ export function linkSettings(key: string, next: unknown, values: Row): Row {
 }
 export function validateSettings(values: Row): string | undefined {
     if (
+        Number(values.show_subscribe_method) === 2 &&
+        (!Number.isInteger(Number(values.show_subscribe_expire)) ||
+            Number(values.show_subscribe_expire) < 1)
+    )
+        return "限时订阅链接有效时间至少为 1 分钟";
+    if (
         on(values.recaptcha_enable) &&
         (!values.recaptcha_key || !values.recaptcha_site_key)
     )
@@ -175,9 +181,18 @@ export function linkNode(key: string, next: unknown, values: Row): Row {
     if (key === "protocol") {
         result.parent_id = "";
         if (tlsRequired.includes(String(next))) result.tls = 1;
-        if (["shadowsocks", "tuic", "hysteria2"].includes(String(next)))
+        else if (next !== "vless" && Number(values.tls) === 2) result.tls = 1;
+        if (
+            ["shadowsocks", "tuic", "hysteria2", "anytls"].includes(
+                String(next),
+            )
+        )
             result.network = "tcp";
         if (next !== "vless") result.flow = "";
+    }
+    if (key === "version") {
+        result.obfs = "";
+        result.obfs_password = "";
     }
     return result;
 }
@@ -198,10 +213,32 @@ export function nodeFields(
                 if (tls === 0) return false;
                 if (
                     [
+                        "cert_mode",
+                        "provider",
+                        "dns_env",
+                        "cert_file",
+                        "key_file",
+                        "pinned_peer_cert_sha256",
+                    ].includes(parameter)
+                ) {
+                    if (type !== "v2node") return false;
+                    if (tls !== 1) return false;
+                    const mode = values[root + ".cert_mode"] || "self";
+                    if (["provider", "dns_env"].includes(parameter))
+                        return mode === "dns";
+                    if (parameter === "pinned_peer_cert_sha256")
+                        return mode === "remote";
+                    if (["cert_file", "key_file"].includes(parameter))
+                        return mode !== "none";
+                }
+                if (
+                    [
                         "public_key",
                         "private_key",
                         "short_id",
                         "server_port",
+                        "dest",
+                        "xver",
                     ].includes(parameter)
                 )
                     return tls === 2;
@@ -216,6 +253,13 @@ export function nodeFields(
                 ["network_settings", "networkSettings"].includes(root) &&
                 parameter
             ) {
+                if (
+                    type === "v2node" &&
+                    ["shadowsocks", "tuic", "hysteria2", "anytls"].includes(
+                        protocol,
+                    )
+                )
+                    return false;
                 if (parameter === "serviceName") return network === "grpc";
                 if (parameter === "headers.Host")
                     return ["ws", "http", "httpupgrade"].includes(network);
@@ -228,6 +272,11 @@ export function nodeFields(
             }
             if (root === "obfs_settings" && parameter)
                 return Boolean(values.obfs);
+            if (
+                (f.key === "server_name" || parameter === "server_name") &&
+                on(values.disable_sni)
+            )
+                return false;
             if (["tls_settings", "tlsSettings"].includes(f.key)) return tls > 0;
             if (["network_settings", "networkSettings"].includes(f.key))
                 return (
@@ -236,7 +285,18 @@ export function nodeFields(
                         protocol,
                     )
                 );
-            if (f.key === "flow") return protocol === "vless" && tls > 0;
+            if (f.key === "flow")
+                return (
+                    protocol === "vless" &&
+                    tls > 0 &&
+                    (network === "tcp" ||
+                        values.encryption === "mlkem768x25519plus")
+                );
+            if (f.key === "encryption_settings")
+                return (
+                    protocol === "vless" &&
+                    values.encryption === "mlkem768x25519plus"
+                );
             if (["obfs_settings", "obfs_password"].includes(f.key))
                 return Boolean(values.obfs);
             if (type === "v2node") {
@@ -263,13 +323,24 @@ export function nodeFields(
             return true;
         })
         .map((f) => {
+            if (f.key === "tls_settings.server_name" && tls === 2)
+                return {
+                    ...f,
+                    required: true,
+                    hint: "Reality 必须与服务端 SNI 一致。",
+                };
+            if (
+                f.key === "tls_settings.ech_server_name" &&
+                values["tls_settings.ech"] === "custom"
+            )
+                return { ...f, required: true };
             if (f.key === "tls")
                 return {
                     ...f,
                     type: "select",
                     options: tlsRequired.includes(protocol)
                         ? [["1", "TLS（此协议必需）"]]
-                        : type === "vless" || type === "v2node"
+                        : protocol === "vless"
                           ? [
                                 ["0", "关闭"],
                                 ["1", "TLS"],
@@ -290,6 +361,64 @@ export function nodeFields(
                         ["xtls-rprx-vision", "XTLS Vision"],
                     ],
                 };
+            if (f.key === "show") return { ...f, type: "switch" };
+            if (f.key === "encryption")
+                return {
+                    ...f,
+                    type: "select",
+                    nullable: true,
+                    options: [
+                        ["", "不启用"],
+                        ["mlkem768x25519plus", "MLKEM768X25519PLUS"],
+                    ],
+                };
+            if (f.key === "udp_relay_mode")
+                return {
+                    ...f,
+                    type: "select",
+                    options: [
+                        ["native", "native"],
+                        ["quic", "quic"],
+                    ],
+                };
+            if (f.key === "congestion_control")
+                return {
+                    ...f,
+                    type: "select",
+                    options: ["cubic", "new_reno", "bbr"].map((v) => [v, v]),
+                };
+            if (
+                f.key === "obfs" &&
+                (type === "hysteria" || protocol === "hysteria2")
+            )
+                return {
+                    ...f,
+                    type: "select",
+                    nullable: true,
+                    options: [
+                        ["", "关闭"],
+                        [
+                            type === "hysteria" &&
+                            Number(values.version || 1) === 1
+                                ? "xplus"
+                                : "salamander",
+                            type === "hysteria" &&
+                            Number(values.version || 1) === 1
+                                ? "xplus"
+                                : "salamander",
+                        ],
+                    ],
+                };
+            if (f.key === "padding_scheme")
+                return {
+                    ...f,
+                    type: "json",
+                    hint: 'JSON 数组，例如 ["stop=8", "0=30-30"]。留空使用服务端默认值。',
+                };
+            if (["rate", "up_mbps", "down_mbps"].includes(f.key))
+                return { ...f, type: "number", min: 0 };
+            if (f.key === "server_port")
+                return { ...f, type: "number", min: 1, max: 65535, step: 1 };
             if (f.key === "cipher" && type === "v2node")
                 return {
                     ...f,
@@ -322,7 +451,9 @@ export function nodeFields(
                     ...f,
                     type: "select",
                     options: (type === "v2node" &&
-                    ["shadowsocks", "tuic", "hysteria2"].includes(protocol)
+                    ["shadowsocks", "tuic", "hysteria2", "anytls"].includes(
+                        protocol,
+                    )
                         ? ["tcp"]
                         : ["tcp", "ws", "grpc", "http", "httpupgrade", "xhttp"]
                     ).map((v) => [v, v]),

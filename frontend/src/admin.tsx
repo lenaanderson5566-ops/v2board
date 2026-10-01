@@ -1,3 +1,4 @@
+import { formPresentation, settingsPresentation } from "./admin-presentation";
 import { useState, useEffect, type ReactNode } from "react";
 import { Plus, Search } from "lucide-react";
 import {
@@ -1168,10 +1169,16 @@ export function ResourcePage({
             </Panel>
             {editing && (
                 <Modal
-                    wide={
-                        resource === resources.knowledge ||
-                        resource === resources.notices
+                    variant={
+                        [
+                            resources.plans,
+                            resources.users,
+                            resources.knowledge,
+                        ].includes(resource)
+                            ? "drawer"
+                            : "modal"
                     }
+                    wide={resource === resources.knowledge}
                     title={
                         editing[key]
                             ? `编辑 · ${resource.title}`
@@ -1188,10 +1195,15 @@ export function ResourcePage({
                         }}
                     >
                         <Editor
-                            fields={editorFields.filter(
-                                (field) =>
-                                    field.key !== "force_update" ||
-                                    Boolean(editing.id),
+                            fields={formPresentation(
+                                editorFields.filter(
+                                    (field) =>
+                                        field.key !== "force_update" ||
+                                        Boolean(editing.id),
+                                ),
+                                Object.keys(resources).find(
+                                    (k) => resources[k] === resource,
+                                ) || "",
                             )}
                             initial={editing}
                             resolveFields={(fields, values) =>
@@ -1542,23 +1554,32 @@ export function Settings() {
         }
     }
     const raw = d.data?.[group] || {};
-    const fields = Object.entries(raw)
-        .filter(([k]) => !k.startsWith("frontend_") && k !== "email_template")
-        .map(([k, v]) =>
-            k === "try_out_plan_id"
-                ? {
-                      key: k,
-                      label: "试用套餐",
-                      type: "select" as const,
-                      options: [
-                          ["0", "不指定套餐"] as [string, string],
-                          ...rows(plans.data).map(
-                              (r) => [String(r.id), r.name] as [string, string],
-                          ),
-                      ],
-                  }
-                : configField(k, v, schema.data?.[k], labels[k] || k),
-        );
+    const fields = settingsPresentation(
+        group,
+        Object.entries(raw)
+            .filter(
+                ([k]) => !k.startsWith("frontend_") && k !== "email_template",
+            )
+            .map(([k, v]) =>
+                k === "try_out_plan_id"
+                    ? {
+                          key: k,
+                          label: "试用套餐",
+                          type: "select" as const,
+                          options: [
+                              ["0", "不指定套餐"] as [string, string],
+                              ...rows(plans.data).map(
+                                  (r) =>
+                                      [String(r.id), r.name] as [
+                                          string,
+                                          string,
+                                      ],
+                              ),
+                          ],
+                      }
+                    : configField(k, v, schema.data?.[k], labels[k] || k),
+            ),
+    );
     return (
         <Panel title="系统配置" className="settings-panel">
             <div className="section-tabs">
@@ -1951,7 +1972,11 @@ export function Payments() {
                 </State>
             </Panel>
             {editing && (
-                <Modal title="支付方式设置" close={() => setEditing(null)}>
+                <Modal
+                    variant="modal"
+                    title="支付方式设置"
+                    close={() => setEditing(null)}
+                >
                     <PaymentEditor
                         initial={editing}
                         methods={methods.data || []}
@@ -2325,51 +2350,54 @@ export function Nodes() {
                         <Editor
                             key={type}
                             resolveFields={(fields, values) =>
-                                nodeFields(
-                                    type,
-                                    fields.map((field) =>
-                                        field.key === "parent_id"
-                                            ? {
-                                                  ...field,
-                                                  label: "父节点",
-                                                  type: "select",
-                                                  nullable: true,
-                                                  options: [
-                                                      ["", "不设置父节点"],
-                                                      ...rows(d.data)
-                                                          .filter(
-                                                              (r) =>
-                                                                  r.type ===
-                                                                      type &&
-                                                                  String(
-                                                                      r.id,
-                                                                  ) !==
-                                                                      String(
-                                                                          editing.id,
-                                                                      ) &&
-                                                                  (type !==
-                                                                      "v2node" ||
-                                                                      r.protocol ===
-                                                                          values.protocol),
-                                                          )
-                                                          .map(
-                                                              (r) =>
-                                                                  [
+                                formPresentation(
+                                    nodeFields(
+                                        type,
+                                        fields.map((field) =>
+                                            field.key === "parent_id"
+                                                ? {
+                                                      ...field,
+                                                      label: "父节点",
+                                                      type: "select",
+                                                      nullable: true,
+                                                      options: [
+                                                          ["", "不设置父节点"],
+                                                          ...rows(d.data)
+                                                              .filter(
+                                                                  (r) =>
+                                                                      r.type ===
+                                                                          type &&
                                                                       String(
                                                                           r.id,
-                                                                      ),
-                                                                      r.name,
-                                                                  ] as [
-                                                                      string,
-                                                                      string,
-                                                                  ],
-                                                          ),
-                                                  ] as [string, string][],
-                                                  hint: "可选择同类型、同协议的节点。切换协议时会清除当前选择。",
-                                              }
-                                            : field,
+                                                                      ) !==
+                                                                          String(
+                                                                              editing.id,
+                                                                          ) &&
+                                                                      (type !==
+                                                                          "v2node" ||
+                                                                          r.protocol ===
+                                                                              values.protocol),
+                                                              )
+                                                              .map(
+                                                                  (r) =>
+                                                                      [
+                                                                          String(
+                                                                              r.id,
+                                                                          ),
+                                                                          r.name,
+                                                                      ] as [
+                                                                          string,
+                                                                          string,
+                                                                      ],
+                                                              ),
+                                                      ] as [string, string][],
+                                                      hint: "可选择同类型、同协议的节点。切换协议时会清除当前选择。",
+                                                  }
+                                                : field,
+                                        ),
+                                        values,
                                     ),
-                                    values,
+                                    "nodes",
                                 )
                             }
                             linkValues={linkNode}

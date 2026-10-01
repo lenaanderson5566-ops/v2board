@@ -356,7 +356,11 @@ export function UsersPage() {
                 </Modal>
             )}
             {generate && (
-                <Modal title="生成用户" close={() => setGenerate(false)}>
+                <Modal
+                    variant="modal"
+                    title="生成用户"
+                    close={() => setGenerate(false)}
+                >
                     <GenerateUsers
                         onCreated={() => {
                             setGenerate(false);

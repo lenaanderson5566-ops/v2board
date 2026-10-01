@@ -1094,3 +1094,82 @@ body[data-console="admin"] .auth-box .form-bottom .primary {
     border-radius: 4px;
     min-height: 40px;
 }
+body[data-console="admin"] .modal .field-grid {
+    display: grid;
+    grid-template-columns: repeat(12, minmax(0, 1fr));
+    gap: 24px 10px;
+}
+body[data-console="admin"] .modal .editor {
+    padding: 16px;
+}
+body[data-console="admin"] .modal .field-grid > label {
+    min-width: 0;
+}
+body[data-console="admin"] .modal .field-grid > label > span {
+    font-weight: 600;
+}
+body[data-console="admin"] .field-section {
+    grid-column: 1/-1;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    margin: 4px 0;
+}
+body[data-console="admin"] .field-section::before,
+body[data-console="admin"] .field-section::after {
+    content: "";
+    height: 1px;
+    background: #e8e8e8;
+    flex: 1;
+}
+body[data-console="admin"] .input-control:has(.input-unit) {
+    display: flex;
+}
+body[data-console="admin"] .input-control:has(.input-unit) input {
+    min-width: 0;
+    border-radius: 4px 0 0 4px;
+}
+body[data-console="admin"] .input-unit {
+    display: flex;
+    align-items: center;
+    padding: 0 11px;
+    border: 1px solid #d9d9d9;
+    border-left: 0;
+    background: #fafafa;
+    border-radius: 0 4px 4px 0;
+}
+body[data-console="admin"] .overlay:not(.admin-drawer) .modal {
+    width: min(520px, calc(100vw - 32px));
+}
+body[data-console="admin"] .modal > .panel-head .icon-button {
+    border: 0;
+    background: transparent;
+    color: #999;
+}
+body[data-console="admin"] .modal .form-bottom {
+    margin: 24px -16px -16px;
+    padding: 10px 16px;
+}
+body[data-console="admin"] .settings-panel .field-grid > label[data-child] {
+    border-left: 18px solid #eee;
+    background: #efefef;
+}
+body[data-console="admin"].admin-dark .input-unit {
+    background: #272e38;
+    border-color: #404854;
+}
+body[data-console="admin"].admin-dark
+    .settings-panel
+    .field-grid
+    > label[data-child] {
+    background: #272e38;
+    border-left-color: #404854;
+}
+@media (max-width: 480px) {
+    body[data-console="admin"]
+        .modal
+        .field-grid
+        > label[style="grid-column: span 2;"] {
+        grid-column: span 4 !important;
+    }
+}

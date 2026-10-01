@@ -1,0 +1,536 @@
+{
+  "site": {
+    "app_name": {
+      "label": "站点名称",
+      "hint": "用于显示需要站点名称的地方。",
+      "placeholder": "请输入站点名称",
+      "child": false,
+      "line": 5682
+    },
+    "app_description": {
+      "label": "站点描述",
+      "hint": "用于显示需要站点描述的地方。",
+      "placeholder": "请输入站点描述",
+      "child": false,
+      "line": 5691
+    },
+    "app_url": {
+      "label": "站点网址",
+      "hint": "当前网站最新网址，将会在邮件等需要用于网址处体现。",
+      "placeholder": "请输入站点URL，末尾不要/",
+      "child": false,
+      "line": 5700
+    },
+    "force_https": {
+      "label": "强制HTTPS",
+      "hint": "当站点没有使用HTTPS，CDN或反代开启强制HTTPS时需要开启。",
+      "child": false,
+      "line": 5706
+    },
+    "logo": {
+      "label": "LOGO",
+      "hint": "用于显示需要LOGO的地方。",
+      "placeholder": "请输入LOGO URL，末尾不要/",
+      "child": false,
+      "line": 5715
+    },
+    "subscribe_url": {
+      "label": "订阅URL",
+      "hint": "用于订阅所使用，留空则为站点URL。如需多个订阅URL随机获取请使用逗号进行分割。",
+      "placeholder": "请输入订阅URL，末尾不要/。逗号分割支持多域名",
+      "child": false,
+      "line": 5725
+    },
+    "subscribe_path": {
+      "label": "订阅路径",
+      "hint": "用于订阅所使用，留空则为/api/v1/client/subscribe。如需更换不同的订阅路径请设置。",
+      "placeholder": "/api/v1/client/subscribe",
+      "child": false,
+      "line": 5734
+    },
+    "tos_url": {
+      "label": "用户条款(TOS)URL",
+      "hint": "用于跳转到用户条款(TOS)",
+      "placeholder": "请输入用户条款URL，末尾不要/",
+      "child": false,
+      "line": 5743
+    },
+    "stop_register": {
+      "label": "停止新用户注册",
+      "hint": "开启后任何人都将无法进行注册。",
+      "child": false,
+      "line": 5749
+    },
+    "try_out_plan_id": {
+      "label": "注册试用",
+      "hint": "选择需要试用的订阅，如果没有选项请先前往订阅管理添加。",
+      "placeholder": "请选择试用订阅",
+      "child": false,
+      "line": 5754
+    },
+    "try_out_hour": {
+      "label": "试用时间(小时)",
+      "placeholder": "请输入",
+      "child": true,
+      "line": 5774
+    },
+    "currency": {
+      "label": "货币单位",
+      "hint": "仅用于展示使用，更改后系统中所有的货币单位都将发生变更。",
+      "placeholder": "CNY",
+      "child": false,
+      "line": 5783
+    },
+    "currency_symbol": {
+      "label": "货币符号",
+      "hint": "仅用于展示使用，更改后系统中所有的货币单位都将发生变更。",
+      "placeholder": "¥",
+      "child": false,
+      "line": 5792
+    },
+    "frontend_theme_sidebar": {
+      "label": "边栏风格",
+      "child": false,
+      "line": 6191
+    },
+    "frontend_theme_header": {
+      "label": "头部风格",
+      "child": false,
+      "line": 6198
+    }
+  },
+  "safe": {
+    "email_verify": {
+      "label": "邮箱验证",
+      "hint": "开启后将会强制要求用户进行邮箱验证。",
+      "child": false,
+      "line": 5803
+    },
+    "email_gmail_limit_enable": {
+      "label": "禁止使用Gmail多别名",
+      "hint": "开启后Gmail多别名将无法注册。",
+      "child": false,
+      "line": 5809
+    },
+    "safe_mode_enable": {
+      "label": "安全模式",
+      "hint": "开启后除了站点URL以外的绑定本站点的域名访问都将会被403。",
+      "child": false,
+      "line": 5815
+    },
+    "secure_path": {
+      "label": "后台路径",
+      "hint": "后台管理路径，修改后将会改变原有的admin路径",
+      "placeholder": "admin",
+      "child": false,
+      "line": 5824
+    },
+    "email_whitelist_enable": {
+      "label": "邮箱后缀白名单",
+      "hint": "开启后在名单中的邮箱后缀才允许进行注册。",
+      "child": false,
+      "line": 5830
+    },
+    "email_whitelist_suffix": {
+      "label": "白名单后缀",
+      "hint": "请使用逗号进行分割，如：qq.com,gmail.com。",
+      "placeholder": "请输入后缀域名，逗号分割 如：qq.com,gmail.com",
+      "child": true,
+      "line": 5841
+    },
+    "recaptcha_enable": {
+      "label": "防机器人",
+      "hint": "开启后将会使用Google reCAPTCHA防止机器人。",
+      "child": false,
+      "line": 5847
+    },
+    "recaptcha_key": {
+      "label": "密钥",
+      "hint": "在Google reCAPTCHA申请的密钥。",
+      "placeholder": "请输入",
+      "child": true,
+      "line": 5857
+    },
+    "recaptcha_site_key": {
+      "label": "网站密钥",
+      "hint": "在Google reCAPTCH申请的网站密钥。",
+      "placeholder": "请输入",
+      "child": true,
+      "line": 5867
+    },
+    "register_limit_by_ip_enable": {
+      "label": "IP注册限制",
+      "hint": "开启后如果IP注册账户达到规则要求将会被限制注册，请注意IP判断可能因为CDN或前置代理导致问题。",
+      "child": false,
+      "line": 5873
+    },
+    "register_limit_count": {
+      "label": "次数",
+      "hint": "达到注册次数后开启惩罚。",
+      "placeholder": "请输入",
+      "child": true,
+      "line": 5883
+    },
+    "register_limit_expire": {
+      "label": "惩罚时间(分钟)",
+      "hint": "需要等待惩罚时间过后才可以再次注册。",
+      "placeholder": "请输入",
+      "child": true,
+      "line": 5893
+    },
+    "password_limit_enable": {
+      "label": "防爆破限制",
+      "hint": "开启后如果该账户尝试登陆失败次数过多将会被限制。",
+      "child": false,
+      "line": 5899
+    },
+    "password_limit_count": {
+      "label": "次数",
+      "hint": "达到失败次数后开启惩罚。",
+      "placeholder": "请输入",
+      "child": true,
+      "line": 5909
+    },
+    "password_limit_expire": {
+      "label": "惩罚时间(分钟)",
+      "hint": "需要等待惩罚时间过后才可以再次登陆。",
+      "placeholder": "请输入",
+      "child": true,
+      "line": 5919
+    },
+    "show_subscribe_expire": {
+      "label": "订阅链接有效时间(分钟)",
+      "hint": "订阅链接获取后经过该时间将失效。",
+      "placeholder": "请输入",
+      "child": true,
+      "line": 6026
+    }
+  },
+  "subscribe": {
+    "plan_change_enable": {
+      "label": "允许用户更改订阅",
+      "hint": "开启后用户将会可以对订阅计划进行变更。",
+      "child": false,
+      "line": 5930
+    },
+    "reset_traffic_method": {
+      "label": "月流量重置方式",
+      "hint": "全局流量重置方式，默认每月1号。可以在订阅管理为订阅单独设置。",
+      "placeholder": "请选择订阅重置方式",
+      "child": false,
+      "line": 5935
+    },
+    "surplus_enable": {
+      "label": "开启折抵方案",
+      "hint": "开启后用户更换订阅将会由系统对原有订阅进行折抵，方案参考文档。",
+      "child": false,
+      "line": 5954
+    },
+    "allow_new_period": {
+      "label": "允许提前开启流量周期",
+      "hint": "开启后用户流量用尽时可以选择扣除订阅时长为代价重置流量，按月重置时扣除本周期剩余订阅时长，每月1号重置时扣除整月时间30天。",
+      "child": false,
+      "line": 5960
+    },
+    "new_order_event_id": {
+      "label": "当订阅新购时触发事件",
+      "hint": "新购订阅完成时将触发该任务。",
+      "placeholder": "请选择事件",
+      "child": false,
+      "line": 5965
+    },
+    "renew_order_event_id": {
+      "label": "当订阅续费时触发事件",
+      "hint": "续费订阅完成时将触发该任务。",
+      "placeholder": "请选择事件",
+      "child": false,
+      "line": 5977
+    },
+    "change_order_event_id": {
+      "label": "当订阅变更时触发事件",
+      "hint": "变更订阅完成时将触发该任务。",
+      "placeholder": "请选择事件",
+      "child": false,
+      "line": 5989
+    },
+    "show_info_to_server_enable": {
+      "label": "在订阅中展示订阅信息",
+      "hint": "开启后将会在用户订阅节点时输出订阅信息。",
+      "child": false,
+      "line": 6002
+    },
+    "show_subscribe_method": {
+      "label": "订阅链接生效模式",
+      "hint": "用户获取订阅链接后的有效期。",
+      "placeholder": "请选择",
+      "child": false,
+      "line": 6007
+    }
+  },
+  "deposit": {
+    "deposit_bounus": {
+      "label": "充值奖励",
+      "hint": "充值一定金额可以获得的奖励。",
+      "placeholder": "请输入 充值金额:奖励金额,逗号分割\n如 50:18,100:38, 200:88",
+      "child": false,
+      "line": 6041
+    }
+  },
+  "ticket": {
+    "ticket_status": {
+      "label": "工单设置",
+      "hint": "请选择工单的状态。",
+      "child": false,
+      "line": 6051
+    }
+  },
+  "invite": {
+    "invite_force": {
+      "label": "开启强制邀请",
+      "hint": "开启后只有被邀请的用户才可以进行注册。",
+      "child": false,
+      "line": 6073
+    },
+    "invite_commission": {
+      "label": "邀请佣金百分比",
+      "hint": "默认全局的佣金分配比例，你可以在用户管理单独配置单个比例。",
+      "placeholder": "请输入",
+      "child": false,
+      "line": 6082
+    },
+    "invite_gen_limit": {
+      "label": "用户可创建邀请码上限",
+      "placeholder": "请输入",
+      "child": false,
+      "line": 6090
+    },
+    "invite_never_expire": {
+      "label": "邀请码永不失效",
+      "hint": "开启后邀请码被使用后将不会失效，否则使用过后即失效。",
+      "child": false,
+      "line": 6096
+    },
+    "commission_first_time_enable": {
+      "label": "佣金仅首次发放",
+      "hint": "开启后被邀请人首次支付时才会产生佣金，可以在用户管理对用户进行单独配置。",
+      "child": false,
+      "line": 6102
+    },
+    "commission_auto_check_enable": {
+      "label": "佣金自动确认",
+      "hint": "开启后佣金将会在订单完成3日后自动进行确认。",
+      "child": false,
+      "line": 6108
+    },
+    "commission_withdraw_limit": {
+      "label": "提现单申请门槛(元)",
+      "hint": "小于门槛金额的提现单将不会被提交。",
+      "placeholder": "请输入",
+      "child": false,
+      "line": 6117
+    },
+    "commission_withdraw_method": {
+      "label": "提现方式",
+      "hint": "可以支持的提现方式。",
+      "placeholder": "请输入后缀域名，逗号分割 如：支付宝,USDT,贝宝",
+      "child": false,
+      "line": 6127
+    },
+    "withdraw_close_enable": {
+      "label": "关闭提现",
+      "hint": "关闭后将禁止用户申请提现，且邀请佣金将会直接进入用户余额。",
+      "child": false,
+      "line": 6133
+    },
+    "commission_distribution_enable": {
+      "label": "三级分销",
+      "hint": "开启后将佣金将按照设置的3成比例进行分成，三成比例合计请不要>100%。",
+      "child": false,
+      "line": 6139
+    },
+    "commission_distribution_l1": {
+      "label": "一级邀请人比例",
+      "placeholder": "请输入比例如：50",
+      "child": true,
+      "line": 6148
+    },
+    "commission_distribution_l2": {
+      "label": "二级邀请人比例",
+      "placeholder": "请输入比例如：30",
+      "child": true,
+      "line": 6157
+    },
+    "commission_distribution_l3": {
+      "label": "三级邀请人比例",
+      "placeholder": "请输入比例如：20",
+      "child": true,
+      "line": 6166
+    }
+  },
+  "server": {
+    "server_api_url": {
+      "label": "节点对接API地址",
+      "hint": "v2node节点一键对接专用地址。",
+      "placeholder": "请输入",
+      "child": false,
+      "line": 6235
+    },
+    "server_token": {
+      "label": "通讯密钥",
+      "hint": "V2board与节点通讯的密钥，以便数据不会被他人获取。",
+      "placeholder": "请输入",
+      "child": false,
+      "line": 6246
+    },
+    "server_pull_interval": {
+      "label": "节点拉取动作轮询间隔",
+      "hint": "节点从面板获取数据的间隔频率。",
+      "placeholder": "请输入",
+      "child": false,
+      "line": 6258
+    },
+    "server_push_interval": {
+      "label": "节点推送动作轮询间隔",
+      "hint": "节点推送数据到面板的间隔频率。",
+      "placeholder": "请输入",
+      "child": false,
+      "line": 6270
+    },
+    "server_node_report_min_traffic": {
+      "label": "节点用户流量上报最低阈值",
+      "hint": "每次推送动作仅累计使用流量高于阈值的用户信息会被上报，未上报流量会累计",
+      "placeholder": "请输入",
+      "child": false,
+      "line": 6282
+    },
+    "server_device_online_min_traffic": {
+      "label": "节点用户设备数统计最低阈值",
+      "hint": "每次推送动作仅上报流量高于阈值的在线设备IP地址会被节点统计",
+      "placeholder": "请输入",
+      "child": false,
+      "line": 6294
+    },
+    "device_limit_mode": {
+      "label": "全局设备数限制采用宽松模式",
+      "hint": "开启后同一IP地址使用多个节点只统计为一个设备",
+      "child": false,
+      "line": 6300
+    }
+  },
+  "email": {
+    "email_host": {
+      "label": "SMTP服务器地址",
+      "hint": "由邮件服务商提供的服务地址",
+      "placeholder": "请输入",
+      "child": false,
+      "line": 6325
+    },
+    "email_port": {
+      "label": "SMTP服务端口",
+      "hint": "常见的端口有25, 465, 587",
+      "placeholder": "请输入",
+      "child": false,
+      "line": 6334
+    },
+    "email_encryption": {
+      "label": "SMTP加密方式",
+      "hint": "465端口加密方式一般为SSL，587端口加密方式一般为TLS",
+      "placeholder": "请输入",
+      "child": false,
+      "line": 6343
+    },
+    "email_username": {
+      "label": "SMTP账号",
+      "hint": "由邮件服务商提供的账号",
+      "placeholder": "请输入",
+      "child": false,
+      "line": 6352
+    },
+    "email_password": {
+      "label": "SMTP密码",
+      "hint": "由邮件服务商提供的密码",
+      "placeholder": "请输入",
+      "child": false,
+      "line": 6361
+    },
+    "email_from_address": {
+      "label": "发件地址",
+      "hint": "由邮件服务商提供的发件地址",
+      "placeholder": "请输入",
+      "child": false,
+      "line": 6370
+    },
+    "email_template": {
+      "label": "邮件模板",
+      "hint": "你可以在文档查看如何自定义邮件模板",
+      "child": false,
+      "line": 6375
+    }
+  },
+  "telegram": {
+    "telegram_bot_token": {
+      "label": "机器人Token",
+      "hint": "请输入由Botfather提供的token。",
+      "placeholder": "0000000000:xxxxxxxxx_xxxxxxxxxxxxxxx",
+      "child": false,
+      "line": 6406
+    },
+    "telegram_bot_enable": {
+      "label": "开启机器人通知",
+      "hint": "开启后bot将会对绑定了telegram的管理员和用户进行基础通知。",
+      "child": false,
+      "line": 6425
+    },
+    "telegram_discuss_link": {
+      "label": "群组地址",
+      "hint": "填写后将会在用户端展示，或者被用于需要的地方。",
+      "placeholder": "https://t.me/xxxxxx",
+      "child": false,
+      "line": 6434
+    }
+  },
+  "app": {
+    "windows_version": {
+      "label": "Windows",
+      "hint": "Windows端版本号及下载地址",
+      "placeholder": "1.0.0",
+      "child": false,
+      "line": 6459
+    },
+    "windows_download_url": {
+      "label": "Windows",
+      "hint": "Windows端版本号及下载地址",
+      "placeholder": "https://xxxx.com/xxx.exe",
+      "child": false,
+      "line": 6465
+    },
+    "macos_version": {
+      "label": "macOS",
+      "hint": "macOS端版本号及下载地址",
+      "placeholder": "1.0.0",
+      "child": false,
+      "line": 6474
+    },
+    "macos_download_url": {
+      "label": "macOS",
+      "hint": "macOS端版本号及下载地址",
+      "placeholder": "https://xxxx.com/xxx.dmg",
+      "child": false,
+      "line": 6480
+    },
+    "android_version": {
+      "label": "Android",
+      "hint": "Android端版本号及下载地址",
+      "placeholder": "1.0.0",
+      "child": false,
+      "line": 6489
+    },
+    "android_download_url": {
+      "label": "Android",
+      "hint": "Android端版本号及下载地址",
+      "placeholder": "https://xxxx.com/xxx.apk",
+      "child": false,
+      "line": 6495
+    }
+  }
+}

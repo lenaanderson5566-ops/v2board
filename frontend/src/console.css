@@ -784,3 +784,128 @@ html[dir="rtl"] .metric > strong {
         scroll-behavior: auto !important;
     }
 }
+fieldset.field-grid {
+    border: 0;
+    padding: 0;
+    margin: 0;
+    min-inline-size: 0;
+}
+.field-grid > label {
+    min-width: 0;
+}
+.toggle-control {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    min-height: 44px;
+    border: 1px solid var(--border, #e5e5e5);
+    padding: 9px 12px;
+    background: transparent;
+    border-radius: 9px;
+    text-align: start;
+    font-size: 13px;
+}
+.toggle-track {
+    width: 34px;
+    height: 20px;
+    border-radius: 20px;
+    background: #d4d4d4;
+    display: flex;
+    align-items: center;
+    padding: 3px;
+    flex-shrink: 0;
+}
+.toggle-track i {
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    background: #fff;
+    box-shadow: 0 1px 3px #0002;
+    transition: transform 0.15s;
+}
+.toggle-control[aria-checked="true"] .toggle-track {
+    background: #202020;
+}
+.toggle-control[aria-checked="true"] .toggle-track i {
+    transform: translateX(14px);
+}
+[dir="rtl"] .toggle-control[aria-checked="true"] .toggle-track i {
+    transform: translateX(-14px);
+}
+.password-control {
+    position: relative;
+    display: flex;
+    align-items: center;
+}
+.password-control input {
+    width: 100%;
+    padding-inline-end: 44px;
+}
+.password-control button {
+    position: absolute;
+    inset-inline-end: 2px;
+    min-width: 40px;
+    min-height: 40px;
+    background: transparent;
+    border: 0;
+    color: #666;
+    display: grid;
+    place-items: center;
+}
+.option-group {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    border: 1px solid #e5e5e5;
+    padding: 12px;
+    border-radius: 9px;
+}
+.option-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-height: 44px;
+    border: 1px solid #e5e5e5;
+    padding: 8px 12px;
+    background: #fff;
+    border-radius: 7px;
+    font-size: 13px;
+}
+.option-item.selected {
+    background: #f3f3f3;
+    border-color: #a0a0a0;
+}
+.option-check {
+    display: grid;
+    place-items: center;
+    width: 16px;
+    height: 16px;
+    border: 1px solid #aaa;
+    border-radius: 4px;
+}
+.option-item.selected .option-check {
+    background: #222;
+    color: white;
+    border-color: #222;
+}
+.option-clear {
+    background: transparent;
+    border: 0;
+    color: #666;
+    text-decoration: underline;
+    font-size: 12px;
+}
+.save-feedback {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    color: #537761;
+    font-size: 13px;
+}
+.editor fieldset:disabled {
+    opacity: 0.65;
+}
+.editor button:focus-visible {
+    outline: 2px solid #555;
+    outline-offset: 3px;
+}

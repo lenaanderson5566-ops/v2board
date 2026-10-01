@@ -31,7 +31,7 @@ try {
     ]);
     $auth = new App\Services\AuthService($user);
     $token = $auth->generateAuthData(Illuminate\Http\Request::create('/'))['auth_data'];
-    foreach (['/', '/' . $securePath] as $path) {
+    foreach (['/', '/app', '/' . $securePath] as $path) {
         $response = $call($path);
         $assert($response->getStatusCode() === 200 && strpos($response->getContent(), '/console/assets/') !== false, 'React shell failed: ' . $path);
     }
@@ -51,6 +51,10 @@ try {
     $response = $call('/api/v1/' . $securePath . '/config/fetch', null, $token);
     $config = json_decode($response->getContent(), true)['data'];
     $assert(!isset($config['frontend']) && isset($config['footer']['custom_footer_html']), 'Footer configuration failed');
+    $assert($call('/api/v1/' . $securePath . '/console/configSchema')->getStatusCode() === 403, 'Config schema must require admin authentication');
+    $response = $call('/api/v1/' . $securePath . '/console/configSchema', null, $token);
+    $rules = json_decode($response->getContent(), true)['data'] ?? [];
+    $assert($response->getStatusCode() === 200 && ($rules['email_verify'] ?? '') === 'in:0,1' && ($rules['reset_traffic_method'] ?? '') === 'in:0,1,2,3,4', 'Configuration control schema failed');
     $assert($call('/api/v1/' . $securePath . '/console/nodeSchema?type=v2node')->getStatusCode() === 403, 'Node schema must require admin authentication');
     foreach (['v2node', 'vmess', 'vless', 'trojan', 'shadowsocks', 'hysteria', 'tuic', 'anytls'] as $type) {
         $response = $call('/api/v1/' . $securePath . '/console/nodeSchema?type=' . $type, null, $token);
@@ -71,7 +75,8 @@ try {
     $response = $call('/api/v1/' . $securePath . '/config/save', ['custom_footer_html' => $footer], $token);
     $assert($response->getStatusCode() === 200, 'Footer save failed: ' . $response->getContent());
     config(['v2board.custom_footer_html' => $footer]);
-    $assert(strpos($call('/')->getContent(), $footer) !== false, 'Footer was not rendered in user shell');
+    $assert(strpos($call('/app')->getContent(), $footer) !== false, 'Footer was not rendered in user shell');
+    $assert(strpos($call('/')->getContent(), '<title>Studio</title>') !== false && strpos($call('/')->getContent(), $footer) === false, 'Public landing metadata or footer isolation failed');
     $assert(strpos($call('/' . $securePath)->getContent(), $footer) === false, 'User footer leaked into admin shell');
     echo "Console smoke tests: {$checks} checks passed\n";
 } finally {

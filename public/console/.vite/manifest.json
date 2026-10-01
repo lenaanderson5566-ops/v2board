@@ -1,23 +1,45 @@
 {
-  "src/admin-entry.tsx": {
-    "file": "assets/admin-entry-DlTCJ0vz.js",
-    "name": "admin-entry",
-    "src": "src/admin-entry.tsx",
-    "isDynamicEntry": true,
+  "_plus-CqnE9iC2.js": {
+    "file": "assets/plus-CqnE9iC2.js",
+    "name": "plus",
     "imports": [
       "src/main.tsx"
     ]
   },
+  "src/Landing.tsx": {
+    "file": "assets/Landing-DWLBJY6q.js",
+    "name": "Landing",
+    "src": "src/Landing.tsx",
+    "isDynamicEntry": true,
+    "imports": [
+      "src/main.tsx",
+      "_plus-CqnE9iC2.js"
+    ],
+    "css": [
+      "assets/Landing-LdxGN_YO.css"
+    ]
+  },
+  "src/admin-entry.tsx": {
+    "file": "assets/admin-entry-DBfo6JmU.js",
+    "name": "admin-entry",
+    "src": "src/admin-entry.tsx",
+    "isDynamicEntry": true,
+    "imports": [
+      "src/main.tsx",
+      "_plus-CqnE9iC2.js"
+    ]
+  },
   "src/main.tsx": {
-    "file": "assets/main-DW9NSXpm.js",
+    "file": "assets/main-BEV-AcLx.js",
     "name": "main",
     "src": "src/main.tsx",
     "isEntry": true,
     "dynamicImports": [
-      "src/admin-entry.tsx"
+      "src/admin-entry.tsx",
+      "src/Landing.tsx"
     ],
     "css": [
-      "assets/main-Dvscyp_6.css"
+      "assets/main-BVdyjq8I.css"
     ]
   }
 }

@@ -24,6 +24,7 @@ import {
     Empty,
     type Field,
 } from "./ui";
+import { configField, resetOptions } from "./admin-fields";
 const f = (
     key: string,
     label: string,
@@ -33,7 +34,7 @@ const f = (
 const toggle = (key: string, label: string): Field => ({
     key,
     label,
-    type: "select",
+    type: "switch",
     options: [
         ["1", "开启"],
         ["0", "关闭"],
@@ -106,7 +107,13 @@ export const resources: Record<string, Resource> = {
                     ][i],
                 ),
             ),
-            f("reset_traffic_method", "流量重置模式 (0–4)", "number"),
+            {
+                key: "reset_traffic_method",
+                label: "流量重置模式",
+                type: "select",
+                nullable: true,
+                options: [["", "跟随系统设置"], ...resetOptions],
+            },
             f("content", "套餐说明 HTML", "textarea"),
         ],
         defaults: { transfer_enable: 100, group_id: 1 },
@@ -507,6 +514,39 @@ export const resources: Record<string, Resource> = {
     },
 };
 export function ResourcePage({ resource }: { resource: Resource }) {
+    const groups = useData<Row[]>(
+        resource.fields.some((f) => f.key === "group_id")
+            ? admin("server/group/fetch")
+            : "",
+    );
+    const plans = useData<Row[]>(
+        resource.fields.some((f) => f.key === "plan_id")
+            ? admin("plan/fetch")
+            : "",
+    );
+    const editorFields = resource.fields.map((field) =>
+        field.key === "group_id"
+            ? {
+                  ...field,
+                  type: "select" as const,
+                  options: rows(groups.data).map(
+                      (r) => [String(r.id), r.name] as [string, string],
+                  ),
+              }
+            : field.key === "plan_id"
+              ? {
+                    ...field,
+                    type: "select" as const,
+                    nullable: true,
+                    options: [
+                        ["", "不指定套餐"] as [string, string],
+                        ...rows(plans.data).map(
+                            (r) => [String(r.id), r.name] as [string, string],
+                        ),
+                    ],
+                }
+              : field,
+    );
     const [page, setPage] = useState(1),
         [search, setSearch] = useState(""),
         [editing, setEditing] = useState<Row | null>(null),
@@ -700,7 +740,7 @@ export function ResourcePage({ resource }: { resource: Resource }) {
                     close={() => setEditing(null)}
                 >
                     <Editor
-                        fields={resource.fields}
+                        fields={editorFields}
                         initial={editing}
                         onSave={async (body) => {
                             const clean: Row = {};
@@ -864,6 +904,27 @@ const labels: Record<string, string> = {
     subscribe_url: "订阅域名",
     subscribe_path: "自定义订阅路径",
     try_out_plan_id: "试用套餐 ID",
+    try_out_enable: "启用试用",
+    invite_never_expire: "邀请码永不过期",
+    commission_first_time_enable: "仅首单计算佣金",
+    commission_auto_check_enable: "自动审核佣金",
+    commission_distribution_enable: "启用多级佣金",
+    commission_distribution_l1: "一级佣金比例（%）",
+    commission_distribution_l2: "二级佣金比例（%）",
+    commission_distribution_l3: "三级佣金比例（%）",
+    withdraw_close_enable: "关闭提现",
+    email_whitelist_enable: "启用邮箱白名单",
+    email_whitelist_suffix: "允许注册的邮箱域名",
+    email_gmail_limit_enable: "限制 Gmail 别名注册",
+    register_limit_by_ip_enable: "限制单个 IP 注册",
+    register_limit_count: "注册次数上限",
+    register_limit_expire: "注册限制有效期（分钟）",
+    password_limit_enable: "限制密码错误次数",
+    password_limit_count: "密码错误次数上限",
+    password_limit_expire: "密码限制有效期（分钟）",
+    new_order_event_id: "新购套餐后的流量处理",
+    renew_order_event_id: "续费后的流量处理",
+    change_order_event_id: "切换套餐后的流量处理",
     try_out_hour: "试用时长（小时）",
     tos_url: "服务条款 URL",
     server_token: "节点通讯密钥",
@@ -900,7 +961,7 @@ const labels: Record<string, string> = {
     reset_traffic_method: "流量重置模式",
     allow_new_period: "允许新周期",
     show_subscribe_method: "订阅状态展示",
-    show_subscribe_expire: "到期提醒天数",
+    show_subscribe_expire: "令牌轮换间隔（分钟）",
     show_info_to_server_enable: "节点接收用户信息",
     paid_total: "总收入",
     order_count: "订单数",
@@ -922,32 +983,28 @@ const groupNames: Record<string, string> = {
 };
 export function Settings() {
     const d = useData(admin("config/fetch"));
+    const schema = useData(admin("console/configSchema"));
+    const plans = useData<Row[]>(admin("plan/fetch"));
     const [group, setGroup] = useState("site"),
         [saved, setSaved] = useState("");
     const raw = d.data?.[group] || {};
     const fields = Object.entries(raw)
         .filter(([k]) => !k.startsWith("frontend_") && k !== "email_template")
-        .map(([k, v]): Field => ({
-            key: k,
-            label: labels[k] || k,
-            type:
-                k === "custom_footer_html"
-                    ? "textarea"
-                    : k.includes("password") ||
-                        k === "server_token" ||
-                        k === "telegram_bot_token" ||
-                        k === "recaptcha_key"
-                      ? "password"
-                      : Array.isArray(v)
-                        ? "json"
-                        : typeof v === "number"
-                          ? "number"
-                          : "text",
-            hint:
-                k === "custom_footer_html"
-                    ? "支持 HTML 和管理员自定义脚本，展示在用户端页面底部。"
-                    : undefined,
-        }));
+        .map(([k, v]) =>
+            k === "try_out_plan_id"
+                ? {
+                      key: k,
+                      label: "试用套餐",
+                      type: "select" as const,
+                      options: [
+                          ["0", "不指定套餐"] as [string, string],
+                          ...rows(plans.data).map(
+                              (r) => [String(r.id), r.name] as [string, string],
+                          ),
+                      ],
+                  }
+                : configField(k, v, schema.data?.[k], labels[k] || k),
+        );
     return (
         <Panel title="系统设置">
             <div className="section-tabs">
@@ -964,7 +1021,15 @@ export function Settings() {
                     </button>
                 ))}
             </div>
-            <State {...d} retry={d.reload}>
+            <State
+                loading={d.loading || schema.loading || plans.loading}
+                error={d.error || schema.error || plans.error}
+                retry={() => {
+                    d.reload();
+                    schema.reload();
+                    plans.reload();
+                }}
+            >
                 <Editor
                     key={group + JSON.stringify(raw)}
                     fields={fields}
@@ -1266,6 +1331,8 @@ const nodeTypes = [
     "anytls",
 ];
 export function Nodes() {
+    const groups = useData<Row[]>(admin("server/group/fetch"));
+    const routes = useData<Row[]>(admin("server/route/fetch"));
     const d = useData<Row[]>(admin("server/manage/getNodes"));
     const [type, setType] = useState("v2node"),
         [editing, setEditing] = useState<Row | null>(null);
@@ -1400,6 +1467,23 @@ export function Nodes() {
                             fields={Object.entries(schema.data || {})
                                 .filter(([k]) => !k.includes(".") && k !== "id")
                                 .map(([k, rule]) => {
+                                    if (k === "group_id" || k === "route_id")
+                                        return {
+                                            key: k,
+                                            label: nodeLabels[k] || k,
+                                            type: "multiselect",
+                                            required: k === "group_id",
+                                            options: rows(
+                                                k === "group_id"
+                                                    ? groups.data
+                                                    : routes.data,
+                                            ).map((r) => [
+                                                String(r.id),
+                                                r.name ||
+                                                    r.remarks ||
+                                                    String(r.id),
+                                            ]),
+                                        } as Field;
                                     const str = Array.isArray(rule)
                                         ? rule.join("|")
                                         : String(rule);
@@ -1409,7 +1493,18 @@ export function Nodes() {
                                         return {
                                             key: k,
                                             label: nodeLabels[k] || k,
-                                            type: "select",
+                                            type:
+                                                enumRule[1] === "0,1" &&
+                                                [
+                                                    "show",
+                                                    "tls",
+                                                    "allow_insecure",
+                                                    "tls_allow_insecure",
+                                                    "is_shield",
+                                                    "insecure",
+                                                ].includes(k)
+                                                    ? "switch"
+                                                    : "select",
                                             required: str.includes("required"),
                                             options: enumRule[1]
                                                 .split(",")

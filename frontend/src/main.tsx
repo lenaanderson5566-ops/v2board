@@ -44,6 +44,7 @@ import {
     Traffic,
 } from "./user";
 const AdminContent = React.lazy(() => import("./admin-entry"));
+const Landing = React.lazy(() => import("./Landing"));
 import "./style.css";
 import "./console.css";
 import { useTranslation } from "react-i18next";
@@ -165,11 +166,19 @@ function Auth({
         [cooldown, setCooldown] = useState(0);
     const formRef = useRef<HTMLDivElement>(null);
     const fields: Field[] = [
-        { key: "email", label: tx("邮箱地址"), required: true },
+        {
+            key: "email",
+            label: tx("邮箱地址"),
+            type: "email",
+            autoComplete: "email",
+            required: true,
+        },
         {
             key: "password",
             label: forget ? tx("新密码") : tx("密码"),
             type: "password",
+            autoComplete:
+                register || forget ? "new-password" : "current-password",
             required: true,
         },
         ...(register
@@ -467,7 +476,9 @@ function App() {
         };
         window.addEventListener("hashchange", fn);
         window.addEventListener("auth-expired", expire);
-        if (localStorage.getItem(storageKey))
+        if (boot.landing && location.hash.startsWith("#/"))
+            location.replace("/app" + location.hash);
+        if (!boot.landing && localStorage.getItem(storageKey))
             request("user/info")
                 .then(async (r) => {
                     if (boot.mode === "admin")
@@ -485,6 +496,18 @@ function App() {
             window.removeEventListener("auth-expired", expire);
         };
     }, []);
+    if (boot.landing)
+        return (
+            <React.Suspense
+                fallback={
+                    <div className="state full">
+                        <span className="spinner" />
+                    </div>
+                }
+            >
+                <Landing />
+            </React.Suspense>
+        );
     if (loading)
         return (
             <div className="state full">

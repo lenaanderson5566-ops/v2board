@@ -2,8 +2,18 @@ import { tx, locale } from "./i18n";
 import { useEffect, useState, useRef, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import { createPortal } from "react-dom";
+import { ux } from "./ux";
 import DOMPurify from "dompurify";
-import { X, Inbox, RefreshCw, ChevronLeft, ChevronRight } from "lucide-react";
+import {
+    X,
+    Inbox,
+    RefreshCw,
+    ChevronLeft,
+    ChevronRight,
+    Eye,
+    EyeOff,
+    Check,
+} from "lucide-react";
 import { request, type Row } from "./api";
 export function Html({ value }: { value: unknown }) {
     return (
@@ -26,6 +36,12 @@ export function useData<T = Row>(path: string, body?: Row) {
         [total, setTotal] = useState(0);
     useEffect(() => {
         let live = true;
+        if (!path) {
+            setLoading(false);
+            setData(null);
+            setError("");
+            return;
+        }
         setLoading(true);
         setError("");
         request<T>(
@@ -204,7 +220,16 @@ export interface Field {
         | "textarea"
         | "json"
         | "select"
-        | "datetime-local";
+        | "datetime-local"
+        | "switch"
+        | "multiselect"
+        | "email"
+        | "url";
+    min?: number;
+    max?: number;
+    step?: number;
+    nullable?: boolean;
+    autoComplete?: string;
     required?: boolean;
     options?: [string, string][];
     hint?: string;
@@ -225,8 +250,19 @@ export function Editor({
     const [value, setValue] = useState<Row>(() => ({
             ...Object.fromEntries(
                 fields
-                    .filter((f) => f.type === "select")
-                    .map((f) => [f.key, f.options?.[0]?.[0] ?? ""]),
+                    .filter((f) =>
+                        ["select", "switch", "multiselect"].includes(
+                            f.type || "",
+                        ),
+                    )
+                    .map((f) => [
+                        f.key,
+                        f.type === "switch"
+                            ? 0
+                            : f.type === "multiselect"
+                              ? []
+                              : (f.options?.[0]?.[0] ?? ""),
+                    ]),
             ),
             ...Object.fromEntries(
                 Object.entries(initial).map(([key, value]) => [
@@ -236,15 +272,26 @@ export function Editor({
             ),
         })),
         [error, setError] = useState(""),
-        [busy, setBusy] = useState(false);
+        [busy, setBusy] = useState(false),
+        [saved, setSaved] = useState(false),
+        [revealed, setRevealed] = useState<Record<string, boolean>>({});
     async function save(e: React.FormEvent) {
         e.preventDefault();
         setError("");
+        setSaved(false);
         setBusy(true);
         try {
             const body = { ...value };
             for (const f of fields) {
+                if (
+                    f.type === "multiselect" &&
+                    f.required &&
+                    !body[f.key]?.length
+                )
+                    throw new Error(tx(f.label) + " *");
                 if (!(f.key in body)) continue;
+                if (f.type === "select" && f.nullable && body[f.key] === "")
+                    body[f.key] = null;
                 if (
                     f.type === "select" &&
                     /^-?\d+(\.\d+)?$/.test(String(body[f.key]))
@@ -263,6 +310,7 @@ export function Editor({
                         : null;
             }
             await onSave(body);
+            setSaved(true);
         } catch (e) {
             setError((e as Error).message);
         } finally {
@@ -270,12 +318,19 @@ export function Editor({
         }
     }
     return (
-        <form className="editor" onSubmit={save}>
-            <div className="field-grid">
+        <form
+            className="editor"
+            onSubmit={save}
+            onChange={() => setSaved(false)}
+            aria-busy={busy}
+        >
+            <fieldset className="field-grid" disabled={busy}>
                 {fields.map((f) => (
                     <label
                         className={
-                            f.type === "textarea" || f.type === "json"
+                            f.type === "textarea" ||
+                            f.type === "json" ||
+                            f.type === "multiselect"
                                 ? "wide"
                                 : ""
                         }
@@ -285,8 +340,102 @@ export function Editor({
                             {tx(f.label)}
                             {f.required && " *"}
                         </span>
-                        {f.type === "select" ? (
+                        {f.type === "switch" ? (
+                            <button
+                                type="button"
+                                role="switch"
+                                aria-checked={Number(value[f.key]) === 1}
+                                aria-label={tx(f.label)}
+                                className="toggle-control"
+                                onClick={() => {
+                                    setValue({
+                                        ...value,
+                                        [f.key]:
+                                            Number(value[f.key]) === 1 ? 0 : 1,
+                                    });
+                                    setSaved(false);
+                                }}
+                            >
+                                <span className="toggle-track">
+                                    <i />
+                                </span>
+                                <span>
+                                    {tx(
+                                        Number(value[f.key]) === 1
+                                            ? "开启"
+                                            : "关闭",
+                                    )}
+                                </span>
+                            </button>
+                        ) : f.type === "multiselect" ? (
+                            <div
+                                className="option-group"
+                                role="group"
+                                aria-label={tx(f.label)}
+                            >
+                                {(f.options || []).map(([key, label]) => {
+                                    const selected = (
+                                        Array.isArray(value[f.key])
+                                            ? value[f.key]
+                                            : []
+                                    ).map(String);
+                                    const checked = selected.includes(key);
+                                    return (
+                                        <button
+                                            type="button"
+                                            role="checkbox"
+                                            aria-checked={checked}
+                                            className={
+                                                checked
+                                                    ? "option-item selected"
+                                                    : "option-item"
+                                            }
+                                            key={key}
+                                            onClick={() => {
+                                                const next = checked
+                                                    ? selected.filter(
+                                                          (v: string) =>
+                                                              v !== key,
+                                                      )
+                                                    : [...selected, key];
+                                                setValue({
+                                                    ...value,
+                                                    [f.key]: next.map(
+                                                        (v: string) =>
+                                                            /^\d+$/.test(v)
+                                                                ? Number(v)
+                                                                : v,
+                                                    ),
+                                                });
+                                                setSaved(false);
+                                            }}
+                                        >
+                                            <span className="option-check">
+                                                {checked && <Check size={12} />}
+                                            </span>
+                                            {label}
+                                        </button>
+                                    );
+                                })}
+                                {!f.options?.length && (
+                                    <small>{ux("noOptions")}</small>
+                                )}
+                                {f.options?.length ? (
+                                    <button
+                                        type="button"
+                                        className="option-clear"
+                                        onClick={() => {
+                                            setValue({ ...value, [f.key]: [] });
+                                            setSaved(false);
+                                        }}
+                                    >
+                                        {ux("clear")}
+                                    </button>
+                                ) : null}
+                            </div>
+                        ) : f.type === "select" ? (
                             <select
+                                required={f.required}
                                 value={value[f.key] ?? ""}
                                 onChange={(e) =>
                                     setValue({
@@ -295,6 +444,14 @@ export function Editor({
                                     })
                                 }
                             >
+                                {value[f.key] != null &&
+                                    !f.options?.some(
+                                        ([v]) => v === String(value[f.key]),
+                                    ) && (
+                                        <option value={value[f.key]}>
+                                            {String(value[f.key])}
+                                        </option>
+                                    )}
                                 {f.options?.map(([v, label]) => (
                                     <option value={v} key={v}>
                                         {label}
@@ -319,23 +476,77 @@ export function Editor({
                                 }
                             />
                         ) : (
-                            <input
-                                type={f.type || "text"}
-                                step={f.type === "number" ? "any" : undefined}
-                                value={value[f.key] ?? ""}
-                                required={f.required}
-                                onChange={(e) =>
-                                    setValue({
-                                        ...value,
-                                        [f.key]: e.target.value,
-                                    })
+                            <div
+                                className={
+                                    f.type === "password"
+                                        ? "password-control"
+                                        : "input-control"
                                 }
-                            />
+                            >
+                                <input
+                                aria-label={tx(f.label)}
+                                type={
+                                        f.type === "password" && revealed[f.key]
+                                            ? "text"
+                                            : f.type || "text"
+                                    }
+                                    autoComplete={
+                                        f.autoComplete ??
+                                        (f.type === "password"
+                                            ? f.key.includes("old")
+                                                ? "current-password"
+                                                : "new-password"
+                                            : f.type === "email"
+                                              ? "email"
+                                              : undefined)
+                                    }
+                                    step={
+                                        f.step ??
+                                        (f.type === "number"
+                                            ? "any"
+                                            : undefined)
+                                    }
+                                    min={f.min}
+                                    max={f.max}
+                                    value={value[f.key] ?? ""}
+                                    required={f.required}
+                                    onChange={(e) =>
+                                        setValue({
+                                            ...value,
+                                            [f.key]: e.target.value,
+                                        })
+                                    }
+                                />
+                                {f.type === "password" && (
+                                    <button
+                                        type="button"
+                                        className="icon-button"
+                                        aria-label={ux(
+                                            revealed[f.key]
+                                                ? "hidePassword"
+                                                : "showPassword",
+                                        )}
+                                        aria-pressed={Boolean(revealed[f.key])}
+                                        onClick={() =>
+                                            setRevealed({
+                                                ...revealed,
+                                                [f.key]: !revealed[f.key],
+                                            })
+                                        }
+                                    >
+                                        {revealed[f.key] ? (
+                                            <EyeOff size={17} />
+                                        ) : (
+                                            <Eye size={17} />
+                                        )}
+                                    </button>
+                                )}
+                            </div>
                         )}{" "}
                         {f.hint && <small>{f.hint}</small>}
                     </label>
                 ))}
-            </div>
+            </fieldset>
             {children}
             {error && (
                 <div className="alert" role="alert">
@@ -343,6 +554,12 @@ export function Editor({
                 </div>
             )}
             <div className="form-bottom">
+                {saved && (
+                    <span className="save-feedback" role="status">
+                        <Check size={15} />
+                        {ux("saved")}
+                    </span>
+                )}
                 <button className="primary" disabled={busy}>
                     {busy ? tx("提交中…") : submit}
                 </button>

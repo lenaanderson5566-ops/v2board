@@ -8,6 +8,7 @@ export interface Envelope<T> {
     errors?: Record<string, string[]>;
 }
 export interface Boot {
+    landing?: boolean;
     mode: "user" | "admin";
     title: string;
     description: string;

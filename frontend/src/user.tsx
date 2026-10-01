@@ -1020,7 +1020,7 @@ export function Profile() {
                             {
                                 key: "remind_expire",
                                 label: tx("到期提醒"),
-                                type: "select",
+                                type: "switch",
                                 options: [
                                     ["1", tx("开启")],
                                     ["0", tx("关闭")],
@@ -1029,7 +1029,7 @@ export function Profile() {
                             {
                                 key: "remind_traffic",
                                 label: tx("流量提醒"),
-                                type: "select",
+                                type: "switch",
                                 options: [
                                     ["1", tx("开启")],
                                     ["0", tx("关闭")],

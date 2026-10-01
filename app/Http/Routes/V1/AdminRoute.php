@@ -16,6 +16,7 @@ class AdminRoute
             $router->post('/config/save', 'V1\\Admin\\ConfigController@save');
             $router->get ('/config/getEmailTemplate', 'V1\\Admin\\ConfigController@getEmailTemplate');
             $router->get ('/console/nodeSchema', 'V1\\Admin\\ConsoleController@nodeSchema');
+            $router->get ('/console/configSchema', 'V1\\Admin\\ConsoleController@configSchema');
             $router->post('/config/setTelegramWebhook', 'V1\\Admin\\ConfigController@setTelegramWebhook');
             $router->post('/config/testSendMail', 'V1\\Admin\\ConfigController@testSendMail');
             // Plan

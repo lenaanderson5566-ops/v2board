@@ -6,6 +6,10 @@ use Illuminate\Http\Request;
 
 class ConsoleController extends Controller
 {
+    public function configSchema()
+    {
+        return response(['data' => \App\Http\Requests\Admin\ConfigSave::RULES]);
+    }
     public function nodeSchema(Request $request)
     {
         $classes = ['vmess' => 'ServerVmessSave', 'trojan' => 'ServerTrojanSave', 'shadowsocks' => 'ServerShadowsocksSave'];

@@ -3,6 +3,17 @@
 React + TypeScript + Vite provide the user workspace and unified admin console.
 Laravel retains all authentication, billing, node, risk and persistence logic.
 
+The public `/` route displays the Studio assistant-themed landing page. The
+examples use predefined translated text and do not call a model. Account pages
+live under `/app#/dashboard`; existing `/#/…` bookmarks redirect to `/app`.
+The landing page and its metadata use neutral standalone copy in eight languages.
+Custom footer HTML remains on account pages and is excluded from the public page.
+
+Admin setting controls follow the authenticated `console/configSchema` endpoint.
+Boolean settings use switches; event modes and reset periods use explicit choices.
+Node group and route arrays use multi-select controls, and related plans and groups
+use options loaded from existing admin APIs.
+
 ## Build
 
 ```sh

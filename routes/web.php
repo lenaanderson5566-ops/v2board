@@ -1,7 +1,7 @@
 <?php
 use Illuminate\Http\Request;
 $securePath = config('v2board.secure_path', config('v2board.frontend_admin_path', hash('crc32b', config('app.key'))));
-$renderConsole = function (string $mode) use ($securePath) {
+$renderConsole = function (string $mode, bool $landing = false) use ($securePath) {
     $manifestPath = public_path('console/.vite/manifest.json');
     abort_unless(is_file($manifestPath), 503, '请先在 frontend 目录执行 npm ci && npm run build');
     $manifest = json_decode(file_get_contents($manifestPath), true);
@@ -9,8 +9,9 @@ $renderConsole = function (string $mode) use ($securePath) {
         'entry' => $manifest['src/main.tsx'],
         'boot' => [
             'mode' => $mode,
-            'title' => config('v2board.app_name', 'V2Board'),
-            'description' => config('v2board.app_description', '连接世界，轻松管理你的订阅。'),
+            'landing' => $landing,
+            'title' => $landing ? 'Studio' : config('v2board.app_name', 'V2Board'),
+            'description' => $landing ? 'A space for ideas, writing and everyday planning.' : config('v2board.app_description', '连接世界，轻松管理你的订阅。'),
             'adminPath' => $mode === 'admin' ? $securePath : '',
             'opsPath' => $mode === 'admin' ? config('v2board.ops_api_path', 'ops') : '',
             'emailVerify' => (bool) config('v2board.email_verify', 0),
@@ -22,6 +23,12 @@ $renderConsole = function (string $mode) use ($securePath) {
     ]);
 };
 Route::get('/', function (Request $request) use ($renderConsole) {
+    if (config('v2board.app_url') && config('v2board.safe_mode_enable', 0)) {
+        abort_if($request->getHost() !== parse_url(config('v2board.app_url'), PHP_URL_HOST), 403);
+    }
+    return $renderConsole('user', true);
+});
+Route::get('/app', function (Request $request) use ($renderConsole) {
     if (config('v2board.app_url') && config('v2board.safe_mode_enable', 0)) {
         abort_if($request->getHost() !== parse_url(config('v2board.app_url'), PHP_URL_HOST), 403);
     }

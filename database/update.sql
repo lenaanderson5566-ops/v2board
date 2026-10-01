@@ -870,3 +870,6 @@ CREATE TABLE IF NOT EXISTS `v2_plan_translation` (
   CONSTRAINT `fk_plan_translation_plan` FOREIGN KEY (`plan_id`) REFERENCES `v2_plan` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
+
+ALTER TABLE `v2_server_v2node`
+ADD `trusted_x_forwarded_for` varchar(255) COLLATE 'utf8mb4_general_ci' NULL COMMENT '信任的x-forwarded-for头部' AFTER `network_settings`;

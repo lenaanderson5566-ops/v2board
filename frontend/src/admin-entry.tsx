@@ -10,10 +10,14 @@ import {
     Nodes,
     System,
 } from "./admin";
-import { Tickets } from "./user";
+import { OrdersPage } from "./admin-orders";
+import { AdminTickets, ContentPage } from "./admin-content";
 import { UsersPage } from "./admin-users";
 export default function AdminContent({ current }: { current: string }) {
     if (current === "users") return <UsersPage />;
+    if (current === "orders") return <OrdersPage />;
+    if (current === "knowledge" || current === "notices")
+        return <ContentPage kind={current} />;
     if (resources[current])
         return <ResourcePage key={current} resource={resources[current]} />;
     switch (current) {
@@ -24,7 +28,7 @@ export default function AdminContent({ current }: { current: string }) {
         case "translations":
             return <Translations />;
         case "tickets":
-            return <Tickets isAdmin />;
+            return <AdminTickets />;
         case "generate":
             return <GenerateUsers />;
         case "payments":

@@ -104,13 +104,11 @@ describe("CSV download", () => {
     it("rejects successful JSON responses instead of saving a false CSV", async () => {
         vi.stubGlobal(
             "fetch",
-            vi
-                .fn()
-                .mockResolvedValue(
-                    new Response(JSON.stringify({ data: true }), {
-                        headers: { "Content-Type": "application/json" },
-                    }),
-                ),
+            vi.fn().mockResolvedValue(
+                new Response(JSON.stringify({ data: true }), {
+                    headers: { "Content-Type": "application/json" },
+                }),
+            ),
         );
         await expect(
             download("admin/user/dumpCSV", {}, "users.csv"),
@@ -130,13 +128,11 @@ describe("CSV download", () => {
             .spyOn(URL, "createObjectURL")
             .mockReturnValue("blob:test");
         vi.spyOn(URL, "revokeObjectURL").mockImplementation(() => {});
-        const fetchMock = vi
-            .fn()
-            .mockResolvedValue(
-                new Response("email\nuser@example.com", {
-                    headers: { "Content-Type": "text/csv; charset=UTF-8" },
-                }),
-            );
+        const fetchMock = vi.fn().mockResolvedValue(
+            new Response("email\nuser@example.com", {
+                headers: { "Content-Type": "text/csv; charset=UTF-8" },
+            }),
+        );
         vi.stubGlobal("fetch", fetchMock);
         await download(
             "admin/user/dumpCSV",
@@ -150,6 +146,7 @@ describe("CSV download", () => {
             JSON.parse(fetchMock.mock.calls[0][1].body).filter[0].value,
         ).toBe(0);
         expect(create).toHaveBeenCalled();
+        expect(JSON.parse(fetchMock.mock.calls[0][1].body).format).toBe("csv");
         expect(link.download).toBe("users.csv");
         expect(click).toHaveBeenCalled();
         expect(remove).toHaveBeenCalled();

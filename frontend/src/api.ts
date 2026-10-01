@@ -94,7 +94,7 @@ export async function download(path: string, body: Row, filename: string) {
             "Content-Type": "application/json",
             ...(token ? { Authorization: token } : {}),
         },
-        body: JSON.stringify(body),
+        body: JSON.stringify({ ...body, format: "csv" }),
     });
     if (!response.ok) {
         if ((response.status === 401 || response.status === 403) && token) {

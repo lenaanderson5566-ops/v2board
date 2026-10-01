@@ -44,7 +44,7 @@ class TicketController extends Controller
         }
         if ($request->input('email') !== NULL) {
             $user = User::where('email', $request->input('email'))->first();
-            if ($user) $model->where('user_id', $user->id);
+            $model->where('user_id', $user ? $user->id : 0);
         }
         $total = $model->count();
         $res = $model->forPage($current, $pageSize)

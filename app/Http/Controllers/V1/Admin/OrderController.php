@@ -23,9 +23,9 @@ class OrderController extends Controller
         if ($request->input('filter')) {
             foreach ($request->input('filter') as $filter) {
                 if ($filter['key'] === 'email') {
-                    $user = User::where('email', "%{$filter['value']}%")->first();
-                    if (!$user) continue;
-                    $builder->where('user_id', $user->id);
+                    $condition = $filter['condition'] === '模糊' ? 'like' : $filter['condition'];
+                    $value = $filter['condition'] === '模糊' ? "%{$filter['value']}%" : $filter['value'];
+                    $builder->whereIn('user_id', User::where('email', $condition, $value)->select('id'));
                     continue;
                 }
                 if ($filter['condition'] === '模糊') {
@@ -126,6 +126,9 @@ class OrderController extends Controller
             abort(500, '订单不存在');
         }
 
+        if ($request->has('commission_status') && (in_array($order->status, [0, 2]) || !$order->commission_balance || $order->commission_status === 2)) {
+            abort(422, '该订单佣金不可审核');
+        }
         try {
             $order->update($params);
         } catch (\Exception $e) {

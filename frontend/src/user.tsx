@@ -1,6 +1,6 @@
 import { tx, locale, languages } from "./i18n";
 import { SubscriptionImport } from "./SubscriptionImport";
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, type ReactNode } from "react";
 import { QRCodeSVG } from "qrcode.react";
 import { loadStripe } from "@stripe/stripe-js/pure";
 import type { Stripe, StripeCardElement } from "@stripe/stripe-js";
@@ -33,6 +33,7 @@ import {
     Editor,
     Modal,
     Reload,
+    Pager,
     type Field,
 } from "./ui";
 const periods: Record<string, string> = {
@@ -700,11 +701,28 @@ export function Knowledge() {
         </>
     );
 }
-export function Tickets({ isAdmin = false }: { isAdmin?: boolean }) {
+export function Tickets({
+    isAdmin = false,
+    queryParams = {},
+    toolbar,
+    pageSize = 20,
+}: {
+    isAdmin?: boolean;
+    queryParams?: Row;
+    toolbar?: ReactNode;
+    pageSize?: number;
+}) {
+    const [page, setPage] = useState(1);
     const prefix = isAdmin ? boot.adminPath : "user";
     const [id, setId] = useState<number | null>(null),
         [creating, setCreating] = useState(false);
-    const d = useData<Row[]>(`${prefix}/ticket/fetch`),
+    const d = useData<Row[]>(
+            query(`${prefix}/ticket/fetch`, {
+                current: page,
+                pageSize,
+                ...queryParams,
+            }),
+        ),
         detail = useData(
             id
                 ? query(`${prefix}/ticket/fetch`, { id })
@@ -728,6 +746,7 @@ export function Tickets({ isAdmin = false }: { isAdmin?: boolean }) {
                     </>
                 }
             >
+                {toolbar}
                 <State {...d} retry={d.reload}>
                     <Table
                         data={d.data || []}
@@ -752,11 +771,39 @@ export function Tickets({ isAdmin = false }: { isAdmin?: boolean }) {
                             ],
                         ]}
                         actions={(r) => (
-                            <button onClick={() => setId(r.id)}>
-                                {tx("查看对话")}
-                            </button>
+                            <>
+                                <button onClick={() => setId(r.id)}>
+                                    {tx("查看对话")}
+                                </button>
+                                {isAdmin && (
+                                    <button
+                                        disabled={r.status !== 0}
+                                        onClick={async () => {
+                                            try {
+                                                await request(
+                                                    `${prefix}/ticket/close`,
+                                                    { id: r.id },
+                                                );
+                                                d.reload();
+                                            } catch (e) {
+                                                alert((e as Error).message);
+                                            }
+                                        }}
+                                    >
+                                        {tx("关闭工单")}
+                                    </button>
+                                )}
+                            </>
                         )}
                     />
+                    {isAdmin && d.total > 0 && (
+                        <Pager
+                            page={page}
+                            total={d.total}
+                            size={pageSize}
+                            onChange={setPage}
+                        />
+                    )}
                 </State>
             </Panel>
             {creating && (

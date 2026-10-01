@@ -17,7 +17,8 @@ class KnowledgeSave extends FormRequest
             'category' => 'required',
             'language' => 'required',
             'title' => 'required',
-            'body' => 'required'
+            'body' => 'required',
+            'sort' => 'nullable|integer|min:0'
         ];
     }
 

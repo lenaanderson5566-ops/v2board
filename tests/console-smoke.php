@@ -14,9 +14,9 @@ $assert = function ($condition, $message) use (&$checks) {
     if (!$condition) throw new RuntimeException($message);
     $checks++;
 };
-$call = function (string $path, ?array $body = null, ?string $token = null, ?string $language = null) use ($kernel) {
+$call = function (string $path, ?array $body = null, ?string $token = null, ?string $language = null, string $accept = 'application/json') use ($kernel) {
     $request = Illuminate\Http\Request::create($path, $body === null ? 'GET' : 'POST', $body ?? []);
-    $request->headers->set('Accept', 'application/json');
+    $request->headers->set('Accept', $accept);
     if ($token) $request->headers->set('Authorization', $token);
     if ($language) $request->headers->set('Content-Language', $language);
     return $kernel->handle($request);
@@ -183,6 +183,123 @@ try {
         $response = $call('/api/v1/' . $securePath . '/' . $kind . '/generate', $params, $token);
         $payload = json_decode($response->getContent(), true);
         $assert($response->getStatusCode() === 200 && ($payload['generated_count'] ?? 0) === 2 && ($payload['data'] ?? null) === true, 'Batch JSON generation failed: ' . $kind);
+    }
+    foreach (array_merge(['v2node'], array_keys($nodeVariants)) as $nodeType) {
+        $model = 'App\\Models\\Server' . ucfirst($nodeType);
+        $originalNode = $model::where('name', $nodeType === 'v2node' ? 'console-smoke-node' : 'console-smoke-' . $nodeType)->first();
+        $response = $call('/api/v1/' . $securePath . '/server/' . $nodeType . '/update', ['id' => $originalNode->id, 'show' => 1], $token);
+        $assert($response->getStatusCode() === 200 && $originalNode->refresh()->show == 1, 'Node visibility failed: ' . $nodeType);
+        $beforeIds = $model::pluck('id')->all();
+        $response = $call('/api/v1/' . $securePath . '/server/' . $nodeType . '/copy', ['id' => $originalNode->id], $token);
+        $copy = $model::whereNotIn('id', $beforeIds)->first();
+        $assert($response->getStatusCode() === 200 && $copy && $copy->host === $originalNode->host, 'Node copy failed: ' . $nodeType);
+        $response = $call('/api/v1/' . $securePath . '/server/' . $nodeType . '/drop', ['id' => $copy->id], $token);
+        $assert($response->getStatusCode() === 200 && !$model::find($copy->id), 'Node deletion failed: ' . $nodeType);
+    }
+    $response = $call('/api/v1/' . $securePath . '/server/group/save', ['name' => 'console-button-group'], $token);
+    $tempGroup = App\Models\ServerGroup::where('name', 'console-button-group')->first();
+    $assert($response->getStatusCode() === 200 && $tempGroup, 'Group creation failed');
+    $response = $call('/api/v1/' . $securePath . '/server/group/save', ['id' => $tempGroup->id, 'name' => 'console-button-group-edited'], $token);
+    $assert($response->getStatusCode() === 200 && $tempGroup->refresh()->name === 'console-button-group-edited', 'Group edit failed');
+    $response = $call('/api/v1/' . $securePath . '/server/group/drop', ['id' => $tempGroup->id], $token);
+    $assert($response->getStatusCode() === 200 && !App\Models\ServerGroup::find($tempGroup->id), 'Group deletion failed');
+    $routeBody = ['remarks' => 'console-button-route', 'action' => 'block', 'match' => ['example.invalid']];
+    $response = $call('/api/v1/' . $securePath . '/server/route/save', $routeBody, $token);
+    $tempRoute = App\Models\ServerRoute::where('remarks', $routeBody['remarks'])->first();
+    $assert($response->getStatusCode() === 200 && $tempRoute, 'Route creation failed');
+    $routeBody['id'] = $tempRoute->id; $routeBody['action'] = 'dns'; $routeBody['action_value'] = '8.8.8.8';
+    $response = $call('/api/v1/' . $securePath . '/server/route/save', $routeBody, $token);
+    $assert($response->getStatusCode() === 200 && $tempRoute->refresh()->action === 'dns', 'Route edit failed');
+    $response = $call('/api/v1/' . $securePath . '/server/route/drop', ['id' => $tempRoute->id], $token);
+    $assert($response->getStatusCode() === 200 && !App\Models\ServerRoute::find($tempRoute->id), 'Route deletion failed');
+    $noticeBody = ['title' => 'console-button-notice', 'content' => '<p>notice</p>', 'tags' => ['test-only']];
+    $response = $call('/api/v1/' . $securePath . '/notice/save', $noticeBody, $token);
+    $notice = App\Models\Notice::where('title', $noticeBody['title'])->first();
+    $assert($response->getStatusCode() === 200 && $notice && $notice->tags === ['test-only'], 'Notice creation/tags failed');
+    $noticeBody['id'] = $notice->id; $noticeBody['content'] = '<p>edited</p>';
+    $response = $call('/api/v1/' . $securePath . '/notice/save', $noticeBody, $token);
+    $assert($response->getStatusCode() === 200 && $notice->refresh()->content === '<p>edited</p>', 'Notice edit failed');
+    $response = $call('/api/v1/' . $securePath . '/notice/show', ['id' => $notice->id], $token);
+    $assert($response->getStatusCode() === 200 && $notice->refresh()->show == 1, 'Notice visibility failed');
+    $response = $call('/api/v1/' . $securePath . '/notice/drop', ['id' => $notice->id], $token);
+    $assert($response->getStatusCode() === 200 && !App\Models\Notice::find($notice->id), 'Notice deletion failed');
+    // Whole-console button regression: temporary records only, no external delivery.
+    $plan2 = App\Models\Plan::create(['name' => 'console-sort-plan', 'group_id' => $group->id, 'transfer_enable' => 5, 'month_price' => 500]);
+    $response = $call('/api/v1/' . $securePath . '/plan/sort', ['plan_ids' => [$plan2->id, $plan->id]], $token);
+    $assert($response->getStatusCode() === 200 && $plan2->refresh()->sort == 1 && $plan->refresh()->sort == 2, 'Plan order did not persist');
+    foreach (['show', 'renew'] as $field) {
+        foreach ([0, 1] as $value) {
+            $response = $call('/api/v1/' . $securePath . '/plan/update', ['id' => $plan2->id, $field => $value], $token);
+            $assert($response->getStatusCode() === 200 && $plan2->refresh()->$field == $value, 'Plan switch did not persist: ' . $field);
+        }
+    }
+    $subscriber = App\Models\User::create(['email' => 'console-plan-' . bin2hex(random_bytes(5)) . '@example.invalid', 'password' => password_hash(bin2hex(random_bytes(16)), PASSWORD_DEFAULT), 'plan_id' => $plan2->id, 'uuid' => App\Utils\Helper::guid(true), 'token' => App\Utils\Helper::guid()]);
+    $response = $call('/api/v1/' . $securePath . '/plan/save', ['id' => $plan2->id, 'name' => $plan2->name, 'group_id' => $group->id, 'transfer_enable' => 9, 'device_limit' => 3, 'speed_limit' => 50, 'force_update' => 1], $token);
+    $assert($response->getStatusCode() === 200 && $subscriber->refresh()->transfer_enable == 9 * 1073741824 && $subscriber->device_limit == 3 && $subscriber->speed_limit == 50, 'Force-update subscribers failed');
+    $payment2 = App\Models\Payment::create(['name' => 'console-sort-payment', 'payment' => 'Paytaro', 'uuid' => App\Utils\Helper::guid(), 'config' => [], 'enable' => 0]);
+    $response = $call('/api/v1/' . $securePath . '/payment/sort', ['ids' => [$payment2->id, $payment->id]], $token);
+    $assert($response->getStatusCode() === 200 && $payment2->refresh()->sort == 1 && $payment->refresh()->sort == 2, 'Payment order failed');
+    $response = $call('/api/v1/' . $securePath . '/payment/show', ['id' => $payment2->id], $token);
+    $assert($response->getStatusCode() === 200 && $payment2->refresh()->enable == 1, 'Payment enable failed');
+    $response = $call('/api/v1/' . $securePath . '/payment/drop', ['id' => $payment2->id], $token);
+    $assert($response->getStatusCode() === 200 && !App\Models\Payment::find($payment2->id), 'Payment deletion failed');
+    $vmess = App\Models\ServerVmess::where('name', 'console-smoke-vmess')->first();
+    $response = $call('/api/v1/' . $securePath . '/server/manage/sort', ['v2node' => [$node->id => 2], 'vmess' => [$vmess->id => 1]], $token);
+    $assert($response->getStatusCode() === 200 && $node->refresh()->sort == 2 && $vmess->refresh()->sort == 1, 'Cross-protocol node order failed');
+    $knowledge = [];
+    foreach ([1, 2] as $index) {
+        $title = 'console-knowledge-' . $index;
+        $response = $call('/api/v1/' . $securePath . '/knowledge/save', ['title' => $title, 'category' => 'console-category', 'language' => 'ja-JP', 'body' => '<p>complete body</p>'], $token);
+        $assert($response->getStatusCode() === 200, 'Knowledge creation failed');
+        $knowledge[] = App\Models\Knowledge::where('title', $title)->first();
+    }
+    $response = $call('/api/v1/' . $securePath . '/knowledge/fetch?id=' . $knowledge[0]->id, null, $token);
+    $payload = json_decode($response->getContent(), true)['data'];
+    $assert($response->getStatusCode() === 200 && $payload['body'] === '<p>complete body</p>' && $payload['language'] === 'ja-JP', 'Knowledge edit detail lost body/language');
+    $response = $call('/api/v1/' . $securePath . '/knowledge/getCategory', null, $token);
+    $assert(in_array('console-category', json_decode($response->getContent(), true)['data']), 'Knowledge category suggestions missing');
+    $response = $call('/api/v1/' . $securePath . '/knowledge/sort', ['knowledge_ids' => [$knowledge[1]->id, $knowledge[0]->id]], $token);
+    $assert($response->getStatusCode() === 200 && $knowledge[1]->refresh()->sort == 1 && $knowledge[0]->refresh()->sort == 2, 'Knowledge ordering failed');
+    $response = $call('/api/v1/' . $securePath . '/knowledge/show', ['id' => $knowledge[0]->id], $token);
+    $assert($response->getStatusCode() === 200 && $knowledge[0]->refresh()->show == 1, 'Knowledge visibility failed');
+    $response = $call('/api/v1/' . $securePath . '/knowledge/drop', ['id' => $knowledge[1]->id], $token);
+    $assert($response->getStatusCode() === 200 && !App\Models\Knowledge::find($knowledge[1]->id), 'Knowledge deletion failed');
+    foreach (['coupon' => ['type' => 2, 'value' => 20], 'giftcard' => ['type' => 4]] as $kind => $params) {
+        $params += ['format' => 'csv', 'name' => '=console,csv-' . $kind, 'generate_count' => 2, 'started_at' => time(), 'ended_at' => time() + 86400];
+        $response = $call('/api/v1/' . $securePath . '/' . $kind . '/generate', $params, $token, null, 'text/csv, application/json');
+        $csv = array_map('str_getcsv', explode("\n", trim(substr($response->getContent(), 3))));
+        $assert($response->getStatusCode() === 200 && strpos($response->headers->get('Content-Type'), 'text/csv') === 0 && count($csv) === 3 && $csv[1][0] === "'" . $params['name'], 'Card CSV/escaping failed: ' . $kind);
+        $model = $kind === 'coupon' ? App\Models\Coupon::class : App\Models\Giftcard::class;
+        $item = $model::where('name', $params['name'])->first();
+        if ($kind === 'coupon') {
+            $previous = $item->show;
+            $response = $call('/api/v1/' . $securePath . '/coupon/show', ['id' => $item->id], $token);
+            $assert($response->getStatusCode() === 200 && $item->refresh()->show != $previous, 'Coupon visibility failed');
+        }
+        $response = $call('/api/v1/' . $securePath . '/' . $kind . '/drop', ['id' => $item->id], $token);
+        $assert($response->getStatusCode() === 200 && !$model::find($item->id), 'Card delete failed: ' . $kind);
+    }
+    $order = App\Models\Order::create(['user_id' => $subscriber->id, 'plan_id' => $plan2->id, 'period' => 'month_price', 'trade_no' => App\Utils\Helper::guid(), 'total_amount' => 500, 'type' => 1, 'status' => 3, 'commission_balance' => 100, 'invite_user_id' => $user->id]);
+    $response = $call('/api/v1/' . $securePath . '/order/update', ['trade_no' => $order->trade_no, 'commission_status' => 3], $token);
+    $assert($response->getStatusCode() === 200 && $order->refresh()->commission_status === 3, 'Commission rejection failed');
+    $order->commission_status = 2; $order->save();
+    $assert($call('/api/v1/' . $securePath . '/order/update', ['trade_no' => $order->trade_no, 'commission_status' => 0], $token)->getStatusCode() === 422, 'Paid commission allowed review');
+    $response = $call('/api/v1/' . $securePath . '/order/fetch?' . http_build_query(['filter' => [['key' => 'email', 'condition' => '=', 'value' => 'no-such-user@example.invalid']]]), null, $token);
+    $assert(json_decode($response->getContent(), true)['total'] === 0, 'Unknown order email leaked all orders');
+    $response = $call('/api/v1/' . $securePath . '/order/fetch?' . http_build_query(['filter' => [['key' => 'email', 'condition' => '模糊', 'value' => 'console-plan-']]]), null, $token);
+    $assert(json_decode($response->getContent(), true)['total'] === 1, 'Order email filtering failed');
+    $ticket = App\Models\Ticket::create(['user_id' => $subscriber->id, 'subject' => 'console-ticket', 'level' => 0, 'status' => 0, 'reply_status' => 0]);
+    $response = $call('/api/v1/' . $securePath . '/ticket/fetch?' . http_build_query(['email' => $subscriber->email, 'status' => 0, 'reply_status' => [0], 'current' => 1, 'pageSize' => 10]), null, $token);
+    $assert(json_decode($response->getContent(), true)['total'] === 1, 'Ticket filter/pagination failed');
+    $response = $call('/api/v1/' . $securePath . '/ticket/fetch?email=no-such-user@example.invalid', null, $token);
+    $assert(json_decode($response->getContent(), true)['total'] === 0, 'Unknown ticket email leaked other tickets');
+    $response = $call('/api/v1/' . $securePath . '/ticket/reply', ['id' => $ticket->id, 'message' => 'fixture reply'], $token);
+    $assert($response->getStatusCode() === 200 && $ticket->refresh()->reply_status === 1, 'Ticket reply failed');
+    $response = $call('/api/v1/' . $securePath . '/ticket/close', ['id' => $ticket->id], $token);
+    $assert($response->getStatusCode() === 200 && $ticket->refresh()->status === 1, 'Ticket close failed');
+    foreach (['stat/getServerTodayRank', 'stat/getServerLastRank', 'stat/getUserTodayRank', 'stat/getUserLastRank', 'stat/getOrder', 'system/getQueueWorkload', 'system/getQueueMasters'] as $endpoint) {
+        $assert($call('/api/v1/' . $securePath . '/' . $endpoint, null, $token)->getStatusCode() === 200, 'Legacy read control failed: ' . $endpoint);
+        $assert($call('/api/v1/' . $securePath . '/' . $endpoint)->getStatusCode() === 403, 'Legacy control lacks admin authentication: ' . $endpoint);
     }
     foreach (['risk/overview/fetch', 'risk/rule/fetch', 'risk/settings/fetch', 'client/strategy/fetch', 'log/login/fetch'] as $endpoint) {
         $assert($call('/api/v1/' . $opsPath . '/' . $endpoint, null, $token)->getStatusCode() === 200, 'Unified operations endpoint failed: ' . $endpoint);

@@ -36,6 +36,12 @@ class SystemController extends Controller
         ]);
     }
 
+    public function getQueueMasters(MasterSupervisorRepository $masters, SupervisorRepository $supervisors)
+    {
+        $items = app(\Laravel\Horizon\Http\Controllers\MasterSupervisorController::class)->index($masters, $supervisors);
+        return response(['data' => $items->values()->toArray()]);
+    }
+
     protected function getScheduleStatus():bool
     {
         return (time() - 120) < Cache::get(CacheKey::get('SCHEDULE_LAST_CHECK_AT', null));

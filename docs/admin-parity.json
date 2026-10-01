@@ -8,8 +8,8 @@
     {
       "module": "原后台菜单",
       "item": "仪表盘 (/dashboard)",
-      "status": "部分迁移",
-      "note": "运营概览：保留核心概览；原今日/昨日节点及用户排行尚未恢复，统计交互需要回归。",
+      "status": "已迁移",
+      "note": "运营概览：核心运营概览、今日/昨日节点与用户排行、运营记录、待处理工单/佣金和队列状态跳转已恢复。",
       "evidence": "public/assets/admin/res_005.js:21000"
     },
     {
@@ -22,8 +22,8 @@
     {
       "module": "原后台菜单",
       "item": "支付配置 (/config/payment)",
-      "status": "部分迁移",
-      "note": "支付方式：网关表单与启用/删除已迁移；排序入口待补齐。",
+      "status": "已迁移",
+      "note": "支付方式：网关表单、刷新、启用/删除与拖动/按钮排序已核对。",
       "evidence": "public/assets/admin/res_005.js:21017"
     },
     {
@@ -36,8 +36,8 @@
     {
       "module": "原后台菜单",
       "item": "节点管理 (/server/manage)",
-      "status": "部分迁移",
-      "note": "节点管理：八类节点、复制、展示、参数联动已迁移；拖动排序待补齐。",
+      "status": "已迁移",
+      "note": "节点管理：八类节点编辑、复制、展示、删除、参数联动、排序与节点安装命令已核对。",
       "evidence": "public/assets/admin/res_005.js:21034"
     },
     {
@@ -57,29 +57,29 @@
     {
       "module": "原后台菜单",
       "item": "订阅管理 (/plan)",
-      "status": "部分迁移",
-      "note": "套餐管理：字段、周期、重置方式、展示已保留；排序入口待补齐。",
+      "status": "已迁移",
+      "note": "套餐管理：创建、编辑、删除、展示/隐藏、续费开关、更新现有用户及排序已核对。",
       "evidence": "public/assets/admin/res_005.js:21058"
     },
     {
       "module": "原后台菜单",
       "item": "订单管理 (/order)",
-      "status": "部分迁移",
-      "note": "订单管理：列表、付款标记、取消已保留；详情、分配订单和筛选待补齐。",
+      "status": "已迁移",
+      "note": "订单管理：筛选、分页、分配、详情、用户跳转、付款标记/取消和佣金审核已核对。",
       "evidence": "public/assets/admin/res_005.js:21065"
     },
     {
       "module": "原后台菜单",
       "item": "优惠券管理 (/coupon)",
-      "status": "部分迁移",
-      "note": "优惠券：生成、批量生成、套餐/周期限制已迁移；CSV 下载入口待补齐。",
+      "status": "已迁移",
+      "note": "优惠券：生成、启用切换、删除、分页及批量生成 CSV 下载已核对。",
       "evidence": "public/assets/admin/res_005.js:21072"
     },
     {
       "module": "原后台菜单",
       "item": "礼品卡管理 (/giftcard)",
-      "status": "部分迁移",
-      "note": "礼品卡：五种类型与条件字段已迁移；CSV 下载入口待补齐。",
+      "status": "已迁移",
+      "note": "礼品卡：创建、编辑、删除、分页及批量生成 CSV 下载已核对。",
       "evidence": "public/assets/admin/res_005.js:21079"
     },
     {
@@ -99,22 +99,22 @@
     {
       "module": "原后台菜单",
       "item": "工单管理 (/ticket)",
-      "status": "部分迁移",
-      "note": "工单中心：列表、回复、关闭已统一；旧筛选与分页需要单独回归。",
+      "status": "已迁移",
+      "note": "工单中心：邮箱、状态与回复状态筛选、分页、查看、回复及关闭已核对。",
       "evidence": "public/assets/admin/res_005.js:21103"
     },
     {
       "module": "原后台菜单",
       "item": "知识库管理 (/knowledge)",
-      "status": "部分迁移",
-      "note": "知识库：正文、语言、分类已保留；拖动排序及分类选项待补齐。",
+      "status": "已迁移",
+      "note": "知识库：详情加载、分类建议、语言、预览、正文、展示、删除和排序已核对。",
       "evidence": "public/assets/admin/res_005.js:21110"
     },
     {
       "module": "原后台菜单",
       "item": "队列监控 (/queue)",
-      "status": "部分迁移",
-      "note": "系统状态：状态与队列概况已迁移；原队列工作负载、进程详情待补齐。",
+      "status": "已迁移",
+      "note": "系统状态：系统状态、队列概况、工作负载、主进程和刷新已核对。",
       "evidence": "public/assets/admin/res_005.js:21120"
     },
     {
@@ -812,6 +812,55 @@
     },
     {
       "module": "操作入口",
+      "item": "订单管理 / 佣金审核",
+      "status": "已保留",
+      "note": "当前前端已引用该管理员接口；不代表外部服务已配置。",
+      "evidence": "public/assets/admin/res_005.js:13336"
+    },
+    {
+      "module": "操作入口",
+      "item": "知识库 / 分类建议",
+      "status": "已保留",
+      "note": "当前前端已引用该管理员接口；不代表外部服务已配置。",
+      "evidence": "public/assets/admin/res_005.js:83876"
+    },
+    {
+      "module": "操作入口",
+      "item": "仪表盘 / 今日节点排行",
+      "status": "已保留",
+      "note": "当前前端已引用该管理员接口；不代表外部服务已配置。",
+      "evidence": "public/assets/admin/res_005.js:42674"
+    },
+    {
+      "module": "操作入口",
+      "item": "仪表盘 / 昨日节点排行",
+      "status": "已保留",
+      "note": "当前前端已引用该管理员接口；不代表外部服务已配置。",
+      "evidence": "public/assets/admin/res_005.js:42648"
+    },
+    {
+      "module": "操作入口",
+      "item": "仪表盘 / 今日用户排行",
+      "status": "已保留",
+      "note": "当前前端已引用该管理员接口；不代表外部服务已配置。",
+      "evidence": "public/assets/admin/res_005.js:42700"
+    },
+    {
+      "module": "操作入口",
+      "item": "仪表盘 / 昨日用户排行",
+      "status": "已保留",
+      "note": "当前前端已引用该管理员接口；不代表外部服务已配置。",
+      "evidence": "public/assets/admin/res_005.js:42726"
+    },
+    {
+      "module": "操作入口",
+      "item": "仪表盘 / 运营历史记录",
+      "status": "已保留",
+      "note": "当前前端已引用该管理员接口；不代表外部服务已配置。",
+      "evidence": "public/assets/admin/res_005.js:42622"
+    },
+    {
+      "module": "操作入口",
       "item": "系统设置 / 发送测试邮件",
       "status": "已保留",
       "note": "当前前端已引用该管理员接口；不代表外部服务已配置。",
@@ -827,29 +876,29 @@
     {
       "module": "操作入口",
       "item": "套餐管理 / 套餐排序",
-      "status": "缺失",
-      "note": "原后台引用此接口，当前前端未找到操作入口。",
+      "status": "已保留",
+      "note": "当前前端已引用该管理员接口；不代表外部服务已配置。",
       "evidence": "public/assets/admin/res_005.js:27858"
     },
     {
       "module": "操作入口",
       "item": "节点管理 / 节点排序",
-      "status": "缺失",
-      "note": "原后台引用此接口，当前前端未找到操作入口。",
+      "status": "已保留",
+      "note": "当前前端已引用该管理员接口；不代表外部服务已配置。",
       "evidence": "public/assets/admin/res_005.js:5522"
     },
     {
       "module": "操作入口",
       "item": "支付方式 / 支付方式排序",
-      "status": "缺失",
-      "note": "原后台引用此接口，当前前端未找到操作入口。",
+      "status": "已保留",
+      "note": "当前前端已引用该管理员接口；不代表外部服务已配置。",
       "evidence": "public/assets/admin/res_005.js:37260"
     },
     {
       "module": "操作入口",
       "item": "知识库 / 知识库排序",
-      "status": "缺失",
-      "note": "原后台引用此接口，当前前端未找到操作入口。",
+      "status": "已保留",
+      "note": "当前前端已引用该管理员接口；不代表外部服务已配置。",
       "evidence": "public/assets/admin/res_005.js:83996"
     },
     {
@@ -904,15 +953,15 @@
     {
       "module": "操作入口",
       "item": "队列监控 / 队列工作负载",
-      "status": "缺失",
-      "note": "原后台引用此接口，当前前端未找到操作入口。",
+      "status": "已保留",
+      "note": "当前前端已引用该管理员接口；不代表外部服务已配置。",
       "evidence": "public/assets/admin/res_005.js:31964"
     },
     {
       "module": "操作入口",
       "item": "队列监控 / 队列主进程",
-      "status": "待核对",
-      "note": "后端保留接口；未找到原构建中的直接引用，不判定为原界面遗漏。",
+      "status": "已保留",
+      "note": "当前前端已引用该管理员接口；不代表外部服务已配置。",
       "evidence": "app/Http/Routes/V1/AdminRoute.php"
     },
     {

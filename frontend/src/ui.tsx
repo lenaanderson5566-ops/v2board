@@ -1,5 +1,5 @@
 import { tx, locale } from "./i18n";
-import { useEffect, useState, useRef, type ReactNode } from "react";
+import { useEffect, useState, useRef, useId, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import { createPortal } from "react-dom";
 import { ux } from "./ux";
@@ -211,6 +211,7 @@ export function Modal({
     );
 }
 export interface Field {
+    suggestions?: string[];
     key: string;
     label: string;
     type?:
@@ -257,6 +258,7 @@ export function Editor({
     onDirty?: () => void;
     onValuesChange?: (values: Row) => void;
 }) {
+    const formId = useId();
     const [value, setValue] = useState<Row>(() => ({
             ...Object.fromEntries(
                 fields
@@ -518,6 +520,11 @@ export function Editor({
                             >
                                 <input
                                     aria-label={tx(f.label)}
+                                    list={
+                                        f.suggestions
+                                            ? `${formId}-${f.key}`
+                                            : undefined
+                                    }
                                     type={
                                         f.type === "password" && revealed[f.key]
                                             ? "text"
@@ -547,6 +554,13 @@ export function Editor({
                                         updateValue(f.key, e.target.value)
                                     }
                                 />
+                                {f.suggestions && (
+                                    <datalist id={`${formId}-${f.key}`}>
+                                        {f.suggestions.map((text) => (
+                                            <option key={text} value={text} />
+                                        ))}
+                                    </datalist>
+                                )}
                                 {f.type === "password" && (
                                     <button
                                         type="button"

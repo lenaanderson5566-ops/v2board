@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\GiftcardGenerate;
 use App\Models\Giftcard;
 use App\Utils\Helper;
+use App\Utils\Csv;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
@@ -83,7 +84,7 @@ class GiftcardController extends Controller
             abort(500, $e->getMessage());
         }
         $giftcardvalue = $giftcard['value'] ?? 0;
-        $data = "名称,类型,数值,开始时间,结束时间,可用次数,礼品卡卡密,生成时间\r\n";
+        $rows = [];
         foreach ($giftcards as $giftcard) {
             $type = ['', '金额', '时长', '流量', '重置', '套餐'][$giftcard['type']];
             $value = ['', round($giftcardvalue/100, 2), $giftcardvalue . '天', $giftcardvalue . 'GB', '-', $giftcardvalue . '天'][$giftcard['type']];
@@ -91,12 +92,12 @@ class GiftcardController extends Controller
             $endTime = date('Y-m-d H:i:s', $giftcard['ended_at']);
             $limitUse = $giftcard['limit_use'] ?? '不限制';
             $createTime = date('Y-m-d H:i:s', $giftcard['created_at']);
-            $data .= "{$giftcard['name']},{$type},{$value},{$startTime},{$endTime},{$limitUse},{$giftcard['code']},{$createTime}\r\n";
+            $rows[] = [$giftcard['name'], $type, $value, $startTime, $endTime, $limitUse, $giftcard['code'], $createTime];
         }
 
         // Return the CSV data as a response
-        if ($request->expectsJson()) return response(['data' => true, 'generated_count' => count($giftcards)]);
-        return response($data, 200, ['Content-Type' => 'text/csv; charset=UTF-8']);
+        if ($request->expectsJson() && $request->input('format') !== 'csv') return response(['data' => true, 'generated_count' => count($giftcards)]);
+        return Csv::response(['名称', '类型', '数值', '开始时间', '结束时间', '可用次数', '礼品卡卡密', '生成时间'], $rows, 'giftcards.csv');
     }
 
     public function drop(Request $request)

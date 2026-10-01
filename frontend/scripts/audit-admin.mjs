@@ -193,8 +193,8 @@ const add = (module, item, status, note, evidence) =>
 const routes = {
     "/dashboard": [
         "运营概览",
-        "部分迁移",
-        "保留核心概览；原今日/昨日节点及用户排行尚未恢复，统计交互需要回归。",
+        "已迁移",
+        "核心运营概览、今日/昨日节点与用户排行、运营记录、待处理工单/佣金和队列状态跳转已恢复。",
     ],
     "/config/system": [
         "系统设置",
@@ -204,7 +204,7 @@ const routes = {
     "/config/payment": [
         "支付方式",
         "已迁移",
-        "网关表单与启用/删除已迁移；排序入口待补齐。",
+        "网关表单、刷新、启用/删除与拖动/按钮排序已核对。",
     ],
     "/config/theme": [
         "主题配置",
@@ -214,29 +214,29 @@ const routes = {
     "/server/manage": [
         "节点管理",
         "已迁移",
-        "八类节点、复制、展示、参数联动已迁移；拖动排序待补齐。",
+        "八类节点编辑、复制、展示、删除、参数联动、排序与节点安装命令已核对。",
     ],
     "/server/group": ["权限组", "已迁移", "新增、编辑、删除已保留。"],
     "/server/route": ["路由规则", "已迁移", "动作、参数与默认出口条件已迁移。"],
     "/plan": [
         "套餐管理",
         "已迁移",
-        "字段、周期、重置方式、展示已保留；排序入口待补齐。",
+        "创建、编辑、删除、展示/隐藏、续费开关、更新现有用户及排序已核对。",
     ],
     "/order": [
         "订单管理",
-        "部分迁移",
-        "列表、付款标记、取消已保留；详情、分配订单和筛选待补齐。",
+        "已迁移",
+        "筛选、分页、分配、详情、用户跳转、付款标记/取消和佣金审核已核对。",
     ],
     "/coupon": [
         "优惠券",
         "已迁移",
-        "生成、批量生成、套餐/周期限制已迁移；CSV 下载入口待补齐。",
+        "生成、启用切换、删除、分页及批量生成 CSV 下载已核对。",
     ],
     "/giftcard": [
         "礼品卡",
         "已迁移",
-        "五种类型与条件字段已迁移；CSV 下载入口待补齐。",
+        "创建、编辑、删除、分页及批量生成 CSV 下载已核对。",
     ],
     "/user": [
         "用户管理",
@@ -247,17 +247,17 @@ const routes = {
     "/ticket": [
         "工单中心",
         "已迁移",
-        "列表、回复、关闭已统一；旧筛选与分页需要单独回归。",
+        "邮箱、状态与回复状态筛选、分页、查看、回复及关闭已核对。",
     ],
     "/knowledge": [
         "知识库",
         "已迁移",
-        "正文、语言、分类已保留；拖动排序及分类选项待补齐。",
+        "详情加载、分类建议、语言、预览、正文、展示、删除和排序已核对。",
     ],
     "/queue": [
         "系统状态",
-        "部分迁移",
-        "状态与队列概况已迁移；原队列工作负载、进程详情待补齐。",
+        "已迁移",
+        "系统状态、队列概况、工作负载、主进程和刷新已核对。",
     ],
 };
 for (const menu of menus) {
@@ -384,6 +384,13 @@ for (const key of userKeys) {
     );
 }
 const actions = [
+    ["订单管理", "order/update", "佣金审核"],
+    ["知识库", "knowledge/getCategory", "分类建议"],
+    ["仪表盘", "stat/getServerTodayRank", "今日节点排行"],
+    ["仪表盘", "stat/getServerLastRank", "昨日节点排行"],
+    ["仪表盘", "stat/getUserTodayRank", "今日用户排行"],
+    ["仪表盘", "stat/getUserLastRank", "昨日用户排行"],
+    ["仪表盘", "stat/getOrder", "运营历史记录"],
     ["系统设置", "config/testSendMail", "发送测试邮件"],
     ["系统设置", "config/setTelegramWebhook", "设置 Telegram Webhook"],
     ["套餐管理", "plan/sort", "套餐排序"],
@@ -404,6 +411,9 @@ const adminEndpoints = new Set();
 for (const file of [
     "frontend/src/admin.tsx",
     "frontend/src/admin-users.tsx",
+    "frontend/src/admin-orders.tsx",
+    "frontend/src/admin-content.tsx",
+    "frontend/src/admin-tools.tsx",
     "frontend/src/user.tsx",
 ]) {
     const source = ts.createSourceFile(

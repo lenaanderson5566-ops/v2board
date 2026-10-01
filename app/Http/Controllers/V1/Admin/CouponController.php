@@ -7,6 +7,7 @@ use App\Http\Requests\Admin\CouponGenerate;
 use App\Http\Requests\Admin\CouponSave;
 use App\Models\Coupon;
 use App\Utils\Helper;
+use App\Utils\Csv;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
@@ -100,7 +101,7 @@ class CouponController extends Controller
             abort(500, '生成失败');
         }
         DB::commit();
-        $data = "名称,类型,金额或比例,开始时间,结束时间,可用次数,可用于订阅,券码,生成时间\r\n";
+        $rows = [];
         foreach($coupons as $coupon) {
             $type = ['', '金额', '比例'][$coupon['type']];
             $value = ['', ($coupon['value'] / 100),$coupon['value']][$coupon['type']];
@@ -109,10 +110,10 @@ class CouponController extends Controller
             $limitUse = $coupon['limit_use'] ?? '不限制';
             $createTime = date('Y-m-d H:i:s', $coupon['created_at']);
             $limitPlanIds = isset($coupon['limit_plan_ids']) ? implode("/", $coupon['limit_plan_ids']) : '不限制';
-            $data .= "{$coupon['name']},{$type},{$value},{$startTime},{$endTime},{$limitUse},{$limitPlanIds},{$coupon['code']},{$createTime}\r\n";
+            $rows[] = [$coupon['name'], $type, $value, $startTime, $endTime, $limitUse, $limitPlanIds, $coupon['code'], $createTime];
         }
-        if ($request->expectsJson()) return response(['data' => true, 'generated_count' => count($coupons)]);
-        return response($data, 200, ['Content-Type' => 'text/csv; charset=UTF-8']);
+        if ($request->expectsJson() && $request->input('format') !== 'csv') return response(['data' => true, 'generated_count' => count($coupons)]);
+        return Csv::response(['名称', '类型', '金额或比例', '开始时间', '结束时间', '可用次数', '可用于订阅', '券码', '生成时间'], $rows, 'coupons.csv');
     }
 
     public function drop(Request $request)

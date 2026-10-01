@@ -26,6 +26,7 @@ import {
     Html,
     type Field,
 } from "./ui";
+import { SortButton, LegacyRanks, QueueDetails } from "./admin-tools";
 import { configField, resetOptions } from "./admin-fields";
 import {
     paymentFields,
@@ -66,6 +67,8 @@ const toggle = (key: string, label: string): Field => ({
 export interface Resource {
     title: string;
     fetch: string;
+    sort?: string;
+    sortKind?: "plans" | "knowledge";
     save?: string;
     drop?: string;
     fields: Field[];
@@ -89,6 +92,8 @@ export const resources: Record<string, Resource> = {
     plans: {
         title: "套餐管理",
         fetch: admin("plan/fetch"),
+        sort: admin("plan/sort"),
+        sortKind: "plans",
         save: admin("plan/save"),
         drop: admin("plan/drop"),
         columns: [
@@ -98,6 +103,7 @@ export const resources: Record<string, Resource> = {
             ["month_price", "月付", (r) => money(r.month_price)],
             ["count", "活跃用户"],
             ["show", "展示"],
+            ["renew", "允许续费"],
         ],
         fields: [
             f("name", "套餐名称", "text", true),
@@ -138,11 +144,17 @@ export const resources: Record<string, Resource> = {
                 options: [["", "跟随系统设置"], ...resetOptions],
             },
             f("content", "套餐说明 HTML", "textarea"),
+            {
+                ...toggle("force_update", "更新到现有用户"),
+                hint: "保存时将流量、设备、速率和权限组同步到此套餐下的所有用户。",
+            },
         ],
         defaults: { transfer_enable: 100 },
         actions: [
             ["展示", admin("plan/update"), { show: 1 }],
             ["隐藏", admin("plan/update"), { show: 0 }],
+            ["开启续费", admin("plan/update"), { renew: 1 }],
+            ["关闭续费", admin("plan/update"), { renew: 0 }],
         ],
     },
     groups: {
@@ -277,6 +289,7 @@ export const resources: Record<string, Resource> = {
         fields: [
             f("title", "公告标题", "text", true),
             f("img_url", "封面 URL"),
+            f("tags", "适用标签数组（留空表示全部）", "json"),
             f("content", "公告内容 HTML", "textarea", true),
         ],
         actions: [["切换展示", admin("notice/show")]],
@@ -284,6 +297,8 @@ export const resources: Record<string, Resource> = {
     knowledge: {
         title: "知识库管理",
         fetch: admin("knowledge/fetch"),
+        sort: admin("knowledge/sort"),
+        sortKind: "knowledge",
         save: admin("knowledge/save"),
         drop: admin("knowledge/drop"),
         columns: [
@@ -587,61 +602,81 @@ export function ResourcePage({
             ? admin("plan/fetch")
             : "",
     );
+    const categories = useData<string[]>(
+        resource === resources.knowledge ? admin("knowledge/getCategory") : "",
+    );
     const editorFields = resource.fields.map((field) =>
-        field.key === "group_id"
-            ? {
-                  ...field,
-                  label: "权限组",
-                  type: "select" as const,
-                  options: rows(groups.data).map(
-                      (r) => [String(r.id), r.name] as [string, string],
-                  ),
-              }
-            : field.key === "plan_id"
+        field.key === "category"
+            ? { ...field, suggestions: categories.data || [] }
+            : field.key === "language"
               ? {
                     ...field,
-                    label: "套餐",
-                    hint:
-                        resource === resources.users
-                            ? "选择套餐会同步流量、设备和速率限制；到期时间与余额保持当前输入。"
-                            : !rows(plans.data).length
-                              ? "请先到套餐管理创建套餐。"
-                              : undefined,
-                    type: "select" as const,
-                    nullable: true,
-                    options: [
-                        ["", "不指定套餐"] as [string, string],
-                        ...rows(plans.data).map(
-                            (r) => [String(r.id), r.name] as [string, string],
-                        ),
+                    suggestions: [
+                        "zh-CN",
+                        "zh-TW",
+                        "en-US",
+                        "ja-JP",
+                        "ko-KR",
+                        "vi-VN",
+                        "ru-RU",
+                        "fa-IR",
                     ],
                 }
-              : field.key === "limit_plan_ids"
+              : field.key === "group_id"
                 ? {
                       ...field,
-                      label: "适用套餐（不选择表示全部）",
-                      type: "multiselect" as const,
-                      options: rows(plans.data).map(
+                      label: "权限组",
+                      type: "select" as const,
+                      options: rows(groups.data).map(
                           (r) => [String(r.id), r.name] as [string, string],
                       ),
                   }
-                : field.key === "limit_period"
+                : field.key === "plan_id"
                   ? {
                         ...field,
-                        label: "适用周期（不选择表示全部）",
-                        type: "multiselect" as const,
+                        label: "套餐",
+                        hint:
+                            resource === resources.users
+                                ? "选择套餐会同步流量、设备和速率限制；到期时间与余额保持当前输入。"
+                                : !rows(plans.data).length
+                                  ? "请先到套餐管理创建套餐。"
+                                  : undefined,
+                        type: "select" as const,
+                        nullable: true,
                         options: [
-                            ["month_price", "月付"],
-                            ["quarter_price", "季付"],
-                            ["half_year_price", "半年付"],
-                            ["year_price", "年付"],
-                            ["two_year_price", "两年付"],
-                            ["three_year_price", "三年付"],
-                            ["onetime_price", "一次性"],
-                            ["reset_price", "重置流量"],
-                        ] as [string, string][],
+                            ["", "不指定套餐"] as [string, string],
+                            ...rows(plans.data).map(
+                                (r) =>
+                                    [String(r.id), r.name] as [string, string],
+                            ),
+                        ],
                     }
-                  : field,
+                  : field.key === "limit_plan_ids"
+                    ? {
+                          ...field,
+                          label: "适用套餐（不选择表示全部）",
+                          type: "multiselect" as const,
+                          options: rows(plans.data).map(
+                              (r) => [String(r.id), r.name] as [string, string],
+                          ),
+                      }
+                    : field.key === "limit_period"
+                      ? {
+                            ...field,
+                            label: "适用周期（不选择表示全部）",
+                            type: "multiselect" as const,
+                            options: [
+                                ["month_price", "月付"],
+                                ["quarter_price", "季付"],
+                                ["half_year_price", "半年付"],
+                                ["year_price", "年付"],
+                                ["two_year_price", "两年付"],
+                                ["three_year_price", "三年付"],
+                                ["onetime_price", "一次性"],
+                                ["reset_price", "重置流量"],
+                            ] as [string, string][],
+                        }
+                      : field,
     );
     const [page, setPage] = useState(1),
         [search, setSearch] = useState(""),
@@ -726,6 +761,16 @@ export function ResourcePage({
                     </>
                 }
             >
+                {resource.sort && resource.sortKind && (
+                    <div className="pad">
+                        <SortButton
+                            path={resource.sort}
+                            kind={resource.sortKind}
+                            items={rows(d.data)}
+                            onSaved={d.reload}
+                        />
+                    </div>
+                )}
                 {toolbar}
                 <State {...d} retry={d.reload}>
                     {error && <div className="alert">{error}</div>}
@@ -733,7 +778,10 @@ export function ResourcePage({
                         data={list}
                         columns={resource.columns}
                         actions={
-                            resource.save || resource.drop || resource.actions
+                            resource.save ||
+                            resource.drop ||
+                            resource.actions ||
+                            extraActions
                                 ? (r) => (
                                       <>
                                           {resource.save &&
@@ -860,6 +908,11 @@ export function ResourcePage({
                                               ([label, path, extra]) => (
                                                   <button
                                                       key={label}
+                                                      disabled={
+                                                          resource ===
+                                                              resources.orders &&
+                                                          r.status !== 0
+                                                      }
                                                       onClick={() =>
                                                           action(path, r, extra)
                                                       }
@@ -912,7 +965,11 @@ export function ResourcePage({
                         }}
                     >
                         <Editor
-                            fields={editorFields}
+                            fields={editorFields.filter(
+                                (field) =>
+                                    field.key !== "force_update" ||
+                                    Boolean(editing.id),
+                            )}
                             initial={editing}
                             resolveFields={(fields, values) =>
                                 resourceFields(
@@ -970,7 +1027,20 @@ export function ResourcePage({
                                         Number(clean.generate_count) <= 1)
                                 )
                                     delete clean.generate_count;
-                                await request(resource.save!, clean);
+                                if (
+                                    (resource === resources.coupons ||
+                                        resource === resources.giftcards) &&
+                                    !editing[key] &&
+                                    Number(clean.generate_count) > 1
+                                )
+                                    await download(
+                                        resource.save!,
+                                        clean,
+                                        resource === resources.coupons
+                                            ? "coupons.csv"
+                                            : "giftcards.csv",
+                                    );
+                                else await request(resource.save!, clean);
                                 setEditing(null);
                                 d.reload();
                             }}
@@ -983,11 +1053,19 @@ export function ResourcePage({
 }
 export function Overview() {
     const d = useData(ops("risk/overview/fetch")),
-        stat = useData(admin("stat/getOverride"));
+        stat = useData(admin("stat/getOverride")),
+        health = useData(admin("system/getSystemStatus"));
     const [window, setWindow] = useState("today");
     const w = d.data?.windows?.[window] || {};
     return (
         <>
+            {health.data && (!health.data.horizon || !health.data.schedule) && (
+                <p className="alert" role="status">
+                    {!health.data.horizon ? "队列消费者未运行。" : ""}
+                    {!health.data.schedule ? "定时任务近期未运行。" : ""}{" "}
+                    <a href="#/system">查看系统状态</a>
+                </p>
+            )}
             <div className="section-tabs">
                 {[
                     ["today", "今日"],
@@ -1083,10 +1161,38 @@ export function Overview() {
                     </Panel>
                 </div>
             </State>
+            <div className="actions pad">
+                <a className="button" href="#/tickets?status=0&reply_status=0">
+                    处理待回复工单
+                </a>
+                <a
+                    className="button"
+                    href="#/orders?status=3&commission_status=0&commission_balance_min=0"
+                >
+                    处理待审核佣金
+                </a>
+                <a className="button" href="#/system">
+                    查看队列状态
+                </a>
+            </div>
+            <LegacyRanks />
         </>
     );
 }
 const labels: Record<string, string> = {
+    schedule: "定时任务",
+    horizon: "队列消费者",
+    schedule_last_runtime: "最近任务运行",
+    failedJobs: "近期失败任务",
+    jobsPerMinute: "每分钟任务数",
+    pausedMasters: "暂停的主进程",
+    processes: "进程数",
+    recentJobs: "近期任务",
+    status: "运行状态",
+    queueWithMaxRuntime: "最长耗时队列",
+    queueWithMaxThroughput: "最高吞吐队列",
+    wait: "等待时间",
+    periods: "统计时间范围",
     online_user: "在线用户",
     month_income: "本月收入",
     last_month_income: "上月收入",
@@ -1511,17 +1617,27 @@ export function Payments() {
             <Panel
                 title="支付方式"
                 actions={
-                    <button
-                        className="primary"
-                        disabled={
-                            methods.loading ||
-                            Boolean(methods.error) ||
-                            !methods.data?.length
-                        }
-                        onClick={() => setEditing({})}
-                    >
-                        添加支付方式
-                    </button>
+                    <>
+                        {" "}
+                        <Reload onClick={d.reload} />
+                        <SortButton
+                            path={admin("payment/sort")}
+                            kind="payments"
+                            items={d.data || []}
+                            onSaved={d.reload}
+                        />
+                        <button
+                            className="primary"
+                            disabled={
+                                methods.loading ||
+                                Boolean(methods.error) ||
+                                !methods.data?.length
+                            }
+                            onClick={() => setEditing({})}
+                        >
+                            添加支付方式
+                        </button>
+                    </>
                 }
             >
                 <State
@@ -1708,6 +1824,7 @@ export function Nodes() {
     const [type, setType] = useState("v2node"),
         [editing, setEditing] = useState<Row | null>(null);
     const [error, setError] = useState("");
+    const [command, setCommand] = useState<Row | null>(null);
     const schema = useData<Row>(query(admin("console/nodeSchema"), { type }));
     return (
         <>
@@ -1716,6 +1833,12 @@ export function Nodes() {
                 actions={
                     <>
                         <Reload onClick={d.reload} />
+                        <SortButton
+                            path={admin("server/manage/sort")}
+                            kind="nodes"
+                            items={rows(d.data)}
+                            onSaved={d.reload}
+                        />
                         <button
                             className="primary"
                             onClick={() =>
@@ -1748,9 +1871,23 @@ export function Nodes() {
                             ["port", "端口"],
                             ["rate", "倍率"],
                             ["show", "展示"],
+                            ["online", "在线用户"],
+                            [
+                                "available_status",
+                                "状态",
+                                (r) =>
+                                    ["离线", "未上报流量", "正常"][
+                                        r.available_status
+                                    ],
+                            ],
                         ]}
                         actions={(r) => (
                             <>
+                                {r.install_command && (
+                                    <button onClick={() => setCommand(r)}>
+                                        安装命令
+                                    </button>
+                                )}
                                 <button
                                     onClick={() => {
                                         setType(r.type);
@@ -1819,6 +1956,41 @@ export function Nodes() {
                     />
                 </State>
             </Panel>
+            {command && (
+                <Modal title="节点安装命令" close={() => setCommand(null)}>
+                    <div className="pad">
+                        <p className="muted">
+                            命令包含节点通讯凭据，仅在目标服务器使用。
+                        </p>
+                        <textarea
+                            readOnly
+                            aria-label="节点安装命令"
+                            value={command.install_command}
+                        />
+                        <button
+                            onClick={async () => {
+                                try {
+                                    await navigator.clipboard.writeText(
+                                        command.install_command,
+                                    );
+                                    setCommand({ ...command, copied: true });
+                                } catch (e) {
+                                    setCommand({
+                                        ...command,
+                                        error: (e as Error).message,
+                                    });
+                                }
+                            }}
+                        >
+                            复制命令
+                        </button>
+                        {command.copied && <p role="status">已复制</p>}
+                        {command.error && (
+                            <p className="alert">{command.error}</p>
+                        )}
+                    </div>
+                </Modal>
+            )}
             {editing && (
                 <Modal title="节点配置" close={() => setEditing(null)}>
                     {!editing.id && (
@@ -2060,37 +2232,48 @@ export function System() {
     const status = useData(admin("system/getSystemStatus")),
         queue = useData(admin("system/getQueueStats"));
     return (
-        <div className="split">
-            {[
-                [status, "系统状态"],
-                [queue, "队列状态"],
-            ].map(([d, title]) => {
-                const data = d as ReturnType<typeof useData>;
-                return (
-                    <Panel
-                        key={title as string}
-                        title={title as string}
-                        actions={<Reload onClick={data.reload} />}
-                    >
-                        <State {...data}>
-                            <div className="stats-list">
-                                {Object.entries(data.data || {}).map(
-                                    ([k, v]) => (
-                                        <div key={k}>
-                                            <span>{k}</span>
-                                            <strong>
-                                                {typeof v === "object"
-                                                    ? JSON.stringify(v)
-                                                    : String(v)}
-                                            </strong>
-                                        </div>
-                                    ),
-                                )}
-                            </div>
-                        </State>
-                    </Panel>
-                );
-            })}
-        </div>
+        <>
+            <div className="split">
+                {[
+                    [status, "系统状态"],
+                    [queue, "队列状态"],
+                ].map(([d, title]) => {
+                    const data = d as ReturnType<typeof useData>;
+                    return (
+                        <Panel
+                            key={title as string}
+                            title={title as string}
+                            actions={<Reload onClick={data.reload} />}
+                        >
+                            <State {...data}>
+                                <div className="stats-list">
+                                    {Object.entries(data.data || {}).map(
+                                        ([k, v]) => (
+                                            <div key={k}>
+                                                <span>{labels[k] || k}</span>
+                                                <strong>
+                                                    {k ===
+                                                    "schedule_last_runtime"
+                                                        ? date(v)
+                                                        : typeof v === "boolean"
+                                                          ? v
+                                                              ? "运行中"
+                                                              : "未运行"
+                                                          : typeof v ===
+                                                              "object"
+                                                            ? JSON.stringify(v)
+                                                            : String(v)}
+                                                </strong>
+                                            </div>
+                                        ),
+                                    )}
+                                </div>
+                            </State>
+                        </Panel>
+                    );
+                })}
+            </div>
+            <QueueDetails />
+        </>
     );
 }

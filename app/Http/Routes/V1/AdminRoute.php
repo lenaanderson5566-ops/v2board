@@ -169,7 +169,7 @@ class AdminRoute
             $router->get ('/system/getSystemStatus', 'V1\\Admin\\SystemController@getSystemStatus');
             $router->get ('/system/getQueueStats', 'V1\\Admin\\SystemController@getQueueStats');
             $router->get ('/system/getQueueWorkload', 'V1\\Admin\\SystemController@getQueueWorkload');
-            $router->get ('/system/getQueueMasters', '\\Laravel\\Horizon\\Http\\Controllers\\MasterSupervisorController@index');
+            $router->get ('/system/getQueueMasters', 'V1\\Admin\\SystemController@getQueueMasters');
             $router->get ('/system/getSystemLog', 'V1\\Admin\\SystemController@getSystemLog');
         });
     }

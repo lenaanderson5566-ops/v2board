@@ -1,36 +1,36 @@
 {
-  "_plus-BJPaNWZa.js": {
-    "file": "assets/plus-BJPaNWZa.js",
+  "_plus-pZyor1lw.js": {
+    "file": "assets/plus-pZyor1lw.js",
     "name": "plus",
     "imports": [
       "src/main.tsx"
     ]
   },
   "src/Landing.tsx": {
-    "file": "assets/Landing-ztzeuzyW.js",
+    "file": "assets/Landing-CC3usunn.js",
     "name": "Landing",
     "src": "src/Landing.tsx",
     "isDynamicEntry": true,
     "imports": [
       "src/main.tsx",
-      "_plus-BJPaNWZa.js"
+      "_plus-pZyor1lw.js"
     ],
     "css": [
       "assets/Landing-LdxGN_YO.css"
     ]
   },
   "src/admin-entry.tsx": {
-    "file": "assets/admin-entry-DtjvqLqb.js",
+    "file": "assets/admin-entry-BC31dJkx.js",
     "name": "admin-entry",
     "src": "src/admin-entry.tsx",
     "isDynamicEntry": true,
     "imports": [
       "src/main.tsx",
-      "_plus-BJPaNWZa.js"
+      "_plus-pZyor1lw.js"
     ]
   },
   "src/main.tsx": {
-    "file": "assets/main-DjHUwqfL.js",
+    "file": "assets/main-KrcJ-Dap.js",
     "name": "main",
     "src": "src/main.tsx",
     "isEntry": true,
@@ -39,7 +39,7 @@
       "src/Landing.tsx"
     ],
     "css": [
-      "assets/main-BhC1micb.css"
+      "assets/main-D_16hKar.css"
     ]
   }
 }

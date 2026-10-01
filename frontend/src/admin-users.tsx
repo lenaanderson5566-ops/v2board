@@ -21,7 +21,22 @@ import {
 
 export function UsersPage() {
     const plans = useData<Row[]>(admin("plan/fetch"));
-    const [filters, setFilters] = useState<UserFilter[]>([]),
+    const [filters, setFilters] = useState<UserFilter[]>(() => {
+            const params = new URLSearchParams(
+                window.location.hash.split("?")[1] || "",
+            );
+            return params.has("user_id")
+                ? [{ key: "id", condition: "=", value: params.get("user_id")! }]
+                : params.has("invite_user_id")
+                  ? [
+                        {
+                            key: "invite_user_id",
+                            condition: "=",
+                            value: params.get("invite_user_id")!,
+                        },
+                    ]
+                  : [];
+        }),
         [email, setEmail] = useState(""),
         [showFilters, setShowFilters] = useState(false),
         [total, setTotal] = useState(0),
@@ -646,7 +661,7 @@ const periods: [string, string][] = [
     ["onetime_price", "一次性"],
     ["reset_price", "重置流量"],
 ];
-function AssignOrder({
+export function AssignOrder({
     row,
     plans,
     loading,

@@ -9,11 +9,15 @@
     <meta name="description" content="{{ $boot['landing'] ? 'Studio — A space for ideas, writing and everyday planning.' : config('v2board.app_description', 'V2Board') }}">
     <title>{{ $boot['landing'] ? 'Studio' : config('v2board.app_name', 'V2Board') }}</title>
     <script>window.V2BOARD = @json($boot);</script>
+    @if($boot['mode'] === 'admin')
+        <link rel="stylesheet" href="/assets/admin/res_002.css">
+        <link rel="stylesheet" href="/assets/admin/res_004.css">
+    @endif
     @foreach($entry['css'] ?? [] as $css)
         <link rel="stylesheet" href="{{ '/console/' . $css }}">
     @endforeach
 </head>
-<body>
+<body data-console="{{ $boot['mode'] }}">
     <div id="root"></div>
     @if($boot['mode'] === 'user' && !$boot['landing'])
         <footer id="custom-footer">{!! \App\Support\FrontendConfig::footer() !!}</footer>

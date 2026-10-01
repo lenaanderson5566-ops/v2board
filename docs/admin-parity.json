@@ -3,7 +3,7 @@
     "file": "public/assets/admin/res_005.js",
     "commit": "d1d12201"
   },
-  "method": "原构建文件 AST + 当前表单源码 + 后端路由/校验；浏览器已只读抽查原仪表盘、系统配置站点和邮件页、用户列表及用户编辑抽屉；其他项目以源码核对为主。操作入口清单属于重点抽查，不是全部按钮枚举；已迁移不等于行为完全一致。",
+  "method": "原构建 AST、原 CSS、React 表单源码和后端校验对照；浏览器核对原仪表盘、设置、用户列表、登录及 Markdown 抽屉，并在本地临时记录上回读文章与金额。布局与控件清单见 admin-layout-review.md，业务按钮见 admin-buttons-review.md；静态入口核对不能替代所有边界测试和外部服务验收。",
   "rows": [
     {
       "module": "原后台菜单",
@@ -247,7 +247,7 @@
       "module": "系统设置字段",
       "item": "safe.email_whitelist_suffix",
       "status": "已保留",
-      "note": "原控件：白名单后缀 / textarea。当前：json。联动按 admin-linkage.ts 定义；自定义组件需结合浏览器确认。",
+      "note": "原控件：白名单后缀 / textarea。当前：textarea。联动按 admin-linkage.ts 定义；自定义组件需结合浏览器确认。",
       "evidence": "public/assets/admin/res_005.js:5841"
     },
     {
@@ -387,7 +387,7 @@
       "module": "系统设置字段",
       "item": "deposit.deposit_bounus",
       "status": "已保留",
-      "note": "原控件：充值奖励 / textarea。当前：json。联动按 admin-linkage.ts 定义；自定义组件需结合浏览器确认。",
+      "note": "原控件：充值奖励 / textarea。当前：textarea。联动按 admin-linkage.ts 定义；自定义组件需结合浏览器确认。",
       "evidence": "public/assets/admin/res_005.js:6041"
     },
     {
@@ -450,7 +450,7 @@
       "module": "系统设置字段",
       "item": "invite.commission_withdraw_method",
       "status": "已保留",
-      "note": "原控件：提现方式 / textarea。当前：json。联动按 admin-linkage.ts 定义；自定义组件需结合浏览器确认。",
+      "note": "原控件：提现方式 / textarea。当前：textarea。联动按 admin-linkage.ts 定义；自定义组件需结合浏览器确认。",
       "evidence": "public/assets/admin/res_005.js:6127"
     },
     {
@@ -694,15 +694,15 @@
     {
       "module": "用户编辑字段",
       "item": "balance",
-      "status": "交互差异",
-      "note": "字段已保留，但原后台显示元，当前输入分，属于单位交互差异。",
+      "status": "已保留",
+      "note": "与原后台一致输入元，提交转换为整数分；金额转换已回归。",
       "evidence": "public/assets/admin/res_005.js:22320"
     },
     {
       "module": "用户编辑字段",
       "item": "commission_balance",
-      "status": "交互差异",
-      "note": "字段已保留，但原后台显示元，当前输入分，属于单位交互差异。",
+      "status": "已保留",
+      "note": "与原后台一致输入元，提交转换为整数分；金额转换已回归。",
       "evidence": "public/assets/admin/res_005.js:22328"
     },
     {

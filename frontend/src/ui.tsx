@@ -1,9 +1,34 @@
 import { tx, locale } from "./i18n";
-import { useEffect, useState, useRef, useId, type ReactNode } from "react";
+import {
+    useEffect,
+    useState,
+    useRef,
+    useId,
+    createContext,
+    useContext,
+    lazy,
+    Suspense,
+    type ReactNode,
+} from "react";
 import { useTranslation } from "react-i18next";
 import { createPortal } from "react-dom";
 import { ux } from "./ux";
 import DOMPurify from "dompurify";
+const AdminMarkdown = lazy(() =>
+    import("./admin-markdown").then((module) => ({
+        default: module.AdminMarkdown,
+    })),
+);
+const AdminCodeEditor = lazy(() =>
+    import("./admin-code-editor").then((module) => ({
+        default: module.AdminCodeEditor,
+    })),
+);
+import { renderMarkdown } from "./markdown";
+import { moveItem } from "./admin-actions";
+import { inputValue, apiValue } from "./field-values";
+import { AdminMultiSelect } from "./admin-multiselect";
+const ModalClose = createContext<(() => void) | undefined>(undefined);
 import {
     X,
     Inbox,
@@ -14,13 +39,21 @@ import {
     EyeOff,
     Check,
 } from "lucide-react";
-import { request, type Row } from "./api";
-export function Html({ value }: { value: unknown }) {
+import { boot, request, type Row } from "./api";
+export function Html({
+    value,
+    markdown = false,
+}: {
+    value: unknown;
+    markdown?: boolean;
+}) {
     return (
         <div
             className="rich-text"
             dangerouslySetInnerHTML={{
-                __html: DOMPurify.sanitize(String(value || "")),
+                __html: DOMPurify.sanitize(
+                    markdown ? renderMarkdown(value) : String(value || ""),
+                ),
             }}
         />
     );
@@ -112,13 +145,15 @@ export function Panel({
     title,
     children,
     actions,
+    className = "",
 }: {
     title?: string;
     children: ReactNode;
     actions?: ReactNode;
+    className?: string;
 }) {
     return (
-        <section className="panel">
+        <section className={`panel ${className}`}>
             {(title || actions) && (
                 <div className="panel-head">
                     <h2>{title}</h2>
@@ -133,10 +168,14 @@ export function Modal({
     title,
     children,
     close,
+    variant,
+    wide = false,
 }: {
     title: string;
     children: ReactNode;
     close: () => void;
+    variant?: "modal" | "drawer";
+    wide?: boolean;
 }) {
     const dialog = useRef<HTMLElement>(null);
     const closeRef = useRef(close);
@@ -182,7 +221,16 @@ export function Modal({
     }, []);
     return createPortal(
         <div
-            className="overlay"
+            className={
+                "overlay" +
+                (boot.mode === "admin" &&
+                (variant === "drawer" ||
+                    (!variant &&
+                        /编辑|新建|设置|配置|高级筛选|生成用户/.test(title)))
+                    ? " admin-drawer"
+                    : "") +
+                (wide ? " admin-wide-drawer" : "")
+            }
             onMouseDown={(e) => {
                 if (e.target === e.currentTarget) close();
             }}
@@ -204,7 +252,9 @@ export function Modal({
                         <X />
                     </button>
                 </div>
-                {children}
+                <ModalClose.Provider value={close}>
+                    {children}
+                </ModalClose.Provider>
             </section>
         </div>,
         document.body,
@@ -226,11 +276,16 @@ export interface Field {
         | "multiselect"
         | "email"
         | "url";
+    markdown?: boolean;
+    scale?: number;
     min?: number;
     max?: number;
     step?: number;
     nullable?: boolean;
     autoComplete?: string;
+    placeholder?: string;
+    arrayText?: boolean;
+    creatable?: boolean;
     required?: boolean;
     options?: [string, string][];
     hint?: string;
@@ -258,7 +313,11 @@ export function Editor({
     onDirty?: () => void;
     onValuesChange?: (values: Row) => void;
 }) {
+    const cancel = useContext(ModalClose);
     const formId = useId();
+    const initialFields = resolveFields
+        ? resolveFields(fields, initial)
+        : fields;
     const [value, setValue] = useState<Row>(() => ({
             ...Object.fromEntries(
                 fields
@@ -279,7 +338,10 @@ export function Editor({
             ...Object.fromEntries(
                 Object.entries(initial).map(([key, value]) => [
                     key,
-                    typeof value === "boolean" ? Number(value) : value,
+                    inputValue(
+                        initialFields.find((field) => field.key === key),
+                        value,
+                    ),
                 ]),
             ),
         })),
@@ -287,8 +349,26 @@ export function Editor({
         [busy, setBusy] = useState(false),
         [saved, setSaved] = useState(false),
         [revealed, setRevealed] = useState<Record<string, boolean>>({});
-    const activeFields = resolveFields ? resolveFields(fields, value) : fields;
+    const activeFields = (
+        resolveFields ? resolveFields(fields, value) : fields
+    ).map((field) =>
+        boot.mode === "admin" && field.key === "tags"
+            ? {
+                  ...field,
+                  type: "multiselect" as const,
+                  creatable: true,
+                  options: (Array.isArray(value.tags) ? value.tags : []).map(
+                      (tag) => [String(tag), String(tag)] as [string, string],
+                  ),
+              }
+            : field,
+    );
     function updateValue(key: string, next: unknown) {
+        if (
+            activeFields.find((field) => field.key === key)?.arrayText &&
+            typeof next === "string"
+        )
+            next = next.split(",");
         onDirty?.();
         onValuesChange?.(
             linkValues
@@ -316,6 +396,12 @@ export function Editor({
             const validationError = validate?.(value);
             if (validationError) throw new Error(validationError);
             for (const f of activeFields) {
+                if (
+                    f.markdown &&
+                    f.required &&
+                    !String(body[f.key] || "").trim()
+                )
+                    throw new Error(tx(f.label) + " *");
                 if (f.type === "select" && body[f.key] == null && !f.nullable)
                     body[f.key] = f.options?.[0]?.[0] ?? "";
                 if (f.type === "switch" && body[f.key] == null) body[f.key] = 0;
@@ -338,9 +424,7 @@ export function Editor({
                     /^-?\d+(\.\d+)?$/.test(String(body[f.key]))
                 )
                     body[f.key] = Number(body[f.key]);
-                if (f.type === "number")
-                    body[f.key] =
-                        body[f.key] === "" ? null : Number(body[f.key]);
+                body[f.key] = apiValue(f, body[f.key]);
                 if (f.type === "json" && typeof body[f.key] === "string")
                     body[f.key] = body[f.key].trim()
                         ? JSON.parse(body[f.key])
@@ -381,7 +465,45 @@ export function Editor({
                             {tx(f.label)}
                             {f.required && " *"}
                         </span>
-                        {f.type === "switch" ? (
+                        {f.markdown && boot.mode === "admin" ? (
+                            <div inert={busy}>
+                                <Suspense
+                                    fallback={<span className="spinner" />}
+                                >
+                                    <AdminMarkdown
+                                        label={f.label}
+                                        value={String(value[f.key] || "")}
+                                        onChange={(next) =>
+                                            updateValue(f.key, next)
+                                        }
+                                    />
+                                </Suspense>
+                            </div>
+                        ) : f.type === "json" && boot.mode === "admin" ? (
+                            <div inert={busy}>
+                                <Suspense
+                                    fallback={<span className="spinner" />}
+                                >
+                                    <AdminCodeEditor
+                                        label={f.label}
+                                        value={
+                                            typeof value[f.key] === "string"
+                                                ? value[f.key]
+                                                : value[f.key] == null
+                                                  ? ""
+                                                  : JSON.stringify(
+                                                        value[f.key],
+                                                        null,
+                                                        2,
+                                                    )
+                                        }
+                                        onChange={(next) =>
+                                            updateValue(f.key, next)
+                                        }
+                                    />
+                                </Suspense>
+                            </div>
+                        ) : f.type === "switch" ? (
                             <button
                                 type="button"
                                 role="switch"
@@ -407,6 +529,19 @@ export function Editor({
                                     )}
                                 </span>
                             </button>
+                        ) : f.type === "multiselect" &&
+                          boot.mode === "admin" ? (
+                            <div inert={busy}>
+                                <AdminMultiSelect
+                                    label={f.label}
+                                    creatable={f.creatable}
+                                    options={f.options || []}
+                                    value={value[f.key]}
+                                    onChange={(next) =>
+                                        updateValue(f.key, next)
+                                    }
+                                />
+                            </div>
                         ) : f.type === "multiselect" ? (
                             <div
                                 className="option-group"
@@ -530,6 +665,7 @@ export function Editor({
                                             ? "text"
                                             : f.type || "text"
                                     }
+                                    placeholder={f.placeholder}
                                     autoComplete={
                                         f.autoComplete ??
                                         (f.type === "password"
@@ -598,6 +734,11 @@ export function Editor({
                 </div>
             )}
             <div className="form-bottom">
+                {cancel && (
+                    <button type="button" onClick={cancel}>
+                        {ux("cancel")}
+                    </button>
+                )}
                 {saved && (
                     <span className="save-feedback" role="status">
                         <Check size={15} />
@@ -656,31 +797,192 @@ export function Table({
     data,
     columns,
     actions,
+    sort,
+    onSort,
+    onReorder,
 }: {
     data: Row[];
     columns: [string, string, ((row: Row) => ReactNode)?][];
-    actions?: (row: Row) => ReactNode;
+    actions?: (row: Row, context?: boolean) => ReactNode;
+    sort?: { key: string; direction: string; fields: string[] };
+    onSort?: (key: string, direction: string) => void;
+    onReorder?: (data: Row[]) => void | Promise<void>;
 }) {
-    if (!data.length) return <Empty />;
+    const [dragged, setDragged] = useState<number | null>(null);
+    const [reorderError, setReorderError] = useState("");
+    const [reordering, setReordering] = useState(false);
+    const [context, setContext] = useState<{
+        row: Row;
+        x: number;
+        y: number;
+    } | null>(null);
+    const contextMenu = useRef<HTMLDivElement>(null);
+    useEffect(() => {
+        if (!context) return;
+        const close = (event: MouseEvent) => {
+            if (!contextMenu.current?.contains(event.target as Node))
+                setContext(null);
+        };
+        const escape = (event: KeyboardEvent) => {
+            if (event.key === "Escape") setContext(null);
+        };
+        document.addEventListener("mousedown", close);
+        document.addEventListener("keydown", escape);
+        return () => {
+            document.removeEventListener("mousedown", close);
+            document.removeEventListener("keydown", escape);
+        };
+    }, [context]);
+    if (!data.length && boot.mode !== "admin") return <Empty />;
     return (
         <div className="table-scroll">
+            {reorderError && (
+                <div className="alert" role="alert">
+                    {reorderError}
+                </div>
+            )}
             <table>
                 <thead>
                     <tr>
+                        {onReorder && <th>{ux("sort")}</th>}
                         {columns.map(([k, label]) => (
-                            <th key={k}>{label}</th>
+                            <th
+                                key={k}
+                                aria-sort={
+                                    sort?.key === k
+                                        ? sort.direction === "ASC"
+                                            ? "ascending"
+                                            : "descending"
+                                        : undefined
+                                }
+                            >
+                                {sort?.fields.includes(k) && onSort ? (
+                                    <button
+                                        className="table-sort"
+                                        onClick={() =>
+                                            onSort(
+                                                k,
+                                                sort.key === k &&
+                                                    sort.direction === "ASC"
+                                                    ? "DESC"
+                                                    : "ASC",
+                                            )
+                                        }
+                                    >
+                                        {label}
+                                        <span aria-hidden="true">
+                                            {sort.key === k
+                                                ? sort.direction === "ASC"
+                                                    ? " ▲"
+                                                    : " ▼"
+                                                : " ↕"}
+                                        </span>
+                                    </button>
+                                ) : (
+                                    label
+                                )}
+                            </th>
                         ))}
                         {actions && <th>{tx("操作")}</th>}
                     </tr>
                 </thead>
                 <tbody>
+                    {!data.length && (
+                        <tr>
+                            <td
+                                colSpan={
+                                    columns.length +
+                                    (actions ? 1 : 0) +
+                                    (onReorder ? 1 : 0)
+                                }
+                            >
+                                <Empty />
+                            </td>
+                        </tr>
+                    )}
                     {data.map((r, i) => (
-                        <tr key={r.id ?? r.trade_no ?? i}>
+                        <tr
+                            key={
+                                r.type
+                                    ? `${r.type}-${r.id ?? i}`
+                                    : (r.id ?? r.trade_no ?? i)
+                            }
+                            onContextMenu={
+                                boot.mode === "admin" && actions
+                                    ? (e) => {
+                                          e.preventDefault();
+                                          setContext({
+                                              row: r,
+                                              x: Math.min(
+                                                  e.clientX,
+                                                  window.innerWidth - 220,
+                                              ),
+                                              y: Math.min(
+                                                  e.clientY,
+                                                  window.innerHeight - 300,
+                                              ),
+                                          });
+                                      }
+                                    : undefined
+                            }
+                            onDragOver={
+                                onReorder
+                                    ? (e) => e.preventDefault()
+                                    : undefined
+                            }
+                            onDrop={
+                                onReorder
+                                    ? async (e) => {
+                                          e.preventDefault();
+                                          if (
+                                              dragged === null ||
+                                              dragged === i ||
+                                              reordering
+                                          )
+                                              return;
+                                          setReordering(true);
+                                          setReorderError("");
+                                          try {
+                                              await onReorder(
+                                                  moveItem(data, dragged, i),
+                                              );
+                                          } catch (error) {
+                                              setReorderError(
+                                                  (error as Error).message,
+                                              );
+                                          } finally {
+                                              setDragged(null);
+                                              setReordering(false);
+                                          }
+                                      }
+                                    : undefined
+                            }
+                        >
+                            {onReorder && (
+                                <td>
+                                    <button
+                                        type="button"
+                                        draggable
+                                        disabled={reordering}
+                                        aria-label={`排序 ${r.name || r.title || r.id}`}
+                                        className="row-drag-handle"
+                                        onDragStart={(e) => {
+                                            e.dataTransfer.effectAllowed =
+                                                "move";
+                                            setDragged(i);
+                                        }}
+                                        onDragEnd={() => setDragged(null)}
+                                    >
+                                        ☰
+                                    </button>
+                                </td>
+                            )}
                             {columns.map(([k, label, render]) => (
                                 <td key={k} data-label={label}>
                                     {render
                                         ? render(r)
-                                        : typeof r[k] === "object"
+                                        : r[k] != null &&
+                                            typeof r[k] === "object"
                                           ? JSON.stringify(r[k])
                                           : String(r[k] ?? "—")}
                                 </td>
@@ -694,6 +996,26 @@ export function Table({
                     ))}
                 </tbody>
             </table>
+            {context &&
+                actions &&
+                createPortal(
+                    <div
+                        ref={contextMenu}
+                        className="admin-context-menu"
+                        role="menu"
+                        style={{
+                            left: Math.max(0, context.x),
+                            top: Math.max(0, context.y),
+                        }}
+                        onClick={(e) => {
+                            if ((e.target as Element).closest("button,a[href]"))
+                                setContext(null);
+                        }}
+                    >
+                        {actions(context.row, true)}
+                    </div>,
+                    document.body,
+                )}
         </div>
     );
 }

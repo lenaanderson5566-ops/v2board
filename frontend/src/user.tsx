@@ -166,7 +166,7 @@ export function UserDashboard() {
                                 <div className="notice" key={n.id}>
                                     <small>{date(n.created_at)}</small>
                                     <h3>{n.title}</h3>
-                                    <Html value={n.content} />
+                                    <Html markdown value={n.content} />
                                 </div>
                             ))
                         ) : (
@@ -693,7 +693,7 @@ export function Knowledge() {
                 >
                     <State {...article}>
                         <div className="pad">
-                            <Html value={article.data?.body} />
+                            <Html markdown value={article.data?.body} />
                         </div>
                     </State>
                 </Modal>
@@ -706,11 +706,15 @@ export function Tickets({
     queryParams = {},
     toolbar,
     pageSize = 20,
+    heading,
+    adminColumns,
 }: {
     isAdmin?: boolean;
     queryParams?: Row;
     toolbar?: ReactNode;
     pageSize?: number;
+    heading?: string;
+    adminColumns?: [string, string, ((row: Row) => ReactNode)?][];
 }) {
     const [page, setPage] = useState(1);
     const prefix = isAdmin ? boot.adminPath : "user";
@@ -731,7 +735,7 @@ export function Tickets({
     return (
         <>
             <Panel
-                title={tx("工单中心")}
+                title={heading || tx("工单中心")}
                 actions={
                     <>
                         <Reload onClick={d.reload} />
@@ -750,26 +754,28 @@ export function Tickets({
                 <State {...d} retry={d.reload}>
                     <Table
                         data={d.data || []}
-                        columns={[
-                            ["id", tx("编号")],
-                            ["subject", tx("主题")],
-                            [
-                                "status",
-                                tx("状态"),
-                                (r) => (
-                                    <span className="badge">
-                                        {r.status === 0
-                                            ? tx("处理中")
-                                            : tx("已关闭")}
-                                    </span>
-                                ),
-                            ],
-                            [
-                                "updated_at",
-                                tx("更新时间"),
-                                (r) => date(r.updated_at),
-                            ],
-                        ]}
+                        columns={
+                            adminColumns || [
+                                ["id", tx("编号")],
+                                ["subject", tx("主题")],
+                                [
+                                    "status",
+                                    tx("状态"),
+                                    (r) => (
+                                        <span className="badge">
+                                            {r.status === 0
+                                                ? tx("处理中")
+                                                : tx("已关闭")}
+                                        </span>
+                                    ),
+                                ],
+                                [
+                                    "updated_at",
+                                    tx("更新时间"),
+                                    (r) => date(r.updated_at),
+                                ],
+                            ]
+                        }
                         actions={(r) => (
                             <>
                                 <button onClick={() => setId(r.id)}>

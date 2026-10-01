@@ -21,7 +21,6 @@ import {
     Menu,
     ArrowUpRight,
     ChevronRight,
-    UserRound,
     Activity,
     MonitorSmartphone,
     Bell,
@@ -49,6 +48,8 @@ import "./style.css";
 import "./console.css";
 import { useTranslation } from "react-i18next";
 import { LanguagePicker } from "./LanguagePicker";
+import { AdminShell, adminPage, legacyAdminMenu } from "./admin-shell";
+import "./admin-legacy.css";
 type Nav = { key: string; label: string; icon: typeof Globe; group: string };
 const userNav: Nav[] = [
     {
@@ -76,81 +77,12 @@ const userNav: Nav[] = [
     { key: "invite", label: "邀请好友", icon: Users, group: "帮助与账户" },
     { key: "profile", label: "账户设置", icon: Settings, group: "帮助与账户" },
 ];
-const adminNav: Nav[] = [
-    {
-        key: "overview",
-        label: "运营概览",
-        icon: LayoutDashboard,
-        group: "运营",
-    },
-    { key: "users", label: "用户管理", icon: Users, group: "运营" },
-    { key: "generate", label: "生成用户", icon: UserRound, group: "运营" },
-    { key: "orders", label: "订单管理", icon: ReceiptText, group: "运营" },
-    { key: "plans", label: "套餐管理", icon: ShoppingBag, group: "服务" },
-    { key: "nodes", label: "节点管理", icon: Server, group: "服务" },
-    { key: "groups", label: "权限组", icon: Layers, group: "服务" },
-    { key: "routes", label: "路由规则", icon: Route, group: "服务" },
-    { key: "payments", label: "支付方式", icon: CreditCard, group: "服务" },
-    { key: "coupons", label: "优惠券", icon: Ticket, group: "服务" },
-    { key: "giftcards", label: "礼品卡", icon: Gift, group: "服务" },
-    { key: "notices", label: "公告管理", icon: Bell, group: "内容与支持" },
-    { key: "knowledge", label: "知识库", icon: BookOpen, group: "内容与支持" },
-    {
-        key: "tickets",
-        label: "工单中心",
-        icon: MessageCircle,
-        group: "内容与支持",
-    },
-    {
-        key: "translations",
-        label: "套餐多语言",
-        icon: Languages,
-        group: "内容与支持",
-    },
-    { key: "risk", label: "风控规则", icon: Shield, group: "风控与客户端" },
-    {
-        key: "risk-settings",
-        label: "风控设置",
-        icon: Settings,
-        group: "风控与客户端",
-    },
-    {
-        key: "blacklist-ip",
-        label: "IP 黑名单",
-        icon: Network,
-        group: "风控与客户端",
-    },
-    {
-        key: "blacklist-ua",
-        label: "UA 黑名单",
-        icon: Shield,
-        group: "风控与客户端",
-    },
-    {
-        key: "clients",
-        label: "客户端策略",
-        icon: MonitorSmartphone,
-        group: "风控与客户端",
-    },
-    { key: "online", label: "在线用户", icon: Activity, group: "风控与客户端" },
-    { key: "usage", label: "用户使用情况", icon: Globe, group: "风控与客户端" },
-    ...["login", "subscribe", "connection", "risk"].map((key, i) => ({
-        key: "log-" + key,
-        label: [tx("登录日志"), tx("订阅日志"), tx("连接日志"), tx("风控命中")][
-            i
-        ],
-        icon: ScrollText,
-        group: tx("日志与系统"),
-    })),
-    {
-        key: "system-log",
-        label: "系统日志",
-        icon: ScrollText,
-        group: "日志与系统",
-    },
-    { key: "system", label: "系统状态", icon: Activity, group: "日志与系统" },
-    { key: "settings", label: "系统设置", icon: Settings, group: "日志与系统" },
-];
+const adminNav: Nav[] = legacyAdminMenu.map(([key, label, , group]) => ({
+    key,
+    label,
+    group,
+    icon: LayoutDashboard,
+}));
 function Auth({
     mode,
     onLogin,
@@ -159,7 +91,7 @@ function Auth({
     onLogin: (user: Row) => void;
 }) {
     const register = mode === "register" && boot.mode === "user",
-        forget = mode === "forget" && boot.mode === "user";
+        forget = mode === "forget";
     const [captcha, setCaptcha] = useState(""),
         [mailError, setMailError] = useState(""),
         [sending, setSending] = useState(false),
@@ -233,7 +165,9 @@ function Auth({
                             ? tx("重置密码")
                             : register
                               ? tx("创建账户")
-                              : tx("欢迎回来")}
+                              : boot.mode === "admin"
+                                ? boot.title
+                                : tx("欢迎回来")}
                     </h2>
                     <p className="muted">
                         {boot.mode === "admin"
@@ -244,7 +178,14 @@ function Auth({
                     </p>
                     <Editor
                         key={mode}
-                        fields={fields}
+                        fields={
+                            boot.mode === "admin"
+                                ? fields.map((field) => ({
+                                      ...field,
+                                      placeholder: field.label,
+                                  }))
+                                : fields
+                        }
                         initial={{
                             invite_code:
                                 new URLSearchParams(
@@ -345,6 +286,13 @@ function Auth({
                             </>
                         )}
                     </Editor>
+                    {boot.mode === "admin" && (
+                        <div className="auth-links">
+                            <a href={forget ? "#/login" : "#/forget"}>
+                                {forget ? tx("登录") : tx("忘记密码？")}
+                            </a>
+                        </div>
+                    )}
                     {boot.mode === "user" && (
                         <div className="auth-links">
                             <a href="#/login">{tx("登录")}</a>
@@ -421,6 +369,9 @@ function App() {
         () => matchMedia("(max-width: 800px)").matches,
     );
     const sidebar = useRef<HTMLElement>(null);
+    useEffect(() => {
+        if (boot.mode === "admin" && path === "generate") navigate("users");
+    }, [path]);
     useEffect(() => {
         const media = matchMedia("(max-width: 800px)");
         const update = () => {
@@ -528,7 +479,10 @@ function App() {
             </>
         );
     const nav = boot.mode === "admin" ? adminNav : userNav,
-        current = path.split("/")[0] || nav[0].key,
+        current =
+            boot.mode === "admin"
+                ? adminPage(path)
+                : path.split("/")[0] || nav[0].key,
         item = nav.find((n) => n.key === current),
         groups = [...new Set(nav.map((n) => n.group))];
     let content: ReactNode;
@@ -567,6 +521,20 @@ function App() {
                 <UserDashboard />
             );
     }
+    if (["admin"].includes(boot.mode))
+        return (
+            <AdminShell
+                current={current}
+                user={user}
+                logout={() => {
+                    localStorage.removeItem(storageKey);
+                    setUser(null);
+                    navigate("login");
+                }}
+            >
+                {content}
+            </AdminShell>
+        );
     return (
         <div className={"app " + boot.mode}>
             {open && (

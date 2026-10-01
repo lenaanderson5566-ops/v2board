@@ -35,7 +35,7 @@ Route::get('/app', function (Request $request) use ($renderConsole) {
     return $renderConsole('user');
 });
 Route::get('/' . $securePath, function () use ($renderConsole) { return $renderConsole('admin'); });
-foreach (['' => 'overview', '/overview' => 'overview', '/risk' => 'risk', '/client' => 'clients', '/logs' => 'log-login', '/i18n' => 'translations'] as $suffix => $page) {
+foreach (['' => 'operations', '/overview' => 'operations', '/risk' => 'risk', '/client' => 'clients', '/logs' => 'log-login', '/i18n' => 'translations'] as $suffix => $page) {
     Route::get('/' . $securePath . '/ops-center' . $suffix, function () use ($securePath, $page) { return redirect('/' . $securePath . '#/' . $page); });
 }
 if (!empty(config('v2board.subscribe_path'))) {

@@ -1,11 +1,10 @@
 import {
-    Overview,
+    OperationsOverview,
     ResourcePage,
     resources,
     Settings,
     RiskSettings,
     Translations,
-    GenerateUsers,
     Payments,
     Nodes,
     System,
@@ -13,6 +12,7 @@ import {
 import { OrdersPage } from "./admin-orders";
 import { AdminTickets, ContentPage } from "./admin-content";
 import { UsersPage } from "./admin-users";
+import { Overview } from "./admin-dashboard";
 export default function AdminContent({ current }: { current: string }) {
     if (current === "users") return <UsersPage />;
     if (current === "orders") return <OrdersPage />;
@@ -21,6 +21,8 @@ export default function AdminContent({ current }: { current: string }) {
     if (resources[current])
         return <ResourcePage key={current} resource={resources[current]} />;
     switch (current) {
+        case "operations":
+            return <OperationsOverview />;
         case "settings":
             return <Settings />;
         case "risk-settings":
@@ -29,8 +31,6 @@ export default function AdminContent({ current }: { current: string }) {
             return <Translations />;
         case "tickets":
             return <AdminTickets />;
-        case "generate":
-            return <GenerateUsers />;
         case "payments":
             return <Payments />;
         case "nodes":

@@ -26,7 +26,9 @@ import {
     Html,
     type Field,
 } from "./ui";
-import { SortButton, LegacyRanks, QueueDetails } from "./admin-tools";
+import { SortButton, QueueDetails } from "./admin-tools";
+import { AdminSwitch } from "./admin-switch";
+import { sortPayload } from "./admin-actions";
 import { configField, resetOptions } from "./admin-fields";
 import {
     paymentFields,
@@ -85,24 +87,52 @@ const created: [string, string, ((r: Row) => React.ReactNode)?] = [
 ];
 const name: [string, string] = ["name", "名称"];
 const price = (key: string, label: string): Field => ({
-    ...f(key, label + "（分）", "number"),
+    ...f(key, label + "（元）", "number"),
+    scale: 100,
+    step: 0.01,
     hint: "留空表示不提供该支付周期",
 });
 export const resources: Record<string, Resource> = {
     plans: {
-        title: "套餐管理",
+        title: "订阅管理",
         fetch: admin("plan/fetch"),
         sort: admin("plan/sort"),
         sortKind: "plans",
         save: admin("plan/save"),
         drop: admin("plan/drop"),
         columns: [
-            ["id", "ID"],
+            ["show", "销售状态"],
             name,
+            ["count", "统计"],
             ["transfer_enable", "流量 (GB)"],
-            ["month_price", "月付", (r) => money(r.month_price)],
-            ["count", "活跃用户"],
-            ["show", "展示"],
+            ["device_limit", "设备数限制"],
+            ...[
+                "month_price",
+                "quarter_price",
+                "half_year_price",
+                "year_price",
+                "two_year_price",
+                "three_year_price",
+                "onetime_price",
+                "reset_price",
+            ].map(
+                (key, i) =>
+                    [
+                        key,
+                        [
+                            "月付",
+                            "季付",
+                            "半年付",
+                            "年付",
+                            "两年付",
+                            "三年付",
+                            "一次性",
+                            "重置包",
+                        ][i],
+                        (r: Row) => (r[key] == null ? "—" : money(r[key])),
+                    ] as [string, string, (r: Row) => ReactNode],
+            ),
+            ["group_id", "权限组"],
             ["renew", "允许续费"],
         ],
         fields: [
@@ -158,22 +188,31 @@ export const resources: Record<string, Resource> = {
         ],
     },
     groups: {
-        title: "权限组",
+        title: "权限组管理",
         fetch: admin("server/group/fetch"),
         save: admin("server/group/save"),
         drop: admin("server/group/drop"),
-        columns: [["id", "ID"], name],
+        columns: [
+            ["id", "组ID"],
+            ["name", "组名称"],
+            ["user_count", "用户数量"],
+            ["server_count", "节点数量"],
+        ],
         fields: [f("name", "权限组名称", "text", true)],
     },
     routes: {
-        title: "路由规则",
+        title: "路由管理",
         fetch: admin("server/route/fetch"),
         save: admin("server/route/save"),
         drop: admin("server/route/drop"),
         columns: [
             ["id", "ID"],
             ["remarks", "备注"],
-            ["match", "匹配条件"],
+            [
+                "match",
+                "匹配数量",
+                (r) => (Array.isArray(r.match) ? r.match.length : 0),
+            ],
             ["action", "动作"],
         ],
         fields: [
@@ -205,20 +244,38 @@ export const resources: Record<string, Resource> = {
         columns: [
             ["id", "ID"],
             ["email", "邮箱"],
-            ["plan_name", "套餐"],
-            ["group_id", "权限组 ID"],
-            ["balance", "余额", (r) => money(r.balance)],
-            ["total_used", "已用流量", (r) => bytes(r.total_used)],
-            ["transfer_enable", "流量限额", (r) => bytes(r.transfer_enable)],
+            [
+                "banned",
+                "状态",
+                (r) => (
+                    <span
+                        className={`admin-status ${r.banned ? "error" : "success"}`}
+                    >
+                        {r.banned ? "封禁" : "正常"}
+                    </span>
+                ),
+            ],
+            ["plan_name", "订阅"],
+            ["group_id", "权限组"],
+            [
+                "total_used",
+                "已用(G)",
+                (r) => (Number(r.total_used || 0) / 1073741824).toFixed(2),
+            ],
+            [
+                "transfer_enable",
+                "流量(G)",
+                (r) => (Number(r.transfer_enable || 0) / 1073741824).toFixed(2),
+            ],
             [
                 "device_limit",
-                "在线 / 限额",
+                "设备数",
                 (r) => `${r.alive_ip || 0} / ${r.device_limit || "不限"}`,
             ],
             ["expired_at", "到期时间", (r) => date(r.expired_at)],
-            ["banned", "状态", (r) => (r.banned ? "封禁" : "正常")],
+            ["balance", "余额", (r) => money(r.balance)],
             ["commission_balance", "佣金", (r) => money(r.commission_balance)],
-            created,
+            ["created_at", "加入时间", (r) => date(r.created_at)],
         ],
         fields: [
             f("email", "邮箱", "text", true),
@@ -227,7 +284,7 @@ export const resources: Record<string, Resource> = {
             f("transfer_enable", "流量 (GB)", "number"),
             f("u", "已用上传（GB）", "number"),
             f("d", "已用下载（GB）", "number"),
-            f("balance", "余额（分）", "number"),
+            { ...f("balance", "余额（元）", "number"), scale: 100, step: 0.01 },
             f("expired_at", "到期时间", "datetime-local"),
             f("device_limit", "设备限制", "number"),
             f("speed_limit", "速率限制", "number"),
@@ -246,7 +303,11 @@ export const resources: Record<string, Resource> = {
                     ["2", "首次返利"],
                 ],
             },
-            f("commission_balance", "佣金余额（分）", "number"),
+            {
+                ...f("commission_balance", "佣金余额（元）", "number"),
+                scale: 100,
+                step: 0.01,
+            },
             f("invite_user_email", "邀请人邮箱（留空解除）", "email"),
             f("remarks", "备注", "textarea"),
         ],
@@ -261,9 +322,45 @@ export const resources: Record<string, Resource> = {
         fetch: admin("order/fetch"),
         columns: [
             ["trade_no", "订单号"],
+            [
+                "type",
+                "类型",
+                (r) => ["", "新购", "续费", "升级"][Number(r.type)] || r.type,
+            ],
+            ["plan_name", "订阅计划"],
+            [
+                "period",
+                "周期",
+                (r) =>
+                    (
+                        ({
+                            month_price: "月付",
+                            quarter_price: "季付",
+                            half_year_price: "半年付",
+                            year_price: "年付",
+                            two_year_price: "两年付",
+                            three_year_price: "三年付",
+                            onetime_price: "一次性",
+                            reset_price: "重置包",
+                        }) as Row
+                    )[r.period] || r.period,
+            ],
             ["user_id", "用户 ID"],
             ["plan_id", "套餐 ID"],
             ["total_amount", "金额", (r) => money(r.total_amount)],
+            [
+                "commission_balance",
+                "佣金金额",
+                (r) => money(r.commission_balance),
+            ],
+            [
+                "commission_status",
+                "佣金状态",
+                (r) =>
+                    ["待确认", "有效", "已发放", "无效"][
+                        Number(r.commission_status)
+                    ],
+            ],
             [
                 "status",
                 "状态",
@@ -285,12 +382,12 @@ export const resources: Record<string, Resource> = {
         fetch: admin("notice/fetch"),
         save: admin("notice/save"),
         drop: admin("notice/drop"),
-        columns: [["id", "ID"], ["title", "标题"], ["show", "展示"], created],
+        columns: [["id", "#"], ["show", "显示"], ["title", "标题"], created],
         fields: [
             f("title", "公告标题", "text", true),
             f("img_url", "封面 URL"),
             f("tags", "适用标签数组（留空表示全部）", "json"),
-            f("content", "公告内容 HTML", "textarea", true),
+            { ...f("content", "内容", "textarea", true), markdown: true },
         ],
         actions: [["切换展示", admin("notice/show")]],
     },
@@ -303,34 +400,51 @@ export const resources: Record<string, Resource> = {
         drop: admin("knowledge/drop"),
         columns: [
             ["id", "ID"],
+            ["show", "显示"],
             ["title", "标题"],
             ["category", "分类"],
             ["language", "语言"],
-            ["show", "展示"],
+            ["updated_at", "更新时间", (r) => date(r.updated_at)],
         ],
         fields: [
             f("title", "标题", "text", true),
             f("category", "分类", "text", true),
             f("language", "语言代码", "text", true),
-            f("body", "文章 HTML", "textarea", true),
+            { ...f("body", "内容", "textarea", true), markdown: true },
             f("sort", "排序", "number"),
         ],
         defaults: { language: "zh-CN", sort: 0 },
         actions: [["切换展示", admin("knowledge/show")]],
     },
     coupons: {
-        title: "优惠券",
+        title: "优惠券管理",
         fetch: admin("coupon/fetch"),
         save: admin("coupon/generate"),
         drop: admin("coupon/drop"),
         create: true,
         columns: [
             ["id", "ID"],
-            name,
-            ["code", "兑换码"],
-            ["type", "类型"],
-            ["value", "面值"],
-            ["limit_use", "次数"],
+            ["show", "启用"],
+            ["name", "券名称"],
+            [
+                "type",
+                "类型",
+                (r) =>
+                    Number(r.type) === 1
+                        ? `金额优惠 ${money(r.value)}`
+                        : `比例优惠 ${r.value}%`,
+            ],
+            ["code", "券码"],
+            [
+                "limit_use",
+                "剩余次数",
+                (r) => (r.limit_use == null ? "不限" : r.limit_use),
+            ],
+            [
+                "started_at",
+                "有效期",
+                (r) => `${date(r.started_at)} — ${date(r.ended_at)}`,
+            ],
         ],
         fields: [
             f("name", "名称", "text", true),
@@ -340,7 +454,7 @@ export const resources: Record<string, Resource> = {
                 label: "优惠类型",
                 type: "select",
                 options: [
-                    ["1", "固定金额（分）"],
+                    ["1", "固定金额（元）"],
                     ["2", "百分比"],
                 ],
             },
@@ -357,15 +471,39 @@ export const resources: Record<string, Resource> = {
         actions: [["切换启用", admin("coupon/show")]],
     },
     giftcards: {
-        title: "礼品卡",
+        title: "礼品卡管理",
         fetch: admin("giftcard/fetch"),
         save: admin("giftcard/generate"),
         drop: admin("giftcard/drop"),
         columns: [
             ["id", "ID"],
             name,
-            ["code", "兑换码"],
+            [
+                "type",
+                "类型",
+                (r) =>
+                    [
+                        "",
+                        "余额",
+                        "延长订阅",
+                        "增加流量",
+                        "重置流量",
+                        "开通套餐",
+                    ][Number(r.type)],
+            ],
             ["value", "面值"],
+            ["plan_id", "套餐"],
+            ["code", "卡密"],
+            [
+                "limit_use",
+                "剩余次数",
+                (r) => (r.limit_use == null ? "不限" : r.limit_use),
+            ],
+            [
+                "started_at",
+                "有效期",
+                (r) => `${date(r.started_at)} — ${date(r.ended_at)}`,
+            ],
             ["status", "状态"],
         ],
         fields: [
@@ -377,7 +515,7 @@ export const resources: Record<string, Resource> = {
                 label: "礼品卡类型",
                 type: "select",
                 options: [
-                    ["1", "余额（分）"],
+                    ["1", "余额（元）"],
                     ["2", "延长订阅（天）"],
                     ["3", "增加流量（GB）"],
                     ["4", "重置流量"],
@@ -581,14 +719,18 @@ export function ResourcePage({
     searchable = true,
     pageSize = 20,
     onTotal,
+    tableSort,
+    onTableSort,
 }: {
     resource: Resource;
     queryParams?: Row;
     toolbar?: ReactNode;
-    extraActions?: (row: Row) => ReactNode;
+    extraActions?: (row: Row, context?: boolean) => ReactNode;
     searchable?: boolean;
     pageSize?: number;
     onTotal?: (total: number) => void;
+    tableSort?: { key: string; direction: string; fields: string[] };
+    onTableSort?: (key: string, direction: string) => void;
 }) {
     const groups = useData<Row[]>(
         resource.fields.some((f) => f.key === "group_id")
@@ -776,13 +918,90 @@ export function ResourcePage({
                     {error && <div className="alert">{error}</div>}
                     <Table
                         data={list}
-                        columns={resource.columns}
+                        columns={resource.columns.map(
+                            ([key, label, render]) => {
+                                if (
+                                    (key === "show" || key === "renew") &&
+                                    [
+                                        resources.plans,
+                                        resources.knowledge,
+                                        resources.notices,
+                                        resources.coupons,
+                                    ].includes(resource)
+                                )
+                                    return [
+                                        key,
+                                        label,
+                                        (r: Row) => (
+                                            <AdminSwitch
+                                                label={`${r.name || r.title || r.id} ${label}`}
+                                                checked={Number(r[key]) === 1}
+                                                onChange={async (checked) => {
+                                                    const path =
+                                                        resource ===
+                                                        resources.plans
+                                                            ? "plan/update"
+                                                            : resource ===
+                                                                resources.knowledge
+                                                              ? "knowledge/show"
+                                                              : resource ===
+                                                                  resources.notices
+                                                                ? "notice/show"
+                                                                : "coupon/show";
+                                                    await request(
+                                                        admin(path),
+                                                        resource ===
+                                                            resources.plans
+                                                            ? {
+                                                                  id: r.id,
+                                                                  [key]: checked
+                                                                      ? 1
+                                                                      : 0,
+                                                              }
+                                                            : { id: r.id },
+                                                    );
+                                                    d.reload();
+                                                }}
+                                            />
+                                        ),
+                                    ] as [
+                                        string,
+                                        string,
+                                        (r: Row) => ReactNode,
+                                    ];
+                                return [key, label, render] as [
+                                    string,
+                                    string,
+                                    ((r: Row) => ReactNode)?,
+                                ];
+                            },
+                        )}
+                        onReorder={
+                            resource.sort && resource.sortKind && !search
+                                ? async (items) => {
+                                      try {
+                                          await request(
+                                              resource.sort!,
+                                              sortPayload(
+                                                  resource.sortKind!,
+                                                  items,
+                                              ),
+                                          );
+                                          d.reload();
+                                      } catch (e) {
+                                          setError((e as Error).message);
+                                      }
+                                  }
+                                : undefined
+                        }
+                        sort={tableSort}
+                        onSort={onTableSort}
                         actions={
                             resource.save ||
                             resource.drop ||
                             resource.actions ||
                             extraActions
-                                ? (r) => (
+                                ? (r, context) => (
                                       <>
                                           {resource.save &&
                                               resource.create !== true && (
@@ -931,7 +1150,7 @@ export function ResourcePage({
                                                   删除
                                               </button>
                                           )}
-                                          {extraActions?.(r)}
+                                          {extraActions?.(r, context)}
                                       </>
                                   )
                                 : undefined
@@ -949,6 +1168,10 @@ export function ResourcePage({
             </Panel>
             {editing && (
                 <Modal
+                    wide={
+                        resource === resources.knowledge ||
+                        resource === resources.notices
+                    }
                     title={
                         editing[key]
                             ? `编辑 · ${resource.title}`
@@ -982,7 +1205,9 @@ export function ResourcePage({
                             }
                             linkValues={(key, next, values) =>
                                 linkResource(
-                                    resource === resources.users ? "users" : "",
+                                    Object.keys(resources).find(
+                                        (key) => resources[key] === resource,
+                                    ) || "",
                                     rows(plans.data),
                                     key,
                                     next,
@@ -1051,7 +1276,7 @@ export function ResourcePage({
         </>
     );
 }
-export function Overview() {
+export function OperationsOverview() {
     const d = useData(ops("risk/overview/fetch")),
         stat = useData(admin("stat/getOverride")),
         health = useData(admin("system/getSystemStatus"));
@@ -1175,7 +1400,6 @@ export function Overview() {
                     查看队列状态
                 </a>
             </div>
-            <LegacyRanks />
         </>
     );
 }
@@ -1336,7 +1560,7 @@ export function Settings() {
                 : configField(k, v, schema.data?.[k], labels[k] || k),
         );
     return (
-        <Panel title="系统设置">
+        <Panel title="系统配置" className="settings-panel">
             <div className="section-tabs">
                 {Object.keys(groupNames).map((k) => (
                     <button
@@ -1615,7 +1839,7 @@ export function Payments() {
     return (
         <>
             <Panel
-                title="支付方式"
+                title="支付配置"
                 actions={
                     <>
                         {" "}
@@ -1651,11 +1875,38 @@ export function Payments() {
                     <Table
                         data={d.data || []}
                         columns={[
-                            name,
-                            ["payment", "支付网关"],
-                            ["enable", "启用"],
+                            ["id", "ID"],
+                            [
+                                "enable",
+                                "启用",
+                                (r) => (
+                                    <AdminSwitch
+                                        label={`${r.name} 启用`}
+                                        checked={Number(r.enable) === 1}
+                                        onChange={async (checked) => {
+                                            await request(
+                                                admin("payment/update"),
+                                                {
+                                                    id: r.id,
+                                                    enable: checked ? 1 : 0,
+                                                },
+                                            );
+                                            d.reload();
+                                        }}
+                                    />
+                                ),
+                            ],
+                            ["name", "显示名称"],
+                            ["payment", "支付接口"],
                             ["notify_url", "通知地址"],
                         ]}
+                        onReorder={async (items) => {
+                            await request(
+                                admin("payment/sort"),
+                                sortPayload("payments", items),
+                            );
+                            d.reload();
+                        }}
                         actions={(r) => (
                             <>
                                 <button onClick={() => setEditing(r)}>
@@ -1762,11 +2013,12 @@ function PaymentEditor({
                         {
                             ...f(
                                 "handling_fee_fixed",
-                                "固定手续费（分）",
+                                "固定手续费（元）",
                                 "number",
                             ),
                             min: 0,
-                            step: 1,
+                            step: 0.01,
+                            scale: 100,
                         },
                         {
                             ...f(
@@ -1793,7 +2045,13 @@ function PaymentEditor({
                                     "notify_domain",
                                     "handling_fee_fixed",
                                     "handling_fee_percent",
-                                ].map((key) => [key, values[key]]),
+                                ].map((key) => [
+                                    key,
+                                    key === "handling_fee_fixed" &&
+                                    values[key] != null
+                                        ? Math.round(Number(values[key]) * 100)
+                                        : values[key],
+                                ]),
                             ),
                         )
                     }
@@ -1870,7 +2128,41 @@ export function Nodes() {
                             ["host", "主机"],
                             ["port", "端口"],
                             ["rate", "倍率"],
-                            ["show", "展示"],
+                            [
+                                "show",
+                                "显隐",
+                                (r) => (
+                                    <AdminSwitch
+                                        label={`${r.name} 显示`}
+                                        checked={Number(r.show) === 1}
+                                        onChange={async (checked) => {
+                                            await request(
+                                                admin(
+                                                    `server/${r.type}/update`,
+                                                ),
+                                                {
+                                                    id: r.id,
+                                                    show: checked ? 1 : 0,
+                                                },
+                                            );
+                                            d.reload();
+                                        }}
+                                    />
+                                ),
+                            ],
+                            [
+                                "group_id",
+                                "权限组",
+                                (r) =>
+                                    (r.group_id || [])
+                                        .map(
+                                            (id: number) =>
+                                                rows(groups.data).find(
+                                                    (g) => g.id === id,
+                                                )?.name || id,
+                                        )
+                                        .join(" / "),
+                            ],
                             ["online", "在线用户"],
                             [
                                 "available_status",
@@ -1881,6 +2173,17 @@ export function Nodes() {
                                     ],
                             ],
                         ]}
+                        onReorder={async (items) => {
+                            try {
+                                await request(
+                                    admin("server/manage/sort"),
+                                    sortPayload("nodes", items),
+                                );
+                                d.reload();
+                            } catch (e) {
+                                setError((e as Error).message);
+                            }
+                        }}
                         actions={(r) => (
                             <>
                                 {r.install_command && (

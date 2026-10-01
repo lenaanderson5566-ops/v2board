@@ -118,15 +118,16 @@ export function resourceFields(
                     label:
                         (
                             {
-                                1: "金额（分）",
+                                1: "金额（元）",
                                 2: "延长时间（天）",
                                 3: "增加流量（GB）",
                                 5: "套餐有效期（天）",
                             } as Record<number, string>
                         )[Number(values.type)] || f.label,
                     required: true,
-                    min: 1,
-                    step: 1,
+                    min: Number(values.type) === 1 ? 0.01 : 1,
+                    step: Number(values.type) === 1 ? 0.01 : 1,
+                    scale: Number(values.type) === 1 ? 100 : undefined,
                 };
             if (kind === "giftcards" && f.key === "plan_id")
                 return { ...f, required: true };
@@ -136,10 +137,11 @@ export function resourceFields(
                     label:
                         Number(values.type) === 2
                             ? "折扣比例（%，例如 20 表示减免 20%）"
-                            : "优惠金额（分）",
-                    min: 1,
+                            : "优惠金额（元）",
+                    min: Number(values.type) === 2 ? 1 : 0.01,
                     max: Number(values.type) === 2 ? 100 : undefined,
-                    step: 1,
+                    step: Number(values.type) === 2 ? 1 : 0.01,
+                    scale: Number(values.type) === 2 ? undefined : 100,
                 };
             if (f.key === "generate_count")
                 return { ...f, min: 1, max: 500, step: 1 };
@@ -154,6 +156,12 @@ export function linkResource(
     values: Row,
 ): Row {
     const result = { ...values, [key]: next };
+    if (
+        ["giftcards", "coupons"].includes(kind) &&
+        key === "type" &&
+        String(values.type) !== String(next)
+    )
+        result.value = "";
     if (kind === "users" && key === "plan_id" && Number(next) > 0) {
         const plan = plans.find((p) => String(p.id) === String(next));
         if (plan)

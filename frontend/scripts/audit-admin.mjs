@@ -360,14 +360,10 @@ for (const key of userKeys) {
     add(
         "用户编辑字段",
         key,
-        exists
-            ? ["balance", "commission_balance"].includes(key)
-                ? "交互差异"
-                : "已保留"
-            : "缺失",
+        exists ? "已保留" : "缺失",
         exists
             ? (["balance", "commission_balance"].includes(key)
-                  ? "字段已保留，但原后台显示元，当前输入分，属于单位交互差异。"
+                  ? "与原后台一致输入元，提交转换为整数分；金额转换已回归。"
                   : ["u", "d", "transfer_enable"].includes(key)
                     ? "与原后台一致输入 GB，提交转换为整数字节；后端保存已回归。"
                     : key === "invite_user_email"
@@ -414,6 +410,7 @@ for (const file of [
     "frontend/src/admin-orders.tsx",
     "frontend/src/admin-content.tsx",
     "frontend/src/admin-tools.tsx",
+    "frontend/src/admin-dashboard.tsx",
     "frontend/src/user.tsx",
 ]) {
     const source = ts.createSourceFile(
@@ -484,7 +481,7 @@ const report = {
             { cwd: root, encoding: "utf8" },
         ).trim(),
     },
-    method: "原构建文件 AST + 当前表单源码 + 后端路由/校验；浏览器已只读抽查原仪表盘、系统配置站点和邮件页、用户列表及用户编辑抽屉；其他项目以源码核对为主。操作入口清单属于重点抽查，不是全部按钮枚举；已迁移不等于行为完全一致。",
+    method: "原构建 AST、原 CSS、React 表单源码和后端校验对照；浏览器核对原仪表盘、设置、用户列表、登录及 Markdown 抽屉，并在本地临时记录上回读文章与金额。布局与控件清单见 admin-layout-review.md，业务按钮见 admin-buttons-review.md；静态入口核对不能替代所有边界测试和外部服务验收。",
     rows,
 };
 fs.mkdirSync(path.join(root, "docs"), { recursive: true });

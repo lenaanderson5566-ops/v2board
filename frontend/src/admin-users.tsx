@@ -90,6 +90,15 @@ export function UsersPage() {
                 pageSize={pageSize}
                 searchable={false}
                 onTotal={setTotal}
+                tableSort={{
+                    key: sort,
+                    direction,
+                    fields: userSortFields.map(([key]) => key),
+                }}
+                onTableSort={(key, next) => {
+                    setSort(key);
+                    setDirection(next);
+                }}
                 toolbar={
                     <div className="pad user-toolbar">
                         <form
@@ -127,49 +136,57 @@ export function UsersPage() {
                             </button>
                         </form>
                         <div className="actions">
-                            <button
-                                disabled={busy || !total}
-                                onClick={exportCsv}
-                            >
-                                导出 CSV
-                            </button>
-                            <button
-                                disabled={!total}
-                                onClick={() =>
-                                    setBulk({
-                                        kind: "mail",
-                                        filters: structuredClone(filters),
-                                        count: total,
-                                    })
-                                }
-                            >
-                                发送邮件
-                            </button>
-                            <button
-                                disabled={!filters.length || !total}
-                                onClick={() =>
-                                    setBulk({
-                                        kind: "ban",
-                                        filters: structuredClone(filters),
-                                        count: total,
-                                    })
-                                }
-                            >
-                                批量封禁
-                            </button>
-                            <button
-                                className="danger"
-                                disabled={!filters.length || !total}
-                                onClick={() =>
-                                    setBulk({
-                                        kind: "delete",
-                                        filters: structuredClone(filters),
-                                        count: total,
-                                    })
-                                }
-                            >
-                                批量删除
-                            </button>
+                            <details className="admin-bulk-menu">
+                                <summary>操作</summary>
+                                <div className="admin-bulk-content">
+                                    <button
+                                        disabled={busy || !total}
+                                        onClick={exportCsv}
+                                    >
+                                        导出 CSV
+                                    </button>
+                                    <button
+                                        disabled={!total}
+                                        onClick={() =>
+                                            setBulk({
+                                                kind: "mail",
+                                                filters:
+                                                    structuredClone(filters),
+                                                count: total,
+                                            })
+                                        }
+                                    >
+                                        发送邮件
+                                    </button>
+                                    <button
+                                        disabled={!filters.length || !total}
+                                        onClick={() =>
+                                            setBulk({
+                                                kind: "ban",
+                                                filters:
+                                                    structuredClone(filters),
+                                                count: total,
+                                            })
+                                        }
+                                    >
+                                        批量封禁
+                                    </button>
+                                    <button
+                                        className="danger"
+                                        disabled={!filters.length || !total}
+                                        onClick={() =>
+                                            setBulk({
+                                                kind: "delete",
+                                                filters:
+                                                    structuredClone(filters),
+                                                count: total,
+                                            })
+                                        }
+                                    >
+                                        批量删除
+                                    </button>
+                                </div>
+                            </details>
                             <button
                                 className="primary"
                                 onClick={() => setGenerate(true)}
@@ -177,51 +194,61 @@ export function UsersPage() {
                                 生成用户
                             </button>
                         </div>
-                        <div className="actions">
-                            <label>
-                                排序字段{" "}
-                                <select
-                                    aria-label="用户排序字段"
-                                    value={sort}
-                                    onChange={(e) => setSort(e.target.value)}
-                                >
-                                    {userSortFields.map(([value, label]) => (
-                                        <option key={value} value={value}>
-                                            {label}
-                                        </option>
-                                    ))}
-                                </select>
-                            </label>
-                            <label>
-                                顺序{" "}
-                                <select
-                                    aria-label="用户排序方向"
-                                    value={direction}
-                                    onChange={(e) =>
-                                        setDirection(e.target.value)
-                                    }
-                                >
-                                    <option value="DESC">降序</option>
-                                    <option value="ASC">升序</option>
-                                </select>
-                            </label>
-                            <label>
-                                每页{" "}
-                                <select
-                                    aria-label="用户每页数量"
-                                    value={pageSize}
-                                    onChange={(e) =>
-                                        setPageSize(Number(e.target.value))
-                                    }
-                                >
-                                    {[10, 20, 50, 100, 150].map((n) => (
-                                        <option key={n} value={n}>
-                                            {n}
-                                        </option>
-                                    ))}
-                                </select>
-                            </label>
-                        </div>
+                        <details className="user-display-options">
+                            <summary>显示设置</summary>
+                            <div className="actions">
+                                <label>
+                                    排序字段{" "}
+                                    <select
+                                        aria-label="用户排序字段"
+                                        value={sort}
+                                        onChange={(e) =>
+                                            setSort(e.target.value)
+                                        }
+                                    >
+                                        {userSortFields.map(
+                                            ([value, label]) => (
+                                                <option
+                                                    key={value}
+                                                    value={value}
+                                                >
+                                                    {label}
+                                                </option>
+                                            ),
+                                        )}
+                                    </select>
+                                </label>
+                                <label>
+                                    顺序{" "}
+                                    <select
+                                        aria-label="用户排序方向"
+                                        value={direction}
+                                        onChange={(e) =>
+                                            setDirection(e.target.value)
+                                        }
+                                    >
+                                        <option value="DESC">降序</option>
+                                        <option value="ASC">升序</option>
+                                    </select>
+                                </label>
+                                <label>
+                                    每页{" "}
+                                    <select
+                                        aria-label="用户每页数量"
+                                        value={pageSize}
+                                        onChange={(e) =>
+                                            setPageSize(Number(e.target.value))
+                                        }
+                                    >
+                                        {[10, 20, 50, 100, 150].map((n) => (
+                                            <option key={n} value={n}>
+                                                {n}
+                                            </option>
+                                        ))}
+                                    </select>
+                                </label>
+                            </div>
+                        </details>
                         <p className="muted">
                             {filters.length
                                 ? `当前筛选结果 ${total} 名用户；导出和批量操作使用全部匹配结果，不限当前页。`
@@ -260,8 +287,8 @@ export function UsersPage() {
                         {notice && <p role="status">{notice}</p>}
                     </div>
                 }
-                extraActions={(row) => (
-                    <details className="row-menu">
+                extraActions={(row, context) => (
+                    <details className="row-menu" open={context || undefined}>
                         <summary>更多操作</summary>
                         <div className="row-menu-content">
                             <button
@@ -721,10 +748,11 @@ export function AssignOrder({
                             },
                             {
                                 key: "total_amount",
-                                label: "订单金额（分）",
+                                label: "订单金额（元）",
                                 type: "number",
                                 min: 0,
-                                step: 1,
+                                step: 0.01,
+                                scale: 100,
                                 required: true,
                             },
                         ]}
@@ -778,7 +806,7 @@ export function AssignOrder({
                                     ? {
                                           period: selected,
                                           total_amount:
-                                              p?.[selected || ""] ?? 0,
+                                              (p?.[selected || ""] ?? 0) / 100,
                                       }
                                     : {}),
                             };

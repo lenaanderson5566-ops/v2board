@@ -46,6 +46,20 @@ export function configField(
     rule: unknown,
     label: string,
 ): Field {
+    if (
+        [
+            "email_whitelist_suffix",
+            "commission_withdraw_method",
+            "deposit_bounus",
+        ].includes(key)
+    )
+        return {
+            key,
+            label,
+            type: "textarea",
+            arrayText: true,
+            hint: "使用逗号分隔多个值。",
+        };
     const validation = Array.isArray(rule)
         ? rule.join("|")
         : String(rule || "");

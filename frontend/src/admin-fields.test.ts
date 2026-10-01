@@ -41,7 +41,7 @@ describe("configuration API contracts", () => {
                 "nullable|array",
                 "Domains",
             ).type,
-        ).toBe("json");
+        ).toBe("textarea");
         expect(
             configField("server_token", "", "nullable|min:16", "Secret").type,
         ).toBe("password");

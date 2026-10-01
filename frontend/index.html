@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="zh-CN">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>V2Board Development</title>
+    </head>
+    <body>
+        <div id="root"></div>
+        <script type="module">
+            const query = new URLSearchParams(location.search);
+            window.V2BOARD = {
+                mode: query.get("mode") === "admin" ? "admin" : "user",
+                title: "V2Board",
+                description: "连接世界，轻松管理你的订阅。",
+                adminPath: query.get("adminPath") || "admin",
+                opsPath: "ops",
+                emailVerify: false,
+                registerClosed: false,
+                recaptchaSiteKey: "",
+                tosUrl: "",
+                currencySymbol: "¥",
+            };
+        </script>
+        <script type="module" src="/src/main.tsx"></script>
+    </body>
+</html>

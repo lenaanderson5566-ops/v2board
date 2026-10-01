@@ -25,17 +25,6 @@ class ConfigController extends Controller
         ]);
     }
 
-    public function getThemeTemplate()
-    {
-        $path = public_path('theme/');
-        $files = array_map(function ($item) use ($path) {
-            return str_replace($path, '', $item);
-        }, glob($path . '*'));
-        return response([
-            'data' => $files
-        ]);
-    }
-
     public function testSendMail(Request $request)
     {
         $obj = new SendEmailJob([
@@ -117,12 +106,8 @@ class ConfigController extends Controller
                 'show_subscribe_method' => (int)config('v2board.show_subscribe_method', 0),
                 'show_subscribe_expire' => (int)config('v2board.show_subscribe_expire', 5),
             ],
-            'frontend' => [
-                'frontend_theme' => config('v2board.frontend_theme', 'd1'),
-                'frontend_theme_sidebar' => config('v2board.frontend_theme_sidebar', 'light'),
-                'frontend_theme_header' => config('v2board.frontend_theme_header', 'dark'),
-                'frontend_theme_color' => config('v2board.frontend_theme_color', 'default'),
-                'frontend_background_url' => config('v2board.frontend_background_url'),
+            'footer' => [
+                'custom_footer_html' => \App\Support\FrontendConfig::footer(),
             ],
             'server' => [
                 'server_api_url' => config('v2board.server_api_url'),
@@ -190,6 +175,10 @@ class ConfigController extends Controller
     {
         $data = $request->validated();
         $config = config('v2board');
+        $config['custom_footer_html'] = \App\Support\FrontendConfig::footer();
+        foreach (['frontend_theme', 'frontend_theme_sidebar', 'frontend_theme_header', 'frontend_theme_color', 'frontend_background_url'] as $legacyKey) {
+            unset($config[$legacyKey]);
+        }
         foreach (ConfigSave::RULES as $k => $v) {
             if (!in_array($k, array_keys(ConfigSave::RULES))) {
                 unset($config[$k]);
@@ -203,7 +192,7 @@ class ConfigController extends Controller
         if (!File::put(base_path() . '/config/v2board.php', "<?php\n return $data ;")) {
             abort(500, '修改失败');
         }
-        if (function_exists('opcache_reset')) {
+        if (function_exists('opcache_get_status') && opcache_get_status(false) !== false) {
             if (opcache_reset() === false) {
                 abort(500, '缓存清除失败，请卸载或检查opcache配置状态');
             }

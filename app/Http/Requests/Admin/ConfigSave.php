@@ -61,12 +61,8 @@ class ConfigSave extends FormRequest
         'device_limit_mode' => 'in:0,1',
         'server_node_report_min_traffic' => 'integer', 
         'server_device_online_min_traffic' => 'integer', 
-        // frontend
-        'frontend_theme' => '',
-        'frontend_theme_sidebar' => 'nullable|in:dark,light',
-        'frontend_theme_header' => 'nullable|in:dark,light',
-        'frontend_theme_color' => 'nullable|in:default,darkblue,black,green',
-        'frontend_background_url' => 'nullable|url',
+        // Custom footer is independent of any frontend theme.
+        'custom_footer_html' => 'nullable|string',
         // email
         'email_template' => '',
         'email_host' => '',

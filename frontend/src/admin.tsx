@@ -1,0 +1,1503 @@
+import { useState } from "react";
+import { Plus, Search } from "lucide-react";
+import {
+    admin,
+    ops,
+    request,
+    query,
+    rows,
+    bytes,
+    money,
+    date,
+    type Row,
+} from "./api";
+import {
+    useData,
+    State,
+    Panel,
+    Metric,
+    Table,
+    Editor,
+    Modal,
+    Pager,
+    Reload,
+    Empty,
+    type Field,
+} from "./ui";
+const f = (
+    key: string,
+    label: string,
+    type: Field["type"] = "text",
+    required = false,
+): Field => ({ key, label, type, required });
+const toggle = (key: string, label: string): Field => ({
+    key,
+    label,
+    type: "select",
+    options: [
+        ["1", "开启"],
+        ["0", "关闭"],
+    ],
+});
+export interface Resource {
+    title: string;
+    fetch: string;
+    save?: string;
+    drop?: string;
+    fields: Field[];
+    columns: [string, string, ((r: Row) => React.ReactNode)?][];
+    defaults?: Row;
+    actions?: [string, string, Row?][];
+    key?: string;
+    create?: boolean;
+}
+const created: [string, string, ((r: Row) => React.ReactNode)?] = [
+    "created_at",
+    "创建时间",
+    (r) => date(r.created_at),
+];
+const name: [string, string] = ["name", "名称"];
+const price = (key: string, label: string): Field => ({
+    ...f(key, label + "（分）", "number"),
+    hint: "留空表示不提供该支付周期",
+});
+export const resources: Record<string, Resource> = {
+    plans: {
+        title: "套餐管理",
+        fetch: admin("plan/fetch"),
+        save: admin("plan/save"),
+        drop: admin("plan/drop"),
+        columns: [
+            ["id", "ID"],
+            name,
+            ["transfer_enable", "流量 (GB)"],
+            ["month_price", "月付", (r) => money(r.month_price)],
+            ["count", "活跃用户"],
+            ["show", "展示"],
+        ],
+        fields: [
+            f("name", "套餐名称", "text", true),
+            f("group_id", "权限组 ID", "number", true),
+            f("transfer_enable", "流量 (GB)", "number", true),
+            f("device_limit", "设备数限制", "number"),
+            f("speed_limit", "速率 (Mbps)", "number"),
+            f("capacity_limit", "用户容量", "number"),
+            ...[
+                "month_price",
+                "quarter_price",
+                "half_year_price",
+                "year_price",
+                "two_year_price",
+                "three_year_price",
+                "onetime_price",
+                "reset_price",
+            ].map((k, i) =>
+                price(
+                    k,
+                    [
+                        "月付",
+                        "季付",
+                        "半年付",
+                        "年付",
+                        "两年付",
+                        "三年付",
+                        "一次性",
+                        "重置流量",
+                    ][i],
+                ),
+            ),
+            f("reset_traffic_method", "流量重置模式 (0–4)", "number"),
+            f("content", "套餐说明 HTML", "textarea"),
+        ],
+        defaults: { transfer_enable: 100, group_id: 1 },
+        actions: [
+            ["展示", admin("plan/update"), { show: 1 }],
+            ["隐藏", admin("plan/update"), { show: 0 }],
+        ],
+    },
+    groups: {
+        title: "权限组",
+        fetch: admin("server/group/fetch"),
+        save: admin("server/group/save"),
+        drop: admin("server/group/drop"),
+        columns: [["id", "ID"], name],
+        fields: [f("name", "权限组名称", "text", true)],
+    },
+    routes: {
+        title: "路由规则",
+        fetch: admin("server/route/fetch"),
+        save: admin("server/route/save"),
+        drop: admin("server/route/drop"),
+        columns: [
+            ["id", "ID"],
+            ["remarks", "备注"],
+            ["match", "匹配条件"],
+            ["action", "动作"],
+        ],
+        fields: [
+            f("remarks", "备注", "text", true),
+            f("match", "匹配条件", "json", true),
+            {
+                key: "action",
+                label: "动作",
+                type: "select",
+                options: [
+                    ["block", "阻断"],
+                    ["dns", "DNS"],
+                    ["block_ip", "阻断 IP"],
+                    ["block_port", "阻断端口"],
+                    ["protocol", "协议识别"],
+                    ["route", "路由"],
+                    ["route_ip", "按 IP 路由"],
+                    ["default_out", "默认出口"],
+                ],
+            },
+            f("action_value", "动作参数"),
+        ],
+        defaults: { match: [], action: "block" },
+    },
+    users: {
+        title: "用户管理",
+        fetch: admin("user/fetch"),
+        save: admin("user/update"),
+        columns: [
+            ["id", "ID"],
+            ["email", "邮箱"],
+            ["plan_name", "套餐"],
+            ["balance", "余额", (r) => money(r.balance)],
+            ["total_used", "已用流量", (r) => bytes(r.total_used)],
+            ["expired_at", "到期时间", (r) => date(r.expired_at)],
+            ["banned", "禁用"],
+        ],
+        fields: [
+            f("email", "邮箱", "text", true),
+            f("password", "新密码（留空不修改）", "password"),
+            f("plan_id", "套餐 ID", "number"),
+            f("transfer_enable", "流量 (GB)", "number"),
+            f("balance", "余额（分）", "number"),
+            f("expired_at", "到期时间", "datetime-local"),
+            f("device_limit", "设备限制", "number"),
+            f("speed_limit", "速率限制", "number"),
+            toggle("banned", "禁用账户"),
+            toggle("is_admin", "管理员"),
+            toggle("is_staff", "员工"),
+            f("discount", "专属折扣 (%)", "number"),
+            f("commission_rate", "佣金比例 (%)", "number"),
+            f("commission_balance", "佣金余额（分）", "number"),
+            f("remarks", "备注", "textarea"),
+        ],
+        create: false,
+        actions: [
+            ["重置订阅", admin("user/resetSecret")],
+            ["删除", admin("user/delUser")],
+        ],
+    },
+    orders: {
+        title: "订单管理",
+        fetch: admin("order/fetch"),
+        columns: [
+            ["trade_no", "订单号"],
+            ["user_id", "用户 ID"],
+            ["plan_id", "套餐 ID"],
+            ["total_amount", "金额", (r) => money(r.total_amount)],
+            [
+                "status",
+                "状态",
+                (r) =>
+                    ["待支付", "开通中", "已取消", "已完成", "已折抵"][
+                        r.status
+                    ],
+            ],
+            created,
+        ],
+        fields: [],
+        actions: [
+            ["标记已付款", admin("order/paid")],
+            ["取消", admin("order/cancel")],
+        ],
+    },
+    notices: {
+        title: "公告管理",
+        fetch: admin("notice/fetch"),
+        save: admin("notice/save"),
+        drop: admin("notice/drop"),
+        columns: [["id", "ID"], ["title", "标题"], ["show", "展示"], created],
+        fields: [
+            f("title", "公告标题", "text", true),
+            f("img_url", "封面 URL"),
+            f("content", "公告内容 HTML", "textarea", true),
+        ],
+        actions: [["切换展示", admin("notice/show")]],
+    },
+    knowledge: {
+        title: "知识库管理",
+        fetch: admin("knowledge/fetch"),
+        save: admin("knowledge/save"),
+        drop: admin("knowledge/drop"),
+        columns: [
+            ["id", "ID"],
+            ["title", "标题"],
+            ["category", "分类"],
+            ["language", "语言"],
+            ["show", "展示"],
+        ],
+        fields: [
+            f("title", "标题", "text", true),
+            f("category", "分类", "text", true),
+            f("language", "语言代码", "text", true),
+            f("body", "文章 HTML", "textarea", true),
+            f("sort", "排序", "number"),
+        ],
+        defaults: { language: "zh-CN", sort: 0 },
+        actions: [["切换展示", admin("knowledge/show")]],
+    },
+    coupons: {
+        title: "优惠券",
+        fetch: admin("coupon/fetch"),
+        save: admin("coupon/generate"),
+        drop: admin("coupon/drop"),
+        create: true,
+        columns: [
+            ["id", "ID"],
+            name,
+            ["code", "兑换码"],
+            ["type", "类型"],
+            ["value", "面值"],
+            ["limit_use", "次数"],
+        ],
+        fields: [
+            f("name", "名称", "text", true),
+            f("code", "指定兑换码（可选）"),
+            {
+                key: "type",
+                label: "优惠类型",
+                type: "select",
+                options: [
+                    ["1", "固定金额（分）"],
+                    ["2", "百分比"],
+                ],
+            },
+            f("value", "优惠值", "number", true),
+            f("generate_count", "生成数量", "number"),
+            f("limit_use", "使用次数", "number"),
+            f("limit_use_with_user", "每个用户使用次数", "number"),
+            f("started_at", "开始时间", "datetime-local", true),
+            f("ended_at", "截止时间", "datetime-local", true),
+            f("limit_plan_ids", "限制套餐 ID 数组", "json"),
+            f("limit_period", "限制周期数组", "json"),
+        ],
+        defaults: { type: 1, generate_count: 1 },
+        actions: [["切换启用", admin("coupon/show")]],
+    },
+    giftcards: {
+        title: "礼品卡",
+        fetch: admin("giftcard/fetch"),
+        save: admin("giftcard/generate"),
+        drop: admin("giftcard/drop"),
+        columns: [
+            ["id", "ID"],
+            name,
+            ["code", "兑换码"],
+            ["value", "面值"],
+            ["status", "状态"],
+        ],
+        fields: [
+            f("name", "名称", "text", true),
+            f("generate_count", "数量", "number"),
+            f("value", "金额（分）", "number", true),
+            {
+                key: "type",
+                label: "礼品卡类型",
+                type: "select",
+                options: [
+                    ["1", "余额（分）"],
+                    ["2", "延长订阅（天）"],
+                    ["3", "增加流量（GB）"],
+                    ["4", "重置流量"],
+                    ["5", "开通套餐"],
+                ],
+            },
+            f("plan_id", "套餐 ID", "number"),
+            f("started_at", "开始时间", "datetime-local", true),
+            f("ended_at", "到期时间", "datetime-local", true),
+            f("limit_use", "可用次数", "number"),
+        ],
+        defaults: { generate_count: 1, type: 1 },
+    },
+    risk: {
+        title: "风控规则",
+        fetch: ops("risk/rule/fetch"),
+        save: ops("risk/rule/update"),
+        create: false,
+        key: "rule_key",
+        columns: [
+            ["rule_key", "规则标识"],
+            name,
+            ["scene", "场景"],
+            ["risk_level", "风险级别"],
+            ["enabled", "启用"],
+        ],
+        fields: [
+            f("rule_key", "规则标识", "text", true),
+            f("name", "名称"),
+            f("description", "说明", "textarea"),
+            {
+                key: "risk_level",
+                label: "风险级别",
+                type: "select",
+                options: [
+                    ["low", "低"],
+                    ["medium", "中"],
+                    ["high", "高"],
+                ],
+            },
+            toggle("enabled", "启用"),
+            f("sort", "排序", "number"),
+            f("thresholds", "规则阈值", "json"),
+        ],
+        actions: [["恢复默认", ops("risk/rule/reset")]],
+    },
+    clients: {
+        title: "客户端策略",
+        fetch: ops("client/strategy/fetch"),
+        save: ops("client/strategy/update"),
+        drop: ops("client/strategy/delete"),
+        key: "client_type",
+        columns: [
+            ["client_name", "客户端"],
+            ["client_type", "标识"],
+            ["min_version", "最低版本"],
+            ["is_enabled", "启用"],
+            ["subscribe_count_24h", "24 小时订阅"],
+        ],
+        fields: [
+            f("client_type", "客户端标识", "text", true),
+            f("client_name", "名称"),
+            f("min_version", "最低版本"),
+            toggle("is_enabled", "启用"),
+            f("sort", "排序", "number"),
+        ],
+        defaults: { is_enabled: 1, sort: 0 },
+    },
+    "blacklist-ip": {
+        title: "IP 黑名单",
+        fetch: ops("risk/blacklist/ip/fetch"),
+        save: ops("risk/blacklist/ip/update"),
+        drop: ops("risk/blacklist/ip/delete"),
+        columns: [
+            ["id", "ID"],
+            ["value", "IP / CIDR"],
+            ["reason", "原因"],
+            ["is_enabled", "启用"],
+        ],
+        fields: [
+            f("value", "IP 地址或 CIDR", "text", true),
+            f("reason", "原因"),
+            toggle("is_enabled", "启用"),
+            f("expired_at", "到期时间", "datetime-local"),
+        ],
+        defaults: { type: "ip", is_enabled: 1 },
+    },
+    "blacklist-ua": {
+        title: "UA 黑名单",
+        fetch: ops("risk/blacklist/ua/fetch"),
+        save: ops("risk/blacklist/ua/update"),
+        drop: ops("risk/blacklist/ua/delete"),
+        columns: [
+            ["id", "ID"],
+            ["ua_raw", "原始 UA"],
+            ["value", "UA 哈希"],
+            ["is_enabled", "启用"],
+        ],
+        fields: [
+            f("ua_raw", "原始 UA", "textarea"),
+            f("value", "UA 哈希（可选）"),
+            f("reason", "原因"),
+            toggle("is_enabled", "启用"),
+        ],
+        defaults: { type: "ua_hash", is_enabled: 1 },
+    },
+    online: {
+        title: "在线用户",
+        fetch: ops("risk/online-user/fetch"),
+        columns: [
+            ["user_id", "用户 ID"],
+            ["email", "邮箱"],
+            ["ip", "IP 地址"],
+            ["node", "节点"],
+            ["online_at", "上线时间", (r) => date(r.online_at)],
+        ],
+        fields: [],
+    },
+    usage: {
+        title: "用户使用情况",
+        fetch: ops("risk/user-usage/fetch"),
+        columns: [
+            ["user_id", "用户 ID"],
+            ["email", "邮箱"],
+            ["subscription_plan", "订阅套餐"],
+            ["last_subscribe_at", "最近订阅", (r) => date(r.last_subscribe_at)],
+            ["last_online_ip", "在线 IP"],
+            ["last_online_node", "在线节点"],
+            ["recharge_total", "充值金额"],
+            ["balance", "余额", (r) => money(r.balance)],
+        ],
+        fields: [],
+    },
+    "log-login": {
+        title: "登录日志",
+        fetch: ops("log/login/fetch"),
+        columns: [
+            ["user_id", "用户 ID"],
+            ["email", "邮箱"],
+            ["ip", "IP"],
+            ["country", "国家"],
+            ["city", "城市"],
+            ["user_agent", "客户端"],
+            created,
+        ],
+        fields: [],
+    },
+    "log-subscribe": {
+        title: "订阅日志",
+        fetch: ops("log/subscribe/fetch"),
+        columns: [
+            ["user_id", "用户 ID"],
+            ["email", "邮箱"],
+            ["ip", "IP"],
+            ["client_type", "客户端类型"],
+            ["user_agent", "UA"],
+            created,
+        ],
+        fields: [],
+    },
+    "log-connection": {
+        title: "连接日志",
+        fetch: ops("log/user-connection/fetch"),
+        columns: [
+            ["user_id", "用户 ID"],
+            ["email", "邮箱"],
+            ["ip", "IP"],
+            ["node", "节点"],
+            ["connected_at", "连接时间", (r) => date(r.connected_at)],
+        ],
+        fields: [],
+    },
+    "log-risk": {
+        title: "风控命中日志",
+        fetch: ops("log/rule-hit/fetch"),
+        columns: [
+            ["user_id", "用户 ID"],
+            ["rule_key", "规则"],
+            ["ip", "IP"],
+            ["status", "处理结果"],
+            ["hit_at", "命中时间", (r) => date(r.hit_at)],
+        ],
+        fields: [],
+    },
+    "system-log": {
+        title: "系统日志",
+        fetch: admin("system/getSystemLog"),
+        columns: [
+            ["level", "级别"],
+            ["message", "消息"],
+            ["created_at", "时间", (r) => date(r.created_at)],
+        ],
+        fields: [],
+    },
+};
+export function ResourcePage({ resource }: { resource: Resource }) {
+    const [page, setPage] = useState(1),
+        [search, setSearch] = useState(""),
+        [editing, setEditing] = useState<Row | null>(null),
+        [error, setError] = useState("");
+    const d = useData<Row[]>(
+        query(resource.fetch, {
+            current: page,
+            page: page,
+            pageSize: 20,
+            page_size: 20,
+            email: resource.title.includes("日志") ? search : undefined,
+            keyword: resource.title.includes("黑名单") ? search : undefined,
+        }),
+    );
+    const key = resource.key || "id";
+    async function action(path: string, r: Row, extra: Row = {}) {
+        if (!confirm("确认执行此操作？")) return;
+        try {
+            await request(path, {
+                [key]: r[key],
+                id: r.id,
+                trade_no: r.trade_no,
+                ...extra,
+            });
+            d.reload();
+        } catch (e) {
+            setError((e as Error).message);
+        }
+    }
+    const list = (d.data || []).filter(
+        (r) =>
+            !search ||
+            Object.values(r).some((v) =>
+                String(v ?? "")
+                    .toLowerCase()
+                    .includes(search.toLowerCase()),
+            ),
+    );
+    return (
+        <>
+            <Panel
+                title={resource.title}
+                actions={
+                    <>
+                        <div className="search">
+                            <Search size={16} />
+                            <input
+                                placeholder="搜索当前列表…"
+                                value={search}
+                                onChange={(e) => setSearch(e.target.value)}
+                                aria-label="搜索列表"
+                            />
+                        </div>
+                        <Reload onClick={d.reload} />
+                        {resource.save && resource.create !== false && (
+                            <button
+                                className="primary"
+                                onClick={() =>
+                                    setEditing({ ...resource.defaults })
+                                }
+                            >
+                                <Plus size={16} />
+                                新建
+                            </button>
+                        )}
+                    </>
+                }
+            >
+                <State {...d} retry={d.reload}>
+                    {error && <div className="alert">{error}</div>}
+                    <Table
+                        data={list}
+                        columns={resource.columns}
+                        actions={
+                            resource.save || resource.drop || resource.actions
+                                ? (r) => (
+                                      <>
+                                          {resource.save &&
+                                              resource.create !== true && (
+                                                  <button
+                                                      onClick={async () => {
+                                                          const item = { ...r };
+                                                          if (
+                                                              resource.title ===
+                                                              "知识库管理"
+                                                          ) {
+                                                              try {
+                                                                  Object.assign(
+                                                                      item,
+                                                                      (
+                                                                          await request(
+                                                                              query(
+                                                                                  resource.fetch,
+                                                                                  {
+                                                                                      id: r.id,
+                                                                                  },
+                                                                              ),
+                                                                          )
+                                                                      ).data,
+                                                                  );
+                                                              } catch (e) {
+                                                                  setError(
+                                                                      (
+                                                                          e as Error
+                                                                      ).message,
+                                                                  );
+                                                                  return;
+                                                              }
+                                                          }
+                                                          for (const field of resource.fields) {
+                                                              if (
+                                                                  field.type ===
+                                                                      "datetime-local" &&
+                                                                  item[
+                                                                      field.key
+                                                                  ]
+                                                              )
+                                                                  item[
+                                                                      field.key
+                                                                  ] = new Date(
+                                                                      item[
+                                                                          field
+                                                                              .key
+                                                                      ] *
+                                                                          1000 -
+                                                                          new Date().getTimezoneOffset() *
+                                                                              60000,
+                                                                  )
+                                                                      .toISOString()
+                                                                      .slice(
+                                                                          0,
+                                                                          16,
+                                                                      );
+                                                          }
+                                                          if (
+                                                              resource.title ===
+                                                              "用户管理"
+                                                          ) {
+                                                              item.transfer_enable =
+                                                                  Number(
+                                                                      item.transfer_enable,
+                                                                  ) /
+                                                                  1073741824;
+                                                              delete item.password;
+                                                          }
+                                                          setEditing(item);
+                                                      }}
+                                                  >
+                                                      编辑
+                                                  </button>
+                                              )}
+                                          {resource.actions?.map(
+                                              ([label, path, extra]) => (
+                                                  <button
+                                                      key={label}
+                                                      onClick={() =>
+                                                          action(path, r, extra)
+                                                      }
+                                                  >
+                                                      {label}
+                                                  </button>
+                                              ),
+                                          )}
+                                          {resource.drop && (
+                                              <button
+                                                  className="danger"
+                                                  onClick={() =>
+                                                      action(resource.drop!, r)
+                                                  }
+                                              >
+                                                  删除
+                                              </button>
+                                          )}
+                                      </>
+                                  )
+                                : undefined
+                        }
+                    />
+                    {d.total > 0 && (
+                        <Pager page={page} total={d.total} onChange={setPage} />
+                    )}
+                </State>
+            </Panel>
+            {editing && (
+                <Modal
+                    title={
+                        editing[key]
+                            ? `编辑 · ${resource.title}`
+                            : `新建 · ${resource.title}`
+                    }
+                    close={() => setEditing(null)}
+                >
+                    <Editor
+                        fields={resource.fields}
+                        initial={editing}
+                        onSave={async (body) => {
+                            const clean: Row = {};
+                            resource.fields.forEach((field) => {
+                                if (
+                                    body[field.key] !== undefined &&
+                                    !(
+                                        field.key === "password" &&
+                                        !body.password
+                                    )
+                                )
+                                    clean[field.key] = body[field.key];
+                            });
+                            if (editing[key]) clean[key] = editing[key];
+                            if (
+                                resource.title === "用户管理" &&
+                                clean.transfer_enable !== undefined
+                            )
+                                clean.transfer_enable *= 1073741824;
+                            if (resource.defaults)
+                                Object.entries(resource.defaults).forEach(
+                                    ([k, v]) => {
+                                        if (!(k in clean)) clean[k] = v;
+                                    },
+                                );
+                            await request(resource.save!, clean);
+                            setEditing(null);
+                            d.reload();
+                        }}
+                    />
+                </Modal>
+            )}
+        </>
+    );
+}
+export function Overview() {
+    const d = useData(ops("risk/overview/fetch")),
+        stat = useData(admin("stat/getOverride"));
+    const [window, setWindow] = useState("today");
+    const w = d.data?.windows?.[window] || {};
+    return (
+        <>
+            <div className="section-tabs">
+                {[
+                    ["today", "今日"],
+                    ["7d", "近 7 天"],
+                    ["30d", "近 30 天"],
+                ].map(([k, v]) => (
+                    <button
+                        className={window === k ? "selected" : ""}
+                        key={k}
+                        onClick={() => setWindow(k)}
+                    >
+                        {v}
+                    </button>
+                ))}
+            </div>
+            <State {...d} retry={d.reload}>
+                <div className="metrics">
+                    <Metric
+                        label="活跃用户"
+                        value={w.active_users?.users || 0}
+                        detail={`${w.active_users?.hits || 0} 次订阅请求`}
+                    />
+                    <Metric
+                        label="网络流量"
+                        value={bytes(w.traffic?.total_bytes)}
+                        detail={`上传 ${bytes(w.traffic?.up_bytes)} · 下载 ${bytes(w.traffic?.down_bytes)}`}
+                    />
+                    <Metric
+                        label="风控拦截"
+                        value={w.risk_result?.blocked_hits || 0}
+                        detail={`${w.risk_result?.blocked_users || 0} 个用户`}
+                    />
+                </div>
+                <div className="split">
+                    <Panel title="客户端分布">
+                        <Table
+                            data={rows(w.flag_top)}
+                            columns={[
+                                ["flag", "客户端"],
+                                [
+                                    "hits",
+                                    "请求次数",
+                                    (r) => (
+                                        <div className="bar-cell">
+                                            <span>{r.hits}</span>
+                                            <i
+                                                style={{
+                                                    width:
+                                                        Math.max(
+                                                            5,
+                                                            Math.min(
+                                                                100,
+                                                                (r.hits /
+                                                                    Math.max(
+                                                                        1,
+                                                                        w
+                                                                            .active_users
+                                                                            ?.hits,
+                                                                    )) *
+                                                                    100,
+                                                            ),
+                                                        ) + "%",
+                                                }}
+                                            />
+                                        </div>
+                                    ),
+                                ],
+                            ]}
+                        />
+                    </Panel>
+                    <Panel title="运营统计">
+                        <State {...stat}>
+                            {stat.data ? (
+                                <div className="stats-list">
+                                    {Object.entries(stat.data).map(([k, v]) => (
+                                        <div key={k}>
+                                            <span>{labels[k] || k}</span>
+                                            <strong>
+                                                {typeof v === "object"
+                                                    ? JSON.stringify(v)
+                                                    : String(v)}
+                                            </strong>
+                                        </div>
+                                    ))}
+                                </div>
+                            ) : (
+                                <Empty />
+                            )}
+                        </State>
+                    </Panel>
+                </div>
+            </State>
+        </>
+    );
+}
+const labels: Record<string, string> = {
+    app_name: "站点名称",
+    app_description: "站点介绍",
+    app_url: "站点 URL",
+    logo: "Logo URL",
+    custom_footer_html: "自定义页脚 HTML",
+    currency: "货币代码",
+    currency_symbol: "货币符号",
+    stop_register: "关闭注册",
+    force_https: "强制 HTTPS",
+    subscribe_url: "订阅域名",
+    subscribe_path: "自定义订阅路径",
+    try_out_plan_id: "试用套餐 ID",
+    try_out_hour: "试用时长（小时）",
+    tos_url: "服务条款 URL",
+    server_token: "节点通讯密钥",
+    server_api_url: "节点 API URL",
+    server_pull_interval: "节点拉取间隔",
+    server_push_interval: "节点推送间隔",
+    device_limit_mode: "设备限制模式",
+    server_node_report_min_traffic: "节点上报最低流量",
+    server_device_online_min_traffic: "设备在线最低流量",
+    email_verify: "注册邮箱验证",
+    safe_mode_enable: "安全模式",
+    secure_path: "后台入口路径",
+    recaptcha_enable: "启用 reCAPTCHA",
+    recaptcha_key: "reCAPTCHA 密钥",
+    recaptcha_site_key: "reCAPTCHA 站点密钥",
+    invite_force: "强制邀请码",
+    invite_commission: "邀请佣金比例",
+    invite_gen_limit: "邀请码数量限制",
+    commission_withdraw_limit: "最低提现金额",
+    commission_withdraw_method: "提现方式",
+    email_host: "SMTP 主机",
+    email_port: "SMTP 端口",
+    email_username: "SMTP 用户名",
+    email_password: "SMTP 密码",
+    email_encryption: "SMTP 加密方式",
+    email_from_address: "发件人地址",
+    telegram_bot_enable: "启用 Telegram 机器人",
+    telegram_bot_token: "机器人 Token",
+    telegram_discuss_link: "Telegram 群链接",
+    ticket_status: "工单开放模式",
+    deposit_bounus: "充值奖励阶梯",
+    plan_change_enable: "允许切换套餐",
+    surplus_enable: "折抵剩余价值",
+    reset_traffic_method: "流量重置模式",
+    allow_new_period: "允许新周期",
+    show_subscribe_method: "订阅状态展示",
+    show_subscribe_expire: "到期提醒天数",
+    show_info_to_server_enable: "节点接收用户信息",
+    paid_total: "总收入",
+    order_count: "订单数",
+    user_count: "用户数",
+    paid_count: "已付订单数",
+};
+const groupNames: Record<string, string> = {
+    site: "站点设置",
+    footer: "页脚 HTML",
+    safe: "安全与注册",
+    subscribe: "订阅设置",
+    server: "节点通讯",
+    invite: "邀请与佣金",
+    email: "邮件发送",
+    telegram: "Telegram",
+    ticket: "工单设置",
+    deposit: "充值奖励",
+    app: "客户端下载",
+};
+export function Settings() {
+    const d = useData(admin("config/fetch"));
+    const [group, setGroup] = useState("site"),
+        [saved, setSaved] = useState("");
+    const raw = d.data?.[group] || {};
+    const fields = Object.entries(raw)
+        .filter(([k]) => !k.startsWith("frontend_") && k !== "email_template")
+        .map(([k, v]): Field => ({
+            key: k,
+            label: labels[k] || k,
+            type:
+                k === "custom_footer_html"
+                    ? "textarea"
+                    : k.includes("password") ||
+                        k === "server_token" ||
+                        k === "telegram_bot_token" ||
+                        k === "recaptcha_key"
+                      ? "password"
+                      : Array.isArray(v)
+                        ? "json"
+                        : typeof v === "number"
+                          ? "number"
+                          : "text",
+            hint:
+                k === "custom_footer_html"
+                    ? "支持 HTML 和管理员自定义脚本，展示在用户端页面底部。"
+                    : undefined,
+        }));
+    return (
+        <Panel title="系统设置">
+            <div className="section-tabs">
+                {Object.keys(groupNames).map((k) => (
+                    <button
+                        key={k}
+                        className={group === k ? "selected" : ""}
+                        onClick={() => {
+                            setGroup(k);
+                            setSaved("");
+                        }}
+                    >
+                        {groupNames[k]}
+                    </button>
+                ))}
+            </div>
+            <State {...d} retry={d.reload}>
+                <Editor
+                    key={group + JSON.stringify(raw)}
+                    fields={fields}
+                    initial={raw}
+                    onSave={async (body) => {
+                        await request(admin("config/save"), body);
+                        setSaved("设置已保存");
+                        d.reload();
+                    }}
+                />
+                {saved && (
+                    <p className="success-message" role="status">
+                        {saved}
+                    </p>
+                )}
+            </State>
+        </Panel>
+    );
+}
+export function RiskSettings() {
+    const d = useData(ops("risk/settings/fetch"));
+    return (
+        <Panel title="风控全局设置">
+            <State {...d} retry={d.reload}>
+                <Editor
+                    fields={Object.entries(d.data || {}).map(([k, v]) =>
+                        f(
+                            k,
+                            labels[k] || k,
+                            typeof v === "number"
+                                ? "number"
+                                : typeof v === "object"
+                                  ? "json"
+                                  : "text",
+                        ),
+                    )}
+                    initial={d.data || {}}
+                    onSave={async (b) => {
+                        await request(ops("risk/settings/update"), b);
+                        d.reload();
+                    }}
+                />
+            </State>
+        </Panel>
+    );
+}
+export function Translations() {
+    const plans = useData<Row[]>(admin("plan/fetch")),
+        locales = useData<string[]>(admin("ops/i18n/plan/locales"));
+    const [plan, setPlan] = useState(""),
+        [locale, setLocale] = useState("zh-CN"),
+        [saved, setSaved] = useState("");
+    const d = useData(
+        plan
+            ? query(admin("ops/i18n/plan/fetch"), { plan_id: plan })
+            : admin("plan/fetch"),
+    );
+    return (
+        <Panel title="套餐多语言">
+            <div className="pad actions">
+                <select
+                    value={plan}
+                    onChange={(e) => {
+                        setPlan(e.target.value);
+                        setSaved("");
+                    }}
+                    aria-label="选择套餐"
+                >
+                    <option value="">选择套餐</option>
+                    {plans.data?.map((p) => (
+                        <option key={p.id} value={p.id}>
+                            {p.name}
+                        </option>
+                    ))}
+                </select>
+                <select
+                    value={locale}
+                    onChange={(e) => {
+                        setLocale(e.target.value);
+                        setSaved("");
+                    }}
+                    aria-label="选择语言"
+                >
+                    {locales.data?.map((l) => (
+                        <option key={l}>{l}</option>
+                    ))}
+                </select>
+            </div>
+            {plan ? (
+                <State {...d}>
+                    <div className="pad muted">
+                        默认名称：{d.data?.default?.name}
+                    </div>
+                    <Editor
+                        key={plan + locale + JSON.stringify(d.data)}
+                        fields={[
+                            f("name", "翻译名称"),
+                            f("content", "翻译说明 HTML", "textarea"),
+                        ]}
+                        initial={{
+                            plan_id: Number(plan),
+                            locale,
+                            ...d.data?.translations?.[locale],
+                        }}
+                        onSave={async (b) => {
+                            await request(admin("ops/i18n/plan/save"), b);
+                            setSaved("翻译已保存");
+                            d.reload();
+                        }}
+                    />
+                    {saved && <p className="success-message">{saved}</p>}
+                </State>
+            ) : (
+                <Empty text="选择套餐后开始翻译" />
+            )}
+        </Panel>
+    );
+}
+export function GenerateUsers() {
+    return (
+        <Panel title="生成用户">
+            <Editor
+                fields={[
+                    f("email_prefix", "邮箱前缀"),
+                    f("email_suffix", "邮箱域名", "text", true),
+                    f("generate_count", "生成数量（最多 500）", "number"),
+                    f("password", "初始密码", "password"),
+                    f("plan_id", "套餐 ID", "number"),
+                    f("expired_at", "到期时间", "datetime-local"),
+                ]}
+                initial={{ generate_count: 1 }}
+                onSave={async (b) => {
+                    await request(admin("user/generate"), b);
+                    alert("用户已生成");
+                }}
+            />
+        </Panel>
+    );
+}
+export function Payments() {
+    const d = useData<Row[]>(admin("payment/fetch")),
+        methods = useData<string[]>(admin("payment/getPaymentMethods"));
+    const [editing, setEditing] = useState<Row | null>(null);
+    return (
+        <>
+            <Panel
+                title="支付方式"
+                actions={
+                    <button className="primary" onClick={() => setEditing({})}>
+                        添加支付方式
+                    </button>
+                }
+            >
+                <State {...d}>
+                    <Table
+                        data={d.data || []}
+                        columns={[
+                            name,
+                            ["payment", "支付网关"],
+                            ["enable", "启用"],
+                            ["notify_url", "通知地址"],
+                        ]}
+                        actions={(r) => (
+                            <>
+                                <button onClick={() => setEditing(r)}>
+                                    编辑
+                                </button>
+                                <button
+                                    onClick={async () => {
+                                        try {
+                                            await request(
+                                                admin("payment/show"),
+                                                { id: r.id },
+                                            );
+                                            d.reload();
+                                        } catch (e) {
+                                            alert((e as Error).message);
+                                        }
+                                    }}
+                                >
+                                    切换启用
+                                </button>
+                                <button
+                                    className="danger"
+                                    onClick={async () => {
+                                        if (confirm("确认删除支付方式？")) {
+                                            try {
+                                                await request(
+                                                    admin("payment/drop"),
+                                                    { id: r.id },
+                                                );
+                                                d.reload();
+                                            } catch (e) {
+                                                alert((e as Error).message);
+                                            }
+                                        }
+                                    }}
+                                >
+                                    删除
+                                </button>
+                            </>
+                        )}
+                    />
+                </State>
+            </Panel>
+            {editing && (
+                <Modal title="支付方式设置" close={() => setEditing(null)}>
+                    <PaymentEditor
+                        initial={editing}
+                        methods={methods.data || []}
+                        onSave={async (b) => {
+                            await request(admin("payment/save"), b);
+                            setEditing(null);
+                            d.reload();
+                        }}
+                    />
+                </Modal>
+            )}
+        </>
+    );
+}
+function PaymentEditor({
+    initial,
+    methods,
+    onSave,
+}: {
+    initial: Row;
+    methods: string[];
+    onSave: (b: Row) => Promise<void>;
+}) {
+    const [method, setMethod] = useState(initial.payment || methods[0] || "");
+    const d = useData(admin("payment/getPaymentForm"), {
+        payment: method,
+        id: initial.id,
+    });
+    return (
+        <>
+            <div className="pad">
+                <label>
+                    支付网关
+                    <select
+                        value={method}
+                        onChange={(e) => setMethod(e.target.value)}
+                    >
+                        {methods.map((m) => (
+                            <option key={m}>{m}</option>
+                        ))}
+                    </select>
+                </label>
+            </div>
+            <State {...d}>
+                <Editor
+                    key={method}
+                    fields={[
+                        f("name", "显示名称", "text", true),
+                        f("icon", "图标 URL"),
+                        f("notify_domain", "通知域名"),
+                        f("handling_fee_fixed", "固定手续费（分）", "number"),
+                        f("handling_fee_percent", "手续费比例 (%)", "number"),
+                        ...Object.entries(d.data || {}).map(([k, v]) =>
+                            f(
+                                "config." + k,
+                                v.label || k,
+                                v.type === "textarea" ? "textarea" : "text",
+                            ),
+                        ),
+                    ]}
+                    initial={{
+                        ...initial,
+                        ...Object.fromEntries(
+                            Object.entries(initial.config || {}).map(
+                                ([k, v]) => ["config." + k, v],
+                            ),
+                        ),
+                    }}
+                    onSave={async (b) => {
+                        const config: Row = {};
+                        Object.entries(b).forEach(([k, v]) => {
+                            if (k.startsWith("config.")) {
+                                config[k.slice(7)] = v;
+                                delete b[k];
+                            }
+                        });
+                        await onSave({ ...b, payment: method, config });
+                    }}
+                />
+            </State>
+        </>
+    );
+}
+const nodeTypes = [
+    "v2node",
+    "vmess",
+    "vless",
+    "trojan",
+    "shadowsocks",
+    "hysteria",
+    "tuic",
+    "anytls",
+];
+export function Nodes() {
+    const d = useData<Row[]>(admin("server/manage/getNodes"));
+    const [type, setType] = useState("v2node"),
+        [editing, setEditing] = useState<Row | null>(null);
+    const [error, setError] = useState("");
+    const schema = useData<Row>(query(admin("console/nodeSchema"), { type }));
+    return (
+        <>
+            <Panel
+                title="节点管理"
+                actions={
+                    <>
+                        <Reload onClick={d.reload} />
+                        <button
+                            className="primary"
+                            onClick={() =>
+                                setEditing({
+                                    type,
+                                    group_id: [],
+                                    route_id: [],
+                                    rate: 1,
+                                })
+                            }
+                        >
+                            添加节点
+                        </button>
+                    </>
+                }
+            >
+                <State {...d}>
+                    {error && <div className="alert">{error}</div>}
+                    <Table
+                        data={rows(d.data)}
+                        columns={[
+                            ["id", "ID"],
+                            name,
+                            ["type", "类型"],
+                            ["host", "主机"],
+                            ["port", "端口"],
+                            ["rate", "倍率"],
+                            ["show", "展示"],
+                        ]}
+                        actions={(r) => (
+                            <>
+                                <button
+                                    onClick={() => {
+                                        setType(r.type);
+                                        setEditing(r);
+                                    }}
+                                >
+                                    编辑
+                                </button>
+                                <button
+                                    onClick={async () => {
+                                        try {
+                                            await request(
+                                                admin(`server/${r.type}/copy`),
+                                                { id: r.id },
+                                            );
+                                            d.reload();
+                                        } catch (e) {
+                                            setError((e as Error).message);
+                                        }
+                                    }}
+                                >
+                                    复制
+                                </button>
+                                <button
+                                    onClick={async () => {
+                                        try {
+                                            await request(
+                                                admin(
+                                                    `server/${r.type}/update`,
+                                                ),
+                                                {
+                                                    id: r.id,
+                                                    show: r.show ? 0 : 1,
+                                                },
+                                            );
+                                            d.reload();
+                                        } catch (e) {
+                                            setError((e as Error).message);
+                                        }
+                                    }}
+                                >
+                                    切换展示
+                                </button>
+                                <button
+                                    className="danger"
+                                    onClick={async () => {
+                                        if (confirm("确认删除节点？")) {
+                                            try {
+                                                await request(
+                                                    admin(
+                                                        `server/${r.type}/drop`,
+                                                    ),
+                                                    { id: r.id },
+                                                );
+                                                d.reload();
+                                            } catch (e) {
+                                                setError((e as Error).message);
+                                            }
+                                        }
+                                    }}
+                                >
+                                    删除
+                                </button>
+                            </>
+                        )}
+                    />
+                </State>
+            </Panel>
+            {editing && (
+                <Modal title="节点配置" close={() => setEditing(null)}>
+                    {!editing.id && (
+                        <div className="pad">
+                            <label>
+                                节点类型
+                                <select
+                                    value={type}
+                                    onChange={(e) => setType(e.target.value)}
+                                >
+                                    {nodeTypes.map((t) => (
+                                        <option key={t}>{t}</option>
+                                    ))}
+                                </select>
+                            </label>
+                        </div>
+                    )}
+                    <State {...schema}>
+                        <Editor
+                            key={type}
+                            fields={Object.entries(schema.data || {})
+                                .filter(([k]) => !k.includes(".") && k !== "id")
+                                .map(([k, rule]) => {
+                                    const str = Array.isArray(rule)
+                                        ? rule.join("|")
+                                        : String(rule);
+                                    const enumRule =
+                                        str.match(/(?:^|\|)in:([^|]+)/);
+                                    if (enumRule)
+                                        return {
+                                            key: k,
+                                            label: nodeLabels[k] || k,
+                                            type: "select",
+                                            required: str.includes("required"),
+                                            options: enumRule[1]
+                                                .split(",")
+                                                .map((v) => [v, v]),
+                                        } as Field;
+                                    return f(
+                                        k,
+                                        nodeLabels[k] || k,
+                                        str.includes("array") ||
+                                            k.endsWith("_settings")
+                                            ? "json"
+                                            : str.includes("integer") ||
+                                                str.includes("numeric")
+                                              ? "number"
+                                              : "text",
+                                        str.includes("required"),
+                                    );
+                                })}
+                            initial={editing}
+                            onSave={async (b) => {
+                                const clean: Row = {};
+                                Object.keys(schema.data || {}).forEach((k) => {
+                                    if (!k.includes(".") && b[k] !== undefined)
+                                        clean[k] = b[k];
+                                });
+                                if (editing.id) clean.id = editing.id;
+                                await request(
+                                    admin(`server/${type}/save`),
+                                    clean,
+                                );
+                                setEditing(null);
+                                d.reload();
+                            }}
+                        />
+                    </State>
+                </Modal>
+            )}
+        </>
+    );
+}
+const nodeLabels: Record<string, string> = {
+    name: "节点名称",
+    host: "连接主机",
+    port: "连接端口",
+    server_port: "服务端口",
+    group_id: "权限组 ID 数组",
+    route_id: "路由规则 ID 数组",
+    rate: "流量倍率",
+    tags: "标签数组",
+    parent_id: "父节点 ID",
+    protocol: "协议",
+    network: "传输方式",
+    network_settings: "传输设置",
+    tls: "TLS 模式",
+    tls_settings: "TLS 设置",
+    reality_settings: "Reality 设置",
+    security: "加密方式",
+    obfs: "混淆方式",
+    obfs_settings: "混淆设置",
+    show: "展示",
+    sort: "排序",
+    up_mbps: "上传 Mbps",
+    down_mbps: "下载 Mbps",
+    trusted_x_forwarded_for: "信任的 X-Forwarded-For",
+    udp: "启用 UDP",
+};
+export function System() {
+    const status = useData(admin("system/getSystemStatus")),
+        queue = useData(admin("system/getQueueStats"));
+    return (
+        <div className="split">
+            {[
+                [status, "系统状态"],
+                [queue, "队列状态"],
+            ].map(([d, title]) => {
+                const data = d as ReturnType<typeof useData>;
+                return (
+                    <Panel
+                        key={title as string}
+                        title={title as string}
+                        actions={<Reload onClick={data.reload} />}
+                    >
+                        <State {...data}>
+                            <div className="stats-list">
+                                {Object.entries(data.data || {}).map(
+                                    ([k, v]) => (
+                                        <div key={k}>
+                                            <span>{k}</span>
+                                            <strong>
+                                                {typeof v === "object"
+                                                    ? JSON.stringify(v)
+                                                    : String(v)}
+                                            </strong>
+                                        </div>
+                                    ),
+                                )}
+                            </div>
+                        </State>
+                    </Panel>
+                );
+            })}
+        </div>
+    );
+}

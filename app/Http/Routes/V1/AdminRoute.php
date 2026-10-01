@@ -15,7 +15,7 @@ class AdminRoute
             $router->get ('/config/fetch', 'V1\\Admin\\ConfigController@fetch');
             $router->post('/config/save', 'V1\\Admin\\ConfigController@save');
             $router->get ('/config/getEmailTemplate', 'V1\\Admin\\ConfigController@getEmailTemplate');
-            $router->get ('/config/getThemeTemplate', 'V1\\Admin\\ConfigController@getThemeTemplate');
+            $router->get ('/console/nodeSchema', 'V1\\Admin\\ConsoleController@nodeSchema');
             $router->post('/config/setTelegramWebhook', 'V1\\Admin\\ConfigController@setTelegramWebhook');
             $router->post('/config/testSendMail', 'V1\\Admin\\ConfigController@testSendMail');
             // Plan
@@ -170,10 +170,6 @@ class AdminRoute
             $router->get ('/system/getQueueWorkload', 'V1\\Admin\\SystemController@getQueueWorkload');
             $router->get ('/system/getQueueMasters', '\\Laravel\\Horizon\\Http\\Controllers\\MasterSupervisorController@index');
             $router->get ('/system/getSystemLog', 'V1\\Admin\\SystemController@getSystemLog');
-            // Theme
-            $router->get ('/theme/getThemes', 'V1\\Admin\\ThemeController@getThemes');
-            $router->post('/theme/saveThemeConfig', 'V1\\Admin\\ThemeController@saveThemeConfig');
-            $router->post('/theme/getThemeConfig', 'V1\\Admin\\ThemeController@getThemeConfig');
         });
     }
 }

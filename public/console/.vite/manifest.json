@@ -1,11 +1,23 @@
 {
+  "src/admin-entry.tsx": {
+    "file": "assets/admin-entry-DlTCJ0vz.js",
+    "name": "admin-entry",
+    "src": "src/admin-entry.tsx",
+    "isDynamicEntry": true,
+    "imports": [
+      "src/main.tsx"
+    ]
+  },
   "src/main.tsx": {
-    "file": "assets/main-D8A5tarO.js",
+    "file": "assets/main-DW9NSXpm.js",
     "name": "main",
     "src": "src/main.tsx",
     "isEntry": true,
+    "dynamicImports": [
+      "src/admin-entry.tsx"
+    ],
     "css": [
-      "assets/main--dBtAyzx.css"
+      "assets/main-Dvscyp_6.css"
     ]
   }
 }

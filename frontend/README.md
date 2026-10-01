@@ -39,6 +39,51 @@ the old selected theme's `custom_html` is used until the independent footer sett
 has been saved. Administrator-provided footer scripts retain their original behavior.
 Article and plan HTML is separately sanitized with DOMPurify.
 
+## Languages and mobile UI
+
+The user portal includes Simplified Chinese, Traditional Chinese, English,
+Japanese, Korean, Vietnamese, Russian and Persian. `react-i18next` manages
+reactive switching, English fallback, whole-message interpolation and plurals.
+The language picker is available before and after sign-in. A saved choice takes
+priority over browser language, and `html` language/direction follows that choice.
+Persian uses RTL layout. Dates and numbers use `Intl` for the selected locale.
+The admin console keeps its Chinese interface independently of the user's choice.
+
+Language files are in `src/locales`. Translation keys are complete source messages;
+do not concatenate translated sentence fragments. Use named interpolation values
+and `count` for quantities. Translations are plain text escaped by React.
+The translation source tables in `scripts` generate the five additional locales
+and server errors; `npm run locales:generate` also generates Traditional Chinese.
+Update the English and Simplified Chinese catalogs and translation tables together.
+`npm test` verifies coverage, interpolation parameters, plural forms and source keys.
+
+Requests carry `Content-Language`, which Laravel consumes for validation
+messages and plan translations. Plan names, descriptions and knowledge articles
+remain administrator-authored content: add their translations in the admin console.
+Changing the interface language also selects the knowledge article language; it
+can be overridden independently in the article filter.
+
+Both interfaces share neutral surfaces, a compact sidebar and restrained controls.
+At 800px and below, the user portal has fixed bottom navigation, safe-area padding,
+44px touch targets, form inputs that avoid iOS zoom, readable table cards and bottom
+sheets. Navigation drawers and dialogs manage focus, isolate the background and
+support Escape. Reduced-motion preferences are respected.
+
+## Subscription import
+
+Quick import is available on the dashboard and subscription page. It supports
+Clash/Mihomo, Hiddify, sing-box, Shadowrocket, Surge, Quantumult X, Stash and Surfboard.
+The selection sheet offers direct app links, a QR code and a copy/manual fallback.
+It preserves existing URL parameters, replaces format flags, validates HTTP(S)
+subscription URLs and uses UTF-8 URL-safe base64 for Shadowrocket. No external
+subscription converter receives the link. App launch requires an installed client;
+the browser cannot reliably confirm import completion.
+
+Protocol references: [Clash Verge](https://www.clashverge.dev/guide/url_schemes.html)
+and [Hiddify](https://github.com/hiddify/hiddify-app/wiki/URL-Scheme); other schemes
+retain the project's previous client integration. Do not publish real subscription
+links or QR codes in screenshots, logs, analytics or tests.
+
 ## Verification
 
 ```sh

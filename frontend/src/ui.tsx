@@ -1,4 +1,7 @@
-import { useEffect, useState, type ReactNode } from "react";
+import { tx, locale } from "./i18n";
+import { useEffect, useState, useRef, type ReactNode } from "react";
+import { useTranslation } from "react-i18next";
+import { createPortal } from "react-dom";
 import DOMPurify from "dompurify";
 import { X, Inbox, RefreshCw, ChevronLeft, ChevronRight } from "lucide-react";
 import { request, type Row } from "./api";
@@ -13,6 +16,8 @@ export function Html({ value }: { value: unknown }) {
     );
 }
 export function useData<T = Row>(path: string, body?: Row) {
+    useTranslation();
+    const language = locale();
     const serializedBody = body ? JSON.stringify(body) : undefined;
     const [data, setData] = useState<T | null>(null),
         [error, setError] = useState(""),
@@ -42,7 +47,7 @@ export function useData<T = Row>(path: string, body?: Row) {
         return () => {
             live = false;
         };
-    }, [path, version, serializedBody]);
+    }, [path, version, serializedBody, language]);
     return {
         data,
         error,
@@ -66,24 +71,24 @@ export function State({
         return (
             <div className="state">
                 <span className="spinner" />
-                正在加载…
+                {tx("正在加载…")}
             </div>
         );
     if (error)
         return (
             <div className="alert" role="alert">
                 {error}
-                {retry && <button onClick={retry}>重试</button>}
+                {retry && <button onClick={retry}>{tx("重试")}</button>}
             </div>
         );
     return <>{children}</>;
 }
-export function Empty({ text = "暂无数据" }: { text?: string }) {
+export function Empty({ text = tx("暂无数据") }: { text?: string }) {
     return (
         <div className="state">
             <Inbox size={36} />
             <strong>{text}</strong>
-            <span>数据更新后会显示在这里</span>
+            <span>{tx("数据更新后会显示在这里")}</span>
         </div>
     );
 }
@@ -117,14 +122,49 @@ export function Modal({
     children: ReactNode;
     close: () => void;
 }) {
+    const dialog = useRef<HTMLElement>(null);
+    const closeRef = useRef(close);
+    closeRef.current = close;
     useEffect(() => {
+        const previous = document.activeElement as HTMLElement | null;
+        const previousOverflow = document.body.style.overflow;
+        document.body.style.overflow = "hidden";
+        const root = document.getElementById("root");
+        const previousInert = root?.inert;
+        if (root) root.inert = true;
+        dialog.current
+            ?.querySelector<HTMLElement>(
+                "button, input, select, textarea, a[href]",
+            )
+            ?.focus();
         const fn = (e: KeyboardEvent) => {
-            if (e.key === "Escape") close();
+            if (e.key === "Escape") closeRef.current();
+            if (e.key === "Tab") {
+                const items = [
+                    ...(dialog.current?.querySelectorAll<HTMLElement>(
+                        'button:not(:disabled), input:not(:disabled), select:not(:disabled), textarea:not(:disabled), a[href], [tabindex="0"]',
+                    ) || []),
+                ];
+                const first = items[0],
+                    last = items.at(-1);
+                if (e.shiftKey && document.activeElement === first) {
+                    e.preventDefault();
+                    last?.focus();
+                } else if (!e.shiftKey && document.activeElement === last) {
+                    e.preventDefault();
+                    first?.focus();
+                }
+            }
         };
         document.addEventListener("keydown", fn);
-        return () => document.removeEventListener("keydown", fn);
-    }, [close]);
-    return (
+        return () => {
+            document.removeEventListener("keydown", fn);
+            document.body.style.overflow = previousOverflow;
+            if (root) root.inert = previousInert || false;
+            previous?.focus();
+        };
+    }, []);
+    return createPortal(
         <div
             className="overlay"
             onMouseDown={(e) => {
@@ -133,6 +173,7 @@ export function Modal({
         >
             <section
                 className="modal"
+                ref={dialog}
                 role="dialog"
                 aria-modal="true"
                 aria-label={title}
@@ -142,14 +183,15 @@ export function Modal({
                     <button
                         className="icon-button"
                         onClick={close}
-                        aria-label="关闭"
+                        aria-label={tx("关闭")}
                     >
                         <X />
                     </button>
                 </div>
                 {children}
             </section>
-        </div>
+        </div>,
+        document.body,
     );
 }
 export interface Field {
@@ -171,7 +213,7 @@ export function Editor({
     fields,
     initial,
     onSave,
-    submit = "保存",
+    submit = tx("保存"),
     children,
 }: {
     fields: Field[];
@@ -240,7 +282,7 @@ export function Editor({
                         key={f.key}
                     >
                         <span>
-                            {f.label}
+                            {tx(f.label)}
                             {f.required && " *"}
                         </span>
                         {f.type === "select" ? (
@@ -302,7 +344,7 @@ export function Editor({
             )}
             <div className="form-bottom">
                 <button className="primary" disabled={busy}>
-                    {busy ? "提交中…" : submit}
+                    {busy ? tx("提交中…") : submit}
                 </button>
             </div>
         </form>
@@ -322,19 +364,19 @@ export function Pager({
     return (
         <div className="pager">
             <span>
-                共 {total} 条 · 第 {page} 页
+                {tx("共 {{total}} 条 · 第 {{page}} 页", { total, page })}
             </span>
             <button
                 disabled={page === 1}
                 onClick={() => onChange(page - 1)}
-                aria-label="上一页"
+                aria-label={tx("上一页")}
             >
                 <ChevronLeft size={16} />
             </button>
             <button
                 disabled={page * size >= total}
                 onClick={() => onChange(page + 1)}
-                aria-label="下一页"
+                aria-label={tx("下一页")}
             >
                 <ChevronRight size={16} />
             </button>
@@ -345,7 +387,7 @@ export function Reload({ onClick }: { onClick: () => void }) {
     return (
         <button onClick={onClick}>
             <RefreshCw size={15} />
-            刷新
+            {tx("刷新")}
         </button>
     );
 }
@@ -367,14 +409,14 @@ export function Table({
                         {columns.map(([k, label]) => (
                             <th key={k}>{label}</th>
                         ))}
-                        {actions && <th>操作</th>}
+                        {actions && <th>{tx("操作")}</th>}
                     </tr>
                 </thead>
                 <tbody>
                     {data.map((r, i) => (
                         <tr key={r.id ?? r.trade_no ?? i}>
-                            {columns.map(([k, , render]) => (
-                                <td key={k}>
+                            {columns.map(([k, label, render]) => (
+                                <td key={k} data-label={label}>
                                     {render
                                         ? render(r)
                                         : typeof r[k] === "object"

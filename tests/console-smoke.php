@@ -14,10 +14,11 @@ $assert = function ($condition, $message) use (&$checks) {
     if (!$condition) throw new RuntimeException($message);
     $checks++;
 };
-$call = function (string $path, ?array $body = null, ?string $token = null) use ($kernel) {
+$call = function (string $path, ?array $body = null, ?string $token = null, ?string $language = null) use ($kernel) {
     $request = Illuminate\Http\Request::create($path, $body === null ? 'GET' : 'POST', $body ?? []);
     $request->headers->set('Accept', 'application/json');
     if ($token) $request->headers->set('Authorization', $token);
+    if ($language) $request->headers->set('Content-Language', $language);
     return $kernel->handle($request);
 };
 Illuminate\Support\Facades\DB::beginTransaction();
@@ -34,6 +35,13 @@ try {
         $response = $call($path);
         $assert($response->getStatusCode() === 200 && strpos($response->getContent(), '/console/assets/') !== false, 'React shell failed: ' . $path);
     }
+    foreach (['zh-CN', 'zh-TW', 'en-US', 'ja-JP', 'ko-KR', 'vi-VN', 'ru-RU', 'fa-IR'] as $language) {
+        $response = $call('/api/v1/passport/auth/login', [], null, $language);
+        $errors = json_decode($response->getContent(), true)['errors'] ?? [];
+        $catalog = json_decode(file_get_contents(resource_path('lang/' . $language . '.json')), true);
+        $assert($response->getStatusCode() === 422 && ($errors['email'][0] ?? null) === $catalog['Email can not be empty'], 'Localized validation failed: ' . $language);
+    }
+    app()->setLocale('zh-CN');
     $response = $call('/' . $securePath . '/ops-center/risk');
     $assert($response->getStatusCode() === 302 && strpos($response->headers->get('Location'), '#/risk') !== false, 'Legacy operations bookmark failed');
     foreach (['getThemes', 'getThemeConfig', 'saveThemeConfig'] as $method) {

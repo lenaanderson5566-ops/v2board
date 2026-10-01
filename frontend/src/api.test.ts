@@ -4,6 +4,8 @@ vi.stubGlobal("window", {
     V2BOARD: { mode: "user", currencySymbol: "¥" },
     dispatchEvent: vi.fn(),
 });
+vi.stubGlobal("document", { documentElement: { lang: "", dir: "" } });
+vi.stubGlobal("navigator", { language: "zh-CN" });
 const storage = new Map<string, string>();
 vi.stubGlobal("localStorage", {
     getItem: (key: string) => storage.get(key) || null,
@@ -27,6 +29,9 @@ describe("API client", () => {
         expect(fetchMock.mock.calls[0][0]).toBe("/api/v1/user/update");
         expect(fetchMock.mock.calls[0][1].headers.Authorization).toBe(
             "session-token",
+        );
+        expect(fetchMock.mock.calls[0][1].headers["Content-Language"]).toBe(
+            "zh-CN",
         );
         expect(fetchMock.mock.calls[0][1].body).toBe('{"remind_expire":1}');
     });

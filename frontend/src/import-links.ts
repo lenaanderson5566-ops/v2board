@@ -1,0 +1,78 @@
+export const clients = [
+    {
+        id: "clash",
+        name: "Clash Verge / Mihomo",
+        platform: "Windows · macOS · Linux · Android",
+    },
+    {
+        id: "hiddify",
+        name: "Hiddify",
+        platform: "iOS · Android · Windows · macOS · Linux",
+    },
+    { id: "singbox", name: "sing-box", platform: "iOS · Android · macOS" },
+    { id: "shadowrocket", name: "Shadowrocket", platform: "iOS · macOS" },
+    { id: "surge", name: "Surge", platform: "iOS · macOS" },
+    { id: "quantumult", name: "Quantumult X", platform: "iOS" },
+    { id: "stash", name: "Stash", platform: "iOS · macOS" },
+    { id: "surfboard", name: "Surfboard", platform: "Android" },
+] as const;
+export type ClientId = (typeof clients)[number]["id"];
+export function subscriptionUrl(value: string, flag?: string): string {
+    const url = new URL(value);
+    if (
+        !["http:", "https:"].includes(url.protocol) ||
+        url.username ||
+        url.password
+    )
+        throw new Error("Invalid subscription URL");
+    if (flag) url.searchParams.set("flag", flag);
+    url.hash = "";
+    return url.href;
+}
+function base64url(value: string) {
+    return btoa(
+        Array.from(new TextEncoder().encode(value), (byte) =>
+            String.fromCharCode(byte),
+        ).join(""),
+    )
+        .replace(/\+/g, "-")
+        .replace(/\//g, "_")
+        .replace(/=+$/, "");
+}
+export function importLink(
+    client: ClientId,
+    value: string,
+    name: string,
+): string {
+    const flag = {
+        clash: "meta",
+        hiddify: "sing",
+        singbox: "sing",
+        shadowrocket: "shadowrocket",
+        surge: "surge",
+        quantumult: "quantumult%20x",
+        stash: "stash",
+        surfboard: "surfboard",
+    }[client];
+    const url = subscriptionUrl(value, flag),
+        encoded = encodeURIComponent(url),
+        title = encodeURIComponent(name);
+    switch (client) {
+        case "clash":
+            return `clash://install-config?url=${encoded}&name=${title}`;
+        case "hiddify":
+            return `hiddify://import/${url}#${title}`;
+        case "singbox":
+            return `sing-box://import-remote-profile?url=${encoded}#${title}`;
+        case "shadowrocket":
+            return `shadowrocket://add/sub://${base64url(url)}?remark=${title}`;
+        case "surge":
+            return `surge:///install-config?url=${encoded}&name=${title}`;
+        case "stash":
+            return `stash://install-config?url=${encoded}&name=${title}`;
+        case "surfboard":
+            return `surge:///install-config?url=${encoded}&name=${title}`;
+        case "quantumult":
+            return `quantumult-x:///update-configuration?remote-resource=${encodeURIComponent(JSON.stringify({ server_remote: [`${url}, tag=${name.replace(/[\r\n,]/g, " ")}, enabled=true`] }))}`;
+    }
+}

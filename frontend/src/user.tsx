@@ -1,3 +1,5 @@
+import { tx, locale, languages } from "./i18n";
+import { SubscriptionImport } from "./SubscriptionImport";
 import { useState, useEffect, useRef } from "react";
 import { QRCodeSVG } from "qrcode.react";
 import { loadStripe } from "@stripe/stripe-js/pure";
@@ -46,7 +48,7 @@ const periods: Record<string, string> = {
 const statuses = ["待支付", "开通中", "已取消", "已完成", "已折抵"];
 function CopyValue({
     value,
-    label = "复制",
+    label = tx("复制"),
 }: {
     value: string;
     label?: string;
@@ -62,12 +64,12 @@ function CopyValue({
                         setCopied(true);
                         setTimeout(() => setCopied(false), 2000);
                     } catch {
-                        setError("复制失败，请手动复制链接");
+                        setError(tx("复制失败，请手动复制链接"));
                     }
                 }}
             >
                 {copied ? <Check size={16} /> : <Copy size={16} />}{" "}
-                {copied ? "已复制" : label}
+                {copied ? tx("已复制") : label}
             </button>
             {error && <span role="alert">{error}</span>}
         </>
@@ -88,13 +90,14 @@ export function UserDashboard() {
             <div className="hero">
                 <div>
                     <span className="eyebrow">YOUR CONNECTION, SIMPLIFIED</span>
-                    <h2>连接世界，从这里开始。</h2>
-                    <p>查看订阅状态，轻松管理你的网络服务。</p>
+                    <h2>{tx("连接世界，从这里开始。")}</h2>
+                    <p>{tx("查看订阅状态，轻松管理你的网络服务。")}</p>
                     <button
                         className="primary"
                         onClick={() => navigate("plan")}
                     >
-                        探索订阅套餐 <ArrowUpRight size={18} />
+                        {tx("探索订阅套餐")}
+                        <ArrowUpRight size={18} />
                     </button>
                 </div>
                 <div className="orbit">
@@ -105,52 +108,57 @@ export function UserDashboard() {
             </div>
             <div className="metrics">
                 <Metric
-                    label="已用流量"
+                    label={tx("已用流量")}
                     value={bytes(used)}
-                    detail={`总流量 ${bytes(user.transfer_enable)}`}
+                    detail={tx("总流量 {{value0}}", {
+                        value0: bytes(user.transfer_enable),
+                    })}
                 />
-                <Metric label="账户余额" value={money(user.balance)} />
+                <Metric label={tx("账户余额")} value={money(user.balance)} />
                 <Metric
-                    label="订阅到期"
+                    label={tx("订阅到期")}
                     value={
                         user.expired_at
                             ? new Date(
                                   user.expired_at * 1000,
-                              ).toLocaleDateString("zh-CN")
-                            : "长期有效"
+                              ).toLocaleDateString(locale())
+                            : tx("长期有效")
                     }
-                    detail={s.plan?.name || "尚未订阅套餐"}
+                    detail={s.plan?.name || tx("尚未订阅套餐")}
                 />
             </div>
             <div className="split">
                 <Panel
-                    title="我的订阅"
+                    title={tx("我的订阅")}
                     actions={
                         <button onClick={() => navigate("subscribe")}>
-                            管理订阅 <ArrowUpRight size={15} />
+                            {tx("管理订阅")}
+                            <ArrowUpRight size={15} />
                         </button>
                     }
                 >
                     <div className="pad">
-                        <h3>{s.plan?.name || "准备好开启连接了吗？"}</h3>
+                        <h3>{s.plan?.name || tx("准备好开启连接了吗？")}</h3>
                         <div className="progress">
                             <i style={{ width: percent + "%" }} />
                         </div>
                         <div className="muted">
-                            已使用 {percent.toFixed(1)}% · {bytes(used)} /{" "}
+                            {tx("已使用")}
+                            {percent.toFixed(1)}% · {bytes(used)} /{" "}
                             {bytes(user.transfer_enable)}
                         </div>
                         {s.subscribe_url && (
                             <div className="actions space">
                                 <CopyValue
                                     value={s.subscribe_url}
-                                    label="复制订阅链接"
+                                    label={tx("复制订阅链接")}
                                 />
+                                <SubscriptionImport url={s.subscribe_url} />
                             </div>
                         )}
                     </div>
                 </Panel>
-                <Panel title="最新公告">
+                <Panel title={tx("最新公告")}>
                     <State {...notice} retry={notice.reload}>
                         {notice.data?.length ? (
                             notice.data.slice(0, 3).map((n) => (
@@ -161,7 +169,7 @@ export function UserDashboard() {
                                 </div>
                             ))
                         ) : (
-                            <Empty text="暂无新公告" />
+                            <Empty text={tx("暂无新公告")} />
                         )}
                     </State>
                 </Panel>
@@ -175,37 +183,40 @@ export function Subscribe() {
     const s = d.data || {};
     return (
         <>
-            <Panel title="订阅连接">
+            <Panel title={tx("订阅连接")}>
                 <State {...d} retry={d.reload}>
                     <div className="pad">
-                        <h3>{s.plan?.name || "暂无订阅套餐"}</h3>
+                        <h3>{s.plan?.name || tx("暂无订阅套餐")}</h3>
                         <p className="muted">
-                            订阅链接包含你的访问凭据，请妥善保管。
+                            {tx("订阅链接包含你的访问凭据，请妥善保管。")}
                         </p>
                         {s.subscribe_url ? (
                             <>
                                 <input
                                     readOnly
                                     value={s.subscribe_url}
-                                    aria-label="订阅链接"
+                                    aria-label={tx("订阅链接")}
                                 />
                                 <div className="actions space">
+                                    <SubscriptionImport url={s.subscribe_url} />
                                     <CopyValue
                                         value={s.subscribe_url}
-                                        label="复制订阅"
+                                        label={tx("复制订阅")}
                                     />
                                     <a
                                         className="button"
                                         href={s.subscribe_url}
                                     >
                                         <Download size={16} />
-                                        下载订阅
+                                        {tx("下载订阅")}
                                     </a>
                                     <button
                                         onClick={() => {
                                             if (
                                                 confirm(
-                                                    "重置后，现有订阅链接将失效。继续吗？",
+                                                    tx(
+                                                        "重置后，现有订阅链接将失效。继续吗？",
+                                                    ),
                                                 )
                                             )
                                                 request("user/resetSecurity")
@@ -215,7 +226,7 @@ export function Subscribe() {
                                                     );
                                         }}
                                     >
-                                        重置订阅链接
+                                        {tx("重置订阅链接")}
                                     </button>
                                 </div>
                             </>
@@ -224,28 +235,28 @@ export function Subscribe() {
                                 className="primary"
                                 onClick={() => navigate("plan")}
                             >
-                                选择套餐
+                                {tx("选择套餐")}
                             </button>
                         )}
                     </div>
                 </State>
             </Panel>
-            <Panel title="可用节点">
+            <Panel title={tx("可用节点")}>
                 <State {...nodes} retry={nodes.reload}>
                     <Table
                         data={nodes.data || []}
                         columns={[
-                            ["name", "节点名称"],
-                            ["type", "协议"],
-                            ["rate", "倍率"],
+                            ["name", tx("节点名称")],
+                            ["type", tx("协议")],
+                            ["rate", tx("倍率")],
                             [
                                 "is_online",
-                                "状态",
+                                tx("状态"),
                                 (r) => (
                                     <span
                                         className={`badge ${r.is_online ? "success" : ""}`}
                                     >
-                                        {r.is_online ? "在线" : "离线"}
+                                        {r.is_online ? tx("在线") : tx("离线")}
                                     </span>
                                 ),
                             ],
@@ -277,48 +288,53 @@ export function Plans() {
                                     {" "}
                                     /{" "}
                                     {p.month_price !== null
-                                        ? "月"
+                                        ? tx("月")
                                         : p.year_price !== null
-                                          ? "年"
-                                          : "次"}
+                                          ? tx("年")
+                                          : tx("次")}
                                 </small>
                             </div>
                             <div className="plan-feature">
-                                {p.transfer_enable} GB 流量
+                                {p.transfer_enable} {tx("GB 流量")}
                             </div>
                             <div className="plan-feature">
                                 {p.speed_limit
-                                    ? `${p.speed_limit} Mbps 速率`
-                                    : "不限速"}
+                                    ? tx("{{value0}} Mbps 速率", {
+                                          value0: p.speed_limit,
+                                      })
+                                    : tx("不限速")}
                             </div>
                             <div className="plan-feature">
                                 {p.device_limit
-                                    ? `${p.device_limit} 台设备`
-                                    : "不限设备数"}
+                                    ? tx("{{count}} 台设备", {
+                                          count: p.device_limit,
+                                      })
+                                    : tx("不限设备数")}
                             </div>
                             <Html value={p.content} />
                             <button
                                 className="primary"
                                 onClick={() => setSelected(p)}
                             >
-                                选择套餐 <ArrowUpRight size={16} />
+                                {tx("选择套餐")}
+                                <ArrowUpRight size={16} />
                             </button>
                         </article>
                     ))
                 ) : (
-                    <Empty text="暂无可购买套餐" />
+                    <Empty text={tx("暂无可购买套餐")} />
                 )}
             </div>
             {selected && (
                 <Modal
-                    title={`购买 ${selected.name}`}
+                    title={tx("购买 {{value0}}", { value0: selected.name })}
                     close={() => setSelected(null)}
                 >
                     <Editor
                         fields={[
                             {
                                 key: "period",
-                                label: "支付周期",
+                                label: tx("支付周期"),
                                 type: "select",
                                 options: Object.entries(periods)
                                     .filter(
@@ -328,10 +344,10 @@ export function Plans() {
                                     )
                                     .map(([k, v]) => [
                                         k,
-                                        `${v} · ${money(selected[k])}`,
+                                        `${tx(v)} · ${money(selected[k])}`,
                                     ]),
                             },
-                            { key: "coupon_code", label: "优惠码（可选）" },
+                            { key: "coupon_code", label: tx("优惠码（可选）") },
                         ]}
                         initial={{
                             plan_id: selected.id,
@@ -341,7 +357,7 @@ export function Plans() {
                                     selected[k] !== undefined,
                             ),
                         }}
-                        submit="创建订单"
+                        submit={tx("创建订单")}
                         onSave={async (body) => {
                             const r = await request<string>(
                                 "user/order/save",
@@ -364,7 +380,7 @@ export function Orders({ tradeNo }: { tradeNo?: string }) {
     );
     return (
         <Panel
-            title={tradeNo ? "订单详情" : "订单记录"}
+            title={tradeNo ? tx("订单详情") : tx("订单记录")}
             actions={<Reload onClick={d.reload} />}
         >
             <State {...d} retry={d.reload}>
@@ -374,25 +390,32 @@ export function Orders({ tradeNo }: { tradeNo?: string }) {
                     <Table
                         data={rows(d.data)}
                         columns={[
-                            ["trade_no", "订单编号"],
-                            ["plan", "套餐", (r) => r.plan?.name || "账户充值"],
+                            ["trade_no", tx("订单编号")],
+                            [
+                                "plan",
+                                tx("套餐"),
+                                (r) => r.plan?.name || tx("账户充值"),
+                            ],
                             [
                                 "total_amount",
-                                "金额",
+                                tx("金额"),
                                 (r) => money(r.total_amount),
                             ],
                             [
                                 "status",
-                                "状态",
+                                tx("状态"),
                                 (r) => (
                                     <span className="badge">
-                                        {statuses[r.status] || r.status}
+                                        {tx(
+                                            statuses[r.status] ||
+                                                String(r.status),
+                                        )}
                                     </span>
                                 ),
                             ],
                             [
                                 "created_at",
-                                "创建时间",
+                                tx("创建时间"),
                                 (r) => date(r.created_at),
                             ],
                         ]}
@@ -400,7 +423,7 @@ export function Orders({ tradeNo }: { tradeNo?: string }) {
                             <button
                                 onClick={() => navigate("order/" + r.trade_no)}
                             >
-                                查看
+                                {tx("查看")}
                             </button>
                         )}
                     />
@@ -434,7 +457,10 @@ function OrderDetail({ order, reload }: { order: Row; reload: () => void }) {
             )
                 location.assign(r.data);
             else if (r.type === 0) setQr(String(r.data));
-            else throw new Error("此支付方式需要专用客户端，请选择其他方式。");
+            else
+                throw new Error(
+                    tx("此支付方式需要专用客户端，请选择其他方式。"),
+                );
         } catch (e) {
             setError((e as Error).message);
         } finally {
@@ -445,17 +471,23 @@ function OrderDetail({ order, reload }: { order: Row; reload: () => void }) {
         <div className="pad">
             <div className="metrics">
                 <Metric
-                    label="订单编号"
+                    label={tx("订单编号")}
                     value={<small>{order.trade_no}</small>}
                 />
-                <Metric label="应付金额" value={money(order.total_amount)} />
-                <Metric label="订单状态" value={statuses[order.status]} />
+                <Metric
+                    label={tx("应付金额")}
+                    value={money(order.total_amount)}
+                />
+                <Metric
+                    label={tx("订单状态")}
+                    value={tx(statuses[order.status] || "—")}
+                />
             </div>
             <h3>{order.plan?.name}</h3>
             {error && <div className="alert">{error}</div>}
             {order.status === 0 && (
                 <>
-                    <p>选择支付方式</p>
+                    <p>{tx("选择支付方式")}</p>
                     <State {...methods}>
                         {methods.data?.map((m) => (
                             <button
@@ -477,13 +509,13 @@ function OrderDetail({ order, reload }: { order: Row; reload: () => void }) {
                                 disabled={busy}
                                 onClick={() => pay(0)}
                             >
-                                确认开通
+                                {tx("确认开通")}
                             </button>
                         )}
                         {!methods.data?.length &&
                             Number(order.total_amount) > 0 && (
                                 <p className="muted">
-                                    暂无可用支付方式，请联系客服。
+                                    {tx("暂无可用支付方式，请联系客服。")}
                                 </p>
                             )}
                     </State>
@@ -500,22 +532,25 @@ function OrderDetail({ order, reload }: { order: Row; reload: () => void }) {
                                 }
                             }}
                         >
-                            取消订单
+                            {tx("取消订单")}
                         </button>
-                        <button onClick={reload}>检查支付结果</button>
+                        <button onClick={reload}>{tx("检查支付结果")}</button>
                     </div>
                 </>
             )}
             {qr && (
                 <div className="pad">
                     <QRCodeSVG value={qr} size={220} marginSize={3} />
-                    <p>付款内容</p>
+                    <p>{tx("付款内容")}</p>
                     <input readOnly value={qr} />
                     <CopyValue value={qr} />
                 </div>
             )}
             {cardMethod && (
-                <Modal title="信用卡支付" close={() => setCardMethod(null)}>
+                <Modal
+                    title={tx("信用卡支付")}
+                    close={() => setCardMethod(null)}
+                >
                     <StripeCard
                         method={cardMethod}
                         onToken={(token) => pay(cardMethod, token)}
@@ -583,15 +618,17 @@ function StripeCard({
                     }
                 }}
             >
-                确认支付
+                {tx("确认支付")}
             </button>
         </div>
     );
 }
 export function Knowledge() {
-    const [language, setLanguage] = useState("zh-CN"),
+    const [language, setLanguage] = useState(locale()),
         [keyword, setKeyword] = useState(""),
         [id, setId] = useState<number | null>(null);
+    const interfaceLanguage = locale();
+    useEffect(() => setLanguage(interfaceLanguage), [interfaceLanguage]);
     const d = useData(query("user/knowledge/fetch", { language, keyword })),
         article = useData(
             id
@@ -601,21 +638,23 @@ export function Knowledge() {
     return (
         <>
             <Panel
-                title="使用文档"
+                title={tx("使用文档")}
                 actions={
                     <>
                         <select
-                            aria-label="文档语言"
+                            aria-label={tx("文档语言")}
                             value={language}
                             onChange={(e) => setLanguage(e.target.value)}
                         >
-                            <option>zh-CN</option>
-                            <option>en-US</option>
-                            <option>zh-TW</option>
+                            {languages.map((l) => (
+                                <option value={l.code} key={l.code}>
+                                    {l.name}
+                                </option>
+                            ))}
                         </select>
                         <input
-                            placeholder="搜索文档…"
-                            aria-label="搜索文档"
+                            placeholder={tx("搜索文档…")}
+                            aria-label={tx("搜索文档")}
                             value={keyword}
                             onChange={(e) => setKeyword(e.target.value)}
                         />
@@ -642,13 +681,13 @@ export function Knowledge() {
                             ),
                         )
                     ) : (
-                        <Empty text="暂无相关文档" />
+                        <Empty text={tx("暂无相关文档")} />
                     )}
                 </State>
             </Panel>
             {id && (
                 <Modal
-                    title={article.data?.title || "文档"}
+                    title={article.data?.title || tx("文档")}
                     close={() => setId(null)}
                 >
                     <State {...article}>
@@ -674,7 +713,7 @@ export function Tickets({ isAdmin = false }: { isAdmin?: boolean }) {
     return (
         <>
             <Panel
-                title="工单中心"
+                title={tx("工单中心")}
                 actions={
                     <>
                         <Reload onClick={d.reload} />
@@ -683,7 +722,7 @@ export function Tickets({ isAdmin = false }: { isAdmin?: boolean }) {
                                 className="primary"
                                 onClick={() => setCreating(true)}
                             >
-                                创建工单
+                                {tx("创建工单")}
                             </button>
                         )}
                     </>
@@ -693,49 +732,55 @@ export function Tickets({ isAdmin = false }: { isAdmin?: boolean }) {
                     <Table
                         data={d.data || []}
                         columns={[
-                            ["id", "编号"],
-                            ["subject", "主题"],
+                            ["id", tx("编号")],
+                            ["subject", tx("主题")],
                             [
                                 "status",
-                                "状态",
+                                tx("状态"),
                                 (r) => (
                                     <span className="badge">
-                                        {r.status === 0 ? "处理中" : "已关闭"}
+                                        {r.status === 0
+                                            ? tx("处理中")
+                                            : tx("已关闭")}
                                     </span>
                                 ),
                             ],
                             [
                                 "updated_at",
-                                "更新时间",
+                                tx("更新时间"),
                                 (r) => date(r.updated_at),
                             ],
                         ]}
                         actions={(r) => (
                             <button onClick={() => setId(r.id)}>
-                                查看对话
+                                {tx("查看对话")}
                             </button>
                         )}
                     />
                 </State>
             </Panel>
             {creating && (
-                <Modal title="创建工单" close={() => setCreating(false)}>
+                <Modal title={tx("创建工单")} close={() => setCreating(false)}>
                     <Editor
                         fields={[
-                            { key: "subject", label: "主题", required: true },
+                            {
+                                key: "subject",
+                                label: tx("主题"),
+                                required: true,
+                            },
                             {
                                 key: "level",
-                                label: "优先级",
+                                label: tx("优先级"),
                                 type: "select",
                                 options: [
-                                    ["0", "普通"],
-                                    ["1", "中等"],
-                                    ["2", "紧急"],
+                                    ["0", tx("普通")],
+                                    ["1", tx("中等")],
+                                    ["2", tx("紧急")],
                                 ],
                             },
                             {
                                 key: "message",
-                                label: "问题描述",
+                                label: tx("问题描述"),
                                 type: "textarea",
                                 required: true,
                             },
@@ -751,7 +796,7 @@ export function Tickets({ isAdmin = false }: { isAdmin?: boolean }) {
             )}
             {id && (
                 <Modal
-                    title={detail.data?.subject || "工单对话"}
+                    title={detail.data?.subject || tx("工单对话")}
                     close={() => setId(null)}
                 >
                     <State {...detail}>
@@ -764,7 +809,7 @@ export function Tickets({ isAdmin = false }: { isAdmin?: boolean }) {
                                     key={m.id}
                                 >
                                     <small>
-                                        {m.is_me ? "我" : "对方"} ·{" "}
+                                        {m.is_me ? tx("我") : tx("对方")} ·{" "}
                                         {date(m.created_at)}
                                     </small>
                                     <p>{m.message}</p>
@@ -777,13 +822,13 @@ export function Tickets({ isAdmin = false }: { isAdmin?: boolean }) {
                                     fields={[
                                         {
                                             key: "message",
-                                            label: "回复内容",
+                                            label: tx("回复内容"),
                                             type: "textarea",
                                             required: true,
                                         },
                                     ]}
                                     initial={{ id }}
-                                    submit="发送回复"
+                                    submit={tx("发送回复")}
                                     onSave={async (body) => {
                                         await request(
                                             `${prefix}/ticket/reply`,
@@ -808,7 +853,7 @@ export function Tickets({ isAdmin = false }: { isAdmin?: boolean }) {
                                             }
                                         }}
                                     >
-                                        关闭工单
+                                        {tx("关闭工单")}
                                     </button>
                                 </div>
                             </>
@@ -828,12 +873,12 @@ export function Invite() {
     return (
         <State {...d} retry={d.reload}>
             <div className="metrics">
-                <Metric label="邀请用户" value={stat[0] || 0} />
-                <Metric label="可用佣金" value={money(stat[4])} />
-                <Metric label="佣金比例" value={`${stat[3] || 0}%`} />
+                <Metric label={tx("邀请用户")} value={stat[0] || 0} />
+                <Metric label={tx("可用佣金")} value={money(stat[4])} />
+                <Metric label={tx("佣金比例")} value={`${stat[3] || 0}%`} />
             </div>
             <Panel
-                title="邀请链接"
+                title={tx("邀请链接")}
                 actions={
                     <button
                         className="primary"
@@ -846,53 +891,65 @@ export function Invite() {
                             }
                         }}
                     >
-                        生成邀请码
+                        {tx("生成邀请码")}
                     </button>
                 }
             >
                 <Table
                     data={v.codes || []}
                     columns={[
-                        ["code", "邀请码"],
-                        ["created_at", "创建时间", (r) => date(r.created_at)],
+                        ["code", tx("邀请码")],
+                        [
+                            "created_at",
+                            tx("创建时间"),
+                            (r) => date(r.created_at),
+                        ],
                     ]}
                     actions={(r) => (
                         <CopyValue
                             value={`${location.origin}/#/register?code=${r.code}`}
-                            label="复制邀请链接"
+                            label={tx("复制邀请链接")}
                         />
                     )}
                 />
             </Panel>
-            <Panel title="佣金记录">
+            <Panel title={tx("佣金记录")}>
                 <State {...details}>
                     <Table
                         data={details.data || []}
                         columns={[
-                            ["trade_no", "订单"],
+                            ["trade_no", tx("订单")],
                             [
                                 "order_amount",
-                                "订单金额",
+                                tx("订单金额"),
                                 (r) => money(r.order_amount),
                             ],
-                            ["get_amount", "佣金", (r) => money(r.get_amount)],
-                            ["created_at", "时间", (r) => date(r.created_at)],
+                            [
+                                "get_amount",
+                                tx("佣金"),
+                                (r) => money(r.get_amount),
+                            ],
+                            [
+                                "created_at",
+                                tx("时间"),
+                                (r) => date(r.created_at),
+                            ],
                         ]}
                     />
                 </State>
             </Panel>
-            <Panel title="佣金操作">
+            <Panel title={tx("佣金操作")}>
                 <Editor
                     fields={[
                         {
                             key: "transfer_amount",
-                            label: "转入余额金额（分）",
+                            label: tx("转入余额金额（分）"),
                             type: "number",
                             required: true,
                         },
                     ]}
                     initial={{}}
-                    submit="转入余额"
+                    submit={tx("转入余额")}
                     onSave={async (b) => {
                         await request("user/transfer", b);
                         d.reload();
@@ -900,12 +957,12 @@ export function Invite() {
                 />
             </Panel>
             {config.data && !config.data.withdraw_close && (
-                <Panel title="申请佣金提现">
+                <Panel title={tx("申请佣金提现")}>
                     <Editor
                         fields={[
                             {
                                 key: "withdraw_method",
-                                label: "提现方式",
+                                label: tx("提现方式"),
                                 type: "select",
                                 options: (
                                     config.data.withdraw_methods || []
@@ -913,12 +970,12 @@ export function Invite() {
                             },
                             {
                                 key: "withdraw_account",
-                                label: "收款账户",
+                                label: tx("收款账户"),
                                 required: true,
                             },
                         ]}
                         initial={{}}
-                        submit="提交提现申请"
+                        submit={tx("提交提现申请")}
                         onSave={async (b) => {
                             await request("user/ticket/withdraw", b);
                             navigate("ticket");
@@ -937,43 +994,45 @@ export function Profile() {
     const password: Field[] = [
         {
             key: "old_password",
-            label: "当前密码",
+            label: tx("当前密码"),
             type: "password",
             required: true,
         },
         {
             key: "new_password",
-            label: "新密码",
+            label: tx("新密码"),
             type: "password",
             required: true,
         },
     ];
     return (
         <>
-            <Panel title="账户信息">
+            <Panel title={tx("账户信息")}>
                 <State {...d}>
                     <div className="pad">
                         <h3>{d.data?.email}</h3>
-                        <p className="muted">管理密码、流量提醒和账户余额。</p>
+                        <p className="muted">
+                            {tx("管理密码、流量提醒和账户余额。")}
+                        </p>
                     </div>
                     <Editor
                         fields={[
                             {
                                 key: "remind_expire",
-                                label: "到期提醒",
+                                label: tx("到期提醒"),
                                 type: "select",
                                 options: [
-                                    ["1", "开启"],
-                                    ["0", "关闭"],
+                                    ["1", tx("开启")],
+                                    ["0", tx("关闭")],
                                 ],
                             },
                             {
                                 key: "remind_traffic",
-                                label: "流量提醒",
+                                label: tx("流量提醒"),
                                 type: "select",
                                 options: [
-                                    ["1", "开启"],
-                                    ["0", "关闭"],
+                                    ["1", tx("开启")],
+                                    ["0", tx("关闭")],
                                 ],
                             },
                         ]}
@@ -983,53 +1042,53 @@ export function Profile() {
                                 remind_expire: b.remind_expire,
                                 remind_traffic: b.remind_traffic,
                             });
-                            setNotice("提醒设置已保存");
+                            setNotice(tx("提醒设置已保存"));
                             d.reload();
                         }}
                     />
                 </State>
             </Panel>
-            <Panel title="修改密码">
+            <Panel title={tx("修改密码")}>
                 <Editor
                     fields={password}
                     initial={{}}
                     onSave={async (b) => {
                         await request("user/changePassword", b);
-                        setNotice("密码已更新");
+                        setNotice(tx("密码已更新"));
                     }}
                 />
             </Panel>
             <div className="split">
-                <Panel title="兑换礼品卡">
+                <Panel title={tx("兑换礼品卡")}>
                     <Editor
                         fields={[
                             {
                                 key: "giftcard",
-                                label: "礼品卡代码",
+                                label: tx("礼品卡代码"),
                                 required: true,
                             },
                         ]}
                         initial={{}}
-                        submit="兑换"
+                        submit={tx("兑换")}
                         onSave={async (b) => {
                             await request("user/redeemgiftcard", b);
-                            setNotice("兑换成功");
+                            setNotice(tx("兑换成功"));
                             d.reload();
                         }}
                     />
                 </Panel>
-                <Panel title="账户充值">
+                <Panel title={tx("账户充值")}>
                     <Editor
                         fields={[
                             {
                                 key: "deposit_amount",
-                                label: "充值金额（分）",
+                                label: tx("充值金额（分）"),
                                 type: "number",
                                 required: true,
                             },
                         ]}
                         initial={{ plan_id: 0 }}
-                        submit="创建充值订单"
+                        submit={tx("创建充值订单")}
                         onSave={async (b) => {
                             const r = await request<string>(
                                 "user/order/save",
@@ -1045,16 +1104,20 @@ export function Profile() {
                     {notice}
                 </div>
             )}
-            <Panel title="活跃会话">
+            <Panel title={tx("活跃会话")}>
                 <State {...sessions}>
                     <Table
                         data={Object.entries(sessions.data || {}).map(
                             ([id, value]) => ({ ...value, id }),
                         )}
                         columns={[
-                            ["ip", "IP 地址"],
-                            ["ua", "客户端"],
-                            ["login_at", "登录时间", (r) => date(r.login_at)],
+                            ["ip", tx("IP 地址")],
+                            ["ua", tx("客户端")],
+                            [
+                                "login_at",
+                                tx("登录时间"),
+                                (r) => date(r.login_at),
+                            ],
                         ]}
                         actions={(r) => (
                             <button
@@ -1070,7 +1133,7 @@ export function Profile() {
                                     }
                                 }}
                             >
-                                移除
+                                {tx("移除")}
                             </button>
                         )}
                     />
@@ -1093,7 +1156,7 @@ export function Profile() {
                                 }
                             }}
                         >
-                            打开机器人
+                            {tx("打开机器人")}
                         </button>
                         {config.data?.telegram_discuss_link && (
                             <a
@@ -1102,21 +1165,21 @@ export function Profile() {
                                 target="_blank"
                                 rel="noreferrer"
                             >
-                                加入讨论组
+                                {tx("加入讨论组")}
                             </a>
                         )}
                         <button
                             onClick={async () => {
                                 try {
                                     await request("user/unbindTelegram");
-                                    setNotice("Telegram 已解绑");
+                                    setNotice(tx("Telegram 已解绑"));
                                     d.reload();
                                 } catch (e) {
                                     setNotice((e as Error).message);
                                 }
                             }}
                         >
-                            解除绑定
+                            {tx("解除绑定")}
                         </button>
                     </div>
                 </Panel>
@@ -1127,15 +1190,15 @@ export function Profile() {
 export function Traffic() {
     const d = useData<Row[]>("user/stat/getTrafficLog");
     return (
-        <Panel title="流量记录" actions={<Reload onClick={d.reload} />}>
+        <Panel title={tx("流量记录")} actions={<Reload onClick={d.reload} />}>
             <State {...d} retry={d.reload}>
                 <Table
                     data={d.data || []}
                     columns={[
-                        ["record_at", "日期", (r) => date(r.record_at)],
-                        ["u", "上传", (r) => bytes(r.u)],
-                        ["d", "下载", (r) => bytes(r.d)],
-                        ["server_rate", "倍率"],
+                        ["record_at", tx("日期"), (r) => date(r.record_at)],
+                        ["u", tx("上传"), (r) => bytes(r.u)],
+                        ["d", tx("下载"), (r) => bytes(r.d)],
+                        ["server_rate", tx("倍率")],
                     ]}
                 />
             </State>

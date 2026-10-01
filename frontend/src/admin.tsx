@@ -821,9 +821,12 @@ export function Overview() {
                                         <div key={k}>
                                             <span>{labels[k] || k}</span>
                                             <strong>
-                                                {typeof v === "object"
-                                                    ? JSON.stringify(v)
-                                                    : String(v)}
+                                                {k.includes("income") ||
+                                                k.includes("payout")
+                                                    ? money(v)
+                                                    : typeof v === "object"
+                                                      ? JSON.stringify(v)
+                                                      : String(v)}
                                             </strong>
                                         </div>
                                     ))}
@@ -839,6 +842,16 @@ export function Overview() {
     );
 }
 const labels: Record<string, string> = {
+    online_user: "在线用户",
+    month_income: "本月收入",
+    last_month_income: "上月收入",
+    day_income: "今日收入",
+    month_register_total: "本月注册用户",
+    day_register_total: "今日注册用户",
+    ticket_pending_total: "待处理工单",
+    commission_pending_total: "待结算佣金订单",
+    commission_month_payout: "本月佣金支出",
+    commission_last_month_payout: "上月佣金支出",
     app_name: "站点名称",
     app_description: "站点介绍",
     app_url: "站点 URL",

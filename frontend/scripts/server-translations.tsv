@@ -1,0 +1,98 @@
+Article does not exist|記事が見つかりません|문서를 찾을 수 없습니다|Không tìm thấy bài viết|Статья не найдена|مقاله یافت نشد
+Cancel failed|キャンセルできませんでした|취소하지 못했습니다|Không thể hủy|Не удалось отменить|لغو ناموفق بود
+Close failed|閉じられませんでした|닫지 못했습니다|Không thể đóng|Не удалось закрыть|بستن ناموفق بود
+Coupon cannot be empty|クーポンを入力してください|쿠폰을 입력하세요|Vui lòng nhập mã giảm giá|Введите купон|کد تخفیف را وارد کنید
+Coupon failed|クーポンを適用できませんでした|쿠폰을 적용하지 못했습니다|Không thể áp dụng mã giảm giá|Не удалось применить купон|اعمال تخفیف ناموفق بود
+Currency conversion has timed out, please try again later|通貨換算がタイムアウトしました。後でもう一度お試しください|통화 변환 시간이 초과되었습니다. 나중에 다시 시도하세요|Chuyển đổi tiền tệ quá hạn. Vui lòng thử lại sau|Время конвертации истекло. Повторите позже|زمان تبدیل ارز تمام شد. بعداً دوباره تلاش کنید
+Email already exists|メールアドレスは登録済みです|이미 등록된 이메일입니다|Email đã tồn tại|Этот адрес уже зарегистрирован|ایمیل قبلاً ثبت شده است
+Email suffix is not in the Whitelist|このメールドメインは許可されていません|허용되지 않은 이메일 도메인입니다|Tên miền email không được phép|Этот почтовый домен не разрешён|دامنه ایمیل مجاز نیست
+Email verification code|メール認証コード|이메일 인증 코드|Mã xác minh email|Код из письма|کد تأیید ایمیل
+Email verification code cannot be empty|メール認証コードを入力してください|이메일 인증 코드를 입력하세요|Vui lòng nhập mã xác minh email|Введите код из письма|کد تأیید ایمیل را وارد کنید
+Email verification code has been sent, please request again later|コードを送信しました。再送はしばらくお待ちください|코드를 보냈습니다. 잠시 후 다시 요청하세요|Đã gửi mã. Vui lòng đợi trước khi yêu cầu lại|Код отправлен. Повторный запрос будет доступен позже|کد ارسال شد. کمی بعد دوباره درخواست دهید
+Failed to create order|注文を作成できませんでした|주문을 생성하지 못했습니다|Không thể tạo đơn hàng|Не удалось создать заказ|ایجاد سفارش ناموفق بود
+Failed to open ticket|チケットを作成できませんでした|지원 요청을 생성하지 못했습니다|Không thể tạo yêu cầu hỗ trợ|Не удалось создать обращение|ایجاد درخواست ناموفق بود
+Gmail alias is not supported|Gmail のエイリアスは利用できません|Gmail 별칭은 지원되지 않습니다|Không hỗ trợ bí danh Gmail|Псевдонимы Gmail не поддерживаются|نام مستعار Gmail پشتیبانی نمی‌شود
+Incorrect email or password|メールアドレスまたはパスワードが違います|이메일 또는 비밀번호가 올바르지 않습니다|Email hoặc mật khẩu không đúng|Неверный адрес или пароль|ایمیل یا رمز عبور نادرست است
+Incorrect email verification code|メール認証コードが違います|이메일 인증 코드가 올바르지 않습니다|Mã xác minh email không đúng|Неверный код из письма|کد تأیید ایمیل نادرست است
+Insufficient balance|残高が不足しています|잔액이 부족합니다|Số dư không đủ|Недостаточно средств|موجودی کافی نیست
+Insufficient commission balance|報酬残高が不足しています|수수료 잔액이 부족합니다|Hoa hồng không đủ|Недостаточно комиссии|موجودی کمیسیون کافی نیست
+Invalid code is incorrect|認証コードが違います|인증 코드가 올바르지 않습니다|Mã xác minh không đúng|Неверный проверочный код|کد تأیید نادرست است
+Invalid coupon|クーポンが無効です|유효하지 않은 쿠폰입니다|Mã giảm giá không hợp lệ|Недействительный купон|کد تخفیف نامعتبر است
+Invalid invitation code|招待コードが無効です|초대 코드가 유효하지 않습니다|Mã mời không hợp lệ|Недействительный код приглашения|کد دعوت نامعتبر است
+Invalid parameter|パラメーターが無効です|매개변수가 유효하지 않습니다|Tham số không hợp lệ|Недопустимый параметр|پارامتر نامعتبر است
+Message cannot be empty|メッセージを入力してください|메시지를 입력하세요|Vui lòng nhập nội dung|Введите сообщение|پیام را وارد کنید
+No active subscription. Unable to use our provided Apple ID|有効なプランがないため、提供された Apple ID は利用できません|활성 구독이 없어 제공된 Apple ID를 사용할 수 없습니다|Không có gói hoạt động nên không thể dùng Apple ID được cung cấp|Без активной подписки предоставленный Apple ID недоступен|بدون اشتراک فعال، استفاده از Apple ID ارائه‌شده ممکن نیست
+Oops, there's a problem... Please refresh the page and try again later|問題が発生しました。ページを更新して後でもう一度お試しください|문제가 발생했습니다. 새로고침 후 나중에 다시 시도하세요|Đã xảy ra lỗi. Hãy tải lại trang và thử lại sau|Произошла ошибка. Обновите страницу и повторите позже|مشکلی رخ داد. صفحه را تازه کنید و بعداً دوباره تلاش کنید
+Order does not exist|注文が見つかりません|주문을 찾을 수 없습니다|Không tìm thấy đơn hàng|Заказ не найден|سفارش یافت نشد
+Order does not exist or has been paid|注文が存在しないか、支払い済みです|주문이 없거나 이미 결제되었습니다|Đơn hàng không tồn tại hoặc đã thanh toán|Заказ не найден или уже оплачен|سفارش وجود ندارد یا پرداخت شده است
+Payment failed. Please check your credit card information|支払いに失敗しました。カード情報を確認してください|결제에 실패했습니다. 카드 정보를 확인하세요|Thanh toán thất bại. Vui lòng kiểm tra thông tin thẻ|Оплата не прошла. Проверьте данные карты|پرداخت ناموفق بود. اطلاعات کارت را بررسی کنید
+Payment gateway request failed|決済サービスへの接続に失敗しました|결제 서비스 요청에 실패했습니다|Yêu cầu cổng thanh toán thất bại|Ошибка запроса платёжного шлюза|درخواست درگاه پرداخت ناموفق بود
+Payment method is not available|この支払い方法は利用できません|이 결제 수단은 사용할 수 없습니다|Phương thức thanh toán không khả dụng|Способ оплаты недоступен|روش پرداخت در دسترس نیست
+Please wait for the technical enginneer to reply|サポートからの返信をお待ちください|지원 담당자의 답변을 기다려 주세요|Vui lòng chờ hỗ trợ trả lời|Дождитесь ответа специалиста|منتظر پاسخ پشتیبانی بمانید
+Register failed|登録できませんでした|가입하지 못했습니다|Đăng ký thất bại|Регистрация не удалась|ثبت‌نام ناموفق بود
+Registration has closed|新規登録は停止されています|신규 가입이 마감되었습니다|Đăng ký đã đóng|Регистрация закрыта|ثبت‌نام بسته است
+Reset failed|リセットできませんでした|초기화하지 못했습니다|Đặt lại thất bại|Сброс не удался|بازنشانی ناموفق بود
+Save failed|保存できませんでした|저장하지 못했습니다|Lưu thất bại|Не удалось сохранить|ذخیره ناموفق بود
+Subscription has expired or no active subscription, unable to purchase Data Reset Package|有効なプランがないため通信量リセットを購入できません|활성 구독이 없어 데이터 초기화를 구매할 수 없습니다|Không có gói hoạt động nên không thể mua gói đặt lại lưu lượng|Без активной подписки сброс трафика недоступен|بدون اشتراک فعال، خرید بازنشانی ترافیک ممکن نیست
+Subscription plan does not exist|プランが見つかりません|요금제를 찾을 수 없습니다|Không tìm thấy gói|Тариф не найден|طرح یافت نشد
+The coupon code cannot be used for this subscription|このプランにはクーポンを利用できません|이 구독에는 쿠폰을 사용할 수 없습니다|Mã giảm giá không áp dụng cho gói này|Купон не действует для этой подписки|این تخفیف برای اشتراک قابل استفاده نیست
+The current required minimum withdrawal commission is :limit|出金の最低報酬額は :limit です|최소 출금 수수료 금액은 :limit입니다|Hoa hồng rút tối thiểu là :limit|Минимальная сумма вывода комиссии: :limit|حداقل کمیسیون برای برداشت :limit است
+The maximum number of creations has been reached|作成可能な件数の上限に達しました|생성 가능한 최대 수에 도달했습니다|Đã đạt số lượng tạo tối đa|Достигнут лимит создания|حداکثر تعداد ایجاد شده است
+The old password is wrong|現在のパスワードが違います|현재 비밀번호가 올바르지 않습니다|Mật khẩu hiện tại không đúng|Текущий пароль неверен|رمز عبور فعلی نادرست است
+The ticket is closed and cannot be replied|終了したチケットには返信できません|종료된 요청에는 답변할 수 없습니다|Yêu cầu đã đóng nên không thể trả lời|Нельзя ответить в закрытом обращении|امکان پاسخ به درخواست بسته‌شده نیست
+The user does not exist|ユーザーが見つかりません|사용자를 찾을 수 없습니다|Không tìm thấy người dùng|Пользователь не найден|کاربر یافت نشد
+There are other unresolved tickets|未解決のチケットがあります|미해결 요청이 있습니다|Còn yêu cầu chưa được giải quyết|Есть незакрытые обращения|درخواست حل‌نشده دیگری وجود دارد
+This coupon has expired|クーポンの有効期限が切れています|쿠폰이 만료되었습니다|Mã giảm giá đã hết hạn|Срок купона истёк|کد تخفیف منقضی شده است
+This coupon has not yet started|クーポンの利用期間はまだ始まっていません|쿠폰 사용 기간이 시작되지 않았습니다|Mã giảm giá chưa bắt đầu|Купон ещё не действует|زمان استفاده از تخفیف شروع نشده است
+This coupon is no longer available|このクーポンは利用できません|이 쿠폰은 더 이상 사용할 수 없습니다|Mã giảm giá không còn khả dụng|Купон больше не доступен|تخفیف دیگر قابل استفاده نیست
+This email is registered|このメールは登録済みです|이미 등록된 이메일입니다|Email này đã đăng ký|Адрес уже зарегистрирован|این ایمیل ثبت شده است
+This email is not registered in the system|このメールは登録されていません|등록되지 않은 이메일입니다|Email này chưa đăng ký|Адрес не зарегистрирован|این ایمیل ثبت نشده است
+This payment cycle cannot be purchased, please choose another cycle|この請求期間は選べません。別の期間を選択してください|이 결제 주기는 구매할 수 없습니다. 다른 주기를 선택하세요|Không thể mua chu kỳ này. Vui lòng chọn chu kỳ khác|Этот период оплаты недоступен. Выберите другой|این دوره پرداخت قابل خرید نیست. دوره دیگری انتخاب کنید
+This subscription cannot be renewed, please change to another subscription|このプランは更新できません。別のプランを選択してください|이 구독은 갱신할 수 없습니다. 다른 구독을 선택하세요|Không thể gia hạn gói này. Vui lòng chọn gói khác|Подписку нельзя продлить. Выберите другую|تمدید این اشتراک ممکن نیست. اشتراک دیگری انتخاب کنید
+This subscription has been sold out, please choose another subscription|このプランは売り切れです。別のプランを選択してください|이 요금제는 매진되었습니다. 다른 요금제를 선택하세요|Gói đã hết. Vui lòng chọn gói khác|Тариф распродан. Выберите другой|ظرفیت این طرح تمام شده است. طرح دیگری انتخاب کنید
+This subscription has expired, please change to another subscription|このプランは期限切れです。別のプランを選択してください|이 구독은 만료되었습니다. 다른 구독을 선택하세요|Gói đã hết hạn. Vui lòng chọn gói khác|Подписка истекла. Выберите другую|این اشتراک منقضی شده است. اشتراک دیگری انتخاب کنید
+Ticket does not exist|チケットが見つかりません|지원 요청을 찾을 수 없습니다|Không tìm thấy yêu cầu|Обращение не найдено|درخواست یافت نشد
+Ticket reply failed|返信を送信できませんでした|답변을 보내지 못했습니다|Gửi trả lời thất bại|Не удалось отправить ответ|ارسال پاسخ ناموفق بود
+Token error|認証トークンが無効です|인증 토큰이 유효하지 않습니다|Mã truy cập không hợp lệ|Недействительный токен|توکن نامعتبر است
+Transfer failed|振替できませんでした|전환하지 못했습니다|Chuyển tiền thất bại|Перевод не удался|انتقال ناموفق بود
+Unsupported withdrawal|出金は利用できません|출금이 지원되지 않습니다|Không hỗ trợ rút tiền|Вывод не поддерживается|برداشت پشتیبانی نمی‌شود
+Unsupported withdrawal method|この出金方法は利用できません|지원되지 않는 출금 방식입니다|Phương thức rút tiền không được hỗ trợ|Способ вывода не поддерживается|روش برداشت پشتیبانی نمی‌شود
+Withdrawal account|受取口座|수령 계좌|Tài khoản nhận|Счёт вывода|حساب برداشت
+Withdrawal method|出金方法|출금 방식|Phương thức rút tiền|Способ вывода|روش برداشت
+You can only cancel pending orders|支払い待ちの注文のみキャンセルできます|결제 대기 주문만 취소할 수 있습니다|Chỉ có thể hủy đơn chờ thanh toán|Можно отменить только неоплаченные заказы|فقط سفارش در انتظار پرداخت قابل لغو است
+You have an unpaid or pending order, please try again later or cancel it|未払いまたは処理中の注文があります。後で再試行するかキャンセルしてください|미결제 또는 처리 중인 주문이 있습니다. 나중에 다시 시도하거나 취소하세요|Bạn có đơn chưa thanh toán hoặc đang xử lý. Hãy thử lại sau hoặc hủy đơn|Есть неоплаченный или обрабатываемый заказ. Повторите позже или отмените его|سفارش پرداخت‌نشده یا در حال بررسی دارید. بعداً تلاش کنید یا آن را لغو کنید
+You must have a valid subscription to view content in this area|このコンテンツには有効なプランが必要です|이 콘텐츠를 보려면 활성 구독이 필요합니다|Cần gói hoạt động để xem nội dung này|Для просмотра нужна действующая подписка|برای مشاهده این محتوا اشتراک فعال لازم است
+You must use the invitation code to register|登録には招待コードが必要です|가입하려면 초대 코드가 필요합니다|Cần mã mời để đăng ký|Для регистрации нужен код приглашения|برای ثبت‌نام کد دعوت لازم است
+Your account has been suspended|アカウントは停止されています|계정이 정지되었습니다|Tài khoản đã bị đình chỉ|Аккаунт заблокирован|حساب شما تعلیق شده است
+[Commission Withdrawal Request] This ticket is opened by the system|[報酬出金申請] システムが作成したチケットです|[수수료 출금 신청] 시스템에서 생성한 요청입니다|[Rút hoa hồng] Yêu cầu do hệ thống tạo|[Вывод комиссии] Обращение создано системой|[برداشت کمیسیون] این درخواست توسط سیستم ایجاد شده است
+Plan ID cannot be empty|プラン ID を指定してください|요금제 ID를 지정하세요|Vui lòng chọn ID gói|Укажите ID тарифа|شناسه طرح را وارد کنید
+Plan cycle cannot be empty|請求期間を選択してください|결제 주기를 선택하세요|Vui lòng chọn chu kỳ|Выберите период оплаты|دوره پرداخت را انتخاب کنید
+Wrong plan cycle|請求期間が無効です|결제 주기가 유효하지 않습니다|Chu kỳ không hợp lệ|Недопустимый период оплаты|دوره پرداخت نامعتبر است
+Ticket subject cannot be empty|件名を入力してください|제목을 입력하세요|Vui lòng nhập tiêu đề|Введите тему обращения|موضوع درخواست را وارد کنید
+Ticket level cannot be empty|優先度を選択してください|우선순위를 선택하세요|Vui lòng chọn mức ưu tiên|Выберите приоритет|اولویت را انتخاب کنید
+Incorrect ticket level format|優先度が無効です|우선순위가 유효하지 않습니다|Mức ưu tiên không hợp lệ|Недопустимый приоритет|اولویت نامعتبر است
+The withdrawal method cannot be empty|出金方法を選択してください|출금 방식을 선택하세요|Vui lòng chọn cách rút tiền|Выберите способ вывода|روش برداشت را انتخاب کنید
+The withdrawal account cannot be empty|受取口座を入力してください|수령 계좌를 입력하세요|Vui lòng nhập tài khoản nhận|Укажите счёт получателя|حساب دریافت‌کننده را وارد کنید
+Old password cannot be empty|現在のパスワードを入力してください|현재 비밀번호를 입력하세요|Vui lòng nhập mật khẩu hiện tại|Введите текущий пароль|رمز عبور فعلی را وارد کنید
+New password cannot be empty|新しいパスワードを入力してください|새 비밀번호를 입력하세요|Vui lòng nhập mật khẩu mới|Введите новый пароль|رمز عبور جدید را وارد کنید
+Password must be greater than 8 digits|パスワードは 8 文字より長くしてください|비밀번호는 8자보다 길어야 합니다|Mật khẩu phải dài hơn 8 ký tự|Пароль должен быть длиннее 8 символов|رمز عبور باید بیش از ۸ نویسه باشد
+The transfer amount cannot be empty|振替金額を入力してください|전환 금액을 입력하세요|Vui lòng nhập số tiền chuyển|Введите сумму перевода|مبلغ انتقال را وارد کنید
+The transfer amount parameter is wrong|振替金額が無効です|전환 금액이 유효하지 않습니다|Số tiền chuyển không hợp lệ|Недопустимая сумма перевода|مبلغ انتقال نامعتبر است
+Incorrect format of expiration reminder|期限通知の設定が無効です|만료 알림 설정이 유효하지 않습니다|Cài đặt nhắc hết hạn không hợp lệ|Недопустимая настройка напоминаний|تنظیم یادآوری انقضا نامعتبر است
+Incorrect traffic alert format|通信量通知の設定が無効です|데이터 알림 설정이 유효하지 않습니다|Cài đặt nhắc lưu lượng không hợp lệ|Недопустимая настройка уведомлений о трафике|تنظیم هشدار ترافیک نامعتبر است
+Email can not be empty|メールアドレスを入力してください|이메일을 입력하세요|Vui lòng nhập email|Введите адрес эл. почты|ایمیل را وارد کنید
+Email format is incorrect|メールアドレスの形式が違います|이메일 형식이 올바르지 않습니다|Định dạng email không đúng|Неверный формат адреса|قالب ایمیل نادرست است
+Password can not be empty|パスワードを入力してください|비밀번호를 입력하세요|Vui lòng nhập mật khẩu|Введите пароль|رمز عبور را وارد کنید
+The traffic usage in :app_name has reached 95%|:app_name の通信量使用率が 95% に達しました|:app_name의 데이터 사용량이 95%에 도달했습니다|Lưu lượng tại :app_name đã đạt 95%|В :app_name использовано 95% трафика|مصرف ترافیک در :app_name به ۹۵٪ رسیده است
+The service in :app_name is about to expire|:app_name のサービスはまもなく期限切れになります|:app_name 서비스가 곧 만료됩니다|Dịch vụ tại :app_name sắp hết hạn|Срок услуги в :app_name скоро истечёт|خدمات :app_name به‌زودی منقضی می‌شود
+The coupon can only be used :limit_use_with_user per person|クーポンは一人 :limit_use_with_user 回まで利用できます|쿠폰은 1인당 :limit_use_with_user회 사용할 수 있습니다|Mỗi người chỉ dùng mã :limit_use_with_user lần|Купон можно использовать :limit_use_with_user раз на человека|هر شخص می‌تواند این تخفیف را :limit_use_with_user بار استفاده کند
+The coupon code cannot be used for this period|この期間にはクーポンを利用できません|이 기간에는 쿠폰을 사용할 수 없습니다|Mã giảm giá không áp dụng cho chu kỳ này|Купон не действует для этого периода|تخفیف برای این دوره قابل استفاده نیست
+Request failed, please try again later|リクエストに失敗しました。後でもう一度お試しください|요청에 실패했습니다. 나중에 다시 시도하세요|Yêu cầu thất bại. Vui lòng thử lại sau|Запрос не удался. Повторите позже|درخواست ناموفق بود. بعداً دوباره تلاش کنید
+Register frequently, please try again after :minute minute|登録の試行が多すぎます。:minute 分後に再試行してください|가입 시도가 너무 많습니다. :minute분 후 다시 시도하세요|Đăng ký quá nhiều lần. Thử lại sau :minute phút|Слишком частые регистрации. Повторите через :minute мин.|تلاش‌های ثبت‌نام زیاد است. پس از :minute دقیقه دوباره تلاش کنید
+Uh-oh, we've had some problems, we're working on it.|問題が発生しました。対応中です|문제가 발생하여 처리 중입니다|Đã xảy ra lỗi, chúng tôi đang xử lý|Возникла проблема, мы её исправляем|مشکلی رخ داده و در حال رفع آن هستیم
+This subscription reset package does not apply to your subscription|このリセットパックは現在のプランに適用できません|이 초기화 패키지는 현재 구독에 적용되지 않습니다|Gói đặt lại không áp dụng cho đăng ký của bạn|Этот пакет сброса не подходит вашей подписке|این بسته بازنشانی برای اشتراک شما مناسب نیست
+Login to :name|:name にログイン|:name에 로그인|Đăng nhập vào :name|Войти в :name|ورود به :name
+Sending frequently, please try again later|送信の試行が多すぎます。後でもう一度お試しください|전송 요청이 너무 많습니다. 나중에 다시 시도하세요|Gửi quá thường xuyên. Vui lòng thử lại sau|Слишком частая отправка. Повторите позже|درخواست ارسال زیاد است. بعداً دوباره تلاش کنید
+Current product is sold out|この商品は売り切れです|현재 상품은 매진되었습니다|Sản phẩm đã hết|Товар распродан|ظرفیت محصول تمام شده است
+There are too many password errors, please try again after :minute minutes.|パスワードの誤りが多すぎます。:minute 分後に再試行してください|비밀번호 오류가 너무 많습니다. :minute분 후 다시 시도하세요|Sai mật khẩu quá nhiều lần. Thử lại sau :minute phút|Слишком много ошибок пароля. Повторите через :minute мин.|خطاهای رمز عبور زیاد است. پس از :minute دقیقه دوباره تلاش کنید
+Reset failed, Please try again later|リセットに失敗しました。後でもう一度お試しください|초기화에 실패했습니다. 나중에 다시 시도하세요|Đặt lại thất bại. Vui lòng thử lại sau|Сброс не удался. Повторите позже|بازنشانی ناموفق بود. بعداً دوباره تلاش کنید

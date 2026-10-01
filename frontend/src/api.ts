@@ -1,3 +1,4 @@
+import { tx, locale } from "./i18n";
 export type Row = Record<string, any>;
 export interface Envelope<T> {
     data: T;
@@ -40,6 +41,7 @@ export async function request<T = Row>(
         method: body ? "POST" : "GET",
         headers: {
             Accept: "application/json",
+            "Content-Language": locale(),
             ...(body ? { "Content-Type": "application/json" } : {}),
             ...(token ? { Authorization: token } : {}),
         },
@@ -49,7 +51,9 @@ export async function request<T = Row>(
     try {
         json = await res.json();
     } catch {
-        throw new Error(`服务响应异常 (${res.status})`);
+        throw new Error(
+            tx("服务响应异常 ({{value0}})", { value0: res.status }),
+        );
     }
     if (!res.ok) {
         if ((res.status === 403 || res.status === 401) && token) {
@@ -61,7 +65,7 @@ export async function request<T = Row>(
                 .flat()
                 .join("；") ||
                 json.message ||
-                `请求失败 (${res.status})`,
+                tx("请求失败 ({{value0}})", { value0: res.status }),
         );
     }
     return json;
@@ -82,7 +86,7 @@ export function rows(data: unknown): Row[] {
     return [];
 }
 export const money = (n: unknown) =>
-    `${boot.currencySymbol}${(Number(n || 0) / 100).toFixed(2)}`;
+    `${boot.currencySymbol}${new Intl.NumberFormat(locale(), { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(Number(n || 0) / 100)}`;
 export const bytes = (n: unknown) => {
     let v = Number(n || 0),
         i = 0;
@@ -94,7 +98,7 @@ export const bytes = (n: unknown) => {
     return `${v.toFixed(i ? 2 : 0)} ${units[i]}`;
 };
 export const date = (n: unknown) =>
-    n ? new Date(Number(n) * 1000).toLocaleString("zh-CN") : "—";
+    n ? new Date(Number(n) * 1000).toLocaleString(locale()) : "—";
 export const navigate = (path: string) => {
     location.hash = "/" + path;
 };

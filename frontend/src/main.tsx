@@ -1,3 +1,4 @@
+import { tx, locale } from "./i18n";
 import React, { useEffect, useRef, useState, type ReactNode } from "react";
 import { createRoot } from "react-dom/client";
 import {
@@ -27,6 +28,7 @@ import {
     Route,
     Layers,
     Server,
+    X,
 } from "lucide-react";
 import { boot, request, storageKey, navigate, admin, type Row } from "./api";
 import { Editor, Panel, type Field } from "./ui";
@@ -41,19 +43,11 @@ import {
     Profile,
     Traffic,
 } from "./user";
-import {
-    Overview,
-    ResourcePage,
-    resources,
-    Settings as SiteSettings,
-    RiskSettings,
-    Translations,
-    GenerateUsers,
-    Payments,
-    Nodes,
-    System,
-} from "./admin";
+const AdminContent = React.lazy(() => import("./admin-entry"));
 import "./style.css";
+import "./console.css";
+import { useTranslation } from "react-i18next";
+import { LanguagePicker } from "./LanguagePicker";
 type Nav = { key: string; label: string; icon: typeof Globe; group: string };
 const userNav: Nav[] = [
     {
@@ -141,9 +135,11 @@ const adminNav: Nav[] = [
     { key: "usage", label: "用户使用情况", icon: Globe, group: "风控与客户端" },
     ...["login", "subscribe", "connection", "risk"].map((key, i) => ({
         key: "log-" + key,
-        label: ["登录日志", "订阅日志", "连接日志", "风控命中"][i],
+        label: [tx("登录日志"), tx("订阅日志"), tx("连接日志"), tx("风控命中")][
+            i
+        ],
         icon: ScrollText,
-        group: "日志与系统",
+        group: tx("日志与系统"),
     })),
     {
         key: "system-log",
@@ -169,21 +165,21 @@ function Auth({
         [cooldown, setCooldown] = useState(0);
     const formRef = useRef<HTMLDivElement>(null);
     const fields: Field[] = [
-        { key: "email", label: "邮箱地址", required: true },
+        { key: "email", label: tx("邮箱地址"), required: true },
         {
             key: "password",
-            label: forget ? "新密码" : "密码",
+            label: forget ? tx("新密码") : tx("密码"),
             type: "password",
             required: true,
         },
         ...(register
-            ? [{ key: "invite_code", label: "邀请码（可选）" } as Field]
+            ? [{ key: "invite_code", label: tx("邀请码（可选）") } as Field]
             : []),
         ...(forget || (register && boot.emailVerify)
             ? [
                   {
                       key: "email_code",
-                      label: "邮箱验证码",
+                      label: tx("邮箱验证码"),
                       required: true,
                   } as Field,
               ]
@@ -204,19 +200,19 @@ function Auth({
                 <div>
                     <span className="eyebrow">A BETTER WAY TO CONNECT</span>
                     <h1>
-                        更自由的连接。
+                        {tx("更自由的连接。")}
                         <br />
-                        更简单的体验。
+                        {tx("更简单的体验。")}
                     </h1>
                     <p>
                         {boot.description ||
-                            "你的网络服务，在一个地方轻松管理。"}
+                            tx("你的网络服务，在一个地方轻松管理。")}
                     </p>
                     <div className="auth-orbits">
                         <Globe size={160} strokeWidth={0.65} />
                     </div>
                 </div>
-                <small>连接 · 探索 · 发现</small>
+                <small>{tx("连接 · 探索 · 发现")}</small>
             </section>
             <section className="auth-form">
                 <div className="auth-box" ref={formRef}>
@@ -225,17 +221,17 @@ function Auth({
                     </span>
                     <h2>
                         {forget
-                            ? "重置密码"
+                            ? tx("重置密码")
                             : register
-                              ? "创建账户"
-                              : "欢迎回来"}
+                              ? tx("创建账户")
+                              : tx("欢迎回来")}
                     </h2>
                     <p className="muted">
                         {boot.mode === "admin"
-                            ? "登录统一管理后台"
+                            ? tx("登录统一管理后台")
                             : forget
-                              ? "使用邮箱验证码设置新密码"
-                              : "登录以管理你的订阅与账户"}
+                              ? tx("使用邮箱验证码设置新密码")
+                              : tx("登录以管理你的订阅与账户")}
                     </p>
                     <Editor
                         key={mode}
@@ -247,11 +243,15 @@ function Auth({
                                 ).get("code") || "",
                         }}
                         submit={
-                            forget ? "重置密码" : register ? "注册账户" : "登录"
+                            forget
+                                ? tx("重置密码")
+                                : register
+                                  ? tx("注册账户")
+                                  : tx("登录")
                         }
                         onSave={async (body) => {
                             if (boot.recaptchaSiteKey && !captcha)
-                                throw new Error("请先完成安全验证");
+                                throw new Error(tx("请先完成安全验证"));
                             if (forget) {
                                 await request("passport/auth/forget", {
                                     ...body,
@@ -303,7 +303,9 @@ function Auth({
                                                     "input",
                                                 )?.value;
                                             if (!email)
-                                                throw new Error("请填写邮箱");
+                                                throw new Error(
+                                                    tx("请填写邮箱"),
+                                                );
                                             await request(
                                                 "passport/comm/sendEmailVerify",
                                                 {
@@ -321,10 +323,12 @@ function Auth({
                                     }}
                                 >
                                     {cooldown
-                                        ? `${cooldown} 秒后重试`
+                                        ? tx("{{value0}} 秒后重试", {
+                                              value0: cooldown,
+                                          })
                                         : sending
-                                          ? "发送中…"
-                                          : "发送邮箱验证码"}
+                                          ? tx("发送中…")
+                                          : tx("发送邮箱验证码")}
                                 </button>
                                 {mailError && (
                                     <div className="alert">{mailError}</div>
@@ -334,22 +338,22 @@ function Auth({
                     </Editor>
                     {boot.mode === "user" && (
                         <div className="auth-links">
-                            <a href="#/login">登录</a>
+                            <a href="#/login">{tx("登录")}</a>
                             {!boot.registerClosed && (
-                                <a href="#/register">创建账户</a>
+                                <a href="#/register">{tx("创建账户")}</a>
                             )}
-                            <a href="#/forget">忘记密码？</a>
+                            <a href="#/forget">{tx("忘记密码？")}</a>
                         </div>
                     )}
                     {register && boot.tosUrl && (
                         <p className="muted">
-                            注册即表示同意{" "}
+                            {tx("注册即表示同意")}{" "}
                             <a
                                 href={boot.tosUrl}
                                 target="_blank"
                                 rel="noreferrer"
                             >
-                                服务条款
+                                {tx("服务条款")}
                             </a>
                             。
                         </p>
@@ -396,6 +400,7 @@ function Captcha({ onChange }: { onChange: (value: string) => void }) {
     return boot.recaptchaSiteKey ? <div ref={ref} /> : null;
 }
 function App() {
+    useTranslation();
     const [path, setPath] = useState(
             location.hash.slice(2).split("?")[0] || "",
         ),
@@ -403,6 +408,54 @@ function App() {
         [loading, setLoading] = useState(true),
         [open, setOpen] = useState(false),
         [error, setError] = useState("");
+    const [mobile, setMobile] = useState(
+        () => matchMedia("(max-width: 800px)").matches,
+    );
+    const sidebar = useRef<HTMLElement>(null);
+    useEffect(() => {
+        const media = matchMedia("(max-width: 800px)");
+        const update = () => {
+            setMobile(media.matches);
+            if (!media.matches) setOpen(false);
+        };
+        media.addEventListener("change", update);
+        return () => media.removeEventListener("change", update);
+    }, []);
+    useEffect(() => {
+        window.scrollTo({ top: 0, behavior: "instant" });
+    }, [path]);
+    useEffect(() => {
+        if (!open) return;
+        const previous = document.body.style.overflow;
+        const previousFocus = document.activeElement as HTMLElement | null;
+        document.body.style.overflow = "hidden";
+        sidebar.current?.querySelector<HTMLElement>("button, a[href]")?.focus();
+        const escape = (event: KeyboardEvent) => {
+            if (event.key === "Escape") setOpen(false);
+            if (event.key === "Tab") {
+                const items = [
+                    ...(sidebar.current?.querySelectorAll<HTMLElement>(
+                        "button, a[href]",
+                    ) || []),
+                ];
+                const first = items[0],
+                    last = items.at(-1);
+                if (event.shiftKey && document.activeElement === first) {
+                    event.preventDefault();
+                    last?.focus();
+                } else if (!event.shiftKey && document.activeElement === last) {
+                    event.preventDefault();
+                    first?.focus();
+                }
+            }
+        };
+        window.addEventListener("keydown", escape);
+        return () => {
+            document.body.style.overflow = previous;
+            window.removeEventListener("keydown", escape);
+            previousFocus?.focus();
+        };
+    }, [open]);
     useEffect(() => {
         const fn = () => {
             setPath(location.hash.slice(2).split("?")[0] || "");
@@ -436,12 +489,17 @@ function App() {
         return (
             <div className="state full">
                 <span className="spinner" />
-                正在加载工作空间…
+                {tx("正在加载工作空间…")}
             </div>
         );
     if (!user)
         return (
             <>
+                {boot.mode === "user" && (
+                    <div className="auth-language">
+                        <LanguagePicker />
+                    </div>
+                )}
                 {error && <div className="alert">{error}</div>}
                 <Auth mode={path} onLogin={setUser} />
             </>
@@ -452,26 +510,17 @@ function App() {
         groups = [...new Set(nav.map((n) => n.group))];
     let content: ReactNode;
     if (boot.mode === "admin") {
-        content = resources[current] ? (
-            <ResourcePage key={current} resource={resources[current]} />
-        ) : current === "settings" ? (
-            <SiteSettings />
-        ) : current === "risk-settings" ? (
-            <RiskSettings />
-        ) : current === "translations" ? (
-            <Translations />
-        ) : current === "tickets" ? (
-            <Tickets isAdmin />
-        ) : current === "generate" ? (
-            <GenerateUsers />
-        ) : current === "payments" ? (
-            <Payments />
-        ) : current === "nodes" ? (
-            <Nodes />
-        ) : current === "system" ? (
-            <System />
-        ) : (
-            <Overview />
+        content = (
+            <React.Suspense
+                fallback={
+                    <div className="state">
+                        <span className="spinner" />
+                        {tx("正在加载…")}
+                    </div>
+                }
+            >
+                <AdminContent current={current} />
+            </React.Suspense>
         );
     } else {
         content =
@@ -500,7 +549,18 @@ function App() {
             {open && (
                 <div className="nav-backdrop" onClick={() => setOpen(false)} />
             )}
-            <aside className={open ? "open" : ""}>
+            <aside
+                ref={sidebar}
+                inert={mobile && !open}
+                className={open ? "open" : ""}
+            >
+                <button
+                    className="drawer-close icon-button"
+                    aria-label={tx("关闭")}
+                    onClick={() => setOpen(false)}
+                >
+                    <X size={19} />
+                </button>
                 <a
                     className="brand"
                     href={boot.mode === "admin" ? `/${boot.adminPath}` : "/"}
@@ -510,19 +570,22 @@ function App() {
                         {boot.title}
                         <small>
                             {boot.mode === "admin"
-                                ? "管理控制台"
-                                : "用户工作空间"}
+                                ? tx("管理控制台")
+                                : tx("用户工作空间")}
                         </small>
                     </span>
                 </a>
                 <nav>
                     {groups.map((group) => (
                         <div className="nav-group" key={group}>
-                            <small>{group}</small>
+                            <small>{tx(group)}</small>
                             {nav
                                 .filter((n) => n.group === group)
                                 .map(({ key, label, icon: Icon }) => (
                                     <a
+                                        aria-current={
+                                            current === key ? "page" : undefined
+                                        }
                                         className={
                                             current === key ? "active" : ""
                                         }
@@ -530,7 +593,7 @@ function App() {
                                         key={key}
                                     >
                                         <Icon size={18} />
-                                        <span>{label}</span>
+                                        <span>{tx(label)}</span>
                                         {current === key && (
                                             <span className="nav-dot" />
                                         )}
@@ -546,12 +609,14 @@ function App() {
                     <div>
                         <strong>{user.email}</strong>
                         <small>
-                            {boot.mode === "admin" ? "管理员" : "个人账户"}
+                            {boot.mode === "admin"
+                                ? tx("管理员")
+                                : tx("个人账户")}
                         </small>
                     </div>
                     <button
                         className="icon-button"
-                        title="退出登录"
+                        title={tx("退出登录")}
                         onClick={() => {
                             localStorage.removeItem(storageKey);
                             setUser(null);
@@ -562,23 +627,27 @@ function App() {
                     </button>
                 </div>
             </aside>
-            <div className="main">
+            <div className="main" inert={mobile && open}>
                 <header>
                     <div className="breadcrumb">
                         <button
                             className="mobile-menu icon-button"
-                            aria-label="打开导航"
+                            aria-label={tx("打开导航")}
+                            aria-expanded={open}
                             onClick={() => setOpen(!open)}
                         >
                             <Menu />
                         </button>
                         <span>
-                            {boot.mode === "admin" ? "管理后台" : "工作空间"}
+                            {boot.mode === "admin"
+                                ? tx("管理后台")
+                                : tx("工作空间")}
                         </span>
                         <ChevronRight size={14} />
-                        <strong>{item?.label || "总览"}</strong>
+                        <strong>{tx(item?.label || "总览")}</strong>
                     </div>
                     <div className="actions">
+                        {boot.mode === "user" && <LanguagePicker />}
                         {boot.mode === "admin" && (
                             <a
                                 className="button"
@@ -586,13 +655,15 @@ function App() {
                                 target="_blank"
                                 rel="noreferrer"
                             >
-                                用户端
+                                {tx("用户端")}
                                 <ArrowUpRight size={15} />
                             </a>
                         )}
                         <span className="online-indicator" />{" "}
                         <span className="muted">
-                            {boot.mode === "admin" ? "统一控制台" : "服务在线"}
+                            {boot.mode === "admin"
+                                ? tx("统一控制台")
+                                : tx("服务在线")}
                         </span>
                     </div>
                 </header>
@@ -604,10 +675,10 @@ function App() {
                                     ? "CONTROL CENTER"
                                     : "WORKSPACE"}
                             </span>
-                            <h1>{item?.label || "总览"}</h1>
+                            <h1>{tx(item?.label || "总览")}</h1>
                         </div>
                         <span className="today">
-                            {new Date().toLocaleDateString("zh-CN", {
+                            {new Date().toLocaleDateString(locale(), {
                                 month: "long",
                                 day: "numeric",
                                 weekday: "long",
@@ -616,10 +687,40 @@ function App() {
                     </div>
                     {content}
                     <div className="page-footer">
-                        {boot.title} <span>简洁连接，无限可能。</span>
+                        {boot.title} <span>{tx("简洁连接，无限可能。")}</span>
                     </div>
                 </main>
             </div>
+            {boot.mode === "user" && (
+                <nav
+                    className="bottom-nav"
+                    inert={mobile && open}
+                    aria-label={tx("快捷导航")}
+                >
+                    {userNav
+                        .filter((n) =>
+                            [
+                                "dashboard",
+                                "subscribe",
+                                "ticket",
+                                "profile",
+                            ].includes(n.key),
+                        )
+                        .map(({ key, label, icon: Icon }) => (
+                            <a
+                                key={key}
+                                href={"#/" + key}
+                                aria-current={
+                                    current === key ? "page" : undefined
+                                }
+                                className={current === key ? "active" : ""}
+                            >
+                                <Icon size={21} />
+                                <span>{tx(label)}</span>
+                            </a>
+                        ))}
+                </nav>
+            )}
         </div>
     );
 }
@@ -633,10 +734,12 @@ class ErrorBoundary extends React.Component<
     }
     render() {
         return this.state.error ? (
-            <Panel title="页面暂时无法加载">
+            <Panel title={tx("页面暂时无法加载")}>
                 <div className="pad">
                     <p>{this.state.error}</p>
-                    <button onClick={() => location.reload()}>重新加载</button>
+                    <button onClick={() => location.reload()}>
+                        {tx("重新加载")}
+                    </button>
                 </div>
             </Panel>
         ) : (

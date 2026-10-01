@@ -31,6 +31,21 @@ try {
     ]);
     $auth = new App\Services\AuthService($user);
     $token = $auth->generateAuthData(Illuminate\Http\Request::create('/'))['auth_data'];
+    $subject = App\Models\User::create([
+        'email' => 'console-subject-' . bin2hex(random_bytes(5)) . '@example.com',
+        'password' => password_hash(bin2hex(random_bytes(16)), PASSWORD_DEFAULT),
+        'uuid' => App\Utils\Helper::guid(true), 'token' => App\Utils\Helper::guid(),
+        'invite_user_id' => $user->id,
+    ]);
+    $editUser = ['id' => $subject->id, 'email' => $subject->email, 'banned' => 0, 'is_admin' => 0, 'is_staff' => 0, 'transfer_enable' => 10737418240, 'u' => 536870912, 'd' => 1073741824, 'commission_type' => 2];
+    $response = $call('/api/v1/' . $securePath . '/user/update', $editUser, $token);
+    $subject->refresh();
+    $assert($response->getStatusCode() === 200 && $subject->u == 536870912 && $subject->d == 1073741824 && $subject->commission_type == 2, 'User traffic and commission fields did not persist');
+    $assert($subject->invite_user_id == $user->id, 'Unrelated user update cleared the inviter');
+    $response = $call('/api/v1/' . $securePath . '/user/update', $editUser + ['invite_user_email' => ''], $token);
+    $assert($response->getStatusCode() === 200 && $subject->refresh()->invite_user_id === null, 'Explicit inviter removal failed');
+    $response = $call('/api/v1/' . $securePath . '/user/update', $editUser + ['invite_user_email' => $user->email], $token);
+    $assert($response->getStatusCode() === 200 && $subject->refresh()->invite_user_id == $user->id, 'Inviter email assignment failed');
     foreach (['/', '/app', '/' . $securePath] as $path) {
         $response = $call($path);
         $assert($response->getStatusCode() === 200 && strpos($response->getContent(), '/console/assets/') !== false, 'React shell failed: ' . $path);

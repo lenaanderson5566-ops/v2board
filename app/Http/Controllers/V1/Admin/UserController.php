@@ -147,12 +147,12 @@ class UserController extends Controller
         } else {
             $params['group_id'] = null;
         }
-        if ($request->input('invite_user_email')) {
+        if ($request->has('invite_user_email') && $request->input('invite_user_email')) {
             $inviteUser = User::where('email', $request->input('invite_user_email'))->first();
             if ($inviteUser) {
                 $params['invite_user_id'] = $inviteUser->id;
             }
-        } else {
+        } elseif ($request->has('invite_user_email')) {
             $params['invite_user_id'] = null;
         }
 

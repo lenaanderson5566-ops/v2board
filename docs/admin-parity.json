@@ -1,0 +1,933 @@
+{
+  "baseline": {
+    "file": "public/assets/admin/res_005.js",
+    "commit": "d1d12201"
+  },
+  "method": "原构建文件 AST + 当前表单源码 + 后端路由/校验；浏览器已只读抽查原仪表盘、系统配置站点和邮件页、用户列表及用户编辑抽屉；其他项目以源码核对为主。操作入口清单属于重点抽查，不是全部按钮枚举；已迁移不等于行为完全一致。",
+  "rows": [
+    {
+      "module": "原后台菜单",
+      "item": "仪表盘 (/dashboard)",
+      "status": "部分迁移",
+      "note": "运营概览：保留核心概览；原今日/昨日节点及用户排行尚未恢复，统计交互需要回归。",
+      "evidence": "public/assets/admin/res_005.js:21000"
+    },
+    {
+      "module": "原后台菜单",
+      "item": "系统配置 (/config/system)",
+      "status": "已迁移",
+      "note": "系统设置：按分类加载后端设置，并增加参数联动。",
+      "evidence": "public/assets/admin/res_005.js:21010"
+    },
+    {
+      "module": "原后台菜单",
+      "item": "支付配置 (/config/payment)",
+      "status": "部分迁移",
+      "note": "支付方式：网关表单与启用/删除已迁移；排序入口待补齐。",
+      "evidence": "public/assets/admin/res_005.js:21017"
+    },
+    {
+      "module": "原后台菜单",
+      "item": "主题配置 (/config/theme)",
+      "status": "按要求移除",
+      "note": "主题配置：不恢复主题选择；自定义页脚 HTML 已单独保留。",
+      "evidence": "public/assets/admin/res_005.js:21024"
+    },
+    {
+      "module": "原后台菜单",
+      "item": "节点管理 (/server/manage)",
+      "status": "部分迁移",
+      "note": "节点管理：八类节点、复制、展示、参数联动已迁移；拖动排序待补齐。",
+      "evidence": "public/assets/admin/res_005.js:21034"
+    },
+    {
+      "module": "原后台菜单",
+      "item": "权限组管理 (/server/group)",
+      "status": "已迁移",
+      "note": "权限组：新增、编辑、删除已保留。",
+      "evidence": "public/assets/admin/res_005.js:21041"
+    },
+    {
+      "module": "原后台菜单",
+      "item": "路由管理 (/server/route)",
+      "status": "已迁移",
+      "note": "路由规则：动作、参数与默认出口条件已迁移。",
+      "evidence": "public/assets/admin/res_005.js:21048"
+    },
+    {
+      "module": "原后台菜单",
+      "item": "订阅管理 (/plan)",
+      "status": "部分迁移",
+      "note": "套餐管理：字段、周期、重置方式、展示已保留；排序入口待补齐。",
+      "evidence": "public/assets/admin/res_005.js:21058"
+    },
+    {
+      "module": "原后台菜单",
+      "item": "订单管理 (/order)",
+      "status": "部分迁移",
+      "note": "订单管理：列表、付款标记、取消已保留；详情、分配订单和筛选待补齐。",
+      "evidence": "public/assets/admin/res_005.js:21065"
+    },
+    {
+      "module": "原后台菜单",
+      "item": "优惠券管理 (/coupon)",
+      "status": "部分迁移",
+      "note": "优惠券：生成、批量生成、套餐/周期限制已迁移；CSV 下载入口待补齐。",
+      "evidence": "public/assets/admin/res_005.js:21072"
+    },
+    {
+      "module": "原后台菜单",
+      "item": "礼品卡管理 (/giftcard)",
+      "status": "部分迁移",
+      "note": "礼品卡：五种类型与条件字段已迁移；CSV 下载入口待补齐。",
+      "evidence": "public/assets/admin/res_005.js:21079"
+    },
+    {
+      "module": "原后台菜单",
+      "item": "用户管理 (/user)",
+      "status": "部分迁移",
+      "note": "用户管理：编辑字段逐项核对；高级筛选、批量操作、邮件和 CSV 待补齐。",
+      "evidence": "public/assets/admin/res_005.js:21089"
+    },
+    {
+      "module": "原后台菜单",
+      "item": "公告管理 (/notice)",
+      "status": "已迁移",
+      "note": "公告管理：新增、编辑、删除、展示已保留。",
+      "evidence": "public/assets/admin/res_005.js:21096"
+    },
+    {
+      "module": "原后台菜单",
+      "item": "工单管理 (/ticket)",
+      "status": "部分迁移",
+      "note": "工单中心：列表、回复、关闭已统一；旧筛选与分页需要单独回归。",
+      "evidence": "public/assets/admin/res_005.js:21103"
+    },
+    {
+      "module": "原后台菜单",
+      "item": "知识库管理 (/knowledge)",
+      "status": "部分迁移",
+      "note": "知识库：正文、语言、分类已保留；拖动排序及分类选项待补齐。",
+      "evidence": "public/assets/admin/res_005.js:21110"
+    },
+    {
+      "module": "原后台菜单",
+      "item": "队列监控 (/queue)",
+      "status": "部分迁移",
+      "note": "系统状态：状态与队列概况已迁移；原队列工作负载、进程详情待补齐。",
+      "evidence": "public/assets/admin/res_005.js:21120"
+    },
+    {
+      "module": "系统设置字段",
+      "item": "site.app_name",
+      "status": "已保留",
+      "note": "原控件：站点名称 / text。当前：text。联动按 admin-linkage.ts 定义；自定义组件需结合浏览器确认。",
+      "evidence": "public/assets/admin/res_005.js:5682"
+    },
+    {
+      "module": "系统设置字段",
+      "item": "site.app_description",
+      "status": "已保留",
+      "note": "原控件：站点描述 / text。当前：text。联动按 admin-linkage.ts 定义；自定义组件需结合浏览器确认。",
+      "evidence": "public/assets/admin/res_005.js:5691"
+    },
+    {
+      "module": "系统设置字段",
+      "item": "site.app_url",
+      "status": "已保留",
+      "note": "原控件：站点网址 / text。当前：url。联动按 admin-linkage.ts 定义；自定义组件需结合浏览器确认。",
+      "evidence": "public/assets/admin/res_005.js:5700"
+    },
+    {
+      "module": "系统设置字段",
+      "item": "site.force_https",
+      "status": "已保留",
+      "note": "原控件：强制HTTPS / switch。当前：switch。联动按 admin-linkage.ts 定义；自定义组件需结合浏览器确认。",
+      "evidence": "public/assets/admin/res_005.js:5706"
+    },
+    {
+      "module": "系统设置字段",
+      "item": "site.logo",
+      "status": "已保留",
+      "note": "原控件：LOGO / text。当前：url。联动按 admin-linkage.ts 定义；自定义组件需结合浏览器确认。",
+      "evidence": "public/assets/admin/res_005.js:5715"
+    },
+    {
+      "module": "系统设置字段",
+      "item": "site.subscribe_url",
+      "status": "已保留",
+      "note": "原控件：订阅URL / textarea。当前：text。联动按 admin-linkage.ts 定义；自定义组件需结合浏览器确认。",
+      "evidence": "public/assets/admin/res_005.js:5725"
+    },
+    {
+      "module": "系统设置字段",
+      "item": "site.subscribe_path",
+      "status": "已保留",
+      "note": "原控件：订阅路径 / text。当前：text。联动按 admin-linkage.ts 定义；自定义组件需结合浏览器确认。",
+      "evidence": "public/assets/admin/res_005.js:5734"
+    },
+    {
+      "module": "系统设置字段",
+      "item": "site.tos_url",
+      "status": "已保留",
+      "note": "原控件：用户条款(TOS)URL / text。当前：url。联动按 admin-linkage.ts 定义；自定义组件需结合浏览器确认。",
+      "evidence": "public/assets/admin/res_005.js:5743"
+    },
+    {
+      "module": "系统设置字段",
+      "item": "site.stop_register",
+      "status": "已保留",
+      "note": "原控件：停止新用户注册 / switch。当前：switch。联动按 admin-linkage.ts 定义；自定义组件需结合浏览器确认。",
+      "evidence": "public/assets/admin/res_005.js:5749"
+    },
+    {
+      "module": "系统设置字段",
+      "item": "site.try_out_plan_id",
+      "status": "已保留",
+      "note": "原控件：注册试用 / select [0=关闭]。当前：select。联动按 admin-linkage.ts 定义；自定义组件需结合浏览器确认。",
+      "evidence": "public/assets/admin/res_005.js:5754"
+    },
+    {
+      "module": "系统设置字段",
+      "item": "site.try_out_hour",
+      "status": "已保留",
+      "note": "原控件：试用时间(小时) / text。当前：number。联动按 admin-linkage.ts 定义；自定义组件需结合浏览器确认。",
+      "evidence": "public/assets/admin/res_005.js:5774"
+    },
+    {
+      "module": "系统设置字段",
+      "item": "site.currency",
+      "status": "已保留",
+      "note": "原控件：货币单位 / text。当前：text。联动按 admin-linkage.ts 定义；自定义组件需结合浏览器确认。",
+      "evidence": "public/assets/admin/res_005.js:5783"
+    },
+    {
+      "module": "系统设置字段",
+      "item": "site.currency_symbol",
+      "status": "已保留",
+      "note": "原控件：货币符号 / text。当前：text。联动按 admin-linkage.ts 定义；自定义组件需结合浏览器确认。",
+      "evidence": "public/assets/admin/res_005.js:5792"
+    },
+    {
+      "module": "系统设置字段",
+      "item": "safe.email_verify",
+      "status": "已保留",
+      "note": "原控件：邮箱验证 / switch。当前：switch。联动按 admin-linkage.ts 定义；自定义组件需结合浏览器确认。",
+      "evidence": "public/assets/admin/res_005.js:5803"
+    },
+    {
+      "module": "系统设置字段",
+      "item": "safe.email_gmail_limit_enable",
+      "status": "已保留",
+      "note": "原控件：禁止使用Gmail多别名 / switch。当前：switch。联动按 admin-linkage.ts 定义；自定义组件需结合浏览器确认。",
+      "evidence": "public/assets/admin/res_005.js:5809"
+    },
+    {
+      "module": "系统设置字段",
+      "item": "safe.safe_mode_enable",
+      "status": "已保留",
+      "note": "原控件：安全模式 / switch。当前：switch。联动按 admin-linkage.ts 定义；自定义组件需结合浏览器确认。",
+      "evidence": "public/assets/admin/res_005.js:5815"
+    },
+    {
+      "module": "系统设置字段",
+      "item": "safe.secure_path",
+      "status": "已保留",
+      "note": "原控件：后台路径 / text。当前：text。联动按 admin-linkage.ts 定义；自定义组件需结合浏览器确认。",
+      "evidence": "public/assets/admin/res_005.js:5824"
+    },
+    {
+      "module": "系统设置字段",
+      "item": "safe.email_whitelist_enable",
+      "status": "已保留",
+      "note": "原控件：邮箱后缀白名单 / switch。当前：switch。联动按 admin-linkage.ts 定义；自定义组件需结合浏览器确认。",
+      "evidence": "public/assets/admin/res_005.js:5830"
+    },
+    {
+      "module": "系统设置字段",
+      "item": "safe.email_whitelist_suffix",
+      "status": "已保留",
+      "note": "原控件：白名单后缀 / textarea。当前：json。联动按 admin-linkage.ts 定义；自定义组件需结合浏览器确认。",
+      "evidence": "public/assets/admin/res_005.js:5841"
+    },
+    {
+      "module": "系统设置字段",
+      "item": "safe.recaptcha_enable",
+      "status": "已保留",
+      "note": "原控件：防机器人 / switch。当前：switch。联动按 admin-linkage.ts 定义；自定义组件需结合浏览器确认。",
+      "evidence": "public/assets/admin/res_005.js:5847"
+    },
+    {
+      "module": "系统设置字段",
+      "item": "safe.recaptcha_key",
+      "status": "已保留",
+      "note": "原控件：密钥 / text。当前：password。联动按 admin-linkage.ts 定义；自定义组件需结合浏览器确认。",
+      "evidence": "public/assets/admin/res_005.js:5857"
+    },
+    {
+      "module": "系统设置字段",
+      "item": "safe.recaptcha_site_key",
+      "status": "已保留",
+      "note": "原控件：网站密钥 / text。当前：text。联动按 admin-linkage.ts 定义；自定义组件需结合浏览器确认。",
+      "evidence": "public/assets/admin/res_005.js:5867"
+    },
+    {
+      "module": "系统设置字段",
+      "item": "safe.register_limit_by_ip_enable",
+      "status": "已保留",
+      "note": "原控件：IP注册限制 / switch。当前：switch。联动按 admin-linkage.ts 定义；自定义组件需结合浏览器确认。",
+      "evidence": "public/assets/admin/res_005.js:5873"
+    },
+    {
+      "module": "系统设置字段",
+      "item": "safe.register_limit_count",
+      "status": "已保留",
+      "note": "原控件：次数 / text。当前：number。联动按 admin-linkage.ts 定义；自定义组件需结合浏览器确认。",
+      "evidence": "public/assets/admin/res_005.js:5883"
+    },
+    {
+      "module": "系统设置字段",
+      "item": "safe.register_limit_expire",
+      "status": "已保留",
+      "note": "原控件：惩罚时间(分钟) / text。当前：number。联动按 admin-linkage.ts 定义；自定义组件需结合浏览器确认。",
+      "evidence": "public/assets/admin/res_005.js:5893"
+    },
+    {
+      "module": "系统设置字段",
+      "item": "safe.password_limit_enable",
+      "status": "已保留",
+      "note": "原控件：防爆破限制 / switch。当前：switch。联动按 admin-linkage.ts 定义；自定义组件需结合浏览器确认。",
+      "evidence": "public/assets/admin/res_005.js:5899"
+    },
+    {
+      "module": "系统设置字段",
+      "item": "safe.password_limit_count",
+      "status": "已保留",
+      "note": "原控件：次数 / text。当前：number。联动按 admin-linkage.ts 定义；自定义组件需结合浏览器确认。",
+      "evidence": "public/assets/admin/res_005.js:5909"
+    },
+    {
+      "module": "系统设置字段",
+      "item": "safe.password_limit_expire",
+      "status": "已保留",
+      "note": "原控件：惩罚时间(分钟) / text。当前：number。联动按 admin-linkage.ts 定义；自定义组件需结合浏览器确认。",
+      "evidence": "public/assets/admin/res_005.js:5919"
+    },
+    {
+      "module": "系统设置字段",
+      "item": "subscribe.plan_change_enable",
+      "status": "已保留",
+      "note": "原控件：允许用户更改订阅 / switch。当前：switch。联动按 admin-linkage.ts 定义；自定义组件需结合浏览器确认。",
+      "evidence": "public/assets/admin/res_005.js:5930"
+    },
+    {
+      "module": "系统设置字段",
+      "item": "subscribe.reset_traffic_method",
+      "status": "已保留",
+      "note": "原控件：月流量重置方式 / select [0=每月1号、1=按月重置、2=不重置、3=每年1月1日、4=按年重置]。当前：select [0=每月首日、1=每月按到期日、2=不重置、3=每年首日、4=每年按到期日]。联动按 admin-linkage.ts 定义；自定义组件需结合浏览器确认。",
+      "evidence": "public/assets/admin/res_005.js:5935"
+    },
+    {
+      "module": "系统设置字段",
+      "item": "subscribe.surplus_enable",
+      "status": "已保留",
+      "note": "原控件：开启折抵方案 / switch。当前：switch。联动按 admin-linkage.ts 定义；自定义组件需结合浏览器确认。",
+      "evidence": "public/assets/admin/res_005.js:5954"
+    },
+    {
+      "module": "系统设置字段",
+      "item": "subscribe.allow_new_period",
+      "status": "已保留",
+      "note": "原控件：允许提前开启流量周期 / switch。当前：switch。联动按 admin-linkage.ts 定义；自定义组件需结合浏览器确认。",
+      "evidence": "public/assets/admin/res_005.js:5960"
+    },
+    {
+      "module": "系统设置字段",
+      "item": "subscribe.new_order_event_id",
+      "status": "已保留",
+      "note": "原控件：当订阅新购时触发事件 / select [0=不执行任何动作、1=重置用户流量]。当前：select [0=保持已有流量、1=重置已用流量]。联动按 admin-linkage.ts 定义；自定义组件需结合浏览器确认。",
+      "evidence": "public/assets/admin/res_005.js:5965"
+    },
+    {
+      "module": "系统设置字段",
+      "item": "subscribe.renew_order_event_id",
+      "status": "已保留",
+      "note": "原控件：当订阅续费时触发事件 / select [0=不执行任何动作、1=重置用户流量]。当前：select [0=保持已有流量、1=重置已用流量]。联动按 admin-linkage.ts 定义；自定义组件需结合浏览器确认。",
+      "evidence": "public/assets/admin/res_005.js:5977"
+    },
+    {
+      "module": "系统设置字段",
+      "item": "subscribe.change_order_event_id",
+      "status": "已保留",
+      "note": "原控件：当订阅变更时触发事件 / select [0=不执行任何动作、1=重置用户流量]。当前：select [0=保持已有流量、1=重置已用流量]。联动按 admin-linkage.ts 定义；自定义组件需结合浏览器确认。",
+      "evidence": "public/assets/admin/res_005.js:5989"
+    },
+    {
+      "module": "系统设置字段",
+      "item": "subscribe.show_info_to_server_enable",
+      "status": "已保留",
+      "note": "原控件：在订阅中展示订阅信息 / switch。当前：switch。联动按 admin-linkage.ts 定义；自定义组件需结合浏览器确认。",
+      "evidence": "public/assets/admin/res_005.js:6002"
+    },
+    {
+      "module": "系统设置字段",
+      "item": "subscribe.show_subscribe_method",
+      "status": "已保留",
+      "note": "原控件：订阅链接生效模式 / select [0=永久有效、1=一次性有效、2=限时有效]。当前：select [0=固定访问令牌、1=每日轮换访问令牌、2=按时间轮换访问令牌]。联动按 admin-linkage.ts 定义；自定义组件需结合浏览器确认。",
+      "evidence": "public/assets/admin/res_005.js:6007"
+    },
+    {
+      "module": "系统设置字段",
+      "item": "safe.show_subscribe_expire",
+      "status": "已保留",
+      "note": "原控件：订阅链接有效时间(分钟) / text。当前：number。联动按 admin-linkage.ts 定义；自定义组件需结合浏览器确认。",
+      "evidence": "public/assets/admin/res_005.js:6026"
+    },
+    {
+      "module": "系统设置字段",
+      "item": "deposit.deposit_bounus",
+      "status": "已保留",
+      "note": "原控件：充值奖励 / textarea。当前：json。联动按 admin-linkage.ts 定义；自定义组件需结合浏览器确认。",
+      "evidence": "public/assets/admin/res_005.js:6041"
+    },
+    {
+      "module": "系统设置字段",
+      "item": "ticket.ticket_status",
+      "status": "已保留",
+      "note": "原控件：工单设置 / select [0=完全开放工单、1=仅限有付费订单用户、2=完全禁止工单]。当前：select [0=所有用户可提交、1=仅有已付订单的用户、2=关闭所有工单提交]。联动按 admin-linkage.ts 定义；自定义组件需结合浏览器确认。",
+      "evidence": "public/assets/admin/res_005.js:6051"
+    },
+    {
+      "module": "系统设置字段",
+      "item": "invite.invite_force",
+      "status": "已保留",
+      "note": "原控件：开启强制邀请 / switch。当前：switch。联动按 admin-linkage.ts 定义；自定义组件需结合浏览器确认。",
+      "evidence": "public/assets/admin/res_005.js:6073"
+    },
+    {
+      "module": "系统设置字段",
+      "item": "invite.invite_commission",
+      "status": "已保留",
+      "note": "原控件：邀请佣金百分比 / text。当前：number。联动按 admin-linkage.ts 定义；自定义组件需结合浏览器确认。",
+      "evidence": "public/assets/admin/res_005.js:6082"
+    },
+    {
+      "module": "系统设置字段",
+      "item": "invite.invite_gen_limit",
+      "status": "已保留",
+      "note": "原控件：用户可创建邀请码上限 / text。当前：number。联动按 admin-linkage.ts 定义；自定义组件需结合浏览器确认。",
+      "evidence": "public/assets/admin/res_005.js:6090"
+    },
+    {
+      "module": "系统设置字段",
+      "item": "invite.invite_never_expire",
+      "status": "已保留",
+      "note": "原控件：邀请码永不失效 / switch。当前：switch。联动按 admin-linkage.ts 定义；自定义组件需结合浏览器确认。",
+      "evidence": "public/assets/admin/res_005.js:6096"
+    },
+    {
+      "module": "系统设置字段",
+      "item": "invite.commission_first_time_enable",
+      "status": "已保留",
+      "note": "原控件：佣金仅首次发放 / switch。当前：switch。联动按 admin-linkage.ts 定义；自定义组件需结合浏览器确认。",
+      "evidence": "public/assets/admin/res_005.js:6102"
+    },
+    {
+      "module": "系统设置字段",
+      "item": "invite.commission_auto_check_enable",
+      "status": "已保留",
+      "note": "原控件：佣金自动确认 / switch。当前：switch。联动按 admin-linkage.ts 定义；自定义组件需结合浏览器确认。",
+      "evidence": "public/assets/admin/res_005.js:6108"
+    },
+    {
+      "module": "系统设置字段",
+      "item": "invite.commission_withdraw_limit",
+      "status": "已保留",
+      "note": "原控件：提现单申请门槛(元) / text。当前：number。联动按 admin-linkage.ts 定义；自定义组件需结合浏览器确认。",
+      "evidence": "public/assets/admin/res_005.js:6117"
+    },
+    {
+      "module": "系统设置字段",
+      "item": "invite.commission_withdraw_method",
+      "status": "已保留",
+      "note": "原控件：提现方式 / textarea。当前：json。联动按 admin-linkage.ts 定义；自定义组件需结合浏览器确认。",
+      "evidence": "public/assets/admin/res_005.js:6127"
+    },
+    {
+      "module": "系统设置字段",
+      "item": "invite.withdraw_close_enable",
+      "status": "已保留",
+      "note": "原控件：关闭提现 / switch。当前：switch。联动按 admin-linkage.ts 定义；自定义组件需结合浏览器确认。",
+      "evidence": "public/assets/admin/res_005.js:6133"
+    },
+    {
+      "module": "系统设置字段",
+      "item": "invite.commission_distribution_enable",
+      "status": "已保留",
+      "note": "原控件：三级分销 / switch。当前：switch。联动按 admin-linkage.ts 定义；自定义组件需结合浏览器确认。",
+      "evidence": "public/assets/admin/res_005.js:6139"
+    },
+    {
+      "module": "系统设置字段",
+      "item": "invite.commission_distribution_l1",
+      "status": "已保留",
+      "note": "原控件：一级邀请人比例 / text。当前：number。联动按 admin-linkage.ts 定义；自定义组件需结合浏览器确认。",
+      "evidence": "public/assets/admin/res_005.js:6148"
+    },
+    {
+      "module": "系统设置字段",
+      "item": "invite.commission_distribution_l2",
+      "status": "已保留",
+      "note": "原控件：二级邀请人比例 / text。当前：number。联动按 admin-linkage.ts 定义；自定义组件需结合浏览器确认。",
+      "evidence": "public/assets/admin/res_005.js:6157"
+    },
+    {
+      "module": "系统设置字段",
+      "item": "invite.commission_distribution_l3",
+      "status": "已保留",
+      "note": "原控件：三级邀请人比例 / text。当前：number。联动按 admin-linkage.ts 定义；自定义组件需结合浏览器确认。",
+      "evidence": "public/assets/admin/res_005.js:6166"
+    },
+    {
+      "module": "系统设置字段",
+      "item": "site.frontend_theme_sidebar",
+      "status": "按要求移除",
+      "note": "模板配置按既定要求不恢复。",
+      "evidence": "public/assets/admin/res_005.js:6191"
+    },
+    {
+      "module": "系统设置字段",
+      "item": "site.frontend_theme_header",
+      "status": "按要求移除",
+      "note": "模板配置按既定要求不恢复。",
+      "evidence": "public/assets/admin/res_005.js:6198"
+    },
+    {
+      "module": "系统设置字段",
+      "item": "frontend.frontend_theme_color",
+      "status": "按要求移除",
+      "note": "模板配置按既定要求不恢复。",
+      "evidence": "public/assets/admin/res_005.js:6204"
+    },
+    {
+      "module": "系统设置字段",
+      "item": "frontend.frontend_background_url",
+      "status": "按要求移除",
+      "note": "模板配置按既定要求不恢复。",
+      "evidence": "public/assets/admin/res_005.js:6221"
+    },
+    {
+      "module": "系统设置字段",
+      "item": "server.server_api_url",
+      "status": "已保留",
+      "note": "原控件：节点对接API地址 / text。当前：text。联动按 admin-linkage.ts 定义；自定义组件需结合浏览器确认。",
+      "evidence": "public/assets/admin/res_005.js:6235"
+    },
+    {
+      "module": "系统设置字段",
+      "item": "server.server_token",
+      "status": "已保留",
+      "note": "原控件：通讯密钥 / text。当前：password。联动按 admin-linkage.ts 定义；自定义组件需结合浏览器确认。",
+      "evidence": "public/assets/admin/res_005.js:6246"
+    },
+    {
+      "module": "系统设置字段",
+      "item": "server.server_pull_interval",
+      "status": "已保留",
+      "note": "原控件：节点拉取动作轮询间隔 / number。当前：number。联动按 admin-linkage.ts 定义；自定义组件需结合浏览器确认。",
+      "evidence": "public/assets/admin/res_005.js:6258"
+    },
+    {
+      "module": "系统设置字段",
+      "item": "server.server_push_interval",
+      "status": "已保留",
+      "note": "原控件：节点推送动作轮询间隔 / number。当前：number。联动按 admin-linkage.ts 定义；自定义组件需结合浏览器确认。",
+      "evidence": "public/assets/admin/res_005.js:6270"
+    },
+    {
+      "module": "系统设置字段",
+      "item": "server.server_node_report_min_traffic",
+      "status": "已保留",
+      "note": "原控件：节点用户流量上报最低阈值 / number。当前：number。联动按 admin-linkage.ts 定义；自定义组件需结合浏览器确认。",
+      "evidence": "public/assets/admin/res_005.js:6282"
+    },
+    {
+      "module": "系统设置字段",
+      "item": "server.server_device_online_min_traffic",
+      "status": "已保留",
+      "note": "原控件：节点用户设备数统计最低阈值 / number。当前：number。联动按 admin-linkage.ts 定义；自定义组件需结合浏览器确认。",
+      "evidence": "public/assets/admin/res_005.js:6294"
+    },
+    {
+      "module": "系统设置字段",
+      "item": "server.device_limit_mode",
+      "status": "已保留",
+      "note": "原控件：全局设备数限制采用宽松模式 / switch。当前：select [0=按各节点设备数累计、1=按 IP 去重统计]。联动按 admin-linkage.ts 定义；自定义组件需结合浏览器确认。",
+      "evidence": "public/assets/admin/res_005.js:6300"
+    },
+    {
+      "module": "系统设置字段",
+      "item": "email.email_host",
+      "status": "已保留",
+      "note": "原控件：SMTP服务器地址 / text。当前：text。联动按 admin-linkage.ts 定义；自定义组件需结合浏览器确认。",
+      "evidence": "public/assets/admin/res_005.js:6325"
+    },
+    {
+      "module": "系统设置字段",
+      "item": "email.email_port",
+      "status": "已保留",
+      "note": "原控件：SMTP服务端口 / text。当前：text。联动按 admin-linkage.ts 定义；自定义组件需结合浏览器确认。",
+      "evidence": "public/assets/admin/res_005.js:6334"
+    },
+    {
+      "module": "系统设置字段",
+      "item": "email.email_encryption",
+      "status": "已保留",
+      "note": "原控件：SMTP加密方式 / text。当前：select [=不加密、tls=STARTTLS、ssl=SSL/TLS]。联动按 admin-linkage.ts 定义；自定义组件需结合浏览器确认。",
+      "evidence": "public/assets/admin/res_005.js:6343"
+    },
+    {
+      "module": "系统设置字段",
+      "item": "email.email_username",
+      "status": "已保留",
+      "note": "原控件：SMTP账号 / text。当前：text。联动按 admin-linkage.ts 定义；自定义组件需结合浏览器确认。",
+      "evidence": "public/assets/admin/res_005.js:6352"
+    },
+    {
+      "module": "系统设置字段",
+      "item": "email.email_password",
+      "status": "已保留",
+      "note": "原控件：SMTP密码 / text。当前：password。联动按 admin-linkage.ts 定义；自定义组件需结合浏览器确认。",
+      "evidence": "public/assets/admin/res_005.js:6361"
+    },
+    {
+      "module": "系统设置字段",
+      "item": "email.email_from_address",
+      "status": "已保留",
+      "note": "原控件：发件地址 / text。当前：text。联动按 admin-linkage.ts 定义；自定义组件需结合浏览器确认。",
+      "evidence": "public/assets/admin/res_005.js:6370"
+    },
+    {
+      "module": "系统设置字段",
+      "item": "email.email_template",
+      "status": "按要求移除",
+      "note": "模板配置按既定要求不恢复。",
+      "evidence": "public/assets/admin/res_005.js:6375"
+    },
+    {
+      "module": "系统设置字段",
+      "item": "telegram.telegram_bot_token",
+      "status": "已保留",
+      "note": "原控件：机器人Token / text。当前：password。联动按 admin-linkage.ts 定义；自定义组件需结合浏览器确认。",
+      "evidence": "public/assets/admin/res_005.js:6406"
+    },
+    {
+      "module": "系统设置字段",
+      "item": "telegram.telegram_bot_enable",
+      "status": "已保留",
+      "note": "原控件：开启机器人通知 / switch。当前：switch。联动按 admin-linkage.ts 定义；自定义组件需结合浏览器确认。",
+      "evidence": "public/assets/admin/res_005.js:6425"
+    },
+    {
+      "module": "系统设置字段",
+      "item": "telegram.telegram_discuss_link",
+      "status": "已保留",
+      "note": "原控件：群组地址 / text。当前：url。联动按 admin-linkage.ts 定义；自定义组件需结合浏览器确认。",
+      "evidence": "public/assets/admin/res_005.js:6434"
+    },
+    {
+      "module": "系统设置字段",
+      "item": "app.windows_version",
+      "status": "已保留",
+      "note": "原控件：Windows / text。当前：text。联动按 admin-linkage.ts 定义；自定义组件需结合浏览器确认。",
+      "evidence": "public/assets/admin/res_005.js:6459"
+    },
+    {
+      "module": "系统设置字段",
+      "item": "app.windows_download_url",
+      "status": "已保留",
+      "note": "原控件：Windows / text。当前：text。联动按 admin-linkage.ts 定义；自定义组件需结合浏览器确认。",
+      "evidence": "public/assets/admin/res_005.js:6465"
+    },
+    {
+      "module": "系统设置字段",
+      "item": "app.macos_version",
+      "status": "已保留",
+      "note": "原控件：macOS / text。当前：text。联动按 admin-linkage.ts 定义；自定义组件需结合浏览器确认。",
+      "evidence": "public/assets/admin/res_005.js:6474"
+    },
+    {
+      "module": "系统设置字段",
+      "item": "app.macos_download_url",
+      "status": "已保留",
+      "note": "原控件：macOS / text。当前：text。联动按 admin-linkage.ts 定义；自定义组件需结合浏览器确认。",
+      "evidence": "public/assets/admin/res_005.js:6480"
+    },
+    {
+      "module": "系统设置字段",
+      "item": "app.android_version",
+      "status": "已保留",
+      "note": "原控件：Android / text。当前：text。联动按 admin-linkage.ts 定义；自定义组件需结合浏览器确认。",
+      "evidence": "public/assets/admin/res_005.js:6489"
+    },
+    {
+      "module": "系统设置字段",
+      "item": "app.android_download_url",
+      "status": "已保留",
+      "note": "原控件：Android / text。当前：text。联动按 admin-linkage.ts 定义；自定义组件需结合浏览器确认。",
+      "evidence": "public/assets/admin/res_005.js:6495"
+    },
+    {
+      "module": "用户编辑字段",
+      "item": "email",
+      "status": "已保留",
+      "note": "字段入口已存在；不代表所有边界行为已验证。",
+      "evidence": "public/assets/admin/res_005.js:22294"
+    },
+    {
+      "module": "用户编辑字段",
+      "item": "password",
+      "status": "已保留",
+      "note": "字段入口已存在；不代表所有边界行为已验证。",
+      "evidence": "public/assets/admin/res_005.js:40845"
+    },
+    {
+      "module": "用户编辑字段",
+      "item": "balance",
+      "status": "交互差异",
+      "note": "字段已保留，但原后台显示元，当前输入分，属于单位交互差异。",
+      "evidence": "public/assets/admin/res_005.js:22320"
+    },
+    {
+      "module": "用户编辑字段",
+      "item": "commission_balance",
+      "status": "交互差异",
+      "note": "字段已保留，但原后台显示元，当前输入分，属于单位交互差异。",
+      "evidence": "public/assets/admin/res_005.js:22328"
+    },
+    {
+      "module": "用户编辑字段",
+      "item": "u",
+      "status": "已保留",
+      "note": "与原后台一致输入 GB，提交转换为整数字节；后端保存已回归。",
+      "evidence": "public/assets/admin/res_005.js:22338"
+    },
+    {
+      "module": "用户编辑字段",
+      "item": "d",
+      "status": "已保留",
+      "note": "与原后台一致输入 GB，提交转换为整数字节；后端保存已回归。",
+      "evidence": "public/assets/admin/res_005.js:22346"
+    },
+    {
+      "module": "用户编辑字段",
+      "item": "transfer_enable",
+      "status": "已保留",
+      "note": "与原后台一致输入 GB，提交转换为整数字节；后端保存已回归。",
+      "evidence": "public/assets/admin/res_005.js:22356"
+    },
+    {
+      "module": "用户编辑字段",
+      "item": "device_limit",
+      "status": "已保留",
+      "note": "字段入口已存在；不代表所有边界行为已验证。",
+      "evidence": "public/assets/admin/res_005.js:22364"
+    },
+    {
+      "module": "用户编辑字段",
+      "item": "expired_at",
+      "status": "已保留",
+      "note": "字段入口已存在；不代表所有边界行为已验证。",
+      "evidence": "public/assets/admin/res_005.js:40856"
+    },
+    {
+      "module": "用户编辑字段",
+      "item": "plan_id",
+      "status": "已保留",
+      "note": "字段入口已存在；不代表所有边界行为已验证。",
+      "evidence": "public/assets/admin/res_005.js:40867"
+    },
+    {
+      "module": "用户编辑字段",
+      "item": "banned",
+      "status": "已保留",
+      "note": "字段入口已存在；不代表所有边界行为已验证。原选项：1=封禁、0=正常",
+      "evidence": "public/assets/admin/res_005.js:22404"
+    },
+    {
+      "module": "用户编辑字段",
+      "item": "commission_type",
+      "status": "已保留",
+      "note": "字段入口已存在；不代表所有边界行为已验证。原选项：0=跟随系统设置、1=循环返利、2=首次返利",
+      "evidence": "public/assets/admin/res_005.js:22420"
+    },
+    {
+      "module": "用户编辑字段",
+      "item": "commission_rate",
+      "status": "已保留",
+      "note": "字段入口已存在；不代表所有边界行为已验证。",
+      "evidence": "public/assets/admin/res_005.js:22438"
+    },
+    {
+      "module": "用户编辑字段",
+      "item": "discount",
+      "status": "已保留",
+      "note": "字段入口已存在；不代表所有边界行为已验证。",
+      "evidence": "public/assets/admin/res_005.js:22452"
+    },
+    {
+      "module": "用户编辑字段",
+      "item": "is_admin",
+      "status": "已保留",
+      "note": "字段入口已存在；不代表所有边界行为已验证。",
+      "evidence": "public/assets/admin/res_005.js:22468"
+    },
+    {
+      "module": "用户编辑字段",
+      "item": "is_staff",
+      "status": "已保留",
+      "note": "字段入口已存在；不代表所有边界行为已验证。",
+      "evidence": "public/assets/admin/res_005.js:22475"
+    },
+    {
+      "module": "用户编辑字段",
+      "item": "remarks",
+      "status": "已保留",
+      "note": "字段入口已存在；不代表所有边界行为已验证。",
+      "evidence": "public/assets/admin/res_005.js:22484"
+    },
+    {
+      "module": "用户编辑字段",
+      "item": "speed_limit",
+      "status": "已保留",
+      "note": "字段入口已存在；不代表所有边界行为已验证。",
+      "evidence": "public/assets/admin/res_005.js:22461"
+    },
+    {
+      "module": "用户编辑字段",
+      "item": "invite_user_email",
+      "status": "已保留",
+      "note": "已迁入用户编辑；邀请人设置、解除和未提交时保留已回归。",
+      "evidence": "public/assets/admin/res_005.js:22302"
+    },
+    {
+      "module": "操作入口",
+      "item": "系统设置 / 发送测试邮件",
+      "status": "缺失",
+      "note": "原后台引用此接口，当前前端未找到操作入口。",
+      "evidence": "public/assets/admin/res_005.js:6391"
+    },
+    {
+      "module": "操作入口",
+      "item": "系统设置 / 设置 Telegram Webhook",
+      "status": "缺失",
+      "note": "原后台引用此接口，当前前端未找到操作入口。",
+      "evidence": "public/assets/admin/res_005.js:6414"
+    },
+    {
+      "module": "操作入口",
+      "item": "套餐管理 / 套餐排序",
+      "status": "缺失",
+      "note": "原后台引用此接口，当前前端未找到操作入口。",
+      "evidence": "public/assets/admin/res_005.js:27858"
+    },
+    {
+      "module": "操作入口",
+      "item": "节点管理 / 节点排序",
+      "status": "缺失",
+      "note": "原后台引用此接口，当前前端未找到操作入口。",
+      "evidence": "public/assets/admin/res_005.js:5522"
+    },
+    {
+      "module": "操作入口",
+      "item": "支付方式 / 支付方式排序",
+      "status": "缺失",
+      "note": "原后台引用此接口，当前前端未找到操作入口。",
+      "evidence": "public/assets/admin/res_005.js:37260"
+    },
+    {
+      "module": "操作入口",
+      "item": "知识库 / 知识库排序",
+      "status": "缺失",
+      "note": "原后台引用此接口，当前前端未找到操作入口。",
+      "evidence": "public/assets/admin/res_005.js:83996"
+    },
+    {
+      "module": "操作入口",
+      "item": "用户管理 / 导出用户 CSV",
+      "status": "缺失",
+      "note": "原后台引用此接口，当前前端未找到操作入口。",
+      "evidence": "public/assets/admin/res_005.js:70799"
+    },
+    {
+      "module": "操作入口",
+      "item": "用户管理 / 发送用户邮件",
+      "status": "缺失",
+      "note": "原后台引用此接口，当前前端未找到操作入口。",
+      "evidence": "public/assets/admin/res_005.js:81958"
+    },
+    {
+      "module": "操作入口",
+      "item": "用户管理 / 批量封禁",
+      "status": "缺失",
+      "note": "原后台引用此接口，当前前端未找到操作入口。",
+      "evidence": "public/assets/admin/res_005.js:70808"
+    },
+    {
+      "module": "操作入口",
+      "item": "用户管理 / 批量删除",
+      "status": "缺失",
+      "note": "原后台引用此接口，当前前端未找到操作入口。",
+      "evidence": "public/assets/admin/res_005.js:70819"
+    },
+    {
+      "module": "操作入口",
+      "item": "用户管理 / 设置邀请人",
+      "status": "已迁移",
+      "note": "邀请人设置已迁入用户编辑，通过 user/update 保存。",
+      "evidence": "app/Http/Routes/V1/AdminRoute.php"
+    },
+    {
+      "module": "操作入口",
+      "item": "订单管理 / 订单详情",
+      "status": "缺失",
+      "note": "原后台引用此接口，当前前端未找到操作入口。",
+      "evidence": "public/assets/admin/res_005.js:95454"
+    },
+    {
+      "module": "操作入口",
+      "item": "订单管理 / 分配订单",
+      "status": "缺失",
+      "note": "原后台引用此接口，当前前端未找到操作入口。",
+      "evidence": "public/assets/admin/res_005.js:13442"
+    },
+    {
+      "module": "操作入口",
+      "item": "队列监控 / 队列工作负载",
+      "status": "缺失",
+      "note": "原后台引用此接口，当前前端未找到操作入口。",
+      "evidence": "public/assets/admin/res_005.js:31964"
+    },
+    {
+      "module": "操作入口",
+      "item": "队列监控 / 队列主进程",
+      "status": "待核对",
+      "note": "后端保留接口；未找到原构建中的直接引用，不判定为原界面遗漏。",
+      "evidence": "app/Http/Routes/V1/AdminRoute.php"
+    },
+    {
+      "module": "旧管理扩展",
+      "item": "风控、日志、客户端策略、套餐翻译",
+      "status": "已统一",
+      "note": "原独立中台已并入当前后台。需与原扩展逐页回归；本次不声称所有字段完全等价。",
+      "evidence": "resources/views/admin-extension.blade.php"
+    },
+    {
+      "module": "对照限制",
+      "item": "节点高级参数与支付网关配置",
+      "status": "动态表单",
+      "note": "八类节点依照后端校验生成；支付表单依网关返回。静态清单不能证明所有嵌套参数、每个网关与外部服务均测试完成。",
+      "evidence": "frontend/src/node-settings.ts"
+    }
+  ]
+}

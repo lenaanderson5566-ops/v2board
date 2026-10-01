@@ -197,6 +197,8 @@ export const resources: Record<string, Resource> = {
             f("password", "新密码（留空不修改）", "password"),
             f("plan_id", "套餐 ID", "number"),
             f("transfer_enable", "流量 (GB)", "number"),
+            f("u", "已用上传（GB）", "number"),
+            f("d", "已用下载（GB）", "number"),
             f("balance", "余额（分）", "number"),
             f("expired_at", "到期时间", "datetime-local"),
             f("device_limit", "设备限制", "number"),
@@ -206,7 +208,18 @@ export const resources: Record<string, Resource> = {
             toggle("is_staff", "员工"),
             f("discount", "专属折扣 (%)", "number"),
             f("commission_rate", "佣金比例 (%)", "number"),
+            {
+                key: "commission_type",
+                label: "返利类型",
+                type: "select",
+                options: [
+                    ["0", "跟随系统设置"],
+                    ["1", "循环返利"],
+                    ["2", "首次返利"],
+                ],
+            },
             f("commission_balance", "佣金余额（分）", "number"),
+            f("invite_user_email", "邀请人邮箱（留空解除）", "email"),
             f("remarks", "备注", "textarea"),
         ],
         create: false,
@@ -681,6 +694,40 @@ export function ResourcePage({ resource }: { resource: Resource }) {
                                                       onClick={async () => {
                                                           const item = { ...r };
                                                           if (
+                                                              resource ===
+                                                              resources.users
+                                                          ) {
+                                                              try {
+                                                                  Object.assign(
+                                                                      item,
+                                                                      (
+                                                                          await request(
+                                                                              query(
+                                                                                  admin(
+                                                                                      "user/getUserInfoById",
+                                                                                  ),
+                                                                                  {
+                                                                                      id: r.id,
+                                                                                  },
+                                                                              ),
+                                                                          )
+                                                                      ).data,
+                                                                  );
+                                                                  item.invite_user_email =
+                                                                      item
+                                                                          .invite_user
+                                                                          ?.email ||
+                                                                      "";
+                                                              } catch (e) {
+                                                                  setError(
+                                                                      (
+                                                                          e as Error
+                                                                      ).message,
+                                                                  );
+                                                                  return;
+                                                              }
+                                                          }
+                                                          if (
                                                               resource.title ===
                                                               "知识库管理"
                                                           ) {
@@ -739,6 +786,18 @@ export function ResourcePage({ resource }: { resource: Resource }) {
                                                               item.transfer_enable =
                                                                   Number(
                                                                       item.transfer_enable,
+                                                                  ) /
+                                                                  1073741824;
+                                                              item.u =
+                                                                  Number(
+                                                                      item.u ||
+                                                                          0,
+                                                                  ) /
+                                                                  1073741824;
+                                                              item.d =
+                                                                  Number(
+                                                                      item.d ||
+                                                                          0,
                                                                   ) /
                                                                   1073741824;
                                                               delete item.password;
@@ -833,11 +892,16 @@ export function ResourcePage({ resource }: { resource: Resource }) {
                                         clean[field.key] = body[field.key];
                                 });
                                 if (editing[key]) clean[key] = editing[key];
-                                if (
-                                    resource.title === "用户管理" &&
-                                    clean.transfer_enable !== undefined
-                                )
-                                    clean.transfer_enable *= 1073741824;
+                                if (resource.title === "用户管理")
+                                    ["transfer_enable", "u", "d"].forEach(
+                                        (field) => {
+                                            if (clean[field] != null)
+                                                clean[field] = Math.round(
+                                                    Number(clean[field]) *
+                                                        1073741824,
+                                                );
+                                        },
+                                    );
                                 if (resource.defaults)
                                     Object.entries(resource.defaults).forEach(
                                         ([k, v]) => {

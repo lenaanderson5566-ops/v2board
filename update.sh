@@ -113,11 +113,19 @@ done < <(git diff --name-only "$OLD_COMMIT" "$TARGET" -- database/migrations)
 WORK_DIR=$(mktemp -d "${TMPDIR:-/tmp}/v2board-update.XXXXXXXX")
 git show "$TARGET:composer.json" > "$WORK_DIR/composer.json"
 git show "$OLD_COMMIT:composer.json" > "$WORK_DIR/original-composer.json"
+# A manual checkout can leave a legacy Composer file on the new branch.
+mkdir "$WORK_DIR/composer-history"
+history_index=0
+while IFS= read -r revision; do
+    history_index=$((history_index + 1))
+    candidate=$(printf '%06d-%s.json' "$history_index" "$revision")
+    git show "$revision:composer.json" > "$WORK_DIR/composer-history/$candidate"
+done < <(git log -100 --format=%H "$TARGET" "$OLD_COMMIT" -- composer.json)
 # Carry over additive package requirements only, never local scripts or repositories.
 "$PHP_BIN" -r '
-$old=json_decode(file_get_contents($argv[1]),true,512,JSON_THROW_ON_ERROR);
 $local=json_decode(file_get_contents($argv[2]),true,512,JSON_THROW_ON_ERROR);
 $target=json_decode(file_get_contents($argv[3]),true,512,JSON_THROW_ON_ERROR);
+function mergeRequirements($old,$local,$target) {
 foreach (["require","require-dev"] as $section) {
     foreach ($old[$section]??[] as $name=>$constraint) {
         if (($local[$section][$name]??null)!==$constraint) throw new RuntimeException("Changed existing dependency: ".$name);
@@ -131,8 +139,20 @@ foreach (["require","require-dev"] as $section) {
     if (empty($local[$section]) && !isset($old[$section])) unset($local[$section]);
 }
 if ($local!=$old) throw new RuntimeException("Unsupported local composer.json edits; review before upgrade.");
-file_put_contents($argv[3],json_encode($target,JSON_PRETTY_PRINT|JSON_UNESCAPED_SLASHES)."\n");
-' "$WORK_DIR/original-composer.json" "$PROJECT/composer.json" "$WORK_DIR/composer.json"
+return $target;
+}
+$firstError=null;
+foreach (array_merge([$argv[1]],glob($argv[4]."/*.json")) as $candidate) {
+    $old=json_decode(file_get_contents($candidate),true,512,JSON_THROW_ON_ERROR);
+    try { $merged=mergeRequirements($old,$local,$target); }
+    catch (RuntimeException $error) { $firstError=$firstError??$error; continue; }
+    file_put_contents($argv[3],json_encode($merged,JSON_PRETTY_PRINT|JSON_UNESCAPED_SLASHES)."\n");
+    copy($candidate,$argv[5]);
+    echo "Composer baseline matched: ".basename($candidate).PHP_EOL;
+    exit(0);
+}
+throw new RuntimeException("No committed Composer baseline matches local file. ".$firstError->getMessage());
+' "$WORK_DIR/original-composer.json" "$PROJECT/composer.json" "$WORK_DIR/composer.json" "$WORK_DIR/composer-history" "$WORK_DIR/matched-composer.json"
 cp -- "$LOCK_FILE" "$WORK_DIR/composer.lock"
 if (( RESOLVE_DEPENDENCIES == 1 )); then
     # Resolve a candidate lock without modifying the live vendor tree.
@@ -171,6 +191,7 @@ printf '%s\n' "$TARGET" > "$BACKUP/target-commit.txt"
 cp -- "$DATABASE_BACKUP" "$BACKUP/database-backup"
 cp -- composer.json composer.lock "$BACKUP/"
 cp -- "$WORK_DIR/composer.json" "$BACKUP/target-composer.json"
+cp -- "$WORK_DIR/matched-composer.json" "$BACKUP/composer-baseline.json"
 cp -- "$WORK_DIR/composer.lock" "$BACKUP/target-composer.lock"
 git diff --binary -- composer.json > "$BACKUP/composer-local.patch"
 sha256sum .env config/v2board.php > "$BACKUP/protected.sha256"

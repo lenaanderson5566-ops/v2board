@@ -11,13 +11,14 @@ git init -q
 git config user.email test@example.test
 git config user.name 'Updater Test'
 printf '.env\nconfig/v2board.php\ncomposer.lock\nvendor/\nstorage/\nbootstrap/cache/\n' > .gitignore
-printf '{"name":"test/site"}\n' > composer.json
+printf '{"name":"test/site","require":{"php":"^7.3.0|^8.0"}}\n' > composer.json
 mkdir -p config storage/framework bootstrap/cache
 touch artisan
 git add .; git commit -qm original
 OLD=$(git rev-parse HEAD)
 git branch -M original
 git checkout -qb codex/react-typescript-console
+printf '{"name":"test/site","require":{"php":"^7.3.0 || ^8.0","geoip2/geoip2":"^2.12"}}\n' > composer.json
 mkdir -p public/console/.vite database/migrations
 echo '{}' > public/console/.vite/manifest.json
 echo '<?php // fixture' > database/migrations/2026_10_01_000001_add_trusted_x_forwarded_for_to_v2node.php
@@ -91,7 +92,7 @@ touch storage/framework/down
 bash "$SOURCE" "${ARGS[@]}" --jobs-stopped > "$TMP/output" 2>&1
 [[ -e storage/framework/down ]]
 new_site customized
-printf '{"name":"test/site","require":{"joanhey/adapterman":"^0.7.1"}}\n' > composer.json
+printf '{"name":"test/site","require":{"php":"^7.3.0|^8.0","joanhey/adapterman":"^0.7.1"}}\n' > composer.json
 mkdir -p app/Payments storage/geoip
 echo 'custom payment' > app/Payments/MetePay.php
 echo 'old mmdb' > storage/geoip/GeoLite2-ASN.mmdb
@@ -115,12 +116,12 @@ reject --jobs-stopped
 grep -q custom public/console/.vite/manifest.json
 [[ ! -e storage/framework/down ]]
 new_site customcheck
-printf '{"name":"test/site","require":{"joanhey/adapterman":"^0.7.1"}}\n' > composer.json
+printf '{"name":"test/site","require":{"php":"^7.3.0|^8.0","joanhey/adapterman":"^0.7.1"}}\n' > composer.json
 bash "$SOURCE" "${ARGS[@]}" --check --resolve-dependencies > "$TMP/output" 2>&1
 [[ $(git rev-parse HEAD) == "$OLD" && ! -e storage/framework/down ]]
 grep -q joanhey/adapterman composer.json
 new_site customfailure
-printf '{"name":"test/site","require":{"joanhey/adapterman":"^0.7.1"}}\n' > composer.json
+printf '{"name":"test/site","require":{"php":"^7.3.0|^8.0","joanhey/adapterman":"^0.7.1"}}\n' > composer.json
 export FAIL_INSTALL=1; reject --jobs-stopped --resolve-dependencies; unset FAIL_INSTALL
 [[ -e storage/framework/down ]]
 grep -q joanhey/adapterman composer.json
@@ -139,4 +140,17 @@ new_site trackedcode
 echo changed > artisan
 reject --jobs-stopped
 [[ ! -e storage/framework/down ]]
-echo 'Updater: 16 isolated scenarios passed'
+new_site legacycomposer
+git checkout -q codex/react-typescript-console
+# Reproduce the production state: new HEAD with legacy Composer plus local package.
+printf '{"name":"test/site","require":{"php":"^7.3.0|^8.0","joanhey/adapterman":"^0.7.1"}}\n' > composer.json
+bash "$SOURCE" "${ARGS[@]}" --check --resolve-dependencies > "$TMP/output" 2>&1
+grep -q '7.3.0|\^8.0' composer.json
+[[ ! -e storage/framework/down ]]
+bash "$SOURCE" "${ARGS[@]}" --jobs-stopped --resolve-dependencies > "$TMP/output" 2>&1
+"$REAL_PHP" -r '$c=json_decode(file_get_contents("composer.json"),true); if ($c["require"]["php"]!=="^7.3.0 || ^8.0" || !isset($c["require"]["joanhey/adapterman"],$c["require"]["geoip2/geoip2"])) exit(1);'
+new_site unknownconstraint
+printf '{"name":"test/site","require":{"php":"^8.4"}}\n' > composer.json
+reject --jobs-stopped --resolve-dependencies
+[[ ! -e storage/framework/down ]]
+echo 'Updater: 18 isolated scenarios passed'

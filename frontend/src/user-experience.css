@@ -276,15 +276,19 @@ body[data-console="user"] .auth-language {
     border: 0;
     background: transparent;
     overflow: visible;
-    min-width: 48px;
-    min-height: 48px;
+    min-width: 44px;
+    min-height: 44px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
 }
 .letter-avatar {
     display: flex;
     align-items: center;
     justify-content: center;
-    width: 40px;
-    height: 40px;
+    width: 34px;
+    height: 34px;
     border-radius: 50%;
     background: #99a585;
     color: white;
@@ -293,7 +297,7 @@ body[data-console="user"] .auth-language {
 }
 .avatar-plan {
     position: absolute;
-    bottom: -9px;
+    bottom: -6px;
     left: 50%;
     transform: translateX(-50%);
     border: 2px solid white;
@@ -302,7 +306,7 @@ body[data-console="user"] .auth-language {
     color: white;
     font-size: 10px;
     line-height: 16px;
-    max-width: 72px;
+    max-width: 58px;
     min-width: 28px;
     padding: 0 6px;
     white-space: nowrap;
@@ -312,14 +316,14 @@ body[data-console="user"] .auth-language {
 .account-popover {
     position: absolute;
     inset-inline-end: 0;
-    top: 58px;
-    width: min(280px, calc(100vw - 32px));
+    top: calc(100% + 8px);
+    width: min(292px, calc(100vw - 32px));
     z-index: 60;
-    border: 1px solid #e3e6e1;
+    border: 1px solid #e5e5e5;
     background: #fff;
     border-radius: 16px;
-    box-shadow: 0 12px 40px #00000012;
-    padding: 16px;
+    box-shadow: 0 8px 32px #00000012;
+    padding: 12px;
     display: flex;
     flex-direction: column;
     gap: 4px;
@@ -329,7 +333,7 @@ body[data-console="user"] .auth-language {
     overflow-wrap: anywhere;
 }
 .account-popover > small {
-    color: #768170;
+    color: #777;
     line-height: 1.6;
     margin: 5px 0 12px;
 }
@@ -343,19 +347,36 @@ body[data-console="user"] .auth-language {
     border: 0;
     border-radius: 8px;
     background: transparent;
-    color: #343a33;
+    color: #333;
     font-size: 14px;
     min-height: 44px;
     justify-content: flex-start;
 }
 .account-popover a:hover,
+.account-popover a:focus-visible,
 .account-popover > button:hover {
-    background: #f5f6f2;
+    background: #f4f4f4;
 }
-.account-popover button {
+.account-popover .account-logout {
     border-top: 1px solid #eee;
     margin-top: 5px;
 }
+.header-controls { gap: 8px; flex-wrap: nowrap; flex-shrink: 0; }
+.app.user .main > header .breadcrumb { min-width: 0; }
+.app.user .main > header .breadcrumb strong { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.account-security { width: 100%; max-width: 560px; padding: 24px 0; }
+.security-back { display: inline-flex; align-items: center; gap: 7px; font-size: 13px; color: #777; margin-bottom: 24px; text-decoration: none; }
+.security-heading { display: flex; align-items: center; gap: 10px; }
+.security-heading h2 { margin: 0; font-size: 22px; font-weight: 600; }
+.account-security > p { line-height: 1.7; margin: 14px 0 28px; }
+.account-security form { display: grid; gap: 18px; }
+.account-security label { display: grid; gap: 8px; font-size: 14px; }
+.account-security input { min-height: 48px; border-radius: 12px; background: #fff; }
+.security-password { position: relative; }
+.security-password input { width: 100%; padding-inline-end: 52px; }
+.security-password .icon-button { position: absolute; inset-inline-end: 4px; top: 2px; width: 44px; height: 44px; border: 0; background: transparent; }
+.account-security .primary { justify-self: start; min-height: 44px; padding-inline: 24px; border-radius: 24px; }
+.account-security-link { display: flex; align-items: center; gap: 12px; padding: 4px 0 24px; font-size: 13px; }
 .app.user .dashboard-welcome {
     display: flex;
     gap: 24px;
@@ -585,7 +606,7 @@ body[data-console="user"] .auth-language {
         display: none;
     }
     .app.user .main > header .actions {
-        gap: 12px;
+        gap: 8px;
     }
     .app.user .dashboard-welcome {
         align-items: flex-start;

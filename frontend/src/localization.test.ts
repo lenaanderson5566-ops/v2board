@@ -77,6 +77,10 @@ describe("localization resources", () => {
             "UserAuth.tsx",
             "AccountEntry.tsx",
             "AccountMenu.tsx",
+            "AccountSecurity.tsx",
+            "HelpGuides.tsx",
+            "support-flow.ts",
+            "PlanDescription.tsx",
             "EmbeddedBrowserNotice.tsx",
             "WorkspaceSkeleton.tsx",
         ]) {

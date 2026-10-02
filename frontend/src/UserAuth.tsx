@@ -19,6 +19,15 @@ export function UserAuth({
     const register = mode === "register",
         forget = mode === "forget",
         verify = forget || (register && boot.emailVerify);
+    const [passwordUpdated] = useState(
+        () =>
+            mode === "login" &&
+            sessionStorage.getItem(`${storageKey}.passwordUpdated`) === "1",
+    );
+    useEffect(() => {
+        if (passwordUpdated)
+            sessionStorage.removeItem(`${storageKey}.passwordUpdated`);
+    }, [passwordUpdated]);
     const [challenge, setChallenge] = useState(0),
         [registered, setRegistered] = useState(false),
         [step, setStep] = useState(1),
@@ -209,6 +218,11 @@ export function UserAuth({
                     </div>
                 </section>
                 <section className="user-auth-card">
+                    {passwordUpdated && (
+                        <div className="success-message" role="status">
+                            {tx("密码已更新，请重新登录。")}
+                        </div>
+                    )}
                     <div className="auth-title-row">
                         <h2 ref={heading} tabIndex={-1}>
                             {title}

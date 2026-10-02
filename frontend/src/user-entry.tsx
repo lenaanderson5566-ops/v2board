@@ -8,6 +8,7 @@ import {
     Profile,
     Traffic,
 } from "./user";
+import { AccountSecurity } from "./AccountSecurity";
 export default function UserContent({
     current,
     path,
@@ -31,6 +32,8 @@ export default function UserContent({
         />
     ) : current === "invite" ? (
         <Invite />
+    ) : current === "security" ? (
+        <AccountSecurity />
     ) : current === "profile" ? (
         <Profile />
     ) : current === "traffic" ? (

@@ -419,6 +419,7 @@ function App() {
         };
         const expire = () => {
             setUser(null);
+            setPath("login");
             navigate("login");
         };
         window.addEventListener("hashchange", fn);
@@ -502,12 +503,15 @@ function App() {
             { key: "traffic", label: "流量记录" },
             { key: "invite", label: "邀请好友" },
             { key: "ticket", label: "工单支持" },
+            { key: "security", label: "账户安全" },
         ].find((n) => n.key === current),
         groups = [...new Set(nav.map((n) => n.group))],
         navigationCurrent =
             boot.mode === "user" && current === "ticket"
                 ? "knowledge"
-                : current;
+                : boot.mode === "user" && current === "security"
+                  ? "profile"
+                  : current;
     let content: ReactNode;
     if (boot.mode === "admin") {
         content = (
@@ -667,7 +671,7 @@ function App() {
                             <ChevronRight size={14} />
                             <strong>{tx(item?.label || "总览")}</strong>
                         </div>
-                        <div className="actions">
+                        <div className="actions header-controls">
                             {boot.mode === "user" && <LanguagePicker />}
                             {boot.mode === "admin" && (
                                 <a

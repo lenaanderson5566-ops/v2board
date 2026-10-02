@@ -325,20 +325,23 @@ table td {
     font-size: 11px;
 }
 .language-picker {
+    position: relative;
     display: flex;
     flex-direction: row;
     align-items: center;
     gap: 5px;
     color: #666;
 }
-.language-picker select {
-    border: 0;
-    background: transparent;
-    width: auto;
-    max-width: 140px;
-    padding: 8px 22px 8px 5px;
-    font-size: 12px;
-    cursor: pointer;
+.language-trigger { display: inline-flex; align-items: center; gap: 8px; min-height: 44px; padding: 0 10px; border: 0; border-radius: 12px; background: transparent; color: #555; font-size: 13px; }
+.language-trigger:hover, .language-trigger[aria-expanded="true"] { background: #f1f1f1; }
+.language-name { max-width: 110px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.language-popover { position: absolute; inset-inline-end: 0; top: calc(100% + 8px); z-index: 70; width: min(224px, calc(100vw - 32px)); max-height: min(480px, 70dvh); overflow-y: auto; padding: 8px; background: #fff; border: 1px solid #e5e5e5; border-radius: 16px; box-shadow: 0 8px 32px #00000012; }
+.language-popover > small { display: block; padding: 8px 10px; color: #888; font-size: 12px; }
+.language-popover > button { display: flex; align-items: center; justify-content: space-between; width: 100%; min-height: 44px; padding: 10px; border: 0; border-radius: 9px; background: transparent; color: #333; text-align: start; font-size: 14px; }
+.language-popover > button:hover, .language-popover > button:focus-visible, .language-popover > button[aria-checked="true"] { background: #f4f4f4; }
+@media (max-width: 600px) {
+    .language-trigger { width: 44px; padding: 0; justify-content: center; }
+    .language-name, .language-chevron { display: none; }
 }
 .auth-language {
     position: absolute;

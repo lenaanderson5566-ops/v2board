@@ -1148,20 +1148,6 @@ export function Profile() {
     const d = useData("user/info"),
         sessions = useData<Row[]>("user/getActiveSession");
     const [notice, setNotice] = useState("");
-    const password: Field[] = [
-        {
-            key: "old_password",
-            label: tx("当前密码"),
-            type: "password",
-            required: true,
-        },
-        {
-            key: "new_password",
-            label: tx("新密码"),
-            type: "password",
-            required: true,
-        },
-    ];
     return (
         <>
             <Panel title={tx("账户信息")}>
@@ -1169,7 +1155,9 @@ export function Profile() {
                     <div className="pad">
                         <h3>{d.data?.email}</h3>
                         <p className="muted">
-                            {tx("管理密码、流量提醒和账户余额。")}
+                            {tx(
+                                "管理流量提醒和账户余额；密码可在账户安全中修改。",
+                            )}
                         </p>
                         <dl className="subscription-facts">
                             <div>
@@ -1211,16 +1199,13 @@ export function Profile() {
                     />
                 </State>
             </Panel>
-            <Panel title={tx("修改密码")}>
-                <Editor
-                    fields={password}
-                    initial={{}}
-                    onSave={async (b) => {
-                        await request("user/changePassword", b);
-                        setNotice(tx("密码已更新"));
-                    }}
-                />
-            </Panel>
+            <div className="account-security-link">
+                <a className="button" href="#/security">
+                    {tx("账户安全")}
+                    <ArrowUpRight size={15} aria-hidden="true" />
+                </a>
+                <span className="muted">{tx("修改密码")}</span>
+            </div>
             <div className="split">
                 <Panel title={tx("兑换礼品卡")}>
                     <Editor

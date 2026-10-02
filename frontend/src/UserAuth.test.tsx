@@ -58,6 +58,7 @@ beforeEach(() => {
     mocks.boot.recaptchaSiteKey = "";
     mocks.boot.tosUrl = "";
     localStorage.clear();
+    sessionStorage.clear();
     location.hash = "";
     mocks.request.mockImplementation(async (path: string) =>
         path === "passport/auth/login"
@@ -68,16 +69,32 @@ beforeEach(() => {
     );
 });
 it("shows the suspension entry when authenticated credentials are denied as banned", async () => {
-    mocks.request.mockRejectedValue(Object.assign(new Error("Suspended"), {code: "ACCOUNT_BANNED"}));
+    mocks.request.mockRejectedValue(
+        Object.assign(new Error("Suspended"), { code: "ACCOUNT_BANNED" }),
+    );
     const view = page("login");
     credentials();
-    fireEvent.click(screen.getByRole("button", {name: "登录"}));
-    await waitFor(() => expect(screen.getByRole("heading", {name: "bannedTitle"})).toBeTruthy());
+    fireEvent.click(screen.getByRole("button", { name: "登录" }));
+    await waitFor(() =>
+        expect(
+            screen.getByRole("heading", { name: "bannedTitle" }),
+        ).toBeTruthy(),
+    );
     expect(view.onLogin).not.toHaveBeenCalled();
-    expect(screen.queryByLabelText("密码", {exact:true})).toBeNull();
+    expect(screen.queryByLabelText("密码", { exact: true })).toBeNull();
 });
 afterEach(cleanup);
 describe("user account steps", () => {
+    it("shows and consumes the password update notice on the login page", () => {
+        sessionStorage.setItem("auth-flow-test.passwordUpdated", "1");
+        page("login");
+        expect(screen.getByRole("status").textContent).toBe(
+            "密码已更新，请重新登录。",
+        );
+        expect(
+            sessionStorage.getItem("auth-flow-test.passwordUpdated"),
+        ).toBeNull();
+    });
     it("sends a code first and registers only after the verification step", async () => {
         const { onLogin } = page();
         credentials();

@@ -12,12 +12,14 @@ use Illuminate\Queue\SerializesModels;
 class SendInvitationEmailJob implements ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
-    public $tries = 3;
+    public $tries = 0;
+    public $maxExceptions = 5;
+    public function backoff() { return [60, 180, 600, 900]; }
     public $timeout = 30;
     public $invitationId;
     public $token;
     public $language;
-    public function __construct($invitationId, $token) { $this->invitationId=$invitationId; $this->token=$token; $this->language=app()->getLocale(); $this->onQueue('send_email'); }
+    public function __construct($invitationId, $token) { $this->invitationId=$invitationId; $this->token=$token; $this->language=app()->getLocale(); $this->onConnection('redis'); $this->onQueue('send_email'); }
     public function handle()
     {
         $record = EmailInvitation::find($this->invitationId);
@@ -29,10 +31,11 @@ class SendInvitationEmailJob implements ShouldQueue
         $locale = app()->getLocale();
         try {
             app()->setLocale($this->language);
-            $result = (new SendEmailJob(['email'=>$record->email,'subject'=>__('You are invited to :name',['name'=>$name]),'template_name'=>'emailInvitation','template_value'=>['name'=>$name,'url'=>$link,'expires_at'=>$record->expires_at]]))->handle();
+            $result = (new SendEmailJob(['email'=>$record->email,'language'=>$sender->language ?: $this->language,'subject'=>__('You are invited to :name',['name'=>$name]),'template_name'=>'emailInvitation','template_value'=>['name'=>$name,'url'=>$link,'expires_at'=>$record->expires_at]]))->handle();
         } finally { app()->setLocale($locale); }
+        if (!empty($result['deferred'])) { $this->release($result['deferred']); return; }
         $update = EmailInvitation::where('id',$record->id)->where('token_hash',$record->token_hash)->whereNull('accepted_at');
-        if (!empty($result['error'])) { $update->update(['failed_at'=>time()]); throw new \RuntimeException('Invitation email delivery failed.'); }
+        if (!empty($result['error'])) { $update->update(['failed_at'=>time()]); if (!empty($result['permanent'])) { $this->fail(new \RuntimeException('Invitation email rejected.')); return; } throw new \RuntimeException('Invitation email delivery failed.'); }
         $update->update(['sent_at'=>time(),'failed_at'=>null]);
     }
 

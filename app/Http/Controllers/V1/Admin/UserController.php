@@ -336,6 +336,7 @@ class UserController extends Controller
             SendEmailJob::dispatch([
                 'email' => $user->email,
                 'subject' => $request->input('subject'),
+                'translations' => $request->input('translations', []),
                 'template_name' => 'notify',
                 'template_value' => [
                     'name' => config('v2board.app_name', 'V2Board'),

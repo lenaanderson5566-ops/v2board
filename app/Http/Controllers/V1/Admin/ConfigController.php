@@ -25,22 +25,32 @@ class ConfigController extends Controller
         ]);
     }
 
+    public function previewMail(Request $request)
+    {
+        $request->validate([
+            'template' => 'required|in:' . implode(',', \App\Services\ProductMail::TYPES),
+            'language' => 'required|in:' . implode(',', \App\Services\LanguagePreferenceService::SUPPORTED),
+            'subject' => 'nullable|string|max:200', 'content' => 'nullable|string|max:100000',
+        ]);
+        $data = app(\App\Services\ProductMail::class)->data([
+            'template_name'=>$request->input('template'), 'language'=>$request->input('language'),
+            'subject'=>$request->input('subject') ?: 'Preview',
+            'template_value'=>['code'=>'123456', 'url'=>config('v2board.app_url'),
+                'content'=>$request->input('content', ''), 'ticket_subject'=>'Example', 'message'=>'Example reply'],
+        ]);
+        return response(['data'=>['subject'=>$data['subject'],
+            'html'=>view('mail.product.message', $data)->render(),
+            'text'=>view('mail.product.text', $data)->render()]]);
+    }
+
     public function testSendMail(Request $request)
     {
         $obj = new SendEmailJob([
-            'email' => $request->user['email'],
-            'subject' => 'This is v2board test email',
-            'template_name' => 'notify',
-            'template_value' => [
-                'name' => config('v2board.app_name', 'V2Board'),
-                'content' => 'This is v2board test email',
-                'url' => config('v2board.app_url')
-            ]
+            'email' => $request->user['email'], 'template_name' => 'test',
+            'template_value' => ['url' => config('v2board.app_url')]
         ]);
-        return response([
-            'data' => true,
-            'log' => $obj->handle()
-        ]);
+        $result = $obj->handle();
+        return response(['data'=>empty($result['error']), 'log'=>$result]);
     }
 
     public function setTelegramWebhook(Request $request)
@@ -125,7 +135,11 @@ class ConfigController extends Controller
                 'email_username' => config('v2board.email_username'),
                 'email_password' => config('v2board.email_password'),
                 'email_encryption' => config('v2board.email_encryption'),
-                'email_from_address' => config('v2board.email_from_address')
+                'email_from_address' => config('v2board.email_from_address'),
+                'email_default_language' => config('v2board.email_default_language', 'zh-CN'),
+                'email_send_interval' => (int)config('v2board.email_send_interval', 2),
+                'email_bulk_interval' => (int)config('v2board.email_bulk_interval', 10),
+                'email_domain_interval' => (int)config('v2board.email_domain_interval', 30)
             ],
             'telegram' => [
                 'telegram_bot_enable' => config('v2board.telegram_bot_enable', 0),

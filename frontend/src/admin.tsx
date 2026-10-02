@@ -1,3 +1,4 @@
+import { AdminMailPreview } from "./AdminMailPreview";
 import { formPresentation, settingsPresentation } from "./admin-presentation";
 import { useState, useEffect, type ReactNode } from "react";
 import { Plus, Search } from "lucide-react";
@@ -1650,6 +1651,7 @@ export function Settings() {
                         >
                             发送测试邮件
                         </button>
+                        <AdminMailPreview />
                     </div>
                 )}
                 {group === "telegram" && (

@@ -39,8 +39,7 @@ class SendRemindMail extends Command
      */
     public function handle()
     {
-        ini_set('memory_limit', -1);
-        $users = User::all();
+        $users = User::where('banned', 0)->cursor();
         $mailService = new MailService();
         foreach ($users as $user) {
             if ($user->remind_expire) $mailService->remindExpire($user);

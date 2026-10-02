@@ -29,6 +29,10 @@ $call = function ($path, $body=null, $token=null) use ($kernel) {
 $config = config('v2board');
 $queue = Queue::getFacadeRoot(); $mail = Mail::getFacadeRoot();
 Queue::fake(); Mail::fake();
+$app->instance(App\Services\MailRateLimiter::class, new class extends App\Services\MailRateLimiter {
+    public function acquire($email, $bulk, $priority = false) { return 0; }
+    public function cooldown($email, $priority=false) {}
+});
 DB::beginTransaction();
 $users = []; $tokens = [];
 try {
@@ -103,7 +107,7 @@ try {
     try { $service->register($renewedJob->token,$renewed->email,fn()=>throw new RuntimeException('simulated save failure')); }
     catch (RuntimeException $error) { $assert($error->getMessage()==='simulated save failure','Unexpected rollback error'); }
     $assert(!$renewed->fresh()->accepted_at,'Failed registration consumed invitation');
-    Mail::swap(new class { public function send(...$args) { throw new RuntimeException('simulated SMTP failure'); } });
+    Mail::swap(new class { public function forgetMailers() {} public function send(...$args) { throw new RuntimeException('simulated SMTP failure'); } });
     try { $renewedJob->handle(); throw new RuntimeException('Mail failure ignored'); }
     catch (RuntimeException $error) { $assert($error->getMessage()==='Invitation email delivery failed.','Delivery retry error incorrect'); }
     $assert($renewed->fresh()->failed_at && $service->history($sender->id,90)[0]['status']==='failed','Failed delivery not tracked');

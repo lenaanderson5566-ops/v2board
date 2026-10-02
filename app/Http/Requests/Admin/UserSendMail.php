@@ -14,8 +14,12 @@ class UserSendMail extends FormRequest
     public function rules()
     {
         return [
-            'subject' => 'required',
-            'content' => 'required',
+            'subject' => 'required|string|max:200',
+            'content' => 'required|string|max:100000',
+            'translations' => 'sometimes|array:zh-CN,zh-TW,en-US,ja-JP,ko-KR,vi-VN,ru-RU,fa-IR',
+            'translations.*' => 'array:subject,content',
+            'translations.*.subject' => 'required|string|max:200',
+            'translations.*.content' => 'required|string|max:100000',
         ];
     }
 

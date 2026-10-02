@@ -65,6 +65,10 @@ class ConfigSave extends FormRequest
         'custom_footer_html' => 'nullable|string',
         // email
         'email_template' => '',
+        'email_default_language' => 'in:zh-CN,zh-TW,en-US,ja-JP,ko-KR,vi-VN,ru-RU,fa-IR',
+        'email_send_interval' => 'integer|min:1|max:3600',
+        'email_bulk_interval' => 'integer|min:1|max:3600',
+        'email_domain_interval' => 'integer|min:1|max:3600',
         'email_host' => '',
         'email_port' => '',
         'email_username' => '',

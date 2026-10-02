@@ -169,7 +169,7 @@ return [
     */
 
     'environments' => [
-        'local' => [
+        '*' => [
             'V2board' => [
                 'connection' => 'redis',
                 'queue' => [
@@ -177,7 +177,6 @@ return [
                     'traffic_fetch',
                     'stat',
                     'send_email',
-                    'send_email_mass',
                     'send_telegram',
                 ],
                 'balance' => 'auto',
@@ -188,6 +187,16 @@ return [
                 ),
                 'tries' => 1,
                 'balanceCooldown' => 3,
+            ],
+            'mail-priority' => [
+                'connection' => 'redis', 'queue' => ['send_email_priority'],
+                'balance' => 'simple', 'processes' => 2, 'minProcesses' => 2, 'maxProcesses' => 2,
+                'tries' => 1, 'timeout' => 30, 'sleep' => 1,
+            ],
+            'mail-bulk' => [
+                'connection' => 'redis', 'queue' => ['send_email_mass'],
+                'balance' => 'simple', 'processes' => 1, 'minProcesses' => 1, 'maxProcesses' => 1,
+                'tries' => 1, 'timeout' => 30, 'sleep' => 1,
             ],
         ],
     ],

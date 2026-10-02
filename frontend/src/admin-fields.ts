@@ -7,6 +7,16 @@ export const resetOptions: [string, string][] = [
     ["4", "每年按到期日"],
 ];
 const choices: Record<string, [string, string][]> = {
+    email_default_language: [
+        ["zh-CN", "简体中文"],
+        ["zh-TW", "繁體中文"],
+        ["en-US", "English"],
+        ["ja-JP", "日本語"],
+        ["ko-KR", "한국어"],
+        ["vi-VN", "Tiếng Việt"],
+        ["ru-RU", "Русский"],
+        ["fa-IR", "فارسی"],
+    ],
     reset_traffic_method: resetOptions,
     ticket_status: [
         ["0", "所有用户可提交"],

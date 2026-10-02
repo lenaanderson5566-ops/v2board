@@ -300,3 +300,4 @@ printf '\nUpgrade complete; maintenance remains ON. Backup: %s\n' "$BACKUP"
 printf 'In BaoTa restart this site PHP-FPM, then run:\n  %q artisan up\n' "$PHP_BIN"
 printf 'Verify login/subscriptions/payments/admin/assets; start original queue and scheduler.\n'
 printf 'Check manual-quota accounts without plan_id per docs/account-entry-states.md.\n'
+printf 'IMPORTANT: restart Horizon to load the dedicated send_email_priority workers. If using queue:work, add a separate send_email_priority worker BEFORE reopening registration; see docs/product-mail.md.\n'

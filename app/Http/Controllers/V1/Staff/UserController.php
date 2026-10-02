@@ -67,18 +67,19 @@ class UserController extends Controller
         $sort = $request->input('sort') ? $request->input('sort') : 'created_at';
         $builder = User::orderBy($sort, $sortType);
         $this->filter($request, $builder);
-        $users = $builder->get();
+        $users = $builder->cursor();
         foreach ($users as $user) {
             SendEmailJob::dispatch([
                 'email' => $user->email,
                 'subject' => $request->input('subject'),
+                'translations' => $request->input('translations', []),
                 'template_name' => 'notify',
                 'template_value' => [
                     'name' => config('v2board.app_name', 'V2Board'),
                     'url' => config('v2board.app_url'),
                     'content' => $request->input('content')
                 ]
-            ]);
+            ], 'send_email_mass');
         }
 
         return response([

@@ -1,3 +1,4 @@
+import { AdminMailComposer } from "./AdminMailComposer";
 import { useState } from "react";
 import { AdminUsageReset } from "./AdminUsageReset";
 import {
@@ -665,44 +666,42 @@ function BulkUsers({
                 />{" "}
                 我已确认操作范围和人数
             </label>
-            <Editor
-                fields={
-                    operation.kind === "mail"
-                        ? [
-                              {
-                                  key: "subject",
-                                  label: "邮件主题",
-                                  required: true,
-                              },
-                              {
-                                  key: "content",
-                                  label: "邮件正文 HTML",
-                                  type: "textarea",
-                                  required: true,
-                              },
-                          ]
-                        : []
-                }
-                initial={{}}
-                validate={() =>
-                    confirmed ? undefined : "请先确认操作范围和人数"
-                }
-                submit={
-                    operation.kind === "mail"
-                        ? "加入发送队列"
-                        : operation.kind === "ban"
-                          ? "确认封禁"
-                          : "确认永久删除"
-                }
-                onSave={async (body) => {
-                    await request(endpoint, {
-                        ...body,
-                        filter: operation.filters,
-                        expected_count: operation.count,
-                    });
-                    onComplete();
-                }}
-            />
+            {operation.kind === "mail" ? (
+                <AdminMailComposer
+                    confirmed={confirmed}
+                    onSave={async (body) => {
+                        await request(endpoint, {
+                            ...body,
+                            filter: operation.filters,
+                            expected_count: operation.count,
+                        });
+                        onComplete();
+                    }}
+                />
+            ) : (
+                <Editor
+                    fields={[]}
+                    initial={{}}
+                    validate={() =>
+                        confirmed ? undefined : "请先确认操作范围和人数"
+                    }
+                    submit={
+                        operation.kind === "mail"
+                            ? "加入发送队列"
+                            : operation.kind === "ban"
+                              ? "确认封禁"
+                              : "确认永久删除"
+                    }
+                    onSave={async (body) => {
+                        await request(endpoint, {
+                            ...body,
+                            filter: operation.filters,
+                            expected_count: operation.count,
+                        });
+                        onComplete();
+                    }}
+                />
+            )}
         </div>
     );
 }

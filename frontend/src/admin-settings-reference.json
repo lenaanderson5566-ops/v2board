@@ -466,6 +466,30 @@
       "hint": "你可以在文档查看如何自定义邮件模板",
       "child": false,
       "line": 6375
+    },
+    "email_default_language": {
+      "label": "默认邮件语言",
+      "hint": "用户未设置语言时使用；验证码跟随本次界面语言。",
+      "child": false,
+      "line": 9000
+    },
+    "email_send_interval": {
+      "label": "普通邮件最小间隔（秒）",
+      "hint": "普通通知与群发跨进程共享；默认 2 秒。验证码走独立优先队列，不受此间隔限制。",
+      "child": false,
+      "line": 9001
+    },
+    "email_bulk_interval": {
+      "label": "群发邮件最小间隔（秒）",
+      "hint": "群发和批量提醒共享；默认 10 秒。",
+      "child": false,
+      "line": 9002
+    },
+    "email_domain_interval": {
+      "label": "同邮箱服务商群发间隔（秒）",
+      "hint": "QQ / Foxmail、163 / 126、Gmail 分组限速；默认 30 秒。限流拒收后自动退避。",
+      "child": false,
+      "line": 9003
     }
   },
   "telegram": {

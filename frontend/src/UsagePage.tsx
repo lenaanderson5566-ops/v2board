@@ -12,6 +12,9 @@ export function UsagePage() {
         sub = useData("user/getSubscribe"),
         resets = useData("user/usage/reset");
     const [tab, setTab] = useState("overview"),
+        [resetTab, setResetTab] = useState<"available" | "history">(
+            "available",
+        ),
         [confirm, setConfirm] = useState(false),
         [busy, setBusy] = useState(false),
         [error, setError] = useState(""),
@@ -128,118 +131,177 @@ export function UsagePage() {
                             </div>
                         </State>
                     </section>
-                    <section className="settings-section">
-                        <h2>{b("usageReset")}</h2>
-                        <p className="muted">{b("resetHelp")}</p>
+                    <section className="settings-section reset-section">
+                        <div className="reset-section-intro">
+                            <h2>{b("usageReset")}</h2>
+                            <p className="muted">{b("resetHelp")}</p>
+                        </div>
                         <State {...resets} retry={resets.reload}>
-                            <div className="settings-card">
-                                <div className="settings-row">
-                                    <div>
-                                        <strong>{b("banked")}</strong>
-                                        <p className="reset-count">
-                                            {resets.data?.available || 0}
-                                            <small>{b("available")}</small>
-                                        </p>
-                                    </div>
+                            <div className="settings-card reset-card">
+                                <div
+                                    className="reset-switcher"
+                                    role="group"
+                                    aria-label={b("usageReset")}
+                                >
                                     <button
-                                        className="soft-button"
-                                        disabled={
-                                            !resets.data?.can_reset ||
-                                            resets.loading
-                                        }
-                                        onClick={() => {
-                                            attempt.current ||=
-                                                crypto.randomUUID();
-                                            setError("");
-                                            setConfirm(true);
-                                        }}
+                                        aria-pressed={resetTab === "available"}
+                                        onClick={() => setResetTab("available")}
                                     >
-                                        <RotateCcw size={16} />
-                                        {b("resetNow")}
+                                        {b("resetAvailable", {
+                                            count: resets.data?.available || 0,
+                                        })}
+                                    </button>
+                                    <button
+                                        aria-pressed={resetTab === "history"}
+                                        onClick={() => setResetTab("history")}
+                                    >
+                                        {b("historyLabel")}
                                     </button>
                                 </div>
-                                <p className="muted">
-                                    {resets.data?.disabled_reason
-                                        ? resetError({
-                                              code: resets.data.disabled_reason,
-                                              message: "",
-                                          })
-                                        : b("bankedHelp")}
-                                </p>
-                                {!!resets.data?.credits?.length && (
-                                    <ul className="reset-expiry-list">
-                                        {resets.data.credits.map(
-                                            (credit: Row) => (
-                                                <li key={credit.id}>
-                                                    <span>
-                                                        {b("creditCount", {
-                                                            count: credit.remaining,
-                                                        })}
-                                                    </span>
-                                                    <span>
-                                                        {credit.expires_at
-                                                            ? b("expires", {
-                                                                  date: date(
-                                                                      credit.expires_at,
-                                                                  ),
-                                                              })
-                                                            : tx("长期有效")}
-                                                    </span>
-                                                </li>
-                                            ),
-                                        )}
-                                    </ul>
-                                )}
-                            </div>
-                            <header className="reset-history-heading">
-                                <h3>{b("resetHistory")}</h3>
-                                <small className="muted">
-                                    {b("recentHistory")}
-                                </small>
-                            </header>
-                            <div className="settings-card reset-history">
-                                {resets.data?.history?.length ? (
-                                    resets.data.history.map((row: Row) => (
-                                        <div
-                                            className="settings-row"
-                                            key={row.id}
-                                        >
-                                            <div>
-                                                <strong>
-                                                    {b(
-                                                        row.kind === "grant"
-                                                            ? "granted"
-                                                            : row.kind ===
-                                                                "global"
-                                                              ? "globalReset"
-                                                              : "consumed",
-                                                    )}
-                                                </strong>
+                                <div className="reset-content">
+                                    {resetTab === "available" ? (
+                                        Number(resets.data?.available || 0) >
+                                        0 ? (
+                                            <>
+                                                <div className="settings-row">
+                                                    <strong>
+                                                        {b("banked")}
+                                                    </strong>
+                                                    <button
+                                                        className="soft-button"
+                                                        disabled={
+                                                            !resets.data
+                                                                ?.can_reset ||
+                                                            resets.loading
+                                                        }
+                                                        onClick={() => {
+                                                            attempt.current ||=
+                                                                crypto.randomUUID();
+                                                            setError("");
+                                                            setConfirm(true);
+                                                        }}
+                                                    >
+                                                        <RotateCcw size={16} />
+                                                        {b("resetNow")}
+                                                    </button>
+                                                </div>
                                                 <p className="muted">
-                                                    {row.kind === "grant"
-                                                        ? b("creditCount", {
-                                                              count: row.quantity,
+                                                    {resets.data
+                                                        ?.disabled_reason
+                                                        ? resetError({
+                                                              code: resets.data
+                                                                  .disabled_reason,
+                                                              message: "",
                                                           })
-                                                        : b("usageCleared", {
-                                                              amount: bytes(
-                                                                  Number(
-                                                                      row.u_before,
-                                                                  ) +
-                                                                      Number(
-                                                                          row.d_before,
-                                                                      ),
-                                                              ),
-                                                          })}
+                                                        : b("bankedHelp")}
                                                 </p>
-                                            </div>
-                                            <time>{date(row.created_at)}</time>
+                                                {!!resets.data?.credits
+                                                    ?.length && (
+                                                    <ul className="reset-expiry-list">
+                                                        {resets.data.credits.map(
+                                                            (credit: Row) => (
+                                                                <li
+                                                                    key={
+                                                                        credit.id
+                                                                    }
+                                                                >
+                                                                    <span>
+                                                                        {b(
+                                                                            "creditCount",
+                                                                            {
+                                                                                count: credit.remaining,
+                                                                            },
+                                                                        )}
+                                                                    </span>
+                                                                    <span>
+                                                                        {credit.expires_at
+                                                                            ? b(
+                                                                                  "expires",
+                                                                                  {
+                                                                                      date: date(
+                                                                                          credit.expires_at,
+                                                                                      ),
+                                                                                  },
+                                                                              )
+                                                                            : tx(
+                                                                                  "长期有效",
+                                                                              )}
+                                                                    </span>
+                                                                </li>
+                                                            ),
+                                                        )}
+                                                    </ul>
+                                                )}
+                                            </>
+                                        ) : (
+                                            <p className="reset-empty muted">
+                                                {b("resetEmpty")}
+                                            </p>
+                                        )
+                                    ) : (
+                                        <div className="reset-history">
+                                            <p className="reset-history-range muted">
+                                                {b("recentHistory")}
+                                            </p>
+                                            {resets.data?.history?.length ? (
+                                                resets.data.history.map(
+                                                    (row: Row) => (
+                                                        <div
+                                                            className="settings-row"
+                                                            key={row.id}
+                                                        >
+                                                            <div>
+                                                                <strong>
+                                                                    {b(
+                                                                        row.kind ===
+                                                                            "grant"
+                                                                            ? "granted"
+                                                                            : row.kind ===
+                                                                                "global"
+                                                                              ? "globalReset"
+                                                                              : "consumed",
+                                                                    )}
+                                                                </strong>
+                                                                <p className="muted">
+                                                                    {row.kind ===
+                                                                    "grant"
+                                                                        ? b(
+                                                                              "creditCount",
+                                                                              {
+                                                                                  count: row.quantity,
+                                                                              },
+                                                                          )
+                                                                        : b(
+                                                                              "usageCleared",
+                                                                              {
+                                                                                  amount: bytes(
+                                                                                      Number(
+                                                                                          row.u_before,
+                                                                                      ) +
+                                                                                          Number(
+                                                                                              row.d_before,
+                                                                                          ),
+                                                                                  ),
+                                                                              },
+                                                                          )}
+                                                                </p>
+                                                            </div>
+                                                            <time>
+                                                                {date(
+                                                                    row.created_at,
+                                                                )}
+                                                            </time>
+                                                        </div>
+                                                    ),
+                                                )
+                                            ) : (
+                                                <p className="muted">
+                                                    {b("noResetHistory")}
+                                                </p>
+                                            )}
                                         </div>
-                                    ))
-                                ) : (
-                                    <p className="muted">
-                                        {b("noResetHistory")}
-                                    </p>
-                                )}
+                                    )}
+                                </div>
                             </div>
                         </State>
                     </section>

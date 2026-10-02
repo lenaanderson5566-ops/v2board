@@ -1,5 +1,36 @@
 import i18n from "./i18n";
 export const billingCopy = {
+    resetAvailable: [
+        "可用 {{count}}",
+        "可用 {{count}}",
+        "Available {{count}}",
+        "利用可能 {{count}}",
+        "사용 가능 {{count}}",
+        "Khả dụng {{count}}",
+        "Доступно {{count}}",
+        "قابل استفاده {{count}}",
+    ],
+    historyLabel: [
+        "历史记录",
+        "歷史記錄",
+        "History",
+        "履歴",
+        "기록",
+        "Lịch sử",
+        "История",
+        "تاریخچه",
+    ],
+    resetEmpty: [
+        "当前暂无可用的重置次数。",
+        "目前暫無可用的重置次數。",
+        "You have no available resets.",
+        "現在利用できるリセットはありません。",
+        "현재 사용 가능한 초기화 횟수가 없습니다.",
+        "Hiện chưa có lượt đặt lại khả dụng.",
+        "Сейчас нет доступных сбросов.",
+        "در حال حاضر بازنشانی قابل استفاده‌ای ندارید.",
+    ],
+
     usageDetails: [
         "使用明细",
         "使用明細",

@@ -183,6 +183,8 @@ it("distinguishes grants, personal consumption and administrator global resets",
         { id: 3, kind: "global", u_before: 0, d_before: 50 },
     ];
     render(<UsagePage />);
+    expect(screen.queryByText("globalReset")).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "historyLabel" }));
     for (const name of ["granted", "consumed", "globalReset"])
         expect(screen.getByText(name)).toBeTruthy();
 });

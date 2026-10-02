@@ -243,7 +243,7 @@ export default function Landing() {
                         <h2>{t("questions")}</h2>
                     </div>
                     <div>
-                        {[1, 2, 3, 4].map((index) => (
+                        {[1, 3].map((index) => (
                             <details key={index}>
                                 <summary>
                                     {t("q" + index)}

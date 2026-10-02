@@ -55,13 +55,30 @@ class PlanI18nController extends Controller
         ]);
     }
 
+    public function generate(Request $request)
+    {
+        $params = $request->validate([
+            'plan_id'=>'required|integer',
+            'source'=>'required|in:zh-CN,zh-TW,en-US,ja-JP,ko-KR,vi-VN,ru-RU,fa-IR',
+            'locale'=>'required|in:zh-CN,zh-TW,en-US,ja-JP,ko-KR,vi-VN,ru-RU,fa-IR',
+        ]);
+        $plan = Plan::findOrFail($params['plan_id']);
+        $content = (string) $plan->content;
+        if (strlen($content) > 20000) abort(422, '套餐描述过长，请分段人工翻译');
+        $translated = $params['source'] === $params['locale'] ? $content :
+            app(\App\Services\PlanAutoTranslation::class)->generate($content, $params['source'], $params['locale']);
+        return response(['data'=>['name'=>$plan->name, 'content'=>$translated, 'source_hash'=>hash('sha256', $content)]]);
+    }
+
     public function save(Request $request)
     {
         $params = $request->validate([
             'plan_id' => 'required|integer',
             'locale' => 'required|string|max:16',
             'name' => 'nullable|string|max:255',
-            'content' => 'nullable|string'
+            'content' => 'nullable|string',
+            'only_missing' => 'sometimes|boolean',
+            'source_hash' => 'required_if:only_missing,true|string|size:64'
         ]);
 
         $plan = Plan::find($params['plan_id']);
@@ -72,6 +89,19 @@ class PlanI18nController extends Controller
         $localeFile = resource_path('lang/' . $params['locale'] . '.json');
         if (!is_file($localeFile)) {
             abort(500, '语言不存在');
+        }
+
+        if (!empty($params['only_missing'])) {
+            $saved = \Illuminate\Support\Facades\DB::transaction(function () use ($params) {
+                $locked = Plan::where('id', $params['plan_id'])->lockForUpdate()->firstOrFail();
+                if (!hash_equals(hash('sha256', (string) $locked->content), $params['source_hash'])) abort(409, '套餐原文已变更，请重新生成译文');
+                $existing = PlanTranslation::where('plan_id', $locked->id)->where('locale', $params['locale'])->first();
+                if ($existing && trim((string) $existing->content) !== '') return false;
+                PlanTranslation::updateOrCreate(['plan_id'=>$locked->id, 'locale'=>$params['locale']],
+                    ['name'=>$existing && $existing->name ? $existing->name : ($params['name'] ?? $locked->name), 'content'=>$params['content'] ?? '']);
+                return true;
+            });
+            return response(['data'=>$saved]);
         }
 
         $name = $params['name'] ?? null;

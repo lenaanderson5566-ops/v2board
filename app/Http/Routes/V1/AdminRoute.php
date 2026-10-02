@@ -29,6 +29,7 @@ class AdminRoute
             $router->get ('/ops/i18n/plan/locales', 'V1\Admin\PlanI18nController@locales');
             $router->get ('/ops/i18n/plan/fetch', 'V1\Admin\PlanI18nController@fetch');
             $router->post('/ops/i18n/plan/save', 'V1\Admin\PlanI18nController@save');
+            $router->post('/ops/i18n/plan/generate', 'V1\Admin\PlanI18nController@generate')->middleware('throttle:10,1');
             // Server
             $router->get ('/server/group/fetch', 'V1\\Admin\\Server\\GroupController@fetch');
             $router->post('/server/group/save', 'V1\\Admin\\Server\\GroupController@save');

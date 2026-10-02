@@ -1,3 +1,5 @@
+import { PlanDescription } from "./PlanDescription";
+import { AdminPlanAutoTranslation } from "./AdminPlanAutoTranslation";
 import { AdminMailPreview } from "./AdminMailPreview";
 import { formPresentation, settingsPresentation } from "./admin-presentation";
 import { useState, useEffect, type ReactNode } from "react";
@@ -92,7 +94,10 @@ const price = (key: string, label: string): Field => ({
     ...f(key, label + "（元）", "number"),
     scale: 100,
     step: 0.01,
-    hint: key === "onetime_price" ? "额度包价格；流量 (GB) 为额度数量。仅在用户的额度入口展示，可独立使用，套餐重置不会补回额度。" : "留空表示不提供该支付周期",
+    hint:
+        key === "onetime_price"
+            ? "额度包价格；流量 (GB) 为额度数量。仅在用户的额度入口展示，可独立使用，套餐重置不会补回额度。"
+            : "留空表示不提供该支付周期",
 });
 export const resources: Record<string, Resource> = {
     plans: {
@@ -328,7 +333,10 @@ export const resources: Record<string, Resource> = {
             [
                 "type",
                 "类型",
-                (r) => ["", "新购", "续费", "升级", "流量重置", "额度购买"][Number(r.type)] || r.type,
+                (r) =>
+                    ["", "新购", "续费", "升级", "流量重置", "额度购买"][
+                        Number(r.type)
+                    ] || r.type,
             ],
             ["plan_name", "订阅计划"],
             [
@@ -350,7 +358,11 @@ export const resources: Record<string, Resource> = {
             ],
             ["user_id", "用户 ID"],
             ["plan_id", "套餐 ID"],
-            ["credit_bytes", "额度数量", (r) => r.credit_bytes ? bytes(r.credit_bytes) : "—"],
+            [
+                "credit_bytes",
+                "额度数量",
+                (r) => (r.credit_bytes ? bytes(r.credit_bytes) : "—"),
+            ],
             ["total_amount", "金额", (r) => money(r.total_amount)],
             [
                 "commission_balance",
@@ -1762,14 +1774,26 @@ export function Translations() {
             </div>
             {plan ? (
                 <State {...d}>
+                    <AdminPlanAutoTranslation
+                        key={plan}
+                        plan={plan}
+                        locales={locales.data || []}
+                        onSaved={d.reload}
+                    />
                     <div className="pad muted">
                         默认名称：{d.data?.default?.name}
+                        <details>
+                            <summary>查看套餐原文</summary>
+                            <PlanDescription
+                                content={d.data?.default?.content}
+                            />
+                        </details>
                     </div>
                     <Editor
                         key={plan + locale + JSON.stringify(d.data)}
                         fields={[
                             f("name", "翻译名称"),
-                            f("content", "翻译说明 HTML", "textarea"),
+                            f("content", "翻译说明（JSON / HTML）", "textarea"),
                         ]}
                         initial={{
                             plan_id: Number(plan),

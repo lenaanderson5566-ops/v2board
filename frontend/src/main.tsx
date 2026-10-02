@@ -49,6 +49,7 @@ import { Editor, Panel, type Field } from "./ui";
 import { UserAuth } from "./UserAuth";
 import { UserStatusGate } from "./AccountEntry";
 import { AnnouncementCenter } from "./AnnouncementCenter";
+import { InviteCampaign } from "./InviteCampaign";
 import { AccountMenu } from "./AccountMenu";
 import { EmbeddedBrowserNotice } from "./EmbeddedBrowserNotice";
 import { currentDevice } from "./user-experience";
@@ -665,6 +666,7 @@ function App() {
                             </div>
                         ))}
                     </nav>
+                    <InviteCampaign />
                     <div className="sidebar-bottom">
                         <div className="avatar">
                             {user.email?.slice(0, 1).toUpperCase()}

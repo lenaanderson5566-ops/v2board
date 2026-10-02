@@ -1141,3 +1141,10 @@ body:has(.browser-notice) #custom-footer {
         margin-top: 20px;
     }
 }
+.help-guides details { border-bottom: 1px solid #ececec; padding: 14px 0; }
+.help-guides details:first-child { padding-top: 0; }
+.help-guides details:last-child { border-bottom: 0; }
+.help-guides summary { cursor: pointer; font-weight: 500; min-height: 32px; }
+.help-guides p { color: #666; line-height: 1.8; margin: 8px 0; }
+.support-context { padding-inline: 0; }
+.order-support-link { margin-bottom: 16px; }

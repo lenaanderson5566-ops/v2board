@@ -7,7 +7,6 @@ import {
     ShoppingBag,
     ReceiptText,
     BookOpen,
-    MessageCircle,
     Users,
     Settings,
     Shield,
@@ -67,14 +66,8 @@ const userNav: Nav[] = [
     { key: "plan", label: "购买订阅", icon: ShoppingBag, group: "工作空间" },
     {
         key: "knowledge",
-        label: "使用文档",
+        label: "帮助中心",
         icon: BookOpen,
-        group: "帮助与账户",
-    },
-    {
-        key: "ticket",
-        label: "工单支持",
-        icon: MessageCircle,
         group: "帮助与账户",
     },
     { key: "profile", label: "账户设置", icon: Settings, group: "帮助与账户" },
@@ -508,8 +501,13 @@ function App() {
             { key: "order", label: "订单记录" },
             { key: "traffic", label: "流量记录" },
             { key: "invite", label: "邀请好友" },
+            { key: "ticket", label: "工单支持" },
         ].find((n) => n.key === current),
-        groups = [...new Set(nav.map((n) => n.group))];
+        groups = [...new Set(nav.map((n) => n.group))],
+        navigationCurrent =
+            boot.mode === "user" && current === "ticket"
+                ? "knowledge"
+                : current;
     let content: ReactNode;
     if (boot.mode === "admin") {
         content = (
@@ -603,19 +601,21 @@ function App() {
                                     .map(({ key, label, icon: Icon }) => (
                                         <a
                                             aria-current={
-                                                current === key
+                                                navigationCurrent === key
                                                     ? "page"
                                                     : undefined
                                             }
                                             className={
-                                                current === key ? "active" : ""
+                                                navigationCurrent === key
+                                                    ? "active"
+                                                    : ""
                                             }
                                             href={"#/" + key}
                                             key={key}
                                         >
                                             <Icon size={18} />
                                             <span>{tx(label)}</span>
-                                            {current === key && (
+                                            {navigationCurrent === key && (
                                                 <span className="nav-dot" />
                                             )}
                                         </a>
@@ -727,7 +727,7 @@ function App() {
                                 [
                                     "dashboard",
                                     "plan",
-                                    "ticket",
+                                    "knowledge",
                                     "profile",
                                 ].includes(n.key),
                             )
@@ -736,9 +736,15 @@ function App() {
                                     key={key}
                                     href={"#/" + key}
                                     aria-current={
-                                        current === key ? "page" : undefined
+                                        navigationCurrent === key
+                                            ? "page"
+                                            : undefined
                                     }
-                                    className={current === key ? "active" : ""}
+                                    className={
+                                        navigationCurrent === key
+                                            ? "active"
+                                            : ""
+                                    }
                                 >
                                     <Icon size={21} />
                                     <span>{tx(label)}</span>

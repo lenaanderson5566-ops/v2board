@@ -1,5 +1,12 @@
 import { useEffect, useRef, useState } from "react";
-import { Settings, ReceiptText, Activity, Users, LogOut } from "lucide-react";
+import {
+    Settings,
+    ReceiptText,
+    Activity,
+    Users,
+    LogOut,
+    BookOpen,
+} from "lucide-react";
 import { type Row } from "./api";
 import { useData } from "./ui";
 import { tx } from "./i18n";
@@ -78,6 +85,7 @@ export function AccountMenu({
                     </small>
                     {[
                         { key: "profile", label: "账户设置", icon: Settings },
+                        { key: "knowledge", label: "帮助中心", icon: BookOpen },
                         { key: "order", label: "订单记录", icon: ReceiptText },
                         { key: "traffic", label: "流量记录", icon: Activity },
                         { key: "invite", label: "邀请好友", icon: Users },

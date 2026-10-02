@@ -22,7 +22,13 @@ export default function UserContent({
     ) : current === "knowledge" ? (
         <Knowledge />
     ) : current === "ticket" ? (
-        <Tickets />
+        <Tickets
+            orderTradeNo={
+                path.split("/")[1] === "order"
+                    ? decodeURIComponent(path.split("/")[2] || "")
+                    : undefined
+            }
+        />
     ) : current === "invite" ? (
         <Invite />
     ) : current === "profile" ? (

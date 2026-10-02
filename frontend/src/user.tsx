@@ -4,6 +4,12 @@ import { SubscriptionImport } from "./SubscriptionImport";
 import { UsageChart } from "./UsageChart";
 import { AccountEntry } from "./AccountEntry";
 import { PlanDescription } from "./PlanDescription";
+import { HelpGuides, ContactSupport } from "./HelpGuides";
+import {
+    supportTopics,
+    unresolvedTicket,
+    supportPayload,
+} from "./support-flow";
 import { useState, useEffect, useRef, type ReactNode } from "react";
 import { QRCodeSVG } from "qrcode.react";
 import { loadStripe } from "@stripe/stripe-js/pure";
@@ -520,6 +526,12 @@ function OrderDetail({ order, reload }: { order: Row; reload: () => void }) {
                 />
             </div>
             <h3>{order.plan?.name}</h3>
+            <a
+                className="button order-support-link"
+                href={`#/ticket/order/${encodeURIComponent(order.trade_no)}`}
+            >
+                {tx("此订单需要帮助？")}
+            </a>
             {error && <div className="alert">{error}</div>}
             {order.status === 0 && (
                 <>
@@ -673,6 +685,7 @@ export function Knowledge() {
         );
     return (
         <>
+            <HelpGuides />
             <Panel
                 title={tx("使用文档")}
                 actions={
@@ -721,6 +734,7 @@ export function Knowledge() {
                     )}
                 </State>
             </Panel>
+            <ContactSupport />
             {id && (
                 <Modal
                     title={article.data?.title || tx("文档")}
@@ -743,6 +757,7 @@ export function Tickets({
     pageSize = 20,
     heading,
     adminColumns,
+    orderTradeNo,
 }: {
     isAdmin?: boolean;
     queryParams?: Row;
@@ -750,6 +765,7 @@ export function Tickets({
     pageSize?: number;
     heading?: string;
     adminColumns?: [string, string, ((row: Row) => ReactNode)?][];
+    orderTradeNo?: string;
 }) {
     const [page, setPage] = useState(1);
     const prefix = isAdmin ? boot.adminPath : "user";
@@ -767,8 +783,17 @@ export function Tickets({
                 ? query(`${prefix}/ticket/fetch`, { id })
                 : `${prefix}/ticket/fetch`,
         );
+    const openTicket = unresolvedTicket(d.data || []);
     return (
         <>
+            {!isAdmin && (
+                <div className="pad support-context">
+                    <a href="#/knowledge">{tx("先查看帮助中心")}</a>
+                    <p className="muted">
+                        {tx("已有未关闭的工单请继续回复，避免重复提交。")}
+                    </p>
+                </div>
+            )}
             <Panel
                 title={heading || tx("工单中心")}
                 actions={
@@ -776,10 +801,15 @@ export function Tickets({
                         <Reload onClick={d.reload} />
                         {!isAdmin && (
                             <button
-                                className="primary"
-                                onClick={() => setCreating(true)}
+                                className="button"
+                                disabled={d.loading || Boolean(d.error)}
+                                onClick={() =>
+                                    openTicket
+                                        ? setId(openTicket.id)
+                                        : setCreating(true)
+                                }
                             >
-                                {tx("创建工单")}
+                                {tx(openTicket ? "继续已有工单" : "创建工单")}
                             </button>
                         )}
                     </>
@@ -852,6 +882,20 @@ export function Tickets({
                     <Editor
                         fields={[
                             {
+                                key: "topic",
+                                label: tx("问题类型"),
+                                type: "select",
+                                required: true,
+                                options: supportTopics.map(([value, label]) => [
+                                    value,
+                                    tx(label),
+                                ]),
+                            },
+                            {
+                                key: "order_trade_no",
+                                label: tx("关联订单（可选）"),
+                            },
+                            {
                                 key: "subject",
                                 label: tx("主题"),
                                 required: true,
@@ -869,13 +913,33 @@ export function Tickets({
                             {
                                 key: "message",
                                 label: tx("问题描述"),
+                                hint: tx(
+                                    "请说明发生时间、设备与客户端、错误提示以及已尝试的排查步骤。",
+                                ),
                                 type: "textarea",
                                 required: true,
                             },
                         ]}
-                        initial={{ level: 0 }}
+                        initial={{
+                            level: 0,
+                            topic: orderTradeNo ? "payment" : "other",
+                            order_trade_no: orderTradeNo || "",
+                        }}
                         onSave={async (body) => {
-                            await request("user/ticket/save", body);
+                            const latest = await request("user/ticket/fetch");
+                            const existing = unresolvedTicket(
+                                rows(latest.data),
+                            );
+                            if (existing) {
+                                setCreating(false);
+                                setId(existing.id);
+                                d.reload();
+                                return;
+                            }
+                            await request(
+                                "user/ticket/save",
+                                supportPayload(body, tx),
+                            );
                             setCreating(false);
                             d.reload();
                         }}

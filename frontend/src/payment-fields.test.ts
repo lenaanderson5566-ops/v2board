@@ -5,6 +5,42 @@ import {
     paymentPayload,
 } from "./payment-fields";
 describe("payment configuration", () => {
+    it("renders MGate credentials and currency through the dynamic gateway form", () => {
+        const form = {
+            mgate_url: { type: "input", required: true },
+            mgate_app_id: { type: "input", required: true },
+            mgate_app_secret: { type: "input", required: true },
+            mgate_source_currency: { type: "input", value: "CNY" },
+        };
+        expect(
+            paymentFields(form).find((f) => f.key === "config.mgate_app_secret")
+                ?.type,
+        ).toBe("password");
+        expect(
+            paymentFields(form).find((f) => f.key === "config.mgate_url")
+                ?.required,
+        ).toBe(true);
+        const values = paymentInitial({}, form, false);
+        expect(values["config.mgate_source_currency"]).toBe("CNY");
+        expect(
+            paymentPayload(
+                {
+                    ...values,
+                    "config.mgate_app_id": "app",
+                    "config.mgate_app_secret": "test-secret",
+                    "config.mgate_url": "https://gateway.example",
+                },
+                form,
+                "MGate",
+                {},
+            ).config,
+        ).toEqual({
+            mgate_url: "https://gateway.example",
+            mgate_app_id: "app",
+            mgate_app_secret: "test-secret",
+            mgate_source_currency: "CNY",
+        });
+    });
     it("keeps Stripe private credentials masked and removes old stored notices", () => {
         const form = {
             stripe_sk_live: { type: "input" },

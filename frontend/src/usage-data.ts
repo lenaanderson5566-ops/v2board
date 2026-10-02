@@ -5,11 +5,13 @@ export interface UsageRecord {
 }
 export function usageDays(
     records: UsageRecord[],
-    days: "month" | "week",
+    days: "month" | "week" | "30days",
     now = new Date(),
 ) {
     const start = new Date(now.getFullYear(), now.getMonth(), 1);
-    if (days === "week") start.setDate(Math.max(1, now.getDate() - 6));
+    if (days !== "month") {
+        start.setDate(now.getDate() - (days === "week" ? 6 : 29));
+    }
     const key = (date: Date) =>
         `${date.getFullYear()}-${date.getMonth()}-${date.getDate()}`;
     const totals = new Map<string, { upload: number; download: number }>();

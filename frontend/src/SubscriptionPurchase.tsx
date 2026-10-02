@@ -58,7 +58,7 @@ export function SubscriptionPurchase() {
                 <p className="muted">
                     {tx("先选择适合的套餐，再确认费用和支付方式。")}
                 </p>
-                <a href="#/order">{tx("订单记录")}</a>
+                <a href="#/order">{tx("账单")}</a>
             </div>
             <State {...orders} retry={orders.reload}>
                 {pending && (

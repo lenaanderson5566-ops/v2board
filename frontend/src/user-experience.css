@@ -1270,3 +1270,9 @@ body:has(.browser-notice) #custom-footer {
     .invite-status { grid-column: 2; }
     .invite-actions button { flex: 1; }
 }
+.quick-step{padding:20px 0;border-bottom:1px solid var(--line,#e8e8e8)}
+.quick-step:first-child{padding-top:0}.quick-step h3{display:flex;align-items:center;gap:12px;margin:0 0 12px}.quick-step h3>span{display:grid;place-items:center;width:30px;height:30px;border-radius:50%;background:#171717;color:white;font-size:14px;flex-shrink:0}
+.device-options{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:10px;margin-top:16px}.device-options button{min-height:68px;display:flex;align-items:center;justify-content:center;gap:8px;background:white;border-radius:14px}.device-options button[aria-pressed=true]{border-color:#171717;background:#f3f3f3}.quick-step .import-download{margin:12px 8px 0 0}.quick-step .import-open{display:inline-flex;width:auto;margin:12px 8px 0 0}.quick-step .import-guide{margin-top:12px}
+@media(max-width:600px){.device-options{grid-template-columns:repeat(2,minmax(0,1fr))}.quick-step .import-download,.quick-step .import-open{width:100%;margin-inline:0}.quick-step{padding:20px 0}.quick-step .client-card{min-width:0}}
+.quick-actions{display:grid;grid-auto-flow:column;grid-auto-columns:minmax(0,1fr);gap:10px;margin-top:16px}.quick-step .quick-actions .import-download,.quick-step .quick-actions .import-open,.quick-actions button{width:100%;margin:0;min-height:48px;justify-content:center}
+@media(max-width:600px){.quick-actions{grid-auto-flow:row;grid-template-columns:1fr}}

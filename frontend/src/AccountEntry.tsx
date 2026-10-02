@@ -68,7 +68,7 @@ export function AccountEntry({
                             className="button"
                             href={state === "expired" ? "#/order" : "#/ticket"}
                         >
-                            {tx(state === "expired" ? "订单记录" : "工单支持")}
+                            {tx(state === "expired" ? "账单" : "工单支持")}
                         </a>
                     </>
                 ) : (
@@ -110,12 +110,17 @@ export function UserStatusGate({
     children,
     logout,
     support,
+    onStatus,
 }: {
     children: ReactNode;
     logout: () => void;
     support: ReactNode;
+    onStatus?: (user: import("./api").Row) => void;
 }) {
     const info = useData("user/info");
+    useEffect(() => {
+        if (info.data) onStatus?.(info.data);
+    }, [info.data, onStatus]);
     useEffect(() => {
         const poll = setInterval(() => {
             if (document.visibilityState === "visible") info.reload();

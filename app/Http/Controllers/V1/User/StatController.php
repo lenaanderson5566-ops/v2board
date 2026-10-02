@@ -11,6 +11,11 @@ class StatController extends Controller
 {
     public function getTrafficLog(Request $request)
     {
+        $request->validate(['days' => 'nullable|integer|in:7,30']);
+        // Optional rolling window; preserve the original calendar-month default.
+        $start = $request->filled('days')
+            ? strtotime('-' . ((int) $request->input('days') - 1) . ' days', strtotime(date('Y-m-d')))
+            : strtotime(date('Y-m-1'));
         $builder = StatUser::select([
             'u',
             'd',
@@ -19,7 +24,8 @@ class StatController extends Controller
             'server_rate'
         ])
             ->where('user_id', $request->user['id'])
-            ->where('record_at', '>=', strtotime(date('Y-m-1')))
+            ->where('record_at', '>=', $start)
+            ->where('record_at', '<', strtotime('tomorrow'))
             ->orderBy('record_at', 'DESC');
         return response([
             'data' => $builder->get()

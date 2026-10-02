@@ -15,7 +15,7 @@ import {
 import { useState, useEffect, useRef, type ReactNode } from "react";
 import { loadStripe } from "@stripe/stripe-js/pure";
 import type { Stripe, StripeCardElement } from "@stripe/stripe-js";
-import { ArrowUpRight, Copy, Check } from "lucide-react";
+import { ArrowUpRight } from "lucide-react";
 import {
     boot,
     request,
@@ -42,37 +42,7 @@ import {
     type Field,
 } from "./ui";
 const statuses = ["待支付", "开通中", "已取消", "已完成", "已折抵"];
-function CopyValue({
-    value,
-    label = tx("复制"),
-}: {
-    value: string;
-    label?: string;
-}) {
-    const [copied, setCopied] = useState(false),
-        [error, setError] = useState("");
-    return (
-        <>
-            <button
-                onClick={async () => {
-                    try {
-                        await navigator.clipboard.writeText(value);
-                        setCopied(true);
-                        setTimeout(() => setCopied(false), 2000);
-                    } catch {
-                        setError(tx("复制失败，请手动复制链接"));
-                    }
-                }}
-            >
-                {copied ? <Check size={16} /> : <Copy size={16} />}{" "}
-                {copied ? tx("已复制") : label}
-            </button>
-            {error && <span role="alert">{error}</span>}
-        </>
-    );
-}
 export function UserDashboard() {
-    const [more, setMore] = useState(false);
     const info = useData("user/info"),
         sub = useData("user/getSubscribe"),
         notice = useData<Row[]>("user/notice/fetch");
@@ -124,7 +94,7 @@ export function UserDashboard() {
                     title={tx("我的订阅")}
                     actions={
                         <a className="button" href="#/plan">
-                            {tx("购买订阅")}
+                            {tx("管理订阅")}
                             <ArrowUpRight size={15} />
                         </a>
                     }
@@ -135,15 +105,13 @@ export function UserDashboard() {
                             {s.subscribe_url &&
                                 user.account_status?.is_available &&
                                 !user.account_status?.quota_exhausted && (
-                                    <div className="actions space">
-                                        <SubscriptionImport
-                                            url={s.subscribe_url}
-                                        />
-                                        <CopyValue
-                                            value={s.subscribe_url}
-                                            label={tx("复制订阅链接")}
-                                        />
-                                    </div>
+                                    <a
+                                        className="button primary"
+                                        href="#/subscribe"
+                                    >
+                                        {tx("快速开始")}
+                                        <ArrowUpRight size={16} />
+                                    </a>
                                 )}
                             <dl className="subscription-facts">
                                 <div>
@@ -213,90 +181,151 @@ export function UserDashboard() {
                     </State>
                 </Panel>
             </div>
-            <details
-                className="subscription-details"
-                onToggle={(event) => setMore(event.currentTarget.open)}
-            >
-                <summary>{e("nodes")}</summary>
-                {more && <Subscribe />}
-            </details>
         </State>
     );
 }
 export function Subscribe() {
+    const info = useData("user/info");
+    const ready = info.data?.account_status?.state === "active";
     const d = useData("user/getSubscribe"),
-        nodes = useData<Row[]>("user/server/fetch");
+        nodes = useData<Row[]>(ready ? "user/server/fetch" : "");
     const s = d.data || {};
+    if (!info.data)
+        return (
+            <State {...info} retry={info.reload}>
+                <></>
+            </State>
+        );
+    if (!ready)
+        return (
+            <AccountEntry
+                state={info.data.account_status?.state || "new"}
+                subscription={s}
+            />
+        );
+    if (!d.data)
+        return (
+            <State {...d} retry={d.reload}>
+                <></>
+            </State>
+        );
     return (
         <>
-            <Panel title={tx("订阅连接")}>
-                <State {...d} retry={d.reload}>
-                    <div className="pad">
-                        <p className="muted">
-                            {tx("订阅链接包含你的访问凭据，请妥善保管。")}
+            <Panel
+                title={tx("快速开始")}
+                actions={
+                    <a href="#/plan" className="button">
+                        {tx("管理订阅")}
+                    </a>
+                }
+            >
+                <div aria-busy={d.loading}>
+                    {d.loading && (
+                        <p className="pad muted" role="status">
+                            {e("refreshing")}
                         </p>
-                        {s.subscribe_url ? (
-                            <>
-                                <input
-                                    readOnly
-                                    value={s.subscribe_url}
-                                    aria-label={tx("订阅链接")}
-                                />
-                                <div className="actions space">
-                                    <button
-                                        onClick={() => {
-                                            if (
-                                                confirm(
-                                                    tx(
-                                                        "重置后，现有订阅链接将失效。继续吗？",
-                                                    ),
+                    )}
+                    {d.error && (
+                        <div className="alert" role="alert">
+                            {d.error}
+                            <button onClick={d.reload}>{tx("重试")}</button>
+                        </div>
+                    )}
+                    {s.subscribe_url &&
+                    info.data.account_status?.is_available &&
+                    !info.data.account_status?.quota_exhausted ? (
+                        <SubscriptionImport url={s.subscribe_url} inline />
+                    ) : (
+                        <div className="pad">
+                            <p>
+                                {e(
+                                    info.data.account_status?.quota_exhausted
+                                        ? "exhausted"
+                                        : "unavailable",
+                                )}
+                            </p>
+                            <a className="button primary" href="#/plan">
+                                {tx("管理订阅")}
+                            </a>
+                        </div>
+                    )}
+                </div>
+            </Panel>
+            <details className="subscription-details">
+                <summary>{tx("高级配置")}</summary>
+                <Panel title={tx("订阅连接")}>
+                    <State {...d} retry={d.reload}>
+                        <div className="pad">
+                            <p className="muted">
+                                {tx("订阅链接包含你的访问凭据，请妥善保管。")}
+                            </p>
+                            {s.subscribe_url ? (
+                                <>
+                                    <input
+                                        readOnly
+                                        value={s.subscribe_url}
+                                        aria-label={tx("订阅链接")}
+                                    />
+                                    <div className="actions space">
+                                        <button
+                                            onClick={() => {
+                                                if (
+                                                    confirm(
+                                                        tx(
+                                                            "重置后，现有订阅链接将失效。继续吗？",
+                                                        ),
+                                                    )
                                                 )
-                                            )
-                                                request("user/resetSecurity")
-                                                    .then(d.reload)
-                                                    .catch((e) =>
-                                                        alert(e.message),
-                                                    );
-                                        }}
-                                    >
-                                        {tx("重置订阅链接")}
-                                    </button>
-                                </div>
-                            </>
-                        ) : (
-                            <button
-                                className="primary"
-                                onClick={() => navigate("plan")}
-                            >
-                                {tx("选择套餐")}
-                            </button>
-                        )}
-                    </div>
-                </State>
-            </Panel>
-            <Panel title={tx("可用节点")}>
-                <State {...nodes} retry={nodes.reload}>
-                    <Table
-                        data={nodes.data || []}
-                        columns={[
-                            ["name", tx("节点名称")],
-                            ["type", tx("协议")],
-                            ["rate", tx("倍率")],
-                            [
-                                "is_online",
-                                tx("状态"),
-                                (r) => (
-                                    <span
-                                        className={`badge ${r.is_online ? "success" : ""}`}
-                                    >
-                                        {r.is_online ? tx("在线") : tx("离线")}
-                                    </span>
-                                ),
-                            ],
-                        ]}
-                    />
-                </State>
-            </Panel>
+                                                    request(
+                                                        "user/resetSecurity",
+                                                    )
+                                                        .then(d.reload)
+                                                        .catch((e) =>
+                                                            alert(e.message),
+                                                        );
+                                            }}
+                                        >
+                                            {tx("重置订阅链接")}
+                                        </button>
+                                    </div>
+                                </>
+                            ) : (
+                                <button
+                                    className="primary"
+                                    onClick={() => navigate("plan")}
+                                >
+                                    {tx("选择套餐")}
+                                </button>
+                            )}
+                        </div>
+                    </State>
+                </Panel>
+                <Panel title={tx("可用节点")}>
+                    <State {...nodes} retry={nodes.reload}>
+                        <Table
+                            data={nodes.data || []}
+                            columns={[
+                                ["name", tx("节点名称")],
+                                ["type", tx("协议")],
+                                ["rate", tx("倍率")],
+                                [
+                                    "is_online",
+                                    tx("状态"),
+                                    (r) => (
+                                        <span
+                                            className={`badge ${r.is_online ? "success" : ""}`}
+                                        >
+                                            {r.is_online
+                                                ? tx("在线")
+                                                : tx("离线")}
+                                        </span>
+                                    ),
+                                ],
+                            ]}
+                        />
+                    </State>
+                </Panel>
+            </details>
         </>
     );
 }
@@ -311,7 +340,7 @@ export function Orders({ tradeNo }: { tradeNo?: string }) {
     );
     return (
         <Panel
-            title={tradeNo ? tx("订单详情") : tx("订单记录")}
+            title={tradeNo ? tx("订单详情") : tx("账单")}
             actions={<Reload onClick={d.reload} />}
         >
             {tradeNo && d.data ? (

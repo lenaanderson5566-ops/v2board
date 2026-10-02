@@ -39,7 +39,7 @@ describe("account entry", () => {
             screen.getByRole("link", { name: /renew/ }).getAttribute("href"),
         ).toBe("#/plan");
         expect(
-            screen.getByRole("link", { name: "订单记录" }).getAttribute("href"),
+            screen.getByRole("link", { name: "账单" }).getAttribute("href"),
         ).toBe("#/order");
     });
     it("blocks the regular workspace and provides authenticated support and logout", () => {

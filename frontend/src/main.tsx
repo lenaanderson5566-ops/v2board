@@ -44,6 +44,7 @@ import { UserStatusGate } from "./AccountEntry";
 import { AccountMenu } from "./AccountMenu";
 import { EmbeddedBrowserNotice } from "./EmbeddedBrowserNotice";
 import { currentDevice } from "./user-experience";
+import { userNavigation } from "./user-navigation";
 import { WorkspaceSkeleton } from "./WorkspaceSkeleton";
 const UserContent = React.lazy(() => import("./user-entry"));
 const AdminContent = React.lazy(() => import("./admin-entry"));
@@ -56,22 +57,6 @@ import { AdminShell, adminPage, legacyAdminMenu } from "./admin-shell";
 import "./admin-legacy.css";
 import "./user-experience.css";
 type Nav = { key: string; label: string; icon: typeof Globe; group: string };
-const userNav: Nav[] = [
-    {
-        key: "dashboard",
-        label: "总览",
-        icon: LayoutDashboard,
-        group: "工作空间",
-    },
-    { key: "plan", label: "购买订阅", icon: ShoppingBag, group: "工作空间" },
-    { key: "order", label: "订单记录", icon: ReceiptText, group: "工作空间" },
-    {
-        key: "knowledge",
-        label: "帮助中心",
-        icon: BookOpen,
-        group: "帮助",
-    },
-];
 const adminNav: Nav[] = legacyAdminMenu.map(([key, label, , group]) => ({
     key,
     label,
@@ -366,7 +351,6 @@ function App() {
     const sidebar = useRef<HTMLElement>(null);
     useEffect(() => {
         if (boot.mode === "admin" && path === "generate") navigate("users");
-        if (boot.mode === "user" && path === "subscribe") navigate("dashboard");
     }, [path]);
     useEffect(() => {
         const media = matchMedia("(max-width: 800px)");
@@ -492,20 +476,40 @@ function App() {
                 )}
             </>
         );
+    const userNav = userNavigation(user.account_status?.state).map((item) => ({
+        ...item,
+        icon: (
+            {
+                dashboard: LayoutDashboard,
+                subscribe: MonitorSmartphone,
+                plan: ShoppingBag,
+                order: ReceiptText,
+                knowledge: BookOpen,
+            } as Record<string, typeof Globe>
+        )[item.key],
+    }));
     const nav = boot.mode === "admin" ? adminNav : userNav,
         current =
             boot.mode === "admin"
                 ? adminPage(path)
-                : path.split("/")[0] || nav[0].key,
+                : path.split("/")[0] || nav[0]?.key || "dashboard",
         item = [
             ...nav,
-            { key: "order", label: "订单记录" },
+            { key: "order", label: "账单" },
             { key: "traffic", label: "流量记录" },
             { key: "invite", label: "邀请好友" },
             { key: "ticket", label: "工单支持" },
             { key: "security", label: "账户安全" },
             { key: "notifications", label: "通知设置" },
             { key: "profile", label: "账户设置" },
+            {
+                key: "plan",
+                label:
+                    user.account_status?.state === "active"
+                        ? "管理订阅"
+                        : "购买订阅",
+            },
+            { key: "subscribe", label: "配置中心" },
         ].find((n) => n.key === current),
         groups = [...new Set(nav.map((n) => n.group))],
         navigationCurrent =
@@ -516,7 +520,12 @@ function App() {
                   ? "profile"
                   : current,
         mobileNavigationCurrent =
-            current === "order" ? "plan" : navigationCurrent;
+            ["order", "plan"].includes(current) &&
+            user.account_status?.state === "active"
+                ? "subscribe"
+                : current === "order"
+                  ? "plan"
+                  : navigationCurrent;
     let content: ReactNode;
     if (boot.mode === "admin") {
         content = (
@@ -554,6 +563,7 @@ function App() {
         );
     return (
         <UserStatusGate
+            onStatus={setUser}
             logout={() => {
                 clearReadCache();
                 localStorage.removeItem(storageKey);
@@ -736,6 +746,7 @@ function App() {
                                 [
                                     "dashboard",
                                     "plan",
+                                    "subscribe",
                                     "knowledge",
                                     "profile",
                                 ].includes(n.key),

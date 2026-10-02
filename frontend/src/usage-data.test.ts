@@ -17,11 +17,25 @@ describe("daily usage series", () => {
         expect(days[1]).toMatchObject({ upload: 15, download: 24 });
         expect(days[0]).toMatchObject({ upload: 0, download: 0 });
     });
-    it("limits seven days to the available month and excludes future records", () => {
+    it("includes seven complete days across a month boundary and excludes future records", () => {
         expect(usageDays([], "week", now)).toHaveLength(7);
-        expect(usageDays([], "week", new Date(2026, 9, 2, 12))).toHaveLength(2);
+        expect(usageDays([], "week", new Date(2026, 9, 2, 12))).toHaveLength(7);
         const days = usageDays([record(15, 9, 9)], "month", now);
         expect(days.every((day) => day.upload + day.download === 0)).toBe(true);
+    });
+    it("includes exactly thirty days across month and year boundaries", () => {
+        const end = new Date(2026, 0, 2, 12);
+        const previous = new Date(2025, 11, 10);
+        const days = usageDays(
+            [{ record_at: previous.getTime() / 1000, u: 4, d: 8 }],
+            "30days",
+            end,
+        );
+        expect(days).toHaveLength(30);
+        expect(days[0].date).toEqual(new Date(2025, 11, 4));
+        expect(
+            days.find((day) => day.date.getTime() === previous.getTime()),
+        ).toMatchObject({ upload: 4, download: 8 });
     });
     it("ignores invalid dates and clamps negative counters", () => {
         const days = usageDays(

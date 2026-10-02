@@ -1,5 +1,6 @@
 import {
     UserDashboard,
+    Subscribe,
     Plans,
     Orders,
     Knowledge,
@@ -17,7 +18,9 @@ export default function UserContent({
     current: string;
     path: string;
 }) {
-    return current === "plan" ? (
+    return current === "subscribe" ? (
+        <Subscribe />
+    ) : current === "plan" ? (
         <Plans />
     ) : current === "order" ? (
         <Orders key={path} tradeNo={path.split("/")[1]} />

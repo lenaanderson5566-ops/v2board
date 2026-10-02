@@ -6,8 +6,8 @@ import { State, useData } from "./ui";
 import { usageDays, type UsageRecord } from "./usage-data";
 
 export function UsageChart() {
-    const data = useData<UsageRecord[]>("user/stat/getTrafficLog");
-    const [period, setPeriod] = useState<"month" | "week">("month");
+    const data = useData<UsageRecord[]>("user/stat/getTrafficLog?days=30");
+    const [period, setPeriod] = useState<"30days" | "week">("30days");
     const days = usageDays(data.data || [], period);
     const max = Math.max(1, ...days.map((day) => day.upload + day.download));
     const formatDate = (date: Date) =>
@@ -21,13 +21,13 @@ export function UsageChart() {
                     role="group"
                     aria-label={tx("日期")}
                 >
-                    {(["week", "month"] as const).map((value) => (
+                    {(["week", "30days"] as const).map((value) => (
                         <button
                             key={value}
                             aria-pressed={period === value}
                             onClick={() => setPeriod(value)}
                         >
-                            {e(value)}
+                            {value === "week" ? e("week") : tx("近30天")}
                         </button>
                     ))}
                 </div>
@@ -36,7 +36,11 @@ export function UsageChart() {
                 <h3>{e("dailyUsage")}</h3>
                 <a href="#/traffic">{e("usage")}</a>
             </div>
-            <p className="muted usage-scope">{e("monthOnly")}</p>
+            <p className="muted usage-scope">
+                {tx("按日汇总近{{days}}天上传与下载用量，包含今天。", {
+                    days: period === "week" ? 7 : 30,
+                })}
+            </p>
             <State {...data} retry={data.reload}>
                 {data.data?.length ? (
                     <>

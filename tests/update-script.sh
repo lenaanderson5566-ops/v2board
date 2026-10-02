@@ -69,6 +69,7 @@ bash "$SOURCE" "${ARGS[@]}" --jobs-stopped > "$TMP/output" 2>&1
 grep -q original-key .env
 grep -q preserved config/v2board.php
 grep -q 'migrate --path=database/migrations/2026_10_01_000001' calls.log
+grep -q 'artisan console:verify' calls.log
 [[ $(stat -c %a public/console/.vite/manifest.json) == 644 ]]
 ! grep -Eq 'v2board:update|cache:clear|optimize:clear|artisan up' calls.log
 find "$TMP/backups" -name site.tar.gz -exec tar -tzf {} \; | grep -q './vendor/original'

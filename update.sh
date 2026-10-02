@@ -155,6 +155,7 @@ cp -- "$WORK_DIR/composer.lock" composer.lock
 "$PHP_BIN" artisan migrate --path="$MIGRATION" --force
 "$PHP_BIN" artisan config:cache
 "$PHP_BIN" artisan view:cache
+"$PHP_BIN" artisan console:verify
 sha256sum -c "$BACKUP/protected.sha256"
 if [[ $(id -u) == 0 ]]; then chown -R "$WEB_USER" storage bootstrap/cache; fi
 "$PHP_BIN" artisan --version

@@ -37,6 +37,12 @@ are checked into Git so PHP deployments do not require Node.js. Rebuild and
 commit the generated files whenever frontend source changes. `routes/web.php`
 renders both interfaces from the same build with separate authentication storage.
 
+After deployment, run `php artisan console:verify` to check every manifest asset
+and the landing, account and admin page actions. Use `--host=your.domain` to test
+the visitor hostname against safe mode. This check works while maintenance is
+enabled; it does not disable domain protection or replace a PHP-FPM/HTTP check.
+The branch already includes production JS/CSS, so no ZIP upload is required.
+
 For local iteration, `npm run dev` starts Vite with `/api` proxied to port 8080.
 Open `http://127.0.0.1:5173/` for the user interface, or
 `http://127.0.0.1:5173/?mode=admin&adminPath=admin` for the configured admin path.

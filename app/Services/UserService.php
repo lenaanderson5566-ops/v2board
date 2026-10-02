@@ -100,6 +100,14 @@ class UserService
         return null;
     }
 
+    public function getResetAt(User $user): ?int
+    {
+        if (!$user->plan_id || $user->transfer_enable <= 0) return null;
+        $plan = Plan::find($user->plan_id);
+        if (!$plan) return null;
+        return TrafficResetSchedule::next((int)($plan->reset_traffic_method ?? config('v2board.reset_traffic_method', 0)), $user->expired_at);
+    }
+
     public function getResetPeriod(User $user)
     {
         if ($user->plan_id === NULL) return null;
@@ -145,39 +153,22 @@ class UserService
 
     public function isAvailable(User $user)
     {
-        if (!$user->banned && $user->transfer_enable && ($user->expired_at > time() || $user->expired_at === NULL)) {
-            return true;
-        }
-        return false;
+        return !$user->banned && (TrafficCreditService::hasPeriod($user) || $user->credit_balance > 0);
     }
 
     public function getAvailableUsers()
     {
-        return User::whereRaw('u + d < transfer_enable')
-            ->where(function ($query) {
-                $query->where('expired_at', '>=', time())
-                ->orWhereNull('expired_at');
-            })
-            ->where('banned', 0)
-            ->get();
+        return User::withUsableTraffic()->get();
     }
 
     public function getDeviceLimitedUsers()
     {
-        return User::whereRaw('u + d < transfer_enable')
-            ->where(function ($query) {
-                $query->where('expired_at', '>=', time())
-                ->orWhereNull('expired_at');
-            })
-            ->where('banned', 0)
-            ->where('device_limit','>', 0)
-            ->select('id')
-            ->get();
+        return User::withUsableTraffic()->where('device_limit', '>', 0)->select('id')->get();
     }
 
     public function getUnAvailbaleUsers()
     {
-        return User::where(function ($query) {
+        return User::where('credit_balance', '<=', 0)->where(function ($query) {
             $query->where('expired_at', '<', time())
                 ->orWhere('expired_at', 0);
         })

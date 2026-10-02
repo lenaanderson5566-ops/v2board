@@ -228,7 +228,7 @@ class TicketController extends Controller
 
 			if ($user) {
 				$transfer_enable = $this->getFlowData($user->transfer_enable); // 总流量
-				$remaining_traffic = $this->getFlowData($user->transfer_enable - $user->u - $user->d); // 剩余流量
+				$remaining_traffic = $this->getFlowData((\App\Services\TrafficCreditService::hasPeriod($user) ? max(0, $user->transfer_enable - $user->u - $user->d) : 0) + (int)$user->credit_balance); // 剩余流量
 				$u = $this->getFlowData($user->u); // 上传
 				$d = $this->getFlowData($user->d); // 下载
 				$expired_at = date("Y-m-d H:i:s", $user->expired_at); // 到期时间

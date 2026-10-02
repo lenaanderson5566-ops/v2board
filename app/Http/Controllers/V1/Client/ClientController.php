@@ -24,6 +24,7 @@ class ClientController extends Controller
         $resolvedFlag = $this->resolveProtocolFlag($requestedFlag ?: $flag);
         $clientStrategyService = new ClientStrategyService();
         $user = $request->user;
+        $clientUser = \App\Services\TrafficCreditService::forClient($user);
         // account not expired and is not banned.
         $userService = new UserService();
         if ($userService->isAvailable($user)) {
@@ -63,7 +64,7 @@ class ClientController extends Controller
                 if ($resolvedFlag !== 'sing') {
                     $this->setSubscribeInfoToServers($servers, $user);
                 }
-                $class = $this->resolveProtocolHandler($resolvedFlag, $user, $servers);
+                $class = $this->resolveProtocolHandler($resolvedFlag, $clientUser, $servers);
                 $resolvedClientType = $class->flag;
                 $riskLogService->createSubscribeLog($this->buildSubscribeLogPayload(
                     $request,
@@ -222,17 +223,17 @@ class ClientController extends Controller
         if (!isset($servers[0])) return;
         if (!(int)config('v2board.show_info_to_server_enable', 0)) return;
         $useTraffic = $user['u'] + $user['d'];
-        $totalTraffic = $user['transfer_enable'];
+        $totalTraffic = \App\Services\TrafficCreditService::forClient($user)->transfer_enable;
         $remainingTraffic = Helper::trafficConvert($totalTraffic - $useTraffic);
         $expiredDate = $user['expired_at'] ? date('Y-m-d', $user['expired_at']) : '长期有效';
         $userService = new UserService();
-        $resetDay = $userService->getResetDay($user);
+        $resetAt = $userService->getResetAt($user);
         array_unshift($servers, array_merge($servers[0], [
             'name' => "套餐到期：{$expiredDate}",
         ]));
-        if ($resetDay) {
+        if ($resetAt) {
             array_unshift($servers, array_merge($servers[0], [
-                'name' => "距离下次重置剩余：{$resetDay} 天",
+                'name' => '计划重置：'.date('Y-m-d H:i', $resetAt).' '.config('app.timezone'),
             ]));
         }
         array_unshift($servers, array_merge($servers[0], [

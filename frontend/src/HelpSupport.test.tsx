@@ -1,4 +1,5 @@
 // @vitest-environment jsdom
+vi.mock("./credit-copy", () => ({ c: (key: string) => key, minuteDate: (v: unknown) => String(v) }));
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
     cleanup,

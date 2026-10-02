@@ -1,6 +1,8 @@
+import { TrafficCredits } from "./TrafficCredits";
+import { c } from "./credit-copy";
 import { useState } from "react";
 import { ArrowUpRight, ChevronRight, Gift, Plus } from "lucide-react";
-import { boot, date, money, navigate, request, type Row } from "./api";
+import { boot, bytes, date, money, navigate, request, type Row } from "./api";
 import { tx } from "./i18n";
 import { b } from "./billing-copy";
 import { e } from "./experience-copy";
@@ -29,10 +31,14 @@ export function BillingPage() {
                     <div className="settings-card settings-row">
                         <div>
                             <strong>
-                                {sub.data?.plan?.name || tx("尚未订阅套餐")}
+                                {sub.data?.has_subscription === false
+                                    ? tx("尚未订阅套餐")
+                                    : sub.data?.plan?.name ||
+                                      tx("尚未订阅套餐")}
                             </strong>
                             <p className="muted">
-                                {sub.data?.plan
+                                {sub.data?.plan &&
+                                sub.data?.has_subscription !== false
                                     ? `${tx("订阅到期")} · ${sub.data.expired_at ? date(sub.data.expired_at) : tx("长期有效")}`
                                     : b("choosePlan")}
                             </p>
@@ -73,6 +79,7 @@ export function BillingPage() {
                     </div>
                 </State>
             </section>
+            <TrafficCredits balance={Number(info.data?.credit_balance || 0)} />
             {notice && (
                 <p className="success-message" role="status">
                     {notice}
@@ -102,8 +109,14 @@ export function BillingPage() {
                                     >
                                         <span>
                                             <strong>
-                                                {order.plan?.name ||
-                                                    tx("账户充值")}
+                                                {order.credit_bytes
+                                                    ? c("creditOrder", {
+                                                          amount: bytes(
+                                                              order.credit_bytes,
+                                                          ),
+                                                      })
+                                                    : order.plan?.name ||
+                                                      tx("账户充值")}
                                             </strong>
                                             <small>
                                                 {date(order.created_at)}

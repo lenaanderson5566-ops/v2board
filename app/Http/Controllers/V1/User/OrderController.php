@@ -62,9 +62,7 @@ class OrderController extends Controller
         }
         $order['plan'] = Plan::find($order->plan_id);
         $order['try_out_plan_id'] = (int)config('v2board.try_out_plan_id');
-        if (!$order['plan']) {
-            abort(500, __('Subscription plan does not exist'));
-        }
+        if (!$order['plan']) $order['plan'] = ['id' => $order->plan_id, 'name' => $order->credit_snapshot['name'] ?? '#'.$order->plan_id];
         if ($order->surplus_order_ids) {
             $order['surplus_orders'] = Order::whereIn('id', $order->surplus_order_ids)->get();
         }
@@ -120,6 +118,8 @@ class OrderController extends Controller
             abort(500, __('Subscription plan does not exist'));
         }
 
+        $isCredit = $request->input('period') === 'onetime_price';
+        if ($isCredit && (!$plan->show || $plan->transfer_enable <= 0 || $plan->group_id === null)) abort(422, __('Current product is sold out'));
         if ($user->plan_id !== $plan->id && !$planService->haveCapacity() && $request->input('period') !== 'reset_price') {
             abort(500, __('Current product is sold out'));
         }
@@ -129,7 +129,7 @@ class OrderController extends Controller
         }
 
         if ($request->input('period') === 'reset_price') {
-            if (!$userService->isAvailable($user) || $plan->id !== $user->plan_id) {
+            if (!\App\Services\TrafficCreditService::hasPeriod($user) || $user->banned || $plan->id !== $user->plan_id) {
                 abort(500, __('Subscription has expired or no active subscription, unable to purchase Data Reset Package'));
             }
         }
@@ -140,7 +140,7 @@ class OrderController extends Controller
             }
         }
 
-        if (!$plan->renew && $user->plan_id == $plan->id && $request->input('period') !== 'reset_price') {
+        if (!$isCredit && !$plan->renew && $user->plan_id == $plan->id && $request->input('period') !== 'reset_price') {
             abort(500, __('This subscription cannot be renewed, please change to another subscription'));
         }
 
@@ -157,6 +157,10 @@ class OrderController extends Controller
         $order->period = $request->input('period');
         $order->trade_no = Helper::generateOrderNo();
         $order->total_amount = $plan[$request->input('period')];
+        if ($isCredit) {
+            $order->credit_bytes = (int)round($plan->transfer_enable * 1073741824);
+            $order->credit_snapshot = $plan->only(['name','group_id','speed_limit','device_limit']);
+        }
 
         if ($request->input('coupon_code')) {
             $couponService = new CouponService($request->input('coupon_code'));

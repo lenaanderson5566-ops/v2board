@@ -22,6 +22,7 @@ vi.mock("./api", () => ({
     boot: { mode: "user" },
     request: mocks.request,
     navigate: mocks.navigate,
+    bytes: (n: number) => `${n} B`,
     money: (value: any) => `¥${(Number(value || 0) / 100).toFixed(2)}`,
     query: (path: string, params: any) =>
         path + "?" + new URLSearchParams(params),
@@ -29,6 +30,10 @@ vi.mock("./api", () => ({
 vi.mock("./i18n", () => ({
     tx: (key: string, args: any = {}) =>
         key.replace(/{{(\w+)}}/g, (_, name) => String(args[name])),
+}));
+vi.mock("./credit-copy", () => ({
+    c: (key: string) => key,
+    minuteDate: (value: unknown) => String(value || "—"),
 }));
 vi.mock("./billing-copy", () => ({ b: (key: string) => key }));
 vi.mock("./experience-copy", () => ({ e: (key: string) => key }));
@@ -149,7 +154,6 @@ it("preserves quarterly and zero-priced periods and excludes reset from ordinary
     expect(purchasePeriods({ ...plan, onetime_price: 0 })).toEqual([
         "quarter_price",
         "year_price",
-        "onetime_price",
     ]);
     expect(paymentFee(1000, mocks.methods[0])).toBe(50);
     expect(paymentFee(0, mocks.methods[0])).toBe(0);
@@ -347,8 +351,8 @@ it("does not make gateway calls twice during a pending confirmation", async () =
     await act(async () => resolve({ type: 0, data: "pay-qr" }));
 });
 it.each([
-    [1, "#/dashboard"],
-    [0, "#/profile"],
+    [1, "#/subscribe"],
+    [0, "#/order"],
 ])(
     "links a completed plan_id %s order to the correct next action",
     (planId, href) => {
@@ -356,10 +360,49 @@ it.each([
         expect(
             screen
                 .getByRole("link", {
-                    name: planId === 0 ? "账户设置" : "前往总览",
+                    name: planId === 0 ? "账单" : "快速开始",
                 })
                 .getAttribute("href"),
         ).toBe(href);
         expect(screen.queryByRole("button", { name: "确认支付" })).toBeNull();
     },
 );
+
+it("closed orders omit payment steps and identify cancelled balance refunds", () => {
+    render(
+        <PaymentCheckout
+            order={{ ...order, status: 2 }}
+            reload={vi.fn()}
+            renderCard={() => null}
+        />,
+    );
+    expect(screen.queryByLabelText("订阅流程")).toBeNull();
+    expect(screen.queryByRole("button", { name: "确认支付" })).toBeNull();
+    expect(screen.getByText("balanceReturned")).toBeTruthy();
+    expect(screen.getByText("quote")).toBeTruthy();
+    expect(screen.queryByText("paid")).toBeNull();
+});
+it("completed credit receipts lead to usage and do not claim a subscription was activated", () => {
+    render(
+        <PaymentCheckout
+            order={{
+                ...order,
+                status: 3,
+                credit_bytes: 1073741824,
+                credit_snapshot: { name: "10 GB" },
+            }}
+            reload={vi.fn()}
+            renderCard={() => null}
+        />,
+    );
+    expect(screen.getByText("credited")).toBeTruthy();
+    expect(
+        screen.getByRole("link", { name: "使用情况" }).getAttribute("href"),
+    ).toBe("#/traffic");
+    expect(screen.queryByLabelText("订阅流程")).toBeNull();
+});
+it("one-time-only products are not shown in the subscription catalog", () => {
+    mocks.plans = [{ id: 99, name: "CreditOnly", onetime_price: 1000 }];
+    render(<SubscriptionPurchase />);
+    expect(screen.queryByText("CreditOnly")).toBeNull();
+});

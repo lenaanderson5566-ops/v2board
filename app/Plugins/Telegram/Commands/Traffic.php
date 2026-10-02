@@ -21,7 +21,8 @@ class Traffic extends Telegram {
         $transferEnable = Helper::trafficConvert($user->transfer_enable);
         $up = Helper::trafficConvert($user->u);
         $down = Helper::trafficConvert($user->d);
-        $remaining = Helper::trafficConvert($user->transfer_enable - ($user->u + $user->d));
+        $available = (\App\Services\TrafficCreditService::hasPeriod($user) ? max(0, $user->transfer_enable - $user->u - $user->d) : 0) + (int)$user->credit_balance;
+        $remaining = Helper::trafficConvert($available);
         $text = "🚥流量查询\n———————————————\n计划流量：`{$transferEnable}`\n已用上行：`{$up}`\n已用下行：`{$down}`\n剩余流量：`{$remaining}`";
         $telegramService->sendMessage($message->chat_id, $text, 'markdown');
     }

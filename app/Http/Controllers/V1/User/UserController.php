@@ -280,6 +280,7 @@ class UserController extends Controller
                 'email',
                 'language',
                 'transfer_enable',
+                'credit_balance',
                 'device_limit',
                 'last_login_at',
                 'u',
@@ -336,6 +337,7 @@ class UserController extends Controller
                 'u',
                 'd',
                 'transfer_enable',
+                'credit_balance',
                 'device_limit',
                 'email',
                 'uuid'
@@ -362,6 +364,9 @@ class UserController extends Controller
         $user['subscribe_url'] = Helper::getSubscribeUrl($user['token']);
 
         $userService = new UserService();
+        $user['reset_at'] = $userService->getResetAt($user);
+        $user['reset_timezone'] = config('app.timezone', 'UTC');
+        $user['has_subscription'] = \App\Services\TrafficCreditService::hasPeriod($user);
         $user['reset_day'] = $userService->getResetDay($user);
         $user['allow_new_period'] = config('v2board.allow_new_period', 0);
         return response([

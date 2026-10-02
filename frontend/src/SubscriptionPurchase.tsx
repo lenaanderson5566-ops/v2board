@@ -43,9 +43,12 @@ export function SubscriptionPurchase() {
     const currentAvailable =
         activePlan(currentPlan, sub.data?.expired_at) &&
         Number(sub.data?.transfer_enable) > 0;
-    const visiblePlans = [...(plans.data || [])];
+    const visiblePlans = (plans.data || []).filter(
+        (plan) => purchasePeriods(plan).length > 0,
+    );
     if (
         currentPlan &&
+        purchasePeriods(currentPlan).length > 0 &&
         currentAvailable &&
         Number(currentPlan.renew) === 1 &&
         !visiblePlans.some((plan) => Number(plan.id) === Number(currentPlan.id))

@@ -170,6 +170,9 @@ export function Orders({ tradeNo }: { tradeNo?: string }) {
 }
 function OrderView({ tradeNo }: { tradeNo: string }) {
     const d = useData<Row>(query("user/order/detail", { trade_no: tradeNo }));
+    if (d.data && [2, 3, 4].includes(Number(d.data.status))) {
+        return <><OrderDetail order={d.data} reload={d.reload} />{d.error && <p className="alert" role="alert">{d.error}<button onClick={d.reload}>{tx("重试")}</button></p>}</>;
+    }
     return (
         <Panel title={tx("订单详情")} actions={<Reload onClick={d.reload} />}>
             {d.data ? (

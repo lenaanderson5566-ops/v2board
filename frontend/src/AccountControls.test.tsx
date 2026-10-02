@@ -120,7 +120,7 @@ describe("header controls", () => {
         expect(screen.queryByRole("link", { name: "订单记录" })).toBeNull();
         expect(screen.queryByRole("link", { name: "帮助中心" })).toBeNull();
         expect(screen.queryByRole("link", { name: "流量记录" })).toBeNull();
-        expect(screen.getByText("A")).toBeTruthy();
+        expect(screen.getByRole("button", { name: "account" }).textContent).toContain("A");
         expect(screen.getByText("PRO")).toBeTruthy();
         fireEvent.pointerDown(document.body);
         expect(screen.queryByRole("link", { name: "账户安全" })).toBeNull();

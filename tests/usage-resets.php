@@ -25,7 +25,7 @@ try {
     $makeUser = function ($admin = false) use ($plan, &$auths) {
         $user = User::create(['email'=>'reset-'.Str::uuid().'@example.com', 'password'=>password_hash(Str::random(24), PASSWORD_DEFAULT),
             'uuid'=>App\Utils\Helper::guid(true), 'token'=>App\Utils\Helper::guid(), 'is_admin'=>$admin ? 1 : 0,
-            'plan_id'=>$plan->id, 'group_id'=>$plan->group_id, 'expired_at'=>time()+86400*20, 'transfer_enable'=>1073741824, 'u'=>10, 'd'=>20]);
+            'plan_id'=>$plan->id, 'group_id'=>$plan->group_id, 'expired_at'=>time()+86400*20, 'transfer_enable'=>1073741824, 'credit_balance'=>75, 'u'=>10, 'd'=>20]);
         $auth = new App\Services\AuthService($user); $auths[] = $auth;
         return [$user, $auth->generateAuthData(Illuminate\Http\Request::create('/'))['auth_data']];
     };
@@ -53,7 +53,7 @@ try {
     $assert($call($endpoint, $grant, $adminToken)->getStatusCode()===422, 'Reused key allowed different payload');
     $grant['request_key']=(string)Str::uuid(); $grant['expected_count']=2;
     $assert($call($endpoint, $grant, $adminToken)->getStatusCode()===422 && $service->summary($user->id)['available']===2, 'Count mismatch partially granted: '.json_encode($service->summary($user->id)));
-    $before = $user->refresh()->only(['expired_at','transfer_enable','plan_id','token','uuid','balance']);
+    $before = $user->refresh()->only(['expired_at','transfer_enable','plan_id','token','uuid','balance','credit_balance']);
     $soonGrant = ['kind'=>'grant','request_key'=>(string)Str::uuid(),'expected_count'=>1,'quantity'=>1,'expires_at'=>time()+3600];
     $service->batch(User::where('id',$user->id),$admin->id,$soonGrant);
     $soon = DB::table('v2_usage_reset_credit')->where('user_id',$user->id)->whereNotNull('expires_at')->first();

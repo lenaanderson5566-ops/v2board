@@ -28,8 +28,21 @@ class OrderService
 
     public function open()
     {
+        DB::transaction(function () {
+            $this->order = Order::where('id', $this->order->id)->lockForUpdate()->firstOrFail();
+            if ((int)$this->order->status !== 1) return;
+            $this->openLocked();
+        }, 3);
+    }
+
+    private function openLocked()
+    {
         $order = $this->order;
-        $this->user = User::find($order->user_id);
+        if ($order->credit_bytes !== null) {
+            (new TrafficCreditService())->fulfill($order);
+            return;
+        }
+        $this->user = User::where('id', $order->user_id)->lockForUpdate()->firstOrFail();
         if ($order->type == 9) {
             DB::beginTransaction();
             $this->user->balance += $order->total_amount + $this->getbounus($order->total_amount);
@@ -97,6 +110,9 @@ class OrderService
             DB::rollBack();
             abort(500, '开通失败');
         }
+        // An old permanent-plan reset must restore its promised allowance before conversion.
+        (new TrafficCreditService())->migrateUser($this->user);
+        $this->user->save();
 
         DB::commit();
     }
@@ -107,9 +123,11 @@ class OrderService
         $order = $this->order;
         if ($order->period === 'deposit'){
             $order->type = 9;
+        } else if ($order->credit_bytes !== null) {
+            $order->type = 5;
         } else if ($order->period === 'reset_price') {
             $order->type = 4;
-        } else if ($user->plan_id !== NULL && $order->plan_id !== $user->plan_id && ($user->expired_at > time() || $user->expired_at === NULL)) {
+        } else if ($user->transfer_enable > 0 && $user->plan_id !== NULL && $order->plan_id !== $user->plan_id && ($user->expired_at > time() || $user->expired_at === NULL)) {
             if (!(int)config('v2board.plan_change_enable', 1)) abort(500, '目前不允许更改订阅，请联系客服或提交工单操作');
             $order->type = 3;
             if ((int)config('v2board.surplus_enable', 1)) $this->getSurplusValue($user, $order);
@@ -257,11 +275,12 @@ class OrderService
     public function paid(string $callbackNo)
     {
         $order = $this->order;
-        if ($order->status !== 0) return true;
-        $order->status = 1;
-        $order->paid_at = time();
-        $order->callback_no = $callbackNo;
-        if (!$order->save()) return false;
+        // A stale simultaneous callback must never reopen a completed order.
+        $changed = Order::where('id', $order->id)->where('status', 0)->update([
+            'status' => 1, 'paid_at' => time(), 'callback_no' => $callbackNo,
+        ]);
+        $order->refresh();
+        if (!$changed && (int)$order->status !== 1) return true;
         try {
             OrderHandleJob::dispatch($order->trade_no);
         } catch (\Exception $e) {
@@ -273,26 +292,15 @@ class OrderService
     public function cancel():bool
     {
         $order = $this->order;
-        DB::beginTransaction();
-        $affected = Order::where('id', $order->id)
-            ->where('status', 0)
-            ->update([
-                'status' => 2
-            ]);
-
-        if ($affected !== 1) {
-            DB::rollBack();
-            return false;
-        }
-        if ($order->balance_amount) {
-            $userService = new UserService();
-            if (!$userService->addBalance($order->user_id, $order->balance_amount)) {
-                DB::rollBack();
-                return false;
-            }
-        }
-        DB::commit();
-        return true;
+        return DB::transaction(function () use ($order) {
+            $affected = Order::where('id', $order->id)->where('status', 0)->update(['status' => 2]);
+            if ($affected !== 1) return false;
+            $user = User::where('id', $order->user_id)->lockForUpdate()->firstOrFail();
+            $user->balance += (int)$order->balance_amount;
+            (new TrafficCreditService())->migrateUser($user);
+            if (!$user->save()) throw new \RuntimeException('Order cancellation failed');
+            return true;
+        }, 3);
     }
 
     private function setSpeedLimit($speedLimit)
@@ -348,6 +356,16 @@ class OrderService
         $this->user->plan_id = $plan->id;
         $this->user->group_id = $plan->group_id;
         $this->user->expired_at = NULL;
+        // Honor pending legacy orders' quoted conversion, then preserve it as credits.
+        $remaining = max(0, $this->user->transfer_enable - $this->user->u - $this->user->d);
+        DB::table('v2_traffic_credit_log')->insert([
+            'user_id' => $this->user->id, 'reference' => 'order:'.$order->id,
+            'bytes' => $remaining, 'kind' => 'legacy_order',
+            'snapshot' => json_encode(['plan_id' => $plan->id]), 'created_at' => time(),
+        ]);
+        $this->user->credit_balance = (int)$this->user->credit_balance + $remaining;
+        $this->user->credit_migrated_at = time();
+        $this->user->transfer_enable = 0;
     }
 
     private function getTime($str, $timestamp)

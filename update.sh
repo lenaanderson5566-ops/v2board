@@ -19,6 +19,7 @@ BACKUP=
 MAINTENANCE=0
 MIGRATION=database/migrations/2026_10_01_000001_add_trusted_x_forwarded_for_to_v2node.php
 INVITATION_MIGRATION=database/migrations/2026_10_02_000001_create_email_invitations.php
+CREDIT_MIGRATION=database/migrations/2026_10_02_000005_create_traffic_credits.php
 NOTICE_MIGRATION=database/migrations/2026_10_02_000004_create_notice_reads.php
 RESET_MIGRATION=database/migrations/2026_10_02_000003_create_usage_resets.php
 LANGUAGE_MIGRATION=database/migrations/2026_10_02_000002_add_language_to_users.php
@@ -113,10 +114,11 @@ git cat-file -e "$TARGET:public/console/.vite/manifest.json" || die 'Target has 
 git cat-file -e "$TARGET:$MIGRATION" || die 'Target lacks the approved migration'
 git cat-file -e "$TARGET:$INVITATION_MIGRATION" || die 'Target lacks the email invitation migration'
 git cat-file -e "$TARGET:$LANGUAGE_MIGRATION" || die 'Target lacks the user language migration'
+git cat-file -e "$TARGET:$CREDIT_MIGRATION" || die 'Target lacks the traffic credit migration'
 git cat-file -e "$TARGET:$NOTICE_MIGRATION" || die 'Target lacks the announcement read migration'
 git cat-file -e "$TARGET:$RESET_MIGRATION" || die 'Target lacks the usage reset migration'
 while IFS= read -r changed; do
-    [[ -z "$changed" || "$changed" == "$MIGRATION" || "$changed" == "$INVITATION_MIGRATION" || "$changed" == "$LANGUAGE_MIGRATION" || "$changed" == "$RESET_MIGRATION" || "$changed" == "$NOTICE_MIGRATION" ]] || die "Unexpected migration: $changed; review scope first"
+    [[ -z "$changed" || "$changed" == "$MIGRATION" || "$changed" == "$INVITATION_MIGRATION" || "$changed" == "$LANGUAGE_MIGRATION" || "$changed" == "$RESET_MIGRATION" || "$changed" == "$NOTICE_MIGRATION" || "$changed" == "$CREDIT_MIGRATION" ]] || die "Unexpected migration: $changed; review scope first"
 done < <(git diff --name-only "$OLD_COMMIT" "$TARGET" -- database/migrations)
 WORK_DIR=$(mktemp -d "${TMPDIR:-/tmp}/v2board-update.XXXXXXXX")
 git show "$TARGET:composer.json" > "$WORK_DIR/composer.json"
@@ -215,7 +217,8 @@ site.tar.gz contains ORIGINAL vendor, lock, config, storage and source files.
 Restore original dependencies/config deliberately; do not overwrite newer uploads.
 Then config:clear, route:clear, view:clear, config:cache; restart PHP-FPM.
 Run artisan up only after verification, then restart original queue/scheduler.
-The nullable added column can usually remain. No blind DB restore or migrate:fresh.
+Traffic-credit conversion is not code-only reversible. Follow docs/traffic-credits.md.
+Reconcile new orders and restore matching code/database/Redis state; never migrate:fresh.
 EOF
 if [[ ! -e storage/framework/down ]]; then "$PHP_BIN" artisan down; fi
 MAINTENANCE=1
@@ -253,6 +256,7 @@ cp -- "$WORK_DIR/composer.json" composer.json
 "$PHP_BIN" artisan migrate --path="$LANGUAGE_MIGRATION" --force
 "$PHP_BIN" artisan migrate --path="$RESET_MIGRATION" --force
 "$PHP_BIN" artisan migrate --path="$NOTICE_MIGRATION" --force
+"$PHP_BIN" artisan migrate --path="$CREDIT_MIGRATION" --force
 "$PHP_BIN" artisan config:cache
 "$PHP_BIN" artisan view:cache
 "$PHP_BIN" artisan console:verify

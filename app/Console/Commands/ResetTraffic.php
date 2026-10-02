@@ -75,6 +75,7 @@ class ResetTraffic extends Command
                         // year first day
                         case 3:
                             $this->resetByYearFirstDay($builder);
+                            break;
                         // year expire day
                         case 4:
                             $this->resetByExpireYear($builder);
@@ -113,9 +114,7 @@ class ResetTraffic extends Command
     {
         $users = [];
         foreach ($builder->get() as $item) {
-            $expireDay = date('m-d', $item->expired_at);
-            $today = date('m-d');
-            if ($expireDay === $today) {
+            if (\App\Services\TrafficResetSchedule::due(4, $item->expired_at, time())) {
                 array_push($users, $item->id);
             }
         }
@@ -153,16 +152,10 @@ class ResetTraffic extends Command
 
     private function resetByExpireDay($builder): void
     {
-        $lastDay = date('t');
         $users = [];
-        $today = date('d');
         foreach ($builder->get() as $item) {
-            $expireDay = date('d', $item->expired_at);
-
-            if (($expireDay === $today) ||(($today === $lastDay) && $expireDay >= $lastDay)) {
-                if (time() < $item->expired_at - 2160000) {
-                    array_push($users, $item->id);
-                }
+            if (\App\Services\TrafficResetSchedule::due(1, $item->expired_at, time())) {
+                array_push($users, $item->id);
             }
 
         }

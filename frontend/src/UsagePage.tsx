@@ -1,3 +1,5 @@
+import { TrafficCredits } from "./TrafficCredits";
+import { c, minuteDate } from "./credit-copy";
 import { useRef, useState } from "react";
 import { ArrowUpRight, RotateCcw } from "lucide-react";
 import { bytes, date, request, type Row } from "./api";
@@ -25,7 +27,10 @@ export function UsagePage() {
             0,
             Number(info.data?.u || 0) + Number(info.data?.d || 0),
         ),
-        total = Math.max(0, Number(info.data?.transfer_enable || 0));
+        total =
+            sub.data?.has_subscription === false
+                ? 0
+                : Math.max(0, Number(info.data?.transfer_enable || 0));
     const percent = total
         ? Math.max(0, Math.min(100, ((total - used) / total) * 100))
         : 0;
@@ -84,53 +89,83 @@ export function UsagePage() {
                 <UsageChart showDetails={false} showRecords />
             ) : (
                 <>
-                    <section className="settings-section">
-                        <header>
-                            <h2>{e("quota")}</h2>
-                            <a href="#/order">{tx("管理订阅")}</a>
-                        </header>
-                        <State
-                            loading={info.loading || sub.loading}
-                            error={info.error || sub.error}
-                            data={info.data && sub.data}
-                            retry={() => {
-                                info.reload();
-                                sub.reload();
-                            }}
-                        >
-                            <div className="settings-card usage-quota">
-                                <strong>
-                                    {sub.data?.plan?.name || tx("尚未订阅套餐")}
-                                </strong>
-                                <div className="settings-row">
-                                    <span className="muted">
-                                        {typeof sub.data?.reset_day === "number"
-                                            ? e("resetDays", {
-                                                  count: sub.data.reset_day,
-                                              })
-                                            : e("noReset")}
-                                    </span>
-                                    <span>
-                                        {e("remaining")} {Math.round(percent)}%
-                                    </span>
+                    <div className="usage-balance-grid">
+                        <section className="settings-section">
+                            <header>
+                                <h2>{e("quota")}</h2>
+                                <a href="#/order">{tx("管理订阅")}</a>
+                            </header>
+                            <State
+                                loading={info.loading || sub.loading}
+                                error={info.error || sub.error}
+                                data={info.data && sub.data}
+                                retry={() => {
+                                    info.reload();
+                                    sub.reload();
+                                }}
+                            >
+                                <div className="settings-card usage-quota">
+                                    <strong>
+                                        {sub.data?.has_subscription === false
+                                            ? c("noPlanTitle")
+                                            : sub.data?.plan?.name ||
+                                              tx("尚未订阅套餐")}
+                                    </strong>
+                                    <div className="settings-row">
+                                        <span className="muted">
+                                            {sub.data?.reset_at
+                                                ? c("resetAt", {
+                                                      date: minuteDate(
+                                                          sub.data.reset_at,
+                                                          sub.data
+                                                              .reset_timezone,
+                                                      ),
+                                                  })
+                                                : c(
+                                                      sub.data
+                                                          ?.has_subscription ===
+                                                          false
+                                                          ? "noPlan"
+                                                          : "noReset",
+                                                  )}
+                                        </span>
+                                        {total > 0 && (
+                                            <span>
+                                                {e("remaining")}{" "}
+                                                {Math.round(percent)}%
+                                            </span>
+                                        )}
+                                    </div>
+                                    {total > 0 && (
+                                        <>
+                                            <div
+                                                className="quota-progress"
+                                                role="progressbar"
+                                                aria-label={e("remaining")}
+                                                aria-valuemin={0}
+                                                aria-valuemax={100}
+                                                aria-valuenow={percent}
+                                            >
+                                                <i
+                                                    style={{
+                                                        width: `${percent}%`,
+                                                    }}
+                                                />
+                                            </div>
+                                            <p className="muted">
+                                                {tx("已使用")}{" "}
+                                                {bytes(Math.min(used, total))} /{" "}
+                                                {bytes(total)}
+                                            </p>
+                                        </>
+                                    )}
                                 </div>
-                                <div
-                                    className="quota-progress"
-                                    role="progressbar"
-                                    aria-label={e("remaining")}
-                                    aria-valuemin={0}
-                                    aria-valuemax={100}
-                                    aria-valuenow={percent}
-                                >
-                                    <i style={{ width: `${percent}%` }} />
-                                </div>
-                                <p className="muted">
-                                    {tx("已使用")} {bytes(used)} /{" "}
-                                    {bytes(total)}
-                                </p>
-                            </div>
-                        </State>
-                    </section>
+                            </State>
+                        </section>
+                        <TrafficCredits
+                            balance={Number(info.data?.credit_balance || 0)}
+                        />
+                    </div>
                     <section className="settings-section reset-section">
                         <div className="reset-section-intro">
                             <h2>{b("usageReset")}</h2>

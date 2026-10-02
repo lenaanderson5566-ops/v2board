@@ -27,7 +27,9 @@ export function AccountMenu({
         );
         return () => clearTimeout(timer);
     }, [sub.data, clock]);
-    const valid = activePlan(sub.data?.plan, sub.data?.expired_at);
+    const valid =
+        sub.data?.has_subscription !== false &&
+        activePlan(sub.data?.plan, sub.data?.expired_at);
     const plan = sub.data?.plan?.name || "";
     const initial = String(user.email || "?")
         .trim()

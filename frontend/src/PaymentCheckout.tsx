@@ -1,6 +1,8 @@
+import { OrderReceipt } from "./OrderReceipt";
+import { c } from "./credit-copy";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { QRCodeSVG } from "qrcode.react";
-import { CheckCircle2, LoaderCircle } from "lucide-react";
+import { LoaderCircle } from "lucide-react";
 import { request, money, query, type Row } from "./api";
 import { useData, State, Modal } from "./ui";
 import { tx } from "./i18n";
@@ -159,46 +161,36 @@ export function PaymentCheckout({
             setBusy(false);
         }
     }
+    if ([2, 3, 4].includes(status)) return <OrderReceipt order={order} />;
     return (
         <div className="checkout-page">
-            <PurchaseSteps step={status === 3 ? 3 : 2} />
-            {status === 3 ? (
-                <section className="checkout-result" role="status">
-                    <CheckCircle2 size={40} aria-hidden="true" />
-                    <h2>{tx("订单已完成")}</h2>
-                    <p>
-                        {tx(
-                            deposit
-                                ? "充值已到账，可在账户设置中查看余额。"
-                                : "订阅已开通，前往总览为设备导入配置。",
-                        )}
-                    </p>
-                    <a
-                        className="button primary"
-                        href={deposit ? "#/profile" : "#/dashboard"}
-                    >
-                        {tx(deposit ? "账户设置" : "前往总览")}
-                    </a>
-                </section>
-            ) : status === 1 ? (
+            {!order.credit_bytes && !deposit && <PurchaseSteps step={2} />}
+            {status === 1 && (
                 <section className="checkout-result" role="status">
                     <LoaderCircle size={32} aria-hidden="true" />
                     <h2>{tx("支付已确认，正在开通")}</h2>
                     <p>{tx("开通结果将自动更新，请勿重复支付。")}</p>
                 </section>
-            ) : status === 2 || status === 4 ? (
-                <section className="checkout-result">
-                    <h2>{tx(status === 2 ? "已取消" : "已折抵")}</h2>
-                    <a className="button" href="#/plan">
-                        {tx("选择套餐")}
-                    </a>
-                </section>
-            ) : null}
-            <div className="checkout-layout">
+            )}
+            <div
+                className={
+                    status === 1
+                        ? "checkout-layout checkout-processing"
+                        : "checkout-layout"
+                }
+            >
                 <section className="checkout-summary">
-                    <h2>{deposit ? tx("账户充值") : order.plan?.name}</h2>
+                    <h2>
+                        {order.credit_bytes
+                            ? c("credits")
+                            : deposit
+                              ? tx("账户充值")
+                              : order.plan?.name}
+                    </h2>
                     <p className="muted">
-                        {tx(billingPeriods[order.period] || "账户充值")}
+                        {order.credit_bytes
+                            ? order.credit_snapshot?.name
+                            : tx(billingPeriods[order.period] || "账户充值")}
                     </p>
                     <dl className="checkout-lines">
                         {Number(order.discount_amount) > 0 && (

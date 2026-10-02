@@ -91,7 +91,7 @@ const price = (key: string, label: string): Field => ({
     ...f(key, label + "（元）", "number"),
     scale: 100,
     step: 0.01,
-    hint: "留空表示不提供该支付周期",
+    hint: key === "onetime_price" ? "额度包价格；流量 (GB) 为额度数量。仅在用户的额度入口展示，可独立使用，套餐重置不会补回额度。" : "留空表示不提供该支付周期",
 });
 export const resources: Record<string, Resource> = {
     plans: {
@@ -127,7 +127,7 @@ export const resources: Record<string, Resource> = {
                             "年付",
                             "两年付",
                             "三年付",
-                            "一次性",
+                            "额度包",
                             "重置包",
                         ][i],
                         (r: Row) => (r[key] == null ? "—" : money(r[key])),
@@ -162,7 +162,7 @@ export const resources: Record<string, Resource> = {
                         "年付",
                         "两年付",
                         "三年付",
-                        "一次性",
+                        "额度包",
                         "重置流量",
                     ][i],
                 ),
@@ -177,7 +177,7 @@ export const resources: Record<string, Resource> = {
             f("content", "套餐说明 HTML", "textarea"),
             {
                 ...toggle("force_update", "更新到现有用户"),
-                hint: "保存时将流量、设备、速率和权限组同步到此套餐下的所有用户。",
+                hint: "同步设备、速率和权限组；流量配额仅更新未转换为额度的套餐用户，已购额度保持不变。",
             },
         ],
         defaults: { transfer_enable: 100 },
@@ -245,6 +245,7 @@ export const resources: Record<string, Resource> = {
         columns: [
             ["id", "ID"],
             ["email", "邮箱"],
+            ["credit_balance", "剩余额度", (r) => bytes(r.credit_balance || 0)],
             [
                 "banned",
                 "状态",
@@ -326,7 +327,7 @@ export const resources: Record<string, Resource> = {
             [
                 "type",
                 "类型",
-                (r) => ["", "新购", "续费", "升级"][Number(r.type)] || r.type,
+                (r) => ["", "新购", "续费", "升级", "流量重置", "额度购买"][Number(r.type)] || r.type,
             ],
             ["plan_name", "订阅计划"],
             [
@@ -341,13 +342,14 @@ export const resources: Record<string, Resource> = {
                             year_price: "年付",
                             two_year_price: "两年付",
                             three_year_price: "三年付",
-                            onetime_price: "一次性",
+                            onetime_price: "额度包",
                             reset_price: "重置包",
                         }) as Row
                     )[r.period] || r.period,
             ],
             ["user_id", "用户 ID"],
             ["plan_id", "套餐 ID"],
+            ["credit_bytes", "额度数量", (r) => r.credit_bytes ? bytes(r.credit_bytes) : "—"],
             ["total_amount", "金额", (r) => money(r.total_amount)],
             [
                 "commission_balance",
@@ -815,7 +817,7 @@ export function ResourcePage({
                                 ["year_price", "年付"],
                                 ["two_year_price", "两年付"],
                                 ["three_year_price", "三年付"],
-                                ["onetime_price", "一次性"],
+                                ["onetime_price", "额度包"],
                                 ["reset_price", "重置流量"],
                             ] as [string, string][],
                         }

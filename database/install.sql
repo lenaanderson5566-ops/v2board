@@ -669,3 +669,19 @@ CREATE TABLE IF NOT EXISTS `v2_notice_read` (
   `read_at` int unsigned NOT NULL,
   PRIMARY KEY (`user_id`, `notice_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- Independent traffic credits. Balances are bytes, separate from money and usage reset counts.
+ALTER TABLE `v2_user` ADD COLUMN `credit_balance` bigint unsigned NOT NULL DEFAULT 0,
+  ADD COLUMN `credit_migrated_at` int unsigned NULL;
+ALTER TABLE `v2_order` ADD COLUMN `credit_bytes` bigint unsigned NULL,
+  ADD COLUMN `credit_snapshot` text NULL;
+CREATE TABLE IF NOT EXISTS `v2_traffic_credit_log` (
+  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
+  `user_id` int NOT NULL,
+  `reference` varchar(80) NOT NULL,
+  `kind` varchar(20) NOT NULL,
+  `bytes` bigint unsigned NOT NULL,
+  `snapshot` text NOT NULL,
+  `created_at` int unsigned NOT NULL,
+  PRIMARY KEY (`id`), UNIQUE KEY (`reference`), KEY (`user_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;

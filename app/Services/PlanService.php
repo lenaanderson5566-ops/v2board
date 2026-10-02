@@ -31,7 +31,7 @@ class PlanService
         )
             ->where('plan_id', '!=', NULL)
             ->where(function ($query) {
-                $query->where('expired_at', '>=', time())
+                $query->where('credit_balance', '>', 0)->orWhere('expired_at', '>=', time())
                     ->orWhere('expired_at', NULL);
             })
             ->groupBy("plan_id")

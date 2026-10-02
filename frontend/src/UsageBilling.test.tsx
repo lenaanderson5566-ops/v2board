@@ -24,6 +24,10 @@ vi.mock("./api", () => ({
     money: (s: number) => `¥${s / 100}`,
 }));
 vi.mock("./i18n", () => ({ tx: (s: string) => s }));
+vi.mock("./credit-copy", () => ({
+    c: (key: string) => key,
+    minuteDate: (value: unknown) => String(value || "—"),
+}));
 vi.mock("./billing-copy", () => ({ b: (s: string) => s }));
 vi.mock("./experience-copy", () => ({ e: (s: string) => s }));
 vi.mock("./UsageChart", () => ({ UsageChart: () => <div>chart-30-days</div> }));

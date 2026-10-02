@@ -250,13 +250,7 @@ class ServerService
 
     public function getAvailableUsers($groupId)
     {
-        return User::whereIn('group_id', $groupId)
-            ->whereRaw('u + d < transfer_enable')
-            ->where(function ($query) {
-                $query->where('expired_at', '>=', time())
-                    ->orWhere('expired_at', NULL);
-            })
-            ->where('banned', 0)
+        return User::withUsableTraffic()->whereIn('group_id', $groupId)
             ->select([
                 'id',
                 'uuid',

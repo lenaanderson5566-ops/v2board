@@ -13,6 +13,7 @@ export function purchasePeriods(plan: Row): string[] {
     return Object.keys(billingPeriods).filter(
         (key) =>
             key !== "reset_price" &&
+            key !== "onetime_price" &&
             plan[key] != null &&
             Number.isFinite(Number(plan[key])) &&
             Number(plan[key]) >= 0,

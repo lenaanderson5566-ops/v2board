@@ -44,6 +44,11 @@ export function SubscriptionPurchase() {
     const [billingPeriod, setBillingPeriod] = useState("month_price");
     const [mobilePlanId, setMobilePlanId] = useState<number | null>(null);
     const pending = unfinishedOrder(orders.data || []);
+    const replaceable =
+        pending &&
+        Number(pending.status) === 0 &&
+        !pending.payment_id &&
+        purchasePeriods({ [pending.period]: 0 }).length > 0;
     const currentPlan = sub.data?.plan;
     const currentAvailable =
         activePlan(currentPlan, sub.data?.expired_at) &&
@@ -84,6 +89,7 @@ export function SubscriptionPurchase() {
                                 {pending.plan?.name || tx("账户充值")} ·{" "}
                                 {money(pending.total_amount)}
                             </p>
+                            {replaceable && <p>{pc("replaceHint")}</p>}
                         </div>
                         <a
                             className="button primary"
@@ -178,7 +184,7 @@ export function SubscriptionPurchase() {
                                 Number(plan.capacity_limit) <= 0 &&
                                 !same;
                             const blocked =
-                                Boolean(pending) ||
+                                (Boolean(pending) && !replaceable) ||
                                 orders.loading ||
                                 Boolean(orders.error) ||
                                 !available.length ||
@@ -301,6 +307,11 @@ export function SubscriptionPurchase() {
                 >
                     <PlanSelection
                         plan={selected}
+                        replaceTradeNo={
+                            !selected.resetOnly && replaceable
+                                ? pending?.trade_no
+                                : undefined
+                        }
                         close={() => setSelected(null)}
                     />
                 </Modal>
@@ -308,7 +319,15 @@ export function SubscriptionPurchase() {
         </section>
     );
 }
-function PlanSelection({ plan, close }: { plan: Row; close: () => void }) {
+function PlanSelection({
+    plan,
+    close,
+    replaceTradeNo,
+}: {
+    plan: Row;
+    close: () => void;
+    replaceTradeNo?: string;
+}) {
     const available = plan.resetOnly ? ["reset_price"] : purchasePeriods(plan);
     const [period, setPeriod] = useState(
         available.includes(plan.initialPeriod)
@@ -330,7 +349,9 @@ function PlanSelection({ plan, close }: { plan: Row; close: () => void }) {
                 plan_id: plan.id,
                 period,
                 ...(coupon.trim() ? { coupon_code: coupon.trim() } : {}),
+                ...(replaceTradeNo ? { replace_trade_no: replaceTradeNo } : {}),
             });
+            window.dispatchEvent(new Event("data-changed"));
             navigate("order/" + result.data);
             close();
         } catch (problem) {
@@ -410,6 +431,11 @@ function PlanSelection({ plan, close }: { plan: Row; close: () => void }) {
                         {error}
                         <a href="#/order">{tx("查看订单记录")}</a>
                     </div>
+                )}
+                {replaceTradeNo && (
+                    <p className="muted" role="note">
+                        {pc("replaceConfirm")}
+                    </p>
                 )}
                 <button
                     className="primary purchase-primary"

@@ -196,7 +196,7 @@ it("shows the actual available period and lets users review their selection befo
 it.each([0, 1])(
     "routes an unfinished order with status %s to its existing checkout",
     (status) => {
-        mocks.orders = [{ ...order, status }];
+        mocks.orders = [{ ...order, status, payment_id: 1 }];
         render(<SubscriptionPurchase />);
         expect(
             screen
@@ -542,4 +542,22 @@ it("renders configured payment icons and keeps fees only in the summary", () => 
     expect(
         view.container.querySelectorAll("svg.payment-method-icon"),
     ).toHaveLength(2);
+});
+
+it("allows reviewing a replacement and submits its exact order reference atomically", async () => {
+    mocks.orders = [{ ...order, payment_id: null }];
+    mocks.request.mockResolvedValue({ data: "replacement" });
+    render(<SubscriptionPurchase />);
+    fireEvent.click(screen.getByRole("button", { name: "subscribe{}" }));
+    expect(mocks.request).not.toHaveBeenCalled();
+    expect(screen.getByRole("note").textContent).toContain("replaceConfirm");
+    fireEvent.click(screen.getByRole("button", { name: "创建订单并继续" }));
+    await waitFor(() =>
+        expect(mocks.request).toHaveBeenCalledWith("user/order/save", {
+            plan_id: 1,
+            period: "quarter_price",
+            replace_trade_no: "test-order",
+        }),
+    );
+    expect(mocks.request).toHaveBeenCalledTimes(1);
 });

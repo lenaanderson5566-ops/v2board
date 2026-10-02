@@ -79,7 +79,12 @@ vi.mock("./ui", () => ({
 }));
 import { SubscriptionPurchase } from "./SubscriptionPurchase";
 import { PaymentCheckout } from "./PaymentCheckout";
-import { purchasePeriods, paymentFee, periodSavings } from "./billing-flow";
+import {
+    purchasePeriods,
+    paymentFee,
+    periodSavings,
+    subscriptionAction,
+} from "./billing-flow";
 import { Orders } from "./user";
 const plan = {
     id: 1,
@@ -170,7 +175,7 @@ it("shows the actual available period and lets users review their selection befo
     mocks.request.mockResolvedValue({ data: "created-order" });
     render(<SubscriptionPurchase />);
     expect(screen.getByText("/ 季付")).toBeTruthy();
-    fireEvent.click(screen.getByRole("button", { name: "选择套餐" }));
+    fireEvent.click(screen.getByRole("button", { name: "subscribe{}" }));
     expect(screen.queryByRole("radio", { name: /流量重置/ })).toBeNull();
     fireEvent.click(screen.getByRole("radio", { name: /年付/ }));
     fireEvent.click(screen.getByText("使用优惠码"));
@@ -203,7 +208,7 @@ it.each([0, 1])(
         expect(
             (
                 screen.getByRole("button", {
-                    name: "选择套餐",
+                    name: "subscribe{}",
                 }) as HTMLButtonElement
             ).disabled,
         ).toBe(true);
@@ -443,7 +448,7 @@ it("carries the yearly card selection into checkout and removes duplicate metada
     mocks.request.mockResolvedValue({ data: "new-order" });
     render(<SubscriptionPurchase />);
     fireEvent.click(screen.getByRole("button", { name: "年付" }));
-    fireEvent.click(screen.getByRole("button", { name: "选择套餐" }));
+    fireEvent.click(screen.getByRole("button", { name: "subscribe{}" }));
     expect(
         (screen.getByRole("radio", { name: /年付/ }) as HTMLInputElement)
             .checked,
@@ -482,4 +487,38 @@ it("defaults mobile details to the current plan and preserves selection when cha
     expect(view.container.querySelector(".mobile-active")?.id).toBe(
         "pricing-plan-2",
     );
+});
+
+it("matches purchase wording to backend renewal and switching rules", () => {
+    const now = 2000000;
+    const active = { plan_id: 1, expired_at: 3000, transfer_enable: 50 };
+    expect(subscriptionAction(plan, {}, now)).toBe("subscribe");
+    expect(subscriptionAction(plan, active, now)).toBe("renew");
+    expect(subscriptionAction({ ...plan, id: 2 }, active, now)).toBe(
+        "switchPlan",
+    );
+    expect(subscriptionAction(plan, { ...active, expired_at: 1000 }, now)).toBe(
+        "resubscribe",
+    );
+    expect(
+        subscriptionAction(
+            { ...plan, id: 2 },
+            { ...active, expired_at: 1000 },
+            now,
+        ),
+    ).toBe("subscribe");
+    expect(
+        subscriptionAction(
+            { ...plan, id: 2 },
+            { ...active, expired_at: null },
+            now,
+        ),
+    ).toBe("switchPlan");
+    expect(
+        subscriptionAction(
+            { ...plan, id: 2 },
+            { ...active, transfer_enable: 0 },
+            now,
+        ),
+    ).toBe("subscribe");
 });

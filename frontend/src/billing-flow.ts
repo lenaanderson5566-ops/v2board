@@ -52,3 +52,24 @@ export function periodSavings(plan: Row, period: string): number {
         Math.floor((1 - Number(plan[period]) / baseline) * 100 + 1e-9),
     );
 }
+
+// Match OrderService::setOrderType, including legacy non-expiring plans.
+export function subscriptionAction(
+    plan: Row,
+    sub?: Row | null,
+    now = Date.now(),
+): "subscribe" | "renew" | "switchPlan" | "resubscribe" {
+    const currentId = sub?.plan_id || sub?.plan?.id;
+    const same = !!currentId && Number(currentId) === Number(plan.id);
+    const future = Number(sub?.expired_at) * 1000 > now;
+    if (same && future) return "renew";
+    if (
+        !same &&
+        currentId &&
+        Number(sub?.transfer_enable) > 0 &&
+        (future || sub?.expired_at === null)
+    )
+        return "switchPlan";
+    if (same) return "resubscribe";
+    return "subscribe";
+}

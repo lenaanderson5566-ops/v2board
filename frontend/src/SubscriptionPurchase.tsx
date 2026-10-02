@@ -11,6 +11,7 @@ import {
     purchasePeriods,
     unfinishedOrder,
     periodSavings,
+    subscriptionAction,
 } from "./billing-flow";
 
 export function PurchaseSteps({ step }: { step: number }) {
@@ -166,6 +167,7 @@ export function SubscriptionPurchase() {
                             const displayed = available.includes(billingPeriod)
                                 ? billingPeriod
                                 : available[0];
+                            const action = subscriptionAction(plan, sub.data);
                             const savings = periodSavings(plan, displayed);
                             const same =
                                 Number(
@@ -192,7 +194,12 @@ export function SubscriptionPurchase() {
                                         <h2>{plan.name}</h2>
                                         {same && (
                                             <span className="badge">
-                                                {tx("当前套餐")}
+                                                {activePlan(
+                                                    plan,
+                                                    sub.data?.expired_at,
+                                                )
+                                                    ? tx("当前套餐")
+                                                    : pc("previousPlan")}
                                             </span>
                                         )}
                                     </div>
@@ -261,17 +268,15 @@ export function SubscriptionPurchase() {
                                             setSelected({
                                                 ...plan,
                                                 initialPeriod: displayed,
+                                                purchaseAction: action,
                                             })
                                         }
                                     >
-                                        {tx(
-                                            soldOut
-                                                ? "暂时售罄"
-                                                : same &&
-                                                    Number(plan.renew) === 0
-                                                  ? "暂不支持续费"
-                                                  : "选择套餐",
-                                        )}
+                                        {soldOut
+                                            ? tx("暂时售罄")
+                                            : same && Number(plan.renew) === 0
+                                              ? tx("暂不支持续费")
+                                              : pc(action)}
                                     </button>
                                     <PlanDescription content={plan.content} />
                                 </article>
@@ -284,7 +289,14 @@ export function SubscriptionPurchase() {
             </State>
             {selected && (
                 <Modal
-                    title={tx("购买 {{value0}}", { value0: selected.name })}
+                    title={
+                        selected.resetOnly
+                            ? tx("购买 {{value0}}", { value0: selected.name })
+                            : pc("actionTitle", {
+                                  action: pc(selected.purchaseAction),
+                                  plan: selected.name,
+                              })
+                    }
                     close={() => setSelected(null)}
                 >
                     <PlanSelection

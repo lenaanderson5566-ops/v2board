@@ -28,23 +28,20 @@ class PlanTranslationService
 
         $translationMap = [];
         foreach ($translations as $translation) {
-            $planId = $translation->plan_id;
-            if (isset($translationMap[$planId])) {
-                continue;
-            }
-            $translationMap[$planId] = $translation;
+            $translationMap[$translation->plan_id][$translation->locale] = $translation;
         }
 
         foreach ($plans as $plan) {
-            if (!isset($translationMap[$plan->id])) {
-                continue;
-            }
-            $translation = $translationMap[$plan->id];
-            if ($translation->name) {
-                $plan->name = $translation->name;
-            }
-            if ($translation->content) {
-                $plan->content = $translation->content;
+            // SQL whereIn does not preserve locale preference order.
+            // Resolve each field explicitly: exact locale first, then fallback.
+            foreach (['name', 'content'] as $field) {
+                foreach ($candidates as $candidate) {
+                    $translation = $translationMap[$plan->id][$candidate] ?? null;
+                    if ($translation && trim((string) $translation->$field) !== '') {
+                        $plan->$field = $translation->$field;
+                        break;
+                    }
+                }
             }
         }
 
@@ -57,26 +54,7 @@ class PlanTranslationService
             return $plan;
         }
 
-        $candidates = $this->buildLocaleCandidates($locale);
-        if (!$candidates) {
-            return $plan;
-        }
-
-        $translation = PlanTranslation::where('plan_id', $plan->id)
-            ->whereIn('locale', $candidates)
-            ->first();
-
-        if (!$translation) {
-            return $plan;
-        }
-
-        if ($translation->name) {
-            $plan->name = $translation->name;
-        }
-        if ($translation->content) {
-            $plan->content = $translation->content;
-        }
-
+        $this->translateCollection([$plan], $locale);
         return $plan;
     }
 
@@ -93,6 +71,8 @@ class PlanTranslationService
         }
 
         $normalized = str_replace('_', '-', $locale);
+        $aliases = ['zh-hant'=>'zh-TW', 'zh-hant-tw'=>'zh-TW', 'zh-hk'=>'zh-TW', 'zh-hant-hk'=>'zh-TW', 'zh-hans'=>'zh-CN', 'zh-hans-cn'=>'zh-CN'];
+        $normalized = $aliases[strtolower($normalized)] ?? $normalized;
         $langOnly = explode('-', $normalized)[0];
 
         $candidates = [];

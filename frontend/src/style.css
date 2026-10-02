@@ -634,6 +634,7 @@ label small {
     padding: 24px;
 }
 .modal {
+    isolation: isolate;
     background: white;
     border-radius: 14px;
     width: min(740px, 100%);
@@ -641,7 +642,7 @@ label small {
     overflow: auto;
     box-shadow: 0 20px 100px #20202033;
 }
-.modal .panel-head {
+.modal > .panel-head {
     position: sticky;
     top: 0;
     background: #fff;

@@ -7,7 +7,7 @@ export function LanguagePicker() {
     useTranslation();
     const saving = useRef(false);
     const [busy, setBusy] = useState(false), [error, setError] = useState("");
-    const { id, open, setOpen, root, trigger, toggle } = useHeaderPopover();
+    const { id, open, setOpen, root, trigger, toggle, onBlur } = useHeaderPopover();
     const selected =
         languages.find((language) => language.code === locale()) ||
         languages[0];
@@ -15,10 +15,7 @@ export function LanguagePicker() {
         <div
             className="language-picker"
             ref={root}
-            onBlur={(event) => {
-                if (!event.currentTarget.contains(event.relatedTarget as Node))
-                    setOpen(false);
-            }}
+            onBlur={onBlur}
         >
             <button
                 ref={trigger}

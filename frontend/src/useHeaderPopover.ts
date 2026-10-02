@@ -1,4 +1,4 @@
-import { useEffect, useId, useRef, useState } from "react";
+import { useEffect, useId, useRef, useState, type FocusEvent } from "react";
 
 export function useHeaderPopover() {
     const id = useId();
@@ -66,6 +66,13 @@ export function useHeaderPopover() {
         setOpen,
         root,
         trigger,
+        onBlur: (event: FocusEvent<HTMLDivElement>) => {
+            // Touch browsers may not focus the tapped button. A null relatedTarget
+            // is not proof of leaving: unmounting here discards the upcoming click.
+            // Outside pointer presses are handled by the document listener above.
+            if (event.relatedTarget && !event.currentTarget.contains(event.relatedTarget))
+                setOpen(false);
+        },
         toggle: () => {
             if (!open)
                 window.dispatchEvent(

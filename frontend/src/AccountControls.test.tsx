@@ -75,6 +75,28 @@ describe("header controls", () => {
         await waitFor(() => expect(screen.queryByRole("menu")).toBeNull());
         expect(document.activeElement).toBe(trigger);
     });
+    it("keeps touch selection mounted when mobile blur has no related target", async () => {
+        render(<LanguagePicker />);
+        fireEvent.click(screen.getByRole("button", { name: "界面语言" }));
+        const selected = screen.getByRole("menuitemradio", { name: "English" });
+        const option = screen.getByRole("menuitemradio", { name: "简体中文" });
+        // Touch browsers can blur the focused item without focusing the tapped button.
+        fireEvent.pointerDown(option, { pointerType: "touch" });
+        fireEvent.blur(selected, { relatedTarget: null });
+        expect(screen.getByRole("menuitemradio", { name: "简体中文" })).toBe(option);
+        fireEvent.pointerUp(option, { pointerType: "touch" });
+        fireEvent.click(option);
+        await waitFor(() => expect(mocks.changeLanguage).toHaveBeenCalledWith("zh-CN"));
+        await waitFor(() => expect(screen.queryByRole("menu")).toBeNull());
+    });
+    it("still closes when keyboard focus leaves the menu", () => {
+        render(<><LanguagePicker /><button>Outside</button></>);
+        fireEvent.click(screen.getByRole("button", { name: "界面语言" }));
+        fireEvent.blur(screen.getByRole("menuitemradio", { name: "English" }), {
+            relatedTarget: screen.getByRole("button", { name: "Outside" }),
+        });
+        expect(screen.queryByRole("menu")).toBeNull();
+    });
     it("shows a failed save and allows retry without closing the menu", async () => {
         mocks.changeLanguage.mockRejectedValueOnce(Error("save failed"));
         render(<LanguagePicker />);

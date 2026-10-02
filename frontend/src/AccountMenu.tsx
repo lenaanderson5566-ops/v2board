@@ -14,7 +14,7 @@ export function AccountMenu({
     logout: () => void;
 }) {
     const sub = useData("user/getSubscribe");
-    const { id, open, setOpen, root, trigger, toggle } = useHeaderPopover();
+    const { id, open, setOpen, root, trigger, toggle, onBlur } = useHeaderPopover();
     const [clock, setClock] = useState(0);
     useEffect(() => {
         const expiry = Number(sub.data?.expired_at) * 1000;
@@ -39,10 +39,7 @@ export function AccountMenu({
         <div
             className="account-control"
             ref={root}
-            onBlur={(event) => {
-                if (!event.currentTarget.contains(event.relatedTarget as Node))
-                    setOpen(false);
-            }}
+            onBlur={onBlur}
         >
             <button
                 ref={trigger}

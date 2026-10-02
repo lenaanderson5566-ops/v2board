@@ -3,6 +3,7 @@ import { tx, locale, languages } from "./i18n";
 import { SubscriptionImport } from "./SubscriptionImport";
 import { UsageChart } from "./UsageChart";
 import { AccountEntry } from "./AccountEntry";
+import { PlanDescription } from "./PlanDescription";
 import { useState, useEffect, useRef, type ReactNode } from "react";
 import { QRCodeSVG } from "qrcode.react";
 import { loadStripe } from "@stripe/stripe-js/pure";
@@ -346,7 +347,7 @@ export function Plans() {
                                       })
                                     : tx("不限设备数")}
                             </div>
-                            <Html value={p.content} />
+                            <PlanDescription content={p.content} />
                             <button
                                 className="primary"
                                 onClick={() => setSelected(p)}

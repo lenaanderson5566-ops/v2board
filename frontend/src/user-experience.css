@@ -1282,3 +1282,7 @@ body:has(.browser-notice) #custom-footer {
 .quick-actions{display:grid;grid-auto-flow:column;grid-auto-columns:minmax(0,1fr);gap:10px;margin-top:16px}.quick-step .quick-actions .import-download,.quick-step .quick-actions .import-open,.quick-actions button{width:100%;margin:0;min-height:48px;justify-content:center}
 @media(max-width:600px){.quick-actions{grid-auto-flow:row;grid-template-columns:1fr}}
 .subscription-security{margin-top:32px;padding-top:24px;border-top:1px solid var(--line,#e8e8e8)}.subscription-security h2{font-size:18px}.subscription-security>button{margin-top:12px}
+
+.checkout-payment .payment-options label { flex-wrap: nowrap; min-height: 60px; }
+.checkout-payment .payment-method-icon { width: 28px; height: 28px; flex: 0 0 28px; object-fit: contain; color: #737373; }
+.checkout-payment .payment-options label > span { min-width: 0; overflow-wrap: anywhere; }

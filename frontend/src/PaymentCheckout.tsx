@@ -2,12 +2,34 @@ import { OrderReceipt } from "./OrderReceipt";
 import { c } from "./credit-copy";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { QRCodeSVG } from "qrcode.react";
-import { LoaderCircle } from "lucide-react";
+import { CreditCard, LoaderCircle } from "lucide-react";
 import { request, money, query, type Row } from "./api";
 import { useData, State, Modal } from "./ui";
 import { tx } from "./i18n";
 import { billingPeriods, paymentFee } from "./billing-flow";
 import { PurchaseSteps } from "./SubscriptionPurchase";
+
+function PaymentIcon({ source }: { source: unknown }) {
+    const [failed, setFailed] = useState(false);
+    const url = typeof source === "string" ? source.trim() : "";
+    if (!url || failed)
+        return (
+            <CreditCard
+                className="payment-method-icon"
+                size={28}
+                aria-hidden="true"
+            />
+        );
+    return (
+        <img
+            className="payment-method-icon"
+            src={url}
+            alt=""
+            referrerPolicy="no-referrer"
+            onError={() => setFailed(true)}
+        />
+    );
+}
 
 export function PaymentCheckout({
     order,
@@ -286,11 +308,11 @@ export function PaymentCheckout({
                                                     setError("");
                                                 }}
                                             />
+                                            <PaymentIcon
+                                                key={String(item.icon || "")}
+                                                source={item.icon}
+                                            />
                                             <span>{item.name}</span>
-                                            <small>
-                                                {tx("支付手续费")}{" "}
-                                                {money(paymentFee(due, item))}
-                                            </small>
                                         </label>
                                     ))}
                                 </fieldset>

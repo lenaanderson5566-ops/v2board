@@ -522,3 +522,24 @@ it("matches purchase wording to backend renewal and switching rules", () => {
         ),
     ).toBe("subscribe");
 });
+
+it("renders configured payment icons and keeps fees only in the summary", () => {
+    mocks.methods[0].icon = "https://example.com/alipay.png";
+    const view = render(
+        <PaymentCheckout
+            order={order}
+            reload={vi.fn()}
+            renderCard={() => null}
+        />,
+    );
+    const icon = view.container.querySelector(
+        "img.payment-method-icon",
+    ) as HTMLImageElement;
+    expect(icon.getAttribute("src")).toBe("https://example.com/alipay.png");
+    expect(screen.getAllByText("支付手续费")).toHaveLength(1);
+    fireEvent.error(icon);
+    expect(view.container.querySelector("img.payment-method-icon")).toBeNull();
+    expect(
+        view.container.querySelectorAll("svg.payment-method-icon"),
+    ).toHaveLength(2);
+});

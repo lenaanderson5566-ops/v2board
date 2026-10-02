@@ -11,9 +11,29 @@ vi.stubGlobal("localStorage", {
     getItem: (key: string) => storage.get(key) || null,
     removeItem: (key: string) => storage.delete(key),
 });
-const { request, rows, query, bytes, storageKey, download } =
+const { request, rows, query, bytes, storageKey, download, logoutSession } =
     await import("./api");
 describe("API client", () => {
+    it("revokes the current server session before clearing the browser token", async () => {
+        storage.set(storageKey, "session-token");
+        const fetchMock = vi
+            .fn()
+            .mockResolvedValue(new Response('{"data":true}', { status: 200 }));
+        vi.stubGlobal("fetch", fetchMock);
+        await logoutSession();
+        expect(fetchMock.mock.calls[0][0]).toBe("/api/v1/user/logout");
+        expect(fetchMock.mock.calls[0][1].method).toBe("POST");
+        expect(fetchMock.mock.calls[0][1].headers.Authorization).toBe(
+            "session-token",
+        );
+        expect(storage.has(storageKey)).toBe(false);
+    });
+    it("allows local logout when offline", async () => {
+        storage.set(storageKey, "session-token");
+        vi.stubGlobal("fetch", vi.fn().mockRejectedValue(Error("offline")));
+        await logoutSession();
+        expect(storage.has(storageKey)).toBe(false);
+    });
     beforeEach(() => {
         storage.clear();
         vi.restoreAllMocks();

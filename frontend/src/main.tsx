@@ -36,6 +36,7 @@ import {
     admin,
     readRequest,
     clearReadCache,
+    logoutSession,
     type Row,
 } from "./api";
 import { Editor, Panel, type Field } from "./ui";
@@ -349,6 +350,18 @@ function App() {
         () => matchMedia("(max-width: 800px)").matches,
     );
     const sidebar = useRef<HTMLElement>(null);
+    const loggingOut = useRef(false);
+    async function handleLogout() {
+        if (loggingOut.current) return;
+        loggingOut.current = true;
+        try {
+            await logoutSession();
+            setUser(null);
+            navigate("login");
+        } finally {
+            loggingOut.current = false;
+        }
+    }
     useEffect(() => {
         if (boot.mode === "admin" && path === "generate") navigate("users");
     }, [path]);
@@ -549,27 +562,14 @@ function App() {
     }
     if (["admin"].includes(boot.mode))
         return (
-            <AdminShell
-                current={current}
-                user={user}
-                logout={() => {
-                    localStorage.removeItem(storageKey);
-                    setUser(null);
-                    navigate("login");
-                }}
-            >
+            <AdminShell current={current} user={user} logout={handleLogout}>
                 {content}
             </AdminShell>
         );
     return (
         <UserStatusGate
             onStatus={setUser}
-            logout={() => {
-                clearReadCache();
-                localStorage.removeItem(storageKey);
-                setUser(null);
-                navigate("login");
-            }}
+            logout={handleLogout}
             support={
                 <React.Suspense fallback={<WorkspaceSkeleton />}>
                     <UserContent current="ticket" path="ticket" />
@@ -657,11 +657,7 @@ function App() {
                         <button
                             className="icon-button"
                             title={tx("退出登录")}
-                            onClick={() => {
-                                localStorage.removeItem(storageKey);
-                                setUser(null);
-                                navigate("login");
-                            }}
+                            onClick={handleLogout}
                         >
                             <LogOut size={17} />
                         </button>
@@ -699,15 +695,7 @@ function App() {
                                     <ArrowUpRight size={15} />
                                 </a>
                             )}
-                            <AccountMenu
-                                user={user}
-                                logout={() => {
-                                    clearReadCache();
-                                    localStorage.removeItem(storageKey);
-                                    setUser(null);
-                                    navigate("login");
-                                }}
-                            />
+                            <AccountMenu user={user} logout={handleLogout} />
                         </div>
                     </header>
                     <main>

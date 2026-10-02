@@ -59,7 +59,7 @@ export function SubscriptionImport({
             setCopied(true);
             setError("");
         } catch {
-            setError(tx("复制失败，请手动复制链接"));
+            setError(tx("复制失败，请使用一键导入或扫码。"));
         }
     }
     const downloads: Partial<Record<ClientId, string>> = {
@@ -256,14 +256,6 @@ export function SubscriptionImport({
                         title={tx("订阅二维码")}
                     />
                 </div>
-                <input
-                    className="subscription-input"
-                    readOnly
-                    value={raw}
-                    dir="ltr"
-                    aria-label={tx("订阅链接")}
-                    onFocus={(event) => event.target.select()}
-                />
                 <small className="muted">
                     {tx("订阅链接和二维码包含访问凭据，请勿分享。")}
                 </small>

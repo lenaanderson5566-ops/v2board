@@ -23,6 +23,14 @@ use Illuminate\Support\Facades\DB;
 
 class UserController extends Controller
 {
+    public function logout(Request $request)
+    {
+        $user = User::findOrFail($request->user['id']);
+        return response(['data' => (new AuthService($user))->removeCurrentSession(
+            $request->input('auth_data') ?? $request->header('authorization')
+        )]);
+    }
+
     public function getActiveSession(Request $request)
     {
         $user = User::find($request->user['id']);
@@ -31,7 +39,10 @@ class UserController extends Controller
         }
         $authService = new AuthService($user);
         return response([
-            'data' => $authService->getSessions()
+            'data' => array_map(function ($session) {
+                unset($session['auth_data']);
+                return $session;
+            }, $authService->getSessions())
         ]);
     }
 

@@ -253,53 +253,6 @@ export function Subscribe() {
             </Panel>
             <details className="subscription-details">
                 <summary>{tx("高级配置")}</summary>
-                <Panel title={tx("订阅连接")}>
-                    <State {...d} retry={d.reload}>
-                        <div className="pad">
-                            <p className="muted">
-                                {tx("订阅链接包含你的访问凭据，请妥善保管。")}
-                            </p>
-                            {s.subscribe_url ? (
-                                <>
-                                    <input
-                                        readOnly
-                                        value={s.subscribe_url}
-                                        aria-label={tx("订阅链接")}
-                                    />
-                                    <div className="actions space">
-                                        <button
-                                            onClick={() => {
-                                                if (
-                                                    confirm(
-                                                        tx(
-                                                            "重置后，现有订阅链接将失效。继续吗？",
-                                                        ),
-                                                    )
-                                                )
-                                                    request(
-                                                        "user/resetSecurity",
-                                                    )
-                                                        .then(d.reload)
-                                                        .catch((e) =>
-                                                            alert(e.message),
-                                                        );
-                                            }}
-                                        >
-                                            {tx("重置订阅链接")}
-                                        </button>
-                                    </div>
-                                </>
-                            ) : (
-                                <button
-                                    className="primary"
-                                    onClick={() => navigate("plan")}
-                                >
-                                    {tx("选择套餐")}
-                                </button>
-                            )}
-                        </div>
-                    </State>
-                </Panel>
                 <Panel title={tx("可用节点")}>
                     <State {...nodes} retry={nodes.reload}>
                         <Table

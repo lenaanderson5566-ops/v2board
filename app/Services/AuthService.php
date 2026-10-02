@@ -22,13 +22,16 @@ class AuthService
     public function generateAuthData(Request $request)
     {
         $guid = Helper::guid();
+        $now = time();
         $authData = JWT::encode([
             'id' => $this->user->id,
             'session' => $guid,
+            'iat' => $now,
+            'exp' => $now + 30 * 86400,
         ], config('app.key'), 'HS256');
         self::addSession($this->user->id, $guid, [
             'ip' => $request->ip(),
-            'login_at' => time(),
+            'login_at' => $now,
             'ua' => $request->userAgent(),
             'auth_data' => $authData
         ]);
@@ -42,21 +45,16 @@ class AuthService
     public static function decryptAuthData($jwt)
     {
         try {
-            if (!Cache::has($jwt)) {
-                $data = (array)JWT::decode($jwt, new Key(config('app.key'), 'HS256'));
-                if (!self::checkSession($data['id'], $data['session'])) return false;
-                $user = User::select([
-                    'id',
-                    'email',
-                    'is_admin',
-                    'is_staff'
-                ])
-                    ->find($data['id']);
-                if (!$user) return false;
-                Cache::put($jwt, $user->toArray(), 3600);
-            }
-            return Cache::get($jwt);
-        } catch (\Exception $e) {
+            if (!is_string($jwt) || $jwt === '') return false;
+            // Always verify signature, expiry and revocation. Legacy tokens without
+            // exp remain compatible, but cannot bypass the server session registry.
+            $data = (array)JWT::decode($jwt, new Key(config('app.key'), 'HS256'));
+            if (!isset($data['id'], $data['session']) || !is_numeric($data['id']) || !is_string($data['session'])) return false;
+            if (!self::checkSession($data['id'], $data['session'])) return false;
+            $user = User::select(['id', 'email', 'is_admin', 'is_staff', 'banned'])->find($data['id']);
+            if (!$user) return false;
+            return $user->toArray();
+        } catch (\Throwable $e) {
             return false;
         }
     }
@@ -89,6 +87,8 @@ class AuthService
     {
         $cacheKey = CacheKey::get("USER_SESSIONS", $this->user->id);
         $sessions = (array)Cache::get($cacheKey, []);
+        if (!is_string($sessionId)) return false;
+        if (isset($sessions[$sessionId]['auth_data'])) Cache::forget($sessions[$sessionId]['auth_data']);
         unset($sessions[$sessionId]);
         if (!Cache::put(
             $cacheKey,
@@ -107,5 +107,16 @@ class AuthService
             }
         }
         return Cache::forget($cacheKey);
+    }
+
+    public function removeCurrentSession($jwt)
+    {
+        try {
+            $data = (array)JWT::decode($jwt, new Key(config('app.key'), 'HS256'));
+            if ((int)($data['id'] ?? 0) !== (int)$this->user->id) return false;
+            return $this->removeSession($data['session'] ?? null);
+        } catch (\Throwable $e) {
+            return false;
+        }
     }
 }

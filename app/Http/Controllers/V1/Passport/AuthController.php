@@ -129,12 +129,19 @@ class AuthController extends Controller
 
     public function login(AuthLogin $request)
     {
+        if ((int)config('v2board.recaptcha_enable', 0)) {
+            $challenge = $request->input('recaptcha_data');
+            if (!is_string($challenge) || $challenge === '') abort(422, __('Invalid code is incorrect'));
+            $result = (new ReCaptcha(config('v2board.recaptcha_key')))->verify($challenge, $request->ip());
+            if (!$result->isSuccess()) abort(422, __('Invalid code is incorrect'));
+        }
         $email = $request->input('email');
         $password = $request->input('password');
         $riskLogService = new RiskLogService();
+        $limitEmail = strtolower(trim($email));
 
         if ((int)config('v2board.password_limit_enable', 1)) {
-            $passwordErrorCount = (int)Cache::get(CacheKey::get('PASSWORD_ERROR_LIMIT', $email), 0);
+            $passwordErrorCount = (int)Cache::get(CacheKey::get('PASSWORD_ERROR_LIMIT', $limitEmail), 0);
             if ($passwordErrorCount >= (int)config('v2board.password_limit_count', 5)) {
                 abort(500, __('There are too many password errors, please try again after :minute minutes.', [
                     'minute' => config('v2board.password_limit_expire', 60)
@@ -157,9 +164,9 @@ class AuthController extends Controller
             $password,
             $user->password)
         ) {
-            if ((int)config('v2board.password_limit_enable')) {
+            if ((int)config('v2board.password_limit_enable', 1)) {
                 Cache::put(
-                    CacheKey::get('PASSWORD_ERROR_LIMIT', $email),
+                    CacheKey::get('PASSWORD_ERROR_LIMIT', $limitEmail),
                     (int)$passwordErrorCount + 1,
                     60 * (int)config('v2board.password_limit_expire', 60)
                 );

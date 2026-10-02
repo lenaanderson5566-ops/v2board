@@ -31,6 +31,12 @@ vi.mock("./i18n", () => ({
 vi.mock("./experience-copy", () => ({ e: (key: string) => key }));
 vi.mock("./ui", () => ({
     useData: () => ({ data: { plan: { name: "PRO" }, expired_at: null } }),
+    Modal: ({ title, children, close }: any) => (
+        <div role="dialog" aria-label={title}>
+            <button onClick={close}>关闭</button>
+            {children}
+        </div>
+    ),
 }));
 import { LanguagePicker } from "./LanguagePicker";
 import { AccountMenu } from "./AccountMenu";
@@ -110,6 +116,26 @@ describe("header controls", () => {
     });
 });
 describe("account password changes", () => {
+    it("requires confirmation to reset configuration credentials without logging out or revealing the URL", async () => {
+        mocks.request.mockResolvedValue({
+            data: "https://example.com/sub?token=hidden",
+        });
+        localStorage.setItem("controls-test", "test-session");
+        render(<AccountSecurity />);
+        fireEvent.click(screen.getByRole("button", { name: "重置订阅链接" }));
+        expect(mocks.request).not.toHaveBeenCalled();
+        fireEvent.click(screen.getByRole("button", { name: "取消" }));
+        expect(screen.queryByRole("dialog")).toBeNull();
+        fireEvent.click(screen.getByRole("button", { name: "重置订阅链接" }));
+        fireEvent.click(screen.getByRole("button", { name: "确认重置" }));
+        await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+        expect(mocks.request).toHaveBeenCalledWith("user/resetSecurity", {});
+        expect(localStorage.getItem("controls-test")).toBe("test-session");
+        expect(screen.queryByText(/token=hidden/)).toBeNull();
+        expect(
+            screen.getByRole("link", { name: "配置中心" }).getAttribute("href"),
+        ).toBe("#/subscribe");
+    });
     it("rejects mismatched confirmation before contacting Laravel", () => {
         render(<AccountSecurity />);
         fill("new-password", "different-password");

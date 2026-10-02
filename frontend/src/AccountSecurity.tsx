@@ -1,7 +1,8 @@
-import { useId, useState, type FormEvent } from "react";
+import { useId, useState, useRef, type FormEvent } from "react";
 import { Eye, EyeOff, ArrowLeft, Shield } from "lucide-react";
 import { request, clearReadCache, storageKey } from "./api";
 import { tx } from "./i18n";
+import { Modal } from "./ui";
 
 export function AccountSecurity() {
     const id = useId();
@@ -11,6 +12,28 @@ export function AccountSecurity() {
     const [visible, setVisible] = useState(false);
     const [busy, setBusy] = useState(false);
     const [error, setError] = useState("");
+    const [resetOpen, setResetOpen] = useState(false);
+    const [resetBusy, setResetBusy] = useState(false);
+    const [resetError, setResetError] = useState("");
+    const [resetDone, setResetDone] = useState(false);
+    const resetting = useRef(false);
+    async function resetSubscription() {
+        if (resetting.current) return;
+        resetting.current = true;
+        setResetBusy(true);
+        setResetError("");
+        try {
+            await request("user/resetSecurity", {});
+            clearReadCache();
+            setResetOpen(false);
+            setResetDone(true);
+        } catch (problem) {
+            setResetError((problem as Error).message);
+        } finally {
+            resetting.current = false;
+            setResetBusy(false);
+        }
+    }
     async function save(event: FormEvent) {
         event.preventDefault();
         if (busy) return;
@@ -122,6 +145,65 @@ export function AccountSecurity() {
                     {tx(busy ? "提交中…" : "更新密码")}
                 </button>
             </form>
+            <section className="subscription-security">
+                <h2>{tx("订阅安全")}</h2>
+                <p className="muted">
+                    {tx(
+                        "怀疑配置泄露时，可重置订阅凭据。重置后所有设备需要重新导入配置，账户登录不受影响。",
+                    )}
+                </p>
+                {resetDone && (
+                    <p className="success-message" role="status">
+                        {tx("订阅凭据已重置，请到配置中心重新导入。")}{" "}
+                        <a href="#/subscribe">{tx("配置中心")}</a>
+                    </p>
+                )}
+                <button
+                    onClick={() => {
+                        setResetError("");
+                        setResetDone(false);
+                        setResetOpen(true);
+                    }}
+                >
+                    {tx("重置订阅链接")}
+                </button>
+            </section>
+            {resetOpen && (
+                <Modal
+                    title={tx("重置订阅链接")}
+                    close={() => {
+                        if (!resetBusy) setResetOpen(false);
+                    }}
+                >
+                    <div className="pad">
+                        <p>
+                            {tx(
+                                "重置会更换订阅凭据及连接标识，旧链接和已导入的配置将失效。此操作无法撤销。",
+                            )}
+                        </p>
+                        {resetError && (
+                            <div role="alert" className="alert">
+                                {resetError}
+                            </div>
+                        )}
+                        <div className="actions space">
+                            <button
+                                disabled={resetBusy}
+                                onClick={() => setResetOpen(false)}
+                            >
+                                {tx("取消")}
+                            </button>
+                            <button
+                                className="primary"
+                                disabled={resetBusy}
+                                onClick={resetSubscription}
+                            >
+                                {tx(resetBusy ? "提交中…" : "确认重置")}
+                            </button>
+                        </div>
+                    </div>
+                </Modal>
+            )}
         </section>
     );
 }

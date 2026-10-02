@@ -1,4 +1,11 @@
 {
+    "取消": "Hủy",
+    "订阅安全": "Bảo mật cấu hình",
+    "怀疑配置泄露时，可重置订阅凭据。重置后所有设备需要重新导入配置，账户登录不受影响。": "Nếu nghi cấu hình bị lộ, hãy đặt lại thông tin truy cập. Mọi thiết bị cần nhập lại cấu hình. Tài khoản vẫn đăng nhập.",
+    "订阅凭据已重置，请到配置中心重新导入。": "Đã đặt lại thông tin truy cập. Hãy nhập lại từ Cấu hình.",
+    "重置会更换订阅凭据及连接标识，旧链接和已导入的配置将失效。此操作无法撤销。": "Thao tác thay thông tin truy cập và mã kết nối. Liên kết cũ và cấu hình đã nhập sẽ mất hiệu lực. Không thể hoàn tác.",
+    "确认重置": "Xác nhận đặt lại",
+    "复制失败，请使用一键导入或扫码。": "Sao chép thất bại. Hãy nhập nhanh hoặc quét mã QR.",
     "账单": "Hóa đơn",
     "使用情况": "Sử dụng",
     "配置中心": "Cấu hình",

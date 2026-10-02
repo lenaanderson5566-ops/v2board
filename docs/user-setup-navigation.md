@@ -13,7 +13,7 @@
 
 有效套餐流量耗尽仍属于 active，但停止显示导入步骤并提示管理订阅。账户状态轮询、到期刷新及付款后更新会同步导航；导航只是界面引导，不替代服务端鉴权。旧的套餐、账单和配置链接仍能打开；非有效用户直接访问配置中心时会看到开通或续订引导。
 
-快速开始与配置中心合并，避免额外增加一个导航项。步骤包括选择系统、安装并导入、开始使用。自动识别设备后允许手动改为 Windows、macOS、Android、iOS、Linux，客户端选择同步改变对应配置格式。一键打开、复制和扫码复用同一导入逻辑，不增加下载订阅文件功能；原始连接和重置入口收进“高级配置”。
+快速开始与配置中心合并，避免额外增加一个导航项。步骤包括选择系统、安装并导入、开始使用。自动识别设备后允许手动改为 Windows、macOS、Android、iOS、Linux，客户端选择同步改变对应配置格式。一键打开、复制和扫码复用同一导入逻辑，不增加下载订阅文件功能；节点列表收进“高级配置”。界面不展示订阅地址明文，凭据重置位于账户安全，详见 [登录安全检查](authentication-security.md)。
 
 下载按钮进入维护者的发布或客户端目录，用户自行选择架构和版本，不固定过期安装包：[Clash Verge Rev](https://github.com/clash-verge-rev/clash-verge-rev/releases)、[Hiddify](https://github.com/hiddify/hiddify-app/releases)、[sing-box](https://sing-box.sagernet.org/clients/)。其他客户端保留导入与帮助入口。
 

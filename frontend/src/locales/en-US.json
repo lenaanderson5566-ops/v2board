@@ -1,4 +1,11 @@
 {
+    "取消": "Cancel",
+    "订阅安全": "Subscription security",
+    "怀疑配置泄露时，可重置订阅凭据。重置后所有设备需要重新导入配置，账户登录不受影响。": "Reset subscription credentials if you suspect a leak. All devices will need to import the new configuration. Your account stays signed in.",
+    "订阅凭据已重置，请到配置中心重新导入。": "Credentials reset. Import your new configuration from Setup.",
+    "重置会更换订阅凭据及连接标识，旧链接和已导入的配置将失效。此操作无法撤销。": "This replaces subscription credentials and connection identifiers. Old links and imported configurations will stop working. This cannot be undone.",
+    "确认重置": "Confirm reset",
+    "复制失败，请使用一键导入或扫码。": "Copy failed. Use one-click import or scan the QR code.",
     "账单": "Billing",
     "使用情况": "Usage",
     "配置中心": "Setup",

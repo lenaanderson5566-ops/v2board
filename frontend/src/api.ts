@@ -59,6 +59,16 @@ export function readRequest<T = Row>(
 export function clearReadCache() {
     readCache.clear();
 }
+export async function logoutSession() {
+    try {
+        await request("user/logout", {});
+    } catch {
+        /* Local logout remains possible if the network is unavailable. */
+    } finally {
+        clearReadCache();
+        localStorage.removeItem(storageKey);
+    }
+}
 export async function request<T = Row>(
     path: string,
     body?: Row,

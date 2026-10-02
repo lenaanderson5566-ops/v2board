@@ -38,9 +38,7 @@ class PlanAutoTranslation
         foreach ($texts as $index => $text) {
             $translated = $rows[$index]['translations'][0]['text'] ?? null;
             if (!is_string($translated) || (trim($text) !== '' && trim($translated) === '')) throw ValidationException::withMessages(['translation'=>'翻译服务返回了无效内容']);
-            preg_match_all('/\d+(?:[.,]\d+)*/u', $text, $before);
-            preg_match_all('/\d+(?:[.,]\d+)*/u', $translated, $after);
-            if ($before[0] !== $after[0]) throw ValidationException::withMessages(['translation'=>'译文中的数字发生变化，请人工检查']);
+            if ($this->numbers($text) !== $this->numbers($translated)) throw ValidationException::withMessages(['translation'=>'译文中的数字发生变化，请人工检查']);
             $result[] = $translated;
         }
         if (!$isFeatures) return $result[0];
@@ -48,4 +46,17 @@ class PlanAutoTranslation
         unset($item);
         return json_encode($features, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
     }
+    private function numbers($text)
+    {
+        // Localized digits and punctuation represent the same quota, not a changed value.
+        $text = strtr(html_entity_decode(strip_tags($text), ENT_QUOTES | ENT_HTML5, 'UTF-8'),
+            array_combine(preg_split('//u', '۰۱۲۳۴۵۶۷۸۹٠١٢٣٤٥٦٧٨٩０１２３４５６７８９', -1, PREG_SPLIT_NO_EMPTY),
+                str_split('012345678901234567890123456789')));
+        $text = strtr($text, ['٫'=>'.', '٬'=>'']);
+        preg_match_all('/[0-9]+(?:[.,][0-9]+)*/u', $text, $matches);
+        $numbers = $matches[0];
+        sort($numbers, SORT_STRING);
+        return $numbers;
+    }
+
 }

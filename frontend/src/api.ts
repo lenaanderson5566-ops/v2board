@@ -72,10 +72,12 @@ export async function logoutSession() {
 export async function request<T = Row>(
     path: string,
     body?: Row,
+    options?: { signal?: AbortSignal },
 ): Promise<Envelope<T>> {
     if (body) readCache.clear();
     const token = localStorage.getItem(storageKey);
     const res = await fetch(`/api/v1/${path}`, {
+        signal: options?.signal,
         method: body ? "POST" : "GET",
         headers: {
             Accept: "application/json",

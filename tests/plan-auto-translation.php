@@ -26,6 +26,13 @@ Http::swap(new Illuminate\Http\Client\Factory);
 Http::fake(['*'=>Http::response([['translations'=>[['text'=>'500 GB']]],['translations'=>[['text'=>'4 devices']]]],200)]);
 try { $service->generate($input,'zh-CN','en-US'); throw new RuntimeException('numeric corruption accepted'); } catch (Illuminate\Validation\ValidationException $e) { $checks++; }
 Http::swap(new Illuminate\Http\Client\Factory);
+Http::fake(['*'=>Http::response([['translations'=>[['text'=>'ماهانه ۵۰ GB']]],['translations'=>[['text'=>'۴ دستگاه']]]],200)]);
+$persian = json_decode($service->generate($input,'zh-CN','fa-IR'),true);
+$assert($persian[0]['feature']==='ماهانه ۵۰ GB', 'Persian digits are equivalent');
+Http::swap(new Illuminate\Http\Client\Factory);
+Http::fake(['*'=>Http::response([['translations'=>[['text'=>'５００ GB']]],['translations'=>[['text'=>'４ devices']]]],200)]);
+try { $service->generate($input,'zh-CN','ja-JP'); throw new RuntimeException('localized corruption accepted'); } catch (Illuminate\Validation\ValidationException $e) { $checks++; }
+Http::swap(new Illuminate\Http\Client\Factory);
 Http::fake(['*'=>Http::response(['error'=>['message'=>'secret upstream']],429)]);
 try { $service->generate('Test','en-US','ja-JP'); throw new RuntimeException('rate limit accepted'); } catch (Illuminate\Validation\ValidationException $e) { $assert(strpos(json_encode($e->errors()),'secret upstream')===false,'upstream details hidden'); }
 config(['plan-translation.key'=>'']);

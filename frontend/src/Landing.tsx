@@ -7,9 +7,6 @@ import {
     Sparkles,
     Laptop,
     Smartphone,
-    PenLine,
-    Search,
-    Code2,
     ShoppingBag,
     Menu,
     X,
@@ -20,6 +17,9 @@ import {
 import { boot } from "./api";
 import "./landing-copy";
 import "./landing.css";
+import openaiIcon from "./assets/openai.svg";
+import claudeIcon from "./assets/claude.svg";
+import geminiIcon from "./assets/googlegemini.svg";
 import { LanguagePicker } from "./LanguagePicker";
 
 export default function Landing() {
@@ -117,32 +117,53 @@ export default function Landing() {
                                 <Sparkles size={15} />
                                 {boot.title}
                             </span>
-                            <span>{t("preview")}</span>
+                            <span>{t("aiLabel")}</span>
                         </div>
                         <div className="preview-body">
                             <span className="preview-eyebrow">{t("tag")}</span>
-                            <h2>{t("scenarioTitle")}</h2>
-                            <p>{t("scenarioIntro")}</p>
-                            <ul className="preview-scenarios">
-                                {[PenLine, Search, Code2].map((Icon, index) => (
-                                    <li key={index}>
-                                        <span className="preview-next-icon">
-                                            <Icon
-                                                size={20}
-                                                aria-hidden="true"
+                            <h2>{t("aiTitle")}</h2>
+                            <p>{t("aiIntro")}</p>
+                            <ul
+                                className="preview-ai-services"
+                                aria-label={t("aiLabel")}
+                            >
+                                {[
+                                    {
+                                        name: "OpenAI",
+                                        detail: "ChatGPT",
+                                        icon: openaiIcon,
+                                        tone: "openai",
+                                    },
+                                    {
+                                        name: "Claude",
+                                        detail: "Anthropic",
+                                        icon: claudeIcon,
+                                        tone: "claude",
+                                    },
+                                    {
+                                        name: "Gemini",
+                                        detail: "Google",
+                                        icon: geminiIcon,
+                                        tone: "gemini",
+                                    },
+                                ].map(({ name, detail, icon, tone }) => (
+                                    <li key={name}>
+                                        <span
+                                            className={`ai-brand-mark ${tone}`}
+                                        >
+                                            <img
+                                                src={icon}
+                                                alt=""
+                                                width="32"
+                                                height="32"
                                             />
                                         </span>
-                                        <div>
-                                            <strong>
-                                                {t(`scenario${index + 1}`)}
-                                            </strong>
-                                            <p>
-                                                {t(`scenario${index + 1}Text`)}
-                                            </p>
-                                        </div>
+                                        <strong>{name}</strong>
+                                        <span>{detail}</span>
                                     </li>
                                 ))}
                             </ul>
+                            <p className="preview-ai-note">{t("aiNote")}</p>
                             <a
                                 className="button primary preview-start"
                                 href={startHref}

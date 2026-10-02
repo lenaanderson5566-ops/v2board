@@ -25,16 +25,17 @@ afterEach(() => {
     mocks.boot.registerClosed = false;
 });
 describe("public product entry", () => {
-    it("uses the configured brand and explains use cases before setup", () => {
+    it("uses the configured brand and shows AI service brands before setup", () => {
         render(<Landing />);
         expect(
             screen.getAllByRole("link", { name: "Example AI" })[0],
         ).toHaveProperty("href", expect.stringContaining("/"));
         expect(screen.queryByRole("button", { name: "Android" })).toBeNull();
-        expect(screen.getByText("scenarioTitle")).toBeTruthy();
-        expect(screen.getByText("scenario1")).toBeTruthy();
-        expect(screen.getByText("scenario2")).toBeTruthy();
-        expect(screen.getByText("scenario3")).toBeTruthy();
+        expect(screen.getByText("aiTitle")).toBeTruthy();
+        expect(screen.getByText("OpenAI")).toBeTruthy();
+        expect(screen.getByText("Claude")).toBeTruthy();
+        expect(screen.getByText("Gemini")).toBeTruthy();
+        expect(screen.getByText("aiNote")).toBeTruthy();
         expect(
             screen
                 .getAllByRole("link", { name: "start" })

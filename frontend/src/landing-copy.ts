@@ -1,5 +1,46 @@
 import i18n from "./i18n";
 export const landingCopy = {
+    aiTitle: [
+        "连接你的 AI 世界",
+        "連接你的 AI 世界",
+        "Connect to your AI world",
+        "あなたの AI の世界へ",
+        "나만의 AI 세상으로",
+        "Kết nối thế giới AI của bạn",
+        "Откройте свой мир ИИ",
+        "به دنیای هوش مصنوعی خود متصل شوید",
+    ],
+    aiIntro: [
+        "熟悉的工具，更多可能。",
+        "熟悉的工具，更多可能。",
+        "Familiar tools. More possibilities.",
+        "いつものツールで、可能性を広げる。",
+        "익숙한 도구로 더 많은 가능성을.",
+        "Công cụ quen thuộc, nhiều khả năng hơn.",
+        "Знакомые инструменты. Больше возможностей.",
+        "ابزارهای آشنا، امکانات بیشتر.",
+    ],
+    aiLabel: [
+        "探索 AI 服务",
+        "探索 AI 服務",
+        "Explore AI services",
+        "AI サービスを探索",
+        "AI 서비스 살펴보기",
+        "Khám phá dịch vụ AI",
+        "Знакомство с ИИ-сервисами",
+        "کاوش خدمات هوش مصنوعی",
+    ],
+    aiNote: [
+        "第三方服务需另行注册，会员权益不包含在内。",
+        "第三方服務需另行註冊，不包含會員權益。",
+        "Third-party services require separate accounts. Memberships are not included.",
+        "各サービスへの登録が別途必要です。有料プランは含まれません。",
+        "각 서비스의 계정이 별도로 필요하며 멤버십은 포함되지 않습니다.",
+        "Cần tài khoản riêng cho từng dịch vụ. Không bao gồm gói thành viên.",
+        "Нужны отдельные аккаунты. Подписки на эти сервисы не включены.",
+        "حساب جداگانه لازم است. اشتراک این خدمات شامل نمی‌شود.",
+    ],
+
     scenarioTitle: [
         "把时间留给想做的事",
         "把時間留給想做的事",

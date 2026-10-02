@@ -2,6 +2,7 @@ import { tx, locale, setLanguagePersistence, applyAccountLanguage } from "./i18n
 import React, { useEffect, useRef, useState, type ReactNode } from "react";
 import { createRoot } from "react-dom/client";
 import {
+    Sparkles,
     LayoutDashboard,
     Globe,
     ShoppingBag,
@@ -46,7 +47,7 @@ import { AccountMenu } from "./AccountMenu";
 import { EmbeddedBrowserNotice } from "./EmbeddedBrowserNotice";
 import { currentDevice } from "./user-experience";
 import { userNavigation } from "./user-navigation";
-import { WorkspaceSkeleton } from "./WorkspaceSkeleton";
+import { WorkspaceSkeleton, LandingSkeleton } from "./WorkspaceSkeleton";
 setLanguagePersistence(async (language) => {
     if (boot.mode !== "user" || !localStorage.getItem(storageKey)) return false;
     await request("user/update", { language });
@@ -62,6 +63,7 @@ import { LanguagePicker } from "./LanguagePicker";
 import { AdminShell, adminPage, legacyAdminMenu } from "./admin-shell";
 import "./admin-legacy.css";
 import "./user-experience.css";
+import "./product.css";
 type Nav = { key: string; label: string; icon: typeof Globe; group: string };
 const adminNav: Nav[] = legacyAdminMenu.map(([key, label, , group]) => ({
     key,
@@ -121,7 +123,7 @@ function Auth({
         <div className="auth-layout">
             <section className="auth-brand">
                 <a className="brand" href="/">
-                    <span className="brand-mark">V</span>
+                    <span className="brand-mark"><Sparkles size={19} aria-hidden="true" /></span>
                     {boot.title}
                 </a>
                 <div>
@@ -455,7 +457,7 @@ function App() {
         return <EmbeddedBrowserNotice />;
     if (boot.landing)
         return (
-            <React.Suspense fallback={<WorkspaceSkeleton full />}>
+            <React.Suspense fallback={<LandingSkeleton />}>
                 <Landing />
             </React.Suspense>
         );
@@ -607,7 +609,7 @@ function App() {
                             boot.mode === "admin" ? `/${boot.adminPath}` : "/"
                         }
                     >
-                        <span className="brand-mark">V</span>
+                        <span className="brand-mark"><Sparkles size={19} aria-hidden="true" /></span>
                         <span>
                             {boot.title}
                             <small>

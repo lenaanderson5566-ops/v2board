@@ -20,3 +20,20 @@ export function WorkspaceSkeleton({ full = false }: { full?: boolean }) {
         </div>
     );
 }
+
+export function LandingSkeleton() {
+    return (
+        <div className="landing-skeleton" role="status" aria-busy="true">
+            <span className="sr-only">{tx("正在加载…")}</span>
+            <div className="landing-skeleton-bar" aria-hidden="true" />
+            <div className="landing-skeleton-hero" aria-hidden="true">
+                <div>
+                    <i />
+                    <i />
+                    <i />
+                </div>
+                <div />
+            </div>
+        </div>
+    );
+}

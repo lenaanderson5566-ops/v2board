@@ -64,12 +64,7 @@ export function AccountEntry({
                         <a className="button" href="#/knowledge">
                             {tx("使用文档")}
                         </a>
-                        <a
-                            className="button"
-                            href={state === "expired" ? "#/order" : "#/ticket"}
-                        >
-                            {tx(state === "expired" ? "账单" : "工单支持")}
-                        </a>
+                        {state === "expired" && <a className="button" href="#/order">{tx("账单")}</a>}
                     </>
                 ) : (
                     <>

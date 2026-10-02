@@ -317,7 +317,7 @@ try {
     $assert(config('v2board.password_limit_enable', 1) === ($originalConfig['password_limit_enable'] ?? 1), 'Partial settings update changed an unrelated switch');
     config(['v2board.custom_footer_html' => $footer]);
     $assert(strpos($call('/app')->getContent(), $footer) !== false, 'Footer was not rendered in user shell');
-    $assert(strpos($call('/')->getContent(), '<title>Studio</title>') !== false && strpos($call('/')->getContent(), $footer) === false, 'Public landing metadata or footer isolation failed');
+    $assert(strpos($call('/')->getContent(), '<title>' . e(config('v2board.app_name', 'V2Board')) . '</title>') !== false && strpos($call('/')->getContent(), $footer) === false, 'Public landing metadata or footer isolation failed');
     $assert(strpos($call('/' . $securePath)->getContent(), $footer) === false, 'User footer leaked into admin shell');
     echo "Console smoke tests: {$checks} checks passed\n";
 } finally {

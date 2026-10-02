@@ -3,11 +3,12 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <link rel="icon" type="image/svg+xml" href="/console-mark.svg">
     <meta name="theme-color" content="#ffffff">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="default">
-    <meta name="description" content="{{ $boot['landing'] ? 'Studio — Device setup and connectivity guidance for AI apps.' : config('v2board.app_description', 'V2Board') }}">
-    <title>{{ $boot['landing'] ? 'Studio' : config('v2board.app_name', 'V2Board') }}</title>
+    <meta name="description" content="{{ $boot['description'] }}">
+    <title>{{ $boot['title'] }}</title>
     <script>window.V2BOARD = @json($boot);</script>
     @if($boot['mode'] === 'admin')
         <link rel="stylesheet" href="/assets/admin/res_002.css">

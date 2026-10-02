@@ -1,0 +1,488 @@
+/* Shared user product finish; intentionally scoped to the user experience. */
+.product-skip {
+    position: fixed;
+    z-index: 100;
+    top: 8px;
+    inset-inline-start: 12px;
+    transform: translateY(-160%);
+    border-radius: 10px;
+    padding: 12px 18px;
+    color: #fff !important;
+    background: #243c31;
+}
+.product-skip:focus {
+    transform: translateY(0);
+}
+.app.user {
+    color: #252b27;
+    background: #fff;
+    --border: #e5e8e3;
+    --muted: #70766f;
+}
+.app.user aside {
+    background: #f7f8f5;
+    border-inline-end: 1px solid #e9ece6;
+}
+.app.user .brand {
+    padding: 28px 22px;
+    line-height: 1.35;
+    gap: 11px;
+}
+.app.user .brand > span:last-child {
+    min-width: 0;
+    overflow-wrap: anywhere;
+}
+.app.user .brand-mark {
+    background: #263e32;
+    color: #fff;
+    border-radius: 10px;
+    flex-shrink: 0;
+}
+.app.user .brand small {
+    font-size: 11px;
+    font-weight: 400;
+    margin-top: 6px;
+}
+.app.user aside nav {
+    padding: 8px 14px;
+}
+.app.user .nav-group > small {
+    padding: 0 12px;
+    margin-bottom: 12px;
+    font-size: 10px;
+    color: #8a9187;
+}
+.app.user aside nav a {
+    min-height: 44px;
+    border-radius: 10px;
+    font-size: 13px;
+    font-weight: 450;
+}
+.app.user aside nav a.active {
+    background: #e9ede4;
+    color: #263e32;
+    font-weight: 600;
+}
+.app.user aside nav a:hover {
+    background: #edf0e8;
+}
+.app.user .sidebar-bottom {
+    margin: 12px;
+    padding: 14px 4px;
+    border-top: 1px solid #e4e9df;
+}
+.app.user .sidebar-bottom strong {
+    font-weight: 500;
+}
+.app.user .main > header {
+    background: #ffffffed;
+    border-bottom: 1px solid #f0f2ed;
+    padding-inline: 36px;
+}
+.app.user .main > main {
+    max-width: 1180px;
+    margin-inline: auto;
+    padding: 36px 40px 24px;
+}
+.app.user .page-heading {
+    margin-bottom: 28px;
+    align-items: center;
+}
+.app.user .page-heading h1 {
+    font-size: 28px;
+    letter-spacing: -0.8px;
+    font-weight: 600;
+}
+.app.user .today {
+    font-size: 12px;
+    color: #8b9188;
+}
+.app.user .panel {
+    border: 1px solid #e8ebe5;
+    border-radius: 18px;
+    box-shadow: none;
+}
+.app.user .panel-head {
+    padding: 20px 24px;
+    border-bottom-color: #edf0e9;
+}
+.app.user .panel-head h2 {
+    font-size: 15px;
+    font-weight: 600;
+}
+.app.user :is(button, .button) {
+    min-height: 40px;
+    border-radius: 10px;
+    font-size: 13px;
+}
+.app.user .primary,
+.user-auth .primary {
+    background: #263e32;
+    border-color: #263e32;
+    color: white;
+}
+.app.user .primary:hover,
+.user-auth .primary:hover {
+    background: #395842;
+    border-color: #395842;
+    color: white;
+}
+.app.user :is(input, select, textarea):focus,
+.user-auth input:focus {
+    border-color: #788c70;
+    box-shadow: 0 0 0 3px #617b4910;
+}
+.app.user :focus-visible {
+    outline: 2px solid #718466;
+    outline-offset: 3px;
+}
+.app.user .dashboard-welcome {
+    padding: 24px 28px;
+    background: #f5f7f1;
+    border: 1px solid #e8ede1;
+    border-radius: 18px;
+    margin-bottom: 20px;
+}
+.app.user .dashboard-welcome h2 {
+    font-size: 20px;
+    font-weight: 550;
+}
+.app.user .dashboard-welcome p {
+    font-size: 13px;
+    line-height: 1.8;
+}
+.app.user .dashboard-welcome > .button {
+    flex-shrink: 0;
+}
+.app.user .account-status-line {
+    margin: 0 0 16px;
+    font-size: 12px;
+}
+.app.user .badge.success {
+    color: #3d6845;
+    background: #edf5e9;
+    border: 1px solid #dce9d5;
+}
+.app.user .dashboard-grid {
+    gap: 20px;
+    margin-bottom: 28px;
+}
+.app.user .dashboard-grid > .panel,
+.app.user .quota-card {
+    border-radius: 20px;
+    box-shadow: 0 3px 12px #25391c03;
+    border-color: #e5e9e1;
+}
+.app.user .dashboard-grid .panel-head h2,
+.app.user .quota-card h3 {
+    color: #757e70;
+    font-size: 13px;
+    font-weight: 500;
+}
+.app.user .dashboard-grid .pad > h3 {
+    font-size: 28px;
+    font-weight: 550;
+}
+.app.user .quota-value strong {
+    font-size: 44px;
+    font-weight: 550;
+    font-variant-numeric: tabular-nums;
+}
+.app.user .quota-value span {
+    font-size: 16px;
+    color: #697165;
+}
+.app.user .quota-progress {
+    height: 9px;
+    background: #eef1e9;
+}
+.app.user .quota-progress i {
+    background: #5d8862;
+}
+.app.user .quota-card p,
+.app.user .quota-card small {
+    line-height: 1.6;
+    color: #747d6d;
+}
+.app.user .subscription-facts dt {
+    font-size: 12px;
+    color: #7a8274;
+}
+.app.user .subscription-facts dd {
+    font-size: 14px;
+}
+.app.user .usage-analysis {
+    padding: 26px;
+    border: 1px solid #e8ebe5;
+    border-radius: 20px;
+    margin-bottom: 28px;
+    background: #fff;
+}
+.app.user .usage-analysis > header {
+    padding: 0;
+    background: transparent;
+    backdrop-filter: none;
+}
+.app.user .dashboard-secondary .panel {
+    border: 1px solid #e8ebe5;
+    border-radius: 18px;
+}
+.app.user .dashboard-secondary .panel-head {
+    padding: 20px 24px;
+    border-bottom: 1px solid #edf0e9;
+}
+.app.user .dashboard-secondary .pad {
+    padding: 22px 24px;
+}
+.app.user .notice {
+    padding: 22px 24px;
+}
+.app.user .notice h3 {
+    font-size: 15px;
+}
+.app.user .notice small {
+    color: #8a9283;
+}
+.app.user .account-entry {
+    padding: 36px;
+    border-color: #e5e9e0;
+    border-radius: 22px;
+    background: #fff;
+}
+.app.user .account-entry-new {
+    background: #fafbf7;
+}
+.app.user .account-entry .entry-symbol {
+    border-radius: 16px;
+    background: #ecf1e5;
+    color: #546c43;
+}
+.app.user .account-entry h2 {
+    font-weight: 550;
+    line-height: 1.4;
+}
+.app.user .account-entry > p {
+    max-width: 580px;
+    font-size: 14px;
+}
+.app.user .entry-steps {
+    gap: 20px;
+    border-color: #e5e9de;
+    margin-top: 32px;
+    padding-top: 24px;
+}
+.app.user .entry-steps > div {
+    font-size: 13px;
+}
+.app.user .entry-steps span {
+    background: #edf1e6;
+    border-radius: 8px;
+    padding: 8px;
+    color: #657457;
+}
+.app.user .plan-card {
+    border-radius: 18px;
+    border-color: #e4e9dd;
+    padding: 26px;
+}
+.app.user .plan-card:hover {
+    border-color: #a1b094;
+}
+.app.user .account-security {
+    max-width: 660px;
+}
+.app.user .page-footer {
+    margin-top: 36px;
+    padding-top: 22px;
+    border-top: 1px solid #eef0ea;
+    color: #8b9384;
+    font-size: 11px;
+}
+.user-auth {
+    background: #f8f9f5;
+    color: #26362c;
+}
+.user-auth .auth-home {
+    font-weight: 600;
+    font-size: 17px;
+}
+.user-auth .user-auth-card {
+    padding: 32px;
+    background: #fff;
+    border: 1px solid #e5e9df;
+    border-radius: 24px;
+    box-shadow: 0 16px 60px -34px #31462835;
+    max-width: 490px;
+}
+.user-auth .auth-illustration {
+    background: #edf1e5;
+    color: #6c8158;
+    transform: none;
+    border: 1px solid #e2e8d8;
+    border-radius: 32px;
+}
+.user-auth .user-auth-intro h1 {
+    font-weight: 550;
+    font-size: clamp(32px, 4vw, 48px);
+}
+.user-auth .user-auth-intro p {
+    font-size: 15px;
+}
+.user-auth .auth-title-row h2 {
+    font-size: 27px;
+}
+.user-auth .user-auth-form fieldset {
+    gap: 20px;
+}
+.user-auth .user-auth-form input:not([type="checkbox"]) {
+    border-radius: 11px;
+    border-color: #dfe4d8;
+    min-height: 50px;
+}
+.user-auth .auth-submit {
+    border-radius: 11px;
+    min-height: 48px;
+}
+@media (max-width: 800px) {
+    .app.user .main > main {
+        padding: 24px 18px 100px;
+    }
+    .app.user .main > header {
+        padding: 10px 18px;
+    }
+    .app.user .page-heading {
+        margin-bottom: 20px;
+    }
+    .app.user .page-heading h1 {
+        font-size: 25px;
+    }
+    .app.user .dashboard-welcome {
+        padding: 21px;
+        gap: 16px;
+    }
+    .app.user .dashboard-welcome h2 {
+        font-size: 20px;
+    }
+    .app.user .dashboard-welcome > .button {
+        width: 100%;
+    }
+    .app.user .dashboard-grid {
+        gap: 14px;
+    }
+    .app.user .usage-analysis {
+        padding: 20px 16px;
+        border-radius: 18px;
+    }
+    .app.user .account-entry {
+        padding: 26px 22px;
+    }
+    .app.user .entry-steps {
+        gap: 14px;
+    }
+    .app.user .bottom-nav {
+        border-color: #e6eadf;
+    }
+    .app.user .bottom-nav a.active {
+        color: #2c5134;
+    }
+    .app.user .bottom-nav a.active svg {
+        background: #eaf0e1;
+        border-radius: 7px;
+        box-sizing: content-box;
+        padding: 3px 12px;
+        margin: -3px -12px;
+    }
+    .app.user .panel-head {
+        padding: 18px 20px;
+    }
+    .app.user .plan-card {
+        padding: 22px;
+    }
+    .app.user :is(button, .button) {
+        min-height: 44px;
+    }
+    .app.user .page-footer {
+        padding-bottom: 12px;
+    }
+    .user-auth {
+        padding: 24px 20px;
+    }
+    .user-auth .user-auth-card {
+        padding: 26px 22px;
+        border-radius: 20px;
+    }
+    .user-auth .user-auth-layout {
+        gap: 28px;
+    }
+    .user-auth .auth-title-row h2 {
+        font-size: 25px;
+    }
+}
+@media (max-width: 380px) {
+    .app.user .main > main {
+        padding-inline: 14px;
+    }
+    .user-auth {
+        padding-inline: 16px;
+    }
+    .user-auth .user-auth-card {
+        padding: 24px 18px;
+    }
+}
+@media (prefers-reduced-motion: reduce) {
+    .app.user *,
+    .user-auth * {
+        transition: none !important;
+    }
+}
+
+.landing-skeleton {
+    max-width: 1280px;
+    margin: auto;
+    padding: 28px 48px;
+    min-height: 100dvh;
+    background: white;
+}
+.landing-skeleton-bar {
+    width: 180px;
+    height: 32px;
+    border-radius: 10px;
+    background: #f0f3eb;
+}
+.landing-skeleton-hero {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 80px;
+    align-items: center;
+    margin-top: 90px;
+}
+.landing-skeleton-hero > div:last-child {
+    height: 410px;
+    border: 1px solid #edf0e7;
+    border-radius: 22px;
+    background: #fafbf8;
+}
+.landing-skeleton-hero i {
+    display: block;
+    height: 40px;
+    background: #f2f4ee;
+    border-radius: 10px;
+    margin: 16px 0;
+}
+.landing-skeleton-hero i:last-child {
+    width: 60%;
+    height: 20px;
+}
+@media (max-width: 800px) {
+    .landing-skeleton {
+        padding: 22px 20px;
+    }
+    .landing-skeleton-hero {
+        grid-template-columns: 1fr;
+        gap: 32px;
+        margin-top: 60px;
+    }
+    .landing-skeleton-hero > div:last-child {
+        height: 350px;
+    }
+}

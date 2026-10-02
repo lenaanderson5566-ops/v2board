@@ -10,8 +10,8 @@ $renderConsole = function (string $mode, bool $landing = false) use ($securePath
         'boot' => [
             'mode' => $mode,
             'landing' => $landing,
-            'title' => $landing ? 'Studio' : config('v2board.app_name', 'V2Board'),
-            'description' => $landing ? 'A space for ideas, writing and everyday planning.' : config('v2board.app_description', '连接世界，轻松管理你的订阅。'),
+            'title' => config('v2board.app_name', 'V2Board'),
+            'description' => $landing ? 'AI 应用配置助手，让设备配置更简单。' : config('v2board.app_description', '连接世界，轻松管理你的订阅。'),
             'adminPath' => $mode === 'admin' ? $securePath : '',
             'opsPath' => $mode === 'admin' ? config('v2board.ops_api_path', 'ops') : '',
             'emailVerify' => (bool) config('v2board.email_verify', 0),

@@ -70,8 +70,8 @@ export function UserDashboard() {
                     <h2>{e("connectionHelp")}</h2>
                     <p className="muted">{e("connectionDetail")}</p>
                 </div>
-                <a className="button" href="#/knowledge">
-                    {tx("使用文档")}
+                <a className="button primary" href={user.account_status?.is_available && !user.account_status?.quota_exhausted ? "#/subscribe" : "#/plan"}>
+                    {tx(user.account_status?.is_available && !user.account_status?.quota_exhausted ? "快速开始" : "管理订阅")}
                     <ArrowUpRight size={16} />
                 </a>
             </div>
@@ -102,17 +102,6 @@ export function UserDashboard() {
                     <State {...sub} retry={sub.reload}>
                         <div className="pad">
                             <h3>{s.plan?.name || tx("尚未订阅套餐")}</h3>
-                            {s.subscribe_url &&
-                                user.account_status?.is_available &&
-                                !user.account_status?.quota_exhausted && (
-                                    <a
-                                        className="button primary"
-                                        href="#/subscribe"
-                                    >
-                                        {tx("快速开始")}
-                                        <ArrowUpRight size={16} />
-                                    </a>
-                                )}
                             <dl className="subscription-facts">
                                 <div>
                                     <dt>{tx("订阅到期")}</dt>

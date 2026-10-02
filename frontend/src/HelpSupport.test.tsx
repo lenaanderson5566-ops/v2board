@@ -1,5 +1,12 @@
 // @vitest-environment jsdom
-vi.mock("./credit-copy", () => ({ c: (key: string) => key, minuteDate: (v: unknown) => String(v) }));
+vi.mock("./help-copy", () => ({ h: (key: string) => key }));
+vi.mock("react-i18next", () => ({
+    useTranslation: () => ({ i18n: { resolvedLanguage: "zh-CN" } }),
+}));
+vi.mock("./credit-copy", () => ({
+    c: (key: string) => key,
+    minuteDate: (v: unknown) => String(v),
+}));
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
     cleanup,
@@ -82,7 +89,7 @@ describe("help and ticket interactions", () => {
                 <ContactSupport />
             </>,
         );
-        expect(container.querySelectorAll("details")).toHaveLength(4);
+        expect(container.querySelectorAll("details")).toHaveLength(8);
         expect(
             screen
                 .getByRole("link", { name: "联系客服 / 查看已有工单" })

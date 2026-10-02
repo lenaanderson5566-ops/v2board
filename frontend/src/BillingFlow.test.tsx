@@ -31,6 +31,7 @@ vi.mock("./i18n", () => ({
     tx: (key: string, args: any = {}) =>
         key.replace(/{{(\w+)}}/g, (_, name) => String(args[name])),
 }));
+vi.mock("./help-copy", () => ({ h: (key: string) => key }));
 vi.mock("./credit-copy", () => ({
     c: (key: string) => key,
     minuteDate: (value: unknown) => String(value || "—"),

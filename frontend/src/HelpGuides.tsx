@@ -1,33 +1,172 @@
+import { useState } from "react";
+import { Search, ChevronDown, ArrowUpRight } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import { tx } from "./i18n";
 import { Panel } from "./ui";
+import { h, type helpCopy } from "./help-copy";
+
+type Category = "setup" | "usage" | "account";
+const topics: {
+    id: string;
+    category: Category;
+    question: keyof typeof helpCopy;
+    answer: keyof typeof helpCopy;
+    action: keyof typeof helpCopy;
+    href: string;
+}[] = [
+    {
+        id: "start",
+        category: "setup",
+        question: "qStart",
+        answer: "aStart",
+        action: "configure",
+        href: "#/subscribe",
+    },
+    {
+        id: "import",
+        category: "setup",
+        question: "qImport",
+        answer: "aImport",
+        action: "configure",
+        href: "#/subscribe",
+    },
+    {
+        id: "connect",
+        category: "setup",
+        question: "qConnect",
+        answer: "aConnect",
+        action: "viewUsage",
+        href: "#/dashboard",
+    },
+    {
+        id: "credits",
+        category: "usage",
+        question: "qCredits",
+        answer: "aCredits",
+        action: "viewUsage",
+        href: "#/dashboard",
+    },
+    {
+        id: "reset",
+        category: "usage",
+        question: "qReset",
+        answer: "aReset",
+        action: "viewUsage",
+        href: "#/dashboard",
+    },
+    {
+        id: "payment",
+        category: "account",
+        question: "qPayment",
+        answer: "aPayment",
+        action: "billing",
+        href: "#/order",
+    },
+    {
+        id: "cancelled",
+        category: "account",
+        question: "qCancelled",
+        answer: "aCancelled",
+        action: "billing",
+        href: "#/order",
+    },
+    {
+        id: "security",
+        category: "account",
+        question: "qSecurity",
+        answer: "aSecurity",
+        action: "security",
+        href: "#/security",
+    },
+];
 
 export function HelpGuides() {
+    const { i18n } = useTranslation("help");
+    const [category, setCategory] = useState<Category | "all">("all");
+    const [search, setSearch] = useState("");
+    const terms = search
+        .trim()
+        .toLocaleLowerCase()
+        .split(/\s+/)
+        .filter(Boolean);
+    const visible = topics.filter(
+        (topic) =>
+            (category === "all" || category === topic.category) &&
+            terms.every((term) =>
+                `${h(topic.question)} ${h(topic.answer)}`
+                    .toLocaleLowerCase()
+                    .includes(term),
+            ),
+    );
     return (
         <Panel title={tx("常见问题与问题排查")}>
             <div className="pad help-guides">
-                {[
-                    [
-                        "配置导入",
-                        "在总览中选择适合当前设备的导入方式。若无法打开客户端，请先安装客户端，再用系统浏览器重试。",
-                    ],
-                    [
-                        "连接问题",
-                        "先在总览确认套餐有效期和剩余额度，再更新客户端配置并切换可用节点；仍有问题时记录设备和客户端版本。",
-                    ],
-                    [
-                        "支付问题",
-                        "先在订单详情检查支付结果。已付款仍未到账时，可从订单详情联系客服，订单编号会自动带入。",
-                    ],
-                    [
-                        "账号问题",
-                        "忘记密码可在登录页重置；其他账户设置可在账户设置中修改。请勿在工单中发送密码或完整订阅链接。",
-                    ],
-                ].map(([title, text]) => (
-                    <details key={title}>
-                        <summary>{tx(title)}</summary>
-                        <p>{tx(text)}</p>
-                    </details>
-                ))}
+                <p className="muted help-intro">{h("intro")}</p>
+                <div className="help-search">
+                    <Search size={18} aria-hidden="true" />
+                    <input
+                        type="search"
+                        aria-label={h("search")}
+                        placeholder={h("search")}
+                        value={search}
+                        onChange={(event) => setSearch(event.target.value)}
+                    />
+                </div>
+                <div
+                    className="help-categories"
+                    role="group"
+                    aria-label={tx("常见问题与问题排查")}
+                >
+                    {(["all", "setup", "usage", "account"] as const).map(
+                        (key) => (
+                            <button
+                                key={key}
+                                type="button"
+                                aria-pressed={category === key}
+                                onClick={() => setCategory(key)}
+                            >
+                                {h(key)}
+                            </button>
+                        ),
+                    )}
+                </div>
+                <p className="help-count muted" role="status">
+                    {h("count", { count: visible.length })}
+                </p>
+                <div className="help-results" key={i18n.resolvedLanguage}>
+                    {visible.map((topic) => (
+                        <details key={topic.id}>
+                            <summary>
+                                {h(topic.question)}
+                                <ChevronDown size={18} aria-hidden="true" />
+                            </summary>
+                            <div className="help-answer">
+                                <p>{h(topic.answer)}</p>
+                                <a className="help-action" href={topic.href}>
+                                    {h(topic.action)}
+                                    <ArrowUpRight
+                                        size={16}
+                                        aria-hidden="true"
+                                    />
+                                </a>
+                            </div>
+                        </details>
+                    ))}
+                </div>
+                {!visible.length && (
+                    <div className="help-empty">
+                        <p>{h("empty")}</p>
+                        <button
+                            type="button"
+                            onClick={() => {
+                                setSearch("");
+                                setCategory("all");
+                            }}
+                        >
+                            {h("clear")}
+                        </button>
+                    </div>
+                )}
             </div>
         </Panel>
     );

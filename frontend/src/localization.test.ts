@@ -45,6 +45,7 @@ await import("./experience-copy");
 await import("./billing-copy");
 await import("./announcement-copy");
 await import("./credit-copy");
+await import("./help-copy");
 describe("landing and interactive control translations", () => {
     for (const { code } of languages)
         it(`${code} provides landing and control namespaces`, () => {
@@ -55,6 +56,7 @@ describe("landing and interactive control translations", () => {
                 "billing",
                 "announcements",
                 "credits",
+                "help",
             ]) {
                 const base = i18n.getResourceBundle("zh-CN", namespace);
                 const translated = i18n.getResourceBundle(code, namespace);
@@ -232,6 +234,7 @@ function localeForTest() {
 
 it("formats scheduled reset timestamps to the minute with an explicit timezone", async () => {
     const { minuteDate } = await import("./credit-copy");
+await import("./help-copy");
     await i18n.changeLanguage("zh-CN");
     const output = minuteDate(Date.parse("2026-10-07T13:51:37Z") / 1000, "Asia/Shanghai");
     expect(output).toContain("21:51");

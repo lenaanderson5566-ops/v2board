@@ -1160,3 +1160,124 @@
     max-width: 700px;
     margin-inline: auto;
 }
+
+/* Help is a searchable self-service entry; contact remains after the documentation. */
+.app.user .help-guides {
+    max-width: 960px;
+    margin-inline: auto;
+}
+.app.user .help-intro {
+    margin-block: 0 20px;
+}
+.app.user .help-search {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding-inline: 14px;
+    background: #fafbf9;
+}
+.app.user .help-search input {
+    border: 0;
+    background: transparent;
+    box-shadow: none;
+    min-width: 0;
+    width: 100%;
+    min-height: 48px;
+    padding-inline: 0;
+}
+.app.user .help-search:focus-within {
+    outline: 2px solid #252b27;
+    outline-offset: 2px;
+}
+.app.user .help-categories {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-block: 20px 12px;
+}
+.app.user .help-categories button {
+    min-height: 44px;
+    border: 1px solid transparent;
+    border-radius: 999px;
+    padding: 10px 16px;
+    box-shadow: none;
+    background: transparent;
+}
+.app.user .help-categories button[aria-pressed="true"] {
+    background: #ecefe8;
+    border-color: var(--border);
+    color: #252b27;
+}
+.app.user .help-count {
+    font-size: 12px;
+    margin-block: 0 12px;
+}
+.app.user .help-results details {
+    padding: 0;
+    border-bottom: 1px solid var(--border);
+}
+.app.user .help-results summary {
+    list-style: none;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 18px;
+    min-height: 64px;
+    padding-block: 18px;
+    cursor: pointer;
+    font-weight: 600;
+    line-height: 1.5;
+}
+.app.user .help-results summary::-webkit-details-marker {
+    display: none;
+}
+.app.user .help-results summary svg {
+    flex-shrink: 0;
+    transition: transform 0.15s ease;
+}
+.app.user .help-results details[open] summary svg {
+    transform: rotate(180deg);
+}
+.app.user .help-answer {
+    padding-block: 0 20px;
+    max-width: 76ch;
+}
+.app.user .help-answer p {
+    color: var(--muted);
+    line-height: 1.85;
+    margin-block: 0 10px;
+    overflow-wrap: anywhere;
+}
+.app.user .help-action {
+    display: inline-flex;
+    gap: 6px;
+    align-items: center;
+    min-height: 44px;
+    text-decoration: underline;
+    text-underline-offset: 4px;
+}
+.app.user .help-empty {
+    padding-block: 20px;
+    line-height: 1.7;
+}
+.app.user .help-empty button {
+    min-height: 44px;
+}
+@media (max-width: 600px) {
+    .app.user .help-categories {
+        gap: 4px;
+    }
+    .app.user .help-categories button {
+        padding-inline: 12px;
+    }
+    .app.user .help-results summary {
+        min-height: 60px;
+    }
+}
+@media (prefers-reduced-motion: reduce) {
+    .app.user .help-results summary svg {
+        transition: none;
+    }
+}

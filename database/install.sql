@@ -661,3 +661,11 @@ CREATE TABLE `v2_plan_translation` (
   KEY `idx_locale` (`locale`),
   CONSTRAINT `fk_plan_translation_plan` FOREIGN KEY (`plan_id`) REFERENCES `v2_plan` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS `v2_notice_read` (
+  `user_id` int NOT NULL,
+  `notice_id` int NOT NULL,
+  `notice_updated_at` int unsigned NOT NULL,
+  `read_at` int unsigned NOT NULL,
+  PRIMARY KEY (`user_id`, `notice_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;

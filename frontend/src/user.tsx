@@ -44,8 +44,7 @@ import {
 } from "./ui";
 export function UserDashboard() {
     const info = useData("user/info"),
-        sub = useData("user/getSubscribe"),
-        notice = useData<Row[]>("user/notice/fetch");
+        sub = useData("user/getSubscribe");
     const user = info.data || {},
         s = sub.data || {};
     if (!info.data)
@@ -63,28 +62,7 @@ export function UserDashboard() {
                 />
             </State>
         );
-    return (
-        <>
-            <UsagePage />
-            <div className="settings-content">
-                <Panel title={tx("最新公告")}>
-                    <State {...notice} retry={notice.reload}>
-                        {notice.data?.length ? (
-                            notice.data.slice(0, 3).map((n) => (
-                                <div className="notice" key={n.id}>
-                                    <small>{date(n.created_at)}</small>
-                                    <h3>{n.title}</h3>
-                                    <Html markdown value={n.content} />
-                                </div>
-                            ))
-                        ) : (
-                            <p className="pad muted">{tx("暂无新公告")}</p>
-                        )}
-                    </State>
-                </Panel>
-            </div>
-        </>
-    );
+    return <UsagePage />;
 }
 export function Subscribe() {
     const info = useData("user/info");

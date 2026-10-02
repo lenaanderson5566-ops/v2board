@@ -26,6 +26,7 @@ echo '<?php // fixture' > database/migrations/2026_10_01_000001_add_trusted_x_fo
 echo '<?php // fixture' > database/migrations/2026_10_02_000001_create_email_invitations.php
 echo '<?php // fixture' > database/migrations/2026_10_02_000002_add_language_to_users.php
 echo '<?php // fixture' > database/migrations/2026_10_02_000003_create_usage_resets.php
+echo '<?php // fixture' > database/migrations/2026_10_02_000004_create_notice_reads.php
 mkdir -p storage/geoip
 echo 'new mmdb' > storage/geoip/GeoLite2-ASN.mmdb
 git add -f storage/geoip/GeoLite2-ASN.mmdb
@@ -86,6 +87,7 @@ grep -q 'migrate --path=database/migrations/2026_10_01_000001' calls.log
 grep -q 'migrate --path=database/migrations/2026_10_02_000001' calls.log
 grep -q 'migrate --path=database/migrations/2026_10_02_000002' calls.log
 grep -q 'migrate --path=database/migrations/2026_10_02_000003' calls.log
+grep -q 'migrate --path=database/migrations/2026_10_02_000004' calls.log
 grep -q 'artisan console:verify' calls.log
 [[ $(stat -c %a public/console/.vite/manifest.json) == 644 ]]
 ! grep -Eq 'v2board:update|cache:clear|optimize:clear|artisan up' calls.log

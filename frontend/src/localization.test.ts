@@ -43,6 +43,7 @@ const { landingCopy } = await import("./landing-copy");
 await import("./ux");
 await import("./experience-copy");
 await import("./billing-copy");
+await import("./announcement-copy");
 describe("landing and interactive control translations", () => {
     for (const { code } of languages)
         it(`${code} provides landing and control namespaces`, () => {
@@ -51,6 +52,7 @@ describe("landing and interactive control translations", () => {
                 "ux",
                 "experience",
                 "billing",
+                "announcements",
             ]) {
                 const base = i18n.getResourceBundle("zh-CN", namespace);
                 const translated = i18n.getResourceBundle(code, namespace);
@@ -87,6 +89,7 @@ describe("localization resources", () => {
             "user.tsx",
             "BillingPage.tsx",
             "UsagePage.tsx",
+            "AnnouncementCenter.tsx",
             "ui.tsx",
             "api.ts",
             "LanguagePicker.tsx",

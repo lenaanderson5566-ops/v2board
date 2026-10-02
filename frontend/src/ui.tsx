@@ -202,12 +202,14 @@ export function Modal({
     close,
     variant,
     wide = false,
+    className = "",
 }: {
     title: string;
     children: ReactNode;
     close: () => void;
     variant?: "modal" | "drawer";
     wide?: boolean;
+    className?: string;
 }) {
     const dialog = useRef<HTMLElement>(null);
     const closeRef = useRef(close);
@@ -261,7 +263,9 @@ export function Modal({
                         /编辑|新建|设置|配置|高级筛选|生成用户/.test(title)))
                     ? " admin-drawer"
                     : "") +
-                (wide ? " admin-wide-drawer" : "")
+                (wide ? " admin-wide-drawer" : "") +
+                " " +
+                className
             }
             onMouseDown={(e) => {
                 if (e.target === e.currentTarget) close();

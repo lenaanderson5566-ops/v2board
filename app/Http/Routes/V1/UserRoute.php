@@ -47,6 +47,8 @@ class UserRoute
             $router->post('/invite/email/send', 'V1\\User\\InviteController@sendEmail')->middleware('throttle:10,1');
             $router->get ('/invite/email/fetch', 'V1\\User\\InviteController@emailHistory');
             // Notice
+            $router->get('/notice/inbox', 'V1\\User\\NoticeController@inbox');
+            $router->post('/notice/read', 'V1\\User\\NoticeController@read')->middleware('throttle:120,1');
             $router->get ('/notice/fetch', 'V1\\User\\NoticeController@fetch');
             // Ticket
             $router->post('/ticket/reply', 'V1\\User\\TicketController@reply');

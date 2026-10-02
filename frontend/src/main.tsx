@@ -48,6 +48,7 @@ import {
 import { Editor, Panel, type Field } from "./ui";
 import { UserAuth } from "./UserAuth";
 import { UserStatusGate } from "./AccountEntry";
+import { AnnouncementCenter } from "./AnnouncementCenter";
 import { AccountMenu } from "./AccountMenu";
 import { EmbeddedBrowserNotice } from "./EmbeddedBrowserNotice";
 import { currentDevice } from "./user-experience";
@@ -717,6 +718,7 @@ function App() {
                                     <ArrowUpRight size={15} />
                                 </a>
                             )}
+                            {boot.mode === "user" && <AnnouncementCenter />}
                             <AccountMenu user={user} logout={handleLogout} />
                         </div>
                     </header>

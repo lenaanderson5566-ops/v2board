@@ -29,19 +29,23 @@ import {
     Server,
     X,
 } from "lucide-react";
-import { boot, request, storageKey, navigate, admin, type Row } from "./api";
-import { Editor, Panel, type Field } from "./ui";
 import {
-    UserDashboard,
-    Subscribe,
-    Plans,
-    Orders,
-    Knowledge,
-    Tickets,
-    Invite,
-    Profile,
-    Traffic,
-} from "./user";
+    boot,
+    request,
+    storageKey,
+    navigate,
+    admin,
+    readRequest,
+    clearReadCache,
+    type Row,
+} from "./api";
+import { Editor, Panel, type Field } from "./ui";
+import { UserAuth } from "./UserAuth";
+import { AccountMenu } from "./AccountMenu";
+import { EmbeddedBrowserNotice } from "./EmbeddedBrowserNotice";
+import { currentDevice } from "./user-experience";
+import { WorkspaceSkeleton } from "./WorkspaceSkeleton";
+const UserContent = React.lazy(() => import("./user-entry"));
 const AdminContent = React.lazy(() => import("./admin-entry"));
 const Landing = React.lazy(() => import("./Landing"));
 import "./style.css";
@@ -50,6 +54,7 @@ import { useTranslation } from "react-i18next";
 import { LanguagePicker } from "./LanguagePicker";
 import { AdminShell, adminPage, legacyAdminMenu } from "./admin-shell";
 import "./admin-legacy.css";
+import "./user-experience.css";
 type Nav = { key: string; label: string; icon: typeof Globe; group: string };
 const userNav: Nav[] = [
     {
@@ -58,10 +63,7 @@ const userNav: Nav[] = [
         icon: LayoutDashboard,
         group: "工作空间",
     },
-    { key: "subscribe", label: "我的订阅", icon: Globe, group: "工作空间" },
     { key: "plan", label: "购买订阅", icon: ShoppingBag, group: "工作空间" },
-    { key: "order", label: "订单记录", icon: ReceiptText, group: "工作空间" },
-    { key: "traffic", label: "流量记录", icon: Activity, group: "工作空间" },
     {
         key: "knowledge",
         label: "使用文档",
@@ -74,7 +76,6 @@ const userNav: Nav[] = [
         icon: MessageCircle,
         group: "帮助与账户",
     },
-    { key: "invite", label: "邀请好友", icon: Users, group: "帮助与账户" },
     { key: "profile", label: "账户设置", icon: Settings, group: "帮助与账户" },
 ];
 const adminNav: Nav[] = legacyAdminMenu.map(([key, label, , group]) => ({
@@ -371,6 +372,7 @@ function App() {
     const sidebar = useRef<HTMLElement>(null);
     useEffect(() => {
         if (boot.mode === "admin" && path === "generate") navigate("users");
+        if (boot.mode === "user" && path === "subscribe") navigate("dashboard");
     }, [path]);
     useEffect(() => {
         const media = matchMedia("(max-width: 800px)");
@@ -427,10 +429,14 @@ function App() {
         };
         window.addEventListener("hashchange", fn);
         window.addEventListener("auth-expired", expire);
+        if (boot.mode === "user" && currentDevice().embedded) {
+            setLoading(false);
+            return;
+        }
         if (boot.landing && location.hash.startsWith("#/"))
             location.replace("/app" + location.hash);
         if (!boot.landing && localStorage.getItem(storageKey))
-            request("user/info")
+            readRequest("user/info")
                 .then(async (r) => {
                     if (boot.mode === "admin")
                         await request(admin("config/fetch"));
@@ -447,20 +453,18 @@ function App() {
             window.removeEventListener("auth-expired", expire);
         };
     }, []);
+    if (boot.mode === "user" && currentDevice().embedded)
+        return <EmbeddedBrowserNotice />;
     if (boot.landing)
         return (
-            <React.Suspense
-                fallback={
-                    <div className="state full">
-                        <span className="spinner" />
-                    </div>
-                }
-            >
+            <React.Suspense fallback={<WorkspaceSkeleton full />}>
                 <Landing />
             </React.Suspense>
         );
     if (loading)
-        return (
+        return boot.mode === "user" ? (
+            <WorkspaceSkeleton full />
+        ) : (
             <div className="state full">
                 <span className="spinner" />
                 {tx("正在加载工作空间…")}
@@ -475,7 +479,22 @@ function App() {
                     </div>
                 )}
                 {error && <div className="alert">{error}</div>}
-                <Auth mode={path} onLogin={setUser} />
+                {boot.mode === "user" ? (
+                    <UserAuth
+                        key={path}
+                        mode={
+                            ["register", "forget"].includes(path)
+                                ? path
+                                : "login"
+                        }
+                        onLogin={setUser}
+                        renderCaptcha={(handler) => (
+                            <Captcha onChange={handler} />
+                        )}
+                    />
+                ) : (
+                    <Auth mode={path} onLogin={setUser} />
+                )}
             </>
         );
     const nav = boot.mode === "admin" ? adminNav : userNav,
@@ -483,7 +502,12 @@ function App() {
             boot.mode === "admin"
                 ? adminPage(path)
                 : path.split("/")[0] || nav[0].key,
-        item = nav.find((n) => n.key === current),
+        item = [
+            ...nav,
+            { key: "order", label: "订单记录" },
+            { key: "traffic", label: "流量记录" },
+            { key: "invite", label: "邀请好友" },
+        ].find((n) => n.key === current),
         groups = [...new Set(nav.map((n) => n.group))];
     let content: ReactNode;
     if (boot.mode === "admin") {
@@ -500,26 +524,11 @@ function App() {
             </React.Suspense>
         );
     } else {
-        content =
-            current === "subscribe" ? (
-                <Subscribe />
-            ) : current === "plan" ? (
-                <Plans />
-            ) : current === "order" ? (
-                <Orders key={path} tradeNo={path.split("/")[1]} />
-            ) : current === "knowledge" ? (
-                <Knowledge />
-            ) : current === "ticket" ? (
-                <Tickets />
-            ) : current === "invite" ? (
-                <Invite />
-            ) : current === "profile" ? (
-                <Profile />
-            ) : current === "traffic" ? (
-                <Traffic />
-            ) : (
-                <UserDashboard />
-            );
+        content = (
+            <React.Suspense fallback={<WorkspaceSkeleton />}>
+                <UserContent current={current} path={path} />
+            </React.Suspense>
+        );
     }
     if (["admin"].includes(boot.mode))
         return (
@@ -650,12 +659,15 @@ function App() {
                                 <ArrowUpRight size={15} />
                             </a>
                         )}
-                        <span className="online-indicator" />{" "}
-                        <span className="muted">
-                            {boot.mode === "admin"
-                                ? tx("统一控制台")
-                                : tx("服务在线")}
-                        </span>
+                        <AccountMenu
+                            user={user}
+                            logout={() => {
+                                clearReadCache();
+                                localStorage.removeItem(storageKey);
+                                setUser(null);
+                                navigate("login");
+                            }}
+                        />
                     </div>
                 </header>
                 <main>
@@ -690,12 +702,9 @@ function App() {
                 >
                     {userNav
                         .filter((n) =>
-                            [
-                                "dashboard",
-                                "subscribe",
-                                "ticket",
-                                "profile",
-                            ].includes(n.key),
+                            ["dashboard", "plan", "ticket", "profile"].includes(
+                                n.key,
+                            ),
                         )
                         .map(({ key, label, icon: Icon }) => (
                             <a

@@ -1,8 +1,9 @@
+import type { Device } from "./user-experience";
 export const clients = [
     {
         id: "clash",
         name: "Clash Verge / Mihomo",
-        platform: "Windows · macOS · Linux · Android",
+        platform: "Windows · macOS · Linux",
     },
     {
         id: "hiddify",
@@ -44,17 +45,7 @@ export function importLink(
     value: string,
     name: string,
 ): string {
-    const flag = {
-        clash: "meta",
-        hiddify: "sing",
-        singbox: "sing",
-        shadowrocket: "shadowrocket",
-        surge: "surge",
-        quantumult: "quantumult%20x",
-        stash: "stash",
-        surfboard: "surfboard",
-    }[client];
-    const url = subscriptionUrl(value, flag),
+    const url = clientSubscriptionUrl(client, value),
         encoded = encodeURIComponent(url),
         title = encodeURIComponent(name);
     switch (client) {
@@ -75,4 +66,45 @@ export function importLink(
         case "quantumult":
             return `quantumult-x:///update-configuration?remote-resource=${encodeURIComponent(JSON.stringify({ server_remote: [`${url}, tag=${name.replace(/[\r\n,]/g, " ")}, enabled=true`] }))}`;
     }
+}
+
+export function clientSubscriptionUrl(client: ClientId, value: string): string {
+    const flags: Record<ClientId, string> = {
+        clash: "meta",
+        hiddify: "sing",
+        singbox: "sing",
+        shadowrocket: "shadowrocket",
+        surge: "surge",
+        quantumult: "quantumult%20x",
+        stash: "stash",
+        surfboard: "surfboard",
+    };
+    return subscriptionUrl(value, flags[client]);
+}
+export function recommendedClients(device: Device) {
+    const supported: Record<Device, readonly ClientId[]> = {
+        ios: [
+            "hiddify",
+            "shadowrocket",
+            "singbox",
+            "surge",
+            "quantumult",
+            "stash",
+        ],
+        android: ["hiddify", "singbox", "surfboard"],
+        windows: ["clash", "hiddify"],
+        macos: [
+            "clash",
+            "hiddify",
+            "singbox",
+            "shadowrocket",
+            "surge",
+            "stash",
+        ],
+        linux: ["clash", "hiddify"],
+        unknown: clients.map((client) => client.id),
+    };
+    return supported[device].map((id) =>
+        clients.find((client) => client.id === id)!,
+    );
 }

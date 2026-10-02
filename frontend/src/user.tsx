@@ -1,3 +1,4 @@
+import { e } from "./experience-copy";
 import { tx, locale, languages } from "./i18n";
 import { SubscriptionImport } from "./SubscriptionImport";
 import { useState, useEffect, useRef, type ReactNode } from "react";
@@ -77,6 +78,7 @@ function CopyValue({
     );
 }
 export function UserDashboard() {
+    const [more, setMore] = useState(false);
     const info = useData("user/info"),
         sub = useData("user/getSubscribe"),
         notice = useData<Row[]>("user/notice/fetch");
@@ -88,24 +90,85 @@ export function UserDashboard() {
             : 0;
     return (
         <State {...info} retry={info.reload}>
-            <div className="hero">
+            <div className="dashboard-welcome">
                 <div>
-                    <span className="eyebrow">YOUR CONNECTION, SIMPLIFIED</span>
-                    <h2>{tx("连接世界，从这里开始。")}</h2>
-                    <p>{tx("查看订阅状态，轻松管理你的网络服务。")}</p>
-                    <button
-                        className="primary"
-                        onClick={() => navigate("plan")}
-                    >
-                        {tx("探索订阅套餐")}
-                        <ArrowUpRight size={18} />
-                    </button>
+                    <h2>{e("connectionHelp")}</h2>
+                    <p className="muted">{e("connectionDetail")}</p>
                 </div>
-                <div className="orbit">
-                    <div className="orbit-inner">
-                        V<span>CONNECTED</span>
-                    </div>
-                </div>
+                <a className="button" href="#/knowledge">
+                    {tx("使用文档")}
+                    <ArrowUpRight size={16} />
+                </a>
+            </div>
+            <div className="split">
+                <Panel
+                    title={tx("我的订阅")}
+                    actions={
+                        <a className="button" href="#/plan">
+                            {tx("购买订阅")}
+                            <ArrowUpRight size={15} />
+                        </a>
+                    }
+                >
+                    <State {...sub} retry={sub.reload}>
+                        <div className="pad">
+                            <h3>{s.plan?.name || tx("尚未订阅套餐")}</h3>
+                            <div className="progress">
+                                <i style={{ width: percent + "%" }} />
+                            </div>
+                            <div className="muted">
+                                {tx("已使用")}
+                                {percent.toFixed(1)}% · {bytes(used)} /{" "}
+                                {bytes(user.transfer_enable)}
+                            </div>
+                            {s.subscribe_url && (
+                                <div className="actions space">
+                                    <SubscriptionImport url={s.subscribe_url} />
+                                    <CopyValue
+                                        value={s.subscribe_url}
+                                        label={tx("复制订阅链接")}
+                                    />
+                                    <a className="button" href="#/traffic">
+                                        {e("usage")}
+                                    </a>
+                                </div>
+                            )}
+                            <dl className="subscription-facts">
+                                <div>
+                                    <dt>{tx("订阅到期")}</dt>
+                                    <dd>
+                                        {!s.plan
+                                            ? e("noPlan")
+                                            : s.expired_at
+                                              ? new Date(
+                                                    s.expired_at * 1000,
+                                                ).toLocaleDateString(locale())
+                                              : tx("长期有效")}
+                                    </dd>
+                                </div>
+                                <div>
+                                    <dt>{e("deviceLimit")}</dt>
+                                    <dd>{s.device_limit || "—"}</dd>
+                                </div>
+                            </dl>
+                        </div>
+                    </State>
+                </Panel>
+                <Panel title={tx("最新公告")}>
+                    <State {...notice} retry={notice.reload}>
+                        {notice.data?.length ? (
+                            notice.data.slice(0, 3).map((n) => (
+                                <div className="notice" key={n.id}>
+                                    <small>{date(n.created_at)}</small>
+                                    <h3>{n.title}</h3>
+                                    <Html markdown value={n.content} />
+                                </div>
+                            ))
+                        ) : (
+                            <p className="pad muted">{tx("暂无新公告")}</p>
+                        )}
+                    </State>
+                </Panel>
             </div>
             <div className="metrics">
                 <Metric
@@ -119,62 +182,24 @@ export function UserDashboard() {
                 <Metric
                     label={tx("订阅到期")}
                     value={
-                        user.expired_at
-                            ? new Date(
-                                  user.expired_at * 1000,
-                              ).toLocaleDateString(locale())
-                            : tx("长期有效")
+                        !s.plan
+                            ? tx("尚未订阅套餐")
+                            : user.expired_at
+                              ? new Date(
+                                    user.expired_at * 1000,
+                                ).toLocaleDateString(locale())
+                              : tx("长期有效")
                     }
                     detail={s.plan?.name || tx("尚未订阅套餐")}
                 />
             </div>
-            <div className="split">
-                <Panel
-                    title={tx("我的订阅")}
-                    actions={
-                        <button onClick={() => navigate("subscribe")}>
-                            {tx("管理订阅")}
-                            <ArrowUpRight size={15} />
-                        </button>
-                    }
-                >
-                    <div className="pad">
-                        <h3>{s.plan?.name || tx("准备好开启连接了吗？")}</h3>
-                        <div className="progress">
-                            <i style={{ width: percent + "%" }} />
-                        </div>
-                        <div className="muted">
-                            {tx("已使用")}
-                            {percent.toFixed(1)}% · {bytes(used)} /{" "}
-                            {bytes(user.transfer_enable)}
-                        </div>
-                        {s.subscribe_url && (
-                            <div className="actions space">
-                                <CopyValue
-                                    value={s.subscribe_url}
-                                    label={tx("复制订阅链接")}
-                                />
-                                <SubscriptionImport url={s.subscribe_url} />
-                            </div>
-                        )}
-                    </div>
-                </Panel>
-                <Panel title={tx("最新公告")}>
-                    <State {...notice} retry={notice.reload}>
-                        {notice.data?.length ? (
-                            notice.data.slice(0, 3).map((n) => (
-                                <div className="notice" key={n.id}>
-                                    <small>{date(n.created_at)}</small>
-                                    <h3>{n.title}</h3>
-                                    <Html markdown value={n.content} />
-                                </div>
-                            ))
-                        ) : (
-                            <Empty text={tx("暂无新公告")} />
-                        )}
-                    </State>
-                </Panel>
-            </div>
+            <details
+                className="subscription-details"
+                onToggle={(event) => setMore(event.currentTarget.open)}
+            >
+                <summary>{e("nodes")}</summary>
+                {more && <Subscribe />}
+            </details>
         </State>
     );
 }
@@ -996,7 +1021,12 @@ export function Invite() {
                     fields={[
                         {
                             key: "transfer_amount",
-                            label: tx("转入余额金额（分）"),
+                            label: e("transferAmount", {
+                                currency: boot.currencySymbol,
+                            }),
+                            scale: 100,
+                            min: 0.01,
+                            step: 0.01,
                             type: "number",
                             required: true,
                         },
@@ -1135,7 +1165,12 @@ export function Profile() {
                         fields={[
                             {
                                 key: "deposit_amount",
-                                label: tx("充值金额（分）"),
+                                label: e("depositAmount", {
+                                    currency: boot.currencySymbol,
+                                }),
+                                scale: 100,
+                                min: 0.01,
+                                step: 0.01,
                                 type: "number",
                                 required: true,
                             },

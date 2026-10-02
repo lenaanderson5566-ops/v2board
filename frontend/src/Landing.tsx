@@ -1,41 +1,39 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
+    Plus,
     ArrowUpRight,
     ArrowRight,
     Sparkles,
-    PenLine,
-    ListTree,
-    CalendarDays,
-    Plus,
+    Laptop,
+    Smartphone,
+    Check,
     Menu,
     X,
+    SlidersHorizontal,
+    BookOpen,
+    MessageCircle,
 } from "lucide-react";
 import "./landing-copy";
 import "./landing.css";
 import { LanguagePicker } from "./LanguagePicker";
 export default function Landing() {
     const { t } = useTranslation("landing");
-    const [sample, setSample] = useState(0),
-        [menu, setMenu] = useState(false);
-    const tabs = [
-        { key: "draft", icon: PenLine },
-        { key: "organize", icon: ListTree },
-        { key: "plan", icon: CalendarDays },
-    ];
+    const [menu, setMenu] = useState(false);
     return (
-        <div className="landing">
+        <div className="landing ai-landing">
             <header className="landing-header">
                 <a className="studio-brand" href="/" aria-label="Studio">
-                    <Sparkles size={24} />
+                    <Sparkles size={25} />
                     <strong>Studio</strong>
                 </a>
                 <nav
                     className={menu ? "landing-links open" : "landing-links"}
-                    aria-label={t("about")}
+                    aria-label={t("examples")}
+                    id="landing-navigation"
                     onClick={() => setMenu(false)}
                 >
-                    <a href="#examples">{t("examples")}</a>
+                    <a href="#setup">{t("examples")}</a>
                     <a href="#approach">{t("about")}</a>
                     <a href="#questions">{t("questions")}</a>
                 </nav>
@@ -43,10 +41,11 @@ export default function Landing() {
                     <LanguagePicker />
                     <a className="landing-login" href="/app#/login">
                         {t("signIn")}
-                        <ArrowUpRight size={14} />
+                        <ArrowUpRight size={15} />
                     </a>
                     <button
                         className="landing-menu icon-button"
+                        aria-controls="landing-navigation"
                         aria-expanded={menu}
                         aria-label={t("examples")}
                         onClick={() => setMenu(!menu)}
@@ -66,89 +65,71 @@ export default function Landing() {
                     <div className="landing-cta">
                         <a className="button primary" href="/app#/dashboard">
                             {t("start")}
-                            <ArrowUpRight size={17} />
+                            <ArrowUpRight size={18} />
                         </a>
-                        <a className="button" href="#examples">
+                        <a className="button" href="#setup">
                             {t("seeDemo")}
-                            <ArrowRight size={17} />
+                            <ArrowRight size={18} />
                         </a>
                     </div>
                 </section>
-                <section
-                    className="studio-preview"
-                    id="examples"
-                    aria-label={t("examples")}
-                >
-                    <div className="preview-rail">
-                        <span className="preview-dot" />
-                        <span>Studio</span>
-                        <span className="preview-label">{t("demoNote")}</span>
-                    </div>
-                    <div className="preview-layout">
-                        <div className="preview-sidebar">
-                            <Sparkles size={24} />
-                            <div role="tablist" aria-label={t("examples")}>
-                                {tabs.map(({ key, icon: Icon }, index) => (
-                                    <button
-                                        type="button"
-                                        role="tab"
-                                        aria-selected={sample === index}
-                                        aria-controls="studio-example"
-                                        id={"studio-tab-" + index}
-                                        className={
-                                            sample === index ? "selected" : ""
-                                        }
-                                        key={key}
-                                        onClick={() => setSample(index)}
-                                    >
-                                        <Icon size={17} />
-                                        {t(key)}
-                                    </button>
-                                ))}
-                            </div>
-                            <small>{t("demoNote")}</small>
-                        </div>
-                        <div
-                            className="preview-conversation"
-                            role="tabpanel"
-                            id="studio-example"
-                            aria-labelledby={"studio-tab-" + sample}
-                        >
-                            <div className="preview-prompt">
-                                {t("prompt" + sample)}
-                            </div>
-                            <div className="preview-answer" aria-live="polite">
-                                <Sparkles size={20} />
-                                <p>{t("result" + sample)}</p>
-                            </div>
-                            <button
-                                className="preview-composer"
-                                onClick={() => setSample((sample + 1) % 3)}
-                            >
-                                <Plus size={18} />
-                                <span>{t("demoAction")}</span>
-                                <ArrowRight size={18} />
-                            </button>
+                <section className="setup-preview" id="setup">
+                    <div className="setup-preview-head">
+                        <span>
+                            <SlidersHorizontal size={18} />
+                            Studio / SETUP
+                        </span>
+                        <div className="preview-devices" aria-hidden="true">
+                            <Laptop size={18} />
+                            <Smartphone size={18} />
                         </div>
                     </div>
+                    <h2>{t("setupTitle")}</h2>
+                    <ol className="setup-steps">
+                        {[Laptop, SlidersHorizontal, Sparkles].map(
+                            (Icon, index) => (
+                                <li key={index}>
+                                    <span className="setup-step-number">
+                                        0{index + 1}
+                                    </span>
+                                    <Icon size={25} />
+                                    <h3>{t("step" + (index + 1))}</h3>
+                                    <p>{t("step" + (index + 1) + "Text")}</p>
+                                    <Check size={17} className="setup-check" />
+                                </li>
+                            ),
+                        )}
+                    </ol>
                 </section>
                 <section className="landing-approach" id="approach">
                     <div>
-                        <span className="studio-kicker">Studio / 01</span>
+                        <span className="studio-kicker">AI / COMPANION</span>
                         <h2>{t("approachTitle")}</h2>
                         <p>{t("approachText")}</p>
                     </div>
                     <div className="idea-stack">
-                        {tabs.map(({ key, icon: Icon }, index) => (
-                            <a
-                                href="#examples"
-                                key={key}
-                                onClick={() => setSample(index)}
-                            >
+                        {[
+                            {
+                                icon: SlidersHorizontal,
+                                label: "step1",
+                                href: "/app#/dashboard",
+                            },
+                            {
+                                icon: BookOpen,
+                                label: "about",
+                                href: "/app#/knowledge",
+                            },
+                            {
+                                icon: MessageCircle,
+                                label: "questions",
+                                href: "/app#/ticket",
+                            },
+                        ].map(({ icon: Icon, label, href }) => (
+                            <a href={href} key={label}>
                                 <span className="idea-icon">
                                     <Icon size={23} />
                                 </span>
-                                <strong>{t(key)}</strong>
+                                <strong>{t(label)}</strong>
                                 <ArrowUpRight size={18} />
                             </a>
                         ))}
@@ -170,14 +151,11 @@ export default function Landing() {
                 </section>
             </main>
             <footer className="landing-footer">
-                <a className="studio-brand" href="/">
-                    <Sparkles size={20} />
-                    Studio
-                </a>
-                <span>{t("footer")}</span>
+                <span>Studio</span>
+                <p>{t("footer")}</p>
                 <a href="/app#/login">
-                    {t("signIn")}
-                    <ArrowUpRight size={14} />
+                    {t("start")}
+                    <ArrowUpRight size={16} />
                 </a>
             </footer>
         </div>

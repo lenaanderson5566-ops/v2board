@@ -1,3 +1,5 @@
+import { WorkspaceSkeleton } from "./WorkspaceSkeleton";
+import { e } from "./experience-copy";
 import { tx, locale } from "./i18n";
 import {
     useEffect,
@@ -40,7 +42,7 @@ import {
     EyeOff,
     Check,
 } from "lucide-react";
-import { boot, request, type Row } from "./api";
+import { boot, request, readRequest, type Row } from "./api";
 export function Html({
     value,
     markdown = false,
@@ -78,9 +80,10 @@ export function useData<T = Row>(path: string, body?: Row) {
         }
         setLoading(true);
         setError("");
-        request<T>(
+        readRequest<T>(
             path,
             serializedBody ? JSON.parse(serializedBody) : undefined,
+            version > 0,
         )
             .then((r) => {
                 if (live) {
@@ -98,6 +101,21 @@ export function useData<T = Row>(path: string, body?: Row) {
             live = false;
         };
     }, [path, version, serializedBody, language]);
+    useEffect(() => {
+        if (boot.mode !== "user" || !path) return;
+        const refresh = () => setVersion((v) => v + 1);
+        const visible = () => {
+            if (document.visibilityState === "visible") refresh();
+        };
+        window.addEventListener("data-changed", refresh);
+        window.addEventListener("focus", refresh);
+        document.addEventListener("visibilitychange", visible);
+        return () => {
+            window.removeEventListener("data-changed", refresh);
+            window.removeEventListener("focus", refresh);
+            document.removeEventListener("visibilitychange", visible);
+        };
+    }, [path]);
     return {
         data,
         error,
@@ -111,12 +129,25 @@ export function State({
     error,
     children,
     retry,
+    data,
 }: {
+    data?: unknown;
     loading: boolean;
     error: string;
     children: ReactNode;
     retry?: () => void;
 }) {
+    if (loading && boot.mode === "user")
+        return data != null ? (
+            <div className="refreshing-content" aria-busy="true">
+                <span className="refresh-status" role="status">
+                    {e("refreshing")}
+                </span>
+                {children}
+            </div>
+        ) : (
+            <WorkspaceSkeleton />
+        );
     if (loading)
         return (
             <div className="state">

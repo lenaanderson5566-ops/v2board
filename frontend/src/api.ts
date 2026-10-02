@@ -1,3 +1,4 @@
+import { createReadCache } from "./read-cache";
 import { tx, locale } from "./i18n";
 export type Row = Record<string, any>;
 export interface Envelope<T> {
@@ -33,10 +34,34 @@ export const boot = window.V2BOARD;
 export const storageKey = `v2board.${boot.mode}.auth`;
 export const admin = (path: string) => `${boot.adminPath}/${path}`;
 export const ops = (path: string) => `${boot.opsPath}/${path}`;
+const readCache = createReadCache();
+const cacheable = new Set([
+    "user/info",
+    "user/getSubscribe",
+    "user/notice/fetch",
+    "user/server/fetch",
+]);
+export function readRequest<T = Row>(
+    path: string,
+    body?: Row,
+    fresh = false,
+): Promise<Envelope<T>> {
+    if (boot.mode !== "user" || body || !cacheable.has(path))
+        return request<T>(path, body);
+    return readCache.read(
+        `${localStorage.getItem(storageKey) || ""}\0${locale()}\0${path}`,
+        () => request<T>(path),
+        fresh,
+    );
+}
+export function clearReadCache() {
+    readCache.clear();
+}
 export async function request<T = Row>(
     path: string,
     body?: Row,
 ): Promise<Envelope<T>> {
+    if (body) readCache.clear();
     const token = localStorage.getItem(storageKey);
     const res = await fetch(`/api/v1/${path}`, {
         method: body ? "POST" : "GET",
@@ -58,6 +83,7 @@ export async function request<T = Row>(
     }
     if (!res.ok) {
         if ((res.status === 403 || res.status === 401) && token) {
+            readCache.clear();
             localStorage.removeItem(storageKey);
             window.dispatchEvent(new Event("auth-expired"));
         }
@@ -68,6 +94,10 @@ export async function request<T = Row>(
                 json.message ||
                 tx("请求失败 ({{value0}})", { value0: res.status }),
         );
+    }
+    if (body && boot.mode === "user") {
+        readCache.clear();
+        window.dispatchEvent(new Event("data-changed"));
     }
     return json;
 }
@@ -98,6 +128,7 @@ export async function download(path: string, body: Row, filename: string) {
     });
     if (!response.ok) {
         if ((response.status === 401 || response.status === 403) && token) {
+            readCache.clear();
             localStorage.removeItem(storageKey);
             window.dispatchEvent(new Event("auth-expired"));
         }

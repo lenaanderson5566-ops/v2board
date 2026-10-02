@@ -6,7 +6,7 @@
     <meta name="theme-color" content="#ffffff">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="default">
-    <meta name="description" content="{{ $boot['landing'] ? 'Studio — A space for ideas, writing and everyday planning.' : config('v2board.app_description', 'V2Board') }}">
+    <meta name="description" content="{{ $boot['landing'] ? 'Studio — Device setup and connectivity guidance for AI apps.' : config('v2board.app_description', 'V2Board') }}">
     <title>{{ $boot['landing'] ? 'Studio' : config('v2board.app_name', 'V2Board') }}</title>
     <script>window.V2BOARD = @json($boot);</script>
     @if($boot['mode'] === 'admin')

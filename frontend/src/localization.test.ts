@@ -30,22 +30,31 @@ const catalogs = Object.fromEntries(
 );
 const placeholders = (v: string) =>
     [...v.matchAll(/{{\s*(\w+)\s*}}/g)].map((m) => m[1]).sort();
-const {landingCopy}=await import('./landing-copy');
-await import('./ux');
-describe('landing and interactive control translations',()=>{
- for(const {code} of languages) it(`${code} provides landing and control namespaces`,()=>{
-  for(const namespace of ['landing','ux']){
-   const base=i18n.getResourceBundle('zh-CN',namespace);
-   const translated=i18n.getResourceBundle(code,namespace);
-   for(const [key,value] of Object.entries(base)){
-    expect(translated[key],`${code}/${namespace}/${key}`).toBeTruthy();
-    expect(placeholders(translated[key])).toEqual(placeholders(String(value)));
-   }
-  }
- });
- it('keeps public copy focused on assistant demonstrations',()=>{
-  for(const values of Object.values(landingCopy)) for(const value of values) expect(value).not.toMatch(/vpn|翻墙|代理|节点|订阅|流量/i);
- });
+const { landingCopy } = await import("./landing-copy");
+await import("./ux");
+await import("./experience-copy");
+describe("landing and interactive control translations", () => {
+    for (const { code } of languages)
+        it(`${code} provides landing and control namespaces`, () => {
+            for (const namespace of ["landing", "ux", "experience"]) {
+                const base = i18n.getResourceBundle("zh-CN", namespace);
+                const translated = i18n.getResourceBundle(code, namespace);
+                for (const [key, value] of Object.entries(base)) {
+                    expect(
+                        translated[key],
+                        `${code}/${namespace}/${key}`,
+                    ).toBeTruthy();
+                    expect(placeholders(translated[key])).toEqual(
+                        placeholders(String(value)),
+                    );
+                }
+            }
+        });
+    it("keeps public copy focused on assistant demonstrations", () => {
+        for (const values of Object.values(landingCopy))
+            for (const value of values)
+                expect(value).not.toMatch(/vpn|翻墙|代理|节点|订阅|流量/i);
+    });
 });
 describe("localization resources", () => {
     for (const { code } of languages)
@@ -65,6 +74,10 @@ describe("localization resources", () => {
             "api.ts",
             "LanguagePicker.tsx",
             "SubscriptionImport.tsx",
+            "UserAuth.tsx",
+            "AccountMenu.tsx",
+            "EmbeddedBrowserNotice.tsx",
+            "WorkspaceSkeleton.tsx",
         ]) {
             const path = new URL(`./${name}`, import.meta.url);
             const source = ts.createSourceFile(

@@ -465,46 +465,31 @@ body[data-console="user"] .auth-language {
     min-height: 36px;
     font-size: 14px;
 }
-.browser-notice {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    min-height: 100dvh;
-    padding: 32px 24px;
-    background: #faf9f6;
-}
-.browser-notice-card {
-    max-width: 440px;
-    text-align: center;
-}
-.notice-symbol {
-    display: inline-flex;
-    align-items: center;
-    gap: 12px;
-    padding: 20px;
-    background: #e9eee5;
-    border-radius: 24px;
-    color: #506f56;
-    margin-bottom: 20px;
-}
-.browser-notice h1 {
-    font-size: 27px;
-    line-height: 1.4;
-}
-.browser-notice p {
-    font-size: 15px;
-    line-height: 1.85;
-}
-.browser-notice button {
-    min-height: 48px;
-    width: 100%;
-    margin: 18px 0 12px;
-}
-.browser-notice input {
-    width: 100%;
-    font-size: 13px;
-    color: #777;
-}
+/* In-app browser handoff: calm guidance with an accessible copy fallback. */
+.browser-notice { min-height:100dvh; max-width:none; width:100%; padding:28px 20px calc(36px + env(safe-area-inset-bottom)); background:#f7f9f4; color:#26362c; }
+.browser-notice-brand { display:flex; align-items:center; justify-content:center; gap:9px; font-size:14px; margin:4px auto 26px; color:#445940; }
+.browser-notice-brand strong { overflow-wrap:anywhere; }
+.browser-notice-card { max-width:480px; width:100%; margin:0 auto; padding:32px; border:1px solid #e3e9dc; border-radius:24px; background:#fff; box-shadow:0 16px 50px -28px #2d422529; }
+.browser-context { display:inline-block; max-width:100%; padding:5px 10px; border-radius:999px; background:#f2f5ed; color:#718062; font-size:11px; }
+.browser-notice .notice-symbol { width:58px; height:58px; display:grid; place-items:center; background:#edf2e6; color:#577148; border:1px solid #e1e9d6; border-radius:17px; margin:25px 0 18px; }
+.browser-notice h1 { font-size:28px; line-height:1.4; letter-spacing:-.7px; font-weight:600; margin:0 0 12px; text-wrap:balance; }
+.browser-notice p { font-size:13px; line-height:1.8; color:#737d6d; margin:0; }
+.browser-notice .browser-intro { margin-bottom:26px; }
+.browser-instructions { margin:0; padding:0; list-style:none; border:1px solid #e7ecdf; border-radius:15px; overflow:hidden; }
+.browser-instructions li { display:flex; gap:12px; align-items:flex-start; padding:18px 16px; background:#fcfdf9; }
+.browser-instructions li + li { border-top:1px solid #e7ecdf; }
+.browser-step-number { display:grid; place-items:center; width:23px; height:23px; flex-shrink:0; border-radius:50%; background:#eaf0e1; color:#586b49; font-size:11px; font-weight:600; }
+.browser-instructions li > div { flex:1; min-width:0; }.browser-instructions li > svg { color:#819073; flex-shrink:0; margin-top:1px; }
+.browser-notice h2 { font-size:14px; line-height:1.6; font-weight:600; margin:0 0 5px; }.browser-instructions p { font-size:12px; }
+.browser-alternative { margin-top:26px; }.browser-alternative > h2 { font-size:13px; }.browser-alternative > p { font-size:12px; }
+.browser-notice .browser-copy { width:100%; min-height:48px; border-radius:11px; margin:18px 0 0; background:#263e32; border-color:#263e32; color:#fff; font-size:14px; }
+.browser-notice .browser-copy:hover { background:#375640; border-color:#375640; }
+.browser-notice .browser-manual { display:flex; min-height:44px; margin:8px auto 0; padding:8px 12px; background:transparent; border:0; font-size:12px; color:#76856a; }
+.browser-notice .browser-copy-success { margin-top:12px; color:#42693d; font-size:12px; }.browser-notice .browser-copy-error { margin-top:12px; color:#96682b; font-size:12px; }
+.browser-manual-address { display:grid; gap:8px; margin-top:16px; font-size:11px; color:#73816a; }.browser-manual-address input { width:100%; border:1px solid #dfe7d5; border-radius:9px; background:#fafbf7; padding:12px; font-size:16px; min-height:46px; color:#526048; }
+.browser-notice :focus-visible { outline:2px solid #728965; outline-offset:3px; }
+@media(max-width:480px) { .browser-notice { padding:22px 16px calc(24px + env(safe-area-inset-bottom)); }.browser-notice-brand { margin-bottom:20px; }.browser-notice-card { padding:26px 22px; border-radius:21px; }.browser-notice h1 { font-size:25px; }.browser-instructions li { padding:17px 13px; gap:10px; } }
+@media(max-width:350px) { .browser-notice-card { padding:23px 18px; }.browser-instructions li > svg { display:none; }.browser-notice h1 { font-size:23px; } }
 .workspace-skeleton {
     width: 100%;
     padding: 22px;

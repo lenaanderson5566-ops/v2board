@@ -77,19 +77,20 @@ export function SubscriptionPurchase() {
             <State {...orders} retry={orders.reload}>
                 {pending && (
                     <div className="pending-order" role="status">
-                        <div>
-                            <strong>
+                        <div className="pending-order-summary">
+                            <span>
                                 {tx(
                                     Number(pending.status) === 1
                                         ? "你的订单正在开通"
-                                        : "你有一笔待支付订单",
+                                        : "待支付",
                                 )}
+                            </span>
+                            <strong>
+                                {pending.plan?.name || tx("账户充值")}
                             </strong>
-                            <p>
-                                {pending.plan?.name || tx("账户充值")} ·{" "}
+                            <span className="pending-order-amount">
                                 {money(pending.total_amount)}
-                            </p>
-                            {replaceable && <p>{pc("replaceHint")}</p>}
+                            </span>
                         </div>
                         <a
                             className="button primary"
@@ -128,9 +129,6 @@ export function SubscriptionPurchase() {
                     </div>
                 )}
                 <div className="pricing-toolbar">
-                    <p className="muted">
-                        {tx("先选择适合的套餐，再确认费用和支付方式。")}
-                    </p>
                     <div
                         className="pricing-cycle"
                         role="group"

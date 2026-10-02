@@ -35,7 +35,7 @@
     flex-shrink: 0;
 }
 .app.user .pricing-summary {
-    min-height: 88px;
+    min-height: 72px;
     padding-block: 12px;
 }
 .app.user .pricing-summary .plan-price {
@@ -67,9 +67,9 @@
 .app.user .pricing-toolbar {
     display: flex;
     align-items: center;
-    justify-content: space-between;
-    gap: 16px;
-    margin-bottom: 20px;
+    justify-content: flex-end;
+    gap: 12px;
+    margin-bottom: 12px;
 }
 .app.user .pricing-toolbar p {
     margin: 0;
@@ -217,5 +217,85 @@
     .compact-selection .period-options label {
         gap: 6px;
         padding: 12px 10px;
+    }
+}
+
+.app.user .subscription-catalog .pending-order {
+    padding: 10px 14px;
+    margin-bottom: 12px;
+    gap: 12px;
+}
+.app.user .pending-order-summary {
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+    min-width: 0;
+    flex-wrap: wrap;
+}
+.app.user .pending-order-summary > span:first-child {
+    color: #777;
+    font-size: 13px;
+}
+.app.user .pending-order-summary strong {
+    overflow-wrap: anywhere;
+}
+.app.user .pending-order-amount {
+    white-space: nowrap;
+}
+.app.user .subscription-catalog .pending-order > .button {
+    flex-shrink: 0;
+    white-space: nowrap;
+    min-height: 44px;
+}
+.app.user .pricing-summary .plan-price {
+    white-space: nowrap;
+}
+@media (max-width: 700px) {
+    .app.user main:has(.subscription-catalog) {
+        padding-top: 12px;
+    }
+    .app.user main:has(.subscription-catalog) .page-heading {
+        margin-bottom: 12px;
+    }
+    .app.user .subscription-catalog .pending-order {
+        flex-direction: row;
+        align-items: center;
+        padding: 8px 10px;
+        gap: 8px;
+    }
+    .app.user .pending-order-summary {
+        gap: 3px 6px;
+        font-size: 13px;
+    }
+    .app.user .pending-order-summary > span:first-child {
+        display: none;
+    }
+    .app.user .subscription-catalog .pending-order > .button {
+        padding-inline: 10px;
+        font-size: 13px;
+    }
+    .app.user .pricing-plans .plan-card {
+        padding: 16px;
+    }
+    .app.user .pricing-summary {
+        padding-block: 6px;
+    }
+    .app.user .pricing-plans .plan-card > .primary {
+        min-height: 44px;
+        margin-bottom: 10px;
+    }
+    .app.user .pricing-plans .plan-feature-list {
+        gap: 2px;
+    }
+    .app.user .pricing-plans .plan-feature-list li {
+        padding-block: 3px;
+        line-height: 1.45;
+    }
+    .app.user .mobile-plan-picker {
+        padding-bottom: 6px;
+    }
+    .app.user .mobile-plan-picker button {
+        white-space: nowrap;
+        max-width: none;
     }
 }

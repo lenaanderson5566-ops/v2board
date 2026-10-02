@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { clients, importLink, subscriptionUrl } from "./import-links";
+import { clients, importLink, subscriptionUrl, localizedSubscriptionUrl } from "./import-links";
 const url = "https://example.com/subscribe?token=a%2Bb%26c&flag=old";
 describe("subscription import protocols", () => {
     it("preserves access tokens while replacing the client format", () => {
@@ -52,4 +52,16 @@ describe("subscription import protocols", () => {
         ])
             expect(() => subscriptionUrl(invalid)).toThrow();
     });
+});
+
+it("pins the selected language without changing subscription credentials",()=>{
+    const localized=localizedSubscriptionUrl(url,"zh-TW");
+    for (const client of clients) {
+        const link=importLink(client.id,localized,"Test");
+        expect(link).toContain(client.id === "shadowrocket" ? "shadowrocket://" : client.id === "quantumult" ? "quantumult-x://" : "://");
+    }
+    const nested=new URL(new URL(importLink("clash",localized,"Test")).searchParams.get("url")!);
+    expect(nested.searchParams.get("language")).toBe("zh-TW");
+    expect(nested.searchParams.get("token")).toBe("a+b&c");
+    expect(()=>localizedSubscriptionUrl(url,"invalid")).toThrow();
 });

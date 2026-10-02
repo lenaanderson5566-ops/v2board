@@ -108,3 +108,10 @@ export function recommendedClients(device: Device) {
         clients.find((client) => client.id === id)!,
     );
 }
+
+export function localizedSubscriptionUrl(value: string, language: string): string {
+    const url = new URL(subscriptionUrl(value));
+    if (!["zh-CN","zh-TW","en-US","ja-JP","ko-KR","vi-VN","ru-RU","fa-IR"].includes(language)) throw new Error("Unsupported subscription language");
+    url.searchParams.set("language", language);
+    return url.href;
+}

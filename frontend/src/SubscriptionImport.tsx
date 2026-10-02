@@ -1,4 +1,6 @@
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
+import "./import-copy";
 import {
     ArrowUpRight,
     Copy,
@@ -10,10 +12,11 @@ import {
 import { QRCodeSVG } from "qrcode.react";
 import { Modal } from "./ui";
 import { boot } from "./api";
-import { tx } from "./i18n";
+import { tx, locale } from "./i18n";
 import { e } from "./experience-copy";
 import { currentDevice, type Device } from "./user-experience";
 import {
+    localizedSubscriptionUrl,
     clients,
     importLink,
     clientSubscriptionUrl,
@@ -27,6 +30,7 @@ export function SubscriptionImport({
     url: string;
     inline?: boolean;
 }) {
+    const { t } = useTranslation("clientImport");
     const [device, setDevice] = useState<Device>(() => currentDevice().device);
     const recommended = recommendedClients(device);
     const [open, setOpen] = useState(false),
@@ -47,10 +51,11 @@ export function SubscriptionImport({
     let link = "",
         raw = "";
     try {
-        raw = clientSubscriptionUrl(selected, url);
-        link = importLink(selected, url, boot.title);
+        const localized = localizedSubscriptionUrl(url, locale());
+        raw = clientSubscriptionUrl(selected, localized);
+        link = importLink(selected, localized, boot.title);
     } catch {
-        return null;
+        return <p className="pad" role="alert">{t("invalid")}</p>;
     }
     const visible = all ? clients : recommended;
     async function copy() {
@@ -213,11 +218,10 @@ export function SubscriptionImport({
                     </button>
                 </div>
                 {error && <p role="alert">{error}</p>}
+                {copied && <p role="status" className="import-help">{t("copied")}</p>}
                 {attempted && (
                     <p role="status" className="import-help">
-                        {tx(
-                            "如果客户端没有打开，请先安装客户端，或复制订阅链接手动添加。",
-                        )}
+                        {t("opened")}
                     </p>
                 )}
             </section>

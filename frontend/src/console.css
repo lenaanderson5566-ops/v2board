@@ -135,7 +135,8 @@ aside nav a:hover {
     width: calc(100% - 240px);
     min-width: 0;
 }
-header {
+.main > header,
+#page-header {
     height: 64px;
     border-bottom: 1px solid #f1f1f1;
     padding: 0 36px;
@@ -153,8 +154,8 @@ header {
 .breadcrumb strong {
     color: #3c3c3c;
 }
-header .online-indicator,
-header > .actions > .muted {
+.main > header .online-indicator,
+.main > header > .actions > .muted {
     display: none;
 }
 main {
@@ -556,7 +557,8 @@ html[dir="rtl"] .metric > strong {
         margin: 0;
         width: 100%;
     }
-    header {
+    .main > header,
+    #page-header {
         height: calc(60px + env(safe-area-inset-top));
         padding: env(safe-area-inset-top) 16px 0;
     }

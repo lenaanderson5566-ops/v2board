@@ -228,7 +228,8 @@ nav a:hover {
     margin-left: 248px;
     width: calc(100% - 248px);
 }
-header {
+.main > header,
+#page-header {
     height: 76px;
     background: #fff;
     border-bottom: 1px solid var(--border);
@@ -254,7 +255,8 @@ header {
     border-radius: 50%;
     background: #5cab87;
 }
-header .muted {
+.main > header .muted,
+#page-header .muted {
     font-size: 10px;
 }
 main {
@@ -895,7 +897,8 @@ label small {
     main {
         padding: 24px 18px;
     }
-    header {
+    .main > header,
+    #page-header {
         padding: 0 18px;
         height: 62px;
     }

@@ -29,6 +29,10 @@ export function AccountMenu({
     }, [sub.data, clock]);
     const valid = activePlan(sub.data?.plan, sub.data?.expired_at);
     const plan = sub.data?.plan?.name || "";
+    const initial = String(user.email || "?")
+        .trim()
+        .slice(0, 1)
+        .toUpperCase();
     return (
         <div
             className="account-control"
@@ -42,15 +46,15 @@ export function AccountMenu({
                 ref={trigger}
                 className="account-trigger"
                 aria-label={e("account")}
+                aria-description={
+                    valid ? e("activePlan", { plan }) : e("noPlan")
+                }
                 aria-expanded={open}
                 aria-controls={id}
                 onClick={toggle}
             >
                 <span className="letter-avatar">
-                    {String(user.email || "?")
-                        .trim()
-                        .slice(0, 1)
-                        .toUpperCase()}
+                    {initial}
                     {valid && (
                         <span className="avatar-plan" title={plan}>
                             {plan}
@@ -60,10 +64,19 @@ export function AccountMenu({
             </button>
             {open && (
                 <div id={id} className="account-popover">
-                    <strong dir="ltr">{user.email}</strong>
-                    <small>
-                        {valid ? e("activePlan", { plan }) : e("noPlan")}
-                    </small>
+                    <div className="account-identity">
+                        <span className="letter-avatar" aria-hidden="true">
+                            {initial}
+                        </span>
+                        <div>
+                            <strong dir="ltr">{user.email}</strong>
+                            <small>
+                                {valid
+                                    ? e("activePlan", { plan })
+                                    : e("noPlan")}
+                            </small>
+                        </div>
+                    </div>
                     {[
                         { key: "profile", label: "账户设置", icon: Settings },
                         { key: "notifications", label: "通知设置", icon: Bell },

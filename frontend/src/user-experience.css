@@ -276,8 +276,10 @@ body[data-console="user"] .auth-language {
     border: 0;
     background: transparent;
     overflow: visible;
-    min-width: 44px;
-    min-height: 44px;
+    width: 60px;
+    min-width: 60px;
+    height: 56px;
+    min-height: 56px;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -287,8 +289,9 @@ body[data-console="user"] .auth-language {
     display: flex;
     align-items: center;
     justify-content: center;
-    width: 34px;
-    height: 34px;
+    width: 38px;
+    height: 38px;
+    flex-shrink: 0;
     border-radius: 50%;
     background: #99a585;
     color: white;
@@ -297,16 +300,15 @@ body[data-console="user"] .auth-language {
 }
 .avatar-plan {
     position: absolute;
-    bottom: -6px;
-    left: 50%;
-    transform: translateX(-50%);
+    top: calc(100% - 5px);
+    inset-inline-end: -7px;
     border: 2px solid white;
     border-radius: 12px;
     background: #20231f;
     color: white;
     font-size: 10px;
     line-height: 16px;
-    max-width: 58px;
+    max-width: 64px;
     min-width: 28px;
     padding: 0 6px;
     white-space: nowrap;
@@ -328,14 +330,28 @@ body[data-console="user"] .auth-language {
     flex-direction: column;
     gap: 4px;
 }
-.account-popover > strong {
+.account-identity {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 8px 4px 16px;
+    margin-bottom: 4px;
+    border-bottom: 1px solid #eee;
+}
+.account-identity > div {
+    min-width: 0;
+}
+.account-identity strong {
+    display: block;
     font-size: 13px;
     overflow-wrap: anywhere;
 }
-.account-popover > small {
+.account-identity small {
+    display: block;
     color: #777;
     line-height: 1.6;
-    margin: 5px 0 12px;
+    margin-top: 4px;
+    overflow-wrap: anywhere;
 }
 .account-popover a,
 .account-popover > button {
@@ -362,6 +378,10 @@ body[data-console="user"] .auth-language {
     margin-top: 5px;
 }
 .header-controls { gap: 8px; flex-wrap: nowrap; flex-shrink: 0; }
+@media (max-width: 700px) {
+    .account-trigger { width: 52px; min-width: 52px; height: 52px; min-height: 52px; }
+    .account-trigger .letter-avatar { width: 36px; height: 36px; }
+}
 .app.user .main > header .breadcrumb { min-width: 0; }
 .app.user .main > header .breadcrumb strong { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
 .account-security { width: 100%; max-width: 560px; padding: 24px 0; }

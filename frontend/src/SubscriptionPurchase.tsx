@@ -1,5 +1,6 @@
 import { useState, useRef, type FormEvent } from "react";
-import { ArrowUpRight } from "lucide-react";
+import { pricingCopy as pc } from "./pricing-copy";
+import "./pricing.css";
 import { useData, State, Empty, Modal } from "./ui";
 import { request, money, navigate, type Row } from "./api";
 import { tx } from "./i18n";
@@ -9,6 +10,7 @@ import {
     billingPeriods,
     purchasePeriods,
     unfinishedOrder,
+    periodSavings,
 } from "./billing-flow";
 
 export function PurchaseSteps({ step }: { step: number }) {
@@ -38,6 +40,7 @@ export function SubscriptionPurchase() {
     const orders = useData<Row[]>("user/order/fetch");
     const sub = useData("user/getSubscribe");
     const [selected, setSelected] = useState<Row | null>(null);
+    const [billingPeriod, setBillingPeriod] = useState("month_price");
     const pending = unfinishedOrder(orders.data || []);
     const currentPlan = sub.data?.plan;
     const currentAvailable =
@@ -61,7 +64,6 @@ export function SubscriptionPurchase() {
                 <p className="muted">
                     {tx("先选择适合的套餐，再确认费用和支付方式。")}
                 </p>
-                <a href="#/order">{tx("账单")}</a>
             </div>
             <State {...orders} retry={orders.reload}>
                 {pending && (
@@ -115,10 +117,29 @@ export function SubscriptionPurchase() {
                         </button>
                     </div>
                 )}
-                <div className="plans">
+                <div
+                    className="pricing-cycle"
+                    role="group"
+                    aria-label={tx("选择订阅周期")}
+                >
+                    {["month_price", "year_price"].map((key) => (
+                        <button
+                            key={key}
+                            aria-pressed={billingPeriod === key}
+                            onClick={() => setBillingPeriod(key)}
+                        >
+                            {tx(billingPeriods[key])}
+                        </button>
+                    ))}
+                </div>
+                <div className="plans pricing-plans">
                     {visiblePlans.length ? (
                         visiblePlans.map((plan) => {
                             const available = purchasePeriods(plan);
+                            const displayed = available.includes(billingPeriod)
+                                ? billingPeriod
+                                : available[0];
+                            const savings = periodSavings(plan, displayed);
                             const same =
                                 Number(
                                     sub.data?.plan_id || sub.data?.plan?.id,
@@ -136,44 +157,59 @@ export function SubscriptionPurchase() {
                                 (same && Number(plan.renew) === 0);
                             return (
                                 <article className="plan-card" key={plan.id}>
-                                    {same && (
-                                        <span className="badge">
-                                            {tx("当前套餐")}
-                                        </span>
-                                    )}
-                                    <h2>{plan.name}</h2>
-                                    <div className="plan-price">
-                                        {available.length
-                                            ? money(plan[available[0]])
-                                            : "—"}
-                                        <small>
-                                            {available.length
-                                                ? ` / ${tx(billingPeriods[available[0]])}`
-                                                : ""}
-                                        </small>
+                                    <div className="pricing-card-heading">
+                                        <h2>{plan.name}</h2>
+                                        {same && (
+                                            <span className="badge">
+                                                {tx("当前套餐")}
+                                            </span>
+                                        )}
                                     </div>
-                                    <div className="plan-feature">
-                                        {plan.transfer_enable} {tx("GB 流量")}
+                                    <div className="pricing-summary">
+                                        <div className="plan-price">
+                                            {money(plan[displayed])}
+                                            <small>
+                                                {" "}
+                                                /{" "}
+                                                {tx(billingPeriods[displayed])}
+                                            </small>
+                                        </div>
+                                        <div className="pricing-note">
+                                            {displayed === "year_price"
+                                                ? pc("annual", {
+                                                      price: money(
+                                                          Number(
+                                                              plan[displayed],
+                                                          ) / 12,
+                                                      ),
+                                                  })
+                                                : pc("total")}
+                                        </div>
+                                        <div className="pricing-note">
+                                            {displayed !== billingPeriod
+                                                ? pc("fallback", {
+                                                      period: tx(
+                                                          billingPeriods[
+                                                              displayed
+                                                          ],
+                                                      ),
+                                                  })
+                                                : savings
+                                                  ? pc("save", {
+                                                        percent: savings,
+                                                    })
+                                                  : "\u00a0"}
+                                        </div>
                                     </div>
-                                    <div className="plan-feature">
-                                        {plan.speed_limit
-                                            ? tx("{{value0}} Mbps 速率", {
-                                                  value0: plan.speed_limit,
-                                              })
-                                            : tx("不限速")}
-                                    </div>
-                                    <div className="plan-feature">
-                                        {plan.device_limit
-                                            ? tx("{{count}} 台设备", {
-                                                  count: plan.device_limit,
-                                              })
-                                            : tx("不限设备数")}
-                                    </div>
-                                    <PlanDescription content={plan.content} />
                                     <button
                                         className="primary"
                                         disabled={blocked}
-                                        onClick={() => setSelected(plan)}
+                                        onClick={() =>
+                                            setSelected({
+                                                ...plan,
+                                                initialPeriod: displayed,
+                                            })
+                                        }
                                     >
                                         {tx(
                                             soldOut
@@ -183,11 +219,8 @@ export function SubscriptionPurchase() {
                                                   ? "暂不支持续费"
                                                   : "选择套餐",
                                         )}
-                                        <ArrowUpRight
-                                            size={16}
-                                            aria-hidden="true"
-                                        />
                                     </button>
+                                    <PlanDescription content={plan.content} />
                                 </article>
                             );
                         })
@@ -212,7 +245,11 @@ export function SubscriptionPurchase() {
 }
 function PlanSelection({ plan, close }: { plan: Row; close: () => void }) {
     const available = plan.resetOnly ? ["reset_price"] : purchasePeriods(plan);
-    const [period, setPeriod] = useState(available[0] || "");
+    const [period, setPeriod] = useState(
+        available.includes(plan.initialPeriod)
+            ? plan.initialPeriod
+            : available[0] || "",
+    );
     const [coupon, setCoupon] = useState("");
     const [busy, setBusy] = useState(false);
     const [error, setError] = useState("");
@@ -257,6 +294,13 @@ function PlanSelection({ plan, close }: { plan: Row; close: () => void }) {
                             />
                             <span>{tx(billingPeriods[key])}</span>
                             <strong>{money(plan[key])}</strong>
+                            {periodSavings(plan, key) > 0 && (
+                                <small className="period-saving">
+                                    {pc("save", {
+                                        percent: periodSavings(plan, key),
+                                    })}
+                                </small>
+                            )}
                         </label>
                     ))}
                 </div>

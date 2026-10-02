@@ -1,0 +1,64 @@
+.app.user .pricing-cycle {
+    display: flex;
+    justify-content: center;
+    gap: 4px;
+    padding: 4px;
+    border-radius: 999px;
+    background: #f1f1f1;
+    width: fit-content;
+    margin: 8px auto 28px;
+}
+.app.user .pricing-cycle button {
+    border: 0;
+    border-radius: 999px;
+    background: transparent;
+    min-width: 96px;
+    min-height: 44px;
+}
+.app.user .pricing-cycle button[aria-pressed="true"] {
+    background: white;
+    box-shadow: 0 1px 4px #00000014;
+}
+.app.user .pricing-card-heading {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    min-height: 48px;
+}
+.app.user .pricing-card-heading h2 {
+    margin: 0;
+    overflow-wrap: anywhere;
+}
+.app.user .pricing-card-heading .badge {
+    flex-shrink: 0;
+}
+.app.user .pricing-summary {
+    min-height: 150px;
+    padding-block: 18px;
+}
+.app.user .pricing-summary .plan-price {
+    margin: 0 0 10px;
+}
+.app.user .pricing-note {
+    font-size: 13px;
+    color: #707570;
+    line-height: 1.6;
+}
+.app.user .pricing-plans .plan-card > .primary {
+    margin: 0 0 24px;
+    width: 100%;
+    border-radius: 999px;
+    min-height: 48px;
+    justify-content: center;
+}
+.app.user .period-saving {
+    width: 100%;
+    padding-inline-start: 26px;
+    color: #267151;
+}
+@media (max-width: 600px) {
+    .app.user .pricing-summary {
+        min-height: auto;
+    }
+}

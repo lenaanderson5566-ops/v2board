@@ -31,6 +31,9 @@ vi.mock("./i18n", () => ({
     tx: (key: string, args: any = {}) =>
         key.replace(/{{(\w+)}}/g, (_, name) => String(args[name])),
 }));
+vi.mock("./pricing-copy", () => ({
+    pricingCopy: (key: string, args: any = {}) => key + JSON.stringify(args),
+}));
 vi.mock("./profile-copy", () => ({ p: (key: string) => key }));
 vi.mock("./help-copy", () => ({ h: (key: string) => key }));
 vi.mock("./credit-copy", () => ({
@@ -76,7 +79,7 @@ vi.mock("./ui", () => ({
 }));
 import { SubscriptionPurchase } from "./SubscriptionPurchase";
 import { PaymentCheckout } from "./PaymentCheckout";
-import { purchasePeriods, paymentFee } from "./billing-flow";
+import { purchasePeriods, paymentFee, periodSavings } from "./billing-flow";
 import { Orders } from "./user";
 const plan = {
     id: 1,
@@ -407,4 +410,51 @@ it("one-time-only products are not shown in the subscription catalog", () => {
     mocks.plans = [{ id: 99, name: "CreditOnly", onetime_price: 1000 }];
     render(<SubscriptionPurchase />);
     expect(screen.queryByText("CreditOnly")).toBeNull();
+});
+
+it("calculates real savings without inventing discounts", () => {
+    expect(
+        periodSavings({ month_price: 5880, year_price: 59976 }, "year_price"),
+    ).toBe(15);
+    expect(
+        periodSavings(
+            { month_price: 5880, half_year_price: 33516 },
+            "half_year_price",
+        ),
+    ).toBe(5);
+    expect(
+        periodSavings({ month_price: 0, year_price: 100 }, "year_price"),
+    ).toBe(0);
+    expect(periodSavings({ year_price: 100 }, "year_price")).toBe(0);
+    expect(
+        periodSavings({ month_price: 100, year_price: 1300 }, "year_price"),
+    ).toBe(0);
+});
+it("carries the yearly card selection into checkout and removes duplicate metadata", async () => {
+    mocks.plans = [
+        {
+            ...plan,
+            month_price: 5880,
+            year_price: 59976,
+            speed_limit: 0,
+            device_limit: 4,
+        },
+    ];
+    mocks.request.mockResolvedValue({ data: "new-order" });
+    render(<SubscriptionPurchase />);
+    fireEvent.click(screen.getByRole("button", { name: "年付" }));
+    fireEvent.click(screen.getByRole("button", { name: "选择套餐" }));
+    expect(
+        (screen.getByRole("radio", { name: /年付/ }) as HTMLInputElement)
+            .checked,
+    ).toBe(true);
+    expect(screen.queryByText("不限速")).toBeNull();
+    expect(screen.queryByRole("link", { name: "账单" })).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "创建订单并继续" }));
+    await waitFor(() =>
+        expect(mocks.request).toHaveBeenCalledWith("user/order/save", {
+            plan_id: 1,
+            period: "year_price",
+        }),
+    );
 });

@@ -41,6 +41,7 @@ import {
 } from "./api";
 import { Editor, Panel, type Field } from "./ui";
 import { UserAuth } from "./UserAuth";
+import { UserStatusGate } from "./AccountEntry";
 import { AccountMenu } from "./AccountMenu";
 import { EmbeddedBrowserNotice } from "./EmbeddedBrowserNotice";
 import { currentDevice } from "./user-experience";
@@ -545,183 +546,208 @@ function App() {
             </AdminShell>
         );
     return (
-        <div className={"app " + boot.mode}>
-            {open && (
-                <div className="nav-backdrop" onClick={() => setOpen(false)} />
-            )}
-            <aside
-                ref={sidebar}
-                inert={mobile && !open}
-                className={open ? "open" : ""}
-            >
-                <button
-                    className="drawer-close icon-button"
-                    aria-label={tx("关闭")}
-                    onClick={() => setOpen(false)}
+        <UserStatusGate
+            logout={() => {
+                clearReadCache();
+                localStorage.removeItem(storageKey);
+                setUser(null);
+                navigate("login");
+            }}
+            support={
+                <React.Suspense fallback={<WorkspaceSkeleton />}>
+                    <UserContent current="ticket" path="ticket" />
+                </React.Suspense>
+            }
+        >
+            <div className={"app " + boot.mode}>
+                {open && (
+                    <div
+                        className="nav-backdrop"
+                        onClick={() => setOpen(false)}
+                    />
+                )}
+                <aside
+                    ref={sidebar}
+                    inert={mobile && !open}
+                    className={open ? "open" : ""}
                 >
-                    <X size={19} />
-                </button>
-                <a
-                    className="brand"
-                    href={boot.mode === "admin" ? `/${boot.adminPath}` : "/"}
-                >
-                    <span className="brand-mark">V</span>
-                    <span>
-                        {boot.title}
-                        <small>
-                            {boot.mode === "admin"
-                                ? tx("管理控制台")
-                                : tx("用户工作空间")}
-                        </small>
-                    </span>
-                </a>
-                <nav>
-                    {groups.map((group) => (
-                        <div className="nav-group" key={group}>
-                            <small>{tx(group)}</small>
-                            {nav
-                                .filter((n) => n.group === group)
-                                .map(({ key, label, icon: Icon }) => (
-                                    <a
-                                        aria-current={
-                                            current === key ? "page" : undefined
-                                        }
-                                        className={
-                                            current === key ? "active" : ""
-                                        }
-                                        href={"#/" + key}
-                                        key={key}
-                                    >
-                                        <Icon size={18} />
-                                        <span>{tx(label)}</span>
-                                        {current === key && (
-                                            <span className="nav-dot" />
-                                        )}
-                                    </a>
-                                ))}
-                        </div>
-                    ))}
-                </nav>
-                <div className="sidebar-bottom">
-                    <div className="avatar">
-                        {user.email?.slice(0, 1).toUpperCase()}
-                    </div>
-                    <div>
-                        <strong>{user.email}</strong>
-                        <small>
-                            {boot.mode === "admin"
-                                ? tx("管理员")
-                                : tx("个人账户")}
-                        </small>
-                    </div>
                     <button
-                        className="icon-button"
-                        title={tx("退出登录")}
-                        onClick={() => {
-                            localStorage.removeItem(storageKey);
-                            setUser(null);
-                            navigate("login");
-                        }}
+                        className="drawer-close icon-button"
+                        aria-label={tx("关闭")}
+                        onClick={() => setOpen(false)}
                     >
-                        <LogOut size={17} />
+                        <X size={19} />
                     </button>
-                </div>
-            </aside>
-            <div className="main" inert={mobile && open}>
-                <header>
-                    <div className="breadcrumb">
-                        <button
-                            className="mobile-menu icon-button"
-                            aria-label={tx("打开导航")}
-                            aria-expanded={open}
-                            onClick={() => setOpen(!open)}
-                        >
-                            <Menu />
-                        </button>
+                    <a
+                        className="brand"
+                        href={
+                            boot.mode === "admin" ? `/${boot.adminPath}` : "/"
+                        }
+                    >
+                        <span className="brand-mark">V</span>
                         <span>
-                            {boot.mode === "admin"
-                                ? tx("管理后台")
-                                : tx("工作空间")}
+                            {boot.title}
+                            <small>
+                                {boot.mode === "admin"
+                                    ? tx("管理控制台")
+                                    : tx("用户工作空间")}
+                            </small>
                         </span>
-                        <ChevronRight size={14} />
-                        <strong>{tx(item?.label || "总览")}</strong>
-                    </div>
-                    <div className="actions">
-                        {boot.mode === "user" && <LanguagePicker />}
-                        {boot.mode === "admin" && (
-                            <a
-                                className="button"
-                                href="/"
-                                target="_blank"
-                                rel="noreferrer"
-                            >
-                                {tx("用户端")}
-                                <ArrowUpRight size={15} />
-                            </a>
-                        )}
-                        <AccountMenu
-                            user={user}
-                            logout={() => {
-                                clearReadCache();
+                    </a>
+                    <nav>
+                        {groups.map((group) => (
+                            <div className="nav-group" key={group}>
+                                <small>{tx(group)}</small>
+                                {nav
+                                    .filter((n) => n.group === group)
+                                    .map(({ key, label, icon: Icon }) => (
+                                        <a
+                                            aria-current={
+                                                current === key
+                                                    ? "page"
+                                                    : undefined
+                                            }
+                                            className={
+                                                current === key ? "active" : ""
+                                            }
+                                            href={"#/" + key}
+                                            key={key}
+                                        >
+                                            <Icon size={18} />
+                                            <span>{tx(label)}</span>
+                                            {current === key && (
+                                                <span className="nav-dot" />
+                                            )}
+                                        </a>
+                                    ))}
+                            </div>
+                        ))}
+                    </nav>
+                    <div className="sidebar-bottom">
+                        <div className="avatar">
+                            {user.email?.slice(0, 1).toUpperCase()}
+                        </div>
+                        <div>
+                            <strong>{user.email}</strong>
+                            <small>
+                                {boot.mode === "admin"
+                                    ? tx("管理员")
+                                    : tx("个人账户")}
+                            </small>
+                        </div>
+                        <button
+                            className="icon-button"
+                            title={tx("退出登录")}
+                            onClick={() => {
                                 localStorage.removeItem(storageKey);
                                 setUser(null);
                                 navigate("login");
                             }}
-                        />
+                        >
+                            <LogOut size={17} />
+                        </button>
                     </div>
-                </header>
-                <main>
-                    <div className="page-heading">
-                        <div>
-                            <span className="eyebrow">
-                                {boot.mode === "admin"
-                                    ? "CONTROL CENTER"
-                                    : "WORKSPACE"}
-                            </span>
-                            <h1>{tx(item?.label || "总览")}</h1>
-                        </div>
-                        <span className="today">
-                            {new Date().toLocaleDateString(locale(), {
-                                month: "long",
-                                day: "numeric",
-                                weekday: "long",
-                            })}
-                        </span>
-                    </div>
-                    {content}
-                    <div className="page-footer">
-                        {boot.title} <span>{tx("简洁连接，无限可能。")}</span>
-                    </div>
-                </main>
-            </div>
-            {boot.mode === "user" && (
-                <nav
-                    className="bottom-nav"
-                    inert={mobile && open}
-                    aria-label={tx("快捷导航")}
-                >
-                    {userNav
-                        .filter((n) =>
-                            ["dashboard", "plan", "ticket", "profile"].includes(
-                                n.key,
-                            ),
-                        )
-                        .map(({ key, label, icon: Icon }) => (
-                            <a
-                                key={key}
-                                href={"#/" + key}
-                                aria-current={
-                                    current === key ? "page" : undefined
-                                }
-                                className={current === key ? "active" : ""}
+                </aside>
+                <div className="main" inert={mobile && open}>
+                    <header>
+                        <div className="breadcrumb">
+                            <button
+                                className="mobile-menu icon-button"
+                                aria-label={tx("打开导航")}
+                                aria-expanded={open}
+                                onClick={() => setOpen(!open)}
                             >
-                                <Icon size={21} />
-                                <span>{tx(label)}</span>
-                            </a>
-                        ))}
-                </nav>
-            )}
-        </div>
+                                <Menu />
+                            </button>
+                            <span>
+                                {boot.mode === "admin"
+                                    ? tx("管理后台")
+                                    : tx("工作空间")}
+                            </span>
+                            <ChevronRight size={14} />
+                            <strong>{tx(item?.label || "总览")}</strong>
+                        </div>
+                        <div className="actions">
+                            {boot.mode === "user" && <LanguagePicker />}
+                            {boot.mode === "admin" && (
+                                <a
+                                    className="button"
+                                    href="/"
+                                    target="_blank"
+                                    rel="noreferrer"
+                                >
+                                    {tx("用户端")}
+                                    <ArrowUpRight size={15} />
+                                </a>
+                            )}
+                            <AccountMenu
+                                user={user}
+                                logout={() => {
+                                    clearReadCache();
+                                    localStorage.removeItem(storageKey);
+                                    setUser(null);
+                                    navigate("login");
+                                }}
+                            />
+                        </div>
+                    </header>
+                    <main>
+                        <div className="page-heading">
+                            <div>
+                                <span className="eyebrow">
+                                    {boot.mode === "admin"
+                                        ? "CONTROL CENTER"
+                                        : "WORKSPACE"}
+                                </span>
+                                <h1>{tx(item?.label || "总览")}</h1>
+                            </div>
+                            <span className="today">
+                                {new Date().toLocaleDateString(locale(), {
+                                    month: "long",
+                                    day: "numeric",
+                                    weekday: "long",
+                                })}
+                            </span>
+                        </div>
+                        {content}
+                        <div className="page-footer">
+                            {boot.title}{" "}
+                            <span>{tx("简洁连接，无限可能。")}</span>
+                        </div>
+                    </main>
+                </div>
+                {boot.mode === "user" && (
+                    <nav
+                        className="bottom-nav"
+                        inert={mobile && open}
+                        aria-label={tx("快捷导航")}
+                    >
+                        {userNav
+                            .filter((n) =>
+                                [
+                                    "dashboard",
+                                    "plan",
+                                    "ticket",
+                                    "profile",
+                                ].includes(n.key),
+                            )
+                            .map(({ key, label, icon: Icon }) => (
+                                <a
+                                    key={key}
+                                    href={"#/" + key}
+                                    aria-current={
+                                        current === key ? "page" : undefined
+                                    }
+                                    className={current === key ? "active" : ""}
+                                >
+                                    <Icon size={21} />
+                                    <span>{tx(label)}</span>
+                                </a>
+                            ))}
+                    </nav>
+                )}
+            </div>
+        </UserStatusGate>
     );
 }
 class ErrorBoundary extends React.Component<

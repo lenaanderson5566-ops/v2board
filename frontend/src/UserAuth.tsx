@@ -5,6 +5,7 @@ import { tx } from "./i18n";
 import { ux } from "./ux";
 import { e } from "./experience-copy";
 import { passwordScore } from "./user-experience";
+import { AccountEntry } from "./AccountEntry";
 
 export function UserAuth({
     mode,
@@ -36,6 +37,7 @@ export function UserAuth({
             new URLSearchParams(location.hash.split("?")[1]).get("code") || "",
     );
     const heading = useRef<HTMLHeadingElement>(null);
+    const [suspended, setSuspended] = useState(false);
     useEffect(() => {
         if (!cooldown) return;
         const timer = setTimeout(() => setCooldown((value) => value - 1), 1000);
@@ -111,6 +113,8 @@ export function UserAuth({
             onLogin(info.data);
             navigate("dashboard");
         } catch (reason) {
+            if ((reason as Error & { code?: string }).code === "ACCOUNT_BANNED")
+                setSuspended(true);
             setError((reason as Error).message);
         } finally {
             setBusy(false);
@@ -175,6 +179,19 @@ export function UserAuth({
             )}
         </label>
     );
+    if (suspended)
+        return (
+            <div className="suspended-page">
+                <AccountEntry
+                    state="banned"
+                    onBack={() => {
+                        setSuspended(false);
+                        setError("");
+                        setPassword("");
+                    }}
+                />
+            </div>
+        );
     return (
         <div className="user-auth">
             <a className="auth-home" href="/">

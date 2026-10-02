@@ -67,6 +67,15 @@ beforeEach(() => {
               : { data: true },
     );
 });
+it("shows the suspension entry when authenticated credentials are denied as banned", async () => {
+    mocks.request.mockRejectedValue(Object.assign(new Error("Suspended"), {code: "ACCOUNT_BANNED"}));
+    const view = page("login");
+    credentials();
+    fireEvent.click(screen.getByRole("button", {name: "登录", exact: true}));
+    await waitFor(() => expect(screen.getByRole("heading", {name: "bannedTitle"})).toBeTruthy());
+    expect(view.onLogin).not.toHaveBeenCalled();
+    expect(screen.queryByLabelText("密码", {exact:true})).toBeNull();
+});
 afterEach(cleanup);
 describe("user account steps", () => {
     it("sends a code first and registers only after the verification step", async () => {

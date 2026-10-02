@@ -191,7 +191,7 @@ class AuthController extends Controller
                 'is_success' => false,
                 'reason' => 'user_banned'
             ]);
-            abort(500, __('Your account has been suspended'));
+            return response()->json(['message' => __('Your account has been suspended'), 'code' => 'ACCOUNT_BANNED'], 500);
         }
 
         $riskLogService->createLoginLog([
@@ -234,7 +234,7 @@ class AuthController extends Controller
                 abort(500, __('The user does not '));
             }
             if ($user->banned) {
-                abort(500, __('Your account has been suspended'));
+                return response()->json(['message' => __('Your account has been suspended'), 'code' => 'ACCOUNT_BANNED'], 500);
             }
             Cache::forget($key);
             $user->last_login_at = time();

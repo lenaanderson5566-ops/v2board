@@ -7,6 +7,7 @@ export interface Envelope<T> {
     type?: number;
     message?: string;
     errors?: Record<string, string[]>;
+    code?: string;
 }
 export interface Boot {
     landing?: boolean;
@@ -87,13 +88,15 @@ export async function request<T = Row>(
             localStorage.removeItem(storageKey);
             window.dispatchEvent(new Event("auth-expired"));
         }
-        throw new Error(
+        const error = new Error(
             Object.values(json.errors || {})
                 .flat()
                 .join("；") ||
                 json.message ||
                 tx("请求失败 ({{value0}})", { value0: res.status }),
         );
+        Object.assign(error, { code: json.code });
+        throw error;
     }
     if (body && boot.mode === "user") {
         readCache.clear();

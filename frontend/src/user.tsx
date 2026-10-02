@@ -2,6 +2,7 @@ import { e } from "./experience-copy";
 import { tx, locale, languages } from "./i18n";
 import { SubscriptionImport } from "./SubscriptionImport";
 import { UsageChart } from "./UsageChart";
+import { AccountEntry } from "./AccountEntry";
 import { useState, useEffect, useRef, type ReactNode } from "react";
 import { QRCodeSVG } from "qrcode.react";
 import { loadStripe } from "@stripe/stripe-js/pure";
@@ -85,6 +86,15 @@ export function UserDashboard() {
         remainingPercent = total
             ? Math.max(0, Math.min(100, (remaining / total) * 100))
             : 0;
+    if (user.account_status && user.account_status.state !== "active")
+        return (
+            <State {...info} retry={info.reload}>
+                <AccountEntry
+                    state={user.account_status.state}
+                    subscription={s}
+                />
+            </State>
+        );
     return (
         <State {...info} retry={info.reload}>
             <div className="dashboard-welcome">
@@ -96,6 +106,20 @@ export function UserDashboard() {
                     {tx("使用文档")}
                     <ArrowUpRight size={16} />
                 </a>
+            </div>
+            <div className="account-status-line">
+                <span className="badge success">{e("activeTitle")}</span>
+                {(user.account_status?.quota_exhausted ||
+                    user.account_status?.is_available === false) && (
+                    <p role="status">
+                        {e(
+                            user.account_status?.quota_exhausted
+                                ? "exhausted"
+                                : "unavailable",
+                        )}{" "}
+                        <a href="#/plan">{e("renew")}</a>
+                    </p>
+                )}
             </div>
             <div className="dashboard-grid">
                 <Panel
@@ -110,15 +134,19 @@ export function UserDashboard() {
                     <State {...sub} retry={sub.reload}>
                         <div className="pad">
                             <h3>{s.plan?.name || tx("尚未订阅套餐")}</h3>
-                            {s.subscribe_url && (
-                                <div className="actions space">
-                                    <SubscriptionImport url={s.subscribe_url} />
-                                    <CopyValue
-                                        value={s.subscribe_url}
-                                        label={tx("复制订阅链接")}
-                                    />
-                                </div>
-                            )}
+                            {s.subscribe_url &&
+                                user.account_status?.is_available &&
+                                !user.account_status?.quota_exhausted && (
+                                    <div className="actions space">
+                                        <SubscriptionImport
+                                            url={s.subscribe_url}
+                                        />
+                                        <CopyValue
+                                            value={s.subscribe_url}
+                                            label={tx("复制订阅链接")}
+                                        />
+                                    </div>
+                                )}
                             <dl className="subscription-facts">
                                 <div>
                                     <dt>{tx("订阅到期")}</dt>

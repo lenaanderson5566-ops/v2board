@@ -75,6 +75,7 @@ describe("localization resources", () => {
             "LanguagePicker.tsx",
             "SubscriptionImport.tsx",
             "UserAuth.tsx",
+            "AccountEntry.tsx",
             "AccountMenu.tsx",
             "EmbeddedBrowserNotice.tsx",
             "WorkspaceSkeleton.tsx",

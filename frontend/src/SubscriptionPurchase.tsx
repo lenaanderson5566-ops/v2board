@@ -202,34 +202,56 @@ export function SubscriptionPurchase() {
                                             <small>
                                                 {" "}
                                                 /{" "}
-                                                {tx(billingPeriods[displayed])}
+                                                {displayed === "year_price"
+                                                    ? pc("year")
+                                                    : displayed ===
+                                                        "month_price"
+                                                      ? pc("month")
+                                                      : tx(
+                                                            billingPeriods[
+                                                                displayed
+                                                            ],
+                                                        )}
                                             </small>
                                         </div>
-                                        <div className="pricing-note">
-                                            {displayed === "year_price"
-                                                ? pc("annual", {
-                                                      price: money(
-                                                          Number(
-                                                              plan[displayed],
-                                                          ) / 12,
-                                                      ),
-                                                  })
-                                                : pc("total")}
-                                        </div>
-                                        <div className="pricing-note">
-                                            {displayed !== billingPeriod
-                                                ? pc("fallback", {
-                                                      period: tx(
-                                                          billingPeriods[
-                                                              displayed
-                                                          ],
-                                                      ),
-                                                  })
-                                                : savings
-                                                  ? pc("save", {
+                                        <div className="pricing-note pricing-meta">
+                                            {displayed === "year_price" && (
+                                                <span>
+                                                    {pc("equivalent", {
+                                                        price: money(
+                                                            Number(
+                                                                plan[displayed],
+                                                            ) / 12,
+                                                        ),
+                                                    })}
+                                                </span>
+                                            )}
+                                            {savings > 0 && (
+                                                <span
+                                                    className="pricing-saving"
+                                                    title={pc("save", {
                                                         percent: savings,
-                                                    })
-                                                  : "\u00a0"}
+                                                    })}
+                                                    aria-label={pc("save", {
+                                                        percent: savings,
+                                                    })}
+                                                >
+                                                    {pc("savingBadge", {
+                                                        percent: savings,
+                                                    })}
+                                                </span>
+                                            )}
+                                            {displayed !== billingPeriod && (
+                                                <span>
+                                                    {pc("fallback", {
+                                                        period: tx(
+                                                            billingPeriods[
+                                                                displayed
+                                                            ],
+                                                        ),
+                                                    })}
+                                                </span>
+                                            )}
                                         </div>
                                     </div>
                                     <button

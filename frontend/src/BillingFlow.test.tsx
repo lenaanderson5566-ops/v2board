@@ -483,4 +483,3 @@ it("defaults mobile details to the current plan and preserves selection when cha
         "pricing-plan-2",
     );
 });
-

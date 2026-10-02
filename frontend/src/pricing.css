@@ -35,7 +35,7 @@
     flex-shrink: 0;
 }
 .app.user .pricing-summary {
-    min-height: 104px;
+    min-height: 88px;
     padding-block: 12px;
 }
 .app.user .pricing-summary .plan-price {
@@ -146,4 +146,22 @@
         font-size: 14px;
         padding-block: 5px;
     }
+}
+
+.app.user .pricing-meta {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 6px 10px;
+}
+.app.user .pricing-saving {
+    color: #267151;
+    background: #edf5ef;
+    border-radius: 6px;
+    padding: 2px 7px;
+    font-size: 12px;
+    white-space: nowrap;
+}
+.app.user .pricing-meta:empty {
+    display: none;
 }

@@ -1,5 +1,27 @@
 import i18n, { languages } from "./i18n";
 const copy = {
+    month: ["月", "月", "month", "月", "월", "tháng", "мес.", "ماه"],
+    year: ["年", "年", "year", "年", "년", "năm", "год", "سال"],
+    equivalent: [
+        "约 {{price}} / 月",
+        "約 {{price}} / 月",
+        "≈ {{price}} / month",
+        "約 {{price}} / 月",
+        "약 {{price}} / 월",
+        "≈ {{price}} / tháng",
+        "≈ {{price}} / мес.",
+        "حدود {{price}} / ماه",
+    ],
+    savingBadge: [
+        "省 {{percent}}%",
+        "省 {{percent}}%",
+        "Save {{percent}}%",
+        "{{percent}}% お得",
+        "{{percent}}% 절약",
+        "Tiết kiệm {{percent}}%",
+        "−{{percent}}%",
+        "{{percent}}٪ تخفیف",
+    ],
     annual: [
         "折合 {{price}} / 月，按年一次支付",
         "折合 {{price}} / 月，按年一次支付",

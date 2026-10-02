@@ -165,3 +165,57 @@
 .app.user .pricing-meta:empty {
     display: none;
 }
+
+.compact-selection .period-options {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 8px;
+}
+.compact-selection .period-options label {
+    display: grid;
+    grid-template-columns: 16px minmax(0, 1fr) auto auto;
+    gap: 10px;
+    padding: 14px;
+    min-height: 54px;
+}
+.compact-selection .period-options label strong {
+    width: auto;
+    padding: 0;
+    white-space: nowrap;
+}
+.compact-selection .period-options .period-name {
+    overflow-wrap: anywhere;
+}
+.compact-selection .period-options label .period-saving {
+    width: auto;
+    padding: 2px 6px;
+    white-space: nowrap;
+    color: #267151;
+    background: #edf5ef;
+    border-radius: 5px;
+    font-size: 12px;
+}
+.compact-selection .coupon-disclosure {
+    margin-top: 12px;
+}
+.compact-selection .checkout-lines {
+    margin: 12px 0 4px;
+}
+.compact-selection .purchase-fee-note {
+    font-size: 12px;
+    color: #777;
+    margin-bottom: 14px;
+}
+.compact-selection .purchase-fee-note summary {
+    cursor: pointer;
+    padding: 8px 0;
+}
+.compact-selection .purchase-fee-note p {
+    margin: 4px 0;
+    line-height: 1.6;
+}
+@media (max-width: 380px) {
+    .compact-selection .period-options label {
+        gap: 6px;
+        padding: 12px 10px;
+    }
+}

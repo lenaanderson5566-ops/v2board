@@ -1,5 +1,15 @@
 import i18n, { languages } from "./i18n";
 const copy = {
+    feeDetails: [
+        "费用说明",
+        "費用說明",
+        "Pricing details",
+        "料金について",
+        "요금 안내",
+        "Chi tiết chi phí",
+        "Подробнее об оплате",
+        "جزئیات هزینه",
+    ],
     month: ["月", "月", "month", "月", "월", "tháng", "мес.", "ماه"],
     year: ["年", "年", "year", "年", "년", "năm", "год", "سال"],
     equivalent: [

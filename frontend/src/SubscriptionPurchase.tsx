@@ -329,7 +329,11 @@ function PlanSelection({ plan, close }: { plan: Row; close: () => void }) {
         }
     }
     return (
-        <form className="purchase-selection" onSubmit={submit} aria-busy={busy}>
+        <form
+            className="purchase-selection compact-selection"
+            onSubmit={submit}
+            aria-busy={busy}
+        >
             <fieldset disabled={busy}>
                 <legend>{tx("选择订阅周期")}</legend>
                 <div className="period-options">
@@ -345,11 +349,18 @@ function PlanSelection({ plan, close }: { plan: Row; close: () => void }) {
                                 checked={period === key}
                                 onChange={() => setPeriod(key)}
                             />
-                            <span>{tx(billingPeriods[key])}</span>
+                            <span className="period-name">
+                                {tx(billingPeriods[key])}
+                            </span>
                             <strong>{money(plan[key])}</strong>
                             {periodSavings(plan, key) > 0 && (
-                                <small className="period-saving">
-                                    {pc("save", {
+                                <small
+                                    className="period-saving"
+                                    title={pc("save", {
+                                        percent: periodSavings(plan, key),
+                                    })}
+                                >
+                                    {pc("savingBadge", {
                                         percent: periodSavings(plan, key),
                                     })}
                                 </small>
@@ -374,11 +385,14 @@ function PlanSelection({ plan, close }: { plan: Row; close: () => void }) {
                         <dd>{money(plan[period])}</dd>
                     </div>
                 </dl>
-                <p className="muted">
-                    {tx(
-                        "优惠、旧套餐折抵和余额抵扣以创建后的订单为准。创建订单会预占可用余额，取消订单后返还。",
-                    )}
-                </p>
+                <details className="purchase-fee-note">
+                    <summary>{pc("feeDetails")}</summary>
+                    <p className="muted">
+                        {tx(
+                            "优惠、旧套餐折抵和余额抵扣以创建后的订单为准。创建订单会预占可用余额，取消订单后返还。",
+                        )}
+                    </p>
+                </details>
                 {error && (
                     <div className="alert" role="alert">
                         {error}

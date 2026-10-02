@@ -64,13 +64,13 @@ const userNav: Nav[] = [
         group: "工作空间",
     },
     { key: "plan", label: "购买订阅", icon: ShoppingBag, group: "工作空间" },
+    { key: "order", label: "订单记录", icon: ReceiptText, group: "工作空间" },
     {
         key: "knowledge",
         label: "帮助中心",
         icon: BookOpen,
-        group: "帮助与账户",
+        group: "帮助",
     },
-    { key: "profile", label: "账户设置", icon: Settings, group: "帮助与账户" },
 ];
 const adminNav: Nav[] = legacyAdminMenu.map(([key, label, , group]) => ({
     key,
@@ -505,6 +505,7 @@ function App() {
             { key: "ticket", label: "工单支持" },
             { key: "security", label: "账户安全" },
             { key: "notifications", label: "通知设置" },
+            { key: "profile", label: "账户设置" },
         ].find((n) => n.key === current),
         groups = [...new Set(nav.map((n) => n.group))],
         navigationCurrent =
@@ -513,7 +514,9 @@ function App() {
                 : boot.mode === "user" &&
                     ["security", "notifications"].includes(current)
                   ? "profile"
-                  : current;
+                  : current,
+        mobileNavigationCurrent =
+            current === "order" ? "plan" : navigationCurrent;
     let content: ReactNode;
     if (boot.mode === "admin") {
         content = (
@@ -742,12 +745,12 @@ function App() {
                                     key={key}
                                     href={"#/" + key}
                                     aria-current={
-                                        navigationCurrent === key
+                                        mobileNavigationCurrent === key
                                             ? "page"
                                             : undefined
                                     }
                                     className={
-                                        navigationCurrent === key
+                                        mobileNavigationCurrent === key
                                             ? "active"
                                             : ""
                                     }

@@ -1,10 +1,11 @@
 import { e } from "./experience-copy";
+import { SubscriptionPurchase } from "./SubscriptionPurchase";
+import { PaymentCheckout } from "./PaymentCheckout";
 import { EmailInvites } from "./EmailInvites";
 import { tx, locale, languages } from "./i18n";
 import { SubscriptionImport } from "./SubscriptionImport";
 import { UsageChart } from "./UsageChart";
 import { AccountEntry } from "./AccountEntry";
-import { PlanDescription } from "./PlanDescription";
 import { HelpGuides, ContactSupport } from "./HelpGuides";
 import {
     supportTopics,
@@ -12,10 +13,9 @@ import {
     supportPayload,
 } from "./support-flow";
 import { useState, useEffect, useRef, type ReactNode } from "react";
-import { QRCodeSVG } from "qrcode.react";
 import { loadStripe } from "@stripe/stripe-js/pure";
 import type { Stripe, StripeCardElement } from "@stripe/stripe-js";
-import { ArrowUpRight, Copy, Check, ExternalLink } from "lucide-react";
+import { ArrowUpRight, Copy, Check } from "lucide-react";
 import {
     boot,
     request,
@@ -41,16 +41,6 @@ import {
     Pager,
     type Field,
 } from "./ui";
-const periods: Record<string, string> = {
-    month_price: "月付",
-    quarter_price: "季付",
-    half_year_price: "半年付",
-    year_price: "年付",
-    two_year_price: "两年付",
-    three_year_price: "三年付",
-    onetime_price: "一次性",
-    reset_price: "流量重置",
-};
 const statuses = ["待支付", "开通中", "已取消", "已完成", "已折抵"];
 function CopyValue({
     value,
@@ -311,109 +301,7 @@ export function Subscribe() {
     );
 }
 export function Plans() {
-    const d = useData<Row[]>("user/plan/fetch");
-    const [selected, setSelected] = useState<Row | null>(null);
-    return (
-        <State {...d} retry={d.reload}>
-            <div className="plans">
-                {d.data?.length ? (
-                    d.data.map((p) => (
-                        <article className="plan-card" key={p.id}>
-                            <span className="eyebrow">SUBSCRIPTION</span>
-                            <h2>{p.name}</h2>
-                            <div className="plan-price">
-                                {money(
-                                    p.month_price ??
-                                        p.year_price ??
-                                        p.onetime_price,
-                                )}
-                                <small>
-                                    {" "}
-                                    /{" "}
-                                    {p.month_price !== null
-                                        ? tx("月")
-                                        : p.year_price !== null
-                                          ? tx("年")
-                                          : tx("次")}
-                                </small>
-                            </div>
-                            <div className="plan-feature">
-                                {p.transfer_enable} {tx("GB 流量")}
-                            </div>
-                            <div className="plan-feature">
-                                {p.speed_limit
-                                    ? tx("{{value0}} Mbps 速率", {
-                                          value0: p.speed_limit,
-                                      })
-                                    : tx("不限速")}
-                            </div>
-                            <div className="plan-feature">
-                                {p.device_limit
-                                    ? tx("{{count}} 台设备", {
-                                          count: p.device_limit,
-                                      })
-                                    : tx("不限设备数")}
-                            </div>
-                            <PlanDescription content={p.content} />
-                            <button
-                                className="primary"
-                                onClick={() => setSelected(p)}
-                            >
-                                {tx("选择套餐")}
-                                <ArrowUpRight size={16} />
-                            </button>
-                        </article>
-                    ))
-                ) : (
-                    <Empty text={tx("暂无可购买套餐")} />
-                )}
-            </div>
-            {selected && (
-                <Modal
-                    title={tx("购买 {{value0}}", { value0: selected.name })}
-                    close={() => setSelected(null)}
-                >
-                    <Editor
-                        fields={[
-                            {
-                                key: "period",
-                                label: tx("支付周期"),
-                                type: "select",
-                                options: Object.entries(periods)
-                                    .filter(
-                                        ([k]) =>
-                                            selected[k] !== null &&
-                                            selected[k] !== undefined,
-                                    )
-                                    .map(([k, v]) => [
-                                        k,
-                                        `${tx(v)} · ${money(selected[k])}`,
-                                    ]),
-                            },
-                            { key: "coupon_code", label: tx("优惠码（可选）") },
-                        ]}
-                        initial={{
-                            plan_id: selected.id,
-                            period: Object.keys(periods).find(
-                                (k) =>
-                                    selected[k] !== null &&
-                                    selected[k] !== undefined,
-                            ),
-                        }}
-                        submit={tx("创建订单")}
-                        onSave={async (body) => {
-                            const r = await request<string>(
-                                "user/order/save",
-                                body,
-                            );
-                            navigate("order/" + r.data);
-                            setSelected(null);
-                        }}
-                    />
-                </Modal>
-            )}
-        </State>
-    );
+    return <SubscriptionPurchase />;
 }
 export function Orders({ tradeNo }: { tradeNo?: string }) {
     const d = useData<Row[] | Row>(
@@ -426,187 +314,89 @@ export function Orders({ tradeNo }: { tradeNo?: string }) {
             title={tradeNo ? tx("订单详情") : tx("订单记录")}
             actions={<Reload onClick={d.reload} />}
         >
-            <State {...d} retry={d.reload}>
-                {tradeNo ? (
+            {tradeNo && d.data ? (
+                <>
+                    {d.loading && (
+                        <p className="pad muted" role="status">
+                            {e("refreshing")}
+                        </p>
+                    )}
+                    {d.error && (
+                        <div className="alert" role="alert">
+                            {d.error}
+                            <button onClick={d.reload}>{tx("刷新")}</button>
+                        </div>
+                    )}
                     <OrderDetail order={d.data as Row} reload={d.reload} />
-                ) : (
-                    <Table
-                        data={rows(d.data)}
-                        columns={[
-                            ["trade_no", tx("订单编号")],
-                            [
-                                "plan",
-                                tx("套餐"),
-                                (r) => r.plan?.name || tx("账户充值"),
-                            ],
-                            [
-                                "total_amount",
-                                tx("金额"),
-                                (r) => money(r.total_amount),
-                            ],
-                            [
-                                "status",
-                                tx("状态"),
-                                (r) => (
-                                    <span className="badge">
-                                        {tx(
-                                            statuses[r.status] ||
-                                                String(r.status),
-                                        )}
-                                    </span>
-                                ),
-                            ],
-                            [
-                                "created_at",
-                                tx("创建时间"),
-                                (r) => date(r.created_at),
-                            ],
-                        ]}
-                        actions={(r) => (
-                            <button
-                                onClick={() => navigate("order/" + r.trade_no)}
-                            >
-                                {tx("查看")}
-                            </button>
-                        )}
-                    />
-                )}
-            </State>
+                </>
+            ) : (
+                <State {...d} retry={d.reload}>
+                    {tradeNo ? (
+                        <OrderDetail order={d.data as Row} reload={d.reload} />
+                    ) : (
+                        <Table
+                            data={rows(d.data)}
+                            columns={[
+                                ["trade_no", tx("订单编号")],
+                                [
+                                    "plan",
+                                    tx("套餐"),
+                                    (r) => r.plan?.name || tx("账户充值"),
+                                ],
+                                [
+                                    "total_amount",
+                                    tx("金额"),
+                                    (r) => money(r.total_amount),
+                                ],
+                                [
+                                    "status",
+                                    tx("状态"),
+                                    (r) => (
+                                        <span className="badge">
+                                            {tx(
+                                                statuses[r.status] ||
+                                                    String(r.status),
+                                            )}
+                                        </span>
+                                    ),
+                                ],
+                                [
+                                    "created_at",
+                                    tx("创建时间"),
+                                    (r) => date(r.created_at),
+                                ],
+                            ]}
+                            actions={(r) => (
+                                <button
+                                    onClick={() =>
+                                        navigate("order/" + r.trade_no)
+                                    }
+                                >
+                                    {tx(
+                                        Number(r.status) === 0
+                                            ? "继续支付"
+                                            : Number(r.status) === 1
+                                              ? "查看开通进度"
+                                              : "查看",
+                                    )}
+                                </button>
+                            )}
+                        />
+                    )}
+                </State>
+            )}
         </Panel>
     );
 }
 function OrderDetail({ order, reload }: { order: Row; reload: () => void }) {
-    const methods = useData<Row[]>("user/order/getPaymentMethod");
-    const [error, setError] = useState(""),
-        [busy, setBusy] = useState(false),
-        [qr, setQr] = useState("");
-    const [cardMethod, setCardMethod] = useState<number | null>(null);
-    async function pay(id: number, token?: string) {
-        setBusy(true);
-        setError("");
-        try {
-            const r = await request("user/order/checkout", {
-                trade_no: order.trade_no,
-                method: id,
-                ...(token ? { token } : {}),
-            });
-            if (r.type === -1 || r.type === 2) {
-                setCardMethod(null);
-                reload();
-            } else if (
-                r.type === 1 &&
-                typeof r.data === "string" &&
-                /^https?:\/\//.test(r.data)
-            )
-                location.assign(r.data);
-            else if (r.type === 0) setQr(String(r.data));
-            else
-                throw new Error(
-                    tx("此支付方式需要专用客户端，请选择其他方式。"),
-                );
-        } catch (e) {
-            setError((e as Error).message);
-        } finally {
-            setBusy(false);
-        }
-    }
     return (
-        <div className="pad">
-            <div className="metrics">
-                <Metric
-                    label={tx("订单编号")}
-                    value={<small>{order.trade_no}</small>}
-                />
-                <Metric
-                    label={tx("应付金额")}
-                    value={money(order.total_amount)}
-                />
-                <Metric
-                    label={tx("订单状态")}
-                    value={tx(statuses[order.status] || "—")}
-                />
-            </div>
-            <h3>{order.plan?.name}</h3>
-            <a
-                className="button order-support-link"
-                href={`#/ticket/order/${encodeURIComponent(order.trade_no)}`}
-            >
-                {tx("此订单需要帮助？")}
-            </a>
-            {error && <div className="alert">{error}</div>}
-            {order.status === 0 && (
-                <>
-                    <p>{tx("选择支付方式")}</p>
-                    <State {...methods}>
-                        {methods.data?.map((m) => (
-                            <button
-                                key={m.id}
-                                disabled={busy}
-                                onClick={() =>
-                                    m.payment === "StripeCredit"
-                                        ? setCardMethod(m.id)
-                                        : pay(m.id)
-                                }
-                            >
-                                {m.name}
-                                <ExternalLink size={14} />
-                            </button>
-                        ))}
-                        {Number(order.total_amount) <= 0 && (
-                            <button
-                                className="primary"
-                                disabled={busy}
-                                onClick={() => pay(0)}
-                            >
-                                {tx("确认开通")}
-                            </button>
-                        )}
-                        {!methods.data?.length &&
-                            Number(order.total_amount) > 0 && (
-                                <p className="muted">
-                                    {tx("暂无可用支付方式，请联系客服。")}
-                                </p>
-                            )}
-                    </State>
-                    <div className="actions space">
-                        <button
-                            onClick={async () => {
-                                try {
-                                    await request("user/order/cancel", {
-                                        trade_no: order.trade_no,
-                                    });
-                                    reload();
-                                } catch (e) {
-                                    setError((e as Error).message);
-                                }
-                            }}
-                        >
-                            {tx("取消订单")}
-                        </button>
-                        <button onClick={reload}>{tx("检查支付结果")}</button>
-                    </div>
-                </>
+        <PaymentCheckout
+            order={order}
+            reload={reload}
+            renderCard={(method, pay) => (
+                <StripeCard method={method} onToken={pay} />
             )}
-            {qr && (
-                <div className="pad">
-                    <QRCodeSVG value={qr} size={220} marginSize={3} />
-                    <p>{tx("付款内容")}</p>
-                    <input readOnly value={qr} />
-                    <CopyValue value={qr} />
-                </div>
-            )}
-            {cardMethod && (
-                <Modal
-                    title={tx("信用卡支付")}
-                    close={() => setCardMethod(null)}
-                >
-                    <StripeCard
-                        method={cardMethod}
-                        onToken={(token) => pay(cardMethod, token)}
-                    />
-                </Modal>
-            )}
-        </div>
+        />
     );
 }
 function StripeCard({

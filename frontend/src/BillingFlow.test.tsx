@@ -1,0 +1,364 @@
+// @vitest-environment jsdom
+import { afterEach, beforeEach, expect, it, vi } from "vitest";
+import {
+    cleanup,
+    fireEvent,
+    render,
+    screen,
+    waitFor,
+    act,
+} from "@testing-library/react";
+const mocks = vi.hoisted(() => ({
+    request: vi.fn(),
+    navigate: vi.fn(),
+    plans: [] as any[],
+    orders: [] as any[],
+    sub: {} as any,
+    methods: [] as any[],
+    detail: {} as any,
+    detailLoading: false,
+}));
+vi.mock("./api", () => ({
+    boot: { mode: "user" },
+    request: mocks.request,
+    navigate: mocks.navigate,
+    money: (value: any) => `¥${(Number(value || 0) / 100).toFixed(2)}`,
+    query: (path: string, params: any) =>
+        path + "?" + new URLSearchParams(params),
+}));
+vi.mock("./i18n", () => ({
+    tx: (key: string, args: any = {}) =>
+        key.replace(/{{(\w+)}}/g, (_, name) => String(args[name])),
+}));
+vi.mock("./experience-copy", () => ({ e: (key: string) => key }));
+vi.mock("./ui", () => ({
+    useData: (path: string) => ({
+        data:
+            path === "user/plan/fetch"
+                ? mocks.plans
+                : path === "user/order/fetch"
+                  ? mocks.orders
+                  : path === "user/getSubscribe"
+                    ? mocks.sub
+                    : path.startsWith("user/order/detail")
+                      ? mocks.detail
+                      : mocks.methods,
+        loading: path.startsWith("user/order/detail") && mocks.detailLoading,
+        error: "",
+        reload: vi.fn(),
+    }),
+    State: ({ children, loading, data }: any) =>
+        loading && data ? <div>{children}</div> : children,
+    Panel: ({ children, title, actions }: any) => (
+        <section>
+            <h2>{title}</h2>
+            {actions}
+            {children}
+        </section>
+    ),
+    Reload: ({ onClick }: any) => <button onClick={onClick}>刷新</button>,
+    Empty: ({ text }: any) => <p>{text}</p>,
+    Html: () => null,
+    Modal: ({ title, children, close }: any) => (
+        <div role="dialog" aria-label={title}>
+            <button onClick={close}>关闭</button>
+            {children}
+        </div>
+    ),
+}));
+import { SubscriptionPurchase } from "./SubscriptionPurchase";
+import { PaymentCheckout } from "./PaymentCheckout";
+import { purchasePeriods, paymentFee } from "./billing-flow";
+import { Orders } from "./user";
+const plan = {
+    id: 1,
+    name: "Basic",
+    month_price: null,
+    quarter_price: 900,
+    year_price: 3000,
+    reset_price: 100,
+    renew: 1,
+    show: 1,
+    transfer_enable: 50,
+};
+const order = {
+    trade_no: "test-order",
+    plan_id: 1,
+    plan,
+    period: "quarter_price",
+    status: 0,
+    total_amount: 1000,
+    balance_amount: 200,
+    discount_amount: 100,
+};
+beforeEach(() => {
+    mocks.request.mockReset();
+    mocks.navigate.mockReset();
+    mocks.plans = [plan];
+    mocks.orders = [];
+    mocks.sub = {};
+    mocks.detail = { ...order };
+    mocks.detailLoading = false;
+    mocks.methods = [
+        {
+            id: 1,
+            name: "Card",
+            payment: "MGate",
+            handling_fee_fixed: 30,
+            handling_fee_percent: 2,
+        },
+        {
+            id: 2,
+            name: "QR",
+            payment: "TestQR",
+            handling_fee_fixed: 0,
+            handling_fee_percent: 0,
+        },
+    ];
+});
+afterEach(() => {
+    cleanup();
+    vi.useRealTimers();
+});
+it("preserves payment selection and QR content while an order refreshes", async () => {
+    mocks.request.mockResolvedValue({
+        type: 0,
+        data: "https://pay.example/preserve",
+    });
+    const view = render(<Orders tradeNo="test-order" />);
+    fireEvent.click(screen.getByRole("radio", { name: /QR/ }));
+    fireEvent.click(screen.getByRole("button", { name: "确认支付" }));
+    await screen.findByDisplayValue("https://pay.example/preserve");
+    mocks.detailLoading = true;
+    view.rerender(<Orders tradeNo="test-order" />);
+    expect(
+        screen.getByDisplayValue("https://pay.example/preserve"),
+    ).toBeTruthy();
+    expect(
+        (screen.getByRole("radio", { name: /QR/ }) as HTMLInputElement).checked,
+    ).toBe(true);
+    mocks.detailLoading = false;
+    view.rerender(<Orders tradeNo="test-order" />);
+    expect(
+        screen.getByDisplayValue("https://pay.example/preserve"),
+    ).toBeTruthy();
+    expect(mocks.request).toHaveBeenCalledTimes(1);
+});
+it("preserves quarterly and zero-priced periods and excludes reset from ordinary purchase", () => {
+    expect(purchasePeriods({ ...plan, onetime_price: 0 })).toEqual([
+        "quarter_price",
+        "year_price",
+        "onetime_price",
+    ]);
+    expect(paymentFee(1000, mocks.methods[0])).toBe(50);
+    expect(paymentFee(0, mocks.methods[0])).toBe(0);
+    expect(
+        paymentFee(999, { handling_fee_percent: 2.5, handling_fee_fixed: 1 }),
+    ).toBe(26);
+});
+it("shows the actual available period and lets users review their selection before creating an order", async () => {
+    mocks.request.mockResolvedValue({ data: "created-order" });
+    render(<SubscriptionPurchase />);
+    expect(screen.getByText("/ 季付")).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "选择套餐" }));
+    expect(screen.queryByRole("radio", { name: /流量重置/ })).toBeNull();
+    fireEvent.click(screen.getByRole("radio", { name: /年付/ }));
+    fireEvent.click(screen.getByText("使用优惠码"));
+    fireEvent.change(screen.getByLabelText("优惠码（可选）"), {
+        target: { value: " SAVE " },
+    });
+    expect(mocks.request).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole("button", { name: "创建订单并继续" }));
+    await waitFor(() =>
+        expect(mocks.request).toHaveBeenCalledWith("user/order/save", {
+            plan_id: 1,
+            period: "year_price",
+            coupon_code: "SAVE",
+        }),
+    );
+    expect(mocks.navigate).toHaveBeenCalledWith("order/created-order");
+});
+it.each([0, 1])(
+    "routes an unfinished order with status %s to its existing checkout",
+    (status) => {
+        mocks.orders = [{ ...order, status }];
+        render(<SubscriptionPurchase />);
+        expect(
+            screen
+                .getByRole("link", {
+                    name: status === 0 ? "继续支付" : "查看开通进度",
+                })
+                .getAttribute("href"),
+        ).toBe("#/order/test-order");
+        expect(
+            (
+                screen.getByRole("button", {
+                    name: "选择套餐",
+                }) as HTMLButtonElement
+            ).disabled,
+        ).toBe(true);
+    },
+);
+it("keeps hidden renewable plans and puts reset in a separate, valid-subscription action", () => {
+    mocks.sub = {
+        plan: { ...plan, id: 9, name: "Existing", show: 0 },
+        expired_at: null,
+        transfer_enable: 100,
+    };
+    render(<SubscriptionPurchase />);
+    expect(screen.getByRole("heading", { name: "Existing" })).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: /流量重置/ }));
+    expect(screen.getAllByRole("radio")).toHaveLength(1);
+    expect(screen.getByRole("radio", { name: /流量重置/ })).toBeTruthy();
+});
+function checkout(values: any = {}) {
+    const reload = vi.fn();
+    const view = render(
+        <PaymentCheckout
+            order={{ ...order, ...values }}
+            reload={reload}
+            renderCard={() => null}
+        />,
+    );
+    return { ...view, reload };
+}
+it("selects a method without charging and shows fixed plus percentage fees before confirmation", async () => {
+    mocks.request.mockResolvedValue({
+        type: 0,
+        data: "https://pay.example/qr",
+    });
+    checkout();
+    expect(screen.getByText("¥10.50")).toBeTruthy();
+    expect(screen.getByText("合计 ¥10.50")).toBeTruthy();
+    fireEvent.click(screen.getByRole("radio", { name: /QR/ }));
+    expect(screen.getAllByText("¥10.00").length).toBeGreaterThan(0);
+    expect(mocks.request).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole("button", { name: "确认支付" }));
+    await waitFor(() =>
+        expect(mocks.request).toHaveBeenCalledWith("user/order/checkout", {
+            trade_no: "test-order",
+            method: 2,
+        }),
+    );
+    expect(screen.getByText("正在等待支付确认，请勿重复付款。")).toBeTruthy();
+    expect(screen.queryByText("订单已完成")).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "检查支付结果" }));
+    expect(mocks.request).toHaveBeenCalledTimes(1);
+});
+it("keeps payment status checking available if a previous payment method was removed", () => {
+    mocks.methods = [];
+    const view = checkout({ payment_id: 99 });
+    const button = screen.getByRole("button", { name: "检查支付结果" });
+    expect((button as HTMLButtonElement).disabled).toBe(false);
+    fireEvent.click(button);
+    expect(view.reload).toHaveBeenCalled();
+    expect(mocks.request).not.toHaveBeenCalled();
+});
+it("closes the card dialog and exposes a failed card charge without claiming success", async () => {
+    mocks.methods = [{ id: 3, name: "Stripe", payment: "StripeCredit" }];
+    mocks.request.mockRejectedValue(Error("card declined"));
+    render(
+        <PaymentCheckout
+            order={order}
+            reload={vi.fn()}
+            renderCard={(_, pay) => (
+                <button onClick={() => pay("test-card-token")}>
+                    模拟提交信用卡
+                </button>
+            )}
+        />,
+    );
+    fireEvent.click(screen.getByRole("button", { name: "确认支付" }));
+    fireEvent.click(screen.getByRole("button", { name: "模拟提交信用卡" }));
+    await screen.findByRole("alert");
+    expect(screen.queryByRole("dialog")).toBeNull();
+    expect(screen.getByText("card declined")).toBeTruthy();
+    expect(mocks.request).toHaveBeenCalledWith("user/order/checkout", {
+        trade_no: "test-order",
+        method: 3,
+        token: "test-card-token",
+    });
+});
+it("allows zero-due activation even with no payment methods", async () => {
+    mocks.methods = [];
+    mocks.request.mockResolvedValue({ type: -1, data: true });
+    const view = checkout({ total_amount: 0 });
+    fireEvent.click(screen.getByRole("button", { name: "确认开通" }));
+    await waitFor(() =>
+        expect(mocks.request).toHaveBeenCalledWith("user/order/checkout", {
+            trade_no: "test-order",
+            method: 0,
+        }),
+    );
+    expect(view.reload).toHaveBeenCalled();
+    expect(screen.queryByText("订单已完成")).toBeNull();
+});
+it("does not claim completion on payment acknowledgement and polls the authoritative order status", async () => {
+    vi.useFakeTimers();
+    mocks.request.mockResolvedValue({ data: 3 });
+    const view = checkout({ status: 1 });
+    expect(screen.getByText("支付已确认，正在开通")).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "确认支付" })).toBeNull();
+    await act(async () => {
+        await vi.advanceTimersByTimeAsync(5000);
+    });
+    expect(mocks.request).toHaveBeenCalledWith(
+        "user/order/check?trade_no=test-order",
+    );
+    expect(view.reload).toHaveBeenCalled();
+    view.unmount();
+    mocks.request.mockClear();
+    await act(async () => {
+        await vi.advanceTimersByTimeAsync(10000);
+    });
+    expect(mocks.request).not.toHaveBeenCalled();
+});
+it("requires an explicit confirmation before cancelling and handles a failed payment", async () => {
+    mocks.request
+        .mockRejectedValueOnce(Error("gateway unavailable"))
+        .mockResolvedValue({ data: true });
+    checkout();
+    fireEvent.click(screen.getByRole("button", { name: "确认支付" }));
+    await screen.findByRole("alert");
+    expect(screen.getByText("gateway unavailable")).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "取消订单" }));
+    expect(mocks.request).toHaveBeenCalledTimes(1);
+    fireEvent.click(screen.getByRole("button", { name: "确认取消订单" }));
+    await waitFor(() =>
+        expect(mocks.request).toHaveBeenCalledWith("user/order/cancel", {
+            trade_no: "test-order",
+        }),
+    );
+});
+it("does not make gateway calls twice during a pending confirmation", async () => {
+    let resolve: any;
+    mocks.request.mockImplementation(
+        () =>
+            new Promise((done) => {
+                resolve = done;
+            }),
+    );
+    checkout();
+    const button = screen.getByRole("button", { name: "确认支付" });
+    fireEvent.click(button);
+    fireEvent.click(button);
+    expect(mocks.request).toHaveBeenCalledTimes(1);
+    await act(async () => resolve({ type: 0, data: "pay-qr" }));
+});
+it.each([
+    [1, "#/dashboard"],
+    [0, "#/profile"],
+])(
+    "links a completed plan_id %s order to the correct next action",
+    (planId, href) => {
+        checkout({ status: 3, plan_id: planId });
+        expect(
+            screen
+                .getByRole("link", {
+                    name: planId === 0 ? "账户设置" : "前往总览",
+                })
+                .getAttribute("href"),
+        ).toBe(href);
+        expect(screen.queryByRole("button", { name: "确认支付" })).toBeNull();
+    },
+);

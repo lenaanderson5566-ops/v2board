@@ -82,6 +82,9 @@ describe("localization resources", () => {
             "support-flow.ts",
             "PlanDescription.tsx",
             "EmailInvites.tsx",
+            "SubscriptionPurchase.tsx",
+            "PaymentCheckout.tsx",
+            "billing-flow.ts",
             "EmbeddedBrowserNotice.tsx",
             "WorkspaceSkeleton.tsx",
         ]) {

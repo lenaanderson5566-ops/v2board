@@ -1,0 +1,474 @@
+import { useEffect, useRef, useState, type ReactNode } from "react";
+import { QRCodeSVG } from "qrcode.react";
+import { CheckCircle2, LoaderCircle } from "lucide-react";
+import { request, money, query, type Row } from "./api";
+import { useData, State, Modal } from "./ui";
+import { tx } from "./i18n";
+import { billingPeriods, paymentFee } from "./billing-flow";
+import { PurchaseSteps } from "./SubscriptionPurchase";
+
+export function PaymentCheckout({
+    order,
+    reload,
+    renderCard,
+}: {
+    order: Row;
+    reload: () => void;
+    renderCard: (
+        method: number,
+        pay: (token: string) => Promise<void>,
+    ) => ReactNode;
+}) {
+    const status = Number(order.status);
+    const deposit = Number(order.plan_id) === 0;
+    const due = Number(order.total_amount || 0);
+    const methods = useData<Row[]>(
+        status === 0 && due > 0 ? "user/order/getPaymentMethod" : "",
+    );
+    const [selected, setSelected] = useState<number>(
+        Number(order.payment_id || 0),
+    );
+    const [busy, setBusy] = useState(false),
+        [error, setError] = useState(""),
+        [qr, setQr] = useState("");
+    const [waiting, setWaiting] = useState(Boolean(order.payment_id));
+    const [cancelOpen, setCancelOpen] = useState(false),
+        [cardMethod, setCardMethod] = useState<number | null>(null);
+    const [pollError, setPollError] = useState("");
+    const inFlight = useRef(false);
+    const refresh = useRef(reload);
+    refresh.current = reload;
+    const method = methods.data?.find((item) => Number(item.id) === selected);
+    const fee =
+        status === 0
+            ? paymentFee(due, method)
+            : Number(order.handling_amount || 0);
+    const feeReady = status !== 0 || due <= 0 || Boolean(method);
+    const awaitingConfirmation = waiting && !error;
+    useEffect(() => {
+        if (
+            methods.data?.length &&
+            !methods.data.some((item) => Number(item.id) === selected)
+        )
+            setSelected(Number(methods.data[0].id));
+    }, [methods.data, selected]);
+    useEffect(() => {
+        if (status !== 0) {
+            setQr("");
+            setCardMethod(null);
+        }
+    }, [status]);
+    useEffect(() => {
+        if (status !== 1 && !(status === 0 && waiting)) return;
+        let live = true,
+            checks = 0,
+            checking = false;
+        async function check() {
+            if (!live || checking || document.visibilityState === "hidden")
+                return;
+            checking = true;
+            try {
+                const result = await request<number>(
+                    query("user/order/check", { trade_no: order.trade_no }),
+                );
+                if (!live) return;
+                setPollError("");
+                if (Number(result.data) !== status) {
+                    refresh.current();
+                    window.dispatchEvent(new Event("data-changed"));
+                }
+            } catch (problem) {
+                if (live) setPollError((problem as Error).message);
+            } finally {
+                checking = false;
+            }
+        }
+        const timer = setInterval(() => {
+            if (++checks <= 60) void check();
+            else clearInterval(timer);
+        }, 5000);
+        const visible = () => {
+            if (document.visibilityState !== "hidden") void check();
+        };
+        document.addEventListener("visibilitychange", visible);
+        window.addEventListener("focus", visible);
+        return () => {
+            live = false;
+            clearInterval(timer);
+            document.removeEventListener("visibilitychange", visible);
+            window.removeEventListener("focus", visible);
+        };
+    }, [status, waiting, order.trade_no]);
+    async function pay(id: number, token?: string) {
+        if (inFlight.current) return;
+        inFlight.current = true;
+        setBusy(true);
+        setError("");
+        setWaiting(true);
+        try {
+            const result = await request("user/order/checkout", {
+                trade_no: order.trade_no,
+                method: id,
+                ...(token ? { token } : {}),
+            });
+            if (result.type === -1 || result.type === 2) {
+                setWaiting(true);
+                setCardMethod(null);
+                reload();
+            } else if (
+                result.type === 1 &&
+                typeof result.data === "string" &&
+                /^https?:\/\//i.test(result.data)
+            ) {
+                setWaiting(true);
+                location.assign(result.data);
+            } else if (
+                result.type === 0 &&
+                typeof result.data === "string" &&
+                result.data
+            ) {
+                setQr(result.data);
+                setWaiting(true);
+            } else
+                throw new Error(
+                    tx("此支付方式需要专用客户端，请选择其他方式。"),
+                );
+        } catch (problem) {
+            setError((problem as Error).message);
+            if (token) setCardMethod(null);
+        } finally {
+            inFlight.current = false;
+            setBusy(false);
+        }
+    }
+    async function cancel() {
+        if (inFlight.current) return;
+        inFlight.current = true;
+        setBusy(true);
+        setError("");
+        try {
+            await request("user/order/cancel", { trade_no: order.trade_no });
+            setCancelOpen(false);
+            setQr("");
+            reload();
+        } catch (problem) {
+            setError((problem as Error).message);
+            setCancelOpen(false);
+        } finally {
+            inFlight.current = false;
+            setBusy(false);
+        }
+    }
+    return (
+        <div className="checkout-page">
+            <PurchaseSteps step={status === 3 ? 3 : 2} />
+            {status === 3 ? (
+                <section className="checkout-result" role="status">
+                    <CheckCircle2 size={40} aria-hidden="true" />
+                    <h2>{tx("订单已完成")}</h2>
+                    <p>
+                        {tx(
+                            deposit
+                                ? "充值已到账，可在账户设置中查看余额。"
+                                : "订阅已开通，前往总览为设备导入配置。",
+                        )}
+                    </p>
+                    <a
+                        className="button primary"
+                        href={deposit ? "#/profile" : "#/dashboard"}
+                    >
+                        {tx(deposit ? "账户设置" : "前往总览")}
+                    </a>
+                </section>
+            ) : status === 1 ? (
+                <section className="checkout-result" role="status">
+                    <LoaderCircle size={32} aria-hidden="true" />
+                    <h2>{tx("支付已确认，正在开通")}</h2>
+                    <p>{tx("开通结果将自动更新，请勿重复支付。")}</p>
+                </section>
+            ) : status === 2 || status === 4 ? (
+                <section className="checkout-result">
+                    <h2>{tx(status === 2 ? "已取消" : "已折抵")}</h2>
+                    <a className="button" href="#/plan">
+                        {tx("选择套餐")}
+                    </a>
+                </section>
+            ) : null}
+            <div className="checkout-layout">
+                <section className="checkout-summary">
+                    <h2>{deposit ? tx("账户充值") : order.plan?.name}</h2>
+                    <p className="muted">
+                        {tx(billingPeriods[order.period] || "账户充值")}
+                    </p>
+                    <dl className="checkout-lines">
+                        {Number(order.discount_amount) > 0 && (
+                            <div>
+                                <dt>{tx("优惠金额")}</dt>
+                                <dd>−{money(order.discount_amount)}</dd>
+                            </div>
+                        )}
+                        {Number(order.surplus_amount) > 0 && (
+                            <div>
+                                <dt>{tx("旧套餐折抵")}</dt>
+                                <dd>
+                                    −
+                                    {money(
+                                        Number(order.surplus_amount) -
+                                            Number(order.refund_amount || 0),
+                                    )}
+                                </dd>
+                            </div>
+                        )}
+                        {Number(order.balance_amount) > 0 && (
+                            <div>
+                                <dt>{tx("余额抵扣")}</dt>
+                                <dd>−{money(order.balance_amount)}</dd>
+                            </div>
+                        )}
+                        <div>
+                            <dt>{tx("应付金额")}</dt>
+                            <dd>{money(due)}</dd>
+                        </div>
+                        <div>
+                            <dt>{tx("支付手续费")}</dt>
+                            <dd>{feeReady ? money(fee) : "—"}</dd>
+                        </div>
+                        <div className="checkout-total">
+                            <dt>{tx("合计")}</dt>
+                            <dd>{feeReady ? money(due + fee) : "—"}</dd>
+                        </div>
+                        {Number(order.refund_amount) > 0 && (
+                            <div>
+                                <dt>{tx("退回余额")}</dt>
+                                <dd>{money(order.refund_amount)}</dd>
+                            </div>
+                        )}
+                    </dl>
+                    <details className="order-reference">
+                        <summary>{tx("订单信息")}</summary>
+                        <p>
+                            {tx("订单编号")}
+                            <br />
+                            <span dir="ltr">{order.trade_no}</span>
+                        </p>
+                    </details>
+                </section>
+                {status === 0 && (
+                    <section className="checkout-payment">
+                        <h2>{tx(due > 0 ? "选择支付方式" : "确认开通")}</h2>
+                        {error && (
+                            <div className="alert" role="alert">
+                                {error}
+                            </div>
+                        )}
+                        {due > 0 && (
+                            <State {...methods} retry={methods.reload}>
+                                <fieldset
+                                    className="payment-options"
+                                    disabled={busy}
+                                >
+                                    <legend className="sr-only">
+                                        {tx("选择支付方式")}
+                                    </legend>
+                                    {methods.data?.map((item) => (
+                                        <label
+                                            key={item.id}
+                                            className={
+                                                selected === Number(item.id)
+                                                    ? "selected"
+                                                    : ""
+                                            }
+                                        >
+                                            <input
+                                                type="radio"
+                                                name="payment-method"
+                                                checked={
+                                                    selected === Number(item.id)
+                                                }
+                                                onChange={() => {
+                                                    setSelected(
+                                                        Number(item.id),
+                                                    );
+                                                    setQr("");
+                                                    setWaiting(false);
+                                                    setError("");
+                                                }}
+                                            />
+                                            <span>{item.name}</span>
+                                            <small>
+                                                {tx("支付手续费")}{" "}
+                                                {money(paymentFee(due, item))}
+                                            </small>
+                                        </label>
+                                    ))}
+                                </fieldset>
+                                {!methods.data?.length && (
+                                    <p className="muted">
+                                        {tx("暂无可用支付方式，请联系客服。")}
+                                    </p>
+                                )}
+                            </State>
+                        )}
+                        {qr && (
+                            <div className="checkout-qr">
+                                <QRCodeSVG
+                                    value={qr}
+                                    size={200}
+                                    marginSize={3}
+                                />
+                                <p>{tx("扫码支付后，页面会自动检查结果。")}</p>
+                                <input
+                                    aria-label={tx("付款内容")}
+                                    readOnly
+                                    value={qr}
+                                />
+                                <button
+                                    onClick={async () => {
+                                        try {
+                                            await navigator.clipboard.writeText(
+                                                qr,
+                                            );
+                                        } catch {
+                                            setError(
+                                                tx("复制失败，请手动复制链接"),
+                                            );
+                                        }
+                                    }}
+                                >
+                                    {tx("复制")}
+                                </button>
+                            </div>
+                        )}
+                        <div className="checkout-confirm">
+                            <strong>
+                                {tx("合计")} {feeReady ? money(due + fee) : "—"}
+                            </strong>
+                            <button
+                                className="primary"
+                                disabled={
+                                    busy ||
+                                    (!awaitingConfirmation &&
+                                        due > 0 &&
+                                        (!method ||
+                                            methods.loading ||
+                                            Boolean(methods.error)))
+                                }
+                                onClick={() =>
+                                    awaitingConfirmation
+                                        ? reload()
+                                        : method?.payment === "StripeCredit" &&
+                                            due > 0
+                                          ? setCardMethod(Number(method.id))
+                                          : pay(due > 0 ? selected : 0)
+                                }
+                            >
+                                {tx(
+                                    busy
+                                        ? "提交中…"
+                                        : awaitingConfirmation
+                                          ? "检查支付结果"
+                                          : due > 0
+                                            ? "确认支付"
+                                            : "确认开通",
+                                )}
+                            </button>
+                        </div>
+                        {waiting && (
+                            <p role="status" className="muted">
+                                {tx("正在等待支付确认，请勿重复付款。")}
+                            </p>
+                        )}
+                        <div className="checkout-secondary">
+                            {awaitingConfirmation ? (
+                                <button
+                                    disabled={busy}
+                                    onClick={() => {
+                                        setWaiting(false);
+                                        setQr("");
+                                    }}
+                                >
+                                    {tx("重新发起支付")}
+                                </button>
+                            ) : (
+                                <button
+                                    disabled={busy}
+                                    onClick={() => {
+                                        setPollError("");
+                                        reload();
+                                    }}
+                                >
+                                    {tx("检查支付结果")}
+                                </button>
+                            )}
+                            <button
+                                disabled={busy}
+                                onClick={() => setCancelOpen(true)}
+                            >
+                                {tx("取消订单")}
+                            </button>
+                        </div>
+                    </section>
+                )}
+            </div>
+            {pollError && (
+                <div className="alert" role="alert">
+                    {pollError}
+                    <button onClick={reload}>{tx("检查支付结果")}</button>
+                </div>
+            )}
+            {status === 1 && (
+                <button onClick={reload}>{tx("检查支付结果")}</button>
+            )}
+            <a
+                className="checkout-help"
+                href={`#/ticket/order/${encodeURIComponent(order.trade_no)}`}
+            >
+                {tx("此订单需要帮助？")}
+            </a>
+            {cancelOpen && (
+                <Modal
+                    title={tx("取消订单")}
+                    close={() => {
+                        if (!busy) setCancelOpen(false);
+                    }}
+                >
+                    <div className="pad">
+                        <p>
+                            {tx(
+                                "取消后，已抵扣的余额会返还。已付款时请先检查支付结果。",
+                            )}
+                        </p>
+                        <div className="actions">
+                            <button
+                                disabled={busy}
+                                onClick={() => setCancelOpen(false)}
+                            >
+                                {tx("继续支付")}
+                            </button>
+                            <button disabled={busy} onClick={cancel}>
+                                {tx(busy ? "提交中…" : "确认取消订单")}
+                            </button>
+                        </div>
+                    </div>
+                </Modal>
+            )}
+            {cardMethod && status === 0 && (
+                <Modal
+                    title={tx("信用卡支付")}
+                    close={() => {
+                        if (!busy) setCardMethod(null);
+                    }}
+                >
+                    <div className="checkout-card">
+                        <p className="pad">
+                            {tx("合计")} {money(due + fee)}
+                        </p>
+                        {renderCard(cardMethod, (token) =>
+                            pay(cardMethod, token),
+                        )}
+                    </div>
+                </Modal>
+            )}
+        </div>
+    );
+}

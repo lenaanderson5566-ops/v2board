@@ -100,6 +100,9 @@ describe("header controls", () => {
         expect(
             screen.getByRole("link", { name: "通知设置" }).getAttribute("href"),
         ).toBe("#/notifications");
+        expect(screen.queryByRole("link", { name: "订单记录" })).toBeNull();
+        expect(screen.queryByRole("link", { name: "帮助中心" })).toBeNull();
+        expect(screen.queryByRole("link", { name: "流量记录" })).toBeNull();
         expect(screen.getByText("A")).toBeTruthy();
         expect(screen.getByText("PRO")).toBeTruthy();
         fireEvent.pointerDown(document.body);

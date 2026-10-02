@@ -14,6 +14,8 @@ class AuthLogin extends FormRequest
     public function rules()
     {
         return [
+            'language' => \App\Services\LanguagePreferenceService::rule(),
+            'language_selected' => 'sometimes|boolean',
             'email' => 'required|email:strict',
             'password' => 'required|min:8'
         ];

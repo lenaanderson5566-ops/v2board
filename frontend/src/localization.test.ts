@@ -2,6 +2,12 @@ import { describe, it, expect, vi } from "vitest";
 import { readFileSync } from "node:fs";
 import ts from "typescript";
 const storage = new Map<string, string>();
+const pending = new Map<string, string>();
+vi.stubGlobal("sessionStorage", {
+    getItem: (k: string) => pending.get(k) || null,
+    setItem: (k: string, v: string) => pending.set(k, v),
+    removeItem: (k: string) => pending.delete(k),
+});
 vi.stubGlobal("window", { V2BOARD: { mode: "user" } });
 vi.stubGlobal("document", { documentElement: { lang: "", dir: "" } });
 vi.stubGlobal("navigator", { language: "zh-Hant-HK" });
@@ -16,6 +22,9 @@ const {
     changeLanguage,
     tx,
     languageKey,
+    setLanguagePersistence,
+    loginLanguagePreference,
+    applyAccountLanguage,
 } = await import("./i18n");
 const catalogs = Object.fromEntries(
     languages.map((l) => [
@@ -164,3 +173,38 @@ describe("localization resources", () => {
             }
         });
 });
+
+
+describe("account language preference", () => {
+    it("preserves an explicit anonymous choice until successful authentication", async () => {
+        setLanguagePersistence(async () => false);
+        await changeLanguage("ja-JP");
+        expect(loginLanguagePreference()).toEqual({ language: "ja-JP", language_selected: true });
+        await applyAccountLanguage("ru-RU");
+        expect(localeForTest()).toBe("ru-RU");
+        expect(loginLanguagePreference().language_selected).toBe(false);
+    });
+    it("restores a supported account language without making another save", async () => {
+        const save = vi.fn(async () => true);
+        setLanguagePersistence(save);
+        await applyAccountLanguage("fa-IR");
+        expect(save).not.toHaveBeenCalled();
+        expect(document.documentElement.dir).toBe("rtl");
+        await changeLanguage("en-US");
+        expect(save).toHaveBeenCalledWith("en-US");
+        expect(loginLanguagePreference().language_selected).toBe(false);
+    });
+    it("keeps the old language when persistence fails and allows retry", async () => {
+        await applyAccountLanguage("en-US");
+        setLanguagePersistence(async () => { throw Error("save failed"); });
+        await expect(changeLanguage("ko-KR")).rejects.toThrow("save failed");
+        expect(localeForTest()).toBe("en-US");
+        expect(storage.get(languageKey)).toBe("en-US");
+        setLanguagePersistence(async () => true);
+        await changeLanguage("ko-KR");
+        expect(localeForTest()).toBe("ko-KR");
+        await applyAccountLanguage("unsupported");
+        expect(localeForTest()).toBe("ko-KR");
+    });
+});
+function localeForTest() { return i18n.resolvedLanguage; }

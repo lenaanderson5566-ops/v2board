@@ -67,8 +67,26 @@ export const locale = () =>
     i18next.resolvedLanguage || i18next.language || "en-US";
 export const tx = (key: string, values?: Record<string, unknown>): string =>
     String(i18next.t(key, values || {}));
+const pendingLanguageKey = `${languageKey}.pending`;
+let persistLanguage: ((value: string) => Promise<boolean>) | undefined;
+export function setLanguagePersistence(save: (value: string) => Promise<boolean>) {
+    persistLanguage = save;
+}
+export function loginLanguagePreference() {
+    return { language: locale(), language_selected: sessionStorage.getItem(pendingLanguageKey) === locale() };
+}
+export async function applyAccountLanguage(value: unknown) {
+    sessionStorage.removeItem(pendingLanguageKey);
+    if (typeof value !== "string" || !languages.some((l) => l.code === value)) return;
+    localStorage.setItem(languageKey, value);
+    await i18next.changeLanguage(value);
+}
 export async function changeLanguage(value: string) {
     if (!languages.some((l) => l.code === value)) return;
+    // Save first: a failed request leaves the previous preference intact.
+    const savedToAccount = persistLanguage ? await persistLanguage(value) : false;
+    if (savedToAccount) sessionStorage.removeItem(pendingLanguageKey);
+    else sessionStorage.setItem(pendingLanguageKey, value);
     localStorage.setItem(languageKey, value);
     await i18next.changeLanguage(value);
 }

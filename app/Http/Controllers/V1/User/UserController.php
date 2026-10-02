@@ -278,6 +278,7 @@ class UserController extends Controller
         $user = User::where('id', $request->user['id'])
             ->select([
                 'email',
+                'language',
                 'transfer_enable',
                 'device_limit',
                 'last_login_at',
@@ -401,6 +402,7 @@ class UserController extends Controller
     public function update(UserUpdate $request)
     {
         $updateData = $request->only([
+            'language',
             'auto_renewal',
             'remind_expire',
             'remind_traffic'

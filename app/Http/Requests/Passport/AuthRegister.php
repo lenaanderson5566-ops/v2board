@@ -14,6 +14,7 @@ class AuthRegister extends FormRequest
     public function rules()
     {
         return [
+            'language' => \App\Services\LanguagePreferenceService::rule(),
             'email' => 'required|email:strict',
             'password' => 'required|min:8',
             'invitation' => 'nullable|string|regex:/^[a-f0-9]{64}$/'

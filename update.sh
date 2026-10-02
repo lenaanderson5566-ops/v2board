@@ -19,6 +19,7 @@ BACKUP=
 MAINTENANCE=0
 MIGRATION=database/migrations/2026_10_01_000001_add_trusted_x_forwarded_for_to_v2node.php
 INVITATION_MIGRATION=database/migrations/2026_10_02_000001_create_email_invitations.php
+LANGUAGE_MIGRATION=database/migrations/2026_10_02_000002_add_language_to_users.php
 usage() {
     cat <<'HELP'
 Usage: bash update.sh [options]
@@ -109,8 +110,9 @@ done
 git cat-file -e "$TARGET:public/console/.vite/manifest.json" || die 'Target has no built frontend manifest'
 git cat-file -e "$TARGET:$MIGRATION" || die 'Target lacks the approved migration'
 git cat-file -e "$TARGET:$INVITATION_MIGRATION" || die 'Target lacks the email invitation migration'
+git cat-file -e "$TARGET:$LANGUAGE_MIGRATION" || die 'Target lacks the user language migration'
 while IFS= read -r changed; do
-    [[ -z "$changed" || "$changed" == "$MIGRATION" || "$changed" == "$INVITATION_MIGRATION" ]] || die "Unexpected migration: $changed; review scope first"
+    [[ -z "$changed" || "$changed" == "$MIGRATION" || "$changed" == "$INVITATION_MIGRATION" || "$changed" == "$LANGUAGE_MIGRATION" ]] || die "Unexpected migration: $changed; review scope first"
 done < <(git diff --name-only "$OLD_COMMIT" "$TARGET" -- database/migrations)
 WORK_DIR=$(mktemp -d "${TMPDIR:-/tmp}/v2board-update.XXXXXXXX")
 git show "$TARGET:composer.json" > "$WORK_DIR/composer.json"
@@ -244,6 +246,7 @@ cp -- "$WORK_DIR/composer.json" composer.json
 "$PHP_BIN" artisan view:clear
 "$PHP_BIN" artisan migrate --path="$MIGRATION" --force
 "$PHP_BIN" artisan migrate --path="$INVITATION_MIGRATION" --force
+"$PHP_BIN" artisan migrate --path="$LANGUAGE_MIGRATION" --force
 "$PHP_BIN" artisan config:cache
 "$PHP_BIN" artisan view:cache
 "$PHP_BIN" artisan console:verify

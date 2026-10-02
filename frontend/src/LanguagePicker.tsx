@@ -1,9 +1,12 @@
+import { useState, useRef } from "react";
 import { Languages, Check, ChevronDown } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { languages, changeLanguage, locale, tx } from "./i18n";
 import { useHeaderPopover } from "./useHeaderPopover";
 export function LanguagePicker() {
     useTranslation();
+    const saving = useRef(false);
+    const [busy, setBusy] = useState(false), [error, setError] = useState("");
     const { id, open, setOpen, root, trigger, toggle } = useHeaderPopover();
     const selected =
         languages.find((language) => language.code === locale()) ||
@@ -25,7 +28,9 @@ export function LanguagePicker() {
                 aria-expanded={open}
                 aria-controls={id}
                 title={selected.name}
-                onClick={toggle}
+                aria-disabled={busy}
+                aria-busy={busy}
+                onClick={() => { if (!busy) toggle(); }}
             >
                 <Languages size={18} aria-hidden="true" />
                 <span className="language-name">{selected.name}</span>
@@ -35,6 +40,7 @@ export function LanguagePicker() {
                     aria-hidden="true"
                 />
             </button>
+            {error && <small role="alert">{error}</small>}
             {open && (
                 <div
                     id={id}
@@ -50,10 +56,20 @@ export function LanguagePicker() {
                             aria-checked={language.code === selected.code}
                             data-popover-item
                             lang={language.code}
-                            onClick={() => {
-                                void changeLanguage(language.code);
-                                setOpen(false);
-                                trigger.current?.focus();
+                            disabled={busy}
+                            onClick={async () => {
+                                if (saving.current) return;
+                                saving.current = true;
+                                setBusy(true); setError("");
+                                try {
+                                    await changeLanguage(language.code);
+                                    setOpen(false);
+                                } catch (reason) {
+                                    setError((reason as Error).message);
+                                } finally {
+                                    saving.current = false; setBusy(false);
+                                    trigger.current?.focus();
+                                }
                             }}
                         >
                             <span>{language.name}</span>

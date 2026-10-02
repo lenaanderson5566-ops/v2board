@@ -594,6 +594,7 @@ CREATE TABLE `v2_user` (
                            `auto_renewal` tinyint(4) DEFAULT '0',
                            `remind_expire` tinyint(4) DEFAULT '1',
                            `remind_traffic` tinyint(4) DEFAULT '1',
+                           `language` varchar(10) DEFAULT NULL,
                            `token` char(32) NOT NULL,
                            `expired_at` bigint(20) DEFAULT '0',
                            `remarks` text,

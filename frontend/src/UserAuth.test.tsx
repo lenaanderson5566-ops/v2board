@@ -21,7 +21,12 @@ const mocks = vi.hoisted(() => ({
     },
 }));
 vi.mock("./api", () => ({ ...mocks, storageKey: "auth-flow-test" }));
-vi.mock("./i18n", () => ({ tx: (key: string) => key }));
+vi.mock("./i18n", () => ({
+    tx: (key: string) => key,
+    locale: () => "ja-JP",
+    loginLanguagePreference: () => ({ language: "ja-JP", language_selected: true }),
+    applyAccountLanguage: vi.fn(),
+}));
 vi.mock("./experience-copy", () => ({ e: (key: string) => key }));
 vi.mock("./ux", () => ({ ux: (key: string) => key }));
 import { UserAuth } from "./UserAuth";
@@ -172,6 +177,7 @@ describe("user account steps", () => {
         ]);
         expect(mocks.request.mock.calls[1][1]).toMatchObject({
             email_code: "123456",
+            language: "ja-JP",
             password: "A-long-test-phrase!23",
         });
         expect(mocks.navigate).toHaveBeenCalledWith("dashboard");

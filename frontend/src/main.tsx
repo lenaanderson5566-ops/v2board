@@ -1,4 +1,4 @@
-import { tx, locale } from "./i18n";
+import { tx, locale, setLanguagePersistence, applyAccountLanguage } from "./i18n";
 import React, { useEffect, useRef, useState, type ReactNode } from "react";
 import { createRoot } from "react-dom/client";
 import {
@@ -47,6 +47,11 @@ import { EmbeddedBrowserNotice } from "./EmbeddedBrowserNotice";
 import { currentDevice } from "./user-experience";
 import { userNavigation } from "./user-navigation";
 import { WorkspaceSkeleton } from "./WorkspaceSkeleton";
+setLanguagePersistence(async (language) => {
+    if (boot.mode !== "user" || !localStorage.getItem(storageKey)) return false;
+    await request("user/update", { language });
+    return true;
+});
 const UserContent = React.lazy(() => import("./user-entry"));
 const AdminContent = React.lazy(() => import("./admin-entry"));
 const Landing = React.lazy(() => import("./Landing"));
@@ -432,6 +437,7 @@ function App() {
                 .then(async (r) => {
                     if (boot.mode === "admin")
                         await request(admin("config/fetch"));
+                    if (boot.mode === "user") await applyAccountLanguage(r.data.language);
                     setUser(r.data);
                 })
                 .catch((e) => {

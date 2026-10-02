@@ -61,7 +61,7 @@ function fill(password = "new-password", confirmation = password) {
     });
 }
 describe("header controls", () => {
-    it("selects a language and closes the menu with focus returned", () => {
+    it("selects a language and closes the menu with focus returned", async () => {
         render(<LanguagePicker />);
         const trigger = screen.getByRole("button", { name: "界面语言" });
         fireEvent.click(trigger);
@@ -72,8 +72,19 @@ describe("header controls", () => {
             screen.getByRole("menuitemradio", { name: "简体中文" }),
         );
         expect(mocks.changeLanguage).toHaveBeenCalledWith("zh-CN");
-        expect(screen.queryByRole("menu")).toBeNull();
+        await waitFor(() => expect(screen.queryByRole("menu")).toBeNull());
         expect(document.activeElement).toBe(trigger);
+    });
+    it("shows a failed save and allows retry without closing the menu", async () => {
+        mocks.changeLanguage.mockRejectedValueOnce(Error("save failed"));
+        render(<LanguagePicker />);
+        fireEvent.click(screen.getByRole("button", { name: "界面语言" }));
+        fireEvent.click(screen.getByRole("menuitemradio", { name: "简体中文" }));
+        expect(await screen.findByRole("alert")).toHaveProperty("textContent", "save failed");
+        expect(screen.getByRole("menu")).toBeTruthy();
+        fireEvent.click(screen.getByRole("menuitemradio", { name: "简体中文" }));
+        await waitFor(() => expect(screen.queryByRole("menu")).toBeNull());
+        expect(mocks.changeLanguage).toHaveBeenCalledTimes(2);
     });
     it("supports keyboard navigation and Escape", () => {
         render(<LanguagePicker />);

@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { Eye, EyeOff, ArrowLeft, CheckCircle2, Sparkles } from "lucide-react";
 import { boot, request, storageKey, navigate, type Row } from "./api";
-import { tx } from "./i18n";
+import { tx, locale, loginLanguagePreference, applyAccountLanguage } from "./i18n";
 import { ux } from "./ux";
 import { e } from "./experience-copy";
 import { passwordScore } from "./user-experience";
@@ -108,6 +108,7 @@ export function UserAuth({
                 password,
                 email_code: code,
                 invitation,
+                language: locale(),
                 recaptcha_data: captcha,
             };
             if (forget) {
@@ -122,12 +123,14 @@ export function UserAuth({
                 setRegistered(true);
             }
             const result = await request("passport/auth/login", {
+                ...loginLanguagePreference(),
                 email: email.trim(),
                 password,
                 recaptcha_data: captcha,
             });
             localStorage.setItem(storageKey, result.data.auth_data);
             const info = await request("user/info");
+            await applyAccountLanguage(info.data.language);
             onLogin(info.data);
             navigate("dashboard");
         } catch (reason) {

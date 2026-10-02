@@ -79,6 +79,7 @@ class AuthController extends Controller
         }
         $user = new User();
         $user->email = $email;
+        $user->language = $request->input('language');
         $user->password = password_hash($password, PASSWORD_DEFAULT);
         $user->uuid = Helper::guid(true);
         $user->token = Helper::guid();
@@ -197,6 +198,10 @@ class AuthController extends Controller
             'reason' => 'success'
         ]);
 
+        // An automatic browser locale must not overwrite an account preference.
+        if ($request->filled('language') && ($user->language === null || $request->boolean('language_selected'))) {
+            $user->language = $request->input('language');
+        }
         $user->last_login_at = time();
         $user->last_login_ip = $this->encodeIp($request->ip());
         $user->save();

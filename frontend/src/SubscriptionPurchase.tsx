@@ -41,6 +41,7 @@ export function SubscriptionPurchase() {
     const sub = useData("user/getSubscribe");
     const [selected, setSelected] = useState<Row | null>(null);
     const [billingPeriod, setBillingPeriod] = useState("month_price");
+    const [mobilePlanId, setMobilePlanId] = useState<number | null>(null);
     const pending = unfinishedOrder(orders.data || []);
     const currentPlan = sub.data?.plan;
     const currentAvailable =
@@ -57,14 +58,16 @@ export function SubscriptionPurchase() {
         !visiblePlans.some((plan) => Number(plan.id) === Number(currentPlan.id))
     )
         visiblePlans.unshift(currentPlan);
+    const mobileActive =
+        visiblePlans.find((plan) => Number(plan.id) === mobilePlanId) ||
+        visiblePlans.find(
+            (plan) =>
+                Number(plan.id) ===
+                Number(sub.data?.plan_id || currentPlan?.id),
+        ) ||
+        visiblePlans[0];
     return (
-        <>
-            <PurchaseSteps step={1} />
-            <div className="purchase-intro">
-                <p className="muted">
-                    {tx("先选择适合的套餐，再确认费用和支付方式。")}
-                </p>
-            </div>
+        <section className="subscription-catalog">
             <State {...orders} retry={orders.reload}>
                 {pending && (
                     <div className="pending-order" role="status">
@@ -117,18 +120,42 @@ export function SubscriptionPurchase() {
                         </button>
                     </div>
                 )}
+                <div className="pricing-toolbar">
+                    <p className="muted">
+                        {tx("先选择适合的套餐，再确认费用和支付方式。")}
+                    </p>
+                    <div
+                        className="pricing-cycle"
+                        role="group"
+                        aria-label={tx("选择订阅周期")}
+                    >
+                        {["month_price", "year_price"].map((key) => (
+                            <button
+                                key={key}
+                                aria-pressed={billingPeriod === key}
+                                onClick={() => setBillingPeriod(key)}
+                            >
+                                {tx(billingPeriods[key])}
+                            </button>
+                        ))}
+                    </div>
+                </div>
                 <div
-                    className="pricing-cycle"
+                    className="mobile-plan-picker"
                     role="group"
-                    aria-label={tx("选择订阅周期")}
+                    aria-label={tx("选择套餐")}
                 >
-                    {["month_price", "year_price"].map((key) => (
+                    {visiblePlans.map((plan) => (
                         <button
-                            key={key}
-                            aria-pressed={billingPeriod === key}
-                            onClick={() => setBillingPeriod(key)}
+                            key={plan.id}
+                            type="button"
+                            aria-pressed={
+                                Number(mobileActive?.id) === Number(plan.id)
+                            }
+                            aria-controls={`pricing-plan-${plan.id}`}
+                            onClick={() => setMobilePlanId(Number(plan.id))}
                         >
-                            {tx(billingPeriods[key])}
+                            {plan.name}
                         </button>
                     ))}
                 </div>
@@ -156,7 +183,11 @@ export function SubscriptionPurchase() {
                                 soldOut ||
                                 (same && Number(plan.renew) === 0);
                             return (
-                                <article className="plan-card" key={plan.id}>
+                                <article
+                                    id={`pricing-plan-${plan.id}`}
+                                    className={`plan-card ${Number(mobileActive?.id) === Number(plan.id) ? "mobile-active" : ""}`}
+                                    key={plan.id}
+                                >
                                     <div className="pricing-card-heading">
                                         <h2>{plan.name}</h2>
                                         {same && (
@@ -240,7 +271,7 @@ export function SubscriptionPurchase() {
                     />
                 </Modal>
             )}
-        </>
+        </section>
     );
 }
 function PlanSelection({ plan, close }: { plan: Row; close: () => void }) {

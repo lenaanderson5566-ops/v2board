@@ -458,3 +458,29 @@ it("carries the yearly card selection into checkout and removes duplicate metada
         }),
     );
 });
+
+it("defaults mobile details to the current plan and preserves selection when changing cycle", () => {
+    mocks.plans = [
+        { ...plan, id: 1, name: "Basic" },
+        { ...plan, id: 2, name: "Premium" },
+    ];
+    mocks.sub = { plan_id: 2 };
+    const view = render(<SubscriptionPurchase />);
+    expect(view.container.querySelector(".mobile-active")?.id).toBe(
+        "pricing-plan-2",
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Basic" }));
+    expect(view.container.querySelector(".mobile-active")?.id).toBe(
+        "pricing-plan-1",
+    );
+    fireEvent.click(screen.getByRole("button", { name: "年付" }));
+    expect(view.container.querySelector(".mobile-active")?.id).toBe(
+        "pricing-plan-1",
+    );
+    mocks.plans = [{ ...plan, id: 2, name: "Premium" }];
+    view.rerender(<SubscriptionPurchase />);
+    expect(view.container.querySelector(".mobile-active")?.id).toBe(
+        "pricing-plan-2",
+    );
+});
+

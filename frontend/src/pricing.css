@@ -6,7 +6,8 @@
     border-radius: 999px;
     background: #f1f1f1;
     width: fit-content;
-    margin: 8px auto 28px;
+    margin: 0;
+    flex-shrink: 0;
 }
 .app.user .pricing-cycle button {
     border: 0;
@@ -24,7 +25,7 @@
     align-items: center;
     justify-content: space-between;
     gap: 12px;
-    min-height: 48px;
+    min-height: 36px;
 }
 .app.user .pricing-card-heading h2 {
     margin: 0;
@@ -34,8 +35,8 @@
     flex-shrink: 0;
 }
 .app.user .pricing-summary {
-    min-height: 150px;
-    padding-block: 18px;
+    min-height: 104px;
+    padding-block: 12px;
 }
 .app.user .pricing-summary .plan-price {
     margin: 0 0 10px;
@@ -46,7 +47,7 @@
     line-height: 1.6;
 }
 .app.user .pricing-plans .plan-card > .primary {
-    margin: 0 0 24px;
+    margin: 0 0 16px;
     width: 100%;
     border-radius: 999px;
     min-height: 48px;
@@ -60,5 +61,89 @@
 @media (max-width: 600px) {
     .app.user .pricing-summary {
         min-height: auto;
+    }
+}
+
+.app.user .pricing-toolbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    margin-bottom: 20px;
+}
+.app.user .pricing-toolbar p {
+    margin: 0;
+    font-size: 14px;
+}
+.app.user .pricing-plans {
+    gap: 20px;
+    align-items: start;
+}
+.app.user .pricing-plans .plan-card {
+    padding: 24px;
+}
+.app.user .pricing-plans .plan-feature-list {
+    margin-block: 4px 0;
+    gap: 4px;
+}
+.app.user .pricing-plans .plan-feature-list li {
+    padding-block: 5px;
+}
+.app.user .mobile-plan-picker {
+    display: none;
+}
+@media (max-width: 700px) {
+    .app.user .pricing-toolbar {
+        justify-content: center;
+        margin-bottom: 12px;
+    }
+    .app.user .pricing-toolbar p {
+        display: none;
+    }
+    .app.user .mobile-plan-picker {
+        display: flex;
+        gap: 8px;
+        overflow-x: auto;
+        padding: 2px 0 10px;
+        margin-bottom: 4px;
+    }
+    .app.user .mobile-plan-picker button {
+        flex: 1 0 auto;
+        min-height: 44px;
+        max-width: 220px;
+        white-space: normal;
+        overflow-wrap: anywhere;
+        padding: 10px 16px;
+        border-radius: 12px;
+    }
+    .app.user .mobile-plan-picker button[aria-pressed="true"] {
+        background: #243b31;
+        border-color: #243b31;
+        color: white;
+    }
+    .app.user .pricing-plans {
+        display: block;
+    }
+    .app.user .pricing-plans .plan-card {
+        display: none;
+        padding: 20px;
+    }
+    .app.user .pricing-plans .plan-card.mobile-active {
+        display: flex;
+    }
+    .app.user .pricing-summary {
+        min-height: auto;
+        padding-block: 10px;
+    }
+    .app.user .pricing-summary .plan-price {
+        font-size: 30px;
+        margin-bottom: 4px;
+    }
+    .app.user .pricing-card-heading h2 {
+        font-size: 20px;
+    }
+    .app.user .pricing-plans .plan-feature-list li {
+        font-size: 14px;
+        padding-block: 5px;
     }
 }

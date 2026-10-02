@@ -12,6 +12,8 @@ class UserRoute
             'middleware' => 'user'
         ], function ($router) {
             // User
+            $router->get('/usage/reset', 'V1\\User\\UsageResetController@fetch');
+            $router->post('/usage/reset', 'V1\\User\\UsageResetController@consume')->middleware('throttle:20,1');
             $router->post('/logout', 'V1\\User\\UserController@logout');
             $router->get ('/unbindTelegram', 'V1\\User\\UserController@unbindTelegram');
             $router->get ('/resetSecurity', 'V1\\User\\UserController@resetSecurity');

@@ -42,10 +42,16 @@ const placeholders = (v: string) =>
 const { landingCopy } = await import("./landing-copy");
 await import("./ux");
 await import("./experience-copy");
+await import("./billing-copy");
 describe("landing and interactive control translations", () => {
     for (const { code } of languages)
         it(`${code} provides landing and control namespaces`, () => {
-            for (const namespace of ["landing", "ux", "experience"]) {
+            for (const namespace of [
+                "landing",
+                "ux",
+                "experience",
+                "billing",
+            ]) {
                 const base = i18n.getResourceBundle("zh-CN", namespace);
                 const translated = i18n.getResourceBundle(code, namespace);
                 for (const [key, value] of Object.entries(base)) {
@@ -79,6 +85,8 @@ describe("localization resources", () => {
         for (const name of [
             "main.tsx",
             "user.tsx",
+            "BillingPage.tsx",
+            "UsagePage.tsx",
             "ui.tsx",
             "api.ts",
             "LanguagePicker.tsx",
@@ -174,12 +182,14 @@ describe("localization resources", () => {
         });
 });
 
-
 describe("account language preference", () => {
     it("preserves an explicit anonymous choice until successful authentication", async () => {
         setLanguagePersistence(async () => false);
         await changeLanguage("ja-JP");
-        expect(loginLanguagePreference()).toEqual({ language: "ja-JP", language_selected: true });
+        expect(loginLanguagePreference()).toEqual({
+            language: "ja-JP",
+            language_selected: true,
+        });
         await applyAccountLanguage("ru-RU");
         expect(localeForTest()).toBe("ru-RU");
         expect(loginLanguagePreference().language_selected).toBe(false);
@@ -196,7 +206,9 @@ describe("account language preference", () => {
     });
     it("keeps the old language when persistence fails and allows retry", async () => {
         await applyAccountLanguage("en-US");
-        setLanguagePersistence(async () => { throw Error("save failed"); });
+        setLanguagePersistence(async () => {
+            throw Error("save failed");
+        });
         await expect(changeLanguage("ko-KR")).rejects.toThrow("save failed");
         expect(localeForTest()).toBe("en-US");
         expect(storage.get(languageKey)).toBe("en-US");
@@ -207,4 +219,6 @@ describe("account language preference", () => {
         expect(localeForTest()).toBe("ko-KR");
     });
 });
-function localeForTest() { return i18n.resolvedLanguage; }
+function localeForTest() {
+    return i18n.resolvedLanguage;
+}

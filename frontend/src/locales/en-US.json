@@ -373,5 +373,6 @@
   "{{count}} 台设备": "{{count}} devices",
   "{{count}} 台设备_one": "{{count}} device",
   "{{count}} 台设备_other": "{{count}} devices",
-  "服务没有返回 CSV 文件": "The server did not return a CSV file"
+  "服务没有返回 CSV 文件": "The server did not return a CSV file",
+  "管理账户信息、通知设置与账户安全。": "Manage account details, notifications and security."
 }

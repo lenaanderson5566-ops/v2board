@@ -1,4 +1,9 @@
-import { tx, locale, setLanguagePersistence, applyAccountLanguage } from "./i18n";
+import {
+    tx,
+    locale,
+    setLanguagePersistence,
+    applyAccountLanguage,
+} from "./i18n";
 import React, { useEffect, useRef, useState, type ReactNode } from "react";
 import { createRoot } from "react-dom/client";
 import {
@@ -123,7 +128,9 @@ function Auth({
         <div className="auth-layout">
             <section className="auth-brand">
                 <a className="brand" href="/">
-                    <span className="brand-mark"><Sparkles size={19} aria-hidden="true" /></span>
+                    <span className="brand-mark">
+                        <Sparkles size={19} aria-hidden="true" />
+                    </span>
                     {boot.title}
                 </a>
                 <div>
@@ -439,7 +446,8 @@ function App() {
                 .then(async (r) => {
                     if (boot.mode === "admin")
                         await request(admin("config/fetch"));
-                    if (boot.mode === "user") await applyAccountLanguage(r.data.language);
+                    if (boot.mode === "user")
+                        await applyAccountLanguage(r.data.language);
                     setUser(r.data);
                 })
                 .catch((e) => {
@@ -517,7 +525,7 @@ function App() {
         item = [
             ...nav,
             { key: "order", label: "账单" },
-            { key: "traffic", label: "流量记录" },
+            { key: "traffic", label: "使用情况" },
             { key: "invite", label: "邀请好友" },
             { key: "ticket", label: "工单支持" },
             { key: "security", label: "账户安全" },
@@ -539,7 +547,11 @@ function App() {
                 : boot.mode === "user" &&
                     ["security", "notifications"].includes(current)
                   ? "profile"
-                  : current,
+                  : boot.mode === "user" &&
+                      current === "traffic" &&
+                      user.account_status?.state === "active"
+                    ? "dashboard"
+                    : current,
         mobileNavigationCurrent =
             ["order", "plan"].includes(current) &&
             user.account_status?.state === "active"
@@ -609,7 +621,9 @@ function App() {
                             boot.mode === "admin" ? `/${boot.adminPath}` : "/"
                         }
                     >
-                        <span className="brand-mark"><Sparkles size={19} aria-hidden="true" /></span>
+                        <span className="brand-mark">
+                            <Sparkles size={19} aria-hidden="true" />
+                        </span>
                         <span>
                             {boot.title}
                             <small>

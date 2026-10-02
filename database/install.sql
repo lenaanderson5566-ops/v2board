@@ -608,6 +608,45 @@ CREATE TABLE `v2_user` (
 
 -- 2025-09-12 10:05:00
 
+CREATE TABLE IF NOT EXISTS `v2_usage_reset_batch` (
+  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
+  `request_key` varchar(64) NOT NULL,
+  `actor_id` int NOT NULL,
+  `kind` varchar(16) NOT NULL,
+  `payload_hash` varchar(64) NOT NULL,
+  `affected` int NOT NULL DEFAULT 0,
+  `created_at` int NOT NULL,
+  PRIMARY KEY (`id`), UNIQUE KEY `v2_usage_reset_batch_request_key_unique` (`request_key`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS `v2_usage_reset_credit` (
+  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
+  `user_id` int NOT NULL,
+  `batch_id` bigint unsigned NOT NULL,
+  `quantity` int NOT NULL,
+  `remaining` int NOT NULL,
+  `expires_at` bigint DEFAULT NULL,
+  `created_at` int NOT NULL,
+  PRIMARY KEY (`id`), KEY `v2_usage_reset_credit_user_id_index` (`user_id`),
+  UNIQUE KEY `v2_usage_reset_credit_batch_id_user_id_unique` (`batch_id`,`user_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS `v2_usage_reset_log` (
+  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
+  `user_id` int NOT NULL,
+  `actor_id` int NOT NULL,
+  `credit_id` bigint unsigned DEFAULT NULL,
+  `batch_id` bigint unsigned DEFAULT NULL,
+  `kind` varchar(16) NOT NULL,
+  `quantity` int NOT NULL DEFAULT 0,
+  `u_before` bigint NOT NULL DEFAULT 0,
+  `d_before` bigint NOT NULL DEFAULT 0,
+  `request_key` varchar(64) DEFAULT NULL,
+  `created_at` int NOT NULL,
+  PRIMARY KEY (`id`), KEY `v2_usage_reset_log_user_id_created_at_index` (`user_id`,`created_at`),
+  UNIQUE KEY `v2_usage_reset_log_user_id_request_key_unique` (`user_id`,`request_key`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
 DROP TABLE IF EXISTS `v2_plan_translation`;
 CREATE TABLE `v2_plan_translation` (
   `id` int(11) NOT NULL AUTO_INCREMENT,

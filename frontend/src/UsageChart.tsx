@@ -1,11 +1,18 @@
 import { useState } from "react";
 import { e } from "./experience-copy";
 import { tx, locale } from "./i18n";
-import { bytes } from "./api";
-import { State, useData } from "./ui";
+import { bytes, date } from "./api";
+import { State, Table, useData } from "./ui";
+import { b } from "./billing-copy";
 import { usageDays, type UsageRecord } from "./usage-data";
 
-export function UsageChart() {
+export function UsageChart({
+    showDetails = true,
+    showRecords = false,
+}: {
+    showDetails?: boolean;
+    showRecords?: boolean;
+}) {
     const data = useData<UsageRecord[]>("user/stat/getTrafficLog?days=30");
     const [period, setPeriod] = useState<"30days" | "week">("30days");
     const days = usageDays(data.data || [], period);
@@ -34,7 +41,7 @@ export function UsageChart() {
             </header>
             <div className="usage-section-title">
                 <h3>{e("dailyUsage")}</h3>
-                <a href="#/traffic">{e("usage")}</a>
+                {showDetails && <a href="#/traffic">{tx("使用情况")}</a>}
             </div>
             <p className="muted usage-scope">
                 {tx("按日汇总近{{days}}天上传与下载用量，包含今天。", {
@@ -108,6 +115,28 @@ export function UsageChart() {
                     <div className="usage-empty">{tx("暂无数据")}</div>
                 )}
             </State>
+            {showRecords && !!data.data?.length && (
+                <details className="usage-records">
+                    <summary>{b("usageDetails")}</summary>
+                    <Table
+                        data={data.data.filter(
+                            (row) =>
+                                Number(row.record_at) >=
+                                days[0].date.getTime() / 1000,
+                        )}
+                        columns={[
+                            [
+                                "record_at",
+                                tx("日期"),
+                                (row) => date(row.record_at),
+                            ],
+                            ["u", tx("上传"), (row) => bytes(row.u)],
+                            ["d", tx("下载"), (row) => bytes(row.d)],
+                            ["server_rate", tx("倍率")],
+                        ]}
+                    />
+                </details>
+            )}
         </section>
     );
 }

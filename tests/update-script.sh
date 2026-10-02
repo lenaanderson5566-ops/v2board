@@ -5,6 +5,7 @@ SOURCE=$(realpath "${1:-update.sh}")
 export REAL_PHP=$(command -v php)
 TMP=$(mktemp -d)
 trap 'rm -rf -- "$TMP"' EXIT
+trap '[[ ! -f "$TMP/output" ]] || cat "$TMP/output" >&2' ERR
 mkdir -p "$TMP/seed"
 cd "$TMP/seed"
 git init -q
@@ -24,6 +25,7 @@ echo '{}' > public/console/.vite/manifest.json
 echo '<?php // fixture' > database/migrations/2026_10_01_000001_add_trusted_x_forwarded_for_to_v2node.php
 echo '<?php // fixture' > database/migrations/2026_10_02_000001_create_email_invitations.php
 echo '<?php // fixture' > database/migrations/2026_10_02_000002_add_language_to_users.php
+echo '<?php // fixture' > database/migrations/2026_10_02_000003_create_usage_resets.php
 mkdir -p storage/geoip
 echo 'new mmdb' > storage/geoip/GeoLite2-ASN.mmdb
 git add -f storage/geoip/GeoLite2-ASN.mmdb
@@ -83,6 +85,7 @@ grep -q preserved config/v2board.php
 grep -q 'migrate --path=database/migrations/2026_10_01_000001' calls.log
 grep -q 'migrate --path=database/migrations/2026_10_02_000001' calls.log
 grep -q 'migrate --path=database/migrations/2026_10_02_000002' calls.log
+grep -q 'migrate --path=database/migrations/2026_10_02_000003' calls.log
 grep -q 'artisan console:verify' calls.log
 [[ $(stat -c %a public/console/.vite/manifest.json) == 644 ]]
 ! grep -Eq 'v2board:update|cache:clear|optimize:clear|artisan up' calls.log

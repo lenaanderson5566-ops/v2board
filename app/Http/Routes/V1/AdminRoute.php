@@ -109,6 +109,8 @@ class AdminRoute
             $router->post('/order/cancel', 'V1\\Admin\\OrderController@cancel');
             $router->post('/order/detail', 'V1\\Admin\\OrderController@detail');
             // User
+            $router->get('/user/usageResetPreview', 'V1\\Admin\\UserController@usageResetPreview');
+            $router->post('/user/usageReset', 'V1\\Admin\\UserController@usageReset')->middleware('throttle:10,1');
             $router->get ('/user/fetch', 'V1\\Admin\\UserController@fetch');
             $router->post('/user/update', 'V1\\Admin\\UserController@update');
             $router->get ('/user/getUserInfoById', 'V1\\Admin\\UserController@getUserInfoById');

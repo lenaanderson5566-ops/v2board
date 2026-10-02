@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { AdminUsageReset } from "./AdminUsageReset";
 import {
     admin,
     request,
@@ -139,6 +140,14 @@ export function UsersPage() {
                             <details className="admin-bulk-menu">
                                 <summary>操作</summary>
                                 <div className="admin-bulk-content">
+                                    <AdminUsageReset
+                                        filters={filters}
+                                        count={total}
+                                        onComplete={() => {
+                                            refresh();
+                                            setNotice("用量重置操作已完成");
+                                        }}
+                                    />
                                     <button
                                         disabled={busy || !total}
                                         onClick={exportCsv}
@@ -291,6 +300,21 @@ export function UsersPage() {
                     <details className="row-menu" open={context || undefined}>
                         <summary>更多操作</summary>
                         <div className="row-menu-content">
+                            <AdminUsageReset
+                                single
+                                filters={[
+                                    {
+                                        key: "id",
+                                        condition: "=",
+                                        value: row.id,
+                                    },
+                                ]}
+                                count={1}
+                                onComplete={() => {
+                                    refresh();
+                                    setNotice("储备重置次数已发放");
+                                }}
+                            />
                             <button
                                 onClick={() =>
                                     setDetail({ kind: "assign", row })

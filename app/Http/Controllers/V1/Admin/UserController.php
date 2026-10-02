@@ -23,6 +23,27 @@ use Illuminate\Support\Facades\Cache;
 
 class UserController extends Controller
 {
+    public function usageResetPreview(Request $request)
+    {
+        return response(['data' => ['count' => User::count()]]);
+    }
+
+    public function usageReset(Request $request, \App\Services\UsageResetService $service)
+    {
+        $data = $request->validate([
+            'kind' => 'required|in:global,grant', 'request_key' => 'required|uuid',
+            'expected_count' => 'required|integer|min:1', 'quantity' => 'required_if:kind,grant|integer|min:1|max:100',
+            'expires_at' => 'nullable|integer|min:'.(time() + 60),
+            'confirmation' => 'required_if:kind,global|in:RESET ALL USAGE',
+        ]);
+        $users = User::query();
+        if ($data['kind'] === 'grant') {
+            $this->filter($request, $users);
+            $data['filter'] = $request->input('filter', []);
+        }
+        return response(['data' => $service->batch($users, (int)$request->user['id'], $data)]);
+    }
+
     public function resetSecret(Request $request)
     {
         $user = User::find($request->input('id'));

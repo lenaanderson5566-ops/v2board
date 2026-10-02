@@ -19,6 +19,7 @@ vi.mock("./i18n", () => ({
     locale: () => "zh-CN",
     languages: [],
 }));
+vi.mock("./billing-copy", () => ({ b: (key: string) => key }));
 vi.mock("./experience-copy", () => ({ e: (key: string) => key }));
 vi.mock("./ux", () => ({ ux: (key: string) => key }));
 import { Notifications } from "./user";

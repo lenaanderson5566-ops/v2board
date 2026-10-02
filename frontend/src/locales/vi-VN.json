@@ -371,5 +371,6 @@
   "订阅二维码": "Mã QR đăng ký",
   "订阅链接和二维码包含访问凭据，请勿分享。": "Liên kết và mã QR chứa thông tin truy cập. Không chia sẻ.",
   "{{count}} 台设备": "{{count}} thiết bị",
-  "服务没有返回 CSV 文件": "Máy chủ không trả về tệp CSV"
+  "服务没有返回 CSV 文件": "Máy chủ không trả về tệp CSV",
+  "管理账户信息、通知设置与账户安全。": "Quản lý thông tin, thông báo và bảo mật tài khoản."
 }

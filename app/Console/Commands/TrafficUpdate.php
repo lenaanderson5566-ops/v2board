@@ -52,7 +52,8 @@ class TrafficUpdate extends Command
             return;
         }
 
-        $users = User::whereIn('id', array_keys($downloads))->get(['id', 'u', 'd']);
+        $users = User::whereIn('id', array_unique(array_merge(array_keys($uploads), array_keys($downloads))))->get(['id']);
+        if ($users->isEmpty()) return;
         $time = time();
         $casesU = [];
         $casesD = [];
@@ -62,8 +63,9 @@ class TrafficUpdate extends Command
             $upload = $uploads[$user->id] ?? 0;
             $download = $downloads[$user->id] ?? 0;
 
-            $casesU[] = "WHEN {$user->id} THEN " . ($user->u + $upload);
-            $casesD[] = "WHEN {$user->id} THEN " . ($user->d + $download);
+            // Add against the locked database value, never overwrite a concurrent usage reset.
+            $casesU[] = "WHEN {$user->id} THEN u + " . (int)$upload;
+            $casesD[] = "WHEN {$user->id} THEN d + " . (int)$download;
             $idList[] = $user->id;
         }
         $idListStr = implode(',', $idList);

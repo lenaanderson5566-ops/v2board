@@ -30,6 +30,7 @@ vi.mock("./i18n", () => ({
     tx: (key: string, args: any = {}) =>
         key.replace(/{{(\w+)}}/g, (_, name) => String(args[name])),
 }));
+vi.mock("./billing-copy", () => ({ b: (key: string) => key }));
 vi.mock("./experience-copy", () => ({ e: (key: string) => key }));
 vi.mock("./ui", () => ({
     useData: (path: string) => ({

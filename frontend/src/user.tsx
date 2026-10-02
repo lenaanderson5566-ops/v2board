@@ -1,10 +1,11 @@
+import { BillingPage } from "./BillingPage";
+import { UsagePage } from "./UsagePage";
 import { e } from "./experience-copy";
 import { SubscriptionPurchase } from "./SubscriptionPurchase";
 import { PaymentCheckout } from "./PaymentCheckout";
 import { EmailInvites } from "./EmailInvites";
 import { tx, locale, languages } from "./i18n";
 import { SubscriptionImport } from "./SubscriptionImport";
-import { UsageChart } from "./UsageChart";
 import { AccountEntry } from "./AccountEntry";
 import { HelpGuides, ContactSupport } from "./HelpGuides";
 import {
@@ -41,19 +42,18 @@ import {
     Pager,
     type Field,
 } from "./ui";
-const statuses = ["待支付", "开通中", "已取消", "已完成", "已折抵"];
 export function UserDashboard() {
     const info = useData("user/info"),
         sub = useData("user/getSubscribe"),
         notice = useData<Row[]>("user/notice/fetch");
     const user = info.data || {},
-        s = sub.data || {},
-        used = Number(user.u || 0) + Number(user.d || 0),
-        total = Math.max(0, Number(user.transfer_enable) || 0),
-        remaining = Math.max(0, total - used),
-        remainingPercent = total
-            ? Math.max(0, Math.min(100, (remaining / total) * 100))
-            : 0;
+        s = sub.data || {};
+    if (!info.data)
+        return (
+            <State {...info} retry={info.reload}>
+                <></>
+            </State>
+        );
     if (user.account_status && user.account_status.state !== "active")
         return (
             <State {...info} retry={info.reload}>
@@ -64,96 +64,9 @@ export function UserDashboard() {
             </State>
         );
     return (
-        <State {...info} retry={info.reload}>
-            <div className="dashboard-welcome">
-                <div>
-                    <h2>{e("connectionHelp")}</h2>
-                    <p className="muted">{e("connectionDetail")}</p>
-                </div>
-                <a className="button primary" href={user.account_status?.is_available && !user.account_status?.quota_exhausted ? "#/subscribe" : "#/plan"}>
-                    {tx(user.account_status?.is_available && !user.account_status?.quota_exhausted ? "快速开始" : "管理订阅")}
-                    <ArrowUpRight size={16} />
-                </a>
-            </div>
-            <div className="account-status-line">
-                <span className="badge success">{e("activeTitle")}</span>
-                {(user.account_status?.quota_exhausted ||
-                    user.account_status?.is_available === false) && (
-                    <p role="status">
-                        {e(
-                            user.account_status?.quota_exhausted
-                                ? "exhausted"
-                                : "unavailable",
-                        )}{" "}
-                        <a href="#/plan">{e("renew")}</a>
-                    </p>
-                )}
-            </div>
-            <div className="dashboard-grid">
-                <Panel
-                    title={tx("我的订阅")}
-                    actions={
-                        <a className="button" href="#/plan">
-                            {tx("管理订阅")}
-                            <ArrowUpRight size={15} />
-                        </a>
-                    }
-                >
-                    <State {...sub} retry={sub.reload}>
-                        <div className="pad">
-                            <h3>{s.plan?.name || tx("尚未订阅套餐")}</h3>
-                            <dl className="subscription-facts">
-                                <div>
-                                    <dt>{tx("订阅到期")}</dt>
-                                    <dd>
-                                        {!s.plan
-                                            ? e("noPlan")
-                                            : s.expired_at
-                                              ? new Date(
-                                                    s.expired_at * 1000,
-                                                ).toLocaleDateString(locale())
-                                              : tx("长期有效")}
-                                    </dd>
-                                </div>
-                                <div>
-                                    <dt>{e("deviceLimit")}</dt>
-                                    <dd>{s.device_limit || "—"}</dd>
-                                </div>
-                            </dl>
-                        </div>
-                    </State>
-                </Panel>
-                <section className="quota-card" aria-label={e("quota")}>
-                    <h3>{e("quota")}</h3>
-                    <div className="quota-value">
-                        <strong>
-                            {total ? `${Math.round(remainingPercent)}%` : "—"}
-                        </strong>
-                        <span>{e("remaining")}</span>
-                    </div>
-                    <div
-                        className="quota-progress"
-                        role="progressbar"
-                        aria-label={e("remaining")}
-                        aria-valuemin={0}
-                        aria-valuemax={100}
-                        aria-valuenow={remainingPercent}
-                    >
-                        <i style={{ width: `${remainingPercent}%` }} />
-                    </div>
-                    <p>
-                        {bytes(remaining)} / {bytes(total)} · {tx("已使用")}{" "}
-                        {bytes(used)}
-                    </p>
-                    <small>
-                        {typeof s.reset_day === "number"
-                            ? e("resetDays", { count: s.reset_day })
-                            : e("noReset")}
-                    </small>
-                </section>
-            </div>
-            <UsageChart />
-            <div className="dashboard-secondary">
+        <>
+            <UsagePage />
+            <div className="settings-content">
                 <Panel title={tx("最新公告")}>
                     <State {...notice} retry={notice.reload}>
                         {notice.data?.length ? (
@@ -170,7 +83,7 @@ export function UserDashboard() {
                     </State>
                 </Panel>
             </div>
-        </State>
+        </>
     );
 }
 export function Subscribe() {
@@ -275,17 +188,13 @@ export function Plans() {
     return <SubscriptionPurchase />;
 }
 export function Orders({ tradeNo }: { tradeNo?: string }) {
-    const d = useData<Row[] | Row>(
-        tradeNo
-            ? query("user/order/detail", { trade_no: tradeNo })
-            : "user/order/fetch",
-    );
+    return tradeNo ? <OrderView tradeNo={tradeNo} /> : <BillingPage />;
+}
+function OrderView({ tradeNo }: { tradeNo: string }) {
+    const d = useData<Row>(query("user/order/detail", { trade_no: tradeNo }));
     return (
-        <Panel
-            title={tradeNo ? tx("订单详情") : tx("账单")}
-            actions={<Reload onClick={d.reload} />}
-        >
-            {tradeNo && d.data ? (
+        <Panel title={tx("订单详情")} actions={<Reload onClick={d.reload} />}>
+            {d.data ? (
                 <>
                     {d.loading && (
                         <p className="pad muted" role="status">
@@ -298,67 +207,17 @@ export function Orders({ tradeNo }: { tradeNo?: string }) {
                             <button onClick={d.reload}>{tx("刷新")}</button>
                         </div>
                     )}
-                    <OrderDetail order={d.data as Row} reload={d.reload} />
+                    <OrderDetail order={d.data} reload={d.reload} />
                 </>
             ) : (
                 <State {...d} retry={d.reload}>
-                    {tradeNo ? (
-                        <OrderDetail order={d.data as Row} reload={d.reload} />
-                    ) : (
-                        <Table
-                            data={rows(d.data)}
-                            columns={[
-                                ["trade_no", tx("订单编号")],
-                                [
-                                    "plan",
-                                    tx("套餐"),
-                                    (r) => r.plan?.name || tx("账户充值"),
-                                ],
-                                [
-                                    "total_amount",
-                                    tx("金额"),
-                                    (r) => money(r.total_amount),
-                                ],
-                                [
-                                    "status",
-                                    tx("状态"),
-                                    (r) => (
-                                        <span className="badge">
-                                            {tx(
-                                                statuses[r.status] ||
-                                                    String(r.status),
-                                            )}
-                                        </span>
-                                    ),
-                                ],
-                                [
-                                    "created_at",
-                                    tx("创建时间"),
-                                    (r) => date(r.created_at),
-                                ],
-                            ]}
-                            actions={(r) => (
-                                <button
-                                    onClick={() =>
-                                        navigate("order/" + r.trade_no)
-                                    }
-                                >
-                                    {tx(
-                                        Number(r.status) === 0
-                                            ? "继续支付"
-                                            : Number(r.status) === 1
-                                              ? "查看开通进度"
-                                              : "查看",
-                                    )}
-                                </button>
-                            )}
-                        />
-                    )}
+                    <></>
                 </State>
             )}
         </Panel>
     );
 }
+
 function OrderDetail({ order, reload }: { order: Row; reload: () => void }) {
     return (
         <PaymentCheckout
@@ -922,14 +781,8 @@ export function Profile() {
                     <div className="pad">
                         <h3>{d.data?.email}</h3>
                         <p className="muted">
-                            {tx("管理账户余额，或进入通知设置与账户安全。")}
+                            {tx("管理账户信息、通知设置与账户安全。")}
                         </p>
-                        <dl className="subscription-facts">
-                            <div>
-                                <dt>{tx("账户余额")}</dt>
-                                <dd>{money(d.data?.balance)}</dd>
-                            </div>
-                        </dl>
                     </div>
                 </State>
             </Panel>
@@ -942,52 +795,6 @@ export function Profile() {
                     {tx("账户安全")}
                     <ArrowUpRight size={15} aria-hidden="true" />
                 </a>
-            </div>
-            <div className="split">
-                <Panel title={tx("兑换礼品卡")}>
-                    <Editor
-                        fields={[
-                            {
-                                key: "giftcard",
-                                label: tx("礼品卡代码"),
-                                required: true,
-                            },
-                        ]}
-                        initial={{}}
-                        submit={tx("兑换")}
-                        onSave={async (b) => {
-                            await request("user/redeemgiftcard", b);
-                            setNotice(tx("兑换成功"));
-                            d.reload();
-                        }}
-                    />
-                </Panel>
-                <Panel title={tx("账户充值")}>
-                    <Editor
-                        fields={[
-                            {
-                                key: "deposit_amount",
-                                label: e("depositAmount", {
-                                    currency: boot.currencySymbol,
-                                }),
-                                scale: 100,
-                                min: 0.01,
-                                step: 0.01,
-                                type: "number",
-                                required: true,
-                            },
-                        ]}
-                        initial={{ plan_id: 0 }}
-                        submit={tx("创建充值订单")}
-                        onSave={async (b) => {
-                            const r = await request<string>(
-                                "user/order/save",
-                                b,
-                            );
-                            navigate("order/" + r.data);
-                        }}
-                    />
-                </Panel>
             </div>
             {notice && (
                 <div className="success-message" role="status">
@@ -1078,20 +885,5 @@ export function Profile() {
     );
 }
 export function Traffic() {
-    const d = useData<Row[]>("user/stat/getTrafficLog");
-    return (
-        <Panel title={tx("流量记录")} actions={<Reload onClick={d.reload} />}>
-            <State {...d} retry={d.reload}>
-                <Table
-                    data={d.data || []}
-                    columns={[
-                        ["record_at", tx("日期"), (r) => date(r.record_at)],
-                        ["u", tx("上传"), (r) => bytes(r.u)],
-                        ["d", tx("下载"), (r) => bytes(r.d)],
-                        ["server_rate", tx("倍率")],
-                    ]}
-                />
-            </State>
-        </Panel>
-    );
+    return <UsagePage />;
 }

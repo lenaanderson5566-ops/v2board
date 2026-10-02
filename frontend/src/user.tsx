@@ -1,17 +1,12 @@
 import { e } from "./experience-copy";
 import { tx, locale, languages } from "./i18n";
 import { SubscriptionImport } from "./SubscriptionImport";
+import { UsageChart } from "./UsageChart";
 import { useState, useEffect, useRef, type ReactNode } from "react";
 import { QRCodeSVG } from "qrcode.react";
 import { loadStripe } from "@stripe/stripe-js/pure";
 import type { Stripe, StripeCardElement } from "@stripe/stripe-js";
-import {
-    ArrowUpRight,
-    Copy,
-    Check,
-    Download,
-    ExternalLink,
-} from "lucide-react";
+import { ArrowUpRight, Copy, Check, ExternalLink } from "lucide-react";
 import {
     boot,
     request,
@@ -85,8 +80,10 @@ export function UserDashboard() {
     const user = info.data || {},
         s = sub.data || {},
         used = Number(user.u || 0) + Number(user.d || 0),
-        percent = user.transfer_enable
-            ? Math.min(100, (used / user.transfer_enable) * 100)
+        total = Math.max(0, Number(user.transfer_enable) || 0),
+        remaining = Math.max(0, total - used),
+        remainingPercent = total
+            ? Math.max(0, Math.min(100, (remaining / total) * 100))
             : 0;
     return (
         <State {...info} retry={info.reload}>
@@ -100,7 +97,7 @@ export function UserDashboard() {
                     <ArrowUpRight size={16} />
                 </a>
             </div>
-            <div className="split">
+            <div className="dashboard-grid">
                 <Panel
                     title={tx("我的订阅")}
                     actions={
@@ -113,14 +110,6 @@ export function UserDashboard() {
                     <State {...sub} retry={sub.reload}>
                         <div className="pad">
                             <h3>{s.plan?.name || tx("尚未订阅套餐")}</h3>
-                            <div className="progress">
-                                <i style={{ width: percent + "%" }} />
-                            </div>
-                            <div className="muted">
-                                {tx("已使用")}
-                                {percent.toFixed(1)}% · {bytes(used)} /{" "}
-                                {bytes(user.transfer_enable)}
-                            </div>
                             {s.subscribe_url && (
                                 <div className="actions space">
                                     <SubscriptionImport url={s.subscribe_url} />
@@ -128,9 +117,6 @@ export function UserDashboard() {
                                         value={s.subscribe_url}
                                         label={tx("复制订阅链接")}
                                     />
-                                    <a className="button" href="#/traffic">
-                                        {e("usage")}
-                                    </a>
                                 </div>
                             )}
                             <dl className="subscription-facts">
@@ -154,6 +140,37 @@ export function UserDashboard() {
                         </div>
                     </State>
                 </Panel>
+                <section className="quota-card" aria-label={e("quota")}>
+                    <h3>{e("quota")}</h3>
+                    <div className="quota-value">
+                        <strong>
+                            {total ? `${Math.round(remainingPercent)}%` : "—"}
+                        </strong>
+                        <span>{e("remaining")}</span>
+                    </div>
+                    <div
+                        className="quota-progress"
+                        role="progressbar"
+                        aria-label={e("remaining")}
+                        aria-valuemin={0}
+                        aria-valuemax={100}
+                        aria-valuenow={remainingPercent}
+                    >
+                        <i style={{ width: `${remainingPercent}%` }} />
+                    </div>
+                    <p>
+                        {bytes(remaining)} / {bytes(total)} · {tx("已使用")}{" "}
+                        {bytes(used)}
+                    </p>
+                    <small>
+                        {typeof s.reset_day === "number"
+                            ? e("resetDays", { count: s.reset_day })
+                            : e("noReset")}
+                    </small>
+                </section>
+            </div>
+            <UsageChart />
+            <div className="dashboard-secondary">
                 <Panel title={tx("最新公告")}>
                     <State {...notice} retry={notice.reload}>
                         {notice.data?.length ? (
@@ -169,29 +186,13 @@ export function UserDashboard() {
                         )}
                     </State>
                 </Panel>
-            </div>
-            <div className="metrics">
-                <Metric
-                    label={tx("已用流量")}
-                    value={bytes(used)}
-                    detail={tx("总流量 {{value0}}", {
-                        value0: bytes(user.transfer_enable),
-                    })}
-                />
-                <Metric label={tx("账户余额")} value={money(user.balance)} />
-                <Metric
-                    label={tx("订阅到期")}
-                    value={
-                        !s.plan
-                            ? tx("尚未订阅套餐")
-                            : user.expired_at
-                              ? new Date(
-                                    user.expired_at * 1000,
-                                ).toLocaleDateString(locale())
-                              : tx("长期有效")
-                    }
-                    detail={s.plan?.name || tx("尚未订阅套餐")}
-                />
+                <section className="balance-card">
+                    <span>{tx("账户余额")}</span>
+                    <strong>{money(user.balance)}</strong>
+                    <a href="#/profile">
+                        {tx("账户设置")} <ArrowUpRight size={16} />
+                    </a>
+                </section>
             </div>
             <details
                 className="subscription-details"
@@ -212,7 +213,6 @@ export function Subscribe() {
             <Panel title={tx("订阅连接")}>
                 <State {...d} retry={d.reload}>
                     <div className="pad">
-                        <h3>{s.plan?.name || tx("暂无订阅套餐")}</h3>
                         <p className="muted">
                             {tx("订阅链接包含你的访问凭据，请妥善保管。")}
                         </p>
@@ -224,18 +224,6 @@ export function Subscribe() {
                                     aria-label={tx("订阅链接")}
                                 />
                                 <div className="actions space">
-                                    <SubscriptionImport url={s.subscribe_url} />
-                                    <CopyValue
-                                        value={s.subscribe_url}
-                                        label={tx("复制订阅")}
-                                    />
-                                    <a
-                                        className="button"
-                                        href={s.subscribe_url}
-                                    >
-                                        <Download size={16} />
-                                        {tx("下载订阅")}
-                                    </a>
                                     <button
                                         onClick={() => {
                                             if (

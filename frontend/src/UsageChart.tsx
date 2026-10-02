@@ -1,0 +1,109 @@
+import { useState } from "react";
+import { e } from "./experience-copy";
+import { tx, locale } from "./i18n";
+import { bytes } from "./api";
+import { State, useData } from "./ui";
+import { usageDays, type UsageRecord } from "./usage-data";
+
+export function UsageChart() {
+    const data = useData<UsageRecord[]>("user/stat/getTrafficLog");
+    const [period, setPeriod] = useState<"month" | "week">("month");
+    const days = usageDays(data.data || [], period);
+    const max = Math.max(1, ...days.map((day) => day.upload + day.download));
+    const formatDate = (date: Date) =>
+        date.toLocaleDateString(locale(), { month: "short", day: "numeric" });
+    return (
+        <section className="usage-analysis">
+            <header>
+                <h2>{e("usageAnalysis")}</h2>
+                <div
+                    className="usage-period"
+                    role="group"
+                    aria-label={tx("日期")}
+                >
+                    {(["week", "month"] as const).map((value) => (
+                        <button
+                            key={value}
+                            aria-pressed={period === value}
+                            onClick={() => setPeriod(value)}
+                        >
+                            {e(value)}
+                        </button>
+                    ))}
+                </div>
+            </header>
+            <div className="usage-section-title">
+                <h3>{e("dailyUsage")}</h3>
+                <a href="#/traffic">{e("usage")}</a>
+            </div>
+            <p className="muted usage-scope">{e("monthOnly")}</p>
+            <State {...data} retry={data.reload}>
+                {data.data?.length ? (
+                    <>
+                        <div className="usage-legend">
+                            <span>
+                                <i className="download-dot" />
+                                {tx("下载")}
+                            </span>
+                            <span>
+                                <i className="upload-dot" />
+                                {tx("上传")}
+                            </span>
+                        </div>
+                        <div className="usage-chart">
+                            <div className="usage-axis">
+                                <span>{bytes(max)}</span>
+                                <span>0 B</span>
+                            </div>
+                            <div className="usage-bars">
+                                {days.map((day) => {
+                                    const label = `${formatDate(day.date)} · ${tx("上传")} ${bytes(day.upload)} · ${tx("下载")} ${bytes(day.download)}`;
+                                    return (
+                                        <div
+                                            className="usage-day"
+                                            key={day.date.getTime()}
+                                            tabIndex={0}
+                                            role="img"
+                                            aria-label={label}
+                                        >
+                                            <span className="usage-tooltip">
+                                                {label}
+                                            </span>
+                                            <div
+                                                className="usage-stack"
+                                                style={{
+                                                    height: `${((day.upload + day.download) / max) * 100}%`,
+                                                }}
+                                            >
+                                                <i
+                                                    className="upload-bar"
+                                                    style={{
+                                                        flexGrow: day.upload,
+                                                    }}
+                                                />
+                                                <i
+                                                    className="download-bar"
+                                                    style={{
+                                                        flexGrow: day.download,
+                                                    }}
+                                                />
+                                            </div>
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        </div>
+                        <div className="usage-dates">
+                            <span>{formatDate(days[0].date)}</span>
+                            <span>
+                                {formatDate(days[days.length - 1].date)}
+                            </span>
+                        </div>
+                    </>
+                ) : (
+                    <div className="usage-empty">{tx("暂无数据")}</div>
+                )}
+            </State>
+        </section>
+    );
+}

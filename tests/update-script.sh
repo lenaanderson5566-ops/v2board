@@ -125,4 +125,18 @@ export FAIL_INSTALL=1; reject --jobs-stopped --resolve-dependencies; unset FAIL_
 [[ -e storage/framework/down ]]
 grep -q joanhey/adapterman composer.json
 find "$TMP/backups" -name composer-local.patch -exec cat {} \; | grep joanhey/adapterman > /dev/null
-echo 'Updater: 14 isolated scenarios passed'
+new_site trackedgeoip
+git checkout -q codex/react-typescript-console
+echo 'locally updated database' > storage/geoip/GeoLite2-ASN.mmdb
+bash "$SOURCE" "${ARGS[@]}" --check > "$TMP/output" 2>&1
+grep -q 'locally updated database' storage/geoip/GeoLite2-ASN.mmdb
+[[ ! -e storage/framework/down ]]
+bash "$SOURCE" "${ARGS[@]}" --jobs-stopped > "$TMP/output" 2>&1
+grep -q 'new mmdb' storage/geoip/GeoLite2-ASN.mmdb
+find "$TMP/backups" -path '*/tracked/storage/geoip/GeoLite2-ASN.mmdb' -exec cat {} \; | grep 'locally updated database' > /dev/null
+[[ -e storage/framework/down ]]
+new_site trackedcode
+echo changed > artisan
+reject --jobs-stopped
+[[ ! -e storage/framework/down ]]
+echo 'Updater: 16 isolated scenarios passed'

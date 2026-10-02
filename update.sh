@@ -13,6 +13,7 @@ WEB_USER=www
 JOBS_STOPPED=0
 CHECK_ONLY=0
 RESOLVE_DEPENDENCIES=0
+LOCAL_GEOIP=()
 WORK_DIR=
 BACKUP=
 MAINTENANCE=0
@@ -34,7 +35,8 @@ Usage: bash update.sh [options]
   --help
 Pause writes and background jobs before taking the database backup.
 Success keeps maintenance ON for PHP-FPM restart and operator verification.
-Local additive Composer requirements are preserved; other tracked edits stop.
+Local additive Composer requirements and the three GeoLite2 databases are backed up.
+Other tracked edits stop.
 No historical update.sql replay, cache flush, or DB rollback.
 HELP
 }
@@ -75,7 +77,13 @@ cd "$PROJECT"
 git check-ref-format --branch "$BRANCH" >/dev/null || die 'Invalid branch'
 git diff --cached --quiet || die 'Review staged changes first'
 while IFS= read -r changed; do
-    [[ -z "$changed" || "$changed" == composer.json ]] || die "Review tracked change first: $changed"
+    case "$changed" in
+        ''|composer.json) ;;
+        storage/geoip/GeoLite2-ASN.mmdb|storage/geoip/GeoLite2-City.mmdb|storage/geoip/GeoLite2-Country.mmdb)
+            [[ -f "$changed" && ! -L "$changed" ]] || die "GeoIP change is not a regular file: $changed"
+            LOCAL_GEOIP+=("$changed");;
+        *) die "Review tracked change first: $changed";;
+    esac
 done < <(git diff --name-only)
 [[ -s .env && -s config/v2board.php ]] || die 'Existing .env and config/v2board.php required'
 PHP_BIN=$(command -v "$PHP_BIN") || die 'PHP executable not found'
@@ -186,6 +194,11 @@ tar --exclude='./.git' --exclude='./frontend/node_modules' --exclude='./node_mod
 tar -tzf "$BACKUP/site.tar.gz" >/dev/null
 # Release the local tracked edit only after the full backup has been verified.
 git restore --source=HEAD -- composer.json
+for file in "${LOCAL_GEOIP[@]}"; do
+    mkdir -p -- "$BACKUP/tracked/$(dirname "$file")"
+    cp -- "$file" "$BACKUP/tracked/$file"
+    git restore --source=HEAD -- "$file"
+done
 if [[ -f "$WORK_DIR/geoip-collisions" ]]; then
     while IFS= read -r -d '' file; do
         mkdir -p -- "$BACKUP/untracked/$(dirname "$file")"

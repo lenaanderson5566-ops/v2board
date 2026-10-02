@@ -71,7 +71,7 @@ it("shows the suspension entry when authenticated credentials are denied as bann
     mocks.request.mockRejectedValue(Object.assign(new Error("Suspended"), {code: "ACCOUNT_BANNED"}));
     const view = page("login");
     credentials();
-    fireEvent.click(screen.getByRole("button", {name: "登录", exact: true}));
+    fireEvent.click(screen.getByRole("button", {name: "登录"}));
     await waitFor(() => expect(screen.getByRole("heading", {name: "bannedTitle"})).toBeTruthy());
     expect(view.onLogin).not.toHaveBeenCalled();
     expect(screen.queryByLabelText("密码", {exact:true})).toBeNull();

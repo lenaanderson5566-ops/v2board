@@ -16,6 +16,7 @@ $renderConsole = function (string $mode, bool $landing = false) use ($securePath
             'opsPath' => $mode === 'admin' ? config('v2board.ops_api_path', 'ops') : '',
             'emailVerify' => (bool) config('v2board.email_verify', 0),
             'registerClosed' => (bool) config('v2board.stop_register', 0),
+            'inviteRequired' => (bool) config('v2board.invite_force', 0),
             'recaptchaSiteKey' => config('v2board.recaptcha_enable') ? (string) config('v2board.recaptcha_site_key', '') : '',
             'tosUrl' => (string) config('v2board.tos_url', ''),
             'currencySymbol' => config('v2board.currency_symbol', '¥'),

@@ -31,7 +31,14 @@ export function UserAuth({
     const [challenge, setChallenge] = useState(0),
         [registered, setRegistered] = useState(false),
         [step, setStep] = useState(1),
-        [email, setEmail] = useState(""),
+        [email, setEmail] = useState(() =>
+            register &&
+            new URLSearchParams(location.hash.split("?")[1]).get("invitation")
+                ? new URLSearchParams(location.hash.split("?")[1]).get(
+                      "email",
+                  ) || ""
+                : "",
+        ),
         [password, setPassword] = useState(""),
         [code, setCode] = useState(""),
         [captcha, setCaptcha] = useState(""),
@@ -41,9 +48,11 @@ export function UserAuth({
         [cooldown, setCooldown] = useState(0),
         [sent, setSent] = useState(false),
         [done, setDone] = useState(false);
-    const [invite, setInvite] = useState(
+    const [invitation] = useState(
         () =>
-            new URLSearchParams(location.hash.split("?")[1]).get("code") || "",
+            new URLSearchParams(location.hash.split("?")[1]).get(
+                "invitation",
+            ) || "",
     );
     const heading = useRef<HTMLHeadingElement>(null);
     const [suspended, setSuspended] = useState(false);
@@ -98,7 +107,7 @@ export function UserAuth({
                 email: email.trim(),
                 password,
                 email_code: code,
-                invite_code: invite.trim(),
+                invitation,
                 recaptcha_data: captcha,
             };
             if (forget) {
@@ -252,8 +261,16 @@ export function UserAuth({
                                         ? e("stepAccount")
                                         : tx("登录以管理你的订阅与账户")}
                             </p>
-                            {register && boot.registerClosed ? (
-                                <p role="alert">{e("registerClosed")}</p>
+                            {register &&
+                            (boot.registerClosed ||
+                                (boot.inviteRequired && !invitation)) ? (
+                                <p role="alert">
+                                    {boot.registerClosed
+                                        ? e("registerClosed")
+                                        : tx(
+                                              "本站采用邮件邀请注册，请从邀请邮件中的链接继续。",
+                                          )}
+                                </p>
                             ) : (
                                 <form
                                     className="user-auth-form"
@@ -273,6 +290,10 @@ export function UserAuth({
                                                         inputMode="email"
                                                         required
                                                         value={email}
+                                                        readOnly={
+                                                            register &&
+                                                            Boolean(invitation)
+                                                        }
                                                         maxLength={
                                                             forget
                                                                 ? 64
@@ -288,34 +309,12 @@ export function UserAuth({
                                                     />
                                                 </label>
                                                 {!forget && passwordField}
-                                                {register && (
-                                                    <details open={!!invite}>
-                                                        <summary>
-                                                            {tx(
-                                                                "邀请码（可选）",
-                                                            )}
-                                                        </summary>
-                                                        <label className="auth-field">
-                                                            <span>
-                                                                {tx(
-                                                                    "邀请码（可选）",
-                                                                )}
-                                                            </span>
-                                                            <input
-                                                                value={invite}
-                                                                autoComplete="off"
-                                                                onChange={(
-                                                                    event,
-                                                                ) =>
-                                                                    setInvite(
-                                                                        event
-                                                                            .target
-                                                                            .value,
-                                                                    )
-                                                                }
-                                                            />
-                                                        </label>
-                                                    </details>
+                                                {register && invitation && (
+                                                    <p className="muted">
+                                                        {tx(
+                                                            "你正在接受发送到此邮箱的专属邀请。",
+                                                        )}
+                                                    </p>
                                                 )}
                                             </>
                                         ) : (

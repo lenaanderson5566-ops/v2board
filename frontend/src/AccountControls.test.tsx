@@ -97,6 +97,9 @@ describe("header controls", () => {
         expect(
             screen.getByRole("link", { name: "账户安全" }).getAttribute("href"),
         ).toBe("#/security");
+        expect(
+            screen.getByRole("link", { name: "通知设置" }).getAttribute("href"),
+        ).toBe("#/notifications");
         expect(screen.getByText("A")).toBeTruthy();
         expect(screen.getByText("PRO")).toBeTruthy();
         fireEvent.pointerDown(document.body);

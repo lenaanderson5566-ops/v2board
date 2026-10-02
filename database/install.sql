@@ -7,6 +7,25 @@ SET sql_mode = 'NO_AUTO_VALUE_ON_ZERO';
 
 SET NAMES utf8mb4;
 
+CREATE TABLE IF NOT EXISTS `v2_email_invitation` (
+  `id` int unsigned NOT NULL AUTO_INCREMENT,
+  `user_id` int unsigned NOT NULL,
+  `email` varchar(254) NOT NULL,
+  `email_hash` varchar(64) NOT NULL,
+  `token_hash` varchar(64) NOT NULL,
+  `accepted_user_id` int unsigned DEFAULT NULL,
+  `expires_at` bigint unsigned NOT NULL,
+  `sent_at` bigint unsigned DEFAULT NULL,
+  `failed_at` bigint unsigned DEFAULT NULL,
+  `accepted_at` bigint unsigned DEFAULT NULL,
+  `last_requested_at` bigint unsigned NOT NULL,
+  `created_at` bigint unsigned NOT NULL,
+  `updated_at` bigint unsigned NOT NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `email_invitation_token_unique` (`token_hash`),
+  UNIQUE KEY `email_invitation_recipient_unique` (`user_id`, `email_hash`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
 DROP TABLE IF EXISTS `failed_jobs`;
 CREATE TABLE `failed_jobs` (
                                `id` bigint(20) unsigned NOT NULL AUTO_INCREMENT,

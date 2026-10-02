@@ -7,6 +7,7 @@ import {
     LogOut,
     BookOpen,
     Shield,
+    Bell,
 } from "lucide-react";
 import { type Row } from "./api";
 import { useData } from "./ui";
@@ -74,6 +75,7 @@ export function AccountMenu({
                     </small>
                     {[
                         { key: "profile", label: "账户设置", icon: Settings },
+                        { key: "notifications", label: "通知设置", icon: Bell },
                         { key: "security", label: "账户安全", icon: Shield },
                         { key: "knowledge", label: "帮助中心", icon: BookOpen },
                         { key: "order", label: "订单记录", icon: ReceiptText },

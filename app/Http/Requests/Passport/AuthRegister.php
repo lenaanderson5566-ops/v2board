@@ -15,7 +15,8 @@ class AuthRegister extends FormRequest
     {
         return [
             'email' => 'required|email:strict',
-            'password' => 'required|min:8'
+            'password' => 'required|min:8',
+            'invitation' => 'nullable|string|regex:/^[a-f0-9]{64}$/'
         ];
     }
 

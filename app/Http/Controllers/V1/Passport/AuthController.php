@@ -7,7 +7,7 @@ use App\Http\Requests\Passport\AuthForget;
 use App\Http\Requests\Passport\AuthLogin;
 use App\Http\Requests\Passport\AuthRegister;
 use App\Jobs\SendEmailJob;
-use App\Models\InviteCode;
+use App\Services\EmailInvitationService;
 use App\Models\Plan;
 use App\Models\User;
 use App\Services\AuthService;
@@ -56,8 +56,8 @@ class AuthController extends Controller
             abort(500, __('Registration has closed'));
         }
         if ((int)config('v2board.invite_force', 0)) {
-            if (empty($request->input('invite_code'))) {
-                abort(500, __('You must use the invitation code to register'));
+            if (empty($request->input('invitation'))) {
+                abort(422, __('An email invitation is required to register.'));
             }
         }
         $email = $request->input('email');
@@ -82,22 +82,7 @@ class AuthController extends Controller
         $user->password = password_hash($password, PASSWORD_DEFAULT);
         $user->uuid = Helper::guid(true);
         $user->token = Helper::guid();
-        if ($request->input('invite_code')) {
-            $inviteCode = InviteCode::where('code', $request->input('invite_code'))
-                ->where('status', 0)
-                ->first();
-            if (!$inviteCode) {
-                if ((int)config('v2board.invite_force', 0)) {
-                    abort(500, __('Invalid invitation code'));
-                }
-            } else {
-                $user->invite_user_id = $inviteCode->user_id ? $inviteCode->user_id : null;
-                if (!(int)config('v2board.invite_never_expire', 0)) {
-                    $inviteCode->status = 1;
-                    $inviteCode->save();
-                }
-            }
-        }
+        if ($request->input('invite_code')) abort(410, __('Public invite codes are no longer supported. Use an email invitation.'));
 
         // try out
         if ((int)config('v2board.try_out_plan_id', 0)) {
@@ -112,9 +97,13 @@ class AuthController extends Controller
             }
         }
 
-        if (!$user->save()) {
-            abort(500, __('Register failed'));
-        }
+        if ($request->filled('invitation')) {
+            $user = (new EmailInvitationService())->register($request->input('invitation'), $email, function ($inviterId) use ($user) {
+                $user->invite_user_id = $inviterId;
+                if (!$user->save()) abort(500, __('Register failed'));
+                return $user;
+            });
+        } elseif (!$user->save()) abort(500, __('Register failed'));
         if ((int)config('v2board.email_verify', 0)) {
             Cache::forget(CacheKey::get('EMAIL_VERIFY_CODE', $cacheKeyEmail));
         }

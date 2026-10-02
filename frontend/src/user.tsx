@@ -1,4 +1,5 @@
 import { e } from "./experience-copy";
+import { EmailInvites } from "./EmailInvites";
 import { tx, locale, languages } from "./i18n";
 import { SubscriptionImport } from "./SubscriptionImport";
 import { UsageChart } from "./UsageChart";
@@ -1024,47 +1025,12 @@ export function Invite() {
         stat = v.stat || [];
     return (
         <State {...d} retry={d.reload}>
+            <EmailInvites />
             <div className="metrics">
                 <Metric label={tx("邀请用户")} value={stat[0] || 0} />
                 <Metric label={tx("可用佣金")} value={money(stat[4])} />
                 <Metric label={tx("佣金比例")} value={`${stat[3] || 0}%`} />
             </div>
-            <Panel
-                title={tx("邀请链接")}
-                actions={
-                    <button
-                        className="primary"
-                        onClick={async () => {
-                            try {
-                                await request("user/invite/save");
-                                d.reload();
-                            } catch (e) {
-                                alert((e as Error).message);
-                            }
-                        }}
-                    >
-                        {tx("生成邀请码")}
-                    </button>
-                }
-            >
-                <Table
-                    data={v.codes || []}
-                    columns={[
-                        ["code", tx("邀请码")],
-                        [
-                            "created_at",
-                            tx("创建时间"),
-                            (r) => date(r.created_at),
-                        ],
-                    ]}
-                    actions={(r) => (
-                        <CopyValue
-                            value={`${location.origin}/#/register?code=${r.code}`}
-                            label={tx("复制邀请链接")}
-                        />
-                    )}
-                />
-            </Panel>
             <Panel title={tx("佣金记录")}>
                 <State {...details}>
                     <Table
@@ -1143,6 +1109,46 @@ export function Invite() {
         </State>
     );
 }
+export function Notifications() {
+    const d = useData("user/info");
+    return (
+        <Panel title={tx("通知设置")}>
+            <p className="pad muted">{tx("选择接收到期和流量使用提醒。")}</p>
+            <State {...d} retry={d.reload}>
+                <Editor
+                    fields={[
+                        {
+                            key: "remind_expire",
+                            label: tx("到期提醒"),
+                            type: "switch",
+                            options: [
+                                ["1", tx("开启")],
+                                ["0", tx("关闭")],
+                            ],
+                        },
+                        {
+                            key: "remind_traffic",
+                            label: tx("流量提醒"),
+                            type: "switch",
+                            options: [
+                                ["1", tx("开启")],
+                                ["0", tx("关闭")],
+                            ],
+                        },
+                    ]}
+                    initial={d.data || {}}
+                    onSave={async (b) => {
+                        await request("user/update", {
+                            remind_expire: b.remind_expire,
+                            remind_traffic: b.remind_traffic,
+                        });
+                        d.reload();
+                    }}
+                />
+            </State>
+        </Panel>
+    );
+}
 export function Profile() {
     const config = useData("user/comm/config");
     const d = useData("user/info"),
@@ -1155,9 +1161,7 @@ export function Profile() {
                     <div className="pad">
                         <h3>{d.data?.email}</h3>
                         <p className="muted">
-                            {tx(
-                                "管理流量提醒和账户余额；密码可在账户安全中修改。",
-                            )}
+                            {tx("管理账户余额，或进入通知设置与账户安全。")}
                         </p>
                         <dl className="subscription-facts">
                             <div>
@@ -1166,45 +1170,17 @@ export function Profile() {
                             </div>
                         </dl>
                     </div>
-                    <Editor
-                        fields={[
-                            {
-                                key: "remind_expire",
-                                label: tx("到期提醒"),
-                                type: "switch",
-                                options: [
-                                    ["1", tx("开启")],
-                                    ["0", tx("关闭")],
-                                ],
-                            },
-                            {
-                                key: "remind_traffic",
-                                label: tx("流量提醒"),
-                                type: "switch",
-                                options: [
-                                    ["1", tx("开启")],
-                                    ["0", tx("关闭")],
-                                ],
-                            },
-                        ]}
-                        initial={d.data || {}}
-                        onSave={async (b) => {
-                            await request("user/update", {
-                                remind_expire: b.remind_expire,
-                                remind_traffic: b.remind_traffic,
-                            });
-                            setNotice(tx("提醒设置已保存"));
-                            d.reload();
-                        }}
-                    />
                 </State>
             </Panel>
             <div className="account-security-link">
+                <a className="button" href="#/notifications">
+                    {tx("通知设置")}
+                    <ArrowUpRight size={15} aria-hidden="true" />
+                </a>
                 <a className="button" href="#/security">
                     {tx("账户安全")}
                     <ArrowUpRight size={15} aria-hidden="true" />
                 </a>
-                <span className="muted">{tx("修改密码")}</span>
             </div>
             <div className="split">
                 <Panel title={tx("兑换礼品卡")}>

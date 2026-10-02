@@ -6,6 +6,7 @@ import {
     Tickets,
     Invite,
     Profile,
+    Notifications,
     Traffic,
 } from "./user";
 import { AccountSecurity } from "./AccountSecurity";
@@ -34,6 +35,8 @@ export default function UserContent({
         <Invite />
     ) : current === "security" ? (
         <AccountSecurity />
+    ) : current === "notifications" ? (
+        <Notifications />
     ) : current === "profile" ? (
         <Profile />
     ) : current === "traffic" ? (

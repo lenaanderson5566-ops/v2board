@@ -9,6 +9,7 @@ use App\Http\Requests\Admin\UserSendMail;
 use App\Http\Requests\Admin\UserUpdate;
 use App\Jobs\SendEmailJob;
 use App\Models\InviteCode;
+use App\Models\EmailInvitation;
 use App\Models\Ticket;
 use App\Models\Order;
 use App\Models\Plan;
@@ -369,6 +370,7 @@ class UserController extends Controller
                 $authService->removeAllSession();
                 Order::where('user_id', $user->id)->delete();
                 InviteCode::where('user_id', $user->id)->delete();
+                EmailInvitation::where('user_id', $user->id)->orWhere('accepted_user_id', $user->id)->delete();
                 $tickets = Ticket::where('user_id', $user->id)->get();
                 foreach($tickets as $ticket) {
                     TicketMessage::where('ticket_id', $ticket->id)->delete();
@@ -401,6 +403,7 @@ class UserController extends Controller
             Order::where('user_id', $request->input('id'))->delete();
             User::where('invite_user_id', $request->input('id'))->update(['invite_user_id' => null]);
             InviteCode::where('user_id', $request->input('id'))->delete();
+            EmailInvitation::where('user_id', $user->id)->orWhere('accepted_user_id', $user->id)->delete();
             
             $tickets = Ticket::where('user_id', $request->input('id'))->get();
             foreach($tickets as $ticket) {

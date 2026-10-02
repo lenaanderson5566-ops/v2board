@@ -18,6 +18,7 @@ export interface Boot {
     opsPath: string;
     emailVerify: boolean;
     registerClosed: boolean;
+    inviteRequired?: boolean;
     recaptchaSiteKey: string;
     tosUrl: string;
     currencySymbol: string;

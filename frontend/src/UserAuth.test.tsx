@@ -15,6 +15,7 @@ const mocks = vi.hoisted(() => ({
         mode: "user",
         emailVerify: true,
         registerClosed: false,
+        inviteRequired: false,
         recaptchaSiteKey: "",
         tosUrl: "",
     },
@@ -55,6 +56,7 @@ beforeEach(() => {
     mocks.navigate.mockReset();
     mocks.boot.emailVerify = true;
     mocks.boot.registerClosed = false;
+    mocks.boot.inviteRequired = false;
     mocks.boot.recaptchaSiteKey = "";
     mocks.boot.tosUrl = "";
     localStorage.clear();
@@ -85,6 +87,44 @@ it("shows the suspension entry when authenticated credentials are denied as bann
 });
 afterEach(cleanup);
 describe("user account steps", () => {
+    it("explains email-only registration when an invitation is required", () => {
+        mocks.boot.inviteRequired = true;
+        page();
+        expect(screen.getByRole("alert").textContent).toBe(
+            "本站采用邮件邀请注册，请从邀请邮件中的链接继续。",
+        );
+        expect(screen.queryByLabelText("邮箱地址")).toBeNull();
+        expect(mocks.request).not.toHaveBeenCalled();
+    });
+    it("accepts a recipient-bound email invitation without a public code input", async () => {
+        mocks.boot.emailVerify = false;
+        mocks.boot.inviteRequired = true;
+        const token = "a".repeat(64);
+        location.hash = `#/register?invitation=${token}&email=friend%40example.com`;
+        page();
+        const email = screen.getByLabelText("邮箱地址") as HTMLInputElement;
+        expect(email.value).toBe("friend@example.com");
+        expect(email.readOnly).toBe(true);
+        expect(screen.queryByLabelText("邀请码")).toBeNull();
+        fireEvent.change(screen.getByLabelText("密码", { exact: true }), {
+            target: { value: "A-long-test-phrase!23" },
+        });
+        fireEvent.click(screen.getByRole("button", { name: "next" }));
+        await screen.findByRole("heading", { name: "review" });
+        fireEvent.click(screen.getByRole("button", { name: "注册账户" }));
+        await waitFor(() =>
+            expect(mocks.request).toHaveBeenCalledWith(
+                "passport/auth/register",
+                expect.objectContaining({
+                    email: "friend@example.com",
+                    invitation: token,
+                }),
+            ),
+        );
+        expect(mocks.request.mock.calls[0][1]).not.toHaveProperty(
+            "invite_code",
+        );
+    });
     it("shows and consumes the password update notice on the login page", () => {
         sessionStorage.setItem("auth-flow-test.passwordUpdated", "1");
         page("login");

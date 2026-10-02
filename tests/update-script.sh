@@ -22,6 +22,7 @@ printf '{"name":"test/site","require":{"php":"^7.3.0 || ^8.0","geoip2/geoip2":"^
 mkdir -p public/console/.vite database/migrations
 echo '{}' > public/console/.vite/manifest.json
 echo '<?php // fixture' > database/migrations/2026_10_01_000001_add_trusted_x_forwarded_for_to_v2node.php
+echo '<?php // fixture' > database/migrations/2026_10_02_000001_create_email_invitations.php
 mkdir -p storage/geoip
 echo 'new mmdb' > storage/geoip/GeoLite2-ASN.mmdb
 git add -f storage/geoip/GeoLite2-ASN.mmdb
@@ -79,6 +80,7 @@ bash "$SOURCE" "${ARGS[@]}" --jobs-stopped > "$TMP/output" 2>&1
 grep -q original-key .env
 grep -q preserved config/v2board.php
 grep -q 'migrate --path=database/migrations/2026_10_01_000001' calls.log
+grep -q 'migrate --path=database/migrations/2026_10_02_000001' calls.log
 grep -q 'artisan console:verify' calls.log
 [[ $(stat -c %a public/console/.vite/manifest.json) == 644 ]]
 ! grep -Eq 'v2board:update|cache:clear|optimize:clear|artisan up' calls.log

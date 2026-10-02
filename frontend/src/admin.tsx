@@ -1487,9 +1487,9 @@ const labels: Record<string, string> = {
     recaptcha_enable: "启用 reCAPTCHA",
     recaptcha_key: "reCAPTCHA 密钥",
     recaptcha_site_key: "reCAPTCHA 站点密钥",
-    invite_force: "强制邀请码",
+    invite_force: "注册必须通过邮件邀请",
     invite_commission: "邀请佣金比例",
-    invite_gen_limit: "邀请码数量限制",
+    invite_gen_limit: "待接受邮件邀请数量限制",
     commission_withdraw_limit: "最低提现金额",
     commission_withdraw_method: "提现方式",
     email_host: "SMTP 主机",
@@ -1558,7 +1558,10 @@ export function Settings() {
         group,
         Object.entries(raw)
             .filter(
-                ([k]) => !k.startsWith("frontend_") && k !== "email_template",
+                ([k]) =>
+                    !k.startsWith("frontend_") &&
+                    k !== "email_template" &&
+                    k !== "invite_never_expire",
             )
             .map(([k, v]) =>
                 k === "try_out_plan_id"

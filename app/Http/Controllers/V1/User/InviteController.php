@@ -4,25 +4,27 @@ namespace App\Http\Controllers\V1\User;
 
 use App\Http\Controllers\Controller;
 use App\Models\CommissionLog;
-use App\Models\InviteCode;
 use App\Models\Order;
 use App\Models\User;
-use App\Utils\Helper;
 use Illuminate\Http\Request;
 
 class InviteController extends Controller
 {
     public function save(Request $request)
     {
-        if (InviteCode::where('user_id', $request->user['id'])->where('status', 0)->count() >= config('v2board.invite_gen_limit', 5)) {
-            abort(500, __('The maximum number of creations has been reached'));
-        }
-        $inviteCode = new InviteCode();
-        $inviteCode->user_id = $request->user['id'];
-        $inviteCode->code = Helper::randomChar(8);
-        return response([
-            'data' => $inviteCode->save()
-        ]);
+        abort(410, __('Public invite codes are no longer supported. Use an email invitation.'));
+    }
+
+    public function sendEmail(Request $request)
+    {
+        $params=$request->validate(['email'=>'required|string|email:strict|max:254']);
+        $record=(new \App\Services\EmailInvitationService())->send((int)$request->user['id'],$params['email']);
+        return response(['data'=>['id'=>$record->id,'email'=>$record->email,'status'=>'queued']]);
+    }
+    public function emailHistory(Request $request)
+    {
+        $params=$request->validate(['days'=>'nullable|integer|in:7,30,90']);
+        return response(['data'=>(new \App\Services\EmailInvitationService())->history((int)$request->user['id'],(int)($params['days']??90))]);
     }
 
     public function details(Request $request)
@@ -50,9 +52,6 @@ class InviteController extends Controller
 
     public function fetch(Request $request)
     {
-        $codes = InviteCode::where('user_id', $request->user['id'])
-            ->where('status', 0)
-            ->get();
         $commission_rate = config('v2board.invite_commission', 10);
         $user = User::find($request->user['id']);
         if ($user->commission_rate) {
@@ -80,7 +79,6 @@ class InviteController extends Controller
         ];
         return response([
             'data' => [
-                'codes' => $codes,
                 'stat' => $stat
             ]
         ]);

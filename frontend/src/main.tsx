@@ -504,12 +504,14 @@ function App() {
             { key: "invite", label: "邀请好友" },
             { key: "ticket", label: "工单支持" },
             { key: "security", label: "账户安全" },
+            { key: "notifications", label: "通知设置" },
         ].find((n) => n.key === current),
         groups = [...new Set(nav.map((n) => n.group))],
         navigationCurrent =
             boot.mode === "user" && current === "ticket"
                 ? "knowledge"
-                : boot.mode === "user" && current === "security"
+                : boot.mode === "user" &&
+                    ["security", "notifications"].includes(current)
                   ? "profile"
                   : current;
     let content: ReactNode;

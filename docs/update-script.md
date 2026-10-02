@@ -75,7 +75,7 @@ bash /tmp/v2board-update.sh \
 - 在私有目录保存原提交编号、原分支、配置校验和、数据库备份副本及站点归档（包含原 vendor、lock、配置、storage；排除 .git 和 node_modules）。归档校验失败即停止。
 - 仅允许目标分支快进；本地目标分支若有额外提交会停止，不执行 reset --hard。
 - 从经过预检的锁文件 install 依赖，检查运行平台；不下载 Composer、不执行 composer update 或 require。
-- 仅运行 `2026_10_01_000001_add_trusted_x_forwarded_for_to_v2node.php`。该迁移已做字段存在检查，已执行或字段已存在时不会重复 ADD。发现其他迁移差异会停止并要求单独审查。
+- 仅运行 `2026_10_01_000001_add_trusted_x_forwarded_for_to_v2node.php` 与 `2026_10_02_000001_create_email_invitations.php`。前者按字段存在情况补充节点字段，后者新增 `v2_email_invitation` 邮件邀请记录表；均支持重复执行。发现其他迁移差异会停止并要求单独审查。
 - 不运行历史 update.sql、v2board:update、migrate:fresh、cache:clear、optimize:clear 或 Redis 清空。配置、路由、视图缓存单独处理。
 - 校验生产 `.env` 和业务配置内容没有变化。使用私有备份权限，同时确保新发布的 PHP／静态文件对网站进程可读。
 

@@ -932,7 +932,7 @@ body:has(.browser-notice) #custom-footer {
 }
 .dashboard-secondary {
     display: grid;
-    grid-template-columns: 1.5fr 1fr;
+    grid-template-columns: 1fr;
     gap: 24px;
     margin-bottom: 24px;
 }
@@ -948,29 +948,6 @@ body:has(.browser-notice) #custom-footer {
 }
 .app.user .dashboard-secondary .pad {
     padding: 12px 0;
-}
-.balance-card {
-    padding: 20px 24px;
-    border-radius: 20px;
-    background: #f7f7f7;
-    display: flex;
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 12px;
-}
-.balance-card > span {
-    font-size: 13px;
-    color: #888;
-}
-.balance-card strong {
-    font-size: 26px;
-    font-weight: 600;
-}
-.balance-card a {
-    font-size: 13px;
-    display: flex;
-    gap: 5px;
-    align-items: center;
 }
 @media (max-width: 800px) {
     .app.user .dashboard-grid,

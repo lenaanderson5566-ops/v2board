@@ -186,13 +186,6 @@ export function UserDashboard() {
                         )}
                     </State>
                 </Panel>
-                <section className="balance-card">
-                    <span>{tx("账户余额")}</span>
-                    <strong>{money(user.balance)}</strong>
-                    <a href="#/profile">
-                        {tx("账户设置")} <ArrowUpRight size={16} />
-                    </a>
-                </section>
             </div>
             <details
                 className="subscription-details"
@@ -1085,6 +1078,12 @@ export function Profile() {
                         <p className="muted">
                             {tx("管理密码、流量提醒和账户余额。")}
                         </p>
+                        <dl className="subscription-facts">
+                            <div>
+                                <dt>{tx("账户余额")}</dt>
+                                <dd>{money(d.data?.balance)}</dd>
+                            </div>
+                        </dl>
                     </div>
                     <Editor
                         fields={[

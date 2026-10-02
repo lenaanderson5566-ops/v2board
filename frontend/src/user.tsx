@@ -132,8 +132,6 @@ export function Subscribe() {
                     )}
                 </div>
             </Panel>
-            <details className="subscription-details">
-                <summary>{tx("高级配置")}</summary>
                 <Panel title={tx("可用节点")}>
                     <State {...nodes} retry={nodes.reload}>
                         <Table
@@ -159,7 +157,6 @@ export function Subscribe() {
                         />
                     </State>
                 </Panel>
-            </details>
         </>
     );
 }

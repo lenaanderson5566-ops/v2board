@@ -21,6 +21,7 @@ git branch -M original
 git checkout -qb codex/react-typescript-console
 printf '{"name":"test/site","require":{"php":"^7.3.0 || ^8.0","geoip2/geoip2":"^2.12"}}\n' > composer.json
 mkdir -p public/console/.vite database/migrations
+cp -- "$SOURCE" update.sh
 echo '{}' > public/console/.vite/manifest.json
 echo '<?php // fixture' > database/migrations/2026_10_01_000001_add_trusted_x_forwarded_for_to_v2node.php
 echo '<?php // fixture' > database/migrations/2026_10_02_000001_create_email_invitations.php
@@ -48,6 +49,7 @@ fi
 if [[ "$*" == *' update '* && "${FAIL_RESOLVE:-0}" == 1 ]]; then exit 19; fi
 if [[ "$1" == artisan && "$2" == down ]]; then mkdir -p storage/framework; touch storage/framework/down; fi
 if [[ "$*" == *' install '* && "${FAIL_INSTALL:-0}" == 1 ]]; then exit 17; fi
+if [[ "$1" == artisan && "$2" == migrate && -n "${FAIL_MIGRATION:-}" && "$*" == *"$FAIL_MIGRATION"* ]]; then echo 'Simulated database migration error' >&2; exit 23; fi
 if [[ "$*" == *' validate '* && "${FAIL_LOCK:-0}" == 1 ]]; then exit 18; fi
 MOCK
 chmod +x "$TMP/php"
@@ -164,4 +166,38 @@ new_site unknownconstraint
 printf '{"name":"test/site","require":{"php":"^8.4"}}\n' > composer.json
 reject --jobs-stopped --resolve-dependencies
 [[ ! -e storage/framework/down ]]
-echo 'Updater: 18 isolated scenarios passed'
+new_site missingbackup
+ARGS+=(--database-backup '')
+reject --jobs-stopped
+grep -q 'No migrations have run' "$TMP/output"
+[[ ! -e storage/framework/down && ! -e calls.log ]]
+new_site migrationretry
+export FAIL_MIGRATION=2026_10_02_000002
+reject --jobs-stopped
+unset FAIL_MIGRATION
+[[ -e storage/framework/down ]]
+grep -q 'Failed migration: database/migrations/2026_10_02_000002' "$TMP/output"
+! grep -q 'migrate --path=database/migrations/2026_10_02_000003' calls.log
+! grep -q 'artisan console:verify' calls.log
+bash "$SOURCE" "${ARGS[@]}" --jobs-stopped > "$TMP/output" 2>&1
+grep -q 'All approved migrations completed' "$TMP/output"
+grep -q 'artisan console:verify' calls.log
+[[ -e storage/framework/down ]]
+# Target script changed after the caller was installed. A relative --project must survive handoff.
+cd "$TMP/seed"
+printf '\n# newer updater fixture\n' >> update.sh
+git add update.sh; git commit -qm newer-updater
+git push -q "$TMP/origin.git" HEAD:codex/react-typescript-console
+new_site targetupdater
+cd "$TMP"
+ARGS+=(--project targetupdater)
+bash "$SOURCE" "${ARGS[@]}" --check > "$TMP/output" 2>&1
+[[ $(grep -c 'Using target updater' "$TMP/output") == 1 ]]
+[[ ! -e "$TMP/targetupdater/storage/framework/down" ]]
+new_site targetupgrade
+git checkout -q "$TARGET"
+bash update.sh "${ARGS[@]}" --jobs-stopped > "$TMP/output" 2>&1
+[[ $(grep -c 'Using target updater' "$TMP/output") == 1 ]]
+[[ $(git rev-parse HEAD) == $(git rev-parse origin/codex/react-typescript-console) && -e storage/framework/down ]]
+grep -q 'All approved migrations completed' "$TMP/output"
+echo 'Updater: 22 isolated scenarios passed'

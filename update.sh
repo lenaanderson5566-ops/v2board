@@ -2,6 +2,11 @@
 # For an old-branch upgrade, run a copy of this script OUTSIDE the checkout.
 set -Eeuo pipefail
 umask 077
+ORIGINAL_ARGS=("$@")
+INVOCATION_DIR=$PWD
+SCRIPT_PATH=$(realpath "${BASH_SOURCE[0]}")
+PHASE=preflight
+CURRENT_MIGRATION=
 BRANCH=codex/react-typescript-console
 PROJECT=$PWD
 PHP_BIN=php
@@ -45,7 +50,19 @@ Other tracked edits stop.
 No historical update.sql replay, cache flush, or DB rollback.
 HELP
 }
-die() { printf 'ERROR: %s\n' "$*" >&2; exit 1; }
+die() { printf 'ERROR [%s]: %s\n' "$PHASE" "$*" >&2; exit 1; }
+report_failure() {
+    printf 'Command failed during %s at line %s.\n' "$PHASE" "$1" >&2
+    if [[ -n "$CURRENT_MIGRATION" ]]; then
+        printf 'Failed migration: %s\nFix the reported database error, then rerun the full updater with the same options.\nCompleted migrations are skipped; do not run unrestricted artisan migrate.\n' "$CURRENT_MIGRATION" >&2
+    fi
+}
+run_migration() {
+    CURRENT_MIGRATION=$1
+    printf '\nApplying migration: %s\n' "$CURRENT_MIGRATION"
+    "$PHP_BIN" artisan migrate --path="$CURRENT_MIGRATION" --force --no-interaction
+    CURRENT_MIGRATION=
+}
 cleanup() {
     local result=$?
     trap - EXIT
@@ -56,7 +73,7 @@ cleanup() {
     exit "$result"
 }
 trap cleanup EXIT
-trap 'printf "Command failed at line %s.\n" "$LINENO" >&2' ERR
+trap 'report_failure "$LINENO"' ERR
 while (( $# )); do
     case "$1" in
         --project|--branch|--php|--composer|--lock-file|--database-backup|--backup-dir|--web-user)
@@ -75,7 +92,12 @@ while (( $# )); do
         *) die "Unknown option: $1";;
     esac
 done
-for tool in git tar sha256sum realpath; do command -v "$tool" >/dev/null || die "Missing $tool"; done
+# Report operator prerequisites before expensive Composer checks; --check remains read-only.
+if (( CHECK_ONLY == 0 )); then
+    (( JOBS_STOPPED == 1 )) || die 'No migrations have run. Stop this site queue/scheduler, then rerun with --jobs-stopped and --database-backup /absolute/path/to/backup.sql.gz'
+    [[ -n "$DATABASE_BACKUP" && -s "$DATABASE_BACKUP" ]] || die 'No migrations have run. Supply a completed non-empty backup using --database-backup /absolute/path/to/backup.sql.gz'
+fi
+for tool in git tar sha256sum realpath cmp; do command -v "$tool" >/dev/null || die "Missing $tool"; done
 PROJECT=$(realpath "$PROJECT")
 cd "$PROJECT"
 [[ "$(git rev-parse --show-toplevel)" == "$PROJECT" ]] || die 'Project must be the repository root'
@@ -104,6 +126,14 @@ OLD_COMMIT=$(git rev-parse HEAD)
 OLD_BRANCH=$(git symbolic-ref --short -q HEAD || true)
 git fetch origin "refs/heads/$BRANCH"
 TARGET=$(git rev-parse FETCH_HEAD)
+# Run the updater from the fetched target, outside the checkout. The running Bash
+# file must not be overwritten by git merge, and an old allowlist cannot omit new migrations.
+WORK_DIR=$(mktemp -d "${TMPDIR:-/tmp}/v2board-update.XXXXXXXX")
+git show "$TARGET:update.sh" > "$WORK_DIR/target-update.sh"
+if ! cmp -s -- "$SCRIPT_PATH" "$WORK_DIR/target-update.sh"; then
+    printf 'Using target updater from %s (%s).\n' "$TARGET" "$BRANCH"
+    if (cd "$INVOCATION_DIR"; bash "$WORK_DIR/target-update.sh" "${ORIGINAL_ARGS[@]}"); then exit 0; else exit $?; fi
+fi
 if git show-ref --verify --quiet "refs/heads/$BRANCH"; then
     git merge-base --is-ancestor "refs/heads/$BRANCH" "$TARGET" || die 'Local target branch diverges or is ahead; reconcile it first'
 fi
@@ -120,7 +150,6 @@ git cat-file -e "$TARGET:$RESET_MIGRATION" || die 'Target lacks the usage reset 
 while IFS= read -r changed; do
     [[ -z "$changed" || "$changed" == "$MIGRATION" || "$changed" == "$INVITATION_MIGRATION" || "$changed" == "$LANGUAGE_MIGRATION" || "$changed" == "$RESET_MIGRATION" || "$changed" == "$NOTICE_MIGRATION" || "$changed" == "$CREDIT_MIGRATION" ]] || die "Unexpected migration: $changed; review scope first"
 done < <(git diff --name-only "$OLD_COMMIT" "$TARGET" -- database/migrations)
-WORK_DIR=$(mktemp -d "${TMPDIR:-/tmp}/v2board-update.XXXXXXXX")
 git show "$TARGET:composer.json" > "$WORK_DIR/composer.json"
 git show "$OLD_COMMIT:composer.json" > "$WORK_DIR/original-composer.json"
 # A manual checkout can leave a legacy Composer file on the new branch.
@@ -168,8 +197,8 @@ if (( RESOLVE_DEPENDENCIES == 1 )); then
     # Resolve a candidate lock without modifying the live vendor tree.
     (cd "$WORK_DIR"; COMPOSER="$WORK_DIR/composer.json" "$PHP_BIN" "$COMPOSER_BIN" --no-plugins --no-scripts update --no-install --no-interaction --prefer-dist)
 fi
-COMPOSER="$WORK_DIR/composer.json" "$PHP_BIN" "$COMPOSER_BIN" --no-plugins --no-scripts validate --no-check-publish --check-lock
-COMPOSER="$WORK_DIR/composer.json" "$PHP_BIN" "$COMPOSER_BIN" --no-plugins --no-scripts check-platform-reqs --lock --no-dev
+COMPOSER="$WORK_DIR/composer.json" "$PHP_BIN" "$COMPOSER_BIN" --no-plugins --no-scripts validate --no-check-publish --check-lock --no-interaction
+COMPOSER="$WORK_DIR/composer.json" "$PHP_BIN" "$COMPOSER_BIN" --no-plugins --no-scripts check-platform-reqs --lock --no-dev --no-interaction
 MANUAL_USERS=$("$PHP_BIN" -r 'require $argv[1]."/vendor/autoload.php"; $app=require $argv[1]."/bootstrap/app.php"; $app->make(Illuminate\Contracts\Console\Kernel::class)->bootstrap(); echo App\Models\User::where("banned",0)->whereNull("plan_id")->where("transfer_enable",">",0)->where(function($q){$q->whereNull("expired_at")->orWhere("expired_at",">",time());})->count();' "$PROJECT")
 [[ "$MANUAL_USERS" =~ ^[0-9]+$ ]] || die 'Unable to verify manual-quota accounts'
 (( MANUAL_USERS == 0 )) || die 'Manual-quota accounts without plan_id exist. Resolve target UI compatibility before upgrading.'
@@ -194,6 +223,7 @@ mkdir -p -- "$BACKUP_DIR"
 BACKUP_DIR=$(realpath "$BACKUP_DIR")
 case "$BACKUP_DIR" in "$PROJECT"|"$PROJECT"/*) die 'File backups must be outside the website';; esac
 if [[ $(id -u) == 0 ]]; then id "$WEB_USER" >/dev/null || die 'Runtime user not found'; fi
+PHASE=backup
 BACKUP=$(mktemp -d "$BACKUP_DIR/$(date +%Y%m%d-%H%M%S).XXXXXXXX")
 printf '%s\n' "$OLD_COMMIT" > "$BACKUP/old-commit.txt"
 printf '%s\n' "$OLD_BRANCH" > "$BACKUP/old-branch.txt"
@@ -237,6 +267,7 @@ if [[ -f "$WORK_DIR/geoip-collisions" ]]; then
         mv -- "$file" "$BACKUP/untracked/$file"
     done < "$WORK_DIR/geoip-collisions"
 fi
+PHASE=checkout
 # New public/PHP files must remain readable by PHP-FPM, even when run as root.
 umask 022
 if git show-ref --verify --quiet "refs/heads/$BRANCH"; then
@@ -246,17 +277,19 @@ else git checkout -b "$BRANCH" "$TARGET"; fi
 [[ "$(git rev-parse HEAD)" == "$TARGET" ]] || die 'Checkout differs from target'
 cp -- "$WORK_DIR/composer.lock" composer.lock
 cp -- "$WORK_DIR/composer.json" composer.json
+PHASE=dependencies
 "$PHP_BIN" "$COMPOSER_BIN" install --no-dev --prefer-dist --optimize-autoloader --no-interaction
-"$PHP_BIN" "$COMPOSER_BIN" check-platform-reqs --no-dev
+"$PHP_BIN" "$COMPOSER_BIN" check-platform-reqs --no-dev --no-interaction
+PHASE=cache-preparation
 "$PHP_BIN" artisan config:clear
 "$PHP_BIN" artisan route:clear
 "$PHP_BIN" artisan view:clear
-"$PHP_BIN" artisan migrate --path="$MIGRATION" --force
-"$PHP_BIN" artisan migrate --path="$INVITATION_MIGRATION" --force
-"$PHP_BIN" artisan migrate --path="$LANGUAGE_MIGRATION" --force
-"$PHP_BIN" artisan migrate --path="$RESET_MIGRATION" --force
-"$PHP_BIN" artisan migrate --path="$NOTICE_MIGRATION" --force
-"$PHP_BIN" artisan migrate --path="$CREDIT_MIGRATION" --force
+PHASE=migrations
+for migration in "$MIGRATION" "$INVITATION_MIGRATION" "$LANGUAGE_MIGRATION" "$RESET_MIGRATION" "$NOTICE_MIGRATION" "$CREDIT_MIGRATION"; do
+    run_migration "$migration"
+done
+printf '\nAll approved migrations completed.\n'
+PHASE=verification
 "$PHP_BIN" artisan config:cache
 "$PHP_BIN" artisan view:cache
 "$PHP_BIN" artisan console:verify

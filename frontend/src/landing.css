@@ -709,3 +709,10 @@
 
 .landing:dir(rtl) :is(.lucide-arrow-right, .lucide-chevron-right) { transform:rotate(180deg); }
 @media(max-width:800px) { .landing :is(.landing-login, .landing-menu, .language-trigger) { min-height:44px; } }
+
+.preview-scenarios { list-style: none; padding: 0; margin: 4px 0 22px; display: grid; gap: 10px; }
+.preview-scenarios li { display: flex; align-items: center; gap: 12px; padding: 12px; border: 1px solid var(--landing-line); border-radius: 12px; }
+.preview-scenarios li > div { min-width: 0; }
+.preview-scenarios strong { font-size: 13px; font-weight: 600; }
+.preview-scenarios p { margin: 4px 0 0; color: var(--landing-muted); font-size: 12px; line-height: 1.5; }
+@media(max-width: 600px) { .preview-scenarios { gap: 8px; margin-bottom: 16px; } .preview-scenarios li { padding: 10px; } }

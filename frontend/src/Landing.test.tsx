@@ -25,23 +25,16 @@ afterEach(() => {
     mocks.boot.registerClosed = false;
 });
 describe("public product entry", () => {
-    it("uses the configured brand and detects a device without pretending to configure it", () => {
+    it("uses the configured brand and explains use cases before setup", () => {
         render(<Landing />);
         expect(
             screen.getAllByRole("link", { name: "Example AI" })[0],
         ).toHaveProperty("href", expect.stringContaining("/"));
-        expect(
-            screen
-                .getByRole("button", { name: "Android" })
-                .getAttribute("aria-pressed"),
-        ).toBe("true");
-        fireEvent.click(screen.getByRole("button", { name: "iOS" }));
-        expect(
-            screen
-                .getByRole("button", { name: "iOS" })
-                .getAttribute("aria-pressed"),
-        ).toBe("true");
-        expect(screen.getByText("previewNote")).toBeTruthy();
+        expect(screen.queryByRole("button", { name: "Android" })).toBeNull();
+        expect(screen.getByText("scenarioTitle")).toBeTruthy();
+        expect(screen.getByText("scenario1")).toBeTruthy();
+        expect(screen.getByText("scenario2")).toBeTruthy();
+        expect(screen.getByText("scenario3")).toBeTruthy();
         expect(
             screen
                 .getAllByRole("link", { name: "start" })

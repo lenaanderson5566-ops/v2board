@@ -7,7 +7,10 @@ import {
     Sparkles,
     Laptop,
     Smartphone,
-    Check,
+    PenLine,
+    Search,
+    Code2,
+    ShoppingBag,
     Menu,
     X,
     SlidersHorizontal,
@@ -15,21 +18,13 @@ import {
     ChevronRight,
 } from "lucide-react";
 import { boot } from "./api";
-import { currentDevice } from "./user-experience";
 import "./landing-copy";
 import "./landing.css";
 import { LanguagePicker } from "./LanguagePicker";
 
-const devices = ["Windows", "macOS", "Android", "iOS"];
 export default function Landing() {
     const { t } = useTranslation("landing");
     const [menu, setMenu] = useState(false);
-    const [device, setDevice] = useState(() => {
-        const detected = currentDevice().device;
-        return (
-            devices.find((name) => name.toLowerCase() === detected) || "Windows"
-        );
-    });
     const menuButton = useRef<HTMLButtonElement>(null);
     useEffect(() => {
         if (!menu) return;
@@ -42,7 +37,10 @@ export default function Landing() {
         window.addEventListener("keydown", escape);
         return () => window.removeEventListener("keydown", escape);
     }, [menu]);
-    const startHref = boot.registerClosed || boot.inviteRequired ? "/app#/login" : "/app#/register";
+    const startHref =
+        boot.registerClosed || boot.inviteRequired
+            ? "/app#/login"
+            : "/app#/register";
     return (
         <div className="landing">
             <a className="product-skip" href="#landing-content">
@@ -104,7 +102,7 @@ export default function Landing() {
                         </div>
                         <div
                             className="landing-platforms"
-                            aria-label={t("step1")}
+                            aria-label={t("tag")}
                         >
                             <Laptop size={15} aria-hidden="true" />
                             <span>Windows · macOS</span>
@@ -122,52 +120,29 @@ export default function Landing() {
                             <span>{t("preview")}</span>
                         </div>
                         <div className="preview-body">
-                            <span className="preview-eyebrow" dir="ltr">01 / 03</span>
-                            <h2>{t("step1")}</h2>
-                            <p>{t("step1Text")}</p>
-                            <div
-                                className="preview-device-picker"
-                                role="group"
-                                aria-label={t("step1")}
-                            >
-                                {devices.map((name) => {
-                                    const Icon = ["iOS", "Android"].includes(
-                                        name,
-                                    )
-                                        ? Smartphone
-                                        : Laptop;
-                                    return (
-                                        <button
-                                            key={name}
-                                            aria-pressed={device === name}
-                                            onClick={() => setDevice(name)}
-                                        >
+                            <span className="preview-eyebrow">{t("tag")}</span>
+                            <h2>{t("scenarioTitle")}</h2>
+                            <p>{t("scenarioIntro")}</p>
+                            <ul className="preview-scenarios">
+                                {[PenLine, Search, Code2].map((Icon, index) => (
+                                    <li key={index}>
+                                        <span className="preview-next-icon">
                                             <Icon
-                                                size={22}
+                                                size={20}
                                                 aria-hidden="true"
                                             />
-                                            <span>{name}</span>
-                                            {device === name && (
-                                                <Check
-                                                    size={13}
-                                                    className="device-check"
-                                                    aria-hidden="true"
-                                                />
-                                            )}
-                                        </button>
-                                    );
-                                })}
-                            </div>
-                            <div className="preview-next" aria-live="polite">
-                                <span className="preview-next-icon">
-                                    <SlidersHorizontal size={18} />
-                                </span>
-                                <div>
-                                    <strong>{device}</strong>
-                                    <p>{t("step2Text")}</p>
-                                </div>
-                                <ChevronRight size={16} aria-hidden="true" />
-                            </div>
+                                        </span>
+                                        <div>
+                                            <strong>
+                                                {t(`scenario${index + 1}`)}
+                                            </strong>
+                                            <p>
+                                                {t(`scenario${index + 1}Text`)}
+                                            </p>
+                                        </div>
+                                    </li>
+                                ))}
+                            </ul>
                             <a
                                 className="button primary preview-start"
                                 href={startHref}
@@ -175,9 +150,6 @@ export default function Landing() {
                                 {t("start")}
                                 <ArrowRight size={16} aria-hidden="true" />
                             </a>
-                            <small className="preview-caption">
-                                {t("previewNote")}
-                            </small>
                         </div>
                     </div>
                 </section>
@@ -187,7 +159,7 @@ export default function Landing() {
                         <h2>{t("setupTitle")}</h2>
                     </div>
                     <ol className="setup-steps">
-                        {[Laptop, SlidersHorizontal, Sparkles].map(
+                        {[ShoppingBag, SlidersHorizontal, Sparkles].map(
                             (Icon, index) => (
                                 <li key={index}>
                                     <div className="setup-step-top">
@@ -220,7 +192,7 @@ export default function Landing() {
                                 icon: SlidersHorizontal,
                                 label: "step1",
                                 detail: "step1Text",
-                                href: "/app#/subscribe",
+                                href: "/app#/plan",
                             },
                             {
                                 icon: BookOpen,

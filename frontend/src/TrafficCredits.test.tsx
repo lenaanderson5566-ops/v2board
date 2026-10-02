@@ -104,3 +104,10 @@ it("handles an empty catalog without offering a checkout", () => {
     expect(screen.getByText("empty")).toBeTruthy();
     expect(screen.queryByRole("button", { name: "checkout" })).toBeNull();
 });
+
+it("uses a text purchase action only when requested by billing", () => {
+    const { rerender } = render(<TrafficCredits balance={20} purchaseLabel />);
+    expect(screen.getByRole("button", { name: "buyMore" }).textContent).toBe("buyMore");
+    rerender(<TrafficCredits balance={20} />);
+    expect(screen.getByRole("button", { name: "buy" }).textContent).toBe("");
+});

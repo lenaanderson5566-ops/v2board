@@ -1,3 +1,4 @@
+import { AccountPreferences } from "./AccountPreferences";
 import { BillingPage } from "./BillingPage";
 import { UsagePage } from "./UsagePage";
 import { e } from "./experience-copy";
@@ -752,71 +753,18 @@ export function Notifications() {
 }
 export function Profile() {
     const config = useData("user/comm/config");
-    const d = useData("user/info"),
-        sessions = useData<Row[]>("user/getActiveSession");
+    const d = useData("user/info");
     const [notice, setNotice] = useState("");
     return (
-        <>
-            <Panel title={tx("账户信息")}>
-                <State {...d}>
-                    <div className="pad">
-                        <h3>{d.data?.email}</h3>
-                        <p className="muted">
-                            {tx("管理账户信息、通知设置与账户安全。")}
-                        </p>
-                    </div>
-                </State>
-            </Panel>
-            <div className="account-security-link">
-                <a className="button" href="#/notifications">
-                    {tx("通知设置")}
-                    <ArrowUpRight size={15} aria-hidden="true" />
-                </a>
-                <a className="button" href="#/security">
-                    {tx("账户安全")}
-                    <ArrowUpRight size={15} aria-hidden="true" />
-                </a>
-            </div>
+        <div className="settings-content account-preferences">
+            <State {...d} retry={d.reload}>
+                <AccountPreferences user={d.data || {}} />
+            </State>
             {notice && (
                 <div className="success-message" role="status">
                     {notice}
                 </div>
             )}
-            <Panel title={tx("活跃会话")}>
-                <State {...sessions}>
-                    <Table
-                        data={Object.entries(sessions.data || {}).map(
-                            ([id, value]) => ({ ...value, id }),
-                        )}
-                        columns={[
-                            ["ip", tx("IP 地址")],
-                            ["ua", tx("客户端")],
-                            [
-                                "login_at",
-                                tx("登录时间"),
-                                (r) => date(r.login_at),
-                            ],
-                        ]}
-                        actions={(r) => (
-                            <button
-                                onClick={async () => {
-                                    try {
-                                        await request(
-                                            "user/removeActiveSession",
-                                            { session_id: r.id },
-                                        );
-                                        sessions.reload();
-                                    } catch (e) {
-                                        alert((e as Error).message);
-                                    }
-                                }}
-                            >
-                                {tx("移除")}
-                            </button>
-                        )}
-                    />
-                </State>
-            </Panel>
             {Boolean(config.data?.is_telegram) && (
                 <Panel title="Telegram">
                     <div className="pad actions">
@@ -862,7 +810,7 @@ export function Profile() {
                     </div>
                 </Panel>
             )}
-        </>
+        </div>
     );
 }
 export function Traffic() {

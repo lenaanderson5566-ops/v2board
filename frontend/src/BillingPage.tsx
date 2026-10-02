@@ -79,7 +79,10 @@ export function BillingPage() {
                     </div>
                 </State>
             </section>
-            <TrafficCredits balance={Number(info.data?.credit_balance || 0)} />
+            <TrafficCredits
+                purchaseLabel
+                balance={Number(info.data?.credit_balance || 0)}
+            />
             {notice && (
                 <p className="success-message" role="status">
                     {notice}

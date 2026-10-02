@@ -6,7 +6,13 @@ import { c } from "./credit-copy";
 import { Modal, State, useData } from "./ui";
 import { unfinishedOrder } from "./billing-flow";
 
-export function TrafficCredits({ balance = 0 }: { balance?: number }) {
+export function TrafficCredits({
+    balance = 0,
+    purchaseLabel = false,
+}: {
+    balance?: number;
+    purchaseLabel?: boolean;
+}) {
     const [open, setOpen] = useState(false);
     return (
         <section className="settings-section traffic-credits">
@@ -22,11 +28,11 @@ export function TrafficCredits({ balance = 0 }: { balance?: number }) {
                         </strong>
                     </div>
                     <button
-                        className="credit-add"
-                        aria-label={c("buy")}
+                        className={purchaseLabel ? "soft-button" : "credit-add"}
+                        aria-label={c(purchaseLabel ? "buyMore" : "buy")}
                         onClick={() => setOpen(true)}
                     >
-                        <Plus size={20} />
+                        {purchaseLabel ? c("buyMore") : <Plus size={20} />}
                     </button>
                 </div>
                 <p className="muted">{c("help")}</p>

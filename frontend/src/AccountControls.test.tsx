@@ -40,6 +40,7 @@ vi.mock("./ui", () => ({
 }));
 import { LanguagePicker } from "./LanguagePicker";
 import { AccountMenu } from "./AccountMenu";
+vi.mock("./AccountSessions", () => ({ AccountSessions: () => <div>Sessions</div> }));
 import { AccountSecurity } from "./AccountSecurity";
 afterEach(cleanup);
 beforeEach(() => {

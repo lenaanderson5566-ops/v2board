@@ -1,5 +1,6 @@
 import i18n, { locale } from "./i18n";
 export const creditCopy = {
+    buyMore: ["购买更多额度", "購買更多額度", "Buy more credits", "クレジットを追加購入", "크레딧 추가 구매", "Mua thêm hạn mức", "Купить ещё кредиты", "خرید اعتبار بیشتر"],
     completedHelp: [
         "订单已处理，可在使用情况中查看当前服务状态。",
         "訂單已處理，可在使用情況中查看目前服務狀態。",

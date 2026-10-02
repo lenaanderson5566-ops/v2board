@@ -1,3 +1,4 @@
+import { AccountSessions } from "./AccountSessions";
 import { useId, useState, useRef, type FormEvent } from "react";
 import { Eye, EyeOff, ArrowLeft, Shield } from "lucide-react";
 import { request, clearReadCache, storageKey } from "./api";
@@ -67,9 +68,9 @@ export function AccountSecurity() {
     }
     return (
         <section className="account-security">
-            <a href="#/profile" className="security-back">
+            <a href="#/dashboard" className="security-back">
                 <ArrowLeft size={16} aria-hidden="true" />
-                {tx("账户设置")}
+                {tx("总览")}
             </a>
             <div className="security-heading">
                 <Shield size={24} aria-hidden="true" />
@@ -168,6 +169,7 @@ export function AccountSecurity() {
                     {tx("重置订阅链接")}
                 </button>
             </section>
+            <AccountSessions />
             {resetOpen && (
                 <Modal
                     title={tx("重置订阅链接")}

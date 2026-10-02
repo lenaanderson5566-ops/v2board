@@ -2,6 +2,7 @@
 # Isolated Git repositories; PHP/Composer/Artisan are mocked. No live DB changes.
 set -euo pipefail
 SOURCE=$(realpath "${1:-update.sh}")
+export REAL_PHP=$(command -v php)
 TMP=$(mktemp -d)
 trap 'rm -rf -- "$TMP"' EXIT
 mkdir -p "$TMP/seed"
@@ -20,6 +21,9 @@ git checkout -qb codex/react-typescript-console
 mkdir -p public/console/.vite database/migrations
 echo '{}' > public/console/.vite/manifest.json
 echo '<?php // fixture' > database/migrations/2026_10_01_000001_add_trusted_x_forwarded_for_to_v2node.php
+mkdir -p storage/geoip
+echo 'new mmdb' > storage/geoip/GeoLite2-ASN.mmdb
+git add -f storage/geoip/GeoLite2-ASN.mmdb
 git add .; git commit -qm target
 TARGET=$(git rev-parse HEAD)
 git clone -q --bare . "$TMP/origin.git"
@@ -29,8 +33,12 @@ touch "$TMP/composer.phar"
 cat > "$TMP/php" <<'MOCK'
 #!/usr/bin/env bash
 set -e
-printf '%s\n' "$*" >> calls.log
-if [[ "$1" == '-r' ]]; then echo "${MANUAL_USERS:-0}"; exit; fi
+printf '%s\n' "$*" >> "${MOCK_LOG:-calls.log}"
+if [[ "$1" == '-r' ]]; then
+    if [[ "$2" == *'json_decode'* ]]; then exec "$REAL_PHP" "$@"; fi
+    echo "${MANUAL_USERS:-0}"; exit
+fi
+if [[ "$*" == *' update '* && "${FAIL_RESOLVE:-0}" == 1 ]]; then exit 19; fi
 if [[ "$1" == artisan && "$2" == down ]]; then mkdir -p storage/framework; touch storage/framework/down; fi
 if [[ "$*" == *' install '* && "${FAIL_INSTALL:-0}" == 1 ]]; then exit 17; fi
 if [[ "$*" == *' validate '* && "${FAIL_LOCK:-0}" == 1 ]]; then exit 18; fi
@@ -39,6 +47,7 @@ chmod +x "$TMP/php"
 new_site() {
     git clone -q -b original "$TMP/origin.git" "$TMP/$1"
     cd "$TMP/$1"
+    export MOCK_LOG="$PWD/calls.log"
     mkdir -p config storage/framework bootstrap/cache vendor
     printf 'APP_KEY=original-key\n' > .env
     printf '<?php return ["preserved"=>true];\n' > config/v2board.php
@@ -81,4 +90,39 @@ new_site existingdown
 touch storage/framework/down
 bash "$SOURCE" "${ARGS[@]}" --jobs-stopped > "$TMP/output" 2>&1
 [[ -e storage/framework/down ]]
-echo 'Updater: 8 isolated scenarios passed'
+new_site customized
+printf '{"name":"test/site","require":{"joanhey/adapterman":"^0.7.1"}}\n' > composer.json
+mkdir -p app/Payments storage/geoip
+echo 'custom payment' > app/Payments/MetePay.php
+echo 'old mmdb' > storage/geoip/GeoLite2-ASN.mmdb
+bash "$SOURCE" "${ARGS[@]}" --jobs-stopped --resolve-dependencies > "$TMP/output" 2>&1
+grep -q joanhey/adapterman composer.json
+grep -q 'custom payment' app/Payments/MetePay.php
+grep -q 'new mmdb' storage/geoip/GeoLite2-ASN.mmdb
+find "$TMP/backups" -path '*/untracked/storage/geoip/GeoLite2-ASN.mmdb' -exec cat {} \; | grep -q 'old mmdb'
+grep -q 'update --no-install' calls.log
+new_site unsupported
+printf '{"name":"test/site","scripts":{"danger":"echo run"}}\n' > composer.json
+reject --jobs-stopped --resolve-dependencies
+[[ $(git rev-parse HEAD) == "$OLD" && ! -e storage/framework/down ]]
+new_site resolvefail
+export FAIL_RESOLVE=1; reject --jobs-stopped --resolve-dependencies; unset FAIL_RESOLVE
+[[ $(git rev-parse HEAD) == "$OLD" && ! -e storage/framework/down ]]
+new_site collision
+mkdir -p public/console/.vite
+echo custom > public/console/.vite/manifest.json
+reject --jobs-stopped
+grep -q custom public/console/.vite/manifest.json
+[[ ! -e storage/framework/down ]]
+new_site customcheck
+printf '{"name":"test/site","require":{"joanhey/adapterman":"^0.7.1"}}\n' > composer.json
+bash "$SOURCE" "${ARGS[@]}" --check --resolve-dependencies > "$TMP/output" 2>&1
+[[ $(git rev-parse HEAD) == "$OLD" && ! -e storage/framework/down ]]
+grep -q joanhey/adapterman composer.json
+new_site customfailure
+printf '{"name":"test/site","require":{"joanhey/adapterman":"^0.7.1"}}\n' > composer.json
+export FAIL_INSTALL=1; reject --jobs-stopped --resolve-dependencies; unset FAIL_INSTALL
+[[ -e storage/framework/down ]]
+grep -q joanhey/adapterman composer.json
+find "$TMP/backups" -name composer-local.patch -exec cat {} \; | grep joanhey/adapterman > /dev/null
+echo 'Updater: 14 isolated scenarios passed'

@@ -1,13 +1,37 @@
 # 宝塔分支升级脚本
 
-`update.sh` 默认目标为 `codex/react-typescript-console`，适用于已运行的 Git 安装。保留 `.env`、APP_KEY、`config/v2board.php`、用户数据及既有会话，不删除 Composer 锁文件，不切回 master。使用现有 Composer 和与网站一致的 PHP。
+`update.sh` 默认目标为 `codex/react-typescript-console`，适用于已运行的 Git 安装。保留 `.env`、APP_KEY、`config/v2board.php`、用户数据及既有会话，不删除原锁文件备份，不切回 master。使用现有 Composer 和与网站一致的 PHP。
+
+## 从带本地文件的旧分支直接升级
+
+不需要先更新旧分支的全部提交。脚本接受 `composer.json` 中本地新增的 `require` / `require-dev` 包（如 `joanhey/adapterman`），合并到目标依赖定义。修改既有依赖约束、脚本、仓库源等其他内容，以及其他已跟踪文件的改动，会在切换前停止。不会执行 `git clean`、强制重置或删除自定义支付文件。
+
+使用 `--resolve-dependencies` 可在临时目录运行 Composer `update --no-install`，禁用插件和脚本，生成候选锁文件，再验证依赖和实际 PHP 平台。此操作需要网络，可能改变候选依赖版本；不会改动线上 vendor。正式升级会先备份完整站点、原 Composer 文件、本地补丁及候选文件，再切换分支并安装候选锁文件。省略该参数时仍要求与合并后定义匹配的已验证锁文件。
+
+旧版未跟踪且与目标同名的 `storage/geoip` 普通文件会在完整备份后移入备份目录的 `untracked/storage/geoip`，由目标分支文件替换。其他未跟踪文件冲突、GeoIP 符号链接均停止，不覆盖；无冲突的本地支付、协议、上传文件保留。
+
+针对 PHP 8.1 的宝塔站点，可下载新版脚本后先预检：
+
+```bash
+cd /www/wwwroot/api.adanalytics-service.com
+curl -fL https://raw.githubusercontent.com/lenaanderson5566-ops/v2board/codex/react-typescript-console/update.sh -o /tmp/v2board-update.sh
+bash /tmp/v2board-update.sh --php /www/server/php/81/bin/php --composer "$PWD/composer.phar" --resolve-dependencies --check
+```
+
+预检通过后，暂停写入、队列和调度，完成数据库备份，运行以下命令（数据库备份路径须替换为实际文件）：
+
+```bash
+bash /tmp/v2board-update.sh --php /www/server/php/81/bin/php --composer "$PWD/composer.phar" --resolve-dependencies --database-backup /www/backup/本次数据库备份.sql.gz --backup-dir /www/backup/v2board-upgrades --jobs-stopped
+```
+
+成功保持维护模式。宝塔重启对应 PHP-FPM 后执行指定 PHP 的 `artisan up` 并验收，再恢复原队列和调度。回滚时需结合原 Composer 文件和完整归档恢复，本地新增依赖会让升级后的 `composer.json` 显示本地修改，这是预期结果。
 
 ## 先准备
 
-1. 在与生产一致的 PHP 环境验证目标分支，准备对应的 `composer.lock`。本仓库忽略锁文件，所以脚本不会在生产自动解析依赖；锁文件与目标 composer.json 不一致会停止。
+1. 不启用 `--resolve-dependencies` 时，在与生产一致的 PHP 环境验证目标分支并准备对应的 `composer.lock`。本仓库忽略锁文件；锁文件与合并后 composer.json 不一致会停止。
 2. 暂停站点写入、原队列和定时任务，完成数据库备份，放在站点目录之外。可先用原代码执行 `php artisan down`；脚本接受并保留已有维护模式。
 3. 使用网站服务账户执行；如用 root，默认仅将 `storage` 和 `bootstrap/cache` 属主设为 www，可用 `--web-user` 调整。不递归修改整个站点属主。
-4. 把新版脚本下载至 checkout 之外；旧分支里的旧 update.sh 不能用于这次升级。脚本不接受有未提交 tracked-file 修改的 checkout。
+4. 把新版脚本下载至 checkout 之外；旧分支里的旧 update.sh 不能用于这次升级。仅接受上述可合并的 Composer 新增依赖，其他未提交 tracked-file 修改会停止。
 
 示例路径均需替换为实际值，PHP 版本应与网站 PHP-FPM 一致：
 

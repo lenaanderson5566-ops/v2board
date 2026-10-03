@@ -11,6 +11,7 @@ class UserRoute
             'prefix' => 'user',
             'middleware' => 'user'
         ], function ($router) {
+            $router->get('/apple-account', 'V1\\User\\AppleAccountController@fetch')->middleware('throttle:10,1');
             // User
             $router->get('/usage/reset', 'V1\\User\\UsageResetController@fetch');
             $router->post('/usage/reset', 'V1\\User\\UsageResetController@consume')->middleware('throttle:20,1');

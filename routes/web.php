@@ -14,6 +14,7 @@ $renderConsole = function (string $mode, bool $landing = false) use ($securePath
             'description' => $landing ? 'AI 应用配置助手，让设备配置更简单。' : config('v2board.app_description', '连接世界，轻松管理你的订阅。'),
             'adminPath' => $mode === 'admin' ? $securePath : '',
             'opsPath' => $mode === 'admin' ? config('v2board.ops_api_path', 'ops') : '',
+            'appleAccountEnabled' => (bool) config('v2board.apple_account_enable', 0),
             'emailVerify' => (bool) config('v2board.email_verify', 0),
             'registerClosed' => (bool) config('v2board.stop_register', 0),
             'creditAccessPolicy' => \App\Services\TrafficCreditService::baseGroupId() !== null,

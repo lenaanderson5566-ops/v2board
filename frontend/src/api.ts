@@ -20,6 +20,7 @@ export interface Boot {
     registerClosed: boolean;
     inviteRequired?: boolean;
     creditAccessPolicy?: boolean;
+    appleAccountEnabled?: boolean;
     emailWhitelistEnabled?: boolean;
     emailWhitelistSuffixes?: string[];
     recaptchaSiteKey: string;

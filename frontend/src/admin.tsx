@@ -1528,6 +1528,9 @@ const labels: Record<string, string> = {
     email_host: "SMTP 主机",
     email_port: "SMTP 端口",
     email_username: "SMTP 用户名",
+    apple_account_enable: "启用 iOS 下载账号",
+    apple_account_token: "AppleAuto API Key（留空保留，仅服务端保存）",
+    apple_account_share: "AppleAuto 分享代码",
     email_password: "SMTP 密码",
     email_encryption: "SMTP 加密方式",
     email_from_address: "发件人地址",
@@ -1669,6 +1672,7 @@ export function Settings() {
                     }}
                 />
                 {group === "subscribe" && <p className="pad muted">设置额度基础权限组后：订阅有效时，额度沿用订阅权限；订阅到期或无订阅时，额度仅可使用基础组节点。适用于所有额度用户（含已迁移的一次性套餐）。额度余额、套餐记录及限速、设备限制不变。节点在下次拉取用户时更新权限，客户端需更新订阅以刷新节点列表。</p>}
+                {group === "app" && <div className="pad"><p className="muted">AppleAuto 服务：https://account.fastdog66.com。填写分享链接最后一段代码。仅有效订阅或有剩余额度的用户可查看。请先保存，再测试连接；启用后刷新用户页面。</p><button disabled={dirty || actionBusy} onClick={() => runAction("config/testAppleAccount")}>测试下载账号连接</button></div>}
                 {group === "email" && (
                     <div className="pad">
                         <p className="muted">

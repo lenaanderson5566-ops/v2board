@@ -1,3 +1,4 @@
+import { AppleAccounts } from "./AppleAccounts";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import "./import-copy";
@@ -188,6 +189,7 @@ export function SubscriptionImport({
                         </button>
                     ))}
                 </div>
+                {device === "ios" && boot.appleAccountEnabled && <AppleAccounts />}
                 <div className="quick-actions">
                     {downloads[selected] && (
                         <a

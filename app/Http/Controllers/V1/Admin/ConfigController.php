@@ -148,6 +148,9 @@ class ConfigController extends Controller
                 'telegram_discuss_link' => config('v2board.telegram_discuss_link')
             ],
             'app' => [
+                'apple_account_enable' => (int) config('v2board.apple_account_enable', 0),
+                'apple_account_token' => '',
+                'apple_account_share' => config('v2board.apple_account_share', ''),
                 'windows_version' => config('v2board.windows_version'),
                 'windows_download_url' => config('v2board.windows_download_url'),
                 'macos_version' => config('v2board.macos_version'),
@@ -186,9 +189,17 @@ class ConfigController extends Controller
         ]);
     }
 
+    public function testAppleAccount(\App\Services\AppleAccountService $service)
+    {
+        $accounts = $service->accounts();
+        abort_if(count($accounts) === 0, 503, '连接成功，但分享页暂无检查正常的可用账号。');
+        return response(['data' => ['available' => count($accounts)]])->header('Cache-Control', 'no-store');
+    }
+
     public function save(ConfigSave $request)
     {
         $data = $request->validated();
+        if (empty($data['apple_account_token'])) unset($data['apple_account_token']);
         $config = config('v2board');
         $config['custom_footer_html'] = \App\Support\FrontendConfig::footer();
         foreach (['frontend_theme', 'frontend_theme_sidebar', 'frontend_theme_header', 'frontend_theme_color', 'frontend_background_url'] as $legacyKey) {

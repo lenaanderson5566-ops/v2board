@@ -7,6 +7,9 @@ use Illuminate\Foundation\Http\FormRequest;
 class ConfigSave extends FormRequest
 {
     const RULES = [
+        'apple_account_enable' => 'in:0,1',
+        'apple_account_token' => 'nullable|string|max:256',
+        'apple_account_share' => 'nullable|alpha_num|max:128',
         // deposit
         'deposit_bounus' => [
             'nullable',

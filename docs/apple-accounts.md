@@ -1,10 +1,10 @@
 # iOS 下载账号
 
-使用 AppleAuto User API，固定上游 `https://account.fastdog66.com`，禁止重定向，密钥不会发送到其他地址。
+使用 AppleAuto User API，后台可配置 HTTPS 接口域名，默认 `https://account.fastdog66.com`。禁止重定向和代理，拒绝内网/保留 IP，并锁定通过校验的 DNS 地址。当前连接使用 IPv4。
 
 部署后进入 **系统配置 → 客户端下载**：
 
-1. 填写 AppleAuto 用户 API Key（不使用管理员 API Key）。密钥留空保留旧值，不通过配置读取接口回显。
+1. 填写 HTTPS 接口域名（不含 /share、/client 等路径），再填写 AppleAuto 用户 API Key（不使用管理员 API Key）。密钥留空保留旧值，不通过配置读取接口回显。
 2. 填写分享链接末尾的分享代码（不是完整 URL，也不是数字 ID）。后端自动从 getAllSharepages 匹配数字 ID，再调用 getShareAccounts。
 3. 保存并点击“测试下载账号连接”。测试只返回可用数量，不返回密码。
 4. 测试成功后启用 iOS 下载账号，刷新用户页面。

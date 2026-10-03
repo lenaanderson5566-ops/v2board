@@ -148,6 +148,7 @@ class ConfigController extends Controller
                 'telegram_discuss_link' => config('v2board.telegram_discuss_link')
             ],
             'app' => [
+                'apple_account_url' => config('v2board.apple_account_url', \App\Services\AppleAccountService::ORIGIN),
                 'apple_account_enable' => (int) config('v2board.apple_account_enable', 0),
                 'apple_account_token' => '',
                 'apple_account_share' => config('v2board.apple_account_share', ''),
@@ -199,6 +200,10 @@ class ConfigController extends Controller
     public function save(ConfigSave $request)
     {
         $data = $request->validated();
+        if (isset($data['apple_account_url'])) {
+            try { $data['apple_account_url'] = \App\Services\AppleAccountService::normalizeOrigin($data['apple_account_url']); }
+            catch (\InvalidArgumentException $e) { throw \Illuminate\Validation\ValidationException::withMessages(['apple_account_url' => $e->getMessage()]); }
+        }
         if (empty($data['apple_account_token'])) unset($data['apple_account_token']);
         $config = config('v2board');
         $config['custom_footer_html'] = \App\Support\FrontendConfig::footer();

@@ -5,17 +5,54 @@ use Illuminate\Support\Facades\Http;
 
 class AppleAccountService
 {
-    // Explicit upstream allowlist: never send this credential to arbitrary hosts or redirects.
+    // Default preserves existing deployments; administrators may configure another HTTPS origin.
     public const ORIGIN = 'https://account.fastdog66.com';
+
+    public static function normalizeOrigin(string $value): string
+    {
+        $parts = parse_url(trim($value));
+        if (!$parts || ($parts['scheme'] ?? '') !== 'https' || empty($parts['host'])
+            || isset($parts['user']) || isset($parts['pass']) || isset($parts['query']) || isset($parts['fragment'])
+            || !in_array($parts['path'] ?? '', ['', '/'], true)
+            || !filter_var($parts['host'], FILTER_VALIDATE_DOMAIN, FILTER_FLAG_HOSTNAME)) {
+            throw new \InvalidArgumentException('请输入 HTTPS 接口域名，不包含路径、账号或查询参数。');
+        }
+        return 'https://'.strtolower($parts['host']).(isset($parts['port']) ? ':'.$parts['port'] : '');
+    }
+
+    protected function resolveHost(string $host): array
+    {
+        return gethostbynamel($host) ?: [];
+    }
+
+    private function connection(): array
+    {
+        try {
+            $origin = self::normalizeOrigin((string) config('v2board.apple_account_url', self::ORIGIN));
+        } catch (\InvalidArgumentException $e) {
+            abort(503, 'Invalid Apple account service URL.');
+        }
+        $host = parse_url($origin, PHP_URL_HOST);
+        $port = parse_url($origin, PHP_URL_PORT) ?: 443;
+        $addresses = $this->resolveHost($host);
+        abort_if(!$addresses, 503, 'Apple account service DNS lookup failed.');
+        foreach ($addresses as $ip) {
+            abort_unless(filter_var($ip, FILTER_VALIDATE_IP, FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE), 503, 'Apple account service requires a public address.');
+        }
+        // Pin the validated address, preventing a second DNS lookup or proxy from reaching an internal host.
+        return [$origin, ['connect_timeout' => 3, 'allow_redirects' => false, 'proxy' => '',
+            'curl' => [CURLOPT_RESOLVE => ["{$host}:{$port}:{$addresses[0]}"]]]];
+    }
 
     private function get(string $path, array $query = []): array
     {
         $token = (string) config('v2board.apple_account_token', '');
         abort_if($token === '', 503, 'Apple account service is not configured.');
+        [$origin, $options] = $this->connection();
         try {
             $response = Http::withHeaders(['X-API-Key' => $token])->acceptJson()
-                ->timeout(8)->withOptions(['connect_timeout' => 3, 'allow_redirects' => false])
-                ->get(self::ORIGIN.$path, $query);
+                ->timeout(8)->withOptions($options)
+                ->get($origin.$path, $query);
         } catch (\Throwable $e) {
             abort(503, 'Apple account service connection failed. Please retry later.');
         }

@@ -106,28 +106,6 @@ export function SubscriptionPurchase() {
                 )}
             </State>
             <State {...plans} retry={plans.reload}>
-                {currentAvailable && currentPlan?.reset_price != null && (
-                    <div className="pending-order">
-                        <div>
-                            <strong>
-                                {tx("当前套餐")} · {currentPlan.name}
-                            </strong>
-                            <p>{tx("重置流量不会延长订阅有效期。")}</p>
-                        </div>
-                        <button
-                            disabled={
-                                Boolean(pending) ||
-                                orders.loading ||
-                                Boolean(orders.error)
-                            }
-                            onClick={() =>
-                                setSelected({ ...currentPlan, resetOnly: true })
-                            }
-                        >
-                            {tx("流量重置")} · {money(currentPlan.reset_price)}
-                        </button>
-                    </div>
-                )}
                 <div className="pricing-toolbar">
                     <div
                         className="pricing-cycle"
@@ -317,7 +295,7 @@ export function SubscriptionPurchase() {
         </section>
     );
 }
-function PlanSelection({
+export function PlanSelection({
     plan,
     close,
     replaceTradeNo,
@@ -366,7 +344,7 @@ function PlanSelection({
             aria-busy={busy}
         >
             <fieldset disabled={busy}>
-                <legend>{tx("选择订阅周期")}</legend>
+                <legend>{tx(plan.resetOnly ? "流量重置" : "选择订阅周期")}</legend>
                 <div className="period-options">
                     {available.map((key) => (
                         <label

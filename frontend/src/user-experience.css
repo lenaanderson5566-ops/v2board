@@ -1322,3 +1322,7 @@ body:has(.browser-notice) #custom-footer {
 .user-auth-form .auth-email-selector input { flex: 1; width: 0; min-width: 0; border-radius: 12px 0 0 12px; }
 .user-auth-form .auth-email-selector select { width: auto; max-width: 56%; min-width: 110px; border: 1px solid #dce2dd; border-left: 0; border-radius: 0 12px 12px 0; padding: 12px 10px; background: #f4f5f2; color: inherit; font: inherit; }
 .auth-email-selector :focus-visible { outline: 2px solid #44685b; outline-offset: 2px; position: relative; }
+
+.paid-traffic-reset { margin-top: 16px; padding: 20px; }
+.paid-traffic-reset .settings-row { gap: 12px; flex-wrap: wrap; }
+.paid-traffic-reset .muted { margin-bottom: 0; }

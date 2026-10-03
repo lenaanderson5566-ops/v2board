@@ -34,6 +34,7 @@ vi.mock("./i18n", () => ({
 vi.mock("./pricing-copy", () => ({
     pricingCopy: (key: string, args: any = {}) => key + JSON.stringify(args),
 }));
+vi.mock("./import-copy", () => ({}));
 vi.mock("./profile-copy", () => ({ p: (key: string) => key }));
 vi.mock("./help-copy", () => ({ h: (key: string) => key }));
 vi.mock("./credit-copy", () => ({
@@ -214,7 +215,7 @@ it.each([0, 1])(
         ).toBe(true);
     },
 );
-it("keeps hidden renewable plans and puts reset in a separate, valid-subscription action", () => {
+it("keeps hidden renewable plans without a paid reset action in the catalog", () => {
     mocks.sub = {
         plan: { ...plan, id: 9, name: "Existing", show: 0 },
         expired_at: null,
@@ -222,9 +223,7 @@ it("keeps hidden renewable plans and puts reset in a separate, valid-subscriptio
     };
     render(<SubscriptionPurchase />);
     expect(screen.getByRole("heading", { name: "Existing" })).toBeTruthy();
-    fireEvent.click(screen.getByRole("button", { name: /流量重置/ }));
-    expect(screen.getAllByRole("radio")).toHaveLength(1);
-    expect(screen.getByRole("radio", { name: /流量重置/ })).toBeTruthy();
+    expect(screen.queryByRole("button", { name: /流量重置/ })).toBeNull();
 });
 function checkout(values: any = {}) {
     const reload = vi.fn();

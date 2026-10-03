@@ -1,8 +1,11 @@
+import { PlanSelection } from "./SubscriptionPurchase";
+import { activePlan } from "./user-experience";
+import { unfinishedOrder } from "./billing-flow";
 import { TrafficCredits } from "./TrafficCredits";
 import { c, minuteDate } from "./credit-copy";
 import { useRef, useState } from "react";
 import { ArrowUpRight, RotateCcw } from "lucide-react";
-import { bytes, date, request, type Row } from "./api";
+import { bytes, date, money, request, type Row } from "./api";
 import { tx } from "./i18n";
 import { e } from "./experience-copy";
 import { b } from "./billing-copy";
@@ -339,6 +342,9 @@ export function UsagePage() {
                                 </div>
                             </div>
                         </State>
+                        {sub.data?.has_subscription !== false && activePlan(sub.data?.plan, sub.data?.expired_at) && total > 0 && sub.data?.plan?.reset_price != null && (
+                            <PaidTrafficReset plan={sub.data.plan} used={used} />
+                        )}
                     </section>
                 </>
             )}
@@ -396,4 +402,26 @@ export function resetError(error: { code?: string; message: string }) {
         default:
             return error.message;
     }
+}
+
+export function PaidTrafficReset({ plan, used }: { plan: Row; used: number }) {
+    const orders = useData<Row[]>("user/order/fetch");
+    const [open, setOpen] = useState(false);
+    const pending = unfinishedOrder(orders.data || []);
+    return <div className="settings-card paid-traffic-reset">
+        <div className="settings-row">
+            <strong>{c("paidReset")}</strong>
+            <button className="soft-button" disabled={used <= 0 || orders.loading || Boolean(orders.error) || Boolean(pending)} onClick={() => setOpen(true)}>
+                {c("paidReset")} · {money(plan.reset_price)}
+            </button>
+        </div>
+        <p className="muted">{c("paidResetHelp")}</p>
+        {used <= 0 && <p className="muted">{b("emptyUsage")}</p>}
+        {pending && <a href={`#/order/${pending.trade_no}`}>{tx("你有一笔待支付订单")} · {tx("查看")}</a>}
+        {orders.error && <State {...orders} retry={orders.reload}>{null}</State>}
+        {open && <Modal title={c("paidReset")} close={() => setOpen(false)}>
+            <p className="pad muted">{c("paidResetHelp")}</p>
+            <PlanSelection plan={{ ...plan, resetOnly: true }} close={() => setOpen(false)} />
+        </Modal>}
+    </div>;
 }

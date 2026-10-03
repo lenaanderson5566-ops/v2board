@@ -12,6 +12,7 @@ const mocks = vi.hoisted(() => ({
     reload: vi.fn(),
     navigate: vi.fn(),
     resets: {} as any,
+    subscription: {} as any,
     orders: [] as any[],
 }));
 vi.mock("./api", () => ({
@@ -28,6 +29,7 @@ vi.mock("./credit-copy", () => ({
     c: (key: string) => key,
     minuteDate: (value: unknown) => String(value || "—"),
 }));
+vi.mock("./pricing-copy", () => ({ pricingCopy: (s: string) => s }));
 vi.mock("./billing-copy", () => ({ b: (s: string) => s }));
 vi.mock("./experience-copy", () => ({ e: (s: string) => s }));
 vi.mock("./UsageChart", () => ({ UsageChart: () => <div>chart-30-days</div> }));
@@ -48,11 +50,7 @@ vi.mock("./ui", () => ({
                       }
                     : path.includes("Preview")
                       ? { count: 12 }
-                      : {
-                            plan: { name: "Pro" },
-                            expired_at: 2000000000,
-                            reset_day: 4,
-                        },
+                      : mocks.subscription,
         reload: mocks.reload,
         loading: false,
         error: "",
@@ -84,6 +82,7 @@ beforeEach(() => {
     mocks.navigate.mockReset();
     mocks.resets = { available: 2, can_reset: true, credits: [], history: [] };
     mocks.orders = [];
+    mocks.subscription = { plan: { id: 7, name: "Pro", reset_price: 200 }, expired_at: 2000000000, reset_day: 4, has_subscription: true };
 });
 afterEach(cleanup);
 it("groups subscription, balance and transactions and opens redemption on demand", async () => {
@@ -245,4 +244,25 @@ it("grants banked credits to the exact selected user filter", async () => {
             }),
         ),
     );
+});
+
+it("creates a paid reset order from usage without consuming banked resets", async () => {
+    mocks.request.mockResolvedValue({ data: "reset-order" });
+    render(<UsagePage />);
+    fireEvent.click(screen.getByRole("button", { name: /paidReset/ }));
+    expect(screen.queryByText("选择订阅周期")).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "创建订单并继续" }));
+    await waitFor(() => expect(mocks.navigate).toHaveBeenCalledWith("order/reset-order"));
+    expect(mocks.request).toHaveBeenCalledWith("user/order/save", { plan_id: 7, period: "reset_price" });
+    expect(mocks.request).not.toHaveBeenCalledWith("user/usage/reset", expect.anything());
+});
+it("hides paid resets for expired subscriptions", () => {
+    mocks.subscription.has_subscription = false;
+    render(<UsagePage />);
+    expect(screen.queryByRole("button", { name: /paidReset/ })).toBeNull();
+});
+it("blocks another paid reset when an unfinished order exists", () => {
+    mocks.orders = [{ status: 0, trade_no: "existing" }];
+    render(<UsagePage />);
+    expect((screen.getByRole("button", { name: /paidReset/ }) as HTMLButtonElement).disabled).toBe(true);
 });

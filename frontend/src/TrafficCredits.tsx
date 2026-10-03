@@ -116,12 +116,12 @@ export function CreditPurchase({ close }: { close: () => void }) {
                             >
                                 {catalog.data?.map((item) => (
                                     <option key={item.id} value={item.id}>
-                                        {bytes(item.bytes)} · {item.name} —{" "}
+                                        {c("creditOrder", { amount: bytes(item.bytes) })} —{" "}
                                         {money(item.price)}
                                     </option>
                                 ))}
                             </select>
-                            <p className="muted">{c("access")}</p>
+                            {!boot.creditAccessPolicy && <p className="muted">{c("access")}</p>}
                             <div className="settings-row credit-price">
                                 <strong>
                                     {c("creditOrder", {

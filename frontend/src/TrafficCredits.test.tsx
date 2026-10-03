@@ -23,7 +23,7 @@ vi.mock("./api", () => ({
     money: (n: number) => `$${n / 100}`,
 }));
 vi.mock("./i18n", () => ({ tx: (s: string) => s }));
-vi.mock("./credit-copy", () => ({ c: (s: string) => s }));
+vi.mock("./credit-copy", () => ({ c: (s: string, args?: { amount?: string }) => args?.amount ? `${args.amount} credits` : s }));
 vi.mock("./ui", () => ({
     useData: (path: string) => ({
         data: path === "user/credit/fetch" ? mocks.plans : mocks.orders,
@@ -120,4 +120,11 @@ it("explains subscription-dependent node access when configured", () => {
     render(<TrafficCredits />);
     expect(screen.getByText("accessHelp")).toBeTruthy();
     expect(screen.queryByText("help")).toBeNull();
+});
+
+it("formats package names by capacity instead of administrative plan names", () => {
+    render(<TrafficCredits />);
+    fireEvent.click(screen.getByRole("button", { name: "buy" }));
+    expect(screen.getByRole("option", { name: "100 B credits — $10" })).toBeTruthy();
+    expect(screen.queryByText(/Small|Large/)).toBeNull();
 });

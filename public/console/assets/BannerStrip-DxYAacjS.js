@@ -1,0 +1,11 @@
+import{y as b,u as f,q as j,r as m,D as S,j as e}from"./main-D8yM8l8L.js";/**
+ * @license lucide-react v0.468.0 - ISC
+ *
+ * This source code is licensed under the ISC license.
+ * See the LICENSE file in the root directory of this source tree.
+ */const k=b("Plus",[["path",{d:"M5 12h14",key:"1ays0h"}],["path",{d:"M12 5v14",key:"s699le"}]]);/**
+ * @license lucide-react v0.468.0 - ISC
+ *
+ * This source code is licensed under the ISC license.
+ * See the LICENSE file in the root directory of this source tree.
+ */const C=b("Smartphone",[["rect",{width:"14",height:"20",x:"5",y:"2",rx:"2",ry:"2",key:"1yt0o3"}],["path",{d:"M12 18h.01",key:"mhygvu"}]]);function h(t){if(typeof t!="string"||/[\x00-\x20\x7f\\]/.test(t))return;let a;try{a=decodeURIComponent(t)}catch{return}if(!/[\x00-\x20\x7f\\]/.test(a)){if(/^\/(?!\/)/.test(a))return t;try{const i=new URL(t);if(["https:","http:"].includes(i.protocol)&&!i.username&&!i.password)return t}catch{}}}const p={"zh-CN":["上一张","下一张","选择 Banner"],"zh-TW":["上一張","下一張","選擇 Banner"],"en-US":["Previous banner","Next banner","Select banner"],"ja-JP":["前へ","次へ","バナーを選択"],"ko-KR":["이전","다음","배너 선택"],"vi-VN":["Trước","Tiếp","Chọn banner"],"ru-RU":["Назад","Далее","Выбрать баннер"],"fa-IR":["قبلی","بعدی","انتخاب بنر"]};function N({placement:t}){const a=f(j("guest/banner/fetch",{placement:t})),[i,o]=m.useState(0),[g,y]=m.useState([]),r=(a.data||[]).filter(s=>h(s.image_url)&&!g.includes(s.image_url));if(!r.length||a.error)return null;const l=i%r.length,n=r[l],d=h(n.target_url),c=p[S()]||p["en-US"],x=e.jsxs("picture",{children:[h(n.mobile_image_url)&&e.jsx("source",{media:"(max-width: 600px)",srcSet:n.mobile_image_url}),e.jsx("img",{src:n.image_url,alt:n.title,onError:()=>y(s=>[...s,n.image_url])})]},n.image_url);return e.jsxs("section",{className:`banner-strip banner-${t}`,"aria-label":n.title,children:[d?e.jsx("a",{href:d,children:x}):x,r.length>1&&e.jsxs("div",{className:"banner-controls",children:[e.jsx("button",{type:"button","aria-label":c[0],onClick:()=>o((l+r.length-1)%r.length),children:"‹"}),e.jsx("div",{children:r.map((s,u)=>e.jsx("button",{type:"button","aria-label":`${c[2]} ${u+1}`,"aria-pressed":l===u,onClick:()=>o(u),className:"banner-dot"},s.id))}),e.jsx("button",{type:"button","aria-label":c[1],onClick:()=>o((l+1)%r.length),children:"›"})]})]})}export{N as B,k as P,C as S,h as b};

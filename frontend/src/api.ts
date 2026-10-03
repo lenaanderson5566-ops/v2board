@@ -71,7 +71,7 @@ export async function logoutSession() {
 }
 export async function request<T = Row>(
     path: string,
-    body?: Row,
+    body?: Row | FormData,
     options?: { signal?: AbortSignal },
 ): Promise<Envelope<T>> {
     if (body) readCache.clear();
@@ -82,10 +82,14 @@ export async function request<T = Row>(
         headers: {
             Accept: "application/json",
             "Content-Language": locale(),
-            ...(body ? { "Content-Type": "application/json" } : {}),
+            ...(body && !(body instanceof FormData)
+                ? { "Content-Type": "application/json" }
+                : {}),
             ...(token ? { Authorization: token } : {}),
         },
-        ...(body ? { body: JSON.stringify(body) } : {}),
+        ...(body
+            ? { body: body instanceof FormData ? body : JSON.stringify(body) }
+            : {}),
     });
     let json: Envelope<T>;
     try {

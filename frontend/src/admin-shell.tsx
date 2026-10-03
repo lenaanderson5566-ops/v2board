@@ -26,6 +26,7 @@ export const legacyAdminMenu = [
     ["online", "在线用户", "users", "运营中台"],
     ["operations", "运营概览", "speedometer", "运营中台"],
     ["usage", "用户使用情况", "graph", "运营中台"],
+    ["banners", "Banner 管理", "picture", "运营中台"],
     ["translations", "套餐多语言", "globe", "运营中台"],
     ["log-login", "登录日志", "login", "日志"],
     ["log-subscribe", "订阅日志", "notebook", "日志"],

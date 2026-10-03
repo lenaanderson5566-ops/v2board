@@ -1,3 +1,4 @@
+import { BannerStrip } from "./BannerStrip";
 import {
     UserDashboard,
     Subscribe,
@@ -45,6 +46,9 @@ export default function UserContent({
     ) : current === "traffic" ? (
         <Traffic />
     ) : (
-        <UserDashboard />
+        <>
+            <BannerStrip placement="dashboard" />
+            <UserDashboard />
+        </>
     );
 }

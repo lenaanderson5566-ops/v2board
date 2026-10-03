@@ -172,3 +172,24 @@ describe("CSV download", () => {
         expect(remove).toHaveBeenCalled();
     });
 });
+
+it("sends multipart uploads without overriding the browser boundary", async () => {
+    storage.set(storageKey, "upload-session");
+    const fetchMock = vi
+        .fn()
+        .mockResolvedValue(
+            new Response('{"data":{"url":"/image.png"}}', { status: 200 }),
+        );
+    vi.stubGlobal("fetch", fetchMock);
+    const body = new FormData();
+    body.append(
+        "image",
+        new Blob(["png"], { type: "image/png" }),
+        "banner.png",
+    );
+    await request("admin/banner/upload", body);
+    const options = fetchMock.mock.calls[0][1];
+    expect(options.body).toBe(body);
+    expect(options.headers["Content-Type"]).toBeUndefined();
+    expect(options.headers.Authorization).toBe("upload-session");
+});

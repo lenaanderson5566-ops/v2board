@@ -1,3 +1,4 @@
+import { BannerStrip } from "./BannerStrip";
 import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
@@ -174,6 +175,7 @@ export default function Landing() {
                         </div>
                     </div>
                 </section>
+                <BannerStrip placement="landing" />
                 <section className="landing-setup" id="setup">
                     <div className="landing-section-heading">
                         <span className="studio-kicker">{t("examples")}</span>

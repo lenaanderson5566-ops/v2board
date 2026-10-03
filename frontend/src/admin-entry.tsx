@@ -1,3 +1,4 @@
+import { AdminBanners } from "./AdminBanners";
 import {
     OperationsOverview,
     ResourcePage,
@@ -21,6 +22,8 @@ export default function AdminContent({ current }: { current: string }) {
     if (resources[current])
         return <ResourcePage key={current} resource={resources[current]} />;
     switch (current) {
+        case "banners":
+            return <AdminBanners />;
         case "operations":
             return <OperationsOverview />;
         case "settings":

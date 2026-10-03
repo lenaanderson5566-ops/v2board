@@ -1,0 +1,151 @@
+.banner-strip {
+    width: 100%;
+    overflow: hidden;
+    border-radius: 18px;
+    margin: 0 0 24px;
+    background: transparent;
+}
+.banner-strip picture,
+.banner-strip a {
+    display: block;
+}
+.banner-strip img {
+    display: block;
+    width: 100%;
+    height: auto;
+}
+.banner-landing {
+    max-width: 1200px;
+    margin: 24px auto 48px;
+}
+.banner-controls {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 16px;
+    padding: 8px;
+}
+.banner-controls > div {
+    display: flex;
+    gap: 8px;
+}
+.banner-controls button {
+    padding: 0;
+    width: 28px;
+    height: 28px;
+    border: 0;
+    background: transparent;
+    color: inherit;
+    box-shadow: none;
+}
+.banner-controls .banner-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: #c9d0cb;
+}
+.banner-controls .banner-dot[aria-pressed="true"] {
+    background: #253f33;
+}
+.banner-editor {
+    padding: 24px;
+    display: grid;
+    gap: 18px;
+}
+.banner-editor label {
+    display: grid;
+    gap: 8px;
+}
+.banner-editor input:not([type="checkbox"]) {
+    width: 100%;
+}
+.banner-editor fieldset {
+    border: 1px solid #dce2de;
+    border-radius: 12px;
+    padding: 14px;
+    display: flex;
+    gap: 16px;
+    flex-wrap: wrap;
+}
+.banner-editor fieldset label {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+.banner-editor legend {
+    padding: 0 6px;
+}
+.banner-editor img {
+    display: block;
+    max-width: 100%;
+    max-height: 240px;
+    object-fit: contain;
+    border-radius: 12px;
+}
+.banner-editor .banner-options {
+    display: flex;
+    gap: 16px;
+    flex-wrap: wrap;
+}
+.banner-options > label {
+    flex: 1;
+    min-width: 160px;
+}
+.banner-list {
+    padding: 20px;
+    display: grid;
+    gap: 16px;
+}
+.banner-item {
+    display: flex;
+    gap: 20px;
+    align-items: center;
+    border: 1px solid #dce2de;
+    border-radius: 14px;
+    padding: 16px;
+}
+.banner-item > img {
+    width: 200px;
+    border-radius: 10px;
+}
+.banner-item-info {
+    flex: 1;
+    min-width: 0;
+}
+.banner-item-info h3 {
+    margin: 0 0 8px;
+    overflow-wrap: anywhere;
+}
+.banner-item-info p {
+    margin: 4px 0;
+    color: #68746c;
+}
+.banner-item .actions {
+    flex-wrap: wrap;
+}
+.banner-file {
+    font-size: 13px;
+}
+.banner-error {
+    color: #b42318;
+}
+@media (max-width: 700px) {
+    .banner-strip {
+        border-radius: 12px;
+        margin-bottom: 16px;
+    }
+    .banner-item {
+        align-items: stretch;
+        flex-direction: column;
+        gap: 12px;
+    }
+    .banner-item > img {
+        width: 100%;
+    }
+    .banner-editor {
+        padding: 16px;
+    }
+    .banner-landing {
+        margin: 16px auto 24px;
+    }
+}

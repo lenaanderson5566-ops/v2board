@@ -136,6 +136,12 @@ class AdminRoute
             $router->get ('/stat/getStatUser', 'V1\\Admin\\StatController@getStatUser');
             $router->get ('/stat/getRanking', 'V1\\Admin\\StatController@getRanking');
             $router->get ('/stat/getStatRecord', 'V1\\Admin\\StatController@getStatRecord');
+            // Banners
+            $router->get('/banner/fetch', 'V1\\Admin\\BannerController@fetch');
+            $router->post('/banner/save', 'V1\\Admin\\BannerController@save');
+            $router->post('/banner/show', 'V1\\Admin\\BannerController@show');
+            $router->post('/banner/drop', 'V1\\Admin\\BannerController@drop');
+            $router->post('/banner/upload', 'V1\\Admin\\BannerController@upload')->middleware('throttle:20,1');
             // Notice
             $router->get ('/notice/fetch', 'V1\\Admin\\NoticeController@fetch');
             $router->post('/notice/save', 'V1\\Admin\\NoticeController@save');

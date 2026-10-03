@@ -16,6 +16,7 @@ class UserSendMail extends FormRequest
         return [
             'subject' => 'required|string|max:200',
             'content' => 'required|string|max:100000',
+            'source_language' => 'sometimes|in:zh-CN,zh-TW,en-US,ja-JP,ko-KR,vi-VN,ru-RU,fa-IR',
             'translations' => 'sometimes|array:zh-CN,zh-TW,en-US,ja-JP,ko-KR,vi-VN,ru-RU,fa-IR',
             'translations.*' => 'array:subject,content',
             'translations.*.subject' => 'required|string|max:200',

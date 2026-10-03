@@ -10,6 +10,20 @@ use Illuminate\Support\Facades\Schema;
 
 class NoticeController extends Controller
 {
+    private function localized($notice, Request $request)
+    {
+        if (!$notice) return $notice;
+        $locale = $request->attributes->get('notice_locale') ?: \App\Services\ProductMail::language($request->header('Content-Language') ?: $request->input('language') ?: (isset($request->user['id']) ? \App\Models\User::where('id', $request->user['id'])->value('language') : null) ?: app()->getLocale());
+        $request->attributes->set('notice_locale', $locale);
+        $variant = ($notice->translations ?? [])[$locale] ?? [];
+        if (!empty($variant['subject']) && !empty($variant['content'])) {
+            $notice->title = $variant['subject'];
+            $notice->content = $variant['content'];
+        }
+        $notice->makeHidden('translations');
+        return $notice;
+    }
+
     public function inbox(Request $request)
     {
         $request->validate(['current' => 'sometimes|integer|min:1']);
@@ -30,6 +44,7 @@ class NoticeController extends Controller
             ->selectRaw($ready ? 'CASE WHEN receipt.notice_updated_at >= v2_notice.updated_at THEN 1 ELSE 0 END AS is_read' : '0 AS is_read')
             ->orderBy('v2_notice.created_at', 'DESC')->orderBy('v2_notice.id', 'DESC')
             ->forPage($request->input('current', 1), 10)->get();
+        $items->each(function ($notice) use ($request) { $this->localized($notice, $request); });
         return response(['data' => ['items' => $items, 'total' => $total, 'unread' => $unread]]);
     }
 
@@ -69,7 +84,7 @@ class NoticeController extends Controller
             }
     
             return response([
-                'data' => $notice
+                'data' => $this->localized($notice, $request)
             ]);
         }
     
@@ -84,6 +99,7 @@ class NoticeController extends Controller
         $total = $model->count();
         $res = $model->forPage($current, $pageSize)->get();
     
+        $res->each(function ($notice) use ($request) { $this->localized($notice, $request); });
         return response([
             'data' => $res,
             'total' => $total

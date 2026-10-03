@@ -50,6 +50,8 @@ it("requires scope confirmation and complete translated versions", async () => {
     fireEvent.click(screen.getByRole("button", { name: "加入发送队列" }));
     expect(onSave).not.toHaveBeenCalled();
     rerender(<AdminMailComposer confirmed={true} onSave={onSave} />);
+    fireEvent.click(screen.getByLabelText("English"));
+    fireEvent.click(screen.getByLabelText("日本語"));
     fireEvent.change(screen.getByLabelText("编辑语言"), {
         target: { value: "ja-JP" },
     });
@@ -66,7 +68,14 @@ it("requires scope confirmation and complete translated versions", async () => {
         expect(onSave).toHaveBeenCalledWith({
             subject: "Default subject",
             content: "Default body",
-            translations: { "ja-JP": { subject: "日本語", content: "翻訳" } },
+            source_language: "zh-CN",
+            translations: {
+                "zh-CN": {
+                    subject: "Default subject",
+                    content: "Default body",
+                },
+                "ja-JP": { subject: "日本語", content: "翻訳" },
+            },
         }),
     );
 });

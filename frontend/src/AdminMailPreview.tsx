@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import "./admin-mail.css";
 import { admin, request } from "./api";
 export const mailLanguages = {
@@ -41,6 +41,7 @@ export function AdminMailPreview({
     const [error, setError] = useState("");
     const [plain, setPlain] = useState(false);
     const custom = subject !== undefined;
+    useEffect(() => { setPreview(undefined); }, [subject, content, fixedLanguage]);
     return (
         <section className="mail-preview">
             <h3>邮件预览</h3>

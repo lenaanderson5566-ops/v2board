@@ -337,6 +337,7 @@ class UserController extends Controller
                 'email' => $user->email,
                 'subject' => $request->input('subject'),
                 'translations' => $request->input('translations', []),
+                'source_language' => $request->input('source_language'),
                 'template_name' => 'notify',
                 'template_value' => [
                     'name' => config('v2board.app_name', 'V2Board'),

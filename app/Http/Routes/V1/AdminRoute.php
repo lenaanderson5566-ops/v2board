@@ -20,6 +20,7 @@ class AdminRoute
             $router->post('/config/setTelegramWebhook', 'V1\\Admin\\ConfigController@setTelegramWebhook');
             $router->post('/config/testSendMail', 'V1\\Admin\\ConfigController@testSendMail');
             $router->post('/config/previewMail', 'V1\\Admin\\ConfigController@previewMail');
+            $router->post('/ops/i18n/content/generate', 'V1\\Admin\\ContentTranslationController@generate')->middleware('throttle:30,1');
             // Plan
             $router->get ('/plan/fetch', 'V1\\Admin\\PlanController@fetch');
             $router->post('/plan/save', 'V1\\Admin\\PlanController@save');

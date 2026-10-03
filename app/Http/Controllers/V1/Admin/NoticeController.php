@@ -23,7 +23,9 @@ class NoticeController extends Controller
             'title',
             'content',
             'img_url',
-            'tags'
+            'tags',
+            'translations',
+            'source_language'
         ]);
         if (!$request->input('id')) {
             if (!Notice::create($data)) {

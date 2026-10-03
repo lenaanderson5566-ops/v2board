@@ -1,3 +1,4 @@
+import { ContentComposer } from "./ContentComposer";
 import { PlanDescription } from "./PlanDescription";
 import { AdminPlanAutoTranslation } from "./AdminPlanAutoTranslation";
 import { AdminMailPreview } from "./AdminMailPreview";
@@ -1189,11 +1190,15 @@ export function ResourcePage({
                             resources.plans,
                             resources.users,
                             resources.knowledge,
+                            resources.notices,
                         ].includes(resource)
                             ? "drawer"
                             : "modal"
                     }
-                    wide={resource === resources.knowledge}
+                    wide={
+                        resource === resources.knowledge ||
+                        resource === resources.notices
+                    }
                     title={
                         editing[key]
                             ? `编辑 · ${resource.title}`
@@ -1209,94 +1214,107 @@ export function ResourcePage({
                             plans.reload();
                         }}
                     >
-                        <Editor
-                            fields={formPresentation(
-                                editorFields.filter(
-                                    (field) =>
-                                        field.key !== "force_update" ||
-                                        Boolean(editing.id),
-                                ),
-                                Object.keys(resources).find(
-                                    (k) => resources[k] === resource,
-                                ) || "",
-                            )}
-                            initial={editing}
-                            resolveFields={(fields, values) =>
-                                resourceFields(
+                        {resource === resources.notices ? (
+                            <ContentComposer
+                                kind="notice"
+                                initial={editing}
+                                onSave={async (body) => {
+                                    await request(resource.save!, body);
+                                    d.reload();
+                                    setEditing(null);
+                                }}
+                            />
+                        ) : (
+                            <Editor
+                                fields={formPresentation(
+                                    editorFields.filter(
+                                        (field) =>
+                                            field.key !== "force_update" ||
+                                            Boolean(editing.id),
+                                    ),
                                     Object.keys(resources).find(
                                         (k) => resources[k] === resource,
                                     ) || "",
-                                    fields,
-                                    values,
-                                )
-                            }
-                            linkValues={(key, next, values) =>
-                                linkResource(
-                                    Object.keys(resources).find(
-                                        (key) => resources[key] === resource,
-                                    ) || "",
-                                    rows(plans.data),
-                                    key,
-                                    next,
-                                    values,
-                                )
-                            }
-                            validate={validateResource}
-                            onSave={async (body) => {
-                                const clean: Row = {};
-                                resource.fields.forEach((field) => {
-                                    if (
-                                        body[field.key] !== undefined &&
-                                        !(
-                                            field.key === "password" &&
-                                            !body.password
-                                        )
+                                )}
+                                initial={editing}
+                                resolveFields={(fields, values) =>
+                                    resourceFields(
+                                        Object.keys(resources).find(
+                                            (k) => resources[k] === resource,
+                                        ) || "",
+                                        fields,
+                                        values,
                                     )
-                                        clean[field.key] = body[field.key];
-                                });
-                                if (editing[key]) clean[key] = editing[key];
-                                if (resource.title === "用户管理")
-                                    ["transfer_enable", "u", "d"].forEach(
-                                        (field) => {
-                                            if (clean[field] != null)
-                                                clean[field] = Math.round(
-                                                    Number(clean[field]) *
-                                                        1073741824,
-                                                );
-                                        },
-                                    );
-                                if (resource.defaults)
-                                    Object.entries(resource.defaults).forEach(
-                                        ([k, v]) => {
+                                }
+                                linkValues={(key, next, values) =>
+                                    linkResource(
+                                        Object.keys(resources).find(
+                                            (key) =>
+                                                resources[key] === resource,
+                                        ) || "",
+                                        rows(plans.data),
+                                        key,
+                                        next,
+                                        values,
+                                    )
+                                }
+                                validate={validateResource}
+                                onSave={async (body) => {
+                                    const clean: Row = {};
+                                    resource.fields.forEach((field) => {
+                                        if (
+                                            body[field.key] !== undefined &&
+                                            !(
+                                                field.key === "password" &&
+                                                !body.password
+                                            )
+                                        )
+                                            clean[field.key] = body[field.key];
+                                    });
+                                    if (editing[key]) clean[key] = editing[key];
+                                    if (resource.title === "用户管理")
+                                        ["transfer_enable", "u", "d"].forEach(
+                                            (field) => {
+                                                if (clean[field] != null)
+                                                    clean[field] = Math.round(
+                                                        Number(clean[field]) *
+                                                            1073741824,
+                                                    );
+                                            },
+                                        );
+                                    if (resource.defaults)
+                                        Object.entries(
+                                            resource.defaults,
+                                        ).forEach(([k, v]) => {
                                             if (!(k in clean)) clean[k] = v;
-                                        },
-                                    );
-                                if (
-                                    ["coupons", "giftcards"].some(
-                                        (k) => resources[k] === resource,
-                                    ) &&
-                                    (editing[key] ||
-                                        Number(clean.generate_count) <= 1)
-                                )
-                                    delete clean.generate_count;
-                                if (
-                                    (resource === resources.coupons ||
-                                        resource === resources.giftcards) &&
-                                    !editing[key] &&
-                                    Number(clean.generate_count) > 1
-                                )
-                                    await download(
-                                        resource.save!,
-                                        clean,
-                                        resource === resources.coupons
-                                            ? "coupons.csv"
-                                            : "giftcards.csv",
-                                    );
-                                else await request(resource.save!, clean);
-                                setEditing(null);
-                                d.reload();
-                            }}
-                        />
+                                        });
+                                    if (
+                                        ["coupons", "giftcards"].some(
+                                            (k) => resources[k] === resource,
+                                        ) &&
+                                        (editing[key] ||
+                                            Number(clean.generate_count) <= 1)
+                                    )
+                                        delete clean.generate_count;
+                                    if (
+                                        (resource === resources.coupons ||
+                                            resource === resources.giftcards) &&
+                                        !editing[key] &&
+                                        Number(clean.generate_count) > 1
+                                    )
+                                        await download(
+                                            resource.save!,
+                                            clean,
+                                            resource === resources.coupons
+                                                ? "coupons.csv"
+                                                : "giftcards.csv",
+                                        );
+                                    else await request(resource.save!, clean);
+                                    setEditing(null);
+                                    d.reload();
+                                }}
+                            />
+                        )}
                     </State>
                 </Modal>
             )}

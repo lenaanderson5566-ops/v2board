@@ -1,3 +1,4 @@
+import { RegistrationEmail } from "./RegistrationEmail";
 import { registrationEmailError } from "./registration-policy";
 import { RegistrationDomains } from "./RegistrationDomains";
 import { useEffect, useRef, useState, type ReactNode } from "react";
@@ -88,7 +89,7 @@ export function UserAuth({
               ? tx("重置密码")
               : register
                 ? boot.inviteRequired && !invitation
-                    ? tx("邮件邀请注册")
+                    ? tx("受邀加入")
                     : tx("创建账户")
                 : tx("欢迎回来");
     async function sendCode() {
@@ -301,7 +302,7 @@ export function UserAuth({
                                             : tx("登录以管理你的订阅与账户")}
                                 </p>
                             )}
-                            {register && !boot.registerClosed && (
+                            {register && !boot.registerClosed && (Boolean(invitation) || !boot.emailWhitelistSuffixes?.length) && (
                                 <RegistrationDomains />
                             )}
                             {registrationBlocked ? (
@@ -314,13 +315,13 @@ export function UserAuth({
                                                     "邀请链接不完整，请从邀请邮件中重新打开。",
                                                 )
                                               : tx(
-                                                    "本站采用邮件邀请注册，请从邀请邮件中的链接继续。",
+                                                    "请朋友邀请你加入",
                                                 )}
                                     </p>
                                     {!boot.registerClosed && (
                                         <p className="muted">
                                             {tx(
-                                                "请让已注册用户向你的邮箱发送邀请，然后打开邮件中的专属链接。",
+                                                "请已注册的朋友向你的邮箱发送邀请，收到邮件后，打开其中的链接即可注册。",
                                             )}
                                         </p>
                                     )}
@@ -334,6 +335,9 @@ export function UserAuth({
                                     <fieldset disabled={busy}>
                                         {step === 1 ? (
                                             <>
+                                                {register && !invitation && boot.emailWhitelistEnabled && boot.emailWhitelistSuffixes?.length ? (
+                                                    <RegistrationEmail value={email} onChange={setEmail} />
+                                                ) : (
                                                 <label className="auth-field">
                                                     <span>
                                                         {tx("邮箱地址")}
@@ -362,6 +366,7 @@ export function UserAuth({
                                                         placeholder="you@example.com"
                                                     />
                                                 </label>
+                                                )}
                                                 {!forget && passwordField}
                                                 {register && invitation && (
                                                     <p className="muted">

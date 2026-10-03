@@ -381,5 +381,9 @@
     "允许注册的邮箱": "Allowed email domains",
     "此邮箱域名暂不支持注册，请使用允许的邮箱。": "This email domain is not allowed for registration. Use an allowed email address.",
     "当前未配置可用的邮箱域名，请联系管理员。": "No email domains are currently allowed. Contact the administrator.",
-    "邀请链接不完整，请从邀请邮件中重新打开。": "The invitation link is incomplete. Open it again from the invitation email."
+    "邀请链接不完整，请从邀请邮件中重新打开。": "The invitation link is incomplete. Open it again from the invitation email.",
+    "受邀加入": "Join by invitation",
+    "请朋友邀请你加入": "Ask a friend to invite you",
+    "请已注册的朋友向你的邮箱发送邀请，收到邮件后，打开其中的链接即可注册。": "Ask a friend with an account to send you an email invitation. Open the link in the email to create your account.",
+    "邮箱后缀": "Email domain"
 }

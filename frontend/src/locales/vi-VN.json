@@ -379,5 +379,9 @@
     "允许注册的邮箱": "Miền email được phép đăng ký",
     "此邮箱域名暂不支持注册，请使用允许的邮箱。": "Miền email này không được phép đăng ký. Vui lòng dùng địa chỉ email được cho phép.",
     "当前未配置可用的邮箱域名，请联系管理员。": "Chưa có miền email nào được cho phép. Vui lòng liên hệ quản trị viên.",
-    "邀请链接不完整，请从邀请邮件中重新打开。": "Liên kết mời không đầy đủ. Vui lòng mở lại từ email mời."
+    "邀请链接不完整，请从邀请邮件中重新打开。": "Liên kết mời không đầy đủ. Vui lòng mở lại từ email mời.",
+    "受邀加入": "Tham gia qua lời mời",
+    "请朋友邀请你加入": "Nhờ bạn bè mời bạn tham gia",
+    "请已注册的朋友向你的邮箱发送邀请，收到邮件后，打开其中的链接即可注册。": "Nhờ một người bạn đã có tài khoản gửi lời mời qua email. Mở liên kết trong email để đăng ký.",
+    "邮箱后缀": "Tên miền email"
 }

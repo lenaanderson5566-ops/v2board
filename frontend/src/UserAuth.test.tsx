@@ -103,7 +103,7 @@ describe("user account steps", () => {
         mocks.boot.inviteRequired = true;
         page();
         expect(screen.getByRole("alert").textContent).toBe(
-            "本站采用邮件邀请注册，请从邀请邮件中的链接继续。",
+            "请朋友邀请你加入",
         );
         expect(screen.queryByLabelText("邮箱地址")).toBeNull();
         expect(mocks.request).not.toHaveBeenCalled();
@@ -363,4 +363,24 @@ it("does not restrict password recovery for existing accounts", async () => {
         "passport/comm/sendEmailVerify",
         expect.objectContaining({ isforget: 1, email: "review@example.test" }),
     );
+});
+
+it("combines an email username with the chosen allowed domain", async () => {
+    mocks.boot.emailWhitelistEnabled = true;
+    mocks.boot.emailWhitelistSuffixes = ["qq.com", "gmail.com"];
+    page();
+    fireEvent.change(screen.getByLabelText("邮箱地址"), { target: { value: "friend" } });
+    fireEvent.change(screen.getByLabelText("邮箱后缀"), { target: { value: "gmail.com" } });
+    fireEvent.change(screen.getByLabelText("密码", { exact: true }), { target: { value: "Long-password!234" } });
+    fireEvent.click(screen.getByRole("button", { name: "next" }));
+    await screen.findByRole("heading", { name: "verify" });
+    expect(mocks.request).toHaveBeenCalledWith("passport/comm/sendEmailVerify", expect.objectContaining({ email: "friend@gmail.com" }));
+});
+it("keeps the invited address locked instead of offering a domain selector", () => {
+    mocks.boot.emailWhitelistEnabled = true;
+    mocks.boot.emailWhitelistSuffixes = ["qq.com", "gmail.com"];
+    location.hash = `#/register?invitation=${"a".repeat(64)}&email=friend%40qq.com`;
+    page();
+    expect(screen.queryByLabelText("邮箱后缀")).toBeNull();
+    expect((screen.getByLabelText("邮箱地址") as HTMLInputElement).readOnly).toBe(true);
 });

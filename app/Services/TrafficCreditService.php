@@ -61,10 +61,50 @@ class TrafficCreditService
         return $user->transfer_enable > 0 && ($user->expired_at === null || $user->expired_at > time());
     }
 
+    public static function baseGroupId(): ?int
+    {
+        $id = (int)config('v2board.credit_base_group_id', 0);
+        return $id > 0 ? $id : null;
+    }
+
+    // Access follows subscription validity, never whether its traffic is exhausted.
+    public static function effectiveGroupId(User $user): ?int
+    {
+        if (self::baseGroupId() !== null && $user->credit_balance > 0 && !self::hasPeriod($user)) {
+            return self::baseGroupId();
+        }
+        return $user->group_id === null ? null : (int)$user->group_id;
+    }
+
+    // SQL counterpart of effectiveGroupId; avoids loading all subscribers for every node.
+    public static function constrainGroups($query, array $groups)
+    {
+        $base = self::baseGroupId();
+        if ($base === null) return $query->whereIn('group_id', $groups);
+        $now = time();
+        return $query->where(function ($access) use ($groups, $base, $now) {
+            $access->where(function ($original) use ($groups, $now) {
+                $original->whereIn('group_id', $groups)->where(function ($keep) use ($now) {
+                    $keep->where('credit_balance', '<=', 0)->orWhere(function ($active) use ($now) {
+                        $active->where('transfer_enable', '>', 0)->where(function ($expiry) use ($now) {
+                            $expiry->whereNull('expired_at')->orWhere('expired_at', '>', $now);
+                        });
+                    });
+                });
+            });
+            if (in_array($base, $groups)) $access->orWhere(function ($credits) use ($now) {
+                $credits->where('credit_balance', '>', 0)->where(function ($inactive) use ($now) {
+                    $inactive->where('transfer_enable', '<=', 0)->orWhere('expired_at', '<=', $now);
+                });
+            });
+        });
+    }
+
     // A copy for client quota headers only; never save these derived fields.
     public static function forClient(User $user): User
     {
         $copy = clone $user;
+        $copy->group_id = self::effectiveGroupId($user);
         if ($user->credit_balance > 0) {
             $base = self::hasPeriod($user) ? (int)$user->transfer_enable : 0;
             $copy->transfer_enable = max($base, (int)$user->u + (int)$user->d) + (int)$user->credit_balance;

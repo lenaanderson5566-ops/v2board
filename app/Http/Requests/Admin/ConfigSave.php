@@ -43,6 +43,7 @@ class ConfigSave extends FormRequest
         'currency' => '',
         'currency_symbol' => '',
         // subscribe
+        'credit_base_group_id' => 'nullable|integer|min:1|exists:v2_server_group,id',
         'plan_change_enable' => 'in:0,1',
         'reset_traffic_method' => 'in:0,1,2,3,4',
         'surplus_enable' => 'in:0,1',

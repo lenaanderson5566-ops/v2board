@@ -9,12 +9,14 @@ import {
     act,
 } from "@testing-library/react";
 const mocks = vi.hoisted(() => ({
+    boot: { creditAccessPolicy: false },
     request: vi.fn(),
     navigate: vi.fn(),
     orders: [] as any[],
     plans: [] as any[],
 }));
 vi.mock("./api", () => ({
+    boot: mocks.boot,
     request: mocks.request,
     navigate: mocks.navigate,
     bytes: (n: number) => `${n} B`,
@@ -39,6 +41,7 @@ vi.mock("./ui", () => ({
 }));
 import { TrafficCredits } from "./TrafficCredits";
 beforeEach(() => {
+    mocks.boot.creditAccessPolicy = false;
     mocks.request.mockReset();
     mocks.navigate.mockReset();
     mocks.orders = [];
@@ -110,4 +113,11 @@ it("uses a text purchase action only when requested by billing", () => {
     expect(screen.getByRole("button", { name: "buyMore" }).textContent).toBe("buyMore");
     rerender(<TrafficCredits balance={20} />);
     expect(screen.getByRole("button", { name: "buy" }).textContent).toBe("");
+});
+
+it("explains subscription-dependent node access when configured", () => {
+    mocks.boot.creditAccessPolicy = true;
+    render(<TrafficCredits />);
+    expect(screen.getByText("accessHelp")).toBeTruthy();
+    expect(screen.queryByText("help")).toBeNull();
 });

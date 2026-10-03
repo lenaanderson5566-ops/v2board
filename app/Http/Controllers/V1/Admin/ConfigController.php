@@ -105,6 +105,7 @@ class ConfigController extends Controller
                 'currency_symbol' => config('v2board.currency_symbol', '¥'),
             ],
             'subscribe' => [
+                'credit_base_group_id' => config('v2board.credit_base_group_id'),
                 'plan_change_enable' => (int)config('v2board.plan_change_enable', 1),
                 'reset_traffic_method' => (int)config('v2board.reset_traffic_method', 0),
                 'surplus_enable' => (int)config('v2board.surplus_enable', 1),

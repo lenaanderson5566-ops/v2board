@@ -1565,6 +1565,7 @@ export function Settings() {
     const d = useData(admin("config/fetch"));
     const schema = useData(admin("console/configSchema"));
     const plans = useData<Row[]>(admin("plan/fetch"));
+    const creditGroups = useData<Row[]>(admin("server/group/fetch"));
     const [group, setGroup] = useState("site"),
         [saved, setSaved] = useState("");
     const [dirty, setDirty] = useState(false),
@@ -1597,7 +1598,9 @@ export function Settings() {
                     k !== "invite_never_expire",
             )
             .map(([k, v]) =>
-                k === "try_out_plan_id"
+                k === "credit_base_group_id"
+                    ? { key: k, label: "额度基础权限组", type: "select" as const, options: [["", "未配置（沿用原权限）"] as [string, string], ...rows(creditGroups.data).map((r) => [String(r.id), r.name] as [string, string])] }
+                    : k === "try_out_plan_id"
                     ? {
                           key: k,
                           label: "试用套餐",
@@ -1635,12 +1638,13 @@ export function Settings() {
                 ))}
             </div>
             <State
-                loading={d.loading || schema.loading || plans.loading}
-                error={d.error || schema.error || plans.error}
+                loading={d.loading || schema.loading || plans.loading || creditGroups.loading}
+                error={d.error || schema.error || plans.error || creditGroups.error}
                 retry={() => {
                     d.reload();
                     schema.reload();
                     plans.reload();
+                    creditGroups.reload();
                 }}
             >
                 <Editor
@@ -1664,6 +1668,7 @@ export function Settings() {
                         d.reload();
                     }}
                 />
+                {group === "subscribe" && <p className="pad muted">设置额度基础权限组后：订阅有效时，额度沿用订阅权限；订阅到期或无订阅时，额度仅可使用基础组节点。适用于所有额度用户（含已迁移的一次性套餐）。额度余额、套餐记录及限速、设备限制不变。节点在下次拉取用户时更新权限，客户端需更新订阅以刷新节点列表。</p>}
                 {group === "email" && (
                     <div className="pad">
                         <p className="muted">

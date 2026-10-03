@@ -1,6 +1,6 @@
 import { useRef, useState } from "react";
 import { Plus } from "lucide-react";
-import { bytes, money, navigate, request, type Row } from "./api";
+import { boot, bytes, money, navigate, request, type Row } from "./api";
 import { tx } from "./i18n";
 import { c } from "./credit-copy";
 import { Modal, State, useData } from "./ui";
@@ -35,7 +35,7 @@ export function TrafficCredits({
                         {purchaseLabel ? c("buyMore") : <Plus size={20} />}
                     </button>
                 </div>
-                <p className="muted">{c("help")}</p>
+                <p className="muted">{c(boot.creditAccessPolicy ? "accessHelp" : "help")}</p>
             </div>
             {open && <CreditPurchase close={() => setOpen(false)} />}
         </section>
@@ -81,7 +81,7 @@ export function CreditPurchase({ close }: { close: () => void }) {
             variant="modal"
         >
             <div className="credit-checkout pad">
-                <p className="muted">{c("help")}</p>
+                <p className="muted">{c(boot.creditAccessPolicy ? "accessHelp" : "help")}</p>
                 <State
                     loading={catalog.loading || orders.loading}
                     error={catalog.error || orders.error}

@@ -16,6 +16,7 @@ $renderConsole = function (string $mode, bool $landing = false) use ($securePath
             'opsPath' => $mode === 'admin' ? config('v2board.ops_api_path', 'ops') : '',
             'emailVerify' => (bool) config('v2board.email_verify', 0),
             'registerClosed' => (bool) config('v2board.stop_register', 0),
+            'creditAccessPolicy' => \App\Services\TrafficCreditService::baseGroupId() !== null,
             'inviteRequired' => (bool) config('v2board.invite_force', 0),
             'emailWhitelistEnabled' => (bool) config('v2board.email_whitelist_enable', 0),
             'emailWhitelistSuffixes' => config('v2board.email_whitelist_enable', 0) ? \App\Utils\Helper::emailSuffixes(config('v2board.email_whitelist_suffix', \App\Utils\Dict::EMAIL_WHITELIST_SUFFIX_DEFAULT)) : [],

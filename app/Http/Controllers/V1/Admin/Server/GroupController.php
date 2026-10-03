@@ -57,6 +57,7 @@ class GroupController extends Controller
 
     public function drop(Request $request)
     {
+        if ((int)$request->input('id') === \App\Services\TrafficCreditService::baseGroupId()) abort(422, '该组被设为额度基础权限组，请先更换配置');
         if ($request->input('id')) {
             $serverGroup = ServerGroup::find($request->input('id'));
             if (!$serverGroup) {

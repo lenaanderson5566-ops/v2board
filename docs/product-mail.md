@@ -48,3 +48,9 @@ stopwaitsecs=40
 ```
 
 不要只把优先队列追加到群发队列后面。验证码会在专用进程可用时立即投递，群发不会产生额外等待；SMTP 响应、网络和收件服务商仍决定实际到达时间。
+
+### 更新后验证码报 Undefined variable $preheader
+
+Horizon 是常驻进程。仅 git pull 后，新 Blade 模板可能与旧进程已加载的 ProductMail 数据构造代码混用。preheader 为可选摘要，模板现已兼容其缺失；验证码和找回密码共用 verify 模板。
+
+部署后执行 `php artisan view:clear`，然后通过 Supervisor 重启 Horizon。若 PHP-FPM 启用了不检查文件时间的 OPcache，也需重启对应 PHP-FPM。修复后重新申请验证码，不要批量重投已过期验证码任务。MaxAttemptsExceededException 本身不能确认是 SMTP 超时，应结合原始邮件日志判断。

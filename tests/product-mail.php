@@ -22,6 +22,11 @@ try {
             $html=view('mail.product.message',$data)->render(); $plain=view('mail.product.text',$data)->render();
             $assert(strpos(strtolower($html),'v2board')===false && strpos($html,'lang="'.$language.'"')!==false,'Brand/language rendering failed');
             $assert(strlen($plain)>30 && strpos($plain,'<html')===false,'Missing plain text');
+            // A running worker may still use pre-summary data after a template deployment.
+            $legacyData=$data; unset($legacyData['preheader']);
+            $legacyHtml=view('mail.product.message',$legacyData)->render();
+            $assert(strpos($legacyHtml, e($data['title']))!==false, 'Missing optional preheader blocks delivery');
+            if ($type==='verify') $assert(strpos($legacyHtml,'123456')!==false, 'Verification code lost without preheader');
             $assert($data['direction']===($language==='fa-IR'?'rtl':'ltr'),'RTL incorrect');
         }
     }
@@ -67,7 +72,7 @@ try {
     $assert($allowed===1,'Concurrent workers exceeded shared budget');
     $fakeLimiter=new class extends MailRateLimiter { public $delay=0; public $cooldowns=0; public function acquire($email,$bulk,$priority=false) { return $this->delay; } public function cooldown($email, $priority=false) { $this->cooldowns++; } };
     $app->instance(MailRateLimiter::class,$fakeLimiter);
-    $transport=new class { public $sent=0; public $error; public $rejected=[]; public function failures() { return $this->rejected; } public function forgetMailers() {} public function send(...$args) { $this->sent++; if($this->error) throw $this->error; } };
+    $transport=new class { public $sent=0; public $error; public $rejected=[]; public function failures() { return $this->rejected; } public function forgetMailers() {} public function send($views, $data, $callback) { foreach ($views as $view) view($view, $data)->render(); $this->sent++; if($this->error) throw $this->error; } };
     Mail::swap($transport);
     $job=new SendEmailJob($base,'send_email_mass');
     $fakeLimiter->delay=10;

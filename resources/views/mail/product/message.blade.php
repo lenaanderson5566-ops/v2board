@@ -1,7 +1,7 @@
 <!doctype html>
 <html lang="{{ $language }}" dir="{{ $direction }}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>{{ $subject }}</title><style>@media (max-width:480px){.mail-shell{padding:16px 8px!important}.mail-card{padding:24px 20px!important}.mail-code{font-size:26px!important;letter-spacing:5px!important;padding:16px 10px!important}}</style></head>
 <body style="margin:0;background:#f7f7f6;color:#202123;font-family:Arial,sans-serif;line-height:1.7">
-<div style="display:none;max-height:0;overflow:hidden">{{ $preheader }}</div>
+<div style="display:none;max-height:0;overflow:hidden">{{ $preheader ?? ($body ?? '') }}</div>
 <table role="presentation" width="100%" cellspacing="0" cellpadding="0"><tr><td class="mail-shell" align="center" style="padding:32px 16px">
 <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="max-width:580px"><tr><td style="padding:0 8px 24px;font-size:20px;font-weight:bold">{{ $brand }}</td></tr>
 <tr><td class="mail-card" style="background:#fff;border:1px solid #e8e8e6;border-radius:20px;padding:32px">

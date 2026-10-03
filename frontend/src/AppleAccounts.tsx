@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
-import i18n from "./i18n";
+import i18n, { tx } from "./i18n";
 import { request } from "./api";
 import { Modal } from "./ui";
 
@@ -15,7 +15,7 @@ const labels = {
     "fa-IR": ["دریافت حساب دانلود", "فقط برای دانلود از App Store. وارد iCloud یا تنظیمات دستگاه نشوید.", "در حال دریافت…", "حساب در دسترس نیست. اشتراک فعال یا اعتبار باقی‌مانده لازم است. بعداً تلاش کنید.", "حسابی موجود نیست", "تلاش مجدد", "کپی حساب", "کپی رمز", "نمایش رمز", "پنهان کردن رمز", "کپی شد", "کپی نشد؛ دستی کپی کنید.", "آخرین بررسی"],
 };
 Object.entries(labels).forEach(([language, values]) => i18n.addResourceBundle(language, "appleAccount", Object.fromEntries(values.map((value, i) => [String(i), value]))));
-type Account = { username: string; password: string; region_display?: string; last_check?: string };
+type Account = { username: string; password?: string; available?: boolean; status?: string; region_display?: string; last_check?: string };
 
 export function AppleAccounts() {
     const { t } = useTranslation("appleAccount");
@@ -48,11 +48,11 @@ function AccountList() {
     }
     return <div className="pad">
         <p>{t("1")}</p>
-        {busy ? <p role="status">{t("2")}</p> : error ? <p role="alert">{t("3")}</p> : accounts.length === 0 ? <p>{t("4")}</p> : accounts.map((account, index) => <section key={index} style={{ borderTop: "1px solid #ddd", padding: "16px 0", overflowWrap: "anywhere" }}>
-            <strong>{account.region_display}</strong>
+        {busy ? <p role="status">{t("2")}</p> : error ? <p role="alert">{t("3")}</p> : accounts.length === 0 ? <p>{t("4")}</p> : accounts.map((account, index) => <section key={index} className="apple-account-card">
+            <div className="apple-account-heading"><strong>{account.region_display || "App Store"}</strong><span className={`badge ${account.available ? "success" : ""}`}>{tx(account.available ? "正常" : account.status === "disabled" ? "已停用" : "暂不可用")}</span></div>
             <p dir="ltr">{account.username}</p>
-            <p dir="ltr">{visible[index] ? account.password : "••••••••"}</p>
-            <div className="quick-actions"><button onClick={() => copy(account.username)}>{t("6")}</button><button onClick={() => copy(account.password)}>{t("7")}</button><button onClick={() => setVisible(previous => ({ ...previous, [index]: !previous[index] }))}>{t(visible[index] ? "9" : "8")}</button></div>
+            <p className="apple-account-password" dir="ltr">{account.available && (visible[index] ? account.password : "••••••••")}</p>
+            {account.available && account.password && <div className="quick-actions"><button onClick={() => copy(account.username)}>{t("6")}</button><button onClick={() => copy(account.password!)}>{t("7")}</button><button onClick={() => setVisible(previous => ({ ...previous, [index]: !previous[index] }))}>{t(visible[index] ? "9" : "8")}</button></div>}
             {account.last_check && <p className="muted">{t("12")}: {account.last_check}</p>}
         </section>)}
         {!busy && (error || accounts.length === 0) && <button onClick={() => setAttempt(value => value + 1)}>{t("5")}</button>}

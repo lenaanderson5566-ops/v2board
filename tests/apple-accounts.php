@@ -24,8 +24,10 @@ Http::fake(function ($request) use ($assert) {
     throw new RuntimeException('Unexpected request');
 });
 $accounts = $service->accounts();
-$assert(count($accounts) === 1 && $accounts[0]['username'] === 'allowed');
+$assert(count($accounts) === 4 && $accounts[0]['username'] === 'allowed');
 $assert(!isset($accounts[0]['private']));
+$assert($accounts[0]['available'] && $accounts[0]['status'] === 'normal');
+foreach (array_slice($accounts, 1) as $row) $assert(!$row['available'] && !isset($row['password']));
 foreach ([[0,time()+100,100,0,true],[0,time()-100,100,1,true],[0,time()-100,100,0,false],[1,time()+100,100,100,false]] as [$banned,$expiry,$quota,$credits,$expected]) {
     $user = new User; $user->banned=$banned; $user->expired_at=$expiry; $user->transfer_enable=$quota; $user->credit_balance=$credits;
     $assert((new UserService)->isAvailable($user) === $expected);

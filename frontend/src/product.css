@@ -1281,3 +1281,19 @@
         transition: none;
     }
 }
+
+/* Leave room for page actions and the device safe area below the chat launcher. */
+:root { --customer-chat-bottom: 88px; }
+.crisp-client .cc-unoo { bottom: calc(var(--customer-chat-bottom) + env(safe-area-inset-bottom, 0px)) !important; }
+.apple-account-card { border: 1px solid #e5e7e5; border-radius: 14px; padding: 16px; margin: 12px 0; overflow-wrap: anywhere; }
+.apple-account-heading { display:flex; justify-content:space-between; align-items:center; gap:12px; }
+.apple-account-card p { margin:10px 0; }
+.apple-account-password { font-family:monospace; }
+@media(max-width:760px) {
+ .user .compact-mobile-table tbody tr { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:6px 10px; padding:12px 14px; }
+ .user .compact-mobile-table table td { display:block; padding:0; font-size:12px; }
+ .user .compact-mobile-table table td:first-child { grid-column:1/-1; font-weight:600; font-size:14px; }
+ .user .compact-mobile-table table td[data-label]::before { display:block; font-size:10px; margin-bottom:3px; }
+ .user .compact-mobile-table table td:first-child::before { display:none; }
+ .apple-account-card .quick-actions { display:flex; flex-wrap:wrap; gap:8px; }
+}

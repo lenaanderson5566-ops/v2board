@@ -135,6 +135,7 @@ export function Subscribe() {
                 <Panel title={tx("可用节点")}>
                     <State {...nodes} retry={nodes.reload}>
                         <Table
+                            compact
                             data={nodes.data || []}
                             columns={[
                                 ["name", tx("节点名称")],
@@ -490,10 +491,6 @@ export function Tickets({
                                     value,
                                     tx(label),
                                 ]),
-                            },
-                            {
-                                key: "order_trade_no",
-                                label: tx("关联订单（可选）"),
                             },
                             {
                                 key: "subject",

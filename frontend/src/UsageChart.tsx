@@ -118,7 +118,7 @@ export function UsageChart({
             {showRecords && !!data.data?.length && (
                 <details className="usage-records">
                     <summary>{b("usageDetails")}</summary>
-                    <Table
+                    <Table compact
                         data={data.data.filter(
                             (row) =>
                                 Number(row.record_at) >=

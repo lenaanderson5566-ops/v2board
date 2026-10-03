@@ -192,7 +192,7 @@ class ConfigController extends Controller
 
     public function testAppleAccount(\App\Services\AppleAccountService $service)
     {
-        $accounts = $service->accounts();
+        $accounts = array_filter($service->accounts(), fn($account) => $account['available']);
         abort_if(count($accounts) === 0, 503, '连接成功，但分享页暂无检查正常的可用账号。');
         return response(['data' => ['available' => count($accounts)]])->header('Cache-Control', 'no-store');
     }

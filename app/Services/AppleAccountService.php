@@ -74,10 +74,17 @@ class AppleAccountService
         $accounts = $this->get('/client/getShareAccounts', ['id' => (int) $page['id']]);
         $result = [];
         foreach ($accounts as $account) {
-            if (!is_array($account) || (int) ($account['status'] ?? 0) !== 1 || !in_array($account['last_check_success'] ?? null, [true, 1, '1'], true)) continue;
-            if (!is_string($account['username'] ?? null) || !is_string($account['password'] ?? null) || $account['username'] === '' || $account['password'] === '') continue;
-            $result[] = array_intersect_key($account, array_flip(['username', 'password', 'region_display', 'last_check']));
+            if (!is_array($account) || !is_string($account['username'] ?? null) || $account['username'] === '') continue;
+            $enabled = (int) ($account['status'] ?? 0) === 1;
+            $checked = in_array($account['last_check_success'] ?? null, [true, 1, '1'], true);
+            $available = $enabled && $checked && is_string($account['password'] ?? null) && $account['password'] !== '';
+            $row = array_intersect_key($account, array_flip(['username', 'region_display', 'last_check']));
+            $row['available'] = $available;
+            $row['status'] = !$enabled ? 'disabled' : ($available ? 'normal' : 'unavailable');
+            if ($available) $row['password'] = $account['password'];
+            $result[] = $row;
         }
+        usort($result, function ($a, $b) { return (int) $b['available'] - (int) $a['available']; });
         return array_slice($result, 0, 20);
     }
 }

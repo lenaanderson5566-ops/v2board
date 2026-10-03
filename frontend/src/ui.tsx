@@ -874,7 +874,9 @@ export function Table({
     sort,
     onSort,
     onReorder,
+    compact = false,
 }: {
+    compact?: boolean;
     data: Row[];
     columns: [string, string, ((row: Row) => ReactNode)?][];
     actions?: (row: Row, context?: boolean) => ReactNode;
@@ -909,7 +911,7 @@ export function Table({
     }, [context]);
     if (!data.length && boot.mode !== "admin") return <Empty />;
     return (
-        <div className="table-scroll">
+        <div className={`table-scroll ${compact ? "compact-mobile-table" : ""}`}>
             {reorderError && (
                 <div className="alert" role="alert">
                     {reorderError}

@@ -36,7 +36,13 @@ vi.mock("./ui", () => ({
     State: () => null,
     Modal: ({ children }: any) => <div>{children}</div>,
 }));
-import { BannerStrip, bannerUrl } from "./BannerStrip";
+import {
+    BannerStrip,
+    bannerUrl,
+    bannerImages,
+    presetBanner,
+    presetMobileBanner,
+} from "./BannerStrip";
 import { BannerEditor } from "./AdminBanners";
 afterEach(() => {
     cleanup();
@@ -158,4 +164,20 @@ it("allows saving a draft after upload fails", async () => {
     );
     fireEvent.click(screen.getByRole("button", { name: "保存" }));
     await waitFor(() => expect(done).toHaveBeenCalled());
+});
+
+it("updates existing preset artwork while preserving custom mobile images", () => {
+    expect(bannerImages({ image_url: presetMobileBanner })).toEqual({
+        desktop: presetBanner,
+        mobile: presetMobileBanner,
+    });
+    expect(
+        bannerImages({
+            image_url: presetMobileBanner,
+            mobile_image_url: "/custom.png",
+        }).mobile,
+    ).toBe("/custom.png");
+    expect(bannerImages({ image_url: "/other.png" }).desktop).toBe(
+        "/other.png",
+    );
 });

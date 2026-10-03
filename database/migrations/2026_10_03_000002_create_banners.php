@@ -25,7 +25,8 @@ return new class extends Migration {
         });
         DB::table('v2_banner')->insert([
             'title'=>'Fastdog 3.0 — Faster. Simpler. Smarter.',
-            'image_url'=>'/banners/fastdog-3-launch.png',
+            'image_url'=>'/banners/fastdog-3-launch-slim.png',
+            'mobile_image_url'=>'/banners/fastdog-3-launch.png',
             'placements'=>json_encode(['dashboard']), 'languages'=>json_encode([]),
             'show'=>true, 'sort'=>0, 'created_at'=>time(), 'updated_at'=>time(),
         ]);

@@ -25,6 +25,23 @@ export function bannerUrl(value: unknown): string | undefined {
         /* Invalid URL */
     }
 }
+export const presetBanner = "/banners/fastdog-3-launch-slim.png";
+export const presetMobileBanner = "/banners/fastdog-3-launch.png";
+// Existing seeded records adopt the compact artwork without changing saved settings.
+export function bannerImages(banner: Row) {
+    const preset = [presetBanner, presetMobileBanner].includes(
+        banner.image_url,
+    );
+    return {
+        desktop:
+            banner.image_url === presetMobileBanner
+                ? presetBanner
+                : banner.image_url,
+        mobile:
+            banner.mobile_image_url ||
+            (preset ? presetMobileBanner : undefined),
+    };
+}
 const labels: Record<string, string[]> = {
     "zh-CN": ["上一张", "下一张", "选择 Banner"],
     "zh-TW": ["上一張", "下一張", "選擇 Banner"],
@@ -51,16 +68,14 @@ export function BannerStrip({
         banner = items[active],
         target = bannerUrl(banner.target_url);
     const copy = labels[locale()] || labels["en-US"];
+    const images = bannerImages(banner);
     const image = (
-        <picture key={banner.image_url}>
-            {bannerUrl(banner.mobile_image_url) && (
-                <source
-                    media="(max-width: 600px)"
-                    srcSet={banner.mobile_image_url}
-                />
+        <picture key={images.desktop}>
+            {bannerUrl(images.mobile) && (
+                <source media="(max-width: 600px)" srcSet={images.mobile} />
             )}
             <img
-                src={banner.image_url}
+                src={images.desktop}
                 alt={banner.title}
                 onError={() => setFailed((v) => [...v, banner.image_url])}
             />

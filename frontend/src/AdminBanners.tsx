@@ -2,9 +2,14 @@ import { useRef, useState } from "react";
 import { admin, request, Row } from "./api";
 import { Modal, Panel, State, useData } from "./ui";
 import { languages } from "./i18n";
-import { bannerUrl } from "./BannerStrip";
+import {
+    bannerUrl,
+    bannerImages,
+    presetBanner,
+    presetMobileBanner,
+} from "./BannerStrip";
 import "./banners.css";
-const preset = "/banners/fastdog-3-launch.png";
+const preset = presetBanner;
 const positions: Record<string, string> = {
     dashboard: "用户首页",
     landing: "落地页",
@@ -91,7 +96,11 @@ export function AdminBanners() {
                 {data.data?.map((row) => (
                     <article className="banner-item" key={row.id}>
                         {bannerUrl(row.image_url) && (
-                            <img src={row.image_url} alt={row.title} />
+                            <img
+                                className="banner-desktop-preview"
+                                src={bannerImages(row).desktop}
+                                alt={row.title}
+                            />
                         )}
                         <div className="banner-item-info">
                             <h3>{row.title}</h3>
@@ -171,6 +180,8 @@ export function BannerEditor({
 }) {
     const [draft, setDraft] = useState<Row>({
         ...initial,
+        image_url: bannerImages(initial).desktop,
+        mobile_image_url: bannerImages(initial).mobile || "",
         starts_at: localDate(initial.starts_at),
         ends_at: localDate(initial.ends_at),
     });
@@ -267,6 +278,7 @@ export function BannerEditor({
                         setDraft((d) => ({
                             ...d,
                             image_url: preset,
+                            mobile_image_url: presetMobileBanner,
                             title:
                                 d.title ||
                                 "Fastdog 3.0 — Faster. Simpler. Smarter.",
@@ -298,13 +310,22 @@ export function BannerEditor({
                             }}
                         />
                         {bannerUrl(draft[key]) && (
-                            <img src={draft[key]} alt={`${label}预览`} />
+                            <img
+                                className={
+                                    key === "image_url"
+                                        ? "banner-desktop-preview"
+                                        : "banner-mobile-preview"
+                                }
+                                src={draft[key]}
+                                alt={`${label}预览`}
+                            />
                         )}
                     </label>
                 ))}
                 <small>
-                    推荐主图比例 3:1。手机图未设置时使用主图，完整显示图片；支持
-                    PNG、JPG、WebP，最大 5 MB。
+                    桌面按约 6:1 显示，高度 128–180px；手机按 3:1
+                    显示。文字请放在中央安全区域；支持 PNG、JPG、WebP，最大 5
+                    MB。
                 </small>
                 <label>
                     点击跳转（可选）

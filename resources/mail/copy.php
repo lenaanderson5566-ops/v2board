@@ -28,7 +28,7 @@ return json_decode(<<<'JSON'
     ],
     "ticketReply": [
       "您的工单收到新回复",
-      "支持团队已回复您的工单，回复内容如下。您可以在帮助中心查看完整对话并继续回复。"
+      "支持团队已回复您的工单。请登录账户，在帮助中心查看完整回复并继续沟通。"
     ],
     "test": [
       "邮件发送测试",
@@ -42,7 +42,8 @@ return json_decode(<<<'JSON'
     "securityIgnore": "如非您本人发起的操作，请忽略此邮件。",
     "usageAction": "查看使用情况",
     "billingAction": "管理订阅",
-    "supportAction": "查看回复"
+    "supportAction": "查看回复",
+    "ticketReference": "工单编号"
   },
   "zh-TW": {
     "verify": [
@@ -71,7 +72,7 @@ return json_decode(<<<'JSON'
     ],
     "ticketReply": [
       "您的工單收到新回覆",
-      "支援團隊已回覆您的工單，回覆內容如下。您可以在說明中心查看完整對話並繼續回覆。"
+      "支援團隊已回覆您的工單。請登入帳戶，在說明中心查看完整回覆並繼續溝通。"
     ],
     "test": [
       "郵件傳送測試",
@@ -85,7 +86,8 @@ return json_decode(<<<'JSON'
     "securityIgnore": "若非您本人發起的操作，請忽略此郵件。",
     "usageAction": "查看使用情況",
     "billingAction": "管理訂閱",
-    "supportAction": "查看回覆"
+    "supportAction": "查看回覆",
+    "ticketReference": "工單編號"
   },
   "en-US": {
     "verify": [
@@ -114,7 +116,7 @@ return json_decode(<<<'JSON'
     ],
     "ticketReply": [
       "New reply to your support request",
-      "Our support team has replied to your request. Read the reply below, or open the help center to view the full conversation and respond."
+      "Our support team has replied to your ticket. Sign in to view the full reply and continue the conversation in the help center."
     ],
     "test": [
       "Email delivery test",
@@ -128,7 +130,8 @@ return json_decode(<<<'JSON'
     "securityIgnore": "If you did not make this request, you can ignore this email.",
     "usageAction": "View usage",
     "billingAction": "Manage subscription",
-    "supportAction": "View reply"
+    "supportAction": "View reply",
+    "ticketReference": "Ticket"
   },
   "ja-JP": {
     "verify": [
@@ -157,7 +160,7 @@ return json_decode(<<<'JSON'
     ],
     "ticketReply": [
       "お問い合わせへの新しい返信",
-      "サポートチームから返信が届きました。以下の内容をご確認ください。ヘルプセンターで会話全体の確認や返信ができます。"
+      "サポートチームがお問い合わせに返信しました。ログインしてヘルプセンターで返信を確認し、会話を続けてください。"
     ],
     "test": [
       "メール送信テスト",
@@ -171,7 +174,8 @@ return json_decode(<<<'JSON'
     "securityIgnore": "この操作に心当たりがない場合は、このメールを無視してください。",
     "usageAction": "使用状況を確認",
     "billingAction": "サブスクリプションを管理",
-    "supportAction": "返信を確認"
+    "supportAction": "返信を確認",
+    "ticketReference": "お問い合わせ番号"
   },
   "ko-KR": {
     "verify": [
@@ -200,7 +204,7 @@ return json_decode(<<<'JSON'
     ],
     "ticketReply": [
       "문의에 새 답변이 도착했습니다",
-      "지원팀의 답변을 아래에서 확인하세요. 도움말 센터에서 전체 대화를 확인하고 답변할 수 있습니다."
+      "지원팀이 문의에 답변했습니다. 로그인한 후 도움말 센터에서 전체 답변을 확인하고 대화를 이어가세요."
     ],
     "test": [
       "이메일 발송 테스트",
@@ -214,7 +218,8 @@ return json_decode(<<<'JSON'
     "securityIgnore": "직접 요청하지 않았다면 이 이메일을 무시하세요.",
     "usageAction": "사용량 확인",
     "billingAction": "구독 관리",
-    "supportAction": "답변 확인"
+    "supportAction": "답변 확인",
+    "ticketReference": "문의 번호"
   },
   "vi-VN": {
     "verify": [
@@ -243,7 +248,7 @@ return json_decode(<<<'JSON'
     ],
     "ticketReply": [
       "Yêu cầu hỗ trợ có phản hồi mới",
-      "Đội ngũ hỗ trợ đã trả lời yêu cầu của bạn. Đọc phản hồi bên dưới hoặc mở trung tâm trợ giúp để xem toàn bộ trao đổi và trả lời."
+      "Đội ngũ hỗ trợ đã trả lời yêu cầu của bạn. Đăng nhập để xem toàn bộ phản hồi và tiếp tục trao đổi trong trung tâm trợ giúp."
     ],
     "test": [
       "Kiểm tra gửi email",
@@ -257,7 +262,8 @@ return json_decode(<<<'JSON'
     "securityIgnore": "Nếu bạn không thực hiện yêu cầu này, hãy bỏ qua email.",
     "usageAction": "Xem mức sử dụng",
     "billingAction": "Quản lý gói đăng ký",
-    "supportAction": "Xem phản hồi"
+    "supportAction": "Xem phản hồi",
+    "ticketReference": "Mã yêu cầu"
   },
   "ru-RU": {
     "verify": [
@@ -286,7 +292,7 @@ return json_decode(<<<'JSON'
     ],
     "ticketReply": [
       "Новый ответ на ваш запрос",
-      "Служба поддержки ответила на ваш запрос. Ответ приведён ниже. В центре помощи можно посмотреть всю переписку и ответить."
+      "Служба поддержки ответила на ваше обращение. Войдите в аккаунт, чтобы прочитать ответ и продолжить общение в центре помощи."
     ],
     "test": [
       "Проверка отправки почты",
@@ -300,7 +306,8 @@ return json_decode(<<<'JSON'
     "securityIgnore": "Если вы не отправляли этот запрос, проигнорируйте письмо.",
     "usageAction": "Посмотреть использование",
     "billingAction": "Управление подпиской",
-    "supportAction": "Посмотреть ответ"
+    "supportAction": "Посмотреть ответ",
+    "ticketReference": "Обращение"
   },
   "fa-IR": {
     "verify": [
@@ -329,7 +336,7 @@ return json_decode(<<<'JSON'
     ],
     "ticketReply": [
       "پاسخ جدید به درخواست پشتیبانی شما",
-      "تیم پشتیبانی به درخواست شما پاسخ داده است. پاسخ را در زیر بخوانید یا برای مشاهده گفتگو و ارسال پاسخ به مرکز راهنما بروید."
+      "تیم پشتیبانی به درخواست شما پاسخ داده است. برای مشاهده پاسخ کامل و ادامه گفتگو در مرکز راهنما وارد حساب شوید."
     ],
     "test": [
       "آزمایش ارسال ایمیل",
@@ -343,7 +350,8 @@ return json_decode(<<<'JSON'
     "securityIgnore": "اگر این درخواست را شما ارسال نکرده‌اید، این ایمیل را نادیده بگیرید.",
     "usageAction": "مشاهده مصرف",
     "billingAction": "مدیریت اشتراک",
-    "supportAction": "مشاهده پاسخ"
+    "supportAction": "مشاهده پاسخ",
+    "ticketReference": "شماره درخواست"
   }
 }
 JSON, true);

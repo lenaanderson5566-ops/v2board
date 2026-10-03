@@ -40,7 +40,10 @@ class ProductMail
             $content = $variant['content'] ?? ($value['content'] ?? '');
             $body = ''; // Custom messages already provide the introduction; avoid duplicate boilerplate.
         }
-        if ($type === 'ticketReply') $content = ($value['ticket_subject'] ?? '') . "\n\n" . ($value['message'] ?? '');
+        // Notification only, including old queued jobs that still contain a reply body.
+        if ($type === 'ticketReply' && (int) ($value['ticket_id'] ?? 0) > 0) {
+            $content = $copy['ticketReference'].' #'.(int) $value['ticket_id'];
+        }
         // Admin announcements retain basic formatting, never active content or remote tracking images.
         $html = $type === 'notify' ? $this->safeHtml($content) : nl2br(e($content));
         $url = $type === 'mailLogin' ? ($value['link'] ?? '') : ($value['url'] ?? config('v2board.app_url'));

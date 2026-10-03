@@ -17,6 +17,18 @@ try {
     config(['v2board.app_name'=>'V2Board','v2board.app_url'=>'https://product.example', 'v2board.email_host'=>null]);
     $renderer = new ProductMail;
     foreach (App\Services\LanguagePreferenceService::SUPPORTED as $language) {
+        $data = $renderer->data(['template_name'=>'ticketReply', 'language'=>$language,
+            'template_value'=>['ticket_id'=>12345, 'ticket_subject'=>'PRIVATE_SUBJECT_SENTINEL', 'message'=>'PRIVATE_REPLY_SENTINEL']]);
+        $html = view('mail.product.message', $data)->render();
+        $plain = view('mail.product.text', $data)->render();
+        $serialized = json_encode($data).$html.$plain;
+        $assert(strpos($serialized, 'PRIVATE_SUBJECT_SENTINEL')===false && strpos($serialized, 'PRIVATE_REPLY_SENTINEL')===false, 'Ticket content leaked into notification');
+        $assert(strpos($html, '#12345')!==false && strpos($plain, '#12345')!==false, 'Ticket reference missing');
+        $assert(substr($data['url'], -12)==='/app#/ticket', 'Ticket notification link incorrect');
+        $legacy = $renderer->data(['template_name'=>'ticketReply', 'language'=>$language, 'template_value'=>['ticket_subject'=>'PRIVATE_SUBJECT_SENTINEL', 'message'=>'PRIVATE_REPLY_SENTINEL']]);
+        $assert($legacy['contentText']==='' && $legacy['contentHtml']==='', 'Legacy queued ticket body leaked');
+    }
+    foreach (App\Services\LanguagePreferenceService::SUPPORTED as $language) {
         foreach (ProductMail::TYPES as $type) {
             $data=$renderer->data(['template_name'=>$type,'language'=>$language,'template_value'=>['code'=>'123456']]);
             $html=view('mail.product.message',$data)->render(); $plain=view('mail.product.text',$data)->render();

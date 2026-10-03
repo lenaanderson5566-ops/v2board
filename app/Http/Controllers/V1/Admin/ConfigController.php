@@ -36,7 +36,7 @@ class ConfigController extends Controller
             'template_name'=>$request->input('template'), 'language'=>$request->input('language'),
             'subject'=>$request->input('subject') ?: 'Preview',
             'template_value'=>['code'=>'123456', 'url'=>config('v2board.app_url'),
-                'content'=>$request->input('content', ''), 'ticket_subject'=>'Example', 'message'=>'Example reply'],
+                'content'=>$request->input('content', ''), 'ticket_id'=>12345],
         ]);
         return response(['data'=>['subject'=>$data['subject'],
             'html'=>view('mail.product.message', $data)->render(),

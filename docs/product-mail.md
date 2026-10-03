@@ -32,6 +32,8 @@ Redis 对同一应用的同一 SMTP 账号统一限速，多个进程共享配�
 
 ## 验证
 
+工单回复采用通知邮件：只显示本地化提醒、工单编号及帮助中心入口，不发送工单标题或回复正文。新队列任务不携带这些内容；更新后的渲染器也会忽略旧任务中的标题和正文。后台邮件预览使用示例编号。正文仍在登录后的工单页面查看，邮件不支持直接回复。部署后重启 Horizon 以加载新渲染逻辑；已经发送的邮件无法撤回。
+
 本地 PHP：`php tests/product-mail.php`、`php tests/email-invitations.php`；均使用模拟邮件传输，不发送真实邮件。前端：`npm test -- --run src/AdminMail.test.tsx`，然后 `npm run build`。静态构建随仓库提交。
 
 ### 自行使用 Supervisor queue:work 的部署

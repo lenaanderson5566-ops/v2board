@@ -57,11 +57,11 @@ class TicketService {
             abort(500, '工单回复失败');
         }
         DB::commit();
-        $this->sendEmailNotify($ticket, $ticketMessage);
+        $this->sendEmailNotify($ticket);
     }
 
     // 半小时内不再重复通知
-    private function sendEmailNotify(Ticket $ticket, TicketMessage $ticketMessage)
+    private function sendEmailNotify(Ticket $ticket)
     {
         $user = User::find($ticket->user_id);
         $cacheKey = 'ticket_sendEmailNotify_' . $ticket->user_id;
@@ -74,8 +74,7 @@ class TicketService {
                 'template_value' => [
                     'name' => config('v2board.app_name', 'V2Board'),
                     'url' => config('v2board.app_url'),
-                    'ticket_subject' => $ticket->subject,
-                    'message' => $ticketMessage->message
+                    'ticket_id' => (int) $ticket->id
                 ]
             ]);
         }

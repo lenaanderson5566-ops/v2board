@@ -29,10 +29,6 @@ class CommController extends Controller
 
     private function getEmailSuffix()
     {
-        $suffix = config('v2board.email_whitelist_suffix', Dict::EMAIL_WHITELIST_SUFFIX_DEFAULT);
-        if (!is_array($suffix)) {
-            return preg_split('/,/', $suffix);
-        }
-        return $suffix;
+        return \App\Utils\Helper::emailSuffixes(config('v2board.email_whitelist_suffix', Dict::EMAIL_WHITELIST_SUFFIX_DEFAULT));
     }
 }

@@ -374,5 +374,12 @@
   "{{count}} 台设备_one": "{{count}} device",
   "{{count}} 台设备_other": "{{count}} devices",
   "服务没有返回 CSV 文件": "The server did not return a CSV file",
-  "管理账户信息、通知设置与账户安全。": "Manage account details, notifications and security."
+  "管理账户信息、通知设置与账户安全。": "Manage account details, notifications and security.",
+    "邮件邀请注册": "Register by email invitation",
+    "了解注册方式": "How to register",
+    "请让已注册用户向你的邮箱发送邀请，然后打开邮件中的专属链接。": "Ask an existing user to invite your email address, then open the personal link in the invitation email.",
+    "允许注册的邮箱": "Allowed email domains",
+    "此邮箱域名暂不支持注册，请使用允许的邮箱。": "This email domain is not allowed for registration. Use an allowed email address.",
+    "当前未配置可用的邮箱域名，请联系管理员。": "No email domains are currently allowed. Contact the administrator.",
+    "邀请链接不完整，请从邀请邮件中重新打开。": "The invitation link is incomplete. Open it again from the invitation email."
 }

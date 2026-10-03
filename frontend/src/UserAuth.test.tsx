@@ -16,6 +16,8 @@ const mocks = vi.hoisted(() => ({
         emailVerify: true,
         registerClosed: false,
         inviteRequired: false,
+        emailWhitelistEnabled: false,
+        emailWhitelistSuffixes: [] as string[],
         recaptchaSiteKey: "",
         tosUrl: "",
     },
@@ -24,7 +26,10 @@ vi.mock("./api", () => ({ ...mocks, storageKey: "auth-flow-test" }));
 vi.mock("./i18n", () => ({
     tx: (key: string) => key,
     locale: () => "ja-JP",
-    loginLanguagePreference: () => ({ language: "ja-JP", language_selected: true }),
+    loginLanguagePreference: () => ({
+        language: "ja-JP",
+        language_selected: true,
+    }),
     applyAccountLanguage: vi.fn(),
 }));
 vi.mock("./experience-copy", () => ({ e: (key: string) => key }));
@@ -62,6 +67,8 @@ beforeEach(() => {
     mocks.boot.emailVerify = true;
     mocks.boot.registerClosed = false;
     mocks.boot.inviteRequired = false;
+    mocks.boot.emailWhitelistEnabled = false;
+    mocks.boot.emailWhitelistSuffixes = [];
     mocks.boot.recaptchaSiteKey = "";
     mocks.boot.tosUrl = "";
     localStorage.clear();
@@ -280,4 +287,80 @@ describe("user account steps", () => {
         await screen.findByRole("alert");
         expect(mocks.request).toHaveBeenCalledTimes(1);
     });
+});
+
+it("replaces open signup with invitation guidance on the login page", () => {
+    mocks.boot.inviteRequired = true;
+    page("login");
+    expect(screen.queryByRole("link", { name: "创建账户" })).toBeNull();
+    expect(screen.getByRole("link", { name: "了解注册方式" })).toBeTruthy();
+});
+it("blocks malformed invitations before showing account fields", () => {
+    mocks.boot.inviteRequired = true;
+    location.hash = "#/register?invitation=bad&email=a%40example.test";
+    page();
+    expect(screen.getByRole("alert").textContent).toContain("邀请链接不完整");
+    expect(screen.queryByLabelText("邮箱地址")).toBeNull();
+    expect(mocks.request).not.toHaveBeenCalled();
+});
+it("shows allowed domains and stops disallowed addresses before sending codes", async () => {
+    mocks.boot.emailWhitelistEnabled = true;
+    mocks.boot.emailWhitelistSuffixes = ["QQ.COM", "gmail.com"];
+    page();
+    expect(screen.getByText("@qq.com")).toBeTruthy();
+    credentials();
+    fireEvent.click(screen.getByRole("button", { name: "next" }));
+    await waitFor(() =>
+        expect(screen.getByRole("alert").textContent).toContain(
+            "此邮箱域名暂不支持注册",
+        ),
+    );
+    expect(mocks.request).not.toHaveBeenCalled();
+});
+it("accepts allowed email domains regardless of case", async () => {
+    mocks.boot.emailWhitelistEnabled = true;
+    mocks.boot.emailWhitelistSuffixes = ["@EXAMPLE.TEST"];
+    page();
+    credentials();
+    fireEvent.click(screen.getByRole("button", { name: "next" }));
+    await screen.findByRole("heading", { name: "verify" });
+    expect(mocks.request).toHaveBeenCalledWith(
+        "passport/comm/sendEmailVerify",
+        expect.objectContaining({ email: "review@example.test" }),
+    );
+});
+it("passes the bound invitation when requesting registration verification", async () => {
+    const invitation = "a".repeat(64);
+    mocks.boot.inviteRequired = true;
+    location.hash = `#/register?invitation=${invitation}&email=friend%40example.test`;
+    page();
+    fireEvent.change(screen.getByLabelText("密码", { exact: true }), {
+        target: { value: "Long-password!234" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "next" }));
+    await screen.findByRole("heading", { name: "verify" });
+    expect(mocks.request).toHaveBeenCalledWith(
+        "passport/comm/sendEmailVerify",
+        expect.objectContaining({
+            invitation,
+            email: "friend@example.test",
+            isforget: 0,
+        }),
+    );
+});
+it("does not restrict password recovery for existing accounts", async () => {
+    mocks.boot.emailWhitelistEnabled = true;
+    mocks.boot.emailWhitelistSuffixes = ["qq.com"];
+    mocks.boot.inviteRequired = true;
+    page("forget");
+    expect(screen.queryByText("允许注册的邮箱")).toBeNull();
+    fireEvent.change(screen.getByLabelText("邮箱地址"), {
+        target: { value: "review@example.test" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "next" }));
+    await screen.findByRole("heading", { name: "verify" });
+    expect(mocks.request).toHaveBeenCalledWith(
+        "passport/comm/sendEmailVerify",
+        expect.objectContaining({ isforget: 1, email: "review@example.test" }),
+    );
 });

@@ -1,7 +1,14 @@
+import { registrationEmailError } from "./registration-policy";
+import { RegistrationDomains } from "./RegistrationDomains";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { Eye, EyeOff, ArrowLeft, CheckCircle2, Sparkles } from "lucide-react";
 import { boot, request, storageKey, navigate, type Row } from "./api";
-import { tx, locale, loginLanguagePreference, applyAccountLanguage } from "./i18n";
+import {
+    tx,
+    locale,
+    loginLanguagePreference,
+    applyAccountLanguage,
+} from "./i18n";
 import { ux } from "./ux";
 import { e } from "./experience-copy";
 import { passwordScore } from "./user-experience";
@@ -54,6 +61,13 @@ export function UserAuth({
                 "invitation",
             ) || "",
     );
+    const invitationComplete =
+        /^[a-f0-9]{64}$/.test(invitation) && /^[^@\s]+@[^@\s]+$/.test(email);
+    const registrationBlocked =
+        register &&
+        (boot.registerClosed ||
+            (boot.inviteRequired && !invitation) ||
+            (Boolean(invitation) && !invitationComplete));
     const heading = useRef<HTMLHeadingElement>(null);
     const [suspended, setSuspended] = useState(false);
     useEffect(() => {
@@ -73,14 +87,23 @@ export function UserAuth({
             : forget
               ? tx("重置密码")
               : register
-                ? tx("创建账户")
+                ? boot.inviteRequired && !invitation
+                    ? tx("邮件邀请注册")
+                    : tx("创建账户")
                 : tx("欢迎回来");
     async function sendCode() {
+        if (register) {
+            if (registrationBlocked)
+                throw new Error(tx("邀请链接不完整，请从邀请邮件中重新打开。"));
+            const domainError = registrationEmailError(email);
+            if (domainError) throw new Error(domainError);
+        }
         if (boot.recaptchaSiteKey && !captcha)
             throw new Error(tx("请先完成安全验证"));
         await request("passport/comm/sendEmailVerify", {
             email: email.trim(),
             isforget: forget ? 1 : 0,
+            ...(register && invitation ? { invitation } : {}),
             recaptcha_data: captcha,
         });
         setSent(true);
@@ -96,6 +119,14 @@ export function UserAuth({
         setBusy(true);
         setError("");
         try {
+            if (register) {
+                if (registrationBlocked)
+                    throw new Error(
+                        tx("邀请链接不完整，请从邀请邮件中重新打开。"),
+                    );
+                const domainError = registrationEmailError(email);
+                if (domainError) throw new Error(domainError);
+            }
             if (boot.recaptchaSiteKey && !captcha)
                 throw new Error(tx("请先完成安全验证"));
             if ((register || forget) && step === 1) {
@@ -239,9 +270,13 @@ export function UserAuth({
                         <h2 ref={heading} tabIndex={-1}>
                             {title}
                         </h2>
-                        {(register || forget) && !done && (
-                            <span className="auth-step-count">{step} / 2</span>
-                        )}
+                        {(register || forget) &&
+                            !done &&
+                            !registrationBlocked && (
+                                <span className="auth-step-count">
+                                    {step} / 2
+                                </span>
+                            )}
                     </div>
                     {done ? (
                         <div className="auth-complete" role="status">
@@ -253,27 +288,43 @@ export function UserAuth({
                         </div>
                     ) : (
                         <>
-                            <p className="muted">
-                                {step === 2
-                                    ? verify
-                                        ? e("verifyHelp")
-                                        : e("review")
-                                    : forget
-                                      ? tx("使用邮箱验证码设置新密码")
-                                      : register
-                                        ? e("stepAccount")
-                                        : tx("登录以管理你的订阅与账户")}
-                            </p>
-                            {register &&
-                            (boot.registerClosed ||
-                                (boot.inviteRequired && !invitation)) ? (
-                                <p role="alert">
-                                    {boot.registerClosed
-                                        ? e("registerClosed")
-                                        : tx(
-                                              "本站采用邮件邀请注册，请从邀请邮件中的链接继续。",
-                                          )}
+                            {!registrationBlocked && (
+                                <p className="muted">
+                                    {step === 2
+                                        ? verify
+                                            ? e("verifyHelp")
+                                            : e("review")
+                                        : forget
+                                          ? tx("使用邮箱验证码设置新密码")
+                                          : register
+                                            ? e("stepAccount")
+                                            : tx("登录以管理你的订阅与账户")}
                                 </p>
+                            )}
+                            {register && !boot.registerClosed && (
+                                <RegistrationDomains />
+                            )}
+                            {registrationBlocked ? (
+                                <div className="auth-policy">
+                                    <p role="alert">
+                                        {boot.registerClosed
+                                            ? e("registerClosed")
+                                            : invitation
+                                              ? tx(
+                                                    "邀请链接不完整，请从邀请邮件中重新打开。",
+                                                )
+                                              : tx(
+                                                    "本站采用邮件邀请注册，请从邀请邮件中的链接继续。",
+                                                )}
+                                    </p>
+                                    {!boot.registerClosed && (
+                                        <p className="muted">
+                                            {tx(
+                                                "请让已注册用户向你的邮箱发送邀请，然后打开邮件中的专属链接。",
+                                            )}
+                                        </p>
+                                    )}
+                                </div>
                             ) : (
                                 <form
                                     className="user-auth-form"
@@ -426,7 +477,9 @@ export function UserAuth({
                                                         <CheckCircle2
                                                             size={17}
                                                         />
-                                                        {e("sent", { email })}
+                                                        {e("sent", {
+                                                            email,
+                                                        })}
                                                     </p>
                                                 )}
                                             </>
@@ -487,7 +540,7 @@ export function UserAuth({
                                     </fieldset>
                                 </form>
                             )}
-                            {register && (
+                            {register && !registrationBlocked && (
                                 <p className="auth-free">{e("freeRegister")}</p>
                             )}
                             <div className="auth-links">
@@ -495,7 +548,13 @@ export function UserAuth({
                                     <a href="#/login">{tx("登录")}</a>
                                 )}
                                 {!register && !boot.registerClosed && (
-                                    <a href="#/register">{tx("创建账户")}</a>
+                                    <a href="#/register">
+                                        {tx(
+                                            boot.inviteRequired
+                                                ? "了解注册方式"
+                                                : "创建账户",
+                                        )}
+                                    </a>
                                 )}
                                 {!forget && (
                                     <a href="#/forget">{tx("忘记密码？")}</a>

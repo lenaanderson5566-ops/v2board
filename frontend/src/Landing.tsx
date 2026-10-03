@@ -38,10 +38,7 @@ export default function Landing() {
         window.addEventListener("keydown", escape);
         return () => window.removeEventListener("keydown", escape);
     }, [menu]);
-    const startHref =
-        boot.registerClosed || boot.inviteRequired
-            ? "/app#/login"
-            : "/app#/register";
+    const startHref = boot.registerClosed ? "/app#/login" : "/app#/register";
     return (
         <div className="landing">
             <a className="product-skip" href="#landing-content">
@@ -93,7 +90,11 @@ export default function Landing() {
                         <p>{t("intro")}</p>
                         <div className="landing-cta">
                             <a className="button primary" href={startHref}>
-                                {t("start")}
+                                {t(
+                                    boot.inviteRequired && !boot.registerClosed
+                                        ? "inviteStart"
+                                        : "start",
+                                )}
                                 <ArrowRight size={17} aria-hidden="true" />
                             </a>
                             <a className="button secondary" href="#setup">
@@ -169,7 +170,11 @@ export default function Landing() {
                                 className="button primary preview-start"
                                 href={startHref}
                             >
-                                {t("start")}
+                                {t(
+                                    boot.inviteRequired && !boot.registerClosed
+                                        ? "inviteStart"
+                                        : "start",
+                                )}
                                 <ArrowRight size={16} aria-hidden="true" />
                             </a>
                         </div>
@@ -261,7 +266,11 @@ export default function Landing() {
                     <h2>{t("title")}</h2>
                     <p>{t("footer")}</p>
                     <a className="button primary" href={startHref}>
-                        {t("start")}
+                        {t(
+                            boot.inviteRequired && !boot.registerClosed
+                                ? "inviteStart"
+                                : "start",
+                        )}
                         <ArrowRight size={17} aria-hidden="true" />
                     </a>
                 </section>

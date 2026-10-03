@@ -68,15 +68,23 @@ class Helper
         }
     }
 
-    public static function emailSuffixVerify($email, $suffixs)
+    public static function emailSuffixes($suffixes): array
     {
-        $suffix = preg_split('/@/', $email)[1];
-        if (!$suffix) return false;
-        if (!is_array($suffixs)) {
-            $suffixs = preg_split('/,/', $suffixs);
+        if (!is_array($suffixes)) {
+            $decoded = json_decode((string)$suffixes, true);
+            $suffixes = is_array($decoded) ? $decoded : explode(',', (string)$suffixes);
         }
-        if (!in_array($suffix, $suffixs)) return false;
-        return true;
+        return array_values(array_unique(array_filter(array_map(function ($suffix) {
+            return is_string($suffix) ? strtolower(ltrim(trim($suffix), '@')) : '';
+        }, $suffixes))));
+    }
+
+    public static function emailSuffixVerify($email, $suffixes)
+    {
+        $email = strtolower(trim((string)$email));
+        if (substr_count($email, '@') !== 1) return false;
+        $suffix = substr($email, strpos($email, '@') + 1);
+        return $suffix !== '' && in_array($suffix, self::emailSuffixes($suffixes), true);
     }
 
     public static function trafficConvert(int $byte)

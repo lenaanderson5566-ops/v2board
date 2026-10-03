@@ -1286,3 +1286,34 @@ body:has(.browser-notice) #custom-footer {
 .checkout-payment .payment-options label { flex-wrap: nowrap; min-height: 60px; }
 .checkout-payment .payment-method-icon { width: 28px; height: 28px; flex: 0 0 28px; object-fit: contain; color: #737373; }
 .checkout-payment .payment-options label > span { min-width: 0; overflow-wrap: anywhere; }
+
+.auth-policy {
+    background: var(--surface-muted, #f3f6f4);
+    border: 1px solid var(--border, #dce4de);
+    border-radius: 12px;
+    padding: 14px 16px;
+    margin: 12px 0;
+    font-size: 14px;
+}
+.auth-policy p {
+    margin: 0;
+}
+.auth-policy p + p {
+    margin-top: 8px;
+}
+.auth-policy summary {
+    cursor: pointer;
+    font-weight: 500;
+}
+.auth-domain-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-top: 10px;
+}
+.auth-domain-chips span {
+    border: 1px solid var(--border, #dce4de);
+    border-radius: 6px;
+    padding: 3px 7px;
+    overflow-wrap: anywhere;
+}

@@ -1,3 +1,5 @@
+import { RegistrationDomains } from "./RegistrationDomains";
+import { registrationEmailError } from "./registration-policy";
 import { useState, type FormEvent } from "react";
 import { Mail, ArrowLeft } from "lucide-react";
 import { boot, request, query, type Row } from "./api";
@@ -28,6 +30,8 @@ export function EmailInvites() {
         setError("");
         setSent(false);
         try {
+            const domainError = registrationEmailError(email);
+            if (domainError) throw new Error(domainError);
             await request("user/invite/email/send", { email: email.trim() });
             setSent(true);
             setEmail("");
@@ -89,6 +93,7 @@ export function EmailInvites() {
                                         "专属邀请仅限收件邮箱使用，7 天内有效。",
                                     )}
                                 </p>
+                                <RegistrationDomains />
                                 <form onSubmit={send}>
                                     <label>
                                         {tx("朋友的邮箱地址")}

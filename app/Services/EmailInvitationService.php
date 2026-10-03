@@ -12,6 +12,7 @@ class EmailInvitationService
     public function send(int $userId, string $email): EmailInvitation
     {
         $email = strtolower(trim($email));
+        if (config('v2board.email_whitelist_enable', 0) && !\App\Utils\Helper::emailSuffixVerify($email, config('v2board.email_whitelist_suffix', \App\Utils\Dict::EMAIL_WHITELIST_SUFFIX_DEFAULT))) abort(422, __('Email suffix is not in the Whitelist'));
         $url = rtrim((string)config('v2board.app_url'), '/');
         if (!filter_var($url, FILTER_VALIDATE_URL) || !in_array(parse_url($url, PHP_URL_SCHEME), ['http','https'], true)) abort(422, __('Configure the site URL before sending invitations.'));
         if (config('v2board.stop_register', 0)) abort(422, __('Registration has closed'));
@@ -42,16 +43,24 @@ class EmailInvitationService
 
     public function register(string $token, string $email, callable $createUser): User
     {
-        if (!preg_match('/^[a-f0-9]{64}$/', $token)) abort(422, __('The email invitation is invalid or expired.'));
         return DB::transaction(function () use ($token, $email, $createUser) {
-            $invitation = EmailInvitation::where('token_hash',hash('sha256',$token))->lockForUpdate()->first();
-            if (!$invitation || $invitation->accepted_at || $invitation->expires_at <= time() || $invitation->email !== strtolower(trim($email))) abort(422, __('The email invitation is invalid or expired.'));
-            $sender = User::find($invitation->user_id);
-            if (!$sender || $sender->banned) abort(422, __('The email invitation is invalid or expired.'));
+            $invitation = $this->validateRecipient($token, $email, true);
             $user = $createUser($invitation->user_id);
             $invitation->update(['accepted_user_id'=>$user->id,'accepted_at'=>time()]);
             return $user;
         });
+    }
+
+    public function validateRecipient(string $token, string $email, bool $lock = false): EmailInvitation
+    {
+        if (!preg_match('/^[a-f0-9]{64}$/', $token)) abort(422, __('The email invitation is invalid or expired.'));
+        $query = EmailInvitation::where('token_hash', hash('sha256', $token));
+        if ($lock) $query->lockForUpdate();
+        $invitation = $query->first();
+        if (!$invitation || $invitation->accepted_at || $invitation->expires_at <= time() || $invitation->email !== strtolower(trim($email))) abort(422, __('The email invitation is invalid or expired.'));
+        $sender = User::find($invitation->user_id);
+        if (!$sender || $sender->banned) abort(422, __('The email invitation is invalid or expired.'));
+        return $invitation;
     }
 
     public function history(int $userId, int $days): array

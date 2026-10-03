@@ -372,5 +372,12 @@
   "订阅链接和二维码包含访问凭据，请勿分享。": "Liên kết và mã QR chứa thông tin truy cập. Không chia sẻ.",
   "{{count}} 台设备": "{{count}} thiết bị",
   "服务没有返回 CSV 文件": "Máy chủ không trả về tệp CSV",
-  "管理账户信息、通知设置与账户安全。": "Quản lý thông tin, thông báo và bảo mật tài khoản."
+  "管理账户信息、通知设置与账户安全。": "Quản lý thông tin, thông báo và bảo mật tài khoản.",
+    "邮件邀请注册": "Đăng ký qua lời mời email",
+    "了解注册方式": "Cách đăng ký",
+    "请让已注册用户向你的邮箱发送邀请，然后打开邮件中的专属链接。": "Nhờ người dùng đã đăng ký mời địa chỉ email của bạn, rồi mở liên kết riêng trong email mời.",
+    "允许注册的邮箱": "Miền email được phép đăng ký",
+    "此邮箱域名暂不支持注册，请使用允许的邮箱。": "Miền email này không được phép đăng ký. Vui lòng dùng địa chỉ email được cho phép.",
+    "当前未配置可用的邮箱域名，请联系管理员。": "Chưa có miền email nào được cho phép. Vui lòng liên hệ quản trị viên.",
+    "邀请链接不完整，请从邀请邮件中重新打开。": "Liên kết mời không đầy đủ. Vui lòng mở lại từ email mời."
 }

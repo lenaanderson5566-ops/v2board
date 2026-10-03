@@ -5,10 +5,12 @@ const mocks = vi.hoisted(() => ({
     boot: {
         title: "Example AI",
         registerClosed: false,
+        inviteRequired: false,
         tosUrl: "https://example.com/terms",
     },
 }));
 vi.mock("./api", () => mocks);
+vi.mock("./BannerStrip", () => ({ BannerStrip: () => null }));
 vi.mock("./landing-copy", () => ({}));
 vi.mock("./LanguagePicker", () => ({
     LanguagePicker: () => <span>Language</span>,
@@ -23,6 +25,7 @@ import Landing from "./Landing";
 afterEach(() => {
     cleanup();
     mocks.boot.registerClosed = false;
+    mocks.boot.inviteRequired = false;
 });
 describe("public product entry", () => {
     it("uses the configured brand and shows AI service brands before setup", () => {
@@ -66,4 +69,14 @@ describe("public product entry", () => {
         expect(trigger.getAttribute("aria-expanded")).toBe("false");
         expect(document.activeElement).toBe(trigger);
     });
+});
+
+it("labels invitation-only entry clearly", () => {
+    mocks.boot.inviteRequired = true;
+    render(<Landing />);
+    expect(
+        screen
+            .getAllByRole("link", { name: "inviteStart" })
+            .every((el) => el.getAttribute("href") === "/app#/register"),
+    ).toBe(true);
 });

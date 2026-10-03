@@ -17,6 +17,8 @@ $renderConsole = function (string $mode, bool $landing = false) use ($securePath
             'emailVerify' => (bool) config('v2board.email_verify', 0),
             'registerClosed' => (bool) config('v2board.stop_register', 0),
             'inviteRequired' => (bool) config('v2board.invite_force', 0),
+            'emailWhitelistEnabled' => (bool) config('v2board.email_whitelist_enable', 0),
+            'emailWhitelistSuffixes' => config('v2board.email_whitelist_enable', 0) ? \App\Utils\Helper::emailSuffixes(config('v2board.email_whitelist_suffix', \App\Utils\Dict::EMAIL_WHITELIST_SUFFIX_DEFAULT)) : [],
             'recaptchaSiteKey' => config('v2board.recaptcha_enable') ? (string) config('v2board.recaptcha_site_key', '') : '',
             'tosUrl' => (string) config('v2board.tos_url', ''),
             'currencySymbol' => config('v2board.currency_symbol', '¥'),

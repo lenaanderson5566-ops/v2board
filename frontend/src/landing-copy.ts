@@ -1,5 +1,15 @@
 import i18n from "./i18n";
 export const landingCopy = {
+    inviteStart: [
+        "受邀注册",
+        "受邀註冊",
+        "Join by invitation",
+        "招待で登録",
+        "초대로 가입",
+        "Đăng ký qua lời mời",
+        "Регистрация по приглашению",
+        "ثبت‌نام با دعوت",
+    ],
     aiTitle: [
         "连接你的 AI 世界",
         "連接你的 AI 世界",

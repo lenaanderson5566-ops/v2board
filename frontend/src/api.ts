@@ -19,6 +19,8 @@ export interface Boot {
     emailVerify: boolean;
     registerClosed: boolean;
     inviteRequired?: boolean;
+    emailWhitelistEnabled?: boolean;
+    emailWhitelistSuffixes?: string[];
     recaptchaSiteKey: string;
     tosUrl: string;
     currencySymbol: string;

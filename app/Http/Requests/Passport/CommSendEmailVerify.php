@@ -14,7 +14,9 @@ class CommSendEmailVerify extends FormRequest
     public function rules()
     {
         return [
-            'email' => 'required|email:strict'
+            'email' => 'required|email:strict',
+            'isforget' => 'nullable|integer|in:0,1',
+            'invitation' => 'nullable|string|max:64'
         ];
     }
 

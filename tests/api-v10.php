@@ -215,4 +215,3 @@ try {
     $assert($r->getStatusCode()===204 && !App\Services\AuthService::decryptAuthData($credentials['auth_data']),'Cross-version revocation');
     echo "V10 contracts: $checks checks passed\n";
 } finally { foreach ($cleanupUsers as $fixture) if ($fixture) (new App\Services\AuthService($fixture))->removeAllSession(); DB::rollBack(); }
-

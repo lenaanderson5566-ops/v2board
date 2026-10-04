@@ -98,7 +98,7 @@ class UserActions
         ]);
     }
 
-    public function newPeriod(Request $request) 
+    public function newPeriod(Request $request)
     {
         if (!config('v2board.allow_new_period', 0)) {
             abort(request()->is('api/v10/*') ? 409 : 500, __('Renewal is not allowed'));

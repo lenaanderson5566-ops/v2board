@@ -71,7 +71,7 @@ class CommActions
         if (isset($isforget)) {
             if ($isforget == 0 && $email_exists) {
                 abort(request()->is('api/v10/*') ? 409 : 500, __('This email is registered'));
-            } 
+            }
             if ($isforget == 1 && !$email_exists) {
                 abort(request()->is('api/v10/*') ? 409 : 500, __('This email is not registered in the system'));
             }

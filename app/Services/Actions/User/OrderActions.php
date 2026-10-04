@@ -120,14 +120,14 @@ class OrderActions
             $order->period = 'deposit';
             $order->trade_no = Helper::generateOrderNo();
             $order->total_amount = $amount;
-            
+
             $orderService->setOrderType($user);
             $orderService->setInvite($user);
 
             if (!$order->save()) {
                 abort(request()->is('api/v10/*') ? 409 : 500, __('Failed to create order'));
             }
-    
+
             return response([
                 'data' => $order->trade_no
             ]);

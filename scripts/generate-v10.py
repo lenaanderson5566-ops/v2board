@@ -136,7 +136,7 @@ for i,e in enumerate(entries):
  methods=e.get('methods',[e['method']]);
  if e['method']=='GET' and not e['path'].startswith('webhooks/'): methods=[*methods,'HEAD']
  route='\\Illuminate\\Support\\Facades\\Route::match('+str(methods).replace('"',"'")+", "+repr(e['path'])+", [\\App\\Http\\Controllers\\V10\\"+controller+"::class, "+repr(name)+"])"
- 
+
  if e['middleware']:route+='->middleware('+str(e['middleware'])+')'
  route+='->name('+repr('v10.'+name)+');';routes.append(route)
 for c,b in controllers.items():write('app/Http/Controllers/V10/'+c+'.php','<?php\nnamespace App\\Http\\Controllers\\V10;\nclass '+c+' extends ResourceController\n{\n'+''.join(b)+'}\n')

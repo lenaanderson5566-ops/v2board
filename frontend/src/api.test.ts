@@ -21,10 +21,10 @@ describe("API client", () => {
             .mockResolvedValue(new Response('{"data":true}', { status: 200 }));
         vi.stubGlobal("fetch", fetchMock);
         await logoutSession();
-        expect(fetchMock.mock.calls[0][0]).toBe("/api/v1/user/logout");
-        expect(fetchMock.mock.calls[0][1].method).toBe("POST");
+        expect(fetchMock.mock.calls[0][0]).toBe("/api/v10/me/session");
+        expect(fetchMock.mock.calls[0][1].method).toBe("DELETE");
         expect(fetchMock.mock.calls[0][1].headers.Authorization).toBe(
-            "session-token",
+            "Bearer session-token",
         );
         expect(storage.has(storageKey)).toBe(false);
     });
@@ -47,14 +47,14 @@ describe("API client", () => {
             );
         vi.stubGlobal("fetch", fetchMock);
         await request("user/update", { remind_expire: 1 });
-        expect(fetchMock.mock.calls[0][0]).toBe("/api/v1/user/update");
+        expect(fetchMock.mock.calls[0][0]).toBe("/api/v10/me");
         expect(fetchMock.mock.calls[0][1].headers.Authorization).toBe(
-            "session-token",
+            "Bearer session-token",
         );
-        expect(fetchMock.mock.calls[0][1].headers["Content-Language"]).toBe(
+        expect(fetchMock.mock.calls[0][1].headers["Accept-Language"]).toBe(
             "zh-CN",
         );
-        expect(fetchMock.mock.calls[0][1].body).toBe('{"remind_expire":1}');
+        expect(fetchMock.mock.calls[0][1].body).toBe('{"expiryReminders":1}');
     });
     it("clears expired sessions and reports access errors", async () => {
         storage.set(storageKey, "expired");
@@ -63,7 +63,7 @@ describe("API client", () => {
             vi
                 .fn()
                 .mockResolvedValue(
-                    new Response('{"message":"登录已过期"}', { status: 403 }),
+                    new Response('{"detail":"登录已过期"}', { status: 401 }),
                 ),
         );
         await expect(request("user/info")).rejects.toThrow("登录已过期");

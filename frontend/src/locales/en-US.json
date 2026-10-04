@@ -389,5 +389,7 @@
   "请求超时，请刷新确认结果后再试": "Request timed out. Refresh to check the result before trying again.",
   "自动检查已暂停，订单仍可继续处理，请勿重复付款。": "Automatic checking is paused. Your order can still be processed. Do not pay again.",
   "继续检查": "Resume checking",
-  "确认关闭此工单？": "Close this support ticket?"
+  "确认关闭此工单？": "Close this support ticket?",
+    "未登录或登陆已过期": "Your session has expired",
+    "登录已过期": "Your session has expired"
 }

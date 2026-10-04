@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import i18n, { tx } from "./i18n";
-import { request } from "./api";
+import { request, date } from "./api";
 import { Modal } from "./ui";
 
 const labels = {
@@ -15,7 +15,7 @@ const labels = {
     "fa-IR": ["دریافت حساب دانلود", "فقط برای دانلود از App Store. وارد iCloud یا تنظیمات دستگاه نشوید.", "در حال دریافت…", "حساب در دسترس نیست. اشتراک فعال یا اعتبار باقی‌مانده لازم است. بعداً تلاش کنید.", "حسابی موجود نیست", "تلاش مجدد", "کپی حساب", "کپی رمز", "نمایش رمز", "پنهان کردن رمز", "کپی شد", "کپی نشد؛ دستی کپی کنید.", "آخرین بررسی"],
 };
 Object.entries(labels).forEach(([language, values]) => i18n.addResourceBundle(language, "appleAccount", Object.fromEntries(values.map((value, i) => [String(i), value]))));
-type Account = { username: string; password?: string; available?: boolean; status?: string; region_display?: string; last_check?: string };
+type Account = { username: string; password?: string; available?: boolean; status?: string; region_display?: string; last_check?: string | number };
 
 export function AppleAccounts() {
     const { t } = useTranslation("appleAccount");
@@ -53,7 +53,7 @@ export function AccountList() {
             <p dir="ltr">{account.username}</p>
             <p className="apple-account-password" dir="ltr">{account.available && (visible[index] ? account.password : "••••••••")}</p>
             {account.available && account.password && <div className="quick-actions"><button onClick={() => copy(account.username)}>{t("6")}</button><button onClick={() => copy(account.password!)}>{t("7")}</button><button onClick={() => setVisible(previous => ({ ...previous, [index]: !previous[index] }))}>{t(visible[index] ? "9" : "8")}</button></div>}
-            {account.last_check && <p className="muted">{t("12")}: {account.last_check}</p>}
+            {account.last_check && <p className="muted">{t("12")}: {typeof account.last_check === 'number' ? date(account.last_check) : account.last_check}</p>}
         </section>)}
         {!busy && (error || accounts.length === 0) && <button onClick={() => setAttempt(value => value + 1)}>{t("5")}</button>}
         <p role="status">{feedback && t(feedback)}</p>

@@ -1,19 +1,14 @@
 <?php
 namespace App\Http\Controllers\V1\User;
 
-use App\Http\Controllers\Controller;
-use App\Services\UsageResetService;
-use Illuminate\Http\Request;
-
-class UsageResetController extends Controller
+class UsageResetController extends \App\Http\Controllers\Controller
 {
-    public function fetch(Request $request, UsageResetService $service)
+    public function fetch(\Illuminate\Http\Request $request, \App\Services\UsageResetService $service)
     {
-        return response(['data' => $service->summary((int)$request->user['id'])]);
+        return app(\App\Services\Actions\User\UsageResetActions::class)->fetch($request, $service);
     }
-    public function consume(Request $request, UsageResetService $service)
+    public function consume(\Illuminate\Http\Request $request, \App\Services\UsageResetService $service)
     {
-        $data = $request->validate(['request_key' => 'required|uuid']);
-        return response(['data' => $service->consume((int)$request->user['id'], $data['request_key'])]);
+        return app(\App\Services\Actions\User\UsageResetActions::class)->consume($request, $service);
     }
 }

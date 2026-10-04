@@ -397,7 +397,7 @@ const actions = [
     ["用户管理", "user/sendMail", "发送用户邮件"],
     ["用户管理", "user/ban", "批量封禁"],
     ["用户管理", "user/allDel", "批量删除"],
-    ["用户管理", "user/setInviteUser", "设置邀请人"],
+    ["用户管理", "user/update", "设置邀请人"],
     ["订单管理", "order/detail", "订单详情"],
     ["订单管理", "order/assign", "分配订单"],
     ["队列监控", "system/getQueueWorkload", "队列工作负载"],
@@ -432,7 +432,7 @@ for (const file of [
 for (const [module, endpoint, label] of actions) {
     const exists = adminEndpoints.has(endpoint),
         equivalent =
-            endpoint === "user/setInviteUser" &&
+            endpoint === "user/update" && label === "设置邀请人" &&
             currentResources.get("users")?.has("invite_user_email");
     const source = read(legacyPath);
     const index = source.indexOf(endpoint);

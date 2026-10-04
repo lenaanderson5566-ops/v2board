@@ -12,9 +12,8 @@ class ClientRoute
             'middleware' => 'client'
         ], function ($router) {
             // Client
-            if (empty(config('v2board.subscribe_path'))) {
-                $router->get('/subscribe', 'V1\\Client\\ClientController@subscribe');
-            }
+            // Historical links remain valid even after configuring a custom path.
+            $router->get('/subscribe', 'V1\\Client\\ClientController@subscribe');
             // App
             $router->get('/app/getConfig', 'V1\\Client\\AppController@getConfig');
             $router->get('/app/getVersion', 'V1\\Client\\AppController@getVersion');

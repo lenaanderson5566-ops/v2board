@@ -13,7 +13,7 @@ export function UsageChart({
     showDetails?: boolean;
     showRecords?: boolean;
 }) {
-    const data = useData<UsageRecord[]>("user/stat/getTrafficLog?days=30");
+    const data = useData<UsageRecord[]>("user/stat/getTrafficLog?days=30&page_size=100", undefined, true);
     const [period, setPeriod] = useState<"30days" | "week">("30days");
     const days = usageDays(data.data || [], period);
     const max = Math.max(1, ...days.map((day) => day.upload + day.download));

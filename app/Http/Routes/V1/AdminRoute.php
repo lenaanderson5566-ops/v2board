@@ -125,9 +125,7 @@ class AdminRoute
             $router->post('/user/resetSecret', 'V1\\Admin\\UserController@resetSecret');
             $router->post('/user/delUser', 'V1\\Admin\\UserController@delUser');
             $router->post('/user/allDel', 'V1\\Admin\\UserController@allDel');
-            $router->post('/user/setInviteUser', 'V1\\Admin\\UserController@setInviteUser');
             // Stat
-            $router->get ('/stat/getStat', 'V1\\Admin\\StatController@getStat');
             $router->get ('/stat/getOverride', 'V1\\Admin\\StatController@getOverride');
             $router->get ('/stat/getServerLastRank', 'V1\\Admin\\StatController@getServerLastRank');
             $router->get ('/stat/getServerTodayRank', 'V1\\Admin\\StatController@getServerTodayRank');
@@ -135,8 +133,6 @@ class AdminRoute
             $router->get ('/stat/getUserTodayRank', 'V1\\Admin\\StatController@getUserTodayRank');
             $router->get ('/stat/getOrder', 'V1\\Admin\\StatController@getOrder');
             $router->get ('/stat/getStatUser', 'V1\\Admin\\StatController@getStatUser');
-            $router->get ('/stat/getRanking', 'V1\\Admin\\StatController@getRanking');
-            $router->get ('/stat/getStatRecord', 'V1\\Admin\\StatController@getStatRecord');
             // Banners
             $router->get('/banner/fetch', 'V1\\Admin\\BannerController@fetch');
             $router->post('/banner/save', 'V1\\Admin\\BannerController@save');
@@ -146,7 +142,6 @@ class AdminRoute
             // Notice
             $router->get ('/notice/fetch', 'V1\\Admin\\NoticeController@fetch');
             $router->post('/notice/save', 'V1\\Admin\\NoticeController@save');
-            $router->post('/notice/update', 'V1\\Admin\\NoticeController@update');
             $router->post('/notice/drop', 'V1\\Admin\\NoticeController@drop');
             $router->post('/notice/show', 'V1\\Admin\\NoticeController@show');
             // Ticket

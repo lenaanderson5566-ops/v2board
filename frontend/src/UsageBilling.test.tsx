@@ -16,6 +16,7 @@ const mocks = vi.hoisted(() => ({
     orders: [] as any[],
 }));
 vi.mock("./api", () => ({
+    query: (path:string, params:any) => path+"?"+new URLSearchParams(params),
     boot: { currencySymbol: "¥" },
     admin: (s: string) => "admin/" + s,
     request: mocks.request,
@@ -38,7 +39,7 @@ vi.mock("./ui", () => ({
         data:
             path === "user/usage/reset"
                 ? mocks.resets
-                : path === "user/order/fetch"
+                : path.startsWith("user/order/fetch")
                   ? mocks.orders
                   : path === "user/info"
                     ? {

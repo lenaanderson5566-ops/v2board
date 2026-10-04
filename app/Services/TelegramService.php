@@ -52,7 +52,8 @@ class TelegramService {
         $commands = $this->discoverCommands(base_path('app/Plugins/Telegram/Commands'));
         $this->setMyCommands($commands);
         return $this->request('setWebhook', [
-            'url' => $url
+            'url' => $url,
+            ...(str_contains($url, '/api/v10/webhooks/telegram') ? ['secret_token'=>md5(config('v2board.telegram_bot_token'))] : [])
         ]);
     }
 

@@ -27,7 +27,10 @@ export function subscriptionUrl(value: string, flag?: string): string {
         url.password
     )
         throw new Error("Invalid subscription URL");
-    if (flag) url.searchParams.set("flag", flag);
+    if (flag) {
+        const formats:Record<string,string>={meta:'clash-meta',verge:'clash-verge',flclash:'flclash',sing:'sing-box',shadowrocket:'shadowrocket',surge:'surge','quantumult%20x':'quantumult-x',stash:'stash',clash:'clash'};
+        url.searchParams.set(url.pathname.startsWith('/api/v10/subscriptions/') ? 'format' : 'flag', url.pathname.startsWith('/api/v10/subscriptions/') ? (formats[flag] || flag) : flag);
+    }
     url.hash = "";
     return url.href;
 }

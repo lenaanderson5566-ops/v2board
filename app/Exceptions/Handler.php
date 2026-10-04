@@ -39,6 +39,10 @@ class Handler extends ExceptionHandler
      */
     public function report(Throwable $exception)
     {
+        if (request()->is('api/v10','api/v10/*')) {
+            \Illuminate\Support\Facades\Log::error('V10 exception', ['requestId'=>request()->attributes->get('requestId'), 'exceptionClass'=>get_class($exception)]);
+            return;
+        }
         parent::report($exception);
     }
 
@@ -53,6 +57,9 @@ class Handler extends ExceptionHandler
      */
     public function render($request, Throwable $exception)
     {
+        if ($request->is('api/v10','api/v10/*')) {
+            return app(\App\Http\Middleware\V10::class)->exceptionResponse($request,$exception);
+        }
         if ($exception instanceof ViewException) {
             abort(500, "主题渲染失败。如更新主题，参数可能发生变化请重新配置主题后再试。");
         }

@@ -20,6 +20,7 @@ class AccountStatusService
             'state' => $state,
             'is_available' => (new UserService())->isAvailable($user),
             'quota_exhausted' => $state === 'active' && $user->credit_balance <= 0
+                && $user->transfer_enable > 0
                 && ($user->u + $user->d) >= $user->transfer_enable,
             'server_time' => $now,
         ];

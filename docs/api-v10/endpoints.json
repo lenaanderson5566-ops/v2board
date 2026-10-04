@@ -1,0 +1,1337 @@
+[
+  {
+    "legacy": "client/subscribe",
+    "legacyMethod": "GET",
+    "method": "GET",
+    "path": "subscriptions/{subscriptionToken}",
+    "action": "App\\Http\\Controllers\\V1\\Client\\ClientController@subscribe",
+    "parameters": [
+      {
+        "name": "request",
+        "type": "Illuminate\\Http\\Request",
+        "optional": false
+      }
+    ],
+    "bindings": {
+      "subscriptionToken": "token"
+    },
+    "middleware": [],
+    "role": "subscription",
+    "scope": "client",
+    "status": 200
+  },
+  {
+    "legacy": "client/app/getConfig",
+    "legacyMethod": "GET",
+    "method": "GET",
+    "path": "subscriptions/{subscriptionToken}/application-config",
+    "action": "App\\Http\\Controllers\\V1\\Client\\AppController@getConfig",
+    "parameters": [
+      {
+        "name": "request",
+        "type": "Illuminate\\Http\\Request",
+        "optional": false
+      }
+    ],
+    "bindings": {
+      "subscriptionToken": "token"
+    },
+    "middleware": [],
+    "role": "subscription",
+    "scope": "client",
+    "status": 200
+  },
+  {
+    "legacy": "client/app/getVersion",
+    "legacyMethod": "GET",
+    "method": "GET",
+    "path": "subscriptions/{subscriptionToken}/application-version",
+    "action": "App\\Http\\Controllers\\V1\\Client\\AppController@getVersion",
+    "parameters": [
+      {
+        "name": "request",
+        "type": "Illuminate\\Http\\Request",
+        "optional": false
+      }
+    ],
+    "bindings": {
+      "subscriptionToken": "token"
+    },
+    "middleware": [],
+    "role": "subscription",
+    "scope": "client",
+    "status": 200
+  },
+  {
+    "legacy": "guest/telegram/webhook",
+    "legacyMethod": "POST",
+    "method": "POST",
+    "path": "webhooks/telegram",
+    "action": "App\\Http\\Controllers\\V1\\Guest\\TelegramController@webhook",
+    "parameters": [
+      {
+        "name": "request",
+        "type": "Illuminate\\Http\\Request",
+        "optional": false
+      }
+    ],
+    "bindings": {},
+    "middleware": [],
+    "role": "public",
+    "scope": "guest",
+    "status": 200
+  },
+  {
+    "legacy": "guest/payment/notify/{method}/{uuid}",
+    "legacyMethod": "GET",
+    "method": "GET",
+    "path": "webhooks/payments/{provider}/{endpointId}",
+    "action": "App\\Http\\Controllers\\V1\\Guest\\PaymentController@notify",
+    "parameters": [
+      {
+        "name": "method",
+        "type": null,
+        "optional": false
+      },
+      {
+        "name": "uuid",
+        "type": null,
+        "optional": false
+      },
+      {
+        "name": "request",
+        "type": "Illuminate\\Http\\Request",
+        "optional": false
+      }
+    ],
+    "bindings": {
+      "provider": "method",
+      "endpointId": "uuid"
+    },
+    "middleware": [],
+    "role": "public",
+    "scope": "guest",
+    "methods": [
+      "GET",
+      "POST"
+    ],
+    "status": 200
+  },
+  {
+    "legacy": "guest/banner/fetch",
+    "legacyMethod": "GET",
+    "method": "GET",
+    "path": "public/banners",
+    "action": "App\\Http\\Controllers\\V1\\Guest\\BannerController@fetch",
+    "parameters": [
+      {
+        "name": "request",
+        "type": "Illuminate\\Http\\Request",
+        "optional": false
+      }
+    ],
+    "bindings": {},
+    "middleware": [],
+    "role": "public",
+    "scope": "guest",
+    "status": 200
+  },
+  {
+    "legacy": "guest/banner/image/{name}",
+    "legacyMethod": "GET",
+    "method": "GET",
+    "path": "public/banner-images/{name}",
+    "action": "App\\Http\\Controllers\\V1\\Guest\\BannerController@image",
+    "parameters": [
+      {
+        "name": "name",
+        "type": null,
+        "optional": false
+      }
+    ],
+    "bindings": {
+      "name": "name"
+    },
+    "middleware": [],
+    "role": "public",
+    "scope": "guest",
+    "status": 200
+  },
+  {
+    "legacy": "guest/comm/config",
+    "legacyMethod": "GET",
+    "method": "GET",
+    "path": "public/settings",
+    "action": "App\\Http\\Controllers\\V1\\Guest\\CommController@config",
+    "parameters": [],
+    "bindings": {},
+    "middleware": [],
+    "role": "public",
+    "scope": "guest",
+    "status": 200
+  },
+  {
+    "legacy": "passport/auth/register",
+    "legacyMethod": "POST",
+    "method": "POST",
+    "path": "auth/registrations",
+    "action": "App\\Http\\Controllers\\V1\\Passport\\AuthController@register",
+    "parameters": [
+      {
+        "name": "request",
+        "type": "App\\Http\\Requests\\Passport\\AuthRegister",
+        "optional": false
+      }
+    ],
+    "bindings": {},
+    "middleware": [],
+    "role": "public",
+    "scope": "passport",
+    "status": 201
+  },
+  {
+    "legacy": "passport/auth/login",
+    "legacyMethod": "POST",
+    "method": "POST",
+    "path": "auth/sessions",
+    "action": "App\\Http\\Controllers\\V1\\Passport\\AuthController@login",
+    "parameters": [
+      {
+        "name": "request",
+        "type": "App\\Http\\Requests\\Passport\\AuthLogin",
+        "optional": false
+      }
+    ],
+    "bindings": {},
+    "middleware": [
+      "throttle:30,1"
+    ],
+    "role": "public",
+    "scope": "passport",
+    "status": 200
+  },
+  {
+    "legacy": "passport/auth/token2Login",
+    "legacyMethod": "GET",
+    "method": "POST",
+    "path": "auth/session-exchanges",
+    "action": "App\\Http\\Controllers\\V1\\Passport\\AuthController@token2Login",
+    "parameters": [
+      {
+        "name": "request",
+        "type": "Illuminate\\Http\\Request",
+        "optional": false
+      }
+    ],
+    "bindings": {},
+    "middleware": [],
+    "role": "public",
+    "scope": "passport",
+    "status": 200
+  },
+  {
+    "legacy": "passport/auth/forget",
+    "legacyMethod": "POST",
+    "method": "POST",
+    "path": "auth/password-resets",
+    "action": "App\\Http\\Controllers\\V1\\Passport\\AuthController@forget",
+    "parameters": [
+      {
+        "name": "request",
+        "type": "App\\Http\\Requests\\Passport\\AuthForget",
+        "optional": false
+      }
+    ],
+    "bindings": {},
+    "middleware": [],
+    "role": "public",
+    "scope": "passport",
+    "status": 204
+  },
+  {
+    "legacy": "passport/auth/getQuickLoginUrl",
+    "legacyMethod": "POST",
+    "method": "POST",
+    "path": "auth/login-links",
+    "action": "App\\Http\\Controllers\\V1\\Passport\\AuthController@getQuickLoginUrl",
+    "parameters": [
+      {
+        "name": "request",
+        "type": "Illuminate\\Http\\Request",
+        "optional": false
+      }
+    ],
+    "bindings": {},
+    "middleware": [],
+    "role": "user",
+    "scope": "passport",
+    "status": 200
+  },
+  {
+    "legacy": "passport/comm/sendEmailVerify",
+    "legacyMethod": "POST",
+    "method": "POST",
+    "path": "auth/email-verifications",
+    "action": "App\\Http\\Controllers\\V1\\Passport\\CommController@sendEmailVerify",
+    "parameters": [
+      {
+        "name": "request",
+        "type": "App\\Http\\Requests\\Passport\\CommSendEmailVerify",
+        "optional": false
+      }
+    ],
+    "bindings": {},
+    "middleware": [],
+    "role": "public",
+    "scope": "passport",
+    "status": 202
+  },
+  {
+    "legacy": "passport/comm/pv",
+    "legacyMethod": "POST",
+    "method": "POST",
+    "path": "public/page-views",
+    "action": "App\\Http\\Controllers\\V1\\Passport\\CommController@pv",
+    "parameters": [
+      {
+        "name": "request",
+        "type": "Illuminate\\Http\\Request",
+        "optional": false
+      }
+    ],
+    "bindings": {},
+    "middleware": [],
+    "role": "public",
+    "scope": "passport",
+    "status": 204
+  },
+  {
+    "legacy": "user/apple-account",
+    "legacyMethod": "GET",
+    "method": "GET",
+    "path": "me/download-accounts",
+    "action": "App\\Http\\Controllers\\V1\\User\\AppleAccountController@fetch",
+    "parameters": [
+      {
+        "name": "request",
+        "type": "Illuminate\\Http\\Request",
+        "optional": false
+      },
+      {
+        "name": "service",
+        "type": "App\\Services\\AppleAccountService",
+        "optional": false
+      }
+    ],
+    "bindings": {},
+    "middleware": [
+      "throttle:10,1"
+    ],
+    "role": "user",
+    "scope": "user",
+    "status": 200
+  },
+  {
+    "legacy": "user/usage/reset",
+    "legacyMethod": "GET",
+    "method": "GET",
+    "path": "me/usage-resets",
+    "action": "App\\Http\\Controllers\\V1\\User\\UsageResetController@fetch",
+    "parameters": [
+      {
+        "name": "request",
+        "type": "Illuminate\\Http\\Request",
+        "optional": false
+      },
+      {
+        "name": "service",
+        "type": "App\\Services\\UsageResetService",
+        "optional": false
+      }
+    ],
+    "bindings": {},
+    "middleware": [],
+    "role": "user",
+    "scope": "user",
+    "status": 200
+  },
+  {
+    "legacy": "user/usage/reset",
+    "legacyMethod": "POST",
+    "method": "POST",
+    "path": "me/usage-resets/consumptions",
+    "action": "App\\Http\\Controllers\\V1\\User\\UsageResetController@consume",
+    "parameters": [
+      {
+        "name": "request",
+        "type": "Illuminate\\Http\\Request",
+        "optional": false
+      },
+      {
+        "name": "service",
+        "type": "App\\Services\\UsageResetService",
+        "optional": false
+      }
+    ],
+    "bindings": {},
+    "middleware": [
+      "throttle:20,1"
+    ],
+    "role": "user",
+    "scope": "user",
+    "status": 200
+  },
+  {
+    "legacy": "user/logout",
+    "legacyMethod": "POST",
+    "method": "DELETE",
+    "path": "me/session",
+    "action": "App\\Http\\Controllers\\V1\\User\\UserController@logout",
+    "parameters": [
+      {
+        "name": "request",
+        "type": "Illuminate\\Http\\Request",
+        "optional": false
+      }
+    ],
+    "bindings": {},
+    "middleware": [],
+    "role": "user",
+    "scope": "user",
+    "status": 204
+  },
+  {
+    "legacy": "user/unbindTelegram",
+    "legacyMethod": "GET",
+    "method": "DELETE",
+    "path": "me/integrations/telegram",
+    "action": "App\\Http\\Controllers\\V1\\User\\UserController@unbindTelegram",
+    "parameters": [
+      {
+        "name": "request",
+        "type": "Illuminate\\Http\\Request",
+        "optional": false
+      }
+    ],
+    "bindings": {},
+    "middleware": [],
+    "role": "user",
+    "scope": "user",
+    "status": 204
+  },
+  {
+    "legacy": "user/resetSecurity",
+    "legacyMethod": "POST",
+    "method": "POST",
+    "path": "me/subscription/credential-rotations",
+    "action": "App\\Http\\Controllers\\V1\\User\\UserController@resetSecurity",
+    "parameters": [
+      {
+        "name": "request",
+        "type": "Illuminate\\Http\\Request",
+        "optional": false
+      }
+    ],
+    "bindings": {},
+    "middleware": [],
+    "role": "user",
+    "scope": "user",
+    "status": 200
+  },
+  {
+    "legacy": "user/info",
+    "legacyMethod": "GET",
+    "method": "GET",
+    "path": "me",
+    "action": "App\\Http\\Controllers\\V1\\User\\UserController@info",
+    "parameters": [
+      {
+        "name": "request",
+        "type": "Illuminate\\Http\\Request",
+        "optional": false
+      }
+    ],
+    "bindings": {},
+    "middleware": [],
+    "role": "user",
+    "scope": "user",
+    "status": 200
+  },
+  {
+    "legacy": "user/newPeriod",
+    "legacyMethod": "POST",
+    "method": "POST",
+    "path": "me/subscription/period-advances",
+    "action": "App\\Http\\Controllers\\V1\\User\\UserController@newPeriod",
+    "parameters": [
+      {
+        "name": "request",
+        "type": "Illuminate\\Http\\Request",
+        "optional": false
+      }
+    ],
+    "bindings": {},
+    "middleware": [],
+    "role": "user",
+    "scope": "user",
+    "status": 204
+  },
+  {
+    "legacy": "user/redeemgiftcard",
+    "legacyMethod": "POST",
+    "method": "POST",
+    "path": "me/gift-card-redemptions",
+    "action": "App\\Http\\Controllers\\V1\\User\\UserController@redeemgiftcard",
+    "parameters": [
+      {
+        "name": "request",
+        "type": "App\\Http\\Requests\\User\\UserRedeemGiftCard",
+        "optional": false
+      }
+    ],
+    "bindings": {},
+    "middleware": [],
+    "role": "user",
+    "scope": "user",
+    "status": 200
+  },
+  {
+    "legacy": "user/changePassword",
+    "legacyMethod": "POST",
+    "method": "PATCH",
+    "path": "me/password",
+    "action": "App\\Http\\Controllers\\V1\\User\\UserController@changePassword",
+    "parameters": [
+      {
+        "name": "request",
+        "type": "App\\Http\\Requests\\User\\UserChangePassword",
+        "optional": false
+      }
+    ],
+    "bindings": {},
+    "middleware": [],
+    "role": "user",
+    "scope": "user",
+    "status": 204
+  },
+  {
+    "legacy": "user/update",
+    "legacyMethod": "POST",
+    "method": "PATCH",
+    "path": "me",
+    "action": "App\\Http\\Controllers\\V1\\User\\UserController@update",
+    "parameters": [
+      {
+        "name": "request",
+        "type": "App\\Http\\Requests\\User\\UserUpdate",
+        "optional": false
+      }
+    ],
+    "bindings": {},
+    "middleware": [],
+    "role": "user",
+    "scope": "user",
+    "status": 204
+  },
+  {
+    "legacy": "user/getSubscribe",
+    "legacyMethod": "GET",
+    "method": "GET",
+    "path": "me/subscription",
+    "action": "App\\Http\\Controllers\\V1\\User\\UserController@getSubscribe",
+    "parameters": [
+      {
+        "name": "request",
+        "type": "Illuminate\\Http\\Request",
+        "optional": false
+      }
+    ],
+    "bindings": {},
+    "middleware": [],
+    "role": "user",
+    "scope": "user",
+    "status": 200
+  },
+  {
+    "legacy": "user/getStat",
+    "legacyMethod": "GET",
+    "method": "GET",
+    "path": "me/summary",
+    "action": "App\\Http\\Controllers\\V1\\User\\UserController@getStat",
+    "parameters": [
+      {
+        "name": "request",
+        "type": "Illuminate\\Http\\Request",
+        "optional": false
+      }
+    ],
+    "bindings": {},
+    "middleware": [],
+    "role": "user",
+    "scope": "user",
+    "status": 200
+  },
+  {
+    "legacy": "user/checkLogin",
+    "legacyMethod": "GET",
+    "method": "GET",
+    "path": "me/session",
+    "action": "App\\Http\\Controllers\\V1\\User\\UserController@checkLogin",
+    "parameters": [
+      {
+        "name": "request",
+        "type": "Illuminate\\Http\\Request",
+        "optional": false
+      }
+    ],
+    "bindings": {},
+    "middleware": [],
+    "role": "user",
+    "scope": "user",
+    "status": 200
+  },
+  {
+    "legacy": "user/transfer",
+    "legacyMethod": "POST",
+    "method": "POST",
+    "path": "me/commission-transfers",
+    "action": "App\\Http\\Controllers\\V1\\User\\UserController@transfer",
+    "parameters": [
+      {
+        "name": "request",
+        "type": "App\\Http\\Requests\\User\\UserTransfer",
+        "optional": false
+      }
+    ],
+    "bindings": {},
+    "middleware": [],
+    "role": "user",
+    "scope": "user",
+    "status": 204
+  },
+  {
+    "legacy": "user/getQuickLoginUrl",
+    "legacyMethod": "POST",
+    "method": "POST",
+    "path": "me/login-links",
+    "action": "App\\Http\\Controllers\\V1\\User\\UserController@getQuickLoginUrl",
+    "parameters": [
+      {
+        "name": "request",
+        "type": "Illuminate\\Http\\Request",
+        "optional": false
+      }
+    ],
+    "bindings": {},
+    "middleware": [],
+    "role": "user",
+    "scope": "user",
+    "status": 200
+  },
+  {
+    "legacy": "user/getActiveSession",
+    "legacyMethod": "GET",
+    "method": "GET",
+    "path": "me/sessions",
+    "action": "App\\Http\\Controllers\\V1\\User\\UserController@getActiveSession",
+    "parameters": [
+      {
+        "name": "request",
+        "type": "Illuminate\\Http\\Request",
+        "optional": false
+      }
+    ],
+    "bindings": {},
+    "middleware": [],
+    "role": "user",
+    "scope": "user",
+    "status": 200
+  },
+  {
+    "legacy": "user/removeActiveSession",
+    "legacyMethod": "POST",
+    "method": "DELETE",
+    "path": "me/sessions/{sessionId}",
+    "action": "App\\Http\\Controllers\\V1\\User\\UserController@removeActiveSession",
+    "parameters": [
+      {
+        "name": "request",
+        "type": "Illuminate\\Http\\Request",
+        "optional": false
+      }
+    ],
+    "bindings": {
+      "sessionId": "session_id"
+    },
+    "middleware": [],
+    "role": "user",
+    "scope": "user",
+    "status": 204
+  },
+  {
+    "legacy": "user/order/save",
+    "legacyMethod": "POST",
+    "method": "POST",
+    "path": "me/orders",
+    "action": "App\\Http\\Controllers\\V1\\User\\OrderController@save",
+    "parameters": [
+      {
+        "name": "request",
+        "type": "App\\Http\\Requests\\User\\OrderSave",
+        "optional": false
+      }
+    ],
+    "bindings": {},
+    "middleware": [],
+    "role": "user",
+    "scope": "user",
+    "status": 201
+  },
+  {
+    "legacy": "user/order/checkout",
+    "legacyMethod": "POST",
+    "method": "POST",
+    "path": "me/orders/{orderNumber}/payments",
+    "action": "App\\Http\\Controllers\\V1\\User\\OrderController@checkout",
+    "parameters": [
+      {
+        "name": "request",
+        "type": "Illuminate\\Http\\Request",
+        "optional": false
+      }
+    ],
+    "bindings": {
+      "orderNumber": "trade_no"
+    },
+    "middleware": [],
+    "role": "user",
+    "scope": "user",
+    "status": 200
+  },
+  {
+    "legacy": "user/order/check",
+    "legacyMethod": "GET",
+    "method": "GET",
+    "path": "me/orders/{orderNumber}/status",
+    "action": "App\\Http\\Controllers\\V1\\User\\OrderController@check",
+    "parameters": [
+      {
+        "name": "request",
+        "type": "Illuminate\\Http\\Request",
+        "optional": false
+      }
+    ],
+    "bindings": {
+      "orderNumber": "trade_no"
+    },
+    "middleware": [],
+    "role": "user",
+    "scope": "user",
+    "status": 200
+  },
+  {
+    "legacy": "user/order/detail",
+    "legacyMethod": "GET",
+    "method": "GET",
+    "path": "me/orders/{orderNumber}",
+    "action": "App\\Http\\Controllers\\V1\\User\\OrderController@detail",
+    "parameters": [
+      {
+        "name": "request",
+        "type": "Illuminate\\Http\\Request",
+        "optional": false
+      }
+    ],
+    "bindings": {
+      "orderNumber": "trade_no"
+    },
+    "middleware": [],
+    "role": "user",
+    "scope": "user",
+    "status": 200
+  },
+  {
+    "legacy": "user/order/fetch",
+    "legacyMethod": "GET",
+    "method": "GET",
+    "path": "me/orders",
+    "action": "App\\Http\\Controllers\\V1\\User\\OrderController@fetch",
+    "parameters": [
+      {
+        "name": "request",
+        "type": "Illuminate\\Http\\Request",
+        "optional": false
+      }
+    ],
+    "bindings": {},
+    "middleware": [],
+    "role": "user",
+    "scope": "user",
+    "status": 200
+  },
+  {
+    "legacy": "user/order/getPaymentMethod",
+    "legacyMethod": "GET",
+    "method": "GET",
+    "path": "payment-methods",
+    "action": "App\\Http\\Controllers\\V1\\User\\OrderController@getPaymentMethod",
+    "parameters": [],
+    "bindings": {},
+    "middleware": [],
+    "role": "user",
+    "scope": "user",
+    "status": 200
+  },
+  {
+    "legacy": "user/order/cancel",
+    "legacyMethod": "POST",
+    "method": "POST",
+    "path": "me/orders/{orderNumber}/cancellation",
+    "action": "App\\Http\\Controllers\\V1\\User\\OrderController@cancel",
+    "parameters": [
+      {
+        "name": "request",
+        "type": "Illuminate\\Http\\Request",
+        "optional": false
+      }
+    ],
+    "bindings": {
+      "orderNumber": "trade_no"
+    },
+    "middleware": [],
+    "role": "user",
+    "scope": "user",
+    "status": 204
+  },
+  {
+    "legacy": "user/credit/fetch",
+    "legacyMethod": "GET",
+    "method": "GET",
+    "path": "credit-packages",
+    "action": "App\\Http\\Controllers\\V1\\User\\PlanController@credits",
+    "parameters": [
+      {
+        "name": "request",
+        "type": "Illuminate\\Http\\Request",
+        "optional": false
+      }
+    ],
+    "bindings": {},
+    "middleware": [],
+    "role": "user",
+    "scope": "user",
+    "status": 200
+  },
+  {
+    "legacy": "user/plan/fetch",
+    "legacyMethod": "GET",
+    "method": "GET",
+    "path": "plans",
+    "action": "App\\Http\\Controllers\\V1\\User\\PlanController@fetch",
+    "parameters": [
+      {
+        "name": "request",
+        "type": "Illuminate\\Http\\Request",
+        "optional": false
+      }
+    ],
+    "bindings": {},
+    "middleware": [],
+    "role": "user",
+    "scope": "user",
+    "status": 200
+  },
+  {
+    "legacy": "user/invite/save",
+    "legacyMethod": "GET",
+    "method": "POST",
+    "path": "me/invitations/retired-codes",
+    "action": "App\\Http\\Controllers\\V1\\User\\InviteController@save",
+    "parameters": [
+      {
+        "name": "request",
+        "type": "Illuminate\\Http\\Request",
+        "optional": false
+      }
+    ],
+    "bindings": {},
+    "middleware": [],
+    "role": "user",
+    "scope": "user",
+    "status": 201
+  },
+  {
+    "legacy": "user/invite/fetch",
+    "legacyMethod": "GET",
+    "method": "GET",
+    "path": "me/referrals",
+    "action": "App\\Http\\Controllers\\V1\\User\\InviteController@fetch",
+    "parameters": [
+      {
+        "name": "request",
+        "type": "Illuminate\\Http\\Request",
+        "optional": false
+      }
+    ],
+    "bindings": {},
+    "middleware": [],
+    "role": "user",
+    "scope": "user",
+    "status": 200
+  },
+  {
+    "legacy": "user/invite/details",
+    "legacyMethod": "GET",
+    "method": "GET",
+    "path": "me/commissions",
+    "action": "App\\Http\\Controllers\\V1\\User\\InviteController@details",
+    "parameters": [
+      {
+        "name": "request",
+        "type": "Illuminate\\Http\\Request",
+        "optional": false
+      }
+    ],
+    "bindings": {},
+    "middleware": [],
+    "role": "user",
+    "scope": "user",
+    "status": 200
+  },
+  {
+    "legacy": "user/invite/email/send",
+    "legacyMethod": "POST",
+    "method": "POST",
+    "path": "me/invitations",
+    "action": "App\\Http\\Controllers\\V1\\User\\InviteController@sendEmail",
+    "parameters": [
+      {
+        "name": "request",
+        "type": "Illuminate\\Http\\Request",
+        "optional": false
+      }
+    ],
+    "bindings": {},
+    "middleware": [
+      "throttle:10,1"
+    ],
+    "role": "user",
+    "scope": "user",
+    "status": 202
+  },
+  {
+    "legacy": "user/invite/email/fetch",
+    "legacyMethod": "GET",
+    "method": "GET",
+    "path": "me/invitations",
+    "action": "App\\Http\\Controllers\\V1\\User\\InviteController@emailHistory",
+    "parameters": [
+      {
+        "name": "request",
+        "type": "Illuminate\\Http\\Request",
+        "optional": false
+      }
+    ],
+    "bindings": {},
+    "middleware": [],
+    "role": "user",
+    "scope": "user",
+    "status": 200
+  },
+  {
+    "legacy": "user/notice/inbox",
+    "legacyMethod": "GET",
+    "method": "GET",
+    "path": "me/notifications",
+    "action": "App\\Http\\Controllers\\V1\\User\\NoticeController@inbox",
+    "parameters": [
+      {
+        "name": "request",
+        "type": "Illuminate\\Http\\Request",
+        "optional": false
+      }
+    ],
+    "bindings": {},
+    "middleware": [],
+    "role": "user",
+    "scope": "user",
+    "status": 200
+  },
+  {
+    "legacy": "user/notice/read",
+    "legacyMethod": "POST",
+    "method": "POST",
+    "path": "me/notifications/read-receipts",
+    "action": "App\\Http\\Controllers\\V1\\User\\NoticeController@read",
+    "parameters": [
+      {
+        "name": "request",
+        "type": "Illuminate\\Http\\Request",
+        "optional": false
+      }
+    ],
+    "bindings": {},
+    "middleware": [
+      "throttle:120,1"
+    ],
+    "role": "user",
+    "scope": "user",
+    "status": 204
+  },
+  {
+    "legacy": "user/notice/fetch",
+    "legacyMethod": "GET",
+    "method": "GET",
+    "path": "announcements",
+    "action": "App\\Http\\Controllers\\V1\\User\\NoticeController@fetch",
+    "parameters": [
+      {
+        "name": "request",
+        "type": "Illuminate\\Http\\Request",
+        "optional": false
+      }
+    ],
+    "bindings": {},
+    "middleware": [],
+    "role": "user",
+    "scope": "user",
+    "status": 200
+  },
+  {
+    "legacy": "user/ticket/reply",
+    "legacyMethod": "POST",
+    "method": "POST",
+    "path": "me/tickets/{ticketId}/messages",
+    "action": "App\\Http\\Controllers\\V1\\User\\TicketController@reply",
+    "parameters": [
+      {
+        "name": "request",
+        "type": "Illuminate\\Http\\Request",
+        "optional": false
+      }
+    ],
+    "bindings": {
+      "ticketId": "id"
+    },
+    "middleware": [],
+    "role": "user",
+    "scope": "user",
+    "status": 204
+  },
+  {
+    "legacy": "user/ticket/close",
+    "legacyMethod": "POST",
+    "method": "POST",
+    "path": "me/tickets/{ticketId}/closure",
+    "action": "App\\Http\\Controllers\\V1\\User\\TicketController@close",
+    "parameters": [
+      {
+        "name": "request",
+        "type": "Illuminate\\Http\\Request",
+        "optional": false
+      }
+    ],
+    "bindings": {
+      "ticketId": "id"
+    },
+    "middleware": [],
+    "role": "user",
+    "scope": "user",
+    "status": 204
+  },
+  {
+    "legacy": "user/ticket/save",
+    "legacyMethod": "POST",
+    "method": "POST",
+    "path": "me/tickets",
+    "action": "App\\Http\\Controllers\\V1\\User\\TicketController@save",
+    "parameters": [
+      {
+        "name": "request",
+        "type": "App\\Http\\Requests\\User\\TicketSave",
+        "optional": false
+      }
+    ],
+    "bindings": {},
+    "middleware": [],
+    "role": "user",
+    "scope": "user",
+    "status": 201
+  },
+  {
+    "legacy": "user/ticket/fetch",
+    "legacyMethod": "GET",
+    "method": "GET",
+    "path": "me/tickets",
+    "action": "App\\Http\\Controllers\\V1\\User\\TicketController@fetch",
+    "parameters": [
+      {
+        "name": "request",
+        "type": "Illuminate\\Http\\Request",
+        "optional": false
+      }
+    ],
+    "bindings": {},
+    "middleware": [],
+    "role": "user",
+    "scope": "user",
+    "status": 200
+  },
+  {
+    "legacy": "user/ticket/withdraw",
+    "legacyMethod": "POST",
+    "method": "POST",
+    "path": "me/commission-withdrawals",
+    "action": "App\\Http\\Controllers\\V1\\User\\TicketController@withdraw",
+    "parameters": [
+      {
+        "name": "request",
+        "type": "App\\Http\\Requests\\User\\TicketWithdraw",
+        "optional": false
+      }
+    ],
+    "bindings": {},
+    "middleware": [],
+    "role": "user",
+    "scope": "user",
+    "status": 200
+  },
+  {
+    "legacy": "user/server/fetch",
+    "legacyMethod": "GET",
+    "method": "GET",
+    "path": "me/nodes",
+    "action": "App\\Http\\Controllers\\V1\\User\\ServerController@fetch",
+    "parameters": [
+      {
+        "name": "request",
+        "type": "Illuminate\\Http\\Request",
+        "optional": false
+      }
+    ],
+    "bindings": {},
+    "middleware": [],
+    "role": "user",
+    "scope": "user",
+    "status": 200
+  },
+  {
+    "legacy": "user/coupon/check",
+    "legacyMethod": "POST",
+    "method": "POST",
+    "path": "me/coupon-validations",
+    "action": "App\\Http\\Controllers\\V1\\User\\CouponController@check",
+    "parameters": [
+      {
+        "name": "request",
+        "type": "Illuminate\\Http\\Request",
+        "optional": false
+      }
+    ],
+    "bindings": {},
+    "middleware": [],
+    "role": "user",
+    "scope": "user",
+    "status": 200
+  },
+  {
+    "legacy": "user/telegram/getBotInfo",
+    "legacyMethod": "GET",
+    "method": "GET",
+    "path": "me/integrations/telegram",
+    "action": "App\\Http\\Controllers\\V1\\User\\TelegramController@getBotInfo",
+    "parameters": [],
+    "bindings": {},
+    "middleware": [],
+    "role": "user",
+    "scope": "user",
+    "status": 200
+  },
+  {
+    "legacy": "user/comm/config",
+    "legacyMethod": "GET",
+    "method": "GET",
+    "path": "me/preferences/options",
+    "action": "App\\Http\\Controllers\\V1\\User\\CommController@config",
+    "parameters": [],
+    "bindings": {},
+    "middleware": [],
+    "role": "user",
+    "scope": "user",
+    "status": 200
+  },
+  {
+    "legacy": "user/comm/getStripePublicKey",
+    "legacyMethod": "POST",
+    "method": "GET",
+    "path": "payment-methods/{paymentId}/public-key",
+    "action": "App\\Http\\Controllers\\V1\\User\\CommController@getStripePublicKey",
+    "parameters": [
+      {
+        "name": "request",
+        "type": "Illuminate\\Http\\Request",
+        "optional": false
+      }
+    ],
+    "bindings": {
+      "paymentId": "id"
+    },
+    "middleware": [],
+    "role": "user",
+    "scope": "user",
+    "status": 200
+  },
+  {
+    "legacy": "user/knowledge/fetch",
+    "legacyMethod": "GET",
+    "method": "GET",
+    "path": "knowledge-articles",
+    "action": "App\\Http\\Controllers\\V1\\User\\KnowledgeController@fetch",
+    "parameters": [
+      {
+        "name": "request",
+        "type": "Illuminate\\Http\\Request",
+        "optional": false
+      }
+    ],
+    "bindings": {},
+    "middleware": [],
+    "role": "user",
+    "scope": "user",
+    "status": 200
+  },
+  {
+    "legacy": "user/knowledge/getCategory",
+    "legacyMethod": "GET",
+    "method": "GET",
+    "path": "knowledge-categories",
+    "action": "App\\Http\\Controllers\\V1\\User\\KnowledgeController@getCategory",
+    "parameters": [
+      {
+        "name": "request",
+        "type": "Illuminate\\Http\\Request",
+        "optional": false
+      }
+    ],
+    "bindings": {},
+    "middleware": [],
+    "role": "user",
+    "scope": "user",
+    "status": 200
+  },
+  {
+    "legacy": "user/stat/getTrafficLog",
+    "legacyMethod": "GET",
+    "method": "GET",
+    "path": "me/traffic-records",
+    "action": "App\\Http\\Controllers\\V1\\User\\StatController@getTrafficLog",
+    "parameters": [
+      {
+        "name": "request",
+        "type": "Illuminate\\Http\\Request",
+        "optional": false
+      }
+    ],
+    "bindings": {},
+    "middleware": [],
+    "role": "user",
+    "scope": "user",
+    "status": 200
+  },
+  {
+    "legacy": "user/ticket/fetch",
+    "legacyMethod": "GET",
+    "method": "GET",
+    "path": "me/tickets/{ticketId}",
+    "action": "App\\Http\\Controllers\\V1\\User\\TicketController@fetch",
+    "parameters": [
+      {
+        "name": "request",
+        "type": "Illuminate\\Http\\Request",
+        "optional": false
+      }
+    ],
+    "bindings": {
+      "ticketId": "id"
+    },
+    "middleware": [],
+    "role": "user",
+    "scope": "user",
+    "status": 200,
+    "legacyQuery": {
+      "id": "resourceId"
+    }
+  },
+  {
+    "legacy": "user/knowledge/fetch",
+    "legacyMethod": "GET",
+    "method": "GET",
+    "path": "knowledge-articles/{articleId}",
+    "action": "App\\Http\\Controllers\\V1\\User\\KnowledgeController@fetch",
+    "parameters": [
+      {
+        "name": "request",
+        "type": "Illuminate\\Http\\Request",
+        "optional": false
+      }
+    ],
+    "bindings": {
+      "articleId": "id"
+    },
+    "middleware": [],
+    "role": "user",
+    "scope": "user",
+    "status": 200,
+    "legacyQuery": {
+      "id": "resourceId"
+    }
+  },
+  {
+    "legacy": "user/plan/fetch",
+    "legacyMethod": "GET",
+    "method": "GET",
+    "path": "plans/{planId}",
+    "action": "App\\Http\\Controllers\\V1\\User\\PlanController@fetch",
+    "parameters": [
+      {
+        "name": "request",
+        "type": "Illuminate\\Http\\Request",
+        "optional": false
+      }
+    ],
+    "bindings": {
+      "planId": "id"
+    },
+    "middleware": [],
+    "role": "user",
+    "scope": "user",
+    "status": 200,
+    "legacyQuery": {
+      "id": "resourceId"
+    }
+  },
+  {
+    "legacy": "user/notice/fetch",
+    "legacyMethod": "GET",
+    "method": "GET",
+    "path": "announcements/{notificationId}",
+    "action": "App\\Http\\Controllers\\V1\\User\\NoticeController@fetch",
+    "parameters": [
+      {
+        "name": "request",
+        "type": "Illuminate\\Http\\Request",
+        "optional": false
+      }
+    ],
+    "bindings": {
+      "notificationId": "id"
+    },
+    "middleware": [],
+    "role": "user",
+    "scope": "user",
+    "status": 200,
+    "legacyQuery": {
+      "id": "resourceId"
+    }
+  }
+]

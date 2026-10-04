@@ -17,6 +17,7 @@ vi.mock("./api", () => ({
 }));
 vi.mock("react-i18next", () => ({ useTranslation: () => ({}) }));
 vi.mock("./i18n", () => ({
+    default: { addResourceBundle: () => undefined },
     tx: (key: string) => key,
     locale: () => "zh-CN",
     languages: [],

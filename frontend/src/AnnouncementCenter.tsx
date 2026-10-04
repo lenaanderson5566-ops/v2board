@@ -24,7 +24,7 @@ export function AnnouncementCenter() {
     const [open, setOpen] = useState(false);
     const [page, setPage] = useState(1);
     const [selected, setSelected] = useState<number | null>(null);
-    const inbox = useData<Inbox>(`user/notice/inbox?current=${page}`);
+    const inbox = useData<Inbox>(`user/notice/inbox?current=${page}&page_size=10`);
     const unread = inbox.data?.unread || 0;
     const trigger = useRef<HTMLButtonElement>(null);
     const close = () => {

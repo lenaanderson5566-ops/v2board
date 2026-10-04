@@ -16,8 +16,9 @@ import {
     waitFor,
 } from "@testing-library/react";
 import type { ReactNode } from "react";
-const mocks = vi.hoisted(() => ({ tickets: [] as any[], request: vi.fn() }));
+const mocks = vi.hoisted(() => ({ tickets: [] as any[], request: vi.fn(), saveError: vi.fn() }));
 vi.mock("./i18n", () => ({
+    default: { addResourceBundle: () => undefined },
     tx: (key: string) => key,
     locale: () => "zh-CN",
     languages: [],
@@ -67,7 +68,7 @@ vi.mock("./ui", () => ({
     Editor: ({ initial, onSave }: any) => (
         <button
             onClick={() =>
-                onSave({ ...initial, subject: "未到账", message: "详情" })
+                Promise.resolve(onSave({ ...initial, subject: "未到账", message: "详情" })).catch(mocks.saveError)
             }
         >
             提交测试工单
@@ -80,6 +81,7 @@ afterEach(cleanup);
 beforeEach(() => {
     mocks.tickets = [];
     mocks.request.mockReset();
+    mocks.saveError.mockReset();
 });
 describe("help and ticket interactions", () => {
     it("offers expandable self-service topics before the contact entry", () => {
@@ -121,11 +123,7 @@ describe("help and ticket interactions", () => {
         render(<Tickets />);
         fireEvent.click(screen.getByRole("button", { name: "创建工单" }));
         fireEvent.click(screen.getByRole("button", { name: "提交测试工单" }));
-        await waitFor(() =>
-            expect(
-                screen.getByRole("dialog", { name: "现有工单" }),
-            ).toBeTruthy(),
-        );
+        await waitFor(() => expect(mocks.saveError).toHaveBeenCalledWith(expect.objectContaining({message:"已有未关闭的工单请继续回复，避免重复提交。"})));
         expect(mocks.request).toHaveBeenCalledTimes(1);
     });
     it("keeps admin ticket management separate from self-service prompts", () => {

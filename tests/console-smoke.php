@@ -233,7 +233,9 @@ try {
             $assert($response->getStatusCode() === 200 && $plan2->refresh()->$field == $value, 'Plan switch did not persist: ' . $field);
         }
     }
-    $subscriber = App\Models\User::create(['email' => 'console-plan-' . bin2hex(random_bytes(5)) . '@example.invalid', 'password' => password_hash(bin2hex(random_bytes(16)), PASSWORD_DEFAULT), 'plan_id' => $plan2->id, 'uuid' => App\Utils\Helper::guid(true), 'token' => App\Utils\Helper::guid()]);
+    // A period subscriber has an existing quota; zero-quota credit-only users
+    // intentionally do not acquire a subscription quota through force_update.
+    $subscriber = App\Models\User::create(['email' => 'console-plan-' . bin2hex(random_bytes(5)) . '@example.invalid', 'password' => password_hash(bin2hex(random_bytes(16)), PASSWORD_DEFAULT), 'plan_id' => $plan2->id, 'transfer_enable' => 1073741824, 'uuid' => App\Utils\Helper::guid(true), 'token' => App\Utils\Helper::guid()]);
     $response = $call('/api/v1/' . $securePath . '/plan/save', ['id' => $plan2->id, 'name' => $plan2->name, 'group_id' => $group->id, 'transfer_enable' => 9, 'device_limit' => 3, 'speed_limit' => 50, 'force_update' => 1], $token);
     $assert($response->getStatusCode() === 200 && $subscriber->refresh()->transfer_enable == 9 * 1073741824 && $subscriber->device_limit == 3 && $subscriber->speed_limit == 50, 'Force-update subscribers failed');
     $payment2 = App\Models\Payment::create(['name' => 'console-sort-payment', 'payment' => 'Paytaro', 'uuid' => App\Utils\Helper::guid(), 'config' => [], 'enable' => 0]);

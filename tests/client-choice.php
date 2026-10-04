@@ -20,9 +20,9 @@ try {
     $assert(!$service->frontendPolicies()['flclash']['enabled']);
     $assert(!$service->frontendPolicies()['clash']['enabled']);
     $assert(!$service->frontendPolicies()['cmfa']['enabled']);
-    $method = new ReflectionMethod(App\Http\Controllers\V1\Client\ClientController::class, 'resolveProtocolFlag');
+    $method = new ReflectionMethod(App\Services\Actions\Client\ClientActions::class, 'resolveProtocolFlag');
     $method->setAccessible(true);
-    $controller = new App\Http\Controllers\V1\Client\ClientController();
+    $controller = new App\Services\Actions\Client\ClientActions();
     $assert($method->invoke($controller, 'FlClash/0.8.0') === 'flclash');
     $assert($method->invoke($controller, 'clash-verge/2.0') === 'verge');
     echo "PASS client choice and backend policy checks\n";

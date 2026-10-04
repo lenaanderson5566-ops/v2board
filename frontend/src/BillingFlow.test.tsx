@@ -28,6 +28,7 @@ vi.mock("./api", () => ({
         path + "?" + new URLSearchParams(params),
 }));
 vi.mock("./i18n", () => ({
+    default: { addResourceBundle: () => undefined },
     tx: (key: string, args: any = {}) =>
         key.replace(/{{(\w+)}}/g, (_, name) => String(args[name])),
 }));
@@ -159,7 +160,7 @@ it("preserves payment selection and QR content while an order refreshes", async 
     expect(
         screen.getByDisplayValue("https://pay.example/preserve"),
     ).toBeTruthy();
-    expect(mocks.request).toHaveBeenCalledTimes(1);
+    expect(mocks.request.mock.calls.filter(([path]) => path === "user/order/checkout")).toHaveLength(1);
 });
 it("preserves quarterly and zero-priced periods and excludes reset from ordinary purchase", () => {
     expect(purchasePeriods({ ...plan, onetime_price: 0 })).toEqual([
@@ -257,7 +258,7 @@ it("selects a method without charging and shows fixed plus percentage fees befor
     expect(screen.getByText("正在等待支付确认，请勿重复付款。")).toBeTruthy();
     expect(screen.queryByText("订单已完成")).toBeNull();
     fireEvent.click(screen.getByRole("button", { name: "检查支付结果" }));
-    expect(mocks.request).toHaveBeenCalledTimes(1);
+    expect(mocks.request.mock.calls.filter(([path]) => path === "user/order/checkout")).toHaveLength(1);
 });
 it("keeps payment status checking available if a previous payment method was removed", () => {
     mocks.methods = [];
@@ -266,7 +267,7 @@ it("keeps payment status checking available if a previous payment method was rem
     expect((button as HTMLButtonElement).disabled).toBe(false);
     fireEvent.click(button);
     expect(view.reload).toHaveBeenCalled();
-    expect(mocks.request).not.toHaveBeenCalled();
+    expect(mocks.request).toHaveBeenCalledWith("user/order/check?trade_no=test-order");
 });
 it("closes the card dialog and exposes a failed card charge without claiming success", async () => {
     mocks.methods = [{ id: 3, name: "Stripe", payment: "StripeCredit" }];
@@ -284,9 +285,9 @@ it("closes the card dialog and exposes a failed card charge without claiming suc
     );
     fireEvent.click(screen.getByRole("button", { name: "确认支付" }));
     fireEvent.click(screen.getByRole("button", { name: "模拟提交信用卡" }));
-    await screen.findByRole("alert");
+    await screen.findAllByRole("alert");
     expect(screen.queryByRole("dialog")).toBeNull();
-    expect(screen.getByText("card declined")).toBeTruthy();
+    expect(screen.getAllByText("card declined").length).toBeGreaterThan(0);
     expect(mocks.request).toHaveBeenCalledWith("user/order/checkout", {
         trade_no: "test-order",
         method: 3,
@@ -333,10 +334,10 @@ it("requires an explicit confirmation before cancelling and handles a failed pay
         .mockResolvedValue({ data: true });
     checkout();
     fireEvent.click(screen.getByRole("button", { name: "确认支付" }));
-    await screen.findByRole("alert");
+    await screen.findAllByRole("alert");
     expect(screen.getByText("gateway unavailable")).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: "取消订单" }));
-    expect(mocks.request).toHaveBeenCalledTimes(1);
+    expect(mocks.request.mock.calls.filter(([path]) => path === "user/order/checkout")).toHaveLength(1);
     fireEvent.click(screen.getByRole("button", { name: "确认取消订单" }));
     await waitFor(() =>
         expect(mocks.request).toHaveBeenCalledWith("user/order/cancel", {
@@ -356,7 +357,7 @@ it("does not make gateway calls twice during a pending confirmation", async () =
     const button = screen.getByRole("button", { name: "确认支付" });
     fireEvent.click(button);
     fireEvent.click(button);
-    expect(mocks.request).toHaveBeenCalledTimes(1);
+    expect(mocks.request.mock.calls.filter(([path]) => path === "user/order/checkout")).toHaveLength(1);
     await act(async () => resolve({ type: 0, data: "pay-qr" }));
 });
 it.each([
@@ -558,5 +559,5 @@ it("allows reviewing a replacement and submits its exact order reference atomica
             replace_trade_no: "test-order",
         }),
     );
-    expect(mocks.request).toHaveBeenCalledTimes(1);
+    expect(mocks.request.mock.calls.filter(([path]) => path === "user/order/save")).toHaveLength(1);
 });

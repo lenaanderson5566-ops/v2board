@@ -2,16 +2,17 @@ import { TrafficCredits } from "./TrafficCredits";
 import { c } from "./credit-copy";
 import { useState } from "react";
 import { ArrowUpRight, ChevronRight, Gift, Plus } from "lucide-react";
-import { boot, bytes, date, money, navigate, request, type Row } from "./api";
+import { boot, bytes, date, money, navigate, request, query, type Row } from "./api";
 import { tx } from "./i18n";
 import { b } from "./billing-copy";
 import { e } from "./experience-copy";
-import { Editor, Empty, Modal, State, useData } from "./ui";
+import { Editor, Empty, Modal, State, useData, Pager } from "./ui";
 
 export function BillingPage() {
+    const [page, setPage] = useState(1);
     const info = useData("user/info"),
         sub = useData("user/getSubscribe"),
-        orders = useData<Row[]>("user/order/fetch");
+        orders = useData<Row[]>(query("user/order/fetch", {current:page,page_size:20}));
     const [dialog, setDialog] = useState<"gift" | "deposit" | null>(null);
     const [notice, setNotice] = useState("");
     const [all, setAll] = useState(false);
@@ -148,6 +149,7 @@ export function BillingPage() {
                     )}
                 </State>
             </section>
+            {all && orders.total > 20 && <Pager page={page} total={orders.total} size={20} onChange={setPage} />}
             {dialog && (
                 <Modal
                     title={tx(dialog === "gift" ? "兑换礼品卡" : "账户充值")}

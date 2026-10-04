@@ -491,7 +491,7 @@ export function Tickets({
                             </>
                         )}
                     />
-                    {isAdmin && d.total > 0 && (
+                    {d.total > pageSize && (
                         <Pager
                             page={page}
                             total={d.total}
@@ -662,9 +662,10 @@ export function Tickets({
     );
 }
 export function Invite() {
+    const [page, setPage] = useState(1);
     const config = useData("user/comm/config");
     const d = useData("user/invite/fetch"),
-        details = useData<Row[]>("user/invite/details");
+        details = useData<Row[]>(query("user/invite/details", {current: page, page_size: 20}));
     const v = d.data || {},
         stat = v.stat || [];
     return (
@@ -699,6 +700,7 @@ export function Invite() {
                         ]}
                     />
                 </State>
+            {details.total > 20 && <Pager page={page} total={details.total} size={20} onChange={setPage} />}
             </Panel>
             <Panel title={tx("佣金操作")}>
                 <Editor

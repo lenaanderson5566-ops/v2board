@@ -33,13 +33,13 @@ describe("device-aware user experience", () => {
     );
     it("offers Android-compatible imports without Apple-only clients", () => {
         const ids = recommendedClients("android").map((client) => client.id);
-        expect(ids).toContain("hiddify");
+        expect(ids).toContain("cmfa");
         expect(ids).toContain("singbox");
         expect(ids).not.toContain("shadowrocket");
         expect(ids).not.toContain("surge");
     });
-    it("retains every client when the device is unknown", () =>
-        expect(recommendedClients("unknown")).toHaveLength(8));
+    it("keeps a focused default recommendation when the device is unknown", () =>
+        expect(recommendedClients("unknown")).toHaveLength(3));
     it("keeps the selected format for manual import and preserves credentials", () => {
         const url = new URL(
             clientSubscriptionUrl(

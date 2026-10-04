@@ -51,7 +51,7 @@ Route::get('/' . $securePath, function () use ($renderConsole) { return $renderC
 foreach (['' => 'operations', '/overview' => 'operations', '/risk' => 'risk', '/client' => 'clients', '/logs' => 'log-login', '/i18n' => 'translations'] as $suffix => $page) {
     Route::get('/' . $securePath . '/ops-center' . $suffix, function () use ($securePath, $page) { return redirect('/' . $securePath . '#/' . $page); });
 }
-if (!empty(config('v2board.subscribe_path'))) {
+if (!empty(config('v2board.subscribe_path')) && trim(config('v2board.subscribe_path'), '/') !== 'api/v1/client/subscribe') {
     Route::get(config('v2board.subscribe_path'), 'V1\\Client\\ClientController@subscribe')->middleware('client');
 }
 

@@ -1,3 +1,4 @@
+import { v10Request } from './v10-api';
 import { createReadCache } from "./read-cache";
 import { tx, locale } from "./i18n";
 export type Row = Record<string, any>;
@@ -98,29 +99,25 @@ export async function request<T = Row>(
         abort();
     }, options?.timeoutMs ?? 30000);
     try {
-        const res = await fetch(`/api/v1/${path}`, {
+        const v10 = boot.mode === 'user' && /^(user|passport|guest)\//.test(path) ? v10Request(path, body instanceof FormData ? undefined : body) : null;
+        const res = await fetch(v10?.url ?? `/api/v1/${path}`, {
             signal: controller.signal,
-            method: body ? "POST" : "GET",
+            method: v10?.method ?? (body ? "POST" : "GET"),
             headers: {
                 Accept: "application/json",
-                "Content-Language": locale(),
-                ...(body && !(body instanceof FormData)
+                ...(v10 ? { "Accept-Language": locale() } : { "Content-Language": locale() }),
+                ...((v10?.body || body) && !(body instanceof FormData)
                     ? { "Content-Type": "application/json" }
                     : {}),
-                ...(token ? { Authorization: token } : {}),
+                ...(token ? { Authorization: v10 ? `Bearer ${token}` : token } : {}),
             },
-            ...(body
-                ? {
-                      body:
-                          body instanceof FormData
-                              ? body
-                              : JSON.stringify(body),
-                  }
-                : {}),
+            ...(v10 ? (v10.body ? {body:v10.body} : {}) : (body ? {body:body instanceof FormData ? body : JSON.stringify(body)} : {})),
         });
         let json: Envelope<T>;
         try {
-            json = await res.json();
+            json = res.status === 204 ? {data:true} as Envelope<T> : await res.json();
+            if (v10 && !res.ok) Object.assign(json, {message:(json as any).detail || (json as any).title});
+            if (v10 && res.ok && res.status !== 204) json = v10.decode(json);
         } catch {
             throw new Error(
                 tx("服务响应异常 ({{value0}})", { value0: res.status }),

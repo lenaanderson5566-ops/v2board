@@ -387,5 +387,7 @@
   "请求超时，请刷新确认结果后再试": "Yêu cầu hết thời gian. Hãy làm mới để kiểm tra kết quả trước khi thử lại.",
   "自动检查已暂停，订单仍可继续处理，请勿重复付款。": "Đã tạm dừng kiểm tra tự động. Đơn hàng vẫn có thể được xử lý. Đừng thanh toán lại.",
   "继续检查": "Tiếp tục kiểm tra",
-  "确认关闭此工单？": "Đóng yêu cầu hỗ trợ này?"
+  "确认关闭此工单？": "Đóng yêu cầu hỗ trợ này?",
+    "未登录或登陆已过期": "Phiên đăng nhập đã hết hạn",
+    "登录已过期": "Phiên đăng nhập đã hết hạn"
 }

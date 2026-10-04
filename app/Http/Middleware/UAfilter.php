@@ -16,6 +16,7 @@ class UAfilter
      */
     public function handle(Request $request, Closure $next)
     {
+        if ($request->is('api/v10','api/v10/*')) return $next($request);
         if (defined('isWEBMAN') && isWEBMAN) {
             if(str_contains($request->header('Content-Type'), 'application/json')) {
                 $phpInput = json_encode($_POST);

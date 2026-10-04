@@ -1,3 +1,4 @@
+import { completePages } from './paginated-data';
 import { WorkspaceSkeleton } from "./WorkspaceSkeleton";
 import { e } from "./experience-copy";
 import { tx, locale } from "./i18n";
@@ -61,7 +62,7 @@ export function Html({
         />
     );
 }
-export function useData<T = Row>(path: string, body?: Row) {
+export function useData<T = Row>(path: string, body?: Row, allPages = false) {
     useTranslation();
     const language = locale();
     const serializedBody = body ? JSON.stringify(body) : undefined;
@@ -86,7 +87,15 @@ export function useData<T = Row>(path: string, body?: Row) {
             serializedBody ? JSON.parse(serializedBody) : undefined,
             version > 0,
         )
-            .then((r) => {
+            .then(async (r) => {
+                if (allPages && Array.isArray(r.data)) {
+                    r = await completePages(r as any, (page) => {
+                        const [base, search] = path.split('?');
+                        const query = new URLSearchParams(search);
+                        query.set('current', String(page));
+                        return readRequest<any[]>(`${base}?${query}`, undefined, version > 0);
+                    }, () => live) as typeof r;
+                }
                 if (live) {
                     setData(r.data);
                     setTotal(r.total || 0);
@@ -102,7 +111,7 @@ export function useData<T = Row>(path: string, body?: Row) {
         return () => {
             live = false;
         };
-    }, [path, version, serializedBody, language]);
+    }, [path, version, serializedBody, language, allPages]);
     useEffect(() => {
         if (boot.mode !== "user" || !path) return;
         const refresh = () => setVersion((v) => v + 1);

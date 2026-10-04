@@ -1,0 +1,1738 @@
+{
+  "schemas": {
+    "plan": {
+      "id": [
+        "id",
+        "integer"
+      ],
+      "name": [
+        "name"
+      ],
+      "description": [
+        "content"
+      ],
+      "quotaBytes": [
+        "transfer_enable",
+        "gb"
+      ],
+      "speedLimitMbps": [
+        "speed_limit",
+        "number"
+      ],
+      "deviceLimit": [
+        "device_limit",
+        "integer"
+      ],
+      "remainingCapacity": [
+        "capacity_limit",
+        "integer"
+      ],
+      "renewable": [
+        "renew",
+        "boolean"
+      ],
+      "monthlyPrice": [
+        "month_price",
+        "integer"
+      ],
+      "quarterlyPrice": [
+        "quarter_price",
+        "integer"
+      ],
+      "semiannualPrice": [
+        "half_year_price",
+        "integer"
+      ],
+      "annualPrice": [
+        "year_price",
+        "integer"
+      ],
+      "biennialPrice": [
+        "two_year_price",
+        "integer"
+      ],
+      "triennialPrice": [
+        "three_year_price",
+        "integer"
+      ],
+      "creditPrice": [
+        "onetime_price",
+        "integer"
+      ],
+      "resetPrice": [
+        "reset_price",
+        "integer"
+      ],
+      "resetMethod": [
+        "reset_traffic_method",
+        "number"
+      ]
+    },
+    "accountStatus": {
+      "state": [
+        "state"
+      ],
+      "available": [
+        "is_available",
+        "boolean"
+      ],
+      "quotaExhausted": [
+        "quota_exhausted",
+        "boolean"
+      ],
+      "serverTime": [
+        "server_time",
+        "time"
+      ]
+    },
+    "account": {
+      "id": [
+        "id",
+        "integer"
+      ],
+      "email": [
+        "email"
+      ],
+      "language": [
+        "language"
+      ],
+      "quotaBytes": [
+        "transfer_enable",
+        "integer"
+      ],
+      "creditBytes": [
+        "credit_balance",
+        "integer"
+      ],
+      "deviceLimit": [
+        "device_limit",
+        "integer"
+      ],
+      "lastLoginAt": [
+        "last_login_at",
+        "time"
+      ],
+      "uploadedBytes": [
+        "u",
+        "integer"
+      ],
+      "downloadedBytes": [
+        "d",
+        "integer"
+      ],
+      "createdAt": [
+        "created_at",
+        "time"
+      ],
+      "banned": [
+        "banned",
+        "boolean"
+      ],
+      "autoRenewal": [
+        "auto_renewal",
+        "boolean"
+      ],
+      "expiryReminders": [
+        "remind_expire",
+        "boolean"
+      ],
+      "trafficReminders": [
+        "remind_traffic",
+        "boolean"
+      ],
+      "expiresAt": [
+        "expired_at",
+        "time"
+      ],
+      "balance": [
+        "balance",
+        "integer"
+      ],
+      "commissionBalance": [
+        "commission_balance",
+        "integer"
+      ],
+      "planId": [
+        "plan_id",
+        "integer"
+      ],
+      "discountPercent": [
+        "discount",
+        "number"
+      ],
+      "commissionRate": [
+        "commission_rate",
+        "number"
+      ],
+      "telegramId": [
+        "telegram_id"
+      ],
+      "avatarUrl": [
+        "avatar_url"
+      ],
+      "accountStatus": [
+        "account_status",
+        "object",
+        "accountStatus"
+      ]
+    },
+    "subscription": {
+      "planId": [
+        "plan_id",
+        "integer"
+      ],
+      "expiresAt": [
+        "expired_at",
+        "time"
+      ],
+      "uploadedBytes": [
+        "u",
+        "integer"
+      ],
+      "downloadedBytes": [
+        "d",
+        "integer"
+      ],
+      "quotaBytes": [
+        "transfer_enable",
+        "integer"
+      ],
+      "creditBytes": [
+        "credit_balance",
+        "integer"
+      ],
+      "deviceLimit": [
+        "device_limit",
+        "integer"
+      ],
+      "email": [
+        "email"
+      ],
+      "credentialId": [
+        "uuid"
+      ],
+      "plan": [
+        "plan",
+        "object",
+        "plan"
+      ],
+      "onlineDevices": [
+        "alive_ip",
+        "integer"
+      ],
+      "subscriptionUrl": [
+        "subscribe_url"
+      ],
+      "resetAt": [
+        "reset_at",
+        "time"
+      ],
+      "resetTimezone": [
+        "reset_timezone"
+      ],
+      "active": [
+        "has_subscription",
+        "boolean"
+      ],
+      "resetDay": [
+        "reset_day",
+        "integer"
+      ],
+      "canAdvancePeriod": [
+        "allow_new_period",
+        "boolean"
+      ]
+    },
+    "creditSnapshot": {
+      "name": [
+        "name"
+      ]
+    },
+    "order": {
+      "orderNumber": [
+        "trade_no"
+      ],
+      "planId": [
+        "plan_id",
+        "integer"
+      ],
+      "billingPeriod": [
+        "period",
+        "period"
+      ],
+      "totalAmount": [
+        "total_amount",
+        "integer"
+      ],
+      "discountAmount": [
+        "discount_amount",
+        "integer"
+      ],
+      "creditOffset": [
+        "surplus_amount",
+        "integer"
+      ],
+      "refundAmount": [
+        "refund_amount",
+        "integer"
+      ],
+      "balanceOffset": [
+        "balance_amount",
+        "integer"
+      ],
+      "handlingAmount": [
+        "handling_amount",
+        "integer"
+      ],
+      "paymentId": [
+        "payment_id",
+        "integer"
+      ],
+      "status": [
+        "status",
+        "orderStatus"
+      ],
+      "kind": [
+        "type",
+        "orderKind"
+      ],
+      "createdAt": [
+        "created_at",
+        "time"
+      ],
+      "updatedAt": [
+        "updated_at",
+        "time"
+      ],
+      "paidAt": [
+        "paid_at",
+        "time"
+      ],
+      "creditBytes": [
+        "credit_bytes",
+        "integer"
+      ],
+      "plan": [
+        "plan",
+        "object",
+        "plan"
+      ],
+      "creditedAmount": [
+        "get_amount",
+        "integer"
+      ],
+      "depositBonus": [
+        "bounus",
+        "integer"
+      ],
+      "creditSnapshot": [
+        "credit_snapshot",
+        "object",
+        "creditSnapshot"
+      ]
+    },
+    "paymentMethod": {
+      "id": [
+        "id",
+        "integer"
+      ],
+      "name": [
+        "name"
+      ],
+      "provider": [
+        "payment"
+      ],
+      "iconUrl": [
+        "icon"
+      ],
+      "fixedFee": [
+        "handling_fee_fixed",
+        "integer"
+      ],
+      "percentageFee": [
+        "handling_fee_percent",
+        "number"
+      ]
+    },
+    "credit": {
+      "id": [
+        "id",
+        "integer"
+      ],
+      "name": [
+        "name"
+      ],
+      "bytes": [
+        "bytes",
+        "integer"
+      ],
+      "price": [
+        "price",
+        "integer"
+      ]
+    },
+    "notification": {
+      "id": [
+        "id",
+        "integer"
+      ],
+      "title": [
+        "title"
+      ],
+      "content": [
+        "content"
+      ],
+      "imageUrl": [
+        "img_url"
+      ],
+      "tags": [
+        "tags"
+      ],
+      "createdAt": [
+        "created_at",
+        "time"
+      ],
+      "updatedAt": [
+        "updated_at",
+        "time"
+      ],
+      "read": [
+        "is_read",
+        "boolean"
+      ],
+      "version": [
+        "updated_at",
+        "integer"
+      ]
+    },
+    "message": {
+      "id": [
+        "id",
+        "integer"
+      ],
+      "ticketId": [
+        "ticket_id",
+        "integer"
+      ],
+      "message": [
+        "message"
+      ],
+      "createdAt": [
+        "created_at",
+        "time"
+      ],
+      "updatedAt": [
+        "updated_at",
+        "time"
+      ],
+      "mine": [
+        "is_me",
+        "boolean"
+      ]
+    },
+    "ticket": {
+      "id": [
+        "id",
+        "integer"
+      ],
+      "subject": [
+        "subject"
+      ],
+      "priority": [
+        "level",
+        "priority"
+      ],
+      "status": [
+        "status",
+        "ticketStatus"
+      ],
+      "replyStatus": [
+        "reply_status",
+        "replyStatus"
+      ],
+      "createdAt": [
+        "created_at",
+        "time"
+      ],
+      "updatedAt": [
+        "updated_at",
+        "time"
+      ],
+      "messages": [
+        "message",
+        "array",
+        "message"
+      ]
+    },
+    "node": {
+      "id": [
+        "id",
+        "integer"
+      ],
+      "name": [
+        "name"
+      ],
+      "protocol": [
+        "type"
+      ],
+      "host": [
+        "host"
+      ],
+      "port": [
+        "port",
+        "integer"
+      ],
+      "online": [
+        "is_online",
+        "boolean"
+      ],
+      "rate": [
+        "rate",
+        "number"
+      ],
+      "tags": [
+        "tags"
+      ],
+      "lastCheckedAt": [
+        "last_check_at",
+        "time"
+      ]
+    },
+    "traffic": {
+      "uploadedBytes": [
+        "u",
+        "integer"
+      ],
+      "downloadedBytes": [
+        "d",
+        "integer"
+      ],
+      "recordedAt": [
+        "record_at",
+        "time"
+      ],
+      "rate": [
+        "server_rate",
+        "number"
+      ]
+    },
+    "invitation": {
+      "id": [
+        "id",
+        "integer"
+      ],
+      "email": [
+        "email"
+      ],
+      "status": [
+        "status"
+      ],
+      "createdAt": [
+        "created_at",
+        "time"
+      ],
+      "expiresAt": [
+        "expires_at",
+        "time"
+      ]
+    },
+    "commission": {
+      "id": [
+        "id",
+        "integer"
+      ],
+      "orderAmount": [
+        "order_amount",
+        "integer"
+      ],
+      "orderNumber": [
+        "trade_no"
+      ],
+      "amount": [
+        "get_amount",
+        "integer"
+      ],
+      "createdAt": [
+        "created_at",
+        "time"
+      ]
+    },
+    "article": {
+      "id": [
+        "id",
+        "integer"
+      ],
+      "title": [
+        "title"
+      ],
+      "category": [
+        "category"
+      ],
+      "body": [
+        "body"
+      ],
+      "updatedAt": [
+        "updated_at",
+        "time"
+      ],
+      "createdAt": [
+        "created_at",
+        "time"
+      ]
+    },
+    "banner": {
+      "id": [
+        "id",
+        "integer"
+      ],
+      "title": [
+        "title"
+      ],
+      "imageUrl": [
+        "image_url"
+      ],
+      "mobileImageUrl": [
+        "mobile_image_url"
+      ],
+      "targetUrl": [
+        "target_url"
+      ]
+    },
+    "apple": {
+      "username": [
+        "username"
+      ],
+      "password": [
+        "password"
+      ],
+      "region": [
+        "region_display"
+      ],
+      "lastCheckedAt": [
+        "last_check",
+        "time"
+      ],
+      "available": [
+        "available",
+        "boolean"
+      ],
+      "status": [
+        "status"
+      ]
+    },
+    "session": {
+      "ip": [
+        "ip"
+      ],
+      "loginAt": [
+        "login_at",
+        "time"
+      ],
+      "userAgent": [
+        "ua"
+      ]
+    },
+    "resetCredit": {
+      "id": [
+        "id",
+        "integer"
+      ],
+      "remaining": [
+        "remaining",
+        "integer"
+      ],
+      "expiresAt": [
+        "expires_at",
+        "time"
+      ]
+    },
+    "resetHistory": {
+      "id": [
+        "id",
+        "integer"
+      ],
+      "kind": [
+        "kind"
+      ],
+      "quantity": [
+        "quantity",
+        "integer"
+      ],
+      "uploadedBefore": [
+        "u_before",
+        "integer"
+      ],
+      "downloadedBefore": [
+        "d_before",
+        "integer"
+      ],
+      "createdAt": [
+        "created_at",
+        "time"
+      ]
+    },
+    "reset": {
+      "available": [
+        "available",
+        "integer"
+      ],
+      "credits": [
+        "credits",
+        "array",
+        "resetCredit"
+      ],
+      "canReset": [
+        "can_reset",
+        "boolean"
+      ],
+      "disabledReason": [
+        "disabled_reason"
+      ],
+      "history": [
+        "history",
+        "array",
+        "resetHistory"
+      ]
+    },
+    "resetResult": {
+      "outcome": [
+        "outcome"
+      ]
+    },
+    "publicSettings": {
+      "termsUrl": [
+        "tos_url"
+      ],
+      "emailVerificationRequired": [
+        "is_email_verify",
+        "boolean"
+      ],
+      "invitationRequired": [
+        "is_invite_force",
+        "boolean"
+      ],
+      "emailSuffixes": [
+        "email_whitelist_suffix",
+        "strings"
+      ],
+      "captchaRequired": [
+        "is_recaptcha",
+        "boolean"
+      ],
+      "captchaSiteKey": [
+        "recaptcha_site_key"
+      ],
+      "description": [
+        "app_description"
+      ],
+      "appUrl": [
+        "app_url"
+      ],
+      "logoUrl": [
+        "logo"
+      ]
+    },
+    "preferences": {
+      "telegramEnabled": [
+        "is_telegram",
+        "boolean"
+      ],
+      "telegramCommunityUrl": [
+        "telegram_discuss_link"
+      ],
+      "stripePublicKey": [
+        "stripe_pk"
+      ],
+      "withdrawalMethods": [
+        "withdraw_methods"
+      ],
+      "withdrawalsClosed": [
+        "withdraw_close",
+        "boolean"
+      ],
+      "currency": [
+        "currency"
+      ],
+      "currencySymbol": [
+        "currency_symbol"
+      ],
+      "commissionDistributionEnabled": [
+        "commission_distribution_enable",
+        "boolean"
+      ],
+      "commissionLevelOne": [
+        "commission_distribution_l1",
+        "number"
+      ],
+      "commissionLevelTwo": [
+        "commission_distribution_l2",
+        "number"
+      ],
+      "commissionLevelThree": [
+        "commission_distribution_l3",
+        "number"
+      ]
+    },
+    "task": {
+      "taskId": [
+        "task_id"
+      ],
+      "status": [
+        "status"
+      ]
+    },
+    "bot": {
+      "username": [
+        "username"
+      ]
+    },
+    "loginState": {
+      "authenticated": [
+        "is_login",
+        "boolean"
+      ],
+      "administrator": [
+        "is_admin",
+        "boolean"
+      ]
+    },
+    "coupon": {
+      "id": [
+        "id"
+      ],
+      "code": [
+        "code"
+      ],
+      "name": [
+        "name"
+      ],
+      "discountType": [
+        "type",
+        "couponType"
+      ],
+      "value": [
+        "value",
+        "number"
+      ],
+      "startedAt": [
+        "started_at",
+        "time"
+      ],
+      "expiresAt": [
+        "ended_at",
+        "time"
+      ]
+    },
+    "applicationVersion": {
+      "platform": [
+        "platform"
+      ],
+      "version": [
+        "version"
+      ],
+      "downloadUrl": [
+        "download_url"
+      ]
+    }
+  },
+  "endpoints": {
+    "getSubscriptionsSubscriptionToken": {
+      "input": {
+        "format": "flag",
+        "language": "language"
+      },
+      "output": "scalar",
+      "role": "subscription",
+      "status": 200,
+      "raw": true,
+      "bindings": {
+        "subscriptionToken": "token"
+      },
+      "path": "subscriptions/{subscriptionToken}",
+      "method": "GET",
+      "key": "Client/ClientController@subscribe"
+    },
+    "getSubscriptionsSubscriptionTokenApplicationConfig": {
+      "input": {
+        "format": "flag",
+        "language": "language"
+      },
+      "output": "scalar",
+      "role": "subscription",
+      "status": 200,
+      "raw": true,
+      "bindings": {
+        "subscriptionToken": "token"
+      },
+      "path": "subscriptions/{subscriptionToken}/application-config",
+      "method": "GET",
+      "key": "Client/AppController@getConfig"
+    },
+    "getSubscriptionsSubscriptionTokenApplicationVersion": {
+      "input": {
+        "format": "flag",
+        "language": "language"
+      },
+      "output": "applicationVersion",
+      "role": "subscription",
+      "status": 200,
+      "raw": false,
+      "bindings": {
+        "subscriptionToken": "token"
+      },
+      "path": "subscriptions/{subscriptionToken}/application-version",
+      "method": "GET",
+      "key": "Client/AppController@getVersion"
+    },
+    "postWebhooksTelegram": {
+      "input": {},
+      "output": "scalar",
+      "role": "public",
+      "status": 200,
+      "raw": true,
+      "bindings": {},
+      "path": "webhooks/telegram",
+      "method": "POST",
+      "key": "Guest/TelegramController@webhook"
+    },
+    "getWebhooksPaymentsProviderEndpointId": {
+      "input": {},
+      "output": "scalar",
+      "role": "public",
+      "status": 200,
+      "raw": true,
+      "bindings": {
+        "provider": "method",
+        "endpointId": "uuid"
+      },
+      "path": "webhooks/payments/{provider}/{endpointId}",
+      "method": "GET",
+      "key": "Guest/PaymentController@notify"
+    },
+    "getPublicBanners": {
+      "input": {
+        "placement": "placement"
+      },
+      "output": "array:banner",
+      "role": "public",
+      "status": 200,
+      "raw": false,
+      "bindings": {},
+      "path": "public/banners",
+      "method": "GET",
+      "key": "Guest/BannerController@fetch"
+    },
+    "getPublicBannerImagesName": {
+      "input": {},
+      "output": "scalar",
+      "role": "public",
+      "status": 200,
+      "raw": true,
+      "bindings": {
+        "name": "name"
+      },
+      "path": "public/banner-images/{name}",
+      "method": "GET",
+      "key": "Guest/BannerController@image"
+    },
+    "getPublicSettings": {
+      "input": {},
+      "output": "publicSettings",
+      "role": "public",
+      "status": 200,
+      "raw": false,
+      "bindings": {},
+      "path": "public/settings",
+      "method": "GET",
+      "key": "Guest/CommController@config"
+    },
+    "postAuthRegistrations": {
+      "input": {
+        "email": "email",
+        "password": "password",
+        "emailCode": "email_code",
+        "invitation": "invitation",
+        "inviteCode": "invite_code",
+        "captchaToken": "recaptcha_data",
+        "language": "language",
+        "languageSelected": "language_selected"
+      },
+      "output": "authentication",
+      "role": "public",
+      "status": 201,
+      "raw": false,
+      "bindings": {},
+      "path": "auth/registrations",
+      "method": "POST",
+      "key": "Passport/AuthController@register"
+    },
+    "postAuthSessions": {
+      "input": {
+        "email": "email",
+        "password": "password",
+        "captchaToken": "recaptcha_data",
+        "language": "language",
+        "languageSelected": "language_selected"
+      },
+      "output": "authentication",
+      "role": "public",
+      "status": 200,
+      "raw": false,
+      "bindings": {},
+      "path": "auth/sessions",
+      "method": "POST",
+      "key": "Passport/AuthController@login"
+    },
+    "postAuthSessionExchanges": {
+      "input": {
+        "verificationToken": "verify"
+      },
+      "output": "authentication",
+      "role": "public",
+      "status": 200,
+      "raw": false,
+      "bindings": {},
+      "path": "auth/session-exchanges",
+      "method": "POST",
+      "key": "Passport/AuthController@token2Login"
+    },
+    "postAuthPasswordResets": {
+      "input": {
+        "email": "email",
+        "password": "password",
+        "emailCode": "email_code",
+        "language": "language"
+      },
+      "output": "scalar",
+      "role": "public",
+      "status": 204,
+      "raw": false,
+      "bindings": {},
+      "path": "auth/password-resets",
+      "method": "POST",
+      "key": "Passport/AuthController@forget"
+    },
+    "postAuthLoginLinks": {
+      "input": {
+        "redirect": "redirect"
+      },
+      "output": "scalar",
+      "role": "user",
+      "status": 200,
+      "raw": false,
+      "bindings": {},
+      "path": "auth/login-links",
+      "method": "POST",
+      "key": "Passport/AuthController@getQuickLoginUrl"
+    },
+    "postAuthEmailVerifications": {
+      "input": {
+        "email": "email",
+        "resetPassword": "isforget",
+        "invitation": "invitation",
+        "captchaToken": "recaptcha_data",
+        "language": "language"
+      },
+      "output": "task",
+      "role": "public",
+      "status": 202,
+      "raw": false,
+      "bindings": {},
+      "path": "auth/email-verifications",
+      "method": "POST",
+      "key": "Passport/CommController@sendEmailVerify"
+    },
+    "postPublicPageViews": {
+      "input": {
+        "inviteCode": "invite_code"
+      },
+      "output": "scalar",
+      "role": "public",
+      "status": 204,
+      "raw": false,
+      "bindings": {},
+      "path": "public/page-views",
+      "method": "POST",
+      "key": "Passport/CommController@pv"
+    },
+    "getMeDownloadAccounts": {
+      "input": {},
+      "output": "array:apple",
+      "role": "user",
+      "status": 200,
+      "raw": false,
+      "bindings": {},
+      "path": "me/download-accounts",
+      "method": "GET",
+      "key": "User/AppleAccountController@fetch"
+    },
+    "getMeUsageResets": {
+      "input": {},
+      "output": "reset",
+      "role": "user",
+      "status": 200,
+      "raw": false,
+      "bindings": {},
+      "path": "me/usage-resets",
+      "method": "GET",
+      "key": "User/UsageResetController@fetch"
+    },
+    "postMeUsageResetsConsumptions": {
+      "input": {
+        "requestKey": "request_key"
+      },
+      "output": "resetResult",
+      "role": "user",
+      "status": 200,
+      "raw": false,
+      "bindings": {},
+      "path": "me/usage-resets/consumptions",
+      "method": "POST",
+      "key": "User/UsageResetController@consume"
+    },
+    "deleteMeSession": {
+      "input": {},
+      "output": "scalar",
+      "role": "user",
+      "status": 204,
+      "raw": false,
+      "bindings": {},
+      "path": "me/session",
+      "method": "DELETE",
+      "key": "User/UserController@logout"
+    },
+    "deleteMeIntegrationsTelegram": {
+      "input": {},
+      "output": "scalar",
+      "role": "user",
+      "status": 204,
+      "raw": false,
+      "bindings": {},
+      "path": "me/integrations/telegram",
+      "method": "DELETE",
+      "key": "User/UserController@unbindTelegram"
+    },
+    "postMeSubscriptionCredentialRotations": {
+      "input": {},
+      "output": "scalar",
+      "role": "user",
+      "status": 200,
+      "raw": false,
+      "bindings": {},
+      "path": "me/subscription/credential-rotations",
+      "method": "POST",
+      "key": "User/UserController@resetSecurity"
+    },
+    "getMe": {
+      "input": {},
+      "output": "account",
+      "role": "user",
+      "status": 200,
+      "raw": false,
+      "bindings": {},
+      "path": "me",
+      "method": "GET",
+      "key": "User/UserController@info"
+    },
+    "postMeSubscriptionPeriodAdvances": {
+      "input": {},
+      "output": "scalar",
+      "role": "user",
+      "status": 204,
+      "raw": false,
+      "bindings": {},
+      "path": "me/subscription/period-advances",
+      "method": "POST",
+      "key": "User/UserController@newPeriod"
+    },
+    "postMeGiftCardRedemptions": {
+      "input": {
+        "giftCardCode": "giftcard"
+      },
+      "output": "scalar",
+      "role": "user",
+      "status": 200,
+      "raw": false,
+      "bindings": {},
+      "path": "me/gift-card-redemptions",
+      "method": "POST",
+      "key": "User/UserController@redeemgiftcard"
+    },
+    "patchMePassword": {
+      "input": {
+        "oldPassword": "old_password",
+        "newPassword": "new_password"
+      },
+      "output": "scalar",
+      "role": "user",
+      "status": 204,
+      "raw": false,
+      "bindings": {},
+      "path": "me/password",
+      "method": "PATCH",
+      "key": "User/UserController@changePassword"
+    },
+    "patchMe": {
+      "input": {
+        "language": "language",
+        "autoRenewal": "auto_renewal",
+        "expiryReminders": "remind_expire",
+        "trafficReminders": "remind_traffic"
+      },
+      "output": "scalar",
+      "role": "user",
+      "status": 204,
+      "raw": false,
+      "bindings": {},
+      "path": "me",
+      "method": "PATCH",
+      "key": "User/UserController@update"
+    },
+    "getMeSubscription": {
+      "input": {},
+      "output": "subscription",
+      "role": "user",
+      "status": 200,
+      "raw": false,
+      "bindings": {},
+      "path": "me/subscription",
+      "method": "GET",
+      "key": "User/UserController@getSubscribe"
+    },
+    "getMeSummary": {
+      "input": {},
+      "output": "summary",
+      "role": "user",
+      "status": 200,
+      "raw": false,
+      "bindings": {},
+      "path": "me/summary",
+      "method": "GET",
+      "key": "User/UserController@getStat"
+    },
+    "getMeSession": {
+      "input": {},
+      "output": "loginState",
+      "role": "user",
+      "status": 200,
+      "raw": false,
+      "bindings": {},
+      "path": "me/session",
+      "method": "GET",
+      "key": "User/UserController@checkLogin"
+    },
+    "postMeCommissionTransfers": {
+      "input": {
+        "amount": "transfer_amount"
+      },
+      "output": "scalar",
+      "role": "user",
+      "status": 204,
+      "raw": false,
+      "bindings": {},
+      "path": "me/commission-transfers",
+      "method": "POST",
+      "key": "User/UserController@transfer"
+    },
+    "postMeLoginLinks": {
+      "input": {
+        "redirect": "redirect"
+      },
+      "output": "scalar",
+      "role": "user",
+      "status": 200,
+      "raw": false,
+      "bindings": {},
+      "path": "me/login-links",
+      "method": "POST",
+      "key": "User/UserController@getQuickLoginUrl"
+    },
+    "getMeSessions": {
+      "input": {},
+      "output": "dictionary:session",
+      "role": "user",
+      "status": 200,
+      "raw": false,
+      "bindings": {},
+      "path": "me/sessions",
+      "method": "GET",
+      "key": "User/UserController@getActiveSession"
+    },
+    "deleteMeSessionsSessionId": {
+      "input": {},
+      "output": "scalar",
+      "role": "user",
+      "status": 204,
+      "raw": false,
+      "bindings": {
+        "sessionId": "session_id"
+      },
+      "path": "me/sessions/{sessionId}",
+      "method": "DELETE",
+      "key": "User/UserController@removeActiveSession"
+    },
+    "postMeOrders": {
+      "input": {
+        "planId": "plan_id",
+        "replacementOrderNumber": "replace_trade_no",
+        "billingPeriod": "period",
+        "depositAmount": "deposit_amount",
+        "couponCode": "coupon_code"
+      },
+      "output": "orderCreated",
+      "role": "user",
+      "status": 201,
+      "raw": false,
+      "bindings": {},
+      "path": "me/orders",
+      "method": "POST",
+      "key": "User/OrderController@save"
+    },
+    "postMeOrdersOrderNumberPayments": {
+      "input": {
+        "paymentMethodId": "method",
+        "paymentToken": "token"
+      },
+      "output": "payment",
+      "role": "user",
+      "status": 200,
+      "raw": false,
+      "bindings": {
+        "orderNumber": "trade_no"
+      },
+      "path": "me/orders/{orderNumber}/payments",
+      "method": "POST",
+      "key": "User/OrderController@checkout"
+    },
+    "getMeOrdersOrderNumberStatus": {
+      "input": {},
+      "output": "orderStatus",
+      "role": "user",
+      "status": 200,
+      "raw": false,
+      "bindings": {
+        "orderNumber": "trade_no"
+      },
+      "path": "me/orders/{orderNumber}/status",
+      "method": "GET",
+      "key": "User/OrderController@check"
+    },
+    "getMeOrdersOrderNumber": {
+      "input": {},
+      "output": "order",
+      "role": "user",
+      "status": 200,
+      "raw": false,
+      "bindings": {
+        "orderNumber": "trade_no"
+      },
+      "path": "me/orders/{orderNumber}",
+      "method": "GET",
+      "key": "User/OrderController@detail"
+    },
+    "getMeOrders": {
+      "input": {
+        "status": "status",
+        "page": "current",
+        "pageSize": "page_size"
+      },
+      "output": "array:order",
+      "role": "user",
+      "status": 200,
+      "raw": false,
+      "bindings": {},
+      "path": "me/orders",
+      "method": "GET",
+      "key": "User/OrderController@fetch"
+    },
+    "getPaymentMethods": {
+      "input": {},
+      "output": "array:paymentMethod",
+      "role": "user",
+      "status": 200,
+      "raw": false,
+      "bindings": {},
+      "path": "payment-methods",
+      "method": "GET",
+      "key": "User/OrderController@getPaymentMethod"
+    },
+    "postMeOrdersOrderNumberCancellation": {
+      "input": {},
+      "output": "scalar",
+      "role": "user",
+      "status": 204,
+      "raw": false,
+      "bindings": {
+        "orderNumber": "trade_no"
+      },
+      "path": "me/orders/{orderNumber}/cancellation",
+      "method": "POST",
+      "key": "User/OrderController@cancel"
+    },
+    "getCreditPackages": {
+      "input": {},
+      "output": "array:credit",
+      "role": "user",
+      "status": 200,
+      "raw": false,
+      "bindings": {},
+      "path": "credit-packages",
+      "method": "GET",
+      "key": "User/PlanController@credits"
+    },
+    "getPlans": {
+      "input": {
+        "planId": "id"
+      },
+      "output": "flex:plan",
+      "role": "user",
+      "status": 200,
+      "raw": false,
+      "bindings": {},
+      "path": "plans",
+      "method": "GET",
+      "key": "User/PlanController@fetch"
+    },
+    "postMeInvitationsRetiredCodes": {
+      "input": {},
+      "output": "scalar",
+      "role": "user",
+      "status": 201,
+      "raw": false,
+      "bindings": {},
+      "path": "me/invitations/retired-codes",
+      "method": "POST",
+      "key": "User/InviteController@save"
+    },
+    "getMeReferrals": {
+      "input": {},
+      "output": "referrals",
+      "role": "user",
+      "status": 200,
+      "raw": false,
+      "bindings": {},
+      "path": "me/referrals",
+      "method": "GET",
+      "key": "User/InviteController@fetch"
+    },
+    "getMeCommissions": {
+      "input": {
+        "page": "current",
+        "pageSize": "page_size"
+      },
+      "output": "array:commission",
+      "role": "user",
+      "status": 200,
+      "raw": false,
+      "bindings": {},
+      "path": "me/commissions",
+      "method": "GET",
+      "key": "User/InviteController@details"
+    },
+    "postMeInvitations": {
+      "input": {
+        "email": "email",
+        "language": "language"
+      },
+      "output": "invitation",
+      "role": "user",
+      "status": 202,
+      "raw": false,
+      "bindings": {},
+      "path": "me/invitations",
+      "method": "POST",
+      "key": "User/InviteController@sendEmail"
+    },
+    "getMeInvitations": {
+      "input": {
+        "days": "days",
+        "page": "current",
+        "pageSize": "page_size"
+      },
+      "output": "array:invitation",
+      "role": "user",
+      "status": 200,
+      "raw": false,
+      "bindings": {},
+      "path": "me/invitations",
+      "method": "GET",
+      "key": "User/InviteController@emailHistory"
+    },
+    "getMeNotifications": {
+      "input": {
+        "page": "current",
+        "pageSize": "page_size"
+      },
+      "output": "inbox",
+      "role": "user",
+      "status": 200,
+      "raw": false,
+      "bindings": {},
+      "path": "me/notifications",
+      "method": "GET",
+      "key": "User/NoticeController@inbox"
+    },
+    "postMeNotificationsReadReceipts": {
+      "input": {
+        "notificationId": "id",
+        "version": "version"
+      },
+      "output": "scalar",
+      "role": "user",
+      "status": 204,
+      "raw": false,
+      "bindings": {},
+      "path": "me/notifications/read-receipts",
+      "method": "POST",
+      "key": "User/NoticeController@read"
+    },
+    "getAnnouncements": {
+      "input": {
+        "notificationId": "id",
+        "page": "current",
+        "pageSize": "pageSize"
+      },
+      "output": "flex:notification",
+      "role": "user",
+      "status": 200,
+      "raw": false,
+      "bindings": {},
+      "path": "announcements",
+      "method": "GET",
+      "key": "User/NoticeController@fetch"
+    },
+    "postMeTicketsTicketIdMessages": {
+      "input": {
+        "message": "message"
+      },
+      "output": "scalar",
+      "role": "user",
+      "status": 204,
+      "raw": false,
+      "bindings": {
+        "ticketId": "id"
+      },
+      "path": "me/tickets/{ticketId}/messages",
+      "method": "POST",
+      "key": "User/TicketController@reply"
+    },
+    "postMeTicketsTicketIdClosure": {
+      "input": {},
+      "output": "scalar",
+      "role": "user",
+      "status": 204,
+      "raw": false,
+      "bindings": {
+        "ticketId": "id"
+      },
+      "path": "me/tickets/{ticketId}/closure",
+      "method": "POST",
+      "key": "User/TicketController@close"
+    },
+    "postMeTickets": {
+      "input": {
+        "subject": "subject",
+        "priority": "level",
+        "message": "message"
+      },
+      "output": "ticket",
+      "role": "user",
+      "status": 201,
+      "raw": false,
+      "bindings": {},
+      "path": "me/tickets",
+      "method": "POST",
+      "key": "User/TicketController@save"
+    },
+    "getMeTickets": {
+      "input": {
+        "ticketId": "id",
+        "page": "current",
+        "pageSize": "page_size"
+      },
+      "output": "flex:ticket",
+      "role": "user",
+      "status": 200,
+      "raw": false,
+      "bindings": {},
+      "path": "me/tickets",
+      "method": "GET",
+      "key": "User/TicketController@fetch"
+    },
+    "postMeCommissionWithdrawals": {
+      "input": {
+        "withdrawalMethod": "withdraw_method",
+        "withdrawalAccount": "withdraw_account"
+      },
+      "output": "ticket",
+      "role": "user",
+      "status": 200,
+      "raw": false,
+      "bindings": {},
+      "path": "me/commission-withdrawals",
+      "method": "POST",
+      "key": "User/TicketController@withdraw"
+    },
+    "getMeNodes": {
+      "input": {},
+      "output": "array:node",
+      "role": "user",
+      "status": 200,
+      "raw": false,
+      "bindings": {},
+      "path": "me/nodes",
+      "method": "GET",
+      "key": "User/ServerController@fetch"
+    },
+    "postMeCouponValidations": {
+      "input": {
+        "code": "code",
+        "planId": "plan_id",
+        "billingPeriod": "period"
+      },
+      "output": "coupon",
+      "role": "user",
+      "status": 200,
+      "raw": false,
+      "bindings": {},
+      "path": "me/coupon-validations",
+      "method": "POST",
+      "key": "User/CouponController@check"
+    },
+    "getMeIntegrationsTelegram": {
+      "input": {},
+      "output": "bot",
+      "role": "user",
+      "status": 200,
+      "raw": false,
+      "bindings": {},
+      "path": "me/integrations/telegram",
+      "method": "GET",
+      "key": "User/TelegramController@getBotInfo"
+    },
+    "getMePreferencesOptions": {
+      "input": {},
+      "output": "preferences",
+      "role": "user",
+      "status": 200,
+      "raw": false,
+      "bindings": {},
+      "path": "me/preferences/options",
+      "method": "GET",
+      "key": "User/CommController@config"
+    },
+    "getPaymentMethodsPaymentIdPublicKey": {
+      "input": {},
+      "output": "scalar",
+      "role": "user",
+      "status": 200,
+      "raw": false,
+      "bindings": {
+        "paymentId": "id"
+      },
+      "path": "payment-methods/{paymentId}/public-key",
+      "method": "GET",
+      "key": "User/CommController@getStripePublicKey"
+    },
+    "getKnowledgeArticles": {
+      "input": {
+        "articleId": "id",
+        "keyword": "keyword"
+      },
+      "output": "articles",
+      "role": "user",
+      "status": 200,
+      "raw": false,
+      "bindings": {},
+      "path": "knowledge-articles",
+      "method": "GET",
+      "key": "User/KnowledgeController@fetch"
+    },
+    "getKnowledgeCategories": {
+      "input": {},
+      "output": "strings",
+      "role": "user",
+      "status": 200,
+      "raw": false,
+      "bindings": {},
+      "path": "knowledge-categories",
+      "method": "GET",
+      "key": "User/KnowledgeController@getCategory"
+    },
+    "getMeTrafficRecords": {
+      "input": {
+        "days": "days",
+        "page": "current",
+        "pageSize": "page_size"
+      },
+      "output": "array:traffic",
+      "role": "user",
+      "status": 200,
+      "raw": false,
+      "bindings": {},
+      "path": "me/traffic-records",
+      "method": "GET",
+      "key": "User/StatController@getTrafficLog"
+    },
+    "getMeTicketsTicketId": {
+      "input": {
+        "page": "current",
+        "pageSize": "page_size"
+      },
+      "output": "flex:ticket",
+      "role": "user",
+      "status": 200,
+      "raw": false,
+      "bindings": {
+        "ticketId": "id"
+      },
+      "path": "me/tickets/{ticketId}",
+      "method": "GET",
+      "key": "User/TicketController@fetch"
+    },
+    "getKnowledgeArticlesArticleId": {
+      "input": {
+        "keyword": "keyword"
+      },
+      "output": "articles",
+      "role": "user",
+      "status": 200,
+      "raw": false,
+      "bindings": {
+        "articleId": "id"
+      },
+      "path": "knowledge-articles/{articleId}",
+      "method": "GET",
+      "key": "User/KnowledgeController@fetch"
+    },
+    "getPlansPlanId": {
+      "input": {},
+      "output": "flex:plan",
+      "role": "user",
+      "status": 200,
+      "raw": false,
+      "bindings": {
+        "planId": "id"
+      },
+      "path": "plans/{planId}",
+      "method": "GET",
+      "key": "User/PlanController@fetch"
+    },
+    "getAnnouncementsNotificationId": {
+      "input": {
+        "page": "current",
+        "pageSize": "pageSize"
+      },
+      "output": "flex:notification",
+      "role": "user",
+      "status": 200,
+      "raw": false,
+      "bindings": {
+        "notificationId": "id"
+      },
+      "path": "announcements/{notificationId}",
+      "method": "GET",
+      "key": "User/NoticeController@fetch"
+    }
+  }
+}

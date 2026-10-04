@@ -53,6 +53,17 @@ final class Input
         }
         foreach ($required[$contract['key']] ?? [] as $field) $rules[$field]='required|'.($types[$field] ?? 'string');
         if (($contract['key'] === 'User/OrderController@save') && $request->input('billingPeriod')==='deposit') $rules['depositAmount']='required|'.$types['depositAmount'];
-        Validator::make($request->all(),$rules,['required'=>__('This field is required.')])->validate();
+        $messages=['required'=>__('This field is required.')];
+        foreach (['string','email','max','min','digits','regex','integer','in','boolean','uuid'] as $rule) {
+            $messages[$rule]=__('Please check the format and allowed range of this value.');
+        }
+        $validator=Validator::make($request->all(),$rules,$messages);
+        $validator->after(function ($validator) use ($request,$contract) {
+            if ($contract['key'] !== 'User/OrderController@save' || $validator->errors()->isNotEmpty()) return;
+            if (($request->input('billingPeriod')==='deposit') !== ((int)$request->input('planId')===0)) {
+                $validator->errors()->add('planId',__('The selected plan does not match the order type.'));
+            }
+        });
+        $validator->validate();
     }
 }

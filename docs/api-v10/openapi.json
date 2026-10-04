@@ -4851,7 +4851,7 @@
         ],
         "x-permission": "user",
         "x-legacy-path": "/api/v1/user/order/save",
-        "description": "Requires an active session. Order and ticket identifiers are checked against the authenticated owner. Unauthenticated: 401; banned account: 403.",
+        "description": "Requires an active session. Order and ticket identifiers are checked against the authenticated owner. Unauthenticated: 401; banned account: 403. Deposit orders require planId 0 and a positive integer depositAmount in minor currency units; other billing periods require a positive planId.",
         "requestBody": {
           "required": true,
           "content": {

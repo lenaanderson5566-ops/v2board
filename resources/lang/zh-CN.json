@@ -111,5 +111,7 @@
     "Current product is sold out": "当前商品已售罄",
     "There are too many password errors, please try again after :minute minutes.": "密码错误次数过多，请 :minute 分钟后再试",
     "Reset failed, Please try again later": "重置失败，请稍后再试",
-    "This field is required.": "请填写此项。"
+    "This field is required.": "请填写此项。",
+    "Please check the format and allowed range of this value.": "请检查此项的格式和允许范围。",
+    "The selected plan does not match the order type.": "所选套餐与订单类型不匹配。"
 }

@@ -114,5 +114,7 @@
   "Plan period cannot be empty": "Выберите период оплаты",
   "Wrong plan period": "Недопустимый период оплаты",
   "This payment period cannot be purchased, please choose another period": "Этот период оплаты недоступен. Выберите другой",
-    "This field is required.": "Это поле обязательно."
+    "This field is required.": "Это поле обязательно.",
+    "Please check the format and allowed range of this value.": "Проверьте формат и допустимый диапазон значения.",
+    "The selected plan does not match the order type.": "Выбранный тариф не соответствует типу заказа."
 }

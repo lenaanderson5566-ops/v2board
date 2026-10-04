@@ -36,6 +36,11 @@ try {
     [$r,$j]=$call('POST','/api/v10/me/orders',['planId'=>0,'billingPeriod'=>'deposit','depositAmount'=>500],$bearer);
     $assert($r->getStatusCode()===201 && isset($j['data']['orderNumber']),'Deposit creation succeeds');
     $depositNumber=$j['data']['orderNumber'];
+    foreach ([['planId'=>0,'billingPeriod'=>'monthly','depositAmount'=>500],['planId'=>$plan->id,'billingPeriod'=>'deposit','depositAmount'=>500],['planId'=>0,'billingPeriod'=>'deposit','depositAmount'=>0],['planId'=>0,'billingPeriod'=>'deposit','depositAmount'=>1.5],['planId'=>0,'billingPeriod'=>'deposit','depositAmount'=>9999999]] as $invalidOrder) {
+        [$bad,$problem]=$call('POST','/api/v10/me/orders',$invalidOrder,$bearer,'zh-CN');
+        $assert($bad->getStatusCode()===422 && !str_contains(json_encode($problem),'validation.'),'Invalid order has readable field errors');
+    }
+
     [$r,$j]=$call('GET','/api/v10/me/orders/'.$depositNumber,[],$bearer);
     $assert($r->getStatusCode()===200 && $j['data']['billingPeriod']==='deposit' && $j['data']['totalAmount']===500,'Deposit detail preserves amount and period');
     [$r,$j]=$call('POST','/api/v10/me/orders/'.$depositNumber.'/cancellation',[],$bearer);

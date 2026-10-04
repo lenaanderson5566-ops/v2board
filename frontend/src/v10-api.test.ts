@@ -36,3 +36,15 @@ describe('V10 wire contracts', () => {
     expect(subscriptionUrl('https://example.com/custom?token=credential','sing')).toBe('https://example.com/custom?token=credential&flag=sing');
   });
 });
+
+it.each([
+  ['user/order/save',{plan_id:0,period:'deposit',deposit_amount:500},{planId:0,billingPeriod:'deposit',depositAmount:500}],
+  ['user/order/save',{plan_id:2,period:'onetime_price'},{planId:2,billingPeriod:'credits'}],
+  ['user/ticket/save',{subject:'Help',level:0,message:'Details'},{subject:'Help',priority:'normal',message:'Details'}],
+  ['user/ticket/withdraw',{withdraw_method:'bank',withdraw_account:'account'},{withdrawalMethod:'bank',withdrawalAccount:'account'}],
+  ['user/invite/email/send',{email:'user@example.com'},{email:'user@example.com'}],
+  ['user/changePassword',{old_password:'old',new_password:'new-password'},{oldPassword:'old',newPassword:'new-password'}],
+  ['user/order/checkout',{trade_no:'order',method:0},{paymentMethodId:0}],
+] as const)('preserves required fields for %s', (path, body, expected) => {
+  expect(JSON.parse(v10Request(path,body).body!)).toEqual(expected);
+});

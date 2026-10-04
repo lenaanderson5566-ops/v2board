@@ -114,5 +114,7 @@
   "Plan period cannot be empty": "Vui lòng chọn chu kỳ",
   "Wrong plan period": "Chu kỳ không hợp lệ",
   "This payment period cannot be purchased, please choose another period": "Không thể mua chu kỳ này. Vui lòng chọn chu kỳ khác",
-    "This field is required.": "Vui lòng điền trường này."
+    "This field is required.": "Vui lòng điền trường này.",
+    "Please check the format and allowed range of this value.": "Vui lòng kiểm tra định dạng và phạm vi cho phép của giá trị này.",
+    "The selected plan does not match the order type.": "Gói đã chọn không khớp với loại đơn hàng."
 }

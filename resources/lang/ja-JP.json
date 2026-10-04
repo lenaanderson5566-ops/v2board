@@ -114,5 +114,7 @@
   "Plan period cannot be empty": "請求期間を選択してください",
   "Wrong plan period": "請求期間が無効です",
   "This payment period cannot be purchased, please choose another period": "この請求期間は選べません。別の期間を選択してください",
-    "This field is required.": "この項目は必須です。"
+    "This field is required.": "この項目は必須です。",
+    "Please check the format and allowed range of this value.": "この値の形式と許容範囲を確認してください。",
+    "The selected plan does not match the order type.": "選択したプランが注文の種類と一致しません。"
 }

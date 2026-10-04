@@ -114,5 +114,7 @@
   "This payment cycle cannot be purchased, please choose another cycle": "該訂閱週期無法進行購買，請選擇其它週期",
   "Plan cycle cannot be empty": "套餐週期不能為空",
   "Wrong plan cycle": "套餐週期參數有誤",
-    "This field is required.": "請填寫此項。"
+    "This field is required.": "請填寫此項。",
+    "Please check the format and allowed range of this value.": "請檢查此項的格式和允許範圍。",
+    "The selected plan does not match the order type.": "所選方案與訂單類型不符。"
 }

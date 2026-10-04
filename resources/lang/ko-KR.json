@@ -114,5 +114,7 @@
   "Plan period cannot be empty": "결제 주기를 선택하세요",
   "Wrong plan period": "결제 주기가 유효하지 않습니다",
   "This payment period cannot be purchased, please choose another period": "이 결제 주기는 구매할 수 없습니다. 다른 주기를 선택하세요",
-    "This field is required.": "필수 항목입니다."
+    "This field is required.": "필수 항목입니다.",
+    "Please check the format and allowed range of this value.": "입력값의 형식과 허용 범위를 확인해 주세요.",
+    "The selected plan does not match the order type.": "선택한 요금제가 주문 유형과 일치하지 않습니다."
 }

@@ -11,6 +11,7 @@ export interface Envelope<T> {
     code?: string;
 }
 export interface Boot {
+    clientRecommendations?: Record<string, (string | null)[]>;
     clientPolicies?: Record<string, { enabled: boolean; minVersion?: string | null }>;
     clientMirrors?: Record<string, string>;
     legacyDownloads?: Record<string, string>;

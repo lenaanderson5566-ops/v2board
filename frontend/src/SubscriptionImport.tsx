@@ -37,7 +37,7 @@ export function SubscriptionImport({
     const enabled = (id: ClientId) => boot.clientPolicies?.[id]?.enabled !== false;
     const [downloadOpen, setDownloadOpen] = useState(false);
     const [device, setDevice] = useState<Device>(() => currentDevice().device);
-    const recommended = recommendedClients(device);
+    const recommended = recommendedClients(device, boot.clientRecommendations);
     const [open, setOpen] = useState(false),
         [all, setAll] = useState(false);
     const [selected, setSelected] = useState<ClientId>(() => {
@@ -119,7 +119,7 @@ export function SubscriptionImport({
                             onClick={() => {
                                 setDevice(value);
                                 setAll(false);
-                                setSelected(recommendedClients(value).find(client => enabled(client.id))?.id || supportedClients(value).find(client => enabled(client.id))?.id || recommendedClients(value)[0].id);
+                                setSelected(recommendedClients(value, boot.clientRecommendations).find(client => enabled(client.id))?.id || supportedClients(value).find(client => enabled(client.id))?.id || recommendedClients(value, boot.clientRecommendations)[0].id);
                                 setCopied(false);
                                 setAttempted(false);
                                 setError("");

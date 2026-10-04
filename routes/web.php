@@ -14,6 +14,7 @@ $renderConsole = function (string $mode, bool $landing = false) use ($securePath
             'description' => $landing ? 'AI 应用配置助手，让设备配置更简单。' : config('v2board.app_description', '连接世界，轻松管理你的订阅。'),
             'adminPath' => $mode === 'admin' ? $securePath : '',
             'opsPath' => $mode === 'admin' ? config('v2board.ops_api_path', 'ops') : '',
+            'clientRecommendations' => collect(['android','windows','macos','linux','ios'])->mapWithKeys(fn($os) => [$os => [config('v2board.client_primary_'.$os), config('v2board.client_secondary_'.$os)]])->all(),
             'clientPolicies' => $landing ? [] : (new \App\Services\ClientStrategyService())->frontendPolicies(),
             'clientMirrors' => array_merge([
                 'singbox_linux' => config('v2board.client_mirror_singbox_linux', ''),

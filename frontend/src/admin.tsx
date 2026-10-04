@@ -1,3 +1,5 @@
+import { supportedClients as recommendationClients } from "./import-links";
+import type { Device as RecommendationDevice } from "./user-experience";
 import { AdminUserActivityLink } from "./AdminUserActivity";
 import { ContentComposer } from "./ContentComposer";
 import { PlanDescription } from "./PlanDescription";
@@ -1419,6 +1421,16 @@ const labels: Record<string, string> = {
     client_mirror_flclash_windows: "FlClash · windows 镜像下载地址",
     client_mirror_flclash_macos: "FlClash · macos 镜像下载地址",
     client_mirror_flclash_linux: "FlClash · linux 镜像下载地址",
+    client_primary_android: "android · 主推荐客户端",
+    client_secondary_android: "android · 备选客户端",
+    client_primary_windows: "windows · 主推荐客户端",
+    client_secondary_windows: "windows · 备选客户端",
+    client_primary_macos: "macos · 主推荐客户端",
+    client_secondary_macos: "macos · 备选客户端",
+    client_primary_linux: "linux · 主推荐客户端",
+    client_secondary_linux: "linux · 备选客户端",
+    client_primary_ios: "ios · 主推荐客户端",
+    client_secondary_ios: "ios · 备选客户端",
     client_mirror_cmfa_android: "Clash Meta for Android · android 镜像下载地址",
     client_mirror_flclash_android: "FlClash · android 镜像下载地址",
     client_mirror_singbox_windows: "sing-box · windows 镜像下载地址",
@@ -1512,7 +1524,7 @@ export function Settings() {
                               ),
                           ],
                       }
-                    : configField(k, v, schema.data?.[k], labels[k] || k),
+                     : /^client_(primary|secondary)_/.test(k) ? {key:k,label:labels[k],type:"select" as const,options:[["","使用默认推荐"] as [string,string],...recommendationClients(k.split("_").pop() as RecommendationDevice).map(c=>[c.id,c.name] as [string,string])]} : configField(k, v, schema.data?.[k], labels[k] || k),
             ),
     );
     return (

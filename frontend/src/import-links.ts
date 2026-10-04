@@ -114,12 +114,14 @@ export function supportedClients(device: Device) {
     );
 }
 
-export function recommendedClients(device: Device) {
+export function recommendedClients(device: Device, configured?: Record<string, (string | null)[]>) {
     const ids: Record<Device, readonly ClientId[]> = {
         windows: ["clash", "singbox", "flclash"], macos: ["clash", "singbox", "flclash"], linux: ["clash", "singbox", "flclash"],
         android: ["cmfa", "singbox", "flclash"], ios: ["shadowrocket", "singbox"], unknown: ["clash", "singbox", "flclash"],
     };
-    return ids[device].map(id => clients.find(client => client.id === id)!);
+    const supported=supportedClients(device);
+    const configuredIds=[0,1].map(index=>{const id=configured?.[device]?.[index];return supported.some(c=>c.id===id) ? id as ClientId : ids[device][index];});
+    return [...new Set([...configuredIds,...ids[device]])].map(id => clients.find(client => client.id === id)!);
 }
 
 export function localizedSubscriptionUrl(value: string, language: string): string {

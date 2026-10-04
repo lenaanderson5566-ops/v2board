@@ -89,3 +89,16 @@ it("disables clients blocked by backend policy and selects an available alternat
   expect(screen.getByText(/最低版本：1.12.0/)).toBeTruthy();
  } finally { boot.clientPolicies = undefined; }
 });
+
+it("uses configured recommendations per platform and keeps default primary when only backup changes",()=>{
+ boot.clientRecommendations={windows:["flclash","clash"],android:[null,"flclash"]};
+ try {
+ render(<SubscriptionImport inline url="https://example.com/sub?token=test"/>);
+ fireEvent.click(screen.getByRole("button",{name:"Windows"}));
+ expect(screen.getByRole("link",{name:/在 FlClash/})).toBeTruthy();
+ expect(screen.getByRole("button",{name:/备选： Clash Verge/})).toBeTruthy();
+ fireEvent.click(screen.getByRole("button",{name:"Android"}));
+ expect(screen.getByRole("link",{name:/在 Clash Meta/})).toBeTruthy();
+ expect(screen.getByRole("button",{name:/备选： FlClash/})).toBeTruthy();
+ } finally {boot.clientRecommendations=undefined;}
+});

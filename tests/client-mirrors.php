@@ -29,7 +29,13 @@ try {
  $s->download($id);$row=$s->listing()['items'][0];
  $assert($row['status']==='ready' && $row['verified']);
  $assert($row['sha256']===hash('sha256','test-package'));
- $s->action($id,'publish');$assert($s->listing()['published']['cmfa_android']===$id);
+ $s->action($id,'publish');$assert($s->listing()['published']['cmfa_android:universal']===$id);
+ $asset2=$asset;$asset2['id']=2;$asset2['name']='app-arm64.apk';
+ Cache::put('client-release:cmfa',['version'=>'test','assets'=>[$asset,$asset2]],60);
+ $second=$s->enqueue('cmfa',2,'cmfa_android');$s->download($second);$s->action($second,'publish');
+ $assert(count($s->listing()['published'])===2);
+ $s->action($second,'unpublish');$s->action($second,'delete');
+ $assert($s->listing()['published']['cmfa_android:universal']===$id);
  $reject(fn()=>$s->action($id,'delete'));
  $assert($s->serve($id)->headers->get('X-Content-Type-Options')==='nosniff');
  $s->action($id,'unpublish');$reject(fn()=>$s->serve($id));

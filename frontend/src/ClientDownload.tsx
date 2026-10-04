@@ -29,13 +29,21 @@ export function mirrorDownload(client: ClientId, device: Device) {
 }
 export function ClientDownload({ client, device, official, close }: { client: ClientId; device: Device; official: string; close: () => void }) {
     const { t } = useTranslation("clientDownload");
-    const mirror = mirrorDownload(client, device);
+    const variants=Object.entries(boot.clientMirrors || {}).filter(([key,url])=>key.startsWith(`${client}_${device}:`) && safeDownloadUrl(url));
+    const [architecture,setArchitecture]=useState("");
+    const variant=variants.find(([key])=>key.split(":")[1]===architecture);
+    const universal=variants.find(([key])=>key.endsWith(":universal"));
+    const mirror = variants.length ? safeDownloadUrl(variant?.[1] || universal?.[1]) : mirrorDownload(client, device);
     const { t: ios } = useTranslation("iosDownload");
     const [showAccounts, setShowAccounts] = useState(false);
     return <Modal title={t("title")} close={close} className="client-download-modal">
         <div className="pad download-options">
             <p className="download-client">{clients.find(item => item.id === client)?.name}<span>{device === "unknown" ? "" : device}</span></p>
             <a className="download-source" href={safeDownloadUrl(official)} target="_blank" rel="noopener noreferrer"><Globe size={22}/><span><strong>{t("official")}</strong><small>{new URL(official).hostname}</small></span><ArrowUpRight size={18}/></a>
+            {device !== "ios" && variants.length>0 && <select aria-label={t("hint")} value={architecture} onChange={e=>setArchitecture(e.target.value)}>
+                <option value="">{t("hint")}</option>
+                {variants.map(([key])=>{const arch=key.split(":")[1];return <option key={key} value={arch}>{arch==="arm64" ? (device==="macos" ? "Apple Silicon · M1 / M2 / M3 / M4 / ARM64" : "ARM64") : arch==="x64" ? "Intel / AMD · x64" : arch==="universal" ? "Universal" : arch==="unknown" ? "—" : arch.toUpperCase()}</option>;})}
+            </select>}
             {device !== "ios" && (mirror ? <a className="download-source" href={mirror} target="_blank" rel="noopener noreferrer"><Download size={22}/><span><strong>{t("mirror")}</strong><small>{t("provided")}</small></span><ArrowUpRight size={18}/></a> : <button className="download-source" disabled><Download size={22}/><span><strong>{t("mirror")}</strong><small>{t("unavailable")}</small></span></button>)}
             {device === "ios" ? <>
                 <p className="muted">{ios("own")}</p>

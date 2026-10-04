@@ -184,7 +184,7 @@ export function AdminClientReleases() {
                     ))}
                 </div>
             </State>
-            <AdminClientMirrors clients={clients} />
+            <AdminClientMirrors clients={clients} checking={!!busy} checkUpdates={()=>check(clients.filter(c=>["cmfa","clash-verge","flclash","sing-box"].includes(c.id)).map(c=>c.id))} />
             {notes && (
                 <Modal
                     title={`${notes.name} ${notes.version}`}

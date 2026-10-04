@@ -43,3 +43,16 @@ it("keeps official download available when account sharing is disabled", () => {
  expect(screen.queryByRole("button", {name: /使用下载账号/})).toBeNull();
  boot.appleAccountEnabled = true;
 });
+
+it("requires architecture selection and serves the matching mirror",()=>{
+ const old=boot.clientMirrors;
+ boot.clientMirrors={"clash_macos:arm64":"https://mirror.example/arm.dmg","clash_macos:x64":"https://mirror.example/intel.dmg"};
+ try {
+ render(<ClientDownload client="clash" device="macos" official="https://github.com/clash-verge-rev/clash-verge-rev/releases" close={()=>{}}/>);
+ expect(screen.queryByRole("link",{name:/镜像下载/})).toBeNull();
+ fireEvent.change(screen.getByRole("combobox"),{target:{value:"arm64"}});
+ expect(screen.getByRole("link",{name:/镜像下载/}).getAttribute("href")).toBe("https://mirror.example/arm.dmg");
+ fireEvent.change(screen.getByRole("combobox"),{target:{value:"x64"}});
+ expect(screen.getByRole("link",{name:/镜像下载/}).getAttribute("href")).toBe("https://mirror.example/intel.dmg");
+ } finally {boot.clientMirrors=old;}
+});

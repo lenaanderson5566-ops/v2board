@@ -35,6 +35,15 @@ class ClientMirrorService
             return ['items'=>array_values(array_reverse($s['items'],true)), 'published'=>$s['published'], 'targets'=>self::TARGETS];
         });
     }
+    public static function architecture(string $name): string {
+        $name=strtolower($name);
+        if (preg_match('/arm64|aarch64/',$name)) return 'arm64';
+        if (preg_match('/armv7|armeabi/',$name)) return 'arm32';
+        if (preg_match('/x86_64|amd64|x64/',$name)) return 'x64';
+        if (preg_match('/x86|i686|i386/',$name)) return 'x86';
+        if (preg_match('/(?:^|[._-])universal(?:[._-]|$)/',$name)) return 'universal';
+        return 'unknown';
+    }
     public function enqueue(string $client, int $assetId, string $target): string {
         abort_unless(in_array($target,self::TARGETS[$client]??[],true),422,'不支持此客户端或系统');
         $release=Cache::get('client-release:'.$client,[]);
@@ -53,7 +62,7 @@ class ClientMirrorService
             abort_if(count($s['items'])>=100,422,'镜像记录已达 100 条，请清理未发布文件');
             $id=(string)Str::uuid();
             $s['items'][$id]=['id'=>$id,'client'=>$client,'asset_id'=>$asset['id'],'target'=>$target,'version'=>$release['version'],
-                'name'=>$name,'size'=>$size,'source'=>$url,'digest'=>$asset['digest']??null,'status'=>'queued','updated_at'=>time(),'created_at'=>time()];
+                'publish_key'=>$target.':'.self::architecture($name),'name'=>$name,'size'=>$size,'source'=>$url,'digest'=>$asset['digest']??null,'status'=>'queued','updated_at'=>time(),'created_at'=>time()];
             return $id;
         });
         try { \App\Jobs\DownloadClientMirror::dispatch($id); }
@@ -99,7 +108,7 @@ class ClientMirrorService
     public function action(string $id,string $action): void {
         $this->state(function(&$s)use($id,$action){
             abort_unless(isset($s['items'][$id]),404);
-            $row=$s['items'][$id];$target=$row['target'];
+            $row=$s['items'][$id];$target=$row['publish_key']??$row['target'];
             if($action==='publish') {
                 abort_unless($row['status']==='ready' && is_file($this->directory().'/'.$id.'.bin'),422,'安装包尚未准备好');
                 $s['published'][$target]=$id;

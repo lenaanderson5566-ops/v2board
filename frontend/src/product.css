@@ -1312,3 +1312,6 @@
 .ios-account-guide li { margin-bottom: 12px; line-height: 1.6; }
 .ios-account-guide > .pad { padding: 0; }
 .ios-account-guide { min-width: 0; }
+
+.import-more { margin-block: 4px 12px; font-size: 13px; }
+.client-card:disabled { opacity: .5; cursor: not-allowed; }

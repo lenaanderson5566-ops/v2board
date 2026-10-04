@@ -2,6 +2,7 @@ import { iosDownloads, ClientDownload } from "./ClientDownload";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import "./import-copy";
+import "./client-choice-copy";
 import {
     ArrowUpRight,
     Copy,
@@ -14,7 +15,6 @@ import { QRCodeSVG } from "qrcode.react";
 import { Modal } from "./ui";
 import { boot } from "./api";
 import { tx, locale } from "./i18n";
-import { e } from "./experience-copy";
 import { currentDevice, type Device } from "./user-experience";
 import {
     localizedSubscriptionUrl,
@@ -22,6 +22,7 @@ import {
     importLink,
     clientSubscriptionUrl,
     recommendedClients,
+    supportedClients,
     type ClientId,
 } from "./import-links";
 export function SubscriptionImport({
@@ -32,19 +33,21 @@ export function SubscriptionImport({
     inline?: boolean;
 }) {
     const { t } = useTranslation("clientImport");
+    const { t: choice } = useTranslation("clientChoice");
+    const enabled = (id: ClientId) => boot.clientPolicies?.[id]?.enabled !== false;
     const [downloadOpen, setDownloadOpen] = useState(false);
     const [device, setDevice] = useState<Device>(() => currentDevice().device);
     const recommended = recommendedClients(device);
     const [open, setOpen] = useState(false),
-        [all, setAll] = useState(device === "unknown");
+        [all, setAll] = useState(false);
     const [selected, setSelected] = useState<ClientId>(() => {
         let saved: string | null = null;
         try {
             saved = localStorage.getItem("v2board.import-client");
         } catch {}
         return (
-            recommended.find((client) => client.id === saved)?.id ||
-            recommended[0].id
+            recommended.find((client) => client.id === saved && enabled(client.id))?.id ||
+            recommended.find(client => enabled(client.id))?.id || supportedClients(device).find(client => enabled(client.id))?.id || recommended[0].id
         );
     });
     const [copied, setCopied] = useState(false),
@@ -59,7 +62,9 @@ export function SubscriptionImport({
     } catch {
         return <p className="pad" role="alert">{t("invalid")}</p>;
     }
-    const visible = all ? clients : recommended;
+    const extra = supportedClients(device).filter(client => !recommended.some(item => item.id === client.id));
+    const visible = all ? [...recommended, ...extra] : recommended.some(client => client.id === selected) ? recommended : [...recommended, ...extra.filter(client => client.id === selected)];
+    const policy = boot.clientPolicies?.[selected];
     async function copy() {
         try {
             await navigator.clipboard.writeText(raw);
@@ -70,11 +75,14 @@ export function SubscriptionImport({
         }
     }
     const downloads: Partial<Record<ClientId, string>> = {
+        flclash: "https://github.com/chen08209/FlClash/releases",
         clash: "https://github.com/clash-verge-rev/clash-verge-rev/releases",
         hiddify: "https://github.com/hiddify/hiddify-app/releases",
         singbox: "https://sing-box.sagernet.org/clients/",
     };
-    const downloadUrl = device === "ios" ? iosDownloads[selected] : downloads[selected];
+    const downloadUrl = selected === "singbox"
+        ? `https://sing-box.sagernet.org/clients/${device === "windows" || device === "linux" ? "desktop/" : device === "ios" || device === "macos" ? "apple/" : device === "android" ? "android/" : ""}`
+        : device === "ios" ? iosDownloads[selected] : downloads[selected];
     const content = (
         <div className="pad import-content">
             <section className="quick-step">
@@ -105,7 +113,7 @@ export function SubscriptionImport({
                             onClick={() => {
                                 setDevice(value);
                                 setAll(false);
-                                setSelected(recommendedClients(value)[0].id);
+                                setSelected(recommendedClients(value).find(client => enabled(client.id))?.id || supportedClients(value).find(client => enabled(client.id))?.id || recommendedClients(value)[0].id);
                                 setCopied(false);
                                 setAttempted(false);
                                 setError("");
@@ -134,29 +142,7 @@ export function SubscriptionImport({
                 <p className="muted">
                     {tx("选择已安装的客户端，直接导入订阅。")}
                 </p>
-                <div className="import-tabs">
-                    <button
-                        aria-pressed={!all}
-                        onClick={() => {
-                            setAll(false);
-                            if (
-                                !recommended.some(
-                                    (client) => client.id === selected,
-                                )
-                            ) {
-                                setSelected(recommended[0].id);
-                                setCopied(false);
-                                setAttempted(false);
-                            }
-                        }}
-                    >
-                        {e("recommended")}
-                    </button>
-                    <button aria-pressed={all} onClick={() => setAll(true)}>
-                        {e("allClients")}
-                    </button>
-                </div>
-                <small className="muted">{e("deviceHint")}</small>
+                {extra.length > 0 && <button className="import-more" aria-expanded={all} onClick={() => setAll(value => !value)}>{choice(all ? "less" : "more")}</button>}
                 <div className="client-grid">
                     {visible.map((client) => (
                         <button
@@ -166,6 +152,7 @@ export function SubscriptionImport({
                                     ? "client-card selected"
                                     : "client-card"
                             }
+                            disabled={!enabled(client.id)}
                             aria-pressed={selected === client.id}
                             onClick={() => {
                                 setSelected(client.id);
@@ -185,13 +172,15 @@ export function SubscriptionImport({
                             </span>
                             <span>
                                 <strong>{client.name}</strong>
-                                <small>{client.platform}</small>
+                                <small>{enabled(client.id) ? client.platform : choice("disabled")}</small>
                             </span>
                             {selected === client.id && <Check size={17} />}
                         </button>
                     ))}
                 </div>
-                <div className="quick-actions">
+                {!enabled(selected) && <p role="status">{choice("disabled")}</p>}
+                {policy?.minVersion && <p className="muted">{choice("version", { version: policy.minVersion })}</p>}
+                {enabled(selected) && <div className="quick-actions">
                     {downloadUrl && (
                         <button
                             className="button import-download"
@@ -218,6 +207,7 @@ export function SubscriptionImport({
                         {tx(copied ? "已复制" : "复制订阅链接")}
                     </button>
                 </div>
+                }
                 {error && <p role="alert">{error}</p>}
                 {copied && <p role="status" className="import-help">{t("copied")}</p>}
                 {attempted && (
@@ -243,7 +233,7 @@ export function SubscriptionImport({
                     {tx("使用文档")}
                 </a>
             </section>
-            <details className="import-manual">
+            {enabled(selected) && <details className="import-manual">
                 <summary>
                     <QrCode size={17} />
                     {tx("扫码或手动添加")}
@@ -264,7 +254,7 @@ export function SubscriptionImport({
                 <small className="muted">
                     {tx("订阅链接和二维码包含访问凭据，请勿分享。")}
                 </small>
-            </details>
+            </details>}
         </div>
     );
     const downloadDialog = downloadOpen && <ClientDownload client={selected} device={device} official={downloadUrl!} close={() => setDownloadOpen(false)} />;

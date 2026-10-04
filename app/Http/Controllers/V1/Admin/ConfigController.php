@@ -148,6 +148,12 @@ class ConfigController extends Controller
                 'telegram_discuss_link' => config('v2board.telegram_discuss_link')
             ],
             'app' => [
+                'client_mirror_singbox_linux' => config('v2board.client_mirror_singbox_linux', ''),
+                'client_mirror_singbox_windows' => config('v2board.client_mirror_singbox_windows', ''),
+                'client_mirror_flclash_android' => config('v2board.client_mirror_flclash_android', ''),
+                'client_mirror_flclash_linux' => config('v2board.client_mirror_flclash_linux', ''),
+                'client_mirror_flclash_macos' => config('v2board.client_mirror_flclash_macos', ''),
+                'client_mirror_flclash_windows' => config('v2board.client_mirror_flclash_windows', ''),
                 'client_mirror_clash_windows' => config('v2board.client_mirror_clash_windows', ''),
                 'client_mirror_clash_macos' => config('v2board.client_mirror_clash_macos', ''),
                 'client_mirror_clash_linux' => config('v2board.client_mirror_clash_linux', ''),

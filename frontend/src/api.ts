@@ -10,6 +10,7 @@ export interface Envelope<T> {
     code?: string;
 }
 export interface Boot {
+    clientPolicies?: Record<string, { enabled: boolean; minVersion?: string | null }>;
     clientMirrors?: Record<string, string>;
     legacyDownloads?: Record<string, string>;
     landing?: boolean;

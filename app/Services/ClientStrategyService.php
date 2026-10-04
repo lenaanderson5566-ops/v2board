@@ -7,6 +7,22 @@ use ReflectionClass;
 
 class ClientStrategyService
 {
+    // Read-only public presentation data, no rule details or blacklist information.
+    public function frontendPolicies(): array
+    {
+        $mapping = ['clash'=>'verge', 'flclash'=>'flclash', 'hiddify'=>'sing', 'singbox'=>'sing',
+            'shadowrocket'=>'shadowrocket', 'surge'=>'surge', 'quantumult'=>'quantumult%20x', 'stash'=>'stash', 'surfboard'=>'surfboard'];
+        $rows = ClientStrategy::query()->whereIn('client_type', array_merge(array_values($mapping), ['meta']))->get()->keyBy('client_type');
+        $result = [];
+        foreach ($mapping as $id => $flag) {
+            $row = $rows->get($flag);
+            $enabled = !$row || (bool) $row->is_enabled;
+            if (in_array($flag, ['flclash', 'verge'], true) && $rows->get('meta') && !$rows->get('meta')->is_enabled) $enabled = false;
+            $result[$id] = ['enabled' => $enabled, 'minVersion' => $row->min_version ?? null];
+        }
+        return $result;
+    }
+
     public function scanProtocols(): array
     {
         $clients = [];
@@ -71,6 +87,7 @@ class ClientStrategyService
         $this->syncStrategies();
         $strategy = ClientStrategy::query()->where('client_type', $clientType)->first();
 
+        if (in_array($clientType, ['flclash', 'verge'], true) && !$this->isEnabled('meta')) return false;
         return $strategy ? (bool) $strategy->is_enabled : true;
     }
 
@@ -185,6 +202,7 @@ class ClientStrategyService
 
     private function defaultClientName(string $className): string
     {
+        if ($className === 'FlClash') return 'FlClash';
         $name = preg_replace('/(?<!^)([A-Z])/', ' $1', $className);
         return trim((string) $name) ?: $className;
     }

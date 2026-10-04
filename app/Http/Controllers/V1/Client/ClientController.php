@@ -213,7 +213,9 @@ class ClientController extends Controller
         }
 
         $input = strtolower($input);
-        foreach ($this->getProtocolFlags() as $flag) {
+        $flags = array_values($this->getProtocolFlags());
+        usort($flags, fn ($a, $b) => strlen($b) <=> strlen($a));
+        foreach ($flags as $flag) {
             if (strpos($input, $flag) !== false) {
                 return $flag;
             }

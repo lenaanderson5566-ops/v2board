@@ -97,6 +97,12 @@ class ConfigSave extends FormRequest
         'client_mirror_singbox_android' => 'nullable|url|regex:~^https?://~i|max:2048',
         'client_mirror_singbox_macos' => 'nullable|url|regex:~^https?://~i|max:2048',
         'client_mirror_singbox_ios' => 'nullable|url|regex:~^https?://~i|max:2048',
+        'client_mirror_flclash_windows' => 'nullable|url|regex:~^https?://~i|max:2048',
+        'client_mirror_flclash_macos' => 'nullable|url|regex:~^https?://~i|max:2048',
+        'client_mirror_flclash_linux' => 'nullable|url|regex:~^https?://~i|max:2048',
+        'client_mirror_flclash_android' => 'nullable|url|regex:~^https?://~i|max:2048',
+        'client_mirror_singbox_windows' => 'nullable|url|regex:~^https?://~i|max:2048',
+        'client_mirror_singbox_linux' => 'nullable|url|regex:~^https?://~i|max:2048',
         // app
         'windows_version' => '',
         'windows_download_url' => '',

@@ -1,12 +1,12 @@
 import { describe, it, expect } from "vitest";
-import { clients, importLink, subscriptionUrl, localizedSubscriptionUrl } from "./import-links";
+import { clients, importLink, subscriptionUrl, localizedSubscriptionUrl, recommendedClients, supportedClients } from "./import-links";
 const url = "https://example.com/subscribe?token=a%2Bb%26c&flag=old";
 describe("subscription import protocols", () => {
     it("preserves access tokens while replacing the client format", () => {
         const link = new URL(importLink("clash", url, "测试 & Home"));
         const nested = new URL(link.searchParams.get("url")!);
         expect(nested.searchParams.get("token")).toBe("a+b&c");
-        expect(nested.searchParams.getAll("flag")).toEqual(["meta"]);
+        expect(nested.searchParams.getAll("flag")).toEqual(["verge"]);
         expect(link.searchParams.get("name")).toBe("测试 & Home");
     });
     it("generates all supported schemes without third-party converters", () => {
@@ -64,4 +64,18 @@ it("pins the selected language without changing subscription credentials",()=>{
     expect(nested.searchParams.get("language")).toBe("zh-TW");
     expect(nested.searchParams.get("token")).toBe("a+b&c");
     expect(()=>localizedSubscriptionUrl(url,"invalid")).toThrow();
+});
+
+it("uses the dedicated FlClash scheme and policy flag", () => {
+ const link = new URL(importLink("flclash", url, "Test"));
+ expect(link.protocol).toBe("flclash:");
+ expect(new URL(link.searchParams.get("url")!).searchParams.get("flag")).toBe("flclash");
+});
+
+it("offers sing-box as the second recommendation on every supported platform", () => {
+ for (const device of ["windows", "macos", "linux", "android", "ios"] as const) {
+  expect(recommendedClients(device)).toHaveLength(2);
+  expect(recommendedClients(device)[1].id).toBe("singbox");
+  expect(supportedClients(device).some(client => client.id === "singbox")).toBe(true);
+ }
 });

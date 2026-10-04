@@ -633,6 +633,48 @@
       "placeholder": "https://",
       "child": false,
       "line": 0
+    },
+    "client_mirror_flclash_windows": {
+      "label": "FlClash · windows 镜像下载地址",
+      "hint": "可选，填写对应系统的 HTTP(S) 下载链接。",
+      "placeholder": "https://",
+      "child": false,
+      "line": 0
+    },
+    "client_mirror_flclash_macos": {
+      "label": "FlClash · macos 镜像下载地址",
+      "hint": "可选，填写对应系统的 HTTP(S) 下载链接。",
+      "placeholder": "https://",
+      "child": false,
+      "line": 0
+    },
+    "client_mirror_flclash_linux": {
+      "label": "FlClash · linux 镜像下载地址",
+      "hint": "可选，填写对应系统的 HTTP(S) 下载链接。",
+      "placeholder": "https://",
+      "child": false,
+      "line": 0
+    },
+    "client_mirror_flclash_android": {
+      "label": "FlClash · android 镜像下载地址",
+      "hint": "可选，填写对应系统的 HTTP(S) 下载链接。",
+      "placeholder": "https://",
+      "child": false,
+      "line": 0
+    },
+    "client_mirror_singbox_windows": {
+      "label": "sing-box · windows 镜像下载地址",
+      "hint": "填写 sing-box for Desktop 安装包地址，不要填写仅包含命令行内核的压缩包。",
+      "placeholder": "https://",
+      "child": false,
+      "line": 0
+    },
+    "client_mirror_singbox_linux": {
+      "label": "sing-box · linux 镜像下载地址",
+      "hint": "填写 sing-box for Desktop 安装包地址，不要填写仅包含命令行内核的压缩包。",
+      "placeholder": "https://",
+      "child": false,
+      "line": 0
     }
   }
 }

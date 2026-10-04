@@ -1,8 +1,9 @@
 import type { Device } from "./user-experience";
 export const clients = [
+    { id: "flclash", name: "FlClash", platform: "Android · Windows · macOS · Linux" },
     {
         id: "clash",
-        name: "Clash Verge / Mihomo",
+        name: "Clash Verge Rev",
         platform: "Windows · macOS · Linux",
     },
     {
@@ -10,7 +11,7 @@ export const clients = [
         name: "Hiddify",
         platform: "iOS · Android · Windows · macOS · Linux",
     },
-    { id: "singbox", name: "sing-box", platform: "iOS · Android · macOS" },
+    { id: "singbox", name: "sing-box", platform: "Android · iOS · Windows · macOS · Linux" },
     { id: "shadowrocket", name: "Shadowrocket", platform: "iOS · macOS" },
     { id: "surge", name: "Surge", platform: "iOS · macOS" },
     { id: "quantumult", name: "Quantumult X", platform: "iOS" },
@@ -49,6 +50,8 @@ export function importLink(
         encoded = encodeURIComponent(url),
         title = encodeURIComponent(name);
     switch (client) {
+        case "flclash":
+            return `flclash://install-config?url=${encoded}&name=${title}`;
         case "clash":
             return `clash://install-config?url=${encoded}&name=${title}`;
         case "hiddify":
@@ -70,7 +73,8 @@ export function importLink(
 
 export function clientSubscriptionUrl(client: ClientId, value: string): string {
     const flags: Record<ClientId, string> = {
-        clash: "meta",
+        flclash: "flclash",
+        clash: "verge",
         hiddify: "sing",
         singbox: "sing",
         shadowrocket: "shadowrocket",
@@ -81,7 +85,7 @@ export function clientSubscriptionUrl(client: ClientId, value: string): string {
     };
     return subscriptionUrl(value, flags[client]);
 }
-export function recommendedClients(device: Device) {
+export function supportedClients(device: Device) {
     const supported: Record<Device, readonly ClientId[]> = {
         ios: [
             "hiddify",
@@ -91,22 +95,31 @@ export function recommendedClients(device: Device) {
             "quantumult",
             "stash",
         ],
-        android: ["hiddify", "singbox", "surfboard"],
-        windows: ["clash", "hiddify"],
+        android: ["flclash", "hiddify", "singbox", "surfboard"],
+        windows: ["clash", "flclash", "hiddify", "singbox"],
         macos: [
             "clash",
+            "flclash",
             "hiddify",
             "singbox",
             "shadowrocket",
             "surge",
             "stash",
         ],
-        linux: ["clash", "hiddify"],
+        linux: ["clash", "flclash", "hiddify", "singbox"],
         unknown: clients.map((client) => client.id),
     };
     return supported[device].map((id) =>
         clients.find((client) => client.id === id)!,
     );
+}
+
+export function recommendedClients(device: Device) {
+    const ids: Record<Device, readonly ClientId[]> = {
+        windows: ["clash", "singbox"], macos: ["clash", "singbox"], linux: ["clash", "singbox"],
+        android: ["flclash", "singbox"], ios: ["shadowrocket", "singbox"], unknown: ["clash", "singbox"],
+    };
+    return ids[device].map(id => clients.find(client => client.id === id)!);
 }
 
 export function localizedSubscriptionUrl(value: string, language: string): string {

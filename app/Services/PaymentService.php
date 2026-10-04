@@ -38,7 +38,7 @@ class PaymentService
 
     public function pay($order)
     {
-        // custom notify domain name
+        // New payments use V10; historical callbacks remain registered.
         $notifyUrl = url("/api/v10/webhooks/payments/{$this->method}/{$this->config['uuid']}");
         if ($this->config['notify_domain']) {
             $parseUrl = parse_url($notifyUrl);

@@ -15,3 +15,5 @@
 - Never commit Dockerfile.local, LOCAL-RUN.txt, local-seed.php, environment secrets or runtime installer files.
 
 - Default subscriptions always use /api/v10/subscriptions/{subscriptionToken}, including links generated outside V10 requests. /api/v1/client/subscribe is retired; preserve administrator-defined custom links via CustomSubscriptionController and the shared subscription action.
+
+- Payment initiation and administrative callback displays use /api/v10/webhooks/payments/{provider}/{endpointId}, including custom notify domains. Retain old payment callbacks for in-flight orders. User payment APIs stay on V10; do not modify provider SDK signing or native responses for API versioning.

@@ -131,7 +131,7 @@ for entry in entries:
         responses['416'] = {'description': 'Requested range is not satisfiable'}
     if entry['role'] == 'user': operation['description'] = 'Requires an active session. Order and ticket identifiers are checked against the authenticated owner. Unauthenticated: 401; banned account: 403.'
     if entry['path'].startswith('webhooks/'):
-        operation['description'] = 'Provider-native signature verification and response. Payment notifications are idempotent; Telegram requires X-Telegram-Bot-Api-Secret-Token. Historical callback URLs remain supported.'
+        operation['description'] = 'Provider-native signature verification and response. Payment notifications are idempotent; Telegram requires X-Telegram-Bot-Api-Secret-Token. New payments use V10 callback URLs, including custom callback domains. Old payment callbacks remain compatible for existing orders. Historical callback URLs remain supported.'
         operation['requestBody'] = {'content': {'application/json': {'schema': {'type': 'object'}}, 'application/x-www-form-urlencoded': {'schema': {'type': 'object'}}}}
     elif entry['method'] == 'GET':
         operation['parameters'] += [{'name': f, 'in': 'query', 'schema': v} for f, v in properties.items()]

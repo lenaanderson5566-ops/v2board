@@ -167,7 +167,10 @@ try {
     [$r,$j]=$call('POST','/api/v10/webhooks/payments/V10TestPayment/'.$payment->uuid,['signature'=>'invalid','orderNumber'=>$order->trade_no]);
     $assert($r->getStatusCode()>=400 && $r->getContent()==='fail','Invalid provider signature uses native failure');
     $gateway=(new App\Services\PaymentService('V10TestPayment',$payment->id))->pay(['trade_no'=>$order->trade_no,'total_amount'=>1000,'user_id'=>$user->id,'stripe_token'=>null]);
-    $assert(str_contains($gateway['data'],'/api/v10/webhooks/payments/'),'Newly generated callback URL');
+    $assert(parse_url($gateway['data'],PHP_URL_PATH)==='/api/v10/webhooks/payments/V10TestPayment/'.$payment->uuid,'New orders use V10 provider callback');
+    $payment->notify_domain='https://callback.example'; $payment->save();
+    $gateway=(new App\Services\PaymentService('V10TestPayment',$payment->id))->pay(['trade_no'=>$order->trade_no,'total_amount'=>1000,'user_id'=>$user->id,'stripe_token'=>null]);
+    $assert($gateway['data']==='https://callback.example/api/v10/webhooks/payments/V10TestPayment/'.$payment->uuid,'Custom callback domain uses V10 path');
     config(['v2board.app_url'=>'https://example.com','v2board.stop_register'=>0,'v2board.email_whitelist_enable'=>0,'v2board.email_gmail_limit_enable'=>0,'v2board.invite_force'=>1,'v2board.email_verify'=>1,'v2board.try_out_plan_id'=>0]);
     $email=Str::uuid().'@example.com';
     [$r,$j]=$call('POST','/api/v10/me/invitations',['email'=>$email],$bearer);

@@ -1,65 +1,138 @@
-# port: 7890
-# socks-port: 7891
-# redir-port: 7892
-# tproxy-port: 7893
+# Mihomo 订阅服务端模板；节点和 $app_name 由服务端填充。
+# 不要将含空 proxies 的模板直接作为最终客户端配置导入。
 mixed-port: 7890
+ipv6: true
 allow-lan: false
-bind-address: "127.0.0.1"
+bind-address: '127.0.0.1'
+unified-delay: true
+tcp-concurrent: true
 mode: rule
 log-level: info
+external-controller: '127.0.0.1:9090'
+
+# 保留原配置的数据镜像；首次使用需要能够访问该镜像。
+geodata-mode: true
+geo-auto-update: true
+geo-update-interval: 24
+geox-url:
+  geoip: 'https://cdn.gh-proxy.org/github.com/MetaCubeX/meta-rules-dat/releases/download/latest/geoip-lite.dat'
+  geosite: 'https://cdn.gh-proxy.org/github.com/MetaCubeX/meta-rules-dat/releases/download/latest/geosite.dat'
+find-process-mode: strict
 profile:
   store-selected: true
-external-controller: 127.0.0.1:9090
+  store-fake-ip: true
+sniffer:
+  enable: true
+  sniff:
+    HTTP:
+      ports: [80, 8080-8880]
+      override-destination: true
+    TLS:
+      ports: [443, 8443]
+    QUIC:
+      ports: [443, 8443]
+  skip-domain:
+    - 'Mijia Cloud'
+    - '+.push.apple.com'
+    - '+.lan'
+    - '+.local'
 
 dns:
   enable: true
-  # listen: 0.0.0.0:53
-  ipv6: false
-
-  default-nameserver:
-    - 223.5.5.5
-    - 119.29.29.29
-    - 114.114.114.114
+  ipv6: true
   enhanced-mode: fake-ip
   fake-ip-range: 198.18.0.1/16
   fake-ip-filter:
-    - "*.lan"
-    - "*.local"
-    - "localhost"
+    - '*.lan'
+    - '*.local'
+    - 'localhost'
+    - '+.localhost'
+    - '+.home.arpa'
+    - 'time.*.com'
+    - 'time.*.gov'
+    - '+.pool.ntp.org'
   use-hosts: true
+  use-system-hosts: true
   respect-rules: true
+  # 仅用于解析 DNS 服务的域名，避免启动时依赖尚未连接的代理。
+  default-nameserver:
+    - 223.5.5.5
+    - 119.29.29.29
+  # 节点域名独立直连解析，避免“先连节点才能解析节点”的循环。
   proxy-server-nameserver:
-    - 223.5.5.5
-    - 119.29.29.29
-    - 114.114.114.114
+    - 'https://dns.alidns.com/dns-query#DIRECT'
+    - 'https://doh.pub/dns-query#DIRECT'
+  direct-nameserver:
+    - 'https://dns.alidns.com/dns-query#DIRECT'
+    - 'https://doh.pub/dns-query#DIRECT'
+  direct-nameserver-follow-policy: true
+  nameserver-policy:
+    '+.lan': system
+    '+.local': system
+    '+.localhost': system
+    '+.home.arpa': system
+    'geosite:cn':
+      - 'https://dns.alidns.com/dns-query#DIRECT'
+      - 'https://doh.pub/dns-query#DIRECT'
+  # 其余域名使用代理查询海外 DNS；国内域名由上述 policy 优先处理。
   nameserver:
-    - 223.5.5.5
-    - 119.29.29.29
-    - 114.114.114.114
-  fallback:
-    - 1.1.1.1
-    - 8.8.8.8
-  fallback-filter:
-    geoip: true
-    geoip-code: CN
-    geosite:
-      - gfw
-    ipcidr:
-      - 240.0.0.0/4
-    domain:
-      - '+.google.com'
-      - '+.facebook.com'
-      - '+.youtube.com'
+    - 'https://cloudflare-dns.com/dns-query#$app_name'
+    - 'https://dns.google/dns-query#$app_name'
 
-
-proxies:
+proxies: []
 
 proxy-groups:
-  - { name: "$app_name", type: select, proxies: ["自动选择", "故障转移"] }
-  - { name: "自动选择", type: url-test, proxies: [], url: "https://www.gstatic.com/generate_204", interval: 600 }
-  - { name: "故障转移", type: fallback, proxies: [], url: "https://www.gstatic.com/generate_204", interval: 600 }
+  - name: '$app_name'
+    type: select
+    proxies: ['自动选择', '故障转移']
+  - name: '自动选择'
+    type: url-test
+    proxies: []
+    url: 'https://cp.cloudflare.com/generate_204'
+    interval: 600
+    tolerance: 50
+    lazy: true
+  - name: '故障转移'
+    type: fallback
+    proxies: []
+    url: 'https://cp.cloudflare.com/generate_204'
+    interval: 600
+    lazy: true
 
 rules:
+  # 局域网优先处理，IP 规则不触发额外 DNS 查询。
+  - DOMAIN,localhost,DIRECT
+  - DOMAIN-SUFFIX,localhost,DIRECT
+  - DOMAIN-SUFFIX,lan,DIRECT
+  - DOMAIN-SUFFIX,local,DIRECT
+  - DOMAIN-SUFFIX,home.arpa,DIRECT
+  - IP-CIDR,0.0.0.0/8,DIRECT,no-resolve
+  - IP-CIDR,127.0.0.0/8,DIRECT,no-resolve
+  - IP-CIDR,10.0.0.0/8,DIRECT,no-resolve
+  - IP-CIDR,172.16.0.0/12,DIRECT,no-resolve
+  - IP-CIDR,192.168.0.0/16,DIRECT,no-resolve
+  - IP-CIDR,169.254.0.0/16,DIRECT,no-resolve
+  - IP-CIDR,100.64.0.0/10,DIRECT,no-resolve
+  - IP-CIDR,224.0.0.0/4,DIRECT,no-resolve
+  - IP-CIDR6,::1/128,DIRECT,no-resolve
+  - IP-CIDR6,fc00::/7,DIRECT,no-resolve
+  - IP-CIDR6,fe80::/10,DIRECT,no-resolve
+  - IP-CIDR6,ff00::/8,DIRECT,no-resolve
+
+  # AI 服务与国内 DNS：具体规则优先于后面的通用域名规则。
+  - DOMAIN-SUFFIX,openai.com,$app_name
+  - DOMAIN-SUFFIX,chatgpt.com,$app_name
+  - DOMAIN-SUFFIX,oaistatic.com,$app_name
+  - DOMAIN-SUFFIX,oaiusercontent.com,$app_name
+  - DOMAIN-SUFFIX,anthropic.com,$app_name
+  - DOMAIN-SUFFIX,claude.ai,$app_name
+  - DOMAIN,gemini.google.com,$app_name
+  - DOMAIN,aistudio.google.com,$app_name
+  - DOMAIN,generativelanguage.googleapis.com,$app_name
+  - DOMAIN,copilot.microsoft.com,$app_name
+  - DOMAIN,dns.alidns.com,DIRECT
+  - DOMAIN,doh.pub,DIRECT
+
   # 自定义规则
   ## 您可以在此处插入您补充的自定义规则（请注意保持缩进）
   - IP-CIDR,1.1.1.1/32,$app_name,no-resolve
@@ -94,8 +167,6 @@ rules:
   - DOMAIN-SUFFIX,cdn20.com,DIRECT
   - DOMAIN-SUFFIX,cdn-apple.com,DIRECT
   - DOMAIN-SUFFIX,akadns.net,DIRECT
-  - DOMAIN-SUFFIX,akamaiedge.net,DIRECT
-  - DOMAIN-SUFFIX,edgekey.net,DIRECT
   - DOMAIN-SUFFIX,mwcloudcdn.com,DIRECT
   - DOMAIN-SUFFIX,mwcname.com,DIRECT
   - DOMAIN-SUFFIX,apple.com,DIRECT
@@ -158,7 +229,6 @@ rules:
   - DOMAIN-SUFFIX,le.com,DIRECT
   - DOMAIN-SUFFIX,lecloud.com,DIRECT
   - DOMAIN-SUFFIX,lemicp.com,DIRECT
-  - DOMAIN-SUFFIX,licdn.com,DIRECT
   - DOMAIN-SUFFIX,luoo.net,DIRECT
   - DOMAIN-SUFFIX,meituan.com,DIRECT
   - DOMAIN-SUFFIX,meituan.net,DIRECT
@@ -271,7 +341,6 @@ rules:
   - DOMAIN-KEYWORD,supersonicads,REJECT
   - DOMAIN-KEYWORD,uedas,REJECT
   - DOMAIN-KEYWORD,umeng,REJECT
-  - DOMAIN-KEYWORD,usage,REJECT
   - DOMAIN-SUFFIX,vungle.com,REJECT
   - DOMAIN-KEYWORD,wlmonitor,REJECT
   - DOMAIN-KEYWORD,zjtoolbar,REJECT
@@ -469,7 +538,6 @@ rules:
   - DOMAIN-SUFFIX,sharethis.com,$app_name
   - DOMAIN-SUFFIX,shazam.com,$app_name
   - DOMAIN-SUFFIX,skype.com,$app_name
-  - DOMAIN-SUFFIX,smartdns$app_name.com,$app_name
   - DOMAIN-SUFFIX,smartmailcloud.com,$app_name
   - DOMAIN-SUFFIX,sndcdn.com,$app_name
   - DOMAIN-SUFFIX,sony.com,$app_name
@@ -580,22 +648,13 @@ rules:
   - IP-CIDR,220.181.174.226/32,$app_name,no-resolve
   - IP-CIDR,220.181.174.34/32,$app_name,no-resolve
 
-  # LAN
+  # 保留的特殊直连规则
   - DOMAIN,injections.adguard.org,DIRECT
   - DOMAIN,local.adguard.org,DIRECT
-  - DOMAIN-SUFFIX,local,DIRECT
-  - IP-CIDR,127.0.0.0/8,DIRECT
-  - IP-CIDR,172.16.0.0/12,DIRECT
-  - IP-CIDR,192.168.0.0/16,DIRECT
-  - IP-CIDR,10.0.0.0/8,DIRECT
-  - IP-CIDR,17.0.0.0/8,DIRECT
-  - IP-CIDR,100.64.0.0/10,DIRECT
-  - IP-CIDR,224.0.0.0/4,DIRECT
-  - IP-CIDR6,fe80::/10,DIRECT
+  - IP-CIDR,17.0.0.0/8,DIRECT,no-resolve # 保留原 Apple 地址段策略（非局域网）
 
   # 剩余未匹配的国内网站
   - DOMAIN-SUFFIX,cn,DIRECT
-  - DOMAIN-KEYWORD,-cn,DIRECT
 
   # 最终规则
   - GEOIP,CN,DIRECT

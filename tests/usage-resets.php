@@ -2,6 +2,7 @@
 require __DIR__.'/../vendor/autoload.php';
 $app = require __DIR__.'/../bootstrap/app.php';
 $app->make(Illuminate\Contracts\Console\Kernel::class)->bootstrap();
+set_exception_handler(function (Throwable $error) { fwrite(STDERR, $error->getMessage().PHP_EOL); exit(1); });
 if (!app()->environment('local')) throw new RuntimeException('Local test only');
 use App\Models\User;
 use App\Models\Plan;
@@ -13,9 +14,9 @@ $assert = function ($ok, $message) use (&$checks) { if (!$ok) throw new RuntimeE
 $kernel = $app->make(Illuminate\Contracts\Http\Kernel::class);
 $callIndex = 0;
 $call = function ($path, $body, $token = null) use ($kernel, &$callIndex) {
-    $request = Illuminate\Http\Request::create('/api/v1/'.$path, $body === null ? 'GET' : 'POST', $body ?? [], [], [], ['REMOTE_ADDR' => '192.0.2.'.(++$callIndex)]);
+    $request = Illuminate\Http\Request::create($path, $body === null ? 'GET' : 'POST', $body ?? [], [], [], ['REMOTE_ADDR' => '192.0.2.'.(++$callIndex)]);
     $request->headers->set('Accept', 'application/json');
-    if ($token) $request->headers->set('Authorization', $token);
+    if ($token) $request->headers->set('Authorization', (strpos($path, '/api/v10/') === 0 ? 'Bearer ' : '').$token);
     return $kernel->handle($request);
 };
 $auths = [];
@@ -39,10 +40,10 @@ try {
             $adminPath = substr($route->uri(), strlen('api/v1/'), -strlen('/user/usageReset')); break;
         }
     }
-    $endpoint = $adminPath.'/user/usageReset';
+    $endpoint = '/api/v1/'.$adminPath.'/user/usageReset';
     $grant = ['kind'=>'grant', 'request_key'=>(string)Str::uuid(), 'expected_count'=>1, 'quantity'=>2,
         'filter'=>[['key'=>'id', 'condition'=>'=', 'value'=>$user->id]]];
-    $assert($call('user/usage/reset', null)->getStatusCode()===403, 'Anonymous access accepted');
+    $assert($call('/api/v10/me/usage-resets', null)->getStatusCode()===401, 'Anonymous access accepted');
     $assert($call($endpoint, $grant, $token)->getStatusCode()===403, 'User could grant credits');
     $r = $call($endpoint, $grant, $adminToken);
     $assert($r->getStatusCode()===200, 'Grant failed: '.$r->getContent());
@@ -58,28 +59,28 @@ try {
     $service->batch(User::where('id',$user->id),$admin->id,$soonGrant);
     $soon = DB::table('v2_usage_reset_credit')->where('user_id',$user->id)->whereNotNull('expires_at')->first();
     $key=(string)Str::uuid();
-    $r=$call('user/usage/reset',['request_key'=>$key,'user_id'=>$other->id],$token);
+    $r=$call('/api/v10/me/usage-resets/consumptions',['requestKey'=>$key,'user_id'=>$other->id],$token);
     $assert($r->getStatusCode()===200,'Consume failed: '.$r->getContent());
     $assert($user->refresh()->u===0 && $user->d===0,'Usage not cleared');
     $assert($user->only(array_keys($before))===$before,'Subscription or credentials changed');
     $assert($other->refresh()->u===10 && $other->d===20,'Other account was reset');
     $assert(DB::table('v2_usage_reset_credit')->where('id',$soon->id)->value('remaining')===0,'Expiring credit not used first');
     $user->update(['u'=>50]);
-    $assert($call('user/usage/reset',['request_key'=>$key],$token)->getStatusCode()===200 && $user->refresh()->u===50,'Retry reset newly accrued usage');
+    $assert($call('/api/v10/me/usage-resets/consumptions',['requestKey'=>$key],$token)->getStatusCode()===200 && $user->refresh()->u===50,'Retry reset newly accrued usage');
     $assert($service->summary($user->id)['available']===2,'Retry consumed a second credit');
     foreach ([['banned'=>1], ['expired_at'=>time()-1], ['plan_id'=>null], ['transfer_enable'=>0]] as $state) {
         $original=$user->only(array_keys($state)); $user->update($state);
-        $r=$call('user/usage/reset',['request_key'=>(string)Str::uuid()],$token);
-        $assert($r->getStatusCode()===422 && $service->summary($user->id)['available']===2,'Ineligible user consumed credit');
+        $r=$call('/api/v10/me/usage-resets/consumptions',['requestKey'=>(string)Str::uuid()],$token);
+        $assert($r->getStatusCode()===(isset($state['banned']) ? 403 : 422) && $service->summary($user->id)['available']===2,'Ineligible user consumed credit: '.$r->getContent());
         $user->update($original);
     }
     $user->update(['u'=>0,'d'=>0]);
-    $assert($call('user/usage/reset',['request_key'=>(string)Str::uuid()],$token)->getStatusCode()===422,'Empty usage consumed credit');
+    $assert($call('/api/v10/me/usage-resets/consumptions',['requestKey'=>(string)Str::uuid()],$token)->getStatusCode()===422,'Empty usage consumed credit');
     DB::table('v2_usage_reset_credit')->where('user_id',$user->id)->update(['expires_at'=>time()-1]);
     $user->update(['u'=>100]);
     $assert($service->summary($user->id)['available']===0,'Expired credits counted');
-    $assert($call('user/usage/reset',['request_key'=>(string)Str::uuid()],$token)->getStatusCode()===422,'Expired credits usable');
-    $assert($call('user/usage/reset',['request_key'=>'bad'], $token)->getStatusCode()===422,'Invalid idempotency key accepted');
+    $assert($call('/api/v10/me/usage-resets/consumptions',['requestKey'=>(string)Str::uuid()],$token)->getStatusCode()===422,'Expired credits usable');
+    $assert($call('/api/v10/me/usage-resets/consumptions',['requestKey'=>'bad'], $token)->getStatusCode()===422,'Invalid idempotency key accepted');
     $all=['kind'=>'global','request_key'=>(string)Str::uuid(),'expected_count'=>User::count(),'confirmation'=>'RESET ALL USAGE'];
     $wrong=$all; unset($wrong['confirmation']);
     $assert($call($endpoint,$wrong,$adminToken)->getStatusCode()===422,'Unconfirmed global reset accepted');
@@ -90,7 +91,7 @@ try {
     $other->update(['d'=>37]);
     $assert($call($endpoint,$all,$adminToken)->getStatusCode()===200 && $other->refresh()->d===37,'Repeated global reset changed new usage');
     $assert($user->only(array_keys($before))===$before,'Global reset changed plan or credentials');
-    $logs=json_decode($call('user/usage/reset',null,$otherToken)->getContent(),true)['data']['history'];
+    $logs=json_decode($call('/api/v10/me/usage-resets',null,$otherToken)->getContent(),true)['data']['history'];
     $assert(count($logs)===1 && $logs[0]['kind']==='global','History leaked another account records');
     $assert(App\Services\AuthService::decryptAuthData($token)!==false,'Reset revoked login');
     $redis = Illuminate\Support\Facades\Redis::getFacadeRoot();

@@ -17,6 +17,7 @@ vi.stubGlobal("localStorage", {
 });
 const {
     default: i18n,
+    languageReady,
     languages,
     resolveLanguage,
     changeLanguage,
@@ -26,6 +27,7 @@ const {
     loginLanguagePreference,
     applyAccountLanguage,
 } = await import("./i18n");
+await languageReady;
 const catalogs = Object.fromEntries(
     languages.map((l) => [
         l.code,
@@ -78,6 +80,14 @@ describe("landing and interactive control translations", () => {
     });
 });
 describe("localization resources", () => {
+    it("loads only the requested extra catalog and keeps language switching translated", async () => {
+        expect(i18n.hasResourceBundle("zh-TW", "translation")).toBe(true);
+        expect(i18n.hasResourceBundle("ja-JP", "translation")).toBe(false);
+        await i18n.changeLanguage("ja-JP");
+        expect(tx("登录")).toBe(catalogs["ja-JP"]["登录"]);
+        expect(i18n.hasResourceBundle("ja-JP", "translation")).toBe(true);
+        await i18n.changeLanguage("zh-TW");
+    });
     for (const { code } of languages)
         it(`${code} covers every message and preserves interpolation`, () => {
             for (const [key, value] of Object.entries(catalogs["zh-CN"])) {

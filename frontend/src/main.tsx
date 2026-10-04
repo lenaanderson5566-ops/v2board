@@ -1,5 +1,6 @@
 import {
     tx,
+    languageReady,
     locale,
     setLanguagePersistence,
     applyAccountLanguage,
@@ -60,7 +61,8 @@ setLanguagePersistence(async (language) => {
     await request("user/update", { language });
     return true;
 });
-const UserContent = React.lazy(() => import("./user-entry"));
+const loadUserContent = () => import("./user-entry");
+const UserContent = React.lazy(loadUserContent);
 const AdminContent = React.lazy(() => import("./admin-entry"));
 const Landing = React.lazy(() => import("./Landing"));
 import "./style.css";
@@ -443,6 +445,9 @@ function App() {
         }
         if (boot.landing && location.hash.startsWith("#/"))
             location.replace("/app" + location.hash);
+        // Start code loading alongside the account request; do not delay authentication on it.
+        if (boot.mode === "user" && !boot.landing && localStorage.getItem(storageKey))
+            void loadUserContent().catch(() => {});
         if (!boot.landing && localStorage.getItem(storageKey))
             readRequest("user/info")
                 .then(async (r) => {
@@ -813,8 +818,8 @@ class ErrorBoundary extends React.Component<
         );
     }
 }
-createRoot(document.getElementById("root")!).render(
+void languageReady.then(() => createRoot(document.getElementById("root")!).render(
     <ErrorBoundary>
         <App />
     </ErrorBoundary>,
-);
+));

@@ -1,4 +1,5 @@
 // @vitest-environment jsdom
+import { Suspense } from "react";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import {
     cleanup,
@@ -143,12 +144,14 @@ it("preserves payment selection and QR content while an order refreshes", async 
         type: 0,
         data: "https://pay.example/preserve",
     });
-    const view = render(<Orders tradeNo="test-order" />);
-    fireEvent.click(screen.getByRole("radio", { name: /QR/ }));
+    const view = render(<Suspense fallback={<p>Loading checkout</p>}><Orders tradeNo="test-order" /></Suspense>);
+    const qrMethod = await screen.findByRole("radio", { name: /QR/ });
+    await waitFor(() => expect((screen.getByRole("radio", { name: /Card/ }) as HTMLInputElement).checked).toBe(true));
+    fireEvent.click(qrMethod);
     fireEvent.click(screen.getByRole("button", { name: "确认支付" }));
     await screen.findByDisplayValue("https://pay.example/preserve");
     mocks.detailLoading = true;
-    view.rerender(<Orders tradeNo="test-order" />);
+    view.rerender(<Suspense fallback={<p>Loading checkout</p>}><Orders tradeNo="test-order" /></Suspense>);
     expect(
         screen.getByDisplayValue("https://pay.example/preserve"),
     ).toBeTruthy();
@@ -156,7 +159,7 @@ it("preserves payment selection and QR content while an order refreshes", async 
         (screen.getByRole("radio", { name: /QR/ }) as HTMLInputElement).checked,
     ).toBe(true);
     mocks.detailLoading = false;
-    view.rerender(<Orders tradeNo="test-order" />);
+    view.rerender(<Suspense fallback={<p>Loading checkout</p>}><Orders tradeNo="test-order" /></Suspense>);
     expect(
         screen.getByDisplayValue("https://pay.example/preserve"),
     ).toBeTruthy();
@@ -245,7 +248,7 @@ it("selects a method without charging and shows fixed plus percentage fees befor
     checkout();
     expect(screen.getByText("¥10.50")).toBeTruthy();
     expect(screen.getByText("合计 ¥10.50")).toBeTruthy();
-    fireEvent.click(screen.getByRole("radio", { name: /QR/ }));
+    fireEvent.click(await screen.findByRole("radio", { name: /QR/ }));
     expect(screen.getAllByText("¥10.00").length).toBeGreaterThan(0);
     expect(mocks.request).not.toHaveBeenCalled();
     fireEvent.click(screen.getByRole("button", { name: "确认支付" }));

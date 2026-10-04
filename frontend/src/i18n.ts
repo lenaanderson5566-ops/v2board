@@ -1,13 +1,7 @@
 import i18next from "i18next";
 import { initReactI18next } from "react-i18next";
 import zhCN from "./locales/zh-CN.json";
-import zhTW from "./locales/zh-TW.json";
 import enUS from "./locales/en-US.json";
-import jaJP from "./locales/ja-JP.json";
-import koKR from "./locales/ko-KR.json";
-import viVN from "./locales/vi-VN.json";
-import ruRU from "./locales/ru-RU.json";
-import faIR from "./locales/fa-IR.json";
 
 export const languages = [
     { code: "zh-CN", name: "简体中文" },
@@ -30,17 +24,30 @@ export function resolveLanguage(value: string): string {
     if (matched) return matched.code;
     return "en-US";
 }
+const localeLoaders: Record<string, () => Promise<{ default: Record<string, string> }>> = {
+    "zh-TW": () => import("./locales/zh-TW.json"),
+    "ja-JP": () => import("./locales/ja-JP.json"),
+    "ko-KR": () => import("./locales/ko-KR.json"),
+    "vi-VN": () => import("./locales/vi-VN.json"),
+    "ru-RU": () => import("./locales/ru-RU.json"),
+    "fa-IR": () => import("./locales/fa-IR.json"),
+};
+// Keep common/fallback languages available synchronously; fetch other catalogs only when needed.
+i18next.use({
+    type: "backend",
+    init() {},
+    read(language: string, namespace: string, callback: (error: Error | null, data: Record<string, string> | null) => void) {
+        const loader = namespace === "translation" ? localeLoaders[language] : undefined;
+        if (!loader) { callback(null, {}); return; }
+        loader().then(({ default: catalog }) => callback(null, catalog), (error: Error) => callback(error, null));
+    },
+});
 const saved = localStorage.getItem(languageKey);
-void i18next.use(initReactI18next).init({
+export const languageReady = i18next.use(initReactI18next).init({
+    partialBundledLanguages: true,
     resources: {
         "zh-CN": { translation: zhCN },
-        "zh-TW": { translation: zhTW },
         "en-US": { translation: enUS },
-        "ja-JP": { translation: jaJP },
-        "ko-KR": { translation: koKR },
-        "vi-VN": { translation: viVN },
-        "ru-RU": { translation: ruRU },
-        "fa-IR": { translation: faIR },
     },
     lng:
         window.V2BOARD?.mode === "admin"
@@ -75,14 +82,23 @@ export function setLanguagePersistence(save: (value: string) => Promise<boolean>
 export function loginLanguagePreference() {
     return { language: locale(), language_selected: sessionStorage.getItem(pendingLanguageKey) === locale() };
 }
+async function ensureCatalog(value: string) {
+    if (!i18next.hasResourceBundle(value, "translation") && localeLoaders[value]) {
+        const { default: catalog } = await localeLoaders[value]();
+        i18next.addResourceBundle(value, "translation", catalog, true, true);
+    }
+}
 export async function applyAccountLanguage(value: unknown) {
     sessionStorage.removeItem(pendingLanguageKey);
     if (typeof value !== "string" || !languages.some((l) => l.code === value)) return;
+    await ensureCatalog(value);
     localStorage.setItem(languageKey, value);
     await i18next.changeLanguage(value);
 }
 export async function changeLanguage(value: string) {
     if (!languages.some((l) => l.code === value)) return;
+    // Do not change the saved preference if the language chunk cannot be downloaded.
+    await ensureCatalog(value);
     // Save first: a failed request leaves the previous preference intact.
     const savedToAccount = persistLanguage ? await persistLanguage(value) : false;
     if (savedToAccount) sessionStorage.removeItem(pendingLanguageKey);

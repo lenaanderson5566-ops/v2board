@@ -2,6 +2,7 @@
 require __DIR__.'/../vendor/autoload.php';
 $app = require __DIR__.'/../bootstrap/app.php';
 $app->make(Illuminate\Contracts\Console\Kernel::class)->bootstrap();
+set_exception_handler(function (Throwable $error) { fwrite(STDERR, $error->getMessage().PHP_EOL); exit(1); });
 if (!app()->environment('local')) throw new RuntimeException('Local test only');
 use App\Models\User;
 use App\Models\Plan;
@@ -18,8 +19,8 @@ $assert=function($ok,$label)use(&$checks){if(!$ok)throw new RuntimeException($la
 $kernel=$app->make(Illuminate\Contracts\Http\Kernel::class);
 $index=0;$auths=[];
 $call=function($path,$body,$token=null)use($kernel,&$index){
- $r=Illuminate\Http\Request::create('/api/v1/'.$path,$body===null?'GET':'POST',$body??[],[],[],['REMOTE_ADDR'=>'192.0.2.'.(++$index)]);
- $r->headers->set('Accept','application/json');if($token)$r->headers->set('Authorization',$token);
+ $r=Illuminate\Http\Request::create('/api/v10/'.$path,$body===null?'GET':'POST',$body??[],[],[],['REMOTE_ADDR'=>'192.0.2.'.(++$index)]);
+ $r->headers->set('Accept','application/json');if($token)$r->headers->set('Authorization','Bearer '.$token);
  return $kernel->handle($r);
 };
 DB::beginTransaction();
@@ -37,13 +38,13 @@ try {
  $active=$make(['expired_at'=>time()+86400*90,'u'=>800,'d'=>100,'credit_balance'=>500,'plan_id'=>$recurring->id,'group_id'=>2]);
  $service->migrateUser($active);$assert($active->transfer_enable===1000,'Recurring user migrated');
  $auth=new App\Services\AuthService($active);$auths[]=$auth;$token=$auth->generateAuthData(Illuminate\Http\Request::create('/'))['auth_data'];
- $assert($call('user/credit/fetch',null)->getStatusCode()===403,'Anonymous catalog accepted');
- $catalog=json_decode($call('user/credit/fetch',null,$token)->getContent(),true)['data'];
+ $assert($call('credit-packages',null)->getStatusCode()===401,'Anonymous catalog accepted');
+ $catalog=json_decode($call('credit-packages',null,$token)->getContent(),true)['data'];
  $assert(in_array($plan->id,array_column($catalog,'id')),'Credit catalog missing one-time plan');
- $plans=json_decode($call('user/plan/fetch',null,$token)->getContent(),true)['data'];
+ $plans=json_decode($call('plans',null,$token)->getContent(),true)['data'];
  $assert(!in_array($plan->id,array_column($plans,'id')) && in_array($recurring->id,array_column($plans,'id')),'One-time plan not separated');
- $r=$call('user/order/save',['plan_id'=>$plan->id,'period'=>'onetime_price'],$token);$assert($r->getStatusCode()===200,'Credit order save failed: '.$r->getContent());
- $order=Order::where('trade_no',json_decode($r->getContent(),true)['data'])->firstOrFail();
+ $r=$call('me/orders',['planId'=>$plan->id,'billingPeriod'=>'credits'],$token);$assert($r->getStatusCode()===201,'Credit order save failed: '.$r->getContent());
+ $order=Order::where('trade_no',json_decode($r->getContent(),true)['data']['orderNumber'])->firstOrFail();
  $assert($order->type===5 && $order->credit_bytes===10*1073741824 && !$order->surplus_amount,'Credit order converted subscription');
  $before=$active->fresh()->only(['u','d','transfer_enable','expired_at','plan_id','group_id','device_limit','speed_limit','token']);
  $plan->update(['transfer_enable'=>50]);$order->status=1;$order->save();
@@ -90,7 +91,7 @@ try {
  $assert((new App\Services\ServerService())->getAvailableUsers([1])->contains('id',$fresh->id),'Independent credit account missing from node authentication');
  $assert(!(new App\Services\ServerService())->getAvailableUsers([2])->contains('id',$fresh->id),'Credit account leaked into another node group');
  $assert((new UserService())->getDeviceLimitedUsers()->contains('id',$fresh->id),'Independent account bypassed device checks');
- $info=json_decode($call('user/getSubscribe',null,$token)->getContent(),true)['data'];$assert(array_key_exists('reset_at',$info) && array_key_exists('credit_balance',$info),'API metadata missing');
+ $info=json_decode($call('me/subscription',null,$token)->getContent(),true)['data'];$assert(array_key_exists('resetAt',$info) && array_key_exists('creditBytes',$info),'API metadata missing');
  $assert(TrafficResetSchedule::next(0,strtotime('2027-01-01'),strtotime('2026-10-02 13:45'))===strtotime('2026-11-01 00:00'),'Month-first reset timestamp wrong');
  $assert(TrafficResetSchedule::next(1,strtotime('2027-03-31 12:00'),strtotime('2026-01-31 13:00'))===strtotime('2026-02-28 00:00'),'Month-end clamping wrong');
  $assert(TrafficResetSchedule::next(1,strtotime('2026-10-25 12:00'),strtotime('2026-10-02'))===null,'25-day guard not respected');

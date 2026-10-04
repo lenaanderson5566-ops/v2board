@@ -1,12 +1,12 @@
-import { AccountPreferences } from "./AccountPreferences";
-import { BillingPage } from "./BillingPage";
-import { UsagePage } from "./UsagePage";
+const AccountPreferences = lazy(() => import("./AccountPreferences").then((module) => ({ default: module.AccountPreferences })));
+const BillingPage = lazy(() => import("./BillingPage").then((module) => ({ default: module.BillingPage })));
+const UsagePage = lazy(() => import("./UsagePage").then((module) => ({ default: module.UsagePage })));
 import { e } from "./experience-copy";
-import { SubscriptionPurchase } from "./SubscriptionPurchase";
-import { PaymentCheckout } from "./PaymentCheckout";
-import { EmailInvites } from "./EmailInvites";
+const SubscriptionPurchase = lazy(() => import("./SubscriptionPurchase").then((module) => ({ default: module.SubscriptionPurchase })));
+const PaymentCheckout = lazy(() => import("./PaymentCheckout").then((module) => ({ default: module.PaymentCheckout })));
+const EmailInvites = lazy(() => import("./EmailInvites").then((module) => ({ default: module.EmailInvites })));
 import { tx, locale, languages } from "./i18n";
-import { SubscriptionImport } from "./SubscriptionImport";
+const SubscriptionImport = lazy(() => import("./SubscriptionImport").then((module) => ({ default: module.SubscriptionImport })));
 import { AccountEntry } from "./AccountEntry";
 import { HelpGuides, ContactSupport } from "./HelpGuides";
 import {
@@ -14,7 +14,7 @@ import {
     unresolvedTicket,
     supportPayload,
 } from "./support-flow";
-import { useState, useEffect, useRef, type ReactNode } from "react";
+import { lazy, useState, useEffect, useRef, type ReactNode } from "react";
 import { loadStripe } from "@stripe/stripe-js/pure";
 import type { Stripe, StripeCardElement } from "@stripe/stripe-js";
 import { ArrowUpRight } from "lucide-react";

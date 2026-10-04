@@ -7,7 +7,6 @@
         "dev": "vite --host 127.0.0.1",
         "build": "tsc --noEmit && vite build",
         "test": "vitest run",
-        "audit:admin": "node scripts/audit-admin.mjs",
         "locales:generate": "node scripts/expand-locales.mjs"
     },
     "dependencies": {

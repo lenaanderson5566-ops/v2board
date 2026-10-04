@@ -4,6 +4,7 @@ $app = require __DIR__ . '/../bootstrap/app.php';
 $app->make(Illuminate\Contracts\Console\Kernel::class)->bootstrap();
 if (!app()->environment('local')) throw new RuntimeException('Local test only');
 $checks = 0;
+set_exception_handler(function ($e) { fwrite(STDERR, $e->getMessage()."\n"); exit(1); });
 $assert = function ($condition, $message) use (&$checks) { if (!$condition) throw new RuntimeException($message); $checks++; };
 Illuminate\Support\Facades\DB::beginTransaction();
 $auth = null; $cacheTokens = []; $limitKey = null;
@@ -31,20 +32,20 @@ try {
     $first = $issue(); $second = $issue();
     $kernel = $app->make(Illuminate\Contracts\Http\Kernel::class);
     $call = function ($path,$token,$method='GET') use ($kernel) {
-        $request = Illuminate\Http\Request::create('/api/v1/'.$path,$method);
-        $request->headers->set('Authorization',$token); $request->headers->set('Accept','application/json');
+        $request = Illuminate\Http\Request::create('/api/v10/'.$path,$method);
+        $request->headers->set('Authorization','Bearer '.$token); $request->headers->set('Accept','application/json');
         return $kernel->handle($request);
     };
-    $sessions = json_decode($call('user/getActiveSession',$first)->getContent(),true)['data'];
+    $sessions = json_decode($call('me/sessions',$first)->getContent(),true)['data'];
     $assert(count($sessions)===2 && count(array_filter($sessions,fn($meta)=>isset($meta['auth_data'])))===0, 'Session list leaked login tokens');
     $before = $user->only(['token','uuid','password','plan_id']);
-    $reset = $call('user/resetSecurity',$first,'POST'); $user->refresh();
+    $reset = $call('me/subscription/credential-rotations',$first,'POST'); $user->refresh();
     $assert($reset->getStatusCode()===200 && $user->token!==$before['token'] && $user->uuid!==$before['uuid'], 'Subscription credentials not rotated');
     $assert($user->password===$before['password'] && $user->plan_id===$before['plan_id'], 'Reset changed account credentials or plan');
     $assert(App\Services\AuthService::decryptAuthData($first)!==false, 'Subscription reset logged account out');
-    $assert($call('user/logout',$first,'POST')->getStatusCode()===200, 'Logout route failed');
+    $assert($call('me/session',$first,'DELETE')->getStatusCode()===204, 'Logout route failed');
     $assert(App\Services\AuthService::decryptAuthData($first)===false && App\Services\AuthService::decryptAuthData($second)!==false, 'Logout should revoke only current session');
-    $assert($call('user/info',$first)->getStatusCode()===403, 'Revoked session still accesses API');
+    $assert($call('me',$first)->getStatusCode()===401, 'Revoked session still accesses API');
     $user->update(['is_admin'=>1,'is_staff'=>1,'banned'=>1]);
     foreach ([new App\Http\Middleware\Admin(), new App\Http\Middleware\Staff()] as $guard) {
         $request = Illuminate\Http\Request::create('/'); $request->headers->set('Authorization',$second);

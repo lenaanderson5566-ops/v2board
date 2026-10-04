@@ -17,8 +17,12 @@ class PaymentService
         $this->method = $method;
         $this->class = '\\App\\Payments\\' . $this->method;
         if (!class_exists($this->class)) abort(500, 'gate is not found');
-        if ($id) $payment = Payment::find($id)->toArray();
-        if ($uuid) $payment = Payment::where('uuid', $uuid)->first()->toArray();
+        if ($id || $uuid) {
+            $record = $id ? Payment::find($id) : Payment::where('uuid', $uuid)->first();
+            // A callback URL cannot select a different verifier for this channel's secrets.
+            abort_unless($record && $record->payment === $method, 404, 'Payment channel not found');
+            $payment = $record->toArray();
+        }
         $this->config = [];
         if (isset($payment)) {
             $this->config = $payment['config'];

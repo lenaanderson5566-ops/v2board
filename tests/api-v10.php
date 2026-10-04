@@ -35,6 +35,7 @@ try {
     $assert($r->getStatusCode()===422 && ($j['errors']['billingPeriod'][0] ?? '')==='请填写此项。','Required error is localized');
     [$r,$j]=$call('POST','/api/v10/me/orders',['planId'=>0,'billingPeriod'=>'deposit','depositAmount'=>500],$bearer);
     $assert($r->getStatusCode()===201 && isset($j['data']['orderNumber']),'Deposit creation succeeds');
+    $assert(str_contains($r->headers->get('Cache-Control'),'no-store'),'Private API response must not be cached');
     $depositNumber=$j['data']['orderNumber'];
     foreach ([['planId'=>0,'billingPeriod'=>'monthly','depositAmount'=>500],['planId'=>$plan->id,'billingPeriod'=>'deposit','depositAmount'=>500],['planId'=>0,'billingPeriod'=>'deposit','depositAmount'=>0],['planId'=>0,'billingPeriod'=>'deposit','depositAmount'=>1.5],['planId'=>0,'billingPeriod'=>'deposit','depositAmount'=>9999999]] as $invalidOrder) {
         [$bad,$problem]=$call('POST','/api/v10/me/orders',$invalidOrder,$bearer,'zh-CN');
@@ -104,6 +105,7 @@ try {
     app('router')->get('/custom-subscription', [App\Http\Controllers\CustomSubscriptionController::class, 'subscribe'])->middleware('client');
     [$r,$j]=$call('GET','/custom-subscription?token='.$user->token.'&flag=sing');
     $assert($r->getStatusCode()===200 && isset($j['outbounds']),'Existing custom subscription remains usable');
+    $assert(str_contains($r->headers->get('Cache-Control'),'no-store'),'Custom subscription must not be cached');
     $user->language='zh-TW'; $user->save();
     foreach ([''=>'zh-TW','en-US'=>'en-US','unsupported'=>'zh-TW'] as $header=>$expected) {
         [$r,$j]=$call('GET','/api/v10/subscriptions/'.$user->token.'?format=sing-box',[],null,$header);
@@ -157,6 +159,8 @@ try {
     $assert((int)App\Payments\V10TestPayment::$lastOrder['total_amount']===1050 && App\Payments\V10TestPayment::$lastOrder['stripe_token']==='test-card-token','Checkout fee and payment token reach provider');
     $assert($order->fresh()->payment_id===$payment->id && $order->fresh()->handling_amount===50 && $order->fresh()->status===0,'Checkout persists fee without prematurely activating');
     $notifyBody=['signature'=>'local-test-signature','orderNumber'=>$order->trade_no];
+    [$bad,$problem]=$call('POST','/api/v10/webhooks/payments/MGate/'.$payment->uuid,$notifyBody);
+    $assert($bad->getStatusCode()>=400 && $order->fresh()->status===0,'Callback cannot choose a different provider for channel');
     [$r,$j]=$call('POST','/api/v10/webhooks/payments/V10TestPayment/'.$payment->uuid,$notifyBody);
     $assert($r->getStatusCode()===200 && $r->getContent()==='success' && $order->fresh()->status===1,'Native payment callback');
     [$r,$j]=$call('POST','/api/v1/guest/payment/notify/V10TestPayment/'.$payment->uuid,$notifyBody);

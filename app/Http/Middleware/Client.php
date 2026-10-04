@@ -72,6 +72,10 @@ class Client
         $request->merge([
             'user' => $user
         ]);
-        return $next($request);
+        $response = $next($request);
+        if ($response instanceof \Symfony\Component\HttpFoundation\Response) {
+            $response->headers->set('Cache-Control', 'private, no-store');
+        }
+        return $response;
     }
 }

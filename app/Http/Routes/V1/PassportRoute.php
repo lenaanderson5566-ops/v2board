@@ -13,12 +13,9 @@ class PassportRoute
             // Auth
             $router->post('/auth/register', 'V1\\Passport\\AuthController@register');
             $router->post('/auth/login', 'V1\\Passport\\AuthController@login')->middleware('throttle:30,1');
-            $router->get ('/auth/token2Login', 'V1\\Passport\\AuthController@token2Login');
             $router->post('/auth/forget', 'V1\\Passport\\AuthController@forget');
-            $router->post('/auth/getQuickLoginUrl', 'V1\\Passport\\AuthController@getQuickLoginUrl');
             // Comm
             $router->post('/comm/sendEmailVerify', 'V1\\Passport\\CommController@sendEmailVerify');
-            $router->post('/comm/pv', 'V1\\Passport\\CommController@pv');
         });
     }
 }

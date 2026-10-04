@@ -125,12 +125,17 @@ class ClientMirrorService
         $file=storage_path('app/client-mirrors/manifest.json');
         if(!is_file($file))return [];
         $s=json_decode(file_get_contents($file),true);$out=[];
-        foreach(($s['published']??[]) as $target=>$id)if(preg_match('/^[a-f0-9-]{36}$/i',$id) && is_file(dirname($file).'/'.$id.'.bin'))$out[$target]=url('/client-mirrors/'.$id);
+        foreach(($s['published']??[]) as $target=>$id)if(preg_match('/^[a-f0-9-]{36}$/i',$id) && is_file(dirname($file).'/'.$id.'.bin'))$out[$target]=url('/api/v10/public/client-installers/'.$id.'/content');
         return $out;
     }
     public function serve(string $id) {
-        $row=$this->state(function(&$s)use($id){abort_unless(in_array($id,$s['published'],true),404);return $s['items'][$id];});
-        $file=$this->directory().'/'.$id.'.bin';abort_unless(is_file($file),404);
+        abort_unless(preg_match('/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i', $id),404);
+        $dir=$this->directory();
+        $manifest=$dir.'/manifest.json';
+        $state=is_file($manifest) ? json_decode(file_get_contents($manifest),true,512,JSON_THROW_ON_ERROR) : [];
+        abort_unless(in_array($id,$state['published'] ?? [],true) && isset($state['items'][$id]),404);
+        $row=$state['items'][$id];
+        $file=$dir.'/'.$id.'.bin';abort_unless(is_file($file),404);
         $name=preg_replace('/[^a-zA-Z0-9._-]/','_', $row['name']);
         return response()->download($file,$name,['Content-Type'=>'application/octet-stream','X-Content-Type-Options'=>'nosniff','Cache-Control'=>'private, max-age=0']);
     }

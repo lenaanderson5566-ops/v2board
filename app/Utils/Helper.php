@@ -108,11 +108,8 @@ class Helper
     public static function getSubscribeUrl($token)
     {
         $submethod = (int)config('v2board.show_subscribe_method', 0);
-        $path = config('v2board.subscribe_path', '/api/v1/client/subscribe');
-        if (empty($path)) {
-            $path = '/api/v1/client/subscribe';
-        } 
-        $v10 = request()->is('api/v10/*') && $path === '/api/v1/client/subscribe';
+        $path = '/' . trim((string) config('v2board.subscribe_path', ''), '/');
+        $v10 = in_array($path, ['/', '/api/v1/client/subscribe', '/api/v10/subscriptions'], true);
         $subscribeUrls = explode(',', config('v2board.subscribe_url'));
         $subscribeUrl = $subscribeUrls[rand(0, count($subscribeUrls) - 1)];
         switch ($submethod) {

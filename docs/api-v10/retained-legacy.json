@@ -1,0 +1,13 @@
+[
+  "api/v1/passport/auth/register",
+  "api/v1/passport/auth/login",
+  "api/v1/passport/auth/forget",
+  "api/v1/passport/comm/sendEmailVerify",
+  "api/v1/user/info",
+  "api/v1/user/update",
+  "api/v1/user/logout",
+  "api/v1/guest/telegram/webhook",
+  "api/v1/guest/payment/notify/{method}/{uuid}",
+  "api/v1/client/app/getConfig",
+  "api/v1/client/app/getVersion"
+]

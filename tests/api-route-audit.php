@@ -9,6 +9,8 @@ $assert=function($ok,$label) use (&$checks) { if (!$ok) throw new RuntimeExcepti
 $entries=json_decode(file_get_contents(base_path('docs/api-v10/endpoints.json')),true);
 $contracts=App\Http\Resources\V10\Resource::contracts()['endpoints'];
 $mapping=[];
+$allowlist=json_decode(file_get_contents(base_path('docs/api-v10/retained-legacy.json')),true);
+$seen=[];
 foreach ($entries as $entry) $mapping[$entry['action']][]=(str_starts_with($entry['path'],'webhooks/payments/') ? 'GET/POST' : $entry['method']).' /api/v10/'.$entry['path'];
 foreach (app('router')->getRoutes() as $route) {
     $routeCount++; $uri=$route->uri(); $action=$route->getActionName(); $middleware=$route->gatherMiddleware();
@@ -25,13 +27,16 @@ foreach (app('router')->getRoutes() as $route) {
         if (str_contains($class,'\\V1\\User\\')) $assert(in_array('user',$middleware,true),'Unprotected legacy user route '.$uri);
     }
     if (preg_match('#^api/v1/(user|passport|guest|client)/#',$uri,$match)) {
+        $assert(in_array($uri,$allowlist,true),'Retired route was reintroduced: '.$uri);
+        $seen[]=$uri;
         $retained[$match[1]][]=['method'=>implode('/',array_diff($route->methods(),['HEAD'])),'path'=>'/'.$uri,'new'=>implode('<br>',array_unique($mapping[$action] ?? []))];
     }
 }
+$assert(!array_diff($allowlist,$seen),'A required compatibility route is missing');
 // Exercise every V10 account route through the HTTP kernel without credentials.
 // This cannot invoke business mutations: authorization must reject first.
 foreach ($entries as $entry) {
-    $key=str_replace('\\','/',str_replace('App\\Http\\Controllers\\V1\\','',$entry['action']));
+    $key=$entry['key'] ?? str_replace('\\','/',str_replace('App\\Http\\Controllers\\V1\\','',$entry['action']));
     $contract=collect($contracts)->firstWhere('key',$key);
     $assert($contract!==null,'Missing contract '.$key);
     if ($contract['role']!=='user') continue;
@@ -48,13 +53,16 @@ foreach (['','/api/v1/client/subscribe','/custom-subscription'] as $custom) {
     config(['v2board.subscribe_path'=>$custom]);
     $router=new Illuminate\Routing\Router(app('events'),app());
     $router->group(['prefix'=>'api/v1','namespace'=>'App\\Http\\Controllers'],function($router) { (new App\Http\Routes\V1\ClientRoute())->map($router); });
-    $route=$router->getRoutes()->match(Illuminate\Http\Request::create('/api/v1/client/subscribe','GET'));
-    $assert(str_ends_with($route->getActionName(),'ClientController@subscribe') && in_array('client',$route->gatherMiddleware(),true),'Historical subscription route missing with '.$custom);
+    $assert(in_array('client',$router->getRoutes()->match(Illuminate\Http\Request::create('/api/v1/client/app/getConfig','GET'))->gatherMiddleware(),true),'Client config remains protected');
+    try {
+        $router->getRoutes()->match(Illuminate\Http\Request::create('/api/v1/client/subscribe','GET'));
+        $assert(false,'Old default subscription was reintroduced');
+    } catch (Symfony\Component\HttpKernel\Exception\NotFoundHttpException $e) { $assert(true,'Old subscription is retired'); }
 }
 config(['v2board.subscribe_path'=>$original]);
 if (in_array('--write-inventory',$argv,true)) {
-    $doc="# 后台之外的保留接口\n\n此清单由实际注册路由生成：`php tests/api-route-audit.php --write-inventory`。不包含 V10 新接口、管理/风控/客服后台接口。GET 路由同时支持 HEAD，表中省略 HEAD。旧接口不设自动停用日期；保留不代表推荐新功能继续使用。\n\n";
-    $titles=['passport'=>'旧登录与注册接口','user'=>'旧用户接口','guest'=>'旧公共接口与回调','client'=>'旧订阅与客户端接口'];
+    $doc="# 后台之外的保留接口\n\n此清单由实际注册路由生成：`php tests/api-route-audit.php --write-inventory`。不包含 V10 新接口、管理/风控/客服后台接口。GET 路由同时支持 HEAD，表中省略 HEAD。仅表中入口继续保留；其余旧用户业务与公共内容 API 已移除。认证入口供现有后台使用。\n\n";
+    $titles=['passport'=>'后台依赖的认证接口','user'=>'后台依赖的账户接口','guest'=>'旧公共接口与回调','client'=>'旧订阅与客户端接口'];
     $count=0;
     foreach ($titles as $group=>$title) {
         $rows=$retained[$group] ?? []; $count+=count($rows);
@@ -68,7 +76,7 @@ if (in_array('--write-inventory',$argv,true)) {
         foreach ((new ReflectionClass($class))->getMethods(ReflectionMethod::IS_PUBLIC) as $method) if ($method->getDeclaringClass()->getName()===$class && !$method->isConstructor()) $methods[]=$method->getName();
         $doc.='| `'.lcfirst(substr($name,0,-10)).'` | `'.implode('`, `',$methods)."` |\n";
     }
-    $doc.="\nV2 保留 `/api/v2/server/config`（同样接受以上方法），使用节点 token 和 node_id；当前没有 V2 用户接口。\n\n## 其他保留入口\n\n| 方法 | 路径 | 用途与条件 |\n|---|---|---|\n| GET/HEAD | 管理员配置的 `subscribe_path` | 自定义订阅路径，使用原 token 规则；与默认旧路径及 V10 同时可用 |\n| GET/HEAD | `/client-mirrors/{id}` | 已发布安装包文件下载，UUID 标识，无 JSON 包装 |\n\n`/` 与 `/app` 是网页入口而非 API，也继续保留。后台安全路径、运营路径和客服 `/api/v1/staff/*` 不在本清单范围内。\n\n## 兼容说明\n\n- 上表旧用户/登录/公共/客户端路由共 {$count} 条；前端用户业务已通过集中传输层使用 V10，旧入口保留给历史版本和已有链接。\n- 旧 `invite/save` 保留原来的 410（功能已退役），不代表恢复邀请码注册。\n- 支付与 Telegram 的旧回调继续验证原签名并返回供应商要求的响应；新生成地址使用 V10。\n- 旧接口中的 GET 写操作保持历史契约；对应 V10 已使用 POST/DELETE，不应在新调用中继续使用旧 GET。\n- 原节点动态分发属于明确保留的历史协议，未将这种设计带入 V10。\n";
+    $doc.="\nV2 保留 `/api/v2/server/config`（同样接受以上方法），使用节点 token 和 node_id；当前没有 V2 用户接口。\n\n## 其他保留入口\n\n| 方法 | 路径 | 用途与条件 |\n|---|---|---|\n| GET/HEAD | 管理员配置的 `subscribe_path` | 自定义订阅路径，使用原 token 规则；与 V10 同时可用；旧默认路径已移除 |\n| GET/HEAD | `/api/v10/public/client-installers/{installerId}/content` | 镜像下载新版入口；原 `/client-mirrors/{id}` 已移除 |\n\n`/` 与 `/app` 是网页入口而非 API，也继续保留。后台安全路径、运营路径和客服 `/api/v1/staff/*` 不在本清单范围内。\n\n## 兼容说明\n\n- 上表旧用户/登录/公共/客户端路由共 {$count} 条；前端用户业务已通过集中传输层使用 V10，仅保留后台依赖、历史回调及订阅入口。\n- 旧用户业务 API（包括 `invite/save`）已移除；使用 V10。\n- 支付与 Telegram 的旧回调继续验证原签名并返回供应商要求的响应；新生成地址使用 V10。\n- 不再注册旧用户业务中的 GET 写操作。\n- 原节点动态分发属于明确保留的历史协议，未将这种设计带入 V10。\n";
     file_put_contents(base_path('docs/api-v10/retained-endpoints.md'),$doc);
 }
 echo "Route audit: {$routeCount} registered routes, {$protectedCount} V10 authentication checks, {$checks} checks passed\n";

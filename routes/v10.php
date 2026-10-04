@@ -67,3 +67,4 @@
 \Illuminate\Support\Facades\Route::match(['GET', 'HEAD'], 'knowledge-articles/{articleId}', [\App\Http\Controllers\V10\UserKnowledgeController::class, 'getKnowledgeArticlesArticleId'])->name('v10.getKnowledgeArticlesArticleId');
 \Illuminate\Support\Facades\Route::match(['GET', 'HEAD'], 'plans/{planId}', [\App\Http\Controllers\V10\UserPlanController::class, 'getPlansPlanId'])->name('v10.getPlansPlanId');
 \Illuminate\Support\Facades\Route::match(['GET', 'HEAD'], 'announcements/{notificationId}', [\App\Http\Controllers\V10\UserNoticeController::class, 'getAnnouncementsNotificationId'])->name('v10.getAnnouncementsNotificationId');
+\Illuminate\Support\Facades\Route::match(['GET', 'HEAD'], 'public/client-installers/{installerId}/content', [\App\Http\Controllers\V10\PublicMirrorController::class, 'getPublicClientInstallersInstallerIdContent'])->name('v10.getPublicClientInstallersInstallerIdContent');

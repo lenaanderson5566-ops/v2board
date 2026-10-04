@@ -109,3 +109,4 @@ export type V10GetMeTicketsTicketIdInput = { "page"?: number; "pageSize"?: numbe
 export type V10GetKnowledgeArticlesArticleIdInput = { "keyword"?: string };
 export type V10GetPlansPlanIdInput = {  };
 export type V10GetAnnouncementsNotificationIdInput = { "page"?: number; "pageSize"?: number };
+export type V10GetPublicClientInstallersInstallerIdContentInput = {  };

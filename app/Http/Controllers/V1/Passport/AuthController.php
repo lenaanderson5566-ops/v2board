@@ -11,16 +11,8 @@ class AuthController extends \App\Http\Controllers\Controller
     {
         return app(\App\Services\Actions\Passport\AuthActions::class)->login($request);
     }
-    public function token2Login(\Illuminate\Http\Request $request)
-    {
-        return app(\App\Services\Actions\Passport\AuthActions::class)->token2Login($request);
-    }
     public function forget(\App\Http\Requests\Passport\AuthForget $request)
     {
         return app(\App\Services\Actions\Passport\AuthActions::class)->forget($request);
-    }
-    public function getQuickLoginUrl(\Illuminate\Http\Request $request)
-    {
-        return app(\App\Services\Actions\Passport\AuthActions::class)->getQuickLoginUrl($request);
     }
 }

@@ -52,7 +52,5 @@ foreach (['' => 'operations', '/overview' => 'operations', '/risk' => 'risk', '/
     Route::get('/' . $securePath . '/ops-center' . $suffix, function () use ($securePath, $page) { return redirect('/' . $securePath . '#/' . $page); });
 }
 if (!empty(config('v2board.subscribe_path')) && trim(config('v2board.subscribe_path'), '/') !== 'api/v1/client/subscribe') {
-    Route::get(config('v2board.subscribe_path'), 'V1\\Client\\ClientController@subscribe')->middleware('client');
+    Route::get(config('v2board.subscribe_path'), [\App\Http\Controllers\CustomSubscriptionController::class, 'subscribe'])->middleware('client');
 }
-
-Route::get('/client-mirrors/{id}', function (string $id) { return (new \App\Services\ClientMirrorService())->serve($id); })->where('id', '[0-9a-fA-F-]{36}');

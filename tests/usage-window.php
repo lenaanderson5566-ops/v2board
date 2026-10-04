@@ -15,7 +15,7 @@ try {
     App\Models\StatUser::create(['user_id'=>$id+1, 'server_rate'=>1, 'u'=>999, 'd'=>999, 'record_type'=>'d', 'record_at'=>$today]);
     $read = function ($days = null) use ($id) {
         $request = Illuminate\Http\Request::create('/', 'GET', ['user'=>['id'=>$id]] + ($days === null ? [] : ['days'=>$days]));
-        $response = (new App\Http\Controllers\V1\User\StatController())->getTrafficLog($request);
+        $response = (new App\Services\Actions\User\StatActions())->getTrafficLog($request);
         return json_decode($response->getContent(), true)['data'];
     };
     $records = $read(30);

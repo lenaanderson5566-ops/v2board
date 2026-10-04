@@ -1333,5 +1333,28 @@
     "legacyQuery": {
       "id": "resourceId"
     }
+  },
+  {
+    "legacy": "public/client-installers/{installerId}/content",
+    "legacyMethod": "GET",
+    "method": "GET",
+    "path": "public/client-installers/{installerId}/content",
+    "action": "App\\Http\\Controllers\\V10\\PublicMirrorController@getPublicClientInstallersInstallerIdContent",
+    "key": "Public/MirrorController@download",
+    "parameters": [
+      {
+        "name": "id",
+        "type": null,
+        "optional": false
+      }
+    ],
+    "bindings": {
+      "installerId": "id"
+    },
+    "scope": "public",
+    "role": "public",
+    "status": 200,
+    "middleware": [],
+    "raw": true
   }
 ]

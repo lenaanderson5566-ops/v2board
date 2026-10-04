@@ -10,7 +10,7 @@ use App\Services\OrderService;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use App\Http\Requests\User\OrderSave;
-use App\Http\Controllers\V1\User\OrderController;
+use App\Services\Actions\User\OrderActions as OrderController;
 $checks = 0;
 $assert = function ($ok, $label) use (&$checks) { if (!$ok) throw new RuntimeException($label); $checks++; };
 DB::beginTransaction();

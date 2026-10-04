@@ -97,7 +97,7 @@ def input_schema(field):
     return {'type': 'string', **({'format': 'email'} if field == 'email' else {})}
 
 paths = {}
-mapping = ['# Legacy → V10 mapping', '', 'Admin, operations/risk, staff and node APIs retain all existing paths and schemas. All mapped V1 routes remain callable. See contracts.json for exact field projections.', '', '| Existing symbol | V10 method and path | Permission | Resource |', '|---|---|---|---|']
+mapping = ['# Legacy → V10 mapping', '', 'Admin, operations/risk, staff and node APIs retain all existing paths and schemas. Legacy symbols are historical mappings, not a list of callable routes. Only the explicit retained-endpoints allowlist remains callable. See contracts.json for exact field projections.', '', '| Existing symbol | V10 method and path | Permission | Resource |', '|---|---|---|---|']
 for entry in entries:
     operation_id = entry['method'].lower() + ''.join(w[0].upper() + w[1:] for w in re.findall(r'[A-Za-z0-9]+', entry['path']))
     contract = contracts['endpoints'][operation_id]
@@ -110,19 +110,25 @@ for entry in entries:
     success = {'description': 'Success', 'headers': {'X-Request-ID': {'schema': {'type': 'string'}}, 'Content-Language': {'schema': {'type': 'string'}}}}
     if status != '204':
         if contract['raw']:
-            media = 'application/octet-stream' if 'banner-images' in entry['path'] else ('text/plain' if entry['path'].startswith('webhooks/') else 'application/yaml')
+            media = 'application/octet-stream' if ('banner-images' in entry['path'] or 'client-installers' in entry['path']) else ('text/plain' if entry['path'].startswith('webhooks/') else 'application/yaml')
             success['content'] = {media: {'schema': {'type': 'string', **({'format': 'binary'} if media == 'application/octet-stream' else {})}}}
             if entry['path'].startswith('subscriptions/'):
                 success['content']['application/json'] = {'schema': {'type': 'object', 'description': 'Native client configuration, not a JSON API envelope.'}}
         else:
             success['content'] = {'application/json': {'schema': obj({'data': resource(contract['output']), 'meta': obj({'pagination': reference('Pagination'), 'taskId': {'type': 'string'}})}, ['data'])}}
     responses = {status: success}
-    if not contract['raw']:
+    if not contract['raw'] or entry.get('key') == 'Public/MirrorController@download':
         for code in [401, 403, 404, 409, 410, 422, 429, 500]: responses[str(code)] = {'description': 'Problem details', 'content': {'application/problem+json': {'schema': reference('Problem')}}}
     if entry['path'] == 'me/nodes':
         params.append({'name': 'If-None-Match', 'in': 'header', 'schema': {'type': 'string'}})
         responses['304']={'description':'Unchanged node list; empty body, ETag retained.'}
-    operation = {'operationId': operation_id, 'tags': [entry['scope']], 'summary': entry['method'] + ' ' + entry['path'], 'parameters': params, 'responses': responses, 'security': [{'bearerAuth': []}] if entry['role'] == 'user' else [], 'x-permission': entry['role'], 'x-legacy-path': '/api/v1/' + entry['legacy']}
+    operation = {'operationId': operation_id, 'tags': [entry['scope']], 'summary': entry['method'] + ' ' + entry['path'], 'parameters': params, 'responses': responses, 'security': [{'bearerAuth': []}] if entry['role'] == 'user' else [], 'x-permission': entry['role']}
+    if not entry.get('key'): operation['x-legacy-path'] = '/api/v1/' + entry['legacy']
+    if entry.get('key') == 'Public/MirrorController@download':
+        operation['description'] = 'Published installer download. Supports HEAD and byte ranges; binary content is not enveloped. Unpublished or unknown IDs return 404.'
+        params.append({'name': 'Range', 'in': 'header', 'schema': {'type': 'string'}})
+        responses['206'] = {**success, 'description': 'Partial installer content'}
+        responses['416'] = {'description': 'Requested range is not satisfiable'}
     if entry['role'] == 'user': operation['description'] = 'Requires an active session. Order and ticket identifiers are checked against the authenticated owner. Unauthenticated: 401; banned account: 403.'
     if entry['path'].startswith('webhooks/'):
         operation['description'] = 'Provider-native signature verification and response. Payment notifications are idempotent; Telegram requires X-Telegram-Bot-Api-Secret-Token. Historical callback URLs remain supported.'
@@ -133,7 +139,8 @@ for entry in entries:
         operation['requestBody'] = {'required': bool(required.get(contract['key'])), 'content': {'application/json': {'schema': reference(request_name)}}}
     for method in entry.get('methods', [entry['method']]):
         paths.setdefault('/' + entry['path'], {})[method.lower()] = {**operation, 'operationId': operation_id + (method.title() if method != entry['method'] else '')}
-    mapping.append(f"| `{entry['legacyMethod']} {entry['legacy']}` | `{entry['method']} /api/v10/{entry['path']}` | {entry['role']} | {contract['output']} |")
+    legacy_label = 'New native resource' if entry.get('key') else entry['legacyMethod'] + ' ' + entry['legacy']
+    mapping.append(f"| `{legacy_label}` | `{entry['method']} /api/v10/{entry['path']}` | {entry['role']} | {contract['output']} |")
 
 document = {'openapi': '3.0.3', 'info': {'title': 'FastDog user API', 'version': '10.0.0', 'description': 'Parallel user API. Administrative, staff, operations and node communication contracts are unchanged.'}, 'servers': [{'url': '/api/v10'}], 'paths': paths, 'components': {'securitySchemes': {'bearerAuth': {'type': 'http', 'scheme': 'bearer', 'bearerFormat': 'JWT'}}, 'schemas': schemas}}
 (root / 'docs/api-v10/openapi.json').write_text(json.dumps(document, ensure_ascii=False, indent=2) + '\n', encoding='utf-8')

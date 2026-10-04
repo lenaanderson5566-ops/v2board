@@ -1733,6 +1733,19 @@
       "path": "announcements/{notificationId}",
       "method": "GET",
       "key": "User/NoticeController@fetch"
+    },
+    "getPublicClientInstallersInstallerIdContent": {
+      "input": {},
+      "output": "scalar",
+      "role": "public",
+      "status": 200,
+      "raw": true,
+      "bindings": {
+        "installerId": "id"
+      },
+      "path": "public/client-installers/{installerId}/content",
+      "method": "GET",
+      "key": "Public/MirrorController@download"
     }
   }
 }

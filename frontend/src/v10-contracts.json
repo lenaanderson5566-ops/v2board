@@ -1733,6 +1733,19 @@
       "path": "announcements/{notificationId}",
       "method": "GET",
       "key": "User/NoticeController@fetch"
+    },
+    "getPublicClientInstallersInstallerIdContent": {
+      "input": {},
+      "output": "scalar",
+      "role": "public",
+      "status": 200,
+      "raw": true,
+      "bindings": {
+        "installerId": "id"
+      },
+      "path": "public/client-installers/{installerId}/content",
+      "method": "GET",
+      "key": "Public/MirrorController@download"
     }
   },
   "routes": {
@@ -1797,7 +1810,8 @@
     "user/comm/getStripePublicKey": "getPaymentMethodsPaymentIdPublicKey",
     "user/knowledge/fetch": "getKnowledgeArticles",
     "user/knowledge/getCategory": "getKnowledgeCategories",
-    "user/stat/getTrafficLog": "getMeTrafficRecords"
+    "user/stat/getTrafficLog": "getMeTrafficRecords",
+    "public/client-installers/{installerId}/content": "getPublicClientInstallersInstallerIdContent"
   },
   "details": {
     "user/ticket/fetch": "getMeTicketsTicketId",
@@ -1868,6 +1882,7 @@
     "POST user/comm/getStripePublicKey": "getPaymentMethodsPaymentIdPublicKey",
     "GET user/knowledge/fetch": "getKnowledgeArticles",
     "GET user/knowledge/getCategory": "getKnowledgeCategories",
-    "GET user/stat/getTrafficLog": "getMeTrafficRecords"
+    "GET user/stat/getTrafficLog": "getMeTrafficRecords",
+    "GET public/client-installers/{installerId}/content": "getPublicClientInstallersInstallerIdContent"
   }
 }

@@ -1,6 +1,6 @@
 # Legacy → V10 mapping
 
-Admin, operations/risk, staff and node APIs retain all existing paths and schemas. All mapped V1 routes remain callable. See contracts.json for exact field projections.
+Admin, operations/risk, staff and node APIs retain all existing paths and schemas. Legacy symbols are historical mappings, not a list of callable routes. Only the explicit retained-endpoints allowlist remains callable. See contracts.json for exact field projections.
 
 | Existing symbol | V10 method and path | Permission | Resource |
 |---|---|---|---|
@@ -71,3 +71,4 @@ Admin, operations/risk, staff and node APIs retain all existing paths and schema
 | `GET user/knowledge/fetch` | `GET /api/v10/knowledge-articles/{articleId}` | user | articles |
 | `GET user/plan/fetch` | `GET /api/v10/plans/{planId}` | user | flex:plan |
 | `GET user/notice/fetch` | `GET /api/v10/announcements/{notificationId}` | user | flex:notification |
+| `New native resource` | `GET /api/v10/public/client-installers/{installerId}/content` | public | scalar |

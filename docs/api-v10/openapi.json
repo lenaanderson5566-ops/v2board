@@ -10025,6 +10025,174 @@
         "x-legacy-path": "/api/v1/user/notice/fetch",
         "description": "Requires an active session. Order and ticket identifiers are checked against the authenticated owner. Unauthenticated: 401; banned account: 403."
       }
+    },
+    "/public/client-installers/{installerId}/content": {
+      "get": {
+        "operationId": "getPublicClientInstallersInstallerIdContent",
+        "tags": [
+          "public"
+        ],
+        "summary": "GET public/client-installers/{installerId}/content",
+        "parameters": [
+          {
+            "name": "installerId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "Accept-Language",
+            "in": "header",
+            "schema": {
+              "type": "string"
+            },
+            "description": "Supported language tags with optional quality weights."
+          },
+          {
+            "name": "Range",
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "headers": {
+              "X-Request-ID": {
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "Content-Language": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "content": {
+              "application/octet-stream": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Problem details",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Problem details",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Problem details",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Problem details",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "410": {
+            "description": "Problem details",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Problem details",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Problem details",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Problem details",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "206": {
+            "description": "Partial installer content",
+            "headers": {
+              "X-Request-ID": {
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "Content-Language": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "content": {
+              "application/octet-stream": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            }
+          },
+          "416": {
+            "description": "Requested range is not satisfiable"
+          }
+        },
+        "security": [],
+        "x-permission": "public",
+        "description": "Published installer download. Supports HEAD and byte ranges; binary content is not enveloped. Unpublished or unknown IDs return 404."
+      }
     }
   },
   "components": {
@@ -12212,6 +12380,10 @@
             "default": 20
           }
         }
+      },
+      "getPublicClientInstallersInstallerIdContentInput": {
+        "type": "object",
+        "properties": {}
       }
     }
   }

@@ -38,7 +38,7 @@ allowed={
  'User/NoticeController@inbox':'page pageSize','User/NoticeController@fetch':'notificationId page pageSize',
  'User/KnowledgeController@fetch':'articleId keyword','User/StatController@getTrafficLog':'days page pageSize',
  'Guest/BannerController@fetch':'placement'}
-def key(e):return e['action'].split('V1\\')[1].replace('\\','/')
+def key(e):return e.get('key') or e['action'].split('V1\\')[1].replace('\\','/')
 # Schema notation: source field, conversion, nested named schema. Only declared fields leave the server.
 schemas={}
 def schema(name, fields):
@@ -112,7 +112,7 @@ outputs={
 contracts={};controllers={};routes=['<?php','// Explicit V10 resources. Administrative and node routes remain unchanged.']
 for i,e in enumerate(entries):
  k=key(e);name=e['method'].lower()+''.join(x[0].upper()+x[1:] for x in re.findall(r'[A-Za-z0-9]+',e['path']));area,action=k.split('@');controller=area.replace('/','')
- raw=e['scope']=='client' and not k.endswith('getVersion') or k.startswith('Guest/Payment') or k.startswith('Guest/Telegram') or k.endswith('BannerController@image')
+ raw=e.get('raw',False) or e['scope']=='client' and not k.endswith('getVersion') or k.startswith('Guest/Payment') or k.startswith('Guest/Telegram') or k.endswith('BannerController@image')
  names=allowed.get(k,'').split();imap={n:inputs[n] for n in names}
  if k=='User/PlanController@fetch':imap={'planId':'id'}
  if k=='User/NoticeController@fetch':imap.update({'pageSize':'pageSize'})

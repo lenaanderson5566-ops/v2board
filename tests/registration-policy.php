@@ -39,7 +39,7 @@ try{
  $assert(!$inv->fresh()->accepted_at,'OTP consumed invitation');
  config(['v2board.stop_register'=>1]);$send(['email'=>$emails[1],'isforget'=>1]);
  $assert(Queue::pushed(App\Jobs\SendEmailJob::class)->count()===2,'Existing account recovery blocked');
- $guest=(new App\Http\Controllers\V1\Guest\CommController)->config()->getOriginalContent()['data'];
+ $guest=(new App\Services\Actions\Guest\CommActions)->config()->getOriginalContent()['data'];
  $assert($guest['email_whitelist_suffix']===['example.test']&&$guest['is_invite_force']===1,'Guest configuration differs from policy');
 }finally{
  DB::rollBack();config(['v2board'=>$original]);RateLimiter::clear('127.0.0.1');foreach($emails as $email){Cache::forget(App\Utils\CacheKey::get('EMAIL_VERIFY_CODE',$email));Cache::forget(App\Utils\CacheKey::get('LAST_SEND_EMAIL_VERIFY_TIMESTAMP',$email));}

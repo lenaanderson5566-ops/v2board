@@ -26,7 +26,7 @@ $assert(validator(['title'=>'Title','content'=>'Body','translations'=>['en-US'=>
 DB::beginTransaction();
 try {
     $notice=App\Models\Notice::create(['title'=>'原文','content'=>'正文','show'=>1,'translations'=>['zh-TW'=>['subject'=>'繁體標題','content'=>'繁體正文']]]);
-    $controller=new App\Http\Controllers\V1\User\NoticeController;
+    $controller=new App\Services\Actions\User\NoticeActions;
     foreach (['zh-TW','zh_Hant','en-US'] as $locale) {
         $req=Illuminate\Http\Request::create('/', 'GET', ['id'=>$notice->id]); $req->headers->set('Content-Language',$locale);
         $data=json_decode($controller->fetch($req)->getContent(),true)['data'];

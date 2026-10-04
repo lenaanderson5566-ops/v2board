@@ -86,7 +86,10 @@ try {
     [$r,$j]=$call('GET','/api/v10/subscriptions/'.$user->token.'?format=sing-box');
     $assert($r->getStatusCode()===200 && !isset($j['data']) && isset($j['outbounds']),'Native subscription configuration '.json_encode($j));
     [$r,$j]=$call('GET','/api/v1/client/subscribe?token='.$user->token.'&flag=sing');
-    $assert($r->getStatusCode()===200 && isset($j['outbounds']),'Old subscription remains usable');
+    $assert($r->getStatusCode()===404,'Old default subscription is retired');
+    app('router')->get('/custom-subscription', [App\Http\Controllers\CustomSubscriptionController::class, 'subscribe'])->middleware('client');
+    [$r,$j]=$call('GET','/custom-subscription?token='.$user->token.'&flag=sing');
+    $assert($r->getStatusCode()===200 && isset($j['outbounds']),'Existing custom subscription remains usable');
     $user->language='zh-TW'; $user->save();
     foreach ([''=>'zh-TW','en-US'=>'en-US','unsupported'=>'zh-TW'] as $header=>$expected) {
         [$r,$j]=$call('GET','/api/v10/subscriptions/'.$user->token.'?format=sing-box',[],null,$header);

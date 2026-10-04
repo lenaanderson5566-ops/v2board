@@ -60,6 +60,6 @@ class BannerController extends Controller
         $file=$request->file('image');
         $name=bin2hex(random_bytes(20)).'.'.$file->guessExtension();
         if (!Storage::disk('local')->putFileAs('banners', $file, $name)) abort(500, '图片保存失败，请检查 storage 目录权限');
-        return response(['data'=>['url'=>'/api/v1/guest/banner/image/'.$name]]);
+        return response(['data'=>['url'=>'/api/v10/public/banner-images/'.$name]]);
     }
 }

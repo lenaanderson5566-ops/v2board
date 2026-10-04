@@ -2,7 +2,7 @@
 
 ## API contracts
 - New user-facing product APIs belong under /api/v10. Administrative, operations/risk and staff APIs remain on their existing contracts and must not be migrated by this change. Register explicit resource routes; do not dynamically dispatch controllers or proxy requests to /api/v1.
-- Preserve /api/v1, /api/v2, custom subscription paths and historical webhooks until the user explicitly authorizes removal. Node communication remains on the existing protocol.
+- Legacy user business/public APIs were explicitly retired. Preserve only the routes in docs/api-v10/retained-legacy.json, administrative/operations/staff APIs, node communication, and configured custom subscriptions. Do not reintroduce retired routes. Mirror downloads use /api/v10/public/client-installers/{installerId}/content; the old /client-mirrors path is retired.
 - Keep shared business actions in App/Services/Actions; V1 and V10 controllers must use the same transactions, validation, session revocation and entitlement rules.
 - Use GET for reads, POST for creation/business operations, PATCH for partial changes and DELETE for deletion. GET must not mutate business records.
 - V10 browser authentication requires Authorization: Bearer. Never accept browser credentials from query parameters. Authentication failures are 401; authorization failures are 403.
@@ -13,3 +13,5 @@
 - Log route names, request IDs, statuses and duration only. Redact credentials, subscription tokens, passwords, verification codes, account credentials and callback secrets.
 - Changes must update docs/api-v10/openapi.json, endpoint mappings, frontend transport types and contract tests. Keep old/new interoperability tests.
 - Never commit Dockerfile.local, LOCAL-RUN.txt, local-seed.php, environment secrets or runtime installer files.
+
+- Default subscriptions always use /api/v10/subscriptions/{subscriptionToken}, including links generated outside V10 requests. /api/v1/client/subscribe is retired; preserve administrator-defined custom links via CustomSubscriptionController and the shared subscription action.

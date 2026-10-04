@@ -9,7 +9,7 @@ use App\Models\Banner;
 if (!app()->environment('local')) throw new RuntimeException('Local tests only');
 $checks=0;$assert=function($ok,$msg)use(&$checks){if(!$ok)throw new RuntimeException($msg);$checks++;};
 $admin=new App\Http\Controllers\V1\Admin\BannerController;
-$guest=new App\Http\Controllers\V1\Guest\BannerController;
+$guest=new App\Services\Actions\Guest\BannerActions;
 $base=['title'=>'测试','image_url'=>'/banners/fastdog-3-launch.png','placements'=>['dashboard'],'languages'=>[],'sort'=>0,'show'=>true];
 DB::beginTransaction();
 try {
@@ -39,7 +39,9 @@ $assert(Storage::disk('local')->exists('banners/'.$name),'Uploaded image missing
 $assert($guest->image($name)->headers->get('X-Content-Type-Options')==='nosniff','Image response missing nosniff');
 try{$guest->image('../.env');throw new RuntimeException('Traversal accepted');}catch(Symfony\Component\HttpKernel\Exception\HttpException $e){$assert($e->getStatusCode()===404,'Traversal wrong status');}
 Storage::disk('local')->delete('banners/'.$name);
-$route=app('router')->getRoutes()->match(Request::create('/api/v1/guest/banner/image/'.$name));
-$assert(strpos($route->getActionName(),'BannerController@image')!==false,'Image route does not match');
+$route=app('router')->getRoutes()->match(Request::create('/api/v10/public/banner-images/'.$name));
+$assert(strpos($route->getActionName(),'GuestBannerController@getPublicBannerImagesName')!==false,'Image route does not match');
+$oldImage=new Banner(['image_url'=>'/api/v1/guest/banner/image/'.$name]);
+$assert($oldImage->image_url==='/api/v10/public/banner-images/'.$name,'Existing banner image URL must follow the new route');
 $assert(in_array('admin',app('router')->getRoutes()->match(Request::create('/api/v1/'.config('v2board.secure_path','admin').'/banner/fetch'))->gatherMiddleware()),'Banner management lacks admin authorization');
 echo "PASS: $checks banner checks\n";

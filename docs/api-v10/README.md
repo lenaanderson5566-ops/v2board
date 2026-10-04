@@ -6,7 +6,7 @@ The new user API is `/api/v10`. Administration, operations/risk, staff managemen
 
 - [OpenAPI](openapi.json) describes all explicitly registered resources, inputs, outputs, permissions and native responses. [Mapping](mapping.md) lists every migrated legacy function. `endpoints.json` is the routing inventory; `contracts.json` declares field projections.
 - [Retained endpoints](retained-endpoints.md) lists legacy non-management routes and their V10 equivalents; [route audit](audit.md) records checks, findings and verification limits.
-- Old `/api/v1`, `/api/v2`, configured subscription paths and historical webhook URLs remain available without an expiry date. Both controller sets invoke shared business actions in `app/Services/Actions`; no HTTP forwarding or dynamic controller dispatch is used.
+- Legacy user business and public-content routes have been retired with explicit authorization. Only the routes in `retained-legacy.json`, administrative/staff/risk APIs, node communication, configured subscription paths and historical webhook URLs remain available. Both controller sets invoke shared business actions in `app/Services/Actions`; no HTTP forwarding or dynamic controller dispatch is used.
 - User browser requests require `Authorization: Bearer <existing session token>`. Existing local login storage, expiry and revocation are preserved. Query credentials cannot authenticate browser requests. Subscription credentials remain in their dedicated subscription path.
 - JSON successes use `{data, meta?}`. Amounts are integer minor currency units with `currency`, traffic uses bytes and dates use UTC ISO 8601. `null` prices mean unavailable; zero prices remain zero. Order, billing-period, ticket-priority and ticket-status enums are stable strings.
 - Pagination uses `page` and `pageSize` (default 20, maximum 100), returned in `meta.pagination`. Creation uses 201, queued mail uses 202 and a task identifier, and no-content actions use 204.
@@ -16,11 +16,11 @@ The new user API is `/api/v10`. Administration, operations/risk, staff managemen
 
 ## Native protocol exceptions
 
-`GET /subscriptions/{subscriptionToken}` returns native client configuration, without an API envelope. Supported `format` values are `clash`, `clash-meta`, `clash-verge`, `flclash`, `sing-box`, `shadowrocket`, `surge`, `quantumult-x`, `stash` and `general`. An omitted format retains client detection. Default user links use V10; administrator-defined subscription paths retain their original form. Existing links return configuration directly.
+`GET /subscriptions/{subscriptionToken}` returns native client configuration, without an API envelope. Supported `format` values are `clash`, `clash-meta`, `clash-verge`, `flclash`, `sing-box`, `shadowrocket`, `surge`, `quantumult-x`, `stash` and `general`. An omitted format retains client detection. Default user links use V10; administrator-defined subscription paths retain their original form. Existing custom links return configuration directly; the old default `/api/v1/client/subscribe` is retired. Default links generated from any context (including administration) use V10.
 
 Subscription language precedence is an explicit `language` parameter, a supported `Accept-Language` preference, the account's saved language, then the application default. Missing or unsupported language headers must not override the saved preference. Permanent, one-use and time-based subscription credentials retain their existing validation behavior.
 
-Payment callbacks use `/webhooks/payments/{provider}/{endpointId}`, accepting provider-required GET/POST and their native payload/signature/response. New payment requests generate V10 callback addresses; old callbacks continue to use the same business handler and idempotent order provisioning. Telegram uses `/webhooks/telegram` and validates `X-Telegram-Bot-Api-Secret-Token`; the old signed query entry remains compatible. Banner images and other binary/provider responses are not wrapped. Existing administrative CSV and installer downloads retain their original APIs.
+Payment callbacks use `/webhooks/payments/{provider}/{endpointId}`, accepting provider-required GET/POST and their native payload/signature/response. New payment requests generate V10 callback addresses; old callbacks continue to use the same business handler and idempotent order provisioning. Telegram uses `/webhooks/telegram` and validates `X-Telegram-Bot-Api-Secret-Token`; the old signed query entry remains compatible. Banner images and other binary/provider responses are not wrapped. Administrative CSV retains its existing API. Published installer downloads use `GET /api/v10/public/client-installers/{installerId}/content`, including HEAD and byte-range support. The old `/client-mirrors/{id}` route returns 404. Existing Banner image URLs are normalized to V10 when read.
 
 `POST /me/invitations/retired-codes` preserves the existing 410 response for the previously retired public-code feature. Email invitations are the supported replacement. `/public/page-views` is POST because referral attribution may write state.
 
@@ -33,6 +33,7 @@ python scripts/generate-v10.py
 python scripts/document-v10.py
 php tests/api-v10.php
 php tests/api-v10-inventory.php
+php tests/api-retirement.php
 php tests/api-route-audit.php --write-inventory
 cd frontend && npm test -- --run && npm run build
 ```
@@ -43,4 +44,4 @@ PHP database tests require the local test environment and roll back fixture reco
 
 Deploy backend changes and the tracked `public/console` frontend build together. Preserve the previous commit and build outside the public document root; the existing `update.sh` site backup includes the frontend build. Clear configuration, route and compiled-view caches, then terminate Horizon gracefully so the existing supervisor restarts workers with the updated actions. Existing node entry points and database structures are unchanged.
 
-If rollback is needed, restore the matching previous backend commit and frontend assets from the site backup, clear caches and restart workers. Do not mix an old backend with the V10 frontend build. No legacy endpoint removal is included in this release.
+If rollback is needed, restore the matching previous backend commit and frontend assets from the site backup, clear caches and restart workers. Do not mix an old backend with the V10 frontend build. This release removes legacy user business/public endpoints; deploy the matching frontend build at the same time. The declared compatibility allowlist remains available.

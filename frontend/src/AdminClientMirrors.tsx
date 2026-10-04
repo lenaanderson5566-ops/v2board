@@ -82,7 +82,7 @@ export function AdminClientMirrors({clients, checkUpdates, checking}: {clients: 
  {r.sha256 && <p style={{overflowWrap:"anywhere"}}>SHA-256：{r.sha256}<br/>{r.verified ? "已与官方摘要核对" : "本地指纹；官方未提供可核对的 SHA-256"}</p>}
  <div className="actions">
  {r.status==="ready" && <button disabled={busy} onClick={()=>run("client/mirrors/action",{id:r.id,action:d.data?.published?.[r.publish_key || r.target]===r.id?"unpublish":"publish"})}>{d.data?.published?.[r.publish_key || r.target]===r.id?"下架":"发布此架构镜像"}</button>}
- {d.data?.published?.[r.publish_key || r.target]===r.id && <a className="button" href={`/client-mirrors/${r.id}`}>下载安装包</a>}
+ {d.data?.published?.[r.publish_key || r.target]===r.id && <a className="button" href={`/api/v10/public/client-installers/${r.id}/content`}>下载安装包</a>}
  {r.status==="failed" && <button disabled={busy} onClick={()=>run("client/mirrors/download",{client:r.client,asset_id:r.asset_id,target:r.target})}>重新下载</button>}
  {!['queued','downloading'].includes(r.status) && d.data?.published?.[r.publish_key || r.target]!==r.id && <button disabled={busy} onClick={()=>{if(confirm("删除这份未发布的安装包？"))run("client/mirrors/action",{id:r.id,action:"delete"});}}>删除</button>}
  </div></article>)}

@@ -1,4 +1,4 @@
-import { adminUserLabel } from "./admin-user-label";
+import { AdminUserActivityLink } from "./AdminUserActivity";
 import { ContentComposer } from "./ContentComposer";
 import { PlanDescription } from "./PlanDescription";
 import { AdminPlanAutoTranslation } from "./AdminPlanAutoTranslation";
@@ -644,24 +644,24 @@ export const resources: Record<string, Resource> = {
         title: "在线用户",
         fetch: ops("risk/online-user/fetch"),
         columns: [
-            ["user_id", "用户（邮箱 / ID）", adminUserLabel],
+            ["user_id", "用户（邮箱 / ID）", r => <AdminUserActivityLink row={r} />],
             ["ip", "IP 地址"],
             ["node", "节点"],
-            ["online_at", "上线时间", (r) => date(r.online_at)],
+            ["online_at", "最近活跃", (r) => date(r.online_at)],
         ],
         fields: [],
     },
     usage: {
-        title: "用户使用情况",
+        title: "用户活动",
         fetch: ops("risk/user-usage/fetch"),
         columns: [
-            ["user_id", "用户（邮箱 / ID）", adminUserLabel],
+            ["user_id", "用户（邮箱 / ID）", r => <AdminUserActivityLink row={r} />],
             ["subscription_plan", "订阅套餐"],
             ["last_subscribe_at", "最近订阅", (r) => date(r.last_subscribe_at)],
-            ["last_online_ip", "在线 IP"],
-            ["last_online_node", "在线节点"],
-            ["recharge_total", "充值金额"],
-            ["balance", "余额", (r) => money(r.balance)],
+            ["last_online_ip", "最近在线 IP"],
+            ["last_online_node", "最近在线节点"],
+            ["paid_total_amount", "累计订单金额", r => money(r.paid_total_amount)],
+            ["balance_cents", "余额", (r) => money(r.balance_cents)],
         ],
         fields: [],
     },
@@ -669,7 +669,7 @@ export const resources: Record<string, Resource> = {
         title: "登录日志",
         fetch: ops("log/login/fetch"),
         columns: [
-            ["user_id", "用户（邮箱 / ID）", adminUserLabel],
+            ["user_id", "用户（邮箱 / ID）", r => <AdminUserActivityLink row={r} />],
             ["ip", "IP"],
             ["country", "国家"],
             ["city", "城市"],
@@ -682,7 +682,7 @@ export const resources: Record<string, Resource> = {
         title: "订阅日志",
         fetch: ops("log/subscribe/fetch"),
         columns: [
-            ["user_id", "用户（邮箱 / ID）", adminUserLabel],
+            ["user_id", "用户（邮箱 / ID）", r => <AdminUserActivityLink row={r} />],
             ["ip", "IP"],
             ["client_type", "客户端类型"],
             ["user_agent", "UA"],
@@ -694,7 +694,7 @@ export const resources: Record<string, Resource> = {
         title: "连接日志",
         fetch: ops("log/user-connection/fetch"),
         columns: [
-            ["user_id", "用户（邮箱 / ID）", adminUserLabel],
+            ["user_id", "用户（邮箱 / ID）", r => <AdminUserActivityLink row={r} />],
             ["ip", "IP"],
             ["node", "节点"],
             ["connected_at", "连接时间", (r) => date(r.connected_at)],
@@ -703,13 +703,15 @@ export const resources: Record<string, Resource> = {
     },
     "log-risk": {
         title: "风控命中日志",
-        fetch: ops("log/rule-hit/fetch"),
+        fetch: ops("log/rule-hit/fetch?grouped=1"),
         columns: [
-            ["user_id", "用户（邮箱 / ID）", adminUserLabel],
+            ["user_id", "用户（邮箱 / ID）", r => <AdminUserActivityLink row={r} />],
             ["rule_key", "规则"],
             ["ip", "IP"],
             ["status", "处理结果"],
-            ["hit_at", "命中时间", (r) => date(r.hit_at)],
+            ["hit_count", "命中次数"],
+            ["first_hit_at", "首次命中", r => date(r.first_hit_at)],
+            ["hit_at", "最后命中", (r) => date(r.hit_at)],
         ],
         fields: [],
     },
@@ -843,7 +845,7 @@ export function ResourcePage({
             page: page,
             pageSize,
             page_size: pageSize,
-            email: resource.title.includes("日志") ? search : undefined,
+            email: resource.title.includes("日志") || resource === resources.online || resource === resources.usage ? search : undefined,
             keyword: resource.title.includes("黑名单") ? search : undefined,
             ...queryParams,
         }),
@@ -894,9 +896,9 @@ export function ResourcePage({
                             <div className="search">
                                 <Search size={16} />
                                 <input
-                                    placeholder="搜索当前列表…"
+                                    placeholder={resource === resources.online || resource === resources.usage || resource.title.includes("日志") ? "搜索邮箱…" : "搜索当前列表…"}
                                     value={search}
-                                    onChange={(e) => setSearch(e.target.value)}
+                                    onChange={(e) => { setSearch(e.target.value); setPage(1); }}
                                     aria-label="搜索列表"
                                 />
                             </div>
@@ -927,6 +929,9 @@ export function ResourcePage({
                     </div>
                 )}
                 {toolbar}
+                {resource === resources.online && <p className="pad muted">近 10 分钟活跃且有节点缓存记录；不是即时连接状态。用户 {d.meta?.users ?? "—"} · IP {d.meta?.ips ?? "—"} · 连接记录 {d.total} · 查询时间 {date(d.meta?.updated_at)}。节点未上报时可能不显示。</p>}
+                {resource === resources.usage && <p className="pad muted">用户历史活动与账户资料，最近在线记录不代表当前在线。</p>}
+                {resource === resources["log-risk"] && <p className="pad muted">近 30 天，同一用户、规则、IP 和处理结果按固定 10 分钟窗口合并；总数为合并后的事件数。点击用户查看原始活动。</p>}
                 <State {...d} retry={d.reload}>
                     {error && <div className="alert">{error}</div>}
                     <Table

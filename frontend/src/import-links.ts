@@ -17,7 +17,6 @@ export const clients = [
     { id: "surge", name: "Surge", platform: "iOS · macOS" },
     { id: "quantumult", name: "Quantumult X", platform: "iOS" },
     { id: "stash", name: "Stash", platform: "iOS · macOS" },
-    { id: "surfboard", name: "Surfboard", platform: "Android" },
 ] as const;
 export type ClientId = (typeof clients)[number]["id"];
 export function subscriptionUrl(value: string, flag?: string): string {
@@ -67,8 +66,6 @@ export function importLink(
             return `surge:///install-config?url=${encoded}&name=${title}`;
         case "stash":
             return `stash://install-config?url=${encoded}&name=${title}`;
-        case "surfboard":
-            return `surge:///install-config?url=${encoded}&name=${title}`;
         case "quantumult":
             return `quantumult-x:///update-configuration?remote-resource=${encodeURIComponent(JSON.stringify({ server_remote: [`${url}, tag=${name.replace(/[\r\n,]/g, " ")}, enabled=true`] }))}`;
     }
@@ -85,7 +82,6 @@ export function clientSubscriptionUrl(client: ClientId, value: string): string {
         surge: "surge",
         quantumult: "quantumult%20x",
         stash: "stash",
-        surfboard: "surfboard",
     };
     return subscriptionUrl(value, flags[client]);
 }
@@ -99,7 +95,7 @@ export function supportedClients(device: Device) {
             "quantumult",
             "stash",
         ],
-        android: ["cmfa", "singbox", "flclash", "surfboard"],
+        android: ["cmfa", "singbox", "flclash"],
         windows: ["clash", "flclash", "hiddify", "singbox"],
         macos: [
             "clash",

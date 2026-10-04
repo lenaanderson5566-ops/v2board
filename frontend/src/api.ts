@@ -4,6 +4,7 @@ export type Row = Record<string, any>;
 export interface Envelope<T> {
     data: T;
     total?: number;
+    meta?: Row;
     type?: number;
     message?: string;
     errors?: Record<string, string[]>;

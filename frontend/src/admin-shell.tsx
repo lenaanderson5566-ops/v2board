@@ -26,7 +26,7 @@ export const legacyAdminMenu = [
     ["blacklist-ua", "UA 黑名单", "ban", "风控与客户端"],
     ["clients", "客户端策略", "screen-smartphone", "风控与客户端"],
     ["online", "在线用户", "users", "运营中台"],
-    ["usage", "用户使用情况", "graph", "运营中台"],
+    ["usage", "用户活动", "graph", "运营中台"],
     ["banners", "Banner 管理", "picture", "运营中台"],
     ["translations", "套餐多语言", "globe", "运营中台"],
     ["log-login", "登录日志", "login", "日志"],

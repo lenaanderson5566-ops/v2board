@@ -709,6 +709,15 @@ class LogController extends Controller
             $builder->where('ip', $request->input('ip'));
         }
 
+        if ($request->boolean('grouped')) {
+            // Preserve raw events; group only the display within fixed ten-minute windows.
+            $builder->where('hit_at', '>=', time() - 30 * 86400);
+            $grouped = $builder->select(['user_id', 'email', 'rule_key', 'ip', 'status', 'risk_level', 'scene'])
+                ->selectRaw('MAX(id) as id, COUNT(*) as hit_count, MIN(hit_at) as first_hit_at, MAX(hit_at) as hit_at, FLOOR(hit_at / 600) as time_bucket')
+                ->groupBy('user_id', 'email', 'rule_key', 'ip', 'status', 'risk_level', 'scene', 'time_bucket');
+            $total = DB::query()->fromSub(clone $grouped, 'events')->count();
+            return response(['data' => $grouped->orderByDesc('hit_at')->orderByDesc('id')->forPage($current, $pageSize)->get(), 'total' => $total]);
+        }
         $total = $builder->count();
         $data = $builder->orderBy('id', 'desc')
             ->forPage($current, $pageSize)
@@ -728,8 +737,8 @@ class LogController extends Controller
             ->where('t', '>=', $since)
             ->select(['id', 'email', 't'])
             ->orderBy('t', 'desc')
-            ->limit(1000)
-            ->get();
+            ->when($request->filled('email'), function ($q) use ($request) { $q->where('email', 'like', '%' . $request->input('email') . '%'); })
+            ->cursor();
 
         $geoIpService = new GeoIpService();
         $rows = [];
@@ -756,10 +765,11 @@ class LogController extends Controller
 
             foreach ($onlineIps as $item) {
                 $geo = $geoIpService->lookup($item['ip']);
-                $rows[] = [
+                $rows[$user->id . '|' . $item['ip'] . '|' . $item['node']] = [
                     'user_id' => $user->id,
                     'email' => $user->email,
                     'online_ip' => $item['ip'],
+                    'ip' => $item['ip'],
                     'node' => $item['node'],
                     'alive_count' => (int) ($ipsArray['alive_ip'] ?? count($onlineIps)),
                     'online_at' => (int) $user->t,
@@ -772,9 +782,16 @@ class LogController extends Controller
             }
         }
 
+        $rows = array_values($rows);
+        $total = count($rows);
+        $page = max(1, (int) $request->input('current', 1));
+        $size = min(200, max(1, (int) $request->input('page_size', 20)));
         return response([
-            'data' => $rows,
-            'total' => count($rows),
+            'data' => array_slice($rows, ($page - 1) * $size, $size),
+            'total' => $total,
+            'meta' => ['users' => count(array_unique(array_column($rows, 'user_id'))),
+                'ips' => count(array_unique(array_column($rows, 'ip'))), 'connections' => $total,
+                'updated_at' => time()],
         ]);
     }
 
@@ -827,7 +844,7 @@ class LogController extends Controller
         $latestSubscribeMap = [];
         $subscribeLogs = SubscribeLog::query()
             ->whereIn('user_id', $userIds)
-            ->orderBy('id', 'desc')
+            ->whereIn('id', SubscribeLog::query()->whereIn('user_id', $userIds)->selectRaw('MAX(id)')->groupBy('user_id'))
             ->get(['user_id', 'created_at', 'ip', 'user_agent']);
         foreach ($subscribeLogs as $log) {
             if (!isset($latestSubscribeMap[$log->user_id])) {
@@ -851,7 +868,14 @@ class LogController extends Controller
 
         $latestOnlineMap = UserOnlineSnapshot::query()
             ->whereIn('user_id', $userIds)
-            ->orderBy('online_at', 'desc')
+            ->whereNotExists(function ($query) {
+                $query->selectRaw('1')->from('v2_user_online_snapshot as newer')
+                    ->whereColumn('newer.user_id', 'v2_user_online_snapshot.user_id')
+                    ->where(function ($q) {
+                        $q->whereColumn('newer.online_at', '>', 'v2_user_online_snapshot.online_at')
+                          ->orWhere(function ($tie) { $tie->whereColumn('newer.online_at', 'v2_user_online_snapshot.online_at')->whereColumn('newer.id', '>', 'v2_user_online_snapshot.id'); });
+                    });
+            })
             ->get(['user_id', 'online_at', 'ip', 'node'])
             ->keyBy('user_id');
 
@@ -879,7 +903,9 @@ class LogController extends Controller
                 'subscription_plan' => $planNames[$user->plan_id] ?? null,
                 'group_name' => $groupNames[$user->group_id] ?? null,
                 'recharge_total' => round($orderStat['paid_total_amount'] / 100, 2),
+                'paid_total_amount' => $orderStat['paid_total_amount'],
                 'balance' => round(((int) $user->balance) / 100, 2),
+                'balance_cents' => (int) $user->balance,
                 'expired_at' => $user->expired_at ? (int) $user->expired_at : null,
             ];
         }
@@ -972,6 +998,30 @@ class LogController extends Controller
             'data' => $data,
             'total' => $total,
         ]);
+    }
+
+    public function getUserActivity(Request $request)
+    {
+        $params = $request->validate(['user_id' => 'required|integer|min:1']);
+        $id = $params['user_id'];
+        $user = User::query()->find($id, ['id', 'email', 'expired_at']);
+        $events = collect();
+        foreach ([[LoginLog::class, 'created_at', '登录'], [SubscribeLog::class, 'created_at', '订阅'],
+            [UserConnectionLog::class, 'connected_at', '连接'], [RiskRuleHit::class, 'hit_at', '风控']] as [$model, $time, $kind]) {
+            $columns = ['id', 'user_id', 'ip', $time];
+            if ($kind === '风控') $columns = array_merge($columns, ['rule_key', 'risk_level', 'status']);
+            if ($kind === '登录') $columns[] = 'is_success';
+            if ($kind === '订阅') $columns = array_merge($columns, ['client_type', 'status']);
+            if ($kind === '连接') $columns[] = 'node';
+            foreach ($model::query()->where('user_id', $id)->orderByDesc($time)->orderByDesc('id')->limit(50)->get($columns) as $row) {
+                $event = $row->toArray();
+                $event['at'] = (int) $row->getRawOriginal($time);
+                $event['kind'] = $kind;
+                $event['ip'] = $this->formatIp($row->ip);
+                $events->push($event);
+            }
+        }
+        return response(['data' => ['user' => $user, 'events' => $events->sortByDesc('at')->values(), 'limit_per_type' => 50]]);
     }
 
     public function getRiskSettings(Request $request)

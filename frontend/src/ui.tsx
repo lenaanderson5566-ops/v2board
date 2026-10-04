@@ -65,6 +65,7 @@ export function useData<T = Row>(path: string, body?: Row) {
     useTranslation();
     const language = locale();
     const serializedBody = body ? JSON.stringify(body) : undefined;
+    const [meta, setMeta] = useState<Row | undefined>();
     const [data, setData] = useState<T | null>(null),
         [error, setError] = useState(""),
         [loading, setLoading] = useState(true),
@@ -89,6 +90,7 @@ export function useData<T = Row>(path: string, body?: Row) {
                 if (live) {
                     setData(r.data);
                     setTotal(r.total || 0);
+                    setMeta(r.meta);
                 }
             })
             .catch((e) => {
@@ -121,6 +123,7 @@ export function useData<T = Row>(path: string, body?: Row) {
         error,
         loading,
         total,
+        meta,
         reload: () => setVersion((v) => v + 1),
     };
 }

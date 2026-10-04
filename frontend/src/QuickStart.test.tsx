@@ -67,11 +67,14 @@ it("shows ranked recommendations and only compatible alternatives", () => {
  expect(screen.getByRole("button", {name: /sing-box/})).toBeTruthy();
 
  expect(screen.queryByRole("button", {name: /Hiddify/})).toBeNull();
- expect(screen.getByRole("button", {name: /FlClash/})).toBeTruthy();
+ expect(screen.queryByRole("button", {name: /FlClash/})).toBeNull();
+ fireEvent.click(screen.getByRole("button", {name:"查看全部客户端"}));
+ fireEvent.click(screen.getByRole("button", {name:/FlClash/}));
+ expect(screen.getByRole("link", {name:/在 FlClash/})).toBeTruthy();
  expect(screen.queryByRole("button", {name: /Shadowrocket/})).toBeNull();
  fireEvent.click(screen.getByRole("button", {name: "iOS"}));
  expect(screen.queryByRole("button", {name: /FlClash/})).toBeNull();
- expect(screen.getByRole("button", {name: /Shadowrocket/})).toBeTruthy();
+ expect(screen.getByRole("link", {name: /在 Shadowrocket/})).toBeTruthy();
 });
 
 it("disables clients blocked by backend policy and selects an available alternative", () => {
@@ -79,7 +82,9 @@ it("disables clients blocked by backend policy and selects an available alternat
  try {
   render(<SubscriptionImport inline url="https://example.com/sub?token=test"/>);
   fireEvent.click(screen.getByRole("button", {name: "Windows"}));
+  fireEvent.click(screen.getByRole("button", {name:"查看全部客户端"}));
   expect((screen.getByRole("button", {name: /Clash Verge Rev/}) as HTMLButtonElement).disabled).toBe(true);
+  fireEvent.click(screen.getByRole("button", {name:/sing-box/}));
   expect(screen.getByRole("link", {name: /在 sing-box/})).toBeTruthy();
   expect(screen.getByText(/最低版本：1.12.0/)).toBeTruthy();
  } finally { boot.clientPolicies = undefined; }

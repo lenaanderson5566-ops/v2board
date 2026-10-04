@@ -1074,3 +1074,17 @@ fieldset.field-grid {
         grid-template-columns: 1fr;
     }
 }
+
+/* Compact client selection; secondary choices stay outside the primary action. */
+.client-focus {display:flex;align-items:center;gap:14px;padding:18px;border:1px solid var(--border, #e4e7e4);border-radius:16px;}
+.client-focus strong,.client-focus small {display:block;}
+.client-focus small {margin-top:4px;opacity:.65;font-size:12px;}
+.client-switches {display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;margin:10px 0 16px;}
+.client-switches .client-text-link {display:inline-flex;align-items:center;gap:5px;padding:4px 0;border:0;background:transparent;box-shadow:none;font-size:13px;color:inherit;opacity:.75;}
+.client-switches .client-text-link:hover {opacity:1;text-decoration:underline;}
+.client-picker-list {display:grid;gap:10px;}
+.client-picker-list .client-card {width:100%;text-align:start;}
+@media(max-width:600px){
+ .overlay.client-picker-modal {align-items:flex-end;padding:0;}
+ .client-picker-modal .modal {width:100%;max-height:85dvh;border-radius:20px 20px 0 0;margin:0;}
+}

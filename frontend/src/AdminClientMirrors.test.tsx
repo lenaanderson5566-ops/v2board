@@ -22,3 +22,16 @@ it("does not allow publishing an unfinished download",()=>{
  expect(screen.queryByRole("button",{name:"发布为默认镜像"})).toBeNull();
  expect(screen.getByRole("alert").textContent).toContain("校验失败");
 });
+
+it("shows per-device reasons and opens manual selection after checking",async()=>{
+ mocks.data={items:[{id:"old",client:"cmfa",target:"cmfa_android",name:"old.apk",size:12,asset_id:99,status:"ready"}],published:{},targets:{cmfa:["cmfa_android"]}};
+ const clients=[{id:"cmfa",name:"CMFA",version:"2",assets:[{id:8,name:"universal.apk",size:12}]}];
+ mocks.request.mockResolvedValue({data:clients});
+ render(<AdminClientMirrors clients={clients}/>);
+ fireEvent.click(screen.getByRole("button",{name:"一键下载更新"}));
+ await waitFor(()=>expect(screen.getByText(/原安装包架构不明确/)).toBeTruthy());
+ expect(mocks.request.mock.calls.every(call=>call[0]!=="client/mirrors/download")).toBe(true);
+ fireEvent.click(screen.getByRole("button",{name:"手动选择"}));
+ expect((screen.getByLabelText("目标系统") as HTMLSelectElement).value).toBe("cmfa_android");
+ expect(document.activeElement).toBe(screen.getByLabelText("官方安装包"));
+});

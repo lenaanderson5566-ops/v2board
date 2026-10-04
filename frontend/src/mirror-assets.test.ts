@@ -38,3 +38,14 @@ it("updates maintained architectures, skips existing files and ambiguous matches
  expect(mirrorUpdates([{...clients[0],error:"timeout"}],items)).toEqual([]);
  expect(mirrorUpdates([{...clients[0],assets:assets("one-arm64.dmg","two-arm64.dmg")}],items)).toEqual([]);
 });
+
+it("explains each skipped architecture without duplicate history rows",async()=>{
+ const {inspectMirrorUpdates}=await import("./mirror-assets");
+ const old={client:"flclash",target:"flclash_macos",name:"old-arm64.dmg",size:12,asset_id:99,status:"ready"};
+ const client={id:"flclash",version:"2",assets:assets("one-arm64.dmg","two-arm64.dmg")};
+ const report=inspectMirrorUpdates([client],[old,{...old,asset_id:98}]);
+ expect(report).toHaveLength(1);expect(report[0].reason).toContain("优先级相同");expect(report[0].candidates).toHaveLength(2);
+ expect(inspectMirrorUpdates([client],[{...old,name:"unknown.dmg"}])[0].reason).toContain("架构不明确");
+ expect(inspectMirrorUpdates([{...client,error:"API timeout"}],[old])[0]).toMatchObject({status:"failed",reason:"API timeout"});
+ expect(inspectMirrorUpdates([client],[{...old,name:"old-universal.dmg"}])[0].reason).toContain("未找到通用包");
+});

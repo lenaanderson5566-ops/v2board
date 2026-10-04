@@ -25,25 +25,38 @@ export function mirrorAssets(assets: Row[], target: string, profile?: string) {
  }).sort((a,b)=>b.rank-a.rank || String(a.name).localeCompare(String(b.name)));
 }
 
-// Update only device architectures already maintained by the administrator.
-export function mirrorUpdates(clients: Row[], items: Row[]) {
- const result: {client:string;target:string;asset_id:number;name:string}[]=[];
- const seen=new Set<string>();
+export type MirrorUpdateResult = {client:string;target:string;name:string;architecture:string;profile?:string;asset_id?:number;candidates:string[];status:string;reason:string};
+export function inspectMirrorUpdates(clients: Row[], items: Row[]): MirrorUpdateResult[] {
+ const result: MirrorUpdateResult[]=[];
+ const seen=new Set<string>(), downloads=new Set<string>();
  for(const old of items){
   const client=clients.find(c=>c.id===old.client);
-  if(!client?.version || client.error || client.stale)continue;
   const previous=mirrorAssets([old],old.target)[0];
-  if(!previous || previous.architecture==="架构待确认")continue;
-  const profiles=deviceProfiles[String(old.target).split("_").pop() || ""] || [];
-  const profile=profiles.find(p=>p.arch===previous.architecture);
-  const candidates=mirrorAssets(client.assets || [],old.target,profile?.id);
-  const eligible=candidates.filter(a=>a.recommended && (a.universal || a.architecture===previous.architecture));
-  // Universal packages can only be automatically replaced with another universal package.
-  const matches=previous.universal ? candidates.filter(a=>a.universal && !String(old.target).endsWith("_linux") && !(String(old.target).startsWith("singbox_") && !String(old.target).endsWith("_android"))) : eligible;
-  if(!matches.length || (matches[1] && matches[0].rank===matches[1].rank))continue;
-  const a=matches[0], key=`${old.client}:${old.target}:${a.id}`;
-  if(seen.has(key) || items.some(i=>i.client===old.client && i.target===old.target && Number(i.asset_id)===Number(a.id) && ["queued","downloading","ready"].includes(i.status)))continue;
-  seen.add(key);result.push({client:old.client,target:old.target,asset_id:Number(a.id),name:a.name});
+  const architecture=previous?.architecture || "架构待确认";
+  const key=`${old.client}:${old.target}:${architecture}`;
+  if(seen.has(key))continue;seen.add(key);
+  const platform=String(old.target).split("_").pop() || "";
+  const profile=deviceProfiles[platform]?.find(p=>p.arch===architecture)?.id;
+  const candidates=mirrorAssets(client?.assets || [],old.target,profile);
+  const row:MirrorUpdateResult={client:old.client,target:old.target,name:old.name,architecture,profile,candidates:candidates.map(a=>a.name),status:"manual",reason:""};
+  result.push(row);
+  if(!client?.version || client.error || client.stale){row.status="failed";row.reason=client?.error || "尚未获取有效版本，请重新检查更新";continue;}
+  if(!previous || architecture==="架构待确认"){row.reason="原安装包架构不明确，无法安全匹配更新";continue;}
+  if(platform==="linux"){row.reason="Linux 需人工确认发行版及安装格式";continue;}
+  if(String(old.target).startsWith("singbox_") && platform!=="android"){row.reason="sing-box 桌面发布包为内核程序，需人工确认";continue;}
+  const matches=candidates.filter(a=>previous.universal ? a.universal : a.recommended && (a.universal || a.architecture===architecture));
+  if(!matches.length){row.reason=previous.universal ? "未找到通用包，不能自动改为单一架构" : "未找到明确匹配的包；可能因架构、格式、平台命名或 512 MiB 限制被过滤";continue;}
+  row.candidates=matches.map(a=>a.name);
+  if(matches[1] && matches[0].rank===matches[1].rank){row.reason="多个安装包优先级相同，请手动选择";continue;}
+  const a=matches[0];row.name=a.name;row.asset_id=Number(a.id);
+  const existing=items.find(i=>i.client===old.client && i.target===old.target && Number(i.asset_id)===Number(a.id) && ["queued","downloading","ready"].includes(i.status));
+  const downloadKey=`${old.client}:${old.target}:${a.id}`;
+  if(existing){row.status="skipped";row.reason=existing.status==="ready" ? "此安装包已下载，无需重复下载" : "此安装包已排队或正在下载";}
+  else if(downloads.has(downloadKey)){row.status="skipped";row.reason="已由另一设备匹配同一通用包，合并下载";}
+  else{downloads.add(downloadKey);row.status="pending";row.reason="已明确匹配，等待加入下载队列";}
  }
  return result;
+}
+export function mirrorUpdates(clients: Row[], items: Row[]) {
+ return inspectMirrorUpdates(clients,items).filter(r=>r.status==="pending").map(r=>({client:r.client,target:r.target,asset_id:r.asset_id!,name:r.name}));
 }

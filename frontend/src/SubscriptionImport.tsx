@@ -46,7 +46,7 @@ export function SubscriptionImport({
             saved = localStorage.getItem("v2board.import-client");
         } catch {}
         return (
-            recommended.find((client) => client.id === saved && enabled(client.id))?.id ||
+            supportedClients(device).find((client) => client.id === saved && enabled(client.id))?.id ||
             recommended.find(client => enabled(client.id))?.id || supportedClients(device).find(client => enabled(client.id))?.id || recommended[0].id
         );
     });
@@ -62,8 +62,13 @@ export function SubscriptionImport({
     } catch {
         return <p className="pad" role="alert">{t("invalid")}</p>;
     }
-    const extra = supportedClients(device).filter(client => !recommended.some(item => item.id === client.id));
-    const visible = all ? [...recommended, ...extra] : recommended.some(client => client.id === selected) ? recommended : [...recommended, ...extra.filter(client => client.id === selected)];
+    const available = supportedClients(device);
+    const primary = recommended.find(client=>enabled(client.id));
+    const alternative = selected!==primary?.id ? primary : recommended.find(client=>enabled(client.id) && client.id!==primary?.id);
+    function choose(id:ClientId) {
+        setSelected(id);setAll(false);setAttempted(false);setCopied(false);setError("");
+        try {localStorage.setItem("v2board.import-client",id);} catch {}
+    }
     const policy = boot.clientPolicies?.[selected];
     async function copy() {
         try {
@@ -143,41 +148,13 @@ export function SubscriptionImport({
                 <p className="muted">
                     {tx("选择已安装的客户端，直接导入订阅。")}
                 </p>
-                {extra.length > 0 && <button className="import-more" aria-expanded={all} onClick={() => setAll(value => !value)}>{choice(all ? "less" : "more")}</button>}
-                <div className="client-grid">
-                    {visible.map((client) => (
-                        <button
-                            key={client.id}
-                            className={
-                                selected === client.id
-                                    ? "client-card selected"
-                                    : "client-card"
-                            }
-                            disabled={!enabled(client.id)}
-                            aria-pressed={selected === client.id}
-                            onClick={() => {
-                                setSelected(client.id);
-                                setAttempted(false);
-                                setCopied(false);
-                                setError("");
-                                try {
-                                    localStorage.setItem(
-                                        "v2board.import-client",
-                                        client.id,
-                                    );
-                                } catch {}
-                            }}
-                        >
-                            <span className="client-symbol">
-                                <Smartphone size={19} />
-                            </span>
-                            <span>
-                                <strong>{client.name}</strong>
-                                <small>{enabled(client.id) ? client.platform : choice("disabled")}</small>
-                            </span>
-                            {selected === client.id && <Check size={17} />}
-                        </button>
-                    ))}
+                <div className="client-focus">
+                    <span className="client-symbol"><Smartphone size={22}/></span>
+                    <div><strong>{clients.find(client=>client.id===selected)?.name}</strong><small>{selected===primary?.id ? choice("recommended") : choice("selected")}</small></div>
+                </div>
+                <div className="client-switches">
+                    {alternative && <button className="client-text-link" onClick={()=>choose(alternative.id)}>{choice("alternative")} {alternative.name}</button>}
+                    <button className="client-text-link" onClick={()=>setAll(true)}>{choice("more")} <ArrowUpRight size={14}/></button>
                 </div>
                 {!enabled(selected) && <p role="status">{choice("disabled")}</p>}
                 {policy?.minVersion && <p className="muted">{choice("version", { version: policy.minVersion })}</p>}
@@ -259,7 +236,12 @@ export function SubscriptionImport({
         </div>
     );
     const downloadDialog = downloadOpen && <ClientDownload client={selected} device={device} official={downloadUrl!} close={() => setDownloadOpen(false)} />;
-    if (inline) return <>{content}{downloadDialog}</>;
+    const chooser = all && <Modal title={choice("more")} close={()=>setAll(false)} className="client-picker-modal">
+        <div className="pad client-picker-list">{available.map(client=><button key={client.id} className={`client-card${selected===client.id ? " selected" : ""}`} disabled={!enabled(client.id)} aria-pressed={selected===client.id} onClick={()=>choose(client.id)}>
+            <Smartphone size={20}/><span><strong>{client.name}</strong><small>{!enabled(client.id) ? choice("disabled") : client.id===primary?.id ? choice("recommended") : client.platform}</small></span>{selected===client.id && <Check size={18}/>}
+        </button>)}</div>
+    </Modal>;
+    if (inline) return <>{content}{downloadDialog}{chooser}</>;
     return (
         <>
             <button className="primary" onClick={() => setOpen(true)}>
@@ -267,7 +249,8 @@ export function SubscriptionImport({
                 {tx("一键导入")}
             </button>
             {downloadDialog}
-            {open && !downloadOpen && (
+            {chooser}
+            {open && !downloadOpen && !all && (
                 <Modal
                     title={tx("连接你的客户端")}
                     close={() => setOpen(false)}

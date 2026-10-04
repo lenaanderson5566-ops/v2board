@@ -44,6 +44,11 @@ foreach (['ClashMeta', 'ClashVerge', 'ClashNyanpasu', 'Stash'] as $name) {
 }
 $sing = json_decode((new App\Protocols\Singbox($user, $servers))->handle()->getContent(), true);
 $assert(count(array_unique(array_column($sing['outbounds'], 'tag'))) === count($sing['outbounds']));
+$assert($sing['route']['default_http_client'] === 'rule-download');
+$assert($sing['http_clients'][0]['detour'] === '节点选择');
+foreach ($sing['route']['rule_set'] as $ruleSet) {
+    $assert(!isset($ruleSet['download_detour']) && $ruleSet['http_client'] === 'rule-download');
+}
 
 $service = new ClientReleaseService;
 $calls = 0;

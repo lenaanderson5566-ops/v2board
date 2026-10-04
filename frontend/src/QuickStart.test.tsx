@@ -46,11 +46,10 @@ it("lets users switch systems and copies the correct client format without openi
     expect(screen.queryByRole("dialog")).toBeNull();
     fireEvent.click(screen.getByRole("button", { name: "Android" }));
     expect(screen.queryByRole("button", { name: /Clash Verge/ })).toBeNull();
-    fireEvent.click(screen.getByRole("button", { name: "其他客户端" }));
-    fireEvent.click(screen.getByRole("button", { name: /Hiddify/ }));
+    fireEvent.click(screen.getByRole("button", { name: /sing-box/ }));
     expect(
-        screen.getByRole("link", { name: /在 Hiddify/ }).getAttribute("href"),
-    ).toMatch(/^hiddify:\/\//);
+        screen.getByRole("link", { name: /在 sing-box/ }).getAttribute("href"),
+    ).toMatch(/^sing-box:\/\//);
     fireEvent.click(screen.getAllByRole("button", { name: "复制订阅链接" })[0]);
     await waitFor(() =>
         expect(copy).toHaveBeenCalledWith(
@@ -67,7 +66,8 @@ it("shows two recommended clients and expands only compatible alternatives", () 
  expect(screen.queryByRole("button", {name: /Hiddify/})).toBeNull();
  expect(screen.getByRole("button", {name: /sing-box/})).toBeTruthy();
  fireEvent.click(screen.getByRole("button", {name: "其他客户端"}));
- expect(screen.getByRole("button", {name: /Hiddify/})).toBeTruthy();
+ expect(screen.queryByRole("button", {name: /Hiddify/})).toBeNull();
+ expect(screen.getByRole("button", {name: /FlClash/})).toBeTruthy();
  expect(screen.queryByRole("button", {name: /Shadowrocket/})).toBeNull();
  fireEvent.click(screen.getByRole("button", {name: "iOS"}));
  expect(screen.queryByRole("button", {name: /FlClash/})).toBeNull();

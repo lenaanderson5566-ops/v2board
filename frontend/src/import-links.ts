@@ -109,7 +109,7 @@ export function supportedClients(device: Device) {
         linux: ["clash", "flclash", "hiddify", "singbox"],
         unknown: clients.map((client) => client.id),
     };
-    return supported[device].map((id) =>
+    return supported[device].filter((id) => id !== "hiddify").map((id) =>
         clients.find((client) => client.id === id)!,
     );
 }

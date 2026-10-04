@@ -19,6 +19,7 @@ try {
     $assert(!$service->isEnabled('flclash') && !$service->isEnabled('verge'));
     $assert(!$service->frontendPolicies()['flclash']['enabled']);
     $assert(!$service->frontendPolicies()['clash']['enabled']);
+    $assert(!$service->frontendPolicies()['cmfa']['enabled']);
     $method = new ReflectionMethod(App\Http\Controllers\V1\Client\ClientController::class, 'resolveProtocolFlag');
     $method->setAccessible(true);
     $controller = new App\Http\Controllers\V1\Client\ClientController();

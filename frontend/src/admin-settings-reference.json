@@ -655,6 +655,13 @@
       "child": false,
       "line": 0
     },
+    "client_mirror_cmfa_android": {
+      "label": "Clash Meta for Android · android 镜像下载地址",
+      "hint": "可选，填写对应系统的 HTTP(S) 下载链接。",
+      "placeholder": "https://",
+      "child": false,
+      "line": 0
+    },
     "client_mirror_flclash_android": {
       "label": "FlClash · android 镜像下载地址",
       "hint": "可选，填写对应系统的 HTTP(S) 下载链接。",

@@ -10,7 +10,7 @@ class ClientStrategyService
     // Read-only public presentation data, no rule details or blacklist information.
     public function frontendPolicies(): array
     {
-        $mapping = ['clash'=>'verge', 'flclash'=>'flclash', 'hiddify'=>'sing', 'singbox'=>'sing',
+        $mapping = ['cmfa'=>'meta', 'clash'=>'verge', 'flclash'=>'flclash', 'hiddify'=>'sing', 'singbox'=>'sing',
             'shadowrocket'=>'shadowrocket', 'surge'=>'surge', 'quantumult'=>'quantumult%20x', 'stash'=>'stash', 'surfboard'=>'surfboard'];
         $rows = ClientStrategy::query()->whereIn('client_type', array_merge(array_values($mapping), ['meta']))->get()->keyBy('client_type');
         $result = [];

@@ -18,6 +18,7 @@ $renderConsole = function (string $mode, bool $landing = false) use ($securePath
             'clientMirrors' => [
                 'singbox_linux' => config('v2board.client_mirror_singbox_linux', ''),
                 'singbox_windows' => config('v2board.client_mirror_singbox_windows', ''),
+                'cmfa_android' => config('v2board.client_mirror_cmfa_android', ''),
                 'flclash_android' => config('v2board.client_mirror_flclash_android', ''),
                 'flclash_linux' => config('v2board.client_mirror_flclash_linux', ''),
                 'flclash_macos' => config('v2board.client_mirror_flclash_macos', ''),

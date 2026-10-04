@@ -60,12 +60,12 @@ it("lets users switch systems and copies the correct client format without openi
     expect(screen.getByText("开始使用")).toBeTruthy();
 });
 
-it("shows two recommended clients and expands only compatible alternatives", () => {
+it("shows ranked recommendations and only compatible alternatives", () => {
  render(<SubscriptionImport inline url="https://example.com/sub?token=test"/>);
  fireEvent.click(screen.getByRole("button", {name: "Windows"}));
  expect(screen.queryByRole("button", {name: /Hiddify/})).toBeNull();
  expect(screen.getByRole("button", {name: /sing-box/})).toBeTruthy();
- fireEvent.click(screen.getByRole("button", {name: "其他客户端"}));
+
  expect(screen.queryByRole("button", {name: /Hiddify/})).toBeNull();
  expect(screen.getByRole("button", {name: /FlClash/})).toBeTruthy();
  expect(screen.queryByRole("button", {name: /Shadowrocket/})).toBeNull();

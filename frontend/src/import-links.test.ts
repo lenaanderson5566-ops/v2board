@@ -74,8 +74,17 @@ it("uses the dedicated FlClash scheme and policy flag", () => {
 
 it("offers sing-box as the second recommendation on every supported platform", () => {
  for (const device of ["windows", "macos", "linux", "android", "ios"] as const) {
-  expect(recommendedClients(device)).toHaveLength(2);
+  expect(recommendedClients(device)).toHaveLength(device === "ios" ? 2 : 3);
+  if (device !== "ios") expect(recommendedClients(device)[2].id).toBe("flclash");
   expect(recommendedClients(device)[1].id).toBe("singbox");
   expect(supportedClients(device).some(client => client.id === "singbox")).toBe(true);
  }
+});
+
+it("recommends CMFA only on Android with the Meta subscription format", () => {
+ expect(recommendedClients("android")[0].id).toBe("cmfa");
+ expect(supportedClients("windows").some(c => c.id === "cmfa")).toBe(false);
+ const link = new URL(importLink("cmfa", url, "Test"));
+ expect(link.protocol).toBe("clashmeta:");
+ expect(new URL(link.searchParams.get("url")!).searchParams.get("flag")).toBe("meta");
 });

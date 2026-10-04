@@ -75,6 +75,7 @@ export function SubscriptionImport({
         }
     }
     const downloads: Partial<Record<ClientId, string>> = {
+        cmfa: "https://github.com/MetaCubeX/ClashMetaForAndroid/releases",
         flclash: "https://github.com/chen08209/FlClash/releases",
         clash: "https://github.com/clash-verge-rev/clash-verge-rev/releases",
         hiddify: "https://github.com/hiddify/hiddify-app/releases",

@@ -1,5 +1,6 @@
 import type { Device } from "./user-experience";
 export const clients = [
+    { id: "cmfa", name: "Clash Meta for Android", platform: "Android" },
     { id: "flclash", name: "FlClash", platform: "Android · Windows · macOS · Linux" },
     {
         id: "clash",
@@ -50,6 +51,8 @@ export function importLink(
         encoded = encodeURIComponent(url),
         title = encodeURIComponent(name);
     switch (client) {
+        case "cmfa":
+            return `clashmeta://install-config?url=${encoded}&name=${title}`;
         case "flclash":
             return `flclash://install-config?url=${encoded}&name=${title}`;
         case "clash":
@@ -73,6 +76,7 @@ export function importLink(
 
 export function clientSubscriptionUrl(client: ClientId, value: string): string {
     const flags: Record<ClientId, string> = {
+        cmfa: "meta",
         flclash: "flclash",
         clash: "verge",
         hiddify: "sing",
@@ -95,7 +99,7 @@ export function supportedClients(device: Device) {
             "quantumult",
             "stash",
         ],
-        android: ["flclash", "hiddify", "singbox", "surfboard"],
+        android: ["cmfa", "singbox", "flclash", "surfboard"],
         windows: ["clash", "flclash", "hiddify", "singbox"],
         macos: [
             "clash",
@@ -116,8 +120,8 @@ export function supportedClients(device: Device) {
 
 export function recommendedClients(device: Device) {
     const ids: Record<Device, readonly ClientId[]> = {
-        windows: ["clash", "singbox"], macos: ["clash", "singbox"], linux: ["clash", "singbox"],
-        android: ["flclash", "singbox"], ios: ["shadowrocket", "singbox"], unknown: ["clash", "singbox"],
+        windows: ["clash", "singbox", "flclash"], macos: ["clash", "singbox", "flclash"], linux: ["clash", "singbox", "flclash"],
+        android: ["cmfa", "singbox", "flclash"], ios: ["shadowrocket", "singbox"], unknown: ["clash", "singbox", "flclash"],
     };
     return ids[device].map(id => clients.find(client => client.id === id)!);
 }

@@ -1418,6 +1418,7 @@ const labels: Record<string, string> = {
     client_mirror_flclash_windows: "FlClash · windows 镜像下载地址",
     client_mirror_flclash_macos: "FlClash · macos 镜像下载地址",
     client_mirror_flclash_linux: "FlClash · linux 镜像下载地址",
+    client_mirror_cmfa_android: "Clash Meta for Android · android 镜像下载地址",
     client_mirror_flclash_android: "FlClash · android 镜像下载地址",
     client_mirror_singbox_windows: "sing-box · windows 镜像下载地址",
     client_mirror_singbox_linux: "sing-box · linux 镜像下载地址",

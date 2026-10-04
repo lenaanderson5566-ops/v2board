@@ -6,10 +6,10 @@ vi.mock("./api",()=>({ops:(s:string)=>s,request:mocks.request,rows:(v:any)=>v||[
 vi.mock("./ui",()=>({useData:()=>({data:mocks.data,reload:mocks.reload}),State:({children}:any)=><>{children}</>}));
 import { AdminClientMirrors } from "./AdminClientMirrors";
 afterEach(()=>{cleanup();vi.clearAllMocks();});
-it("requires asset and platform and submits asset identity rather than a URL",async()=>{
+it("automatically selects the sole platform and universal package",async()=>{
  mocks.request.mockResolvedValue({data:{}});
  render(<AdminClientMirrors clients={[{id:"cmfa",name:"CMFA",assets:[{id:8,name:"universal.apk",size:12}]}]}/>);
- expect((screen.getByRole("button",{name:"下载到服务器"}) as HTMLButtonElement).disabled).toBe(true);
+ expect((screen.getByLabelText("官方安装包") as HTMLSelectElement).value).toBe("8");
  fireEvent.change(screen.getByLabelText("目标系统"),{target:{value:"cmfa_android"}});
  fireEvent.change(screen.getByLabelText("官方安装包"),{target:{value:"8"}});
  fireEvent.click(screen.getByRole("button",{name:"下载到服务器"}));

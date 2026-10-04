@@ -123,7 +123,7 @@ function ResetForm({
     }
     return (
         <Modal
-            title={global ? "全局重置用量" : "发放 Banked 储备重置"}
+            title={global ? "全局重置用量" : "发放储备重置"}
             close={() => {
                 if (!lock.current) close();
             }}

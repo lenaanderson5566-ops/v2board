@@ -10,6 +10,8 @@ export interface Envelope<T> {
     code?: string;
 }
 export interface Boot {
+    clientMirrors?: Record<string, string>;
+    legacyDownloads?: Record<string, string>;
     landing?: boolean;
     mode: "user" | "admin";
     title: string;

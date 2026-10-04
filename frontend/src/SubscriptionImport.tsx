@@ -1,4 +1,4 @@
-import { AppleAccounts } from "./AppleAccounts";
+import { iosDownloads, ClientDownload } from "./ClientDownload";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import "./import-copy";
@@ -32,6 +32,7 @@ export function SubscriptionImport({
     inline?: boolean;
 }) {
     const { t } = useTranslation("clientImport");
+    const [downloadOpen, setDownloadOpen] = useState(false);
     const [device, setDevice] = useState<Device>(() => currentDevice().device);
     const recommended = recommendedClients(device);
     const [open, setOpen] = useState(false),
@@ -73,6 +74,7 @@ export function SubscriptionImport({
         hiddify: "https://github.com/hiddify/hiddify-app/releases",
         singbox: "https://sing-box.sagernet.org/clients/",
     };
+    const downloadUrl = device === "ios" ? iosDownloads[selected] : downloads[selected];
     const content = (
         <div className="pad import-content">
             <section className="quick-step">
@@ -189,18 +191,15 @@ export function SubscriptionImport({
                         </button>
                     ))}
                 </div>
-                {device === "ios" && boot.appleAccountEnabled && <AppleAccounts />}
                 <div className="quick-actions">
-                    {downloads[selected] && (
-                        <a
+                    {downloadUrl && (
+                        <button
                             className="button import-download"
-                            href={downloads[selected]}
-                            target="_blank"
-                            rel="noopener noreferrer"
+                            onClick={() => setDownloadOpen(true)}
                         >
                             {tx("获取客户端")}
                             <ArrowUpRight size={16} />
-                        </a>
+                        </button>
                     )}
                     <a
                         className="button primary import-open"
@@ -268,14 +267,16 @@ export function SubscriptionImport({
             </details>
         </div>
     );
-    if (inline) return content;
+    const downloadDialog = downloadOpen && <ClientDownload client={selected} device={device} official={downloadUrl!} close={() => setDownloadOpen(false)} />;
+    if (inline) return <>{content}{downloadDialog}</>;
     return (
         <>
             <button className="primary" onClick={() => setOpen(true)}>
                 <Smartphone size={17} />
                 {tx("一键导入")}
             </button>
-            {open && (
+            {downloadDialog}
+            {open && !downloadOpen && (
                 <Modal
                     title={tx("连接你的客户端")}
                     close={() => setOpen(false)}

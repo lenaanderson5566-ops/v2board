@@ -23,7 +23,7 @@ export function AppleAccounts() {
     return <><button onClick={() => setOpen(true)}>{t("0")}</button>{open && <Modal title={t("0")} close={() => setOpen(false)}><AccountList /></Modal>}</>;
 }
 
-function AccountList() {
+export function AccountList() {
     const { t } = useTranslation("appleAccount");
     const [attempt, setAttempt] = useState(0);
     const [accounts, setAccounts] = useState<Account[]>([]);

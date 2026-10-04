@@ -1297,3 +1297,18 @@
  .user .compact-mobile-table table td:first-child::before { display:none; }
  .apple-account-card .quick-actions { display:flex; flex-wrap:wrap; gap:8px; }
 }
+
+.client-download-modal .modal { width: min(440px, calc(100vw - 24px)); }
+.download-options { display: grid; gap: 14px; }
+.download-client { margin: 0 0 4px; font-weight: 600; display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.download-client span { font-size: 12px; opacity: .65; font-weight: 400; }
+.download-source { display: flex; gap: 14px; align-items: center; width: 100%; padding: 16px; border: 1px solid var(--border, #e5e7eb); border-radius: 14px; color: inherit; text-decoration: none; background: transparent; text-align: start; }
+.download-source span { flex: 1; display: grid; gap: 5px; }
+.download-source small { font-size: 12px; font-weight: 400; opacity: .65; overflow-wrap: anywhere; }
+.download-source:disabled { opacity: .45; cursor: not-allowed; }
+.download-source[href]:hover { background: rgba(128,128,128,.08); }
+
+.ios-account-guide ol { padding-inline-start: 22px; margin: 12px 0; }
+.ios-account-guide li { margin-bottom: 12px; line-height: 1.6; }
+.ios-account-guide > .pad { padding: 0; }
+.ios-account-guide { min-width: 0; }

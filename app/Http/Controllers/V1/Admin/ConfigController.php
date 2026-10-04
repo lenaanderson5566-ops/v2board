@@ -148,6 +148,17 @@ class ConfigController extends Controller
                 'telegram_discuss_link' => config('v2board.telegram_discuss_link')
             ],
             'app' => [
+                'client_mirror_clash_windows' => config('v2board.client_mirror_clash_windows', ''),
+                'client_mirror_clash_macos' => config('v2board.client_mirror_clash_macos', ''),
+                'client_mirror_clash_linux' => config('v2board.client_mirror_clash_linux', ''),
+                'client_mirror_hiddify_windows' => config('v2board.client_mirror_hiddify_windows', ''),
+                'client_mirror_hiddify_macos' => config('v2board.client_mirror_hiddify_macos', ''),
+                'client_mirror_hiddify_linux' => config('v2board.client_mirror_hiddify_linux', ''),
+                'client_mirror_hiddify_android' => config('v2board.client_mirror_hiddify_android', ''),
+                'client_mirror_hiddify_ios' => config('v2board.client_mirror_hiddify_ios', ''),
+                'client_mirror_singbox_android' => config('v2board.client_mirror_singbox_android', ''),
+                'client_mirror_singbox_macos' => config('v2board.client_mirror_singbox_macos', ''),
+                'client_mirror_singbox_ios' => config('v2board.client_mirror_singbox_ios', ''),
                 'apple_account_url' => config('v2board.apple_account_url', \App\Services\AppleAccountService::ORIGIN),
                 'apple_account_enable' => (int) config('v2board.apple_account_enable', 0),
                 'apple_account_token' => '',

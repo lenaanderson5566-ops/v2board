@@ -524,7 +524,7 @@
     },
     "windows_download_url": {
       "label": "Windows",
-      "hint": "Windows端版本号及下载地址",
+      "hint": "兼容下载地址：用于 Clash Verge 的 windows 镜像入口。优先使用下方按客户端设置的镜像地址。",
       "placeholder": "https://xxxx.com/xxx.exe",
       "child": false,
       "line": 6465
@@ -538,7 +538,7 @@
     },
     "macos_download_url": {
       "label": "macOS",
-      "hint": "macOS端版本号及下载地址",
+      "hint": "兼容下载地址：用于 Clash Verge 的 macos 镜像入口。优先使用下方按客户端设置的镜像地址。",
       "placeholder": "https://xxxx.com/xxx.dmg",
       "child": false,
       "line": 6480
@@ -552,10 +552,87 @@
     },
     "android_download_url": {
       "label": "Android",
-      "hint": "Android端版本号及下载地址",
+      "hint": "兼容下载地址：用于 Hiddify 的 android 镜像入口。优先使用下方按客户端设置的镜像地址。",
       "placeholder": "https://xxxx.com/xxx.apk",
       "child": false,
       "line": 6495
+    },
+    "client_mirror_clash_windows": {
+      "label": "Clash · windows 镜像下载地址",
+      "hint": "可选，填写此客户端与系统对应的 HTTP(S) 下载链接；留空不启用专用镜像。",
+      "placeholder": "https://",
+      "child": false,
+      "line": 0
+    },
+    "client_mirror_clash_macos": {
+      "label": "Clash · macos 镜像下载地址",
+      "hint": "可选，填写此客户端与系统对应的 HTTP(S) 下载链接；留空不启用专用镜像。",
+      "placeholder": "https://",
+      "child": false,
+      "line": 0
+    },
+    "client_mirror_clash_linux": {
+      "label": "Clash · linux 镜像下载地址",
+      "hint": "可选，填写此客户端与系统对应的 HTTP(S) 下载链接；留空不启用专用镜像。",
+      "placeholder": "https://",
+      "child": false,
+      "line": 0
+    },
+    "client_mirror_hiddify_windows": {
+      "label": "Hiddify · windows 镜像下载地址",
+      "hint": "可选，填写此客户端与系统对应的 HTTP(S) 下载链接；留空不启用专用镜像。",
+      "placeholder": "https://",
+      "child": false,
+      "line": 0
+    },
+    "client_mirror_hiddify_macos": {
+      "label": "Hiddify · macos 镜像下载地址",
+      "hint": "可选，填写此客户端与系统对应的 HTTP(S) 下载链接；留空不启用专用镜像。",
+      "placeholder": "https://",
+      "child": false,
+      "line": 0
+    },
+    "client_mirror_hiddify_linux": {
+      "label": "Hiddify · linux 镜像下载地址",
+      "hint": "可选，填写此客户端与系统对应的 HTTP(S) 下载链接；留空不启用专用镜像。",
+      "placeholder": "https://",
+      "child": false,
+      "line": 0
+    },
+    "client_mirror_hiddify_android": {
+      "label": "Hiddify · android 镜像下载地址",
+      "hint": "可选，填写此客户端与系统对应的 HTTP(S) 下载链接；留空不启用专用镜像。",
+      "placeholder": "https://",
+      "child": false,
+      "line": 0
+    },
+    "client_mirror_hiddify_ios": {
+      "label": "Hiddify · ios 镜像下载地址",
+      "hint": "可选，填写此客户端与系统对应的 HTTP(S) 下载链接；留空不启用专用镜像。",
+      "placeholder": "https://",
+      "child": false,
+      "line": 0
+    },
+    "client_mirror_singbox_android": {
+      "label": "Singbox · android 镜像下载地址",
+      "hint": "可选，填写此客户端与系统对应的 HTTP(S) 下载链接；留空不启用专用镜像。",
+      "placeholder": "https://",
+      "child": false,
+      "line": 0
+    },
+    "client_mirror_singbox_macos": {
+      "label": "Singbox · macos 镜像下载地址",
+      "hint": "可选，填写此客户端与系统对应的 HTTP(S) 下载链接；留空不启用专用镜像。",
+      "placeholder": "https://",
+      "child": false,
+      "line": 0
+    },
+    "client_mirror_singbox_ios": {
+      "label": "Singbox · ios 镜像下载地址",
+      "hint": "可选，填写此客户端与系统对应的 HTTP(S) 下载链接；留空不启用专用镜像。",
+      "placeholder": "https://",
+      "child": false,
+      "line": 0
     }
   }
 }

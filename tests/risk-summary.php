@@ -16,9 +16,10 @@ try {
     // All changes are rolled back; existing local fixture records are excluded temporarily.
     RiskRuleHit::query()->delete();
     foreach ([[time(), 'high',1], [time()-90000,'low',1], [time()-86400*40,'high',2]] as [$at,$level,$user]) {
-        RiskRuleHit::create(['scene'=>'subscribe','rule_key'=>'subscribe_high_frequency_by_user_10m','risk_level'=>$level,'user_id'=>$user,'ip'=>'127.0.0.1','hit_at'=>$at]);
+        RiskRuleHit::create(['scene'=>'subscribe','rule_key'=>'subscribe_high_frequency_by_user_10m','risk_level'=>$level,'user_id'=>$user,'email'=>'risk-test@example.com','ip'=>'127.0.0.1','hit_at'=>$at]);
     }
     $data=json_decode($controller->getSummary(Request::create('/?window=today'))->getContent(), true)['data'];
+    $assert($data['recent'][0]['email']==='risk-test@example.com' && $data['recent'][0]['user_id']===1);
     $assert($data['total']===1 && $data['high']===1 && $data['users']===1);
     $assert(array_sum(array_column($data['trend'],'hits'))===1);
     $assert($data['ranking'][0]['hits']===1 && count($data['recent'])===1);

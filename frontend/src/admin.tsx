@@ -1,3 +1,4 @@
+import { adminUserLabel } from "./admin-user-label";
 import { ContentComposer } from "./ContentComposer";
 import { PlanDescription } from "./PlanDescription";
 import { AdminPlanAutoTranslation } from "./AdminPlanAutoTranslation";
@@ -643,8 +644,7 @@ export const resources: Record<string, Resource> = {
         title: "在线用户",
         fetch: ops("risk/online-user/fetch"),
         columns: [
-            ["user_id", "用户 ID"],
-            ["email", "邮箱"],
+            ["user_id", "用户（邮箱 / ID）", adminUserLabel],
             ["ip", "IP 地址"],
             ["node", "节点"],
             ["online_at", "上线时间", (r) => date(r.online_at)],
@@ -655,8 +655,7 @@ export const resources: Record<string, Resource> = {
         title: "用户使用情况",
         fetch: ops("risk/user-usage/fetch"),
         columns: [
-            ["user_id", "用户 ID"],
-            ["email", "邮箱"],
+            ["user_id", "用户（邮箱 / ID）", adminUserLabel],
             ["subscription_plan", "订阅套餐"],
             ["last_subscribe_at", "最近订阅", (r) => date(r.last_subscribe_at)],
             ["last_online_ip", "在线 IP"],
@@ -670,8 +669,7 @@ export const resources: Record<string, Resource> = {
         title: "登录日志",
         fetch: ops("log/login/fetch"),
         columns: [
-            ["user_id", "用户 ID"],
-            ["email", "邮箱"],
+            ["user_id", "用户（邮箱 / ID）", adminUserLabel],
             ["ip", "IP"],
             ["country", "国家"],
             ["city", "城市"],
@@ -684,8 +682,7 @@ export const resources: Record<string, Resource> = {
         title: "订阅日志",
         fetch: ops("log/subscribe/fetch"),
         columns: [
-            ["user_id", "用户 ID"],
-            ["email", "邮箱"],
+            ["user_id", "用户（邮箱 / ID）", adminUserLabel],
             ["ip", "IP"],
             ["client_type", "客户端类型"],
             ["user_agent", "UA"],
@@ -697,8 +694,7 @@ export const resources: Record<string, Resource> = {
         title: "连接日志",
         fetch: ops("log/user-connection/fetch"),
         columns: [
-            ["user_id", "用户 ID"],
-            ["email", "邮箱"],
+            ["user_id", "用户（邮箱 / ID）", adminUserLabel],
             ["ip", "IP"],
             ["node", "节点"],
             ["connected_at", "连接时间", (r) => date(r.connected_at)],
@@ -709,7 +705,7 @@ export const resources: Record<string, Resource> = {
         title: "风控命中日志",
         fetch: ops("log/rule-hit/fetch"),
         columns: [
-            ["user_id", "用户 ID"],
+            ["user_id", "用户（邮箱 / ID）", adminUserLabel],
             ["rule_key", "规则"],
             ["ip", "IP"],
             ["status", "处理结果"],

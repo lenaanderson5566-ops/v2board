@@ -1,6 +1,10 @@
 {
-  "_BannerStrip-4ztN6BTR.js": {
-    "file": "assets/BannerStrip-4ztN6BTR.js",
+  "_BannerStrip-CH8JEajQ.css": {
+    "file": "assets/BannerStrip-CH8JEajQ.css",
+    "src": "_BannerStrip-CH8JEajQ.css"
+  },
+  "_BannerStrip-DQsQ34TP.js": {
+    "file": "assets/BannerStrip-DQsQ34TP.js",
     "name": "BannerStrip",
     "imports": [
       "src/main.tsx"
@@ -9,20 +13,16 @@
       "assets/BannerStrip-CH8JEajQ.css"
     ]
   },
-  "_BannerStrip-CH8JEajQ.css": {
-    "file": "assets/BannerStrip-CH8JEajQ.css",
-    "src": "_BannerStrip-CH8JEajQ.css"
-  },
   "_user-B4JPW6-j.css": {
     "file": "assets/user-B4JPW6-j.css",
     "src": "_user-B4JPW6-j.css"
   },
-  "_user-EuN3vnsi.js": {
-    "file": "assets/user-EuN3vnsi.js",
+  "_user-EQRE6dLb.js": {
+    "file": "assets/user-EQRE6dLb.js",
     "name": "user",
     "imports": [
       "src/main.tsx",
-      "_BannerStrip-4ztN6BTR.js"
+      "_BannerStrip-DQsQ34TP.js"
     ],
     "css": [
       "assets/user-B4JPW6-j.css"
@@ -33,20 +33,20 @@
     "src": "node_modules/ace-builds/src-noconflict/worker-json.js"
   },
   "src/Landing.tsx": {
-    "file": "assets/Landing-BLya0Mqf.js",
+    "file": "assets/Landing-BZDjgdY2.js",
     "name": "Landing",
     "src": "src/Landing.tsx",
     "isDynamicEntry": true,
     "imports": [
       "src/main.tsx",
-      "_BannerStrip-4ztN6BTR.js"
+      "_BannerStrip-DQsQ34TP.js"
     ],
     "css": [
       "assets/Landing-cgyOlPMG.css"
     ]
   },
   "src/admin-code-editor.tsx": {
-    "file": "assets/admin-code-editor-CVWn_jho.js",
+    "file": "assets/admin-code-editor-GNw9eg0o.js",
     "name": "admin-code-editor",
     "src": "src/admin-code-editor.tsx",
     "isDynamicEntry": true,
@@ -58,21 +58,21 @@
     ]
   },
   "src/admin-entry.tsx": {
-    "file": "assets/admin-entry-Kb0jt33_.js",
+    "file": "assets/admin-entry-DkkkJhRY.js",
     "name": "admin-entry",
     "src": "src/admin-entry.tsx",
     "isDynamicEntry": true,
     "imports": [
       "src/main.tsx",
-      "_BannerStrip-4ztN6BTR.js",
-      "_user-EuN3vnsi.js"
+      "_BannerStrip-DQsQ34TP.js",
+      "_user-EQRE6dLb.js"
     ],
     "css": [
       "assets/admin-entry-BHjDckFS.css"
     ]
   },
   "src/admin-markdown.tsx": {
-    "file": "assets/admin-markdown-Bzt8tEEJ.js",
+    "file": "assets/admin-markdown-pttPe_-d.js",
     "name": "admin-markdown",
     "src": "src/admin-markdown.tsx",
     "isDynamicEntry": true,
@@ -88,7 +88,7 @@
     "src": "src/assets/invite-friends.jpg"
   },
   "src/main.tsx": {
-    "file": "assets/main-yOIN9a4j.js",
+    "file": "assets/main-DUGSDovP.js",
     "name": "main",
     "src": "src/main.tsx",
     "isEntry": true,
@@ -107,14 +107,14 @@
     ]
   },
   "src/user-entry.tsx": {
-    "file": "assets/user-entry-CuU9TGwG.js",
+    "file": "assets/user-entry-Cke2RuPn.js",
     "name": "user-entry",
     "src": "src/user-entry.tsx",
     "isDynamicEntry": true,
     "imports": [
       "src/main.tsx",
-      "_BannerStrip-4ztN6BTR.js",
-      "_user-EuN3vnsi.js"
+      "_BannerStrip-DQsQ34TP.js",
+      "_user-EQRE6dLb.js"
     ]
   }
 }

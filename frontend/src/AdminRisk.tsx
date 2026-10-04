@@ -1,3 +1,4 @@
+import { adminUserLabel } from "./admin-user-label";
 import { useState } from "react";
 import "./admin-risk.css";
 import { ops, request, rows, date, type Row } from "./api";
@@ -134,7 +135,7 @@ export function RiskOverview() {
                                     </span>
                                 ),
                             ],
-                            ["user_id", "用户", (r) => r.user_id || "未识别"],
+                            ["user_id", "用户（邮箱 / ID）", adminUserLabel],
                             ["ip", "IP"],
                             ["hit_at", "时间", (r) => date(r.hit_at)],
                         ]}

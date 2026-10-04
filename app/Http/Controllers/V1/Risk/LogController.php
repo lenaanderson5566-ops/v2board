@@ -39,7 +39,7 @@ class LogController extends Controller
                 return ['rule_key' => $row->rule_key, 'name' => $definitions[$row->rule_key]['name'] ?? $row->rule_key, 'hits' => (int) $row->hits];
             });
         $recent = (clone $query)->orderByDesc('hit_at')->limit(20)
-            ->get(['id', 'rule_key', 'risk_level', 'scene', 'user_id', 'ip', 'status', 'hit_at'])->map(function ($row) use ($definitions) {
+            ->get(['id', 'rule_key', 'risk_level', 'scene', 'user_id', 'email', 'ip', 'status', 'hit_at'])->map(function ($row) use ($definitions) {
                 $row->name = $definitions[$row->rule_key]['name'] ?? $row->rule_key;
                 return $row;
             });

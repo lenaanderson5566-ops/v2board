@@ -1321,133 +1321,6 @@ export function ResourcePage({
         </>
     );
 }
-export function OperationsOverview() {
-    const d = useData(ops("risk/overview/fetch")),
-        stat = useData(admin("stat/getOverride")),
-        health = useData(admin("system/getSystemStatus"));
-    const [window, setWindow] = useState("today");
-    const w = d.data?.windows?.[window] || {};
-    return (
-        <>
-            {health.data && (!health.data.horizon || !health.data.schedule) && (
-                <p className="alert" role="status">
-                    {!health.data.horizon ? "队列消费者未运行。" : ""}
-                    {!health.data.schedule ? "定时任务近期未运行。" : ""}{" "}
-                    <a href="#/system">查看系统状态</a>
-                </p>
-            )}
-            <div className="section-tabs">
-                {[
-                    ["today", "今日"],
-                    ["7d", "近 7 天"],
-                    ["30d", "近 30 天"],
-                ].map(([k, v]) => (
-                    <button
-                        className={window === k ? "selected" : ""}
-                        key={k}
-                        onClick={() => setWindow(k)}
-                    >
-                        {v}
-                    </button>
-                ))}
-            </div>
-            <State {...d} retry={d.reload}>
-                <div className="metrics">
-                    <Metric
-                        label="活跃用户"
-                        value={w.active_users?.users || 0}
-                        detail={`${w.active_users?.hits || 0} 次订阅请求`}
-                    />
-                    <Metric
-                        label="网络流量"
-                        value={bytes(w.traffic?.total_bytes)}
-                        detail={`上传 ${bytes(w.traffic?.up_bytes)} · 下载 ${bytes(w.traffic?.down_bytes)}`}
-                    />
-                    <Metric
-                        label="风控拦截"
-                        value={w.risk_result?.blocked_hits || 0}
-                        detail={`${w.risk_result?.blocked_users || 0} 个用户`}
-                    />
-                </div>
-                <div className="split">
-                    <Panel title="客户端分布">
-                        <Table
-                            data={rows(w.flag_top)}
-                            columns={[
-                                ["flag", "客户端"],
-                                [
-                                    "hits",
-                                    "请求次数",
-                                    (r) => (
-                                        <div className="bar-cell">
-                                            <span>{r.hits}</span>
-                                            <i
-                                                style={{
-                                                    width:
-                                                        Math.max(
-                                                            5,
-                                                            Math.min(
-                                                                100,
-                                                                (r.hits /
-                                                                    Math.max(
-                                                                        1,
-                                                                        w
-                                                                            .active_users
-                                                                            ?.hits,
-                                                                    )) *
-                                                                    100,
-                                                            ),
-                                                        ) + "%",
-                                                }}
-                                            />
-                                        </div>
-                                    ),
-                                ],
-                            ]}
-                        />
-                    </Panel>
-                    <Panel title="运营统计">
-                        <State {...stat}>
-                            {stat.data ? (
-                                <div className="stats-list">
-                                    {Object.entries(stat.data).map(([k, v]) => (
-                                        <div key={k}>
-                                            <span>{labels[k] || k}</span>
-                                            <strong>
-                                                {k.includes("income") ||
-                                                k.includes("payout")
-                                                    ? money(v)
-                                                    : typeof v === "object"
-                                                      ? JSON.stringify(v)
-                                                      : String(v)}
-                                            </strong>
-                                        </div>
-                                    ))}
-                                </div>
-                            ) : (
-                                <Empty />
-                            )}
-                        </State>
-                    </Panel>
-                </div>
-            </State>
-            <div className="actions pad">
-                <a className="button" href="#/tickets?status=0&reply_status=0">
-                    处理待回复工单
-                </a>
-                <a
-                    className="button"
-                    href="#/orders?status=3&commission_status=0&commission_balance_min=0"
-                >
-                    处理待审核佣金
-                </a>
-                <a className="button" href="#/system">
-                    查看队列状态
-                </a>
-            </div>
-        </>
-    );
-}
 const labels: Record<string, string> = {
     schedule: "定时任务",
     horizon: "队列消费者",
@@ -1737,17 +1610,10 @@ export function RiskSettings() {
         <Panel title="风控全局设置">
             <State {...d} retry={d.reload}>
                 <Editor
-                    fields={Object.entries(d.data || {}).map(([k, v]) =>
-                        f(
-                            k,
-                            labels[k] || k,
-                            typeof v === "number"
-                                ? "number"
-                                : typeof v === "object"
-                                  ? "json"
-                                  : "text",
-                        ),
-                    )}
+                    fields={[
+                        { key: "connection_log_interval", label: "连接日志采样间隔", type: "number", required: true, min: 60, max: 86400, step: 1, unit: "秒", hint: "建议 3600 秒。间隔越短，日志写入量越大；不影响登录与订阅规则的统计窗口。" },
+                        { key: "connection_log_retention_days", label: "连接日志保留时间", type: "number", required: true, min: 1, max: 365, step: 1, unit: "天", hint: "建议 30 天。清理任务运行时删除超过保留期的连接日志。" },
+                    ]}
                     initial={d.data || {}}
                     onSave={async (b) => {
                         await request(ops("risk/settings/update"), b);

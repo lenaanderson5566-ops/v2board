@@ -25,6 +25,42 @@ use Illuminate\Support\Facades\DB;
 
 class LogController extends Controller
 {
+    public function getSummary(Request $request)
+    {
+        $params = $request->validate(['window' => 'nullable|in:today,7d,30d']);
+        $days = ['today' => 1, '7d' => 7, '30d' => 30][$params['window'] ?? 'today'];
+        $since = time() - $days * 86400;
+        $query = RiskRuleHit::query()->where('hit_at', '>=', $since);
+        $total = (clone $query)->count();
+        $blocked = (clone $query)->whereIn('status', ['blocked', 'block', 'deny', 'rejected'])->count();
+        $definitions = collect((new RiskLogService())->getRuleDefinitions())->keyBy('rule_key');
+        $ranking = (clone $query)->select('rule_key')->selectRaw('COUNT(*) as hits')
+            ->groupBy('rule_key')->orderByDesc('hits')->limit(10)->get()->map(function ($row) use ($definitions) {
+                return ['rule_key' => $row->rule_key, 'name' => $definitions[$row->rule_key]['name'] ?? $row->rule_key, 'hits' => (int) $row->hits];
+            });
+        $recent = (clone $query)->orderByDesc('hit_at')->limit(20)
+            ->get(['id', 'rule_key', 'risk_level', 'scene', 'user_id', 'ip', 'status', 'hit_at'])->map(function ($row) use ($definitions) {
+                $row->name = $definitions[$row->rule_key]['name'] ?? $row->rule_key;
+                return $row;
+            });
+        // Fixed epoch buckets avoid loading all hit records into PHP memory.
+        $bucket = $days === 1 ? 3600 : 86400;
+        $counts = (clone $query)->selectRaw('FLOOR(hit_at / ' . $bucket . ') as bucket, COUNT(*) as hits')
+            ->groupBy('bucket')->pluck('hits', 'bucket');
+        $trend = [];
+        for ($i = (int) floor($since / $bucket); $i <= (int) floor(time() / $bucket); $i++) {
+            $trend[] = ['at' => $i * $bucket, 'hits' => (int) ($counts[$i] ?? 0)];
+        }
+        return response(['data' => [
+            'total' => $total, 'blocked' => $blocked,
+            'users' => (clone $query)->whereNotNull('user_id')->distinct()->count('user_id'),
+            'high' => (clone $query)->where('risk_level', 'high')->count(),
+            'enabled_rules' => $definitions->where('enabled', 1)->count(),
+            'total_rules' => $definitions->count(),
+            'ranking' => $ranking, 'recent' => $recent, 'trend' => $trend,
+        ]]);
+    }
+
     public function getOverview(Request $request)
     {
         $now = time();
@@ -275,7 +311,7 @@ class LogController extends Controller
             $thresholds = $this->normalizeRuleThresholds($default['thresholds'], $thresholds);
         }
 
-        $mergedExistingThresholds = $this->normalizeRuleThresholds(
+        $mergedExistingThresholds = $thresholds ?? $this->normalizeRuleThresholds(
             $default['thresholds'],
             ($existing && is_array($existing->thresholds)) ? $existing->thresholds : []
         );
@@ -307,6 +343,7 @@ class LogController extends Controller
             ]
         );
 
+        RiskLogService::clearRuleCache();
         return response([
             'data' => (new RiskLogService())->getRuleDefinitions()
         ]);
@@ -328,6 +365,7 @@ class LogController extends Controller
             RiskRuleConfig::query()->whereIn('rule_key', array_keys($definitions))->delete();
         }
 
+        RiskLogService::clearRuleCache();
         return response([
             'data' => (new RiskLogService())->getRuleDefinitions()
         ]);
@@ -949,16 +987,21 @@ class LogController extends Controller
 
     public function updateRiskSettings(Request $request)
     {
-        $interval = (int) $request->input('connection_log_interval', 3600);
+        $params = $request->validate([
+            'connection_log_interval' => 'required|integer|between:60,86400',
+            'connection_log_retention_days' => 'required|integer|between:1,365',
+        ]);
+        $interval = (int) $params['connection_log_interval'];
         if ($interval < 60 || $interval > 86400) {
             abort(422, 'connection_log_interval must be between 60 and 86400 seconds');
         }
 
-        $retentionDays = (int) $request->input('connection_log_retention_days', 30);
+        $retentionDays = (int) $params['connection_log_retention_days'];
         if ($retentionDays < 1 || $retentionDays > 365) {
             abort(422, 'connection_log_retention_days must be between 1 and 365 days');
         }
 
+        DB::transaction(function () use ($interval, $retentionDays) {
         RiskSetting::query()->updateOrCreate(
             ['key' => 'connection_log_interval'],
             ['value' => (string) $interval]
@@ -967,6 +1010,7 @@ class LogController extends Controller
             ['key' => 'connection_log_retention_days'],
             ['value' => (string) $retentionDays]
         );
+        });
         Cache::forget('RISK_CONNECTION_LOG_INTERVAL');
         Cache::forget('RISK_CONNECTION_LOG_RETENTION_DAYS');
 
@@ -994,6 +1038,12 @@ class LogController extends Controller
             }
 
             $thresholdValue = (int) $thresholdValue;
+            if ($thresholdKey === 'window_seconds' && ($thresholdValue < 60 || $thresholdValue > 2592000)) {
+                abort(422, '统计窗口须为 60 至 2592000 秒');
+            }
+            if (in_array($thresholdKey, ['threshold', 'subscribe_threshold'], true) && $thresholdValue < 1) {
+                abort(422, '命中阈值至少为 1');
+            }
             if ($thresholdValue < 0) {
                 abort(422, 'thresholds.' . $thresholdKey . ' must be >= 0');
             }

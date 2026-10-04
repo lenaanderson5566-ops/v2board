@@ -1,6 +1,7 @@
+import { RiskOverview, RiskRules } from "./AdminRisk";
+import { AdminClientReleases } from "./AdminClientReleases";
 import { AdminBanners } from "./AdminBanners";
 import {
-    OperationsOverview,
     ResourcePage,
     resources,
     Settings,
@@ -19,13 +20,15 @@ export default function AdminContent({ current }: { current: string }) {
     if (current === "orders") return <OrdersPage />;
     if (current === "knowledge" || current === "notices")
         return <ContentPage kind={current} />;
+    if (current === "risk") return <RiskRules />;
+    if (current === "client-releases") return <AdminClientReleases />;
     if (resources[current])
         return <ResourcePage key={current} resource={resources[current]} />;
     switch (current) {
         case "banners":
             return <AdminBanners />;
         case "operations":
-            return <OperationsOverview />;
+            return <RiskOverview />;
         case "settings":
             return <Settings />;
         case "risk-settings":

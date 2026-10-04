@@ -170,6 +170,7 @@ class ClientController extends Controller
 
     private function resolveProtocolHandler(string $resolvedFlag, $user, array $servers)
     {
+        $servers = \App\Services\ClientConfigService::uniqueNames($servers, 'name', ['DIRECT', 'REJECT', 'GLOBAL', '自动选择', '故障转移', '节点选择']);
         foreach (array_reverse(glob(app_path('Protocols') . '/*.php')) as $file) {
             $file = 'App\\Protocols\\' . basename($file, '.php');
             $class = new $file($user, $servers);

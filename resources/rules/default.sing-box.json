@@ -8,7 +8,8 @@
             {
                 "type": "udp",
                 "tag": "remote",
-                "server": "1.1.1.1"
+                "server": "1.1.1.1",
+                "detour": "节点选择"
             },
             {
                 "type": "udp",
@@ -36,7 +37,7 @@
                 "2001:0470:f9da:fdfa::1/64"
             ],
             "auto_route": true,
-            "mtu": 9000,
+            "mtu": 1500,
             "stack": "system",
             "strict_route": true,
             "route_exclude_address_set": ["geoip-cn"]

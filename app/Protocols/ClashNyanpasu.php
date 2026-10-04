@@ -76,36 +76,9 @@ class ClashNyanpasu
             }
         }
 
-        $config['proxies'] = array_merge($config['proxies'] ? $config['proxies'] : [], $proxy);
-        foreach ($config['proxy-groups'] as $k => $v) {
-            if (!is_array($config['proxy-groups'][$k]['proxies'])) $config['proxy-groups'][$k]['proxies'] = [];
-            $isFilter = false;
-            foreach ($config['proxy-groups'][$k]['proxies'] as $src) {
-                foreach ($proxies as $dst) {
-                    if (!$this->isRegex($src)) continue;
-                    $isFilter = true;
-                    $config['proxy-groups'][$k]['proxies'] = array_values(array_diff($config['proxy-groups'][$k]['proxies'], [$src]));
-                    if ($this->isMatch($src, $dst)) {
-                        array_push($config['proxy-groups'][$k]['proxies'], $dst);
-                    }
-                }
-                if ($isFilter) continue;
-            }
-            if ($isFilter) continue;
-            $config['proxy-groups'][$k]['proxies'] = array_merge($config['proxy-groups'][$k]['proxies'], $proxies);
-        }
-        $config['proxy-groups'] = array_filter($config['proxy-groups'], function($group) {
-            return $group['proxies'];
-        });
-        $config['proxy-groups'] = array_values($config['proxy-groups']);
-        // Force the current subscription domain to be a direct rule
-        //$subsDomain = $_SERVER['HTTP_HOST'];
-        //if ($subsDomain) {
-        //    array_unshift($config['rules'], "DOMAIN,{$subsDomain},DIRECT");
-        //}
+        $config = \App\Services\ClientConfigService::clash($config, $proxy);
 
         $yaml = Yaml::dump($config, 2, 4, Yaml::DUMP_EMPTY_ARRAY_AS_SEQUENCE);
-        $yaml = str_replace('$app_name', config('v2board.app_name', 'V2Board'), $yaml);
         return $yaml;
     }
 

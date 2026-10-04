@@ -30,7 +30,7 @@ class Singbox
             ->header('subscription-userinfo', "upload={$user['u']}; download={$user['d']}; total={$user['transfer_enable']}; expire={$user['expired_at']}")
             ->header('profile-update-interval', '24')
             ->header('Profile-Title', 'base64:' . base64_encode($appName))
-            ->header('Content-Disposition', 'attachment; filename="' . $appName . '"');
+            ->header('Content-Disposition', "attachment; filename*=UTF-8''" . rawurlencode($appName));
     }
 
     protected function loadConfig()
@@ -39,7 +39,11 @@ class Singbox
         $customConfig = base_path('resources/rules/custom.sing-box.json');
         $jsonData = file_exists($customConfig) ? file_get_contents($customConfig) : file_get_contents($defaultConfig);
 
-        return json_decode($jsonData, true);
+        $config = json_decode($jsonData, true, 512, JSON_THROW_ON_ERROR);
+        if (!is_array($config) || !isset($config['outbounds']) || !is_array($config['outbounds'])) {
+            throw new \RuntimeException('客户端模板缺少 outbounds');
+        }
+        return $config;
     }
 
     protected function buildProxies()
@@ -91,9 +95,11 @@ class Singbox
 
     protected function addProxies($proxies)
     {
+        $proxies = \App\Services\ClientConfigService::uniqueNames($proxies, 'tag', array_column($this->config['outbounds'], 'tag'));
         foreach ($this->config['outbounds'] as &$outbound) {
             if (($outbound['type'] === 'selector' && $outbound['tag'] === '节点选择') || ($outbound['type'] === 'urltest' && $outbound['tag'] === '自动选择') || ($outbound['type'] === 'selector' && strpos($outbound['tag'], '#') === 0 )) {
-                array_push($outbound['outbounds'], ...array_column($proxies, 'tag'));
+                $outbound['outbounds'] = array_values(array_unique(array_merge($outbound['outbounds'] ?? [], array_column($proxies, 'tag'))));
+                if (!$outbound['outbounds']) throw new \RuntimeException('没有适用于 sing-box 的节点');
             }
         }
         unset($outbound);

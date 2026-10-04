@@ -12,6 +12,9 @@ class RiskRoute
             'prefix' => config('v2board.ops_api_path', 'ops'),
             'middleware' => ['admin', 'log'],
         ], function ($router) {
+            $router->get('/risk/summary/fetch', 'V1\Risk\LogController@getSummary');
+            $router->get('/client/releases/fetch', 'V1\Risk\ClientReleaseController@fetch');
+            $router->post('/client/releases/check', 'V1\Risk\ClientReleaseController@check')->middleware('throttle:30,1');
             $router->get('/risk/overview/fetch', 'V1\Risk\LogController@getOverview');
             $router->get('/risk/settings/fetch', 'V1\Risk\LogController@getRiskSettings');
             $router->post('/risk/settings/update', 'V1\Risk\LogController@updateRiskSettings');

@@ -13,6 +13,11 @@ class RiskLogService
     private static $ruleConfigMap = null;
     private const MAX_REASON_LENGTH = 190;
 
+    public static function clearRuleCache(): void
+    {
+        self::$ruleConfigMap = null;
+    }
+
     public function createLoginLog(array $payload): void
     {
         $payload = $this->sanitizePayload($payload);
@@ -72,6 +77,7 @@ class RiskLogService
                 'risk_level' => $rule['risk_level'],
                 'description' => $rule['description'],
                 'thresholds' => $rule['thresholds'],
+                'default_thresholds' => self::defaultRuleDefinitions()[$ruleKey]['thresholds'],
                 'enabled' => (int) $rule['enabled'],
                 'sort' => (int) ($rule['sort'] ?? 0),
             ];

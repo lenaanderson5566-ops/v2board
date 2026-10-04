@@ -1,4 +1,4 @@
-import { deviceProfiles, mirrorAssets } from "./mirror-assets";
+import { deviceProfiles, mirrorAssets, mirrorUpdates } from "./mirror-assets";
 import { useEffect, useState } from "react";
 import { ops, request, rows, bytes, date, type Row } from "./api";
 import { useData, State } from "./ui";
@@ -6,6 +6,7 @@ const labels: Record<string,string> = { queued:"排队中",downloading:"下载�
 export function AdminClientMirrors({clients, checkUpdates, checking}: {clients: Row[]; checkUpdates?:()=>void; checking?:boolean}) {
  const d=useData(ops("client/mirrors/fetch"));
  const [client,setClient]=useState("cmfa"),[asset,setAsset]=useState(""),[target,setTarget]=useState(""),[busy,setBusy]=useState(false),[error,setError]=useState("");
+ const [batchMessage,setBatchMessage]=useState("");
  const [profile,setProfile]=useState("");
  const profiles=deviceProfiles[target.split("_").pop() || ""] || [];
  const current=clients.find(c=>c.id===client);
@@ -20,12 +21,34 @@ export function AdminClientMirrors({clients, checkUpdates, checking}: {clients: 
  const active=items.some(r=>["queued","downloading"].includes(r.status));
  useEffect(()=>{if(!active)return;const timer=setInterval(()=>d.reload(),5000);return()=>clearInterval(timer);},[active]);
  async function run(path:string,body:Row){setBusy(true);setError("");try{await request(ops(path),body);d.reload();}catch(e){setError((e as Error).message);}finally{setBusy(false);}}
+ async function downloadUpdates(){
+  setBusy(true);setError("");setBatchMessage("正在检查已有镜像的官方版本…");
+  let fresh=clients,failed=0,queued=0;
+  const failedClients=new Set<string>();
+  try {
+   for(const id of [...new Set(items.map(i=>String(i.client)))]){
+    const controller=new AbortController();const timer=setTimeout(()=>controller.abort(),15000);
+    try{const res=await request<Row[]>(ops("client/releases/check"),{id},{signal:controller.signal});fresh=rows(res.data);if(fresh.find(c=>c.id===id)?.error){failedClients.add(id);failed++;}}
+    catch{failedClients.add(id);failed++;}finally{clearTimeout(timer);}
+   }
+   const updates=mirrorUpdates(fresh.filter(c=>!failedClients.has(c.id)),items);
+   for(const update of updates){
+    setBatchMessage(`加入下载队列：${update.name}`);
+    const controller=new AbortController();const timer=setTimeout(()=>controller.abort(),15000);
+    try{const {name,...body}=update;await request(ops("client/mirrors/download"),body,{signal:controller.signal});queued++;}
+    catch{failed++;}finally{clearTimeout(timer);}
+   }
+   setBatchMessage(`已加入 ${queued} 个下载任务${failed ? `，${failed} 项检查或提交失败，可重试` : ""}。已下载、处理中及无法明确匹配的安装包会跳过；下载完成后请发布。`);
+  }finally{setBusy(false);d.reload();}
+ }
  return <section className="release-card"><h3>本地安装包镜像</h3>
  <p className="muted">按设备推荐安装包，优先通用包。下载完成后发布，同一系统可保留不同架构。</p>
  {error && <p role="alert">{error}</p>}
+ {batchMessage && <p role="status">{batchMessage}</p>}
  <State {...d} retry={d.reload}>
  <div className="actions">
- {checkUpdates && <button disabled={checking} onClick={checkUpdates}>{checking ? "检查中…" : "一键检查更新"}</button>}
+ {checkUpdates && <button disabled={checking || busy} onClick={checkUpdates}>{checking ? "检查中…" : "一键检查更新"}</button>}
+ <button disabled={busy || checking || !items.length} onClick={downloadUpdates}>一键下载更新</button>
  <select aria-label="镜像客户端" value={client} onChange={e=>{setClient(e.target.value);setAsset("");setTarget("");}}>{clients.filter(c=>d.data?.targets?.[c.id]).map(c=><option key={c.id} value={c.id}>{c.name}</option>)}</select>
  <select aria-label="目标系统" value={target} onChange={e=>setTarget(e.target.value)}><option value="">选择系统</option>{targets.map(t=><option key={t} value={t}>{t.split("_").pop()}</option>)}</select>
  <select aria-label="适用设备" value={profile} onChange={e=>setProfile(e.target.value)}>{profiles.map(p=><option key={p.id} value={p.id}>{p.label}</option>)}</select>

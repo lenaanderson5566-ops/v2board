@@ -53,6 +53,6 @@ final class Input
         }
         foreach ($required[$contract['key']] ?? [] as $field) $rules[$field]='required|'.($types[$field] ?? 'string');
         if (($contract['key'] === 'User/OrderController@save') && $request->input('billingPeriod')==='deposit') $rules['depositAmount']='required|'.$types['depositAmount'];
-        Validator::make($request->all(),$rules)->validate();
+        Validator::make($request->all(),$rules,['required'=>__('This field is required.')])->validate();
     }
 }

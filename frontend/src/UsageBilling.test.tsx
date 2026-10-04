@@ -115,7 +115,7 @@ it("keeps recharge on the existing server order and payment flow", async () => {
     );
     expect(mocks.request).toHaveBeenCalledWith(
         "user/order/save",
-        expect.objectContaining({ plan_id: 0, deposit_amount: 500 }),
+        expect.objectContaining({ plan_id: 0, period: "deposit", deposit_amount: 500 }),
     );
 });
 it("expands all transactions and retains order detail links", () => {

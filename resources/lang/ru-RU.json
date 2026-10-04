@@ -113,5 +113,6 @@
   "Reset failed, Please try again later": "Сброс не удался. Повторите позже",
   "Plan period cannot be empty": "Выберите период оплаты",
   "Wrong plan period": "Недопустимый период оплаты",
-  "This payment period cannot be purchased, please choose another period": "Этот период оплаты недоступен. Выберите другой"
+  "This payment period cannot be purchased, please choose another period": "Этот период оплаты недоступен. Выберите другой",
+    "This field is required.": "Это поле обязательно."
 }

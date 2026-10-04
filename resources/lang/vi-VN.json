@@ -113,5 +113,6 @@
   "Reset failed, Please try again later": "Đặt lại thất bại. Vui lòng thử lại sau",
   "Plan period cannot be empty": "Vui lòng chọn chu kỳ",
   "Wrong plan period": "Chu kỳ không hợp lệ",
-  "This payment period cannot be purchased, please choose another period": "Không thể mua chu kỳ này. Vui lòng chọn chu kỳ khác"
+  "This payment period cannot be purchased, please choose another period": "Không thể mua chu kỳ này. Vui lòng chọn chu kỳ khác",
+    "This field is required.": "Vui lòng điền trường này."
 }

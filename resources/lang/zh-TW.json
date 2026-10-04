@@ -113,5 +113,6 @@
   "Reset failed, Please try again later": "重置失敗，請稍後再試",
   "This payment cycle cannot be purchased, please choose another cycle": "該訂閱週期無法進行購買，請選擇其它週期",
   "Plan cycle cannot be empty": "套餐週期不能為空",
-  "Wrong plan cycle": "套餐週期參數有誤"
+  "Wrong plan cycle": "套餐週期參數有誤",
+    "This field is required.": "請填寫此項。"
 }

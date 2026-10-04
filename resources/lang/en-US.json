@@ -113,5 +113,6 @@
     "Reset failed, Please try again later": "Reset failed, Please try again later",
     "Plan period cannot be empty": "Plan cycle cannot be empty",
     "Wrong plan period": "Wrong plan cycle",
-    "This payment period cannot be purchased, please choose another period": "This payment cycle cannot be purchased, please choose another cycle"
+    "This payment period cannot be purchased, please choose another period": "This payment cycle cannot be purchased, please choose another cycle",
+    "This field is required.": "This field is required."
 }

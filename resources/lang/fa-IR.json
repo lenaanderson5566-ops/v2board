@@ -113,5 +113,6 @@
   "Reset failed, Please try again later": "بازنشانی ناموفق بود. بعداً دوباره تلاش کنید",
   "Plan period cannot be empty": "دوره پرداخت را انتخاب کنید",
   "Wrong plan period": "دوره پرداخت نامعتبر است",
-  "This payment period cannot be purchased, please choose another period": "این دوره پرداخت قابل خرید نیست. دوره دیگری انتخاب کنید"
+  "This payment period cannot be purchased, please choose another period": "این دوره پرداخت قابل خرید نیست. دوره دیگری انتخاب کنید",
+    "This field is required.": "تکمیل این فیلد الزامی است."
 }

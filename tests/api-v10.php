@@ -31,6 +31,15 @@ try {
     $cleanupUsers[]=$user;
     $credentials=(new App\Services\AuthService($user))->generateAuthData(Illuminate\Http\Request::create('/'));
     $bearer='Bearer '.$credentials['auth_data'];
+    [$r,$j]=$call('POST','/api/v10/me/orders',['planId'=>0,'depositAmount'=>500],$bearer,'zh-CN');
+    $assert($r->getStatusCode()===422 && ($j['errors']['billingPeriod'][0] ?? '')==='请填写此项。','Required error is localized');
+    [$r,$j]=$call('POST','/api/v10/me/orders',['planId'=>0,'billingPeriod'=>'deposit','depositAmount'=>500],$bearer);
+    $assert($r->getStatusCode()===201 && isset($j['data']['orderNumber']),'Deposit creation succeeds');
+    $depositNumber=$j['data']['orderNumber'];
+    [$r,$j]=$call('GET','/api/v10/me/orders/'.$depositNumber,[],$bearer);
+    $assert($r->getStatusCode()===200 && $j['data']['billingPeriod']==='deposit' && $j['data']['totalAmount']===500,'Deposit detail preserves amount and period');
+    [$r,$j]=$call('POST','/api/v10/me/orders/'.$depositNumber.'/cancellation',[],$bearer);
+    $assert($r->getStatusCode()===204,'Deposit can be cancelled');
     config(['v2board.recaptcha_enable'=>0]);
     [$r,$j]=$call('POST','/api/v10/auth/sessions',['email'=>$user->email,'password'=>'V10testpassword','language'=>'en-US']);
     $assert($r->getStatusCode()===200 && $j['data']['tokenType']==='Bearer' && isset($j['data']['expiresAt']) && App\Services\AuthService::decryptAuthData($j['data']['accessToken']),'Login resource '.json_encode($j));

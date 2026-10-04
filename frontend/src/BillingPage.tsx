@@ -190,7 +190,7 @@ export function BillingPage() {
                                     required: true,
                                 },
                             ]}
-                            initial={{ plan_id: 0 }}
+                            initial={{ plan_id: 0, period: "deposit" }}
                             submit={tx("创建充值订单")}
                             onSave={async (body) => {
                                 const result = await request<string>(

@@ -13,6 +13,9 @@ class RiskRoute
             'middleware' => ['admin', 'log'],
         ], function ($router) {
             $router->get('/risk/summary/fetch', 'V1\Risk\LogController@getSummary');
+            $router->get('/client/mirrors/fetch', 'V1\Risk\ClientReleaseController@mirrors');
+            $router->post('/client/mirrors/download', 'V1\Risk\ClientReleaseController@download')->middleware('throttle:10,1');
+            $router->post('/client/mirrors/action', 'V1\Risk\ClientReleaseController@mirrorAction')->middleware('throttle:30,1');
             $router->get('/client/releases/fetch', 'V1\Risk\ClientReleaseController@fetch');
             $router->post('/client/releases/check', 'V1\Risk\ClientReleaseController@check')->middleware('throttle:30,1');
             $router->get('/risk/overview/fetch', 'V1\Risk\LogController@getOverview');

@@ -170,6 +170,7 @@ return [
 
     'environments' => [
         '*' => [
+            'client-download' => ['connection'=>'redis-mirror', 'queue'=>['client-download'], 'balance'=>'simple', 'minProcesses'=>1, 'maxProcesses'=>1, 'tries'=>1, 'timeout'=>660, 'sleep'=>2],
             'V2board' => [
                 'connection' => 'redis',
                 'queue' => [

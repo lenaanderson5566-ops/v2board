@@ -15,7 +15,7 @@ $renderConsole = function (string $mode, bool $landing = false) use ($securePath
             'adminPath' => $mode === 'admin' ? $securePath : '',
             'opsPath' => $mode === 'admin' ? config('v2board.ops_api_path', 'ops') : '',
             'clientPolicies' => $landing ? [] : (new \App\Services\ClientStrategyService())->frontendPolicies(),
-            'clientMirrors' => [
+            'clientMirrors' => array_merge([
                 'singbox_linux' => config('v2board.client_mirror_singbox_linux', ''),
                 'singbox_windows' => config('v2board.client_mirror_singbox_windows', ''),
                 'cmfa_android' => config('v2board.client_mirror_cmfa_android', ''),
@@ -34,7 +34,7 @@ $renderConsole = function (string $mode, bool $landing = false) use ($securePath
                 'singbox_android' => config('v2board.client_mirror_singbox_android', ''),
                 'singbox_macos' => config('v2board.client_mirror_singbox_macos', ''),
                 'singbox_ios' => config('v2board.client_mirror_singbox_ios', ''),
-            ],
+            ], (new \App\Services\ClientMirrorService())->urls()),
             'legacyDownloads' => [
                 'windows' => config('v2board.windows_download_url', ''),
                 'macos' => config('v2board.macos_download_url', ''),
@@ -72,3 +72,5 @@ foreach (['' => 'operations', '/overview' => 'operations', '/risk' => 'risk', '/
 if (!empty(config('v2board.subscribe_path'))) {
     Route::get(config('v2board.subscribe_path'), 'V1\\Client\\ClientController@subscribe')->middleware('client');
 }
+
+Route::get('/client-mirrors/{id}', function (string $id) { return (new \App\Services\ClientMirrorService())->serve($id); })->where('id', '[0-9a-fA-F-]{36}');

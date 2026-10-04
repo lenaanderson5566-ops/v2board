@@ -9,6 +9,7 @@ class ClientReleaseService
 {
     public const CLIENTS = [
         'clash-verge' => ['name' => 'Clash Verge Rev', 'repo' => 'clash-verge-rev/clash-verge-rev', 'platforms' => 'Windows · macOS · Linux', 'engine' => 'Mihomo'],
+        'cmfa' => ['name' => 'Clash Meta for Android', 'repo' => 'MetaCubeX/ClashMetaForAndroid', 'platforms' => 'Android', 'engine' => 'Mihomo'],
         'flclash' => ['name' => 'FlClash', 'repo' => 'chen08209/FlClash', 'platforms' => 'Android · Windows · macOS · Linux', 'engine' => 'Mihomo'],
         'hiddify' => ['name' => 'Hiddify', 'repo' => 'hiddify/hiddify-app', 'platforms' => 'Android · iOS · Windows · macOS · Linux', 'engine' => 'sing-box'],
         'v2rayn' => ['name' => 'v2rayN', 'repo' => '2dust/v2rayN', 'platforms' => 'Windows · macOS · Linux', 'engine' => 'Xray / sing-box'],
@@ -68,6 +69,7 @@ class ClientReleaseService
                         $state['updated_at'] = time();
                     }
                     $state['version'] = $tag;
+                    $state['assets'] = array_values(array_map(function ($asset) { return array_intersect_key($asset, array_flip(['id', 'name', 'size', 'digest', 'browser_download_url'])); }, $data['assets'] ?? []));
                     $state['published_at'] = strtotime($data['published_at'] ?? '') ?: null;
                     $state['notes'] = mb_substr((string) ($data['body'] ?? ''), 0, 12000);
                     $state['etag'] = $response->header('ETag');

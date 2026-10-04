@@ -1,3 +1,4 @@
+import { AdminClientMirrors } from "./AdminClientMirrors";
 import { useEffect, useRef, useState } from "react";
 import {
     RefreshCw,
@@ -183,6 +184,7 @@ export function AdminClientReleases() {
                     ))}
                 </div>
             </State>
+            <AdminClientMirrors clients={clients} />
             {notes && (
                 <Modal
                     title={`${notes.name} ${notes.version}`}

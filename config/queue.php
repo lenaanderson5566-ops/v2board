@@ -58,6 +58,7 @@ return [
             'region' => env('AWS_V2BOARD_REGION', 'us-east-1'),
         ],
 
+        'redis-mirror' => ['driver'=>'redis', 'connection'=>'default', 'queue'=>'client-download', 'retry_after'=>900, 'block_for'=>null],
         'redis' => [
             'driver' => 'redis',
             'connection' => 'default',

@@ -160,10 +160,13 @@ export function State({
         );
     if (error)
         return (
-            <div className="alert" role="alert">
-                {error}
-                {retry && <button onClick={retry}>{tx("重试")}</button>}
-            </div>
+            <>
+                <div className="alert" role="alert">
+                    {error}
+                    {retry && <button onClick={retry}>{tx("重试")}</button>}
+                </div>
+                {data != null && children}
+            </>
         );
     return <>{children}</>;
 }
@@ -344,6 +347,7 @@ export function Editor({
     validate,
     onDirty,
     onValuesChange,
+    draftKey,
 }: {
     fields: Field[];
     initial: Row;
@@ -355,7 +359,18 @@ export function Editor({
     validate?: (values: Row) => string | undefined;
     onDirty?: () => void;
     onValuesChange?: (values: Row) => void;
+    draftKey?: string;
 }) {
+    const draftStorageKey = draftKey
+        ? `v2board.draft.${boot.mode}.${localStorage.getItem(`v2board.${boot.mode}.auth`) || ""}.${draftKey}`
+        : "";
+    const readDraft = (): Row => {
+        try {
+            return JSON.parse(sessionStorage.getItem(draftStorageKey) || "{}");
+        } catch {
+            return {};
+        }
+    };
     const cancel = useContext(ModalClose);
     const formId = useId();
     const initialFields = resolveFields
@@ -387,6 +402,7 @@ export function Editor({
                     ),
                 ]),
             ),
+            ...(draftKey ? readDraft() : {}),
         })),
         [error, setError] = useState(""),
         [busy, setBusy] = useState(false),
@@ -412,6 +428,20 @@ export function Editor({
             typeof next === "string"
         )
             next = next.split(",");
+        if (draftKey) {
+            try {
+                sessionStorage.setItem(
+                    draftStorageKey,
+                    JSON.stringify(
+                        linkValues
+                            ? linkValues(key, next, value)
+                            : { ...value, [key]: next },
+                    ),
+                );
+            } catch {
+                /* Storage may be unavailable. */
+            }
+        }
         onDirty?.();
         onValuesChange?.(
             linkValues
@@ -478,6 +508,14 @@ export function Editor({
                         : null;
             }
             await onSave(body);
+            if (draftKey) {
+                try {
+                    sessionStorage.removeItem(draftStorageKey);
+                } catch {
+                    /* Optional persistence. */
+                }
+                setValue(initial);
+            }
             setSaved(true);
         } catch (e) {
             setError((e as Error).message);
@@ -914,7 +952,9 @@ export function Table({
     }, [context]);
     if (!data.length && boot.mode !== "admin") return <Empty />;
     return (
-        <div className={`table-scroll ${compact ? "compact-mobile-table" : ""}`}>
+        <div
+            className={`table-scroll ${compact ? "compact-mobile-table" : ""}`}
+        >
             {reorderError && (
                 <div className="alert" role="alert">
                     {reorderError}

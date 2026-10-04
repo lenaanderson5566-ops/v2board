@@ -59,6 +59,8 @@ export function PaymentCheckout({
     const [cancelOpen, setCancelOpen] = useState(false),
         [cardMethod, setCardMethod] = useState<number | null>(null);
     const [pollError, setPollError] = useState("");
+    const [pollStopped, setPollStopped] = useState(false);
+    const [pollRun, setPollRun] = useState(0);
     const inFlight = useRef(false);
     const refresh = useRef(reload);
     refresh.current = reload;
@@ -84,12 +86,18 @@ export function PaymentCheckout({
     }, [status]);
     useEffect(() => {
         if (status !== 1 && !(status === 0 && waiting)) return;
+        setPollStopped(false);
         let live = true,
             checks = 0,
             checking = false;
         async function check() {
             if (!live || checking || document.visibilityState === "hidden")
                 return;
+            if (checks >= 60) {
+                setPollStopped(true);
+                return;
+            }
+            checks++;
             checking = true;
             try {
                 const result = await request<number>(
@@ -107,9 +115,12 @@ export function PaymentCheckout({
                 checking = false;
             }
         }
+        void check();
         const timer = setInterval(() => {
-            if (++checks <= 60) void check();
-            else clearInterval(timer);
+            if (checks >= 60 && !checking) {
+                setPollStopped(true);
+                clearInterval(timer);
+            } else void check();
         }, 5000);
         const visible = () => {
             if (document.visibilityState !== "hidden") void check();
@@ -122,7 +133,7 @@ export function PaymentCheckout({
             document.removeEventListener("visibilitychange", visible);
             window.removeEventListener("focus", visible);
         };
-    }, [status, waiting, order.trade_no]);
+    }, [status, waiting, order.trade_no, pollRun]);
     async function pay(id: number, token?: string) {
         if (inFlight.current) return;
         inFlight.current = true;
@@ -424,6 +435,19 @@ export function PaymentCheckout({
                     </section>
                 )}
             </div>
+            {pollStopped && (
+                <div className="alert" role="status">
+                    {tx("自动检查已暂停，订单仍可继续处理，请勿重复付款。")}
+                    <button
+                        onClick={() => {
+                            setPollRun((run) => run + 1);
+                            reload();
+                        }}
+                    >
+                        {tx("继续检查")}
+                    </button>
+                </div>
+            )}
             {pollError && (
                 <div className="alert" role="alert">
                     {pollError}

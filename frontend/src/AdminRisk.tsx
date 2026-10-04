@@ -238,6 +238,7 @@ export function RiskRules() {
                                     ? "黑名单命中记录"
                                     : "异常行为记录"}
                             </p>
+                            <p className="muted">{r.thresholds?.window_seconds ? `观察窗口 ${r.thresholds.window_seconds} 秒；达到 ${r.thresholds.threshold ?? r.thresholds.subscribe_threshold} 次 / 个时记录。${r.thresholds.traffic_growth_threshold_bytes !== undefined ? `同时要求流量增长不超过 ${r.thresholds.traffic_growth_threshold_bytes} 字节。` : ""}` : r.description}</p>
                             <dl>
                                 {Object.entries(r.thresholds || {}).map(
                                     ([key, value]) => (

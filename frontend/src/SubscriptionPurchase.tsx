@@ -64,14 +64,23 @@ export function SubscriptionPurchase() {
         !visiblePlans.some((plan) => Number(plan.id) === Number(currentPlan.id))
     )
         visiblePlans.unshift(currentPlan);
+    const cycles = Object.keys(billingPeriods).filter((key) =>
+        visiblePlans.some((plan) => purchasePeriods(plan).includes(key)),
+    );
+    const activePeriod = cycles.includes(billingPeriod)
+        ? billingPeriod
+        : cycles[0];
+    const cyclePlans = visiblePlans.filter((plan) =>
+        purchasePeriods(plan).includes(activePeriod),
+    );
     const mobileActive =
-        visiblePlans.find((plan) => Number(plan.id) === mobilePlanId) ||
-        visiblePlans.find(
+        cyclePlans.find((plan) => Number(plan.id) === mobilePlanId) ||
+        cyclePlans.find(
             (plan) =>
                 Number(plan.id) ===
                 Number(sub.data?.plan_id || currentPlan?.id),
         ) ||
-        visiblePlans[0];
+        cyclePlans[0];
     return (
         <section className="subscription-catalog">
             <State {...orders} retry={orders.reload}>
@@ -112,10 +121,10 @@ export function SubscriptionPurchase() {
                         role="group"
                         aria-label={tx("选择订阅周期")}
                     >
-                        {["month_price", "year_price"].map((key) => (
+                        {cycles.map((key) => (
                             <button
                                 key={key}
-                                aria-pressed={billingPeriod === key}
+                                aria-pressed={activePeriod === key}
                                 onClick={() => setBillingPeriod(key)}
                             >
                                 {tx(billingPeriods[key])}
@@ -128,7 +137,7 @@ export function SubscriptionPurchase() {
                     role="group"
                     aria-label={tx("选择套餐")}
                 >
-                    {visiblePlans.map((plan) => (
+                    {cyclePlans.map((plan) => (
                         <button
                             key={plan.id}
                             type="button"
@@ -143,12 +152,10 @@ export function SubscriptionPurchase() {
                     ))}
                 </div>
                 <div className="plans pricing-plans">
-                    {visiblePlans.length ? (
-                        visiblePlans.map((plan) => {
+                    {cyclePlans.length ? (
+                        cyclePlans.map((plan) => {
                             const available = purchasePeriods(plan);
-                            const displayed = available.includes(billingPeriod)
-                                ? billingPeriod
-                                : available[0];
+                            const displayed = activePeriod;
                             const action = subscriptionAction(plan, sub.data);
                             const savings = periodSavings(plan, displayed);
                             const same =
@@ -230,7 +237,7 @@ export function SubscriptionPurchase() {
                                                     })}
                                                 </span>
                                             )}
-                                            {displayed !== billingPeriod && (
+                                            {displayed !== activePeriod && (
                                                 <span>
                                                     {pc("fallback", {
                                                         period: tx(
@@ -344,7 +351,9 @@ export function PlanSelection({
             aria-busy={busy}
         >
             <fieldset disabled={busy}>
-                <legend>{tx(plan.resetOnly ? "流量重置" : "选择订阅周期")}</legend>
+                <legend>
+                    {tx(plan.resetOnly ? "流量重置" : "选择订阅周期")}
+                </legend>
                 <div className="period-options">
                     {available.map((key) => (
                         <label

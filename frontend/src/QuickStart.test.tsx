@@ -96,9 +96,20 @@ it("uses configured recommendations per platform and keeps default primary when 
  render(<SubscriptionImport inline url="https://example.com/sub?token=test"/>);
  fireEvent.click(screen.getByRole("button",{name:"Windows"}));
  expect(screen.getByRole("link",{name:/在 FlClash/})).toBeTruthy();
- expect(screen.getByRole("button",{name:/备选： Clash Verge/})).toBeTruthy();
+ expect(screen.getByRole("button",{name:/备选.*Clash Verge/})).toBeTruthy();
  fireEvent.click(screen.getByRole("button",{name:"Android"}));
  expect(screen.getByRole("link",{name:/在 Clash Meta/})).toBeTruthy();
- expect(screen.getByRole("button",{name:/备选： FlClash/})).toBeTruthy();
+ expect(screen.getByRole("button",{name:/备选.*FlClash/})).toBeTruthy();
  } finally {boot.clientRecommendations=undefined;}
+});
+
+it("remembers each platform independently", () => {
+ render(<SubscriptionImport inline url="https://example.com/sub?token=test"/>);
+ fireEvent.click(screen.getByRole("button", {name:"Android"}));
+ fireEvent.click(screen.getByRole("button", {name:/sing-box/}));
+ fireEvent.click(screen.getByRole("button", {name:"Windows"}));
+ expect(screen.getByRole("link", {name:/在 Clash Verge/})).toBeTruthy();
+ fireEvent.click(screen.getByRole("button", {name:"Android"}));
+ expect(screen.getByRole("link", {name:/在 sing-box/})).toBeTruthy();
+ expect(localStorage.getItem("v2board.import-client.android")).toBe("singbox");
 });

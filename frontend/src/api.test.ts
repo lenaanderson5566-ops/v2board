@@ -193,3 +193,21 @@ it("sends multipart uploads without overriding the browser boundary", async () =
     expect(options.headers["Content-Type"]).toBeUndefined();
     expect(options.headers.Authorization).toBe("upload-session");
 });
+
+it("keeps the session on ordinary permission denial", async () => {
+    storage.set(storageKey, "valid");
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response('{"message":"Forbidden"}', {status:403})));
+    await expect(request("user/info")).rejects.toMatchObject({status:403});
+    expect(storage.get(storageKey)).toBe("valid");
+});
+it("times out stalled requests", async () => {
+    vi.useFakeTimers();
+    try {
+        vi.stubGlobal("fetch", vi.fn((_url, options) => new Promise((_resolve, reject) => {
+            options.signal.addEventListener("abort", () => reject(new DOMException("Aborted", "AbortError")));
+        })));
+        const assertion = expect(request("user/info", undefined, {timeoutMs:100})).rejects.toThrow("请求超时");
+        await vi.advanceTimersByTimeAsync(100);
+        await assertion;
+    } finally { vi.useRealTimers(); }
+});

@@ -383,5 +383,9 @@
     "受邀加入": "Tham gia qua lời mời",
     "请朋友邀请你加入": "Nhờ bạn bè mời bạn tham gia",
     "请已注册的朋友向你的邮箱发送邀请，收到邮件后，打开其中的链接即可注册。": "Nhờ một người bạn đã có tài khoản gửi lời mời qua email. Mở liên kết trong email để đăng ký.",
-    "邮箱后缀": "Tên miền email"
+    "邮箱后缀": "Tên miền email",
+  "请求超时，请刷新确认结果后再试": "Yêu cầu hết thời gian. Hãy làm mới để kiểm tra kết quả trước khi thử lại.",
+  "自动检查已暂停，订单仍可继续处理，请勿重复付款。": "Đã tạm dừng kiểm tra tự động. Đơn hàng vẫn có thể được xử lý. Đừng thanh toán lại.",
+  "继续检查": "Tiếp tục kiểm tra",
+  "确认关闭此工单？": "Đóng yêu cầu hỗ trợ này?"
 }

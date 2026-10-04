@@ -687,6 +687,20 @@ class LogController extends Controller
         ]);
     }
 
+    public function reviewRuleHit(Request $request)
+    {
+        $p=$request->validate(['id'=>'required|integer|min:1','state'=>'required|in:pending,confirmed,false_positive,ignored','note'=>'nullable|string|max:1000']);
+        DB::transaction(function() use($p,$request) {
+            $hit=RiskRuleHit::query()->lockForUpdate()->findOrFail($p['id']);
+            $payload=$hit->payload ?? [];
+            $review=['state'=>$p['state'],'note'=>$p['note']??'', 'admin_id'=>$request->user['id']??null,'at'=>time()];
+            $payload['review']=$review;
+            $payload['review_history']=array_merge($payload['review_history']??[],[$review]);
+            $hit->payload=$payload;$hit->save();
+        });
+        return response(['data'=>true]);
+    }
+
     public function getRuleHits(Request $request)
     {
         $current = max((int)$request->input('current', 1), 1);
@@ -716,7 +730,10 @@ class LogController extends Controller
                 ->selectRaw('MAX(id) as id, COUNT(*) as hit_count, MIN(hit_at) as first_hit_at, MAX(hit_at) as hit_at, FLOOR(hit_at / 600) as time_bucket')
                 ->groupBy('user_id', 'email', 'rule_key', 'ip', 'status', 'risk_level', 'scene', 'time_bucket');
             $total = DB::query()->fromSub(clone $grouped, 'events')->count();
-            return response(['data' => $grouped->orderByDesc('hit_at')->orderByDesc('id')->forPage($current, $pageSize)->get(), 'total' => $total]);
+            $data=$grouped->orderByDesc('hit_at')->orderByDesc('id')->forPage($current, $pageSize)->get();
+            $events=RiskRuleHit::query()->whereIn('id',$data->pluck('id'))->get()->keyBy('id');
+            foreach($data as $row) $row->payload=$events->get($row->id)->payload ?? [];
+            return response(['data'=>$data,'total'=>$total]);
         }
         $total = $builder->count();
         $data = $builder->orderBy('id', 'desc')

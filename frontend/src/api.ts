@@ -12,7 +12,10 @@ export interface Envelope<T> {
 }
 export interface Boot {
     clientRecommendations?: Record<string, (string | null)[]>;
-    clientPolicies?: Record<string, { enabled: boolean; minVersion?: string | null }>;
+    clientPolicies?: Record<
+        string,
+        { enabled: boolean; minVersion?: string | null }
+    >;
     clientMirrors?: Record<string, string>;
     legacyDownloads?: Record<string, string>;
     landing?: boolean;
@@ -81,54 +84,83 @@ export async function logoutSession() {
 export async function request<T = Row>(
     path: string,
     body?: Row | FormData,
-    options?: { signal?: AbortSignal },
+    options?: { signal?: AbortSignal; timeoutMs?: number },
 ): Promise<Envelope<T>> {
     if (body) readCache.clear();
     const token = localStorage.getItem(storageKey);
-    const res = await fetch(`/api/v1/${path}`, {
-        signal: options?.signal,
-        method: body ? "POST" : "GET",
-        headers: {
-            Accept: "application/json",
-            "Content-Language": locale(),
-            ...(body && !(body instanceof FormData)
-                ? { "Content-Type": "application/json" }
-                : {}),
-            ...(token ? { Authorization: token } : {}),
-        },
-        ...(body
-            ? { body: body instanceof FormData ? body : JSON.stringify(body) }
-            : {}),
-    });
-    let json: Envelope<T>;
+    const controller = new AbortController();
+    let timedOut = false;
+    const abort = () => controller.abort();
+    if (options?.signal?.aborted) abort();
+    options?.signal?.addEventListener("abort", abort, { once: true });
+    const timer = setTimeout(() => {
+        timedOut = true;
+        abort();
+    }, options?.timeoutMs ?? 30000);
     try {
-        json = await res.json();
-    } catch {
-        throw new Error(
-            tx("服务响应异常 ({{value0}})", { value0: res.status }),
-        );
-    }
-    if (!res.ok) {
-        if ((res.status === 403 || res.status === 401) && token) {
-            readCache.clear();
-            localStorage.removeItem(storageKey);
-            window.dispatchEvent(new Event("auth-expired"));
+        const res = await fetch(`/api/v1/${path}`, {
+            signal: controller.signal,
+            method: body ? "POST" : "GET",
+            headers: {
+                Accept: "application/json",
+                "Content-Language": locale(),
+                ...(body && !(body instanceof FormData)
+                    ? { "Content-Type": "application/json" }
+                    : {}),
+                ...(token ? { Authorization: token } : {}),
+            },
+            ...(body
+                ? {
+                      body:
+                          body instanceof FormData
+                              ? body
+                              : JSON.stringify(body),
+                  }
+                : {}),
+        });
+        let json: Envelope<T>;
+        try {
+            json = await res.json();
+        } catch {
+            throw new Error(
+                tx("服务响应异常 ({{value0}})", { value0: res.status }),
+            );
         }
-        const error = new Error(
-            Object.values(json.errors || {})
-                .flat()
-                .join("；") ||
-                json.message ||
-                tx("请求失败 ({{value0}})", { value0: res.status }),
-        );
-        Object.assign(error, { code: json.code });
+        if (!res.ok) {
+            if (
+                (res.status === 401 ||
+                    (res.status === 403 &&
+                        ["未登录或登陆已过期", "登录已过期"].includes(
+                            json.message || "",
+                        ))) &&
+                token
+            ) {
+                readCache.clear();
+                localStorage.removeItem(storageKey);
+                window.dispatchEvent(new Event("auth-expired"));
+            }
+            const error = new Error(
+                Object.values(json.errors || {})
+                    .flat()
+                    .join("；") ||
+                    json.message ||
+                    tx("请求失败 ({{value0}})", { value0: res.status }),
+            );
+            Object.assign(error, { code: json.code, status: res.status });
+            throw error;
+        }
+        if (body && boot.mode === "user") {
+            readCache.clear();
+            window.dispatchEvent(new Event("data-changed"));
+        }
+        return json;
+    } catch (error) {
+        if (timedOut) throw new Error(tx("请求超时，请刷新确认结果后再试"));
         throw error;
+    } finally {
+        clearTimeout(timer);
+        options?.signal?.removeEventListener("abort", abort);
     }
-    if (body && boot.mode === "user") {
-        readCache.clear();
-        window.dispatchEvent(new Event("data-changed"));
-    }
-    return json;
 }
 export function query(path: string, params: Row): string {
     const q = new URLSearchParams();
@@ -156,12 +188,19 @@ export async function download(path: string, body: Row, filename: string) {
         body: JSON.stringify({ ...body, format: "csv" }),
     });
     if (!response.ok) {
-        if ((response.status === 401 || response.status === 403) && token) {
+        const payload = await response.json().catch(() => ({}));
+        if (
+            (response.status === 401 ||
+                (response.status === 403 &&
+                    ["未登录或登陆已过期", "登录已过期"].includes(
+                        payload.message || "",
+                    ))) &&
+            token
+        ) {
             readCache.clear();
             localStorage.removeItem(storageKey);
             window.dispatchEvent(new Event("auth-expired"));
         }
-        const payload = await response.json().catch(() => ({}));
         throw new Error(
             Object.values(payload.errors || {})
                 .flat()

@@ -385,5 +385,9 @@
     "受邀加入": "Join by invitation",
     "请朋友邀请你加入": "Ask a friend to invite you",
     "请已注册的朋友向你的邮箱发送邀请，收到邮件后，打开其中的链接即可注册。": "Ask a friend with an account to send you an email invitation. Open the link in the email to create your account.",
-    "邮箱后缀": "Email domain"
+    "邮箱后缀": "Email domain",
+  "请求超时，请刷新确认结果后再试": "Request timed out. Refresh to check the result before trying again.",
+  "自动检查已暂停，订单仍可继续处理，请勿重复付款。": "Automatic checking is paused. Your order can still be processed. Do not pay again.",
+  "继续检查": "Resume checking",
+  "确认关闭此工单？": "Close this support ticket?"
 }

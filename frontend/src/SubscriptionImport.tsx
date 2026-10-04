@@ -5,6 +5,8 @@ import "./import-copy";
 import "./client-choice-copy";
 import {
     ArrowUpRight,
+    ArrowRightLeft,
+    ChevronRight,
     Copy,
     Check,
     QrCode,
@@ -34,22 +36,34 @@ export function SubscriptionImport({
 }) {
     const { t } = useTranslation("clientImport");
     const { t: choice } = useTranslation("clientChoice");
-    const enabled = (id: ClientId) => boot.clientPolicies?.[id]?.enabled !== false;
+    const enabled = (id: ClientId) =>
+        boot.clientPolicies?.[id]?.enabled !== false;
     const [downloadOpen, setDownloadOpen] = useState(false);
     const [device, setDevice] = useState<Device>(() => currentDevice().device);
     const recommended = recommendedClients(device, boot.clientRecommendations);
     const [open, setOpen] = useState(false),
         [all, setAll] = useState(false);
-    const [selected, setSelected] = useState<ClientId>(() => {
+    function preferredClient(target: Device): ClientId {
         let saved: string | null = null;
         try {
-            saved = localStorage.getItem("v2board.import-client");
+            saved =
+                localStorage.getItem(`v2board.import-client.${target}`) ||
+                localStorage.getItem("v2board.import-client");
         } catch {}
         return (
-            supportedClients(device).find((client) => client.id === saved && enabled(client.id))?.id ||
-            recommended.find(client => enabled(client.id))?.id || supportedClients(device).find(client => enabled(client.id))?.id || recommended[0].id
+            supportedClients(target).find(
+                (client) => client.id === saved && enabled(client.id),
+            )?.id ||
+            recommendedClients(target, boot.clientRecommendations).find(
+                (client) => enabled(client.id),
+            )?.id ||
+            supportedClients(target).find((client) => enabled(client.id))?.id ||
+            recommendedClients(target, boot.clientRecommendations)[0].id
         );
-    });
+    }
+    const [selected, setSelected] = useState<ClientId>(() =>
+        preferredClient(device),
+    );
     const [copied, setCopied] = useState(false),
         [attempted, setAttempted] = useState(false),
         [error, setError] = useState("");
@@ -60,14 +74,29 @@ export function SubscriptionImport({
         raw = clientSubscriptionUrl(selected, localized);
         link = importLink(selected, localized, boot.title);
     } catch {
-        return <p className="pad" role="alert">{t("invalid")}</p>;
+        return (
+            <p className="pad" role="alert">
+                {t("invalid")}
+            </p>
+        );
     }
     const available = supportedClients(device);
-    const primary = recommended.find(client=>enabled(client.id));
-    const alternative = selected!==primary?.id ? primary : recommended.find(client=>enabled(client.id) && client.id!==primary?.id);
-    function choose(id:ClientId) {
-        setSelected(id);setAll(false);setAttempted(false);setCopied(false);setError("");
-        try {localStorage.setItem("v2board.import-client",id);} catch {}
+    const primary = recommended.find((client) => enabled(client.id));
+    const alternative =
+        selected !== primary?.id
+            ? primary
+            : recommended.find(
+                  (client) => enabled(client.id) && client.id !== primary?.id,
+              );
+    function choose(id: ClientId) {
+        setSelected(id);
+        setAll(false);
+        setAttempted(false);
+        setCopied(false);
+        setError("");
+        try {
+            localStorage.setItem(`v2board.import-client.${device}`, id);
+        } catch {}
     }
     const policy = boot.clientPolicies?.[selected];
     async function copy() {
@@ -86,9 +115,12 @@ export function SubscriptionImport({
         hiddify: "https://github.com/hiddify/hiddify-app/releases",
         singbox: "https://sing-box.sagernet.org/clients/",
     };
-    const downloadUrl = selected === "singbox"
-        ? `https://sing-box.sagernet.org/clients/${device === "windows" || device === "linux" ? "desktop/" : device === "ios" || device === "macos" ? "apple/" : device === "android" ? "android/" : ""}`
-        : device === "ios" ? iosDownloads[selected] : downloads[selected];
+    const downloadUrl =
+        selected === "singbox"
+            ? `https://sing-box.sagernet.org/clients/${device === "windows" || device === "linux" ? "desktop/" : device === "ios" || device === "macos" ? "apple/" : device === "android" ? "android/" : ""}`
+            : device === "ios"
+              ? iosDownloads[selected]
+              : downloads[selected];
     const content = (
         <div className="pad import-content">
             <section className="quick-step">
@@ -119,7 +151,7 @@ export function SubscriptionImport({
                             onClick={() => {
                                 setDevice(value);
                                 setAll(false);
-                                setSelected(recommendedClients(value, boot.clientRecommendations).find(client => enabled(client.id))?.id || supportedClients(value).find(client => enabled(client.id))?.id || recommendedClients(value, boot.clientRecommendations)[0].id);
+                                setSelected(preferredClient(value));
                                 setCopied(false);
                                 setAttempted(false);
                                 setError("");
@@ -149,45 +181,89 @@ export function SubscriptionImport({
                     {tx("选择已安装的客户端，直接导入订阅。")}
                 </p>
                 <div className="client-focus">
-                    <span className="client-symbol"><Smartphone size={22}/></span>
-                    <div><strong>{clients.find(client=>client.id===selected)?.name}</strong><small>{selected===primary?.id ? choice("recommended") : choice("selected")}</small></div>
+                    <span className="client-symbol">
+                        <Smartphone size={22} />
+                    </span>
+                    <div>
+                        <strong>
+                            {
+                                clients.find((client) => client.id === selected)
+                                    ?.name
+                            }
+                        </strong>
+                        <small>
+                            {selected === primary?.id
+                                ? choice("recommended")
+                                : choice("selected")}
+                        </small>
+                    </div>
                 </div>
                 <div className="client-switches">
-                    {alternative && <button className="client-text-link" onClick={()=>choose(alternative.id)}>{choice("alternative")} {alternative.name}</button>}
-                    <button className="client-text-link" onClick={()=>setAll(true)}>{choice("more")} <ArrowUpRight size={14}/></button>
-                </div>
-                {!enabled(selected) && <p role="status">{choice("disabled")}</p>}
-                {policy?.minVersion && <p className="muted">{choice("version", { version: policy.minVersion })}</p>}
-                {enabled(selected) && <div className="quick-actions">
-                    {downloadUrl && (
+                    {alternative && (
                         <button
-                            className="button import-download"
-                            onClick={() => setDownloadOpen(true)}
+                            className="client-alternative"
+                            onClick={() => choose(alternative.id)}
                         >
-                            {tx("获取客户端")}
-                            <ArrowUpRight size={16} />
+                            <ArrowRightLeft size={16} aria-hidden="true" />
+                            <span className="client-alternative-label">
+                                {choice("alternative")}
+                            </span>
+                            <span className="client-alternative-name">
+                                {alternative.name}
+                            </span>
+                            <ChevronRight size={15} aria-hidden="true" />
                         </button>
                     )}
-                    <a
-                        className="button primary import-open"
-                        href={link}
-                        onClick={() => setAttempted(true)}
+                    <button
+                        className="client-text-link"
+                        onClick={() => setAll(true)}
                     >
-                        {tx("在 {{client}} 中打开", {
-                            client: clients.find(
-                                (client) => client.id === selected,
-                            )?.name,
-                        })}
-                        <ArrowUpRight size={17} />
-                    </a>
-                    <button onClick={copy}>
-                        {copied ? <Check size={16} /> : <Copy size={16} />}
-                        {tx(copied ? "已复制" : "复制订阅链接")}
+                        {choice("more")} <ArrowUpRight size={14} />
                     </button>
                 </div>
-                }
+                {!enabled(selected) && (
+                    <p role="status">{choice("disabled")}</p>
+                )}
+                {policy?.minVersion && (
+                    <p className="muted">
+                        {choice("version", { version: policy.minVersion })}
+                    </p>
+                )}
+                {enabled(selected) && (
+                    <div className="quick-actions">
+                        {downloadUrl && (
+                            <button
+                                className="button import-download"
+                                onClick={() => setDownloadOpen(true)}
+                            >
+                                {tx("获取客户端")}
+                                <ArrowUpRight size={16} />
+                            </button>
+                        )}
+                        <a
+                            className="button primary import-open"
+                            href={link}
+                            onClick={() => setAttempted(true)}
+                        >
+                            {tx("在 {{client}} 中打开", {
+                                client: clients.find(
+                                    (client) => client.id === selected,
+                                )?.name,
+                            })}
+                            <ArrowUpRight size={17} />
+                        </a>
+                        <button onClick={copy}>
+                            {copied ? <Check size={16} /> : <Copy size={16} />}
+                            {tx(copied ? "已复制" : "复制订阅链接")}
+                        </button>
+                    </div>
+                )}
                 {error && <p role="alert">{error}</p>}
-                {copied && <p role="status" className="import-help">{t("copied")}</p>}
+                {copied && (
+                    <p role="status" className="import-help">
+                        {t("copied")}
+                    </p>
+                )}
                 {attempted && (
                     <p role="status" className="import-help">
                         {t("opened")}
@@ -211,37 +287,80 @@ export function SubscriptionImport({
                     {tx("使用文档")}
                 </a>
             </section>
-            {enabled(selected) && <details className="import-manual">
-                <summary>
-                    <QrCode size={17} />
-                    {tx("扫码或手动添加")}
-                </summary>
-                <div className="import-fallback">
-                    <div>
-                        <p className="muted">
-                            {tx("在另一台设备上扫描，或复制链接到客户端。")}
-                        </p>
+            {enabled(selected) && (
+                <details className="import-manual">
+                    <summary>
+                        <QrCode size={17} />
+                        {tx("扫码或手动添加")}
+                    </summary>
+                    <div className="import-fallback">
+                        <div>
+                            <p className="muted">
+                                {tx("在另一台设备上扫描，或复制链接到客户端。")}
+                            </p>
+                        </div>
+                        <QRCodeSVG
+                            value={raw}
+                            size={116}
+                            marginSize={3}
+                            title={tx("订阅二维码")}
+                        />
                     </div>
-                    <QRCodeSVG
-                        value={raw}
-                        size={116}
-                        marginSize={3}
-                        title={tx("订阅二维码")}
-                    />
-                </div>
-                <small className="muted">
-                    {tx("订阅链接和二维码包含访问凭据，请勿分享。")}
-                </small>
-            </details>}
+                    <small className="muted">
+                        {tx("订阅链接和二维码包含访问凭据，请勿分享。")}
+                    </small>
+                </details>
+            )}
         </div>
     );
-    const downloadDialog = downloadOpen && <ClientDownload client={selected} device={device} official={downloadUrl!} close={() => setDownloadOpen(false)} />;
-    const chooser = all && <Modal title={choice("more")} close={()=>setAll(false)} className="client-picker-modal">
-        <div className="pad client-picker-list">{available.map(client=><button key={client.id} className={`client-card${selected===client.id ? " selected" : ""}`} disabled={!enabled(client.id)} aria-pressed={selected===client.id} onClick={()=>choose(client.id)}>
-            <Smartphone size={20}/><span><strong>{client.name}</strong><small>{!enabled(client.id) ? choice("disabled") : client.id===primary?.id ? choice("recommended") : client.platform}</small></span>{selected===client.id && <Check size={18}/>}
-        </button>)}</div>
-    </Modal>;
-    if (inline) return <>{content}{downloadDialog}{chooser}</>;
+    const downloadDialog = downloadOpen && (
+        <ClientDownload
+            client={selected}
+            device={device}
+            official={downloadUrl!}
+            close={() => setDownloadOpen(false)}
+        />
+    );
+    const chooser = all && (
+        <Modal
+            title={choice("more")}
+            close={() => setAll(false)}
+            className="client-picker-modal"
+        >
+            <div className="pad client-picker-list">
+                {available.map((client) => (
+                    <button
+                        key={client.id}
+                        className={`client-card${selected === client.id ? " selected" : ""}`}
+                        disabled={!enabled(client.id)}
+                        aria-pressed={selected === client.id}
+                        onClick={() => choose(client.id)}
+                    >
+                        <Smartphone size={20} />
+                        <span>
+                            <strong>{client.name}</strong>
+                            <small>
+                                {!enabled(client.id)
+                                    ? choice("disabled")
+                                    : client.id === primary?.id
+                                      ? choice("recommended")
+                                      : client.platform}
+                            </small>
+                        </span>
+                        {selected === client.id && <Check size={18} />}
+                    </button>
+                ))}
+            </div>
+        </Modal>
+    );
+    if (inline)
+        return (
+            <>
+                {content}
+                {downloadDialog}
+                {chooser}
+            </>
+        );
     return (
         <>
             <button className="primary" onClick={() => setOpen(true)}>

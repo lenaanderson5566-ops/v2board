@@ -121,18 +121,17 @@ class ClientStrategyService
 
     public function resolveClientVersion(string $clientType, string $requestedFlag, string $userAgent): ?string
     {
-        $candidates = [trim((string) $requestedFlag), trim((string) $userAgent)];
-        foreach ($candidates as $raw) {
-            if (!$raw) {
-                continue;
-            }
-
-            if (preg_match('/(?:^|[^a-z0-9])' . preg_quote($clientType, '/') . '[\/\s_-]*v?(\d+(?:\.\d+){0,3})/i', $raw, $m)) {
-                return $m[1];
-            }
-            if (preg_match('/\bv?(\d+(?:\.\d+){1,3})\b/i', $raw, $m)) {
-                return $m[1];
-            }
+        // A subscription flag selects a format, not the installed application version.
+        // Match only an explicitly named application/engine; never use OS versions.
+        $aliases = [
+            'sing'=>['sing-box','singbox'],
+            'meta'=>['mihomo','Clash.Meta'],
+            'verge'=>['ClashVergeRev','Clash-Verge','ClashVerge'],
+            'flclash'=>['FlClash'], 'shadowrocket'=>['Shadowrocket'],
+            'surge'=>['Surge'], 'stash'=>['Stash'], 'quantumult%20x'=>['Quantumult X','QuantumultX'],
+        ];
+        foreach ($aliases[$clientType] ?? [$clientType] as $name) {
+            if (preg_match('/(?:^|[^a-z0-9])'.preg_quote($name, '/').'[\/\s_-]+v?(\d+(?:\.\d+){1,3})(?![\d.])/i', $userAgent, $m)) return $m[1];
         }
 
         return null;

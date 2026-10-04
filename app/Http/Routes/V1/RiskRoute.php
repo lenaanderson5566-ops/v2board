@@ -38,6 +38,7 @@ class RiskRoute
             $router->post('/client/strategy/update', 'V1\Risk\LogController@updateClientStrategy');
             $router->post('/client/strategy/delete', 'V1\Risk\LogController@deleteClientStrategy');
 
+            $router->post('/log/rule-hit/review', 'V1\Risk\LogController@reviewRuleHit');
             $router->get('/log/rule-hit/fetch', 'V1\Risk\LogController@getRuleHits');
             $router->get('/log/user-connection/fetch', 'V1\Risk\LogController@getUserConnectionLogs');
             $router->get('/log/login/fetch', 'V1\Risk\LogController@getLoginLogs');

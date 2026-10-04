@@ -132,32 +132,30 @@ export function Subscribe() {
                     )}
                 </div>
             </Panel>
-                <Panel title={tx("可用节点")}>
-                    <State {...nodes} retry={nodes.reload}>
-                        <Table
-                            compact
-                            data={nodes.data || []}
-                            columns={[
-                                ["name", tx("节点名称")],
-                                ["type", tx("协议")],
-                                ["rate", tx("倍率")],
-                                [
-                                    "is_online",
-                                    tx("状态"),
-                                    (r) => (
-                                        <span
-                                            className={`badge ${r.is_online ? "success" : ""}`}
-                                        >
-                                            {r.is_online
-                                                ? tx("在线")
-                                                : tx("离线")}
-                                        </span>
-                                    ),
-                                ],
-                            ]}
-                        />
-                    </State>
-                </Panel>
+            <Panel title={tx("可用节点")}>
+                <State {...nodes} retry={nodes.reload}>
+                    <Table
+                        compact
+                        data={nodes.data || []}
+                        columns={[
+                            ["name", tx("节点名称")],
+                            ["type", tx("协议")],
+                            ["rate", tx("倍率")],
+                            [
+                                "is_online",
+                                tx("状态"),
+                                (r) => (
+                                    <span
+                                        className={`badge ${r.is_online ? "success" : ""}`}
+                                    >
+                                        {r.is_online ? tx("在线") : tx("离线")}
+                                    </span>
+                                ),
+                            ],
+                        ]}
+                    />
+                </State>
+            </Panel>
         </>
     );
 }
@@ -170,7 +168,17 @@ export function Orders({ tradeNo }: { tradeNo?: string }) {
 function OrderView({ tradeNo }: { tradeNo: string }) {
     const d = useData<Row>(query("user/order/detail", { trade_no: tradeNo }));
     if (d.data && [2, 3, 4].includes(Number(d.data.status))) {
-        return <><OrderDetail order={d.data} reload={d.reload} />{d.error && <p className="alert" role="alert">{d.error}<button onClick={d.reload}>{tx("重试")}</button></p>}</>;
+        return (
+            <>
+                <OrderDetail order={d.data} reload={d.reload} />
+                {d.error && (
+                    <p className="alert" role="alert">
+                        {d.error}
+                        <button onClick={d.reload}>{tx("重试")}</button>
+                    </p>
+                )}
+            </>
+        );
     }
     return (
         <Panel title={tx("订单详情")} actions={<Reload onClick={d.reload} />}>
@@ -385,6 +393,28 @@ export function Tickets({
                 : `${prefix}/ticket/fetch`,
         );
     const openTicket = unresolvedTicket(d.data || []);
+    const closingRef = useRef(false);
+    const [closing, setClosing] = useState(false);
+    const [closeTarget, setCloseTarget] = useState<number | null>(null);
+    const [closeError, setCloseError] = useState("");
+    async function closeTicket() {
+        if (!closeTarget || closingRef.current) return;
+        closingRef.current = true;
+        setClosing(true);
+        setCloseError("");
+        try {
+            await request(`${prefix}/ticket/close`, { id: closeTarget });
+            setCloseTarget(null);
+            detail.reload();
+            d.reload();
+        } catch (error) {
+            setCloseError((error as Error).message);
+        } finally {
+            closingRef.current = false;
+            setClosing(false);
+        }
+    }
+
     return (
         <>
             {!isAdmin && (
@@ -450,16 +480,9 @@ export function Tickets({
                                 {isAdmin && (
                                     <button
                                         disabled={r.status !== 0}
-                                        onClick={async () => {
-                                            try {
-                                                await request(
-                                                    `${prefix}/ticket/close`,
-                                                    { id: r.id },
-                                                );
-                                                d.reload();
-                                            } catch (e) {
-                                                alert((e as Error).message);
-                                            }
+                                        onClick={() => {
+                                            setCloseError("");
+                                            setCloseTarget(r.id);
                                         }}
                                     >
                                         {tx("关闭工单")}
@@ -481,6 +504,7 @@ export function Tickets({
             {creating && (
                 <Modal title={tx("创建工单")} close={() => setCreating(false)}>
                     <Editor
+                        draftKey="ticket-new"
                         fields={[
                             {
                                 key: "topic",
@@ -528,10 +552,12 @@ export function Tickets({
                                 rows(latest.data),
                             );
                             if (existing) {
-                                setCreating(false);
-                                setId(existing.id);
                                 d.reload();
-                                return;
+                                throw new Error(
+                                    tx(
+                                        "已有未关闭的工单请继续回复，避免重复提交。",
+                                    ),
+                                );
                             }
                             await request(
                                 "user/ticket/save",
@@ -576,6 +602,8 @@ export function Tickets({
                                             required: true,
                                         },
                                     ]}
+                                    key={id}
+                                    draftKey={`ticket-reply-${id}`}
                                     initial={{ id }}
                                     submit={tx("发送回复")}
                                     onSave={async (body) => {
@@ -589,17 +617,9 @@ export function Tickets({
                                 />
                                 <div className="pad">
                                     <button
-                                        onClick={async () => {
-                                            try {
-                                                await request(
-                                                    `${prefix}/ticket/close`,
-                                                    { id },
-                                                );
-                                                detail.reload();
-                                                d.reload();
-                                            } catch (e) {
-                                                alert((e as Error).message);
-                                            }
+                                        onClick={() => {
+                                            setCloseError("");
+                                            setCloseTarget(id);
                                         }}
                                     >
                                         {tx("关闭工单")}
@@ -608,6 +628,34 @@ export function Tickets({
                             </>
                         )}
                     </State>
+                </Modal>
+            )}
+            {closeTarget !== null && (
+                <Modal
+                    title={tx("关闭工单")}
+                    close={() => {
+                        if (!closingRef.current) setCloseTarget(null);
+                    }}
+                >
+                    <div className="pad">
+                        <p>{tx("确认关闭此工单？")}</p>
+                        {closeError && (
+                            <div role="alert" className="alert">
+                                {closeError}
+                            </div>
+                        )}
+                        <div className="actions">
+                            <button
+                                disabled={closing}
+                                onClick={() => setCloseTarget(null)}
+                            >
+                                {tx("取消")}
+                            </button>
+                            <button disabled={closing} onClick={closeTicket}>
+                                {tx(closing ? "提交中…" : "关闭工单")}
+                            </button>
+                        </div>
+                    </div>
                 </Modal>
             )}
         </>

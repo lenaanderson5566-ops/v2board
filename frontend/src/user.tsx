@@ -667,6 +667,7 @@ export function Tickets({
 }
 export function Invite() {
     const [page, setPage] = useState(1);
+    const [action, setAction] = useState<"transfer" | "withdraw" | null>(null);
     const config = useData("user/comm/config");
     const d = useData("user/invite/fetch"),
         details = useData<Row[]>(query("user/invite/details", {current: page, page_size: 20}));
@@ -676,12 +677,21 @@ export function Invite() {
         <State {...d} retry={d.reload}>
             <div className="invite-page-content">
             <EmailInvites rewards={v.rewards} />
-            <div className="metrics">
-                <Metric label={tx("邀请用户")} value={stat[0] || 0} />
-                <Metric label={tx("可用佣金")} value={money(stat[4])} />
-                <Metric label={tx("佣金比例")} value={`${stat[3] || 0}%`} />
-            </div>
-            <Panel title={tx("佣金记录")}>
+            <section className="invite-wallet">
+                <div className="invite-wallet-balance">
+                    <span className="muted">{tx("可用佣金")}</span>
+                    <strong>{money(stat[4])}</strong>
+                    <div className="invite-wallet-facts">
+                        <span>{tx("邀请用户")} <b>{stat[0] || 0}</b></span>
+                        <span>{tx("佣金比例")} <b>{stat[3] || 0}%</b></span>
+                    </div>
+                </div>
+                <div className="invite-wallet-actions">
+                    <button className="primary" disabled={Number(stat[4] || 0) <= 0} onClick={() => setAction("transfer")}>{tx("转入余额")}</button>
+                    {config.data && !config.data.withdraw_close && <button disabled={Number(stat[4] || 0) <= 0} onClick={() => setAction("withdraw")}>{tx("申请佣金提现")}</button>}
+                </div>
+            </section>
+            <Panel className="invite-ledger" title={tx("佣金记录")}>
                 <State {...details}>
                     <Table
                         data={details.data || []}
@@ -707,7 +717,8 @@ export function Invite() {
                 </State>
             {details.total > 20 && <Pager page={page} total={details.total} size={20} onChange={setPage} />}
             </Panel>
-            <Panel title={tx("佣金操作")}>
+            {action === "transfer" && <Modal title={tx("转入余额")} close={() => setAction(null)}>
+                <div className="invite-money-form">
                 <Editor
                     fields={[
                         {
@@ -727,11 +738,14 @@ export function Invite() {
                     onSave={async (b) => {
                         await request("user/transfer", b);
                         d.reload();
+                        setAction(null);
                     }}
                 />
-            </Panel>
-            {config.data && !config.data.withdraw_close && (
-                <Panel title={tx("申请佣金提现")}>
+                </div>
+            </Modal>}
+            {action === "withdraw" && config.data && !config.data.withdraw_close && (
+                <Modal title={tx("申请佣金提现")} close={() => setAction(null)}>
+                    <div className="invite-money-form">
                     <Editor
                         fields={[
                             {
@@ -755,7 +769,8 @@ export function Invite() {
                             navigate("ticket");
                         }}
                     />
-                </Panel>
+                    </div>
+                </Modal>
             )}
             </div>
         </State>

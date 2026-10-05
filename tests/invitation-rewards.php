@@ -21,7 +21,7 @@ try {
     $disabled=$make(); $service->register($disabled,1000000001);
     $assert(!DB::table('v2_invitation_reward')->where('user_id',$disabled->id)->exists(),'Disabled rewards enrolled account');
     config(['v2board.invite_registration_gb'=>1,'v2board.invite_first_use_gb'=>2]);
-    $user=$make(); $service->register($user,1000000002);
+    $inviter=$make(); $user=$make(); $user->invite_user_id=$inviter->id; $user->save(); $service->register($user,1000000002);
     $assert($user->credit_balance===1073741824,'Registration reward incorrect');
     $assert(App\Services\TrafficCreditService::effectiveGroupId($user)===$group->id && (new App\Services\UserService())->isAvailable($user),'Reward account cannot connect');
     $assert($user->plan_id===null,'Reward changed subscription');
@@ -46,7 +46,9 @@ try {
     $assert($user->fresh()->credit_balance===3*1073741824-10,'First usage reward or debit incorrect');
     $expiry=DB::table('v2_credit_batch')->where('reference','invite_first_use:'.$user->id)->value('expires_at');
     $assert(abs($expiry-Carbon\Carbon::now('UTC')->addMonthsNoOverflow(1)->timestamp)<5,'First-use validity not snapshotted');
+    $assert((int)$inviter->fresh()->credit_balance===2*1073741824,'Inviter first-use reward missing');
     $report(0,10);
+    $assert((int)$inviter->fresh()->credit_balance===2*1073741824,'Repeated usage duplicated inviter reward');
     $assert($user->fresh()->credit_balance===3*1073741824-20,'Repeated usage duplicated reward');
     $assert(DB::table('v2_traffic_credit_log')->where('reference','invite_first_use:'.$user->id)->count()===1,'First-use audit not unique');
     $user->update(['u'=>0,'d'=>0]); $report(1,0);

@@ -57,6 +57,9 @@ class TrafficUpdate extends Command
         $idList=$users->pluck('id')->all();
         try {
             DB::beginTransaction();
+            // Lock recipients and their inviters together in ID order to avoid reciprocal-invite deadlocks.
+            $inviterIds = User::whereIn('id', $idList)->whereNotNull('invite_user_id')->pluck('invite_user_id')->all();
+            User::whereIn('id', array_unique(array_merge($idList, $inviterIds)))->orderBy('id')->lockForUpdate()->get(['id']);
             $casesU=[]; $casesD=[]; $now=time();
             foreach(User::whereIn('id',$idList)->orderBy('id')->lockForUpdate()->get() as $user) {
                 $upload=max(0,(int)($uploads[$user->id]??0));

@@ -32,15 +32,23 @@ class InvitationRewardService
         $reward = DB::table('v2_invitation_reward')->where('user_id',$userId)->lockForUpdate()->first();
         if (!$reward || $reward->first_use_at !== null || $reward->first_use_bytes <= 0) return;
         $this->grant($user, (int)$reward->first_use_bytes, 'invite_first_use', (int)$reward->validity_months);
+        if ($user->invite_user_id && (int)$user->invite_user_id !== (int)$user->id) {
+            $inviter = User::where('id', $user->invite_user_id)->lockForUpdate()->first();
+            if ($inviter && !$inviter->banned) {
+                // Each invited account gets its own reference, even for the same inviter.
+                $this->grant($inviter, (int)$reward->first_use_bytes, 'invite_friend_use', (int)$reward->validity_months, 'invite_friend_use:'.$user->id);
+            }
+        }
         DB::table('v2_invitation_reward')->where('id',$reward->id)->update(['first_use_at'=>time()]);
     }
-    private function grant(User $user, int $bytes, string $kind, int $months): void {
+    private function grant(User $user, int $bytes, string $kind, int $months, ?string $reference = null): void {
         if ($bytes <= 0) return;
+        $reference = $reference ?? $kind.':'.$user->id;
         DB::table('v2_traffic_credit_log')->insert([
-            'user_id'=>$user->id,'reference'=>$kind.':'.$user->id,'kind'=>$kind,'bytes'=>$bytes,
+            'user_id'=>$user->id,'reference'=>$reference,'kind'=>$kind,'bytes'=>$bytes,
             'snapshot'=>json_encode(['inviterId'=>$user->invite_user_id]),'created_at'=>time(),
         ]);
-        CreditExpiryService::grant($user, $bytes, $kind.':'.$user->id, $months);
+        CreditExpiryService::grant($user, $bytes, $reference, $months);
         if ($user->group_id === null) $user->group_id = TrafficCreditService::baseGroupId();
         $user->save();
     }

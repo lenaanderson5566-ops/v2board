@@ -394,5 +394,6 @@
   "好友首次实际使用流量后，再获赠 {{amount}} 额度。": "Bạn bè nhận thêm {{amount}} hạn mức sau lần sử dụng lưu lượng đầu tiên.",
   "暂不开放新工单，已有工单仍可查看和回复。": "Hiện không nhận yêu cầu mới. Bạn vẫn có thể xem và trả lời yêu cầu hiện có.",
   "完成购买后即可创建工单。": "Bạn có thể tạo yêu cầu sau khi hoàn tất mua hàng.",
-  "赠送额度到账后 {{months}} 个月内有效。": "Dung lượng thưởng có hiệu lực {{months}} tháng từ khi được cấp."
+  "赠送额度到账后 {{months}} 个月内有效。": "Dung lượng thưởng có hiệu lực {{months}} tháng từ khi được cấp.",
+    "好友首次实际使用流量后，双方各获赠 {{amount}} 额度。": "Sau khi bạn bè sử dụng lưu lượng lần đầu, mỗi người nhận {{amount}} tín dụng."
 }

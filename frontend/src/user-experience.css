@@ -1326,3 +1326,11 @@ body:has(.browser-notice) #custom-footer {
 .paid-traffic-reset { margin-top: 16px; padding: 20px; }
 .paid-traffic-reset .settings-row { gap: 12px; flex-wrap: wrap; }
 .paid-traffic-reset .muted { margin-bottom: 0; }
+
+.invite-intro { background: #f0f3eb; padding: 28px; }
+.invite-hero-art { display: block; object-fit: cover; border-radius: 18px; margin: 0 auto 18px; }
+.invite-intro p { margin-bottom: 12px; }
+.invite-intro .actions { margin-top: 20px; }
+.invite-banner { height: 110px; background: #f0f3eb; margin-bottom: 16px; }
+.invite-banner img { object-fit: cover; border-radius: 16px; }
+@media (max-width: 600px) { .invite-intro { padding: 20px 16px; } .invite-intro h2 { font-size: 20px; } .invite-hero-art { width: 135px; height: 90px; } }

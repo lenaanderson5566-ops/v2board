@@ -1,3 +1,4 @@
+import invitationArt from "./assets/invite-friends.jpg";
 import { RegistrationDomains } from "./RegistrationDomains";
 import { registrationEmailError } from "./registration-policy";
 import { useState, type FormEvent } from "react";
@@ -49,9 +50,7 @@ export function EmailInvites({ rewards }: { rewards?: { registrationBytes?: numb
     return (
         <>
             <section className="invite-intro">
-                <div className="invite-symbol">
-                    <Mail size={28} aria-hidden="true" />
-                </div>
+                <img className="invite-hero-art" src={invitationArt} alt="" width="180" height="120" />
                 <h2>{tx("邀请朋友使用 {{name}}", { name: boot.title })}</h2>
                 <p className="muted">
                     {tx(
@@ -60,7 +59,7 @@ export function EmailInvites({ rewards }: { rewards?: { registrationBytes?: numb
                 </p>
                 {(Number(rewards?.registrationBytes) > 0 || Number(rewards?.firstUseBytes) > 0) && <p>{tx("赠送额度到账后 {{months}} 个月内有效。", { months: rewards?.validityMonths || 1 })}</p>}
                 {Number(rewards?.registrationBytes) > 0 && <p>{tx("好友通过邀请注册后获赠 {{amount}} 额度。", { amount: bytes(Number(rewards?.registrationBytes)) })}</p>}
-                {Number(rewards?.firstUseBytes) > 0 && <p>{tx("好友首次实际使用流量后，再获赠 {{amount}} 额度。", { amount: bytes(Number(rewards?.firstUseBytes)) })}</p>}
+                {Number(rewards?.firstUseBytes) > 0 && <p>{tx("好友首次实际使用流量后，双方各获赠 {{amount}} 额度。", { amount: bytes(Number(rewards?.firstUseBytes)) })}</p>}
                 <div className="actions">
                     <button className="primary" onClick={open}>
                         {tx("发送邮件邀请")}
@@ -81,7 +80,7 @@ export function EmailInvites({ rewards }: { rewards?: { registrationBytes?: numb
                         {view === "compose" ? (
                             <>
                                 <div className="invite-banner">
-                                    <Mail size={36} aria-hidden="true" />
+                                    <img src={invitationArt} alt="" width="150" height="100" />
                                 </div>
                                 <p className="invite-reward">
                                     {tx("邀请收益按当前站点规则结算。")}

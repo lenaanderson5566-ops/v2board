@@ -120,5 +120,5 @@ it("shows only configured invitee rewards", () => {
     expect(screen.queryByText(/好友首次实际使用/)).toBeNull();
     view.rerender(<EmailInvites rewards={{registrationBytes: 0, firstUseBytes: 2048}} />);
     expect(screen.queryByText(/好友通过邀请注册后获赠/)).toBeNull();
-    expect(screen.getByText("好友首次实际使用流量后，再获赠 2048 B 额度。")).toBeTruthy();
+    expect(screen.getByText("好友首次实际使用流量后，双方各获赠 2048 B 额度。")).toBeTruthy();
 });

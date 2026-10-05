@@ -1,3 +1,4 @@
+import { InlineHelp } from "./InlineHelp";
 import { useRef, useState } from "react";
 import { Plus } from "lucide-react";
 import { boot, bytes, money, navigate, request, type Row } from "./api";
@@ -17,7 +18,7 @@ export function TrafficCredits({
     return (
         <section className="settings-section traffic-credits">
             <header>
-                <h2>{c("credits")}</h2>
+                <h2 className="heading-with-help">{c("credits")}{purchaseLabel && <InlineHelp label={c("credits")}>{c(boot.creditAccessPolicy ? "accessHelp" : "help")}</InlineHelp>}</h2>
             </header>
             <div className="settings-card credit-balance-card">
                 <div className="settings-row">
@@ -35,7 +36,7 @@ export function TrafficCredits({
                         {purchaseLabel ? c("buyMore") : <Plus size={20} />}
                     </button>
                 </div>
-                <p className="muted">{c(boot.creditAccessPolicy ? "accessHelp" : "help")}</p>
+                {!purchaseLabel && <p className="muted">{c(boot.creditAccessPolicy ? "accessHelp" : "help")}</p>}
             </div>
             {open && <CreditPurchase close={() => setOpen(false)} />}
         </section>

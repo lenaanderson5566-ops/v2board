@@ -1,3 +1,4 @@
+import { InlineHelp } from "./InlineHelp";
 import { TrafficCredits } from "./TrafficCredits";
 import { c } from "./credit-copy";
 import { useState } from "react";
@@ -19,7 +20,6 @@ export function BillingPage() {
     const status = ["待支付", "开通中", "已取消", "已完成", "已折抵"];
     return (
         <div className="settings-content billing-page">
-            <p className="settings-intro">{b("billingIntro")}</p>
             {info.data && info.data.account_status?.state !== "active" && (
                 <a className="billing-usage-link" href="#/traffic">
                     {tx("使用情况")}
@@ -53,7 +53,7 @@ export function BillingPage() {
             </section>
             <section className="settings-section">
                 <header>
-                    <h2>{tx("账户余额")}</h2>
+                    <h2 className="heading-with-help">{tx("账户余额")}<InlineHelp label={tx("账户余额")}>{b("balanceHelp")}</InlineHelp></h2>
                     <button
                         className="soft-button"
                         onClick={() => setDialog("gift")}
@@ -76,7 +76,6 @@ export function BillingPage() {
                                 {tx("账户充值")}
                             </button>
                         </div>
-                        <p className="muted">{b("balanceHelp")}</p>
                     </div>
                 </State>
             </section>
@@ -91,7 +90,7 @@ export function BillingPage() {
             )}
             <section className="settings-section">
                 <header>
-                    <h2>{b("transactions")}</h2>
+                    <h2 className="heading-with-help">{b("transactions")}<InlineHelp label={b("transactions")}>{b("billingIntro")}</InlineHelp></h2>
                     {(orders.data?.length || 0) > 5 && (
                         <button
                             className="soft-button"

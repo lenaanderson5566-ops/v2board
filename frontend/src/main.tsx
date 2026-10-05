@@ -1,3 +1,4 @@
+import { installChatLayout } from "./chat-layout";
 import {
     tx,
     languageReady,
@@ -356,6 +357,7 @@ function Captcha({ onChange }: { onChange: (value: string) => void }) {
     return boot.recaptchaSiteKey ? <div ref={ref} /> : null;
 }
 function App() {
+    useEffect(() => installChatLayout(), []);
     useTranslation();
     const [path, setPath] = useState(
             location.hash.slice(2).split("?")[0] || "",

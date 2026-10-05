@@ -15,8 +15,11 @@ it("raises a late-loading launcher above the nav without moving the conversation
     vi.stubGlobal("cancelAnimationFrame", () => {});
     const stop = installChatLayout(); callback(0);
     expect(launcher.hasAttribute("data-chat-launcher")).toBe(true);
+    expect(launcher.style.getPropertyValue("bottom")).toBe("106px");
+    expect(launcher.style.getPropertyPriority("bottom")).toBe("important");
     expect(conversation.hasAttribute("data-chat-launcher")).toBe(false);
     expect(document.documentElement.style.getPropertyValue("--chat-navigation-offset")).toBe("106px");
     stop(); expect(launcher.hasAttribute("data-chat-launcher")).toBe(false);
+    expect(launcher.style.getPropertyValue("bottom")).toBe("");
     document.body.innerHTML = ""; vi.unstubAllGlobals();
 });

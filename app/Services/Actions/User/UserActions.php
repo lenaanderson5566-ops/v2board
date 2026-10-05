@@ -279,6 +279,7 @@ class UserActions
     {
         $user = User::where('id', $request->user['id'])
             ->select([
+                'id',
                 'email',
                 'language',
                 'transfer_enable',
@@ -306,6 +307,7 @@ class UserActions
             abort(request()->is('api/v10/*') ? 409 : 500, __('The user does not exist'));
         }
         $user['avatar_url'] = 'https://cravatar.cn/avatar/' . md5($user->email) . '?s=64&d=identicon';
+        $user['ticket_creation'] = \App\Services\TicketPolicy::creation((int)$user->id);
         $user['account_status'] = (new \App\Services\AccountStatusService())->forUser($user);
         return response([
             'data' => $user
@@ -333,6 +335,7 @@ class UserActions
     {
         $user = User::where('id', $request->user['id'])
             ->select([
+                'id',
                 'plan_id',
                 'token',
                 'expired_at',

@@ -62,31 +62,8 @@ class TicketActions
                 abort(request()->is('api/v10/*') ? 409 : 500, __('There are other unresolved tickets'));
             }
 
-            // 获取工单状态
-            $ticketStatus = config('v2board.ticket_status', 0);
-
-            switch ($ticketStatus) {
-                case 0:
-                    // 完全开放，不禁止任何工单
-                    break;
-                case 1:
-                    // 仅限有付费订单用户
-                    $hasOrder = Order::where('user_id', $request->user['id'])
-                        ->whereIn('status', [3, 4])
-                        ->exists();
-
-                    if (!$hasOrder) {
-                        abort(request()->is('api/v10/*') ? 403 : 500, __('请先购买套餐'));
-                    }
-                    break;
-                case 2:
-                    // 完全禁止所有工单
-                    abort(request()->is('api/v10/*') ? 403 : 500, __('当前套餐不允许发起工单'));
-                    break;
-                default:
-                    // 处理未知状态
-                    abort(request()->is('api/v10/*') ? 409 : 500, __('未知的工单状态'));
-            }
+            $policy = \App\Services\TicketPolicy::creation((int)$request->user['id']);
+            if ($policy !== 'allowed') abort(request()->is('api/v10/*') ? 403 : 500, $policy === 'purchase_required' ? __('请先购买套餐') : __('当前套餐不允许发起工单'));
 
             $ticketData = $request->only(['subject', 'level']) + ['user_id' => $request->user['id']];
             $ticket = Ticket::create($ticketData);

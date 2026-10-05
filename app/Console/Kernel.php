@@ -28,6 +28,7 @@ class Kernel extends ConsoleKernel
     {
         Cache::put(CacheKey::get('SCHEDULE_LAST_CHECK_AT', null), time());
         // traffic
+        $schedule->command('credits:expire')->everyMinute()->withoutOverlapping();
         $schedule->command('traffic:update')->everyMinute()->withoutOverlapping();
         // v2board
         $schedule->command('v2board:statistics')->dailyAt('0:10');

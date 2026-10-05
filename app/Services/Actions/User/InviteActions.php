@@ -79,7 +79,8 @@ class InviteActions
         ];
         return response([
             'data' => [
-                'stat' => $stat
+                'stat' => $stat,
+                'rewards' => \App\Services\InvitationRewardService::settings()
             ]
         ]);
     }

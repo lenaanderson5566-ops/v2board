@@ -55,7 +55,7 @@ function decode(name:string,value:any):any {
     if (name === 'orderCreated') return value.orderNumber;
     if (name === 'orderStatus') return statuses.indexOf(value.status);
     if (name === 'summary') return [value.pendingOrders,value.pendingTickets,value.referrals];
-    if (name === 'referrals') return {stat:[value.registeredUsers,value.earnedCommission,value.pendingCommission,value.commissionRate,value.availableCommission]};
+    if (name === 'referrals') return {rewards:value.rewards,stat:[value.registeredUsers,value.earnedCommission,value.pendingCommission,value.commissionRate,value.availableCommission]};
     if (name === 'inbox') return {...value,items:decode('array:notification',value.items)};
     if (name === 'articles') return value.id ? decode('article',value) : Object.fromEntries(Object.entries(value).map(([k,v])=>[k,decode('array:article',v)]));
     if (name.includes(':')) {

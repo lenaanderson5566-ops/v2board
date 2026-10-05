@@ -16,7 +16,7 @@ import {
     waitFor,
 } from "@testing-library/react";
 import type { ReactNode } from "react";
-const mocks = vi.hoisted(() => ({ tickets: [] as any[], request: vi.fn(), saveError: vi.fn() }));
+const mocks = vi.hoisted(() => ({ policy: "allowed", tickets: [] as any[], request: vi.fn(), saveError: vi.fn() }));
 vi.mock("./i18n", () => ({
     default: { addResourceBundle: () => undefined },
     tx: (key: string) => key,
@@ -35,7 +35,7 @@ vi.mock("./api", () => ({
 }));
 vi.mock("./ui", () => ({
     useData: (path: string) => ({
-        data: path.includes("id=")
+        data: path === "user/info" ? { ticket_creation: mocks.policy } : path.includes("id=")
             ? { subject: "现有工单", status: 1, message: [] }
             : mocks.tickets,
         loading: false,
@@ -79,6 +79,7 @@ import { HelpGuides, ContactSupport } from "./HelpGuides";
 import { Tickets } from "./user";
 afterEach(cleanup);
 beforeEach(() => {
+    mocks.policy = "allowed";
     mocks.tickets = [];
     mocks.request.mockReset();
     mocks.saveError.mockReset();
@@ -133,4 +134,10 @@ describe("help and ticket interactions", () => {
         ).toBeNull();
         expect(screen.queryByRole("button", { name: "创建工单" })).toBeNull();
     });
+});
+
+it.each(["closed", "purchase_required"])("disables new tickets for policy %s", (policy) => {
+    mocks.policy = policy;
+    render(<Tickets />);
+    expect((screen.getByRole("button", {name: "创建工单"}) as HTMLButtonElement).disabled).toBe(true);
 });

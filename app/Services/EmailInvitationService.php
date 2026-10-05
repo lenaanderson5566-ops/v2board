@@ -46,6 +46,7 @@ class EmailInvitationService
         return DB::transaction(function () use ($token, $email, $createUser) {
             $invitation = $this->validateRecipient($token, $email, true);
             $user = $createUser($invitation->user_id);
+            (new InvitationRewardService())->register($user, $invitation->id);
             $invitation->update(['accepted_user_id'=>$user->id,'accepted_at'=>time()]);
             return $user;
         });

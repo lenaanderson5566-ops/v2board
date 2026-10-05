@@ -29,6 +29,10 @@ echo '<?php // fixture' > database/migrations/2026_10_02_000002_add_language_to_
 echo '<?php // fixture' > database/migrations/2026_10_02_000003_create_usage_resets.php
 echo '<?php // fixture' > database/migrations/2026_10_02_000004_create_notice_reads.php
 echo '<?php // fixture' > database/migrations/2026_10_02_000005_create_traffic_credits.php
+echo '<?php // fixture' > database/migrations/2026_10_03_000002_create_banners.php
+echo '<?php // fixture' > database/migrations/2026_10_03_000001_add_notice_translations.php
+echo '<?php // fixture' > database/migrations/2026_10_05_000001_create_invitation_rewards.php
+echo '<?php // fixture' > database/migrations/2026_10_05_000002_create_credit_batches.php
 mkdir -p storage/geoip
 echo 'new mmdb' > storage/geoip/GeoLite2-ASN.mmdb
 git add -f storage/geoip/GeoLite2-ASN.mmdb

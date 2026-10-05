@@ -21,6 +21,9 @@ class ConfigSave extends FormRequest
         'invite_force' => 'in:0,1',
         'invite_commission' => 'integer',
         'invite_gen_limit' => 'integer',
+        'invite_registration_gb' => 'nullable|numeric|min:0|max:10000',
+        'invite_credit_months' => 'nullable|integer|min:1|max:120',
+        'invite_first_use_gb' => 'nullable|numeric|min:0|max:10000',
         'invite_never_expire' => 'in:0,1',
         'commission_first_time_enable' => 'in:0,1',
         'commission_auto_check_enable' => 'in:0,1',
@@ -125,6 +128,16 @@ class ConfigSave extends FormRequest
      *
      * @return array
      */
+    public function withValidator($validator) {
+        $validator->after(function ($validator) {
+            $registration = $this->input('invite_registration_gb', config('v2board.invite_registration_gb', 0));
+            $usage = $this->input('invite_first_use_gb', config('v2board.invite_first_use_gb', 0));
+            $group = $this->input('credit_base_group_id', config('v2board.credit_base_group_id'));
+            if (((float)$registration > 0 || (float)$usage > 0) && (!$group || !\App\Models\ServerGroup::where('id', $group)->exists()))
+                $validator->errors()->add('invite_registration_gb', '请先在订阅设置中配置有效的额度基础权限组，再启用邀请流量奖励。');
+        });
+    }
+
     public function rules()
     {
         $rules = self::RULES;

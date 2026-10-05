@@ -54,35 +54,30 @@ class TrafficUpdate extends Command
 
         $users = User::whereIn('id', array_unique(array_merge(array_keys($uploads), array_keys($downloads))))->get(['id']);
         if ($users->isEmpty()) return;
-        $time = time();
-        $casesU = [];
-        $casesCredit = [];
-        $casesD = [];
-        $idList = [];
-
-        foreach ($users as $user) {
-            $upload = $uploads[$user->id] ?? 0;
-            $download = $downloads[$user->id] ?? 0;
-
-            // Add against the locked database value, never overwrite a concurrent usage reset.
-            $delta = max(0, (int)$upload) + max(0, (int)$download);
-            $base = "(CASE WHEN expired_at IS NULL OR expired_at > {$time} THEN transfer_enable ELSE 0 END)";
-            $casesCredit[] = "WHEN {$user->id} THEN GREATEST(0, CAST(credit_balance AS SIGNED) - (GREATEST(0, u + d + {$delta} - {$base}) - GREATEST(0, u + d - {$base})))";
-            $upload = max(0, (int)$upload);
-            $download = max(0, (int)$download);
-            $casesU[] = "WHEN {$user->id} THEN u + " . (int)$upload;
-            $casesD[] = "WHEN {$user->id} THEN d + " . (int)$download;
-            $idList[] = $user->id;
-        }
-        $idListStr = implode(',', $idList);
-        $casesUStr = implode(' ', $casesU);
-        $casesCreditStr = implode(' ', $casesCredit);
-        $casesDStr = implode(' ', $casesD);
-        // MySQL evaluates assignments left-to-right: calculate debit before incrementing u/d.
-        $sql = "UPDATE v2_user SET credit_balance = CASE id {$casesCreditStr} END, u = CASE id {$casesUStr} END, d = CASE id {$casesDStr} END, t = {$time}, updated_at = {$time} WHERE id IN ({$idListStr})";
+        $idList=$users->pluck('id')->all();
         try {
             DB::beginTransaction();
-            DB::statement($sql);
+            $casesU=[]; $casesD=[]; $now=time();
+            foreach(User::whereIn('id',$idList)->orderBy('id')->lockForUpdate()->get() as $user) {
+                $upload=max(0,(int)($uploads[$user->id]??0));
+                $download=max(0,(int)($downloads[$user->id]??0));
+                $base=\App\Services\TrafficCreditService::hasPeriod($user)?(int)$user->transfer_enable:0;
+                $used=(int)$user->u+(int)$user->d;
+                $debit=max(0,$used+$upload+$download-$base)-max(0,$used-$base);
+                if ((int)($user->getAttributes()['credit_balance'] ?? 0)>0) {
+                    \App\Services\CreditExpiryService::consume($user,$debit); $user->save();
+                }
+                $casesU[]="WHEN {$user->id} THEN u + {$upload}";
+                $casesD[]="WHEN {$user->id} THEN d + {$download}";
+            }
+            $uSql=implode(' ',$casesU); $dSql=implode(' ',$casesD); $ids=implode(',',$idList);
+            DB::statement("UPDATE v2_user SET u=CASE id {$uSql} END, d=CASE id {$dSql} END, t={$now}, updated_at={$now} WHERE id IN ({$ids})");
+            // Reward only actual positive server-reported usage, never a page visit or client claim.
+            $candidates = DB::table('v2_invitation_reward')->whereIn('user_id', $idList)->whereNull('first_use_at')->where('first_use_bytes', '>', 0)->pluck('user_id');
+            foreach ($candidates as $id) {
+                if (max(0, (int)($uploads[$id] ?? 0)) + max(0, (int)($downloads[$id] ?? 0)) > 0)
+                    (new \App\Services\InvitationRewardService())->firstUse((int)$id);
+            }
             DB::commit();
         } catch (\Exception $e) {
             DB::rollBack();

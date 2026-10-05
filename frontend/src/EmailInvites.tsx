@@ -2,7 +2,7 @@ import { RegistrationDomains } from "./RegistrationDomains";
 import { registrationEmailError } from "./registration-policy";
 import { useState, type FormEvent } from "react";
 import { Mail, ArrowLeft } from "lucide-react";
-import { boot, request, query, type Row } from "./api";
+import { boot, request, query, bytes, type Row } from "./api";
 import { Modal, State, useData } from "./ui";
 import { tx } from "./i18n";
 
@@ -13,7 +13,7 @@ const statuses: Record<string, string> = {
     expired: "已过期",
     failed: "发送失败",
 };
-export function EmailInvites() {
+export function EmailInvites({ rewards }: { rewards?: { registrationBytes?: number; firstUseBytes?: number; validityMonths?: number } }) {
     const [view, setView] = useState<"compose" | "history" | null>(null);
     const [email, setEmail] = useState("");
     const [days, setDays] = useState(90);
@@ -58,6 +58,9 @@ export function EmailInvites() {
                         "通过邮件向朋友发送专属邀请，一起更轻松地使用 AI 应用。",
                     )}
                 </p>
+                {(Number(rewards?.registrationBytes) > 0 || Number(rewards?.firstUseBytes) > 0) && <p>{tx("赠送额度到账后 {{months}} 个月内有效。", { months: rewards?.validityMonths || 1 })}</p>}
+                {Number(rewards?.registrationBytes) > 0 && <p>{tx("好友通过邀请注册后获赠 {{amount}} 额度。", { amount: bytes(Number(rewards?.registrationBytes)) })}</p>}
+                {Number(rewards?.firstUseBytes) > 0 && <p>{tx("好友首次实际使用流量后，再获赠 {{amount}} 额度。", { amount: bytes(Number(rewards?.firstUseBytes)) })}</p>}
                 <div className="actions">
                     <button className="primary" onClick={open}>
                         {tx("发送邮件邀请")}

@@ -10434,6 +10434,14 @@
           "currency": {
             "type": "string",
             "example": "CNY"
+          },
+          "ticketCreation": {
+            "type": "string",
+            "enum": [
+              "allowed",
+              "purchase_required",
+              "closed"
+            ]
           }
         },
         "additionalProperties": false
@@ -11550,6 +11558,27 @@
           },
           "currency": {
             "type": "string"
+          },
+          "rewards": {
+            "type": "object",
+            "properties": {
+              "registrationBytes": {
+                "type": "integer",
+                "minimum": 0,
+                "description": "Traffic credit in bytes; 0 disables the reward for new registrations."
+              },
+              "firstUseBytes": {
+                "type": "integer",
+                "minimum": 0,
+                "description": "Traffic credit in bytes; 0 disables the reward for new registrations."
+              },
+              "validityMonths": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 120,
+                "description": "Invitation credit validity in calendar months from each grant; default 1."
+              }
+            }
           }
         }
       },

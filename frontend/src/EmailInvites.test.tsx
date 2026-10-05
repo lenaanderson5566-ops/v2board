@@ -15,6 +15,7 @@ const mocks = vi.hoisted(() => ({
 }));
 vi.mock("./api", () => ({
     boot: { title: "Studio" },
+    bytes: (value: number) => `${value} B`,
     request: mocks.request,
     query: (path: string, params: any) =>
         path + "?" + new URLSearchParams(params),
@@ -111,4 +112,13 @@ it("tracks recipients and statuses with a selectable history period", () => {
     expect(mocks.paths.at(-1)).toBe("user/invite/email/fetch?days=7");
     fireEvent.click(screen.getByRole("button", { name: "返回" }));
     expect(screen.getByLabelText("朋友的邮箱地址")).toBeTruthy();
+});
+
+it("shows only configured invitee rewards", () => {
+    const view = render(<EmailInvites rewards={{registrationBytes: 1024, firstUseBytes: 0}} />);
+    expect(screen.getByText("好友通过邀请注册后获赠 1024 B 额度。")).toBeTruthy();
+    expect(screen.queryByText(/好友首次实际使用/)).toBeNull();
+    view.rerender(<EmailInvites rewards={{registrationBytes: 0, firstUseBytes: 2048}} />);
+    expect(screen.queryByText(/好友通过邀请注册后获赠/)).toBeNull();
+    expect(screen.getByText("好友首次实际使用流量后，再获赠 2048 B 额度。")).toBeTruthy();
 });

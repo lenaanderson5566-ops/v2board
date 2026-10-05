@@ -109,7 +109,7 @@ export function configField(
         key,
         label,
         type,
-        step:
+        step: /^invite_(registration|first_use)_gb$/.test(key) ? 0.01 :
             validation.includes("integer") || key === "email_port"
                 ? 1
                 : undefined,

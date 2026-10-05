@@ -378,6 +378,8 @@ export function Tickets({
 }) {
     const [page, setPage] = useState(1);
     const prefix = isAdmin ? boot.adminPath : "user";
+    const ticketAccount = useData(isAdmin ? "" : "user/info");
+    const ticketPolicy = ticketAccount.data?.ticket_creation;
     const [id, setId] = useState<number | null>(null),
         [creating, setCreating] = useState(false);
     const d = useData<Row[]>(
@@ -422,6 +424,8 @@ export function Tickets({
                     <a href="#/knowledge">{tx("先查看帮助中心")}</a>
                     <p className="muted">
                         {tx("已有未关闭的工单请继续回复，避免重复提交。")}
+                        {ticketPolicy === "closed" && <span role="status">{tx("暂不开放新工单，已有工单仍可查看和回复。")}</span>}
+                        {ticketPolicy === "purchase_required" && <span role="status">{tx("完成购买后即可创建工单。")}</span>}
                     </p>
                 </div>
             )}
@@ -429,11 +433,11 @@ export function Tickets({
                 title={heading || tx("工单中心")}
                 actions={
                     <>
-                        <Reload onClick={d.reload} />
+                        <Reload onClick={() => { d.reload(); if (!isAdmin) ticketAccount.reload(); }} />
                         {!isAdmin && (
                             <button
                                 className="button"
-                                disabled={d.loading || Boolean(d.error)}
+                                disabled={d.loading || Boolean(d.error) || (!openTicket && (ticketAccount.loading || Boolean(ticketAccount.error) || ticketPolicy !== "allowed"))}
                                 onClick={() =>
                                     openTicket
                                         ? setId(openTicket.id)
@@ -670,7 +674,7 @@ export function Invite() {
         stat = v.stat || [];
     return (
         <State {...d} retry={d.reload}>
-            <EmailInvites />
+            <EmailInvites rewards={v.rewards} />
             <div className="metrics">
                 <Metric label={tx("邀请用户")} value={stat[0] || 0} />
                 <Metric label={tx("可用佣金")} value={money(stat[4])} />

@@ -391,5 +391,10 @@
   "继续检查": "Resume checking",
   "确认关闭此工单？": "Close this support ticket?",
     "未登录或登陆已过期": "Your session has expired",
-    "登录已过期": "Your session has expired"
+    "登录已过期": "Your session has expired",
+  "好友通过邀请注册后获赠 {{amount}} 额度。": "Your friend receives {{amount}} in credits after registering through your invitation.",
+  "好友首次实际使用流量后，再获赠 {{amount}} 额度。": "Your friend receives another {{amount}} in credits after their first actual traffic usage.",
+  "暂不开放新工单，已有工单仍可查看和回复。": "New tickets are currently closed. You can still view and reply to existing tickets.",
+  "完成购买后即可创建工单。": "You can create a ticket after completing a purchase.",
+  "赠送额度到账后 {{months}} 个月内有效。": "Reward credits expire {{months}} month(s) after each grant."
 }

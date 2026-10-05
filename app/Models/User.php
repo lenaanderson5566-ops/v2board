@@ -14,10 +14,16 @@ class User extends Model
         'updated_at' => 'timestamp',
         'credit_balance' => 'integer'
     ];
+    public function getCreditBalanceAttribute($value)
+    {
+        if (!$value || !$this->exists) return (int)$value;
+        $expired=\Illuminate\Support\Facades\DB::table('v2_credit_batch')->where('user_id',$this->id)->where('expires_at','<=',time())->sum('remaining_bytes');
+        return max(0,(int)$value-(int)$expired);
+    }
     public function scopeWithUsableTraffic($query)
     {
         return $query->where('banned', 0)->where(function ($q) {
-            $q->where('credit_balance', '>', 0)->orWhere(function ($base) {
+            $q->whereRaw(\App\Services\CreditExpiryService::usableSql().' > 0')->orWhere(function ($base) {
                 $base->whereRaw('u + d < transfer_enable')->where(function ($expiry) {
                     $expiry->whereNull('expired_at')->orWhere('expired_at', '>', time());
                 });

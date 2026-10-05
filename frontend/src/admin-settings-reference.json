@@ -366,6 +366,26 @@
       "placeholder": "请输入比例如：20",
       "child": true,
       "line": 6166
+    },
+    "invite_registration_gb": {
+      "label": "受邀注册奖励（GB）",
+      "hint": "留空或 0 关闭；仅适用于新邮件受邀注册。需先配置额度基础权限组。首次使用奖励按注册时规则保留，每人仅一次。",
+      "placeholder": "0",
+      "child": false,
+      "line": 999
+    },
+    "invite_credit_months": {
+      "child": false,
+      "line": 999,
+      "label": "邀请赠送额度有效期（月）",
+      "hint": "默认 1 个月，从每笔奖励到账时起算。修改仅影响新注册邀请用户；已登记的首次使用奖励沿用注册时规则。"
+    },
+    "invite_first_use_gb": {
+      "label": "受邀首次使用奖励（GB）",
+      "hint": "留空或 0 关闭；仅适用于新邮件受邀注册。需先配置额度基础权限组。首次使用奖励按注册时规则保留，每人仅一次。",
+      "placeholder": "0",
+      "child": false,
+      "line": 999
     }
   },
   "server": {

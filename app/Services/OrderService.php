@@ -363,7 +363,7 @@ class OrderService
             'bytes' => $remaining, 'kind' => 'legacy_order',
             'snapshot' => json_encode(['plan_id' => $plan->id]), 'created_at' => time(),
         ]);
-        $this->user->credit_balance = (int)$this->user->credit_balance + $remaining;
+        CreditExpiryService::grant($this->user, (int)$remaining, 'order:'.$order->id);
         $this->user->credit_migrated_at = time();
         $this->user->transfer_enable = 0;
     }

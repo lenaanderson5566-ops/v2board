@@ -1,0 +1,42 @@
+<?php
+require __DIR__.'/../vendor/autoload.php';
+$app=require __DIR__.'/../bootstrap/app.php';
+$app->make(Illuminate\Contracts\Console\Kernel::class)->bootstrap();
+if (!app()->environment('local')) throw new RuntimeException('Local tests only');
+set_exception_handler(function(Throwable $e){fwrite(STDERR,(string)$e);exit(1);});
+use App\Models\User;
+use App\Services\CreditExpiryService as Credits;
+use Illuminate\Support\Facades\DB;
+$checks=0;
+$assert=function($v,$msg) use (&$checks){if(!$v) throw new RuntimeException($msg);$checks++;};
+DB::beginTransaction();
+try {
+ $u=User::create(['email'=>uniqid().'@example.com','password'=>'test','uuid'=>App\Utils\Helper::guid(true),'token'=>App\Utils\Helper::guid(),'u'=>0,'d'=>0,'transfer_enable'=>0,'credit_balance'=>0]);
+ Credits::grant($u,1000,'test-purchase-'.$u->id);$u->save();
+ Credits::grant($u,100,'test-gift-'.$u->id,1);$u->save();
+ $b=DB::table('v2_credit_batch')->where('user_id',$u->id)->orderBy('expires_at')->get();
+ $assert($b[0]->remaining_bytes==100,'Gift should expire first');
+ $assert(abs($b[0]->expires_at-Carbon\Carbon::now('UTC')->addMonthsNoOverflow(1)->timestamp)<5,'Gift expiry incorrect');
+ $assert(abs($b[1]->expires_at-Carbon\Carbon::now('UTC')->addMonthsNoOverflow(12)->timestamp)<5,'Purchase expiry incorrect');
+ Credits::consume($u,120);$u->save();
+ $assert(DB::table('v2_credit_batch')->where('id',$b[0]->id)->value('remaining_bytes')==0,'Gift not consumed first');
+ $assert($u->fresh()->credit_balance===980,'Mixed debit incorrect');
+ Credits::grant($u,50,'test-expire-'.$u->id,1);$u->save();
+ DB::table('v2_credit_batch')->where('reference','test-expire-'.$u->id)->update(['expires_at'=>time()-1]);
+ $assert($u->fresh()->credit_balance===980,'Read includes expired credits');
+ $assert(User::whereKey($u->id)->whereRaw(Credits::usableSql().' = 980')->exists(),'SQL and balance disagree');
+ Credits::expire($u);$u->save();Credits::expire($u);$u->save();
+ $assert(DB::table('v2_traffic_credit_log')->where('user_id',$u->id)->where('kind','expiry')->count()===1,'Expiry repeated');
+ $assert($u->fresh()->credit_balance===980,'Expiry double deducted');
+ DB::table('v2_credit_batch')->where('user_id',$u->id)->update(['expires_at'=>time()-1]);
+ $assert($u->fresh()->credit_balance===0,'Expired access balance nonzero');
+ $request=Illuminate\Http\Request::create('/api/v10/me'); $request->user=['id'=>$u->id];
+ $response=(new App\Services\Actions\User\UserActions())->info($request);
+ $account=json_decode($response->getContent(),true)['data'];
+ $assert($account['credit_balance']===0,'Account API includes expired credits');
+ $assert(!User::whereKey($u->id)->withUsableTraffic()->exists(),'Expired user still available to nodes');
+ $assert(!(new App\Services\UserService())->isAvailable($u->fresh()),'Expired user still available');
+ Credits::consume($u,20);$u->save();
+ $assert($u->fresh()->credit_balance===0,'Overdraw below zero');
+ echo "Credit expiry: $checks checks passed; rollback.\n";
+} finally {DB::rollBack();}

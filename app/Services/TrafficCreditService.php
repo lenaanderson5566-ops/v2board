@@ -23,7 +23,7 @@ class TrafficCreditService
             'snapshot' => json_encode($user->only(['transfer_enable','u','d','plan_id','group_id','expired_at','speed_limit','device_limit'])),
             'created_at' => time(),
         ]);
-        $user->credit_balance = (int)$user->credit_balance + $remaining;
+        CreditExpiryService::grant($user, $remaining, 'legacy:'.$user->id);
         $user->credit_migrated_at = time();
         $user->transfer_enable = 0;
     }
@@ -44,7 +44,7 @@ class TrafficCreditService
                 $user->speed_limit = $snapshot['speed_limit'];
                 $user->device_limit = $snapshot['device_limit'];
             }
-            $user->credit_balance = (int)$user->credit_balance + (int)$order->credit_bytes;
+            CreditExpiryService::grant($user, (int)$order->credit_bytes, 'order:'.$order->id);
             $user->save();
             DB::table('v2_traffic_credit_log')->insert([
                 'user_id' => $user->id, 'reference' => 'order:'.$order->id,
@@ -85,7 +85,7 @@ class TrafficCreditService
         return $query->where(function ($access) use ($groups, $base, $now) {
             $access->where(function ($original) use ($groups, $now) {
                 $original->whereIn('group_id', $groups)->where(function ($keep) use ($now) {
-                    $keep->where('credit_balance', '<=', 0)->orWhere(function ($active) use ($now) {
+                    $keep->whereRaw(CreditExpiryService::usableSql().' <= 0')->orWhere(function ($active) use ($now) {
                         $active->where('transfer_enable', '>', 0)->where(function ($expiry) use ($now) {
                             $expiry->whereNull('expired_at')->orWhere('expired_at', '>', $now);
                         });
@@ -93,7 +93,7 @@ class TrafficCreditService
                 });
             });
             if (in_array($base, $groups)) $access->orWhere(function ($credits) use ($now) {
-                $credits->where('credit_balance', '>', 0)->where(function ($inactive) use ($now) {
+                $credits->whereRaw(CreditExpiryService::usableSql().' > 0')->where(function ($inactive) use ($now) {
                     $inactive->where('transfer_enable', '<=', 0)->orWhere('expired_at', '<=', $now);
                 });
             });

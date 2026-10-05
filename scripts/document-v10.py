@@ -49,6 +49,8 @@ for name, fields in contracts['schemas'].items():
             prop = {'type': 'number', 'nullable': True}
         else:
             prop = {'type': 'string', 'nullable': True}
+        if field == 'currency': prop = {'type': 'string', 'enum': ['CNY']}
+        if field == 'ticketCreation': prop = {'type': 'string', 'enum': ['allowed', 'purchase_required', 'closed']}
         if 'Bytes' in field or field == 'bytes': prop['description'] = 'Integer bytes.'
         if field.endswith('Price') or field in ['price', 'balance', 'commissionBalance', 'amount', 'orderAmount', 'fixedFee', 'totalAmount', 'discountAmount', 'creditOffset', 'refundAmount', 'balanceOffset', 'handlingAmount', 'creditedAmount', 'depositBonus']:
             prop['description'] = 'Integer minor currency units; currency is declared on the resource. Null prices are unavailable.'
@@ -75,7 +77,20 @@ schemas.update({
     'Pagination': obj({k: number for k in ['page', 'pageSize', 'total', 'totalPages']}, ['page', 'pageSize', 'total', 'totalPages']),
     'Problem': obj({'type': {'type': 'string'}, 'title': {'type': 'string'}, 'status': number, 'detail': {'type': 'string'}, 'code': {'type': 'string'}, 'requestId': {'type': 'string'}, 'errors': {'type': 'object', 'additionalProperties': {'type': 'array', 'items': {'type': 'string'}}}}, ['type', 'title', 'status', 'detail', 'code', 'requestId']),
 })
+
+currency_description = 'CNY only in phase 1; integer monetary values are fen (1/100 CNY). Order currency is persisted and does not follow global configuration.'
+for schema in schemas.values():
+    currency = schema.get('properties', {}).get('currency')
+    if currency is not None:
+        currency.update({'enum': ['CNY'], 'description': currency_description})
+schemas['preferences']['properties']['currency']['nullable'] = True
+schemas['referrals']['properties']['rewards'] = obj({
+    'registrationBytes': {'type': 'integer', 'minimum': 0, 'description': 'Traffic credit in bytes; 0 disables the reward for new registrations.'},
+    'firstUseBytes': {'type': 'integer', 'minimum': 0, 'description': 'Traffic credit in bytes; 0 disables the reward for new registrations.'},
+    'validityMonths': {'type': 'integer', 'minimum': 1, 'maximum': 120, 'description': 'Invitation credit validity in calendar months from each grant; default 1.'},
+})
 required = {
+    'Client/ClientController@authenticatedConfig': ['clientVersion', 'platform'],
     'Passport/AuthController@login': ['email', 'password'], 'Passport/AuthController@register': ['email', 'password'],
     'Passport/AuthController@forget': ['email', 'password', 'emailCode'], 'Passport/AuthController@token2Login': ['verificationToken'],
     'Passport/CommController@sendEmailVerify': ['email'], 'User/OrderController@save': ['planId', 'billingPeriod'],
@@ -87,6 +102,8 @@ required = {
 }
 
 def input_schema(field):
+    if field == 'clientVersion': return {'type': 'string', 'pattern': r'^\d+(?:\.\d+){1,3}$'}
+    if field == 'platform': return {'type': 'string', 'enum': ['windows', 'android', 'macos', 'linux', 'ios']}
     if field in ['page', 'pageSize', 'planId', 'paymentMethodId', 'depositAmount', 'amount', 'days', 'articleId', 'ticketId', 'notificationId', 'version']:
         return {'type': 'integer', **({'minimum': 1, 'maximum': 100, 'default': 20} if field == 'pageSize' else {})}
     if field in ['autoRenewal', 'expiryReminders', 'trafficReminders', 'resetPassword', 'languageSelected']: return {'type': 'boolean'}
@@ -117,7 +134,7 @@ for entry in entries:
         else:
             success['content'] = {'application/json': {'schema': obj({'data': resource(contract['output']), 'meta': obj({'pagination': reference('Pagination'), 'taskId': {'type': 'string'}})}, ['data'])}}
     responses = {status: success}
-    if not contract['raw'] or entry.get('key') == 'Public/MirrorController@download':
+    if not contract['raw'] or entry['role'] == 'user' or entry.get('key') == 'Public/MirrorController@download':
         for code in [401, 403, 404, 409, 410, 422, 429, 500]: responses[str(code)] = {'description': 'Problem details', 'content': {'application/problem+json': {'schema': reference('Problem')}}}
     if entry['path'] == 'me/nodes':
         params.append({'name': 'If-None-Match', 'in': 'header', 'schema': {'type': 'string'}})
@@ -136,7 +153,7 @@ for entry in entries:
         operation['description'] = 'Provider-native signature verification and response. Payment notifications are idempotent; Telegram requires X-Telegram-Bot-Api-Secret-Token. New payments use V10 callback URLs, including custom callback domains. Old payment callbacks remain compatible for existing orders. Historical callback URLs remain supported.'
         operation['requestBody'] = {'content': {'application/json': {'schema': {'type': 'object'}}, 'application/x-www-form-urlencoded': {'schema': {'type': 'object'}}}}
     elif entry['method'] == 'GET':
-        operation['parameters'] += [{'name': f, 'in': 'query', 'schema': v} for f, v in properties.items()]
+        operation['parameters'] += [{'name': f, 'in': 'query', 'schema': v, **({'required': True} if f in required.get(contract['key'], []) else {})} for f, v in properties.items()]
     elif properties:
         operation['requestBody'] = {'required': bool(required.get(contract['key'])), 'content': {'application/json': {'schema': reference(request_name)}}}
     for method in entry.get('methods', [entry['method']]):
@@ -149,6 +166,7 @@ document = {'openapi': '3.0.3', 'info': {'title': 'FastDog user API', 'version':
 (root / 'docs/api-v10/mapping.md').write_text('\n'.join(mapping) + '\n', encoding='utf-8')
 
 def ts_type(schema):
+    if schema.get('enum') == ['CNY']: return 'SettlementCurrency' + (' | null' if schema.get('nullable') else '')
     if '$ref' in schema: return 'V10' + schema['$ref'].split('/')[-1][0].upper() + schema['$ref'].split('/')[-1][1:]
     if 'oneOf' in schema: base = ' | '.join(ts_type(s) for s in schema['oneOf'])
     elif 'enum' in schema: base = ' | '.join(json.dumps(s) for s in schema['enum'])
@@ -159,6 +177,6 @@ def ts_type(schema):
     else: base = {'integer': 'number', 'number': 'number', 'boolean': 'boolean', 'string': 'string'}.get(schema.get('type'), 'unknown')
     return base + (' | null' if schema.get('nullable') else '')
 
-types = ['// Generated by scripts/document-v10.py from explicit resource schemas. Do not edit.', 'export interface V10Envelope<T> { data: T; meta?: { pagination?: V10Pagination; taskId?: string } }']
+types = ['// Phase 1: all monetary values are integer fen; USD is not enabled.', 'export type SettlementCurrency = "CNY";', '// Generated by scripts/document-v10.py from explicit resource schemas. Do not edit.', 'export interface V10Envelope<T> { data: T; meta?: { pagination?: V10Pagination; taskId?: string } }']
 for name, schema in schemas.items(): types.append('export type V10' + name[0].upper() + name[1:] + ' = ' + ts_type(schema) + ';')
 (root / 'frontend/src/v10-types.ts').write_text('\n'.join(types) + '\n', encoding='utf-8')

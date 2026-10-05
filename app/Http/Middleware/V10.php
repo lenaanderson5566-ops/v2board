@@ -44,7 +44,12 @@ class V10
         $response->headers->set('X-Request-ID',$requestId);
         $response->headers->set('Content-Language',app()->getLocale());
         if ($request->is('api/v10/auth/*','api/v10/me/*','api/v10/subscriptions/*')) $response->headers->set('Cache-Control','private, no-store');
-        Log::info('API request',['version'=>'v10','requestId'=>$requestId,'route'=>$request->route() ? $request->route()->uri() : 'unmatched','method'=>$request->method(),'status'=>$response->getStatusCode(),'durationMs'=>(int)round((microtime(true)-$started)*1000)]);
+        $context=['version'=>'v10','requestId'=>$requestId,'route'=>$request->route() ? $request->route()->uri() : 'unmatched','method'=>$request->method(),'status'=>$response->getStatusCode(),'durationMs'=>(int)round((microtime(true)-$started)*1000)];
+        if ($request->is('api/v10/me/client-config')) {
+            $problem=$response->getStatusCode()>=400 ? json_decode($response->getContent(),true) : [];
+            $context+=['userId'=>$request->attributes->get('v10.userId'), 'clientVersion'=>$request->attributes->get('client.version'), 'platform'=>$request->attributes->get('client.platform'), 'outcome'=>$response->getStatusCode()<300 ? 'success' : 'failed', 'code'=>$problem['code'] ?? null];
+        }
+        Log::info($request->is('api/v10/me/client-config') ? 'Client configuration request' : 'API request',$context);
         return $response;
     }
     public function exceptionResponse($request, \Throwable $e)

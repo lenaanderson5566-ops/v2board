@@ -18,6 +18,7 @@ abstract class ResourceController extends \App\Http\Controllers\Controller
             $user = AuthService::decryptAuthData($credential);
             if (!$user) abort(401, __('Unauthenticated.'));
             if ($user['banned']) abort(403, __('Account is disabled.'));
+            $request->attributes->set('v10.userId', $user['id']);
             // Shared business actions receive the already verified session credential.
             $request->headers->set('Authorization', $credential);
         }

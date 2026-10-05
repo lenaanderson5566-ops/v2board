@@ -178,11 +178,11 @@
         "object",
         "accountStatus"
       ],
-      "ticketCreation": [
-        "ticket_creation"
-      ],
       "currency": [
         "currency"
+      ],
+      "ticketCreation": [
+        "ticket_creation"
       ]
     },
     "subscription": {
@@ -1770,6 +1770,20 @@
       "path": "public/client-installers/{installerId}/content",
       "method": "GET",
       "key": "Public/MirrorController@download"
+    },
+    "getMeClientConfig": {
+      "input": {
+        "clientVersion": "client_version",
+        "platform": "platform"
+      },
+      "output": "scalar",
+      "role": "user",
+      "status": 200,
+      "raw": true,
+      "bindings": {},
+      "path": "me/client-config",
+      "method": "GET",
+      "key": "Client/ClientController@authenticatedConfig"
     }
   }
 }

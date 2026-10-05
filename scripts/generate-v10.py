@@ -75,6 +75,9 @@ schema('bot','username:username')
 schema('loginState','authenticated:is_login:boolean administrator:is_admin:boolean')
 schema('coupon','id:id code:code name:name discountType:type:couponType value:value startedAt:started_at:time expiresAt:ended_at:time')
 schema('applicationVersion','platform:platform version:version downloadUrl:download_url')
+for name in ['plan','account','order','paymentMethod','credit','commission','coupon']:
+ schemas[name]['currency']=['currency']
+schemas['account']['ticketCreation']=['ticket_creation']
 # Explicit integer wire conversions, including nullable prices (null means unavailable).
 for name,fields in {
  'plan':['id','deviceLimit','remainingCapacity','monthlyPrice','quarterlyPrice','semiannualPrice','annualPrice','biennialPrice','triennialPrice','creditPrice','resetPrice'],
@@ -117,6 +120,7 @@ for i,e in enumerate(entries):
  if k=='User/PlanController@fetch':imap={'planId':'id'}
  if k=='User/NoticeController@fetch':imap.update({'pageSize':'pageSize'})
  if e['scope']=='client':imap={'format':'flag','language':'language'}
+ if k=='Client/ClientController@authenticatedConfig':imap={'clientVersion':'client_version','platform':'platform'}
  imap={public:internal for public,internal in imap.items() if internal not in e['bindings'].values()}
  if k.startswith('Guest/Telegram'):imap={} # Signed provider payload, native protocol.
  out=outputs.get(k,'authentication' if k in ['Passport/AuthController@login','Passport/AuthController@register','Passport/AuthController@token2Login'] else 'scalar')
@@ -142,9 +146,9 @@ for i,e in enumerate(entries):
 for c,b in controllers.items():write('app/Http/Controllers/V10/'+c+'.php','<?php\nnamespace App\\Http\\Controllers\\V10;\nclass '+c+' extends ResourceController\n{\n'+''.join(b)+'}\n')
 write('routes/v10.php','\n'.join(routes)+'\n')
 write('docs/api-v10/contracts.json',json.dumps({'schemas':schemas,'endpoints':contracts},ensure_ascii=False,indent=2))
-write('frontend/src/v10-contracts.json',json.dumps({'schemas':schemas,'endpoints':contracts,'routes':{e['legacy']:e['method'].lower()+''.join(x[0].upper()+x[1:] for x in re.findall(r'[A-Za-z0-9]+',e['path'])) for i,e in enumerate(entries) if not e.get('legacyQuery')},'details':{e['legacy']:e['method'].lower()+''.join(x[0].upper()+x[1:] for x in re.findall(r'[A-Za-z0-9]+',e['path'])) for i,e in enumerate(entries) if e.get('legacyQuery')}},ensure_ascii=False,indent=2))
+write('frontend/src/v10-contracts.json',json.dumps({'schemas':schemas,'endpoints':contracts,'routes':{e['legacy']:e['method'].lower()+''.join(x[0].upper()+x[1:] for x in re.findall(r'[A-Za-z0-9]+',e['path'])) for i,e in enumerate(entries) if e.get('legacy') and not e.get('legacyQuery')},'details':{e['legacy']:e['method'].lower()+''.join(x[0].upper()+x[1:] for x in re.findall(r'[A-Za-z0-9]+',e['path'])) for i,e in enumerate(entries) if e.get('legacyQuery')}},ensure_ascii=False,indent=2))
 
 frontend_path=root/'frontend/src/v10-contracts.json'
 frontend=json.loads(frontend_path.read_text(encoding='utf-8'))
-frontend['methodRoutes']={e['legacyMethod']+' '+e['legacy']:e['method'].lower()+''.join(x[0].upper()+x[1:] for x in re.findall(r'[A-Za-z0-9]+',e['path'])) for e in entries if not e.get('legacyQuery')}
+frontend['methodRoutes']={e['legacyMethod']+' '+e['legacy']:e['method'].lower()+''.join(x[0].upper()+x[1:] for x in re.findall(r'[A-Za-z0-9]+',e['path'])) for e in entries if e.get('legacy') and not e.get('legacyQuery')}
 write('frontend/src/v10-contracts.json',json.dumps(frontend,ensure_ascii=False,indent=2))

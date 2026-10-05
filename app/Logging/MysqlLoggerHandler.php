@@ -20,12 +20,14 @@ class MysqlLoggerHandler extends AbstractProcessingHandler
             if(isset($record['context']['exception']) && is_object($record['context']['exception'])){
                 $record['context']['exception'] = (array)$record['context']['exception'];
             }
-            $record['request_data'] = request()->all() ??[];
+            $v10 = request()->is('api/v10', 'api/v10/*');
+            $record['request_data'] = $v10 ? [] : (request()->all() ?? []);
+            $route = request()->route();
             $log = [
                 'title' => $record['message'],
                 'level' => $record['level_name'],
                 'host' => $record['request_host'] ?? request()->getSchemeAndHttpHost(),
-                'uri' => $record['request_uri'] ?? request()->getRequestUri(),
+                'uri' => $v10 ? ($route ? '/'.$route->uri() : request()->getPathInfo()) : ($record['request_uri'] ?? request()->getRequestUri()),
                 'method' => $record['request_method'] ?? request()->getMethod(),
                 'ip' => request()->getClientIp(),
                 'data' => json_encode($record['request_data']) ,

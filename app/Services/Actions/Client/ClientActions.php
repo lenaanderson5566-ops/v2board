@@ -15,6 +15,25 @@ use ReflectionClass;
 
 class ClientActions
 {
+    public function authenticatedConfig(Request $request)
+    {
+        $user = \App\Models\User::findOrFail($request->user['id']);
+        $request->attributes->set('client.native', true);
+        $request->attributes->set('client.version', $request->input('client_version'));
+        $request->attributes->set('client.platform', $request->input('platform'));
+        $request->merge(['user' => $user, 'flag' => 'flclash', 'language' => app()->getLocale()]);
+        return response($this->subscribe($request), 200, ['Content-Type' => 'application/yaml']);
+    }
+
+    private function rejectNativeConfig(Request $request, string $code, string $message, int $status = 403): void
+    {
+        if ($request->attributes->get('client.native')) {
+            throw new \Illuminate\Http\Exceptions\HttpResponseException(
+                response()->json(['code' => $code, 'message' => __($message)], $status)
+            );
+        }
+    }
+
     public function subscribe(Request $request)
     {
         $riskLogService = new RiskLogService();
@@ -41,11 +60,12 @@ class ClientActions
                     'failed',
                     'client_disabled'
                 ));
+                $this->rejectNativeConfig($request, 'CLIENT_DISABLED', 'This client is currently unavailable.');
                 $class = $this->resolveProtocolHandler($resolvedFlag, $user, $this->buildUnavailableServers('client_disabled'));
                 return $class->handle();
             }
 
-            $resolvedVersion = $clientStrategyService->resolveClientVersion(
+            $resolvedVersion = $request->attributes->get('client.version') ?: $clientStrategyService->resolveClientVersion(
                 $resolvedFlag,
                 (string) $request->input('flag', ''),
                 (string) $request->header('user-agent', '')
@@ -58,6 +78,7 @@ class ClientActions
                     'failed',
                     'client_version_too_low'
                 ));
+                $this->rejectNativeConfig($request, 'CLIENT_VERSION_TOO_LOW', 'Please update your client.', 409);
                 $class = $this->resolveProtocolHandler($resolvedFlag, $user, $this->buildUnavailableServers('client_version_too_low'));
                 return $class->handle();
             }
@@ -98,6 +119,7 @@ class ClientActions
             'failed',
             $reason
         ));
+        $this->rejectNativeConfig($request, 'SUBSCRIPTION_UNAVAILABLE', 'No available subscription.');
 
         $class = $this->resolveProtocolHandler($resolvedFlag, $user, $this->buildUnavailableServers($reason));
         return $class->handle();

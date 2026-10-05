@@ -14,8 +14,9 @@ $call=function($method,$path,$headers=[])use($app){
 $allow=json_decode(file_get_contents(base_path('docs/api-v10/retained-legacy.json')),true);
 $entries=json_decode(file_get_contents(base_path('docs/api-v10/endpoints.json')),true);
 foreach($entries as $entry){
+    if(isset($entry['key']))continue;
     $old='api/v1/'.$entry['legacy'];
-    if(isset($entry['key']) || in_array($old,$allow,true))continue;
+    if(in_array($old,$allow,true))continue;
     $path='/'.preg_replace('/\{[^}]+\}/','1',$old);
     $assert($call($entry['legacyMethod'],$path)->getStatusCode()===404,'Retired route still resolves: '.$path);
 }

@@ -10,6 +10,8 @@ final class Input
     public static function validate(Request $request, array $contract): void
     {
         $types = [
+            'clientVersion'=>'string|regex:/^\\d+(?:\\.\\d+){1,3}$/',
+            'platform'=>'in:windows,android,macos,linux,ios',
             'email'=>'string|email:strict|max:254', 'password'=>'string|min:8|max:128',
             'oldPassword'=>'string|max:128','newPassword'=>'string|min:8|max:128',
             'emailCode'=>'string|digits:6', 'invitation'=>'string|regex:/^[a-f0-9]{64}$/',
@@ -28,6 +30,7 @@ final class Input
             'placement'=>'in:landing,dashboard','status'=>'in:unpaid,processing,cancelled,completed,discounted'
         ];
         $required = [
+            'Client/ClientController@authenticatedConfig'=>['clientVersion','platform'],
             'Passport/AuthController@login'=>['email','password'],
             'Passport/AuthController@register'=>['email','password'],
             'Passport/AuthController@forget'=>['email','password','emailCode'],

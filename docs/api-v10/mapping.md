@@ -72,3 +72,4 @@ Admin, operations/risk, staff and node APIs retain all existing paths and schema
 | `GET user/plan/fetch` | `GET /api/v10/plans/{planId}` | user | flex:plan |
 | `GET user/notice/fetch` | `GET /api/v10/announcements/{notificationId}` | user | flex:notification |
 | `New native resource` | `GET /api/v10/public/client-installers/{installerId}/content` | public | scalar |
+| `New native resource` | `GET /api/v10/me/client-config` | user | scalar |

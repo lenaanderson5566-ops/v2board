@@ -50,3 +50,13 @@ If rollback is needed, restore the matching previous backend commit and frontend
 All monetary values retain their existing integer minor units (fen); currency is CNY. Orders persist currency independently of global display settings, including existing rows backfilled by the column default. Account balance and commissions remain CNY. User language affects number formatting, not monetary denomination. Monetary resource `currency` fields are retained by the frontend decoder. No currency selection or conversion is introduced; USD pricing and wallets are future phases.
 
 Deploy the order-currency migration through update.sh before reopening workers. Existing gateways, signed callback protocols and charge amounts remain unchanged. Server-generated receipts/notifications and exports label CNY; administrator-authored email/announcement content is not rewritten. Current mail templates contain no generated monetary amounts. Config saves reject non-CNY currency labels. Frontend currencySymbol is retained only as a compatibility field with value CNY.
+
+## fastai session configuration
+
+`GET /api/v10/me/client-config?clientVersion=0.8.99&platform=windows` (also HEAD) requires the normal Bearer session. Supported platforms are windows, android, macos, linux and ios. It returns native `application/yaml`, with `Cache-Control: private, no-store`, directly from the shared FlClash/Mihomo configuration generator. It does not use subscription tokens, custom subscription domains or redirects.
+
+Missing/revoked sessions return 401; banned users return 403; no usable subscription returns 403 `SUBSCRIPTION_UNAVAILABLE`; disabled FlClash strategy returns 403 `CLIENT_DISABLED`; the current minimum-version policy returns 409 `CLIENT_VERSION_TOO_LOW`. Version checks use the validated clientVersion field, not a fabricated FlClash User-Agent. Configuration errors use application/problem+json and requestId. Entitlement errors do not revoke sessions. Existing token/custom subscriptions keep their native behavior.
+
+Deploy the backend before distributing the updated fastai client. Clear/rebuild cached routes using the normal deployment workflow. There is no fallback to a shareable subscription URL. Validate locally with `php tests/fastai-client-config.php`, V10 contract/inventory tests and subscription compatibility tests.
+
+Configuration requests are recorded as `Client configuration request` in the API log: userId, clientVersion, platform, requestId, method, status, outcome, code and durationMs. Existing subscription risk logs also record configuration-generation success and denial reasons. Request credentials, query tokens and configuration bodies are excluded from database API logs.

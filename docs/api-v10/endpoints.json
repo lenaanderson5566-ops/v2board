@@ -1356,5 +1356,25 @@
     "status": 200,
     "middleware": [],
     "raw": true
+  },
+  {
+    "key": "Client/ClientController@authenticatedConfig",
+    "method": "GET",
+    "path": "me/client-config",
+    "parameters": [
+      {
+        "name": "request",
+        "type": "Illuminate\\Http\\Request",
+        "optional": false
+      }
+    ],
+    "bindings": {},
+    "middleware": [
+      "throttle:30,1"
+    ],
+    "role": "user",
+    "scope": "client",
+    "status": 200,
+    "raw": true
   }
 ]

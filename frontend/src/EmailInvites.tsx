@@ -15,7 +15,7 @@ const statuses: Record<string, string> = {
     failed: "发送失败",
 };
 export function EmailInvites({ rewards }: { rewards?: { registrationBytes?: number; firstUseBytes?: number; validityMonths?: number } }) {
-    const [view, setView] = useState<"compose" | "history" | null>(null);
+    const [view, setView] = useState<"history" | null>(null);
     const [email, setEmail] = useState("");
     const [days, setDays] = useState(90);
     const [busy, setBusy] = useState(false);
@@ -43,7 +43,7 @@ export function EmailInvites({ rewards }: { rewards?: { registrationBytes?: numb
         }
     }
     const open = () => {
-        setView("compose");
+        setView(null);
         setError("");
         setSent(false);
     };
@@ -71,44 +71,8 @@ export function EmailInvites({ rewards }: { rewards?: { registrationBytes?: numb
                         </div>}
                     </div>
                 )}
-                <div className="actions">
-                    <button className="primary" onClick={open}>
-                        <Mail size={18} aria-hidden="true" />{tx("发送邮件邀请")}
-                    </button>
-                    <button className="invite-secondary" onClick={() => setView("history")}>
-                        <History size={18} aria-hidden="true" />
-                        {tx("跟踪邀请")}
-                    </button>
-                </div>
-                {(Number(rewards?.registrationBytes) > 0 || Number(rewards?.firstUseBytes) > 0) && <p className="invite-validity muted">{tx("赠送额度到账后 {{months}} 个月内有效。", { months: rewards?.validityMonths || 1 })}</p>}
-            </section>
-            {view && (
-                <Modal
-                    title={tx(
-                        view === "history" ? "查看你的邀请" : "发送邮件邀请",
-                    )}
-                    close={() => setView(null)}
-                >
-                    <div className="email-invite">
-                        {view === "compose" ? (
-                            <>
-                                <div className="invite-banner">
-                                    <img src={invitationArt} alt="" width="150" height="100" />
-                                </div>
-                                <p className="invite-reward">
-                                    {tx("邀请收益按当前站点规则结算。")}
-                                </p>
-                                <h3>
-                                    {tx("邀请朋友使用 {{name}}", {
-                                        name: boot.title,
-                                    })}
-                                </h3>
-                                <p className="muted">
-                                    {tx(
-                                        "专属邀请仅限收件邮箱使用，7 天内有效。",
-                                    )}
-                                </p>
-                                <RegistrationDomains />
+                <div className="invite-center-form">
+                    <RegistrationDomains />
                                 <form onSubmit={send}>
                                     <label>
                                         {tx("朋友的邮箱地址")}
@@ -157,8 +121,18 @@ export function EmailInvites({ rewards }: { rewards?: { registrationBytes?: numb
                                         </button>
                                     </div>
                                 </form>
-                            </>
-                        ) : (
+                    <p className="muted invite-conditions">{tx("专属邀请仅限收件邮箱使用，7 天内有效。")}</p>
+                </div>
+                {(Number(rewards?.registrationBytes) > 0 || Number(rewards?.firstUseBytes) > 0) && <p className="invite-validity muted">{tx("赠送额度到账后 {{months}} 个月内有效。", { months: rewards?.validityMonths || 1 })}</p>}
+            </section>
+            {view && (
+                <Modal
+                    title={tx(
+                        "查看你的邀请",
+                    )}
+                    close={() => setView(null)}
+                >
+                    <div className="email-invite">
                             <>
                                 <div className="invite-history-toolbar">
                                     <button
@@ -226,7 +200,6 @@ export function EmailInvites({ rewards }: { rewards?: { registrationBytes?: numb
                                     )}
                                 </State>
                             </>
-                        )}
                     </div>
                 </Modal>
             )}

@@ -1357,3 +1357,32 @@ body:has(.browser-notice) #custom-footer {
 .invite-page-content .panel { margin-top: 18px; }
 .invite-page-content .panel button[type="submit"] { min-height: 44px; border-radius: 12px; }
 @media (max-width: 600px) { .invite-intro .actions { display: grid; grid-template-columns: 1fr; gap: 10px; } .invite-intro .actions button { width: 100%; } .invite-actions { flex-direction: column; } .invite-actions button { width: 100%; flex: none; } }
+
+/* Invitation composition is the primary action, with rewards as supporting detail. */
+.invite-intro { background: #fff; padding: 28px; text-align: center; }
+.invite-hero-heading { flex-direction: column-reverse; gap: 16px; }
+.invite-hero-heading .invite-hero-art { width: 140px; height: 94px; }
+.invite-hero-heading h2 { margin-bottom: 10px; }
+.invite-hero-heading p { max-width: 520px; }
+.invite-benefits { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; margin: 20px auto; max-width: 660px; }
+.invite-benefit { flex: 1 1 220px; padding: 12px 16px; background: #f0f3eb; text-align: start; border: 0; }
+.invite-benefit strong { display: none; }
+.invite-benefit > span { font-size: 12px; margin-bottom: 4px; }
+.invite-benefit p { font-size: 13px; line-height: 1.5; }
+.invite-center-form { max-width: 540px; margin: 24px auto 0; text-align: start; }
+.invite-center-form form, .invite-center-form label { display: grid; gap: 10px; }
+.invite-center-form form { gap: 16px; }
+.invite-center-form input { width: 100%; min-height: 50px; border-radius: 12px; background: #f7f8f6; }
+.invite-center-form .invite-actions { justify-content: center; border: 0; padding-top: 0; }
+.invite-center-form .invite-actions > .primary { order: 0; flex: none; min-width: 130px; }
+.invite-center-form .invite-conditions { margin: 14px 0 0; font-size: 12px; text-align: center; }
+.invite-intro .invite-validity { text-align: center; }
+.invite-page-content .metrics { gap: 12px; }
+.invite-page-content .metric { padding: 14px 18px; border-radius: 14px; }
+.invite-page-content .metric strong { font-size: 20px; margin-top: 6px; }
+.invite-page-content .panel { border-radius: 16px; overflow: hidden; }
+.invite-page-content .editor { display: grid; gap: 16px; max-width: 540px; }
+.invite-page-content .editor input, .invite-page-content .editor select { min-height: 44px; border-radius: 10px; }
+.invite-page-content .editor button[type="submit"] { justify-self: start; min-width: 140px; }
+.invite-page-content table th, .invite-page-content table td { padding-top: 14px; padding-bottom: 14px; }
+@media (max-width: 600px) { .invite-intro { padding: 20px 16px; } .invite-center-form .invite-actions { flex-direction: row; flex-wrap: nowrap; } .invite-center-form .invite-actions button { width: auto; flex: 1; min-width: 0; padding-inline: 14px; } .invite-page-content .metric strong { font-size: 17px; } .invite-page-content .editor button[type="submit"] { width: 100%; justify-self: stretch; } }

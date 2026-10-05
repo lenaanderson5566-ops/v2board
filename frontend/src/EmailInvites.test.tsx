@@ -53,7 +53,6 @@ it("sends a private email invitation and reports queued status without public co
     mocks.request.mockResolvedValue({ data: { status: "queued" } });
     render(<EmailInvites />);
     expect(mocks.paths.every((path) => path === "")).toBe(true);
-    fireEvent.click(screen.getByRole("button", { name: "发送邮件邀请" }));
     expect(
         (screen.getByRole("button", { name: "发送邀请" }) as HTMLButtonElement)
             .disabled,
@@ -74,7 +73,6 @@ it("sends a private email invitation and reports queued status without public co
 it("retains the address and allows retry when the request fails", async () => {
     mocks.request.mockRejectedValue(Error("daily limit"));
     render(<EmailInvites />);
-    fireEvent.click(screen.getByRole("button", { name: "发送邮件邀请" }));
     fireEvent.change(screen.getByLabelText("朋友的邮箱地址"), {
         target: { value: "friend@example.com" },
     });

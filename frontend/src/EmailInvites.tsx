@@ -2,7 +2,7 @@ import invitationArt from "./assets/invite-friends.jpg";
 import { RegistrationDomains } from "./RegistrationDomains";
 import { registrationEmailError } from "./registration-policy";
 import { useState, type FormEvent } from "react";
-import { Mail, ArrowLeft } from "lucide-react";
+import { Mail, ArrowLeft, History, LoaderCircle } from "lucide-react";
 import { boot, request, query, bytes, type Row } from "./api";
 import { Modal, State, useData } from "./ui";
 import { tx } from "./i18n";
@@ -50,24 +50,37 @@ export function EmailInvites({ rewards }: { rewards?: { registrationBytes?: numb
     return (
         <>
             <section className="invite-intro">
-                <img className="invite-hero-art" src={invitationArt} alt="" width="180" height="120" />
-                <h2>{tx("邀请朋友使用 {{name}}", { name: boot.title })}</h2>
-                <p className="muted">
-                    {tx(
-                        "通过邮件向朋友发送专属邀请，一起更轻松地使用 AI 应用。",
-                    )}
-                </p>
-                {(Number(rewards?.registrationBytes) > 0 || Number(rewards?.firstUseBytes) > 0) && <p>{tx("赠送额度到账后 {{months}} 个月内有效。", { months: rewards?.validityMonths || 1 })}</p>}
-                {Number(rewards?.registrationBytes) > 0 && <p>{tx("好友通过邀请注册后获赠 {{amount}} 额度。", { amount: bytes(Number(rewards?.registrationBytes)) })}</p>}
-                {Number(rewards?.firstUseBytes) > 0 && <p>{tx("好友首次实际使用流量后，双方各获赠 {{amount}} 额度。", { amount: bytes(Number(rewards?.firstUseBytes)) })}</p>}
+                <div className="invite-hero-heading">
+                    <div>
+                        <h2>{tx("邀请朋友使用 {{name}}", { name: boot.title })}</h2>
+                        <p className="muted">{tx("通过邮件向朋友发送专属邀请，一起更轻松地使用 AI 应用。")}</p>
+                    </div>
+                    <img className="invite-hero-art" src={invitationArt} alt="" width="180" height="120" />
+                </div>
+                {(Number(rewards?.registrationBytes) > 0 || Number(rewards?.firstUseBytes) > 0) && (
+                    <div className="invite-benefits">
+                        {Number(rewards?.registrationBytes) > 0 && <div className="invite-benefit">
+                            <span>{tx("好友注册礼")}</span>
+                            <strong>{bytes(Number(rewards?.registrationBytes))}</strong>
+                            <p>{tx("好友通过邀请注册后获赠 {{amount}} 额度。", { amount: bytes(Number(rewards?.registrationBytes)) })}</p>
+                        </div>}
+                        {Number(rewards?.firstUseBytes) > 0 && <div className="invite-benefit">
+                            <span>{tx("双方使用礼")}</span>
+                            <strong>{tx("每人 {{amount}}", { amount: bytes(Number(rewards?.firstUseBytes)) })}</strong>
+                            <p>{tx("好友首次实际使用流量后，双方各获赠 {{amount}} 额度。", { amount: bytes(Number(rewards?.firstUseBytes)) })}</p>
+                        </div>}
+                    </div>
+                )}
                 <div className="actions">
                     <button className="primary" onClick={open}>
-                        {tx("发送邮件邀请")}
+                        <Mail size={18} aria-hidden="true" />{tx("发送邮件邀请")}
                     </button>
-                    <button onClick={() => setView("history")}>
+                    <button className="invite-secondary" onClick={() => setView("history")}>
+                        <History size={18} aria-hidden="true" />
                         {tx("跟踪邀请")}
                     </button>
                 </div>
+                {(Number(rewards?.registrationBytes) > 0 || Number(rewards?.firstUseBytes) > 0) && <p className="invite-validity muted">{tx("赠送额度到账后 {{months}} 个月内有效。", { months: rewards?.validityMonths || 1 })}</p>}
             </section>
             {view && (
                 <Modal
@@ -137,9 +150,10 @@ export function EmailInvites({ rewards }: { rewards?: { registrationBytes?: numb
                                         </button>
                                         <button
                                             className="primary"
+                                            aria-busy={busy}
                                             disabled={busy || !email.trim()}
                                         >
-                                            {tx(busy ? "提交中…" : "发送邀请")}
+                                            {busy ? <LoaderCircle className="spin" size={18} aria-hidden="true" /> : <Mail size={18} aria-hidden="true" />}{tx(busy ? "提交中…" : "发送邀请")}
                                         </button>
                                     </div>
                                 </form>

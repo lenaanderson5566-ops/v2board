@@ -674,6 +674,7 @@ export function Invite() {
         stat = v.stat || [];
     return (
         <State {...d} retry={d.reload}>
+            <div className="invite-page-content">
             <EmailInvites rewards={v.rewards} />
             <div className="metrics">
                 <Metric label={tx("邀请用户")} value={stat[0] || 0} />
@@ -756,6 +757,7 @@ export function Invite() {
                     />
                 </Panel>
             )}
+            </div>
         </State>
     );
 }

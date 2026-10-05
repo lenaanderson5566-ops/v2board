@@ -1334,3 +1334,26 @@ body:has(.browser-notice) #custom-footer {
 .invite-banner { height: 110px; background: #f0f3eb; margin-bottom: 16px; }
 .invite-banner img { object-fit: cover; border-radius: 16px; }
 @media (max-width: 600px) { .invite-intro { padding: 20px 16px; } .invite-intro h2 { font-size: 20px; } .invite-hero-art { width: 135px; height: 90px; } }
+
+.invite-intro { text-align: start; }
+.invite-hero-heading { display: flex; align-items: center; justify-content: space-between; gap: 24px; }
+.invite-hero-heading p { margin: 0; max-width: 540px; }
+.invite-hero-heading .invite-hero-art { flex: none; margin: 0; }
+.invite-benefits { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 14px; margin: 24px 0; }
+.invite-benefit { padding: 20px; background: #fff; border: 1px solid #e1e7d9; border-radius: 16px; }
+.invite-benefit > span { display: block; color: #52624e; font-size: 14px; }
+.invite-benefit strong { display: block; margin: 8px 0; font-size: clamp(24px, 3vw, 32px); color: #253f32; }
+.invite-benefit p { font-size: 14px; margin: 0; }
+.invite-intro .actions { justify-content: flex-start; }
+.invite-intro .invite-validity { margin: 16px 0 0; font-size: 12px; }
+@media (max-width: 600px) { .invite-hero-heading { gap: 12px; } .invite-hero-heading .invite-hero-art { width: 90px; height: 72px; } .invite-benefits { margin: 18px 0; gap: 10px; } .invite-benefit { padding: 16px; } }
+
+.invite-intro .actions button, .invite-actions button { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 48px; padding: 12px 24px; border-radius: 12px; font-weight: 600; }
+.invite-intro .invite-secondary { background: transparent; border-color: #c6d0c1; color: #344c3a; }
+.invite-intro .actions button:focus-visible, .invite-actions button:focus-visible { outline: 3px solid #88a591; outline-offset: 3px; }
+.invite-actions { border-top: 1px solid #e7eae4; padding-top: 18px; }
+.invite-actions > .primary { order: -1; flex: 1; }
+.invite-actions > button:not(.primary) { background: transparent; }
+.invite-page-content .panel { margin-top: 18px; }
+.invite-page-content .panel button[type="submit"] { min-height: 44px; border-radius: 12px; }
+@media (max-width: 600px) { .invite-intro .actions { display: grid; grid-template-columns: 1fr; gap: 10px; } .invite-intro .actions button { width: 100%; } .invite-actions { flex-direction: column; } .invite-actions button { width: 100%; flex: none; } }

@@ -47,8 +47,8 @@ class ConfigSave extends FormRequest
         'try_out_plan_id' => 'integer',
         'try_out_hour' => 'numeric',
         'tos_url' => 'nullable|url',
-        'currency' => '',
-        'currency_symbol' => '',
+        'currency' => 'sometimes|required|in:CNY',
+        'currency_symbol' => 'sometimes|required|in:CNY',
         // subscribe
         'credit_base_group_id' => 'nullable|integer|min:1|exists:v2_server_group,id',
         'plan_change_enable' => 'in:0,1',

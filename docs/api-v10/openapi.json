@@ -10297,7 +10297,11 @@
           },
           "currency": {
             "type": "string",
-            "example": "CNY"
+            "example": "CNY",
+            "enum": [
+              "CNY"
+            ],
+            "description": "CNY only in phase 1; integer monetary values are fen (1/100 CNY). Order currency is persisted and does not follow global configuration."
           }
         },
         "additionalProperties": false
@@ -10433,7 +10437,11 @@
           },
           "currency": {
             "type": "string",
-            "example": "CNY"
+            "example": "CNY",
+            "enum": [
+              "CNY"
+            ],
+            "description": "CNY only in phase 1; integer monetary values are fen (1/100 CNY). Order currency is persisted and does not follow global configuration."
           },
           "ticketCreation": {
             "type": "string",
@@ -10671,7 +10679,11 @@
           },
           "currency": {
             "type": "string",
-            "example": "CNY"
+            "example": "CNY",
+            "enum": [
+              "CNY"
+            ],
+            "description": "CNY only in phase 1; integer monetary values are fen (1/100 CNY). Order currency is persisted and does not follow global configuration."
           }
         },
         "additionalProperties": false
@@ -10708,7 +10720,11 @@
           },
           "currency": {
             "type": "string",
-            "example": "CNY"
+            "example": "CNY",
+            "enum": [
+              "CNY"
+            ],
+            "description": "CNY only in phase 1; integer monetary values are fen (1/100 CNY). Order currency is persisted and does not follow global configuration."
           }
         },
         "additionalProperties": false
@@ -10739,7 +10755,11 @@
           },
           "currency": {
             "type": "string",
-            "example": "CNY"
+            "example": "CNY",
+            "enum": [
+              "CNY"
+            ],
+            "description": "CNY only in phase 1; integer monetary values are fen (1/100 CNY). Order currency is persisted and does not follow global configuration."
           }
         },
         "additionalProperties": false
@@ -11011,7 +11031,11 @@
           },
           "currency": {
             "type": "string",
-            "example": "CNY"
+            "example": "CNY",
+            "enum": [
+              "CNY"
+            ],
+            "description": "CNY only in phase 1; integer monetary values are fen (1/100 CNY). Order currency is persisted and does not follow global configuration."
           }
         },
         "additionalProperties": false
@@ -11287,7 +11311,11 @@
           },
           "currency": {
             "type": "string",
-            "nullable": true
+            "nullable": true,
+            "enum": [
+              "CNY"
+            ],
+            "description": "CNY only in phase 1; integer monetary values are fen (1/100 CNY). Order currency is persisted and does not follow global configuration."
           },
           "currencySymbol": {
             "type": "string",
@@ -11386,7 +11414,11 @@
           },
           "currency": {
             "type": "string",
-            "example": "CNY"
+            "example": "CNY",
+            "enum": [
+              "CNY"
+            ],
+            "description": "CNY only in phase 1; integer monetary values are fen (1/100 CNY). Order currency is persisted and does not follow global configuration."
           }
         },
         "additionalProperties": false
@@ -11557,7 +11589,11 @@
             "type": "number"
           },
           "currency": {
-            "type": "string"
+            "type": "string",
+            "enum": [
+              "CNY"
+            ],
+            "description": "CNY only in phase 1; integer monetary values are fen (1/100 CNY). Order currency is persisted and does not follow global configuration."
           },
           "rewards": {
             "type": "object",

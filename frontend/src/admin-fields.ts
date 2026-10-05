@@ -70,6 +70,7 @@ export function configField(
             arrayText: true,
             hint: "使用逗号分隔多个值。",
         };
+    if (key === "currency" || key === "currency_symbol") return { key, label: "当前结算币种", type: "select", options: [["CNY", "CNY · 人民币"]], hint: "当前采用人民币计价；修改符号不会转换金额。USD 将通过独立价格与钱包支持。" };
     const validation = Array.isArray(rule)
         ? rule.join("|")
         : String(rule || "");

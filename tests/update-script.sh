@@ -33,6 +33,7 @@ echo '<?php // fixture' > database/migrations/2026_10_03_000002_create_banners.p
 echo '<?php // fixture' > database/migrations/2026_10_03_000001_add_notice_translations.php
 echo '<?php // fixture' > database/migrations/2026_10_05_000001_create_invitation_rewards.php
 echo '<?php // fixture' > database/migrations/2026_10_05_000002_create_credit_batches.php
+echo '<?php // fixture' > database/migrations/2026_10_05_000003_add_order_currency.php
 mkdir -p storage/geoip
 echo 'new mmdb' > storage/geoip/GeoLite2-ASN.mmdb
 git add -f storage/geoip/GeoLite2-ASN.mmdb
@@ -90,6 +91,7 @@ bash "$SOURCE" "${ARGS[@]}" > "$TMP/output" 2>&1
 grep -q 'artisan up' calls.log
 grep -q 'Site jobs drained' "$TMP/output"
 new_site success
+chmod 600 composer.json composer.lock
 bash "$SOURCE" "${ARGS[@]}" --jobs-stopped > "$TMP/output" 2>&1
 [[ $(git rev-parse HEAD) == "$TARGET" && -e storage/framework/down ]]
 grep -q original-key .env
@@ -102,6 +104,7 @@ grep -q 'migrate --path=database/migrations/2026_10_02_000004' calls.log
 grep -q 'migrate --path=database/migrations/2026_10_02_000005' calls.log
 grep -q 'artisan console:verify' calls.log
 [[ $(stat -c %a public/console/.vite/manifest.json) == 644 ]]
+[[ $(stat -c %a composer.json) == 644 && $(stat -c %a composer.lock) == 644 ]]
 ! grep -Eq 'v2board:update|cache:clear|optimize:clear|artisan up' calls.log
 find "$TMP/backups" -name site.tar.gz -exec tar -tzf {} \; | grep -q './vendor/original'
 new_site failure

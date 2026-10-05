@@ -73,3 +73,10 @@ export function subscriptionAction(
     if (same) return "resubscribe";
     return "subscribe";
 }
+
+// Reconstruct the price locked in the order, never today's catalog price.
+export function orderOriginalAmount(order: Row): number {
+    return Number(order.total_amount || 0) + Number(order.discount_amount || 0)
+        + Number(order.balance_amount || 0) + Number(order.surplus_amount || 0)
+        - Number(order.refund_amount || 0);
+}

@@ -712,7 +712,7 @@ export function Invite() {
                         {
                             key: "transfer_amount",
                             label: e("transferAmount", {
-                                currency: boot.currencySymbol,
+                                currency: "CNY",
                             }),
                             scale: 100,
                             min: 0.01,

@@ -31,7 +31,8 @@ $renderConsole = function (string $mode, bool $landing = false) use ($securePath
             'emailWhitelistSuffixes' => config('v2board.email_whitelist_enable', 0) ? \App\Utils\Helper::emailSuffixes(config('v2board.email_whitelist_suffix', \App\Utils\Dict::EMAIL_WHITELIST_SUFFIX_DEFAULT)) : [],
             'recaptchaSiteKey' => config('v2board.recaptcha_enable') ? (string) config('v2board.recaptcha_site_key', '') : '',
             'tosUrl' => (string) config('v2board.tos_url', ''),
-            'currencySymbol' => config('v2board.currency_symbol', '¥'),
+            'currency' => \App\Services\Money::CURRENCY,
+            'currencySymbol' => \App\Services\Money::CURRENCY,
         ],
     ]);
 };

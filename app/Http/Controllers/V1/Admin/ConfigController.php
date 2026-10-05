@@ -104,8 +104,8 @@ class ConfigController extends Controller
                 'try_out_plan_id' => (int)config('v2board.try_out_plan_id', 0),
                 'try_out_hour' => (int)config('v2board.try_out_hour', 1),
                 'tos_url' => config('v2board.tos_url'),
-                'currency' => config('v2board.currency', 'CNY'),
-                'currency_symbol' => config('v2board.currency_symbol', '¥'),
+                'currency' => \App\Services\Money::CURRENCY,
+                'currency_symbol' => \App\Services\Money::CURRENCY,
             ],
             'subscribe' => [
                 'credit_base_group_id' => config('v2board.credit_base_group_id'),

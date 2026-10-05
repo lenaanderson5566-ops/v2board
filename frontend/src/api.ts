@@ -34,6 +34,7 @@ export interface Boot {
     emailWhitelistSuffixes?: string[];
     recaptchaSiteKey: string;
     tosUrl: string;
+    currency?: "CNY";
     currencySymbol: string;
 }
 declare global {
@@ -225,8 +226,8 @@ export function rows(data: unknown): Row[] {
             .filter((x) => x && typeof x === "object");
     return [];
 }
-export const money = (n: unknown) =>
-    `${boot.currencySymbol}${new Intl.NumberFormat(locale(), { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(Number(n || 0) / 100)}`;
+export const money = (n: unknown, currency = "CNY") =>
+    `${currency} ${new Intl.NumberFormat(locale(), { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(Number(n || 0) / 100)}`;
 export const bytes = (n: unknown) => {
     let v = Number(n || 0),
         i = 0;

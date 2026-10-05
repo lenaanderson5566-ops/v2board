@@ -86,7 +86,7 @@ class GiftcardController extends Controller
         $giftcardvalue = $giftcard['value'] ?? 0;
         $rows = [];
         foreach ($giftcards as $giftcard) {
-            $type = ['', '金额', '时长', '流量', '重置', '套餐'][$giftcard['type']];
+            $type = ['', '金额 (CNY)', '时长', '流量', '重置', '套餐'][$giftcard['type']];
             $value = ['', round($giftcardvalue/100, 2), $giftcardvalue . '天', $giftcardvalue . 'GB', '-', $giftcardvalue . '天'][$giftcard['type']];
             $startTime = date('Y-m-d H:i:s', $giftcard['started_at']);
             $endTime = date('Y-m-d H:i:s', $giftcard['ended_at']);

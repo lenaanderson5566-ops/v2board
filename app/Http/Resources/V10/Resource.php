@@ -26,7 +26,7 @@ final class Resource
         if ($name === 'summary') return ['pendingOrders'=>$data[0] ?? 0,'pendingTickets'=>$data[1] ?? 0,'referrals'=>$data[2] ?? 0];
         if ($name === 'referrals') {
             $s=$data['stat'] ?? [];
-            return ['rewards'=>$data['rewards'] ?? ['registrationBytes'=>0,'firstUseBytes'=>0,'validityMonths'=>1],'registeredUsers'=>$s[0] ?? 0,'earnedCommission'=>$s[1] ?? 0,'pendingCommission'=>(int)round($s[2] ?? 0),'commissionRate'=>$s[3] ?? 0,'availableCommission'=>$s[4] ?? 0,'currency'=>config('v2board.currency','CNY')];
+            return ['rewards'=>$data['rewards'] ?? ['registrationBytes'=>0,'firstUseBytes'=>0,'validityMonths'=>1],'registeredUsers'=>$s[0] ?? 0,'earnedCommission'=>$s[1] ?? 0,'pendingCommission'=>(int)round($s[2] ?? 0),'commissionRate'=>$s[3] ?? 0,'availableCommission'=>$s[4] ?? 0,'currency'=>\App\Services\Money::CURRENCY];
         }
         if ($name === 'inbox') return ['items'=>self::encode('array:notification',$data['items'] ?? []),'unread'=>$data['unread'] ?? 0];
         if ($name === 'articles') {
@@ -69,7 +69,7 @@ final class Resource
             if (in_array($external,['imageUrl','mobileImageUrl'],true) && is_string($v)) $v=str_replace('/api/v1/guest/banner/image/','/api/v10/public/banner-images/',$v);
             $out[$external]=$v;
         }
-        if (in_array($name,['plan','order','credit','account','paymentMethod','commission','coupon'],true)) $out['currency']=config('v2board.currency','CNY');
+        if (in_array($name,['plan','order','credit','account','paymentMethod','commission','coupon'],true)) $out['currency']=$name === 'order' ? ($data['currency'] ?? \App\Services\Money::CURRENCY) : \App\Services\Money::CURRENCY;
         return $out;
     }
     private static function time($value): ?string

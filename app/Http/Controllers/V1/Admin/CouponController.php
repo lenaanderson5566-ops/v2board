@@ -103,7 +103,7 @@ class CouponController extends Controller
         DB::commit();
         $rows = [];
         foreach($coupons as $coupon) {
-            $type = ['', '金额', '比例'][$coupon['type']];
+            $type = ['', '金额 (CNY)', '比例'][$coupon['type']];
             $value = ['', ($coupon['value'] / 100),$coupon['value']][$coupon['type']];
             $startTime = date('Y-m-d H:i:s', $coupon['started_at']);
             $endTime = date('Y-m-d H:i:s', $coupon['ended_at']);

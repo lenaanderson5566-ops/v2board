@@ -564,3 +564,11 @@ it("allows reviewing a replacement and submits its exact order reference atomica
     );
     expect(mocks.request.mock.calls.filter(([path]) => path === "user/order/save")).toHaveLength(1);
 });
+
+it("shows the historical plan price on completed receipts", async () => {
+    const { OrderReceipt } = await import("./OrderReceipt");
+    render(<OrderReceipt order={{ status: 3, plan_id: 1, period: "month_price", total_amount: 3880, balance_amount: 2000, plan: { name: "Ultimate", month_price: 99999 } }} />);
+    expect(screen.getByText("套餐价格")).toBeTruthy();
+    expect(screen.getByText("¥58.80")).toBeTruthy();
+    expect(screen.getByText("¥38.80")).toBeTruthy();
+});

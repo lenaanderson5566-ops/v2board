@@ -775,7 +775,7 @@ export function AssignOrder({
                             },
                             {
                                 key: "total_amount",
-                                label: "订单金额（元）",
+                                label: "订单金额（CNY）",
                                 type: "number",
                                 min: 0,
                                 step: 0.01,

@@ -118,7 +118,7 @@ export function resourceFields(
                     label:
                         (
                             {
-                                1: "金额（元）",
+                                1: "金额（CNY）",
                                 2: "延长时间（天）",
                                 3: "增加流量（GB）",
                                 5: "套餐有效期（天）",
@@ -137,7 +137,7 @@ export function resourceFields(
                     label:
                         Number(values.type) === 2
                             ? "折扣比例（%，例如 20 表示减免 20%）"
-                            : "优惠金额（元）",
+                            : "优惠金额（CNY）",
                     min: Number(values.type) === 2 ? 1 : 0.01,
                     max: Number(values.type) === 2 ? 100 : undefined,
                     step: Number(values.type) === 2 ? 1 : 0.01,

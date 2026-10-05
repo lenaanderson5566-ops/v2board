@@ -231,8 +231,8 @@ class TicketActions
 				$plan = Plan::where('id', $user->plan_id)->first();
 				$planName = $plan ? $plan->name : '未找到套餐信息'; // Check if plan data is available
 
-				$money = $user->balance / 100;
-				$affmoney = $user->commission_balance / 100;
+				$money = \App\Services\Money::format($user->balance);
+				$affmoney = \App\Services\Money::format($user->commission_balance);
 				$telegramService->sendMessageWithAdmin("📮工单提醒 #{$ticket->id}\n———————————————\n邮箱：\n`{$user->email}`\n用户位置：\n`{$location}`\nIP:\n{$ip_address}\n套餐与流量：\n`{$planName} of {$transfer_enable}/{$remaining_traffic}`\n上传/下载：\n`{$u}/{$d}`\n到期时间：\n`{$expired_at}`\n余额/佣金余额：\n`{$money}/{$affmoney}`\n主题：\n`{$ticket->subject}`\n内容：\n {$message} ", true);
 			} else {
 				// Handle case where user data is not found

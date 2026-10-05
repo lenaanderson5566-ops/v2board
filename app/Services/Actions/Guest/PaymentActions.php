@@ -39,8 +39,8 @@ class PaymentActions
         }
         $telegramService = new TelegramService();
         $message = sprintf(
-            "💰成功收款%s元\n———————————————\n订单号：%s",
-            $order->total_amount / 100,
+            "💰成功收款%s\n———————————————\n订单号：%s",
+            \App\Services\Money::format($order->total_amount),
             $order->trade_no
         );
         $telegramService->sendMessageWithAdmin($message);

@@ -75,16 +75,16 @@
       "line": 5774
     },
     "currency": {
-      "label": "货币单位",
-      "hint": "仅用于展示使用，更改后系统中所有的货币单位都将发生变更。",
+      "label": "当前结算币种",
+      "hint": "当前所有价格、余额和佣金均为 CNY。USD 将通过独立价格与钱包支持，不能通过修改此设置转换金额。",
       "placeholder": "CNY",
       "child": false,
       "line": 5783
     },
     "currency_symbol": {
-      "label": "货币符号",
-      "hint": "仅用于展示使用，更改后系统中所有的货币单位都将发生变更。",
-      "placeholder": "¥",
+      "label": "当前货币标注",
+      "hint": "使用明确的 CNY 标注。",
+      "placeholder": "CNY",
       "child": false,
       "line": 5792
     },
@@ -324,7 +324,7 @@
       "line": 6108
     },
     "commission_withdraw_limit": {
-      "label": "提现单申请门槛(元)",
+      "label": "提现单申请门槛(CNY)",
       "hint": "小于门槛金额的提现单将不会被提交。",
       "placeholder": "请输入",
       "child": false,

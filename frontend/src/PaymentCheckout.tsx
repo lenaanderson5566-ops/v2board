@@ -3,10 +3,10 @@ import { c } from "./credit-copy";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { QRCodeSVG } from "qrcode.react";
 import { CreditCard, LoaderCircle } from "lucide-react";
-import { request, money, query, type Row } from "./api";
+import { request, money as formatMoney, query, type Row } from "./api";
 import { useData, State, Modal } from "./ui";
 import { tx } from "./i18n";
-import { billingPeriods, paymentFee } from "./billing-flow";
+import { billingPeriods, paymentFee, orderOriginalAmount } from "./billing-flow";
 import { PurchaseSteps } from "./SubscriptionPurchase";
 
 function PaymentIcon({ source }: { source: unknown }) {
@@ -43,6 +43,7 @@ export function PaymentCheckout({
         pay: (token: string) => Promise<void>,
     ) => ReactNode;
 }) {
+    const money = (amount: unknown) => formatMoney(amount, order.currency || "CNY");
     const status = Number(order.status);
     const deposit = Number(order.plan_id) === 0;
     const due = Number(order.total_amount || 0);
@@ -226,6 +227,12 @@ export function PaymentCheckout({
                             : tx(billingPeriods[order.period] || "账户充值")}
                     </p>
                     <dl className="checkout-lines">
+                    {Number(order.plan_id) !== 0 && !(Number(order.credit_bytes) > 0) && (
+                        <div>
+                            <dt>{tx("套餐价格")}</dt>
+                            <dd>{money(orderOriginalAmount(order))}</dd>
+                        </div>
+                    )}
                         {Number(order.discount_amount) > 0 && (
                             <div>
                                 <dt>{tx("优惠金额")}</dt>

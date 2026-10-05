@@ -135,7 +135,7 @@ export function BillingPage() {
                                             )}
                                         </span>
                                         <strong>
-                                            {money(order.total_amount)}
+                                            {money(order.total_amount, order.currency || "CNY")}
                                         </strong>
                                         <ChevronRight size={16} />
                                     </a>
@@ -181,7 +181,7 @@ export function BillingPage() {
                                 {
                                     key: "deposit_amount",
                                     label: e("depositAmount", {
-                                        currency: boot.currencySymbol,
+                                        currency: "CNY",
                                     }),
                                     type: "number",
                                     scale: 100,

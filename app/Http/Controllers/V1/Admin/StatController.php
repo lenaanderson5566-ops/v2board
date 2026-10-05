@@ -81,7 +81,7 @@ class StatController extends Controller
                 'value' => $statistic['register_count']
             ];
             $result[] = [
-                'type' => '收款金额',
+                'type' => '收款金额 (CNY)',
                 'date' => $date,
                 'value' => $statistic['paid_total'] / 100
             ];
@@ -91,7 +91,7 @@ class StatController extends Controller
                 'value' => $statistic['paid_count']
             ];
             $result[] = [
-                'type' => '佣金金额(已发放)',
+                'type' => '佣金金额(已发放，CNY)',
                 'date' => $date,
                 'value' => $statistic['commission_total'] / 100
             ];

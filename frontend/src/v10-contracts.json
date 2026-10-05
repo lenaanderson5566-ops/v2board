@@ -66,6 +66,9 @@
       "resetMethod": [
         "reset_traffic_method",
         "number"
+      ],
+      "currency": [
+        "currency"
       ]
     },
     "accountStatus": {
@@ -177,6 +180,9 @@
       ],
       "ticketCreation": [
         "ticket_creation"
+      ],
+      "currency": [
+        "currency"
       ]
     },
     "subscription": {
@@ -332,6 +338,9 @@
         "credit_snapshot",
         "object",
         "creditSnapshot"
+      ],
+      "currency": [
+        "currency"
       ]
     },
     "paymentMethod": {
@@ -355,6 +364,9 @@
       "percentageFee": [
         "handling_fee_percent",
         "number"
+      ],
+      "currency": [
+        "currency"
       ]
     },
     "credit": {
@@ -372,6 +384,9 @@
       "price": [
         "price",
         "integer"
+      ],
+      "currency": [
+        "currency"
       ]
     },
     "notification": {
@@ -558,6 +573,9 @@
       "createdAt": [
         "created_at",
         "time"
+      ],
+      "currency": [
+        "currency"
       ]
     },
     "article": {
@@ -824,6 +842,9 @@
       "expiresAt": [
         "ended_at",
         "time"
+      ],
+      "currency": [
+        "currency"
       ]
     },
     "applicationVersion": {

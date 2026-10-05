@@ -1,10 +1,11 @@
 import { CheckCircle2, CircleX, ArrowLeft, ReceiptText } from "lucide-react";
-import { bytes, money, type Row } from "./api";
+import { bytes, money as formatMoney, type Row } from "./api";
 import { tx } from "./i18n";
 import { c, minuteDate } from "./credit-copy";
-import { billingPeriods } from "./billing-flow";
+import { billingPeriods, orderOriginalAmount } from "./billing-flow";
 
 export function OrderReceipt({ order }: { order: Row }) {
+    const money = (amount: unknown) => formatMoney(amount, order.currency || "CNY");
     const cancelled = Number(order.status) === 2,
         applied = Number(order.status) === 4;
     const credit = Number(order.credit_bytes) > 0,
@@ -69,6 +70,12 @@ export function OrderReceipt({ order }: { order: Row }) {
                     )}
                 </div>
                 <dl className="checkout-lines">
+                    {Number(order.plan_id) !== 0 && !(Number(order.credit_bytes) > 0) && (
+                        <div>
+                            <dt>{tx("套餐价格")}</dt>
+                            <dd>{money(orderOriginalAmount(order))}</dd>
+                        </div>
+                    )}
                     {!cancelled && Number(order.discount_amount) > 0 && (
                         <div>
                             <dt>{tx("优惠金额")}</dt>

@@ -35,6 +35,7 @@ CREDIT_MIGRATION=database/migrations/2026_10_02_000005_create_traffic_credits.ph
 BANNER_MIGRATION=database/migrations/2026_10_03_000002_create_banners.php
 CONTENT_MIGRATION=database/migrations/2026_10_03_000001_add_notice_translations.php
 NOTICE_MIGRATION=database/migrations/2026_10_02_000004_create_notice_reads.php
+CURRENCY_MIGRATION=database/migrations/2026_10_05_000003_add_order_currency.php
 EXPIRY_MIGRATION=database/migrations/2026_10_05_000002_create_credit_batches.php
 REWARD_MIGRATION=database/migrations/2026_10_05_000001_create_invitation_rewards.php
 RESET_MIGRATION=database/migrations/2026_10_02_000003_create_usage_resets.php
@@ -216,11 +217,12 @@ git cat-file -e "$TARGET:$CREDIT_MIGRATION" || die 'Target lacks the traffic cre
 git cat-file -e "$TARGET:$BANNER_MIGRATION" || die 'Target lacks the banner migration'
 git cat-file -e "$TARGET:$CONTENT_MIGRATION" || die 'Target lacks the notice translations migration'
 git cat-file -e "$TARGET:$NOTICE_MIGRATION" || die 'Target lacks the announcement read migration'
+git cat-file -e "$TARGET:$CURRENCY_MIGRATION" || die 'Target lacks order currency migration'
 git cat-file -e "$TARGET:$EXPIRY_MIGRATION" || die 'Target lacks credit expiry migration'
 git cat-file -e "$TARGET:$REWARD_MIGRATION" || die 'Target lacks the invitation rewards migration'
 git cat-file -e "$TARGET:$RESET_MIGRATION" || die 'Target lacks the usage reset migration'
 while IFS= read -r changed; do
-    [[ -z "$changed" || "$changed" == "$MIGRATION" || "$changed" == "$INVITATION_MIGRATION" || "$changed" == "$LANGUAGE_MIGRATION" || "$changed" == "$EXPIRY_MIGRATION" || "$changed" == "$REWARD_MIGRATION" || "$changed" == "$RESET_MIGRATION" || "$changed" == "$NOTICE_MIGRATION" || "$changed" == "$CREDIT_MIGRATION" || "$changed" == "$CONTENT_MIGRATION" || "$changed" == "$BANNER_MIGRATION" ]] || die "Unexpected migration: $changed; review scope first"
+    [[ -z "$changed" || "$changed" == "$MIGRATION" || "$changed" == "$INVITATION_MIGRATION" || "$changed" == "$LANGUAGE_MIGRATION" || "$changed" == "$CURRENCY_MIGRATION" || "$changed" == "$EXPIRY_MIGRATION" || "$changed" == "$REWARD_MIGRATION" || "$changed" == "$RESET_MIGRATION" || "$changed" == "$NOTICE_MIGRATION" || "$changed" == "$CREDIT_MIGRATION" || "$changed" == "$CONTENT_MIGRATION" || "$changed" == "$BANNER_MIGRATION" ]] || die "Unexpected migration: $changed; review scope first"
 done < <(git diff --name-only "$OLD_COMMIT" "$TARGET" -- database/migrations)
 git show "$TARGET:composer.json" > "$WORK_DIR/composer.json"
 git show "$OLD_COMMIT:composer.json" > "$WORK_DIR/original-composer.json"
@@ -357,6 +359,9 @@ else git checkout -b "$BRANCH" "$TARGET"; fi
 [[ "$(git rev-parse HEAD)" == "$TARGET" ]] || die 'Checkout differs from target'
 cp -- "$WORK_DIR/composer.lock" composer.lock
 cp -- "$WORK_DIR/composer.json" composer.json
+# cp overwrites content without fixing an existing 0600 destination. Private
+# staging files and earlier deployments may leave manifests unreadable to FPM.
+chmod 0644 composer.json composer.lock
 PHASE=dependencies
 "$PHP_BIN" "$COMPOSER_BIN" install --no-dev --prefer-dist --optimize-autoloader --no-interaction
 "$PHP_BIN" "$COMPOSER_BIN" check-platform-reqs --no-dev --no-interaction
@@ -365,7 +370,7 @@ PHASE=cache-preparation
 "$PHP_BIN" artisan route:clear
 "$PHP_BIN" artisan view:clear
 PHASE=migrations
-for migration in "$MIGRATION" "$INVITATION_MIGRATION" "$LANGUAGE_MIGRATION" "$RESET_MIGRATION" "$NOTICE_MIGRATION" "$CREDIT_MIGRATION" "$CONTENT_MIGRATION" "$BANNER_MIGRATION" "$REWARD_MIGRATION" "$EXPIRY_MIGRATION"; do
+for migration in "$MIGRATION" "$INVITATION_MIGRATION" "$LANGUAGE_MIGRATION" "$RESET_MIGRATION" "$NOTICE_MIGRATION" "$CREDIT_MIGRATION" "$CONTENT_MIGRATION" "$BANNER_MIGRATION" "$REWARD_MIGRATION" "$EXPIRY_MIGRATION" "$CURRENCY_MIGRATION"; do
     run_migration "$migration"
 done
 printf '\nAll approved migrations completed.\n'

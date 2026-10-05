@@ -96,7 +96,7 @@ const created: [string, string, ((r: Row) => React.ReactNode)?] = [
 ];
 const name: [string, string] = ["name", "名称"];
 const price = (key: string, label: string): Field => ({
-    ...f(key, label + "（元）", "number"),
+    ...f(key, label + "（CNY）", "number"),
     scale: 100,
     step: 0.01,
     hint:
@@ -297,7 +297,7 @@ export const resources: Record<string, Resource> = {
             f("transfer_enable", "流量 (GB)", "number"),
             f("u", "已用上传（GB）", "number"),
             f("d", "已用下载（GB）", "number"),
-            { ...f("balance", "余额（元）", "number"), scale: 100, step: 0.01 },
+            { ...f("balance", "余额（CNY）", "number"), scale: 100, step: 0.01 },
             f("expired_at", "到期时间", "datetime-local"),
             f("device_limit", "设备限制", "number"),
             f("speed_limit", "速率限制", "number"),
@@ -317,7 +317,7 @@ export const resources: Record<string, Resource> = {
                 ],
             },
             {
-                ...f("commission_balance", "佣金余额（元）", "number"),
+                ...f("commission_balance", "佣金余额（CNY）", "number"),
                 scale: 100,
                 step: 0.01,
             },
@@ -475,7 +475,7 @@ export const resources: Record<string, Resource> = {
                 label: "优惠类型",
                 type: "select",
                 options: [
-                    ["1", "固定金额（元）"],
+                    ["1", "固定金额（CNY）"],
                     ["2", "百分比"],
                 ],
             },
@@ -536,7 +536,7 @@ export const resources: Record<string, Resource> = {
                 label: "礼品卡类型",
                 type: "select",
                 options: [
-                    ["1", "余额（元）"],
+                    ["1", "余额（CNY）"],
                     ["2", "延长订阅（天）"],
                     ["3", "增加流量（GB）"],
                     ["4", "重置流量"],
@@ -1981,7 +1981,7 @@ function PaymentEditor({
                         {
                             ...f(
                                 "handling_fee_fixed",
-                                "固定手续费（元）",
+                                "固定手续费（CNY）",
                                 "number",
                             ),
                             min: 0,

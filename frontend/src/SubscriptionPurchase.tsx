@@ -98,7 +98,7 @@ export function SubscriptionPurchase() {
                                 {pending.plan?.name || tx("账户充值")}
                             </strong>
                             <span className="pending-order-amount">
-                                {money(pending.total_amount)}
+                                {money(pending.total_amount, pending.currency || "CNY")}
                             </span>
                         </div>
                         <a

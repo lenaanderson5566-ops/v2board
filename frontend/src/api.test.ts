@@ -11,9 +11,21 @@ vi.stubGlobal("localStorage", {
     getItem: (key: string) => storage.get(key) || null,
     removeItem: (key: string) => storage.delete(key),
 });
-const { request, rows, query, bytes, storageKey, download, logoutSession } =
+const { request, rows, query, bytes, storageKey, download, logoutSession, money } =
     await import("./api");
 describe("API client", () => {
+    it("labels amounts CNY regardless of the legacy boot symbol", () => {
+        expect(money(2880)).toBe("CNY 28.80");
+        expect(money(-1234)).toBe("CNY -12.34");
+        expect(money(0)).toBe("CNY 0.00");
+    });
+    it("keeps order currency in the frontend decoder", async () => {
+        storage.set(storageKey, "session-token");
+        vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response(JSON.stringify({data:{orderNumber:"cny-history",totalAmount:2880,currency:"CNY"}}),{status:200})));
+        const result = await request<any>("user/order/detail?trade_no=cny-history");
+        expect(result.data.currency).toBe("CNY");
+        expect(result.data.total_amount).toBe(2880);
+    });
     it("revokes the current server session before clearing the browser token", async () => {
         storage.set(storageKey, "session-token");
         const fetchMock = vi

@@ -220,7 +220,7 @@ class UserController extends Controller
             $rows[] = [$user['email'], $balance, $commissionBalance, $transferEnable, $deviceLimit, $notUseFlow, $expireDate, $planName, $subscribeUrl];
 
         }
-        return $this->csvResponse(['邮箱', '余额', '推广佣金', '总流量', '设备数限制', '剩余流量', '套餐到期时间', '订阅计划', '订阅地址'], $rows, 'users.csv');
+        return $this->csvResponse(['邮箱', '余额 (CNY)', '推广佣金 (CNY)', '总流量', '设备数限制', '剩余流量', '套餐到期时间', '订阅计划', '订阅地址'], $rows, 'users.csv');
     }
 
     private function checkScope(Request $request, $builder)

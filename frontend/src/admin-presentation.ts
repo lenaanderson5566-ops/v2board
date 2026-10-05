@@ -18,6 +18,7 @@ export function settingsPresentation(group: string, fields: Field[]): Field[] {
             >
         )[group] || {};
     return fields
+        .filter(field => !(group === "site" && field.key === "currency_symbol"))
         .map((field) => ({ ...field, ...entries[field.key] }))
         .sort(
             (a, b) =>
@@ -91,9 +92,9 @@ export function formPresentation(fields: Field[], kind: string): Field[] {
                 if (prices.includes(field.key))
                     return {
                         ...field,
-                        label: field.label.replace(/（元）$/, ""),
+                        label: field.label.replace(/（(?:元|CNY)）$/, ""),
                         columns: prices.indexOf(field.key) < 6 ? 2 : 6,
-                        unit: prices.indexOf(field.key) < 6 ? undefined : "¥",
+                        unit: "CNY",
                         hint: undefined,
                         section:
                             field.key === prices[0] ? "售价设置" : undefined,

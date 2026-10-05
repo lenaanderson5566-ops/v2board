@@ -51,6 +51,7 @@ if [[ "$1" == '-r' ]]; then
     echo "${MANUAL_USERS:-0}"; exit
 fi
 if [[ "$*" == *' update '* && "${FAIL_RESOLVE:-0}" == 1 ]]; then exit 19; fi
+if [[ "$1" == artisan && "$2" == up ]]; then rm -f storage/framework/down; fi
 if [[ "$1" == artisan && "$2" == down ]]; then mkdir -p storage/framework; touch storage/framework/down; fi
 if [[ "$*" == *' install '* && "${FAIL_INSTALL:-0}" == 1 ]]; then exit 17; fi
 if [[ "$1" == artisan && "$2" == migrate && -n "${FAIL_MIGRATION:-}" && "$*" == *"$FAIL_MIGRATION"* ]]; then echo 'Simulated database migration error' >&2; exit 23; fi
@@ -83,8 +84,11 @@ new_site manual
 export MANUAL_USERS=1; reject --jobs-stopped; unset MANUAL_USERS
 [[ $(git rev-parse HEAD) == "$OLD" ]]
 new_site jobs
-reject
-[[ ! -e storage/framework/down ]]
+ARGS+=(--database-backup '')
+bash "$SOURCE" "${ARGS[@]}" > "$TMP/output" 2>&1
+[[ $(git rev-parse HEAD) == "$TARGET" && ! -e storage/framework/down ]]
+grep -q 'artisan up' calls.log
+grep -q 'Site jobs drained' "$TMP/output"
 new_site success
 bash "$SOURCE" "${ARGS[@]}" --jobs-stopped > "$TMP/output" 2>&1
 [[ $(git rev-parse HEAD) == "$TARGET" && -e storage/framework/down ]]
@@ -171,10 +175,10 @@ printf '{"name":"test/site","require":{"php":"^8.4"}}\n' > composer.json
 reject --jobs-stopped --resolve-dependencies
 [[ ! -e storage/framework/down ]]
 new_site missingbackup
-ARGS+=(--database-backup '')
+ARGS+=(--database-backup "$TMP/missing.sql")
 reject --jobs-stopped
-grep -q 'No migrations have run' "$TMP/output"
-[[ ! -e storage/framework/down && ! -e calls.log ]]
+grep -q 'Database backup empty or missing' "$TMP/output"
+[[ ! -e storage/framework/down ]]
 new_site migrationretry
 export FAIL_MIGRATION=2026_10_02_000002
 reject --jobs-stopped
@@ -187,6 +191,19 @@ bash "$SOURCE" "${ARGS[@]}" --jobs-stopped > "$TMP/output" 2>&1
 grep -q 'All approved migrations completed' "$TMP/output"
 grep -q 'artisan console:verify' calls.log
 [[ -e storage/framework/down ]]
+new_site autofailure
+ARGS+=(--database-backup '')
+export FAIL_MIGRATION=2026_10_05_000002
+reject
+unset FAIL_MIGRATION
+[[ -e storage/framework/down ]]
+! grep -q 'artisan up' calls.log
+new_site autoexistingdown
+touch storage/framework/down
+ARGS+=(--database-backup '')
+bash "$SOURCE" "${ARGS[@]}" > "$TMP/output" 2>&1
+[[ -e storage/framework/down ]]
+! grep -q 'artisan up' calls.log
 # Target script changed after the caller was installed. A relative --project must survive handoff.
 cd "$TMP/seed"
 printf '\n# newer updater fixture\n' >> update.sh
@@ -204,4 +221,4 @@ bash update.sh "${ARGS[@]}" --jobs-stopped > "$TMP/output" 2>&1
 [[ $(grep -c 'Using target updater' "$TMP/output") == 1 ]]
 [[ $(git rev-parse HEAD) == $(git rev-parse origin/codex/react-typescript-console) && -e storage/framework/down ]]
 grep -q 'All approved migrations completed' "$TMP/output"
-echo 'Updater: 22 isolated scenarios passed'
+echo 'Updater: 24 isolated scenarios passed'

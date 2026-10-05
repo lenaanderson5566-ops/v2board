@@ -9,7 +9,7 @@
 - 公告优先当前页面语言，缺省使用用户保存语言；缺少对应版本则保留原公告。单条、分页、通知中心都使用同一规则。zh-Hant / zh_Hant / zh-HK 映射到 zh-TW，zh-Hans 映射到 zh-CN。
 - 标题和正文共用一次 Azure 请求；HTML 邮件 / HTML 公告使用 textType=html，Markdown 公告使用 plain。数字与链接发生变化时拒绝自动译文，可手工填写。
 - 公告在原表新增 translations JSON、source_language；原有标题、正文和读状态保留。update.sh 已包含定向迁移：database/migrations/2026_10_03_000001_add_notice_translations.php。
-- 更新仍需停掉本站队列 / 定时任务并提供有效数据库备份，运行更新脚本已有的 --jobs-stopped 和 --database-backup 参数。迁移幂等，重复执行不会重复新增字段。
+- 数据库由管理员自行备份；update.sh 默认自动维护、等待队列结束并执行迁移，--jobs-stopped 保留为手动模式。迁移幂等，重复执行不会重复新增字段。
 
 ## 邮件文案
 

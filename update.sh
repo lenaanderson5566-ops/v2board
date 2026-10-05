@@ -22,6 +22,13 @@ LOCAL_GEOIP=()
 WORK_DIR=
 BACKUP=
 MAINTENANCE=0
+OPEN_ON_SUCCESS=0
+AUTO_HORIZON=0
+AUTO_QUEUE=0
+AUTO_SCHEDULER=0
+JOB_PIDS=()
+JOB_STARTS=()
+JOB_COMMANDS=()
 MIGRATION=database/migrations/2026_10_01_000001_add_trusted_x_forwarded_for_to_v2node.php
 INVITATION_MIGRATION=database/migrations/2026_10_02_000001_create_email_invitations.php
 CREDIT_MIGRATION=database/migrations/2026_10_02_000005_create_traffic_credits.php
@@ -41,14 +48,15 @@ Usage: bash update.sh [options]
   --composer PATH         Existing Composer executable or phar
   --lock-file PATH        Tested target composer.lock (existing lock otherwise)
   --resolve-dependencies Resolve merged dependencies in an isolated temp directory
-  --database-backup PATH  Completed non-empty backup OUTSIDE the website
+  --database-backup PATH  Optional: copy an existing database backup into file backup
   --backup-dir PATH       Private backup parent OUTSIDE the website
   --web-user NAME         Runtime user (default: www)
-  --jobs-stopped          Operator has stopped this site's queue and scheduler
+  --jobs-stopped          Manual mode: jobs already stopped; leave maintenance ON
   --check                 Preflight only; no checkout/install/migration
   --help
-Pause writes and background jobs before taking the database backup.
-Success keeps maintenance ON for PHP-FPM restart and operator verification.
+Database backups are operator-managed; no backup path is required.
+Default: maintenance, drain site workers, migrate, verify, restart workers, reopen.
+An existing maintenance state is preserved. Failed updates remain in maintenance.
 Local additive Composer requirements and the three GeoLite2 databases are backed up.
 Other tracked edits stop.
 No historical update.sql replay, cache flush, or DB rollback.
@@ -66,6 +74,62 @@ run_migration() {
     printf '\nApplying migration: %s\n' "$CURRENT_MIGRATION"
     "$PHP_BIN" artisan migrate --path="$CURRENT_MIGRATION" --force --no-interaction
     CURRENT_MIGRATION=
+}
+snapshot_site_jobs() {
+    JOB_PIDS=(); JOB_STARTS=(); JOB_COMMANDS=()
+    [[ -d /proc/self ]] || die 'Automatic worker draining requires Linux /proc; use --jobs-stopped for manual mode'
+    local proc pid cwd arg command found args
+    for proc in /proc/[0-9]*; do
+        pid=${proc##*/}
+        cwd=$(readlink "$proc/cwd" 2>/dev/null || true)
+        [[ "$cwd" == "$PROJECT" ]] || continue
+        args=(); mapfile -d '' -t args < "$proc/cmdline" 2>/dev/null || continue
+        found=0; command=
+        for arg in "${args[@]}"; do
+            if (( found == 1 )); then command=$arg; break; fi
+            [[ "$arg" == artisan || "$arg" == "$PROJECT/artisan" ]] && found=1
+        done
+        case "$command" in
+            horizon|horizon:supervisor|horizon:work|queue:work|queue:listen|schedule:run|schedule:work|traffic:update|reset:traffic|reset:log|check:order|check:commission|check:ticket|check:renewal|send:remindMail|v2board:statistics|clients:check-releases|credits:expire)
+                for arg in "${args[@]}"; do [[ "$arg" != --force && "$arg" != --force=* ]] || die 'A site worker bypasses maintenance with --force; stop it manually and use --jobs-stopped'; done
+                JOB_PIDS+=("$pid")
+                JOB_STARTS+=("$(awk '{print $22}' "$proc/stat" 2>/dev/null || true)")
+                JOB_COMMANDS+=("$command");;
+        esac
+    done
+}
+drain_site_jobs() {
+    # Maintenance blocks new normal queue jobs and scheduled events. Drain existing
+    # invocations gracefully, scoped by this checkout's cwd, not all BaoTa workers.
+    "$PHP_BIN" -r '
+require "vendor/autoload.php"; $app=require "bootstrap/app.php";
+$app->make(Illuminate\Contracts\Console\Kernel::class)->bootstrap();
+$check=function($items) use (&$check) { foreach($items as $key=>$value) {
+if ($key==="force" && $value) throw new RuntimeException("Horizon force mode requires manual worker shutdown");
+if(is_array($value)) $check($value);
+}}; $check(config("horizon",[]));
+'
+    snapshot_site_jobs
+    local i pid started deadline=$((SECONDS+720)) waiting
+    for i in "${!JOB_PIDS[@]}"; do
+        pid=${JOB_PIDS[$i]}
+        case "${JOB_COMMANDS[$i]}" in
+            horizon) AUTO_HORIZON=1; kill -TERM "$pid" 2>/dev/null || true;;
+            queue:work|queue:listen) AUTO_QUEUE=1; kill -TERM "$pid" 2>/dev/null || true;;
+            schedule:work) AUTO_SCHEDULER=1; kill -TERM "$pid" 2>/dev/null || true;;
+        esac
+    done
+    while :; do
+        waiting=0
+        for i in "${!JOB_PIDS[@]}"; do
+            pid=${JOB_PIDS[$i]}; started=$(awk '{print $22}' "/proc/$pid/stat" 2>/dev/null || true)
+            [[ -n "$started" && "$started" == "${JOB_STARTS[$i]}" ]] && waiting=1
+        done
+        (( waiting == 1 )) || break
+        (( SECONDS < deadline )) || die 'Workers did not drain within 12 minutes; maintenance retained. Check the site Supervisor before retrying'
+        sleep 2
+    done
+    printf 'Site jobs drained; maintenance prevents new jobs during migration.\n'
 }
 cleanup() {
     local result=$?
@@ -96,12 +160,7 @@ while (( $# )); do
         *) die "Unknown option: $1";;
     esac
 done
-# Report operator prerequisites before expensive Composer checks; --check remains read-only.
-if (( CHECK_ONLY == 0 )); then
-    (( JOBS_STOPPED == 1 )) || die 'No migrations have run. Stop this site queue/scheduler, then rerun with --jobs-stopped and --database-backup /absolute/path/to/backup.sql.gz'
-    [[ -n "$DATABASE_BACKUP" && -s "$DATABASE_BACKUP" ]] || die 'No migrations have run. Supply a completed non-empty backup using --database-backup /absolute/path/to/backup.sql.gz'
-fi
-for tool in git tar sha256sum realpath cmp; do command -v "$tool" >/dev/null || die "Missing $tool"; done
+for tool in git tar sha256sum realpath cmp flock awk readlink; do command -v "$tool" >/dev/null || die "Missing $tool"; done
 PROJECT=$(realpath "$PROJECT")
 cd "$PROJECT"
 [[ "$(git rev-parse --show-toplevel)" == "$PROJECT" ]] || die 'Project must be the repository root'
@@ -137,6 +196,11 @@ git show "$TARGET:update.sh" > "$WORK_DIR/target-update.sh"
 if ! cmp -s -- "$SCRIPT_PATH" "$WORK_DIR/target-update.sh"; then
     printf 'Using target updater from %s (%s).\n' "$TARGET" "$BRANCH"
     if (cd "$INVOCATION_DIR"; bash "$WORK_DIR/target-update.sh" "${ORIGINAL_ARGS[@]}"); then exit 0; else exit $?; fi
+fi
+# Serialize actual deployments after target-script handoff.
+if (( CHECK_ONLY == 0 )); then
+    exec 9>"$(git rev-parse --git-path update.lock)"
+    flock -n 9 || die 'Another updater is running for this checkout'
 fi
 if git show-ref --verify --quiet "refs/heads/$BRANCH"; then
     git merge-base --is-ancestor "refs/heads/$BRANCH" "$TARGET" || die 'Local target branch diverges or is ahead; reconcile it first'
@@ -221,11 +285,11 @@ while IFS= read -r -d '' file; do
 done < <(git ls-tree -r --name-only -z "$TARGET")
 printf 'Preflight passed. Current: %s\nTarget: %s (%s)\n' "$OLD_COMMIT" "$TARGET" "$BRANCH"
 if (( CHECK_ONLY == 1 )); then exit 0; fi
-(( JOBS_STOPPED == 1 )) || die 'Stop queue/scheduler and pass --jobs-stopped'
-[[ -n "$DATABASE_BACKUP" ]] || die 'Provide a completed database backup with --database-backup'
-DATABASE_BACKUP=$(realpath "$DATABASE_BACKUP")
-[[ -s "$DATABASE_BACKUP" ]] || die 'Database backup empty or missing'
-case "$DATABASE_BACKUP" in "$PROJECT"|"$PROJECT"/*) die 'Database backup must be outside the website';; esac
+if [[ -n "$DATABASE_BACKUP" ]]; then
+    DATABASE_BACKUP=$(realpath "$DATABASE_BACKUP")
+    [[ -s "$DATABASE_BACKUP" ]] || die 'Database backup empty or missing'
+    case "$DATABASE_BACKUP" in "$PROJECT"|"$PROJECT"/*) die 'Database backup must be outside the website';; esac
+fi
 BACKUP_DIR=${BACKUP_DIR:-$(dirname "$PROJECT")/v2board-private-backups}
 mkdir -p -- "$BACKUP_DIR"
 BACKUP_DIR=$(realpath "$BACKUP_DIR")
@@ -236,7 +300,8 @@ BACKUP=$(mktemp -d "$BACKUP_DIR/$(date +%Y%m%d-%H%M%S).XXXXXXXX")
 printf '%s\n' "$OLD_COMMIT" > "$BACKUP/old-commit.txt"
 printf '%s\n' "$OLD_BRANCH" > "$BACKUP/old-branch.txt"
 printf '%s\n' "$TARGET" > "$BACKUP/target-commit.txt"
-cp -- "$DATABASE_BACKUP" "$BACKUP/database-backup"
+if [[ -n "$DATABASE_BACKUP" ]]; then cp -- "$DATABASE_BACKUP" "$BACKUP/database-backup"; fi
+printf 'Database backup is managed by the operator.\n'
 cp -- composer.json composer.lock "$BACKUP/"
 cp -- "$WORK_DIR/composer.json" "$BACKUP/target-composer.json"
 cp -- "$WORK_DIR/matched-composer.json" "$BACKUP/composer-baseline.json"
@@ -258,8 +323,15 @@ Run artisan up only after verification, then restart original queue/scheduler.
 Traffic-credit conversion is not code-only reversible. Follow docs/traffic-credits.md.
 Reconcile new orders and restore matching code/database/Redis state; never migrate:fresh.
 EOF
-if [[ ! -e storage/framework/down ]]; then "$PHP_BIN" artisan down; fi
+if [[ ! -e storage/framework/down ]]; then
+    "$PHP_BIN" artisan down
+    OPEN_ON_SUCCESS=1
+fi
 MAINTENANCE=1
+if (( JOBS_STOPPED == 0 )); then
+    PHASE=drain-jobs
+    drain_site_jobs
+fi
 tar --exclude='./.git' --exclude='./frontend/node_modules' --exclude='./node_modules' -czf "$BACKUP/site.tar.gz" .
 tar -tzf "$BACKUP/site.tar.gz" >/dev/null
 # Release the local tracked edit only after the full backup has been verified.
@@ -304,8 +376,30 @@ PHASE=verification
 sha256sum -c "$BACKUP/protected.sha256"
 if [[ $(id -u) == 0 ]]; then chown -R "$WEB_USER" storage bootstrap/cache; fi
 "$PHP_BIN" artisan --version
-printf '\nUpgrade complete; maintenance remains ON. Backup: %s\n' "$BACKUP"
-printf 'In BaoTa restart this site PHP-FPM, then run:\n  %q artisan up\n' "$PHP_BIN"
-printf 'Verify login/subscriptions/payments/admin/assets; start original queue and scheduler.\n'
-printf 'Check manual-quota accounts without plan_id per docs/account-entry-states.md.\n'
-printf 'IMPORTANT: restart Horizon to load the dedicated send_email_priority workers. If using queue:work, add a separate send_email_priority worker BEFORE reopening registration; see docs/product-mail.md.\n'
+if (( JOBS_STOPPED == 0 )); then
+    PHASE=restart-jobs
+    drain_site_jobs
+    if (( AUTO_HORIZON == 1 || AUTO_QUEUE == 1 || AUTO_SCHEDULER == 1 )); then
+        # BaoTa Supervisor should respawn the master with the new code/config.
+        found=0
+        for attempt in {1..30}; do
+            snapshot_site_jobs
+            have_horizon=0; have_queue=0; have_scheduler=0
+            for command in "${JOB_COMMANDS[@]}"; do
+                case "$command" in horizon) have_horizon=1;; queue:work|queue:listen) have_queue=1;; schedule:work) have_scheduler=1;; esac
+            done
+            if (( have_horizon >= AUTO_HORIZON && have_queue >= AUTO_QUEUE && have_scheduler >= AUTO_SCHEDULER )); then found=1; fi
+            (( found == 0 )) || break
+            sleep 1
+        done
+        (( found == 1 )) || die 'Background service did not restart; enable autorestart in this site BaoTa Supervisor. Maintenance retained'
+    fi
+    if (( OPEN_ON_SUCCESS == 1 )); then "$PHP_BIN" artisan up; MAINTENANCE=0; fi
+fi
+printf '\nUpgrade complete. File backup: %s\n' "$BACKUP"
+if (( MAINTENANCE == 1 )); then
+    printf 'Maintenance preserved (manual mode or site already offline). Run %q artisan up after verification.\n' "$PHP_BIN"
+else
+    printf 'Site reopened; supervised workers and scheduled jobs can continue.\n'
+fi
+printf 'If PHP-FPM disables OPcache timestamp validation, reload this site PHP-FPM in BaoTa.\n'

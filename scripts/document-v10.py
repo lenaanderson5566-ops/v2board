@@ -184,6 +184,12 @@ document = {'openapi': '3.0.3', 'info': {'title': 'FastDog user API', 'version':
 if '/me/client-config' in document['paths']:
     document['paths']['/me/client-config']['get']['responses']['200']['content']['application/json'] = {'schema': {'type': 'object', 'properties': {'data': {'type': 'object', 'required': ['configVersion', 'yaml', 'nodes'], 'properties': {'configVersion': {'type': 'string'}, 'yaml': {'type': 'string'}, 'nodes': {'type': 'array', 'items': {'type': 'object', 'properties': {'nodeId': {'type': 'string'}, 'proxyName': {'type': 'string'}, 'name': {'type': 'string'}, 'regionCode': {'type': 'string', 'nullable': True}, 'cityCode': {'type': 'string', 'nullable': True}, 'displayLabel': {'type': 'string', 'nullable': True}, 'tags': {'type': 'array', 'items': {'type': 'string'}}, 'displayNames': {'type': 'object', 'additionalProperties': {'type': 'string'}}}}}}}}}}
 
+location_description = 'Canonical location identifier for a state, province or city; legacy cityCode field name is retained for compatibility.'
+if 'cityCode' in schemas.get('node', {}).get('properties', {}):
+    schemas['node']['properties']['cityCode']['description'] = location_description
+if '/me/client-config' in document['paths']:
+    document['paths']['/me/client-config']['get']['responses']['200']['content']['application/json']['schema']['properties']['data']['properties']['nodes']['items']['properties']['cityCode']['description'] = location_description
+
 (root / 'docs/api-v10/openapi.json').write_text(json.dumps(document, ensure_ascii=False, indent=2) + '\n', encoding='utf-8')
 (root / 'docs/api-v10/mapping.md').write_text('\n'.join(mapping) + '\n', encoding='utf-8')
 

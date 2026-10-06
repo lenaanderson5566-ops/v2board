@@ -139,6 +139,10 @@ try {
     $assert($response->getStatusCode() === 200, 'Updated address and location save failed');
     $node->refresh();
     $assert($node->host === 'updated.example.invalid' && $node->region_code === 'US' && $node->city_code === 'san-jose' && $node->display_label === 'A', 'Successful response must persist address and normalized location');
+    $updated['city_code'] = 'aws:us-west-1';
+    $response = $call('/api/v1/' . $securePath . '/server/v2node/save', $updated, $token);
+    $node->refresh();
+    $assert($response->getStatusCode() === 200 && $node->city_code === 'california', 'Cloud area resolves to state and persists');
     $nodeVariants = [
         'vmess' => ['tls' => 1, 'network' => 'xhttp', 'networkSettings' => ['path' => '/test', 'mode' => 'auto', 'security' => 'auto']],
         'vless' => ['tls' => 1, 'network' => 'tcp', 'tls_settings' => ['server_name' => 'example.invalid']],

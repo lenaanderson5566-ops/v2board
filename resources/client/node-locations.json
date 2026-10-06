@@ -2652,7 +2652,8 @@
     "osaka": {
       "zh-CN": "大阪",
       "en-US": "Osaka",
-      "ja-JP": "大阪"
+      "ja-JP": "大阪",
+      "zh-TW": "大阪"
     },
     "seoul": {
       "zh-CN": "首尔",
@@ -2663,15 +2664,18 @@
     },
     "singapore": {
       "zh-CN": "新加坡",
-      "en-US": "Singapore"
+      "en-US": "Singapore",
+      "zh-TW": "新加坡"
     },
     "hong-kong": {
       "zh-CN": "香港",
-      "en-US": "Hong Kong"
+      "en-US": "Hong Kong",
+      "zh-TW": "香港"
     },
     "taipei": {
       "zh-CN": "台北",
-      "en-US": "Taipei"
+      "en-US": "Taipei",
+      "zh-TW": "臺北"
     },
     "los-angeles": {
       "zh-CN": "洛杉矶",
@@ -2680,7 +2684,8 @@
     },
     "san-jose": {
       "zh-CN": "圣何塞",
-      "en-US": "San Jose"
+      "en-US": "San Jose",
+      "zh-TW": "聖何塞"
     },
     "new-york": {
       "zh-CN": "纽约",
@@ -2699,11 +2704,13 @@
     },
     "paris": {
       "zh-CN": "巴黎",
-      "en-US": "Paris"
+      "en-US": "Paris",
+      "zh-TW": "巴黎"
     },
     "sydney": {
       "zh-CN": "悉尼",
-      "en-US": "Sydney"
+      "en-US": "Sydney",
+      "zh-TW": "悉尼"
     },
     "toronto": {
       "zh-CN": "多伦多",
@@ -2712,7 +2719,568 @@
     },
     "amsterdam": {
       "zh-CN": "阿姆斯特丹",
-      "en-US": "Amsterdam"
+      "en-US": "Amsterdam",
+      "zh-TW": "阿姆斯特丹"
+    },
+    "ohio": {
+      "zh-CN": "俄亥俄州",
+      "en-US": "Ohio",
+      "zh-TW": "俄亥俄州"
+    },
+    "oregon": {
+      "zh-CN": "俄勒冈州",
+      "en-US": "Oregon",
+      "zh-TW": "俄勒岡州"
+    },
+    "virginia": {
+      "zh-CN": "弗吉尼亚州",
+      "en-US": "Virginia",
+      "zh-TW": "弗吉尼亞州"
+    },
+    "iowa": {
+      "zh-CN": "艾奥瓦州",
+      "en-US": "Iowa",
+      "zh-TW": "艾奧瓦州"
+    },
+    "illinois": {
+      "zh-CN": "伊利诺伊州",
+      "en-US": "Illinois",
+      "zh-TW": "伊利諾伊州"
+    },
+    "texas": {
+      "zh-CN": "得克萨斯州",
+      "en-US": "Texas",
+      "zh-TW": "得克薩斯州"
+    },
+    "wyoming": {
+      "zh-CN": "怀俄明州",
+      "en-US": "Wyoming",
+      "zh-TW": "懷俄明州"
+    },
+    "california": {
+      "zh-CN": "加利福尼亚州",
+      "en-US": "California",
+      "zh-TW": "加利福尼亞州"
+    },
+    "washington": {
+      "zh-CN": "华盛顿州",
+      "en-US": "Washington State",
+      "zh-TW": "華盛頓州"
+    },
+    "phoenix": {
+      "zh-CN": "凤凰城",
+      "en-US": "Phoenix",
+      "zh-TW": "鳳凰城"
+    },
+    "ashburn": {
+      "zh-CN": "阿什本",
+      "en-US": "Ashburn",
+      "zh-TW": "阿什本"
+    },
+    "chicago": {
+      "zh-CN": "芝加哥",
+      "en-US": "Chicago",
+      "zh-TW": "芝加哥"
+    },
+    "dallas": {
+      "zh-CN": "达拉斯",
+      "en-US": "Dallas",
+      "zh-TW": "達拉斯"
+    },
+    "council-bluffs": {
+      "zh-CN": "康瑟尔布拉夫斯",
+      "en-US": "Council Bluffs",
+      "zh-TW": "康瑟爾布拉夫斯"
+    },
+    "moncks-corner": {
+      "zh-CN": "蒙克斯科纳",
+      "en-US": "Moncks Corner",
+      "zh-TW": "蒙克斯科納"
+    },
+    "columbus": {
+      "zh-CN": "哥伦布",
+      "en-US": "Columbus",
+      "zh-TW": "哥倫布"
+    },
+    "the-dalles": {
+      "zh-CN": "达尔斯",
+      "en-US": "The Dalles",
+      "zh-TW": "達爾斯"
+    },
+    "salt-lake-city": {
+      "zh-CN": "盐湖城",
+      "en-US": "Salt Lake City",
+      "zh-TW": "鹽湖城"
+    },
+    "las-vegas": {
+      "zh-CN": "拉斯维加斯",
+      "en-US": "Las Vegas",
+      "zh-TW": "拉斯維加斯"
+    },
+    "san-francisco": {
+      "zh-CN": "旧金山",
+      "en-US": "San Francisco",
+      "zh-TW": "舊金山"
+    },
+    "atlanta": {
+      "zh-CN": "亚特兰大",
+      "en-US": "Atlanta",
+      "zh-TW": "亞特蘭大"
+    },
+    "richmond": {
+      "zh-CN": "里士满",
+      "en-US": "Richmond",
+      "zh-TW": "里士滿"
+    },
+    "kansas-city": {
+      "zh-CN": "堪萨斯城",
+      "en-US": "Kansas City",
+      "zh-TW": "堪薩斯城"
+    },
+    "memphis": {
+      "zh-CN": "孟菲斯",
+      "en-US": "Memphis",
+      "zh-TW": "孟菲斯"
+    },
+    "hillsboro": {
+      "zh-CN": "希尔斯伯勒",
+      "en-US": "Hillsboro",
+      "zh-TW": "希爾斯伯勒"
+    },
+    "new-jersey": {
+      "zh-CN": "新泽西州",
+      "en-US": "New Jersey",
+      "zh-TW": "新澤西州"
+    },
+    "honolulu": {
+      "zh-CN": "檀香山",
+      "en-US": "Honolulu",
+      "zh-TW": "檀香山"
+    },
+    "miami": {
+      "zh-CN": "迈阿密",
+      "en-US": "Miami",
+      "zh-TW": "邁阿密"
+    },
+    "seattle": {
+      "zh-CN": "西雅图",
+      "en-US": "Seattle",
+      "zh-TW": "西雅圖"
+    },
+    "washington-dc": {
+      "zh-CN": "华盛顿特区",
+      "en-US": "Washington DC",
+      "zh-TW": "華盛頓特區"
+    },
+    "newark": {
+      "zh-CN": "纽瓦克",
+      "en-US": "Newark",
+      "zh-TW": "紐瓦克"
+    },
+    "fremont": {
+      "zh-CN": "弗里蒙特",
+      "en-US": "Fremont",
+      "zh-TW": "弗裡蒙特"
+    },
+    "vint-hill": {
+      "zh-CN": "文特希尔",
+      "en-US": "Vint Hill",
+      "zh-TW": "文特希爾"
+    },
+    "melbourne": {
+      "zh-CN": "墨尔本",
+      "en-US": "Melbourne",
+      "zh-TW": "墨爾本"
+    },
+    "canberra": {
+      "zh-CN": "堪培拉",
+      "en-US": "Canberra",
+      "zh-TW": "堪培拉"
+    },
+    "new-south-wales": {
+      "zh-CN": "新南威尔士州",
+      "en-US": "New South Wales",
+      "zh-TW": "新南威爾士州"
+    },
+    "victoria": {
+      "zh-CN": "维多利亚州",
+      "en-US": "Victoria",
+      "zh-TW": "維多利亞州"
+    },
+    "calgary": {
+      "zh-CN": "卡尔加里",
+      "en-US": "Calgary",
+      "zh-TW": "卡爾加里"
+    },
+    "quebec": {
+      "zh-CN": "魁北克省",
+      "en-US": "Quebec",
+      "zh-TW": "魁北克省"
+    },
+    "montreal": {
+      "zh-CN": "蒙特利尔",
+      "en-US": "Montreal",
+      "zh-TW": "蒙特利爾"
+    },
+    "beauharnois": {
+      "zh-CN": "博阿尔努瓦",
+      "en-US": "Beauharnois",
+      "zh-TW": "博阿爾努瓦"
+    },
+    "madrid": {
+      "zh-CN": "马德里",
+      "en-US": "Madrid",
+      "zh-TW": "馬德里"
+    },
+    "stockholm": {
+      "zh-CN": "斯德哥尔摩",
+      "en-US": "Stockholm",
+      "zh-TW": "斯德哥爾摩"
+    },
+    "gavle": {
+      "zh-CN": "耶夫勒",
+      "en-US": "Gävle",
+      "zh-TW": "耶夫勒"
+    },
+    "zurich": {
+      "zh-CN": "苏黎世",
+      "en-US": "Zurich",
+      "zh-TW": "蘇黎世"
+    },
+    "geneva": {
+      "zh-CN": "日内瓦",
+      "en-US": "Geneva",
+      "zh-TW": "日內瓦"
+    },
+    "milan": {
+      "zh-CN": "米兰",
+      "en-US": "Milan",
+      "zh-TW": "米蘭"
+    },
+    "turin": {
+      "zh-CN": "都灵",
+      "en-US": "Turin",
+      "zh-TW": "都靈"
+    },
+    "marseille": {
+      "zh-CN": "马赛",
+      "en-US": "Marseille",
+      "zh-TW": "馬賽"
+    },
+    "gravelines": {
+      "zh-CN": "格拉夫林",
+      "en-US": "Gravelines",
+      "zh-TW": "格拉夫林"
+    },
+    "roubaix": {
+      "zh-CN": "鲁贝",
+      "en-US": "Roubaix",
+      "zh-TW": "魯貝"
+    },
+    "strasbourg": {
+      "zh-CN": "斯特拉斯堡",
+      "en-US": "Strasbourg",
+      "zh-TW": "斯特拉斯堡"
+    },
+    "berlin": {
+      "zh-CN": "柏林",
+      "en-US": "Berlin",
+      "zh-TW": "柏林"
+    },
+    "falkenstein": {
+      "zh-CN": "法尔肯施泰因",
+      "en-US": "Falkenstein",
+      "zh-TW": "法爾肯施泰因"
+    },
+    "nuremberg": {
+      "zh-CN": "纽伦堡",
+      "en-US": "Nuremberg",
+      "zh-TW": "紐倫堡"
+    },
+    "limburg": {
+      "zh-CN": "林堡",
+      "en-US": "Limburg",
+      "zh-TW": "林堡"
+    },
+    "manchester": {
+      "zh-CN": "曼彻斯特",
+      "en-US": "Manchester",
+      "zh-TW": "曼徹斯特"
+    },
+    "cardiff": {
+      "zh-CN": "卡迪夫",
+      "en-US": "Cardiff",
+      "zh-TW": "卡迪夫"
+    },
+    "newport": {
+      "zh-CN": "纽波特",
+      "en-US": "Newport",
+      "zh-TW": "紐波特"
+    },
+    "erith": {
+      "zh-CN": "埃里思",
+      "en-US": "Erith",
+      "zh-TW": "埃裡思"
+    },
+    "eemshaven": {
+      "zh-CN": "埃姆斯港",
+      "en-US": "Eemshaven",
+      "zh-TW": "埃姆斯港"
+    },
+    "hamina": {
+      "zh-CN": "哈米纳",
+      "en-US": "Hamina",
+      "zh-TW": "哈米納"
+    },
+    "helsinki": {
+      "zh-CN": "赫尔辛基",
+      "en-US": "Helsinki",
+      "zh-TW": "赫爾辛基"
+    },
+    "st-ghislain": {
+      "zh-CN": "圣吉斯兰",
+      "en-US": "St. Ghislain",
+      "zh-TW": "聖吉斯蘭"
+    },
+    "brussels": {
+      "zh-CN": "布鲁塞尔",
+      "en-US": "Brussels",
+      "zh-TW": "布魯塞爾"
+    },
+    "vienna": {
+      "zh-CN": "维也纳",
+      "en-US": "Vienna",
+      "zh-TW": "維也納"
+    },
+    "copenhagen": {
+      "zh-CN": "哥本哈根",
+      "en-US": "Copenhagen",
+      "zh-TW": "哥本哈根"
+    },
+    "warsaw": {
+      "zh-CN": "华沙",
+      "en-US": "Warsaw",
+      "zh-TW": "華沙"
+    },
+    "busan": {
+      "zh-CN": "釜山",
+      "en-US": "Busan",
+      "zh-TW": "釜山"
+    },
+    "chuncheon": {
+      "zh-CN": "春川",
+      "en-US": "Chuncheon",
+      "zh-TW": "春川"
+    },
+    "changhua": {
+      "zh-CN": "彰化县",
+      "en-US": "Changhua",
+      "zh-TW": "彰化縣"
+    },
+    "mumbai": {
+      "zh-CN": "孟买",
+      "en-US": "Mumbai",
+      "zh-TW": "孟買"
+    },
+    "hyderabad": {
+      "zh-CN": "海得拉巴",
+      "en-US": "Hyderabad",
+      "zh-TW": "海得拉巴"
+    },
+    "delhi": {
+      "zh-CN": "德里",
+      "en-US": "Delhi",
+      "zh-TW": "德里"
+    },
+    "delhi-ncr": {
+      "zh-CN": "德里首都区",
+      "en-US": "Delhi NCR",
+      "zh-TW": "德里首都區"
+    },
+    "chennai": {
+      "zh-CN": "金奈",
+      "en-US": "Chennai",
+      "zh-TW": "金奈"
+    },
+    "pune": {
+      "zh-CN": "浦那",
+      "en-US": "Pune",
+      "zh-TW": "浦那"
+    },
+    "bangalore": {
+      "zh-CN": "班加罗尔",
+      "en-US": "Bangalore",
+      "zh-TW": "班加羅爾"
+    },
+    "jakarta": {
+      "zh-CN": "雅加达",
+      "en-US": "Jakarta",
+      "zh-TW": "雅加達"
+    },
+    "batam": {
+      "zh-CN": "巴淡岛",
+      "en-US": "Batam",
+      "zh-TW": "巴淡島"
+    },
+    "kuala-lumpur": {
+      "zh-CN": "吉隆坡",
+      "en-US": "Kuala Lumpur",
+      "zh-TW": "吉隆坡"
+    },
+    "kulai": {
+      "zh-CN": "古来",
+      "en-US": "Kulai",
+      "zh-TW": "古來"
+    },
+    "johor": {
+      "zh-CN": "柔佛州",
+      "en-US": "Johor",
+      "zh-TW": "柔佛州"
+    },
+    "bangkok": {
+      "zh-CN": "曼谷",
+      "en-US": "Bangkok",
+      "zh-TW": "曼谷"
+    },
+    "auckland": {
+      "zh-CN": "奥克兰",
+      "en-US": "Auckland",
+      "zh-TW": "奧克蘭"
+    },
+    "manila": {
+      "zh-CN": "马尼拉",
+      "en-US": "Manila",
+      "zh-TW": "馬尼拉"
+    },
+    "cape-town": {
+      "zh-CN": "开普敦",
+      "en-US": "Cape Town",
+      "zh-TW": "開普敦"
+    },
+    "johannesburg": {
+      "zh-CN": "约翰内斯堡",
+      "en-US": "Johannesburg",
+      "zh-TW": "約翰內斯堡"
+    },
+    "tel-aviv": {
+      "zh-CN": "特拉维夫",
+      "en-US": "Tel Aviv",
+      "zh-TW": "特拉維夫"
+    },
+    "jerusalem": {
+      "zh-CN": "耶路撒冷",
+      "en-US": "Jerusalem",
+      "zh-TW": "耶路撒冷"
+    },
+    "mexico-city": {
+      "zh-CN": "墨西哥城",
+      "en-US": "Mexico City",
+      "zh-TW": "墨西哥城"
+    },
+    "queretaro": {
+      "zh-CN": "克雷塔罗",
+      "en-US": "Querétaro",
+      "zh-TW": "克雷塔羅"
+    },
+    "queretaro-state": {
+      "zh-CN": "克雷塔罗州",
+      "en-US": "Querétaro State",
+      "zh-TW": "克雷塔羅州"
+    },
+    "monterrey": {
+      "zh-CN": "蒙特雷",
+      "en-US": "Monterrey",
+      "zh-TW": "蒙特雷"
+    },
+    "abu-dhabi": {
+      "zh-CN": "阿布扎比",
+      "en-US": "Abu Dhabi",
+      "zh-TW": "阿布扎比"
+    },
+    "dubai": {
+      "zh-CN": "迪拜",
+      "en-US": "Dubai",
+      "zh-TW": "迪拜"
+    },
+    "doha": {
+      "zh-CN": "多哈",
+      "en-US": "Doha",
+      "zh-TW": "多哈"
+    },
+    "riyadh": {
+      "zh-CN": "利雅得",
+      "en-US": "Riyadh",
+      "zh-TW": "利雅得"
+    },
+    "jeddah": {
+      "zh-CN": "吉达",
+      "en-US": "Jeddah",
+      "zh-TW": "吉達"
+    },
+    "dammam": {
+      "zh-CN": "达曼",
+      "en-US": "Dammam",
+      "zh-TW": "達曼"
+    },
+    "casablanca": {
+      "zh-CN": "卡萨布兰卡",
+      "en-US": "Casablanca",
+      "zh-TW": "卡薩布蘭卡"
+    },
+    "sao-paulo": {
+      "zh-CN": "圣保罗",
+      "en-US": "São Paulo",
+      "zh-TW": "聖保羅"
+    },
+    "sao-paulo-state": {
+      "zh-CN": "圣保罗州",
+      "en-US": "São Paulo State",
+      "zh-TW": "聖保羅州"
+    },
+    "rio": {
+      "zh-CN": "里约",
+      "en-US": "Rio",
+      "zh-TW": "里約"
+    },
+    "osasco": {
+      "zh-CN": "奥萨斯库",
+      "en-US": "Osasco",
+      "zh-TW": "奧薩斯庫"
+    },
+    "vinhedo": {
+      "zh-CN": "维涅杜",
+      "en-US": "Vinhedo",
+      "zh-TW": "維涅杜"
+    },
+    "santiago": {
+      "zh-CN": "圣地亚哥",
+      "en-US": "Santiago",
+      "zh-TW": "聖地亞哥"
+    },
+    "valparaiso": {
+      "zh-CN": "瓦尔帕莱索",
+      "en-US": "Valparaiso",
+      "zh-TW": "瓦爾帕萊索"
+    },
+    "bogota": {
+      "zh-CN": "波哥大",
+      "en-US": "Bogota",
+      "zh-TW": "波哥大"
+    },
+    "dublin": {
+      "zh-CN": "都柏林",
+      "en-US": "Dublin",
+      "zh-TW": "都柏林"
+    },
+    "aragon": {
+      "zh-CN": "阿拉贡",
+      "en-US": "Aragon",
+      "zh-TW": "阿拉貢"
+    },
+    "saitama": {
+      "zh-CN": "埼玉县",
+      "en-US": "Saitama",
+      "zh-TW": "埼玉縣"
     }
   },
   "cityRegions": {
@@ -2730,6 +3298,613 @@
     "paris": "FR",
     "sydney": "AU",
     "toronto": "CA",
-    "amsterdam": "NL"
+    "amsterdam": "NL",
+    "ohio": "US",
+    "oregon": "US",
+    "virginia": "US",
+    "iowa": "US",
+    "illinois": "US",
+    "texas": "US",
+    "wyoming": "US",
+    "california": "US",
+    "washington": "US",
+    "phoenix": "US",
+    "ashburn": "US",
+    "chicago": "US",
+    "dallas": "US",
+    "council-bluffs": "US",
+    "moncks-corner": "US",
+    "columbus": "US",
+    "the-dalles": "US",
+    "salt-lake-city": "US",
+    "las-vegas": "US",
+    "san-francisco": "US",
+    "atlanta": "US",
+    "richmond": "US",
+    "kansas-city": "US",
+    "memphis": "US",
+    "hillsboro": "US",
+    "new-jersey": "US",
+    "honolulu": "US",
+    "miami": "US",
+    "seattle": "US",
+    "washington-dc": "US",
+    "newark": "US",
+    "fremont": "US",
+    "vint-hill": "US",
+    "melbourne": "AU",
+    "canberra": "AU",
+    "new-south-wales": "AU",
+    "victoria": "AU",
+    "calgary": "CA",
+    "quebec": "CA",
+    "montreal": "CA",
+    "beauharnois": "CA",
+    "madrid": "ES",
+    "stockholm": "SE",
+    "gavle": "SE",
+    "zurich": "CH",
+    "geneva": "CH",
+    "milan": "IT",
+    "turin": "IT",
+    "marseille": "FR",
+    "gravelines": "FR",
+    "roubaix": "FR",
+    "strasbourg": "FR",
+    "berlin": "DE",
+    "falkenstein": "DE",
+    "nuremberg": "DE",
+    "limburg": "DE",
+    "manchester": "GB",
+    "cardiff": "GB",
+    "newport": "GB",
+    "erith": "GB",
+    "eemshaven": "NL",
+    "hamina": "FI",
+    "helsinki": "FI",
+    "st-ghislain": "BE",
+    "brussels": "BE",
+    "vienna": "AT",
+    "copenhagen": "DK",
+    "warsaw": "PL",
+    "busan": "KR",
+    "chuncheon": "KR",
+    "changhua": "TW",
+    "mumbai": "IN",
+    "hyderabad": "IN",
+    "delhi": "IN",
+    "delhi-ncr": "IN",
+    "chennai": "IN",
+    "pune": "IN",
+    "bangalore": "IN",
+    "jakarta": "ID",
+    "batam": "ID",
+    "kuala-lumpur": "MY",
+    "kulai": "MY",
+    "johor": "MY",
+    "bangkok": "TH",
+    "auckland": "NZ",
+    "manila": "PH",
+    "cape-town": "ZA",
+    "johannesburg": "ZA",
+    "tel-aviv": "IL",
+    "jerusalem": "IL",
+    "mexico-city": "MX",
+    "queretaro": "MX",
+    "queretaro-state": "MX",
+    "monterrey": "MX",
+    "abu-dhabi": "AE",
+    "dubai": "AE",
+    "doha": "QA",
+    "riyadh": "SA",
+    "jeddah": "SA",
+    "dammam": "SA",
+    "casablanca": "MA",
+    "sao-paulo": "BR",
+    "sao-paulo-state": "BR",
+    "rio": "BR",
+    "osasco": "BR",
+    "vinhedo": "BR",
+    "santiago": "CL",
+    "valparaiso": "CL",
+    "bogota": "CO",
+    "dublin": "IE",
+    "aragon": "ES",
+    "saitama": "JP"
+  },
+  "cloudProviders": {
+    "aws": {
+      "name": "AWS",
+      "source": "https://docs.aws.amazon.com/global-infrastructure/latest/regions/aws-regions.html",
+      "verifiedAt": "2026-10-06",
+      "regions": {
+        "us-east-1": "virginia",
+        "us-east-2": "ohio",
+        "us-west-1": "california",
+        "us-west-2": "oregon",
+        "af-south-1": "cape-town",
+        "ap-east-1": "hong-kong",
+        "ap-south-2": "hyderabad",
+        "ap-southeast-3": "jakarta",
+        "ap-southeast-4": "melbourne",
+        "ap-south-1": "mumbai",
+        "ap-southeast-6": "auckland",
+        "ap-northeast-3": "osaka",
+        "ap-northeast-2": "seoul",
+        "ap-southeast-1": "singapore",
+        "ap-southeast-2": "sydney",
+        "ap-east-2": "taipei",
+        "ap-northeast-1": "tokyo",
+        "ca-central-1": "montreal",
+        "ca-west-1": "calgary",
+        "eu-central-1": "frankfurt",
+        "eu-west-1": "dublin",
+        "eu-west-2": "london",
+        "eu-south-1": "milan",
+        "eu-west-3": "paris",
+        "eu-south-2": "aragon",
+        "eu-north-1": "stockholm",
+        "eu-central-2": "zurich",
+        "il-central-1": "tel-aviv",
+        "sa-east-1": "sao-paulo"
+      },
+      "additionalSources": [
+        "https://aws.amazon.com/blogs/publicsector/coming-soon-aws-launching-new-region-spain-2022/",
+        "https://aws.amazon.com/blogs/aws/now-open-third-availability-zone-in-the-aws-canada-central-region/",
+        "https://aws.amazon.com/local/new-zealand/",
+        "https://d0.awsstatic.com/whitepapers/compliance/AWS_EU_Data_Protection_Whitepaper_011215.pdf"
+      ]
+    },
+    "azure": {
+      "name": "Azure",
+      "source": "https://learn.microsoft.com/en-us/azure/reliability/regions-list",
+      "verifiedAt": "2026-10-06",
+      "regions": {
+        "australiacentral": "canberra",
+        "australiacentral2": "canberra",
+        "australiaeast": "new-south-wales",
+        "australiasoutheast": "victoria",
+        "austriaeast": "vienna",
+        "belgiumcentral": "brussels",
+        "brazilsouth": "sao-paulo-state",
+        "brazilsoutheast": "rio",
+        "canadacentral": "toronto",
+        "canadaeast": "quebec",
+        "centralindia": "pune",
+        "centralus": "iowa",
+        "chilecentral": "santiago",
+        "denmarkeast": "copenhagen",
+        "eastasia": "hong-kong",
+        "eastus": "virginia",
+        "eastus2": "virginia",
+        "francecentral": "paris",
+        "francesouth": "marseille",
+        "germanynorth": "berlin",
+        "germanywestcentral": "frankfurt",
+        "indiasouthcentral": "hyderabad",
+        "indonesiacentral": "jakarta",
+        "italynorth": "milan",
+        "japanwest": "osaka",
+        "koreacentral": "seoul",
+        "koreasouth": "busan",
+        "malaysiawest": "kuala-lumpur",
+        "mexicocentral": "queretaro-state",
+        "newzealandnorth": "auckland",
+        "northcentralus": "illinois",
+        "northeurope": "dublin",
+        "polandcentral": "warsaw",
+        "qatarcentral": "doha",
+        "southafricanorth": "johannesburg",
+        "southafricawest": "cape-town",
+        "southcentralus": "texas",
+        "southindia": "chennai",
+        "southeastasia": "singapore",
+        "spaincentral": "madrid",
+        "swedencentral": "gavle",
+        "switzerlandnorth": "zurich",
+        "switzerlandwest": "geneva",
+        "uaecentral": "abu-dhabi",
+        "uaenorth": "dubai",
+        "uksouth": "london",
+        "ukwest": "cardiff",
+        "westcentralus": "wyoming",
+        "westindia": "mumbai",
+        "westus": "california",
+        "westus2": "washington",
+        "westus3": "phoenix"
+      }
+    },
+    "gcp": {
+      "name": "Google Cloud",
+      "source": "https://docs.cloud.google.com/compute/docs/regions-zones",
+      "verifiedAt": "2026-10-06",
+      "regions": {
+        "africa-south1": "johannesburg",
+        "asia-east1": "changhua",
+        "asia-east2": "hong-kong",
+        "asia-northeast1": "tokyo",
+        "asia-northeast2": "osaka",
+        "asia-northeast3": "seoul",
+        "asia-south1": "mumbai",
+        "asia-south2": "delhi",
+        "asia-southeast1": "singapore",
+        "asia-southeast2": "jakarta",
+        "asia-southeast3": "bangkok",
+        "australia-southeast1": "sydney",
+        "australia-southeast2": "melbourne",
+        "europe-north1": "hamina",
+        "europe-north2": "stockholm",
+        "europe-central2": "warsaw",
+        "europe-southwest1": "madrid",
+        "europe-west1": "st-ghislain",
+        "europe-west2": "london",
+        "europe-west3": "frankfurt",
+        "europe-west4": "eemshaven",
+        "europe-west6": "zurich",
+        "europe-west8": "milan",
+        "europe-west9": "paris",
+        "europe-west10": "berlin",
+        "europe-west12": "turin",
+        "me-central1": "doha",
+        "me-central2": "dammam",
+        "me-west1": "tel-aviv",
+        "northamerica-northeast1": "montreal",
+        "northamerica-northeast2": "toronto",
+        "northamerica-south1": "queretaro",
+        "southamerica-east1": "osasco",
+        "southamerica-west1": "santiago",
+        "us-central1": "council-bluffs",
+        "us-east1": "moncks-corner",
+        "us-east4": "ashburn",
+        "us-east5": "columbus",
+        "us-south1": "dallas",
+        "us-west1": "the-dalles",
+        "us-west2": "los-angeles",
+        "us-west3": "salt-lake-city",
+        "us-west4": "las-vegas"
+      }
+    },
+    "oci": {
+      "name": "Oracle Cloud",
+      "source": "https://docs.oracle.com/en-us/iaas/Content/General/Concepts/regions.htm",
+      "verifiedAt": "2026-10-06",
+      "regions": {
+        "ap-sydney-1": "sydney",
+        "ap-melbourne-1": "melbourne",
+        "sa-saopaulo-1": "sao-paulo",
+        "sa-vinhedo-1": "vinhedo",
+        "ca-montreal-1": "montreal",
+        "ca-toronto-1": "toronto",
+        "sa-santiago-1": "santiago",
+        "sa-valparaiso-1": "valparaiso",
+        "sa-bogota-1": "bogota",
+        "eu-paris-1": "paris",
+        "eu-marseille-1": "marseille",
+        "eu-frankfurt-1": "frankfurt",
+        "ap-hyderabad-1": "hyderabad",
+        "ap-mumbai-1": "mumbai",
+        "ap-batam-1": "batam",
+        "il-jerusalem-1": "jerusalem",
+        "eu-milan-1": "milan",
+        "eu-turin-1": "turin",
+        "ap-osaka-1": "osaka",
+        "ap-tokyo-1": "tokyo",
+        "ap-kulai-2": "kulai",
+        "mx-queretaro-1": "queretaro",
+        "mx-monterrey-1": "monterrey",
+        "af-casablanca-1": "casablanca",
+        "eu-amsterdam-1": "amsterdam",
+        "me-riyadh-1": "riyadh",
+        "me-jeddah-1": "jeddah",
+        "ap-singapore-1": "singapore",
+        "ap-singapore-2": "singapore",
+        "af-johannesburg-1": "johannesburg",
+        "ap-seoul-1": "seoul",
+        "ap-chuncheon-1": "chuncheon",
+        "eu-madrid-1": "madrid",
+        "eu-madrid-3": "madrid",
+        "eu-stockholm-1": "stockholm",
+        "eu-zurich-1": "zurich",
+        "me-abudhabi-1": "abu-dhabi",
+        "me-dubai-1": "dubai",
+        "uk-london-1": "london",
+        "uk-cardiff-1": "newport",
+        "us-ashburn-1": "ashburn",
+        "us-chicago-1": "chicago",
+        "us-phoenix-1": "phoenix",
+        "us-sanjose-1": "san-jose"
+      }
+    },
+    "digitalocean": {
+      "name": "DigitalOcean",
+      "source": "https://docs.digitalocean.com/platform/regional-availability/",
+      "verifiedAt": "2026-10-06",
+      "regions": {
+        "nyc1": "new-york",
+        "nyc2": "new-york",
+        "nyc3": "new-york",
+        "ams3": "amsterdam",
+        "sfo2": "san-francisco",
+        "sfo3": "san-francisco",
+        "sgp1": "singapore",
+        "lon1": "london",
+        "fra1": "frankfurt",
+        "tor1": "toronto",
+        "blr1": "bangalore",
+        "syd1": "sydney",
+        "atl1": "atlanta",
+        "ric1": "richmond",
+        "mkc1": "kansas-city",
+        "mem1": "memphis"
+      }
+    },
+    "hetzner": {
+      "name": "Hetzner",
+      "source": "https://docs.hetzner.com/cloud/general/locations/",
+      "verifiedAt": "2026-10-06",
+      "regions": {
+        "fsn1": "falkenstein",
+        "nbg1": "nuremberg",
+        "hel1": "helsinki",
+        "ash": "ashburn",
+        "hil": "hillsboro",
+        "sin": "singapore"
+      }
+    },
+    "vultr": {
+      "name": "Vultr",
+      "source": "https://api.vultr.com/v2/regions",
+      "verifiedAt": "2026-10-06",
+      "regions": {
+        "ams": "amsterdam",
+        "atl": "atlanta",
+        "blr": "bangalore",
+        "bom": "mumbai",
+        "cdg": "paris",
+        "del": "delhi-ncr",
+        "dfw": "dallas",
+        "ewr": "new-jersey",
+        "fra": "frankfurt",
+        "hnl": "honolulu",
+        "icn": "seoul",
+        "itm": "osaka",
+        "jnb": "johannesburg",
+        "lax": "los-angeles",
+        "lhr": "london",
+        "mad": "madrid",
+        "man": "manchester",
+        "mel": "melbourne",
+        "mex": "mexico-city",
+        "mia": "miami",
+        "mxp": "milan",
+        "nrt": "tokyo",
+        "ord": "chicago",
+        "sao": "sao-paulo",
+        "scl": "santiago",
+        "sea": "seattle",
+        "sgp": "singapore",
+        "sjc": "california",
+        "sto": "stockholm",
+        "syd": "sydney",
+        "tlv": "tel-aviv",
+        "waw": "warsaw",
+        "yto": "toronto"
+      }
+    },
+    "linode": {
+      "name": "Akamai / Linode",
+      "source": "https://api.linode.com/v4/regions",
+      "verifiedAt": "2026-10-06",
+      "regions": {
+        "gb-lon": "london",
+        "se-sto": "stockholm",
+        "es-mad": "madrid",
+        "in-maa": "chennai",
+        "jp-osa": "osaka",
+        "it-mil": "milan",
+        "us-mia": "miami",
+        "id-cgk": "jakarta",
+        "us-lax": "los-angeles",
+        "nl-ams": "amsterdam",
+        "au-mel": "melbourne",
+        "in-bom-2": "mumbai",
+        "de-fra-2": "frankfurt",
+        "sg-sin-2": "singapore",
+        "jp-tyo-3": "tokyo",
+        "us-iad-2": "washington-dc",
+        "fr-par-2": "paris",
+        "br-gru": "sao-paulo",
+        "us-sea": "seattle",
+        "fr-par": "paris",
+        "us-ord": "chicago",
+        "us-iad": "washington-dc",
+        "ap-southeast": "sydney",
+        "ca-central": "toronto",
+        "ap-west": "mumbai",
+        "us-central": "dallas",
+        "ap-northeast": "tokyo",
+        "eu-central": "frankfurt",
+        "ap-south": "singapore",
+        "eu-west": "london",
+        "us-east": "newark",
+        "us-southeast": "atlanta",
+        "us-west": "fremont"
+      }
+    },
+    "ovh": {
+      "name": "OVHcloud",
+      "source": "https://www.ovhcloud.com/en/about-us/global-infrastructure/expansion-regions-az/",
+      "verifiedAt": "2026-10-06",
+      "regions": {
+        "eu-south-mil": "milan",
+        "eu-west-par": "paris",
+        "eu-west-gra": "gravelines",
+        "eu-west-rbx": "roubaix",
+        "eu-west-sbg": "strasbourg",
+        "eu-west-lim": "limburg",
+        "eu-central-waw": "warsaw",
+        "eu-west-eri": "erith",
+        "us-east-vin": "vint-hill",
+        "us-west-hil": "hillsboro",
+        "ca-east-bhs": "beauharnois",
+        "ca-east-tor": "toronto",
+        "ap-southeast-sgp": "singapore",
+        "ap-southeast-syd": "sydney",
+        "ap-south-mum": "mumbai"
+      }
+    },
+    "alibaba": {
+      "name": "Alibaba Cloud",
+      "source": "https://www.alibabacloud.com/help/en/ecs/user-guide/regions-and-zones",
+      "verifiedAt": "2026-10-06",
+      "regions": {
+        "cn-hongkong": "hong-kong",
+        "ap-southeast-1": "singapore",
+        "ap-southeast-3": "kuala-lumpur",
+        "ap-southeast-5": "jakarta",
+        "ap-southeast-6": "manila",
+        "ap-southeast-7": "bangkok",
+        "ap-southeast-8": "johor",
+        "ap-northeast-1": "tokyo",
+        "ap-northeast-2": "seoul",
+        "us-west-1": "california",
+        "us-east-1": "virginia",
+        "eu-central-1": "frankfurt",
+        "eu-west-1": "london",
+        "eu-west-2": "paris",
+        "me-east-1": "dubai",
+        "me-central-1": "riyadh",
+        "sa-east-1": "sao-paulo"
+      }
+    }
+  },
+  "locationKinds": {
+    "tokyo": "city",
+    "osaka": "city",
+    "seoul": "city",
+    "singapore": "city",
+    "hong-kong": "city",
+    "taipei": "city",
+    "los-angeles": "city",
+    "san-jose": "city",
+    "new-york": "city",
+    "london": "city",
+    "frankfurt": "city",
+    "paris": "city",
+    "sydney": "city",
+    "toronto": "city",
+    "amsterdam": "city",
+    "ohio": "state",
+    "oregon": "state",
+    "virginia": "state",
+    "iowa": "state",
+    "illinois": "state",
+    "texas": "state",
+    "wyoming": "state",
+    "california": "state",
+    "washington": "state",
+    "phoenix": "city",
+    "ashburn": "city",
+    "chicago": "city",
+    "dallas": "city",
+    "council-bluffs": "city",
+    "moncks-corner": "city",
+    "columbus": "city",
+    "the-dalles": "city",
+    "salt-lake-city": "city",
+    "las-vegas": "city",
+    "san-francisco": "city",
+    "atlanta": "city",
+    "richmond": "city",
+    "kansas-city": "city",
+    "memphis": "city",
+    "hillsboro": "city",
+    "new-jersey": "state",
+    "honolulu": "city",
+    "miami": "city",
+    "seattle": "city",
+    "washington-dc": "city",
+    "newark": "city",
+    "fremont": "city",
+    "vint-hill": "city",
+    "melbourne": "city",
+    "canberra": "city",
+    "new-south-wales": "state",
+    "victoria": "state",
+    "calgary": "city",
+    "quebec": "state",
+    "montreal": "city",
+    "beauharnois": "city",
+    "madrid": "city",
+    "stockholm": "city",
+    "gavle": "city",
+    "zurich": "city",
+    "geneva": "city",
+    "milan": "city",
+    "turin": "city",
+    "marseille": "city",
+    "gravelines": "city",
+    "roubaix": "city",
+    "strasbourg": "city",
+    "berlin": "city",
+    "falkenstein": "city",
+    "nuremberg": "city",
+    "limburg": "city",
+    "manchester": "city",
+    "cardiff": "city",
+    "newport": "city",
+    "erith": "city",
+    "eemshaven": "city",
+    "hamina": "city",
+    "helsinki": "city",
+    "st-ghislain": "city",
+    "brussels": "city",
+    "vienna": "city",
+    "copenhagen": "city",
+    "warsaw": "city",
+    "busan": "city",
+    "chuncheon": "city",
+    "changhua": "state",
+    "mumbai": "city",
+    "hyderabad": "city",
+    "delhi": "city",
+    "delhi-ncr": "city",
+    "chennai": "city",
+    "pune": "city",
+    "bangalore": "city",
+    "jakarta": "city",
+    "batam": "city",
+    "kuala-lumpur": "city",
+    "kulai": "city",
+    "johor": "state",
+    "bangkok": "city",
+    "auckland": "city",
+    "manila": "city",
+    "cape-town": "city",
+    "johannesburg": "city",
+    "tel-aviv": "city",
+    "jerusalem": "city",
+    "mexico-city": "city",
+    "queretaro": "city",
+    "queretaro-state": "state",
+    "monterrey": "city",
+    "abu-dhabi": "city",
+    "dubai": "city",
+    "doha": "city",
+    "riyadh": "city",
+    "jeddah": "city",
+    "dammam": "city",
+    "casablanca": "city",
+    "sao-paulo": "city",
+    "sao-paulo-state": "state",
+    "rio": "city",
+    "osasco": "city",
+    "vinhedo": "city",
+    "santiago": "city",
+    "valparaiso": "city",
+    "bogota": "city",
+    "dublin": "city",
+    "aragon": "state",
+    "saitama": "state"
   }
 }

@@ -18,7 +18,7 @@ import { linkNode } from "./admin-linkage";
 import { AdminCitySelect } from "./admin-city-select";
 afterEach(cleanup);
 it("limits city references to the selected country", () => {
-    const { container, rerender } = render(
+    const { rerender } = render(
         <AdminCitySelect
             label="城市"
             value=""
@@ -26,11 +26,9 @@ it("limits city references to the selected country", () => {
             onChange={() => {}}
         />,
     );
-    expect(
-        Array.from(container.querySelectorAll("option")).map(
-            (option) => option.value,
-        ),
-    ).toEqual(["洛杉矶", "圣何塞", "纽约"]);
+    fireEvent.focus(screen.getByRole("combobox"));
+    expect(screen.getByRole("option", { name: /弗吉尼亚州/ })).toBeTruthy();
+    expect(screen.queryByRole("option", { name: /东京/ })).toBeNull();
     rerender(
         <AdminCitySelect
             label="城市"
@@ -39,11 +37,9 @@ it("limits city references to the selected country", () => {
             onChange={() => {}}
         />,
     );
-    expect(
-        Array.from(container.querySelectorAll("option")).map(
-            (option) => option.value,
-        ),
-    ).toEqual(["东京", "大阪"]);
+    fireEvent.focus(screen.getByRole("combobox"));
+    expect(screen.getByRole("option", { name: /东京/ })).toBeTruthy();
+    expect(screen.queryByRole("option", { name: /弗吉尼亚州/ })).toBeNull();
 });
 it.each(["圣何塞", "San Jose", "SAN-JOSE"])(
     "stores the stable city code for %s",
@@ -76,11 +72,11 @@ it("allows an unlisted English city and preserves existing custom cities", () =>
     expect((screen.getByRole("combobox") as HTMLInputElement).value).toBe(
         "boston",
     );
-    expect(screen.getByText(/未收录城市翻译/)).toBeTruthy();
+    expect(screen.getByText(/未收录位置翻译/)).toBeTruthy();
     fireEvent.change(screen.getByRole("combobox"), {
-        target: { value: "Salt Lake City" },
+        target: { value: "West Des Moines" },
     });
-    expect(change).toHaveBeenCalledWith("Salt Lake City");
+    expect(change).toHaveBeenCalledWith("West Des Moines");
     expect(
         linkNode("region_code", "JP", { city_code: "boston" }).city_code,
     ).toBe("boston");
@@ -117,4 +113,18 @@ it("renders a Chinese city label but saves the city identifier in the node edito
             city_code: "new-york",
         }),
     );
+});
+
+it("finds qualified cloud codes and allows explicit selection for ambiguous codes", () => {
+    const change = vi.fn();
+    render(
+        <AdminCitySelect label="位置" value="" region="" onChange={change} />,
+    );
+    const input = screen.getByRole("combobox");
+    fireEvent.change(input, { target: { value: "aws:us-west-1" } });
+    expect(change).toHaveBeenLastCalledWith("california");
+    fireEvent.change(input, { target: { value: "ap-southeast-3" } });
+    expect(screen.getByRole("option", { name: /雅加达/ })).toBeTruthy();
+    fireEvent.click(screen.getByRole("option", { name: /吉隆坡/ }));
+    expect(change).toHaveBeenLastCalledWith("kuala-lumpur");
 });

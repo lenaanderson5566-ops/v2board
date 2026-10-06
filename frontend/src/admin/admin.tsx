@@ -2496,7 +2496,7 @@ const nodeLabels: Record<string, string> = {
     rate: "流量倍率",
     tags: "标签数组",
     region_code: "国家 / 地区",
-    city_code: "城市标识（例如 tokyo）",
+    city_code: "州 / 省或城市",
     display_label: "线路编号 / 后缀（例如 A）",
     parent_id: "父节点 ID",
     protocol: "协议",

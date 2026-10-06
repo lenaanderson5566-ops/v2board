@@ -10,6 +10,9 @@ foreach ($catalog['cityRegions'] as $city => $region) {
     $assert(isset($catalog['cities'][$city], $catalog['regions'][$region]), 'City reference has valid translations and country: '.$city);
 }
 $assert(count($catalog['cityRegions']) === count($catalog['cities']), 'All reference cities have country mappings');
+$assert(count($catalog['locationKinds']) === count($catalog['cities']), 'Every location has a state or city classification');
+$assert($catalog['locationKinds']['california'] === 'state' && $catalog['locationKinds']['tokyo'] === 'city', 'States and cities are classified');
+$assert(!isset($catalog['cities']['northern-california'], $catalog['cities']['northern-virginia']), 'Directional cloud region labels are not offered');
 $normalize = [App\Services\NodeDisplayService::class, 'normalizeInput'];
 $assert($normalize(['city_code'=>'San Jose'])['city_code']==='san-jose', 'English city case and spaces normalized');
 $assert($normalize(['city_code'=>'  SAN_JOSE  '])['city_code']==='san-jose', 'Whitespace and underscores normalized');
@@ -34,6 +37,23 @@ foreach (['anytls','hysteria','tuic','v2node','vless'] as $protocol) {
     $validator = Illuminate\Support\Facades\Validator::make($normalize(['city_code'=>'San Jose']), ['city_code'=>$schema['city_code']], App\Services\NodeDisplayService::validationMessages());
     $assert(!$validator->fails(), $protocol.' accepts normalized city');
 }
+foreach ($catalog['cloudProviders'] as $provider => $info) {
+    $assert(str_starts_with($info['source'], 'https://') && $info['verifiedAt'] === '2026-10-06', 'Cloud reference has provenance');
+    foreach ($info['regions'] as $alias => $location) {
+        $assert(isset($catalog['cities'][$location], $catalog['cityRegions'][$location]), 'Cloud reference resolves to known geography');
+        $assert($normalize(['region_code'=>$catalog['cityRegions'][$location], 'city_code'=>$provider.':'.$alias])['city_code'] === $location, 'Qualified cloud region normalizes');
+    }
+}
+$ambiguous = false;
+try { $normalize(['city_code'=>'ap-southeast-3']); }
+catch (Illuminate\Validation\ValidationException $error) { $ambiguous = isset($error->errors()['city_code']); }
+$assert($ambiguous, 'Colliding cloud region requires explicit provider');
+$mismatch = false;
+try { $normalize(['region_code'=>'US', 'city_code'=>'Tokyo']); }
+catch (Illuminate\Validation\ValidationException $error) { $mismatch = isset($error->errors()['city_code']); }
+$assert($mismatch, 'Known location cannot be saved under another country');
+
+$assert(App\Services\NodeDisplayService::name(['name'=>'Legacy','region_code'=>'US','city_code'=>'oregon','display_label'=>'A'], 'zh-CN') === '美国 · 俄勒冈州 · A', 'Regional location renders in native and public names');
 $server=['id'=>123,'type'=>'shadowsocks','name'=>'Japan-A','region_code'=>'JP','city_code'=>'tokyo','display_label'=>'A','tags'=>['premium'],'cipher'=>'aes-128-gcm','host'=>'node.example','port'=>443];
 $enriched=App\Services\NodeDisplayService::enrich($server);
 $assert($enriched['proxy_name']==='node_shadowsocks_123','Stable identity');

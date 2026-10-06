@@ -10307,7 +10307,8 @@
                               },
                               "cityCode": {
                                 "type": "string",
-                                "nullable": true
+                                "nullable": true,
+                                "description": "Canonical location identifier for a state, province or city; legacy cityCode field name is retained for compatibility."
                               },
                               "displayLabel": {
                                 "type": "string",
@@ -11359,7 +11360,8 @@
           },
           "cityCode": {
             "type": "string",
-            "nullable": true
+            "nullable": true,
+            "description": "Canonical location identifier for a state, province or city; legacy cityCode field name is retained for compatibility."
           },
           "displayLabel": {
             "type": "string",

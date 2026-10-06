@@ -182,8 +182,8 @@ export function nodeSettingsFields(fields: Field[]): Field[] {
                   },
               ]
             : [{ ...field, ...(field.key === "city_code" ? {
-                  label: "城市标识",
-                  hint: "参考城市随国家 / 地区筛选；支持中文、英文检索，也可输入未收录的英文城市名，例如 San Jose。",
+                  label: "州 / 省或城市",
+                  hint: "按国家 / 地区筛选州、省和城市；可检索中英文名称或云厂商区域代码，未收录的位置可输入英文名称。",
               } : {}) }],
     );
 }

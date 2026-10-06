@@ -1130,3 +1130,11 @@ body[data-console="admin"] .settings-panel .field-grid > label[data-child] {
         grid-column: span 4 !important;
     }
 }
+
+body[data-console="admin"] .admin-region-select .admin-select-options button[data-active="true"] {
+    background: #e6f7ff;
+}
+body[data-console="admin"] .admin-region-select .admin-select-options > .muted {
+    display: block;
+    padding: 8px 12px;
+}

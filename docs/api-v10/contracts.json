@@ -1805,6 +1805,7 @@
       "key": "Public/MirrorController@download"
     },
     "getMeClientConfig": {
+      "description": "FastAI native YAML uses default.fastai.yaml or custom.fastai.yaml, independently of public subscription templates. Only real proxy nodes are emitted; subscription information nodes and subscription-userinfo headers are omitted. Account information is read through the account/subscription JSON APIs.",
       "input": {
         "clientVersion": "client_version",
         "platform": "platform",

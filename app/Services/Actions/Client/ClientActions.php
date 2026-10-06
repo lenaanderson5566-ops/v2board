@@ -90,10 +90,12 @@ class ClientActions
                 $serverService = new ServerService();
                 $servers = $serverService->getAvailableServers($user);
 
-                if ($resolvedFlag !== 'sing') {
+                if (!$request->attributes->get('client.native') && $resolvedFlag !== 'sing') {
                     $this->setSubscribeInfoToServers($servers, $user);
                 }
-                $class = $this->resolveProtocolHandler($resolvedFlag, $clientUser, $servers);
+                $class = $request->attributes->get('client.native')
+                    ? new \App\Services\FastaiConfig($clientUser, $servers)
+                    : $this->resolveProtocolHandler($resolvedFlag, $clientUser, $servers);
                 $resolvedClientType = $class->flag;
                 $riskLogService->createSubscribeLog($this->buildSubscribeLogPayload(
                     $request,

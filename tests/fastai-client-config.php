@@ -21,8 +21,14 @@ try {
         'email'=>Illuminate\Support\Str::uuid().'@example.com',
         'password'=>password_hash(bin2hex(random_bytes(16)), PASSWORD_DEFAULT),
         'uuid'=>(string)Illuminate\Support\Str::uuid(), 'token'=>Illuminate\Support\Str::random(32),
-        'plan_id'=>1, 'group_id'=>1, 'transfer_enable'=>1073741824, 'expired_at'=>time()+86400,
+        'plan_id'=>1, 'group_id'=>98765, 'transfer_enable'=>1073741824, 'expired_at'=>time()+86400,
     ]);
+    App\Models\ServerShadowsocks::create([
+        'group_id'=>[98765], 'name'=>'FastAI test node', 'rate'=>'1',
+        'host'=>'node.example.com', 'port'=>'443', 'server_port'=>443,
+        'cipher'=>'aes-128-gcm', 'show'=>1,
+    ]);
+    config(['v2board.show_info_to_server_enable'=>1]);
     $auth = new App\Services\AuthService($user);
     $token = $auth->generateAuthData(Illuminate\Http\Request::create('/'))['auth_data'];
     App\Models\ClientStrategy::whereIn('client_type', ['meta','flclash'])->update(['is_enabled'=>1, 'min_version'=>null]);
@@ -38,6 +44,10 @@ try {
     $assert($response->headers->get('Content-Language')==='en-US', 'Language negotiation');
     $assert(str_contains($response->headers->get('Cache-Control'), 'no-store'), 'Private config is not cached');
     $assert(!$response->headers->has('Location'), 'No subscription redirect');
+    $assert(!$response->headers->has('subscription-userinfo'), 'Native response omits subscription metadata header');
+    $nativeConfig = Symfony\Component\Yaml\Yaml::parse($response->getContent());
+    $assert(array_column($nativeConfig['proxies'], 'name')===['FastAI test node'], 'Native config contains only actual nodes even with subscription info enabled');
+    $assert(!isset($nativeConfig['mixed-port']) && !isset($nativeConfig['external-controller']), 'Native template leaves local ports to the app');
     $logged = App\Models\Log::where('uri', '/api/v10/me/client-config')->latest('id')->first();
     $assert($logged && $logged->getRawOriginal('data')==='[]', 'Config request log omits parameters and credentials');
     $logContext=json_decode($logged->getRawOriginal('context'),true);
@@ -46,6 +56,9 @@ try {
     $assert($call($path, $token, 'HEAD')->getStatusCode()===200, 'HEAD supported');
     $legacy = $call('/api/v10/subscriptions/'.$user->token.'?format=flclash');
     $assert($legacy->getStatusCode()===200 && str_contains($legacy->getContent(), 'proxy-groups:'), 'Token subscriptions remain compatible');
+    $legacyConfig = Symfony\Component\Yaml\Yaml::parse($legacy->getContent());
+    $assert(count($legacyConfig['proxies'])>1, 'Public subscription still includes configured subscription info nodes');
+    $assert(isset($legacyConfig['mixed-port']), 'Public subscription still uses its original template');
     $user->update(['plan_id'=>null, 'transfer_enable'=>0, 'credit_balance'=>0]);
     $denied = $call($path, $token);
     $problem = json_decode($denied->getContent(), true);

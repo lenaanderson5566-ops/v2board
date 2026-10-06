@@ -8,6 +8,8 @@ use Symfony\Component\Yaml\Yaml;
 class ClashMeta
 {
     public $flag = 'meta';
+    protected $templateName = 'clash';
+    protected $subscriptionMetadata = true;
     private $servers;
     private $user;
 
@@ -22,11 +24,13 @@ class ClashMeta
         $servers = $this->servers;
         $user = $this->user;
         $appName = config('v2board.app_name', 'V2Board');
-        header("subscription-userinfo: upload={$user['u']}; download={$user['d']}; total={$user['transfer_enable']}; expire={$user['expired_at']}");
+        if ($this->subscriptionMetadata) {
+            header("subscription-userinfo: upload={$user['u']}; download={$user['d']}; total={$user['transfer_enable']}; expire={$user['expired_at']}");
+        }
         header('profile-update-interval: 24');
         header("content-disposition:attachment;filename*=UTF-8''".rawurlencode($appName));
-        $defaultConfig = base_path() . '/resources/rules/default.clash.yaml';
-        $customConfig = base_path() . '/resources/rules/custom.clash.yaml';
+        $defaultConfig = resource_path('rules/default.' . $this->templateName . '.yaml');
+        $customConfig = resource_path('rules/custom.' . $this->templateName . '.yaml');
         if (\File::exists($customConfig)) {
             $config = Yaml::parseFile($customConfig);
         } else {

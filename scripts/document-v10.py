@@ -163,6 +163,8 @@ for entry in entries:
         responses['206'] = {**success, 'description': 'Partial installer content'}
         responses['416'] = {'description': 'Requested range is not satisfiable'}
     if entry['role'] == 'user': operation['description'] = 'Requires an active session. Order and ticket identifiers are checked against the authenticated owner. Unauthenticated: 401; banned account: 403.'
+    if contracts['endpoints'][operation_id].get('description'):
+        operation['description'] = operation.get('description', '') + ' ' + contracts['endpoints'][operation_id]['description']
     if contract['key'] == 'User/OrderController@save':
         operation['description'] += ' Deposit orders require planId 0 and a positive integer depositAmount in minor currency units; other billing periods require a positive planId.'
     if entry['path'].startswith('webhooks/'):

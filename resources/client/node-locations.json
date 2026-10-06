@@ -2383,12 +2383,12 @@
     "TW": {
       "zh-CN": "中国台湾",
       "zh-TW": "中國台灣",
-      "en-US": "Taiwan",
-      "ja-JP": "台湾",
-      "ko-KR": "대만",
-      "vi-VN": "Đài Loan",
-      "ru-RU": "Тайвань",
-      "fa-IR": "تایوان"
+      "en-US": "Taiwan, China",
+      "ja-JP": "中国台湾",
+      "ko-KR": "중국 대만",
+      "vi-VN": "Đài Loan, Trung Quốc",
+      "ru-RU": "Тайвань, Китай",
+      "fa-IR": "تایوان، چین"
     },
     "TZ": {
       "zh-CN": "坦桑尼亚",

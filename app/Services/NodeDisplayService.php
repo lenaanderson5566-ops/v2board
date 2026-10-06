@@ -94,7 +94,8 @@ final class NodeDisplayService
             $server['original_name'] = $server['name'];
             $region = strtoupper((string)($server['region_code'] ?? ''));
             if (!isset(self::catalog()['regions'][$region])) continue;
-            $flag = mb_chr(0x1F1E6 + ord($region[0]) - 65).mb_chr(0x1F1E6 + ord($region[1]) - 65);
+            $flagRegion = $region === 'TW' ? 'CN' : $region;
+            $flag = mb_chr(0x1F1E6 + ord($flagRegion[0]) - 65).mb_chr(0x1F1E6 + ord($flagRegion[1]) - 65);
             $server['name'] = $flag.' '.$region.' · '.self::name($server, $language);
         }
         unset($server);

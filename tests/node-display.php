@@ -13,6 +13,11 @@ $assert(count($catalog['cityRegions']) === count($catalog['cities']), 'All refer
 $assert(count($catalog['locationKinds']) === count($catalog['cities']), 'Every location has a state or city classification');
 $assert($catalog['locationKinds']['california'] === 'state' && $catalog['locationKinds']['tokyo'] === 'city', 'States and cities are classified');
 $assert(!isset($catalog['cities']['northern-california'], $catalog['cities']['northern-virginia']), 'Directional cloud region labels are not offered');
+$tw = ['id'=>124, 'type'=>'vless', 'name'=>'Legacy', 'region_code'=>'TW'];
+foreach ($catalog['regions']['TW'] as $language => $name) {
+    $public = App\Services\NodeDisplayService::publicServers([$tw], $language);
+    $assert($public[0]['name'] === '🇨🇳 TW · '.str_replace(',', '，', $name), 'TW uses localized China designation and Chinese flag: '.$language);
+}
 $normalize = [App\Services\NodeDisplayService::class, 'normalizeInput'];
 $assert($normalize(['city_code'=>'San Jose'])['city_code']==='san-jose', 'English city case and spaces normalized');
 $assert($normalize(['city_code'=>'  SAN_JOSE  '])['city_code']==='san-jose', 'Whitespace and underscores normalized');

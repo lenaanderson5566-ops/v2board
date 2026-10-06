@@ -10261,6 +10261,15 @@
                 "schema": {
                   "type": "string"
                 }
+              },
+              "X-FastAI-Config-Version": {
+                "description": "Native configuration format marker for deployment verification.",
+                "schema": {
+                  "type": "string",
+                  "enum": [
+                    "1"
+                  ]
+                }
               }
             },
             "content": {

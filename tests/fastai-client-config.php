@@ -44,6 +44,7 @@ try {
     $assert($response->headers->get('Content-Language')==='en-US', 'Language negotiation');
     $assert(str_contains($response->headers->get('Cache-Control'), 'no-store'), 'Private config is not cached');
     $assert(!$response->headers->has('Location'), 'No subscription redirect');
+    $assert($response->headers->get('X-FastAI-Config-Version')==='1', 'Native configuration has a deployment verification marker');
     $assert(!$response->headers->has('subscription-userinfo'), 'Native response omits subscription metadata header');
     $nativeConfig = Symfony\Component\Yaml\Yaml::parse($response->getContent());
     $assert($nativeConfig['geo-auto-update']===false && !isset($nativeConfig['geox-url']), 'Native config uses bundled Geo data without online updates');

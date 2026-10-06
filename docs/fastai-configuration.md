@@ -22,3 +22,13 @@ FastAI 通过 Bearer 会话请求 `GET /api/v10/me/client-config`，使用
 不参与 FastAI V10 配置生成，修改它们不会影响 FastAI。
 
 回归验证：`php tests/fastai-client-config.php`、`php tests/fastai-template.php`。
+
+## 部署后核实
+
+专用接口成功响应包含 `X-FastAI-Config-Version: 1`，用于辨别线上是否已部署专用配置实现。
+检查此响应头、确认不存在 `subscription-userinfo`，并确认 YAML 的 `proxies` 只包含真实线路。
+自定义 FastAI 模板中的订阅信息节点也会在最终输出时清除，对应代理组引用同时移除。
+
+如果线上仍返回订阅信息节点，需要部署最新后端并按照实际运行环境重新加载 PHP 工作进程／OPcache，
+随后重新请求专用接口。不要将 YAML、Bearer 令牌或节点密码写入部署核实日志。
+App 同步时会兼容过滤旧后端返回的已知订阅信息节点，并记录过滤数量；修复后重新同步即可更新旧配置。

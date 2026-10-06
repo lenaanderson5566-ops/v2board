@@ -25,7 +25,7 @@ class ClientActions
             $this->rejectNativeConfig($request, 'CLIENT_VERSION_TOO_LOW', 'Please update your client.', 409);
         }
         $request->merge(['user' => $user, 'flag' => 'flclash', 'language' => app()->getLocale()]);
-        return response($this->subscribe($request), 200, ['Content-Type' => 'application/yaml']);
+        return response($this->subscribe($request), 200, ['Content-Type' => 'application/yaml', 'X-FastAI-Config-Version' => '1']);
     }
 
     private function rejectNativeConfig(Request $request, string $code, string $message, int $status = 403): void

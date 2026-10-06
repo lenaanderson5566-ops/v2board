@@ -12,14 +12,16 @@ $original = array_map(fn ($path) => file_exists($path) ? file_get_contents($path
 try {
     foreach ($paths as $index => $path) {
         file_put_contents($path, Symfony\Component\Yaml\Yaml::dump([
+            'proxies'=>[['name'=>'剩余流量: 10GB','type'=>'direct']],
             'geo-auto-update'=>true,
             'geox-url'=>['geoip'=>'https://example.com/geoip.dat'],
             'geo-update-interval'=>1,
-            'proxy-groups'=>[['name'=>$index===0 ? 'Native only' : 'Public only', 'type'=>'select', 'proxies'=>[]]],
+            'proxy-groups'=>[['name'=>$index===0 ? 'Native only' : 'Public only', 'type'=>'select', 'proxies'=>['剩余流量: 10GB', '/.*/']]],
             'rules'=>['MATCH,'.($index===0 ? 'Native only' : 'Public only')],
         ]));
     }
     $native = Symfony\Component\Yaml\Yaml::parse((new App\Services\FastaiConfig($user, $nodes))->handle());
+    $assert(!in_array('剩余流量: 10GB', array_column($native['proxies'], 'name')), 'Custom native template cannot inject subscription metadata nodes');
     $public = Symfony\Component\Yaml\Yaml::parse((new App\Protocols\FlClash($user, $nodes))->handle());
     $assert($native['proxy-groups'][0]['name']==='Native only', 'FastAI custom template selected');
     $assert($public['proxy-groups'][0]['name']==='Public only', 'Public custom template selected independently');

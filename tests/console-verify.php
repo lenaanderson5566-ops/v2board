@@ -28,7 +28,7 @@ try {
     Route::setRoutes($originalRoutes);
 
     mkdir($temporary . '/console/.vite', 0700, true);
-    file_put_contents($temporary . '/console/.vite/manifest.json', json_encode(['src/main.tsx' => ['file' => 'missing.js']]));
+    file_put_contents($temporary . '/console/.vite/manifest.json', json_encode(['index.html' => ['file' => 'missing.js'], 'admin.html' => ['file' => 'missing-admin.js']]));
     $app->instance('path.public', $temporary);
     $assert(Artisan::call('console:verify') === 1 && strpos(Artisan::output(), 'Missing or invalid console asset') !== false, 'Missing asset not detected');
 } finally {

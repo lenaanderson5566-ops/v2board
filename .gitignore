@@ -26,3 +26,9 @@ workerman.webman.php.pid
 workerman.log
 
 /storage/framework/user-experience-review.json
+
+/frontend/dist/
+/frontend/.env.local
+/frontend/.env.*.local
+/public/console/user-config.json
+/public/console/admin-config.json

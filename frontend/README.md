@@ -35,7 +35,8 @@ npm test
 The build writes `public/console` and its Vite manifest. These production assets
 are checked into Git so PHP deployments do not require Node.js. Rebuild and
 commit the generated files whenever frontend source changes. `routes/web.php`
-renders both interfaces from the same build with separate authentication storage.
+selects separate user/admin build entries with separate authentication storage.
+See [frontend deployment](../docs/frontend-deployment.md) for source boundaries, independently deployable packages and runtime configuration.
 
 After deployment, run `php artisan console:verify` to check every manifest asset
 and the landing, account and admin page actions. Use `--host=your.domain` to test
@@ -45,7 +46,7 @@ The branch already includes production JS/CSS, so no ZIP upload is required.
 
 For local iteration, `npm run dev` starts Vite with `/api` proxied to port 8080.
 Open `http://127.0.0.1:5173/` for the user interface, or
-`http://127.0.0.1:5173/?mode=admin&adminPath=admin` for the configured admin path.
+`http://127.0.0.1:5173/admin.html` for the admin interface. Provide corresponding public runtime configuration files; the entry never accepts an application mode from the query string.
 Production-shell testing uses the Laravel URL after `npm run build`.
 
 ## Pages

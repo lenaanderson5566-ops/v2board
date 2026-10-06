@@ -1,0 +1,107 @@
+import { useEffect, useState } from "react";
+import { Settings, Users, LogOut, Shield, Bell } from "lucide-react";
+import { type Row } from "../shared/api";
+import { useData } from "../shared/ui";
+import { tx } from "../shared/i18n";
+import { e } from "../shared/experience-copy";
+import { activePlan } from "../shared/user-experience";
+import { useHeaderPopover } from "../shared/useHeaderPopover";
+export function AccountMenu({
+    user,
+    logout,
+}: {
+    user: Row;
+    logout: () => void;
+}) {
+    const sub = useData("user/getSubscribe");
+    const { id, open, setOpen, root, trigger, toggle, onBlur } = useHeaderPopover();
+    const [clock, setClock] = useState(0);
+    useEffect(() => {
+        const expiry = Number(sub.data?.expired_at) * 1000;
+        const remaining = expiry - Date.now();
+        if (!sub.data?.plan || !Number.isFinite(remaining) || remaining <= 0)
+            return;
+        const timer = setTimeout(
+            () => setClock((v) => v + 1),
+            Math.min(remaining + 1, 2147483647),
+        );
+        return () => clearTimeout(timer);
+    }, [sub.data, clock]);
+    const valid =
+        sub.data?.has_subscription !== false &&
+        activePlan(sub.data?.plan, sub.data?.expired_at);
+    const plan = sub.data?.plan?.name || "";
+    const initial = String(user.email || "?")
+        .trim()
+        .slice(0, 1)
+        .toUpperCase();
+    return (
+        <div
+            className="account-control"
+            ref={root}
+            onBlur={onBlur}
+        >
+            <button
+                ref={trigger}
+                className="account-trigger"
+                aria-label={e("account")}
+                aria-description={
+                    valid ? e("activePlan", { plan }) : e("noPlan")
+                }
+                aria-expanded={open}
+                aria-controls={id}
+                onClick={toggle}
+            >
+                <span className="letter-avatar">
+                    {initial}
+                    {valid && (
+                        <span className="avatar-plan" title={plan}>
+                            {plan}
+                        </span>
+                    )}
+                </span>
+            </button>
+            {open && (
+                <div id={id} className="account-popover">
+                    <div className="account-identity">
+                        <span className="letter-avatar" aria-hidden="true">
+                            {initial}
+                        </span>
+                        <div>
+                            <strong dir="ltr">{user.email}</strong>
+                            <small>
+                                {valid
+                                    ? e("activePlan", { plan })
+                                    : e("noPlan")}
+                            </small>
+                        </div>
+                    </div>
+                    {[
+                        { key: "profile", label: "账户设置", icon: Settings },
+                        { key: "notifications", label: "通知设置", icon: Bell },
+                        { key: "security", label: "账户安全", icon: Shield },
+                        { key: "invite", label: "邀请好友", icon: Users },
+                    ].map(({ key, label, icon: Icon }) => (
+                        <a
+                            data-popover-item
+                            key={key}
+                            href={"#/" + key}
+                            onClick={() => setOpen(false)}
+                        >
+                            <Icon size={17} />
+                            {tx(label)}
+                        </a>
+                    ))}
+                    <button
+                        data-popover-item
+                        className="account-logout"
+                        onClick={logout}
+                    >
+                        <LogOut size={17} />
+                        {tx("退出登录")}
+                    </button>
+                </div>
+            )}
+        </div>
+    );
+}

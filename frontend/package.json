@@ -5,7 +5,8 @@
     "type": "module",
     "scripts": {
         "dev": "vite --host 127.0.0.1",
-        "build": "tsc --noEmit && vite build",
+        "build": "tsc --noEmit && vite build && node scripts/package-frontends.mjs",
+        "package:frontends": "node scripts/package-frontends.mjs",
         "test": "vitest run",
         "locales:generate": "node scripts/expand-locales.mjs"
     },

@@ -18,7 +18,7 @@ class ConsoleVerify extends Command
             $root = realpath(public_path('console'));
             if (!$root) throw new \RuntimeException('Missing public/console; deploy the target branch production assets.');
             $manifest = json_decode(file_get_contents($root . '/.vite/manifest.json'), true, 512, JSON_THROW_ON_ERROR);
-            if (empty($manifest['src/main.tsx']['file'])) throw new \RuntimeException('Invalid Vite entry in manifest.');
+            if (empty($manifest['index.html']['file']) || empty($manifest['admin.html']['file'])) throw new \RuntimeException('Invalid Vite entry in manifest.');
             foreach ($manifest as $record) {
                 foreach (array_merge([$record['file'] ?? ''], $record['css'] ?? []) as $file) {
                     $path = realpath($root . '/' . $file);
@@ -43,7 +43,7 @@ class ConsoleVerify extends Command
                 $route = Route::getRoutes()->match($request);
                 $result = $route->run();
                 $html = $result instanceof \Illuminate\Contracts\View\View ? $result->render() : response($result)->getContent();
-                if (strpos($html, 'window.V2BOARD') === false || strpos($html, '/console/' . $manifest['src/main.tsx']['file']) === false || strpos($html, 'data-console="' . $mode . '"') === false) {
+                if (strpos($html, 'window.V2BOARD') === false || strpos($html, '/console/' . $manifest[$mode === 'admin' ? 'admin.html' : 'index.html']['file']) === false || strpos($html, 'data-console="' . $mode . '"') === false) {
                     throw new \RuntimeException('Old or incorrect page at ' . $path . '; check deployed routes and route/view caches.');
                 }
                 $this->info('Verified ' . $path . ' (' . $mode . ')');

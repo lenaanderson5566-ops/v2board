@@ -10,10 +10,6 @@
     <meta name="description" content="{{ $boot['description'] }}">
     <title>{{ $boot['title'] }}</title>
     <script>window.V2BOARD = @json($boot);</script>
-    @if($boot['mode'] === 'admin')
-        <link rel="stylesheet" href="/assets/admin/res_002.css">
-        <link rel="stylesheet" href="/assets/admin/res_004.css">
-    @endif
     @foreach($entry['css'] ?? [] as $css)
         <link rel="stylesheet" href="{{ '/console/' . $css }}">
     @endforeach

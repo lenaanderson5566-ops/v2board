@@ -21,14 +21,14 @@ export default defineConfig({
             },
         },
     ],
-    base: "/console/",
+    base: "./",
     // Avoid charset guessing for executable scripts.
     esbuild: { charset: "ascii" },
     build: {
         outDir: "../public/console",
         emptyOutDir: true,
         manifest: true,
-        rollupOptions: { input: "src/main.tsx" },
+        rollupOptions: { input: { user: "index.html", admin: "admin.html" } },
     },
     server: { proxy: { "/api": "http://localhost:8080" } },
 });

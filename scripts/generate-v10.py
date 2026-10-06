@@ -149,9 +149,9 @@ for i,e in enumerate(entries):
 for c,b in controllers.items():write('app/Http/Controllers/V10/'+c+'.php','<?php\nnamespace App\\Http\\Controllers\\V10;\nclass '+c+' extends ResourceController\n{\n'+''.join(b)+'}\n')
 write('routes/v10.php','\n'.join(routes)+'\n')
 write('docs/api-v10/contracts.json',json.dumps({'schemas':schemas,'endpoints':contracts},ensure_ascii=False,indent=2))
-write('frontend/src/v10-contracts.json',json.dumps({'schemas':schemas,'endpoints':contracts,'routes':{e['legacy']:e['method'].lower()+''.join(x[0].upper()+x[1:] for x in re.findall(r'[A-Za-z0-9]+',e['path'])) for i,e in enumerate(entries) if e.get('legacy') and not e.get('legacyQuery')},'details':{e['legacy']:e['method'].lower()+''.join(x[0].upper()+x[1:] for x in re.findall(r'[A-Za-z0-9]+',e['path'])) for i,e in enumerate(entries) if e.get('legacyQuery')}},ensure_ascii=False,indent=2))
+write('frontend/src/shared/v10-contracts.json',json.dumps({'schemas':schemas,'endpoints':contracts,'routes':{e['legacy']:e['method'].lower()+''.join(x[0].upper()+x[1:] for x in re.findall(r'[A-Za-z0-9]+',e['path'])) for i,e in enumerate(entries) if e.get('legacy') and not e.get('legacyQuery')},'details':{e['legacy']:e['method'].lower()+''.join(x[0].upper()+x[1:] for x in re.findall(r'[A-Za-z0-9]+',e['path'])) for i,e in enumerate(entries) if e.get('legacyQuery')}},ensure_ascii=False,indent=2))
 
-frontend_path=root/'frontend/src/v10-contracts.json'
+frontend_path=root/'frontend/src/shared/v10-contracts.json'
 frontend=json.loads(frontend_path.read_text(encoding='utf-8'))
 frontend['methodRoutes']={e['legacyMethod']+' '+e['legacy']:e['method'].lower()+''.join(x[0].upper()+x[1:] for x in re.findall(r'[A-Za-z0-9]+',e['path'])) for e in entries if e.get('legacy') and not e.get('legacyQuery')}
-write('frontend/src/v10-contracts.json',json.dumps(frontend,ensure_ascii=False,indent=2))
+write('frontend/src/shared/v10-contracts.json',json.dumps(frontend,ensure_ascii=False,indent=2))

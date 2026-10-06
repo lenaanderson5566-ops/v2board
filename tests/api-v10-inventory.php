@@ -28,5 +28,5 @@ foreach ($entries as $entry) {
     foreach ($routes as $route) if ($route->uri()==='api/v10/'.$entry['path'] && in_array($entry['method'],$route->methods(),true)) $found=true;
     $assert($found,'Unregistered resource '.$entry['path']);
 }
-$assert(is_file(base_path('frontend/src/v10-types.ts')) && is_file(base_path('AGENTS.md')),'Types and agent rules exist');
+$assert(is_file(base_path('frontend/src/shared/v10-types.ts')) && is_file(base_path('AGENTS.md')),'Types and agent rules exist');
 echo "V10 inventory: $checks checks passed\n";

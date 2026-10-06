@@ -61,3 +61,5 @@ php artisan migrate --path=database/migrations/2026_10_06_000001_add_node_displa
 另运行 `php tests/node-display.php`。生产部署后重新加载 PHP/OPcache，核实 JSON 响应版本 2；不要记录含节点认证信息的响应体。
 
 开源客户端订阅提示使用短标签，如“剩余: 10GB”“重置: 2026-10-06 18:30 GMT+8”“到期: 2026-11-06 18:30 GMT+8”。时间保留年月日与分钟，时区按该时间的实际偏移生成，支持夏令时及非整小时偏移。专用 App 继续排除这些提示，同时兼容过滤旧长标签。
+
+用户前端的可用节点列表使用 V10 me/nodes 返回的 displayNames、regionCode 和 tags；名称按页面语言选择，缺少翻译回退英文，旧节点回退原名。标签作为用户可见备注展示，协议不显示；保留倍率与在线状态。网页国旗使用 frontend/src/user/assets/flags 的本地 SVG，与 App 的 Circle Flags 资源同源，TW 使用中国国旗。新增或更新 App 国旗时同步网页资源；网页构建会将图片加入独立用户前端包，后台包不包含这些资源。

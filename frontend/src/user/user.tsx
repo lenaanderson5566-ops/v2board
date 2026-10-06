@@ -1,3 +1,4 @@
+import { NodeList } from "./NodeList";
 export { Tickets } from "../shared/Tickets";
 const AccountPreferences = lazy(() => import("./AccountPreferences").then((module) => ({ default: module.AccountPreferences })));
 const BillingPage = lazy(() => import("./BillingPage").then((module) => ({ default: module.BillingPage })));
@@ -131,26 +132,7 @@ export function Subscribe() {
             </Panel>
             <Panel title={tx("可用节点")}>
                 <State {...nodes} retry={nodes.reload}>
-                    <Table
-                        compact
-                        data={nodes.data || []}
-                        columns={[
-                            ["name", tx("节点名称")],
-                            ["type", tx("协议")],
-                            ["rate", tx("倍率")],
-                            [
-                                "is_online",
-                                tx("状态"),
-                                (r) => (
-                                    <span
-                                        className={`badge ${r.is_online ? "success" : ""}`}
-                                    >
-                                        {r.is_online ? tx("在线") : tx("离线")}
-                                    </span>
-                                ),
-                            ],
-                        ]}
-                    />
+                    <NodeList nodes={nodes.data || []} />
                 </State>
             </Panel>
         </>

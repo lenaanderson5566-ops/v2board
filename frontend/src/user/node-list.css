@@ -1,0 +1,33 @@
+.user-node-name {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    min-width: 0;
+}
+.user-node-name > img,
+.user-node-name > svg {
+    flex: 0 0 28px;
+}
+.user-node-name > span {
+    white-space: normal;
+    overflow-wrap: anywhere;
+    font-weight: 500;
+}
+.user-node-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    max-width: 360px;
+}
+.user-node-tags .badge {
+    white-space: normal;
+    overflow-wrap: anywhere;
+}
+@media (max-width: 640px) {
+    .user-node-name {
+        gap: 8px;
+    }
+    .user-node-tags {
+        max-width: none;
+    }
+}

@@ -10233,6 +10233,19 @@
               ]
             },
             "required": true
+          },
+          {
+            "name": "architecture",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "x64",
+                "arm64",
+                "arm",
+                "x86"
+              ]
+            }
           }
         ],
         "responses": {
@@ -10346,6 +10359,179 @@
         ],
         "x-permission": "user",
         "description": "Requires an active session. Order and ticket identifiers are checked against the authenticated owner. Unauthenticated: 401; banned account: 403."
+      }
+    },
+    "/public/fastai/releases/latest": {
+      "get": {
+        "operationId": "getPublicFastaiReleasesLatest",
+        "tags": [
+          "public"
+        ],
+        "summary": "GET public/fastai/releases/latest",
+        "parameters": [
+          {
+            "name": "Accept-Language",
+            "in": "header",
+            "schema": {
+              "type": "string"
+            },
+            "description": "Supported language tags with optional quality weights."
+          },
+          {
+            "name": "platform",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "windows",
+                "android",
+                "macos",
+                "linux",
+                "ios"
+              ]
+            },
+            "required": true
+          },
+          {
+            "name": "architecture",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "x64",
+                "arm64",
+                "arm",
+                "x86"
+              ]
+            },
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "headers": {
+              "X-Request-ID": {
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "Content-Language": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/fastaiRelease"
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {
+                        "pagination": {
+                          "$ref": "#/components/schemas/Pagination"
+                        },
+                        "taskId": {
+                          "type": "string"
+                        }
+                      }
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Problem details",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Problem details",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Problem details",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Problem details",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "410": {
+            "description": "Problem details",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Problem details",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Problem details",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Problem details",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        },
+        "security": [],
+        "x-permission": "public"
       }
     }
   },
@@ -11577,6 +11763,78 @@
         },
         "additionalProperties": false
       },
+      "fastaiRelease": {
+        "type": "object",
+        "properties": {
+          "platform": {
+            "type": "string",
+            "enum": [
+              "windows",
+              "android",
+              "macos",
+              "linux"
+            ]
+          },
+          "architecture": {
+            "type": "string",
+            "enum": [
+              "x64",
+              "arm64",
+              "arm",
+              "x86"
+            ]
+          },
+          "channel": {
+            "type": "string",
+            "enum": [
+              "stable"
+            ]
+          },
+          "latestVersion": {
+            "type": "string",
+            "pattern": "^(0|[1-9]\\d*)\\.(0|[1-9]\\d*)\\.(0|[1-9]\\d*)$"
+          },
+          "latestBuild": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 1,
+            "maximum": 2100000000
+          },
+          "minimumVersion": {
+            "type": "string",
+            "pattern": "^(0|[1-9]\\d*)\\.(0|[1-9]\\d*)\\.(0|[1-9]\\d*)$"
+          },
+          "downloadUrl": {
+            "type": "string",
+            "format": "uri",
+            "pattern": "^https://"
+          },
+          "sha256": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$"
+          },
+          "releaseNotes": {
+            "type": "string",
+            "nullable": true
+          },
+          "publishedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "additionalProperties": false,
+        "required": [
+          "platform",
+          "architecture",
+          "channel",
+          "latestVersion",
+          "latestBuild",
+          "minimumVersion",
+          "downloadUrl",
+          "sha256",
+          "publishedAt"
+        ]
+      },
       "applicationVersion": {
         "type": "object",
         "properties": {
@@ -12620,11 +12878,48 @@
               "linux",
               "ios"
             ]
+          },
+          "architecture": {
+            "type": "string",
+            "enum": [
+              "x64",
+              "arm64",
+              "arm",
+              "x86"
+            ]
           }
         },
         "required": [
           "clientVersion",
           "platform"
+        ]
+      },
+      "getPublicFastaiReleasesLatestInput": {
+        "type": "object",
+        "properties": {
+          "platform": {
+            "type": "string",
+            "enum": [
+              "windows",
+              "android",
+              "macos",
+              "linux",
+              "ios"
+            ]
+          },
+          "architecture": {
+            "type": "string",
+            "enum": [
+              "x64",
+              "arm64",
+              "arm",
+              "x86"
+            ]
+          }
+        },
+        "required": [
+          "platform",
+          "architecture"
         ]
       }
     }

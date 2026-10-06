@@ -479,7 +479,7 @@ class UserActions
             abort(request()->is('api/v10/*') ? 409 : 500, __('The user does not exist'));
         }
 
-        $code = Helper::guid();
+        $code = bin2hex(random_bytes(32));
         $key = CacheKey::get('TEMP_TOKEN', $code);
         Cache::put($key, $user->id, 60);
         $redirect = '/#/login?verify=' . $code . '&redirect=' . ($request->input('redirect') ? $request->input('redirect') : 'dashboard');

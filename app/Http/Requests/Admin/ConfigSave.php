@@ -7,6 +7,8 @@ use Illuminate\Foundation\Http\FormRequest;
 class ConfigSave extends FormRequest
 {
     const RULES = [
+        'fastai_enabled' => 'in:0,1',
+        'fastai_releases' => 'sometimes|array|max:32',
         'apple_account_url' => 'sometimes|required|string|url|max:2048',
         'apple_account_enable' => 'in:0,1',
         'apple_account_token' => 'nullable|string|max:256',

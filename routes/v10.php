@@ -69,3 +69,4 @@
 \Illuminate\Support\Facades\Route::match(['GET', 'HEAD'], 'announcements/{notificationId}', [\App\Http\Controllers\V10\UserNoticeController::class, 'getAnnouncementsNotificationId'])->name('v10.getAnnouncementsNotificationId');
 \Illuminate\Support\Facades\Route::match(['GET', 'HEAD'], 'public/client-installers/{installerId}/content', [\App\Http\Controllers\V10\PublicMirrorController::class, 'getPublicClientInstallersInstallerIdContent'])->name('v10.getPublicClientInstallersInstallerIdContent');
 \Illuminate\Support\Facades\Route::match(['GET', 'HEAD'], 'me/client-config', [\App\Http\Controllers\V10\ClientClientController::class, 'getMeClientConfig'])->middleware(['throttle:30,1'])->name('v10.getMeClientConfig');
+\Illuminate\Support\Facades\Route::match(['GET', 'HEAD'], 'public/fastai/releases/latest', [\App\Http\Controllers\V10\GuestFastaiController::class, 'getPublicFastaiReleasesLatest'])->middleware(['throttle:30,1'])->name('v10.getPublicFastaiReleasesLatest');

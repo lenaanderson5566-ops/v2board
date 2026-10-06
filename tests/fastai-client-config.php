@@ -60,9 +60,14 @@ try {
     $user->update(['credit_balance'=>1073741824]);
     $assert($call($path, $token)->getStatusCode()===200, 'Independent traffic credit remains available');
     App\Models\ClientStrategy::updateOrCreate(['client_type'=>'flclash'], ['is_enabled'=>1, 'min_version'=>'9.0.0']);
+    $assert($call($path, $token)->getStatusCode()===200, 'FastAI policy is independent of upstream FlClash version');
+    config(['v2board.fastai_releases'=>[['platform'=>'windows','architecture'=>'x64','channel'=>'stable','latestVersion'=>'9.0.0','latestBuild'=>1,'minimumVersion'=>'9.0.0','downloadUrl'=>'https://fastdog.ws/FastAI.exe','sha256'=>str_repeat('a',64),'publishedAt'=>'2026-10-06T00:00:00Z']]]);
     $low = $call($path, $token);
     $assert($low->getStatusCode()===409 && json_decode($low->getContent(), true)['code']==='CLIENT_VERSION_TOO_LOW', 'Explicit client version policy');
+    config(['v2board.fastai_releases'=>[]]);
     App\Models\ClientStrategy::where('client_type', 'flclash')->update(['is_enabled'=>0]);
+    $assert($call($path, $token)->getStatusCode()===200, 'FastAI enabled independently of FlClash');
+    config(['v2board.fastai_enabled'=>0]);
     $disabled = $call($path, $token);
     $assert($disabled->getStatusCode()===403 && json_decode($disabled->getContent(), true)['code']==='CLIENT_DISABLED', 'Disabled client policy');
     $user->update(['banned'=>1]);

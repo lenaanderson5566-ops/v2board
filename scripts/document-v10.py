@@ -78,6 +78,20 @@ schemas.update({
     'Problem': obj({'type': {'type': 'string'}, 'title': {'type': 'string'}, 'status': number, 'detail': {'type': 'string'}, 'code': {'type': 'string'}, 'requestId': {'type': 'string'}, 'errors': {'type': 'object', 'additionalProperties': {'type': 'array', 'items': {'type': 'string'}}}}, ['type', 'title', 'status', 'detail', 'code', 'requestId']),
 })
 
+release_schema = schemas['fastaiRelease']
+release_schema['required'] = ['platform', 'architecture', 'channel', 'latestVersion', 'latestBuild', 'minimumVersion', 'downloadUrl', 'sha256', 'publishedAt']
+for field in release_schema['required']:
+    release_schema['properties'][field].pop('nullable', None)
+release_schema['properties']['platform']['enum'] = ['windows', 'android', 'macos', 'linux']
+release_schema['properties']['architecture']['enum'] = ['x64', 'arm64', 'arm', 'x86']
+release_schema['properties']['channel']['enum'] = ['stable']
+for field in ['latestVersion', 'minimumVersion']:
+    release_schema['properties'][field]['pattern'] = r'^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)$'
+release_schema['properties']['latestBuild'].update({'minimum': 1, 'maximum': 2100000000})
+release_schema['properties']['downloadUrl'].update({'format': 'uri', 'pattern': '^https://'})
+release_schema['properties']['sha256']['pattern'] = '^[a-f0-9]{64}$'
+release_schema['properties']['publishedAt']['format'] = 'date-time'
+
 currency_description = 'CNY only in phase 1; integer monetary values are fen (1/100 CNY). Order currency is persisted and does not follow global configuration.'
 for schema in schemas.values():
     currency = schema.get('properties', {}).get('currency')
@@ -90,6 +104,7 @@ schemas['referrals']['properties']['rewards'] = obj({
     'validityMonths': {'type': 'integer', 'minimum': 1, 'maximum': 120, 'description': 'Invitation credit validity in calendar months from each grant; default 1.'},
 })
 required = {
+    'Guest/FastaiController@release': ['platform','architecture'],
     'Client/ClientController@authenticatedConfig': ['clientVersion', 'platform'],
     'Passport/AuthController@login': ['email', 'password'], 'Passport/AuthController@register': ['email', 'password'],
     'Passport/AuthController@forget': ['email', 'password', 'emailCode'], 'Passport/AuthController@token2Login': ['verificationToken'],
@@ -102,6 +117,7 @@ required = {
 }
 
 def input_schema(field):
+    if field == 'architecture': return {'type':'string','enum':['x64','arm64','arm','x86']}
     if field == 'clientVersion': return {'type': 'string', 'pattern': r'^\d+(?:\.\d+){1,3}$'}
     if field == 'platform': return {'type': 'string', 'enum': ['windows', 'android', 'macos', 'linux', 'ios']}
     if field in ['page', 'pageSize', 'planId', 'paymentMethodId', 'depositAmount', 'amount', 'days', 'articleId', 'ticketId', 'notificationId', 'version']:

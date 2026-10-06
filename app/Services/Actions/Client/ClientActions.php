@@ -21,6 +21,9 @@ class ClientActions
         $request->attributes->set('client.native', true);
         $request->attributes->set('client.version', $request->input('client_version'));
         $request->attributes->set('client.platform', $request->input('platform'));
+        if (!(new \App\Services\FastaiReleaseService())->supports($request->input('client_version'), $request->input('platform'), $request->input('architecture'))) {
+            $this->rejectNativeConfig($request, 'CLIENT_VERSION_TOO_LOW', 'Please update your client.', 409);
+        }
         $request->merge(['user' => $user, 'flag' => 'flclash', 'language' => app()->getLocale()]);
         return response($this->subscribe($request), 200, ['Content-Type' => 'application/yaml']);
     }
@@ -52,7 +55,7 @@ class ClientActions
         // account not expired and is not banned.
         $userService = new UserService();
         if ($userService->isAvailable($user)) {
-            if (!$clientStrategyService->isEnabled($resolvedFlag)) {
+            if ($request->attributes->get('client.native') ? !config('v2board.fastai_enabled', 1) : !$clientStrategyService->isEnabled($resolvedFlag)) {
                 $riskLogService->createSubscribeLog($this->buildSubscribeLogPayload(
                     $request,
                     $user,
@@ -70,7 +73,7 @@ class ClientActions
                 (string) $request->input('flag', ''),
                 (string) $request->header('user-agent', '')
             );
-            if (!$clientStrategyService->isVersionAllowed($resolvedFlag, $resolvedVersion)) {
+            if (!$request->attributes->get('client.native') && !$clientStrategyService->isVersionAllowed($resolvedFlag, $resolvedVersion)) {
                 $riskLogService->createSubscribeLog($this->buildSubscribeLogPayload(
                     $request,
                     $user,

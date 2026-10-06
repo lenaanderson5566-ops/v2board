@@ -71,6 +71,7 @@ export function configField(
             hint: "使用逗号分隔多个值。",
         };
     if (key === "currency" || key === "currency_symbol") return { key, label: "当前结算币种", type: "select", options: [["CNY", "CNY · 人民币"]], hint: "当前采用人民币计价；修改符号不会转换金额。USD 将通过独立价格与钱包支持。" };
+    if (key === "fastai_releases") return { key, label, type: "json", hint: "按平台与架构配置稳定版本：latestVersion、latestBuild、minimumVersion、HTTPS downloadUrl、sha256、releaseNotes、UTC publishedAt。空数组表示尚未发布。" };
     const validation = Array.isArray(rule)
         ? rule.join("|")
         : String(rule || "");

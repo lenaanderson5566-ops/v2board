@@ -447,17 +447,35 @@ function App() {
         }
         if (boot.landing && location.hash.startsWith("#/"))
             location.replace("/app" + location.hash);
+        const verification = boot.mode === "user" && !boot.landing
+            ? new URLSearchParams(location.hash.split("?")[1]).get("verify") : null;
+        if (verification) {
+            history.replaceState(null, "", location.pathname + location.search + "#/login");
+            clearReadCache();
+            localStorage.removeItem(storageKey);
+        }
         // Start code loading alongside the account request; do not delay authentication on it.
         if (boot.mode === "user" && !boot.landing && localStorage.getItem(storageKey))
             void loadUserContent().catch(() => {});
-        if (!boot.landing && localStorage.getItem(storageKey))
-            readRequest("user/info")
+        if (!boot.landing && (verification || localStorage.getItem(storageKey)))
+            Promise.resolve().then(async () => {
+                if (verification) {
+                    const session = await request("passport/auth/token2Login", { verify: verification });
+                    if (typeof session.data?.auth_data !== "string") throw new Error(tx("服务响应异常 ({{value0}})", { value0: 200 }));
+                    localStorage.setItem(storageKey, session.data.auth_data);
+                }
+                return readRequest("user/info", undefined, Boolean(verification));
+            })
                 .then(async (r) => {
                     if (boot.mode === "admin")
                         await request(admin("config/fetch"));
                     if (boot.mode === "user")
                         await applyAccountLanguage(r.data.language);
                     setUser(r.data);
+                    if (verification) {
+                        setPath("dashboard");
+                        navigate("dashboard");
+                    }
                 })
                 .catch((e) => {
                     setError(e.message);

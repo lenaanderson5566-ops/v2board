@@ -226,7 +226,9 @@ class AuthActions
 
         if ($request->input('verify')) {
             $key =  CacheKey::get('TEMP_TOKEN', $request->input('verify'));
-            $userId = Cache::get($key);
+            $userId = Cache::lock($key . ':exchange', 5)->get(function () use ($key) {
+                return Cache::pull($key);
+            });
             if (!$userId) {
                 abort(request()->is('api/v10/*') ? 409 : 500, __('Token error'));
             }
@@ -237,7 +239,6 @@ class AuthActions
             if ($user->banned) {
                 return response()->json(['message' => __('Your account has been suspended'), 'code' => 'ACCOUNT_BANNED'], $request->is('api/v10/*') ? 403 : 500);
             }
-            Cache::forget($key);
             $user->last_login_at = time();
             $user->last_login_ip = $this->encodeIp($request->ip());
             $user->save();

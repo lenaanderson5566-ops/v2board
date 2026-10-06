@@ -1376,5 +1376,24 @@
     "scope": "client",
     "status": 200,
     "raw": true
+  },
+  {
+    "key": "Guest/FastaiController@release",
+    "method": "GET",
+    "path": "public/fastai/releases/latest",
+    "parameters": [
+      {
+        "name": "request",
+        "type": "Illuminate\\Http\\Request",
+        "optional": false
+      }
+    ],
+    "bindings": {},
+    "middleware": [
+      "throttle:30,1"
+    ],
+    "role": "public",
+    "scope": "public",
+    "status": 200
   }
 ]

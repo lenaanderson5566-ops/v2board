@@ -93,6 +93,8 @@ class ConfigController extends Controller
                 'commission_distribution_l3' => config('v2board.commission_distribution_l3')
             ],
             'site' => [
+                'fastai_enabled' => config('v2board.fastai_enabled', 1),
+                'fastai_releases' => config('v2board.fastai_releases', []),
                 'logo' => config('v2board.logo'),
                 'force_https' => (int)config('v2board.force_https', 0),
                 'stop_register' => (int)config('v2board.stop_register', 0),
@@ -213,6 +215,7 @@ class ConfigController extends Controller
     public function save(ConfigSave $request)
     {
         $data = $request->validated();
+        if (isset($data['fastai_releases'])) \App\Services\FastaiReleaseService::validateCatalog($data['fastai_releases']);
         if (isset($data['apple_account_url'])) {
             try { $data['apple_account_url'] = \App\Services\AppleAccountService::normalizeOrigin($data['apple_account_url']); }
             catch (\InvalidArgumentException $e) { throw \Illuminate\Validation\ValidationException::withMessages(['apple_account_url' => $e->getMessage()]); }

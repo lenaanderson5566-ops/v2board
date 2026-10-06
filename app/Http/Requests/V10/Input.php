@@ -11,6 +11,7 @@ final class Input
     {
         $types = [
             'clientVersion'=>'string|regex:/^\\d+(?:\\.\\d+){1,3}$/',
+            'architecture'=>'in:x64,arm64,arm,x86',
             'platform'=>'in:windows,android,macos,linux,ios',
             'email'=>'string|email:strict|max:254', 'password'=>'string|min:8|max:128',
             'oldPassword'=>'string|max:128','newPassword'=>'string|min:8|max:128',
@@ -30,6 +31,7 @@ final class Input
             'placement'=>'in:landing,dashboard','status'=>'in:unpaid,processing,cancelled,completed,discounted'
         ];
         $required = [
+            'Guest/FastaiController@release'=>['platform','architecture'],
             'Client/ClientController@authenticatedConfig'=>['clientVersion','platform'],
             'Passport/AuthController@login'=>['email','password'],
             'Passport/AuthController@register'=>['email','password'],

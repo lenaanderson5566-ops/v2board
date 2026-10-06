@@ -15,8 +15,9 @@ inputs={
  'subject':'subject','priority':'level','message':'message','withdrawalMethod':'withdraw_method',
  'withdrawalAccount':'withdraw_account','giftCardCode':'giftcard','status':'status','page':'current',
  'pageSize':'page_size','days':'days','articleId':'id','notificationId':'id','version':'version',
- 'keyword':'keyword','redirect':'redirect','placement':'placement','format':'flag','accessToken':'access_token','code':'code'}
+ 'platform':'platform','architecture':'architecture','keyword':'keyword','redirect':'redirect','placement':'placement','format':'flag','accessToken':'access_token','code':'code'}
 allowed={
+ 'Guest/FastaiController@release':'platform architecture',
  'Passport/AuthController@login':'email password captchaToken language languageSelected',
  'Passport/AuthController@register':'email password emailCode invitation inviteCode captchaToken language languageSelected',
  'Passport/AuthController@forget':'email password emailCode language',
@@ -74,6 +75,7 @@ schema('task','taskId:task_id status:status')
 schema('bot','username:username')
 schema('loginState','authenticated:is_login:boolean administrator:is_admin:boolean')
 schema('coupon','id:id code:code name:name discountType:type:couponType value:value startedAt:started_at:time expiresAt:ended_at:time')
+schema('fastaiRelease','platform:platform architecture:architecture channel:channel latestVersion:latestVersion latestBuild:latestBuild:integer minimumVersion:minimumVersion downloadUrl:downloadUrl sha256:sha256 releaseNotes:releaseNotes publishedAt:publishedAt')
 schema('applicationVersion','platform:platform version:version downloadUrl:download_url')
 for name in ['plan','account','order','paymentMethod','credit','commission','coupon']:
  schemas[name]['currency']=['currency']
@@ -96,6 +98,7 @@ for name,fields in {
 }.items():
  for field in fields: schemas[name][field].append('number')
 outputs={
+ 'Guest/FastaiController@release':'fastaiRelease',
  'User/UserController@info':'account', 'User/UserController@getSubscribe':'subscription',
  'User/UserController@getActiveSession':'dictionary:session','User/UserController@checkLogin':'loginState',
  'User/PlanController@fetch':'flex:plan','User/OrderController@fetch':'array:order','User/OrderController@detail':'order',
@@ -120,7 +123,7 @@ for i,e in enumerate(entries):
  if k=='User/PlanController@fetch':imap={'planId':'id'}
  if k=='User/NoticeController@fetch':imap.update({'pageSize':'pageSize'})
  if e['scope']=='client':imap={'format':'flag','language':'language'}
- if k=='Client/ClientController@authenticatedConfig':imap={'clientVersion':'client_version','platform':'platform'}
+ if k=='Client/ClientController@authenticatedConfig':imap={'clientVersion':'client_version','platform':'platform','architecture':'architecture'}
  imap={public:internal for public,internal in imap.items() if internal not in e['bindings'].values()}
  if k.startswith('Guest/Telegram'):imap={} # Signed provider payload, native protocol.
  out=outputs.get(k,'authentication' if k in ['Passport/AuthController@login','Passport/AuthController@register','Passport/AuthController@token2Login'] else 'scalar')

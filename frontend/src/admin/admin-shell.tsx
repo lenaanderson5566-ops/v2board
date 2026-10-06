@@ -76,19 +76,11 @@ export function AdminShell({
 }) {
     const [open, setOpen] = useState(false);
     const [menu, setMenu] = useState(false);
-    const [dark, setDark] = useState(
-        () => localStorage.getItem("v2board.admin.dark") === "1",
-    );
     const dropdown = useRef<HTMLDivElement>(null);
     useEffect(() => {
         setOpen(false);
         setMenu(false);
     }, [current]);
-    useEffect(() => {
-        document.body.classList.toggle("admin-dark", dark);
-        localStorage.setItem("v2board.admin.dark", dark ? "1" : "0");
-        return () => document.body.classList.remove("admin-dark");
-    }, [dark]);
     useEffect(() => {
         const close = (e: MouseEvent) => {
             if (!dropdown.current?.contains(e.target as Node)) setMenu(false);
@@ -180,13 +172,6 @@ export function AdminShell({
                     </button>
                     <h1 className="v2board-container-title">{title}</h1>
                     <div className="admin-header-actions">
-                        <button
-                            className="btn"
-                            aria-label={dark ? "切换亮色模式" : "切换暗色模式"}
-                            onClick={() => setDark(!dark)}
-                        >
-                            <i className={`fa fa-${dark ? "moon" : "sun"}`} />
-                        </button>
                         <div className="dropdown d-inline-block" ref={dropdown}>
                             <button
                                 className="btn"

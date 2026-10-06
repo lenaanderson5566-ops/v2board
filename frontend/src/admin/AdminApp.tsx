@@ -36,6 +36,8 @@ export default function AdminApp() {
         }
     }
     useEffect(() => {
+        document.body.classList.remove("admin-dark");
+        localStorage.removeItem("v2board.admin.dark");
         let live = true;
         const changed = () =>
             setPath(location.hash.slice(2).split("?")[0] || "");

@@ -1,3 +1,6 @@
+body[data-console="admin"] {
+    color-scheme: light;
+}
 /* Original OneUI/Ant Design presentation, restricted to the admin document. */
 body[data-console="admin"] {
     background: #f0f3f8;
@@ -883,37 +886,6 @@ body[data-console="admin"] .alert {
     color: #734526;
     border: 0;
 }
-body[data-console="admin"].admin-dark {
-    --border: #444;
-    --muted: #a5a9af;
-}
-body[data-console="admin"].admin-dark #main-container,
-body[data-console="admin"].admin-dark #page-header,
-body[data-console="admin"].admin-dark .panel,
-body[data-console="admin"].admin-dark .modal,
-body[data-console="admin"].admin-dark .panel-head,
-body[data-console="admin"].admin-dark .section-tabs,
-body[data-console="admin"].admin-dark td,
-body[data-console="admin"].admin-dark th,
-body[data-console="admin"].admin-dark .form-actions {
-    background: #22272d;
-    color: #c9ced5;
-    border-color: #444;
-}
-body[data-console="admin"].admin-dark input,
-body[data-console="admin"].admin-dark textarea,
-body[data-console="admin"].admin-dark select,
-body[data-console="admin"].admin-dark button {
-    background: #30363d;
-    color: #c9ced5;
-    border-color: #555;
-}
-body[data-console="admin"].admin-dark h1,
-body[data-console="admin"].admin-dark h2,
-body[data-console="admin"].admin-dark label,
-body[data-console="admin"].admin-dark strong {
-    color: #e6edf3 !important;
-}
 @media (max-width: 991px) {
     body[data-console="admin"] #sidebar {
         transform: translateX(-100%);
@@ -1048,10 +1020,6 @@ body[data-console="admin"] .admin-radio-group button:first-child {
 body[data-console="admin"] .admin-radio-group button:last-child {
     border-radius: 0 4px 4px 0;
 }
-body[data-console="admin"].admin-dark .form-bottom {
-    background: #272e38;
-    border-color: #404854;
-}
 body[data-console="admin"] .admin-drawer .panel > .panel-head h2 {
     display: none;
 }
@@ -1153,17 +1121,6 @@ body[data-console="admin"] .modal .form-bottom {
 body[data-console="admin"] .settings-panel .field-grid > label[data-child] {
     border-left: 18px solid #eee;
     background: #efefef;
-}
-body[data-console="admin"].admin-dark .input-unit {
-    background: #272e38;
-    border-color: #404854;
-}
-body[data-console="admin"].admin-dark
-    .settings-panel
-    .field-grid
-    > label[data-child] {
-    background: #272e38;
-    border-left-color: #404854;
 }
 @media (max-width: 480px) {
     body[data-console="admin"]

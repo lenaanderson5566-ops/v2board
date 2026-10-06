@@ -246,26 +246,3 @@
     margin-top: 18px;
 }
 
-.admin-dark .risk-rule-card,
-.admin-dark .release-card {
-    background: #202c37;
-    border-color: #384853;
-    color: #e3ece8;
-}
-.admin-dark .release-hero {
-    background: linear-gradient(120deg, #203830, #273342);
-}
-.admin-dark .release-hero h2,
-.admin-dark .release-card h3,
-.admin-dark .release-summary strong {
-    color: #e3ece8;
-}
-.admin-dark .release-hero p,
-.admin-dark .release-status,
-.admin-dark .release-card small,
-.admin-dark .release-card dt {
-    color: #a9bdb4;
-}
-.admin-dark .release-card footer {
-    border-color: #384853;
-}

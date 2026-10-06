@@ -5,7 +5,9 @@ FastAI's public release API is
 The generated V10 OpenAPI and frontend types declare the request and response.
 There is no database migration or dependency on upstream FlClash's release feed.
 
-Manage the catalog in **System configuration → Site → FastAI 客户端版本与下载**.
+Manage the catalog in **System configuration → 客户端下载 → FastAI 客户端下载与更新**.
+The download tab uses per-platform and per-architecture forms in place of the old Windows/macOS/Android version and download fields. iOS recommendations and Apple download accounts remain unchanged.
+
 The authenticated administrative config API also accepts `fastai_releases` and
 `fastai_enabled` on its existing contract. A catalog entry has these fields:
 

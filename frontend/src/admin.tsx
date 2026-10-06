@@ -1,3 +1,4 @@
+import { AdminFastaiDownloads } from "./AdminFastaiDownloads";
 import { AdminRiskReview } from "./AdminRiskReview";
 import { supportedClients as recommendationClients } from "./import-links";
 import type { Device as RecommendationDevice } from "./user-experience";
@@ -1492,7 +1493,8 @@ export function Settings() {
                 ([k]) =>
                     !k.startsWith("frontend_") &&
                     k !== "email_template" &&
-                    k !== "invite_never_expire",
+                    k !== "invite_never_expire" &&
+                    k !== "fastai_releases",
             )
             .map(([k, v]) =>
                 k === "credit_base_group_id"
@@ -1544,6 +1546,7 @@ export function Settings() {
                     creditGroups.reload();
                 }}
             >
+                {group === "app" && <AdminFastaiDownloads key={JSON.stringify(raw.fastai_releases)} initial={raw.fastai_releases || []} save={async releases => { await request(admin("config/save"), { fastai_releases: releases }); d.reload(); }} />}
                 <Editor
                     key={group + JSON.stringify(raw)}
                     fields={fields}

@@ -93,8 +93,6 @@ class ConfigController extends Controller
                 'commission_distribution_l3' => config('v2board.commission_distribution_l3')
             ],
             'site' => [
-                'fastai_enabled' => config('v2board.fastai_enabled', 1),
-                'fastai_releases' => config('v2board.fastai_releases', []),
                 'logo' => config('v2board.logo'),
                 'force_https' => (int)config('v2board.force_https', 0),
                 'stop_register' => (int)config('v2board.stop_register', 0),
@@ -153,26 +151,14 @@ class ConfigController extends Controller
                 'telegram_discuss_link' => config('v2board.telegram_discuss_link')
             ],
             'app' => [
-                'client_primary_android' => config('v2board.client_primary_android', ''),
-                'client_secondary_android' => config('v2board.client_secondary_android', ''),
-                'client_primary_windows' => config('v2board.client_primary_windows', ''),
-                'client_secondary_windows' => config('v2board.client_secondary_windows', ''),
-                'client_primary_macos' => config('v2board.client_primary_macos', ''),
-                'client_secondary_macos' => config('v2board.client_secondary_macos', ''),
-                'client_primary_linux' => config('v2board.client_primary_linux', ''),
-                'client_secondary_linux' => config('v2board.client_secondary_linux', ''),
+                'fastai_enabled' => config('v2board.fastai_enabled', 1),
+                'fastai_releases' => config('v2board.fastai_releases', []),
                 'client_primary_ios' => config('v2board.client_primary_ios', ''),
                 'client_secondary_ios' => config('v2board.client_secondary_ios', ''),
                 'apple_account_url' => config('v2board.apple_account_url', \App\Services\AppleAccountService::ORIGIN),
                 'apple_account_enable' => (int) config('v2board.apple_account_enable', 0),
                 'apple_account_token' => '',
                 'apple_account_share' => config('v2board.apple_account_share', ''),
-                'windows_version' => config('v2board.windows_version'),
-                'windows_download_url' => config('v2board.windows_download_url'),
-                'macos_version' => config('v2board.macos_version'),
-                'macos_download_url' => config('v2board.macos_download_url'),
-                'android_version' => config('v2board.android_version'),
-                'android_download_url' => config('v2board.android_download_url')
             ],
             'safe' => [
                 'email_verify' => (int)config('v2board.email_verify', 0),

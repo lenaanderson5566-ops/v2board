@@ -11,6 +11,7 @@ class HysteriaController extends Controller
 {
     public function save(Request $request)
     {
+        $request->merge(\App\Services\NodeDisplayService::normalizeInput($request->all()));
         $params = $request->validate([
             'show' => '',
             'name' => 'required',
@@ -32,7 +33,7 @@ class HysteriaController extends Controller
             'obfs_password' => 'nullable',
             'server_name' => 'nullable',
             'insecure' => 'required|in:0,1'
-        ]);
+        ], \App\Services\NodeDisplayService::validationMessages());
 
         if (!isset($params['up_mbps'])) {
             $params['up_mbps'] = 0;

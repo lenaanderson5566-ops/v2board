@@ -181,7 +181,10 @@ export function nodeSettingsFields(fields: Field[]): Field[] {
                       hint: "仅填写未在上方列出的扩展参数；已有扩展参数会保留。",
                   },
               ]
-            : [field],
+            : [{ ...field, ...(field.key === "city_code" ? {
+                  label: "城市标识",
+                  hint: "支持英文城市名，例如 San Jose，保存时自动转换为 san-jose；已收录的中文城市名也可自动识别。",
+              } : {}) }],
     );
 }
 export function nodeSettingsInitial(initial: Row): Row {

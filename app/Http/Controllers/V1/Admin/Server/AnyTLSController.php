@@ -10,6 +10,7 @@ class AnyTLSController extends Controller
 {
     public function save(Request $request)
     {
+        $request->merge(\App\Services\NodeDisplayService::normalizeInput($request->all()));
         $params = $request->validate([
             'show' => '',
             'name' => 'required',
@@ -27,7 +28,7 @@ class AnyTLSController extends Controller
             'server_name' => 'nullable',
             'insecure' => 'required|in:0,1',
             'padding_scheme' => 'nullable',
-        ]);
+        ], \App\Services\NodeDisplayService::validationMessages());
 
         if (isset($params['padding_scheme'])) {
             $params['padding_scheme'] = json_decode($params['padding_scheme']);

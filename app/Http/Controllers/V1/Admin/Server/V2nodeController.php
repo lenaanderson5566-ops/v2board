@@ -12,6 +12,7 @@ class V2nodeController extends Controller
 {
     public function save(Request $request)
     {
+        $request->merge(\App\Services\NodeDisplayService::normalizeInput($request->all()));
         $params = $request->validate([
             'group_id' => 'required',
             'route_id' => 'nullable|array',
@@ -47,7 +48,7 @@ class V2nodeController extends Controller
             'rate' => 'required',
             'show' => 'nullable|in:0,1',
             'sort' => 'nullable'
-        ]);
+        ], \App\Services\NodeDisplayService::validationMessages());
         if ($params['protocol'] == 'anytls' && $params['tls'] === 0) {
             $params['tls'] = 1;
         }

@@ -12,6 +12,7 @@ class VlessController extends Controller
 {
     public function save(Request $request)
     {
+        $request->merge(\App\Services\NodeDisplayService::normalizeInput($request->all()));
         $params = $request->validate([
             'group_id' => 'required',
             'route_id' => 'nullable|array',
@@ -34,7 +35,7 @@ class VlessController extends Controller
             'rate' => 'required',
             'show' => 'nullable|in:0,1',
             'sort' => 'nullable'
-        ]);
+        ], \App\Services\NodeDisplayService::validationMessages());
 
         if (isset($params['tls']) && (int)$params['tls'] === 2) {
             $keyPair = SodiumCompat::crypto_box_keypair();

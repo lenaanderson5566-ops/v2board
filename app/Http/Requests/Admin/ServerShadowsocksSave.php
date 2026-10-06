@@ -6,6 +6,11 @@ use Illuminate\Foundation\Http\FormRequest;
 
 class ServerShadowsocksSave extends FormRequest
 {
+    protected function prepareForValidation()
+    {
+        $this->merge(\App\Services\NodeDisplayService::normalizeInput($this->all()));
+    }
+
     /**
      * Get the validation rules that apply to the request.
      *
@@ -35,7 +40,7 @@ class ServerShadowsocksSave extends FormRequest
 
     public function messages()
     {
-        return [
+        return \App\Services\NodeDisplayService::validationMessages() + [
             'name.required' => '节点名称不能为空',
             'group_id.required' => '权限组不能为空',
             'group_id.array' => '权限组格式不正确',

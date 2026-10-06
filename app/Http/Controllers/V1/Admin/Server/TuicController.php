@@ -10,6 +10,7 @@ class TuicController extends Controller
 {
     public function save(Request $request)
     {
+        $request->merge(\App\Services\NodeDisplayService::normalizeInput($request->all()));
         $params = $request->validate([
             'show' => '',
             'name' => 'required',
@@ -30,7 +31,7 @@ class TuicController extends Controller
             'udp_relay_mode' => 'nullable',
             'zero_rtt_handshake' => 'required|in:0,1',
             'congestion_control' => 'nullable'
-        ]);
+        ], \App\Services\NodeDisplayService::validationMessages());
 
         if ($request->input('id')) {
             $server = ServerTuic::find($request->input('id'));

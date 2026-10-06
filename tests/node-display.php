@@ -5,6 +5,30 @@ $app->make(Illuminate\Contracts\Console\Kernel::class)->bootstrap();
 if (!app()->environment('local')) throw new RuntimeException('Local test only');
 $checks=0;
 $assert=function ($ok,$message) use (&$checks) { if (!$ok) throw new RuntimeException($message); $checks++; };
+$normalize = [App\Services\NodeDisplayService::class, 'normalizeInput'];
+$assert($normalize(['city_code'=>'San Jose'])['city_code']==='san-jose', 'English city case and spaces normalized');
+$assert($normalize(['city_code'=>'  SAN_JOSE  '])['city_code']==='san-jose', 'Whitespace and underscores normalized');
+$assert($normalize(['city_code'=>'圣何塞'])['city_code']==='san-jose', 'Catalog Chinese city normalized');
+$assert($normalize(['region_code'=>' us '])['region_code']==='US', 'Country code normalized');
+$assert($normalize([])===[], 'Omitted fields stay omitted');
+$assert($normalize(['city_code'=>['invalid']])===[], 'Invalid types retained for validator rejection');
+foreach (['Shadowsocks', 'Trojan', 'Vmess'] as $protocol) {
+    $class = 'App\\Http\\Requests\\Admin\\Server'.$protocol.'Save';
+    $request = $class::create('/', 'POST', ['city_code'=>'San Jose']);
+    $prepare = new ReflectionMethod($request, 'prepareForValidation');
+    $prepare->setAccessible(true);
+    $prepare->invoke($request);
+    $assert($request->input('city_code')==='san-jose', $protocol.' request normalizes before validation');
+    $validator = Illuminate\Support\Facades\Validator::make(['city_code'=>'未知城市'], ['city_code'=>$request->rules()['city_code']], $request->messages());
+    $assert($validator->fails() && $validator->errors()->first('city_code')!== 'validation.regex', $protocol.' shows readable city error');
+}
+foreach (['anytls','hysteria','tuic','v2node','vless'] as $protocol) {
+    $response = app(App\Http\Controllers\V1\Admin\ConsoleController::class)->nodeSchema(Illuminate\Http\Request::create('/', 'GET', ['type'=>$protocol]));
+    $schema = json_decode($response->getContent(), true)['data'];
+    $assert(isset($schema['city_code'], $schema['region_code'], $schema['rate']), $protocol.' schema retained');
+    $validator = Illuminate\Support\Facades\Validator::make($normalize(['city_code'=>'San Jose']), ['city_code'=>$schema['city_code']], App\Services\NodeDisplayService::validationMessages());
+    $assert(!$validator->fails(), $protocol.' accepts normalized city');
+}
 $server=['id'=>123,'type'=>'shadowsocks','name'=>'Japan-A','region_code'=>'JP','city_code'=>'tokyo','display_label'=>'A','tags'=>['premium'],'cipher'=>'aes-128-gcm','host'=>'node.example','port'=>443];
 $enriched=App\Services\NodeDisplayService::enrich($server);
 $assert($enriched['proxy_name']==='node_shadowsocks_123','Stable identity');

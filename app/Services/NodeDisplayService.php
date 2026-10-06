@@ -14,6 +14,42 @@ final class NodeDisplayService
         return array_keys(self::catalog()['regions']);
     }
 
+    /** Normalize display metadata before validation; omitted fields stay omitted. */
+    public static function normalizeInput(array $input): array
+    {
+        $normalized = [];
+        if (isset($input['region_code']) && is_string($input['region_code'])) {
+            $normalized['region_code'] = strtoupper(trim($input['region_code']));
+        }
+        if (isset($input['city_code']) && is_string($input['city_code'])) {
+            $city = trim($input['city_code']);
+            foreach (self::catalog()['cities'] as $code => $names) {
+                foreach ($names as $name) {
+                    if (mb_strtolower($city) === mb_strtolower($name)) {
+                        $city = $code;
+                        break 2;
+                    }
+                }
+            }
+            $normalized['city_code'] = strtolower(preg_replace('/[\s_]+/u', '-', $city));
+        }
+        return $normalized;
+    }
+
+    public static function validationMessages(): array
+    {
+        return [
+            'region_code.string' => '国家 / 地区代码必须是文本',
+            'region_code.size' => '请选择有效的国家 / 地区',
+            'region_code.in' => '请选择有效的国家 / 地区',
+            'city_code.string' => '城市标识必须是文本',
+            'city_code.max' => '城市标识不能超过 64 个字符',
+            'city_code.regex' => '城市标识请使用英文城市名，例如 San Jose 或 san-jose；已收录的中文城市名也可自动识别',
+            'display_label.string' => '线路编号 / 后缀必须是文本',
+            'display_label.max' => '线路编号 / 后缀不能超过 64 个字符',
+        ];
+    }
+
     public static function identity(array $server): ?string
     {
         if (empty($server['id']) || empty($server['type'])) return null;

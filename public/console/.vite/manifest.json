@@ -221,7 +221,7 @@
     ]
   },
   "admin.html": {
-    "file": "assets/admin-Cww2YS-D.js",
+    "file": "assets/admin-D3Jf31-A.js",
     "name": "admin",
     "src": "admin.html",
     "isEntry": true,
@@ -251,7 +251,7 @@
     "src": "node_modules/ace-builds/src-noconflict/worker-json.js"
   },
   "src/admin/AdminApp.tsx": {
-    "file": "assets/AdminApp-B12T8kJZ.js",
+    "file": "assets/AdminApp-H6gEbDau.js",
     "name": "AdminApp",
     "src": "src/admin/AdminApp.tsx",
     "isDynamicEntry": true,

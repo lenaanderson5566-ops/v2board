@@ -1,4 +1,5 @@
 import { lazy, Suspense } from "react";
+import { AdminCitySelect } from "./admin-city-select";
 import { AdminRegionSelect } from "./admin-region-select";
 import { AdminMultiSelect } from "./admin-multiselect";
 import type { EditorFieldRenderer } from "../shared/ui";
@@ -18,9 +19,25 @@ export const adminEditorField: EditorFieldRenderer = (
     field,
     value,
     onChange,
+    values,
 ) => {
     if (field.key === "region_code" && field.type === "select")
-        return <AdminRegionSelect label={field.label} value={value} onChange={onChange} />;
+        return (
+            <AdminRegionSelect
+                label={field.label}
+                value={value}
+                onChange={onChange}
+            />
+        );
+    if (field.key === "city_code")
+        return (
+            <AdminCitySelect
+                label={field.label}
+                value={value}
+                region={values.region_code}
+                onChange={onChange}
+            />
+        );
     if (field.markdown)
         return (
             <Suspense fallback={<span className="spinner" />}>

@@ -1,3 +1,4 @@
+import nodeLocations from "../../../resources/client/node-locations.json";
 import type { Row } from "../shared/api";
 import type { Field } from "../shared/ui";
 const on = (value: unknown) => Number(value) === 1;
@@ -186,6 +187,12 @@ export function validateResource(values: Row): string | undefined {
 const tlsRequired = ["trojan", "tuic", "hysteria2", "anytls"];
 export function linkNode(key: string, next: unknown, values: Row): Row {
     const result = { ...values, [key]: next };
+    if (key === "region_code") {
+        const city = String(values.city_code ?? "") as keyof typeof nodeLocations.cityRegions;
+        if (next && nodeLocations.cityRegions[city] && nodeLocations.cityRegions[city] !== String(next).toUpperCase())
+            result.city_code = "";
+    }
+
     if (key === "protocol") {
         result.parent_id = "";
         if (tlsRequired.includes(String(next))) result.tls = 1;

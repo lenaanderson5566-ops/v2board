@@ -1,0 +1,120 @@
+// @vitest-environment jsdom
+import { afterEach, expect, it, vi } from "vitest";
+import {
+    cleanup,
+    fireEvent,
+    render,
+    screen,
+    waitFor,
+} from "@testing-library/react";
+vi.mock("../shared/api", () => ({
+    boot: { mode: "admin" },
+    request: vi.fn(),
+    readRequest: vi.fn(),
+}));
+import { Editor, EditorFieldContext } from "../shared/ui";
+import { adminEditorField } from "./admin-editor-fields";
+import { linkNode } from "./admin-linkage";
+import { AdminCitySelect } from "./admin-city-select";
+afterEach(cleanup);
+it("limits city references to the selected country", () => {
+    const { container, rerender } = render(
+        <AdminCitySelect
+            label="城市"
+            value=""
+            region="US"
+            onChange={() => {}}
+        />,
+    );
+    expect(
+        Array.from(container.querySelectorAll("option")).map(
+            (option) => option.value,
+        ),
+    ).toEqual(["洛杉矶", "圣何塞", "纽约"]);
+    rerender(
+        <AdminCitySelect
+            label="城市"
+            value=""
+            region="JP"
+            onChange={() => {}}
+        />,
+    );
+    expect(
+        Array.from(container.querySelectorAll("option")).map(
+            (option) => option.value,
+        ),
+    ).toEqual(["东京", "大阪"]);
+});
+it.each(["圣何塞", "San Jose", "SAN-JOSE"])(
+    "stores the stable city code for %s",
+    (text) => {
+        const change = vi.fn();
+        render(
+            <AdminCitySelect
+                label="城市"
+                value=""
+                region="US"
+                onChange={change}
+            />,
+        );
+        fireEvent.change(screen.getByRole("combobox"), {
+            target: { value: text },
+        });
+        expect(change).toHaveBeenCalledWith("san-jose");
+    },
+);
+it("allows an unlisted English city and preserves existing custom cities", () => {
+    const change = vi.fn();
+    render(
+        <AdminCitySelect
+            label="城市"
+            value="boston"
+            region="US"
+            onChange={change}
+        />,
+    );
+    expect((screen.getByRole("combobox") as HTMLInputElement).value).toBe(
+        "boston",
+    );
+    expect(screen.getByText(/未收录城市翻译/)).toBeTruthy();
+    fireEvent.change(screen.getByRole("combobox"), {
+        target: { value: "Salt Lake City" },
+    });
+    expect(change).toHaveBeenCalledWith("Salt Lake City");
+    expect(
+        linkNode("region_code", "JP", { city_code: "boston" }).city_code,
+    ).toBe("boston");
+});
+it("clears a known city when changing to another country", () => {
+    expect(
+        linkNode("region_code", "JP", { city_code: "san-jose" }).city_code,
+    ).toBe("");
+    expect(
+        linkNode("region_code", "US", { city_code: "san-jose" }).city_code,
+    ).toBe("san-jose");
+});
+it("renders a Chinese city label but saves the city identifier in the node editor", async () => {
+    const save = vi.fn().mockResolvedValue(undefined);
+    render(
+        <EditorFieldContext.Provider value={adminEditorField}>
+            <Editor
+                fields={[{ key: "city_code", label: "城市" }]}
+                initial={{ region_code: "US", city_code: "san-jose" }}
+                onSave={save}
+            />
+        </EditorFieldContext.Provider>,
+    );
+    expect((screen.getByRole("combobox") as HTMLInputElement).value).toBe(
+        "圣何塞",
+    );
+    fireEvent.change(screen.getByRole("combobox"), {
+        target: { value: "纽约" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+    await waitFor(() =>
+        expect(save).toHaveBeenCalledWith({
+            region_code: "US",
+            city_code: "new-york",
+        }),
+    );
+});

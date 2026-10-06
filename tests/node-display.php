@@ -5,6 +5,11 @@ $app->make(Illuminate\Contracts\Console\Kernel::class)->bootstrap();
 if (!app()->environment('local')) throw new RuntimeException('Local test only');
 $checks=0;
 $assert=function ($ok,$message) use (&$checks) { if (!$ok) throw new RuntimeException($message); $checks++; };
+$catalog = App\Services\NodeDisplayService::catalog();
+foreach ($catalog['cityRegions'] as $city => $region) {
+    $assert(isset($catalog['cities'][$city], $catalog['regions'][$region]), 'City reference has valid translations and country: '.$city);
+}
+$assert(count($catalog['cityRegions']) === count($catalog['cities']), 'All reference cities have country mappings');
 $normalize = [App\Services\NodeDisplayService::class, 'normalizeInput'];
 $assert($normalize(['city_code'=>'San Jose'])['city_code']==='san-jose', 'English city case and spaces normalized');
 $assert($normalize(['city_code'=>'  SAN_JOSE  '])['city_code']==='san-jose', 'Whitespace and underscores normalized');

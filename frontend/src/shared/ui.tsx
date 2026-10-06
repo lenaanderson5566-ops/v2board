@@ -344,6 +344,7 @@ export type EditorFieldRenderer = (
     field: Field,
     value: unknown,
     onChange: (value: unknown) => void,
+    values: Row,
 ) => ReactNode | undefined;
 export const EditorFieldContext = createContext<
     EditorFieldRenderer | undefined
@@ -547,6 +548,7 @@ export function Editor({
                 {activeFields.map((f) => {
                     const extension = renderField?.(f, value[f.key], (next) =>
                         updateValue(f.key, next),
+                        value,
                     );
                     return (
                         <Fragment key={f.key}>

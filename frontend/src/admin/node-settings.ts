@@ -183,7 +183,7 @@ export function nodeSettingsFields(fields: Field[]): Field[] {
               ]
             : [{ ...field, ...(field.key === "city_code" ? {
                   label: "城市标识",
-                  hint: "支持英文城市名，例如 San Jose，保存时自动转换为 san-jose；已收录的中文城市名也可自动识别。",
+                  hint: "参考城市随国家 / 地区筛选；支持中文、英文检索，也可输入未收录的英文城市名，例如 San Jose。",
               } : {}) }],
     );
 }

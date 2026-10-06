@@ -2714,5 +2714,22 @@
       "zh-CN": "阿姆斯特丹",
       "en-US": "Amsterdam"
     }
+  },
+  "cityRegions": {
+    "tokyo": "JP",
+    "osaka": "JP",
+    "seoul": "KR",
+    "singapore": "SG",
+    "hong-kong": "HK",
+    "taipei": "TW",
+    "los-angeles": "US",
+    "san-jose": "US",
+    "new-york": "US",
+    "london": "GB",
+    "frankfurt": "DE",
+    "paris": "FR",
+    "sydney": "AU",
+    "toronto": "CA",
+    "amsterdam": "NL"
   }
 }

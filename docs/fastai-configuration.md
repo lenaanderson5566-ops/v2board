@@ -37,7 +37,13 @@ App 同步时会兼容过滤旧后端返回的已知订阅信息节点，并记�
 
 后台节点编辑增加国家/地区、城市标识与线路后缀。城市使用 `tokyo`、`los-angeles` 等小写标识。所有协议共用 `resources/client/node-locations.json` 翻译目录；新增城市在目录中补充翻译，未收录城市回退为英文标识。缺少国家信息的旧节点保持原名；后缀未填写时保留原名作为区分。
 
-升级后端先执行 `php artisan migrate --force`，无需立即修改现有节点资料。
+升级使用 `update.sh`，脚本会执行节点展示字段的迁移。仅执行 `git pull` 不会更新数据库；已手动拉取代码的部署，应在网站项目目录使用与 PHP-FPM 相同的 PHP 执行本次迁移：
+
+```sh
+php artisan migrate --path=database/migrations/2026_10_06_000001_add_node_display_metadata.php --force
+```
+
+该迁移只给八类节点表增加可空的地区代码、城市标识与线路后缀，不删除节点或修改节点地址。未迁移时，即使只编辑地址，后台提交的展示字段也会使数据库保存失败。不要运行 `migrate:fresh`。无需立即修改现有节点资料。
 `GET /api/v10/me/nodes` 返回 `nodeId`、`proxyName`、`regionCode`、`cityCode`、`displayLabel`、`displayNames` 和现有 `tags`，仅含账号有权限访问的节点。
 
 新版 FastAI 发送 `Accept: application/json`，专用配置响应为 `data: {configVersion, yaml, nodes}`，包含 `X-FastAI-Config-Version: 2`。两部分来自同一次查询；内部名称为 `node_<模型类型>_<id>`。App 根据 `proxyName` 映射，显示内置国旗 SVG 与当前语言名称，测速和选择使用内部名称。本地元数据通过 YAML 摘要校验，避免错配。旧 App 请求 YAML 时保持原格式和原名称，响应版本为 1。

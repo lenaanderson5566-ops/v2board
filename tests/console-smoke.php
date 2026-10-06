@@ -133,6 +133,12 @@ try {
     $assert($response->getStatusCode() === 200, 'Structured node save failed: ' . $response->getContent());
     $node = App\Models\ServerV2node::where('name', 'console-smoke-node')->first();
     $assert($node && $node->tls_settings['server_name'] === 'example.invalid' && $node->network_settings['headers']['Host'] === 'example.invalid', 'Structured node values did not persist');
+    $updated = $nodeParams + ['id' => $node->id, 'region_code' => 'us', 'city_code' => 'San Jose', 'display_label' => 'A'];
+    $updated['host'] = 'updated.example.invalid';
+    $response = $call('/api/v1/' . $securePath . '/server/v2node/save', $updated, $token);
+    $assert($response->getStatusCode() === 200, 'Updated address and location save failed');
+    $node->refresh();
+    $assert($node->host === 'updated.example.invalid' && $node->region_code === 'US' && $node->city_code === 'san-jose' && $node->display_label === 'A', 'Successful response must persist address and normalized location');
     $nodeVariants = [
         'vmess' => ['tls' => 1, 'network' => 'xhttp', 'networkSettings' => ['path' => '/test', 'mode' => 'auto', 'security' => 'auto']],
         'vless' => ['tls' => 1, 'network' => 'tcp', 'tls_settings' => ['server_name' => 'example.invalid']],

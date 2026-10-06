@@ -34,6 +34,7 @@ echo '<?php // fixture' > database/migrations/2026_10_03_000001_add_notice_trans
 echo '<?php // fixture' > database/migrations/2026_10_05_000001_create_invitation_rewards.php
 echo '<?php // fixture' > database/migrations/2026_10_05_000002_create_credit_batches.php
 echo '<?php // fixture' > database/migrations/2026_10_05_000003_add_order_currency.php
+echo '<?php // fixture' > database/migrations/2026_10_06_000001_add_node_display_metadata.php
 mkdir -p storage/geoip
 echo 'new mmdb' > storage/geoip/GeoLite2-ASN.mmdb
 git add -f storage/geoip/GeoLite2-ASN.mmdb
@@ -102,6 +103,7 @@ grep -q 'migrate --path=database/migrations/2026_10_02_000002' calls.log
 grep -q 'migrate --path=database/migrations/2026_10_02_000003' calls.log
 grep -q 'migrate --path=database/migrations/2026_10_02_000004' calls.log
 grep -q 'migrate --path=database/migrations/2026_10_02_000005' calls.log
+grep -q 'migrate --path=database/migrations/2026_10_06_000001_add_node_display_metadata.php --force --no-interaction' calls.log
 grep -q 'artisan console:verify' calls.log
 [[ $(stat -c %a public/console/.vite/manifest.json) == 644 ]]
 [[ $(stat -c %a composer.json) == 644 && $(stat -c %a composer.lock) == 644 ]]

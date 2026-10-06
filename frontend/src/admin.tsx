@@ -1546,7 +1546,7 @@ export function Settings() {
                     creditGroups.reload();
                 }}
             >
-                {group === "app" && <AdminFastaiDownloads key={JSON.stringify(raw.fastai_releases)} initial={raw.fastai_releases || []} save={async releases => { await request(admin("config/save"), { fastai_releases: releases }); d.reload(); }} />}
+                {group === "app" && <AdminFastaiDownloads key={JSON.stringify(raw.fastai_releases)} initial={raw.fastai_releases || []} save={async releases => { await request(admin("config/save"), { fastai_releases: releases }); }} />}
                 <Editor
                     key={group + JSON.stringify(raw)}
                     fields={fields}

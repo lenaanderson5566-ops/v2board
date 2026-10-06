@@ -26,3 +26,24 @@ it("removes a package and reports server validation errors", async () => {
     await waitFor(() => expect(screen.getByRole("status").textContent).toContain("Duplicate release target"));
     expect(save).toHaveBeenCalledWith([]);
 });
+
+it("keeps inputs editable while saving and saves later edits on the next submission", async () => {
+    let finish!: () => void;
+    const save = vi.fn().mockImplementationOnce(() => new Promise<void>(resolve => { finish = resolve; })).mockResolvedValue(undefined);
+    render(<AdminFastaiDownloads initial={[release]} save={save} />);
+    fireEvent.click(screen.getByText("保存 FastAI 下载设置"));
+    const input = screen.getByLabelText("最新版本") as HTMLInputElement;
+    expect(input.matches(":disabled")).toBe(false);
+    expect((screen.getByText("保存中…") as HTMLButtonElement).disabled).toBe(true);
+    fireEvent.change(input, { target: { value: "1.3.0" } });
+    expect(save.mock.calls[0][0][0].latestVersion).toBe("1.2.0");
+    finish();
+    await waitFor(() => expect((screen.getByText("保存 FastAI 下载设置") as HTMLButtonElement).disabled).toBe(false));
+    expect(input.value).toBe("1.3.0");
+    expect(screen.getByRole("status").textContent).toContain("后续修改尚未保存");
+    fireEvent.change(input, { target: { value: "1.4.0" } });
+    fireEvent.click(screen.getByText("保存 FastAI 下载设置"));
+    await waitFor(() => expect(save).toHaveBeenCalledTimes(2));
+    expect(save.mock.calls[1][0][0].latestVersion).toBe("1.4.0");
+    await waitFor(() => expect((screen.getByText("保存 FastAI 下载设置") as HTMLButtonElement).disabled).toBe(false));
+});

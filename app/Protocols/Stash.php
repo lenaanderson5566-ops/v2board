@@ -74,7 +74,7 @@ class Stash
             }
         }
 
-        $config = \App\Services\ClientConfigService::clash($config, $proxy);
+        $config = \App\Services\ClientConfigService::clash($config, $proxy, $servers);
         $subsDomain = request()->getHost();
         if ($subsDomain && filter_var($subsDomain, FILTER_VALIDATE_DOMAIN, FILTER_FLAG_HOSTNAME)) {
             $config['rules'] = $config['rules'] ?? [];

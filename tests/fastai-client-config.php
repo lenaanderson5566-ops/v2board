@@ -5,9 +5,9 @@ $app->make(Illuminate\Contracts\Console\Kernel::class)->bootstrap();
 if (!app()->environment('local')) throw new RuntimeException('Local test only');
 $checks = 0;
 $assert = function ($ok, $label) use (&$checks) { if (!$ok) throw new RuntimeException($label); $checks++; };
-$call = function ($path, $token = null, $method = 'GET') use ($app) {
+$call = function ($path, $token = null, $method = 'GET', $accept = 'application/yaml') use ($app) {
     $request = Illuminate\Http\Request::create($path, $method, [], [], [], [
-        'HTTP_ACCEPT_LANGUAGE'=>'en-US', 'HTTP_USER_AGENT'=>'fastai/0.8.99',
+        'HTTP_ACCEPT'=>$accept, 'HTTP_ACCEPT_LANGUAGE'=>'en-US', 'HTTP_USER_AGENT'=>'fastai/0.8.99',
     ]);
     if ($token) $request->headers->set('Authorization', 'Bearer '.$token);
     $app->instance('request', $request);
@@ -45,6 +45,17 @@ try {
     $assert(str_contains($response->headers->get('Cache-Control'), 'no-store'), 'Private config is not cached');
     $assert(!$response->headers->has('Location'), 'No subscription redirect');
     $assert($response->headers->get('X-FastAI-Config-Version')==='1', 'Native configuration has a deployment verification marker');
+    $bundle = $call($path, $token, 'GET', 'application/json');
+    $data = json_decode($bundle->getContent(), true)['data'];
+    $assert($bundle->headers->get('X-FastAI-Config-Version')==='2', 'JSON format negotiation survives API middleware');
+    $assert(isset($data['configVersion'], $data['yaml'], $data['nodes']), 'One snapshot contains YAML and metadata');
+    $parsed = Symfony\Component\Yaml\Yaml::parse($data['yaml']);
+    $assert($data['nodes'][0]['proxyName']===$parsed['proxies'][0]['name'], 'Node identity matches kernel configuration');
+    $assert(!isset($data['nodes'][0]['uuid'], $data['nodes'][0]['host']), 'Display metadata excludes connection credentials');
+    $nodesResponse = $call('/api/v10/me/nodes', $token, 'GET', 'application/json');
+    $nodeData = json_decode($nodesResponse->getContent(), true)['data'];
+    $assert($nodeData[0]['proxyName']===$data['nodes'][0]['proxyName'], 'Nodes resource exposes same stable identity');
+
     $assert(!$response->headers->has('subscription-userinfo'), 'Native response omits subscription metadata header');
     $nativeConfig = Symfony\Component\Yaml\Yaml::parse($response->getContent());
     $assert($nativeConfig['geo-auto-update']===false && !isset($nativeConfig['geox-url']), 'Native config uses bundled Geo data without online updates');

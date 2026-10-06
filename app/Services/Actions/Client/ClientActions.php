@@ -25,7 +25,21 @@ class ClientActions
             $this->rejectNativeConfig($request, 'CLIENT_VERSION_TOO_LOW', 'Please update your client.', 409);
         }
         $request->merge(['user' => $user, 'flag' => 'flclash', 'language' => app()->getLocale()]);
-        return response($this->subscribe($request), 200, ['Content-Type' => 'application/yaml', 'X-FastAI-Config-Version' => '1']);
+        $yaml = $this->subscribe($request);
+        if ($request->attributes->get('client.nodes') !== null) {
+            $nodes = $request->attributes->get('client.nodes');
+            $version = hash('sha256', $yaml.json_encode($nodes));
+            return response()->json(['data'=>['configVersion'=>$version, 'yaml'=>$yaml, 'nodes'=>$nodes]], 200, ['X-FastAI-Config-Version'=>'2', 'Cache-Control'=>'private, no-store', 'Vary'=>'Accept, Accept-Language']);
+        }
+        return response($yaml, 200, ['Content-Type' => 'application/yaml', 'X-FastAI-Config-Version' => '1', 'Cache-Control'=>'private, no-store', 'Vary'=>'Accept, Accept-Language']);
+    }
+
+    private function structuredConfig(Request $request): bool
+    {
+        $accepted = \Symfony\Component\HttpFoundation\AcceptHeader::fromString((string)$request->attributes->get('v10.requestedAccept', $request->header('Accept')));
+        $json = $accepted->get('application/json');
+        $yaml = $accepted->get('application/yaml');
+        return $json && $json->getQuality() > 0 && (!$yaml || $json->getQuality() >= $yaml->getQuality());
     }
 
     private function rejectNativeConfig(Request $request, string $code, string $message, int $status = 403): void
@@ -90,11 +104,14 @@ class ClientActions
                 $serverService = new ServerService();
                 $servers = $serverService->getAvailableServers($user);
 
+                if (!$request->attributes->get('client.native')) {
+                    $servers = \App\Services\NodeDisplayService::publicServers($servers, $language);
+                }
                 if (!$request->attributes->get('client.native') && $resolvedFlag !== 'sing') {
                     $this->setSubscribeInfoToServers($servers, $user);
                 }
                 $class = $request->attributes->get('client.native')
-                    ? new \App\Services\FastaiConfig($clientUser, $servers)
+                    ? new \App\Services\FastaiConfig($clientUser, $servers, $this->structuredConfig($request))
                     : $this->resolveProtocolHandler($resolvedFlag, $clientUser, $servers);
                 $resolvedClientType = $class->flag;
                 $riskLogService->createSubscribeLog($this->buildSubscribeLogPayload(
@@ -103,7 +120,11 @@ class ClientActions
                     $resolvedClientType,
                     'success'
                 ));
-                return $class->handle();
+                $content = $class->handle();
+                if ($class instanceof \App\Services\FastaiConfig && $this->structuredConfig($request)) {
+                    $request->attributes->set('client.nodes', $class->nodes());
+                }
+                return $content;
             } catch (\Throwable $e) {
                 $riskLogService->createSubscribeLog($this->buildSubscribeLogPayload(
                     $request,

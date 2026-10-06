@@ -76,7 +76,7 @@ class ClashVerge
             }
         }
 
-        $config = \App\Services\ClientConfigService::clash($config, $proxy);
+        $config = \App\Services\ClientConfigService::clash($config, $proxy, $servers);
 
         $yaml = Yaml::dump($config, 2, 4, Yaml::DUMP_EMPTY_ARRAY_AS_SEQUENCE);
         return $yaml;

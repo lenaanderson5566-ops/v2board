@@ -32,3 +32,16 @@ FastAI 通过 Bearer 会话请求 `GET /api/v10/me/client-config`，使用
 如果线上仍返回订阅信息节点，需要部署最新后端并按照实际运行环境重新加载 PHP 工作进程／OPcache，
 随后重新请求专用接口。不要将 YAML、Bearer 令牌或节点密码写入部署核实日志。
 App 同步时会兼容过滤旧后端返回的已知订阅信息节点，并记录过滤数量；修复后重新同步即可更新旧配置。
+
+## 节点地区与名称
+
+后台节点编辑增加国家/地区、城市标识与线路后缀。城市使用 `tokyo`、`los-angeles` 等小写标识。所有协议共用 `resources/client/node-locations.json` 翻译目录；新增城市在目录中补充翻译，未收录城市回退为英文标识。缺少国家信息的旧节点保持原名；后缀未填写时保留原名作为区分。
+
+升级后端先执行 `php artisan migrate --force`，无需立即修改现有节点资料。
+`GET /api/v10/me/nodes` 返回 `nodeId`、`proxyName`、`regionCode`、`cityCode`、`displayLabel`、`displayNames` 和现有 `tags`，仅含账号有权限访问的节点。
+
+新版 FastAI 发送 `Accept: application/json`，专用配置响应为 `data: {configVersion, yaml, nodes}`，包含 `X-FastAI-Config-Version: 2`。两部分来自同一次查询；内部名称为 `node_<模型类型>_<id>`。App 根据 `proxyName` 映射，显示内置国旗 SVG 与当前语言名称，测速和选择使用内部名称。本地元数据通过 YAML 摘要校验，避免错配。旧 App 请求 YAML 时保持原格式和原名称，响应版本为 1。
+
+公开订阅仍使用标准协议，自动输出国旗 emoji、地区代码和对应语言名称，模板正则兼容原节点名。语言沿用订阅链接和账号的现有协商规则。不要将专用配置链接交给第三方客户端导入。
+
+另运行 `php tests/node-display.php`。生产部署后重新加载 PHP/OPcache，核实 JSON 响应版本 2；不要记录含节点认证信息的响应体。

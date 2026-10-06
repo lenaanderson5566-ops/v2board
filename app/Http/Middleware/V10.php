@@ -11,6 +11,7 @@ class V10
     {
         $started=microtime(true); $requestId=(string)Str::uuid();
         $request->attributes->set('requestId',$requestId);
+        $request->attributes->set('v10.requestedAccept', (string)$request->header('Accept'));
         if (!$request->is('api/v10/webhooks/*')) $request->headers->set('Accept','application/json');
         $language='zh-CN'; $candidates=[];
         foreach (explode(',',(string)$request->header('Accept-Language')) as $index=>$candidate) {

@@ -1,3 +1,4 @@
+import nodeLocations from "../../../resources/client/node-locations.json";
 import { AdminFastaiDownloads } from "./AdminFastaiDownloads";
 import { AdminRiskReview } from "./AdminRiskReview";
 import { supportedClients as recommendationClients } from "../shared/import-links";
@@ -2392,6 +2393,10 @@ export function Nodes() {
                                                     ],
                                                 ],
                                             } as Field;
+                                        if (k === "region_code") return {
+                                            key: k, label: nodeLabels[k], type: "select", nullable: true,
+                                            options: [["", "保留原节点名称"], ...Object.entries(nodeLocations.regions).map(([code, names]) => [code, `${names["zh-CN"]} (${code})`])],
+                                        } as Field;
                                         const enumRule =
                                             str.match(/(?:^|\|)in:([^|]+)/);
                                         if (enumRule)
@@ -2490,6 +2495,9 @@ const nodeLabels: Record<string, string> = {
     route_id: "路由规则",
     rate: "流量倍率",
     tags: "标签数组",
+    region_code: "国家 / 地区代码",
+    city_code: "城市标识（例如 tokyo）",
+    display_label: "线路编号 / 后缀（例如 A）",
     parent_id: "父节点 ID",
     protocol: "协议",
     network: "传输方式",

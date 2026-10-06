@@ -10261,21 +10261,76 @@
                 "schema": {
                   "type": "string"
                 }
-              },
-              "X-FastAI-Config-Version": {
-                "description": "Native configuration format marker for deployment verification.",
-                "schema": {
-                  "type": "string",
-                  "enum": [
-                    "1"
-                  ]
-                }
               }
             },
             "content": {
               "application/yaml": {
                 "schema": {
                   "type": "string"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "required": [
+                        "configVersion",
+                        "yaml",
+                        "nodes"
+                      ],
+                      "properties": {
+                        "configVersion": {
+                          "type": "string"
+                        },
+                        "yaml": {
+                          "type": "string"
+                        },
+                        "nodes": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "nodeId": {
+                                "type": "string"
+                              },
+                              "proxyName": {
+                                "type": "string"
+                              },
+                              "name": {
+                                "type": "string"
+                              },
+                              "regionCode": {
+                                "type": "string",
+                                "nullable": true
+                              },
+                              "cityCode": {
+                                "type": "string",
+                                "nullable": true
+                              },
+                              "displayLabel": {
+                                "type": "string",
+                                "nullable": true
+                              },
+                              "tags": {
+                                "type": "array",
+                                "items": {
+                                  "type": "string"
+                                }
+                              },
+                              "displayNames": {
+                                "type": "object",
+                                "additionalProperties": {
+                                  "type": "string"
+                                }
+                              }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
                 }
               }
             }
@@ -11289,6 +11344,32 @@
             "type": "string",
             "format": "date-time",
             "nullable": true
+          },
+          "nodeId": {
+            "type": "string",
+            "nullable": true
+          },
+          "proxyName": {
+            "type": "string",
+            "nullable": true
+          },
+          "regionCode": {
+            "type": "string",
+            "nullable": true
+          },
+          "cityCode": {
+            "type": "string",
+            "nullable": true
+          },
+          "displayLabel": {
+            "type": "string",
+            "nullable": true
+          },
+          "displayNames": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string"
+            }
           }
         },
         "additionalProperties": false

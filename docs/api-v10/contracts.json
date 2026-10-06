@@ -514,6 +514,24 @@
       "lastCheckedAt": [
         "last_check_at",
         "time"
+      ],
+      "nodeId": [
+        "node_id"
+      ],
+      "proxyName": [
+        "proxy_name"
+      ],
+      "regionCode": [
+        "region_code"
+      ],
+      "cityCode": [
+        "city_code"
+      ],
+      "displayLabel": [
+        "display_label"
+      ],
+      "displayNames": [
+        "display_names"
       ]
     },
     "traffic": {

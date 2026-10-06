@@ -36,6 +36,7 @@ class ClashMeta
         } else {
             $config = Yaml::parseFile($defaultConfig);
         }
+        $this->validateTemplate($config);
         $proxy = [];
         $proxies = [];
 
@@ -80,11 +81,15 @@ class ClashMeta
             }
         }
 
-        $config = \App\Services\ClientConfigService::clash($config, $proxy);
+        $config = \App\Services\ClientConfigService::clash($config, $proxy, $servers);
         $config = $this->prepareConfig($config);
 
         $yaml = Yaml::dump($config, 2, 4, Yaml::DUMP_EMPTY_ARRAY_AS_SEQUENCE);
         return $yaml;
+    }
+
+    protected function validateTemplate(array $config): void
+    {
     }
 
     protected function prepareConfig(array $config): array

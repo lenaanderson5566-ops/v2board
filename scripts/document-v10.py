@@ -49,6 +49,7 @@ for name, fields in contracts['schemas'].items():
             prop = {'type': 'number', 'nullable': True}
         else:
             prop = {'type': 'string', 'nullable': True}
+        if name == 'node' and field == 'displayNames': prop = {'type':'object','additionalProperties':{'type':'string'}}
         if field == 'currency': prop = {'type': 'string', 'enum': ['CNY']}
         if field == 'ticketCreation': prop = {'type': 'string', 'enum': ['allowed', 'purchase_required', 'closed']}
         if 'Bytes' in field or field == 'bytes': prop['description'] = 'Integer bytes.'
@@ -180,6 +181,9 @@ for entry in entries:
     mapping.append(f"| `{legacy_label}` | `{entry['method']} /api/v10/{entry['path']}` | {entry['role']} | {contract['output']} |")
 
 document = {'openapi': '3.0.3', 'info': {'title': 'FastDog user API', 'version': '10.0.0', 'description': 'Parallel user API. Administrative, staff, operations and node communication contracts are unchanged.'}, 'servers': [{'url': '/api/v10'}], 'paths': paths, 'components': {'securitySchemes': {'bearerAuth': {'type': 'http', 'scheme': 'bearer', 'bearerFormat': 'JWT'}}, 'schemas': schemas}}
+if '/me/client-config' in document['paths']:
+    document['paths']['/me/client-config']['get']['responses']['200']['content']['application/json'] = {'schema': {'type': 'object', 'properties': {'data': {'type': 'object', 'required': ['configVersion', 'yaml', 'nodes'], 'properties': {'configVersion': {'type': 'string'}, 'yaml': {'type': 'string'}, 'nodes': {'type': 'array', 'items': {'type': 'object', 'properties': {'nodeId': {'type': 'string'}, 'proxyName': {'type': 'string'}, 'name': {'type': 'string'}, 'regionCode': {'type': 'string', 'nullable': True}, 'cityCode': {'type': 'string', 'nullable': True}, 'displayLabel': {'type': 'string', 'nullable': True}, 'tags': {'type': 'array', 'items': {'type': 'string'}}, 'displayNames': {'type': 'object', 'additionalProperties': {'type': 'string'}}}}}}}}}}
+
 (root / 'docs/api-v10/openapi.json').write_text(json.dumps(document, ensure_ascii=False, indent=2) + '\n', encoding='utf-8')
 (root / 'docs/api-v10/mapping.md').write_text('\n'.join(mapping) + '\n', encoding='utf-8')
 

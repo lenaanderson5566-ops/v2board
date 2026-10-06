@@ -54,6 +54,9 @@ export function formPresentation(fields: Field[], kind: string): Field[] {
             : kind === "nodes"
               ? [
                     "name",
+                    "region_code",
+                    "city_code",
+                    "display_label",
                     "rate",
                     "tags",
                     "group_id",

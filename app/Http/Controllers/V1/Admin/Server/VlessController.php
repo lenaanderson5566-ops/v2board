@@ -28,6 +28,9 @@ class VlessController extends Controller
             'encryption' => 'nullable',
             'encryption_settings' => 'nullable|array',
             'tags' => 'nullable|array',
+            'region_code' => 'nullable|string|size:2|in:' . implode(',', \App\Services\NodeDisplayService::regionCodes()),
+            'city_code' => 'nullable|string|max:64|regex:/^[a-z0-9][a-z0-9-]*$/',
+            'display_label' => 'nullable|string|max:64',
             'rate' => 'required',
             'show' => 'nullable|in:0,1',
             'sort' => 'nullable'

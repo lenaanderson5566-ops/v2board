@@ -19,7 +19,7 @@ class ServerActions
         $userService = new UserService();
         if ($userService->isAvailable($user)) {
             $serverService = new ServerService();
-            $servers = $serverService->getAvailableServers($user);
+            $servers = array_map(fn ($server) => \App\Services\NodeDisplayService::enrich($server), $serverService->getAvailableServers($user));
         }
         $eTag = sha1(json_encode(array_column($servers, 'cache_key')));
         if (strpos($request->header('If-None-Match'), $eTag) !== false ) {

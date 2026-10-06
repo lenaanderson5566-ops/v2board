@@ -21,15 +21,20 @@ class ClientConfigService
         return $items;
     }
 
-    public static function clash(array $config, array $nodes): array
+    public static function clash(array $config, array $nodes, array $servers = []): array
     {
         if (!isset($config['proxy-groups']) || !is_array($config['proxy-groups'])) {
             throw new \RuntimeException('客户端模板缺少 proxy-groups');
         }
         $existing = $config['proxies'] ?? [];
         $reserved = array_merge(['DIRECT', 'REJECT', 'GLOBAL'], array_column($config['proxy-groups'], 'name'), array_column($existing, 'name'));
+        $sources = array_column($servers, 'original_name', 'name');
+        $before = array_column($nodes, 'name');
         $nodes = self::uniqueNames($nodes, 'name', $reserved);
         $names = array_column($nodes, 'name');
+        $original = [];
+        foreach ($names as $index=>$name) $original[$name] = $sources[$before[$index]] ?? $before[$index];
+        $renamed = array_diff_key(array_flip(array_filter($original)), array_fill_keys(array_merge(['DIRECT', 'REJECT', 'GLOBAL'], array_column($config['proxy-groups'], 'name')), true));
         $config['proxies'] = array_merge($existing, $nodes);
         foreach ($config['proxy-groups'] as &$group) {
             $members = [];
@@ -38,10 +43,10 @@ class ClientConfigService
                 if (@preg_match($source, '') !== false) {
                     $filtered = true;
                     foreach ($names as $name) {
-                        if (@preg_match($source, $name)) $members[] = $name;
+                        if (@preg_match($source, $name) || @preg_match($source, $original[$name] ?? $name)) $members[] = $name;
                     }
                 } else {
-                    $members[] = $source;
+                    $members[] = $renamed[$source] ?? $source;
                 }
             }
             if (!$filtered) $members = array_merge($members, $names);
@@ -50,6 +55,14 @@ class ClientConfigService
             if (!$group['proxies'] && empty($group['use'])) $group['proxies'] = ['REJECT'];
         }
         unset($group);
+        foreach ($config['rules'] ?? [] as $index=>$rule) {
+            if (!is_string($rule)) continue;
+            $parts = explode(',', $rule);
+            $target = count($parts)-1;
+            if (($parts[$target] ?? '') === 'no-resolve') $target--;
+            if (isset($renamed[$parts[$target] ?? '']) && !in_array($parts[$target], array_column($config['proxy-groups'], 'name'), true)) $parts[$target] = $renamed[$parts[$target]];
+            $config['rules'][$index] = implode(',', $parts);
+        }
         // Replace BEFORE serializing: quotes/newlines in a brand must not corrupt YAML.
         $appName = trim(str_replace(',', '，', preg_replace('/[\x00-\x1f\x7f]/u', ' ', (string) config('v2board.app_name', 'V2Board'))));
         if ($appName === '' || in_array($appName, array_merge(['DIRECT', 'REJECT', 'GLOBAL'], $names, array_column($existing, 'name'), array_column($config['proxy-groups'], 'name')), true)) $appName = 'Proxy selection';

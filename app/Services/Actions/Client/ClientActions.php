@@ -231,6 +231,19 @@ class ClientActions
         return new General($user, $servers);
     }
 
+    private function subscriptionDate(int $timestamp): string
+    {
+        $date = \Carbon\Carbon::createFromTimestamp($timestamp, config('app.timezone', 'UTC'));
+        $offset = (int)($date->getOffset() / 60);
+        $zone = 'GMT';
+        if ($offset !== 0) {
+            $minutes = abs($offset) % 60;
+            $zone .= ($offset > 0 ? '+' : '-').intdiv(abs($offset), 60);
+            if ($minutes !== 0) $zone .= ':'.str_pad((string)$minutes, 2, '0', STR_PAD_LEFT);
+        }
+        return $date->format('Y-m-d H:i').' '.$zone;
+    }
+
     private function setSubscribeInfoToServers(&$servers, $user)
     {
         if (!isset($servers[0])) return;
@@ -239,7 +252,7 @@ class ClientActions
         $totalTraffic = \App\Services\TrafficCreditService::forClient($user)->transfer_enable;
         $remainingTraffic = Helper::trafficConvert($totalTraffic - $useTraffic);
         $copy = $this->subscriptionCopy();
-        $expiredDate = $user['expired_at'] ? date('Y-m-d H:i', $user['expired_at']).' '.config('app.timezone') : $copy['unlimited'];
+        $expiredDate = $user['expired_at'] ? $this->subscriptionDate((int)$user['expired_at']) : $copy['unlimited'];
         $userService = new UserService();
         $resetAt = $userService->getResetAt($user);
         array_unshift($servers, array_merge($servers[0], [
@@ -247,7 +260,7 @@ class ClientActions
         ]));
         if ($resetAt) {
             array_unshift($servers, array_merge($servers[0], [
-                'name' => $copy['reset'].': '.date('Y-m-d H:i', $resetAt).' '.config('app.timezone'),
+                'name' => $copy['reset'].': '.$this->subscriptionDate($resetAt),
             ]));
         }
         array_unshift($servers, array_merge($servers[0], [

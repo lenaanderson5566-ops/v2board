@@ -14,4 +14,19 @@ foreach ($copy as $locale=>$words) {
         $checks++;
     }
 }
+$date = new ReflectionMethod($controller, 'subscriptionDate'); $date->setAccessible(true);
+$timestamp = strtotime('2026-01-01 00:00:00 UTC');
+foreach ([
+    ['Asia/Shanghai', '2026-01-01 08:00 GMT+8'],
+    ['UTC', '2026-01-01 00:00 GMT'],
+    ['Asia/Kathmandu', '2026-01-01 05:45 GMT+5:45'],
+    ['America/New_York', '2025-12-31 19:00 GMT-5'],
+] as [$zone, $expected]) {
+    config(['app.timezone'=>$zone]);
+    if ($date->invoke($controller, $timestamp) !== $expected) throw new RuntimeException('Incorrect compact timezone '.$zone);
+    $checks++;
+}
+config(['app.timezone'=>'America/New_York']);
+if ($date->invoke($controller, strtotime('2026-07-01 00:00:00 UTC')) !== '2026-06-30 20:00 GMT-4') throw new RuntimeException('Incorrect daylight saving offset');
+$checks++;
 echo "PASS: {$checks} client language checks\n";

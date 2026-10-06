@@ -182,8 +182,11 @@ export function nodeSettingsFields(fields: Field[]): Field[] {
                   },
               ]
             : [{ ...field, ...(field.key === "city_code" ? {
-                  label: "州 / 省或城市",
-                  hint: "按国家 / 地区筛选州、省和城市；可检索中英文名称或云厂商区域代码，未收录的位置可输入英文名称。",
+                  label: "城市 / 州（可选）",
+                  hint: "选城市或州即可，留空仅显示国家；支持中英文名称及云厂商区域代码检索。",
+              } : field.key === "display_label" ? {
+                  label: "线路编号 / 后缀（可选）",
+                  hint: "留空不追加编号，也不会追加原节点名称。",
               } : {}) }],
     );
 }

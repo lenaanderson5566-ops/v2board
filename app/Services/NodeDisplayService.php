@@ -97,8 +97,8 @@ final class NodeDisplayService
         $city = $server['city_code'] ?? '';
         if ($city !== '') $parts[] = $translate($catalog['cities'][$city] ?? []) ?? ucwords(str_replace('-', ' ', $city));
         $label = trim((string)($server['display_label'] ?? ''));
-        // Preserve operator distinctions until a structured suffix has been filled in.
-        $parts[] = $label !== '' ? $label : $server['name'];
+        // Optional display fields must not bring the legacy operator name back into the UI.
+        if ($label !== '') $parts[] = $label;
         return implode(' · ', array_filter($parts, fn ($part) => $part !== null && $part !== ''));
     }
 
@@ -112,7 +112,8 @@ final class NodeDisplayService
             $server['name'] = $flag.' '.$region.' · '.self::name($server, $language);
         }
         unset($server);
-        return $servers;
+        // Public clients require unique names even when only the country is configured.
+        return ClientConfigService::uniqueNames($servers, 'name');
     }
 
     public static function metadata(array $server): array

@@ -60,6 +60,24 @@ $assert($enriched['proxy_name']==='node_shadowsocks_123','Stable identity');
 $assert($enriched['display_names']['zh-CN']==='日本 · 东京 · A','Chinese name');
 $assert($enriched['display_names']['en-US']==='Japan · Tokyo · A','English name');
 $assert(App\Services\NodeDisplayService::name(['name'=>'Legacy'], 'en-US')==='Legacy','Unconfigured nodes retain names');
+foreach ([
+    [[], '美国'],
+    [['city_code'=>'california'], '美国 · 加利福尼亚州'],
+    [['city_code'=>'san-jose'], '美国 · 圣何塞'],
+    [['display_label'=>'A'], '美国 · A'],
+    [['city_code'=>null, 'display_label'=>'  '], '美国'],
+    [['city_code'=>'san-jose', 'display_label'=>'A'], '美国 · 圣何塞 · A'],
+] as [$fields, $expected]) {
+    $node = array_merge(['name'=>'Legacy-Operator-Name','region_code'=>'US'], $fields);
+    $assert(App\Services\NodeDisplayService::name($node, 'zh-CN') === $expected, 'Optional city and suffix render independently');
+    $assert(App\Services\NodeDisplayService::metadata($node)['displayNames']['zh-CN'] === $expected, 'Native metadata uses optional naming');
+}
+$countryOnly = [['name'=>'Original-A', 'region_code'=>'US'], ['name'=>'Original-B', 'region_code'=>'US']];
+$readable = App\Services\NodeDisplayService::publicServers($countryOnly, 'en-US');
+$assert($readable[0]['name'] === '🇺🇸 US · United States' && $readable[1]['name'] === '🇺🇸 US · United States (2)', 'Public country-only names stay unique without legacy suffixes');
+$countryTemplate = ['proxy-groups'=>[['name'=>'Country','type'=>'select','proxies'=>['/Original-A/']]], 'rules'=>['MATCH,Country']];
+$countryConfig = App\Services\ClientConfigService::clash($countryTemplate, array_map(fn($node)=>['name'=>$node['name'],'type'=>'ss'], $readable), $readable);
+$assert($countryConfig['proxy-groups'][0]['proxies'] === [$readable[0]['name']], 'Country-only duplicates preserve individual original-name regex mappings');
 $public=App\Services\NodeDisplayService::publicServers([$server], 'en-US');
 $assert(str_contains($public[0]['name'],'🇯🇵 JP · Japan · Tokyo · A'),'Public readable name');
 $template=['proxy-groups'=>[['name'=>'Main','type'=>'select','proxies'=>['/Japan/']]],'rules'=>['MATCH,Main']];

@@ -31,7 +31,7 @@ it.each(["美国", "United States", "us", "  uS  "])(
         fireEvent.change(input, { target: { value: query } });
         if (query.trim().toLowerCase() === "us")
             expect(screen.getAllByRole("option")).toHaveLength(1);
-        fireEvent.click(screen.getByRole("option", { name: "美国" }));
+        fireEvent.click(screen.getByRole("option", { name: "美国（US）" }));
         expect(change).toHaveBeenCalledWith("US");
         expect(screen.queryByRole("listbox")).toBeNull();
     },
@@ -60,12 +60,7 @@ it("supports keyboard selection and clearing", () => {
     fireEvent.keyDown(input, { key: "ArrowDown" });
     fireEvent.keyDown(input, { key: "Enter" });
     expect(change).toHaveBeenCalledWith(
-        (
-            { 阿拉伯联合酋长国: "AE", 英国: "GB", 美国: "US" } as Record<
-                string,
-                string
-            >
-        )[options[1].textContent!.replace("✓", "")],
+        options[1].textContent!.match(/（([A-Z]{2})）/)![1],
     );
     fireEvent.click(screen.getByRole("button", { name: "清空 国家 / 地区" }));
     expect(change).toHaveBeenLastCalledWith("");
@@ -95,7 +90,7 @@ it("submits the country code through the node editor and clears to null", async 
     fireEvent.change(screen.getByRole("combobox"), {
         target: { value: "United States" },
     });
-    fireEvent.click(screen.getByRole("option", { name: "美国" }));
+    fireEvent.click(screen.getByRole("option", { name: "美国（US）" }));
     fireEvent.click(screen.getByRole("button", { name: "Save" }));
     await waitFor(() =>
         expect(save).toHaveBeenCalledWith({ region_code: "US" }),

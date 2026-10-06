@@ -5,7 +5,7 @@ const options = [
     { code: "", label: "保留原节点名称", search: "保留原节点名称" },
     ...Object.entries(locations.regions).map(([code, names]) => ({
         code,
-        label: names["zh-CN"],
+        label: `${names["zh-CN"]}（${code}）`,
         search: [code, ...Object.values(names)].join(" ").toLowerCase(),
     })),
 ];

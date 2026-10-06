@@ -46,6 +46,7 @@ try {
     $assert(!$response->headers->has('Location'), 'No subscription redirect');
     $assert(!$response->headers->has('subscription-userinfo'), 'Native response omits subscription metadata header');
     $nativeConfig = Symfony\Component\Yaml\Yaml::parse($response->getContent());
+    $assert($nativeConfig['geo-auto-update']===false && !isset($nativeConfig['geox-url']), 'Native config uses bundled Geo data without online updates');
     $assert(array_column($nativeConfig['proxies'], 'name')===['FastAI test node'], 'Native config contains only actual nodes even with subscription info enabled');
     $assert(!isset($nativeConfig['mixed-port']) && !isset($nativeConfig['external-controller']), 'Native template leaves local ports to the app');
     $logged = App\Models\Log::where('uri', '/api/v10/me/client-config')->latest('id')->first();

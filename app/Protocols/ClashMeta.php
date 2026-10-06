@@ -81,9 +81,15 @@ class ClashMeta
         }
 
         $config = \App\Services\ClientConfigService::clash($config, $proxy);
+        $config = $this->prepareConfig($config);
 
         $yaml = Yaml::dump($config, 2, 4, Yaml::DUMP_EMPTY_ARRAY_AS_SEQUENCE);
         return $yaml;
+    }
+
+    protected function prepareConfig(array $config): array
+    {
+        return $config;
     }
 
     public static function buildShadowsocks($password, $server)

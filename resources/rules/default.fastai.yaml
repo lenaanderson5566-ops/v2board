@@ -6,13 +6,9 @@ tcp-concurrent: true
 mode: rule
 log-level: info
 
-# 保留原配置的数据镜像；首次使用需要能够访问该镜像。
+# Geo 数据随 FastAI 安装包提供，仅随 App 版本更新。
 geodata-mode: true
-geo-auto-update: true
-geo-update-interval: 24
-geox-url:
-  geoip: 'https://cdn.gh-proxy.org/github.com/MetaCubeX/meta-rules-dat/releases/download/latest/geoip-lite.dat'
-  geosite: 'https://cdn.gh-proxy.org/github.com/MetaCubeX/meta-rules-dat/releases/download/latest/geosite.dat'
+geo-auto-update: false
 find-process-mode: strict
 profile:
   store-selected: true

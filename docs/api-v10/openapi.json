@@ -10358,7 +10358,7 @@
           }
         ],
         "x-permission": "user",
-        "description": "Requires an active session. Order and ticket identifiers are checked against the authenticated owner. Unauthenticated: 401; banned account: 403. FastAI native YAML uses default.fastai.yaml or custom.fastai.yaml, independently of public subscription templates. Only real proxy nodes are emitted; subscription information nodes and subscription-userinfo headers are omitted. Account information is read through the account/subscription JSON APIs."
+        "description": "Requires an active session. Order and ticket identifiers are checked against the authenticated owner. Unauthenticated: 401; banned account: 403. FastAI native YAML uses default.fastai.yaml or custom.fastai.yaml, independently of public subscription templates. Only real proxy nodes are emitted; subscription information nodes and subscription-userinfo headers are omitted. Account information is read through the account/subscription JSON APIs. Geo databases are bundled with FastAI; automatic Geo updates and remote HTTP rule providers are prohibited, including custom templates."
       }
     },
     "/public/fastai/releases/latest": {

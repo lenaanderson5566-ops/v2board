@@ -1,5 +1,10 @@
 # FastAI 配置模板
 
+Geo 数据随 App 内置，后端强制关闭 `geo-auto-update` 并移除
+`geox-url` 与更新间隔，自定义模板也不能覆盖此策略。
+默认模板没有远程规则集；自定义模板中的 HTTP 或含 URL 的规则提供者
+会被拒绝，避免运行时下载规则。可以使用内联规则或随 App 发布的本地规则。
+
 FastAI 通过 Bearer 会话请求 `GET /api/v10/me/client-config`，使用
 `resources/rules/default.fastai.yaml`。需要自定义时，在同一目录创建
 `custom.fastai.yaml`，该文件优先于默认模板，独立于通用订阅的

@@ -31,21 +31,7 @@ final class NodeDisplayService
                     }
                 }
             }
-            $matches = [];
             $region = strtoupper(trim(is_string($input['region_code'] ?? null) ? $input['region_code'] : ''));
-            foreach (self::catalog()['cloudProviders'] ?? [] as $provider => $info) {
-                foreach ($info['regions'] as $alias => $location) {
-                    if ($region !== '' && (self::catalog()['cityRegions'][$location] ?? null) !== $region) continue;
-                    $aliases = [$alias, $provider.':'.$alias, $provider.' '.$alias, $info['name'].' '.$alias];
-                    foreach ($aliases as $candidate) {
-                        if (mb_strtolower($city) === mb_strtolower($candidate)) $matches[$location] = true;
-                    }
-                }
-            }
-            if (count($matches) > 1) {
-                throw \Illuminate\Validation\ValidationException::withMessages(['city_code' => '该区域代码被多个云厂商使用，请从位置列表选择，或输入带厂商前缀的代码，例如 aws:ap-southeast-3']);
-            }
-            if (count($matches) === 1) $city = array_key_first($matches);
             $normalized['city_code'] = strtolower(preg_replace('/[\s_]+/u', '-', $city));
             $locationRegion = self::catalog()['cityRegions'][$normalized['city_code']] ?? null;
             if ($region !== '' && $locationRegion !== null && $region !== $locationRegion) {
@@ -63,7 +49,7 @@ final class NodeDisplayService
             'region_code.in' => '请选择有效的国家 / 地区',
             'city_code.string' => '位置标识必须是文本',
             'city_code.max' => '位置标识不能超过 64 个字符',
-            'city_code.regex' => '位置请从参考列表选择，或输入英文州、省或城市名；已收录的中文名称及厂商区域代码可自动识别',
+            'city_code.regex' => '位置请从参考列表选择，或输入英文州、省或城市名；已收录的中文名称可自动识别',
             'display_label.string' => '线路编号 / 后缀必须是文本',
             'display_label.max' => '线路编号 / 后缀不能超过 64 个字符',
         ];

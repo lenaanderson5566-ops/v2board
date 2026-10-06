@@ -69,7 +69,7 @@ export function AdminCitySelect({
                     aria-activedescendant={
                         open && matches[active] ? `${id}-${active}` : undefined
                     }
-                    placeholder="检索州、省、城市或厂商区域代码"
+                    placeholder="检索州、省或城市名称"
                     value={open ? query : (selected?.label ?? code)}
                     onFocus={() => setOpen(true)}
                     onClick={() => setOpen(true)}
@@ -164,8 +164,7 @@ export function AdminCitySelect({
                                         textAlign: "left",
                                     }}
                                 >
-                                    {option.references.join(" · ") ||
-                                        option.code}
+                                    {option.kind === "state" ? "州 / 省" : "城市"}
                                 </small>
                             </span>
                             <span>{code === option.code ? "✓" : ""}</span>
@@ -180,7 +179,7 @@ export function AdminCitySelect({
             )}
             {!!code && !selected && (
                 <small className="muted">
-                    未收录位置翻译，将使用英文名称；区域代码重名时请从列表选择位置。
+                    未收录位置翻译，将使用英文名称；保存时自动规范化标识。
                 </small>
             )}
         </div>

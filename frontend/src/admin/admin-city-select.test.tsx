@@ -115,16 +115,14 @@ it("renders a Chinese city label but saves the city identifier in the node edito
     );
 });
 
-it("finds qualified cloud codes and allows explicit selection for ambiguous codes", () => {
+it("searches geographic names without cloud code aliases", () => {
     const change = vi.fn();
-    render(
-        <AdminCitySelect label="位置" value="" region="" onChange={change} />,
-    );
+    render(<AdminCitySelect label="位置" value="" region="US" onChange={change} />);
     const input = screen.getByRole("combobox");
-    fireEvent.change(input, { target: { value: "aws:us-west-1" } });
+    fireEvent.change(input, { target: { value: "California" } });
     expect(change).toHaveBeenLastCalledWith("california");
-    fireEvent.change(input, { target: { value: "ap-southeast-3" } });
-    expect(screen.getByRole("option", { name: /雅加达/ })).toBeTruthy();
-    fireEvent.click(screen.getByRole("option", { name: /吉隆坡/ }));
-    expect(change).toHaveBeenLastCalledWith("kuala-lumpur");
+    expect(screen.getByRole("option", { name: /加利福尼亚州/ })).toBeTruthy();
+    expect(screen.queryByText(/AWS/)).toBeNull();
+    fireEvent.change(input, { target: { value: "us-west-1" } });
+    expect(screen.queryAllByRole("option")).toHaveLength(0);
 });

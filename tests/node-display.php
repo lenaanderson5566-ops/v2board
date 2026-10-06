@@ -37,17 +37,9 @@ foreach (['anytls','hysteria','tuic','v2node','vless'] as $protocol) {
     $validator = Illuminate\Support\Facades\Validator::make($normalize(['city_code'=>'San Jose']), ['city_code'=>$schema['city_code']], App\Services\NodeDisplayService::validationMessages());
     $assert(!$validator->fails(), $protocol.' accepts normalized city');
 }
-foreach ($catalog['cloudProviders'] as $provider => $info) {
-    $assert(str_starts_with($info['source'], 'https://') && $info['verifiedAt'] === '2026-10-06', 'Cloud reference has provenance');
-    foreach ($info['regions'] as $alias => $location) {
-        $assert(isset($catalog['cities'][$location], $catalog['cityRegions'][$location]), 'Cloud reference resolves to known geography');
-        $assert($normalize(['region_code'=>$catalog['cityRegions'][$location], 'city_code'=>$provider.':'.$alias])['city_code'] === $location, 'Qualified cloud region normalizes');
-    }
-}
-$ambiguous = false;
-try { $normalize(['city_code'=>'ap-southeast-3']); }
-catch (Illuminate\Validation\ValidationException $error) { $ambiguous = isset($error->errors()['city_code']); }
-$assert($ambiguous, 'Colliding cloud region requires explicit provider');
+$assert(!isset($catalog['cloudProviders']), 'Catalog contains geography only');
+$assert($normalize(['region_code'=>'US', 'city_code'=>'California'])['city_code'] === 'california', 'State name normalizes');
+$assert($normalize(['city_code'=>'us-west-1'])['city_code'] === 'us-west-1', 'Cloud codes have no geographic alias mapping');
 $mismatch = false;
 try { $normalize(['region_code'=>'US', 'city_code'=>'Tokyo']); }
 catch (Illuminate\Validation\ValidationException $error) { $mismatch = isset($error->errors()['city_code']); }

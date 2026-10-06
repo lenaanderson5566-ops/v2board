@@ -2,31 +2,13 @@ import catalog from "../../../resources/client/node-locations.json";
 
 export const locationOptions = Object.entries(catalog.cities).map(
     ([code, names]) => {
-        const references = Object.entries(catalog.cloudProviders).flatMap(
-            ([provider, info]) =>
-                Object.entries(info.regions)
-                    .filter(([, location]) => location === code)
-                    .map(([region]) => ({
-                        label: `${info.name} ${region}`,
-                        aliases: [
-                            `${provider}:${region}`,
-                            `${provider} ${region}`,
-                            `${info.name} ${region}`,
-                            region,
-                        ],
-                    })),
-        );
-        const aliases = [
-            code,
-            ...Object.values(names),
-            ...references.flatMap((reference) => reference.aliases),
-        ];
+        const aliases = [code, ...Object.values(names)];
         return {
             code,
             country:
                 catalog.cityRegions[code as keyof typeof catalog.cityRegions],
             label: names["zh-CN"],
-            references: references.map((reference) => reference.label),
+            kind: catalog.locationKinds[code as keyof typeof catalog.locationKinds],
             aliases,
             search: aliases.join(" ").toLowerCase(),
         };

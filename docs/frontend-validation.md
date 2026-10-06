@@ -39,3 +39,9 @@ php tests/console-smoke.php
 - Vite 同配置构建对比：主入口从 734.44 kB（gzip 232.91）降至 595.13 kB（gzip 201.15）；user 公共模块从 169.50 kB（gzip 62.21）降至 48.22 kB（gzip 20.49）。拆出的页面资源在访问时仍需下载，数字不是全站总大小或实际耗时降幅。
 - 318 项前端测试、类型检查、生产构建和 4 项部署校验通过；支付刷新状态保留与按需语言加载已覆盖。浏览器验证套餐与繁体切换成功，恢复原语言后无捕获的控制台错误。
 - 尚未测量生产网络的 LCP/INP；主入口仍超过 500 kB，后续可继续隔离 Markdown 与后台公共代码。部署需同步发布 manifest 和全部资源，避免 CDN/旧页面引用失效的分包。
+
+## User and backend bundle isolation
+
+The user entry has no static backend module imports. The backend workspace and legacy backend stylesheet are loaded only inside explicit admin-mode branches. Backend-only field renderers are provided by the backend workspace, so shared user forms have no dependency on backend editors or controls.
+
+`npm run build` checks both the source dependency graph and emitted chunks, including all user page navigation imports. A backend JavaScript, stylesheet or settings JSON dependency in that graph fails the build. Tests also verify the guarded entry branches and backend field-provider behavior. Laravel user pages include only the shared entry stylesheet; backend styles are separate assets.

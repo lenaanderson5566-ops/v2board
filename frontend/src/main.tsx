@@ -64,23 +64,15 @@ setLanguagePersistence(async (language) => {
 });
 const loadUserContent = () => import("./user-entry");
 const UserContent = React.lazy(loadUserContent);
-const AdminContent = React.lazy(() => import("./admin-entry"));
+const AdminWorkspace = React.lazy(() => import("./admin-workspace"));
 const Landing = React.lazy(() => import("./Landing"));
 import "./style.css";
 import "./console.css";
 import { useTranslation } from "react-i18next";
 import { LanguagePicker } from "./LanguagePicker";
-import { AdminShell, adminPage, legacyAdminMenu } from "./admin-shell";
-import "./admin-legacy.css";
+if (boot.mode === "admin") void import("./admin-legacy.css");
 import "./user-experience.css";
 import "./product.css";
-type Nav = { key: string; label: string; icon: typeof Globe; group: string };
-const adminNav: Nav[] = legacyAdminMenu.map(([key, label, , group]) => ({
-    key,
-    label,
-    group,
-    icon: LayoutDashboard,
-}));
 function Auth({
     mode,
     onLogin,
@@ -447,25 +439,51 @@ function App() {
         }
         if (boot.landing && location.hash.startsWith("#/"))
             location.replace("/app" + location.hash);
-        const verification = boot.mode === "user" && !boot.landing
-            ? new URLSearchParams(location.hash.split("?")[1]).get("verify") : null;
+        const verification =
+            boot.mode === "user" && !boot.landing
+                ? new URLSearchParams(location.hash.split("?")[1]).get("verify")
+                : null;
         if (verification) {
-            history.replaceState(null, "", location.pathname + location.search + "#/login");
+            history.replaceState(
+                null,
+                "",
+                location.pathname + location.search + "#/login",
+            );
             clearReadCache();
             localStorage.removeItem(storageKey);
         }
         // Start code loading alongside the account request; do not delay authentication on it.
-        if (boot.mode === "user" && !boot.landing && localStorage.getItem(storageKey))
+        if (
+            boot.mode === "user" &&
+            !boot.landing &&
+            localStorage.getItem(storageKey)
+        )
             void loadUserContent().catch(() => {});
         if (!boot.landing && (verification || localStorage.getItem(storageKey)))
-            Promise.resolve().then(async () => {
-                if (verification) {
-                    const session = await request("passport/auth/token2Login", { verify: verification });
-                    if (typeof session.data?.auth_data !== "string") throw new Error(tx("服务响应异常 ({{value0}})", { value0: 200 }));
-                    localStorage.setItem(storageKey, session.data.auth_data);
-                }
-                return readRequest("user/info", undefined, Boolean(verification));
-            })
+            Promise.resolve()
+                .then(async () => {
+                    if (verification) {
+                        const session = await request(
+                            "passport/auth/token2Login",
+                            { verify: verification },
+                        );
+                        if (typeof session.data?.auth_data !== "string")
+                            throw new Error(
+                                tx("服务响应异常 ({{value0}})", {
+                                    value0: 200,
+                                }),
+                            );
+                        localStorage.setItem(
+                            storageKey,
+                            session.data.auth_data,
+                        );
+                    }
+                    return readRequest(
+                        "user/info",
+                        undefined,
+                        Boolean(verification),
+                    );
+                })
                 .then(async (r) => {
                     if (boot.mode === "admin")
                         await request(admin("config/fetch"));
@@ -532,6 +550,19 @@ function App() {
                 )}
             </>
         );
+    if (boot.mode === "admin")
+        return (
+            <React.Suspense
+                fallback={
+                    <div className="state">
+                        <span className="spinner" />
+                        {tx("正在加载…")}
+                    </div>
+                }
+            >
+                <AdminWorkspace path={path} user={user} logout={handleLogout} />
+            </React.Suspense>
+        );
     const userNav = userNavigation(user.account_status?.state).map((item) => ({
         ...item,
         icon: (
@@ -544,11 +575,8 @@ function App() {
             } as Record<string, typeof Globe>
         )[item.key],
     }));
-    const nav = boot.mode === "admin" ? adminNav : userNav,
-        current =
-            boot.mode === "admin"
-                ? adminPage(path)
-                : path.split("/")[0] || nav[0]?.key || "dashboard",
+    const nav = userNav,
+        current = path.split("/")[0] || nav[0]?.key || "dashboard",
         item = [
             ...nav,
             { key: "order", label: "账单" },
@@ -586,33 +614,11 @@ function App() {
                 : current === "order"
                   ? "plan"
                   : navigationCurrent;
-    let content: ReactNode;
-    if (boot.mode === "admin") {
-        content = (
-            <React.Suspense
-                fallback={
-                    <div className="state">
-                        <span className="spinner" />
-                        {tx("正在加载…")}
-                    </div>
-                }
-            >
-                <AdminContent current={current} />
-            </React.Suspense>
-        );
-    } else {
-        content = (
-            <React.Suspense fallback={<WorkspaceSkeleton />}>
-                <UserContent current={current} path={path} />
-            </React.Suspense>
-        );
-    }
-    if (["admin"].includes(boot.mode))
-        return (
-            <AdminShell current={current} user={user} logout={handleLogout}>
-                {content}
-            </AdminShell>
-        );
+    const content = (
+        <React.Suspense fallback={<WorkspaceSkeleton />}>
+            <UserContent current={current} path={path} />
+        </React.Suspense>
+    );
     return (
         <UserStatusGate
             onStatus={setUser}
@@ -642,22 +648,13 @@ function App() {
                     >
                         <X size={19} />
                     </button>
-                    <a
-                        className="brand"
-                        href={
-                            boot.mode === "admin" ? `/${boot.adminPath}` : "/"
-                        }
-                    >
+                    <a className="brand" href="/">
                         <span className="brand-mark">
                             <Sparkles size={19} aria-hidden="true" />
                         </span>
                         <span>
                             {boot.title}
-                            <small>
-                                {boot.mode === "admin"
-                                    ? tx("管理控制台")
-                                    : tx("用户工作空间")}
-                            </small>
+                            <small>{tx("用户工作空间")}</small>
                         </span>
                     </a>
                     <nav>
@@ -698,11 +695,7 @@ function App() {
                         </div>
                         <div>
                             <strong>{user.email}</strong>
-                            <small>
-                                {boot.mode === "admin"
-                                    ? tx("管理员")
-                                    : tx("个人账户")}
-                            </small>
+                            <small>{tx("个人账户")}</small>
                         </div>
                         <button
                             className="icon-button"
@@ -724,27 +717,12 @@ function App() {
                             >
                                 <Menu />
                             </button>
-                            <span>
-                                {boot.mode === "admin"
-                                    ? tx("管理后台")
-                                    : tx("工作空间")}
-                            </span>
+                            <span>{tx("工作空间")}</span>
                             <ChevronRight size={14} />
                             <strong>{tx(item?.label || "总览")}</strong>
                         </div>
                         <div className="actions header-controls">
                             {boot.mode === "user" && <LanguagePicker />}
-                            {boot.mode === "admin" && (
-                                <a
-                                    className="button"
-                                    href="/"
-                                    target="_blank"
-                                    rel="noreferrer"
-                                >
-                                    {tx("用户端")}
-                                    <ArrowUpRight size={15} />
-                                </a>
-                            )}
                             {boot.mode === "user" && <AnnouncementCenter />}
                             <AccountMenu user={user} logout={handleLogout} />
                         </div>
@@ -752,11 +730,7 @@ function App() {
                     <main>
                         <div className="page-heading">
                             <div>
-                                <span className="eyebrow">
-                                    {boot.mode === "admin"
-                                        ? "CONTROL CENTER"
-                                        : "WORKSPACE"}
-                                </span>
+                                <span className="eyebrow">WORKSPACE</span>
                                 <h1>{tx(item?.label || "总览")}</h1>
                             </div>
                             <span className="today">
@@ -838,8 +812,10 @@ class ErrorBoundary extends React.Component<
         );
     }
 }
-void languageReady.then(() => createRoot(document.getElementById("root")!).render(
-    <ErrorBoundary>
-        <App />
-    </ErrorBoundary>,
-));
+void languageReady.then(() =>
+    createRoot(document.getElementById("root")!).render(
+        <ErrorBoundary>
+            <App />
+        </ErrorBoundary>,
+    ),
+);

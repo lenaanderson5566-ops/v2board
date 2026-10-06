@@ -1,4 +1,4 @@
-import { completePages } from './paginated-data';
+import { completePages } from "./paginated-data";
 import { WorkspaceSkeleton } from "./WorkspaceSkeleton";
 import { e } from "./experience-copy";
 import { tx, locale } from "./i18n";
@@ -9,8 +9,6 @@ import {
     useId,
     createContext,
     useContext,
-    lazy,
-    Suspense,
     Fragment,
     type ReactNode,
 } from "react";
@@ -18,20 +16,9 @@ import { useTranslation } from "react-i18next";
 import { createPortal } from "react-dom";
 import { ux } from "./ux";
 import DOMPurify from "dompurify";
-const AdminMarkdown = lazy(() =>
-    import("./admin-markdown").then((module) => ({
-        default: module.AdminMarkdown,
-    })),
-);
-const AdminCodeEditor = lazy(() =>
-    import("./admin-code-editor").then((module) => ({
-        default: module.AdminCodeEditor,
-    })),
-);
 import { renderMarkdown } from "./markdown";
-import { moveItem } from "./admin-actions";
+import { moveItem } from "./array-items";
 import { inputValue, apiValue } from "./field-values";
-import { AdminMultiSelect } from "./admin-multiselect";
 const ModalClose = createContext<(() => void) | undefined>(undefined);
 import {
     X,
@@ -89,12 +76,20 @@ export function useData<T = Row>(path: string, body?: Row, allPages = false) {
         )
             .then(async (r) => {
                 if (allPages && Array.isArray(r.data)) {
-                    r = await completePages(r as any, (page) => {
-                        const [base, search] = path.split('?');
-                        const query = new URLSearchParams(search);
-                        query.set('current', String(page));
-                        return readRequest<any[]>(`${base}?${query}`, undefined, version > 0);
-                    }, () => live) as typeof r;
+                    r = (await completePages(
+                        r as any,
+                        (page) => {
+                            const [base, search] = path.split("?");
+                            const query = new URLSearchParams(search);
+                            query.set("current", String(page));
+                            return readRequest<any[]>(
+                                `${base}?${query}`,
+                                undefined,
+                                version > 0,
+                            );
+                        },
+                        () => live,
+                    )) as typeof r;
                 }
                 if (live) {
                     setData(r.data);
@@ -345,6 +340,14 @@ export interface Field {
     options?: [string, string][];
     hint?: string;
 }
+export type EditorFieldRenderer = (
+    field: Field,
+    value: unknown,
+    onChange: (value: unknown) => void,
+) => ReactNode | undefined;
+export const EditorFieldContext = createContext<
+    EditorFieldRenderer | undefined
+>(undefined);
 export function Editor({
     fields,
     initial,
@@ -370,6 +373,7 @@ export function Editor({
     onValuesChange?: (values: Row) => void;
     draftKey?: string;
 }) {
+    const renderField = useContext(EditorFieldContext);
     const draftStorageKey = draftKey
         ? `v2board.draft.${boot.mode}.${localStorage.getItem(`v2board.${boot.mode}.auth`) || ""}.${draftKey}`
         : "";
@@ -540,316 +544,302 @@ export function Editor({
             aria-busy={busy}
         >
             <fieldset className="field-grid" disabled={busy}>
-                {activeFields.map((f) => (
-                    <Fragment key={f.key}>
-                        {f.section && (
-                            <div className="field-section">{f.section}</div>
-                        )}
-                        <label
-                            style={
-                                boot.mode === "admin"
-                                    ? { gridColumn: `span ${f.columns || 12}` }
-                                    : undefined
-                            }
-                            data-child={f.child || undefined}
-                            className={
-                                f.type === "textarea" ||
-                                f.type === "json" ||
-                                f.type === "multiselect"
-                                    ? "wide"
-                                    : ""
-                            }
-                            key={f.key}
-                        >
-                            <span>
-                                {tx(f.label)}
-                                {f.required && " *"}
-                            </span>
-                            {f.markdown && boot.mode === "admin" ? (
-                                <div inert={busy}>
-                                    <Suspense
-                                        fallback={<span className="spinner" />}
-                                    >
-                                        <AdminMarkdown
-                                            label={f.label}
-                                            value={String(value[f.key] || "")}
-                                            onChange={(next) =>
-                                                updateValue(f.key, next)
-                                            }
-                                        />
-                                    </Suspense>
-                                </div>
-                            ) : f.type === "json" && boot.mode === "admin" ? (
-                                <div inert={busy}>
-                                    <Suspense
-                                        fallback={<span className="spinner" />}
-                                    >
-                                        <AdminCodeEditor
-                                            label={f.label}
-                                            value={
-                                                typeof value[f.key] === "string"
-                                                    ? value[f.key]
-                                                    : value[f.key] == null
-                                                      ? ""
-                                                      : JSON.stringify(
-                                                            value[f.key],
-                                                            null,
-                                                            2,
-                                                        )
-                                            }
-                                            onChange={(next) =>
-                                                updateValue(f.key, next)
-                                            }
-                                        />
-                                    </Suspense>
-                                </div>
-                            ) : f.type === "switch" ? (
-                                <button
-                                    type="button"
-                                    role="switch"
-                                    aria-checked={Number(value[f.key]) === 1}
-                                    aria-label={tx(f.label)}
-                                    className="toggle-control"
-                                    onClick={() => {
-                                        updateValue(
-                                            f.key,
-                                            Number(value[f.key]) === 1 ? 0 : 1,
-                                        );
-                                        setSaved(false);
-                                    }}
-                                >
-                                    <span className="toggle-track">
-                                        <i />
-                                    </span>
-                                    <span>
-                                        {tx(
+                {activeFields.map((f) => {
+                    const extension = renderField?.(f, value[f.key], (next) =>
+                        updateValue(f.key, next),
+                    );
+                    return (
+                        <Fragment key={f.key}>
+                            {f.section && (
+                                <div className="field-section">{f.section}</div>
+                            )}
+                            <label
+                                style={
+                                    boot.mode === "admin"
+                                        ? {
+                                              gridColumn: `span ${f.columns || 12}`,
+                                          }
+                                        : undefined
+                                }
+                                data-child={f.child || undefined}
+                                className={
+                                    f.type === "textarea" ||
+                                    f.type === "json" ||
+                                    f.type === "multiselect"
+                                        ? "wide"
+                                        : ""
+                                }
+                                key={f.key}
+                            >
+                                <span>
+                                    {tx(f.label)}
+                                    {f.required && " *"}
+                                </span>
+                                {extension !== undefined ? (
+                                    <div inert={busy}>{extension}</div>
+                                ) : f.type === "switch" ? (
+                                    <button
+                                        type="button"
+                                        role="switch"
+                                        aria-checked={
                                             Number(value[f.key]) === 1
-                                                ? "开启"
-                                                : "关闭",
-                                        )}
-                                    </span>
-                                </button>
-                            ) : f.type === "multiselect" &&
-                              boot.mode === "admin" ? (
-                                <div inert={busy}>
-                                    <AdminMultiSelect
-                                        label={f.label}
-                                        creatable={f.creatable}
-                                        options={f.options || []}
-                                        value={value[f.key]}
-                                        onChange={(next) =>
-                                            updateValue(f.key, next)
                                         }
-                                    />
-                                </div>
-                            ) : f.type === "multiselect" ? (
-                                <div
-                                    className="option-group"
-                                    role="group"
-                                    aria-label={tx(f.label)}
-                                >
-                                    {(f.options || []).map(([key, label]) => {
-                                        const selected = (
-                                            Array.isArray(value[f.key])
-                                                ? value[f.key]
-                                                : []
-                                        ).map(String);
-                                        const checked = selected.includes(key);
-                                        return (
+                                        aria-label={tx(f.label)}
+                                        className="toggle-control"
+                                        onClick={() => {
+                                            updateValue(
+                                                f.key,
+                                                Number(value[f.key]) === 1
+                                                    ? 0
+                                                    : 1,
+                                            );
+                                            setSaved(false);
+                                        }}
+                                    >
+                                        <span className="toggle-track">
+                                            <i />
+                                        </span>
+                                        <span>
+                                            {tx(
+                                                Number(value[f.key]) === 1
+                                                    ? "开启"
+                                                    : "关闭",
+                                            )}
+                                        </span>
+                                    </button>
+                                ) : f.type === "multiselect" ? (
+                                    <div
+                                        className="option-group"
+                                        role="group"
+                                        aria-label={tx(f.label)}
+                                    >
+                                        {(f.options || []).map(
+                                            ([key, label]) => {
+                                                const selected = (
+                                                    Array.isArray(value[f.key])
+                                                        ? value[f.key]
+                                                        : []
+                                                ).map(String);
+                                                const checked =
+                                                    selected.includes(key);
+                                                return (
+                                                    <button
+                                                        type="button"
+                                                        role="checkbox"
+                                                        aria-checked={checked}
+                                                        className={
+                                                            checked
+                                                                ? "option-item selected"
+                                                                : "option-item"
+                                                        }
+                                                        key={key}
+                                                        onClick={() => {
+                                                            const next = checked
+                                                                ? selected.filter(
+                                                                      (
+                                                                          v: string,
+                                                                      ) =>
+                                                                          v !==
+                                                                          key,
+                                                                  )
+                                                                : [
+                                                                      ...selected,
+                                                                      key,
+                                                                  ];
+                                                            updateValue(
+                                                                f.key,
+                                                                next.map(
+                                                                    (
+                                                                        v: string,
+                                                                    ) =>
+                                                                        /^\d+$/.test(
+                                                                            v,
+                                                                        )
+                                                                            ? Number(
+                                                                                  v,
+                                                                              )
+                                                                            : v,
+                                                                ),
+                                                            );
+                                                            setSaved(false);
+                                                        }}
+                                                    >
+                                                        <span className="option-check">
+                                                            {checked && (
+                                                                <Check
+                                                                    size={12}
+                                                                />
+                                                            )}
+                                                        </span>
+                                                        {label}
+                                                    </button>
+                                                );
+                                            },
+                                        )}
+                                        {!f.options?.length && (
+                                            <small>{ux("noOptions")}</small>
+                                        )}
+                                        {f.options?.length ? (
                                             <button
                                                 type="button"
-                                                role="checkbox"
-                                                aria-checked={checked}
-                                                className={
-                                                    checked
-                                                        ? "option-item selected"
-                                                        : "option-item"
-                                                }
-                                                key={key}
+                                                className="option-clear"
                                                 onClick={() => {
-                                                    const next = checked
-                                                        ? selected.filter(
-                                                              (v: string) =>
-                                                                  v !== key,
-                                                          )
-                                                        : [...selected, key];
-                                                    updateValue(
-                                                        f.key,
-                                                        next.map((v: string) =>
-                                                            /^\d+$/.test(v)
-                                                                ? Number(v)
-                                                                : v,
-                                                        ),
-                                                    );
+                                                    updateValue(f.key, []);
                                                     setSaved(false);
                                                 }}
                                             >
-                                                <span className="option-check">
-                                                    {checked && (
-                                                        <Check size={12} />
-                                                    )}
-                                                </span>
-                                                {label}
+                                                {ux("clear")}
                                             </button>
-                                        );
-                                    })}
-                                    {!f.options?.length && (
-                                        <small>{ux("noOptions")}</small>
-                                    )}
-                                    {f.options?.length ? (
-                                        <button
-                                            type="button"
-                                            className="option-clear"
-                                            onClick={() => {
-                                                updateValue(f.key, []);
-                                                setSaved(false);
-                                            }}
-                                        >
-                                            {ux("clear")}
-                                        </button>
-                                    ) : null}
-                                </div>
-                            ) : f.type === "select" ? (
-                                <select
-                                    required={f.required}
-                                    value={
-                                        value[f.key] ??
-                                        f.options?.[0]?.[0] ??
-                                        ""
-                                    }
-                                    onChange={(e) =>
-                                        updateValue(f.key, e.target.value)
-                                    }
-                                >
-                                    {value[f.key] != null &&
-                                        !f.options?.some(
-                                            ([v]) => v === String(value[f.key]),
-                                        ) && (
-                                            <option value={value[f.key]}>
-                                                {String(value[f.key])}
+                                        ) : null}
+                                    </div>
+                                ) : f.type === "select" ? (
+                                    <select
+                                        required={f.required}
+                                        value={
+                                            value[f.key] ??
+                                            f.options?.[0]?.[0] ??
+                                            ""
+                                        }
+                                        onChange={(e) =>
+                                            updateValue(f.key, e.target.value)
+                                        }
+                                    >
+                                        {value[f.key] != null &&
+                                            !f.options?.some(
+                                                ([v]) =>
+                                                    v === String(value[f.key]),
+                                            ) && (
+                                                <option value={value[f.key]}>
+                                                    {String(value[f.key])}
+                                                </option>
+                                            )}
+                                        {f.options?.map(([v, label]) => (
+                                            <option value={v} key={v}>
+                                                {label}
                                             </option>
-                                        )}
-                                    {f.options?.map(([v, label]) => (
-                                        <option value={v} key={v}>
-                                            {label}
-                                        </option>
-                                    ))}
-                                </select>
-                            ) : f.type === "textarea" || f.type === "json" ? (
-                                <textarea
-                                    placeholder={f.placeholder}
-                                    rows={f.type === "json" ? 6 : 4}
-                                    value={
-                                        typeof value[f.key] === "object" &&
-                                        value[f.key] !== null
-                                            ? f.arrayText &&
-                                              Array.isArray(value[f.key])
-                                                ? value[f.key].join(",")
-                                                : JSON.stringify(
-                                                      value[f.key],
-                                                      null,
-                                                      2,
-                                                  )
-                                            : (value[f.key] ?? "")
-                                    }
-                                    required={f.required}
-                                    onChange={(e) =>
-                                        updateValue(f.key, e.target.value)
-                                    }
-                                />
-                            ) : (
-                                <div
-                                    className={
-                                        f.type === "password"
-                                            ? "password-control"
-                                            : "input-control"
-                                    }
-                                >
-                                    <input
-                                        aria-label={tx(f.label)}
-                                        list={
-                                            f.suggestions
-                                                ? `${formId}-${f.key}`
-                                                : undefined
-                                        }
-                                        type={
-                                            f.type === "password" &&
-                                            revealed[f.key]
-                                                ? "text"
-                                                : f.type || "text"
-                                        }
+                                        ))}
+                                    </select>
+                                ) : f.type === "textarea" ||
+                                  f.type === "json" ? (
+                                    <textarea
                                         placeholder={f.placeholder}
-                                        autoComplete={
-                                            f.autoComplete ??
-                                            (f.type === "password"
-                                                ? f.key.includes("old")
-                                                    ? "current-password"
-                                                    : "new-password"
-                                                : f.type === "email"
-                                                  ? "email"
-                                                  : undefined)
+                                        rows={f.type === "json" ? 6 : 4}
+                                        value={
+                                            typeof value[f.key] === "object" &&
+                                            value[f.key] !== null
+                                                ? f.arrayText &&
+                                                  Array.isArray(value[f.key])
+                                                    ? value[f.key].join(",")
+                                                    : JSON.stringify(
+                                                          value[f.key],
+                                                          null,
+                                                          2,
+                                                      )
+                                                : (value[f.key] ?? "")
                                         }
-                                        step={
-                                            f.step ??
-                                            (f.type === "number"
-                                                ? "any"
-                                                : undefined)
-                                        }
-                                        min={f.min}
-                                        max={f.max}
-                                        value={value[f.key] ?? ""}
                                         required={f.required}
                                         onChange={(e) =>
                                             updateValue(f.key, e.target.value)
                                         }
                                     />
-                                    {f.suggestions && (
-                                        <datalist id={`${formId}-${f.key}`}>
-                                            {f.suggestions.map((text) => (
-                                                <option
-                                                    key={text}
-                                                    value={text}
-                                                />
-                                            ))}
-                                        </datalist>
-                                    )}
-                                    {f.unit && (
-                                        <span className="input-unit">
-                                            {f.unit}
-                                        </span>
-                                    )}
-                                    {f.type === "password" && (
-                                        <button
-                                            type="button"
-                                            className="icon-button"
-                                            aria-label={ux(
-                                                revealed[f.key]
-                                                    ? "hidePassword"
-                                                    : "showPassword",
-                                            )}
-                                            aria-pressed={Boolean(
-                                                revealed[f.key],
-                                            )}
-                                            onClick={() =>
-                                                setRevealed({
-                                                    ...revealed,
-                                                    [f.key]: !revealed[f.key],
-                                                })
+                                ) : (
+                                    <div
+                                        className={
+                                            f.type === "password"
+                                                ? "password-control"
+                                                : "input-control"
+                                        }
+                                    >
+                                        <input
+                                            aria-label={tx(f.label)}
+                                            list={
+                                                f.suggestions
+                                                    ? `${formId}-${f.key}`
+                                                    : undefined
                                             }
-                                        >
-                                            {revealed[f.key] ? (
-                                                <EyeOff size={17} />
-                                            ) : (
-                                                <Eye size={17} />
-                                            )}
-                                        </button>
-                                    )}
-                                </div>
-                            )}{" "}
-                            {f.hint && <small>{f.hint}</small>}
-                        </label>
-                    </Fragment>
-                ))}
+                                            type={
+                                                f.type === "password" &&
+                                                revealed[f.key]
+                                                    ? "text"
+                                                    : f.type || "text"
+                                            }
+                                            placeholder={f.placeholder}
+                                            autoComplete={
+                                                f.autoComplete ??
+                                                (f.type === "password"
+                                                    ? f.key.includes("old")
+                                                        ? "current-password"
+                                                        : "new-password"
+                                                    : f.type === "email"
+                                                      ? "email"
+                                                      : undefined)
+                                            }
+                                            step={
+                                                f.step ??
+                                                (f.type === "number"
+                                                    ? "any"
+                                                    : undefined)
+                                            }
+                                            min={f.min}
+                                            max={f.max}
+                                            value={value[f.key] ?? ""}
+                                            required={f.required}
+                                            onChange={(e) =>
+                                                updateValue(
+                                                    f.key,
+                                                    e.target.value,
+                                                )
+                                            }
+                                        />
+                                        {f.suggestions && (
+                                            <datalist id={`${formId}-${f.key}`}>
+                                                {f.suggestions.map((text) => (
+                                                    <option
+                                                        key={text}
+                                                        value={text}
+                                                    />
+                                                ))}
+                                            </datalist>
+                                        )}
+                                        {f.unit && (
+                                            <span className="input-unit">
+                                                {f.unit}
+                                            </span>
+                                        )}
+                                        {f.type === "password" && (
+                                            <button
+                                                type="button"
+                                                className="icon-button"
+                                                aria-label={ux(
+                                                    revealed[f.key]
+                                                        ? "hidePassword"
+                                                        : "showPassword",
+                                                )}
+                                                aria-pressed={Boolean(
+                                                    revealed[f.key],
+                                                )}
+                                                onClick={() =>
+                                                    setRevealed({
+                                                        ...revealed,
+                                                        [f.key]:
+                                                            !revealed[f.key],
+                                                    })
+                                                }
+                                            >
+                                                {revealed[f.key] ? (
+                                                    <EyeOff size={17} />
+                                                ) : (
+                                                    <Eye size={17} />
+                                                )}
+                                            </button>
+                                        )}
+                                    </div>
+                                )}{" "}
+                                {f.hint && <small>{f.hint}</small>}
+                            </label>
+                        </Fragment>
+                    );
+                })}
             </fieldset>
             {children}
             {error && (

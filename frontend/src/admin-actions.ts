@@ -1,13 +1,6 @@
 import type { Row } from "./api";
 export type SortKind = "plans" | "knowledge" | "payments" | "nodes";
-export function moveItem<T>(items: T[], from: number, to: number): T[] {
-    const next = [...items];
-    if (from < 0 || to < 0 || from >= next.length || to >= next.length)
-        return next;
-    const [item] = next.splice(from, 1);
-    next.splice(to, 0, item);
-    return next;
-}
+export { moveItem } from "./array-items";
 export function sortPayload(kind: SortKind, items: Row[]): Row {
     if (kind === "nodes") {
         const result: Row = {};

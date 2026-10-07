@@ -227,7 +227,8 @@
     "middleware": [],
     "role": "public",
     "scope": "passport",
-    "status": 200
+    "status": 200,
+    "description": "Atomically exchange a browser-purpose code for an independent browser session. The source session must still be active; expired or replayed codes are rejected."
   },
   {
     "legacy": "passport/auth/forget",
@@ -265,7 +266,8 @@
     "middleware": [],
     "role": "user",
     "scope": "passport",
-    "status": 200
+    "status": 200,
+    "description": "Create a HTTPS browser login link with a 60-second single-use code bound to the active source session. Long-lived credentials never appear in the URL."
   },
   {
     "legacy": "passport/comm/sendEmailVerify",
@@ -626,7 +628,8 @@
     "middleware": [],
     "role": "user",
     "scope": "user",
-    "status": 200
+    "status": 200,
+    "description": "Create a HTTPS browser login link with a 60-second single-use code bound to the active source session. Logout, source expiry or account suspension invalidates unredeemed codes."
   },
   {
     "legacy": "user/getActiveSession",
@@ -1483,6 +1486,7 @@
     ],
     "role": "public",
     "scope": "user",
-    "status": 200
+    "status": 200,
+    "description": "Atomically exchange an app-purpose code using S256 PKCE and the original redirect URI. Codes expire after 60 seconds and require an active source session; the resulting App session is independently revocable."
   }
 ]

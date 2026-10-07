@@ -1383,6 +1383,7 @@
         "security": [],
         "x-permission": "public",
         "x-legacy-path": "/api/v1/passport/auth/token2Login",
+        "description": " Atomically exchange a browser-purpose code for an independent browser session. The source session must still be active; expired or replayed codes are rejected.",
         "requestBody": {
           "required": true,
           "content": {
@@ -1671,7 +1672,7 @@
         ],
         "x-permission": "user",
         "x-legacy-path": "/api/v1/passport/auth/getQuickLoginUrl",
-        "description": "Requires an active session. Order and ticket identifiers are checked against the authenticated owner. Unauthenticated: 401; banned account: 403.",
+        "description": "Requires an active session. Order and ticket identifiers are checked against the authenticated owner. Unauthenticated: 401; banned account: 403. Create a HTTPS browser login link with a 60-second single-use code bound to the active source session. Long-lived credentials never appear in the URL.",
         "requestBody": {
           "required": false,
           "content": {
@@ -4406,7 +4407,7 @@
         ],
         "x-permission": "user",
         "x-legacy-path": "/api/v1/user/getQuickLoginUrl",
-        "description": "Requires an active session. Order and ticket identifiers are checked against the authenticated owner. Unauthenticated: 401; banned account: 403.",
+        "description": "Requires an active session. Order and ticket identifiers are checked against the authenticated owner. Unauthenticated: 401; banned account: 403. Create a HTTPS browser login link with a 60-second single-use code bound to the active source session. Logout, source expiry or account suspension invalidates unredeemed codes.",
         "requestBody": {
           "required": false,
           "content": {
@@ -11209,6 +11210,7 @@
         },
         "security": [],
         "x-permission": "public",
+        "description": " Atomically exchange an app-purpose code using S256 PKCE and the original redirect URI. Codes expire after 60 seconds and require an active source session; the resulting App session is independently revocable.",
         "requestBody": {
           "required": true,
           "content": {

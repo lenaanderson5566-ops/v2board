@@ -474,22 +474,6 @@ class UserActions
 
     public function getQuickLoginUrl(Request $request)
     {
-        $user = User::find($request->user['id']);
-        if (!$user) {
-            abort(request()->is('api/v10/*') ? 409 : 500, __('The user does not exist'));
-        }
-
-        $code = bin2hex(random_bytes(32));
-        $key = CacheKey::get('TEMP_TOKEN', $code);
-        Cache::put($key, $user->id, 60);
-        $redirect = '/#/login?verify=' . $code . '&redirect=' . ($request->input('redirect') ? $request->input('redirect') : 'dashboard');
-        if (config('v2board.app_url')) {
-            $url = config('v2board.app_url') . $redirect;
-        } else {
-            $url = url($redirect);
-        }
-        return response([
-            'data' => $url
-        ]);
+        return response(['data'=>app(\App\Services\BrowserLoginLink::class)->create($request, (string)$request->header('Authorization'))]);
     }
 }

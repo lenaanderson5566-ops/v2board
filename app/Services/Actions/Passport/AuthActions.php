@@ -214,31 +214,10 @@ class AuthActions
 
     public function token2Login(Request $request)
     {
-        if ($request->input('token')) {
-            $redirect = '/#/login?verify=' . $request->input('token') . '&redirect=' . ($request->input('redirect') ? $request->input('redirect') : 'dashboard');
-            if (config('v2board.app_url')) {
-                $location = config('v2board.app_url') . $redirect;
-            } else {
-                $location = url($redirect);
-            }
-            return redirect()->to($location)->send();
-        }
-
         if ($request->input('verify')) {
-            $key =  CacheKey::get('TEMP_TOKEN', $request->input('verify'));
-            $userId = Cache::lock($key . ':exchange', 5)->get(function () use ($key) {
-                return Cache::pull($key);
-            });
-            if (!$userId) {
-                abort(request()->is('api/v10/*') ? 409 : 500, __('Token error'));
-            }
-            $user = User::find($userId);
-            if (!$user) {
-                abort(request()->is('api/v10/*') ? 409 : 500, __('The user does not '));
-            }
-            if ($user->banned) {
-                return response()->json(['message' => __('Your account has been suspended'), 'code' => 'ACCOUNT_BANNED'], $request->is('api/v10/*') ? 403 : 500);
-            }
+            $user = app(\App\Services\SessionAuthorizationCode::class)->exchange(
+                \App\Services\SessionAuthorizationCode::BROWSER, $request->input('verify')
+            );
             $user->last_login_at = time();
             $user->last_login_ip = $this->encodeIp($request->ip());
             $user->save();
@@ -251,24 +230,8 @@ class AuthActions
 
     public function getQuickLoginUrl(Request $request)
     {
-        $authorization = $request->input('auth_data') ?? $request->header('authorization');
-        if (!$authorization) abort(403, '未登录或登陆已过期');
-
-        $user = AuthService::decryptAuthData($authorization);
-        if (!$user) abort(403, '未登录或登陆已过期');
-
-        $code = Helper::guid();
-        $key = CacheKey::get('TEMP_TOKEN', $code);
-        Cache::put($key, $user['id'], 60);
-        $redirect = '/#/login?verify=' . $code . '&redirect=' . ($request->input('redirect') ? $request->input('redirect') : 'dashboard');
-        if (config('v2board.app_url')) {
-            $url = config('v2board.app_url') . $redirect;
-        } else {
-            $url = url($redirect);
-        }
-        return response([
-            'data' => $url
-        ]);
+        $credential = (string)($request->input('auth_data') ?? $request->header('authorization'));
+        return response(['data'=>app(\App\Services\BrowserLoginLink::class)->create($request, $credential)]);
     }
 
     public function forget(AuthForget $request)

@@ -42,21 +42,39 @@ class AuthService
         ];
     }
 
-    public static function decryptAuthData($jwt)
+    private static function activeClaims($jwt): ?array
     {
         try {
-            if (!is_string($jwt) || $jwt === '') return false;
-            // Always verify signature, expiry and revocation. Legacy tokens without
-            // exp remain compatible, but cannot bypass the server session registry.
+            if (!is_string($jwt) || $jwt === '') return null;
             $data = (array)JWT::decode($jwt, new Key(config('app.key'), 'HS256'));
-            if (!isset($data['id'], $data['session']) || !is_numeric($data['id']) || !is_string($data['session'])) return false;
-            if (!self::checkSession($data['id'], $data['session'])) return false;
-            $user = User::select(['id', 'email', 'is_admin', 'is_staff', 'banned'])->find($data['id']);
-            if (!$user) return false;
-            return $user->toArray();
+            if (!isset($data['id'], $data['session']) || !is_numeric($data['id']) || !is_string($data['session'])) return null;
+            if (!self::checkSession($data['id'], $data['session'])) return null;
+            return $data;
         } catch (\Throwable $e) {
-            return false;
+            return null;
         }
+    }
+
+    public static function decryptAuthData($jwt)
+    {
+        $data = self::activeClaims($jwt);
+        if (!$data) return false;
+        $user = User::select(['id', 'email', 'is_admin', 'is_staff', 'banned'])->find($data['id']);
+        return $user ? $user->toArray() : false;
+    }
+
+    public static function sessionReference(string $jwt): ?array
+    {
+        $data = self::activeClaims($jwt);
+        return $data ? ['userId'=>(int)$data['id'], 'sessionId'=>$data['session'], 'expiresAt'=>$data['exp'] ?? null] : null;
+    }
+
+    public static function sessionUser(array $reference): ?User
+    {
+        if (!isset($reference['userId'], $reference['sessionId'])) return null;
+        if (isset($reference['expiresAt']) && $reference['expiresAt'] <= time()) return null;
+        if (!self::checkSession($reference['userId'], $reference['sessionId'])) return null;
+        return User::find($reference['userId']);
     }
 
     private static function checkSession($userId, $session)

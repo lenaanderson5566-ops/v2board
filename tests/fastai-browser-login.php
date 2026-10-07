@@ -55,6 +55,7 @@ try {
     parse_str(parse_url($data($call('me/client-authorizations/'.$id.'/approval',[],$browser))['callbackUrl'],PHP_URL_QUERY),$query);
     (new App\Services\AuthService($user))->removeCurrentSession($browser);
     $assert($call('auth/client-session-exchanges',array_replace($exchange,['authorizationCode'=>$query['code']]))->getStatusCode()===403,'Revoked browser session cannot authorize app');
+    $assert($call('me',[],$token,'GET')->getStatusCode()===200,'Already authorized App survives browser logout');
 } finally {
     if ($user) (new App\Services\AuthService($user))->removeAllSession();
     Illuminate\Support\Facades\DB::rollBack(); config(['v2board.app_url'=>$original]);

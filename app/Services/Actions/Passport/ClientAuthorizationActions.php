@@ -1,7 +1,7 @@
 <?php
 namespace App\Services\Actions\Passport;
 
-use App\Models\User;
+use App\Services\SessionAuthorizationCode;
 use App\Services\AuthService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
@@ -53,8 +53,7 @@ final class ClientAuthorizationActions
         $result = Cache::lock($key.':lock', 5)->block(3, function () use ($key, $request) {
             $pending = Cache::get($key);
             if (!$pending || $pending['expiresAt'] <= time()) $this->fail('CLIENT_AUTH_EXPIRED', 410);
-            $code = bin2hex(random_bytes(32));
-            Cache::put($this->key('code', $code), $pending + ['credential'=>$request->header('Authorization')], 60);
+            $code = app(SessionAuthorizationCode::class)->issue(SessionAuthorizationCode::APP, $request->header('Authorization'), ['challenge'=>$pending['challenge'], 'redirectUri'=>$pending['redirectUri']]);
             Cache::forget($key);
             return $pending['redirectUri'].'?'.http_build_query(['code'=>$code, 'state'=>$pending['state']], '', '&', PHP_QUERY_RFC3986);
         });
@@ -63,22 +62,14 @@ final class ClientAuthorizationActions
 
     public function exchange(Request $request)
     {
-        $key = $this->key('code', $request->input('authorizationCode'));
-        $auth = Cache::lock($key.':lock', 5)->block(3, function () use ($key, $request) {
-            $pending = Cache::get($key);
-            if (!$pending) $this->fail('CLIENT_AUTH_EXPIRED', 410);
+        $user = app(SessionAuthorizationCode::class)->exchange(SessionAuthorizationCode::APP, $request->input('authorizationCode'), function (array $binding) use ($request) {
             $challenge = rtrim(strtr(base64_encode(hash('sha256', $request->input('codeVerifier'), true)), '+/', '-_'), '=');
-            if (!hash_equals($pending['challenge'], $challenge) || !hash_equals($pending['redirectUri'], $request->input('redirectUri'))) $this->fail('CLIENT_AUTH_INVALID', 403);
-            $identity = AuthService::decryptAuthData($pending['credential']);
-            if (!$identity || $identity['banned']) $this->fail('CLIENT_AUTH_INVALID', 403);
-            $user = User::find($identity['id']);
-            if (!$user || $user->banned) $this->fail('CLIENT_AUTH_INVALID', 403);
-            Cache::forget($key);
-            $user->last_login_at = time();
-            $user->last_login_ip = $request->ip() && filter_var($request->ip(), FILTER_VALIDATE_IP) ? $request->ip() : null;
-            $user->save();
-            return (new AuthService($user))->generateAuthData($request);
+            return hash_equals($binding['challenge'], $challenge) && hash_equals($binding['redirectUri'], $request->input('redirectUri'));
         });
+        $user->last_login_at = time();
+        $user->last_login_ip = $request->ip() && filter_var($request->ip(), FILTER_VALIDATE_IP) ? $request->ip() : null;
+        $user->save();
+        $auth = (new AuthService($user))->generateAuthData($request);
         return response()->json(['data'=>$auth]);
     }
 }

@@ -86,3 +86,12 @@ protects intercepted codes. Import/deep-link subscription handlers remain disabl
 Normal launches restore the encrypted App session and validate it against the backend;
 only missing, expired or revoked sessions require signing in again. Email/password login
 remains available. iOS sign-in integration is outside this client's supported targets.
+
+
+### Shared one-time session authorization
+
+App-to-browser login links and browser-to-App PKCE approval share the same authorization-code service. Codes have separate purpose namespaces, a 60-second lifetime and atomic single-use redemption. Pending codes store a source session reference, not its raw JWT. Redemption checks source-session revocation, JWT expiry and account suspension; logging out or revoking all sessions invalidates pending grants immediately at redemption.
+
+A successfully exchanged code creates an independent session. Logging out of one client does not implicitly log out the other; revoke all sessions for account-wide logout. PKCE validation failures do not consume the legitimate client's code.
+
+This backend-only hardening needs no database migration or new App build. Existing unredeemed legacy login tickets are intentionally rejected after deployment; users can request a fresh link. Clear/rebuild application caches and restart long-lived PHP workers using the normal deployment procedure. Regression checks: `tests/session-authorization.php`, `tests/fastai-browser-login.php` and `tests/fastai-release-login.php`.

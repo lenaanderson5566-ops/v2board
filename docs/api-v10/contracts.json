@@ -1095,7 +1095,8 @@
       "bindings": {},
       "path": "auth/session-exchanges",
       "method": "POST",
-      "key": "Passport/AuthController@token2Login"
+      "key": "Passport/AuthController@token2Login",
+      "description": "Atomically exchange a browser-purpose code for an independent browser session. The source session must still be active; expired or replayed codes are rejected."
     },
     "postAuthPasswordResets": {
       "input": {
@@ -1124,7 +1125,8 @@
       "bindings": {},
       "path": "auth/login-links",
       "method": "POST",
-      "key": "Passport/AuthController@getQuickLoginUrl"
+      "key": "Passport/AuthController@getQuickLoginUrl",
+      "description": "Create a HTTPS browser login link with a 60-second single-use code bound to the active source session. Long-lived credentials never appear in the URL."
     },
     "postAuthEmailVerifications": {
       "input": {
@@ -1346,7 +1348,8 @@
       "bindings": {},
       "path": "me/login-links",
       "method": "POST",
-      "key": "User/UserController@getQuickLoginUrl"
+      "key": "User/UserController@getQuickLoginUrl",
+      "description": "Create a HTTPS browser login link with a 60-second single-use code bound to the active source session. Logout, source expiry or account suspension invalidates unredeemed codes."
     },
     "getMeSessions": {
       "input": {},
@@ -1933,7 +1936,8 @@
       "bindings": {},
       "path": "auth/client-session-exchanges",
       "method": "POST",
-      "key": "Passport/ClientAuthorizationController@exchange"
+      "key": "Passport/ClientAuthorizationController@exchange",
+      "description": "Atomically exchange an app-purpose code using S256 PKCE and the original redirect URI. Codes expire after 60 seconds and require an active source session; the resulting App session is independently revocable."
     }
   }
 }

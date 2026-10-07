@@ -2,6 +2,9 @@
 return [
     'zh-CN'=>[
         'metadata_aliases'=>['剩余流量','套餐到期','计划重置'],
+        'independent'=>'独立流量',
+        'reset_count'=>'可用重置',
+        'reset_quantity'=>'%d 次',
         'no_plan'=>'暂无可用套餐或额度',
         'expired'=>'套餐已到期，请续费或购买额度',
         'user_unavailable'=>'订阅暂不可用，请查看账户状态',
@@ -15,6 +18,9 @@ return [
     ],
     'zh-TW'=>[
         'metadata_aliases'=>['剩餘流量','方案到期','預定重置'],
+        'independent'=>'獨立流量',
+        'reset_count'=>'可用重置',
+        'reset_quantity'=>'%d 次',
         'no_plan'=>'暫無可用方案或額度',
         'expired'=>'方案已到期，請續費或購買額度',
         'user_unavailable'=>'訂閱暫不可用，請查看帳戶狀態',
@@ -28,6 +34,9 @@ return [
     ],
     'en-US'=>[
         'metadata_aliases'=>['Remaining data','Plan expires','Scheduled reset'],
+        'independent'=>'Extra data',
+        'reset_count'=>'Resets',
+        'reset_quantity'=>'%d',
         'no_plan'=>'No available plan or credits',
         'expired'=>'Plan expired; renew or buy credits',
         'user_unavailable'=>'Subscription unavailable; check your account',
@@ -41,6 +50,9 @@ return [
     ],
     'ja-JP'=>[
         'metadata_aliases'=>['残りの容量','プラン有効期限','次回リセット'],
+        'independent'=>'追加容量',
+        'reset_count'=>'リセット回数',
+        'reset_quantity'=>'%d 回',
         'no_plan'=>'利用可能なプランまたは容量がありません',
         'expired'=>'期限切れです。更新または容量を購入してください',
         'user_unavailable'=>'利用できません。アカウント状態を確認してください',
@@ -54,6 +66,9 @@ return [
     ],
     'ko-KR'=>[
         'metadata_aliases'=>['남은 데이터','요금제 만료','예정된 초기화'],
+        'independent'=>'추가 데이터',
+        'reset_count'=>'초기화 횟수',
+        'reset_quantity'=>'%d회',
         'no_plan'=>'사용 가능한 요금제 또는 용량이 없습니다',
         'expired'=>'요금제가 만료되었습니다. 갱신하거나 용량을 구매하세요',
         'user_unavailable'=>'구독을 사용할 수 없습니다. 계정 상태를 확인하세요',
@@ -67,6 +82,9 @@ return [
     ],
     'vi-VN'=>[
         'metadata_aliases'=>['Dung lượng còn lại','Gói hết hạn','Đặt lại theo lịch'],
+        'independent'=>'Dung lượng riêng',
+        'reset_count'=>'Lượt đặt lại',
+        'reset_quantity'=>'%d',
         'no_plan'=>'Không có gói hoặc dung lượng khả dụng',
         'expired'=>'Gói đã hết hạn; hãy gia hạn hoặc mua dung lượng',
         'user_unavailable'=>'Đăng ký chưa khả dụng; kiểm tra tài khoản',
@@ -80,6 +98,9 @@ return [
     ],
     'ru-RU'=>[
         'metadata_aliases'=>['Остаток трафика','Срок тарифа','Плановый сброс'],
+        'independent'=>'Доп. трафик',
+        'reset_count'=>'Сбросы',
+        'reset_quantity'=>'%d',
         'no_plan'=>'Нет доступного тарифа или объёма',
         'expired'=>'Тариф истёк: продлите или купите объём',
         'user_unavailable'=>'Подписка недоступна: проверьте состояние аккаунта',
@@ -93,6 +114,9 @@ return [
     ],
     'fa-IR'=>[
         'metadata_aliases'=>['ترافیک باقی‌مانده','انقضای طرح','بازنشانی زمان‌بندی‌شده'],
+        'independent'=>'ترافیک مستقل',
+        'reset_count'=>'بازنشانی‌ها',
+        'reset_quantity'=>'%d',
         'no_plan'=>'طرح یا اعتبار قابل استفاده‌ای وجود ندارد',
         'expired'=>'طرح منقضی شده؛ تمدید کنید یا اعتبار بخرید',
         'user_unavailable'=>'اشتراک در دسترس نیست؛ وضعیت حساب را بررسی کنید',

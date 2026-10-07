@@ -1,0 +1,9 @@
+# Supplementary subscription information
+
+The existing `show_info_to_server_enable` setting controls one concise output format. Supported third-party node lists show only remaining independent traffic and unexpired reset-credit counts, each omitted when zero. The balance uses the User credit accessor, which deducts expired traffic batches; reset counts use UsageResetService's available-credit query. Standard subscription traffic/expiry headers are unchanged and retain their existing combined-quota semantics. No additional plan expiry, remaining-total or scheduled-reset placeholder is inserted.
+
+Eight-language copy follows subscription language negotiation. Surge and Surfboard's `$subscribe_info` template slot uses the same supplementary lines. Sing-box configurations continue without placeholder nodes. FastAI native configuration generation never adds these lines and also removes them from custom templates.
+
+The count represents owned, unexpired reset credits, not a command to reset usage or a guarantee that resetting is currently allowed. Actual consumption remains on the website and follows existing eligibility checks. Third-party clients receive a snapshot when updating their subscription. Independent traffic-batch expiration details remain on the website.
+
+Verification: `tests/subscription-info.php`, `tests/client-import-language.php`, `tests/fastai-template.php`, `tests/fastai-client-config.php`, `tests/traffic-credits.php`, and `tests/usage-resets.php`. No database migration or App rebuild is required.

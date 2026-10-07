@@ -9,7 +9,6 @@ use App\Services\ServerService;
 use App\Services\UserService;
 use App\Services\RiskLogService;
 use App\Services\ClientStrategyService;
-use App\Utils\Helper;
 use Illuminate\Http\Request;
 use ReflectionClass;
 
@@ -248,24 +247,11 @@ class ClientActions
     {
         if (!isset($servers[0])) return;
         if (!(int)config('v2board.show_info_to_server_enable', 0)) return;
-        $useTraffic = $user['u'] + $user['d'];
-        $totalTraffic = \App\Services\TrafficCreditService::forClient($user)->transfer_enable;
-        $remainingTraffic = Helper::trafficConvert($totalTraffic - $useTraffic);
-        $copy = $this->subscriptionCopy();
-        $expiredDate = $user['expired_at'] ? $this->subscriptionDate((int)$user['expired_at']) : $copy['unlimited'];
-        $userService = new UserService();
-        $resetAt = $userService->getResetAt($user);
-        array_unshift($servers, array_merge($servers[0], [
-            'name' => $copy['expiry'].': '.$expiredDate,
-        ]));
-        if ($resetAt) {
-            array_unshift($servers, array_merge($servers[0], [
-                'name' => $copy['reset'].': '.$this->subscriptionDate($resetAt),
-            ]));
+        $names = \App\Services\SubscriptionInfo::lines($user);
+        $base = $servers[0];
+        foreach (array_reverse($names) as $name) {
+            array_unshift($servers, array_merge($base, ['name'=>$name]));
         }
-        array_unshift($servers, array_merge($servers[0], [
-            'name' => $copy['remaining'].': '.$remainingTraffic,
-        ]));
     }
 
     private function resolveProtocolFlag(?string $input): string

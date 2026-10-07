@@ -21,7 +21,7 @@ try {
         'email'=>Illuminate\Support\Str::uuid().'@example.com',
         'password'=>password_hash(bin2hex(random_bytes(16)), PASSWORD_DEFAULT),
         'uuid'=>(string)Illuminate\Support\Str::uuid(), 'token'=>Illuminate\Support\Str::random(32),
-        'plan_id'=>1, 'group_id'=>98765, 'transfer_enable'=>1073741824, 'expired_at'=>time()+86400,
+        'plan_id'=>1, 'group_id'=>98765, 'transfer_enable'=>1073741824, 'expired_at'=>time()+86400, 'credit_balance'=>1073741824,
     ]);
     App\Models\ServerShadowsocks::create([
         'group_id'=>[98765], 'name'=>'FastAI test node', 'rate'=>'1',

@@ -58,6 +58,7 @@ class PaymentController extends Controller
     {
         $payment = Payment::find($request->input('id'));
         if (!$payment) abort(500, '支付方式不存在');
+        abort_if(!$payment->enable && in_array($payment->payment, PaymentService::RETIRED_METHODS, true), 422, __('Payment method is not available'));
         $payment->enable = !$payment->enable;
         if (!$payment->save()) abort(500, '保存失败');
         return response([
@@ -73,7 +74,7 @@ class PaymentController extends Controller
         $params = $request->validate([
             'name' => 'required',
             'icon' => 'nullable',
-            'payment' => 'required',
+            'payment' => ['required', 'string', \Illuminate\Validation\Rule::notIn(PaymentService::RETIRED_METHODS)],
             'config' => 'required',
             'notify_domain' => 'nullable|url',
             'handling_fee_fixed' => 'nullable|integer|min:0',

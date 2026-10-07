@@ -20,7 +20,7 @@
 
 ## 建议的后续方案
 
-浏览器更适合使用 Secure、HttpOnly、SameSite Cookie 与服务端会话，配合 CSRF、受信任 Origin/CORS 限制、明确空闲/绝对超时和敏感操作重新认证。当前 CORS 会回显 Origin 并允许凭据，迁移 Cookie 前必须收紧来源，不能只将 JWT 搬进 Cookie。外部客户端可继续使用受控的 Bearer 令牌，管理账户宜再加多因素认证。
+浏览器更适合使用 Secure、HttpOnly、SameSite Cookie 与服务端会话，配合 CSRF、受信任 Origin/CORS 限制、明确空闲/绝对超时和敏感操作重新认证。当前 CORS 配置默认允许任意来源，但不允许携带 Cookie 凭据；迁移 Cookie 前仍必须收紧来源并设计 CSRF 防护，不能只将 JWT 搬进 Cookie。外部客户端可继续使用受控的 Bearer 令牌，管理账户宜再加多因素认证。
 
 可以通过过渡期交换接口，在用户原有 JWT 和 Redis 会话均有效时换发 Cookie，再清理本机旧令牌；过渡期结束后停用浏览器旧令牌。直接停用 JWT/localStorage 会要求当前浏览器重新登录，因此本次没有强制切换。邮箱密码本身可以继续保留，先改进会话管理比单纯换登录按钮更有针对性。
 
@@ -29,3 +29,8 @@
 ## 订阅凭据
 
 重置入口移至账户安全，需要确认。新界面使用 POST，保留旧 GET 接口供旧客户端兼容。该操作更换订阅 token 和连接 UUID，旧链接及已导入配置失效，需要所有设备重新导入；不修改密码、套餐或账户会话。界面不再展示订阅地址明文；复制、导入和二维码仍使用真实凭据，应妥善保管。
+
+
+## 2026-10-07 存储方式复核
+
+历史提交 b359bc83 完成签名/过期验证、会话撤销和退出清理；6ab3689c 去除了 URL 中的 auth_data；941cd206 将一次性授权码绑定来源会话。这些改造没有迁移网页令牌存储方式。当前 shared/api.ts 从 localStorage 读取令牌，UserAuth.tsx 和 user/app.tsx 仍将登录结果写入 localStorage，请求使用 Bearer 并设置 credentials: omit。用户与后台使用不同存储键，但都可被同源 JavaScript 读取。HttpOnly Cookie 迁移仍是后续工作；当前风险不等于已确认生产存在 XSS。

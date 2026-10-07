@@ -7,6 +7,8 @@ use App\Models\Payment;
 
 class PaymentService
 {
+    public const RETIRED_METHODS = ['Epusdt', 'BEasyPaymentUSDT'];
+
     public $method;
     protected $class;
     protected $config;
@@ -14,6 +16,7 @@ class PaymentService
 
     public function __construct($method, $id = NULL, $uuid = NULL)
     {
+        abort_if(in_array($method, self::RETIRED_METHODS, true), 404, __('Payment method is not available'));
         $this->method = $method;
         $this->class = '\\App\\Payments\\' . $this->method;
         if (!class_exists($this->class)) abort(500, 'gate is not found');

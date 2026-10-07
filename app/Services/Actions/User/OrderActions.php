@@ -297,6 +297,7 @@ class OrderActions
             'handling_fee_percent'
         ])
             ->where('enable', 1)
+            ->whereNotIn('payment', PaymentService::RETIRED_METHODS)
             ->orderBy('sort', 'ASC')
             ->get();
 

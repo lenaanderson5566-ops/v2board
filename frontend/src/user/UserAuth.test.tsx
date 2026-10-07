@@ -35,11 +35,12 @@ vi.mock("../shared/i18n", () => ({
 vi.mock("../shared/experience-copy", () => ({ e: (key: string) => key }));
 vi.mock("../shared/ux", () => ({ ux: (key: string) => key }));
 import { UserAuth } from "./UserAuth";
-function page(mode = "register") {
+function page(mode = "register", redirectPath?: string) {
     const onLogin = vi.fn();
     const view = render(
         <UserAuth
             mode={mode}
+            redirectPath={redirectPath}
             onLogin={onLogin}
             renderCaptcha={(onChange) => (
                 <button
@@ -82,6 +83,14 @@ beforeEach(() => {
               : { data: true },
     );
 });
+it("returns to the pending app authorization after website sign-in", async () => {
+    const target = "client-authorize?authorizationId=" + "a".repeat(64);
+    page("login", target);
+    credentials();
+    fireEvent.click(screen.getByRole("button", { name: "登录" }));
+    await waitFor(() => expect(mocks.navigate).toHaveBeenCalledWith(target));
+});
+
 it("shows the suspension entry when authenticated credentials are denied as banned", async () => {
     mocks.request.mockRejectedValue(
         Object.assign(new Error("Suspended"), { code: "ACCOUNT_BANNED" }),
@@ -102,9 +111,7 @@ describe("user account steps", () => {
     it("explains email-only registration when an invitation is required", () => {
         mocks.boot.inviteRequired = true;
         page();
-        expect(screen.getByRole("alert").textContent).toBe(
-            "请朋友邀请你加入",
-        );
+        expect(screen.getByRole("alert").textContent).toBe("请朋友邀请你加入");
         expect(screen.queryByLabelText("邮箱地址")).toBeNull();
         expect(mocks.request).not.toHaveBeenCalled();
     });
@@ -369,12 +376,21 @@ it("combines an email username with the chosen allowed domain", async () => {
     mocks.boot.emailWhitelistEnabled = true;
     mocks.boot.emailWhitelistSuffixes = ["qq.com", "gmail.com"];
     page();
-    fireEvent.change(screen.getByLabelText("邮箱地址"), { target: { value: "friend" } });
-    fireEvent.change(screen.getByLabelText("邮箱后缀"), { target: { value: "gmail.com" } });
-    fireEvent.change(screen.getByLabelText("密码", { exact: true }), { target: { value: "Long-password!234" } });
+    fireEvent.change(screen.getByLabelText("邮箱地址"), {
+        target: { value: "friend" },
+    });
+    fireEvent.change(screen.getByLabelText("邮箱后缀"), {
+        target: { value: "gmail.com" },
+    });
+    fireEvent.change(screen.getByLabelText("密码", { exact: true }), {
+        target: { value: "Long-password!234" },
+    });
     fireEvent.click(screen.getByRole("button", { name: "next" }));
     await screen.findByRole("heading", { name: "verify" });
-    expect(mocks.request).toHaveBeenCalledWith("passport/comm/sendEmailVerify", expect.objectContaining({ email: "friend@gmail.com" }));
+    expect(mocks.request).toHaveBeenCalledWith(
+        "passport/comm/sendEmailVerify",
+        expect.objectContaining({ email: "friend@gmail.com" }),
+    );
 });
 it("keeps the invited address locked instead of offering a domain selector", () => {
     mocks.boot.emailWhitelistEnabled = true;
@@ -382,5 +398,7 @@ it("keeps the invited address locked instead of offering a domain selector", () 
     location.hash = `#/register?invitation=${"a".repeat(64)}&email=friend%40qq.com`;
     page();
     expect(screen.queryByLabelText("邮箱后缀")).toBeNull();
-    expect((screen.getByLabelText("邮箱地址") as HTMLInputElement).readOnly).toBe(true);
+    expect(
+        (screen.getByLabelText("邮箱地址") as HTMLInputElement).readOnly,
+    ).toBe(true);
 });

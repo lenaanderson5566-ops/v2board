@@ -74,3 +74,7 @@ Admin, operations/risk, staff and node APIs retain all existing paths and schema
 | `New native resource` | `GET /api/v10/public/client-installers/{installerId}/content` | public | scalar |
 | `New native resource` | `GET /api/v10/me/client-config` | user | scalar |
 | `New native resource` | `GET /api/v10/public/fastai/releases/latest` | public | fastaiRelease |
+| `New native resource` | `POST /api/v10/auth/client-authorizations` | public | clientAuthorization |
+| `New native resource` | `GET /api/v10/me/client-authorizations/{authorizationId}` | user | clientAuthorizationDetails |
+| `New native resource` | `POST /api/v10/me/client-authorizations/{authorizationId}/approval` | user | clientAuthorizationApproval |
+| `New native resource` | `POST /api/v10/auth/client-session-exchanges` | public | authentication |

@@ -60,3 +60,29 @@ Missing/revoked sessions return 401; banned users return 403; no usable subscrip
 Deploy the backend before distributing the updated fastai client. Clear/rebuild cached routes using the normal deployment workflow. There is no fallback to a shareable subscription URL. Validate locally with `php tests/fastai-client-config.php`, V10 contract/inventory tests and subscription compatibility tests.
 
 Configuration requests are recorded as `Client configuration request` in the API log: userId, clientVersion, platform, requestId, method, status, outcome, code and durationMs. Existing subscription risk logs also record configuration-generation success and denial reasons. Request credentials, query tokens and configuration bodies are excluded from database API logs.
+
+## FastAI browser sign-in
+
+Deploy the V10 backend and rebuilt user frontend before distributing the new client.
+`v2board.app_url` must be the canonical HTTPS website origin. No database migration
+is required; the existing shared cache must support atomic locks (Redis is recommended).
+After deployment, rebuild the frontend with `npm ci && npm run build`, clear stale route
+and configuration caches using the existing deployment procedure, and restart long-lived
+PHP workers. Do not log authorization request IDs, codes, verifiers or callback URLs.
+
+- `POST /auth/client-authorizations`: create a five-minute request with S256 PKCE,
+  random state, platform and a strictly validated redirect URI.
+- `GET /me/client-authorizations/{authorizationId}`: view the request using the
+  browser's Bearer session; this does not grant access.
+- `POST /me/client-authorizations/{authorizationId}/approval`: explicit user consent,
+  returning a one-minute, single-use code through the dedicated callback.
+- `POST /auth/client-session-exchanges`: exchange the code with its original verifier
+  and redirect URI. The resulting App session is independently revocable. An expired,
+  banned or revoked browser session cannot authorize a new App session.
+
+Windows, macOS and Linux use `http://127.0.0.1:{ephemeralPort}/fastai-auth/callback`
+(ports 1024–65535). Android uses only `ws.fastdog.fastai://oauth/callback`; S256 PKCE
+protects intercepted codes. Import/deep-link subscription handlers remain disabled.
+Normal launches restore the encrypted App session and validate it against the backend;
+only missing, expired or revoked sessions require signing in again. Email/password login
+remains available. iOS sign-in integration is outside this client's supported targets.

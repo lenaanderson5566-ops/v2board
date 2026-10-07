@@ -115,6 +115,14 @@ outputs={
  'User/CommController@config':'preferences','User/TelegramController@getBotInfo':'bot',
  'User/CouponController@check':'coupon','Guest/CommController@config':'publicSettings',
  'Guest/BannerController@fetch':'array:banner','Client/AppController@getVersion':'applicationVersion'}
+inputs.update({field:field for field in ['codeChallenge','state','redirectUri','authorizationCode','codeVerifier']})
+allowed.update({'Passport/ClientAuthorizationController@create':'codeChallenge state redirectUri platform', 'Passport/ClientAuthorizationController@exchange':'authorizationCode codeVerifier redirectUri'})
+outputs.update({'Passport/ClientAuthorizationController@create':'clientAuthorization', 'Passport/ClientAuthorizationController@details':'clientAuthorizationDetails', 'Passport/ClientAuthorizationController@approve':'clientAuthorizationApproval', 'Passport/ClientAuthorizationController@exchange':'authentication'})
+schemas.update({
+ 'clientAuthorization':{'authorizationId':['authorizationId'],'authorizationUrl':['authorizationUrl'],'expiresAt':['expiresAt','time']},
+ 'clientAuthorizationDetails':{'platform':['platform'],'expiresAt':['expiresAt','time']},
+ 'clientAuthorizationApproval':{'callbackUrl':['callbackUrl']},
+})
 contracts={};controllers={};routes=['<?php','// Explicit V10 resources. Administrative and node routes remain unchanged.']
 for i,e in enumerate(entries):
  k=key(e);name=e['method'].lower()+''.join(x[0].upper()+x[1:] for x in re.findall(r'[A-Za-z0-9]+',e['path']));area,action=k.split('@');controller=area.replace('/','')
@@ -128,6 +136,7 @@ for i,e in enumerate(entries):
  if k.startswith('Guest/Telegram'):imap={} # Signed provider payload, native protocol.
  out=outputs.get(k,'authentication' if k in ['Passport/AuthController@login','Passport/AuthController@register','Passport/AuthController@token2Login'] else 'scalar')
  contracts[name]={'input':imap,'output':out,'role':e['role'],'status':e['status'],'raw':raw,'bindings':e['bindings'],'path':e['path'],'method':e['method'],'key':k}
+ if e.get('description'): contracts[name]['description']=e['description']
  params=[];args=[]
  for p in e['parameters']:
   typ=p['type'];pn=p['name']

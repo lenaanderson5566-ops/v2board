@@ -117,7 +117,13 @@ required = {
     'User/TicketController@withdraw': ['withdrawalMethod', 'withdrawalAccount'], 'User/NoticeController@read': ['notificationId', 'version'], 'User/CouponController@check': ['code'],
 }
 
+required.update({'Passport/ClientAuthorizationController@create':['codeChallenge','state','redirectUri','platform'], 'Passport/ClientAuthorizationController@exchange':['authorizationCode','codeVerifier','redirectUri']})
+
 def input_schema(field):
+    if field in ['state','codeChallenge']: return {'type':'string','pattern':'^[A-Za-z0-9_-]{43}$'}
+    if field == 'authorizationCode': return {'type':'string','pattern':'^[a-f0-9]{64}$'}
+    if field == 'codeVerifier': return {'type':'string','pattern':'^[A-Za-z0-9._~-]{43,128}$'}
+    if field == 'redirectUri': return {'type':'string','maxLength':255}
     if field == 'architecture': return {'type':'string','enum':['x64','arm64','arm','x86']}
     if field == 'clientVersion': return {'type': 'string', 'pattern': r'^\d+(?:\.\d+){1,3}$'}
     if field == 'platform': return {'type': 'string', 'enum': ['windows', 'android', 'macos', 'linux', 'ios']}

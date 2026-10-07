@@ -10,6 +10,11 @@ final class Input
     public static function validate(Request $request, array $contract): void
     {
         $types = [
+            'codeChallenge'=>'string|regex:/^[A-Za-z0-9_-]{43}$/',
+            'state'=>'string|regex:/^[A-Za-z0-9_-]{43}$/',
+            'redirectUri'=>'string|max:255',
+            'authorizationCode'=>'string|regex:/^[a-f0-9]{64}$/',
+            'codeVerifier'=>'string|regex:/^[A-Za-z0-9._~-]{43,128}$/',
             'clientVersion'=>'string|regex:/^\\d+(?:\\.\\d+){1,3}$/',
             'architecture'=>'in:x64,arm64,arm,x86',
             'platform'=>'in:windows,android,macos,linux,ios',
@@ -31,6 +36,8 @@ final class Input
             'placement'=>'in:landing,dashboard','status'=>'in:unpaid,processing,cancelled,completed,discounted'
         ];
         $required = [
+            'Passport/ClientAuthorizationController@create'=>['codeChallenge','state','redirectUri','platform'],
+            'Passport/ClientAuthorizationController@exchange'=>['authorizationCode','codeVerifier','redirectUri'],
             'Guest/FastaiController@release'=>['platform','architecture'],
             'Client/ClientController@authenticatedConfig'=>['clientVersion','platform'],
             'Passport/AuthController@login'=>['email','password'],

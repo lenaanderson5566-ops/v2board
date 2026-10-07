@@ -1375,7 +1375,8 @@
     "role": "user",
     "scope": "client",
     "status": 200,
-    "raw": true
+    "raw": true,
+    "description": "FastAI native YAML uses default.fastai.yaml or custom.fastai.yaml, independently of public subscription templates. Only real proxy nodes are emitted; subscription information nodes and subscription-userinfo headers are omitted. Account information is read through the account/subscription JSON APIs. Geo databases are bundled with FastAI; automatic Geo updates and remote HTTP rule providers are prohibited, including custom templates."
   },
   {
     "key": "Guest/FastaiController@release",
@@ -1394,6 +1395,94 @@
     ],
     "role": "public",
     "scope": "public",
+    "status": 200
+  },
+  {
+    "method": "POST",
+    "path": "auth/client-authorizations",
+    "key": "Passport/ClientAuthorizationController@create",
+    "action": "App\\Http\\Controllers\\V10\\PassportClientAuthorizationController@create",
+    "parameters": [
+      {
+        "name": "request",
+        "type": "Illuminate\\Http\\Request",
+        "optional": false
+      }
+    ],
+    "bindings": {},
+    "middleware": [
+      "throttle:20,1"
+    ],
+    "role": "public",
+    "scope": "user",
+    "status": 201
+  },
+  {
+    "method": "GET",
+    "path": "me/client-authorizations/{authorizationId}",
+    "key": "Passport/ClientAuthorizationController@details",
+    "action": "App\\Http\\Controllers\\V10\\PassportClientAuthorizationController@details",
+    "parameters": [
+      {
+        "name": "request",
+        "type": "Illuminate\\Http\\Request",
+        "optional": false
+      }
+    ],
+    "bindings": {
+      "authorizationId": "authorization_id"
+    },
+    "middleware": [
+      "throttle:30,1"
+    ],
+    "role": "user",
+    "scope": "user",
+    "status": 200,
+    "legacy": "user/client-authorization",
+    "legacyMethod": "GET"
+  },
+  {
+    "method": "POST",
+    "path": "me/client-authorizations/{authorizationId}/approval",
+    "key": "Passport/ClientAuthorizationController@approve",
+    "action": "App\\Http\\Controllers\\V10\\PassportClientAuthorizationController@approve",
+    "parameters": [
+      {
+        "name": "request",
+        "type": "Illuminate\\Http\\Request",
+        "optional": false
+      }
+    ],
+    "bindings": {
+      "authorizationId": "authorization_id"
+    },
+    "middleware": [
+      "throttle:30,1"
+    ],
+    "role": "user",
+    "scope": "user",
+    "status": 200,
+    "legacy": "user/client-authorization/approve",
+    "legacyMethod": "POST"
+  },
+  {
+    "method": "POST",
+    "path": "auth/client-session-exchanges",
+    "key": "Passport/ClientAuthorizationController@exchange",
+    "action": "App\\Http\\Controllers\\V10\\PassportClientAuthorizationController@exchange",
+    "parameters": [
+      {
+        "name": "request",
+        "type": "Illuminate\\Http\\Request",
+        "optional": false
+      }
+    ],
+    "bindings": {},
+    "middleware": [
+      "throttle:20,1"
+    ],
+    "role": "public",
+    "scope": "user",
     "status": 200
   }
 ]

@@ -66,6 +66,7 @@ setLanguagePersistence(async (language) => {
 });
 const loadUserContent = () => import("./user-entry");
 const UserContent = React.lazy(loadUserContent);
+const ClientAuthorization = React.lazy(() => import("./ClientAuthorization"));
 const Landing = React.lazy(() => import("./Landing"));
 import "../shared/style.css";
 import "../shared/console.css";
@@ -101,6 +102,13 @@ export default function UserApp() {
     );
     const sidebar = useRef<HTMLElement>(null);
     const loggingOut = useRef(false);
+    const authorizationReturn = useRef<string | undefined>(
+        /^#\/client-authorize\?authorizationId=[a-f0-9]{64}$/.test(
+            location.hash,
+        )
+            ? location.hash.slice(2)
+            : undefined,
+    );
     async function handleLogout() {
         if (loggingOut.current) return;
         loggingOut.current = true;
@@ -158,13 +166,30 @@ export default function UserApp() {
     }, [open]);
     useEffect(() => {
         const fn = () => {
+            const current = location.hash.slice(2).split("?")[0];
+            if (
+                /^#\/client-authorize\?authorizationId=[a-f0-9]{64}$/.test(
+                    location.hash,
+                )
+            )
+                authorizationReturn.current = location.hash.slice(2);
+            else if (
+                !["login", "register", "forget", "client-authorize"].includes(
+                    current,
+                )
+            )
+                authorizationReturn.current = undefined;
             setPath(location.hash.slice(2).split("?")[0] || "");
             setOpen(false);
         };
         const expire = () => {
             setUser(null);
-            setPath("login");
-            navigate("login");
+            if (location.hash.startsWith("#/client-authorize?")) {
+                setPath("client-authorize");
+            } else {
+                setPath("login");
+                navigate("login");
+            }
         };
         window.addEventListener("hashchange", fn);
         window.addEventListener("auth-expired", expire);
@@ -271,9 +296,16 @@ export default function UserApp() {
                         ["register", "forget"].includes(path) ? path : "login"
                     }
                     onLogin={setUser}
+                    redirectPath={authorizationReturn.current}
                     renderCaptcha={(handler) => <Captcha onChange={handler} />}
                 />
             </>
+        );
+    if (path === "client-authorize")
+        return (
+            <React.Suspense fallback={<WorkspaceSkeleton full />}>
+                <ClientAuthorization user={user} />
+            </React.Suspense>
         );
     const userNav = userNavigation(user.account_status?.state).map((item) => ({
         ...item,

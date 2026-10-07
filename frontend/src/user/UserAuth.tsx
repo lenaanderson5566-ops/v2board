@@ -19,8 +19,10 @@ export function UserAuth({
     mode,
     onLogin,
     renderCaptcha,
+    redirectPath,
 }: {
     mode: string;
+    redirectPath?: string;
     onLogin: (user: Row) => void;
     renderCaptcha: (onChange: (value: string) => void) => ReactNode;
 }) {
@@ -164,7 +166,7 @@ export function UserAuth({
             const info = await request("user/info");
             await applyAccountLanguage(info.data.language);
             onLogin(info.data);
-            navigate("dashboard");
+            navigate(redirectPath ?? "dashboard");
         } catch (reason) {
             if ((reason as Error & { code?: string }).code === "ACCOUNT_BANNED")
                 setSuspended(true);
@@ -302,9 +304,12 @@ export function UserAuth({
                                             : tx("登录以管理你的订阅与账户")}
                                 </p>
                             )}
-                            {register && !boot.registerClosed && (Boolean(invitation) || !boot.emailWhitelistSuffixes?.length) && (
-                                <RegistrationDomains />
-                            )}
+                            {register &&
+                                !boot.registerClosed &&
+                                (Boolean(invitation) ||
+                                    !boot.emailWhitelistSuffixes?.length) && (
+                                    <RegistrationDomains />
+                                )}
                             {registrationBlocked ? (
                                 <div className="auth-policy">
                                     <p role="alert">
@@ -314,9 +319,7 @@ export function UserAuth({
                                               ? tx(
                                                     "邀请链接不完整，请从邀请邮件中重新打开。",
                                                 )
-                                              : tx(
-                                                    "请朋友邀请你加入",
-                                                )}
+                                              : tx("请朋友邀请你加入")}
                                     </p>
                                     {!boot.registerClosed && (
                                         <p className="muted">
@@ -335,37 +338,46 @@ export function UserAuth({
                                     <fieldset disabled={busy}>
                                         {step === 1 ? (
                                             <>
-                                                {register && !invitation && boot.emailWhitelistEnabled && boot.emailWhitelistSuffixes?.length ? (
-                                                    <RegistrationEmail value={email} onChange={setEmail} />
-                                                ) : (
-                                                <label className="auth-field">
-                                                    <span>
-                                                        {tx("邮箱地址")}
-                                                    </span>
-                                                    <input
-                                                        type="email"
-                                                        autoComplete="email"
-                                                        inputMode="email"
-                                                        required
+                                                {register &&
+                                                !invitation &&
+                                                boot.emailWhitelistEnabled &&
+                                                boot.emailWhitelistSuffixes
+                                                    ?.length ? (
+                                                    <RegistrationEmail
                                                         value={email}
-                                                        readOnly={
-                                                            register &&
-                                                            Boolean(invitation)
-                                                        }
-                                                        maxLength={
-                                                            forget
-                                                                ? 64
-                                                                : undefined
-                                                        }
-                                                        onChange={(event) =>
-                                                            setEmail(
-                                                                event.target
-                                                                    .value,
-                                                            )
-                                                        }
-                                                        placeholder="you@example.com"
+                                                        onChange={setEmail}
                                                     />
-                                                </label>
+                                                ) : (
+                                                    <label className="auth-field">
+                                                        <span>
+                                                            {tx("邮箱地址")}
+                                                        </span>
+                                                        <input
+                                                            type="email"
+                                                            autoComplete="email"
+                                                            inputMode="email"
+                                                            required
+                                                            value={email}
+                                                            readOnly={
+                                                                register &&
+                                                                Boolean(
+                                                                    invitation,
+                                                                )
+                                                            }
+                                                            maxLength={
+                                                                forget
+                                                                    ? 64
+                                                                    : undefined
+                                                            }
+                                                            onChange={(event) =>
+                                                                setEmail(
+                                                                    event.target
+                                                                        .value,
+                                                                )
+                                                            }
+                                                            placeholder="you@example.com"
+                                                        />
+                                                    </label>
                                                 )}
                                                 {!forget && passwordField}
                                                 {register && invitation && (

@@ -908,6 +908,32 @@
       "downloadUrl": [
         "download_url"
       ]
+    },
+    "clientAuthorization": {
+      "authorizationId": [
+        "authorizationId"
+      ],
+      "authorizationUrl": [
+        "authorizationUrl"
+      ],
+      "expiresAt": [
+        "expiresAt",
+        "time"
+      ]
+    },
+    "clientAuthorizationDetails": {
+      "platform": [
+        "platform"
+      ],
+      "expiresAt": [
+        "expiresAt",
+        "time"
+      ]
+    },
+    "clientAuthorizationApproval": {
+      "callbackUrl": [
+        "callbackUrl"
+      ]
     }
   },
   "endpoints": {
@@ -1823,7 +1849,6 @@
       "key": "Public/MirrorController@download"
     },
     "getMeClientConfig": {
-      "description": "FastAI native YAML uses default.fastai.yaml or custom.fastai.yaml, independently of public subscription templates. Only real proxy nodes are emitted; subscription information nodes and subscription-userinfo headers are omitted. Account information is read through the account/subscription JSON APIs. Geo databases are bundled with FastAI; automatic Geo updates and remote HTTP rule providers are prohibited, including custom templates.",
       "input": {
         "clientVersion": "client_version",
         "platform": "platform",
@@ -1836,7 +1861,8 @@
       "bindings": {},
       "path": "me/client-config",
       "method": "GET",
-      "key": "Client/ClientController@authenticatedConfig"
+      "key": "Client/ClientController@authenticatedConfig",
+      "description": "FastAI native YAML uses default.fastai.yaml or custom.fastai.yaml, independently of public subscription templates. Only real proxy nodes are emitted; subscription information nodes and subscription-userinfo headers are omitted. Account information is read through the account/subscription JSON APIs. Geo databases are bundled with FastAI; automatic Geo updates and remote HTTP rule providers are prohibited, including custom templates."
     },
     "getPublicFastaiReleasesLatest": {
       "input": {
@@ -1851,6 +1877,63 @@
       "path": "public/fastai/releases/latest",
       "method": "GET",
       "key": "Guest/FastaiController@release"
+    },
+    "postAuthClientAuthorizations": {
+      "input": {
+        "codeChallenge": "codeChallenge",
+        "state": "state",
+        "redirectUri": "redirectUri",
+        "platform": "platform"
+      },
+      "output": "clientAuthorization",
+      "role": "public",
+      "status": 201,
+      "raw": false,
+      "bindings": {},
+      "path": "auth/client-authorizations",
+      "method": "POST",
+      "key": "Passport/ClientAuthorizationController@create"
+    },
+    "getMeClientAuthorizationsAuthorizationId": {
+      "input": {},
+      "output": "clientAuthorizationDetails",
+      "role": "user",
+      "status": 200,
+      "raw": false,
+      "bindings": {
+        "authorizationId": "authorization_id"
+      },
+      "path": "me/client-authorizations/{authorizationId}",
+      "method": "GET",
+      "key": "Passport/ClientAuthorizationController@details"
+    },
+    "postMeClientAuthorizationsAuthorizationIdApproval": {
+      "input": {},
+      "output": "clientAuthorizationApproval",
+      "role": "user",
+      "status": 200,
+      "raw": false,
+      "bindings": {
+        "authorizationId": "authorization_id"
+      },
+      "path": "me/client-authorizations/{authorizationId}/approval",
+      "method": "POST",
+      "key": "Passport/ClientAuthorizationController@approve"
+    },
+    "postAuthClientSessionExchanges": {
+      "input": {
+        "authorizationCode": "authorizationCode",
+        "codeVerifier": "codeVerifier",
+        "redirectUri": "redirectUri"
+      },
+      "output": "authentication",
+      "role": "public",
+      "status": 200,
+      "raw": false,
+      "bindings": {},
+      "path": "auth/client-session-exchanges",
+      "method": "POST",
+      "key": "Passport/ClientAuthorizationController@exchange"
     }
   }
 }

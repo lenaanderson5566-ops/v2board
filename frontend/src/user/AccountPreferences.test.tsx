@@ -5,11 +5,12 @@ const mocks=vi.hoisted(() => ({changeLanguage:vi.fn(), request:vi.fn(), reload:v
 vi.mock("react-i18next", () => ({useTranslation:()=>({})}));
 vi.mock("./profile-copy", () => ({p:(key:string)=>key}));
 vi.mock("../shared/i18n", () => ({tx:(key:string)=>key, locale:()=>"zh-CN", changeLanguage:mocks.changeLanguage, languages:[{code:"zh-CN",name:"简体中文"},{code:"en-US",name:"English"}]}));
-vi.mock("../shared/api",()=>({request:mocks.request,date:(value:number)=>String(value)}));
+vi.mock("../shared/api",()=>({request:mocks.request,date:(value:number)=>String(value),clearReadCache:vi.fn()}));
 vi.mock("../shared/ui",()=>({
     useData:()=>({data:{"session-a":{ip:"127.0.0.1",ua:"Test",login_at:123}},reload:mocks.reload}),
     Panel:({title,children}:any)=><section><h2>{title}</h2>{children}</section>,
     State:({children}:any)=>children,
+    Modal:({children}:any)=><div role="dialog">{children}</div>,
     Table:({data,actions}:any)=><div>{data.map((row:any)=><div key={row.id}>{row.ip}{actions(row)}</div>)}</div>
 }));
 import { AccountPreferences } from "./AccountPreferences";
@@ -28,7 +29,9 @@ it("keeps the selected account language when persistence fails",async()=>{
 it("retains session removal on the security screen",async()=>{
     mocks.request.mockResolvedValue({data:true});
     render(<AccountSessions/>);
-    fireEvent.click(screen.getByRole("button",{name:"移除"}));
+    fireEvent.click(screen.getByRole("button",{name:"退出登录"}));
+    expect(mocks.request).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole("dialog").querySelector('button.primary')!);
     await waitFor(()=>expect(mocks.reload).toHaveBeenCalled());
     expect(mocks.request).toHaveBeenCalledWith("user/removeActiveSession",{session_id:"session-a"});
 });

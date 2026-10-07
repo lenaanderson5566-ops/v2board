@@ -411,5 +411,12 @@
   "仅在你主动发起 App 登录时批准此请求。": "Approve only if you initiated this app sign-in.",
   "返回 FastAI": "Return to FastAI",
   "正在授权…": "Authorizing…",
-  "确认登录": "Confirm sign-in"
+  "确认登录": "Confirm sign-in",
+  "登录设备": "Login devices",
+  "当前会话": "Current session",
+  "浏览器": "Browser",
+  "应用客户端": "App",
+  "未知设备": "Unknown device",
+  "这里展示账号登录会话，不代表代理在线设备。同一设备可能有多个登录会话。": "These are account sign-in sessions, not active proxy devices. One device may have several sessions.",
+  "退出此登录会话后，该客户端需要重新登录。已建立的代理连接不会因此立即断开。": "This client will need to sign in again. Existing proxy connections will not immediately disconnect."
 }

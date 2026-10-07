@@ -38,6 +38,8 @@ try {
     };
     $sessions = json_decode($call('me/sessions',$first)->getContent(),true)['data'];
     $assert(count($sessions)===2 && count(array_filter($sessions,fn($meta)=>isset($meta['auth_data'])))===0, 'Session list leaked login tokens');
+    $assert(count(array_filter($sessions,fn($meta)=>$meta['current'] ?? false))===1, 'Current session must be identified exactly once');
+    $assert(count(array_filter($sessions,fn($meta)=>($meta['clientKind'] ?? null)==='native'))===2, 'Native session type missing');
     $before = $user->only(['token','uuid','password','plan_id']);
     $reset = $call('me/subscription/credential-rotations',$first,'POST'); $user->refresh();
     $assert($reset->getStatusCode()===200 && $user->token!==$before['token'] && $user->uuid!==$before['uuid'], 'Subscription credentials not rotated');

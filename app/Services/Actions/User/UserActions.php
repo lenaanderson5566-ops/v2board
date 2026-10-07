@@ -38,12 +38,15 @@ class UserActions
             abort(request()->is('api/v10/*') ? 409 : 500, __('The user does not exist'));
         }
         $authService = new AuthService($user);
-        return response([
-            'data' => array_map(function ($session) {
-                unset($session['auth_data']);
-                return $session;
-            }, $authService->getSessions())
-        ]);
+        $current = AuthService::sessionReference($request->header('Authorization') ?? '');
+        $sessions = $authService->getSessions();
+        foreach ($sessions as $id => &$session) {
+            unset($session['auth_data']);
+            $session['current'] = $id === ($current['sessionId'] ?? null);
+            $session['client_kind'] = $session['client_kind'] ?? 'unknown';
+        }
+        unset($session);
+        return response(['data' => $sessions]);
     }
 
     public function removeActiveSession(Request $request)

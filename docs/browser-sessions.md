@@ -16,4 +16,12 @@ CORS no longer reflects arbitrary origins: canonical website origin and exact `F
 
 Legacy-token migration defaults to ending at 2026-10-21 00:00 UTC. Set `BROWSER_LEGACY_EXCHANGE_UNTIL` explicitly to your intended short deployment transition deadline, then disable it by setting a past date when rollout completes. Expired/revoked old tokens require normal sign-in. Do not log cookies, CSRF secrets, passwords, migration tokens or callback codes. An explicit allowed frontend origin is trusted to perform browser actions; keep the allowlist narrow.
 
+## Login device management
+
+The user account security page lists browser and native login sessions together. `GET /api/v10/me/sessions` adds `current`, `clientKind` and `expiresAt` to each session. The current session is derived from the authenticated credential, never client input. Older sessions without client metadata are reported as unknown; expired new sessions are omitted. IP and client information describe the sign-in event, not live location or verified physical-device identity. Multiple sessions can belong to one device. Revoking a session prevents further authenticated API requests; it does not immediately terminate established proxy connections or rotate subscription credentials. Revoking the current browser session also clears the frontend authenticated state.
+
+All registry mutations (registration, individual revocation and account-wide revocation) acquire the same per-user cache lock before reading or writing. Keep the shared Redis cache and its locking support across every backend instance. Lock failures fail the operation rather than issuing an unregistered credential. Concurrent operations are serialized: a new sign-in that completes after an account-wide revocation can establish a new session. Requests already authenticated before revocation are not retroactively cancelled. Deploy/restart all backend workers together: an old worker that does not acquire this lock can still overwrite newer registry values. No database migration or forced sign-out is required for this change.
+
+`tests/session-concurrency.php` starts independent PHP processes against the local shared cache to check registration and revocation interleavings; it must only run in a local environment.
+
 Validation: `tests/browser-session.php`, `tests/auth-security.php`, `tests/fastai-browser-login.php`, `tests/fastai-release-login.php`, V10 inventory/contracts, frontend browser-session and authentication tests. This is a scoped migration, not a full production penetration test.

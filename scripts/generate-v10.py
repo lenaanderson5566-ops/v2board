@@ -65,7 +65,7 @@ schema('commission','id:id orderAmount:order_amount orderNumber:trade_no amount:
 schema('article','id:id title:title category:category body:body updatedAt:updated_at:time createdAt:created_at:time')
 schema('banner','id:id title:title imageUrl:image_url mobileImageUrl:mobile_image_url targetUrl:target_url')
 schema('apple','username:username password:password region:region_display lastCheckedAt:last_check:time available:available:boolean status:status')
-schema('session','ip:ip loginAt:login_at:time userAgent:ua')
+schema('session','ip:ip loginAt:login_at:time userAgent:ua expiresAt:expires_at:time current:current:boolean clientKind:client_kind')
 schema('resetCredit','id:id remaining:remaining expiresAt:expires_at:time')
 schema('resetHistory','id:id kind:kind quantity:quantity uploadedBefore:u_before:integer downloadedBefore:d_before:integer createdAt:created_at:time')
 schema('reset','available:available credits:credits:array:resetCredit canReset:can_reset:boolean disabledReason:disabled_reason history:history:array:resetHistory')

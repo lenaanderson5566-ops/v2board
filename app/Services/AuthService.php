@@ -29,12 +29,15 @@ class AuthService
             'iat' => $now,
             'exp' => $now + 30 * 86400,
         ], config('app.key'), 'HS256');
-        self::addSession($this->user->id, $guid, [
+        $stored = self::addSession($this->user->id, $guid, [
             'ip' => $request->ip(),
             'login_at' => $now,
             'ua' => $request->userAgent(),
-            'auth_data' => $authData
+            'auth_data' => $authData,
+            'expires_at' => $now + 30 * 86400,
+            'client_kind' => $request->attributes->has('browser.session') ? 'browser' : 'native'
         ]);
+        if (!$stored) throw new \RuntimeException('Session registration failed');
         return [
             'token' => $this->user->token,
             'is_admin' => $this->user->is_admin,
@@ -87,44 +90,41 @@ class AuthService
     private static function addSession($userId, $guid, $meta)
     {
         $cacheKey = CacheKey::get("USER_SESSIONS", $userId);
-        $sessions = (array)Cache::get($cacheKey, []);
-        $sessions[$guid] = $meta;
-        if (!Cache::put(
-            $cacheKey,
-            $sessions
-        )) return false;
-        return true;
+        return Cache::lock($cacheKey.':lock', 10)->block(5, function () use ($cacheKey, $guid, $meta) {
+            $sessions = (array)Cache::get($cacheKey, []);
+            $sessions[$guid] = $meta;
+            return Cache::put($cacheKey, $sessions);
+        });
     }
 
     public function getSessions()
     {
-        return (array)Cache::get(CacheKey::get("USER_SESSIONS", $this->user->id), []);
+        return array_filter((array)Cache::get(CacheKey::get("USER_SESSIONS", $this->user->id), []),
+            fn($meta) => !isset($meta['expires_at']) || $meta['expires_at'] > time());
     }
 
     public function removeSession($sessionId)
     {
         $cacheKey = CacheKey::get("USER_SESSIONS", $this->user->id);
-        $sessions = (array)Cache::get($cacheKey, []);
         if (!is_string($sessionId)) return false;
-        if (isset($sessions[$sessionId]['auth_data'])) Cache::forget($sessions[$sessionId]['auth_data']);
-        unset($sessions[$sessionId]);
-        if (!Cache::put(
-            $cacheKey,
-            $sessions
-        )) return false;
-        return true;
+        return Cache::lock($cacheKey.':lock', 10)->block(5, function () use ($cacheKey, $sessionId) {
+            $sessions = (array)Cache::get($cacheKey, []);
+            if (isset($sessions[$sessionId]['auth_data'])) Cache::forget($sessions[$sessionId]['auth_data']);
+            unset($sessions[$sessionId]);
+            return Cache::put($cacheKey, $sessions);
+        });
     }
 
     public function removeAllSession()
     {
         $cacheKey = CacheKey::get("USER_SESSIONS", $this->user->id);
-        $sessions = (array)Cache::get($cacheKey, []);
-        foreach ($sessions as $guid => $meta) {
-            if (isset($meta['auth_data'])) {
-                Cache::forget($meta['auth_data']);
+        return Cache::lock($cacheKey.':lock', 10)->block(5, function () use ($cacheKey) {
+            $sessions = (array)Cache::get($cacheKey, []);
+            foreach ($sessions as $meta) {
+                if (isset($meta['auth_data'])) Cache::forget($meta['auth_data']);
             }
-        }
-        return Cache::forget($cacheKey);
+            return Cache::forget($cacheKey);
+        });
     }
 
     public function removeCurrentSession($jwt)
@@ -132,9 +132,9 @@ class AuthService
         try {
             $data = (array)JWT::decode($jwt, new Key(config('app.key'), 'HS256'));
             if ((int)($data['id'] ?? 0) !== (int)$this->user->id) return false;
-            return $this->removeSession($data['session'] ?? null);
         } catch (\Throwable $e) {
             return false;
         }
+        return $this->removeSession($data['session'] ?? null);
     }
 }

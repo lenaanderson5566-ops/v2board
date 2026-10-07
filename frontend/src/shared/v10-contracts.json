@@ -669,6 +669,17 @@
       ],
       "userAgent": [
         "ua"
+      ],
+      "expiresAt": [
+        "expires_at",
+        "time"
+      ],
+      "current": [
+        "current",
+        "boolean"
+      ],
+      "clientKind": [
+        "client_kind"
       ]
     },
     "resetCredit": {

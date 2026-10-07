@@ -1,3 +1,8 @@
+import {
+    initializeBrowserSession,
+    hasBrowserSession,
+    forgetBrowserSession,
+} from "../shared/browser-session";
 import { Captcha } from "../shared/Captcha";
 import DOMPurify from "dompurify";
 import { installChatLayout } from "./chat-layout";
@@ -39,7 +44,6 @@ import {
 import {
     boot,
     request,
-    storageKey,
     navigate,
     readRequest,
     clearReadCache,
@@ -60,7 +64,7 @@ import {
     LandingSkeleton,
 } from "../shared/WorkspaceSkeleton";
 setLanguagePersistence(async (language) => {
-    if (boot.mode !== "user" || !localStorage.getItem(storageKey)) return false;
+    if (boot.mode !== "user" || !hasBrowserSession()) return false;
     await request("user/update", { language });
     return true;
 });
@@ -210,33 +214,19 @@ export default function UserApp() {
                 location.pathname + location.search + "#/login",
             );
             clearReadCache();
-            localStorage.removeItem(storageKey);
+            forgetBrowserSession();
         }
         // Start code loading alongside the account request; do not delay authentication on it.
-        if (
-            boot.mode === "user" &&
-            !boot.landing &&
-            localStorage.getItem(storageKey)
-        )
+        if (boot.mode === "user" && !boot.landing && hasBrowserSession())
             void loadUserContent().catch(() => {});
-        if (!boot.landing && (verification || localStorage.getItem(storageKey)))
-            Promise.resolve()
+        if (!boot.landing)
+            initializeBrowserSession()
                 .then(async () => {
+                    if (!verification && !hasBrowserSession()) return null;
                     if (verification) {
-                        const session = await request(
-                            "passport/auth/token2Login",
-                            { verify: verification },
-                        );
-                        if (typeof session.data?.auth_data !== "string")
-                            throw new Error(
-                                tx("服务响应异常 ({{value0}})", {
-                                    value0: 200,
-                                }),
-                            );
-                        localStorage.setItem(
-                            storageKey,
-                            session.data.auth_data,
-                        );
+                        await request("passport/auth/token2Login", {
+                            verify: verification,
+                        });
                     }
                     return readRequest(
                         "user/info",
@@ -245,6 +235,7 @@ export default function UserApp() {
                     );
                 })
                 .then(async (r) => {
+                    if (!r) return;
                     if (boot.mode === "user")
                         await applyAccountLanguage(r.data.language);
                     setUser(r.data);
@@ -255,7 +246,7 @@ export default function UserApp() {
                 })
                 .catch((e) => {
                     setError(e.message);
-                    localStorage.removeItem(storageKey);
+                    forgetBrowserSession();
                 })
                 .finally(() => setLoading(false));
         else setLoading(false);

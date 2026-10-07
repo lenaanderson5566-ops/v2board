@@ -95,3 +95,8 @@ App-to-browser login links and browser-to-App PKCE approval share the same autho
 A successfully exchanged code creates an independent session. Logging out of one client does not implicitly log out the other; revoke all sessions for account-wide logout. PKCE validation failures do not consume the legitimate client's code.
 
 This backend-only hardening needs no database migration or new App build. Existing unredeemed legacy login tickets are intentionally rejected after deployment; users can request a fresh link. Clear/rebuild application caches and restart long-lived PHP workers using the normal deployment procedure. Regression checks: `tests/session-authorization.php`, `tests/fastai-browser-login.php` and `tests/fastai-release-login.php`.
+
+
+## Browser HttpOnly authentication
+
+The native Bearer contracts remain supported. Browser mode (`X-Browser-Client: user|admin`) instead uses scoped HttpOnly cookies, synchronizer CSRF and exact allowed Origin validation. Browser authentication responses contain only browser-session metadata, not accessToken. GET/POST/DELETE `/auth/browser-session` bootstrap, migrate legacy localStorage credentials during a bounded window, and revoke the current scoped browser session. See [browser-sessions.md](../browser-sessions.md) for deployment, expiry, CORS and compatibility details.

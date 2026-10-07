@@ -10,6 +10,7 @@ final class Input
     public static function validate(Request $request, array $contract): void
     {
         $types = [
+            'legacyToken'=>'string|max:8192',
             'codeChallenge'=>'string|regex:/^[A-Za-z0-9_-]{43}$/',
             'state'=>'string|regex:/^[A-Za-z0-9_-]{43}$/',
             'redirectUri'=>'string|max:255',
@@ -36,6 +37,7 @@ final class Input
             'placement'=>'in:landing,dashboard','status'=>'in:unpaid,processing,cancelled,completed,discounted'
         ];
         $required = [
+            'Passport/BrowserSessionController@migrate'=>['legacyToken'],
             'Passport/ClientAuthorizationController@create'=>['codeChallenge','state','redirectUri','platform'],
             'Passport/ClientAuthorizationController@exchange'=>['authorizationCode','codeVerifier','redirectUri'],
             'Guest/FastaiController@release'=>['platform','architecture'],

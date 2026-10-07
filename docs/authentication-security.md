@@ -1,6 +1,6 @@
 # 登录安全检查与升级兼容
 
-当前流程为邮箱密码登录、HS256 签名 JWT、Redis 会话登记、浏览器 localStorage 保存令牌。密码使用散列校验；JWT 必须通过签名和会话登记验证。隐藏界面的订阅地址不是令牌加密，也不能替代后端鉴权。
+当前网页使用 HttpOnly Cookie 与共享缓存中的服务端会话；原生 App 保持 HS256 签名 JWT 与 Redis 会话登记。此前浏览器 localStorage 保存令牌的流程已迁移，详见 browser-sessions.md。密码使用散列校验；JWT 必须通过签名和会话登记验证。隐藏界面的订阅地址不是令牌加密，也不能替代后端鉴权。
 
 ## 本次修复
 
@@ -18,7 +18,7 @@
 
 现有 update.sh 清理配置、路由及视图缓存，不执行应用缓存清空。部署不要清空 Redis、执行 `artisan cache:clear`、修改 APP_KEY 或更换到空的会话缓存库，否则仍会导致用户退出。修改密码和找回密码继续撤销该账户全部会话。
 
-## 建议的后续方案
+## 历史迁移方案（已于 2026-10-07 实施）
 
 浏览器更适合使用 Secure、HttpOnly、SameSite Cookie 与服务端会话，配合 CSRF、受信任 Origin/CORS 限制、明确空闲/绝对超时和敏感操作重新认证。当前 CORS 配置默认允许任意来源，但不允许携带 Cookie 凭据；迁移 Cookie 前仍必须收紧来源并设计 CSRF 防护，不能只将 JWT 搬进 Cookie。外部客户端可继续使用受控的 Bearer 令牌，管理账户宜再加多因素认证。
 
@@ -31,6 +31,11 @@
 重置入口移至账户安全，需要确认。新界面使用 POST，保留旧 GET 接口供旧客户端兼容。该操作更换订阅 token 和连接 UUID，旧链接及已导入配置失效，需要所有设备重新导入；不修改密码、套餐或账户会话。界面不再展示订阅地址明文；复制、导入和二维码仍使用真实凭据，应妥善保管。
 
 
-## 2026-10-07 存储方式复核
+## 2026-10-07 迁移前的存储方式复核
 
 历史提交 b359bc83 完成签名/过期验证、会话撤销和退出清理；6ab3689c 去除了 URL 中的 auth_data；941cd206 将一次性授权码绑定来源会话。这些改造没有迁移网页令牌存储方式。当前 shared/api.ts 从 localStorage 读取令牌，UserAuth.tsx 和 user/app.tsx 仍将登录结果写入 localStorage，请求使用 Bearer 并设置 credentials: omit。用户与后台使用不同存储键，但都可被同源 JavaScript 读取。HttpOnly Cookie 迁移仍是后续工作；当前风险不等于已确认生产存在 XSS。
+
+
+## 2026-10-07 HttpOnly 迁移完成
+
+新网页与后台不再写入或读取 localStorage 作为常规认证凭据。仅迁移入口在有限过渡期内读取旧 Token 并换成新的 HttpOnly Cookie 会话，同时撤销该旧 Token。双向免登录、App Bearer、权限检查和全会话撤销保持兼容；CSRF、Origin 与 Cookie 属性详见 [browser-sessions.md](browser-sessions.md)。上述旧版检查记录说明当时的状态，不代表迁移后的当前实现。

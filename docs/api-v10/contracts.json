@@ -909,6 +909,21 @@
         "download_url"
       ]
     },
+    "browserSession": {
+      "accountId": [
+        "accountId"
+      ],
+      "authenticated": [
+        "authenticated",
+        "boolean"
+      ],
+      "csrfToken": [
+        "csrfToken"
+      ],
+      "expiresAt": [
+        "expiresAt"
+      ]
+    },
     "clientAuthorization": {
       "authorizationId": [
         "authorizationId"
@@ -1938,6 +1953,44 @@
       "method": "POST",
       "key": "Passport/ClientAuthorizationController@exchange",
       "description": "Atomically exchange an app-purpose code using S256 PKCE and the original redirect URI. Codes expire after 60 seconds and require an active source session; the resulting App session is independently revocable."
+    },
+    "getAuthBrowserSession": {
+      "input": {},
+      "output": "browserSession",
+      "role": "public",
+      "status": 200,
+      "raw": false,
+      "bindings": {},
+      "path": "auth/browser-session",
+      "method": "GET",
+      "key": "Passport/BrowserSessionController@show",
+      "description": "Browser-only scoped HttpOnly session. X-Browser-Client selects user/admin; mutations require an exact allowed Origin and synchronizer X-CSRF-Token. POST migrates a valid legacy token during the configured transition window."
+    },
+    "postAuthBrowserSession": {
+      "input": {
+        "legacyToken": "legacyToken"
+      },
+      "output": "browserSession",
+      "role": "public",
+      "status": 200,
+      "raw": false,
+      "bindings": {},
+      "path": "auth/browser-session",
+      "method": "POST",
+      "key": "Passport/BrowserSessionController@migrate",
+      "description": "Browser-only scoped HttpOnly session. X-Browser-Client selects user/admin; mutations require an exact allowed Origin and synchronizer X-CSRF-Token. POST migrates a valid legacy token during the configured transition window."
+    },
+    "deleteAuthBrowserSession": {
+      "input": {},
+      "output": "scalar",
+      "role": "public",
+      "status": 204,
+      "raw": false,
+      "bindings": {},
+      "path": "auth/browser-session",
+      "method": "DELETE",
+      "key": "Passport/BrowserSessionController@destroy",
+      "description": "Browser-only scoped HttpOnly session. X-Browser-Client selects user/admin; mutations require an exact allowed Origin and synchronizer X-CSRF-Token. POST migrates a valid legacy token during the configured transition window."
     }
   }
 }

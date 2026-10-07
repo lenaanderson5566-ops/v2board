@@ -1,3 +1,7 @@
+import {
+    initializeBrowserSession,
+    hasBrowserSession,
+} from "../shared/browser-session";
 import "../../../public/assets/admin/res_002.css";
 import "../../../public/assets/admin/res_004.css";
 import "../shared/style.css";
@@ -9,7 +13,6 @@ import AdminWorkspace from "./admin-workspace";
 import {
     boot,
     request,
-    storageKey,
     navigate,
     logoutSession,
     type Row,
@@ -47,22 +50,23 @@ export default function AdminApp() {
         };
         window.addEventListener("hashchange", changed);
         window.addEventListener("auth-expired", expired);
-        if (localStorage.getItem(storageKey)) {
-            request("user/info")
+        {
+            initializeBrowserSession()
+                .then(() => (hasBrowserSession() ? request("user/info") : null))
                 .then(async (result) => {
+                    if (!result) return;
                     await request(`${boot.adminPath}/config/fetch`);
                     if (live) setUser(result.data);
                 })
                 .catch((error) => {
                     if (live) {
                         setError(error.message);
-                        localStorage.removeItem(storageKey);
                     }
                 })
                 .finally(() => {
                     if (live) setLoading(false);
                 });
-        } else setLoading(false);
+        }
         return () => {
             live = false;
             window.removeEventListener("hashchange", changed);

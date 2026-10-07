@@ -156,13 +156,13 @@ export function UserAuth({
                 await request("passport/auth/register", body);
                 setRegistered(true);
             }
-            const result = await request("passport/auth/login", {
+            await request("passport/auth/login", {
                 ...loginLanguagePreference(),
                 email: email.trim(),
                 password,
                 recaptcha_data: captcha,
             });
-            localStorage.setItem(storageKey, result.data.auth_data);
+
             const info = await request("user/info");
             await applyAccountLanguage(info.data.language);
             onLogin(info.data);

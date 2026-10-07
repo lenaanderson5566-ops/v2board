@@ -1668,6 +1668,9 @@
         "security": [
           {
             "bearerAuth": []
+          },
+          {
+            "browserUserCookie": []
           }
         ],
         "x-permission": "user",
@@ -2115,6 +2118,9 @@
         "security": [
           {
             "bearerAuth": []
+          },
+          {
+            "browserUserCookie": []
           }
         ],
         "x-permission": "user",
@@ -2265,6 +2271,9 @@
         "security": [
           {
             "bearerAuth": []
+          },
+          {
+            "browserUserCookie": []
           }
         ],
         "x-permission": "user",
@@ -2415,6 +2424,9 @@
         "security": [
           {
             "bearerAuth": []
+          },
+          {
+            "browserUserCookie": []
           }
         ],
         "x-permission": "user",
@@ -2549,6 +2561,9 @@
         "security": [
           {
             "bearerAuth": []
+          },
+          {
+            "browserUserCookie": []
           }
         ],
         "x-permission": "user",
@@ -2697,6 +2712,9 @@
         "security": [
           {
             "bearerAuth": []
+          },
+          {
+            "browserUserCookie": []
           }
         ],
         "x-permission": "user",
@@ -2821,6 +2839,9 @@
         "security": [
           {
             "bearerAuth": []
+          },
+          {
+            "browserUserCookie": []
           }
         ],
         "x-permission": "user",
@@ -2969,6 +2990,9 @@
         "security": [
           {
             "bearerAuth": []
+          },
+          {
+            "browserUserCookie": []
           }
         ],
         "x-permission": "user",
@@ -3119,6 +3143,9 @@
         "security": [
           {
             "bearerAuth": []
+          },
+          {
+            "browserUserCookie": []
           }
         ],
         "x-permission": "user",
@@ -3269,6 +3296,9 @@
         "security": [
           {
             "bearerAuth": []
+          },
+          {
+            "browserUserCookie": []
           }
         ],
         "x-permission": "user",
@@ -3391,6 +3421,9 @@
         "security": [
           {
             "bearerAuth": []
+          },
+          {
+            "browserUserCookie": []
           }
         ],
         "x-permission": "user",
@@ -3525,6 +3558,9 @@
         "security": [
           {
             "bearerAuth": []
+          },
+          {
+            "browserUserCookie": []
           }
         ],
         "x-permission": "user",
@@ -3675,6 +3711,9 @@
         "security": [
           {
             "bearerAuth": []
+          },
+          {
+            "browserUserCookie": []
           }
         ],
         "x-permission": "user",
@@ -3809,6 +3848,9 @@
         "security": [
           {
             "bearerAuth": []
+          },
+          {
+            "browserUserCookie": []
           }
         ],
         "x-permission": "user",
@@ -3969,6 +4011,9 @@
         "security": [
           {
             "bearerAuth": []
+          },
+          {
+            "browserUserCookie": []
           }
         ],
         "x-permission": "user",
@@ -4119,6 +4164,9 @@
         "security": [
           {
             "bearerAuth": []
+          },
+          {
+            "browserUserCookie": []
           }
         ],
         "x-permission": "user",
@@ -4243,6 +4291,9 @@
         "security": [
           {
             "bearerAuth": []
+          },
+          {
+            "browserUserCookie": []
           }
         ],
         "x-permission": "user",
@@ -4403,6 +4454,9 @@
         "security": [
           {
             "bearerAuth": []
+          },
+          {
+            "browserUserCookie": []
           }
         ],
         "x-permission": "user",
@@ -4566,6 +4620,9 @@
         "security": [
           {
             "bearerAuth": []
+          },
+          {
+            "browserUserCookie": []
           }
         ],
         "x-permission": "user",
@@ -4698,6 +4755,9 @@
         "security": [
           {
             "bearerAuth": []
+          },
+          {
+            "browserUserCookie": []
           }
         ],
         "x-permission": "user",
@@ -4848,6 +4908,9 @@
         "security": [
           {
             "bearerAuth": []
+          },
+          {
+            "browserUserCookie": []
           }
         ],
         "x-permission": "user",
@@ -5040,6 +5103,9 @@
         "security": [
           {
             "bearerAuth": []
+          },
+          {
+            "browserUserCookie": []
           }
         ],
         "x-permission": "user",
@@ -5198,6 +5264,9 @@
         "security": [
           {
             "bearerAuth": []
+          },
+          {
+            "browserUserCookie": []
           }
         ],
         "x-permission": "user",
@@ -5366,6 +5435,9 @@
         "security": [
           {
             "bearerAuth": []
+          },
+          {
+            "browserUserCookie": []
           }
         ],
         "x-permission": "user",
@@ -5524,6 +5596,9 @@
         "security": [
           {
             "bearerAuth": []
+          },
+          {
+            "browserUserCookie": []
           }
         ],
         "x-permission": "user",
@@ -5677,6 +5752,9 @@
         "security": [
           {
             "bearerAuth": []
+          },
+          {
+            "browserUserCookie": []
           }
         ],
         "x-permission": "user",
@@ -5809,6 +5887,9 @@
         "security": [
           {
             "bearerAuth": []
+          },
+          {
+            "browserUserCookie": []
           }
         ],
         "x-permission": "user",
@@ -5962,6 +6043,9 @@
         "security": [
           {
             "bearerAuth": []
+          },
+          {
+            "browserUserCookie": []
           }
         ],
         "x-permission": "user",
@@ -6129,6 +6213,9 @@
         "security": [
           {
             "bearerAuth": []
+          },
+          {
+            "browserUserCookie": []
           }
         ],
         "x-permission": "user",
@@ -6279,6 +6366,9 @@
         "security": [
           {
             "bearerAuth": []
+          },
+          {
+            "browserUserCookie": []
           }
         ],
         "x-permission": "user",
@@ -6429,6 +6519,9 @@
         "security": [
           {
             "bearerAuth": []
+          },
+          {
+            "browserUserCookie": []
           }
         ],
         "x-permission": "user",
@@ -6599,6 +6692,9 @@
         "security": [
           {
             "bearerAuth": []
+          },
+          {
+            "browserUserCookie": []
           }
         ],
         "x-permission": "user",
@@ -6749,6 +6845,9 @@
         "security": [
           {
             "bearerAuth": []
+          },
+          {
+            "browserUserCookie": []
           }
         ],
         "x-permission": "user",
@@ -6934,6 +7033,9 @@
         "security": [
           {
             "bearerAuth": []
+          },
+          {
+            "browserUserCookie": []
           }
         ],
         "x-permission": "user",
@@ -7101,6 +7203,9 @@
         "security": [
           {
             "bearerAuth": []
+          },
+          {
+            "browserUserCookie": []
           }
         ],
         "x-permission": "user",
@@ -7225,6 +7330,9 @@
         "security": [
           {
             "bearerAuth": []
+          },
+          {
+            "browserUserCookie": []
           }
         ],
         "x-permission": "user",
@@ -7419,6 +7527,9 @@
         "security": [
           {
             "bearerAuth": []
+          },
+          {
+            "browserUserCookie": []
           }
         ],
         "x-permission": "user",
@@ -7551,6 +7662,9 @@
         "security": [
           {
             "bearerAuth": []
+          },
+          {
+            "browserUserCookie": []
           }
         ],
         "x-permission": "user",
@@ -7693,6 +7807,9 @@
         "security": [
           {
             "bearerAuth": []
+          },
+          {
+            "browserUserCookie": []
           }
         ],
         "x-permission": "user",
@@ -7843,6 +7960,9 @@
         "security": [
           {
             "bearerAuth": []
+          },
+          {
+            "browserUserCookie": []
           }
         ],
         "x-permission": "user",
@@ -8035,6 +8155,9 @@
         "security": [
           {
             "bearerAuth": []
+          },
+          {
+            "browserUserCookie": []
           }
         ],
         "x-permission": "user",
@@ -8185,6 +8308,9 @@
         "security": [
           {
             "bearerAuth": []
+          },
+          {
+            "browserUserCookie": []
           }
         ],
         "x-permission": "user",
@@ -8358,6 +8484,9 @@
         "security": [
           {
             "bearerAuth": []
+          },
+          {
+            "browserUserCookie": []
           }
         ],
         "x-permission": "user",
@@ -8508,6 +8637,9 @@
         "security": [
           {
             "bearerAuth": []
+          },
+          {
+            "browserUserCookie": []
           }
         ],
         "x-permission": "user",
@@ -8668,6 +8800,9 @@
         "security": [
           {
             "bearerAuth": []
+          },
+          {
+            "browserUserCookie": []
           }
         ],
         "x-permission": "user",
@@ -8826,6 +8961,9 @@
         "security": [
           {
             "bearerAuth": []
+          },
+          {
+            "browserUserCookie": []
           }
         ],
         "x-permission": "user",
@@ -8990,6 +9128,9 @@
         "security": [
           {
             "bearerAuth": []
+          },
+          {
+            "browserUserCookie": []
           }
         ],
         "x-permission": "user",
@@ -9140,6 +9281,9 @@
         "security": [
           {
             "bearerAuth": []
+          },
+          {
+            "browserUserCookie": []
           }
         ],
         "x-permission": "user",
@@ -9317,6 +9461,9 @@
         "security": [
           {
             "bearerAuth": []
+          },
+          {
+            "browserUserCookie": []
           }
         ],
         "x-permission": "user",
@@ -9502,6 +9649,9 @@
         "security": [
           {
             "bearerAuth": []
+          },
+          {
+            "browserUserCookie": []
           }
         ],
         "x-permission": "user",
@@ -9667,6 +9817,9 @@
         "security": [
           {
             "bearerAuth": []
+          },
+          {
+            "browserUserCookie": []
           }
         ],
         "x-permission": "user",
@@ -9835,6 +9988,9 @@
         "security": [
           {
             "bearerAuth": []
+          },
+          {
+            "browserUserCookie": []
           }
         ],
         "x-permission": "user",
@@ -10020,6 +10176,9 @@
         "security": [
           {
             "bearerAuth": []
+          },
+          {
+            "browserUserCookie": []
           }
         ],
         "x-permission": "user",
@@ -10421,6 +10580,9 @@
         "security": [
           {
             "bearerAuth": []
+          },
+          {
+            "browserUserCookie": []
           }
         ],
         "x-permission": "user",
@@ -10905,6 +11067,9 @@
         "security": [
           {
             "bearerAuth": []
+          },
+          {
+            "browserUserCookie": []
           }
         ],
         "x-permission": "user",
@@ -11062,6 +11227,9 @@
         "security": [
           {
             "bearerAuth": []
+          },
+          {
+            "browserUserCookie": []
           }
         ],
         "x-permission": "user",
@@ -11222,6 +11390,421 @@
           }
         }
       }
+    },
+    "/auth/browser-session": {
+      "get": {
+        "operationId": "getAuthBrowserSession",
+        "tags": [
+          "user"
+        ],
+        "summary": "GET auth/browser-session",
+        "parameters": [
+          {
+            "name": "Accept-Language",
+            "in": "header",
+            "schema": {
+              "type": "string"
+            },
+            "description": "Supported language tags with optional quality weights."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "headers": {
+              "X-Request-ID": {
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "Content-Language": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/browserSession"
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {
+                        "pagination": {
+                          "$ref": "#/components/schemas/Pagination"
+                        },
+                        "taskId": {
+                          "type": "string"
+                        }
+                      }
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Problem details",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Problem details",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Problem details",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Problem details",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "410": {
+            "description": "Problem details",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Problem details",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Problem details",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Problem details",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        },
+        "security": [],
+        "x-permission": "public",
+        "description": " Browser-only scoped HttpOnly session. X-Browser-Client selects user/admin; mutations require an exact allowed Origin and synchronizer X-CSRF-Token. POST migrates a valid legacy token during the configured transition window."
+      },
+      "post": {
+        "operationId": "postAuthBrowserSession",
+        "tags": [
+          "user"
+        ],
+        "summary": "POST auth/browser-session",
+        "parameters": [
+          {
+            "name": "Accept-Language",
+            "in": "header",
+            "schema": {
+              "type": "string"
+            },
+            "description": "Supported language tags with optional quality weights."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "headers": {
+              "X-Request-ID": {
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "Content-Language": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/browserSession"
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {
+                        "pagination": {
+                          "$ref": "#/components/schemas/Pagination"
+                        },
+                        "taskId": {
+                          "type": "string"
+                        }
+                      }
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Problem details",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Problem details",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Problem details",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Problem details",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "410": {
+            "description": "Problem details",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Problem details",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Problem details",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Problem details",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        },
+        "security": [],
+        "x-permission": "public",
+        "description": " Browser-only scoped HttpOnly session. X-Browser-Client selects user/admin; mutations require an exact allowed Origin and synchronizer X-CSRF-Token. POST migrates a valid legacy token during the configured transition window.",
+        "requestBody": {
+          "required": false,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/postAuthBrowserSessionInput"
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "operationId": "deleteAuthBrowserSession",
+        "tags": [
+          "user"
+        ],
+        "summary": "DELETE auth/browser-session",
+        "parameters": [
+          {
+            "name": "Accept-Language",
+            "in": "header",
+            "schema": {
+              "type": "string"
+            },
+            "description": "Supported language tags with optional quality weights."
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Success",
+            "headers": {
+              "X-Request-ID": {
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "Content-Language": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Problem details",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Problem details",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Problem details",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Problem details",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "410": {
+            "description": "Problem details",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Problem details",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Problem details",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Problem details",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        },
+        "security": [],
+        "x-permission": "public",
+        "description": " Browser-only scoped HttpOnly session. X-Browser-Client selects user/admin; mutations require an exact allowed Origin and synchronizer X-CSRF-Token. POST migrates a valid legacy token during the configured transition window."
+      }
     }
   },
   "components": {
@@ -11230,6 +11813,12 @@
         "type": "http",
         "scheme": "bearer",
         "bearerFormat": "JWT"
+      },
+      "browserUserCookie": {
+        "type": "apiKey",
+        "in": "cookie",
+        "name": "__Host-fastdog_user",
+        "description": "Scoped HttpOnly session; browser mutations also require X-Browser-Client, X-CSRF-Token and an allowed Origin."
       }
     },
     "schemas": {
@@ -12569,6 +13158,32 @@
         },
         "additionalProperties": false
       },
+      "browserSession": {
+        "type": "object",
+        "properties": {
+          "accountId": {
+            "type": "integer",
+            "nullable": true
+          },
+          "authenticated": {
+            "type": "boolean"
+          },
+          "csrfToken": {
+            "type": "string"
+          },
+          "expiresAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          }
+        },
+        "required": [
+          "accountId",
+          "authenticated",
+          "csrfToken",
+          "expiresAt"
+        ]
+      },
       "clientAuthorization": {
         "type": "object",
         "properties": {
@@ -12693,39 +13308,46 @@
         ]
       },
       "authentication": {
-        "type": "object",
-        "properties": {
-          "accessToken": {
-            "type": "string"
-          },
-          "tokenType": {
-            "type": "string",
-            "enum": [
-              "Bearer"
-            ]
-          },
-          "expiresAt": {
-            "type": "string",
-            "format": "date-time",
-            "nullable": true
-          },
-          "account": {
+        "oneOf": [
+          {
             "type": "object",
             "properties": {
-              "id": {
-                "type": "integer"
+              "accessToken": {
+                "type": "string"
               },
-              "administrator": {
-                "type": "boolean"
+              "tokenType": {
+                "type": "string",
+                "enum": [
+                  "Bearer"
+                ]
+              },
+              "expiresAt": {
+                "type": "string",
+                "format": "date-time",
+                "nullable": true
+              },
+              "account": {
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "type": "integer"
+                  },
+                  "administrator": {
+                    "type": "boolean"
+                  }
+                }
               }
-            }
+            },
+            "required": [
+              "accessToken",
+              "tokenType",
+              "expiresAt",
+              "account"
+            ]
+          },
+          {
+            "$ref": "#/components/schemas/browserSession"
           }
-        },
-        "required": [
-          "accessToken",
-          "tokenType",
-          "expiresAt",
-          "account"
         ]
       },
       "summary": {
@@ -13744,6 +14366,22 @@
           "codeVerifier",
           "redirectUri"
         ]
+      },
+      "getAuthBrowserSessionInput": {
+        "type": "object",
+        "properties": {}
+      },
+      "postAuthBrowserSessionInput": {
+        "type": "object",
+        "properties": {
+          "legacyToken": {
+            "type": "string"
+          }
+        }
+      },
+      "deleteAuthBrowserSessionInput": {
+        "type": "object",
+        "properties": {}
       }
     }
   }

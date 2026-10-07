@@ -1,3 +1,4 @@
+import { browserSessionKey } from "./browser-session";
 import { completePages } from "./paginated-data";
 import { WorkspaceSkeleton } from "./WorkspaceSkeleton";
 import { e } from "./experience-copy";
@@ -30,7 +31,7 @@ import {
     EyeOff,
     Check,
 } from "lucide-react";
-import { boot, request, readRequest, storageKey, type Row } from "./api";
+import { boot, request, readRequest, type Row } from "./api";
 export function Html({
     value,
     markdown = false,
@@ -376,7 +377,7 @@ export function Editor({
 }) {
     const renderField = useContext(EditorFieldContext);
     const draftStorageKey = draftKey
-        ? `v2board.draft.${boot.mode}.${localStorage.getItem(storageKey) || ""}.${draftKey}`
+        ? `v2board.draft.${boot.mode}.${browserSessionKey()}.${draftKey}`
         : "";
     const readDraft = (): Row => {
         try {

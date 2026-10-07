@@ -51,7 +51,7 @@ function decodeEnvelope(contract:Contract,payload:any) {
 }
 function decode(name:string,value:any):any {
     if (value == null) return value;
-    if (name === 'authentication') return {auth_data:value.accessToken,is_admin:value.account.administrator};
+    if (name === 'authentication') return typeof value.authenticated === 'boolean' ? value : {auth_data:value.accessToken,is_admin:value.account.administrator};
     if (name === 'orderCreated') return value.orderNumber;
     if (name === 'orderStatus') return statuses.indexOf(value.status);
     if (name === 'summary') return [value.pendingOrders,value.pendingTickets,value.referrals];

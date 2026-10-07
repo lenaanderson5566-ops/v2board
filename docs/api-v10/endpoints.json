@@ -1488,5 +1488,68 @@
     "scope": "user",
     "status": 200,
     "description": "Atomically exchange an app-purpose code using S256 PKCE and the original redirect URI. Codes expire after 60 seconds and require an active source session; the resulting App session is independently revocable."
+  },
+  {
+    "method": "GET",
+    "path": "auth/browser-session",
+    "key": "Passport/BrowserSessionController@show",
+    "action": "App\\Http\\Controllers\\V10\\PassportBrowserSessionController@show",
+    "parameters": [
+      {
+        "name": "request",
+        "type": "Illuminate\\Http\\Request",
+        "optional": false
+      }
+    ],
+    "bindings": {},
+    "middleware": [
+      "throttle:30,1"
+    ],
+    "role": "public",
+    "scope": "user",
+    "status": 200,
+    "description": "Browser-only scoped HttpOnly session. X-Browser-Client selects user/admin; mutations require an exact allowed Origin and synchronizer X-CSRF-Token. POST migrates a valid legacy token during the configured transition window."
+  },
+  {
+    "method": "POST",
+    "path": "auth/browser-session",
+    "key": "Passport/BrowserSessionController@migrate",
+    "action": "App\\Http\\Controllers\\V10\\PassportBrowserSessionController@migrate",
+    "parameters": [
+      {
+        "name": "request",
+        "type": "Illuminate\\Http\\Request",
+        "optional": false
+      }
+    ],
+    "bindings": {},
+    "middleware": [
+      "throttle:30,1"
+    ],
+    "role": "public",
+    "scope": "user",
+    "status": 200,
+    "description": "Browser-only scoped HttpOnly session. X-Browser-Client selects user/admin; mutations require an exact allowed Origin and synchronizer X-CSRF-Token. POST migrates a valid legacy token during the configured transition window."
+  },
+  {
+    "method": "DELETE",
+    "path": "auth/browser-session",
+    "key": "Passport/BrowserSessionController@destroy",
+    "action": "App\\Http\\Controllers\\V10\\PassportBrowserSessionController@destroy",
+    "parameters": [
+      {
+        "name": "request",
+        "type": "Illuminate\\Http\\Request",
+        "optional": false
+      }
+    ],
+    "bindings": {},
+    "middleware": [
+      "throttle:30,1"
+    ],
+    "role": "public",
+    "scope": "user",
+    "status": 204,
+    "description": "Browser-only scoped HttpOnly session. X-Browser-Client selects user/admin; mutations require an exact allowed Origin and synchronizer X-CSRF-Token. POST migrates a valid legacy token during the configured transition window."
   }
 ]

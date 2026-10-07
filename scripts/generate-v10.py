@@ -5,7 +5,7 @@ def write(p,s):
 entries=json.loads((root/'docs/api-v10/endpoints.json').read_text())
 # Public request names are intentionally declared, never inferred from database keys.
 inputs={
- 'email':'email','password':'password','oldPassword':'old_password','newPassword':'new_password',
+ 'legacyToken':'legacyToken','email':'email','password':'password','oldPassword':'old_password','newPassword':'new_password',
  'emailCode':'email_code','invitation':'invitation','inviteCode':'invite_code','captchaToken':'recaptcha_data',
  'language':'language','languageSelected':'language_selected','verificationToken':'verify','resetPassword':'isforget',
  'planId':'plan_id','replacementOrderNumber':'replace_trade_no','billingPeriod':'period','depositAmount':'deposit_amount',
@@ -17,6 +17,7 @@ inputs={
  'pageSize':'page_size','days':'days','articleId':'id','notificationId':'id','version':'version',
  'platform':'platform','architecture':'architecture','keyword':'keyword','redirect':'redirect','placement':'placement','format':'flag','accessToken':'access_token','code':'code'}
 allowed={
+ 'Passport/BrowserSessionController@migrate':'legacyToken',
  'Guest/FastaiController@release':'platform architecture',
  'Passport/AuthController@login':'email password captchaToken language languageSelected',
  'Passport/AuthController@register':'email password emailCode invitation inviteCode captchaToken language languageSelected',
@@ -97,7 +98,9 @@ for name,fields in {
  'preferences':['commissionLevelOne','commissionLevelTwo','commissionLevelThree']
 }.items():
  for field in fields: schemas[name][field].append('number')
+schema('browserSession','accountId:accountId authenticated:authenticated:boolean csrfToken:csrfToken expiresAt:expiresAt')
 outputs={
+ 'Passport/BrowserSessionController@show':'browserSession','Passport/BrowserSessionController@migrate':'browserSession',
  'Guest/FastaiController@release':'fastaiRelease',
  'User/UserController@info':'account', 'User/UserController@getSubscribe':'subscription',
  'User/UserController@getActiveSession':'dictionary:session','User/UserController@checkLogin':'loginState',

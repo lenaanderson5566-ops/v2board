@@ -1,5 +1,13 @@
 import { beforeEach, describe, it, expect, vi } from "vitest";
 
+const session = vi.hoisted(() => ({ active: true, forgotten: vi.fn() }));
+vi.mock("./browser-session", () => ({
+    queueBrowserLogout: vi.fn(),
+    browserFetch: (url: string, options: RequestInit = {}) => fetch(url, { ...options, credentials: "include", headers: { ...options.headers, "X-Browser-Client": "user", "X-CSRF-Token": "csrf-test" } }),
+    hasBrowserSession: () => session.active,
+    forgetBrowserSession: () => { session.active = false; session.forgotten(); },
+    markBrowserAuthenticated: () => { session.active = true; },
+}));
 vi.stubGlobal("window", {
     V2BOARD: { mode: "user", currencySymbol: "¥" },
     dispatchEvent: vi.fn(),
@@ -59,21 +67,20 @@ describe("API client", () => {
             .mockResolvedValue(new Response('{"data":true}', { status: 200 }));
         vi.stubGlobal("fetch", fetchMock);
         await logoutSession();
-        expect(fetchMock.mock.calls[0][0]).toBe("/api/v10/me/session");
+        expect(fetchMock.mock.calls[0][0]).toBe("/api/v10/auth/browser-session");
         expect(fetchMock.mock.calls[0][1].method).toBe("DELETE");
-        expect(fetchMock.mock.calls[0][1].headers.Authorization).toBe(
-            "Bearer session-token",
-        );
-        expect(storage.has(storageKey)).toBe(false);
+        expect(fetchMock.mock.calls[0][1].headers.Authorization).toBeUndefined();
+        expect(session.active).toBe(false);
     });
     it("allows local logout when offline", async () => {
         storage.set(storageKey, "session-token");
         vi.stubGlobal("fetch", vi.fn().mockRejectedValue(Error("offline")));
         await logoutSession();
-        expect(storage.has(storageKey)).toBe(false);
+        expect(session.active).toBe(false);
     });
     beforeEach(() => {
         storage.clear();
+        session.active = true;
         vi.restoreAllMocks();
     });
     it("sends authenticated JSON without leaking credentials into URL", async () => {
@@ -86,9 +93,7 @@ describe("API client", () => {
         vi.stubGlobal("fetch", fetchMock);
         await request("user/update", { remind_expire: 1 });
         expect(fetchMock.mock.calls[0][0]).toBe("/api/v10/me");
-        expect(fetchMock.mock.calls[0][1].headers.Authorization).toBe(
-            "Bearer session-token",
-        );
+        expect(fetchMock.mock.calls[0][1].headers.Authorization).toBeUndefined();
         expect(fetchMock.mock.calls[0][1].headers["Accept-Language"]).toBe(
             "zh-CN",
         );
@@ -105,7 +110,7 @@ describe("API client", () => {
                 ),
         );
         await expect(request("user/info")).rejects.toThrow("登录已过期");
-        expect(storage.has(storageKey)).toBe(false);
+        expect(session.active).toBe(false);
     });
     it("reports server validation details", async () => {
         vi.stubGlobal(
@@ -197,9 +202,7 @@ describe("CSV download", () => {
             { filter: [{ key: "banned", condition: "=", value: 0 }] },
             "users.csv",
         );
-        expect(fetchMock.mock.calls[0][1].headers.Authorization).toBe(
-            "csv-session",
-        );
+        expect(fetchMock.mock.calls[0][1].headers.Authorization).toBeUndefined();
         expect(
             JSON.parse(fetchMock.mock.calls[0][1].body).filter[0].value,
         ).toBe(0);
@@ -229,7 +232,7 @@ it("sends multipart uploads without overriding the browser boundary", async () =
     const options = fetchMock.mock.calls[0][1];
     expect(options.body).toBe(body);
     expect(options.headers["Content-Type"]).toBeUndefined();
-    expect(options.headers.Authorization).toBe("upload-session");
+    expect(options.headers.Authorization).toBeUndefined();
 });
 
 it("keeps the session on ordinary permission denial", async () => {
@@ -269,7 +272,7 @@ it("times out stalled requests", async () => {
     }
 });
 
-it("uses the configured backend origin for authenticated API calls without cookies", async () => {
+it("uses the configured backend origin for authenticated API calls with scoped cookies", async () => {
     window.V2BOARD.apiBaseUrl = "https://api.example.com";
     const fetcher = vi
         .fn()
@@ -282,8 +285,17 @@ it("uses the configured backend origin for authenticated API calls without cooki
         expect(fetcher.mock.calls[0][0]).toBe(
             "https://api.example.com/api/v10/me",
         );
-        expect(fetcher.mock.calls[0][1].credentials).toBe("omit");
+        expect(fetcher.mock.calls[0][1].credentials).toBe("include");
     } finally {
         delete window.V2BOARD.apiBaseUrl;
     }
+});
+
+it("accepts browser login metadata without expecting a bearer token", async () => {
+    session.active = false;
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response(JSON.stringify({ data: { accountId: 42, authenticated: true, csrfToken: "fresh", expiresAt: "2026-11-01T00:00:00Z" } }), { status: 200 })));
+    const result = await request("passport/auth/login", { email: "test@example.com", password: "example" });
+    expect(result.data.authenticated).toBe(true);
+    expect(result.data.auth_data).toBeUndefined();
+    expect(session.active).toBe(true);
 });

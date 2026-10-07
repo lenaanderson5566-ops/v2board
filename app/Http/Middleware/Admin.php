@@ -16,6 +16,8 @@ class Admin
      */
     public function handle($request, Closure $next)
     {
+        $browser = $request->attributes->get('browser.session');
+        if ($browser && $browser['scope'] !== 'admin') abort(403, __('Account is disabled.'));
         $authorization = $request->input('auth_data') ?? $request->header('authorization');
         if (!$authorization) abort(403, '未登录或登陆已过期');
 

@@ -3,6 +3,7 @@ import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { cleanup, render, screen, waitFor, fireEvent } from "@testing-library/react";
 const mocks = vi.hoisted(() => ({ request: vi.fn(), logout: vi.fn(), navigate: vi.fn() }));
 vi.mock("../shared/api", () => ({ boot: { mode: "admin", adminPath: "test-admin" }, storageKey: "admin-test", request: mocks.request, logoutSession: mocks.logout, navigate: mocks.navigate }));
+vi.mock("../shared/browser-session", () => ({ initializeBrowserSession: vi.fn().mockResolvedValue(undefined), hasBrowserSession: () => true }));
 vi.mock("../shared/i18n", () => ({ tx: (text: string) => text }));
 vi.mock("./AdminAuth", () => ({ AdminAuth: () => <div>Admin login</div> }));
 vi.mock("./admin-workspace", () => ({ default: ({ logout }: { logout: () => void }) => <div>Admin workspace<button onClick={logout}>Logout</button></div> }));
@@ -27,5 +28,5 @@ it("returns to login when the saved session lacks administrative access", async 
     render(<AdminApp />);
     await screen.findByText("Admin login");
     expect(screen.queryByText("Admin workspace")).toBeNull();
-    expect(localStorage.getItem("admin-test")).toBeNull();
+
 });

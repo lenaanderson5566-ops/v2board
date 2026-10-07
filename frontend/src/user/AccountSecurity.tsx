@@ -1,3 +1,4 @@
+import { forgetBrowserSession } from "../shared/browser-session";
 import { AccountSessions } from "./AccountSessions";
 import { useId, useState, useRef, type FormEvent } from "react";
 import { Eye, EyeOff, ArrowLeft, Shield } from "lucide-react";
@@ -57,7 +58,7 @@ export function AccountSecurity() {
             setPassword("");
             setConfirmation("");
             clearReadCache();
-            localStorage.removeItem(storageKey);
+            forgetBrowserSession();
             sessionStorage.setItem(`${storageKey}.passwordUpdated`, "1");
             window.dispatchEvent(new Event("auth-expired"));
         } catch (problem) {

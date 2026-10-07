@@ -186,7 +186,15 @@ for entry in entries:
     legacy_label = 'New native resource' if entry.get('key') else entry['legacyMethod'] + ' ' + entry['legacy']
     mapping.append(f"| `{legacy_label}` | `{entry['method']} /api/v10/{entry['path']}` | {entry['role']} | {contract['output']} |")
 
-document = {'openapi': '3.0.3', 'info': {'title': 'FastDog user API', 'version': '10.0.0', 'description': 'Parallel user API. Administrative, staff, operations and node communication contracts are unchanged.'}, 'servers': [{'url': '/api/v10'}], 'paths': paths, 'components': {'securitySchemes': {'bearerAuth': {'type': 'http', 'scheme': 'bearer', 'bearerFormat': 'JWT'}}, 'schemas': schemas}}
+# Native clients keep bearer authentication; browser responses contain only session metadata.
+native_authentication = schemas['authentication']
+schemas['browserSession'] = obj({'accountId': {'type':'integer','nullable':True}, 'authenticated': {'type':'boolean'}, 'csrfToken': {'type':'string'}, 'expiresAt': {'type':'string','format':'date-time','nullable':True}}, ['accountId','authenticated','csrfToken','expiresAt'])
+schemas['authentication'] = {'oneOf':[native_authentication, reference('browserSession')]}
+for path, operations in paths.items():
+    for operation in operations.values():
+        if isinstance(operation, dict) and operation.get('security'):
+            operation['security'].append({'browserUserCookie':[]})
+document = {'openapi': '3.0.3', 'info': {'title': 'FastDog user API', 'version': '10.0.0', 'description': 'Parallel user API. Administrative, staff, operations and node communication contracts are unchanged.'}, 'servers': [{'url': '/api/v10'}], 'paths': paths, 'components': {'securitySchemes': {'bearerAuth': {'type': 'http', 'scheme': 'bearer', 'bearerFormat': 'JWT'}, 'browserUserCookie': {'type':'apiKey','in':'cookie','name':'__Host-fastdog_user','description':'Scoped HttpOnly session; browser mutations also require X-Browser-Client, X-CSRF-Token and an allowed Origin.'}}, 'schemas': schemas}}
 if '/me/client-config' in document['paths']:
     document['paths']['/me/client-config']['get']['responses']['200']['content']['application/json'] = {'schema': {'type': 'object', 'properties': {'data': {'type': 'object', 'required': ['configVersion', 'yaml', 'nodes'], 'properties': {'configVersion': {'type': 'string'}, 'yaml': {'type': 'string'}, 'nodes': {'type': 'array', 'items': {'type': 'object', 'properties': {'nodeId': {'type': 'string'}, 'proxyName': {'type': 'string'}, 'name': {'type': 'string'}, 'regionCode': {'type': 'string', 'nullable': True}, 'cityCode': {'type': 'string', 'nullable': True}, 'displayLabel': {'type': 'string', 'nullable': True}, 'tags': {'type': 'array', 'items': {'type': 'string'}}, 'displayNames': {'type': 'object', 'additionalProperties': {'type': 'string'}}}}}}}}}}
 

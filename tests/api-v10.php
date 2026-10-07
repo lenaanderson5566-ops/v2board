@@ -15,8 +15,9 @@ $cleanupUsers=[];
 $checks=0;
 set_exception_handler(function($e) { fwrite(STDERR,$e->getMessage()."\n"); exit(1); });
 $assert=function($ok,$label) use (&$checks) { if (!$ok) throw new RuntimeException($label); $checks++; };
-$call=function($method,$path,$body=[],$token=null,$language='en-US',$extra=[]) use ($app) {
-    $server=['HTTP_ACCEPT'=>'application/json','HTTP_ACCEPT_LANGUAGE'=>$language,'HTTP_USER_AGENT'=>'V10ContractTest','CONTENT_TYPE'=>'application/json'];
+$testIp='192.0.2.'.random_int(2,254);
+$call=function($method,$path,$body=[],$token=null,$language='en-US',$extra=[]) use ($app,$testIp) {
+    $server=['REMOTE_ADDR'=>$testIp,'HTTP_ACCEPT'=>'application/json','HTTP_ACCEPT_LANGUAGE'=>$language,'HTTP_USER_AGENT'=>'V10ContractTest','CONTENT_TYPE'=>'application/json'];
     $server=array_merge($server,$extra);
     if ($token) $server['HTTP_AUTHORIZATION']=$token;
     $r=Illuminate\Http\Request::create($path,$method,[] ,[],[],$server,$method === 'GET' ? null : json_encode($body));
@@ -194,7 +195,7 @@ try {
     [$r,$j]=$call('POST','/api/v10/me/invitations',['email'=>$email],$bearer);
     $assert($r->getStatusCode()===202 && $j['data']['status']==='queued' && isset($j['meta']['taskId']),'Invitation queue resource '.json_encode($j));
     $invitationJob=Illuminate\Support\Facades\Queue::pushed(App\Jobs\SendInvitationEmailJob::class)->last();
-    Illuminate\Support\Facades\RateLimiter::clear('127.0.0.1');
+    Illuminate\Support\Facades\RateLimiter::clear($testIp);
     [$r,$j]=$call('POST','/api/v10/auth/email-verifications',['email'=>$email,'invitation'=>$invitationJob->token,'resetPassword'=>false]);
     $assert($r->getStatusCode()===202 && $j['data']['status']==='queued','OTP queued asynchronously '.json_encode($j));
     $assert(Illuminate\Support\Facades\Queue::pushed(App\Jobs\SendEmailJob::class)->last()->queue==='send_email_priority','OTP remains on dedicated priority queue');

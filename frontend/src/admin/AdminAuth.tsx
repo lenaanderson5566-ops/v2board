@@ -4,7 +4,7 @@ import {
     boot,
     request,
     admin,
-    storageKey,
+    logoutSession,
     navigate,
     type Row,
 } from "../shared/api";
@@ -145,17 +145,17 @@ export function AdminAuth({
                                     ...body,
                                     recaptcha_data: captcha,
                                 });
-                            const r = await request("passport/auth/login", {
+                            await request("passport/auth/login", {
                                 email: body.email,
                                 password: body.password,
                                 recaptcha_data: captcha,
                             });
-                            localStorage.setItem(storageKey, r.data.auth_data);
+
                             if (boot.mode === "admin") {
                                 try {
                                     await request(admin("config/fetch"));
                                 } catch (e) {
-                                    localStorage.removeItem(storageKey);
+                                    await logoutSession();
                                     throw e;
                                 }
                             }

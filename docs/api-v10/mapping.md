@@ -78,3 +78,6 @@ Admin, operations/risk, staff and node APIs retain all existing paths and schema
 | `New native resource` | `GET /api/v10/me/client-authorizations/{authorizationId}` | user | clientAuthorizationDetails |
 | `New native resource` | `POST /api/v10/me/client-authorizations/{authorizationId}/approval` | user | clientAuthorizationApproval |
 | `New native resource` | `POST /api/v10/auth/client-session-exchanges` | public | authentication |
+| `New native resource` | `GET /api/v10/auth/browser-session` | public | browserSession |
+| `New native resource` | `POST /api/v10/auth/browser-session` | public | browserSession |
+| `New native resource` | `DELETE /api/v10/auth/browser-session` | public | scalar |

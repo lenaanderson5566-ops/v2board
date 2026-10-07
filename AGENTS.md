@@ -5,7 +5,7 @@
 - Legacy user business/public APIs were explicitly retired. Preserve only the routes in docs/api-v10/retained-legacy.json, administrative/operations/staff APIs, node communication, and configured custom subscriptions. Do not reintroduce retired routes. Mirror downloads use /api/v10/public/client-installers/{installerId}/content; the old /client-mirrors path is retired.
 - Keep shared business actions in App/Services/Actions; V1 and V10 controllers must use the same transactions, validation, session revocation and entitlement rules.
 - Use GET for reads, POST for creation/business operations, PATCH for partial changes and DELETE for deletion. GET must not mutate business records.
-- V10 browser authentication requires Authorization: Bearer. Never accept browser credentials from query parameters. Authentication failures are 401; authorization failures are 403.
+- V10 browser authentication uses scoped HttpOnly server sessions with CSRF and exact Origin validation; native clients retain Authorization: Bearer. Never accept browser credentials from query parameters. Authentication failures are 401; authorization failures are 403.
 - Define explicit request and resource schemas with camelCase semantic names. Never expose models or automatically camel-case arbitrary keys. Monetary amounts are integer minor units with a currency; byte counts are integers; timestamps are UTC ISO 8601; business statuses are string enums.
 - Successful JSON uses data and optional meta. Pagination uses page/pageSize, default 20, max 100, with meta.pagination. Use 201 for creation, 202 for queued jobs, 204 for no-content operations.
 - Errors use application/problem+json with stable code and requestId. Never return stack traces or internal paths, even in debug mode.

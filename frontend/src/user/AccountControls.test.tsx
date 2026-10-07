@@ -1,3 +1,4 @@
+vi.mock("../shared/browser-session", () => ({ forgetBrowserSession: vi.fn() }));
 // @vitest-environment jsdom
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
@@ -193,7 +194,7 @@ describe("account password changes", () => {
                 old_password: "old-password",
                 new_password: "new-password",
             });
-            expect(localStorage.getItem("controls-test")).toBeNull();
+            expect((await import("../shared/browser-session")).forgetBrowserSession).toHaveBeenCalled();
             expect(
                 sessionStorage.getItem("controls-test.passwordUpdated"),
             ).toBe("1");

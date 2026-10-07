@@ -1,3 +1,10 @@
+import {
+    browserFetch,
+    queueBrowserLogout,
+    forgetBrowserSession,
+    hasBrowserSession,
+    markBrowserAuthenticated,
+} from "./browser-session";
 import { apiUrl } from "./runtime-config";
 import { v10Request } from "./v10-api";
 import { createReadCache } from "./read-cache";
@@ -68,7 +75,7 @@ export function readRequest<T = Row>(
     if (boot.mode !== "user" || body || !cacheable.has(path))
         return request<T>(path, body);
     return readCache.read(
-        `${localStorage.getItem(storageKey) || ""}\0${locale()}\0${path}`,
+        `${localStorage.getItem(`v2board.${boot.mode}.sessionRevision`) || ""}\0${locale()}\0${path}`,
         () => request<T>(path),
         fresh,
     );
@@ -78,12 +85,16 @@ export function clearReadCache() {
 }
 export async function logoutSession() {
     try {
-        await request("user/logout", {});
+        const response = await browserFetch(
+            apiUrl("/api/v10/auth/browser-session"),
+            { method: "DELETE" },
+        );
+        if (!response.ok) throw new Error("Session revocation failed");
     } catch {
-        /* Local logout remains possible if the network is unavailable. */
+        queueBrowserLogout();
     } finally {
         clearReadCache();
-        localStorage.removeItem(storageKey);
+        forgetBrowserSession();
     }
 }
 export async function request<T = Row>(
@@ -92,7 +103,7 @@ export async function request<T = Row>(
     options?: { signal?: AbortSignal; timeoutMs?: number },
 ): Promise<Envelope<T>> {
     if (body) readCache.clear();
-    const token = localStorage.getItem(storageKey);
+    const token = hasBrowserSession();
     const controller = new AbortController();
     let timedOut = false;
     const abort = () => controller.abort();
@@ -107,8 +118,8 @@ export async function request<T = Row>(
             boot.mode === "user" && /^(user|passport|guest)\//.test(path)
                 ? v10Request(path, body instanceof FormData ? undefined : body)
                 : null;
-        const res = await fetch(apiUrl(v10?.url ?? `/api/v1/${path}`), {
-            credentials: "omit",
+        const res = await browserFetch(apiUrl(v10?.url ?? `/api/v1/${path}`), {
+            credentials: "include",
             signal: controller.signal,
             method: v10?.method ?? (body ? "POST" : "GET"),
             headers: {
@@ -118,9 +129,6 @@ export async function request<T = Row>(
                     : { "Content-Language": locale() }),
                 ...((v10?.body || body) && !(body instanceof FormData)
                     ? { "Content-Type": "application/json" }
-                    : {}),
-                ...(token
-                    ? { Authorization: v10 ? `Bearer ${token}` : token }
                     : {}),
             },
             ...(v10
@@ -162,7 +170,7 @@ export async function request<T = Row>(
                 token
             ) {
                 readCache.clear();
-                localStorage.removeItem(storageKey);
+                forgetBrowserSession();
                 window.dispatchEvent(new Event("auth-expired"));
             }
             const error = new Error(
@@ -175,6 +183,12 @@ export async function request<T = Row>(
             Object.assign(error, { code: json.code, status: res.status });
             throw error;
         }
+        if (
+            json.data &&
+            typeof json.data === "object" &&
+            (json.data as Row).authenticated === true
+        )
+            markBrowserAuthenticated((json.data as Row).accountId);
         if (body && boot.mode === "user") {
             readCache.clear();
             window.dispatchEvent(new Event("data-changed"));
@@ -202,15 +216,14 @@ export function query(path: string, params: Row): string {
     return path + "?" + q;
 }
 export async function download(path: string, body: Row, filename: string) {
-    const token = localStorage.getItem(storageKey);
-    const response = await fetch(apiUrl(`/api/v1/${path}`), {
-        credentials: "omit",
+    const token = hasBrowserSession();
+    const response = await browserFetch(apiUrl(`/api/v1/${path}`), {
+        credentials: "include",
         method: "POST",
         headers: {
             Accept: "text/csv, application/json",
             "Content-Language": locale(),
             "Content-Type": "application/json",
-            ...(token ? { Authorization: token } : {}),
         },
         body: JSON.stringify({ ...body, format: "csv" }),
     });
@@ -225,7 +238,7 @@ export async function download(path: string, body: Row, filename: string) {
             token
         ) {
             readCache.clear();
-            localStorage.removeItem(storageKey);
+            forgetBrowserSession();
             window.dispatchEvent(new Event("auth-expired"));
         }
         throw new Error(

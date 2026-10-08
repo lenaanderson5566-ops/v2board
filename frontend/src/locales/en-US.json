@@ -418,5 +418,12 @@
   "应用客户端": "App",
   "未知设备": "Unknown device",
   "这里展示账号登录会话，不代表代理在线设备。同一设备可能有多个登录会话。": "These are account sign-in sessions, not active proxy devices. One device may have several sessions.",
-  "退出此登录会话后，该客户端需要重新登录。已建立的代理连接不会因此立即断开。": "This client will need to sign in again. Existing proxy connections will not immediately disconnect."
+  "退出此登录会话后，该客户端需要重新登录。已建立的代理连接不会因此立即断开。": "This client will need to sign in again. Existing proxy connections will not immediately disconnect.",
+  "请核对订单，选择支付方式后继续。": "Review your order and choose how to pay.",
+  "无需外部付款，确认后将处理订单。": "No external payment is needed. Confirm to process your order.",
+  "充值金额": "Top-up amount",
+  "额度价格": "Credit price",
+  "充值赠送": "Top-up bonus",
+  "到账金额": "Amount credited",
+  "订单状态暂不可用，请刷新后重试。": "Order status is unavailable. Refresh to try again."
 }

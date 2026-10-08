@@ -416,5 +416,12 @@
   "应用客户端": "Ứng dụng",
   "未知设备": "Thiết bị không xác định",
   "这里展示账号登录会话，不代表代理在线设备。同一设备可能有多个登录会话。": "Đây là các phiên đăng nhập tài khoản, không phải thiết bị đang dùng proxy. Một thiết bị có thể có nhiều phiên.",
-  "退出此登录会话后，该客户端需要重新登录。已建立的代理连接不会因此立即断开。": "Ứng dụng này sẽ cần đăng nhập lại. Kết nối proxy hiện có sẽ không ngắt ngay lập tức."
+  "退出此登录会话后，该客户端需要重新登录。已建立的代理连接不会因此立即断开。": "Ứng dụng này sẽ cần đăng nhập lại. Kết nối proxy hiện có sẽ không ngắt ngay lập tức.",
+  "请核对订单，选择支付方式后继续。": "Kiểm tra đơn hàng và chọn phương thức thanh toán.",
+  "无需外部付款，确认后将处理订单。": "Không cần thanh toán bên ngoài. Xác nhận để xử lý đơn hàng.",
+  "充值金额": "Số tiền nạp",
+  "额度价格": "Giá hạn mức",
+  "充值赠送": "Thưởng nạp tiền",
+  "到账金额": "Số tiền được cộng",
+  "订单状态暂不可用，请刷新后重试。": "Chưa thể xem trạng thái đơn hàng. Hãy tải lại để thử."
 }

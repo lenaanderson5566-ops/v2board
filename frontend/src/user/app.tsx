@@ -463,7 +463,7 @@ export default function UserApp() {
                         </div>
                     </header>
                     <main>
-                        <div className="page-heading">
+                        {!path.startsWith("order/") && <div className="page-heading">
                             <div>
                                 <span className="eyebrow">WORKSPACE</span>
                                 <h1>{tx(item?.label || "总览")}</h1>
@@ -475,7 +475,7 @@ export default function UserApp() {
                                     weekday: "long",
                                 })}
                             </span>
-                        </div>
+                        </div>}
                         {content}
                         <div className="page-footer">
                             {boot.title}{" "}

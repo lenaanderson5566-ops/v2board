@@ -24,7 +24,7 @@ export function OrderReceipt({ order }: { order: Row }) {
             >
                 <Icon size={28} aria-hidden="true" />
                 <div>
-                    <h2>
+                    <h1>
                         {tx(
                             cancelled
                                 ? "已取消"
@@ -32,7 +32,7 @@ export function OrderReceipt({ order }: { order: Row }) {
                                   ? "已折抵"
                                   : "订单已完成",
                         )}
-                    </h2>
+                    </h1>
                     <p className="muted">
                         {cancelled
                             ? c("cancelledHelp")
@@ -70,9 +70,9 @@ export function OrderReceipt({ order }: { order: Row }) {
                     )}
                 </div>
                 <dl className="checkout-lines">
-                    {Number(order.plan_id) !== 0 && !(Number(order.credit_bytes) > 0) && (
+                    {(
                         <div>
-                            <dt>{tx("套餐价格")}</dt>
+                            <dt>{tx(deposit ? "充值金额" : credit ? "额度价格" : "套餐价格")}</dt>
                             <dd>{money(orderOriginalAmount(order))}</dd>
                         </div>
                     )}
@@ -107,7 +107,7 @@ export function OrderReceipt({ order }: { order: Row }) {
                             </dd>
                         </div>
                     )}
-                    {!cancelled && (
+                    {!cancelled && fee > 0 && (
                         <div>
                             <dt>{tx("支付手续费")}</dt>
                             <dd>{money(fee)}</dd>
@@ -124,6 +124,10 @@ export function OrderReceipt({ order }: { order: Row }) {
                         </div>
                     )}
                 </dl>
+                {!cancelled && deposit && Number(order.bounus) > 0 && <div className="checkout-deposit-benefit">
+                    <span>{tx("充值赠送")} +{money(order.bounus)}</span>
+                    <strong>{tx("到账金额")} {money(order.get_amount)}</strong>
+                </div>}
                 <dl className="receipt-reference">
                     <div>
                         <dt>{tx("订单编号")}</dt>

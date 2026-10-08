@@ -1,10 +1,10 @@
 import { OrderReceipt } from "./OrderReceipt";
 import { normalizeApiOrigin } from "../shared/runtime-config";
-import { c } from "../shared/credit-copy";
+import { c, minuteDate } from "../shared/credit-copy";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { QRCodeSVG } from "qrcode.react";
-import { CreditCard, LoaderCircle } from "lucide-react";
-import { request, money as formatMoney, query, type Row } from "../shared/api";
+import { ArrowLeft, CreditCard, LoaderCircle, Check, ReceiptText } from "lucide-react";
+import { request, bytes, money as formatMoney, query, type Row } from "../shared/api";
 import { useData, State, Modal } from "../shared/ui";
 import { tx } from "../shared/i18n";
 import { billingPeriods, paymentFee, orderOriginalAmount } from "./billing-flow";
@@ -59,7 +59,8 @@ export function PaymentCheckout({
     const [busy, setBusy] = useState(false),
         [error, setError] = useState(""),
         [qr, setQr] = useState("");
-    const [waiting, setWaiting] = useState(Boolean(order.payment_id));
+    const [waiting, setWaiting] = useState(due > 0 && Boolean(order.payment_id));
+    const [issuedFee, setIssuedFee] = useState(Number(order.handling_amount || 0));
     const [cancelOpen, setCancelOpen] = useState(false),
         [cardMethod, setCardMethod] = useState<number | null>(null);
     const [pollError, setPollError] = useState("");
@@ -71,17 +72,17 @@ export function PaymentCheckout({
     const method = methods.data?.find((item) => Number(item.id) === selected);
     const fee =
         status === 0
-            ? paymentFee(due, method)
+            ? waiting ? issuedFee : paymentFee(due, method)
             : Number(order.handling_amount || 0);
-    const feeReady = status !== 0 || due <= 0 || Boolean(method);
+    const feeReady = status !== 0 || waiting || due <= 0 || Boolean(method);
     const awaitingConfirmation = waiting && !error;
     useEffect(() => {
         if (
-            methods.data?.length &&
+            !waiting && methods.data?.length &&
             !methods.data.some((item) => Number(item.id) === selected)
         )
             setSelected(Number(methods.data[0].id));
-    }, [methods.data, selected]);
+    }, [methods.data, selected, waiting]);
     useEffect(() => {
         if (status !== 0) {
             setQr("");
@@ -143,13 +144,15 @@ export function PaymentCheckout({
         inFlight.current = true;
         setBusy(true);
         setError("");
-        setWaiting(true);
+        setWaiting(false);
+        setQr("");
         try {
             const result = await request("user/order/checkout", {
                 trade_no: order.trade_no,
                 method: id,
                 ...(token ? { token } : {}),
             });
+            setIssuedFee(paymentFee(due, methods.data?.find((item) => Number(item.id) === id)));
             if (result.type === -1 || result.type === 2) {
                 setWaiting(true);
                 setCardMethod(null);
@@ -199,16 +202,26 @@ export function PaymentCheckout({
         }
     }
     if ([2, 3, 4].includes(status)) return <OrderReceipt order={order} />;
+    if (![0, 1].includes(status)) return <div className="checkout-page">
+        <a className="receipt-back" href="#/order"><ArrowLeft size={16} />{tx("账单")}</a>
+        <div className="alert" role="alert">{tx("订单状态暂不可用，请刷新后重试。")}
+            <button onClick={reload}>{tx("刷新")}</button>
+        </div>
+    </div>;
     return (
         <div className="checkout-page">
+            <a className="receipt-back" href="#/order"><ArrowLeft size={16} />{tx("账单")}</a>
+            <header className="checkout-heading">
+                <div>
+                    <h1>{tx(status === 1 ? "支付已确认，正在开通" : "确认与支付")}</h1>
+                    <p>{tx(status === 1 ? "开通结果将自动更新，请勿重复支付。" : "请核对订单，选择支付方式后继续。")}</p>
+                </div>
+                <span className={`checkout-status ${status === 1 ? "processing" : ""}`}>
+                    {status === 1 ? <LoaderCircle size={14} /> : <ReceiptText size={14} />}
+                    {tx(status === 1 ? "开通中" : "待支付")}
+                </span>
+            </header>
             {!order.credit_bytes && !deposit && <PurchaseSteps step={2} />}
-            {status === 1 && (
-                <section className="checkout-result" role="status">
-                    <LoaderCircle size={32} aria-hidden="true" />
-                    <h2>{tx("支付已确认，正在开通")}</h2>
-                    <p>{tx("开通结果将自动更新，请勿重复支付。")}</p>
-                </section>
-            )}
             <div
                 className={
                     status === 1
@@ -217,6 +230,7 @@ export function PaymentCheckout({
                 }
             >
                 <section className="checkout-summary">
+                    <span className="checkout-section-label">{tx("订单详情")}</span>
                     <h2>
                         {order.credit_bytes
                             ? c("credits")
@@ -229,13 +243,12 @@ export function PaymentCheckout({
                             ? order.credit_snapshot?.name
                             : tx(billingPeriods[order.period] || "账户充值")}
                     </p>
+                    {Number(order.credit_bytes) > 0 && <p className="checkout-product-quantity">{bytes(order.credit_bytes)}</p>}
                     <dl className="checkout-lines">
-                    {Number(order.plan_id) !== 0 && !(Number(order.credit_bytes) > 0) && (
                         <div>
-                            <dt>{tx("套餐价格")}</dt>
+                            <dt>{tx(deposit ? "充值金额" : Number(order.credit_bytes) > 0 ? "额度价格" : "套餐价格")}</dt>
                             <dd>{money(orderOriginalAmount(order))}</dd>
                         </div>
-                    )}
                         {Number(order.discount_amount) > 0 && (
                             <div>
                                 <dt>{tx("优惠金额")}</dt>
@@ -260,18 +273,13 @@ export function PaymentCheckout({
                                 <dd>−{money(order.balance_amount)}</dd>
                             </div>
                         )}
-                        <div>
-                            <dt>{tx("应付金额")}</dt>
-                            <dd>{money(due)}</dd>
-                        </div>
-                        <div>
+                        {(fee > 0 || !feeReady) && <div>
                             <dt>{tx("支付手续费")}</dt>
                             <dd>{feeReady ? money(fee) : "—"}</dd>
-                        </div>
-                        <div className="checkout-total">
-                            <dt>{tx("合计")}</dt>
-                            <dd>{feeReady ? money(due + fee) : "—"}</dd>
-                        </div>
+                        </div>}
+                        {status === 1 && <div className="checkout-total">
+                            <dt>{tx("合计")}</dt><dd>{money(due + fee)}</dd>
+                        </div>}
                         {Number(order.refund_amount) > 0 && (
                             <div>
                                 <dt>{tx("退回余额")}</dt>
@@ -279,6 +287,10 @@ export function PaymentCheckout({
                             </div>
                         )}
                     </dl>
+                    {deposit && Number(order.bounus) > 0 && <div className="checkout-deposit-benefit">
+                        <span>{tx("充值赠送")} +{money(order.bounus)}</span>
+                        <strong>{tx("到账金额")} {money(order.get_amount)}</strong>
+                    </div>}
                     <details className="order-reference">
                         <summary>{tx("订单信息")}</summary>
                         <p>
@@ -286,11 +298,17 @@ export function PaymentCheckout({
                             <br />
                             <span dir="ltr">{order.trade_no}</span>
                         </p>
+                        <p>{c("created")}<br />{minuteDate(order.created_at)}</p>
                     </details>
                 </section>
                 {status === 0 && (
                     <section className="checkout-payment">
+                        <div className="checkout-amount" aria-live="polite" aria-atomic="true">
+                            <span>{tx("应付金额")}</span>
+                            <strong>{feeReady ? money(due + fee) : "—"}</strong>
+                        </div>
                         <h2>{tx(due > 0 ? "选择支付方式" : "确认开通")}</h2>
+                        {due <= 0 && <p className="muted">{tx("无需外部付款，确认后将处理订单。")}</p>}
                         {error && (
                             <div className="alert" role="alert">
                                 {error}
@@ -300,7 +318,7 @@ export function PaymentCheckout({
                             <State {...methods} retry={methods.reload}>
                                 <fieldset
                                     className="payment-options"
-                                    disabled={busy}
+                                    disabled={busy || awaitingConfirmation}
                                 >
                                     <legend className="sr-only">
                                         {tx("选择支付方式")}
@@ -334,6 +352,7 @@ export function PaymentCheckout({
                                                 source={item.icon}
                                             />
                                             <span>{item.name}</span>
+                                            {selected === Number(item.id) && <Check className="payment-selected-check" size={18} aria-hidden="true" />}
                                         </label>
                                     ))}
                                 </fieldset>
@@ -375,9 +394,6 @@ export function PaymentCheckout({
                             </div>
                         )}
                         <div className="checkout-confirm">
-                            <strong>
-                                {tx("合计")} {feeReady ? money(due + fee) : "—"}
-                            </strong>
                             <button
                                 className="primary"
                                 disabled={
@@ -397,6 +413,7 @@ export function PaymentCheckout({
                                           : pay(due > 0 ? selected : 0)
                                 }
                             >
+                                {busy && <LoaderCircle className="checkout-spinner" size={18} aria-hidden="true" />}
                                 {tx(
                                     busy
                                         ? "提交中…"
@@ -424,17 +441,7 @@ export function PaymentCheckout({
                                 >
                                     {tx("重新发起支付")}
                                 </button>
-                            ) : (
-                                <button
-                                    disabled={busy}
-                                    onClick={() => {
-                                        setPollError("");
-                                        reload();
-                                    }}
-                                >
-                                    {tx("检查支付结果")}
-                                </button>
-                            )}
+                            ) : <span />}
                             <button
                                 disabled={busy}
                                 onClick={() => setCancelOpen(true)}
@@ -442,6 +449,9 @@ export function PaymentCheckout({
                                 {tx("取消订单")}
                             </button>
                         </div>
+                        <a className="checkout-help" href={`#/ticket/order/${encodeURIComponent(order.trade_no)}`}>
+                            {tx("此订单需要帮助？")}
+                        </a>
                     </section>
                 )}
             </div>
@@ -464,15 +474,12 @@ export function PaymentCheckout({
                     <button onClick={reload}>{tx("检查支付结果")}</button>
                 </div>
             )}
-            {status === 1 && (
+            {status === 1 && <div className="checkout-processing-actions">
                 <button onClick={reload}>{tx("检查支付结果")}</button>
-            )}
-            <a
-                className="checkout-help"
-                href={`#/ticket/order/${encodeURIComponent(order.trade_no)}`}
-            >
-                {tx("此订单需要帮助？")}
-            </a>
+                <a className="checkout-help" href={`#/ticket/order/${encodeURIComponent(order.trade_no)}`}>
+                    {tx("此订单需要帮助？")}
+                </a>
+            </div>}
             {cancelOpen && (
                 <Modal
                     title={tx("取消订单")}

@@ -995,7 +995,7 @@
 .order-receipt {
     max-width: 760px;
     margin: 0 auto;
-    padding: 28px;
+    padding: 0;
 }
 .receipt-back {
     min-height: 44px;
@@ -1019,7 +1019,7 @@
 .receipt-status.cancelled > svg {
     color: var(--muted);
 }
-.receipt-status h2 {
+.receipt-status h1 {
     margin: 0 0 8px;
     font-size: 24px;
 }
@@ -1028,8 +1028,8 @@
     line-height: 1.7;
 }
 .receipt-card {
-    border: 1px solid var(--border);
-    border-radius: 22px;
+    background: #f6f7f3;
+    border-radius: 16px;
     padding: 26px;
 }
 .receipt-product h3 {
@@ -1111,7 +1111,7 @@
 }
 @media (max-width: 640px) {
     .order-receipt {
-        padding: 20px 14px;
+        padding: 0;
     }
     .receipt-card {
         padding: 20px 16px;

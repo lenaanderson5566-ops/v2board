@@ -1,3 +1,4 @@
+import { lazy, useState, useEffect, useRef, type ReactNode } from "react";
 import { NodeList } from "./NodeList";
 export { Tickets } from "../shared/Tickets";
 const AccountPreferences = lazy(() => import("./AccountPreferences").then((module) => ({ default: module.AccountPreferences })));
@@ -12,7 +13,6 @@ const SubscriptionImport = lazy(() => import("./SubscriptionImport").then((modul
 import { AccountEntry } from "./AccountEntry";
 import { HelpGuides, ContactSupport } from "./HelpGuides";
 
-import { lazy, useState, useEffect, useRef, type ReactNode } from "react";
 import { loadStripe } from "@stripe/stripe-js/pure";
 import type { Stripe, StripeCardElement } from "@stripe/stripe-js";
 import { ArrowUpRight } from "lucide-react";
@@ -146,21 +146,12 @@ export function Orders({ tradeNo }: { tradeNo?: string }) {
 }
 function OrderView({ tradeNo }: { tradeNo: string }) {
     const d = useData<Row>(query("user/order/detail", { trade_no: tradeNo }));
-    if (d.data && [2, 3, 4].includes(Number(d.data.status))) {
-        return (
-            <>
-                <OrderDetail order={d.data} reload={d.reload} />
-                {d.error && (
-                    <p className="alert" role="alert">
-                        {d.error}
-                        <button onClick={d.reload}>{tx("重试")}</button>
-                    </p>
-                )}
-            </>
-        );
-    }
+    useEffect(() => {
+        if (d.data && [2, 3, 4].includes(Number(d.data.status)))
+            window.scrollTo({ top: 0, behavior: "instant" });
+    }, [tradeNo, d.data?.status]);
     return (
-        <Panel title={tx("订单详情")} actions={<Reload onClick={d.reload} />}>
+        <div className="order-view" aria-busy={d.loading}>
             {d.data ? (
                 <>
                     {d.loading && (
@@ -174,14 +165,14 @@ function OrderView({ tradeNo }: { tradeNo: string }) {
                             <button onClick={d.reload}>{tx("刷新")}</button>
                         </div>
                     )}
-                    <OrderDetail order={d.data} reload={d.reload} />
+                    <OrderDetail key={tradeNo} order={d.data} reload={d.reload} />
                 </>
             ) : (
                 <State {...d} retry={d.reload}>
                     <></>
                 </State>
             )}
-        </Panel>
+        </div>
     );
 }
 

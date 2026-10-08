@@ -247,7 +247,7 @@ it("selects a method without charging and shows fixed plus percentage fees befor
     });
     checkout();
     expect(screen.getByText("¥10.50")).toBeTruthy();
-    expect(screen.getByText("合计 ¥10.50")).toBeTruthy();
+    expect(screen.getAllByText("¥10.50")).toHaveLength(1);
     fireEvent.click(await screen.findByRole("radio", { name: /QR/ }));
     expect(screen.getAllByText("¥10.00").length).toBeGreaterThan(0);
     expect(mocks.request).not.toHaveBeenCalled();
@@ -271,6 +271,39 @@ it("keeps payment status checking available if a previous payment method was rem
     fireEvent.click(button);
     expect(view.reload).toHaveBeenCalled();
     expect(mocks.request).toHaveBeenCalledWith("user/order/check?trade_no=test-order");
+});
+it("uses the fee locked in an issued order even when provider settings change", () => {
+    checkout({ payment_id: 1, handling_amount: 75 });
+    expect(screen.getByText("¥10.75")).toBeTruthy();
+    expect(screen.getByRole("radio", { name: /Card/ }).matches(":disabled")).toBe(true);
+    fireEvent.click(screen.getByRole("button", { name: "重新发起支付" }));
+    expect(screen.getByText("¥10.50")).toBeTruthy();
+    expect(screen.getByRole("radio", { name: /Card/ }).matches(":disabled")).toBe(false);
+    expect(mocks.request.mock.calls.filter(([path]) => path === "user/order/checkout")).toHaveLength(0);
+});
+it("hides zero fees and preserves deposit bonus amounts from the server", () => {
+    mocks.methods = [mocks.methods[1]];
+    checkout({ plan_id: 0, total_amount: 10000, bounus: 2000, get_amount: 12000, balance_amount: 0, discount_amount: 0 });
+    expect(screen.queryByText("支付手续费")).toBeNull();
+    expect(screen.getByText("到账金额 ¥120.00")).toBeTruthy();
+    expect(screen.queryByLabelText("订阅流程")).toBeNull();
+});
+it("shows only a refresh action for unknown order states", () => {
+    const view = checkout({ status: -1 });
+    expect(screen.getByRole("alert")).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "确认支付" })).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "刷新" }));
+    expect(view.reload).toHaveBeenCalledOnce();
+});
+it("replaces a QR checkout with its receipt when the authoritative status completes", async () => {
+    mocks.request.mockResolvedValue({ type: 0, data: "https://pay.example/finish" });
+    const view = checkout();
+    fireEvent.click(screen.getByRole("button", { name: "确认支付" }));
+    await screen.findByDisplayValue("https://pay.example/finish");
+    view.rerender(<PaymentCheckout order={{ ...order, status: 3, handling_amount: 50 }} reload={view.reload} renderCard={() => null} />);
+    expect(screen.getByRole("heading", { name: "订单已完成" })).toBeTruthy();
+    expect(screen.queryByDisplayValue("https://pay.example/finish")).toBeNull();
+    expect(screen.queryByRole("button", { name: "检查支付结果" })).toBeNull();
 });
 it("closes the card dialog and exposes a failed card charge without claiming success", async () => {
     mocks.methods = [{ id: 3, name: "Stripe", payment: "StripeCredit" }];

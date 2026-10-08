@@ -1857,12 +1857,11 @@ export function Payments() {
                                     <AdminSwitch
                                         label={`${r.name} 启用`}
                                         checked={Number(r.enable) === 1}
-                                        onChange={async (checked) => {
+                                        onChange={async () => {
                                             await request(
-                                                admin("payment/update"),
+                                                admin("payment/show"),
                                                 {
                                                     id: r.id,
-                                                    enable: checked ? 1 : 0,
                                                 },
                                             );
                                             d.reload();

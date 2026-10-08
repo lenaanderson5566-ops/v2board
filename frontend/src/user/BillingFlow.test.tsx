@@ -533,7 +533,7 @@ it("renders built-in payment icons from the API host", () => {
     try {
         const view = render(<PaymentCheckout order={order} reload={vi.fn()} renderCard={() => null} />);
         expect(view.container.querySelector("img.payment-method-icon")?.getAttribute("src"))
-            .toBe("https://api.example.com/payment-icons/alipay.svg");
+            .toBe("https://api.example.com/payment-icons/alipay.svg?v=2");
     } finally {
         window.V2BOARD = previous;
     }

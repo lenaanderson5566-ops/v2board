@@ -1285,6 +1285,7 @@ body:has(.browser-notice) #custom-footer {
 
 .checkout-payment .payment-options label { flex-wrap: nowrap; min-height: 60px; }
 .checkout-payment .payment-method-icon { width: 28px; height: 28px; flex: 0 0 28px; object-fit: contain; color: #737373; }
+.checkout-payment img.payment-method-icon { width: 48px; height: 32px; flex-basis: 48px; object-fit: contain; object-position: center; padding: 2px; box-sizing: border-box; }
 .checkout-payment .payment-options label > span { min-width: 0; overflow-wrap: anywhere; }
 
 .auth-policy {

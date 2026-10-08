@@ -25,7 +25,7 @@ function PaymentIcon({ source }: { source: unknown }) {
         <img
             className="payment-method-icon"
             src={/^\/payment-icons\/[a-z]+\.svg$/.test(url)
-                ? normalizeApiOrigin(window.V2BOARD?.apiBaseUrl || "") + url
+                ? normalizeApiOrigin(window.V2BOARD?.apiBaseUrl || "") + url + "?v=2"
                 : url}
             alt=""
             referrerPolicy="no-referrer"

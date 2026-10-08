@@ -3,6 +3,14 @@ import { paymentIcons, paymentIconInitial, resolvePaymentIcon } from "./payment-
 import { paymentPayload } from "./payment-fields";
 
 describe("payment icon selection", () => {
+    it("previews complete vector assets without font-dependent logos", () => {
+        for (const item of paymentIcons) {
+            const svg = decodeURIComponent(item.source.split(",")[1]);
+            expect(svg).toMatch(/viewBox="[^"]+"/);
+            expect(svg).toContain("<path");
+            expect(svg).not.toMatch(/<text\b|<script\b|<foreignObject\b/);
+        }
+    });
     it("defaults to a card and restores saved selections", () => {
         expect(paymentIconInitial({}).iconPreset).toBe("card");
         const alipay = paymentIcons.find((item) => item.id === "alipay")!;

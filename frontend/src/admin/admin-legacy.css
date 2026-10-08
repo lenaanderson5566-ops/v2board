@@ -1142,5 +1142,5 @@ body[data-console="admin"] .admin-region-select .admin-select-options > .muted {
 .payment-icon-options button { display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 10px 6px; border: 1px solid #dbe2ea; border-radius: 8px; background: white; color: #334155; cursor: pointer; }
 .payment-icon-options button[aria-pressed="true"] { border-color: #1677ff; background: #eff6ff; box-shadow: 0 0 0 1px #1677ff; }
 .payment-icon-options button:focus-visible { outline: 2px solid #1677ff; outline-offset: 2px; }
-.payment-icon-options img, .payment-icon-preview img { width: 48px; height: 32px; object-fit: contain; }
+.payment-icon-options img, .payment-icon-preview img { width: 56px; height: 40px; object-fit: contain; object-position: center; padding: 4px; box-sizing: border-box; }
 .payment-icon-preview { display: flex; align-items: center; flex-wrap: wrap; gap: 10px; }

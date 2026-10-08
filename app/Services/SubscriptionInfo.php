@@ -15,7 +15,13 @@ final class SubscriptionInfo
         $resetAt = (new UserService())->getResetAt($user);
         if ($resetAt) {
             $date = \Carbon\Carbon::createFromTimestamp($resetAt, config('app.timezone', 'UTC'));
-            $lines[] = $copy['next_reset'].': '.$date->format('m-d');
+            $offset = $date->utcOffset();
+            $zone = 'GMT';
+            if ($offset !== 0) {
+                $zone .= ($offset > 0 ? '+' : '-').intdiv(abs($offset), 60);
+                if (abs($offset) % 60) $zone .= ':'.sprintf('%02d', abs($offset) % 60);
+            }
+            $lines[] = $copy['next_reset'].': '.$date->format('m-d H:i').' '.$zone;
         }
         $credits = max(0, (int)$user->credit_balance);
         if ($credits > 0) $lines[] = $copy['independent'].': '.Helper::trafficConvert($credits);

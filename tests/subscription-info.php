@@ -9,6 +9,8 @@ $checks = 0;
 $assert = function ($ok, $message) use (&$checks) {if (!$ok) throw new RuntimeException($message); $checks++;};
 $enabled = config('v2board.show_info_to_server_enable');
 $locale = app()->getLocale();
+$timezone = config('app.timezone');
+$phpTimezone = date_default_timezone_get();
 DB::beginTransaction();
 try {
     $user = App\Models\User::create(['email'=>'info-'.bin2hex(random_bytes(6)).'@example.com','password'=>password_hash('fixture-password',PASSWORD_DEFAULT),'uuid'=>App\Utils\Helper::guid(true),'token'=>App\Utils\Helper::guid(),'credit_balance'=>30*1073741824]);
@@ -21,13 +23,22 @@ try {
     $user->plan_id = $plan->id;
     $user->transfer_enable = 1073741824;
     $user->expired_at = time()+90*86400;
+    config(['app.timezone'=>'Asia/Shanghai']);
+    date_default_timezone_set('Asia/Shanghai');
     $resetAt = (new App\Services\UserService())->getResetAt($user);
-    $resetDate = Carbon\Carbon::createFromTimestamp($resetAt, config('app.timezone', 'UTC'))->format('m-d');
+    $resetDate = Carbon\Carbon::createFromTimestamp($resetAt, 'Asia/Shanghai')->format('m-d H:i').' GMT+8';
     foreach (require resource_path('client/copy.php') as $language=>$copy) {
         app()->setLocale($language);
         $lines = SubscriptionInfo::lines($user);
         $assert($lines === [$copy['next_reset'].': '.$resetDate,$copy['independent'].': '.App\Utils\Helper::trafficConvert(20*1073741824),$copy['reset_count'].': '.sprintf($copy['reset_quantity'],2)], 'Wrong effective credits or locale '.$language);
     }
+    foreach (['UTC'=>'GMT', 'Asia/Kathmandu'=>'GMT+5:45', 'America/Panama'=>'GMT-5'] as $zone=>$suffix) {
+        config(['app.timezone'=>$zone]);
+        date_default_timezone_set($zone);
+        $assert(str_ends_with(SubscriptionInfo::lines($user)[0], ' 00:00 '.$suffix), 'Incorrect reset time or GMT offset '.$zone);
+    }
+    config(['app.timezone'=>'Asia/Shanghai']);
+    date_default_timezone_set('Asia/Shanghai');
     $controller = new App\Services\Actions\Client\ClientActions();
     $method = new ReflectionMethod($controller,'setSubscribeInfoToServers'); $method->setAccessible(true);
     $servers = [['name'=>'Real node','type'=>'vmess']];
@@ -53,4 +64,6 @@ try {
     DB::rollBack();
     config(['v2board.show_info_to_server_enable'=>$enabled]);
     app()->setLocale($locale);
+    config(['app.timezone'=>$timezone]);
+    date_default_timezone_set($phpTimezone);
 }

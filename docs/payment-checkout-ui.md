@@ -27,3 +27,8 @@ unknown status. Unknown status offers refresh and cannot initiate payment.
 The pending checkout has one prominent payable total; receipts retain a total.
 Zero fees are omitted. Mobile controls stay in document flow to avoid covering
 payment content or conflicting with navigation and dialogs.
+
+Order help uses account `ticketCreation` (decoded as `ticket_creation`), matching
+`TicketPolicy::creation`. Only an explicit `allowed` result links to order tickets;
+purchase-required, closed, loading and failed account reads link to documentation.
+The help and cancellation actions share a row in pending checkout.

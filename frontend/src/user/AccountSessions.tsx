@@ -2,7 +2,7 @@ import { useState } from "react";
 import { request, date, clearReadCache, type Row } from "../shared/api";
 import { forgetBrowserSession } from "../shared/browser-session";
 import { tx } from "../shared/i18n";
-import { Modal, Panel, State, Table, useData } from "../shared/ui";
+import { Modal, State, Table, useData } from "../shared/ui";
 export function AccountSessions() {
     const sessions = useData<Row[]>("user/getActiveSession");
     const [error, setError] = useState("");
@@ -29,13 +29,14 @@ export function AccountSessions() {
         }
     }
     return (
-        <section className="subscription-security">
+        <section className="settings-section">
             {error && !selected && (
                 <p role="alert" className="alert">
                     {error}
                 </p>
             )}
-            <Panel title={tx("登录设备")}>
+            <h2>{tx("登录设备")}</h2>
+            <div className="settings-card">
                 <p className="muted">
                     {tx(
                         "这里展示账号登录会话，不代表代理在线设备。同一设备可能有多个登录会话。",
@@ -88,7 +89,7 @@ export function AccountSessions() {
                         )}
                     />
                 </State>
-            </Panel>
+            </div>
             {selected && (
                 <Modal
                     title={tx("退出登录")}

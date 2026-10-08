@@ -27,7 +27,7 @@ final class Input
             'billingPeriod'=>'string|in:monthly,quarterly,semiannual,annual,biennial,triennial,credits,reset,deposit',
             'paymentMethodId'=>'integer|min:0','paymentToken'=>'string|max:1024','depositAmount'=>'integer|min:1|max:9999998',
             'couponCode'=>'string|max:128','code'=>'string|max:128','giftCardCode'=>'string|max:128',
-            'amount'=>'integer|min:1','autoRenewal'=>'boolean','expiryReminders'=>'boolean','trafficReminders'=>'boolean',
+            'amount'=>'integer|min:1','autoRenewal'=>'boolean','expiryReminders'=>'boolean','trafficReminders'=>'boolean','serviceNotifications'=>'boolean',
             'resetPassword'=>'boolean','languageSelected'=>'boolean','language'=>\App\Services\LanguagePreferenceService::rule(),
             'requestKey'=>'uuid','page'=>'integer|min:1','pageSize'=>'integer|min:1|max:100',
             'days'=>'integer|in:7,30,90','subject'=>'string|max:255','priority'=>'in:normal,high,urgent',

@@ -22,6 +22,9 @@ describe("account entry", () => {
         expect(
             screen.getByRole("link", { name: "选择套餐" }).getAttribute("href"),
         ).toBe("#/plan");
+        expect(screen.getByRole("link", { name: "使用文档" }).getAttribute("href")).toBe("#/knowledge");
+        expect(screen.queryByRole("link", { name: "配置中心" })).toBeNull();
+        expect(screen.getByText("确认与支付")).toBeTruthy();
         expect(screen.queryByRole("button", { name: "一键导入" })).toBeNull();
     });
     it("preserves expired plan details and offers renewal and orders", () => {

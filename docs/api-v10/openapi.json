@@ -12212,6 +12212,9 @@
               "purchase_required",
               "closed"
             ]
+          },
+          "serviceNotifications": {
+            "type": "boolean"
           }
         },
         "additionalProperties": false
@@ -13979,6 +13982,9 @@
             "type": "boolean"
           },
           "trafficReminders": {
+            "type": "boolean"
+          },
+          "serviceNotifications": {
             "type": "boolean"
           }
         }

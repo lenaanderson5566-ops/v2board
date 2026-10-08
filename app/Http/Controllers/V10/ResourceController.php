@@ -30,7 +30,7 @@ abstract class ResourceController extends \App\Http\Controllers\Controller
         foreach ($contract['input'] as $external => $internal) {
             if ($request->exists($external)) $input[$internal] = $request->input($external);
         }
-        foreach (['isforget','auto_renewal','remind_expire','remind_traffic'] as $flag) if (isset($input[$flag])) $input[$flag]=(int)(bool)$input[$flag];
+        foreach (['isforget','auto_renewal','remind_expire','remind_traffic','remind_service'] as $flag) if (isset($input[$flag])) $input[$flag]=(int)(bool)$input[$flag];
         $request->validate(['page' => 'nullable|integer|min:1', 'pageSize' => 'nullable|integer|min:1|max:100']);
         if (array_key_exists('page', $contract['input'])) $input['current'] = $input['current'] ?? 1;
         if (array_key_exists('pageSize', $contract['input'])) $input[$contract['input']['pageSize']] = $input[$contract['input']['pageSize']] ?? 20;

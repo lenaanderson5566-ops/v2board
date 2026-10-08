@@ -10,6 +10,7 @@ class User extends Model
     protected $dateFormat = 'U';
     protected $guarded = ['id'];
     protected $casts = [
+        'remind_service' => 'boolean',
         'created_at' => 'timestamp',
         'updated_at' => 'timestamp',
         'credit_balance' => 'integer'

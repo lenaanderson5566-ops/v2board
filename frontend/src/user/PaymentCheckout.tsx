@@ -1,4 +1,5 @@
 import { OrderReceipt } from "./OrderReceipt";
+import { OrderHelp } from "./OrderHelp";
 import { normalizeApiOrigin } from "../shared/runtime-config";
 import { c, minuteDate } from "../shared/credit-copy";
 import { useEffect, useRef, useState, type ReactNode } from "react";
@@ -431,6 +432,8 @@ export function PaymentCheckout({
                             </p>
                         )}
                         <div className="checkout-secondary">
+                            <OrderHelp tradeNo={String(order.trade_no)} />
+                            <div className="checkout-secondary-actions">
                             {awaitingConfirmation ? (
                                 <button
                                     disabled={busy}
@@ -441,17 +444,15 @@ export function PaymentCheckout({
                                 >
                                     {tx("重新发起支付")}
                                 </button>
-                            ) : <span />}
+                            ) : null}
                             <button
                                 disabled={busy}
                                 onClick={() => setCancelOpen(true)}
                             >
                                 {tx("取消订单")}
                             </button>
+                            </div>
                         </div>
-                        <a className="checkout-help" href={`#/ticket/order/${encodeURIComponent(order.trade_no)}`}>
-                            {tx("此订单需要帮助？")}
-                        </a>
                     </section>
                 )}
             </div>
@@ -476,9 +477,7 @@ export function PaymentCheckout({
             )}
             {status === 1 && <div className="checkout-processing-actions">
                 <button onClick={reload}>{tx("检查支付结果")}</button>
-                <a className="checkout-help" href={`#/ticket/order/${encodeURIComponent(order.trade_no)}`}>
-                    {tx("此订单需要帮助？")}
-                </a>
+                <OrderHelp tradeNo={String(order.trade_no)} />
             </div>}
             {cancelOpen && (
                 <Modal

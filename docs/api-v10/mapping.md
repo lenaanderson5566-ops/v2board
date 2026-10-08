@@ -1,5 +1,7 @@
 # Legacy → V10 mapping
 
+Account notification preference: `GET/PATCH /me` exposes boolean `serviceNotifications`, mapped to shared `remind_service` (default true).
+
 Admin, operations/risk, staff and node APIs retain all existing paths and schemas. Legacy symbols are historical mappings, not a list of callable routes. Only the explicit retained-endpoints allowlist remains callable. See contracts.json for exact field projections.
 
 | Existing symbol | V10 method and path | Permission | Resource |

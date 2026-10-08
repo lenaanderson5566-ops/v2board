@@ -1,8 +1,17 @@
+import { GiftCardRedemption } from "./GiftCardRedemption";
 import { TrafficCredits } from "./TrafficCredits";
 import { c } from "../shared/credit-copy";
 import { useState } from "react";
 import { ArrowUpRight, ChevronRight, Gift, Plus } from "lucide-react";
-import { boot, bytes, date, money, navigate, request, query, type Row } from "../shared/api";
+import {
+    bytes,
+    date,
+    money,
+    navigate,
+    request,
+    query,
+    type Row,
+} from "../shared/api";
 import { tx } from "../shared/i18n";
 import { b } from "../shared/billing-copy";
 import { e } from "../shared/experience-copy";
@@ -12,9 +21,10 @@ export function BillingPage() {
     const [page, setPage] = useState(1);
     const info = useData("user/info"),
         sub = useData("user/getSubscribe"),
-        orders = useData<Row[]>(query("user/order/fetch", {current:page,page_size:20}));
+        orders = useData<Row[]>(
+            query("user/order/fetch", { current: page, page_size: 20 }),
+        );
     const [dialog, setDialog] = useState<"gift" | "deposit" | null>(null);
-    const [notice, setNotice] = useState("");
     const [all, setAll] = useState(false);
     const status = ["待支付", "开通中", "已取消", "已完成", "已折抵"];
     return (
@@ -84,11 +94,6 @@ export function BillingPage() {
                 purchaseLabel
                 balance={Number(info.data?.credit_balance || 0)}
             />
-            {notice && (
-                <p className="success-message" role="status">
-                    {notice}
-                </p>
-            )}
             <section className="settings-section">
                 <header>
                     <h2>{b("transactions")}</h2>
@@ -135,7 +140,10 @@ export function BillingPage() {
                                             )}
                                         </span>
                                         <strong>
-                                            {money(order.total_amount, order.currency || "CNY")}
+                                            {money(
+                                                order.total_amount,
+                                                order.currency || "CNY",
+                                            )}
                                         </strong>
                                         <ChevronRight size={16} />
                                     </a>
@@ -149,58 +157,54 @@ export function BillingPage() {
                     )}
                 </State>
             </section>
-            {all && orders.total > 20 && <Pager page={page} total={orders.total} size={20} onChange={setPage} />}
-            {dialog && (
+            {all && orders.total > 20 && (
+                <Pager
+                    page={page}
+                    total={orders.total}
+                    size={20}
+                    onChange={setPage}
+                />
+            )}
+            {dialog === "gift" && (
+                <GiftCardRedemption
+                    email={info.data?.email}
+                    close={() => setDialog(null)}
+                    redeemed={() => {
+                        info.reload();
+                        sub.reload();
+                    }}
+                />
+            )}
+            {dialog === "deposit" && (
                 <Modal
-                    title={tx(dialog === "gift" ? "兑换礼品卡" : "账户充值")}
+                    title={tx("账户充值")}
                     close={() => setDialog(null)}
                     variant="modal"
                 >
-                    {dialog === "gift" ? (
-                        <Editor
-                            fields={[
-                                {
-                                    key: "giftcard",
-                                    label: tx("礼品卡代码"),
-                                    required: true,
-                                },
-                            ]}
-                            initial={{}}
-                            submit={tx("兑换")}
-                            onSave={async (body) => {
-                                await request("user/redeemgiftcard", body);
-                                setNotice(tx("兑换成功"));
-                                setDialog(null);
-                                info.reload();
-                                sub.reload();
-                            }}
-                        />
-                    ) : (
-                        <Editor
-                            fields={[
-                                {
-                                    key: "deposit_amount",
-                                    label: e("depositAmount", {
-                                        currency: "CNY",
-                                    }),
-                                    type: "number",
-                                    scale: 100,
-                                    min: 0.01,
-                                    step: 0.01,
-                                    required: true,
-                                },
-                            ]}
-                            initial={{ plan_id: 0, period: "deposit" }}
-                            submit={tx("创建充值订单")}
-                            onSave={async (body) => {
-                                const result = await request<string>(
-                                    "user/order/save",
-                                    body,
-                                );
-                                navigate("order/" + result.data);
-                            }}
-                        />
-                    )}
+                    <Editor
+                        fields={[
+                            {
+                                key: "deposit_amount",
+                                label: e("depositAmount", {
+                                    currency: "CNY",
+                                }),
+                                type: "number",
+                                scale: 100,
+                                min: 0.01,
+                                step: 0.01,
+                                required: true,
+                            },
+                        ]}
+                        initial={{ plan_id: 0, period: "deposit" }}
+                        submit={tx("创建充值订单")}
+                        onSave={async (body) => {
+                            const result = await request<string>(
+                                "user/order/save",
+                                body,
+                            );
+                            navigate("order/" + result.data);
+                        }}
+                    />
                 </Modal>
             )}
         </div>

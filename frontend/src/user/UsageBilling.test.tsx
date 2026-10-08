@@ -1,4 +1,5 @@
 // @vitest-environment jsdom
+vi.mock("../shared/account-copy", () => ({ ac: (key: string) => key }));
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import {
     cleanup,
@@ -21,6 +22,7 @@ vi.mock("../shared/api", () => ({
     admin: (s: string) => "admin/" + s,
     request: mocks.request,
     navigate: mocks.navigate,
+    clearReadCache: vi.fn(),
     date: (s: number) => String(s),
     bytes: (s: number) => `${s} B`,
     money: (s: number) => `¥${s / 100}`,
@@ -43,6 +45,7 @@ vi.mock("../shared/ui", () => ({
                   ? mocks.orders
                   : path === "user/info"
                     ? {
+                          email: "test@example.com",
                           balance: 1234,
                           u: 10,
                           d: 20,
@@ -94,6 +97,7 @@ it("groups subscription, balance and transactions and opens redemption on demand
     expect(screen.getByText("transactions")).toBeTruthy();
     expect(screen.queryByRole("dialog")).toBeNull();
     fireEvent.click(screen.getByRole("button", { name: "兑换礼品卡" }));
+    fireEvent.change(screen.getByLabelText("礼品卡代码"), { target: { value: "TEST" } });
     fireEvent.click(screen.getByRole("button", { name: "兑换" }));
     await waitFor(() =>
         expect(screen.getByRole("status").textContent).toBe("兑换成功"),
@@ -102,6 +106,7 @@ it("groups subscription, balance and transactions and opens redemption on demand
         "user/redeemgiftcard",
         expect.objectContaining({ giftcard: "TEST" }),
     );
+    fireEvent.click(screen.getByRole("button", { name: "完成" }));
     expect(screen.queryByRole("dialog")).toBeNull();
     expect(mocks.reload).toHaveBeenCalled();
 });

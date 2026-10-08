@@ -212,8 +212,12 @@ try {
     $assert($r->headers->get('Content-Language')==='zh-TW','Language quality negotiation');
     Illuminate\Support\Facades\Cache::forget(App\Utils\CacheKey::get('LAST_SEND_EMAIL_VERIFY_TIMESTAMP',$email));
     Illuminate\Support\Facades\RateLimiter::clear('email-invitation:'.$user->id);
-    [$r,$j]=$call('PATCH','/api/v10/me',['expiryReminders'=>false,'trafficReminders'=>true],$bearer);
-    $assert($r->getStatusCode()===204 && $user->fresh()->remind_expire===0 && $user->fresh()->remind_traffic===1,'Boolean preferences adapt to shared validation');
+    [$r,$j]=$call('PATCH','/api/v10/me',['expiryReminders'=>false,'trafficReminders'=>true,'serviceNotifications'=>false],$bearer);
+    $assert($r->getStatusCode()===204 && $user->fresh()->remind_expire===0 && $user->fresh()->remind_traffic===1 && $user->fresh()->remind_service===false,'Boolean preferences adapt to shared validation');
+    [$r,$j]=$call('GET','/api/v10/me',[],$bearer);
+    $assert($j['data']['serviceNotifications']===false,'Service notification preference returned as a boolean');
+    [$r,$j]=$call('PATCH','/api/v10/me',['serviceNotifications'=>'invalid'],$bearer);
+    $assert($r->getStatusCode()===422 && $user->fresh()->remind_service===false,'Invalid service preference rejected without mutation');
     $before=$user->fresh()->getAttributes();
     [$r,$j]=$call('GET','/api/v10/me/subscription',[],$bearer);
     $assert($r->getStatusCode()===200 && $before===$user->fresh()->getAttributes(),'Subscription GET does not write business records');

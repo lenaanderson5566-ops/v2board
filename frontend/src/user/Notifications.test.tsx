@@ -1,4 +1,5 @@
 // @vitest-environment jsdom
+vi.mock("../shared/account-copy", () => ({ ac: (key: string) => key }));
 vi.mock("./help-copy", () => ({ h: (key: string) => key }));
 vi.mock("../shared/credit-copy", () => ({ c: (key: string) => key, minuteDate: (v: unknown) => String(v) }));
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
@@ -33,24 +34,29 @@ beforeEach(() => {
     mocks.readRequest.mockResolvedValue({
         data: {
             email: "test@example.com",
+            remind_service: 1,
             remind_expire: 1,
             remind_traffic: 0,
             balance: 1000,
         },
     });
 });
-it("loads existing notification choices and saves only the two reminder fields", async () => {
+it("loads existing notification choices and saves only the three notification fields", async () => {
     mocks.request.mockResolvedValue({ data: true });
     render(<Notifications />);
     const expiry = await screen.findByRole("switch", { name: "到期提醒" });
-    const usage = screen.getByRole("switch", { name: "流量提醒" });
+    const usage = screen.getByRole("switch", { name: "quotaNotice" });
     expect(expiry.getAttribute("aria-checked")).toBe("true");
     expect(usage.getAttribute("aria-checked")).toBe("false");
+    const service = screen.getByRole("switch", { name: "serviceNotice" });
+    expect(service.getAttribute("aria-checked")).toBe("true");
+    fireEvent.click(service);
     fireEvent.click(expiry);
     fireEvent.click(usage);
     fireEvent.click(screen.getByRole("button", { name: "保存" }));
     await waitFor(() =>
         expect(mocks.request).toHaveBeenCalledWith("user/update", {
+            remind_service: 0,
             remind_expire: 0,
             remind_traffic: 1,
         }),

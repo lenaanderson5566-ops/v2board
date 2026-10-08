@@ -35,6 +35,7 @@ echo '<?php // fixture' > database/migrations/2026_10_05_000001_create_invitatio
 echo '<?php // fixture' > database/migrations/2026_10_05_000002_create_credit_batches.php
 echo '<?php // fixture' > database/migrations/2026_10_05_000003_add_order_currency.php
 echo '<?php // fixture' > database/migrations/2026_10_06_000001_add_node_display_metadata.php
+echo '<?php // fixture' > database/migrations/2026_10_08_000001_add_service_notifications.php
 mkdir -p storage/geoip
 echo 'new mmdb' > storage/geoip/GeoLite2-ASN.mmdb
 git add -f storage/geoip/GeoLite2-ASN.mmdb
@@ -104,6 +105,7 @@ grep -q 'migrate --path=database/migrations/2026_10_02_000003' calls.log
 grep -q 'migrate --path=database/migrations/2026_10_02_000004' calls.log
 grep -q 'migrate --path=database/migrations/2026_10_02_000005' calls.log
 grep -q 'migrate --path=database/migrations/2026_10_06_000001_add_node_display_metadata.php --force --no-interaction' calls.log
+grep -q 'migrate --path=database/migrations/2026_10_08_000001_add_service_notifications.php --force --no-interaction' calls.log
 grep -q 'artisan console:verify' calls.log
 [[ $(stat -c %a public/console/.vite/manifest.json) == 644 ]]
 [[ $(stat -c %a composer.json) == 644 && $(stat -c %a composer.lock) == 644 ]]
@@ -191,9 +193,11 @@ unset FAIL_MIGRATION
 [[ -e storage/framework/down ]]
 grep -q 'Failed migration: database/migrations/2026_10_02_000002' "$TMP/output"
 ! grep -q 'migrate --path=database/migrations/2026_10_02_000003' calls.log
+! grep -q 'migrate --path=database/migrations/2026_10_08_000001_add_service_notifications.php --force --no-interaction' calls.log
 ! grep -q 'artisan console:verify' calls.log
 bash "$SOURCE" "${ARGS[@]}" --jobs-stopped > "$TMP/output" 2>&1
 grep -q 'All approved migrations completed' "$TMP/output"
+grep -q 'migrate --path=database/migrations/2026_10_08_000001_add_service_notifications.php --force --no-interaction' calls.log
 grep -q 'artisan console:verify' calls.log
 [[ -e storage/framework/down ]]
 new_site autofailure

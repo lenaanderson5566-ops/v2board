@@ -86,7 +86,7 @@ export function AccountEntry({
             </div>
             {state === "new" && (
                 <div className="entry-steps">
-                    {[tx("选择套餐"), tx("一键导入"), tx("使用文档")].map(
+                    {[tx("选择套餐"), tx("确认与支付"), tx("配置中心")].map(
                         (label, index) => (
                             <div key={label}>
                                 <span>0{index + 1}</span>

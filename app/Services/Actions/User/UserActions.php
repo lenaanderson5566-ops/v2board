@@ -174,12 +174,12 @@ class UserActions
         DB::beginTransaction();
 
         try {
-            $user = User::find($request->user['id']);
+            $user = User::where('id', $request->user['id'])->lockForUpdate()->first();
             if (!$user) {
                 abort(request()->is('api/v10/*') ? 409 : 500, __('The user does not exist'));
             }
             $giftcard_input = $request->giftcard;
-            $giftcard = Giftcard::where('code', $giftcard_input)->first();
+            $giftcard = Giftcard::where('code', $giftcard_input)->lockForUpdate()->first();
 
             if (!$giftcard) {
                 abort(request()->is('api/v10/*') ? 409 : 500, __('The gift card does not exist'));
@@ -200,7 +200,9 @@ class UserActions
                 }
             }
 
-            $usedUserIds = $giftcard->used_user_ids ? json_decode($giftcard->used_user_ids, true) : [];
+            $usedUserIds = $giftcard->used_user_ids ?: [];
+            // Older rows may contain a JSON string inside the JSON column.
+            if (is_string($usedUserIds)) $usedUserIds = json_decode($usedUserIds, true);
             if (!is_array($usedUserIds)) {
                 $usedUserIds = [];
             }
@@ -210,7 +212,7 @@ class UserActions
             }
 
             $usedUserIds[] = $user->id;
-            $giftcard->used_user_ids = json_encode($usedUserIds);
+            $giftcard->used_user_ids = $usedUserIds;
 
             switch ($giftcard->type) {
                 case 1:
@@ -237,6 +239,7 @@ class UserActions
                 case 5:
                     if ($user->plan_id == null || ($user->expired_at !== null && $user->expired_at < $currentTime)) {
                         $plan = Plan::where('id', $giftcard->plan_id)->first();
+                        if (!$plan) abort(request()->is('api/v10/*') ? 409 : 500, __('Not suitable gift card type'));
                         $user->plan_id = $plan->id;
                         $user->group_id = $plan->group_id;
                         $user->transfer_enable = $plan->transfer_enable * 1073741824;
@@ -264,6 +267,9 @@ class UserActions
                 throw new \Exception(__('Save failed'));
             }
 
+            if ($user->plan_id && in_array((int)$giftcard->type, [2, 5], true)) {
+                \App\Services\ServiceNotification::schedule($user, (int)$giftcard->type === 2);
+            }
             DB::commit();
 
             return response([
@@ -296,6 +302,7 @@ class UserActions
                 'auto_renewal',
                 'remind_expire',
                 'remind_traffic',
+                'remind_service',
                 'expired_at',
                 'balance',
                 'commission_balance',
@@ -418,7 +425,8 @@ class UserActions
             'language',
             'auto_renewal',
             'remind_expire',
-            'remind_traffic'
+            'remind_traffic',
+            'remind_service'
         ]);
 
         $user = User::find($request->user['id']);

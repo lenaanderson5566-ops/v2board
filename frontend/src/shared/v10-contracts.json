@@ -183,6 +183,10 @@
       ],
       "ticketCreation": [
         "ticket_creation"
+      ],
+      "serviceNotifications": [
+        "remind_service",
+        "boolean"
       ]
     },
     "subscription": {
@@ -1314,7 +1318,8 @@
         "language": "language",
         "autoRenewal": "auto_renewal",
         "expiryReminders": "remind_expire",
-        "trafficReminders": "remind_traffic"
+        "trafficReminders": "remind_traffic",
+        "serviceNotifications": "remind_service"
       },
       "output": "scalar",
       "role": "user",

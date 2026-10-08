@@ -91,13 +91,13 @@ describe("API client", () => {
                 new Response(JSON.stringify({ data: true }), { status: 200 }),
             );
         vi.stubGlobal("fetch", fetchMock);
-        await request("user/update", { remind_expire: 1 });
+        await request("user/update", { remind_expire: 1, remind_service: false });
         expect(fetchMock.mock.calls[0][0]).toBe("/api/v10/me");
         expect(fetchMock.mock.calls[0][1].headers.Authorization).toBeUndefined();
         expect(fetchMock.mock.calls[0][1].headers["Accept-Language"]).toBe(
             "zh-CN",
         );
-        expect(fetchMock.mock.calls[0][1].body).toBe('{"expiryReminders":1}');
+        expect(fetchMock.mock.calls[0][1].body).toBe('{"expiryReminders":1,"serviceNotifications":false}');
     });
     it("clears expired sessions and reports access errors", async () => {
         storage.set(storageKey, "expired");

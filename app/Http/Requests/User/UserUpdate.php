@@ -17,7 +17,8 @@ class UserUpdate extends FormRequest
             'language' => \App\Services\LanguagePreferenceService::rule(),
             'auto_renewal' => 'in:0,1',
             'remind_expire' => 'in:0,1',
-            'remind_traffic' => 'in:0,1'
+            'remind_traffic' => 'in:0,1',
+            'remind_service' => 'in:0,1'
         ];
     }
 

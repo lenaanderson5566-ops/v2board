@@ -32,6 +32,10 @@ class OrderService
             $this->order = Order::where('id', $this->order->id)->lockForUpdate()->firstOrFail();
             if ((int)$this->order->status !== 1) return;
             $this->openLocked();
+            if ((int)$this->order->status === 3 && $this->order->credit_bytes === null
+                && $this->order->period !== 'reset_price' && in_array((int)$this->order->type, [1, 2, 3], true)) {
+                ServiceNotification::schedule($this->user, (int)$this->order->type === 2);
+            }
         }, 3);
     }
 

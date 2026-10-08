@@ -3,6 +3,7 @@ import { bytes, money as formatMoney, type Row } from "../shared/api";
 import { tx } from "../shared/i18n";
 import { c, minuteDate } from "../shared/credit-copy";
 import { billingPeriods, orderOriginalAmount } from "./billing-flow";
+import { OrderHelp } from "./OrderHelp";
 
 export function OrderReceipt({ order }: { order: Row }) {
     const money = (amount: unknown) => formatMoney(amount, order.currency || "CNY");
@@ -176,12 +177,7 @@ export function OrderReceipt({ order }: { order: Row }) {
                             ? tx("使用情况")
                             : tx("快速开始")}
                 </a>
-                <a
-                    className="checkout-help"
-                    href={`#/ticket/order/${encodeURIComponent(order.trade_no)}`}
-                >
-                    {tx("此订单需要帮助？")}
-                </a>
+                <OrderHelp tradeNo={String(order.trade_no)} />
             </div>
         </article>
     );

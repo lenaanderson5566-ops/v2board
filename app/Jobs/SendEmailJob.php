@@ -40,9 +40,10 @@ class SendEmailJob implements ShouldQueue
         }
         // Queue delays must not deliver reminders after renewal, reset, or an opt-out.
         $type = $params['template_name'] ?? '';
-        if (in_array($type, ['remindTraffic', 'remindExpire'], true)) {
+        if (in_array($type, ['remindTraffic', 'remindExpire', 'serviceActivated', 'serviceRenewed'], true)) {
             $user = \App\Models\User::where('email', $params['email'])->first();
             if (!$user || $user->banned) return ['skipped'=>true];
+            if (in_array($type, ['serviceActivated', 'serviceRenewed'], true) && !$user->remind_service) return ['skipped'=>true];
             if ($type === 'remindExpire' && (!$user->remind_expire || !$user->expired_at || $user->expired_at <= time() || $user->expired_at > time() + 86400)) return ['skipped'=>true];
             if ($type === 'remindTraffic' && (!$user->remind_traffic || !$user->transfer_enable || $user->u + $user->d < $user->transfer_enable * 0.95 || $user->u + $user->d >= $user->transfer_enable)) return ['skipped'=>true];
         }

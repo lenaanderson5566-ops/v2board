@@ -10,7 +10,7 @@ inputs={
  'language':'language','languageSelected':'language_selected','verificationToken':'verify','resetPassword':'isforget',
  'planId':'plan_id','replacementOrderNumber':'replace_trade_no','billingPeriod':'period','depositAmount':'deposit_amount',
  'couponCode':'coupon_code','paymentMethodId':'method','paymentToken':'token','amount':'transfer_amount',
- 'autoRenewal':'auto_renewal','expiryReminders':'remind_expire','trafficReminders':'remind_traffic',
+ 'autoRenewal':'auto_renewal','expiryReminders':'remind_expire','trafficReminders':'remind_traffic','serviceNotifications':'remind_service',
  'requestKey':'request_key','sessionId':'session_id','orderNumber':'trade_no','ticketId':'id',
  'subject':'subject','priority':'level','message':'message','withdrawalMethod':'withdraw_method',
  'withdrawalAccount':'withdraw_account','giftCardCode':'giftcard','status':'status','page':'current',
@@ -26,7 +26,7 @@ allowed={
  'Passport/AuthController@getQuickLoginUrl':'redirect',
  'Passport/CommController@sendEmailVerify':'email resetPassword invitation captchaToken language',
  'Passport/CommController@pv':'inviteCode',
- 'User/UserController@update':'language autoRenewal expiryReminders trafficReminders',
+ 'User/UserController@update':'language autoRenewal expiryReminders trafficReminders serviceNotifications',
  'User/UserController@changePassword':'oldPassword newPassword',
  'User/UserController@transfer':'amount', 'User/UserController@getQuickLoginUrl':'redirect', 'User/UserController@redeemgiftcard':'giftCardCode',
  'User/OrderController@save':'planId replacementOrderNumber billingPeriod depositAmount couponCode',
@@ -49,7 +49,7 @@ def schema(name, fields):
   parts=spec.split(':');public,source=parts[:2];schemas[name][public]=[source]+parts[2:]
 schema('plan','id:id name:name description:content quotaBytes:transfer_enable:gb speedLimitMbps:speed_limit deviceLimit:device_limit remainingCapacity:capacity_limit renewable:renew:boolean monthlyPrice:month_price quarterlyPrice:quarter_price semiannualPrice:half_year_price annualPrice:year_price biennialPrice:two_year_price triennialPrice:three_year_price creditPrice:onetime_price resetPrice:reset_price resetMethod:reset_traffic_method')
 schema('accountStatus','state:state available:is_available:boolean quotaExhausted:quota_exhausted:boolean serverTime:server_time:time')
-schema('account','id:id email:email language:language quotaBytes:transfer_enable:integer creditBytes:credit_balance:integer deviceLimit:device_limit lastLoginAt:last_login_at:time uploadedBytes:u:integer downloadedBytes:d:integer createdAt:created_at:time banned:banned:boolean autoRenewal:auto_renewal:boolean expiryReminders:remind_expire:boolean trafficReminders:remind_traffic:boolean expiresAt:expired_at:time balance:balance commissionBalance:commission_balance planId:plan_id discountPercent:discount commissionRate:commission_rate telegramId:telegram_id avatarUrl:avatar_url accountStatus:account_status:object:accountStatus')
+schema('account','id:id email:email language:language quotaBytes:transfer_enable:integer creditBytes:credit_balance:integer deviceLimit:device_limit lastLoginAt:last_login_at:time uploadedBytes:u:integer downloadedBytes:d:integer createdAt:created_at:time banned:banned:boolean autoRenewal:auto_renewal:boolean expiryReminders:remind_expire:boolean trafficReminders:remind_traffic:boolean serviceNotifications:remind_service:boolean expiresAt:expired_at:time balance:balance commissionBalance:commission_balance planId:plan_id discountPercent:discount commissionRate:commission_rate telegramId:telegram_id avatarUrl:avatar_url accountStatus:account_status:object:accountStatus')
 schema('subscription','planId:plan_id expiresAt:expired_at:time uploadedBytes:u:integer downloadedBytes:d:integer quotaBytes:transfer_enable:integer creditBytes:credit_balance:integer deviceLimit:device_limit email:email credentialId:uuid plan:plan:object:plan onlineDevices:alive_ip subscriptionUrl:subscribe_url resetAt:reset_at:time resetTimezone:reset_timezone active:has_subscription:boolean resetDay:reset_day canAdvancePeriod:allow_new_period:boolean')
 schema('creditSnapshot','name:name')
 schema('order','orderNumber:trade_no planId:plan_id billingPeriod:period:period totalAmount:total_amount discountAmount:discount_amount creditOffset:surplus_amount refundAmount:refund_amount balanceOffset:balance_amount handlingAmount:handling_amount paymentId:payment_id status:status:orderStatus kind:type:orderKind createdAt:created_at:time updatedAt:updated_at:time paidAt:paid_at:time creditBytes:credit_bytes:integer plan:plan:object:plan creditedAmount:get_amount depositBonus:bounus creditSnapshot:credit_snapshot:object:creditSnapshot')

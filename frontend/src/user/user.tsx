@@ -1,3 +1,4 @@
+import { ac } from "../shared/account-copy";
 import { lazy, useState, useEffect, useRef, type ReactNode } from "react";
 import { NodeList } from "./NodeList";
 export { Tickets } from "../shared/Tickets";
@@ -443,11 +444,13 @@ export function Invite() {
 export function Notifications() {
     const d = useData("user/info");
     return (
-        <Panel title={tx("通知设置")}>
-            <p className="pad muted">{tx("选择接收到期和流量使用提醒。")}</p>
+        <div className="settings-content notification-settings">
+            <p className="settings-intro">{ac("notificationIntro")}</p>
             <State {...d} retry={d.reload}>
+                <div className="settings-card">
                 <Editor
                     fields={[
+                        { key: "remind_service", label: ac("serviceNotice"), hint: ac("serviceHelp"), type: "switch", options: [["1", tx("开启")], ["0", tx("关闭")]] },
                         {
                             key: "remind_expire",
                             label: tx("到期提醒"),
@@ -459,7 +462,8 @@ export function Notifications() {
                         },
                         {
                             key: "remind_traffic",
-                            label: tx("流量提醒"),
+                            label: ac("quotaNotice"),
+                            hint: ac("quotaHelp"),
                             type: "switch",
                             options: [
                                 ["1", tx("开启")],
@@ -470,14 +474,16 @@ export function Notifications() {
                     initial={d.data || {}}
                     onSave={async (b) => {
                         await request("user/update", {
+                            remind_service: b.remind_service,
                             remind_expire: b.remind_expire,
                             remind_traffic: b.remind_traffic,
                         });
                         d.reload();
                     }}
                 />
+                </div>
             </State>
-        </Panel>
+        </div>
     );
 }
 export function Profile() {

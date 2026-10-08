@@ -1,7 +1,7 @@
 import { forgetBrowserSession } from "../shared/browser-session";
 import { AccountSessions } from "./AccountSessions";
 import { useId, useState, useRef, type FormEvent } from "react";
-import { Eye, EyeOff, ArrowLeft, Shield } from "lucide-react";
+import { Eye, EyeOff } from "lucide-react";
 import { request, clearReadCache, storageKey } from "../shared/api";
 import { tx } from "../shared/i18n";
 import { Modal } from "../shared/ui";
@@ -68,107 +68,116 @@ export function AccountSecurity() {
         }
     }
     return (
-        <section className="account-security">
-            <a href="#/dashboard" className="security-back">
-                <ArrowLeft size={16} aria-hidden="true" />
-                {tx("总览")}
-            </a>
-            <div className="security-heading">
-                <Shield size={24} aria-hidden="true" />
+        <section className="settings-content account-security">
+            <section className="settings-section">
                 <h2>{tx("修改密码")}</h2>
-            </div>
-            <p className="muted">
-                {tx("修改密码后，所有设备都需要重新登录。")}
-            </p>
-            <form onSubmit={save}>
-                <label htmlFor={`${id}-current`}>
-                    {tx("当前密码")}
-                    <input
-                        id={`${id}-current`}
-                        type="password"
-                        dir="ltr"
-                        autoComplete="current-password"
-                        required
-                        value={current}
-                        onChange={(event) => setCurrent(event.target.value)}
-                        disabled={busy}
-                    />
-                </label>
-                <label htmlFor={`${id}-new`}>
-                    {tx("新密码")}
-                    <div className="security-password">
-                        <input
-                            id={`${id}-new`}
-                            type={visible ? "text" : "password"}
-                            dir="ltr"
-                            autoComplete="new-password"
-                            required
-                            minLength={8}
-                            value={password}
-                            onChange={(event) =>
-                                setPassword(event.target.value)
-                            }
-                            disabled={busy}
-                        />
-                        <button
-                            type="button"
-                            className="icon-button"
-                            aria-label={tx(visible ? "隐藏密码" : "显示密码")}
-                            aria-pressed={visible}
-                            onClick={() => setVisible(!visible)}
-                        >
-                            {visible ? <EyeOff size={18} /> : <Eye size={18} />}
-                        </button>
-                    </div>
-                </label>
-                <label htmlFor={`${id}-confirm`}>
-                    {tx("确认新密码")}
-                    <input
-                        id={`${id}-confirm`}
-                        type={visible ? "text" : "password"}
-                        dir="ltr"
-                        autoComplete="new-password"
-                        required
-                        minLength={8}
-                        value={confirmation}
-                        onChange={(event) =>
-                            setConfirmation(event.target.value)
-                        }
-                        disabled={busy}
-                    />
-                </label>
-                <small className="muted">{tx("密码至少需要8个字符。")}</small>
-                {error && (
-                    <div className="alert" role="alert">
-                        {error}
-                    </div>
-                )}
-                <button className="primary" disabled={busy}>
-                    {tx(busy ? "提交中…" : "更新密码")}
-                </button>
-            </form>
-            <section className="subscription-security">
-                <h2>{tx("订阅安全")}</h2>
-                <p className="muted">
-                    {tx(
-                        "怀疑配置泄露时，可重置订阅凭据。重置后所有设备需要重新导入配置，账户登录不受影响。",
-                    )}
-                </p>
-                {resetDone && (
-                    <p className="success-message" role="status">
-                        {tx("订阅凭据已重置，请到配置中心重新导入。")}{" "}
-                        <a href="#/subscribe">{tx("配置中心")}</a>
+                <div className="settings-card security-password-card">
+                    <p className="muted">
+                        {tx("修改密码后，所有设备都需要重新登录。")}
                     </p>
-                )}
-                <button
-                    onClick={() => {
-                        setResetError("");
-                        setResetDone(false);
-                        setResetOpen(true);
-                    }}
-                >
-                    {tx("重置订阅链接")}
-                </button>
+                    <form onSubmit={save}>
+                        <label htmlFor={`${id}-current`}>
+                            {tx("当前密码")}
+                            <input
+                                id={`${id}-current`}
+                                type="password"
+                                dir="ltr"
+                                autoComplete="current-password"
+                                required
+                                value={current}
+                                onChange={(event) =>
+                                    setCurrent(event.target.value)
+                                }
+                                disabled={busy}
+                            />
+                        </label>
+                        <label htmlFor={`${id}-new`}>
+                            {tx("新密码")}
+                            <div className="security-password">
+                                <input
+                                    id={`${id}-new`}
+                                    type={visible ? "text" : "password"}
+                                    dir="ltr"
+                                    autoComplete="new-password"
+                                    required
+                                    minLength={8}
+                                    value={password}
+                                    onChange={(event) =>
+                                        setPassword(event.target.value)
+                                    }
+                                    disabled={busy}
+                                />
+                                <button
+                                    type="button"
+                                    className="icon-button"
+                                    aria-label={tx(
+                                        visible ? "隐藏密码" : "显示密码",
+                                    )}
+                                    aria-pressed={visible}
+                                    onClick={() => setVisible(!visible)}
+                                >
+                                    {visible ? (
+                                        <EyeOff size={18} />
+                                    ) : (
+                                        <Eye size={18} />
+                                    )}
+                                </button>
+                            </div>
+                        </label>
+                        <label htmlFor={`${id}-confirm`}>
+                            {tx("确认新密码")}
+                            <input
+                                id={`${id}-confirm`}
+                                type={visible ? "text" : "password"}
+                                dir="ltr"
+                                autoComplete="new-password"
+                                required
+                                minLength={8}
+                                value={confirmation}
+                                onChange={(event) =>
+                                    setConfirmation(event.target.value)
+                                }
+                                disabled={busy}
+                            />
+                        </label>
+                        <small className="muted">
+                            {tx("密码至少需要8个字符。")}
+                        </small>
+                        {error && (
+                            <div className="alert" role="alert">
+                                {error}
+                            </div>
+                        )}
+                        <button className="primary" disabled={busy}>
+                            {tx(busy ? "提交中…" : "更新密码")}
+                        </button>
+                    </form>
+                </div>
+            </section>
+            <section className="settings-section">
+                <h2>{tx("订阅安全")}</h2>
+                <div className="settings-card">
+                    <p className="muted">
+                        {tx(
+                            "怀疑配置泄露时，可重置订阅凭据。重置后所有设备需要重新导入配置，账户登录不受影响。",
+                        )}
+                    </p>
+                    {resetDone && (
+                        <p className="success-message" role="status">
+                            {tx("订阅凭据已重置，请到配置中心重新导入。")}{" "}
+                            <a href="#/subscribe">{tx("配置中心")}</a>
+                        </p>
+                    )}
+                    <button
+                        onClick={() => {
+                            setResetError("");
+                            setResetDone(false);
+                            setResetOpen(true);
+                        }}
+                    >
+                        {tx("重置订阅链接")}
+                    </button>
+                </div>
             </section>
             <AccountSessions />
             {resetOpen && (

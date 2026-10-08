@@ -14,7 +14,9 @@ export const mailLanguages = {
 const templates = {
     verify: "验证码",
     mailLogin: "登录链接",
-    remindTraffic: "用量提醒",
+    remindTraffic: "额度提醒",
+    serviceActivated: "服务开通成功",
+    serviceRenewed: "服务续期成功",
     remindExpire: "订阅到期",
     emailInvitation: "邮件邀请",
     ticketReply: "工单回复",

@@ -6,7 +6,7 @@ use App\Models\User;
 /** Rendering is independent of the queue and never sends mail. */
 class ProductMail
 {
-    const TYPES = ['verify', 'mailLogin', 'remindTraffic', 'remindExpire', 'notify', 'emailInvitation', 'ticketReply', 'test'];
+    const TYPES = ['verify', 'mailLogin', 'remindTraffic', 'remindExpire', 'serviceActivated', 'serviceRenewed', 'notify', 'emailInvitation', 'ticketReply', 'test'];
     public static function language($value)
     {
         $value = strtolower(str_replace('_', '-', (string)$value));
@@ -47,10 +47,10 @@ class ProductMail
         // Admin announcements retain basic formatting, never active content or remote tracking images.
         $html = $type === 'notify' ? $this->safeHtml($content) : nl2br(e($content));
         $url = $type === 'mailLogin' ? ($value['link'] ?? '') : ($value['url'] ?? config('v2board.app_url'));
-        $routes = ['remindTraffic'=>'traffic', 'remindExpire'=>'order', 'ticketReply'=>'ticket', 'test'=>'dashboard', 'notify'=>'dashboard'];
+        $routes = ['serviceActivated'=>'dashboard', 'serviceRenewed'=>'order', 'remindTraffic'=>'traffic', 'remindExpire'=>'order', 'ticketReply'=>'ticket', 'test'=>'dashboard', 'notify'=>'dashboard'];
         if (isset($routes[$type])) $url = rtrim((string)config('v2board.app_url'), '/').'/app#/'.$routes[$type];
         if (!preg_match('~^https?://~i', (string)$url)) $url = '';
-        $actionKey = ['emailInvitation'=>'inviteAction', 'mailLogin'=>'loginAction', 'remindTraffic'=>'usageAction', 'remindExpire'=>'billingAction', 'ticketReply'=>'supportAction'][$type] ?? 'action';
+        $actionKey = ['serviceRenewed'=>'billingAction', 'emailInvitation'=>'inviteAction', 'mailLogin'=>'loginAction', 'remindTraffic'=>'usageAction', 'remindExpire'=>'billingAction', 'ticketReply'=>'supportAction'][$type] ?? 'action';
         return ['language'=>$language, 'direction'=>$language === 'fa-IR' ? 'rtl' : 'ltr', 'brand'=>$brand,
             'title'=>$title, 'subject'=>str_replace(["\r", "\n"], ' ', $subject), 'body'=>$body,
             'contentHtml'=>$html, 'contentText'=>html_entity_decode(strip_tags(str_replace(['</p>','<br>','<br/>','<br />'], "\n", $html)), ENT_QUOTES, 'UTF-8'),

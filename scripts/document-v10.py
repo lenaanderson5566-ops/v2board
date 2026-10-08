@@ -129,7 +129,7 @@ def input_schema(field):
     if field == 'platform': return {'type': 'string', 'enum': ['windows', 'android', 'macos', 'linux', 'ios']}
     if field in ['page', 'pageSize', 'planId', 'paymentMethodId', 'depositAmount', 'amount', 'days', 'articleId', 'ticketId', 'notificationId', 'version']:
         return {'type': 'integer', **({'minimum': 1, 'maximum': 100, 'default': 20} if field == 'pageSize' else {})}
-    if field in ['autoRenewal', 'expiryReminders', 'trafficReminders', 'resetPassword', 'languageSelected']: return {'type': 'boolean'}
+    if field in ['autoRenewal', 'expiryReminders', 'trafficReminders', 'serviceNotifications', 'resetPassword', 'languageSelected']: return {'type': 'boolean'}
     if field == 'billingPeriod': return {'type': 'string', 'enum': enums['period'][:-1]}
     if field == 'priority': return {'type': 'string', 'enum': enums['priority']}
     if field == 'status': return {'type': 'string', 'enum': enums['orderStatus'][:-1]}
@@ -137,7 +137,7 @@ def input_schema(field):
     return {'type': 'string', **({'format': 'email'} if field == 'email' else {})}
 
 paths = {}
-mapping = ['# Legacy → V10 mapping', '', 'Admin, operations/risk, staff and node APIs retain all existing paths and schemas. Legacy symbols are historical mappings, not a list of callable routes. Only the explicit retained-endpoints allowlist remains callable. See contracts.json for exact field projections.', '', '| Existing symbol | V10 method and path | Permission | Resource |', '|---|---|---|---|']
+mapping = ['# Legacy → V10 mapping', '', 'Account notification preference: `GET/PATCH /me` exposes boolean `serviceNotifications`, mapped to shared `remind_service` (default true).', '', 'Admin, operations/risk, staff and node APIs retain all existing paths and schemas. Legacy symbols are historical mappings, not a list of callable routes. Only the explicit retained-endpoints allowlist remains callable. See contracts.json for exact field projections.', '', '| Existing symbol | V10 method and path | Permission | Resource |', '|---|---|---|---|']
 for entry in entries:
     operation_id = entry['method'].lower() + ''.join(w[0].upper() + w[1:] for w in re.findall(r'[A-Za-z0-9]+', entry['path']))
     contract = contracts['endpoints'][operation_id]

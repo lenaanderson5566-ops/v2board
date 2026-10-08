@@ -1,4 +1,5 @@
 // @vitest-environment jsdom
+vi.mock("../shared/account-copy", () => ({ ac: (key: string) => key }));
 import { Suspense } from "react";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import {

@@ -1,4 +1,5 @@
 // @vitest-environment jsdom
+vi.mock("../shared/account-copy", () => ({ ac: (key: string) => key }));
 vi.mock("./help-copy", () => ({ h: (key: string) => key }));
 vi.mock("react-i18next", () => ({
     useTranslation: () => ({ i18n: { resolvedLanguage: "zh-CN" } }),

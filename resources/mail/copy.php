@@ -11,8 +11,8 @@ return json_decode(<<<'JSON'
       "点击下方按钮登录账户。此链接仅可使用一次，自申请起 5 分钟内有效，请勿转发。"
     ],
     "remindTraffic": [
-      "套餐流量即将用尽",
-      "您已使用超过 95% 的套餐流量。请查看剩余流量及重置时间；如需继续使用，可购买独立额度。"
+      "套餐额度即将用尽",
+      "您已使用超过 95% 的套餐额度。请查看剩余额度及重置时间；如需继续使用，可购买独立额度。"
     ],
     "remindExpire": [
       "订阅将在 24 小时内到期",
@@ -43,7 +43,15 @@ return json_decode(<<<'JSON'
     "usageAction": "查看使用情况",
     "billingAction": "管理订阅",
     "supportAction": "查看回复",
-    "ticketReference": "工单编号"
+    "ticketReference": "工单编号",
+    "serviceActivated": [
+      "服务已开通",
+      "您的服务已成功开通，权益现已生效。登录账户查看服务详情并开始使用。"
+    ],
+    "serviceRenewed": [
+      "续期成功",
+      "您的服务已成功续期，有效期已更新。请前往账单查看最新的订阅信息。"
+    ]
   },
   "zh-TW": {
     "verify": [
@@ -55,8 +63,8 @@ return json_decode(<<<'JSON'
       "點擊下方按鈕登入帳戶。此連結僅可使用一次，自申請起 5 分鐘內有效，請勿轉寄。"
     ],
     "remindTraffic": [
-      "方案流量即將用盡",
-      "您已使用超過 95% 的方案流量。請查看剩餘流量及重置時間；如需繼續使用，可購買獨立額度。"
+      "套餐額度即將用盡",
+      "您已使用超過 95% 的套餐額度。請查看剩餘額度及重置時間；如需繼續使用，可購買獨立額度。"
     ],
     "remindExpire": [
       "訂閱將在 24 小時內到期",
@@ -87,7 +95,15 @@ return json_decode(<<<'JSON'
     "usageAction": "查看使用情況",
     "billingAction": "管理訂閱",
     "supportAction": "查看回覆",
-    "ticketReference": "工單編號"
+    "ticketReference": "工單編號",
+    "serviceActivated": [
+      "服務已開通",
+      "您的服務已成功開通，權益現已生效。登入帳戶查看服務詳情並開始使用。"
+    ],
+    "serviceRenewed": [
+      "續期成功",
+      "您的服務已成功續期，有效期限已更新。請前往帳單查看最新的訂閱資訊。"
+    ]
   },
   "en-US": {
     "verify": [
@@ -99,8 +115,8 @@ return json_decode(<<<'JSON'
       "Use the button below to sign in. This link can be used once and expires 5 minutes after your request. Do not forward it."
     ],
     "remindTraffic": [
-      "Your plan data is almost used up",
-      "You have used more than 95% of your plan data. Check your remaining data and reset time. You can purchase independent credits to continue using the service."
+      "Your plan allowance is running low",
+      "You have used more than 95% of your plan allowance. Check your remaining allowance and reset date. Additional credits are available if needed."
     ],
     "remindExpire": [
       "Your subscription ends within 24 hours",
@@ -131,7 +147,15 @@ return json_decode(<<<'JSON'
     "usageAction": "View usage",
     "billingAction": "Manage subscription",
     "supportAction": "View reply",
-    "ticketReference": "Ticket"
+    "ticketReference": "Ticket",
+    "serviceActivated": [
+      "Your service is ready",
+      "Your service has been activated successfully. Sign in to view your service details and get started."
+    ],
+    "serviceRenewed": [
+      "Renewal complete",
+      "Your service has been renewed and its expiry date updated. View billing for your latest subscription details."
+    ]
   },
   "ja-JP": {
     "verify": [
@@ -143,8 +167,8 @@ return json_decode(<<<'JSON'
       "下のボタンからログインしてください。このリンクは一度だけ使用でき、申請から5分間有効です。"
     ],
     "remindTraffic": [
-      "使用量のお知らせ",
-      "プランの通信容量を95%以上使用しました。使用状況や追加容量をご確認ください。"
+      "プランの利用枠が残りわずかです",
+      "プランの利用枠を95%以上使用しました。残りの利用枠とリセット日をご確認ください。必要に応じて追加枠を購入できます。"
     ],
     "remindExpire": [
       "サブスクリプションの期限",
@@ -175,7 +199,15 @@ return json_decode(<<<'JSON'
     "usageAction": "使用状況を確認",
     "billingAction": "サブスクリプションを管理",
     "supportAction": "返信を確認",
-    "ticketReference": "お問い合わせ番号"
+    "ticketReference": "お問い合わせ番号",
+    "serviceActivated": [
+      "サービスが開通しました",
+      "サービスの開通が完了し、利用できるようになりました。ログインして詳細をご確認ください。"
+    ],
+    "serviceRenewed": [
+      "更新が完了しました",
+      "サービスの更新が完了し、有効期限が延長されました。請求ページで最新の契約情報をご確認ください。"
+    ]
   },
   "ko-KR": {
     "verify": [
@@ -187,8 +219,8 @@ return json_decode(<<<'JSON'
       "아래 버튼으로 로그인하세요. 이 링크는 한 번만 사용할 수 있으며 요청 후 5분 동안 유효합니다."
     ],
     "remindTraffic": [
-      "사용량 알림",
-      "요금제 데이터의 95% 이상을 사용했습니다. 사용량이나 추가 용량을 확인하세요."
+      "요금제 한도가 얼마 남지 않았습니다",
+      "요금제 한도의 95% 이상을 사용했습니다. 남은 한도와 초기화 날짜를 확인하세요. 필요하면 추가 한도를 구매할 수 있습니다."
     ],
     "remindExpire": [
       "구독 만료 예정",
@@ -219,7 +251,15 @@ return json_decode(<<<'JSON'
     "usageAction": "사용량 확인",
     "billingAction": "구독 관리",
     "supportAction": "답변 확인",
-    "ticketReference": "문의 번호"
+    "ticketReference": "문의 번호",
+    "serviceActivated": [
+      "서비스가 개통되었습니다",
+      "서비스 개통이 완료되어 이용할 수 있습니다. 로그인하여 서비스 정보를 확인하고 시작하세요."
+    ],
+    "serviceRenewed": [
+      "갱신이 완료되었습니다",
+      "서비스가 갱신되어 유효 기간이 변경되었습니다. 청구 페이지에서 최신 구독 정보를 확인하세요."
+    ]
   },
   "vi-VN": {
     "verify": [
@@ -231,8 +271,8 @@ return json_decode(<<<'JSON'
       "Nhấn nút bên dưới để đăng nhập. Liên kết chỉ dùng một lần và hết hạn sau 5 phút kể từ khi yêu cầu."
     ],
     "remindTraffic": [
-      "Thông báo dung lượng",
-      "Bạn đã sử dụng hơn 95% dung lượng gói. Hãy xem mức sử dụng hoặc quản lý dung lượng bổ sung."
+      "Hạn mức gói sắp hết",
+      "Bạn đã dùng hơn 95% hạn mức gói. Kiểm tra hạn mức còn lại và ngày đặt lại. Bạn có thể mua thêm hạn mức nếu cần."
     ],
     "remindExpire": [
       "Gói đăng ký sắp hết hạn",
@@ -263,7 +303,15 @@ return json_decode(<<<'JSON'
     "usageAction": "Xem mức sử dụng",
     "billingAction": "Quản lý gói đăng ký",
     "supportAction": "Xem phản hồi",
-    "ticketReference": "Mã yêu cầu"
+    "ticketReference": "Mã yêu cầu",
+    "serviceActivated": [
+      "Dịch vụ đã được kích hoạt",
+      "Dịch vụ đã được kích hoạt thành công. Đăng nhập để xem chi tiết và bắt đầu sử dụng."
+    ],
+    "serviceRenewed": [
+      "Gia hạn thành công",
+      "Dịch vụ đã được gia hạn và cập nhật ngày hết hạn. Xem hóa đơn để kiểm tra thông tin đăng ký mới nhất."
+    ]
   },
   "ru-RU": {
     "verify": [
@@ -275,8 +323,8 @@ return json_decode(<<<'JSON'
       "Нажмите кнопку ниже для входа. Одноразовая ссылка действует 5 минут с момента запроса."
     ],
     "remindTraffic": [
-      "Уведомление о расходе",
-      "Использовано более 95% трафика по тарифу. Проверьте расход или управляйте дополнительным объёмом."
+      "Лимит плана почти исчерпан",
+      "Использовано более 95% лимита плана. Проверьте остаток и дату сброса. При необходимости можно приобрести дополнительный лимит."
     ],
     "remindExpire": [
       "Подписка скоро истечёт",
@@ -307,7 +355,15 @@ return json_decode(<<<'JSON'
     "usageAction": "Посмотреть использование",
     "billingAction": "Управление подпиской",
     "supportAction": "Посмотреть ответ",
-    "ticketReference": "Обращение"
+    "ticketReference": "Обращение",
+    "serviceActivated": [
+      "Сервис активирован",
+      "Сервис успешно активирован. Войдите в аккаунт, чтобы узнать подробности и начать пользоваться."
+    ],
+    "serviceRenewed": [
+      "Продление завершено",
+      "Сервис успешно продлён, срок действия обновлён. Актуальные сведения о подписке доступны в разделе оплаты."
+    ]
   },
   "fa-IR": {
     "verify": [
@@ -319,8 +375,8 @@ return json_decode(<<<'JSON'
       "برای ورود دکمه زیر را بزنید. این پیوند یک‌بارمصرف است و تا ۵ دقیقه پس از درخواست اعتبار دارد."
     ],
     "remindTraffic": [
-      "یادآوری مصرف",
-      "بیش از ۹۵٪ حجم طرح خود را مصرف کرده‌اید. میزان مصرف یا حجم اضافه را بررسی کنید."
+      "سهمیهٔ طرح رو به پایان است",
+      "بیش از ۹۵٪ سهمیهٔ طرح مصرف شده است. سهمیهٔ باقی‌مانده و زمان بازنشانی را بررسی کنید. در صورت نیاز می‌توانید سهمیهٔ مستقل بخرید."
     ],
     "remindExpire": [
       "اشتراک رو به پایان است",
@@ -351,7 +407,15 @@ return json_decode(<<<'JSON'
     "usageAction": "مشاهده مصرف",
     "billingAction": "مدیریت اشتراک",
     "supportAction": "مشاهده پاسخ",
-    "ticketReference": "شماره درخواست"
+    "ticketReference": "شماره درخواست",
+    "serviceActivated": [
+      "سرویس شما فعال شد",
+      "سرویس با موفقیت فعال شد. برای مشاهدهٔ جزئیات و شروع استفاده وارد حساب شوید."
+    ],
+    "serviceRenewed": [
+      "تمدید انجام شد",
+      "سرویس با موفقیت تمدید و تاریخ انقضا به‌روز شد. اطلاعات جدید اشتراک را در صورتحساب ببینید."
+    ]
   }
 }
 JSON, true);

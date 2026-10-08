@@ -44,7 +44,7 @@ class V10
         }
         $response->headers->set('X-Request-ID',$requestId);
         $response->headers->set('Content-Language',app()->getLocale());
-        if ($request->is('api/v10/auth/*','api/v10/me/*','api/v10/subscriptions/*')) $response->headers->set('Cache-Control','private, no-store');
+        if ($request->attributes->has('browser.session') || $request->is('api/v10/auth/*','api/v10/me/*','api/v10/subscriptions/*')) $response->headers->set('Cache-Control','private, no-store');
         $context=['version'=>'v10','requestId'=>$requestId,'route'=>$request->route() ? $request->route()->uri() : 'unmatched','method'=>$request->method(),'status'=>$response->getStatusCode(),'durationMs'=>(int)round((microtime(true)-$started)*1000)];
         if ($request->is('api/v10/me/client-config')) {
             $problem=$response->getStatusCode()>=400 ? json_decode($response->getContent(),true) : [];

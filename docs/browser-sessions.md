@@ -27,3 +27,9 @@ All registry mutations (registration, individual revocation and account-wide rev
 `tests/session-concurrency.php` starts independent PHP processes against the local shared cache to check registration and revocation interleavings; it must only run in a local environment.
 
 Validation: `tests/browser-session.php`, `tests/auth-security.php`, `tests/fastai-browser-login.php`, `tests/fastai-release-login.php`, V10 inventory/contracts, frontend browser-session and authentication tests. This is a scoped migration, not a full production penetration test.
+
+## Cookie coverage audit
+
+The browser-session regression suite checks every generated V10 endpoint at the middleware boundary: Cookie credentials take precedence over supplied tokens, browser mutations reject missing CSRF before the action, and public/subscription/webhook protocols remain untouched. Real requests cover catalog and detail resources, scoped admin login, SSO exchanges, migration and revocation. Browser responses, including authentication/authorization/CSRF errors, carry private no-store cache directives. Legacy administrative CORS permits the Content-Language header used by the existing console and downloads while retaining exact allowed origins. Only successful credential-grant responses are inspected for login token conversion; downloads are not parsed as session grants.
+
+Production CDN rules must respect these directives: do not apply forced Cache Everything rules to authenticated APIs. Runtime Secure cookie flags, origin allowlists and proxy configuration still require verification in each deployment.

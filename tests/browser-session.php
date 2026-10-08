@@ -6,9 +6,10 @@ if (!app()->environment('local')) throw new RuntimeException('Local test only');
 $checks=0;
 $assert=function($ok,$label) use (&$checks) { if (!$ok) throw new RuntimeException($label); $checks++; };
 $jar=['user'=>[],'admin'=>[]];$csrf=[];$keys=[];$auth=null;
+$testIp='192.0.2.'.random_int(2,254);
 $original=config('v2board.app_url');$deadline=config('browser.legacy_exchange_until');
-$call=function($path,$body=[],$scope='user',$method='GET',$csrfOverride=null,$origin='https://fastdog.ws',$bearer=null) use ($app,&$jar,&$csrf,&$keys) {
-    $request=Illuminate\Http\Request::create('https://fastdog.ws/api/'.$path,$method,$body,$scope?$jar[$scope]:[]);
+$call=function($path,$body=[],$scope='user',$method='GET',$csrfOverride=null,$origin='https://fastdog.ws',$bearer=null) use ($app,&$jar,&$csrf,&$keys,$testIp) {
+    $request=Illuminate\Http\Request::create('https://fastdog.ws/api/'.$path,$method,$body,$scope?$jar[$scope]:[],[],['REMOTE_ADDR'=>$testIp]);
     $request->headers->set('Accept','application/json');
     if ($scope) {
         $request->headers->set('X-Browser-Client',$scope);
@@ -51,10 +52,51 @@ try {
     $assert($call('v10/me',['auth_data'=>'evil'])->getStatusCode()===200,'Query credential cannot override Cookie');
     $assert($call('v10/me',[],null)->getStatusCode()===401,'Native requires Bearer');
     $assert($call('v10/me/preferences',['language'=>'en-US'],'user','PATCH',false)->getStatusCode()===419,'Cookie mutation requires CSRF');
+    foreach ([null,'null','https://fastdog.ws.evil.example','https://fastdog.ws:444'] as $origin) $assert($call('v10/me/preferences',['language'=>'en-US'],'user','PATCH',null,$origin)->getStatusCode()===419,'Mutations require the exact trusted Origin');
     $native=$call('v10/auth/sessions',$body,null,'POST');
     $assert($native->getStatusCode()===200 && isset($data($native)['accessToken']),'App keeps Bearer login');
     $token=$data($native)['accessToken'];
     $assert($call('v10/me',[],null,'GET',null,null,$token)->getStatusCode()===200,'App Bearer remains usable');
+    // Check the complete generated inventory at the authentication boundary without running mutations.
+    $entries=json_decode(file_get_contents(base_path('docs/api-v10/endpoints.json')),true);
+    $middleware=app(App\Http\Middleware\BrowserSession::class);
+    foreach ($entries as $entry) {
+        $path='api/v10/'.preg_replace('/\{[^}]+\}/','test-resource',$entry['path']);
+        $excluded=str_starts_with($path,'api/v10/public/') || str_starts_with($path,'api/v10/subscriptions/') || str_starts_with($path,'api/v10/webhooks/');
+        $request=Illuminate\Http\Request::create('https://fastdog.ws/'.$path,$entry['method'],['auth_data'=>'injected'],$jar['user']);
+        $request->headers->set('X-Browser-Client','user');
+        $request->headers->set('Origin','https://fastdog.ws');
+        $request->headers->set('X-CSRF-Token',$csrf['user']);
+        $request->headers->set('Authorization','Bearer '.$token);
+        $reached=false;
+        $result=$middleware->handle($request,function($request) use (&$reached,$assert,$excluded,$path,$token) {
+            $reached=true;
+            $assert($request->attributes->has('browser.session')===!$excluded,'Cookie boundary '.$path);
+            if (!$excluded) {
+                $assert($request->input('auth_data')===null,'Strip supplied credential '.$path);
+                $record=$request->attributes->get('browser.session');
+                $assert($record['credential']!==$token && $request->bearerToken()===$record['credential'],'Cookie wins over Bearer '.$path);
+            } else $assert($request->bearerToken()===$token,'Native protocol untouched '.$path);
+            return response('',204);
+        });
+        $assert($reached && $result->getStatusCode()===204,'Inventory request reaches action '.$path);
+        if (!in_array($entry['method'],['GET','HEAD','OPTIONS'],true) && !$excluded) {
+            $request->headers->remove('X-CSRF-Token');
+            $reached=false;
+            $denied=$middleware->handle($request,function() use (&$reached) { $reached=true; return response('',204); });
+            $assert(!$reached && $denied->getStatusCode()===419,'Every browser mutation requires CSRF '.$path);
+            $assert(str_contains($denied->headers->get('Cache-Control'),'no-store'),'CSRF errors cannot be cached '.$path);
+        }
+    }
+    foreach (['plans/test-resource','knowledge-articles/test-resource','announcements/test-resource','payment-methods/test-resource/public-key'] as $resource) {
+        $error=$call('v10/'.$resource);
+        $assert($error->getStatusCode()!==401,'Detail resources accept Cookie '.$resource);
+        $assert(str_contains($error->headers->get('Cache-Control'),'no-store'),'Authenticated detail errors cannot be cached '.$resource);
+    }
+    $preflight=$call('v1/test',[],'user','OPTIONS');
+    $allowedHeaders=strtolower($preflight->headers->get('Access-Control-Allow-Headers'));
+    foreach (['content-language','accept-language','x-browser-client','x-csrf-token'] as $header) $assert(str_contains($allowedHeaders,$header),'Admin CORS header '.$header);
+
     $call('v10/auth/browser-session',[],'admin');
     $admin=$call('v1/passport/auth/login',$body,'admin','POST');
     $assert($admin->getStatusCode()===200 && $data($admin)['authenticated'] && !isset($data($admin)['auth_data']),'Admin login uses Cookie');
@@ -62,9 +104,13 @@ try {
     $assert($jar['admin']!==$jar['user'],'Admin/user Cookies isolated');
     $path=config('v2board.secure_path',config('v2board.frontend_admin_path',hash('crc32b',config('app.key'))));
     $assert($call('v1/'.$path.'/config/fetch',[],'user')->getStatusCode()===403,'User-scoped Cookie cannot authorize administrative routes');
+    $adminDenied=$call('v1/'.$path.'/config/fetch',[],'user');
+    $assert(str_contains($adminDenied->headers->get('Cache-Control'),'no-store'),'Legacy admin authentication errors cannot be cached');
     $assert($call('v1/'.$path.'/config/fetch',[],'admin')->getStatusCode()===200,'Admin-scoped Cookie authorizes administrative routes');
     $user->update(['is_admin'=>0]);
     $assert($call('v1/'.$path.'/config/fetch',[],'admin')->getStatusCode()===403,'Admin permission is rechecked against current account');
+    $rejectedAdmin=$call('v1/passport/auth/login',$body,'admin','POST');
+    $assert($rejectedAdmin->getStatusCode()===403 && str_contains($rejectedAdmin->headers->get('Cache-Control'),'no-store'),'Rejected administrator login cannot be cached or grant a Cookie');
     $user->update(['is_admin'=>1]);
     $verifier=str_repeat('a',43);
     $challenge=rtrim(strtr(base64_encode(hash('sha256',$verifier,true)),'+/','-_'),'=');
@@ -81,6 +127,7 @@ try {
     $assert($web->getStatusCode()===200 && $data($web)['authenticated'] && !isset($data($web)['accessToken']),'App-to-browser exchange sets Cookie');
     $assert($call('v10/auth/browser-session',[],'user','DELETE')->getStatusCode()===204,'Cookie logout');
     $assert($call('v10/me')->getStatusCode()===401,'Cookie logout revokes user session');
+    $assert($call('v10/me',[],'user','GET',null,null,$token)->getStatusCode()===401,'Anonymous browser cannot authenticate using a supplied native Bearer');
     $assert($call('v10/me',[],null,'GET',null,null,$token)->getStatusCode()===200,'Cookie logout preserves App');
     $assert($call('v1/user/info',[],'admin')->getStatusCode()===200,'Cookie logout preserves admin scope');
     $legacy=$auth->generateAuthData(Illuminate\Http\Request::create('/'))['auth_data'];

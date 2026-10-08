@@ -17,11 +17,12 @@ final class BrowserSession
         if ($request->is('api/v1/guest/*','api/v1/client/*','api/v1/server/*')) return $next($request);
         $sessions = app(Sessions::class);
         $record = $sessions->load($request, $scope);
+        $request->attributes->set('browser.session', $record);
         if (!$request->isMethod('GET') && !$request->isMethod('HEAD') && !$request->isMethod('OPTIONS')) {
             $origin = $request->header('Origin');
             $allowed = app(BrowserOrigins::class)->allows($request, $origin);
             if (!$allowed || !is_string($request->header('X-CSRF-Token')) || !hash_equals($record['csrfToken'], $request->header('X-CSRF-Token'))) {
-                return response()->json(['code'=>'CSRF_INVALID', 'message'=>'Refresh the page and try again.'], 419);
+                return response()->json(['code'=>'CSRF_INVALID', 'message'=>'Refresh the page and try again.'], 419, ['Cache-Control'=>'private, no-store']);
             }
         }
         // Browser callers cannot choose a token from query, body or Authorization.
@@ -30,12 +31,11 @@ final class BrowserSession
         $request->request->remove('auth_data');
         if ($request->isJson()) $request->json()->remove('auth_data');
         if ($record['credential']) $request->headers->set('Authorization', $request->is('api/v10/*') ? 'Bearer '.$record['credential'] : $record['credential']);
-        $request->attributes->set('browser.session', $record);
         $response = $next($request);
         $record = $request->attributes->get('browser.session');
-        $payload = json_decode($response->getContent(), true);
-        $credential = $payload['data']['accessToken'] ?? $payload['data']['auth_data'] ?? null;
         $grant = $request->isMethod('POST') && $request->is('api/v10/auth/sessions','api/v10/auth/accounts','api/v10/auth/session-exchanges','api/v10/auth/client-session-exchanges','api/v1/passport/auth/login','api/v1/passport/auth/register');
+        $payload = $grant && $response->isSuccessful() ? json_decode($response->getContent(), true) : null;
+        $credential = $payload['data']['accessToken'] ?? $payload['data']['auth_data'] ?? null;
         if ($grant && $response->isSuccessful() && is_string($credential) && AuthService::decryptAuthData($credential)) {
             $user = AuthService::decryptAuthData($credential);
             if ($scope === 'admin' && (!$user['is_admin'] || $user['banned'])) {

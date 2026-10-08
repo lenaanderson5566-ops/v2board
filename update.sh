@@ -7,7 +7,7 @@ INVOCATION_DIR=$PWD
 SCRIPT_PATH=$(realpath "${BASH_SOURCE[0]}")
 PHASE=preflight
 CURRENT_MIGRATION=
-BRANCH=codex/react-typescript-console
+BRANCH=codex/payment-icon-picker
 PROJECT=$PWD
 PHP_BIN=php
 COMPOSER_BIN=
@@ -47,7 +47,7 @@ usage() {
     cat <<'HELP'
 Usage: bash update.sh [options]
   --project PATH          Existing Git checkout (default: current directory)
-  --branch NAME           Default: codex/react-typescript-console
+  --branch NAME           Default: codex/payment-icon-picker
   --php PATH              PHP matching the website PHP-FPM
   --composer PATH         Existing Composer executable or phar
   --lock-file PATH        Tested target composer.lock (existing lock otherwise)

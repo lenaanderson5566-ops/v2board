@@ -18,7 +18,7 @@ touch artisan
 git add .; git commit -qm original
 OLD=$(git rev-parse HEAD)
 git branch -M original
-git checkout -qb codex/react-typescript-console
+git checkout -qb codex/payment-icon-picker
 printf '{"name":"test/site","require":{"php":"^7.3.0 || ^8.0","geoip2/geoip2":"^2.12"}}\n' > composer.json
 mkdir -p public/console/.vite database/migrations
 cp -- "$SOURCE" update.sh
@@ -157,7 +157,7 @@ export FAIL_INSTALL=1; reject --jobs-stopped --resolve-dependencies; unset FAIL_
 grep -q joanhey/adapterman composer.json
 find "$TMP/backups" -name composer-local.patch -exec cat {} \; | grep joanhey/adapterman > /dev/null
 new_site trackedgeoip
-git checkout -q codex/react-typescript-console
+git checkout -q codex/payment-icon-picker
 echo 'locally updated database' > storage/geoip/GeoLite2-ASN.mmdb
 bash "$SOURCE" "${ARGS[@]}" --check > "$TMP/output" 2>&1
 grep -q 'locally updated database' storage/geoip/GeoLite2-ASN.mmdb
@@ -171,7 +171,7 @@ echo changed > artisan
 reject --jobs-stopped
 [[ ! -e storage/framework/down ]]
 new_site legacycomposer
-git checkout -q codex/react-typescript-console
+git checkout -q codex/payment-icon-picker
 # Reproduce the production state: new HEAD with legacy Composer plus local package.
 printf '{"name":"test/site","require":{"php":"^7.3.0|^8.0","joanhey/adapterman":"^0.7.1"}}\n' > composer.json
 bash "$SOURCE" "${ARGS[@]}" --check --resolve-dependencies > "$TMP/output" 2>&1
@@ -219,7 +219,7 @@ bash "$SOURCE" "${ARGS[@]}" > "$TMP/output" 2>&1
 cd "$TMP/seed"
 printf '\n# newer updater fixture\n' >> update.sh
 git add update.sh; git commit -qm newer-updater
-git push -q "$TMP/origin.git" HEAD:codex/react-typescript-console
+git push -q "$TMP/origin.git" HEAD:codex/payment-icon-picker
 new_site targetupdater
 cd "$TMP"
 ARGS+=(--project targetupdater)
@@ -230,6 +230,6 @@ new_site targetupgrade
 git checkout -q "$TARGET"
 bash update.sh "${ARGS[@]}" --jobs-stopped > "$TMP/output" 2>&1
 [[ $(grep -c 'Using target updater' "$TMP/output") == 1 ]]
-[[ $(git rev-parse HEAD) == $(git rev-parse origin/codex/react-typescript-console) && -e storage/framework/down ]]
+[[ $(git rev-parse HEAD) == $(git rev-parse origin/codex/payment-icon-picker) && -e storage/framework/down ]]
 grep -q 'All approved migrations completed' "$TMP/output"
 echo 'Updater: 24 isolated scenarios passed'

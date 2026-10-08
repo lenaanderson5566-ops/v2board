@@ -16,7 +16,7 @@
     border-color: var(--line);
 }
 .app.user .invite-campaign:focus-visible {
-    outline: 2px solid var(--text-secondary);
+    outline: 2px solid var(--brand);
     outline-offset: 3px;
 }
 .app.user .invite-campaign-content {

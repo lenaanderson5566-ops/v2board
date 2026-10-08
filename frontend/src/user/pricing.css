@@ -17,7 +17,7 @@
     min-height: 44px;
 }
 .app.user .pricing-cycle button[aria-pressed="true"] {
-    background: white;
+    background: var(--surface);
     box-shadow: 0 1px 4px #00000014;
 }
 .app.user .pricing-card-heading {
@@ -119,7 +119,7 @@
     .app.user .mobile-plan-picker button[aria-pressed="true"] {
         background: var(--brand);
         border-color: var(--brand);
-        color: white;
+        color: var(--on-brand);
     }
     .app.user .pricing-plans {
         display: block;

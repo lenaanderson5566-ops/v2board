@@ -72,13 +72,13 @@ const loadUserContent = () => import("./user-entry");
 const UserContent = React.lazy(loadUserContent);
 const ClientAuthorization = React.lazy(() => import("./ClientAuthorization"));
 const Landing = React.lazy(() => import("./Landing"));
+import "./app-theme.css";
 import "../shared/style.css";
 import "../shared/console.css";
 import { useTranslation } from "react-i18next";
 import { LanguagePicker } from "../shared/LanguagePicker";
 import "./user-experience.css";
 import "./product.css";
-import "./app-theme.css";
 export default function UserApp() {
     useEffect(() => {
         if (

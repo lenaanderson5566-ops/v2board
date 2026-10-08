@@ -4,6 +4,7 @@ $app=require __DIR__.'/../bootstrap/app.php';
 $app->make(Illuminate\Contracts\Console\Kernel::class)->bootstrap();
 if (!app()->environment('local')) throw new RuntimeException('Local test only');
 $checks=0; $routeCount=0; $protectedCount=0; $retained=[]; $findings=[];
+$testIp='198.18.'.random_int(0,255).'.'.random_int(1,254);
 set_exception_handler(function($e) { fwrite(STDERR,$e->getMessage()."\n"); exit(1); });
 $assert=function($ok,$label) use (&$checks) { if (!$ok) throw new RuntimeException($label); $checks++; };
 $entries=json_decode(file_get_contents(base_path('docs/api-v10/endpoints.json')),true);
@@ -45,7 +46,7 @@ foreach ($entries as $entry) {
     $assert($contract!==null,'Missing contract '.$key);
     if ($contract['role']!=='user') continue;
     $path='/api/v10/'.preg_replace('/\{[^}]+\}/','1',$entry['path']);
-    $request=Illuminate\Http\Request::create($path,$entry['method'],[],[],[],['HTTP_ACCEPT'=>'application/json','HTTP_USER_AGENT'=>'API-Audit']);
+    $request=Illuminate\Http\Request::create($path,$entry['method'],[],[],[],['REMOTE_ADDR'=>$testIp,'HTTP_ACCEPT'=>'application/json','HTTP_USER_AGENT'=>'API-Audit']);
     $app->instance('request',$request);
     $response=$app->make(Illuminate\Contracts\Http\Kernel::class)->handle($request);
     $assert($response->getStatusCode()===401,'Account route must reject missing credentials: '.$entry['method'].' '.$path.' '.$response->getStatusCode());

@@ -7,7 +7,7 @@
     transform: translateY(-160%);
     border-radius: 10px;
     padding: 12px 18px;
-    color: #fff !important;
+    color: var(--on-brand) !important;
     background: var(--brand);
 }
 .product-skip:focus {
@@ -15,9 +15,7 @@
 }
 .app.user {
     color: var(--ink);
-    background: #fff;
-    --border: var(--line);
-    --muted: var(--text-secondary);
+    background: var(--surface);
 }
 .app.user aside {
     background: var(--surface-soft);
@@ -42,7 +40,7 @@
 }
 .app.user .brand-mark {
     background: var(--brand);
-    color: #fff;
+    color: var(--on-brand);
     border-radius: 10px;
     flex-shrink: 0;
 }
@@ -67,11 +65,11 @@
     font-weight: 450;
 }
 .app.user aside nav a.active {
-    background: var(--surface-tint);
+    background: var(--brand-soft);
     color: var(--brand);
     font-weight: 600;
 }
-.app.user aside nav a:hover {
+.app.user aside nav a:hover:not(.active) {
     background: var(--surface-tint);
 }
 .app.user .sidebar-bottom {
@@ -84,7 +82,7 @@
 }
 .app.user .main > header {
     z-index: 40;
-    background: #ffffffed;
+    background: var(--surface-header);
     border-bottom: 1px solid var(--surface-tint);
     padding-inline: 36px;
 }
@@ -127,27 +125,6 @@
     border-radius: 10px;
     font-size: 13px;
 }
-.app.user .primary,
-.user-auth .primary {
-    background: var(--brand);
-    border-color: var(--brand);
-    color: white;
-}
-.app.user .primary:hover,
-.user-auth .primary:hover {
-    background: var(--brand-hover);
-    border-color: var(--brand-hover);
-    color: white;
-}
-.app.user :is(input, select, textarea):focus,
-.user-auth input:focus {
-    border-color: var(--text-secondary);
-    box-shadow: 0 0 0 3px #153b7010;
-}
-.app.user :focus-visible {
-    outline: 2px solid var(--text-secondary);
-    outline-offset: 3px;
-}
 .app.user .dashboard-welcome {
     padding: 24px 28px;
     background: var(--surface-soft);
@@ -171,9 +148,9 @@
     font-size: 12px;
 }
 .app.user .badge.success {
-    color: #3d6845;
-    background: #edf5e9;
-    border: 1px solid #dce9d5;
+    color: var(--success);
+    background: var(--success-soft);
+    border: 1px solid var(--success-border);
 }
 .app.user .dashboard-grid {
     gap: 20px;
@@ -182,7 +159,7 @@
 .app.user .dashboard-grid > .panel,
 .app.user .quota-card {
     border-radius: 20px;
-    box-shadow: 0 3px 12px #153b7003;
+    box-shadow: 0 3px 12px rgb(var(--shadow-tint-rgb) / 1%);
     border-color: var(--line);
 }
 .app.user .dashboard-grid .panel-head h2,
@@ -228,7 +205,7 @@
     border: 1px solid var(--line);
     border-radius: 20px;
     margin-bottom: 28px;
-    background: #fff;
+    background: var(--surface);
 }
 .app.user .usage-analysis > header {
     padding: 0;
@@ -259,7 +236,7 @@
     padding: 36px;
     border-color: var(--line);
     border-radius: 22px;
-    background: #fff;
+    background: var(--surface);
 }
 .app.user .account-entry-new {
     background: var(--surface-soft);
@@ -320,10 +297,10 @@
 }
 .user-auth .user-auth-card {
     padding: 32px;
-    background: #fff;
+    background: var(--surface);
     border: 1px solid var(--line);
     border-radius: 24px;
-    box-shadow: 0 16px 60px -34px #153b7035;
+    box-shadow: 0 16px 60px -34px rgb(var(--shadow-tint-rgb) / 21%);
     max-width: 490px;
 }
 .user-auth .auth-illustration {
@@ -453,7 +430,7 @@
     margin: auto;
     padding: 28px 48px;
     min-height: 100dvh;
-    background: white;
+    background: var(--surface);
 }
 .landing-skeleton-bar {
     width: 180px;
@@ -549,7 +526,7 @@
     border: 1px solid var(--border);
     border-radius: 20px;
     padding: 22px;
-    background: var(--surface, #fff);
+    background: var(--surface);
 }
 .app.user .settings-row {
     display: flex;
@@ -686,7 +663,7 @@
     background: var(--surface-soft);
 }
 .app.user .reset-switcher button:focus-visible {
-    outline: 2px solid var(--text-secondary);
+    outline: 2px solid var(--brand);
     outline-offset: 3px;
 }
 .app.user .reset-content {
@@ -807,7 +784,7 @@
     inset-inline-end: 8px;
     width: 7px;
     height: 7px;
-    background: #287759;
+    background: var(--success);
     border-radius: 50%;
     box-shadow: 0 0 0 2px #fff;
 }
@@ -864,7 +841,7 @@
     border: 0;
     border-bottom: 1px solid var(--surface-tint);
     border-radius: 0;
-    background: #fff;
+    background: var(--surface);
     color: var(--ink);
 }
 .announcement-item:hover,
@@ -885,7 +862,7 @@
 }
 .announcement-unread {
     font-size: 11px;
-    color: #287759;
+    color: var(--success);
     white-space: nowrap;
 }
 .announcement-summary {
@@ -965,7 +942,7 @@
     overflow-x: auto;
 }
 .announcement-read-error {
-    background: #fff8ed;
+    background: var(--warning-soft);
     padding: 12px;
     border-radius: 12px;
     margin-top: 16px;
@@ -1014,7 +991,7 @@
 .receipt-status > svg {
     flex-shrink: 0;
     margin-top: 4px;
-    color: #22724f;
+    color: var(--success);
 }
 .receipt-status.cancelled > svg {
     color: var(--muted);
@@ -1079,8 +1056,8 @@
     width: 38px;
     height: 38px;
     padding: 0;
-    background: var(--ink);
-    color: white;
+    background: var(--brand);
+    color: var(--on-brand);
     justify-content: center;
     flex-shrink: 0;
 }
@@ -1096,7 +1073,7 @@
     width: 100%;
     min-height: 56px;
     border-radius: 14px;
-    background: var(--bg, var(--surface-soft));
+    background: var(--surface);
     font-size: 16px;
     padding: 12px;
 }
@@ -1368,7 +1345,7 @@
     align-items: center;
     width: 100%;
     padding: 16px;
-    border: 1px solid var(--border, var(--line));
+    border: 1px solid var(--border);
     border-radius: 14px;
     color: inherit;
     text-decoration: none;
@@ -1435,7 +1412,7 @@
     margin: 0;
 }
 .client-authorization-mark {
-    color: var(--primary, #153b70);
+    color: var(--brand);
 }
 .client-authorization-account {
     display: grid;
@@ -1456,10 +1433,10 @@
 .app.user .notification-description { min-width: 0; }
 .app.user .notification-description label { font-size: 15px; font-weight: 600; cursor: pointer; }
 .app.user .notification-description p { margin: 6px 0 0; font-size: 13px; color: var(--muted); }
-.app.user .notification-option .toggle-control { flex-shrink: 0; padding: 8px 0 8px 8px; min-height: 44px; }
+.app.user .notification-option .toggle-control { border: 0; background: transparent; box-shadow: none; flex-shrink: 0; padding: 8px 0 8px 8px; min-height: 44px; }
 .app.user .notification-option .toggle-control:focus-visible { outline: 2px solid currentColor; outline-offset: 4px; }
 .app.user .notification-feedback { min-height: 20px; margin-top: 5px; font-size: 12px; color: var(--muted); }
-.app.user .notification-feedback[data-error="true"] { color: var(--danger, #b42318); }
+.app.user .notification-feedback[data-error="true"] { color: var(--danger); }
 .app.user .notification-autosave { margin: 14px 4px 0; font-size: 12px; color: var(--muted); }
 @media (max-width: 600px) {
     .app.user .notification-options { padding: 0 18px; }

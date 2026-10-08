@@ -1,7 +1,7 @@
 /* Public product surface. All selectors are scoped away from the admin. */
 .landing {
     color: var(--ink);
-    background: #fff;
+    background: var(--surface);
     min-height: 100dvh;
     line-height: 1.65;
     --landing-muted: var(--text-secondary);
@@ -22,7 +22,7 @@
     justify-content: space-between;
     gap: 28px;
     position: relative;
-    background: #fff;
+    background: var(--surface);
     border: 0;
     backdrop-filter: none;
 }
@@ -45,7 +45,7 @@
     width: 34px;
     height: 34px;
     background: var(--brand);
-    color: white;
+    color: var(--on-brand);
     border-radius: 11px;
 }
 .landing-links,
@@ -147,7 +147,7 @@
 .landing .button.primary {
     background: var(--brand);
     border-color: var(--brand);
-    color: white;
+    color: var(--on-brand);
 }
 .landing .button.primary:hover {
     background: var(--brand-hover);
@@ -175,8 +175,8 @@
 .landing-product-preview {
     border: 1px solid var(--line);
     border-radius: 22px;
-    background: #fff;
-    box-shadow: 0 24px 70px -26px #153b702e;
+    background: var(--surface);
+    box-shadow: 0 24px 70px -26px rgb(var(--shadow-tint-rgb) / 18%);
     transform: rotate(-1deg);
 }
 .preview-top {
@@ -380,7 +380,7 @@
     padding: 22px;
     border: 1px solid var(--line);
     border-radius: 14px;
-    background: #fff;
+    background: var(--surface);
 }
 .idea-stack a > div {
     flex: 1;
@@ -493,7 +493,7 @@
     min-height: 40px;
 }
 .landing :is(a, button, summary):focus-visible {
-    outline: 2px solid var(--text-secondary);
+    outline: 2px solid var(--brand);
     outline-offset: 4px;
 }
 .landing :is(a, button, summary) {
@@ -718,7 +718,7 @@
 @media(max-width: 600px) { .preview-scenarios { gap: 8px; margin-bottom: 16px; } .preview-scenarios li { padding: 10px; } }
 
 .preview-ai-services { list-style:none; padding:0; margin:24px 0 18px; display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:10px; }
-.preview-ai-services li { display:flex; flex-direction:column; align-items:center; gap:8px; padding:20px 6px 16px; border:1px solid var(--landing-line); border-radius:16px; background:#fff; }
+.preview-ai-services li { display:flex; flex-direction:column; align-items:center; gap:8px; padding:20px 6px 16px; border:1px solid var(--landing-line); border-radius:16px; background: var(--surface); }
 .ai-brand-mark { display:grid; place-items:center; width:52px; height:52px; border-radius:15px; background:var(--surface-tint); margin-bottom:5px; }
 .ai-brand-mark img { width:32px; height:32px; object-fit:contain; }
 .ai-brand-mark.claude { background:#fbf0e8; }

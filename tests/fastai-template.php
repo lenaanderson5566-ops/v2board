@@ -12,7 +12,7 @@ $original = array_map(fn ($path) => file_exists($path) ? file_get_contents($path
 try {
     foreach ($paths as $index => $path) {
         file_put_contents($path, Symfony\Component\Yaml\Yaml::dump([
-            'proxies'=>[['name'=>'剩余流量: 10GB','type'=>'direct'],['name'=>'独立流量: 20GB','type'=>'direct'],['name'=>'可用重置: 2 次','type'=>'direct']],
+            'proxies'=>[['name'=>'剩余流量: 10GB','type'=>'direct'],['name'=>'独立流量: 20GB','type'=>'direct'],['name'=>'可用重置: 2 次','type'=>'direct'],['name'=>'下次重置: 11-01','type'=>'direct']],
             'geo-auto-update'=>true,
             'geox-url'=>['geoip'=>'https://example.com/geoip.dat'],
             'geo-update-interval'=>1,

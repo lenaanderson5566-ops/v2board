@@ -2,6 +2,7 @@
 return [
     'zh-CN'=>[
         'metadata_aliases'=>['剩余流量','套餐到期','计划重置'],
+        'next_reset'=>'下次重置',
         'independent'=>'独立流量',
         'reset_count'=>'可用重置',
         'reset_quantity'=>'%d 次',
@@ -18,6 +19,7 @@ return [
     ],
     'zh-TW'=>[
         'metadata_aliases'=>['剩餘流量','方案到期','預定重置'],
+        'next_reset'=>'下次重置',
         'independent'=>'獨立流量',
         'reset_count'=>'可用重置',
         'reset_quantity'=>'%d 次',
@@ -34,6 +36,7 @@ return [
     ],
     'en-US'=>[
         'metadata_aliases'=>['Remaining data','Plan expires','Scheduled reset'],
+        'next_reset'=>'Next reset',
         'independent'=>'Extra data',
         'reset_count'=>'Resets',
         'reset_quantity'=>'%d',
@@ -50,6 +53,7 @@ return [
     ],
     'ja-JP'=>[
         'metadata_aliases'=>['残りの容量','プラン有効期限','次回リセット'],
+        'next_reset'=>'次回リセット',
         'independent'=>'追加容量',
         'reset_count'=>'リセット回数',
         'reset_quantity'=>'%d 回',
@@ -66,6 +70,7 @@ return [
     ],
     'ko-KR'=>[
         'metadata_aliases'=>['남은 데이터','요금제 만료','예정된 초기화'],
+        'next_reset'=>'다음 초기화',
         'independent'=>'추가 데이터',
         'reset_count'=>'초기화 횟수',
         'reset_quantity'=>'%d회',
@@ -82,6 +87,7 @@ return [
     ],
     'vi-VN'=>[
         'metadata_aliases'=>['Dung lượng còn lại','Gói hết hạn','Đặt lại theo lịch'],
+        'next_reset'=>'Đặt lại tiếp',
         'independent'=>'Dung lượng riêng',
         'reset_count'=>'Lượt đặt lại',
         'reset_quantity'=>'%d',
@@ -98,6 +104,7 @@ return [
     ],
     'ru-RU'=>[
         'metadata_aliases'=>['Остаток трафика','Срок тарифа','Плановый сброс'],
+        'next_reset'=>'След. сброс',
         'independent'=>'Доп. трафик',
         'reset_count'=>'Сбросы',
         'reset_quantity'=>'%d',
@@ -114,6 +121,7 @@ return [
     ],
     'fa-IR'=>[
         'metadata_aliases'=>['ترافیک باقی‌مانده','انقضای طرح','بازنشانی زمان‌بندی‌شده'],
+        'next_reset'=>'بازنشانی بعدی',
         'independent'=>'ترافیک مستقل',
         'reset_count'=>'بازنشانی‌ها',
         'reset_quantity'=>'%d',

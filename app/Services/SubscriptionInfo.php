@@ -12,6 +12,11 @@ final class SubscriptionInfo
         $translations = require resource_path('client/copy.php');
         $copy = $translations[app()->getLocale()] ?? $translations['zh-CN'];
         $lines = [];
+        $resetAt = (new UserService())->getResetAt($user);
+        if ($resetAt) {
+            $date = \Carbon\Carbon::createFromTimestamp($resetAt, config('app.timezone', 'UTC'));
+            $lines[] = $copy['next_reset'].': '.$date->format('m-d');
+        }
         $credits = max(0, (int)$user->credit_balance);
         if ($credits > 0) $lines[] = $copy['independent'].': '.Helper::trafficConvert($credits);
         $resets = (int)(new UsageResetService())->available($user->id)->sum('remaining');

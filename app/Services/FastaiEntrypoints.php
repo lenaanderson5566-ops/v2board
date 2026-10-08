@@ -69,6 +69,7 @@ final class FastaiEntrypoints
 
     public function check(string $value): array
     {
+        abort_unless(extension_loaded('curl') && defined('CURLOPT_RESOLVE'),503,'Enable the PHP curl extension to check service domains.');
         $origin=self::origin($value);
         $public=$this->publicKey();
         abort_unless($public,503,'Configure the entrypoint signing key first.');
@@ -79,7 +80,7 @@ final class FastaiEntrypoints
         foreach ($addresses as $ip) abort_unless(filter_var($ip,FILTER_VALIDATE_IP,FILTER_FLAG_IPV4 | FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE),422,'Private or reserved destination addresses are not allowed.');
         $started=microtime(true);
         try {
-            $response=\Illuminate\Support\Facades\Http::withOptions(['allow_redirects'=>false,'proxy'=>'','curl'=>[CURLOPT_RESOLVE=>[$host.':443:'.$addresses[0]]]])->connectTimeout(3)->timeout(6)->get($origin.'/api/v10/public/fastai/entrypoints');
+            $response=\Illuminate\Support\Facades\Http::withOptions(['allow_redirects'=>false,'proxy'=>'','connect_timeout'=>3,'curl'=>[CURLOPT_RESOLVE=>[$host.':443:'.$addresses[0]]]])->timeout(6)->get($origin.'/api/v10/public/fastai/entrypoints');
             $envelope=$response->json('data');
             $payload=is_array($envelope) ? base64_decode($envelope['payload'] ?? '',true) : false;
             $signature=is_array($envelope) ? base64_decode($envelope['signature'] ?? '',true) : false;

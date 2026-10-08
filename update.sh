@@ -41,6 +41,7 @@ REWARD_MIGRATION=database/migrations/2026_10_05_000001_create_invitation_rewards
 RESET_MIGRATION=database/migrations/2026_10_02_000003_create_usage_resets.php
 LANGUAGE_MIGRATION=database/migrations/2026_10_02_000002_add_language_to_users.php
 NODE_DISPLAY_MIGRATION=database/migrations/2026_10_06_000001_add_node_display_metadata.php
+RETIRED_PAYMENT_MIGRATION=database/migrations/2026_10_07_000001_disable_retired_payment_methods.php
 SERVICE_MAIL_MIGRATION=database/migrations/2026_10_08_000001_add_service_notifications.php
 usage() {
     cat <<'HELP'
@@ -222,11 +223,12 @@ git cat-file -e "$TARGET:$NOTICE_MIGRATION" || die 'Target lacks the announcemen
 git cat-file -e "$TARGET:$CURRENCY_MIGRATION" || die 'Target lacks order currency migration'
 git cat-file -e "$TARGET:$EXPIRY_MIGRATION" || die 'Target lacks credit expiry migration'
 git cat-file -e "$TARGET:$REWARD_MIGRATION" || die 'Target lacks the invitation rewards migration'
+git cat-file -e "$TARGET:$RETIRED_PAYMENT_MIGRATION" || die 'Target lacks the retired payment migration'
 git cat-file -e "$TARGET:$SERVICE_MAIL_MIGRATION" || die 'Target lacks the service notification migration'
 git cat-file -e "$TARGET:$NODE_DISPLAY_MIGRATION" || die 'Target lacks the node display metadata migration'
 git cat-file -e "$TARGET:$RESET_MIGRATION" || die 'Target lacks the usage reset migration'
 while IFS= read -r changed; do
-    [[ -z "$changed" || "$changed" == "$MIGRATION" || "$changed" == "$INVITATION_MIGRATION" || "$changed" == "$LANGUAGE_MIGRATION" || "$changed" == "$CURRENCY_MIGRATION" || "$changed" == "$EXPIRY_MIGRATION" || "$changed" == "$REWARD_MIGRATION" || "$changed" == "$RESET_MIGRATION" || "$changed" == "$NOTICE_MIGRATION" || "$changed" == "$CREDIT_MIGRATION" || "$changed" == "$CONTENT_MIGRATION" || "$changed" == "$BANNER_MIGRATION" || "$changed" == "$NODE_DISPLAY_MIGRATION" || "$changed" == "$SERVICE_MAIL_MIGRATION" ]] || die "Unexpected migration: $changed; review scope first"
+    [[ -z "$changed" || "$changed" == "$MIGRATION" || "$changed" == "$INVITATION_MIGRATION" || "$changed" == "$LANGUAGE_MIGRATION" || "$changed" == "$CURRENCY_MIGRATION" || "$changed" == "$EXPIRY_MIGRATION" || "$changed" == "$REWARD_MIGRATION" || "$changed" == "$RESET_MIGRATION" || "$changed" == "$NOTICE_MIGRATION" || "$changed" == "$CREDIT_MIGRATION" || "$changed" == "$CONTENT_MIGRATION" || "$changed" == "$BANNER_MIGRATION" || "$changed" == "$NODE_DISPLAY_MIGRATION" || "$changed" == "$SERVICE_MAIL_MIGRATION" || "$changed" == "$RETIRED_PAYMENT_MIGRATION" ]] || die "Unexpected migration: $changed; review scope first"
 done < <(git diff --name-only "$OLD_COMMIT" "$TARGET" -- database/migrations)
 git show "$TARGET:composer.json" > "$WORK_DIR/composer.json"
 git show "$OLD_COMMIT:composer.json" > "$WORK_DIR/original-composer.json"
@@ -374,7 +376,7 @@ PHASE=cache-preparation
 "$PHP_BIN" artisan route:clear
 "$PHP_BIN" artisan view:clear
 PHASE=migrations
-for migration in "$MIGRATION" "$INVITATION_MIGRATION" "$LANGUAGE_MIGRATION" "$RESET_MIGRATION" "$NOTICE_MIGRATION" "$CREDIT_MIGRATION" "$CONTENT_MIGRATION" "$BANNER_MIGRATION" "$REWARD_MIGRATION" "$EXPIRY_MIGRATION" "$CURRENCY_MIGRATION" "$NODE_DISPLAY_MIGRATION" "$SERVICE_MAIL_MIGRATION"; do
+for migration in "$MIGRATION" "$INVITATION_MIGRATION" "$LANGUAGE_MIGRATION" "$RESET_MIGRATION" "$NOTICE_MIGRATION" "$CREDIT_MIGRATION" "$CONTENT_MIGRATION" "$BANNER_MIGRATION" "$REWARD_MIGRATION" "$EXPIRY_MIGRATION" "$CURRENCY_MIGRATION" "$NODE_DISPLAY_MIGRATION" "$RETIRED_PAYMENT_MIGRATION" "$SERVICE_MAIL_MIGRATION"; do
     run_migration "$migration"
 done
 printf '\nAll approved migrations completed.\n'

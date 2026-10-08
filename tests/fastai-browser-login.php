@@ -5,8 +5,9 @@ $app->make(Illuminate\Contracts\Console\Kernel::class)->bootstrap();
 if (!app()->environment('local')) throw new RuntimeException('Local test only');
 $checks=0;
 $assert=function($ok,$label) use (&$checks) { if (!$ok) throw new RuntimeException($label); $checks++; };
-$call=function($path,$body=[],$token=null,$method='POST') use ($app) {
-    $request=Illuminate\Http\Request::create('/api/v10/'.$path,$method,$body);
+$testIp = '192.0.2.'.random_int(2, 254);
+$call=function($path,$body=[],$token=null,$method='POST') use ($app, $testIp) {
+    $request=Illuminate\Http\Request::create('/api/v10/'.$path,$method,$body,[],[],['REMOTE_ADDR'=>$testIp]);
     $request->headers->set('Accept','application/json');
     if ($token) $request->headers->set('Authorization','Bearer '.$token);
     $app->instance('request',$request);

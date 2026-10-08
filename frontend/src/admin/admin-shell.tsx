@@ -1,7 +1,9 @@
+import { Menu, XCircle, CircleUser, ChevronDown, LogOut } from "lucide-react";
+import { AdminIcon } from "./AdminIcon";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { boot, type Row } from "../shared/api";
 
-// Keep the original menu order and OneUI layout; extension pages share this shell.
+// Stable menu order and navigation aliases; styling is owned by admin.css.
 export const legacyAdminMenu = [
     ["overview", "仪表盘", "speedometer", ""],
     ["settings", "系统配置", "equalizer", "设置"],
@@ -103,7 +105,7 @@ export function AdminShell({
     return (
         <div
             id="page-container"
-            className={`legacy-admin sidebar-o sidebar-dark side-scroll page-header-fixed main-content-boxed ${open ? "sidebar-o-xs" : ""}`}
+            className={`admin-shell ${open ? "admin-nav-open" : ""}`}
         >
             {open && (
                 <div
@@ -113,24 +115,24 @@ export function AdminShell({
                 />
             )}
             <nav id="sidebar" aria-label="后台导航">
-                <div className="smini-hidden bg-header-dark">
-                    <div className="content-header justify-content-lg-center bg-black-10">
+                <div className="admin-sidebar-brand">
+                    <div className="content-header">
                         <a
-                            className="link-fx font-size-lg text-white"
+                            className="admin-brand-link"
                             href={`/${boot.adminPath}`}
                         >
                             {boot.title}
                         </a>
                         <button
-                            className="btn d-lg-none text-white"
+                            className="admin-mobile-toggle"
                             aria-label="关闭导航"
                             onClick={() => setOpen(false)}
                         >
-                            <i className="fa fa-times-circle" />
+                            <XCircle size={20} aria-hidden="true" />
                         </button>
                     </div>
                 </div>
-                <div className="content-side content-side-full">
+                <div className="content-side">
                     <ul className="nav-main">
                         {legacyAdminMenu.map(([key, label, icon, group], i) => (
                             <li key={key} className="nav-main-item">
@@ -147,9 +149,7 @@ export function AdminShell({
                                     }
                                     href={`#/${key}`}
                                 >
-                                    <i
-                                        className={`nav-main-link-icon si si-${icon}`}
-                                    />
+                                    <AdminIcon name={icon} className="nav-main-link-icon" />
                                     <span className="nav-main-link-name">
                                         {label}
                                     </span>
@@ -163,36 +163,36 @@ export function AdminShell({
             <header id="page-header">
                 <div className="content-header">
                     <button
-                        className="btn d-lg-none"
+                        className="admin-mobile-toggle"
                         aria-label="打开导航"
                         aria-expanded={open}
                         onClick={() => setOpen(!open)}
                     >
-                        <i className="fa fa-bars" />
+                        <Menu size={20} aria-hidden="true" />
                     </button>
                     <h1 className="v2board-container-title">{title}</h1>
                     <div className="admin-header-actions">
-                        <div className="dropdown d-inline-block" ref={dropdown}>
+                        <div className="admin-account" ref={dropdown}>
                             <button
-                                className="btn"
+                                className="admin-account-trigger"
                                 id="page-header-user-dropdown"
                                 aria-haspopup="menu"
                                 aria-expanded={menu}
                                 onClick={() => setMenu(!menu)}
                             >
-                                <i className="fa fa-user-circle" />
-                                <span className="d-none d-lg-inline ml-1">
+                                <CircleUser size={20} aria-hidden="true" />
+                                <span className="admin-account-email">
                                     {user.email}
                                 </span>
-                                <i className="fa fa-angle-down ml-1" />
+                                <ChevronDown size={16} aria-hidden="true" />
                             </button>
                             {menu && (
                                 <div
-                                    className="dropdown-menu dropdown-menu-right show"
+                                    className="admin-account-menu"
                                     role="menu"
                                 >
                                     <a
-                                        className="dropdown-item"
+                                        className="admin-account-item"
                                         role="menuitem"
                                         href="/"
                                         target="_blank"
@@ -201,12 +201,12 @@ export function AdminShell({
                                         用户端
                                     </a>
                                     <button
-                                        className="dropdown-item"
+                                        className="admin-account-item"
                                         role="menuitem"
                                         onClick={logout}
                                     >
                                         登出
-                                        <i className="fa fa-sign-out-alt text-danger ml-1" />
+                                        <LogOut size={16} aria-hidden="true" />
                                     </button>
                                 </div>
                             )}
@@ -215,7 +215,7 @@ export function AdminShell({
                 </div>
             </header>
             <main id="main-container">
-                <div className="admin-content p-0 p-lg-4" data-page={current}>
+                <div className="admin-content" data-page={current}>
                     {children}
                 </div>
             </main>

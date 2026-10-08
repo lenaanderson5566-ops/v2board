@@ -1,3 +1,4 @@
+import { AdminIcon } from "./AdminIcon";
 import { useState } from "react";
 import { admin, money, type Row } from "../shared/api";
 import { Panel, State, Table, Reload, useData } from "../shared/ui";
@@ -52,7 +53,7 @@ export function Overview() {
                         ["users", "用户管理", "users"],
                     ].map(([key, label, icon]) => (
                         <a key={key} href={`#/${key}`}>
-                            <i className={`si si-${icon}`} />
+                            <AdminIcon name={icon} />
                             {label}
                         </a>
                     ))}

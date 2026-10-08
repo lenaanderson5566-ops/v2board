@@ -2,11 +2,9 @@ import {
     initializeBrowserSession,
     hasBrowserSession,
 } from "../shared/browser-session";
-import "../../../public/assets/admin/res_002.css";
-import "../../../public/assets/admin/res_004.css";
 import "../shared/style.css";
 import "../shared/console.css";
-import "./admin-legacy.css";
+import "./admin.css";
 import { useEffect, useRef, useState } from "react";
 import { AdminAuth } from "./AdminAuth";
 import AdminWorkspace from "./admin-workspace";

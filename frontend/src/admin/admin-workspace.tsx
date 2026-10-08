@@ -3,7 +3,6 @@ import AdminContent from "./admin-entry";
 import type { Row } from "../shared/api";
 import { EditorFieldContext } from "../shared/ui";
 import { adminEditorField } from "./admin-editor-fields";
-import "./admin-legacy.css";
 
 export default function AdminWorkspace({
     path,

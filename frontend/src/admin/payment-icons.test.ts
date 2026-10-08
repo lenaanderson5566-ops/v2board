@@ -5,6 +5,7 @@ import { paymentPayload } from "./payment-fields";
 describe("payment icon selection", () => {
     it("previews complete vector assets without font-dependent logos", () => {
         for (const item of paymentIcons) {
+            if (item.id === "alipay-blue") continue;
             const svg = decodeURIComponent(item.source.split(",")[1]);
             expect(svg).toMatch(/viewBox="[^"]+"/);
             expect(svg).toContain("<path");
@@ -15,6 +16,12 @@ describe("payment icon selection", () => {
         expect(paymentIconInitial({}).iconPreset).toBe("card");
         const alipay = paymentIcons.find((item) => item.id === "alipay")!;
         expect(paymentIconInitial({ icon: `/payment-icons/${alipay.id}.svg` })).toMatchObject({ icon: "", iconPreset: "alipay" });
+    });
+    it("saves and restores the blue Alipay PNG while allowing a custom URL", () => {
+        expect(paymentIcons.find((item) => item.id === "alipay-blue")?.source).toBeTruthy();
+        expect(resolvePaymentIcon("", "alipay-blue")).toBe("/payment-icons/alipay-blue.png");
+        expect(paymentIconInitial({ icon: "/payment-icons/alipay-blue.png" })).toMatchObject({ icon: "", iconPreset: "alipay-blue" });
+        expect(resolvePaymentIcon("https://example.com/custom.png", "alipay-blue")).toBe("https://example.com/custom.png");
     });
     it("prefers custom links and retains the selected fallback", () => {
         const saved = paymentPayload({ icon: " https://example.com/pay.png ", iconPreset: "wechat" }, {}, "EPay", {});

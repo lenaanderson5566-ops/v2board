@@ -1,4 +1,5 @@
 import alipaySvg from "../../../public/payment-icons/alipay.svg?raw";
+import alipayBlue from "../../../public/payment-icons/alipay-blue.png?inline";
 import wechatSvg from "../../../public/payment-icons/wechat.svg?raw";
 import unionpaySvg from "../../../public/payment-icons/unionpay.svg?raw";
 import cardSvg from "../../../public/payment-icons/card.svg?raw";
@@ -16,6 +17,7 @@ const inlineSvg = (source: string) => `data:image/svg+xml,${encodeURIComponent(s
 
 export const paymentIcons = [
     { id: "alipay", label: "支付宝", source: inlineSvg(alipaySvg) },
+    { id: "alipay-blue", label: "支付宝（蓝底）", source: alipayBlue },
     { id: "wechat", label: "微信支付", source: inlineSvg(wechatSvg) },
     { id: "unionpay", label: "银联", source: inlineSvg(unionpaySvg) },
     { id: "card", label: "银行卡", source: inlineSvg(cardSvg) },
@@ -29,8 +31,10 @@ export const paymentIcons = [
     { id: "bitcoin", label: "Bitcoin", source: inlineSvg(bitcoinSvg) },
 ];
 
+const paymentIconPath = (id: string) => `/payment-icons/${id}.${id === "alipay-blue" ? "png" : "svg"}`;
+
 export function paymentIconInitial(initial: Record<string, any>) {
-    const saved = paymentIcons.find((item) => `/payment-icons/${item.id}.svg` === initial.icon);
+    const saved = paymentIcons.find((item) => paymentIconPath(item.id) === initial.icon);
     return {
         ...initial,
         icon: saved ? "" : initial.icon || "",
@@ -40,5 +44,5 @@ export function paymentIconInitial(initial: Record<string, any>) {
 
 export function resolvePaymentIcon(url: unknown, preset: unknown): string {
     return (typeof url === "string" ? url.trim() : "") ||
-        (paymentIcons.some((item) => item.id === preset) ? `/payment-icons/${preset}.svg` : "");
+        (paymentIcons.some((item) => item.id === preset) ? paymentIconPath(String(preset)) : "");
 }

@@ -150,6 +150,11 @@ class ConfigController extends Controller
                 'telegram_bot_token' => config('v2board.telegram_bot_token'),
                 'telegram_discuss_link' => config('v2board.telegram_discuss_link')
             ],
+            'entrypoints' => [
+                'fastai_entrypoints' => config('v2board.fastai_entrypoints', []),
+                'fastai_entrypoints_version' => config('v2board.fastai_entrypoints_version', 1),
+                'fastai_entrypoint_public_key' => app(\App\Services\FastaiEntrypoints::class)->publicKey(),
+            ],
             'app' => [
                 'fastai_enabled' => config('v2board.fastai_enabled', 1),
                 'fastai_releases' => config('v2board.fastai_releases', []),
@@ -198,9 +203,19 @@ class ConfigController extends Controller
         return response(['data' => ['available' => count($accounts)]])->header('Cache-Control', 'no-store');
     }
 
+    public function testFastaiEntrypoint(\Illuminate\Http\Request $request)
+    {
+        $data=$request->validate(['origin'=>'required|string|max:253']);
+        return response()->json(['data'=>app(\App\Services\FastaiEntrypoints::class)->check($data['origin'])]);
+    }
+
     public function save(ConfigSave $request)
     {
         $data = $request->validated();
+        if (isset($data['fastai_entrypoints'])) {
+            $data['fastai_entrypoints'] = \App\Services\FastaiEntrypoints::validate($data['fastai_entrypoints']);
+            app(\App\Services\FastaiEntrypoints::class)->requireVerified($data['fastai_entrypoints']);
+        }
         if (isset($data['fastai_releases'])) \App\Services\FastaiReleaseService::validateCatalog($data['fastai_releases']);
         if (isset($data['apple_account_url'])) {
             try { $data['apple_account_url'] = \App\Services\AppleAccountService::normalizeOrigin($data['apple_account_url']); }
@@ -221,6 +236,7 @@ class ConfigController extends Controller
                 $config[$k] = $data[$k];
             }
         }
+        if (isset($data['fastai_entrypoints'])) $config['fastai_entrypoints_version'] = max((int)($config['fastai_entrypoints_version'] ?? 1)+1,(int)floor(microtime(true)*1000));
         $data = var_export($config, 1);
         if (!File::put(base_path() . '/config/v2board.php', "<?php\n return $data ;")) {
             abort(500, '修改失败');

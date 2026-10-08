@@ -29,7 +29,7 @@ final class ClientAuthorizationActions
     public function create(Request $request)
     {
         $this->redirect($request->input('redirectUri'), $request->input('platform'));
-        $origin = rtrim((string)config('v2board.app_url'), '/');
+        $origin = app(\App\Services\FastaiEntrypoints::class)->requestOrigin($request);
         if (!filter_var($origin, FILTER_VALIDATE_URL) || parse_url($origin, PHP_URL_SCHEME) !== 'https') $this->fail('CLIENT_AUTH_UNAVAILABLE', 503);
         $id = bin2hex(random_bytes(32));
         $expires = time() + 300;

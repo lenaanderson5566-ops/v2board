@@ -76,6 +76,7 @@ schema('task','taskId:task_id status:status')
 schema('bot','username:username')
 schema('loginState','authenticated:is_login:boolean administrator:is_admin:boolean')
 schema('coupon','id:id code:code name:name discountType:type:couponType value:value startedAt:started_at:time expiresAt:ended_at:time')
+schema('signedEntrypoints','payload:payload signature:signature')
 schema('fastaiRelease','platform:platform architecture:architecture channel:channel latestVersion:latestVersion latestBuild:latestBuild:integer minimumVersion:minimumVersion downloadUrl:downloadUrl sha256:sha256 releaseNotes:releaseNotes publishedAt:publishedAt')
 schema('applicationVersion','platform:platform version:version downloadUrl:download_url')
 for name in ['plan','account','order','paymentMethod','credit','commission','coupon']:
@@ -101,6 +102,7 @@ for name,fields in {
 schema('browserSession','accountId:accountId authenticated:authenticated:boolean csrfToken:csrfToken expiresAt:expiresAt')
 outputs={
  'Passport/BrowserSessionController@show':'browserSession','Passport/BrowserSessionController@migrate':'browserSession',
+ 'Guest/FastaiController@entrypoints':'signedEntrypoints',
  'Guest/FastaiController@release':'fastaiRelease',
  'User/UserController@info':'account', 'User/UserController@getSubscribe':'subscription',
  'User/UserController@getActiveSession':'dictionary:session','User/UserController@checkLogin':'loginState',

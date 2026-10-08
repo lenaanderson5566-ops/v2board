@@ -876,6 +876,14 @@
         "currency"
       ]
     },
+    "signedEntrypoints": {
+      "payload": [
+        "payload"
+      ],
+      "signature": [
+        "signature"
+      ]
+    },
     "fastaiRelease": {
       "platform": [
         "platform"
@@ -2002,6 +2010,17 @@
       "method": "DELETE",
       "key": "Passport/BrowserSessionController@destroy",
       "description": "Browser-only scoped HttpOnly session. X-Browser-Client selects user/admin; mutations require an exact allowed Origin and synchronizer X-CSRF-Token. POST migrates a valid legacy token during the configured transition window."
+    },
+    "getPublicFastaiEntrypoints": {
+      "input": {},
+      "output": "signedEntrypoints",
+      "role": "public",
+      "status": 200,
+      "raw": false,
+      "bindings": {},
+      "path": "public/fastai/entrypoints",
+      "method": "GET",
+      "key": "Guest/FastaiController@entrypoints"
     }
   }
 }

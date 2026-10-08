@@ -77,3 +77,4 @@
 \Illuminate\Support\Facades\Route::match(['GET', 'HEAD'], 'auth/browser-session', [\App\Http\Controllers\V10\PassportBrowserSessionController::class, 'getAuthBrowserSession'])->middleware(['throttle:30,1'])->name('v10.getAuthBrowserSession');
 \Illuminate\Support\Facades\Route::match(['POST'], 'auth/browser-session', [\App\Http\Controllers\V10\PassportBrowserSessionController::class, 'postAuthBrowserSession'])->middleware(['throttle:30,1'])->name('v10.postAuthBrowserSession');
 \Illuminate\Support\Facades\Route::match(['DELETE'], 'auth/browser-session', [\App\Http\Controllers\V10\PassportBrowserSessionController::class, 'deleteAuthBrowserSession'])->middleware(['throttle:30,1'])->name('v10.deleteAuthBrowserSession');
+\Illuminate\Support\Facades\Route::match(['GET', 'HEAD'], 'public/fastai/entrypoints', [\App\Http\Controllers\V10\GuestFastaiController::class, 'getPublicFastaiEntrypoints'])->middleware(['throttle:60,1'])->name('v10.getPublicFastaiEntrypoints');

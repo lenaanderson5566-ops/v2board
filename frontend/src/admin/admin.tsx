@@ -1,4 +1,5 @@
 import nodeLocations from "../../../resources/client/node-locations.json";
+import { AdminEntrypoints } from "./AdminEntrypoints";
 import { AdminFastaiDownloads } from "./AdminFastaiDownloads";
 import { AdminRiskReview } from "./AdminRiskReview";
 import { supportedClients as recommendationClients } from "../shared/import-links";
@@ -1459,6 +1460,7 @@ const groupNames: Record<string, string> = {
     ticket: "工单设置",
     deposit: "充值奖励",
     app: "客户端下载",
+    entrypoints: "服务入口",
 };
 export function Settings() {
     const d = useData(admin("config/fetch"));
@@ -1495,7 +1497,7 @@ export function Settings() {
                     !k.startsWith("frontend_") &&
                     k !== "email_template" &&
                     k !== "invite_never_expire" &&
-                    k !== "fastai_releases",
+                    k !== "fastai_releases" && !k.startsWith("fastai_entrypoint"),
             )
             .map(([k, v]) =>
                 k === "credit_base_group_id"
@@ -1547,8 +1549,9 @@ export function Settings() {
                     creditGroups.reload();
                 }}
             >
+                {group === "entrypoints" && <AdminEntrypoints key={JSON.stringify(raw.fastai_entrypoints)} initial={raw.fastai_entrypoints || []} publicKey={raw.fastai_entrypoint_public_key} version={raw.fastai_entrypoints_version || 1} save={async entries => { await request(admin("config/save"), { fastai_entrypoints: entries }); d.reload(); }} />}
                 {group === "app" && <AdminFastaiDownloads key={JSON.stringify(raw.fastai_releases)} initial={raw.fastai_releases || []} save={async releases => { await request(admin("config/save"), { fastai_releases: releases }); }} />}
-                <Editor
+                {group !== "entrypoints" && <Editor
                     key={group + JSON.stringify(raw)}
                     fields={fields}
                     initial={raw}
@@ -1568,7 +1571,7 @@ export function Settings() {
                         setDirty(false);
                         d.reload();
                     }}
-                />
+                />}
                 {group === "subscribe" && <p className="pad muted">设置额度基础权限组后：订阅有效时，额度沿用订阅权限；订阅到期或无订阅时，额度仅可使用基础组节点。适用于所有额度用户（含已迁移的一次性套餐）。额度余额、套餐记录及限速、设备限制不变。节点在下次拉取用户时更新权限，客户端需更新订阅以刷新节点列表。</p>}
                 {group === "app" && <div className="pad"><p className="muted">填写 AppleAuto 的 HTTPS 接口域名及分享链接最后一段代码。接口地址不包含 /share 或 /client 路径。仅有效订阅或有剩余额度的用户可查看。请先保存，再测试连接；启用后刷新用户页面。</p><button disabled={dirty || actionBusy} onClick={() => runAction("config/testAppleAccount")}>测试下载账号连接</button></div>}
                 {group === "email" && (

@@ -1551,5 +1551,25 @@
     "scope": "user",
     "status": 204,
     "description": "Browser-only scoped HttpOnly session. X-Browser-Client selects user/admin; mutations require an exact allowed Origin and synchronizer X-CSRF-Token. POST migrates a valid legacy token during the configured transition window."
+  },
+  {
+    "method": "GET",
+    "path": "public/fastai/entrypoints",
+    "action": "App\\Http\\Controllers\\V1\\Guest\\FastaiController@entrypoints",
+    "parameters": [
+      {
+        "name": "request",
+        "type": "Illuminate\\Http\\Request",
+        "optional": false
+      }
+    ],
+    "bindings": {},
+    "middleware": [
+      "throttle:60,1"
+    ],
+    "role": "public",
+    "scope": "guest",
+    "status": 200,
+    "key": "Guest/FastaiController@entrypoints"
   }
 ]

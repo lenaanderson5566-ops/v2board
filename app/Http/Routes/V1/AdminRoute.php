@@ -12,6 +12,7 @@ class AdminRoute
             'middleware' => ['admin', 'log'],
         ], function ($router) {
             $router->post('/config/testAppleAccount', 'V1\\Admin\\ConfigController@testAppleAccount')->middleware('throttle:10,1');
+            $router->post('/config/testFastaiEntrypoint', 'V1\\Admin\\ConfigController@testFastaiEntrypoint')->middleware('throttle:10,1');
             // Config
             $router->get ('/config/fetch', 'V1\\Admin\\ConfigController@fetch');
             $router->post('/config/save', 'V1\\Admin\\ConfigController@save');

@@ -11805,6 +11805,150 @@
         "x-permission": "public",
         "description": " Browser-only scoped HttpOnly session. X-Browser-Client selects user/admin; mutations require an exact allowed Origin and synchronizer X-CSRF-Token. POST migrates a valid legacy token during the configured transition window."
       }
+    },
+    "/public/fastai/entrypoints": {
+      "get": {
+        "operationId": "getPublicFastaiEntrypoints",
+        "tags": [
+          "guest"
+        ],
+        "summary": "GET public/fastai/entrypoints",
+        "parameters": [
+          {
+            "name": "Accept-Language",
+            "in": "header",
+            "schema": {
+              "type": "string"
+            },
+            "description": "Supported language tags with optional quality weights."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "headers": {
+              "X-Request-ID": {
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "Content-Language": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/signedEntrypoints"
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {
+                        "pagination": {
+                          "$ref": "#/components/schemas/Pagination"
+                        },
+                        "taskId": {
+                          "type": "string"
+                        }
+                      }
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Problem details",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Problem details",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Problem details",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Problem details",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "410": {
+            "description": "Problem details",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Problem details",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Problem details",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Problem details",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        },
+        "security": [],
+        "x-permission": "public"
+      }
     }
   },
   "components": {
@@ -13076,6 +13220,20 @@
               "CNY"
             ],
             "description": "CNY only in phase 1; integer monetary values are fen (1/100 CNY). Order currency is persisted and does not follow global configuration."
+          }
+        },
+        "additionalProperties": false
+      },
+      "signedEntrypoints": {
+        "type": "object",
+        "properties": {
+          "payload": {
+            "type": "string",
+            "nullable": true
+          },
+          "signature": {
+            "type": "string",
+            "nullable": true
           }
         },
         "additionalProperties": false
@@ -14392,6 +14550,10 @@
         }
       },
       "deleteAuthBrowserSessionInput": {
+        "type": "object",
+        "properties": {}
+      },
+      "getPublicFastaiEntrypointsInput": {
         "type": "object",
         "properties": {}
       }

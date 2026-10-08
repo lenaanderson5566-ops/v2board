@@ -7,6 +7,11 @@ use Illuminate\Http\Request;
 
 final class FastaiActions
 {
+    public function entrypoints(Request $request)
+    {
+        return response()->json(['data'=>app(\App\Services\FastaiEntrypoints::class)->envelope()],200,['Cache-Control'=>'public, max-age=300']);
+    }
+
     public function release(Request $request)
     {
         $release = (new FastaiReleaseService())->release($request->input('platform'), $request->input('architecture'));

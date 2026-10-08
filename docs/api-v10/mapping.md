@@ -81,3 +81,4 @@ Admin, operations/risk, staff and node APIs retain all existing paths and schema
 | `New native resource` | `GET /api/v10/auth/browser-session` | public | browserSession |
 | `New native resource` | `POST /api/v10/auth/browser-session` | public | browserSession |
 | `New native resource` | `DELETE /api/v10/auth/browser-session` | public | scalar |
+| `New native resource` | `GET /api/v10/public/fastai/entrypoints` | public | signedEntrypoints |

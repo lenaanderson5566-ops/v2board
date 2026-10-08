@@ -32,3 +32,5 @@ workerman.log
 /frontend/.env.*.local
 /public/console/user-config.json
 /public/console/admin-config.json
+
+/storage/app/fastai-entrypoint.seed

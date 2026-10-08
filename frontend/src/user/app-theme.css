@@ -1,0 +1,79 @@
+/* Match FlClash/lib/v2board/theme.dart. Scoped to user pages and their portals. */
+body[data-console="user"] {
+    --brand: #153b70;
+    --brand-hover: #102d55;
+    --brand-soft: #e8eff8;
+    --ink: #182638;
+    --text-secondary: #687789;
+    --outline: #bac6d4;
+    --line: #e4eaf1;
+    --surface-soft: #f5f7fa;
+    --surface-tint: #eef2f7;
+    --surface-raised: #e8edf4;
+    --accent: var(--brand);
+    --primary: var(--brand);
+    --border: var(--line);
+    --muted: var(--text-secondary);
+    --surface: #fff;
+    --bg: #fff;
+    color: var(--ink);
+    background: #fff;
+    accent-color: var(--brand);
+}
+:where(body[data-console="user"]) :is(button, .button, input, select, textarea) {
+    color: var(--ink);
+}
+body[data-console="user"] :is(input, select, textarea) {
+    border-color: var(--outline);
+    background-color: var(--surface-soft);
+}
+body[data-console="user"] :is(input, select, textarea):focus {
+    border-color: var(--brand);
+    box-shadow: 0 0 0 3px #153b7014;
+}
+body[data-console="user"] :focus-visible {
+    outline-color: var(--brand);
+}
+body[data-console="user"] :is(.primary, .primary:hover) {
+    background: var(--brand);
+    border-color: var(--brand);
+    color: #fff;
+}
+body[data-console="user"] .primary:hover {
+    background: var(--brand-hover);
+    border-color: var(--brand-hover);
+}
+body[data-console="user"] .toggle-control[aria-checked="true"] .toggle-track {
+    background: var(--brand);
+}
+body[data-console="user"] .toggle-control[aria-checked="false"] .toggle-track {
+    background: var(--outline);
+}
+body[data-console="user"] .notification-option .toggle-control {
+    border: 0;
+    background: transparent;
+    box-shadow: none;
+}
+body[data-console="user"] .app.user aside nav a.active {
+    color: var(--brand);
+    background: var(--brand-soft);
+}
+body[data-console="user"] :is(.modal, .popover) {
+    color: var(--ink);
+    background: #fff;
+    border-color: var(--line);
+}
+body[data-console="user"] .user-auth {
+    background: var(--surface-soft);
+}
+body[data-console="user"] .quota-progress i,
+body[data-console="user"] :is(.download-dot, .download-bar) {
+    background: var(--brand);
+}
+body[data-console="user"] :is(.upload-dot, .upload-bar) {
+    background: #8baad0;
+}
+body[data-console="user"] .credit-add {
+    background: var(--brand);
+    color: #fff;
+}

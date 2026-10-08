@@ -8,20 +8,20 @@
     border-radius: 10px;
     padding: 12px 18px;
     color: #fff !important;
-    background: #243c31;
+    background: var(--brand);
 }
 .product-skip:focus {
     transform: translateY(0);
 }
 .app.user {
-    color: #252b27;
+    color: var(--ink);
     background: #fff;
-    --border: #e5e8e3;
-    --muted: #70766f;
+    --border: var(--line);
+    --muted: var(--text-secondary);
 }
 .app.user aside {
-    background: #f7f8f5;
-    border-inline-end: 1px solid #e9ece6;
+    background: var(--surface-soft);
+    border-inline-end: 1px solid var(--surface-tint);
 }
 /* Keep page-local sticky controls below navigation and its popovers.
    Isolation preserves viewport positioning for the mobile checkout bar. */
@@ -41,7 +41,7 @@
     overflow-wrap: anywhere;
 }
 .app.user .brand-mark {
-    background: #263e32;
+    background: var(--brand);
     color: #fff;
     border-radius: 10px;
     flex-shrink: 0;
@@ -58,7 +58,7 @@
     padding: 0 12px;
     margin-bottom: 12px;
     font-size: 10px;
-    color: #8a9187;
+    color: var(--text-secondary);
 }
 .app.user aside nav a {
     min-height: 44px;
@@ -67,17 +67,17 @@
     font-weight: 450;
 }
 .app.user aside nav a.active {
-    background: #e9ede4;
-    color: #263e32;
+    background: var(--surface-tint);
+    color: var(--brand);
     font-weight: 600;
 }
 .app.user aside nav a:hover {
-    background: #edf0e8;
+    background: var(--surface-tint);
 }
 .app.user .sidebar-bottom {
     margin: 12px;
     padding: 14px 4px;
-    border-top: 1px solid #e4e9df;
+    border-top: 1px solid var(--line);
 }
 .app.user .sidebar-bottom strong {
     font-weight: 500;
@@ -85,7 +85,7 @@
 .app.user .main > header {
     z-index: 40;
     background: #ffffffed;
-    border-bottom: 1px solid #f0f2ed;
+    border-bottom: 1px solid var(--surface-tint);
     padding-inline: 36px;
 }
 .app.user .main > main {
@@ -107,16 +107,16 @@
 }
 .app.user .today {
     font-size: 12px;
-    color: #8b9188;
+    color: var(--text-secondary);
 }
 .app.user .panel {
-    border: 1px solid #e8ebe5;
+    border: 1px solid var(--line);
     border-radius: 18px;
     box-shadow: none;
 }
 .app.user .panel-head {
     padding: 20px 24px;
-    border-bottom-color: #edf0e9;
+    border-bottom-color: var(--surface-tint);
 }
 .app.user .panel-head h2 {
     font-size: 15px;
@@ -129,29 +129,29 @@
 }
 .app.user .primary,
 .user-auth .primary {
-    background: #263e32;
-    border-color: #263e32;
+    background: var(--brand);
+    border-color: var(--brand);
     color: white;
 }
 .app.user .primary:hover,
 .user-auth .primary:hover {
-    background: #395842;
-    border-color: #395842;
+    background: var(--brand-hover);
+    border-color: var(--brand-hover);
     color: white;
 }
 .app.user :is(input, select, textarea):focus,
 .user-auth input:focus {
-    border-color: #788c70;
-    box-shadow: 0 0 0 3px #617b4910;
+    border-color: var(--text-secondary);
+    box-shadow: 0 0 0 3px #153b7010;
 }
 .app.user :focus-visible {
-    outline: 2px solid #718466;
+    outline: 2px solid var(--text-secondary);
     outline-offset: 3px;
 }
 .app.user .dashboard-welcome {
     padding: 24px 28px;
-    background: #f5f7f1;
-    border: 1px solid #e8ede1;
+    background: var(--surface-soft);
+    border: 1px solid var(--line);
     border-radius: 18px;
     margin-bottom: 20px;
 }
@@ -182,12 +182,12 @@
 .app.user .dashboard-grid > .panel,
 .app.user .quota-card {
     border-radius: 20px;
-    box-shadow: 0 3px 12px #25391c03;
-    border-color: #e5e9e1;
+    box-shadow: 0 3px 12px #153b7003;
+    border-color: var(--line);
 }
 .app.user .dashboard-grid .panel-head h2,
 .app.user .quota-card h3 {
-    color: #757e70;
+    color: var(--text-secondary);
     font-size: 13px;
     font-weight: 500;
 }
@@ -202,30 +202,30 @@
 }
 .app.user .quota-value span {
     font-size: 16px;
-    color: #697165;
+    color: var(--text-secondary);
 }
 .app.user .quota-progress {
     height: 9px;
-    background: #eef1e9;
+    background: var(--surface-tint);
 }
 .app.user .quota-progress i {
-    background: #5d8862;
+    background: var(--text-secondary);
 }
 .app.user .quota-card p,
 .app.user .quota-card small {
     line-height: 1.6;
-    color: #747d6d;
+    color: var(--text-secondary);
 }
 .app.user .subscription-facts dt {
     font-size: 12px;
-    color: #7a8274;
+    color: var(--text-secondary);
 }
 .app.user .subscription-facts dd {
     font-size: 14px;
 }
 .app.user .usage-analysis {
     padding: 26px;
-    border: 1px solid #e8ebe5;
+    border: 1px solid var(--line);
     border-radius: 20px;
     margin-bottom: 28px;
     background: #fff;
@@ -236,12 +236,12 @@
     backdrop-filter: none;
 }
 .app.user .dashboard-secondary .panel {
-    border: 1px solid #e8ebe5;
+    border: 1px solid var(--line);
     border-radius: 18px;
 }
 .app.user .dashboard-secondary .panel-head {
     padding: 20px 24px;
-    border-bottom: 1px solid #edf0e9;
+    border-bottom: 1px solid var(--surface-tint);
 }
 .app.user .dashboard-secondary .pad {
     padding: 22px 24px;
@@ -253,21 +253,21 @@
     font-size: 15px;
 }
 .app.user .notice small {
-    color: #8a9283;
+    color: var(--text-secondary);
 }
 .app.user .account-entry {
     padding: 36px;
-    border-color: #e5e9e0;
+    border-color: var(--line);
     border-radius: 22px;
     background: #fff;
 }
 .app.user .account-entry-new {
-    background: #fafbf7;
+    background: var(--surface-soft);
 }
 .app.user .account-entry .entry-symbol {
     border-radius: 16px;
-    background: #ecf1e5;
-    color: #546c43;
+    background: var(--surface-tint);
+    color: var(--text-secondary);
 }
 .app.user .account-entry h2 {
     font-weight: 550;
@@ -279,7 +279,7 @@
 }
 .app.user .entry-steps {
     gap: 20px;
-    border-color: #e5e9de;
+    border-color: var(--line);
     margin-top: 32px;
     padding-top: 24px;
 }
@@ -287,18 +287,18 @@
     font-size: 13px;
 }
 .app.user .entry-steps span {
-    background: #edf1e6;
+    background: var(--surface-tint);
     border-radius: 8px;
     padding: 8px;
-    color: #657457;
+    color: var(--text-secondary);
 }
 .app.user .plan-card {
     border-radius: 18px;
-    border-color: #e4e9dd;
+    border-color: var(--line);
     padding: 26px;
 }
 .app.user .plan-card:hover {
-    border-color: #a1b094;
+    border-color: var(--outline);
 }
 .app.user .account-security {
     max-width: 660px;
@@ -306,13 +306,13 @@
 .app.user .page-footer {
     margin-top: 36px;
     padding-top: 22px;
-    border-top: 1px solid #eef0ea;
-    color: #8b9384;
+    border-top: 1px solid var(--surface-tint);
+    color: var(--text-secondary);
     font-size: 11px;
 }
 .user-auth {
-    background: #f8f9f5;
-    color: #26362c;
+    background: var(--surface-soft);
+    color: var(--ink);
 }
 .user-auth .auth-home {
     font-weight: 600;
@@ -321,16 +321,16 @@
 .user-auth .user-auth-card {
     padding: 32px;
     background: #fff;
-    border: 1px solid #e5e9df;
+    border: 1px solid var(--line);
     border-radius: 24px;
-    box-shadow: 0 16px 60px -34px #31462835;
+    box-shadow: 0 16px 60px -34px #153b7035;
     max-width: 490px;
 }
 .user-auth .auth-illustration {
-    background: #edf1e5;
-    color: #6c8158;
+    background: var(--surface-tint);
+    color: var(--text-secondary);
     transform: none;
-    border: 1px solid #e2e8d8;
+    border: 1px solid var(--line);
     border-radius: 32px;
 }
 .user-auth .user-auth-intro h1 {
@@ -348,7 +348,7 @@
 }
 .user-auth .user-auth-form input:not([type="checkbox"]) {
     border-radius: 11px;
-    border-color: #dfe4d8;
+    border-color: var(--line);
     min-height: 50px;
 }
 .user-auth .auth-submit {
@@ -392,13 +392,13 @@
         gap: 14px;
     }
     .app.user .bottom-nav {
-        border-color: #e6eadf;
+        border-color: var(--line);
     }
     .app.user .bottom-nav a.active {
-        color: #2c5134;
+        color: var(--brand);
     }
     .app.user .bottom-nav a.active svg {
-        background: #eaf0e1;
+        background: var(--surface-tint);
         border-radius: 7px;
         box-sizing: content-box;
         padding: 3px 12px;
@@ -459,7 +459,7 @@
     width: 180px;
     height: 32px;
     border-radius: 10px;
-    background: #f0f3eb;
+    background: var(--surface-tint);
 }
 .landing-skeleton-hero {
     display: grid;
@@ -470,14 +470,14 @@
 }
 .landing-skeleton-hero > div:last-child {
     height: 410px;
-    border: 1px solid #edf0e7;
+    border: 1px solid var(--surface-tint);
     border-radius: 22px;
-    background: #fafbf8;
+    background: var(--surface-soft);
 }
 .landing-skeleton-hero i {
     display: block;
     height: 40px;
-    background: #f2f4ee;
+    background: var(--surface-tint);
     border-radius: 10px;
     margin: 16px 0;
 }
@@ -567,14 +567,14 @@
 .app.user .soft-button {
     border: 0;
     border-radius: 999px;
-    background: #f1f2f1;
-    color: #282d2a;
+    background: var(--surface-tint);
+    color: var(--ink);
     padding: 10px 17px;
     flex-shrink: 0;
     box-shadow: none;
 }
 .app.user .soft-button:hover {
-    background: #e7eae7;
+    background: var(--surface-tint);
 }
 .app.user .balance-amount {
     font-size: 30px;
@@ -598,7 +598,7 @@
     border-top: 1px solid var(--border);
 }
 .app.user .transaction-row:hover {
-    background: #f6f7f6;
+    background: var(--surface-soft);
 }
 .app.user .transaction-row small {
     display: block;
@@ -625,8 +625,8 @@
     background: transparent;
 }
 .app.user .settings-tabs button[aria-pressed="true"] {
-    background: #eeeeec;
-    color: #202621;
+    background: var(--surface-tint);
+    color: var(--ink);
 }
 .app.user .usage-heading {
     margin-bottom: 20px;
@@ -641,7 +641,7 @@
     height: 9px;
 }
 .app.user .usage-quota .quota-progress i {
-    background: #28382e;
+    background: var(--ink);
 }
 .app.user .reset-section-intro {
     padding-bottom: 22px;
@@ -680,13 +680,13 @@
     box-shadow: none;
 }
 .app.user .reset-switcher button[aria-pressed="true"] {
-    background: #f4f4f4;
+    background: var(--surface-soft);
 }
 .app.user .reset-switcher button:hover {
-    background: #f4f4f4;
+    background: var(--surface-soft);
 }
 .app.user .reset-switcher button:focus-visible {
-    outline: 2px solid #56665c;
+    outline: 2px solid var(--text-secondary);
     outline-offset: 3px;
 }
 .app.user .reset-content {
@@ -842,9 +842,9 @@
     justify-content: space-between;
     gap: 8px;
     padding: 10px 20px 14px;
-    color: #777;
+    color: var(--text-secondary);
     font-size: 12px;
-    border-bottom: 1px solid #eee;
+    border-bottom: 1px solid var(--surface-tint);
 }
 .announcement-intro p {
     margin: 0;
@@ -862,14 +862,14 @@
     width: 100%;
     padding: 18px 20px;
     border: 0;
-    border-bottom: 1px solid #f0f0f0;
+    border-bottom: 1px solid var(--surface-tint);
     border-radius: 0;
     background: #fff;
-    color: #252525;
+    color: var(--ink);
 }
 .announcement-item:hover,
 .announcement-item:focus-visible {
-    background: #f7f7f7;
+    background: var(--surface-soft);
 }
 .announcement-item-top {
     display: flex;
@@ -891,7 +891,7 @@
 .announcement-summary {
     font-size: 13px;
     line-height: 1.65;
-    color: #737373;
+    color: var(--text-secondary);
     display: -webkit-box;
     -webkit-line-clamp: 2;
     -webkit-box-orient: vertical;
@@ -900,16 +900,16 @@
 }
 .announcement-overlay time {
     font-size: 12px;
-    color: #888;
+    color: var(--text-secondary);
 }
 .announcement-empty {
     padding: 48px 24px;
     text-align: center;
-    color: #777;
+    color: var(--text-secondary);
 }
 .announcement-empty svg {
     margin: 0 auto 12px;
-    color: #aaa;
+    color: var(--text-secondary);
 }
 .announcement-empty p {
     margin: 8px 0;
@@ -923,7 +923,7 @@
     align-items: center;
     padding: 8px 16px;
     font-size: 12px;
-    color: #777;
+    color: var(--text-secondary);
 }
 .announcement-detail {
     padding: 4px 20px 24px;
@@ -934,7 +934,7 @@
     gap: 6px;
     align-items: center;
     border: 0;
-    background: #f5f5f5;
+    background: var(--surface-soft);
     border-radius: 24px;
     font-size: 12px;
     min-height: 40px;
@@ -1028,7 +1028,7 @@
     line-height: 1.7;
 }
 .receipt-card {
-    background: #f6f7f3;
+    background: var(--surface-soft);
     border-radius: 16px;
     padding: 26px;
 }
@@ -1079,7 +1079,7 @@
     width: 38px;
     height: 38px;
     padding: 0;
-    background: #171717;
+    background: var(--ink);
     color: white;
     justify-content: center;
     flex-shrink: 0;
@@ -1096,7 +1096,7 @@
     width: 100%;
     min-height: 56px;
     border-radius: 14px;
-    background: var(--bg, #f7f7f7);
+    background: var(--bg, var(--surface-soft));
     font-size: 16px;
     padding: 12px;
 }
@@ -1176,7 +1176,7 @@
     border: 1px solid var(--border);
     border-radius: 14px;
     padding-inline: 14px;
-    background: #fafbf9;
+    background: var(--surface-soft);
 }
 .app.user .help-search input {
     border: 0;
@@ -1188,7 +1188,7 @@
     padding-inline: 0;
 }
 .app.user .help-search:focus-within {
-    outline: 2px solid #252b27;
+    outline: 2px solid var(--ink);
     outline-offset: 2px;
 }
 .app.user .help-categories {
@@ -1206,9 +1206,9 @@
     background: transparent;
 }
 .app.user .help-categories button[aria-pressed="true"] {
-    background: #ecefe8;
+    background: var(--surface-tint);
     border-color: var(--border);
-    color: #252b27;
+    color: var(--ink);
 }
 .app.user .help-count {
     font-size: 12px;
@@ -1292,7 +1292,7 @@
     }
 }
 .apple-account-card {
-    border: 1px solid #e5e7e5;
+    border: 1px solid var(--line);
     border-radius: 14px;
     padding: 16px;
     margin: 12px 0;
@@ -1368,7 +1368,7 @@
     align-items: center;
     width: 100%;
     padding: 16px;
-    border: 1px solid var(--border, #e5e7eb);
+    border: 1px solid var(--border, var(--line));
     border-radius: 14px;
     color: inherit;
     text-decoration: none;
@@ -1441,7 +1441,7 @@
     display: grid;
     gap: 10px;
     padding: 16px;
-    background: var(--surface, #f5f7fa);
+    background: var(--surface, var(--surface-soft));
     border-radius: 12px;
     overflow-wrap: anywhere;
 }

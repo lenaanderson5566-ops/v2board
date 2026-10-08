@@ -47,6 +47,14 @@ try {
     $assert(!$has($basic,$empty) && !$has($premium,$empty),'Empty expired account authorized');
     $ordinary=$make(['credit_balance'=>0,'u'=>0]);
     $assert($has($premium,$ordinary),'Normal subscription denied');
+    // Expiry must deny access even while the original unused allowance is retained.
+    $ordinary->expired_at=time();$ordinary->save();
+    $assert(!$has($premium,$ordinary) && !(new App\Services\UserService())->isAvailable($ordinary->fresh()),'Expiry boundary authorizes retained plan allowance');
+    $assert((int)$ordinary->fresh()->transfer_enable===1000,'Expiry checks should not erase historical allowance');
+    $ordinary->expired_at=time()-3600;$ordinary->save();
+    $assert(!User::whereKey($ordinary->id)->withUsableTraffic()->exists(),'Expired unused plan allowance authorized');
+    $ordinary->expired_at=time()+3600;$ordinary->save();
+    $assert($has($premium,$ordinary),'Renewed plan access was not restored');
     $assert($server->getAvailableUsers([$basic,$premium])->where('id',$active->id)->count()===1,'Shared node duplicated user');
     $assert($server->getAvailableUsers([])->isEmpty(),'Empty group authorized users');
     config(['v2board.credit_base_group_id'=>null]);

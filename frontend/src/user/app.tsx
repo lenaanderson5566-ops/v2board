@@ -78,6 +78,7 @@ import { useTranslation } from "react-i18next";
 import { LanguagePicker } from "../shared/LanguagePicker";
 import "./user-experience.css";
 import "./product.css";
+import "./app-theme.css";
 export default function UserApp() {
     useEffect(() => {
         if (

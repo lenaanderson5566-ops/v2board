@@ -18,7 +18,7 @@
 
 ## 从带本地文件的旧分支直接升级
 
-不需要先更新旧分支的全部提交。脚本接受 `composer.json` 中本地新增的 `require` / `require-dev` 包（如 `joanhey/adapterman`），合并到目标依赖定义。修改既有依赖约束、脚本、仓库源等其他内容，以及其他已跟踪文件的改动，会在切换前停止。不会执行 `git clean`、强制重置或删除自定义支付文件。
+不需要先更新旧分支的全部提交。脚本接受 `composer.json` 中本地新增的 `require` / `require-dev` 包，合并到目标依赖定义。修改既有依赖约束、脚本、仓库源等其他内容，以及其他已跟踪文件的改动，会在切换前停止。不会执行 `git clean`、强制重置或删除自定义支付文件。
 
 若已手动切换到新分支，但工作目录仍保留旧版 Composer 定义，脚本会在当前/目标提交历史中最多检查 100 次 Composer 变更，匹配除新增包外完全一致的已提交定义。成功后以目标依赖为准，保留本地新增包，并备份匹配的 `composer-baseline.json`。未知的约束或配置修改仍停止；不会简单忽略 `php` 约束错误。浅克隆缺少旧历史时可能无法匹配，需要补齐历史后重试。
 
@@ -120,3 +120,10 @@ bash /tmp/v2board-update.sh \
 ## 独立额度升级
 
 新增并定向执行 `2026_10_02_000005_create_traffic_credits.php`：创建独立流量额度余额、订单数量/配置快照及到账审计表，并迁移老永久流量用户的剩余配额。必须暂停本站队列和调度、备份数据库后运行。额度转换后不能仅回滚代码；须使用一致的数据库/代码备份并核对新交易。详细规则、暂缓迁移的旧待支付订单及核对 SQL 见 [traffic-credits.md](traffic-credits.md)。
+
+
+## HTTP runtime
+
+网站使用 Nginx/Apache + PHP-FPM，入口为 `public/index.php`。Webman/Adapterman 入口 `webman.php`、`start.php` 和专用 `cli-php.ini` 已移除；安装脚本不再安装 Adapterman，保存后台设置也不再读取或终止缓存中的 Webman PID。Horizon 队列、定时任务和 `pm2.yaml` 的队列配置保持不变。
+
+升级脚本仍保留本地新增 Composer 依赖，避免覆盖自定义部署。测试中的 Adapterman 包仅用于验证历史依赖保留，并不表示仍支持该 HTTP 运行方式。已安装的可选依赖不会在本次升级中被强行删除；运行站点无需它们。以前通过 `php -c cli-php.ini` 启动的自定义进程须改用各自正常的 PHP CLI 配置，不能继续引用已移除的配置文件。

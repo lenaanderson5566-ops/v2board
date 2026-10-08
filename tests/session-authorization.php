@@ -3,6 +3,7 @@ require __DIR__.'/../vendor/autoload.php';
 $app = require __DIR__.'/../bootstrap/app.php';
 $app->make(Illuminate\Contracts\Console\Kernel::class)->bootstrap();
 if (!app()->environment('local')) throw new RuntimeException('Local test only');
+set_exception_handler(function(Throwable $e) { fwrite(STDERR,(string)$e."\n"); exit(1); });
 use App\Services\AuthService;
 use App\Services\SessionAuthorizationCode;
 use Illuminate\Support\Facades\Cache;
@@ -50,6 +51,7 @@ try {
         config(['v2board.app_url'=>'https://user@fastdog.ws']);
         try { app(App\Services\BrowserLoginLink::class)->create(Illuminate\Http\Request::create('/'),$browser); throw new RuntimeException('Userinfo accepted'); }
         catch (Symfony\Component\HttpKernel\Exception\HttpException $e) { $assert($e->getStatusCode()===503,'Reject credential-bearing website origin'); }
+        catch (Illuminate\Validation\ValidationException $e) { $assert(isset($e->errors()['fastai_entrypoints']),'Origin validator rejects credential-bearing website origin'); }
     } finally { config(['v2board.app_url'=>$original]); }
     echo "Session authorization: $checks checks passed\n";
 } finally {

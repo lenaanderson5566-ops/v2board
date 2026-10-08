@@ -8,6 +8,7 @@ import { PlanDescription } from "../shared/PlanDescription";
 import { activePlan } from "../shared/user-experience";
 import {
     billingPeriods,
+    billingPeriodMonths,
     purchasePeriods,
     unfinishedOrder,
     periodSavings,
@@ -98,7 +99,10 @@ export function SubscriptionPurchase() {
                                 {pending.plan?.name || tx("账户充值")}
                             </strong>
                             <span className="pending-order-amount">
-                                {money(pending.total_amount, pending.currency || "CNY")}
+                                {money(
+                                    pending.total_amount,
+                                    pending.currency || "CNY",
+                                )}
                             </span>
                         </div>
                         <a
@@ -211,13 +215,17 @@ export function SubscriptionPurchase() {
                                             </small>
                                         </div>
                                         <div className="pricing-note pricing-meta">
-                                            {displayed === "year_price" && (
+                                            {billingPeriodMonths[displayed] >
+                                                1 && (
                                                 <span>
                                                     {pc("equivalent", {
                                                         price: money(
                                                             Number(
                                                                 plan[displayed],
-                                                            ) / 12,
+                                                            ) /
+                                                                billingPeriodMonths[
+                                                                    displayed
+                                                                ],
                                                         ),
                                                     })}
                                                 </span>

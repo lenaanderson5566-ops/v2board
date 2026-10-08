@@ -41,39 +41,44 @@ beforeEach(() => {
         },
     });
 });
-it("loads existing notification choices and saves only the three notification fields", async () => {
+it("saves only the changed field without a save button", async () => {
     mocks.request.mockResolvedValue({ data: true });
     render(<Notifications />);
     const expiry = await screen.findByRole("switch", { name: "到期提醒" });
-    const usage = screen.getByRole("switch", { name: "quotaNotice" });
     expect(expiry.getAttribute("aria-checked")).toBe("true");
-    expect(usage.getAttribute("aria-checked")).toBe("false");
-    const service = screen.getByRole("switch", { name: "serviceNotice" });
-    expect(service.getAttribute("aria-checked")).toBe("true");
-    fireEvent.click(service);
+    expect(screen.queryByRole("button", { name: "保存" })).toBeNull();
     fireEvent.click(expiry);
-    fireEvent.click(usage);
-    fireEvent.click(screen.getByRole("button", { name: "保存" }));
-    await waitFor(() =>
-        expect(mocks.request).toHaveBeenCalledWith("user/update", {
-            remind_service: 0,
-            remind_expire: 0,
-            remind_traffic: 1,
-        }),
-    );
-    expect((await screen.findByRole("status")).textContent).toBe("saved");
+    await screen.findByText("saved");
+    expect(mocks.request).toHaveBeenCalledWith("user/update", { remind_expire: 0 });
+    expect(expiry.getAttribute("aria-checked")).toBe("false");
+    expect(mocks.readRequest).toHaveBeenCalledTimes(1);
 });
-it("shows a failed save without claiming success and allows retry", async () => {
-    mocks.request.mockRejectedValue(Error("temporary failure"));
+it("restores a failed choice and allows retry", async () => {
+    mocks.request.mockRejectedValueOnce(Error("temporary failure")).mockResolvedValueOnce({ data: true });
     render(<Notifications />);
-    await screen.findByRole("switch", { name: "到期提醒" });
-    fireEvent.click(screen.getByRole("button", { name: "保存" }));
-    await screen.findByText("temporary failure");
+    const usage = await screen.findByRole("switch", { name: "quotaNotice" });
+    fireEvent.click(usage);
+    await screen.findByText("notificationFailed");
+    expect(usage.getAttribute("aria-checked")).toBe("false");
     expect(screen.queryByText("saved")).toBeNull();
-    await waitFor(() =>
-        expect(
-            (screen.getByRole("button", { name: "保存" }) as HTMLButtonElement)
-                .disabled,
-        ).toBe(false),
-    );
+    fireEvent.click(usage);
+    await screen.findByText("saved");
+    expect(usage.getAttribute("aria-checked")).toBe("true");
+    expect(mocks.request).toHaveBeenCalledTimes(2);
+});
+it("blocks duplicate clicks while other settings save independently", async () => {
+    let resolve!: (value: unknown) => void;
+    mocks.request.mockImplementationOnce(() => new Promise((done) => { resolve = done; })).mockResolvedValue({ data: true });
+    render(<Notifications />);
+    const service = await screen.findByRole("switch", { name: "serviceNotice" });
+    fireEvent.click(service);
+    fireEvent.click(service);
+    expect((service as HTMLButtonElement).disabled).toBe(true);
+    fireEvent.click(screen.getByRole("switch", { name: "quotaNotice" }));
+    await screen.findByText("saved");
+    expect(mocks.request.mock.calls).toEqual([["user/update", { remind_service: 0 }], ["user/update", { remind_traffic: 1 }]]);
+    resolve({ data: true });
+    await waitFor(() => expect((service as HTMLButtonElement).disabled).toBe(false));
+    expect(service.getAttribute("aria-checked")).toBe("false");
+    expect(screen.getByRole("switch", { name: "quotaNotice" }).getAttribute("aria-checked")).toBe("true");
 });

@@ -174,9 +174,16 @@ for entry in entries:
         operation['description'] = operation.get('description', '') + ' ' + contracts['endpoints'][operation_id]['description']
     if contract['key'] == 'User/OrderController@save':
         operation['description'] += ' Deposit orders require planId 0 and a positive integer depositAmount in minor currency units; other billing periods require a positive planId.'
+        operation['description'] += ' Unconfigured or negative period prices are rejected with 409; an explicit zero price remains valid.'
+    if contract['key'] == 'User/OrderController@checkout':
+        operation['description'] += ' Historical orders with negative totals are rejected with 409; zero totals use the free checkout flow.'
     if entry['path'].startswith('webhooks/'):
         operation['description'] = 'Provider-native signature verification and response. Payment notifications are idempotent; Telegram requires X-Telegram-Bot-Api-Secret-Token. New payments use V10 callback URLs, including custom callback domains. Old payment callbacks remain compatible for existing orders. Historical callback URLs remain supported.'
         operation['requestBody'] = {'content': {'application/json': {'schema': {'type': 'object'}}, 'application/x-www-form-urlencoded': {'schema': {'type': 'object'}}}}
+        if entry['path'] == 'webhooks/telegram':
+            operation['description'] += ' The bot must be enabled with a nonempty configured token; disabled, unconfigured or invalid credentials return 401.'
+            params.append({'name': 'X-Telegram-Bot-Api-Secret-Token', 'in': 'header', 'required': True, 'schema': {'type': 'string'}})
+            responses['401'] = {'description': 'Bot disabled, token unconfigured, or invalid webhook secret'}
     elif entry['method'] == 'GET':
         operation['parameters'] += [{'name': f, 'in': 'query', 'schema': v, **({'required': True} if f in required.get(contract['key'], []) else {})} for f, v in properties.items()]
     elif properties:

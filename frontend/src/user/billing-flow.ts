@@ -30,22 +30,23 @@ export function unfinishedOrder(orders: Row[]): Row | undefined {
     return orders.find((order) => [0, 1].includes(Number(order.status)));
 }
 
+export const billingPeriodMonths: Record<string, number> = {
+    quarter_price: 3,
+    half_year_price: 6,
+    year_price: 12,
+    two_year_price: 24,
+    three_year_price: 36,
+};
+
 // Compare configured cycle prices only; checkout remains authoritative.
 export function periodSavings(plan: Row, period: string): number {
-    const months: Record<string, number> = {
-        quarter_price: 3,
-        half_year_price: 6,
-        year_price: 12,
-        two_year_price: 24,
-        three_year_price: 36,
-    };
     if (
-        !months[period] ||
+        !billingPeriodMonths[period] ||
         !purchasePeriods(plan).includes(period) ||
         !purchasePeriods(plan).includes("month_price")
     )
         return 0;
-    const baseline = Number(plan.month_price) * months[period];
+    const baseline = Number(plan.month_price) * billingPeriodMonths[period];
     if (baseline <= 0) return 0;
     return Math.max(
         0,
@@ -76,7 +77,11 @@ export function subscriptionAction(
 
 // Reconstruct the price locked in the order, never today's catalog price.
 export function orderOriginalAmount(order: Row): number {
-    return Number(order.total_amount || 0) + Number(order.discount_amount || 0)
-        + Number(order.balance_amount || 0) + Number(order.surplus_amount || 0)
-        - Number(order.refund_amount || 0);
+    return (
+        Number(order.total_amount || 0) +
+        Number(order.discount_amount || 0) +
+        Number(order.balance_amount || 0) +
+        Number(order.surplus_amount || 0) -
+        Number(order.refund_amount || 0)
+    );
 }

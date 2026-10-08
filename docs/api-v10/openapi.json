@@ -377,6 +377,14 @@
               "type": "string"
             },
             "description": "Supported language tags with optional quality weights."
+          },
+          {
+            "name": "X-Telegram-Bot-Api-Secret-Token",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
           }
         ],
         "responses": {
@@ -401,12 +409,15 @@
                 }
               }
             }
+          },
+          "401": {
+            "description": "Bot disabled, token unconfigured, or invalid webhook secret"
           }
         },
         "security": [],
         "x-permission": "public",
         "x-legacy-path": "/api/v1/guest/telegram/webhook",
-        "description": "Provider-native signature verification and response. Payment notifications are idempotent; Telegram requires X-Telegram-Bot-Api-Secret-Token. New payments use V10 callback URLs, including custom callback domains. Old payment callbacks remain compatible for existing orders. Historical callback URLs remain supported.",
+        "description": "Provider-native signature verification and response. Payment notifications are idempotent; Telegram requires X-Telegram-Bot-Api-Secret-Token. New payments use V10 callback URLs, including custom callback domains. Old payment callbacks remain compatible for existing orders. Historical callback URLs remain supported. The bot must be enabled with a nonempty configured token; disabled, unconfigured or invalid credentials return 401.",
         "requestBody": {
           "content": {
             "application/json": {
@@ -4915,7 +4926,7 @@
         ],
         "x-permission": "user",
         "x-legacy-path": "/api/v1/user/order/save",
-        "description": "Requires an active session. Order and ticket identifiers are checked against the authenticated owner. Unauthenticated: 401; banned account: 403. Deposit orders require planId 0 and a positive integer depositAmount in minor currency units; other billing periods require a positive planId.",
+        "description": "Requires an active session. Order and ticket identifiers are checked against the authenticated owner. Unauthenticated: 401; banned account: 403. Deposit orders require planId 0 and a positive integer depositAmount in minor currency units; other billing periods require a positive planId. Unconfigured or negative period prices are rejected with 409; an explicit zero price remains valid.",
         "requestBody": {
           "required": true,
           "content": {
@@ -5271,7 +5282,7 @@
         ],
         "x-permission": "user",
         "x-legacy-path": "/api/v1/user/order/checkout",
-        "description": "Requires an active session. Order and ticket identifiers are checked against the authenticated owner. Unauthenticated: 401; banned account: 403.",
+        "description": "Requires an active session. Order and ticket identifiers are checked against the authenticated owner. Unauthenticated: 401; banned account: 403. Historical orders with negative totals are rejected with 409; zero totals use the free checkout flow.",
         "requestBody": {
           "required": true,
           "content": {

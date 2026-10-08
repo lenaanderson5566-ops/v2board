@@ -11,7 +11,11 @@ $contracts=App\Http\Resources\V10\Resource::contracts()['endpoints'];
 $mapping=[];
 $allowlist=json_decode(file_get_contents(base_path('docs/api-v10/retained-legacy.json')),true);
 $seen=[];
-foreach ($entries as $entry) $mapping[$entry['action']][]=(str_starts_with($entry['path'],'webhooks/payments/') ? 'GET/POST' : $entry['method']).' /api/v10/'.$entry['path'];
+foreach ($entries as $entry) {
+    // Native V10 resources have no legacy action to map.
+    if (!isset($entry['action'])) continue;
+    $mapping[$entry['action']][]=(str_starts_with($entry['path'],'webhooks/payments/') ? 'GET/POST' : $entry['method']).' /api/v10/'.$entry['path'];
+}
 foreach (app('router')->getRoutes() as $route) {
     $routeCount++; $uri=$route->uri(); $action=$route->getActionName(); $middleware=$route->gatherMiddleware();
     if ($action!=='Closure' && str_contains($action,'@')) {

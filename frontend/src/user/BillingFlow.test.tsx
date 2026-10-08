@@ -145,14 +145,27 @@ it("preserves payment selection and QR content while an order refreshes", async 
         type: 0,
         data: "https://pay.example/preserve",
     });
-    const view = render(<Suspense fallback={<p>Loading checkout</p>}><Orders tradeNo="test-order" /></Suspense>);
+    const view = render(
+        <Suspense fallback={<p>Loading checkout</p>}>
+            <Orders tradeNo="test-order" />
+        </Suspense>,
+    );
     const qrMethod = await screen.findByRole("radio", { name: /QR/ });
-    await waitFor(() => expect((screen.getByRole("radio", { name: /Card/ }) as HTMLInputElement).checked).toBe(true));
+    await waitFor(() =>
+        expect(
+            (screen.getByRole("radio", { name: /Card/ }) as HTMLInputElement)
+                .checked,
+        ).toBe(true),
+    );
     fireEvent.click(qrMethod);
     fireEvent.click(screen.getByRole("button", { name: "确认支付" }));
     await screen.findByDisplayValue("https://pay.example/preserve");
     mocks.detailLoading = true;
-    view.rerender(<Suspense fallback={<p>Loading checkout</p>}><Orders tradeNo="test-order" /></Suspense>);
+    view.rerender(
+        <Suspense fallback={<p>Loading checkout</p>}>
+            <Orders tradeNo="test-order" />
+        </Suspense>,
+    );
     expect(
         screen.getByDisplayValue("https://pay.example/preserve"),
     ).toBeTruthy();
@@ -160,11 +173,19 @@ it("preserves payment selection and QR content while an order refreshes", async 
         (screen.getByRole("radio", { name: /QR/ }) as HTMLInputElement).checked,
     ).toBe(true);
     mocks.detailLoading = false;
-    view.rerender(<Suspense fallback={<p>Loading checkout</p>}><Orders tradeNo="test-order" /></Suspense>);
+    view.rerender(
+        <Suspense fallback={<p>Loading checkout</p>}>
+            <Orders tradeNo="test-order" />
+        </Suspense>,
+    );
     expect(
         screen.getByDisplayValue("https://pay.example/preserve"),
     ).toBeTruthy();
-    expect(mocks.request.mock.calls.filter(([path]) => path === "user/order/checkout")).toHaveLength(1);
+    expect(
+        mocks.request.mock.calls.filter(
+            ([path]) => path === "user/order/checkout",
+        ),
+    ).toHaveLength(1);
 });
 it("preserves quarterly and zero-priced periods and excludes reset from ordinary purchase", () => {
     expect(purchasePeriods({ ...plan, onetime_price: 0 })).toEqual([
@@ -262,7 +283,11 @@ it("selects a method without charging and shows fixed plus percentage fees befor
     expect(screen.getByText("正在等待支付确认，请勿重复付款。")).toBeTruthy();
     expect(screen.queryByText("订单已完成")).toBeNull();
     fireEvent.click(screen.getByRole("button", { name: "检查支付结果" }));
-    expect(mocks.request.mock.calls.filter(([path]) => path === "user/order/checkout")).toHaveLength(1);
+    expect(
+        mocks.request.mock.calls.filter(
+            ([path]) => path === "user/order/checkout",
+        ),
+    ).toHaveLength(1);
 });
 it("keeps payment status checking available if a previous payment method was removed", () => {
     mocks.methods = [];
@@ -271,20 +296,37 @@ it("keeps payment status checking available if a previous payment method was rem
     expect((button as HTMLButtonElement).disabled).toBe(false);
     fireEvent.click(button);
     expect(view.reload).toHaveBeenCalled();
-    expect(mocks.request).toHaveBeenCalledWith("user/order/check?trade_no=test-order");
+    expect(mocks.request).toHaveBeenCalledWith(
+        "user/order/check?trade_no=test-order",
+    );
 });
 it("uses the fee locked in an issued order even when provider settings change", () => {
     checkout({ payment_id: 1, handling_amount: 75 });
     expect(screen.getByText("¥10.75")).toBeTruthy();
-    expect(screen.getByRole("radio", { name: /Card/ }).matches(":disabled")).toBe(true);
+    expect(
+        screen.getByRole("radio", { name: /Card/ }).matches(":disabled"),
+    ).toBe(true);
     fireEvent.click(screen.getByRole("button", { name: "重新发起支付" }));
     expect(screen.getByText("¥10.50")).toBeTruthy();
-    expect(screen.getByRole("radio", { name: /Card/ }).matches(":disabled")).toBe(false);
-    expect(mocks.request.mock.calls.filter(([path]) => path === "user/order/checkout")).toHaveLength(0);
+    expect(
+        screen.getByRole("radio", { name: /Card/ }).matches(":disabled"),
+    ).toBe(false);
+    expect(
+        mocks.request.mock.calls.filter(
+            ([path]) => path === "user/order/checkout",
+        ),
+    ).toHaveLength(0);
 });
 it("hides zero fees and preserves deposit bonus amounts from the server", () => {
     mocks.methods = [mocks.methods[1]];
-    checkout({ plan_id: 0, total_amount: 10000, bounus: 2000, get_amount: 12000, balance_amount: 0, discount_amount: 0 });
+    checkout({
+        plan_id: 0,
+        total_amount: 10000,
+        bounus: 2000,
+        get_amount: 12000,
+        balance_amount: 0,
+        discount_amount: 0,
+    });
     expect(screen.queryByText("支付手续费")).toBeNull();
     expect(screen.getByText("到账金额 ¥120.00")).toBeTruthy();
     expect(screen.queryByLabelText("订阅流程")).toBeNull();
@@ -297,11 +339,20 @@ it("shows only a refresh action for unknown order states", () => {
     expect(view.reload).toHaveBeenCalledOnce();
 });
 it("replaces a QR checkout with its receipt when the authoritative status completes", async () => {
-    mocks.request.mockResolvedValue({ type: 0, data: "https://pay.example/finish" });
+    mocks.request.mockResolvedValue({
+        type: 0,
+        data: "https://pay.example/finish",
+    });
     const view = checkout();
     fireEvent.click(screen.getByRole("button", { name: "确认支付" }));
     await screen.findByDisplayValue("https://pay.example/finish");
-    view.rerender(<PaymentCheckout order={{ ...order, status: 3, handling_amount: 50 }} reload={view.reload} renderCard={() => null} />);
+    view.rerender(
+        <PaymentCheckout
+            order={{ ...order, status: 3, handling_amount: 50 }}
+            reload={view.reload}
+            renderCard={() => null}
+        />,
+    );
     expect(screen.getByRole("heading", { name: "订单已完成" })).toBeTruthy();
     expect(screen.queryByDisplayValue("https://pay.example/finish")).toBeNull();
     expect(screen.queryByRole("button", { name: "检查支付结果" })).toBeNull();
@@ -374,7 +425,11 @@ it("requires an explicit confirmation before cancelling and handles a failed pay
     await screen.findAllByRole("alert");
     expect(screen.getByText("gateway unavailable")).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: "取消订单" }));
-    expect(mocks.request.mock.calls.filter(([path]) => path === "user/order/checkout")).toHaveLength(1);
+    expect(
+        mocks.request.mock.calls.filter(
+            ([path]) => path === "user/order/checkout",
+        ),
+    ).toHaveLength(1);
     fireEvent.click(screen.getByRole("button", { name: "确认取消订单" }));
     await waitFor(() =>
         expect(mocks.request).toHaveBeenCalledWith("user/order/cancel", {
@@ -394,7 +449,11 @@ it("does not make gateway calls twice during a pending confirmation", async () =
     const button = screen.getByRole("button", { name: "确认支付" });
     fireEvent.click(button);
     fireEvent.click(button);
-    expect(mocks.request.mock.calls.filter(([path]) => path === "user/order/checkout")).toHaveLength(1);
+    expect(
+        mocks.request.mock.calls.filter(
+            ([path]) => path === "user/order/checkout",
+        ),
+    ).toHaveLength(1);
     await act(async () => resolve({ type: 0, data: "pay-qr" }));
 });
 it.each([
@@ -565,9 +624,18 @@ it("renders built-in payment icons from the API host", () => {
     const previous = window.V2BOARD;
     window.V2BOARD = { ...previous, apiBaseUrl: "https://api.example.com" };
     try {
-        const view = render(<PaymentCheckout order={order} reload={vi.fn()} renderCard={() => null} />);
-        expect(view.container.querySelector("img.payment-method-icon")?.getAttribute("src"))
-            .toBe("https://api.example.com/payment-icons/alipay.svg?v=2");
+        const view = render(
+            <PaymentCheckout
+                order={order}
+                reload={vi.fn()}
+                renderCard={() => null}
+            />,
+        );
+        expect(
+            view.container
+                .querySelector("img.payment-method-icon")
+                ?.getAttribute("src"),
+        ).toBe("https://api.example.com/payment-icons/alipay.svg?v=2");
     } finally {
         window.V2BOARD = previous;
     }
@@ -609,13 +677,51 @@ it("allows reviewing a replacement and submits its exact order reference atomica
             replace_trade_no: "test-order",
         }),
     );
-    expect(mocks.request.mock.calls.filter(([path]) => path === "user/order/save")).toHaveLength(1);
+    expect(
+        mocks.request.mock.calls.filter(([path]) => path === "user/order/save"),
+    ).toHaveLength(1);
 });
 
 it("shows the historical plan price on completed receipts", async () => {
     const { OrderReceipt } = await import("./OrderReceipt");
-    render(<OrderReceipt order={{ status: 3, plan_id: 1, period: "month_price", total_amount: 3880, balance_amount: 2000, plan: { name: "Ultimate", month_price: 99999 } }} />);
+    render(
+        <OrderReceipt
+            order={{
+                status: 3,
+                plan_id: 1,
+                period: "month_price",
+                total_amount: 3880,
+                balance_amount: 2000,
+                plan: { name: "Ultimate", month_price: 99999 },
+            }}
+        />,
+    );
     expect(screen.getByText("套餐价格")).toBeTruthy();
     expect(screen.getByText("¥58.80")).toBeTruthy();
     expect(screen.getByText("¥38.80")).toBeTruthy();
+});
+
+it.each([
+    ["quarter_price", "季付", 3],
+    ["half_year_price", "半年付", 6],
+    ["year_price", "年付", 12],
+    ["two_year_price", "两年付", 24],
+    ["three_year_price", "三年付", 36],
+])(
+    "shows monthly equivalent and savings consistently for %s",
+    (period, label, months) => {
+        mocks.plans = [
+            { ...plan, month_price: 10000, [period]: Number(months) * 9500 },
+        ];
+        render(<SubscriptionPurchase />);
+        fireEvent.click(screen.getByRole("button", { name: String(label) }));
+        expect(screen.getByText('equivalent{"price":"¥95.00"}')).toBeTruthy();
+        expect(screen.getByText('savingBadge{"percent":5}')).toBeTruthy();
+    },
+);
+it("shows monthly equivalent without inventing savings when no monthly price exists", () => {
+    mocks.plans = [{ id: 1, name: "Half year", half_year_price: 18000 }];
+    render(<SubscriptionPurchase />);
+    expect(screen.getByText('equivalent{"price":"¥30.00"}')).toBeTruthy();
+    expect(document.querySelector(".pricing-saving")).toBeNull();
 });

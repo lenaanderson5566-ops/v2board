@@ -36,6 +36,26 @@ try {
  $assert($account['credit_balance']===0,'Account API includes expired credits');
  $assert(!User::whereKey($u->id)->withUsableTraffic()->exists(),'Expired user still available to nodes');
  $assert(!(new App\Services\UserService())->isAvailable($u->fresh()),'Expired user still available');
+ // No expiry cleanup has run for these batches: reads and authorization must still reject them.
+ $assert((int)$u->fresh()->getRawOriginal('credit_balance')>0,'Fixture retains uncleaned expired balance');
+ $client=Illuminate\Http\Request::create('/api/v10/subscriptions/test','GET',['flag'=>'general']);
+ $client->user=$u->fresh();
+ $action=new App\Services\Actions\Client\ClientActions();
+ $subscription=$action->subscribe($client);
+ $uris=trim(base64_decode($subscription));
+ $lines=explode("\n",$uris);
+ $placeholder=json_decode(base64_decode(substr(trim($lines[0]),8)),true);
+ $assert(count($lines)===1 && ($placeholder['add']??'')==='203.0.113.10','Expired subscription returns only an unavailable placeholder, never real nodes');
+ $client->attributes->set('client.native',true);
+ try { $action->subscribe($client); throw new RuntimeException('Expired native config accepted'); }
+ catch (Illuminate\Http\Exceptions\HttpResponseException $e) {
+  $payload=json_decode($e->getResponse()->getContent(),true);
+  $assert($e->getResponse()->getStatusCode()===403 && $payload['code']==='SUBSCRIPTION_UNAVAILABLE','Expired native config rejected');
+ }
+ // A still-active period is independent of expired add-on credits.
+ $u->transfer_enable=1000;$u->expired_at=time()+3600;$u->save();
+ $assert((new App\Services\UserService())->isAvailable($u->fresh()) && User::whereKey($u->id)->withUsableTraffic()->exists(),'Active base plan remains usable after add-on expiry');
+ $u->transfer_enable=0;$u->expired_at=0;$u->save();
  Credits::consume($u,20);$u->save();
  $assert($u->fresh()->credit_balance===0,'Overdraw below zero');
  echo "Credit expiry: $checks checks passed; rollback.\n";

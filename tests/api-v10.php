@@ -32,6 +32,11 @@ try {
     $cleanupUsers[]=$user;
     $credentials=(new App\Services\AuthService($user))->generateAuthData(Illuminate\Http\Request::create('/'));
     $bearer='Bearer '.$credentials['auth_data'];
+    $ordersBefore=Order::where('user_id',$user->id)->count();
+    $balanceBefore=$user->fresh()->balance;
+    [$r,$j]=$call('POST','/api/v10/me/orders',['planId'=>$plan->id,'billingPeriod'=>'semiannual','totalAmount'=>0],$bearer);
+    $assert($r->getStatusCode()===409,'Unpriced semiannual period is rejected');
+    $assert(Order::where('user_id',$user->id)->count()===$ordersBefore && $user->fresh()->balance===$balanceBefore,'Rejected period creates no order and takes no balance');
     [$r,$j]=$call('POST','/api/v10/me/orders',['planId'=>0,'depositAmount'=>500],$bearer,'zh-CN');
     $assert($r->getStatusCode()===422 && ($j['errors']['billingPeriod'][0] ?? '')==='请填写此项。','Required error is localized');
     [$r,$j]=$call('POST','/api/v10/me/orders',['planId'=>0,'billingPeriod'=>'deposit','depositAmount'=>500],$bearer);

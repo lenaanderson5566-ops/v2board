@@ -147,7 +147,7 @@ class OrderActions
             abort(request()->is('api/v10/*') ? 409 : 500, __('Current product is sold out'));
         }
 
-        if ($plan[$request->input('period')] === NULL) {
+        if ($plan[$request->input('period')] === NULL || $plan[$request->input('period')] < 0) {
             abort(request()->is('api/v10/*') ? 409 : 500, __('This payment period cannot be purchased, please choose another period'));
         }
 
@@ -233,6 +233,9 @@ class OrderActions
             ->first();
         if (!$order) {
             abort(request()->is('api/v10/*') ? 409 : 500, __('Order does not exist or has been paid'));
+        }
+        if ($order->total_amount < 0) {
+            abort(request()->is('api/v10/*') ? 409 : 500, __('Invalid parameter'));
         }
         // free process
         if ($order->total_amount <= 0) {

@@ -1,6 +1,7 @@
 import type { Row } from "../shared/api";
 import type { Field } from "../shared/ui";
 import { resolvePaymentIcon } from "./payment-icons";
+import catalog from "../../../resources/payment-catalog.json";
 
 export function paymentFields(form: Row): Field[] {
     return Object.entries(form)
@@ -69,6 +70,13 @@ export function paymentPayload(
             config[key] = values["config." + key] ?? "";
         });
     if (values.iconPreset !== undefined) config._console_icon = values.iconPreset;
+    if (values.checkoutCategory) {
+        const meta = values.checkoutCategory;
+        if (meta.category === "crypto" && (!/^[A-Z0-9][A-Z0-9._-]{0,19}$/.test(meta.asset) || !/^[a-z0-9][a-z0-9_-]{0,39}$/.test(meta.network) || !meta.networkName.trim())) {
+            throw new Error("请填写有效的币种代码、网络代码和网络名称");
+        }
+        config._console_checkout = meta.category === "crypto" ? meta : { category: "regular" };
+    }
     return {
         ...Object.fromEntries(
             [
@@ -84,7 +92,9 @@ export function paymentPayload(
         ),
         payment: method,
         ...(values.iconPreset !== undefined
-            ? { icon: resolvePaymentIcon(values.icon, values.iconPreset) }
+            ? { icon: values.checkoutCategory?.category === "crypto"
+                ? String(values.icon || "").trim() || `/payment-icons/${catalog.assets.find(item => item.id === values.checkoutCategory.asset)?.icon || "crypto-generic"}.svg`
+                : resolvePaymentIcon(values.icon, values.iconPreset) }
             : {}),
         config,
     };

@@ -1,39 +1,15 @@
 import { OrderReceipt } from "./OrderReceipt";
 import { OrderHelp } from "./OrderHelp";
-import { normalizeApiOrigin } from "../shared/runtime-config";
+import { PaymentMethodPicker } from "./PaymentMethodPicker";
 import { c, minuteDate } from "../shared/credit-copy";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { QRCodeSVG } from "qrcode.react";
-import { ArrowLeft, CreditCard, LoaderCircle, Check, ReceiptText } from "lucide-react";
+import { ArrowLeft, LoaderCircle, ReceiptText } from "lucide-react";
 import { request, bytes, money as formatMoney, query, type Row } from "../shared/api";
 import { useData, State, Modal } from "../shared/ui";
 import { tx } from "../shared/i18n";
 import { billingPeriods, paymentFee, orderOriginalAmount } from "./billing-flow";
 import { PurchaseSteps } from "./SubscriptionPurchase";
-
-function PaymentIcon({ source }: { source: unknown }) {
-    const [failed, setFailed] = useState(false);
-    const url = typeof source === "string" ? source.trim() : "";
-    if (!url || failed)
-        return (
-            <CreditCard
-                className="payment-method-icon"
-                size={28}
-                aria-hidden="true"
-            />
-        );
-    return (
-        <img
-            className="payment-method-icon"
-            src={/^\/payment-icons\/[a-z]+\.svg$/.test(url)
-                ? normalizeApiOrigin(window.V2BOARD?.apiBaseUrl || "") + url + "?v=2"
-                : url}
-            alt=""
-            referrerPolicy="no-referrer"
-            onError={() => setFailed(true)}
-        />
-    );
-}
 
 export function PaymentCheckout({
     order,
@@ -55,7 +31,7 @@ export function PaymentCheckout({
         status === 0 && due > 0 ? "user/order/getPaymentMethod" : "",
     );
     const [selected, setSelected] = useState<number>(
-        Number(order.payment_id || 0),
+        Number(order.payment_id || -1),
     );
     const [busy, setBusy] = useState(false),
         [error, setError] = useState(""),
@@ -79,10 +55,10 @@ export function PaymentCheckout({
     const awaitingConfirmation = waiting && !error;
     useEffect(() => {
         if (
-            !waiting && methods.data?.length &&
+            !waiting && selected !== 0 && methods.data?.length &&
             !methods.data.some((item) => Number(item.id) === selected)
         )
-            setSelected(Number(methods.data[0].id));
+            setSelected(Number(methods.data.find(item => item.category !== "crypto")?.id || (methods.data.length === 1 ? methods.data[0].id : 0)));
     }, [methods.data, selected, waiting]);
     useEffect(() => {
         if (status !== 0) {
@@ -317,46 +293,9 @@ export function PaymentCheckout({
                         )}
                         {due > 0 && (
                             <State {...methods} retry={methods.reload}>
-                                <fieldset
-                                    className="payment-options"
+                                <PaymentMethodPicker methods={methods.data || []} selected={selected}
                                     disabled={busy || awaitingConfirmation}
-                                >
-                                    <legend className="sr-only">
-                                        {tx("选择支付方式")}
-                                    </legend>
-                                    {methods.data?.map((item) => (
-                                        <label
-                                            key={item.id}
-                                            className={
-                                                selected === Number(item.id)
-                                                    ? "selected"
-                                                    : ""
-                                            }
-                                        >
-                                            <input
-                                                type="radio"
-                                                name="payment-method"
-                                                checked={
-                                                    selected === Number(item.id)
-                                                }
-                                                onChange={() => {
-                                                    setSelected(
-                                                        Number(item.id),
-                                                    );
-                                                    setQr("");
-                                                    setWaiting(false);
-                                                    setError("");
-                                                }}
-                                            />
-                                            <PaymentIcon
-                                                key={String(item.icon || "")}
-                                                source={item.icon}
-                                            />
-                                            <span>{item.name}</span>
-                                            {selected === Number(item.id) && <Check className="payment-selected-check" size={18} aria-hidden="true" />}
-                                        </label>
-                                    ))}
-                                </fieldset>
+                                    onSelect={(id) => { setSelected(id); setQr(""); setWaiting(false); setError(""); }} />
                                 {!methods.data?.length && (
                                     <p className="muted">
                                         {tx("暂无可用支付方式，请联系客服。")}

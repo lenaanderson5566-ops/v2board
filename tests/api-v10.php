@@ -158,6 +158,18 @@ try {
     [$r,$j]=$call('POST','/api/v10/me/usage-resets/consumptions',['requestKey'=>(string)Str::uuid()],$bearer);
     $assert($r->getStatusCode()===422 && isset($j['code']) && $j['status']===422,'Shared service response exceptions preserve 422 '.json_encode($j));
     $payment=App\Models\Payment::create(['uuid'=>Str::random(16),'payment'=>'V10TestPayment','name'=>'Local test provider','config'=>[],'enable'=>1]);
+    [$r,$j]=$call('GET','/api/v10/payment-methods',[],$bearer);
+    $method=collect($j['data'])->firstWhere('id',$payment->id);
+    $assert($method['category']==='regular' && $method['network']===null,'Legacy payment defaults to regular');
+    $payment->config=['key'=>'must-not-leak','_console_checkout'=>['category'=>'crypto','asset'=>'USDT','network'=>'tron','networkName'=>'TRON (TRC20)']]; $payment->save();
+    [$r,$j]=$call('GET','/api/v10/payment-methods',[],$bearer);
+    $method=collect($j['data'])->firstWhere('id',$payment->id);
+    $assert($method['asset']==='USDT' && $method['network']==='tron' && $method['networkIconUrl']==='/payment-icons/crypto-trx.svg','Crypto presentation contract');
+    $assert(!str_contains(json_encode($j),'must-not-leak') && !isset($method['config']),'Payment provider secrets stay private');
+    $payment->enable=0; $payment->save();
+    [$r,$j]=$call('GET','/api/v10/payment-methods',[],$bearer);
+    $assert(!collect($j['data'])->firstWhere('id',$payment->id),'Disabled crypto channels are absent');
+    $payment->enable=1; $payment->save();
     $order=Order::create(['user_id'=>$user->id,'plan_id'=>$plan->id,'period'=>'month_price','trade_no'=>'v10-'.Str::random(16),'total_amount'=>1000,'status'=>0,'type'=>1]);
     $payment->handling_fee_percent=2; $payment->handling_fee_fixed=30; $payment->save();
     [$r,$j]=$call('POST','/api/v10/me/orders/'.$order->trade_no.'/payments',['paymentMethodId'=>$payment->id,'paymentToken'=>'test-card-token'],$bearer);

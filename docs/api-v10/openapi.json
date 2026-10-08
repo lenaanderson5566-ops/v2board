@@ -12501,6 +12501,30 @@
               "CNY"
             ],
             "description": "CNY only in phase 1; integer monetary values are fen (1/100 CNY). Order currency is persisted and does not follow global configuration."
+          },
+          "category": {
+            "type": "string",
+            "nullable": true
+          },
+          "asset": {
+            "type": "string",
+            "nullable": true
+          },
+          "assetIconUrl": {
+            "type": "string",
+            "nullable": true
+          },
+          "network": {
+            "type": "string",
+            "nullable": true
+          },
+          "networkName": {
+            "type": "string",
+            "nullable": true
+          },
+          "networkIconUrl": {
+            "type": "string",
+            "nullable": true
           }
         },
         "additionalProperties": false

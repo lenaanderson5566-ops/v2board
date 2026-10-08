@@ -1457,3 +1457,12 @@ body:has(.browser-notice) #custom-footer {
 .gift-redemption .gift-hint { margin: 0 0 8px; font-size: 12px; }
 .gift-redemption .primary { width: 100%; min-height: 48px; justify-content: center; }
 @media(max-width: 600px) { .gift-redemption { padding: 20px; } }
+
+.payment-crypto-group { border: 1px solid var(--line); border-radius: 10px; overflow: hidden; }
+.checkout-payment .payment-crypto-heading { width: 100%; display: flex; align-items: center; gap: 14px; padding: 16px; border: 0; border-radius: 0; background: var(--surface); text-align: start; color: var(--ink); }
+.payment-option-copy { display: flex; flex-direction: column; gap: 4px; flex: 1; min-width: 0; overflow-wrap: anywhere; }
+.payment-channel-name { font-size: 12px; color: var(--text-secondary); }
+.payment-crypto-heading > svg:last-child { flex-shrink: 0; transition: transform .15s; }
+.payment-crypto-heading > svg.expanded { transform: rotate(180deg); }
+.payment-network-options:not([hidden]) { display: grid; gap: 8px; padding: 4px 12px 12px; background: var(--surface-soft); }
+.payment-network-notice { font-size: 12px; color: var(--text-secondary); margin: 4px 0; }

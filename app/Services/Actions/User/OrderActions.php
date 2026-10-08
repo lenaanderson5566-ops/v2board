@@ -297,12 +297,18 @@ class OrderActions
             'payment',
             'icon',
             'handling_fee_fixed',
-            'handling_fee_percent'
+            'handling_fee_percent',
+            'config'
         ])
             ->where('enable', 1)
             ->whereNotIn('payment', PaymentService::RETIRED_METHODS)
             ->orderBy('sort', 'ASC')
-            ->get();
+            ->get()
+            ->map(function ($method) {
+                $fields = \App\Services\PaymentPresentation::fields($method->config ?? []);
+                // Provider credentials must never be exposed by the public resource.
+                return array_merge($method->makeHidden('config')->toArray(), $fields);
+            });
 
         return response([
             'data' => $methods

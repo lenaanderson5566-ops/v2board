@@ -3,6 +3,16 @@ import { paymentIcons, paymentIconInitial, resolvePaymentIcon } from "./payment-
 import { paymentPayload } from "./payment-fields";
 
 describe("payment icon selection", () => {
+    it("stores crypto metadata, uses coin icons, and restores editable defaults", () => {
+        const checkoutCategory = { category: "crypto", asset: "USDT", network: "tron", networkName: "TRON (TRC20)", networkIcon: "" };
+        const saved = paymentPayload({ iconPreset: "card", icon: "", checkoutCategory }, {}, "PaytaroQR", {});
+        expect(saved.config._console_checkout).toEqual(checkoutCategory);
+        expect(saved.icon).toBe("/payment-icons/crypto-usdt.svg");
+        expect(paymentIconInitial(saved).icon).toBe("");
+        expect(() => paymentPayload({ checkoutCategory: { ...checkoutCategory, network: "" } }, {}, "PaytaroQR", {})).toThrow();
+        expect(paymentPayload({ iconPreset: "card", icon: "https://example.test/custom.png", checkoutCategory }, {}, "PaytaroQR", {}).icon).toBe("https://example.test/custom.png");
+        expect(paymentPayload({ checkoutCategory: { category: "regular" } }, {}, "PaytaroQR", saved).config._console_checkout).toEqual({ category: "regular" });
+    });
     it("previews complete vector assets without font-dependent logos", () => {
         for (const item of paymentIcons) {
             if (item.id === "alipay-blue") continue;

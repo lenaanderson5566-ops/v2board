@@ -75,7 +75,7 @@ class PaymentController extends Controller
             'name' => 'required',
             'icon' => 'nullable',
             'payment' => ['required', 'string', \Illuminate\Validation\Rule::notIn(PaymentService::RETIRED_METHODS)],
-            'config' => 'required',
+            'config' => 'required|array',
             'notify_domain' => 'nullable|url',
             'handling_fee_fixed' => 'nullable|integer|min:0',
             'handling_fee_percent' => 'nullable|numeric|between:0,100'
@@ -87,6 +87,7 @@ class PaymentController extends Controller
             'handling_fee_fixed.integer' => '固定手续费格式有误',
             'handling_fee_percent.between' => '百分比手续费范围须在0-100之间'
         ]);
+        \App\Services\PaymentPresentation::validate($params['config']);
         if ($request->input('id')) {
             $payment = Payment::find($request->input('id'));
             if (!$payment) abort(500, '支付方式不存在');

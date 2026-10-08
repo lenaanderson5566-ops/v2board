@@ -1179,3 +1179,6 @@ body[data-console="admin"] :is(button, .button) { white-space: nowrap; }
 body[data-console="admin"] .user-toolbar > form.actions { flex-wrap: wrap; min-width: 0; max-width: 100%; }
 body[data-console="admin"] .user-toolbar > form.actions input { flex: 1 1 180px; min-width: 0; }
 body[data-console="admin"] .legacy-dashboard-shortcuts svg { width: 32px; height: 32px; margin-inline: auto; }
+
+.payment-category-settings { display: grid; gap: 12px; }
+.payment-category-settings label { display: grid; gap: 6px; }

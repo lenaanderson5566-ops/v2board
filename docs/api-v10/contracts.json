@@ -371,6 +371,24 @@
       ],
       "currency": [
         "currency"
+      ],
+      "category": [
+        "category"
+      ],
+      "asset": [
+        "asset"
+      ],
+      "assetIconUrl": [
+        "asset_icon"
+      ],
+      "network": [
+        "network"
+      ],
+      "networkName": [
+        "network_name"
+      ],
+      "networkIconUrl": [
+        "network_icon"
       ]
     },
     "credit": {

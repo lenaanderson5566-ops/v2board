@@ -3,6 +3,10 @@ import { v10Request } from './v10-api';
 import { subscriptionUrl } from './import-links';
 
 describe('V10 wire contracts', () => {
+  it('decodes payment classification without confusing assets with settlement currency', () => {
+    const result = v10Request('user/order/getPaymentMethod').decode({data:[{id:3,category:'crypto',asset:'USDT',network:'tron',networkName:'TRON (TRC20)',networkIconUrl:'/payment-icons/crypto-trx.svg',assetIconUrl:'/payment-icons/crypto-usdt.svg',currency:'CNY',fixedFee:100}]});
+    expect(result.data[0]).toMatchObject({id:3,category:'crypto',asset:'USDT',network:'tron',network_name:'TRON (TRC20)',network_icon:'/payment-icons/crypto-trx.svg',currency:'CNY',handling_fee_fixed:100});
+  });
   it('uses resource methods and declared public fields', () => {
     const request = v10Request('user/order/save', {plan_id: 3, period: 'year_price', replace_trade_no: 'old', user_id: 999});
     expect(request.url).toBe('/api/v10/me/orders');

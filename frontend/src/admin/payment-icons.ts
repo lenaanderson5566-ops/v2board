@@ -37,7 +37,7 @@ export function paymentIconInitial(initial: Record<string, any>) {
     const saved = paymentIcons.find((item) => paymentIconPath(item.id) === initial.icon);
     return {
         ...initial,
-        icon: saved ? "" : initial.icon || "",
+        icon: saved || /^\/payment-icons\/crypto-[a-z]+\.svg$/.test(initial.icon || "") ? "" : initial.icon || "",
         iconPreset: initial.config?._console_icon || saved?.id || "card",
     };
 }

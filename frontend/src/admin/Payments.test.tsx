@@ -2,6 +2,7 @@
 import { afterEach, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 vi.mock("./payment-icons", () => ({ paymentIcons: [], paymentIconInitial: () => ({}), resolvePaymentIcon: () => "" }));
+vi.mock("./PaymentCategoryEditor", () => ({ PaymentCategoryEditor: () => null, paymentCategoryInitial: () => ({ category: "regular" }) }));
 const api = vi.hoisted(() => {
     window.V2BOARD = { mode: "admin", adminPath: "test-admin" } as any;
     return { request: vi.fn() };

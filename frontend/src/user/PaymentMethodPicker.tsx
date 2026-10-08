@@ -1,0 +1,68 @@
+import { useId, useState } from "react";
+import { Check, ChevronDown, CreditCard } from "lucide-react";
+import { normalizeApiOrigin } from "../shared/runtime-config";
+import { tx } from "../shared/i18n";
+import type { Row } from "../shared/api";
+
+export function paymentIconUrl(source: unknown) {
+    const url = typeof source === "string" ? source.trim() : "";
+    return /^\/payment-icons\/[a-z0-9-]+\.(svg|png)$/.test(url)
+        ? normalizeApiOrigin(window.V2BOARD?.apiBaseUrl || "") + url : url;
+}
+function PaymentIcon({ source }: { source: unknown }) {
+    const [failed, setFailed] = useState(false);
+    const url = paymentIconUrl(source);
+    return !url || failed ? <CreditCard className="payment-method-icon" size={28} aria-hidden="true" />
+        : <img className="payment-method-icon" src={url} alt="" referrerPolicy="no-referrer" onError={() => setFailed(true)} />;
+}
+export function paymentGroups(methods: Row[]) {
+    const groups: { key: string; crypto: boolean; methods: Row[] }[] = [];
+    for (const method of methods) {
+        const crypto = method.category === "crypto" && Boolean(method.asset && method.network);
+        const key = crypto ? `crypto:${method.asset}` : `method:${method.id}`;
+        let group = groups.find(item => item.key === key);
+        if (!group) { group = { key, crypto, methods: [] }; groups.push(group); }
+        group.methods.push(method);
+    }
+    return groups;
+}
+export function PaymentMethodPicker({ methods, selected, disabled, onSelect }: {
+    methods: Row[]; selected: number; disabled: boolean; onSelect: (id: number) => void;
+}) {
+    const prefix = useId();
+    const groups = paymentGroups(methods);
+    const [expanded, setExpanded] = useState<string>();
+    const selectedGroup = groups.find(group => group.methods.some(item => Number(item.id) === selected));
+    const open = expanded ?? (selectedGroup?.crypto ? selectedGroup.key : "");
+    const option = (item: Row, crypto = false) => <label key={item.id} className={selected === Number(item.id) ? "selected" : ""}>
+        <input type="radio" name={`${prefix}-payment-method`} checked={selected === Number(item.id)} onChange={() => onSelect(Number(item.id))} />
+        <PaymentIcon key={String(crypto ? item.network_icon : item.icon)} source={crypto ? item.network_icon : item.icon} />
+        <span className="payment-option-copy"><span>{crypto ? item.network_name || item.network : item.name}</span>
+            {crypto && <span className="payment-channel-name">{item.name}</span>}
+        </span>
+        {selected === Number(item.id) && <Check className="payment-selected-check" size={18} aria-hidden="true" />}
+    </label>;
+    return <fieldset className="payment-options" disabled={disabled}>
+        <legend className="sr-only">{tx("选择支付方式")}</legend>
+        {groups.map((group, index) => {
+            if (!group.crypto) return option(group.methods[0]);
+            const active = group.methods.find(item => Number(item.id) === selected);
+            const first = active || group.methods[0];
+            const isOpen = open === group.key;
+            return <div className="payment-crypto-group" key={group.key}>
+                <button type="button" className="payment-crypto-heading" aria-expanded={isOpen} aria-controls={`${prefix}-${index}`} onClick={() => {
+                    setExpanded(isOpen ? "" : group.key);
+                    if (!isOpen && !active) onSelect(group.methods.length === 1 ? Number(first.id) : 0);
+                }}>
+                    <PaymentIcon key={String(first.icon || first.asset_icon)} source={first.icon || first.asset_icon} />
+                    <span className="payment-option-copy"><span>{first.asset}</span><span className="payment-channel-name">{active ? active.network_name : tx("请选择转账网络")}</span></span>
+                    <ChevronDown size={18} className={isOpen ? "expanded" : ""} aria-hidden="true" />
+                </button>
+                <div id={`${prefix}-${index}`} className="payment-network-options" hidden={!isOpen}>
+                    {group.methods.map(item => option(item, true))}
+                </div>
+            </div>;
+        })}
+        {selectedGroup?.crypto && <p className="payment-network-notice">{tx("请确认付款钱包的币种与网络和所选渠道一致。")}</p>}
+    </fieldset>;
+}

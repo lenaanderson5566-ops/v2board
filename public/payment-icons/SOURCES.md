@@ -12,3 +12,5 @@ ratio; Stripe, Tether and Bitcoin receive their brand fill colors.
 | Stripe, Tether (USDT), Bitcoin | [Simple Icons](https://github.com/simple-icons/simple-icons/tree/98820a4dc8c363ca72fa2c0d294ea4a0a9bba75d), `icons/` | CC0; see LICENSE-simple-icons.txt |
 
 Brand names and logos remain the property of their respective owners.
+
+Crypto coin/network icons: [spothq/cryptocurrency-icons](https://github.com/spothq/cryptocurrency-icons/tree/1a63530be6e374711a8554f31b17e4cb92c25fa5), revision `1a63530be6e374711a8554f31b17e4cb92c25fa5`, `svg/color`; CC0-1.0 (LICENSE-cryptocurrency-icons.md).

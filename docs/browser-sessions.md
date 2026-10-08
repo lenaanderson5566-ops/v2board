@@ -6,6 +6,8 @@ Browser login/registration and App-to-browser one-time exchanges rotate the cook
 
 Browser requests declare `X-Browser-Client: user|admin`. Credentials in Authorization, query or auth_data body fields are ignored in browser mode. Mutations (including login and legacy migration) require `X-CSRF-Token` bound to the opaque cookie plus an exact allowed Origin. Public `GET /api/v10/auth/browser-session` initializes an anonymous ten-minute session or restores metadata/CSRF. `DELETE` revokes it. `POST` exchanges a valid legacy token from the JSON body during the transition window, revokes that old token, and rotates into a new session. The frontend deletes its old localStorage credential after successful exchange or definitive expiry/rejection; it never writes a new login token. CSRF is retained in memory only. A 419 can be retried once after refreshing bootstrap metadata, because the rejection happens before the business action; network failures are not replayed.
 
+Cookie authentication covers authenticated V10 resources outside `/me` as well, including plans, payment methods, credit packages, announcements and knowledge resources. Public resources, subscription downloads and payment/node webhooks remain outside browser-session processing. Route-level authentication and permissions remain authoritative; declaring a browser header alone never grants access.
+
 Authenticated cookies expire on seven days of user inactivity or twelve hours of administrator inactivity, and no later than the underlying new session's thirty-day absolute expiry. Anonymous and idle-expired cache records cannot authenticate. Existing session revocation and banned-account checks remain authoritative.
 
 ## Deployment

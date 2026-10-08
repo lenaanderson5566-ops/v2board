@@ -43,6 +43,10 @@ try {
     $assert(!isset($data($login)['accessToken'],$data($login)['auth_data']) && !str_contains($login->getContent(),$user->token),'No browser token in body');
     $assert($jar['user']!==$old,'Cookie rotated on login');
     $assert($call('v10/me')->getStatusCode()===200,'Cookie authorizes user');
+    foreach (['plans','payment-methods','credit-packages','announcements','knowledge-categories'] as $resource) {
+        $assert($call('v10/'.$resource)->getStatusCode()===200,'Cookie authorizes renewal/support resource '.$resource);
+        $assert($call('v10/'.$resource,[],null)->getStatusCode()===401,'Renewal/support resource still requires authentication '.$resource);
+    }
     $assert(!$call('v10/me')->headers->getCookies(),'Regular reads never overwrite a newly rotated login Cookie');
     $assert($call('v10/me',['auth_data'=>'evil'])->getStatusCode()===200,'Query credential cannot override Cookie');
     $assert($call('v10/me',[],null)->getStatusCode()===401,'Native requires Bearer');

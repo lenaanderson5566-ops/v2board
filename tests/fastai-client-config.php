@@ -5,9 +5,11 @@ $app->make(Illuminate\Contracts\Console\Kernel::class)->bootstrap();
 if (!app()->environment('local')) throw new RuntimeException('Local test only');
 $checks = 0;
 $assert = function ($ok, $label) use (&$checks) { if (!$ok) throw new RuntimeException($label); $checks++; };
-$call = function ($path, $token = null, $method = 'GET', $accept = 'application/yaml') use ($app) {
+$testIp = '192.0.2.'.random_int(2, 254);
+$call = function ($path, $token = null, $method = 'GET', $accept = 'application/yaml') use ($app, $testIp) {
     $request = Illuminate\Http\Request::create($path, $method, [], [], [], [
         'HTTP_ACCEPT'=>$accept, 'HTTP_ACCEPT_LANGUAGE'=>'en-US', 'HTTP_USER_AGENT'=>'fastai/0.8.99',
+        'REMOTE_ADDR'=>$testIp,
     ]);
     if ($token) $request->headers->set('Authorization', 'Bearer '.$token);
     $app->instance('request', $request);

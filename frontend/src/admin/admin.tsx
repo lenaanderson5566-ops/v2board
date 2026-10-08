@@ -1,4 +1,5 @@
 import nodeLocations from "../../../resources/client/node-locations.json";
+import { paymentIcons, paymentIconInitial, resolvePaymentIcon } from "./payment-icons";
 import { AdminEntrypoints } from "./AdminEntrypoints";
 import { AdminFastaiDownloads } from "./AdminFastaiDownloads";
 import { AdminRiskReview } from "./AdminRiskReview";
@@ -1953,7 +1954,8 @@ function PaymentEditor({
     onSave: (b: Row) => Promise<void>;
 }) {
     const [method, setMethod] = useState(initial.payment || methods[0] || "");
-    const [commonDraft, setCommonDraft] = useState(initial);
+    const [commonDraft, setCommonDraft] = useState<Row>(() => paymentIconInitial(initial));
+    const [iconPreset, setIconPreset] = useState(() => paymentIconInitial(initial).iconPreset);
     const d = useData(method ? admin("payment/getPaymentForm") : "", {
         payment: method,
         id: method === initial.payment ? initial.id : undefined,
@@ -1973,6 +1975,26 @@ function PaymentEditor({
                     </select>
                 </label>
             </div>
+            <div className="pad payment-icon-settings">
+                <span>支付图标</span>
+                <div className="payment-icon-options" role="group" aria-label="选择支付图标">
+                    {paymentIcons.map((item) => (
+                        <button type="button" key={item.id}
+                            aria-pressed={iconPreset === item.id}
+                            onClick={() => setIconPreset(item.id)}>
+                            <img src={item.source} alt="" />
+                            <span>{item.label}</span>
+                        </button>
+                    ))}
+                </div>
+                <div className="payment-icon-preview">
+                    <span>当前图标</span>
+                    <img key={resolvePaymentIcon(commonDraft.icon, iconPreset)}
+                        src={commonDraft.icon?.trim() || paymentIcons.find((item) => item.id === iconPreset)?.source} alt="支付图标预览"
+                        onError={(event) => { event.currentTarget.hidden = true; }} />
+                    <span className="muted">填写图标链接后优先使用链接图片，清空后使用所选图标。</span>
+                </div>
+            </div>
             <State {...d} retry={d.reload}>
                 {Object.entries(d.data || {})
                     .filter(([, v]) => v.type === "alert")
@@ -1985,7 +2007,7 @@ function PaymentEditor({
                     key={method}
                     fields={[
                         f("name", "显示名称", "text", true),
-                        f("icon", "图标 URL"),
+                        { ...f("icon", "支付图标链接", "url"), hint: "可选，填写后覆盖上方所选图标" },
                         f("notify_domain", "通知域名", "url"),
                         {
                             ...f(
@@ -2034,7 +2056,7 @@ function PaymentEditor({
                     }
                     onSave={async (b) => {
                         await onSave(
-                            paymentPayload(b, d.data || {}, method, initial),
+                            paymentPayload({ ...b, iconPreset }, d.data || {}, method, initial),
                         );
                     }}
                 />

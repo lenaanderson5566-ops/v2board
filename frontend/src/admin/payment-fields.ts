@@ -1,5 +1,6 @@
 import type { Row } from "../shared/api";
 import type { Field } from "../shared/ui";
+import { resolvePaymentIcon } from "./payment-icons";
 
 export function paymentFields(form: Row): Field[] {
     return Object.entries(form)
@@ -67,6 +68,7 @@ export function paymentPayload(
         .forEach(([key]) => {
             config[key] = values["config." + key] ?? "";
         });
+    if (values.iconPreset !== undefined) config._console_icon = values.iconPreset;
     return {
         ...Object.fromEntries(
             [
@@ -81,6 +83,9 @@ export function paymentPayload(
                 .map((key) => [key, values[key]]),
         ),
         payment: method,
+        ...(values.iconPreset !== undefined
+            ? { icon: resolvePaymentIcon(values.icon, values.iconPreset) }
+            : {}),
         config,
     };
 }

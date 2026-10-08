@@ -1,4 +1,5 @@
 import { OrderReceipt } from "./OrderReceipt";
+import { normalizeApiOrigin } from "../shared/runtime-config";
 import { c } from "../shared/credit-copy";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { QRCodeSVG } from "qrcode.react";
@@ -23,7 +24,9 @@ function PaymentIcon({ source }: { source: unknown }) {
     return (
         <img
             className="payment-method-icon"
-            src={url}
+            src={/^\/payment-icons\/[a-z]+\.svg$/.test(url)
+                ? normalizeApiOrigin(window.V2BOARD?.apiBaseUrl || "") + url
+                : url}
             alt=""
             referrerPolicy="no-referrer"
             onError={() => setFailed(true)}

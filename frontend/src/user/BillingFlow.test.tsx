@@ -526,6 +526,19 @@ it("matches purchase wording to backend renewal and switching rules", () => {
     ).toBe("subscribe");
 });
 
+it("renders built-in payment icons from the API host", () => {
+    mocks.methods[0].icon = "/payment-icons/alipay.svg";
+    const previous = window.V2BOARD;
+    window.V2BOARD = { ...previous, apiBaseUrl: "https://api.example.com" };
+    try {
+        const view = render(<PaymentCheckout order={order} reload={vi.fn()} renderCard={() => null} />);
+        expect(view.container.querySelector("img.payment-method-icon")?.getAttribute("src"))
+            .toBe("https://api.example.com/payment-icons/alipay.svg");
+    } finally {
+        window.V2BOARD = previous;
+    }
+});
+
 it("renders configured payment icons and keeps fees only in the summary", () => {
     mocks.methods[0].icon = "https://example.com/alipay.png";
     const view = render(

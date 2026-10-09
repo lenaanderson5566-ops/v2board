@@ -13,4 +13,11 @@ ratio; Stripe, Tether and Bitcoin receive their brand fill colors.
 
 Brand names and logos remain the property of their respective owners.
 
+`wechat-pay.svg` adapts the WeChat Pay symbol from the existing pinned
+datatrans/payment-logos artwork above (CC BY-SA 4.0): omits the wordmark,
+centers the unchanged symbol in a 64×64 rounded tile, and adds a pale background.
+`card-outline.svg` is original project artwork: a generic card outline in a
+matching rounded tile. These are inspired by the supplied dashboard layout,
+not assets extracted from or distributed by Stripe.
+
 Crypto coin/network icons: [spothq/cryptocurrency-icons](https://github.com/spothq/cryptocurrency-icons/tree/1a63530be6e374711a8554f31b17e4cb92c25fa5), revision `1a63530be6e374711a8554f31b17e4cb92c25fa5`, `svg/color`; CC0-1.0 (LICENSE-cryptocurrency-icons.md).

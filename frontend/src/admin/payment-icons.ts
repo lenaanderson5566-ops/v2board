@@ -1,8 +1,10 @@
 import alipaySvg from "../../../public/payment-icons/alipay.svg?raw";
 import alipayBlue from "../../../public/payment-icons/alipay-blue.png?inline";
 import wechatSvg from "../../../public/payment-icons/wechat.svg?raw";
+import wechatPaySvg from "../../../public/payment-icons/wechat-pay.svg?raw";
 import unionpaySvg from "../../../public/payment-icons/unionpay.svg?raw";
 import cardSvg from "../../../public/payment-icons/card.svg?raw";
+import cardOutlineSvg from "../../../public/payment-icons/card-outline.svg?raw";
 import paypalSvg from "../../../public/payment-icons/paypal.svg?raw";
 import visaSvg from "../../../public/payment-icons/visa.svg?raw";
 import mastercardSvg from "../../../public/payment-icons/mastercard.svg?raw";
@@ -19,8 +21,10 @@ export const paymentIcons = [
     { id: "alipay", label: "支付宝", source: inlineSvg(alipaySvg) },
     { id: "alipay-blue", label: "支付宝（蓝底）", source: alipayBlue },
     { id: "wechat", label: "微信支付", source: inlineSvg(wechatSvg) },
+    { id: "wechat-pay", label: "微信支付（方形）", source: inlineSvg(wechatPaySvg) },
     { id: "unionpay", label: "银联", source: inlineSvg(unionpaySvg) },
     { id: "card", label: "银行卡", source: inlineSvg(cardSvg) },
+    { id: "card-outline", label: "银行卡（简洁）", source: inlineSvg(cardOutlineSvg) },
     { id: "paypal", label: "PayPal", source: inlineSvg(paypalSvg) },
     { id: "visa", label: "Visa", source: inlineSvg(visaSvg) },
     { id: "mastercard", label: "Mastercard", source: inlineSvg(mastercardSvg) },

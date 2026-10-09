@@ -34,14 +34,20 @@ export function PaymentMethodPicker({ methods, selected, disabled, onSelect }: {
     const [expanded, setExpanded] = useState<string>();
     const selectedGroup = groups.find(group => group.methods.some(item => Number(item.id) === selected));
     const open = expanded ?? (selectedGroup?.crypto ? selectedGroup.key : "");
-    const option = (item: Row, crypto = false) => <label key={item.id} className={selected === Number(item.id) ? "selected" : ""}>
+    const option = (item: Row, crypto = false, showChannel = false) => {
+        const networkName = String(item.network_name || item.network || "");
+        const networkParts = networkName.match(/^(.*?)\s*\((TRC20|BEP20|ERC20)\)$/i);
+        return <label key={item.id} className={[selected === Number(item.id) ? "selected" : "", crypto ? "payment-network-option" : ""].filter(Boolean).join(" ")}>
         <input type="radio" name={`${prefix}-payment-method`} checked={selected === Number(item.id)} onChange={() => onSelect(Number(item.id))} />
         <PaymentIcon key={String(crypto ? item.network_icon : item.icon)} source={crypto ? item.network_icon : item.icon} />
-        <span className="payment-option-copy"><span>{crypto ? item.network_name || item.network : item.name}</span>
-            {crypto && <span className="payment-channel-name">{item.name}</span>}
+        <span className="payment-option-copy"><span className="payment-option-title">{crypto ? networkParts?.[1] || networkName : item.name}
+            {crypto && networkParts && <span className="payment-network-tag">{networkParts[2]}</span>}
+        </span>
+            {showChannel && <span className="payment-channel-name">{item.name}</span>}
         </span>
         {selected === Number(item.id) && <Check className="payment-selected-check" size={18} aria-hidden="true" />}
     </label>;
+    };
     return <fieldset className="payment-options" disabled={disabled}>
         <legend className="sr-only">{tx("选择支付方式")}</legend>
         {groups.map((group, index) => {
@@ -49,17 +55,18 @@ export function PaymentMethodPicker({ methods, selected, disabled, onSelect }: {
             const active = group.methods.find(item => Number(item.id) === selected);
             const first = active || group.methods[0];
             const isOpen = open === group.key;
-            return <div className="payment-crypto-group" key={group.key}>
-                <button type="button" className="payment-crypto-heading" aria-expanded={isOpen} aria-controls={`${prefix}-${index}`} onClick={() => {
+            return <div className={`payment-crypto-group${active ? " has-selection" : ""}`} key={group.key}>
+                <button type="button" disabled={disabled} className="payment-crypto-heading" aria-expanded={isOpen} aria-controls={`${prefix}-${index}`} onClick={() => {
                     setExpanded(isOpen ? "" : group.key);
                     if (!isOpen && !active) onSelect(group.methods.length === 1 ? Number(first.id) : 0);
                 }}>
+                    <span className="payment-selection-slot" aria-hidden="true">{active && <Check size={16} />}</span>
                     <PaymentIcon key={String(first.icon || first.asset_icon)} source={first.icon || first.asset_icon} />
-                    <span className="payment-option-copy"><span>{first.asset}</span><span className="payment-channel-name">{active ? active.network_name : tx("请选择转账网络")}</span></span>
+                    <span className="payment-option-copy"><span>{first.asset}{active && ` · ${active.network_name || active.network}`}</span>{!active && <span className="payment-channel-name">{tx("请选择转账网络")}</span>}</span>
                     <ChevronDown size={18} className={isOpen ? "expanded" : ""} aria-hidden="true" />
                 </button>
                 <div id={`${prefix}-${index}`} className="payment-network-options" hidden={!isOpen}>
-                    {group.methods.map(item => option(item, true))}
+                    {group.methods.map(item => option(item, true, group.methods.filter(other => other.network === item.network).length > 1))}
                 </div>
             </div>;
         })}

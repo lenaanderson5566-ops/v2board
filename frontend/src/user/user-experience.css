@@ -1459,10 +1459,20 @@ body:has(.browser-notice) #custom-footer {
 @media(max-width: 600px) { .gift-redemption { padding: 20px; } }
 
 .payment-crypto-group { border: 1px solid var(--line); border-radius: 10px; overflow: hidden; }
-.checkout-payment .payment-crypto-heading { width: 100%; display: flex; align-items: center; gap: 14px; padding: 16px; border: 0; border-radius: 0; background: var(--surface); text-align: start; color: var(--ink); }
+.checkout-payment .payment-crypto-heading { width: 100%; min-height: 64px; display: flex; align-items: center; gap: 14px; padding: 14px 16px; border: 0; border-radius: 0; background: var(--surface); text-align: start; color: var(--ink); }
+.checkout-payment .payment-crypto-heading:disabled { opacity: 1; cursor: default; }
+.payment-crypto-group.has-selection { border-color: var(--brand); box-shadow: 0 0 0 1px var(--brand); }
+.checkout-payment .has-selection .payment-crypto-heading { background: var(--surface-tint); }
+.payment-selection-slot { display: flex; align-items: center; justify-content: center; width: 16px; height: 16px; flex: 0 0 16px; color: var(--brand); }
 .payment-option-copy { display: flex; flex-direction: column; gap: 4px; flex: 1; min-width: 0; overflow-wrap: anywhere; }
 .payment-channel-name { font-size: 12px; color: var(--text-secondary); }
 .payment-crypto-heading > svg:last-child { flex-shrink: 0; transition: transform .15s; }
 .payment-crypto-heading > svg.expanded { transform: rotate(180deg); }
-.payment-network-options:not([hidden]) { display: grid; gap: 8px; padding: 4px 12px 12px; background: var(--surface-soft); }
+.payment-option-title { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; }
+.payment-network-tag { font-size: 11px; line-height: 1.5; font-weight: 500; padding: 2px 6px; border-radius: 4px; background: var(--surface-soft); color: var(--text-secondary); white-space: nowrap; }
+.payment-network-options:not([hidden]) { display: grid; padding: 0 16px; background: var(--surface); border-top: 1px solid var(--line); }
+.checkout-payment .payment-options .payment-network-option { min-height: 56px; padding: 12px 0; border: 0; border-radius: 0; background: transparent; }
+.checkout-payment .payment-options .payment-network-option + .payment-network-option { border-top: 1px solid var(--line); }
+.checkout-payment .payment-options .payment-network-option.selected { background: var(--surface-tint); box-shadow: none; }
+.checkout-payment .payment-network-option img.payment-method-icon { width: 48px; height: 28px; }
 .payment-network-notice { font-size: 12px; color: var(--text-secondary); margin: 4px 0; }

@@ -1310,10 +1310,10 @@ body:has(.browser-notice) #custom-footer {
 .subscription-security{margin-top:32px;padding-top:24px;border-top:1px solid var(--line)}.subscription-security h2{font-size:18px}.subscription-security>button{margin-top:12px}
 
 .checkout-payment .payment-options label { flex-wrap: nowrap; min-height: 64px; padding: 14px 16px; gap: 14px; border-radius: 10px; background: var(--surface); }
-.checkout-payment .payment-options .selected { border-color: var(--brand); background: var(--surface-tint); box-shadow: 0 0 0 1px var(--brand); }
+.checkout-payment .payment-options .selected { border-color: var(--line); background: var(--surface-tint); box-shadow: none; }
 .checkout-payment .payment-options input { accent-color: var(--brand); }
-.checkout-payment .payment-options label:focus-within { outline: 2px solid var(--brand); outline-offset: 3px; }
-.payment-selected-check { margin-inline-start: auto; flex-shrink: 0; color: var(--brand); }
+.checkout-payment .payment-options input:focus { box-shadow: none; outline: none; }
+.checkout-payment .payment-options input:focus-visible { outline: 2px solid var(--brand); outline-offset: 3px; }
 .checkout-payment .payment-method-icon { width: 28px; height: 28px; flex: 0 0 28px; object-fit: contain; color: var(--text-secondary); }
 .checkout-payment img.payment-method-icon { width: 48px; height: 32px; flex-basis: 48px; object-fit: contain; object-position: center; padding: 2px; box-sizing: border-box; }
 .checkout-payment .payment-options label > span { min-width: 0; overflow-wrap: anywhere; font-size: 14px; }
@@ -1461,8 +1461,8 @@ body:has(.browser-notice) #custom-footer {
 .payment-crypto-group { border: 1px solid var(--line); border-radius: 10px; overflow: hidden; }
 .checkout-payment .payment-crypto-heading { width: 100%; min-height: 64px; display: flex; align-items: center; gap: 14px; padding: 14px 16px; border: 0; border-radius: 0; background: var(--surface); text-align: start; color: var(--ink); }
 .checkout-payment .payment-crypto-heading:disabled { opacity: 1; cursor: default; }
-.payment-crypto-group.has-selection { border-color: var(--brand); box-shadow: 0 0 0 1px var(--brand); }
-.checkout-payment .has-selection .payment-crypto-heading { background: var(--surface-tint); }
+.checkout-payment .payment-crypto-heading:focus { outline: none; box-shadow: none; }
+.checkout-payment .payment-crypto-heading:focus-visible { outline: 2px solid var(--brand); outline-offset: -4px; border-radius: 9px; }
 .payment-selection-slot { display: flex; align-items: center; justify-content: center; width: 16px; height: 16px; flex: 0 0 16px; color: var(--brand); }
 .payment-option-copy { display: flex; flex-direction: column; gap: 4px; flex: 1; min-width: 0; overflow-wrap: anywhere; }
 .payment-channel-name { font-size: 12px; color: var(--text-secondary); }
@@ -1470,8 +1470,8 @@ body:has(.browser-notice) #custom-footer {
 .payment-crypto-heading > svg.expanded { transform: rotate(180deg); }
 .payment-option-title { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; }
 .payment-network-tag { font-size: 11px; line-height: 1.5; font-weight: 500; padding: 2px 6px; border-radius: 4px; background: var(--surface-soft); color: var(--text-secondary); white-space: nowrap; }
-.payment-network-options:not([hidden]) { display: grid; padding: 0 16px; background: var(--surface); border-top: 1px solid var(--line); }
-.checkout-payment .payment-options .payment-network-option { min-height: 56px; padding: 12px 0; border: 0; border-radius: 0; background: transparent; }
+.payment-network-options:not([hidden]) { display: grid; background: var(--surface); border-top: 1px solid var(--line); }
+.checkout-payment .payment-options .payment-network-option { min-height: 56px; padding: 12px 16px; border: 0; border-radius: 0; background: transparent; }
 .checkout-payment .payment-options .payment-network-option + .payment-network-option { border-top: 1px solid var(--line); }
 .checkout-payment .payment-options .payment-network-option.selected { background: var(--surface-tint); box-shadow: none; }
 .checkout-payment .payment-network-option img.payment-method-icon { width: 48px; height: 28px; }

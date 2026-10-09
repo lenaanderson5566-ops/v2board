@@ -45,7 +45,6 @@ export function PaymentMethodPicker({ methods, selected, disabled, onSelect }: {
         </span>
             {showChannel && <span className="payment-channel-name">{item.name}</span>}
         </span>
-        {selected === Number(item.id) && <Check className="payment-selected-check" size={18} aria-hidden="true" />}
     </label>;
     };
     return <fieldset className="payment-options" disabled={disabled}>
@@ -60,7 +59,7 @@ export function PaymentMethodPicker({ methods, selected, disabled, onSelect }: {
                     setExpanded(isOpen ? "" : group.key);
                     if (!isOpen && !active) onSelect(group.methods.length === 1 ? Number(first.id) : 0);
                 }}>
-                    <span className="payment-selection-slot" aria-hidden="true">{active && <Check size={16} />}</span>
+                    <span className="payment-selection-slot" aria-hidden="true">{active && !isOpen && <Check size={16} />}</span>
                     <PaymentIcon key={String(first.icon || first.asset_icon)} source={first.icon || first.asset_icon} />
                     <span className="payment-option-copy"><span>{first.asset}{active && ` · ${active.network_name || active.network}`}</span>{!active && <span className="payment-channel-name">{tx("请选择转账网络")}</span>}</span>
                     <ChevronDown size={18} className={isOpen ? "expanded" : ""} aria-hidden="true" />

@@ -50,7 +50,8 @@ export function Html({
         />
     );
 }
-export function useData<T = Row>(path: string, body?: Row, allPages = false) {
+export function useData<T = Row>(path: string, body?: Row, allPages = false, options: { refreshOnEvents?: boolean } = {}) {
+    const refreshOnEvents = options.refreshOnEvents !== false;
     useTranslation();
     const language = locale();
     const serializedBody = body ? JSON.stringify(body) : undefined;
@@ -109,7 +110,7 @@ export function useData<T = Row>(path: string, body?: Row, allPages = false) {
         };
     }, [path, version, serializedBody, language, allPages]);
     useEffect(() => {
-        if (boot.mode !== "user" || !path) return;
+        if (boot.mode !== "user" || !path || !refreshOnEvents) return;
         const refresh = () => setVersion((v) => v + 1);
         const visible = () => {
             if (document.visibilityState === "visible") refresh();
@@ -122,7 +123,7 @@ export function useData<T = Row>(path: string, body?: Row, allPages = false) {
             window.removeEventListener("focus", refresh);
             document.removeEventListener("visibilitychange", visible);
         };
-    }, [path]);
+    }, [path, refreshOnEvents]);
     return {
         data,
         error,

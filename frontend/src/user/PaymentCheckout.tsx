@@ -29,6 +29,11 @@ export function PaymentCheckout({
     const due = Number(order.total_amount || 0);
     const methods = useData<Row[]>(
         status === 0 && due > 0 ? "user/order/getPaymentMethod" : "",
+        undefined,
+        false,
+        // A successful checkout emits data-changed immediately before navigation.
+        // Keep the loaded methods stable; order status has its own polling lifecycle.
+        { refreshOnEvents: false },
     );
     const [selected, setSelected] = useState<number>(
         Number(order.payment_id || -1),

@@ -183,10 +183,10 @@
 }
 .app.user .quota-progress {
     height: 9px;
-    background: var(--surface-tint);
+    background: var(--usage-track);
 }
 .app.user .quota-progress i {
-    background: var(--text-secondary);
+    background: var(--usage-progress);
 }
 .app.user .quota-card p,
 .app.user .quota-card small {
@@ -614,9 +614,6 @@
 }
 .app.user .usage-quota .quota-progress {
     height: 9px;
-}
-.app.user .usage-quota .quota-progress i {
-    background: var(--ink);
 }
 .app.user .reset-section-intro {
     padding-bottom: 22px;

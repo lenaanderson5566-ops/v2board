@@ -18,8 +18,10 @@ body[data-console="user"] {
     --surface-header: #ffffffed;
     --focus-ring: #153b7014;
     --shadow-tint-rgb: 21 59 112;
-    --chart-download: var(--brand);
-    --chart-upload: #8baad0;
+    --usage-progress: #168568;
+    --usage-track: #e5efeb;
+    --chart-download: #168568;
+    --chart-upload: #83bda9;
     --success: #22724f;
     --success-soft: #edf5e9;
     --success-border: #dce9d5;

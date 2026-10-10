@@ -18,7 +18,7 @@ import bitcoinSvg from "../../../public/payment-icons/bitcoin.svg?raw";
 const inlineSvg = (source: string) => `data:image/svg+xml,${encodeURIComponent(source)}`;
 
 export const paymentIcons = [
-    { id: "alipay", label: "支付宝", source: inlineSvg(alipaySvg) },
+    { id: "alipay", label: "支付宝（透明底）", source: inlineSvg(alipaySvg) },
     { id: "alipay-blue", label: "支付宝（蓝底）", source: alipayBlue },
     { id: "wechat", label: "微信支付", source: inlineSvg(wechatSvg) },
     { id: "wechat-pay", label: "微信支付（方形）", source: inlineSvg(wechatPaySvg) },

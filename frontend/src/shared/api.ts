@@ -143,6 +143,11 @@ export async function request<T = Row>(
                                 : JSON.stringify(body),
                     }
                   : {}),
+        }).catch((error: unknown) => {
+            if (error instanceof TypeError && !controller.signal.aborted) {
+                throw Object.assign(new Error(tx("网络连接中断，请检查网络后确认操作结果")), { code: "NETWORK_ERROR" });
+            }
+            throw error;
         });
         let json: Envelope<T>;
         try {
@@ -195,7 +200,7 @@ export async function request<T = Row>(
         }
         return json;
     } catch (error) {
-        if (timedOut) throw new Error(tx("请求超时，请刷新确认结果后再试"));
+        if (timedOut) throw Object.assign(new Error(tx("请求超时，请刷新确认结果后再试")), { code: "REQUEST_TIMEOUT" });
         throw error;
     } finally {
         clearTimeout(timer);

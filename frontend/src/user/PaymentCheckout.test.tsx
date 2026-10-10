@@ -24,7 +24,26 @@ it("recalculates the exact network fee and submits its channel ID", async () => 
     fireEvent.click(screen.getByRole("radio", { name: /BSC/ }));
     expect(screen.getByText("CNY 11.50")).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: "确认支付" }));
-    await waitFor(() => expect(mock.request).toHaveBeenCalledWith("user/order/checkout", { trade_no: "test-order", method: 3 }));
+    await waitFor(() => expect(mock.request).toHaveBeenCalledWith("user/order/checkout", { trade_no: "test-order", method: 3 }, { timeoutMs: 45000 }));
     await screen.findByText("正在等待支付确认，请勿重复付款。");
     expect(screen.getByRole("radio", { name: /BSC/ }).closest("fieldset")?.disabled).toBe(true);
+});
+
+it.each(["NETWORK_ERROR", "REQUEST_TIMEOUT"])("checks status without resubmitting after %s", async (code) => {
+    mock.request.mockImplementation((path: string) => path === "user/order/checkout"
+        ? Promise.reject(Object.assign(new Error("Load failed"), { code }))
+        : Promise.resolve({ data: 0 }));
+    const reload = vi.fn();
+    render(<PaymentCheckout order={{ status: 0, plan_id: 1, total_amount: 1000, trade_no: "uncertain", plan: { name: "Plan" } }} reload={reload} renderCard={() => null} />);
+    fireEvent.click(await screen.findByRole("button", { name: "确认支付" }));
+    await screen.findByText("未能确认支付请求结果，正在检查订单状态，请勿重复付款。");
+    await waitFor(() => expect(mock.request).toHaveBeenCalledWith("user/order/check"));
+    expect(screen.queryByText("Load failed")).toBeNull();
+    expect(screen.getByRole("radio", { name: "Alipay" }).closest("fieldset")?.disabled).toBe(true);
+    fireEvent.click(screen.getByRole("button", { name: "检查支付结果" }));
+    expect(reload).toHaveBeenCalled();
+    expect(mock.request.mock.calls.filter(([path]) => path === "user/order/checkout")).toHaveLength(1);
+    fireEvent.click(screen.getByRole("button", { name: "重新发起支付" }));
+    expect(screen.queryByText("未能确认支付请求结果，正在检查订单状态，请勿重复付款。")).toBeNull();
+    expect(screen.getByRole("button", { name: "确认支付" })).toBeTruthy();
 });

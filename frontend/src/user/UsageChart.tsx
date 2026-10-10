@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { e } from "../shared/experience-copy";
 import { tx, locale } from "../shared/i18n";
 import { bytes, date } from "../shared/api";
@@ -14,8 +14,15 @@ export function UsageChart({
     showRecords?: boolean;
 }) {
     const data = useData<UsageRecord[]>("user/stat/getTrafficLog?days=30&page_size=100", undefined, true);
-    const [period, setPeriod] = useState<"30days" | "week">("30days");
+    const [period, setPeriod] = useState<"30days" | "week">(() =>
+        window.matchMedia?.("(max-width: 800px)").matches ? "week" : "30days");
     const days = usageDays(data.data || [], period);
+    const [selectedDate, setSelectedDate] = useState<number | null>(null);
+    const selectedDay = days.find((day) => day.date.getTime() === selectedDate) || days[days.length - 1];
+    const bars = useRef<HTMLDivElement>(null);
+    useEffect(() => {
+        if (bars.current) bars.current.scrollLeft = bars.current.scrollWidth;
+    }, [period]);
     const max = Math.max(1, ...days.map((day) => day.upload + day.download));
     const formatDate = (date: Date) =>
         date.toLocaleDateString(locale(), { month: "short", day: "numeric" });
@@ -66,21 +73,19 @@ export function UsageChart({
                                 <span>{bytes(max)}</span>
                                 <span>0 B</span>
                             </div>
-                            <div className="usage-bars">
+                            <div className="usage-bars" ref={bars}>
                                 {days.map((day) => {
                                     const label = `${formatDate(day.date)} · ${tx("上传")} ${bytes(day.upload)} · ${tx("下载")} ${bytes(day.download)}`;
                                     return (
-                                        <div
+                                        <button
+                                            type="button"
                                             className="usage-day"
                                             key={day.date.getTime()}
-                                            tabIndex={0}
-                                            role="img"
+                                            aria-pressed={selectedDay === day}
+                                            onClick={() => setSelectedDate(day.date.getTime())}
                                             aria-label={label}
                                         >
-                                            <span className="usage-tooltip">
-                                                {label}
-                                            </span>
-                                            <div
+                                            <span
                                                 className="usage-stack"
                                                 style={{
                                                     height: `${((day.upload + day.download) / max) * 100}%`,
@@ -98,12 +103,15 @@ export function UsageChart({
                                                         flexGrow: day.download,
                                                     }}
                                                 />
-                                            </div>
-                                        </div>
+                                            </span>
+                                        </button>
                                     );
                                 })}
                             </div>
                         </div>
+                        <p className="usage-selected-detail" aria-live="polite" aria-atomic="true">
+                            {formatDate(selectedDay.date)} · {tx("上传")} {bytes(selectedDay.upload)} · {tx("下载")} {bytes(selectedDay.download)}
+                        </p>
                         <div className="usage-dates">
                             <span>{formatDate(days[0].date)}</span>
                             <span>

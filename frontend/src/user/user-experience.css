@@ -760,14 +760,14 @@ body:has(.browser-notice) #custom-footer {
     height: 12px;
     margin: 24px 0 16px;
     border-radius: 99px;
-    background: var(--surface-tint);
+    background: var(--usage-track);
     overflow: hidden;
 }
 .quota-progress i {
     display: block;
     height: 100%;
     border-radius: inherit;
-    background: var(--brand);
+    background: var(--usage-progress);
 }
 .quota-card p {
     color: var(--text-secondary);
@@ -885,7 +885,13 @@ body:has(.browser-notice) #custom-footer {
     align-items: flex-end;
     min-width: 0;
 }
-.usage-day {
+.app.user .usage-day {
+    padding: 0;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+    cursor: pointer;
+    min-height: 0;
     flex: 1;
     height: 100%;
     min-width: 0;
@@ -905,35 +911,9 @@ body:has(.browser-notice) #custom-footer {
     display: block;
     flex-basis: 0;
 }
-.usage-tooltip {
-    display: none;
-    position: absolute;
-    z-index: 1;
-    bottom: 100%;
-    inset-inline-start: 50%;
-    transform: translateX(-50%);
-    width: 185px;
-    padding: 8px 12px;
-    background: var(--ink);
-    color: var(--on-brand);
-    border-radius: 8px;
-    font-size: 11px;
-    line-height: 1.6;
-    pointer-events: none;
-}
-.usage-day:first-child .usage-tooltip {
-    inset-inline-start: 0;
-    transform: none;
-}
-.usage-day:last-child .usage-tooltip {
-    inset-inline-start: auto;
-    inset-inline-end: 0;
-    transform: none;
-}
-.usage-day:hover .usage-tooltip,
-.usage-day:focus .usage-tooltip {
-    display: block;
-}
+.usage-day[aria-pressed="true"] .usage-stack { outline: 2px solid var(--usage-progress); outline-offset: 2px; }
+.usage-day:focus-visible { outline: 2px solid var(--brand); }
+.usage-selected-detail { min-height: 2.8em; margin: 12px 0 0; color: var(--text-secondary); font-size: 12px; line-height: 1.4; overflow-wrap: anywhere; }
 .usage-dates {
     display: flex;
     justify-content: space-between;
@@ -1133,9 +1113,6 @@ body:has(.browser-notice) #custom-footer {
     .usage-dates {
         margin-inline-start: 50px;
     }
-    .usage-tooltip {
-        width: 130px;
-    }
 }
 .app.user .dashboard-welcome {
     margin-bottom: 20px;
@@ -1223,7 +1200,7 @@ body:has(.browser-notice) #custom-footer {
 .period-options label { flex-wrap: wrap; }
 .period-options label strong { width: 100%; padding-inline-start: 26px; }
 .period-options .selected, .payment-options .selected { border-color: var(--text-secondary); background: var(--surface-soft); }
-.period-options input, .payment-options input { width: 16px; height: 16px; margin: 0; flex-shrink: 0; accent-color: var(--ink); }
+.period-options input, .payment-options input { width: 16px; height: 16px; min-width: 16px; min-height: 16px; margin: 0; flex-shrink: 0; accent-color: var(--ink); }
 .coupon-disclosure { margin-top: 22px; font-size: 14px; }
 .coupon-disclosure summary, .order-reference summary { cursor: pointer; padding: 8px 0; }
 .coupon-disclosure label { display: grid; gap: 8px; margin-top: 10px; }
@@ -1316,11 +1293,16 @@ body:has(.browser-notice) #custom-footer {
 
 .checkout-payment .payment-options label { flex-wrap: nowrap; min-height: 64px; padding: 14px 16px; gap: 14px; border-radius: 10px; background: var(--surface); }
 .checkout-payment .payment-options .selected { border-color: var(--line); background: var(--surface-tint); box-shadow: none; }
-.checkout-payment .payment-options input { accent-color: var(--brand); }
+.checkout-payment .payment-options input[type="radio"] { appearance: none; -webkit-appearance: none; width: 16px; height: 16px; padding: 0; border: 1px solid #9ca3af; border-radius: 50%; background: var(--surface); display: grid; place-content: center; cursor: pointer; }
+.checkout-payment .payment-options input[type="radio"]::before { content: ""; width: 5px; height: 5px; border-radius: 50%; background: #fff; transform: scale(0); }
+.checkout-payment .payment-options input[type="radio"]:checked { background: var(--ink); border-color: var(--ink); }
+.checkout-payment .payment-options input[type="radio"]:checked::before { transform: scale(1); }
+.checkout-payment .payment-options input[type="radio"]:disabled { cursor: default; opacity: .55; }
+@media (forced-colors: active) { .checkout-payment .payment-options input[type="radio"] { appearance: auto; } .checkout-payment .payment-options input[type="radio"]::before { display: none; } }
 .checkout-payment .payment-options input:focus { box-shadow: none; outline: none; }
 .checkout-payment .payment-options input:focus-visible { outline: 2px solid var(--brand); outline-offset: 3px; }
-.checkout-payment .payment-method-icon { width: 28px; height: 28px; flex: 0 0 28px; object-fit: contain; color: var(--text-secondary); }
-.checkout-payment img.payment-method-icon { width: 48px; height: 32px; flex-basis: 48px; object-fit: contain; object-position: center; padding: 2px; box-sizing: border-box; }
+.checkout-payment .payment-method-icon { width: 24px; height: 24px; flex: 0 0 24px; object-fit: contain; color: var(--text-secondary); }
+.checkout-payment img.payment-method-icon { object-position: center; padding: 0; box-sizing: border-box; }
 .checkout-payment .payment-options label > span { min-width: 0; overflow-wrap: anywhere; font-size: 14px; }
 
 .auth-policy {
@@ -1479,5 +1461,29 @@ body:has(.browser-notice) #custom-footer {
 .checkout-payment .payment-options .payment-network-option { min-height: 56px; padding: 12px 16px; border: 0; border-radius: 0; background: transparent; }
 .checkout-payment .payment-options .payment-network-option + .payment-network-option { border-top: 1px solid var(--line); }
 .checkout-payment .payment-options .payment-network-option.selected { background: var(--surface-tint); box-shadow: none; }
-.checkout-payment .payment-network-option img.payment-method-icon { width: 48px; height: 28px; }
 .payment-network-notice { font-size: 12px; color: var(--text-secondary); margin: 4px 0; }
+
+/* Compact checkout keeps the primary action reachable without stacking navigation. */
+.checkout-details-toggle { display: none; }
+@media (max-width: 800px) {
+    .app.user:has(.checkout-page) .bottom-nav { display: none; }
+    .app.user .main > main:has(.checkout-page) { padding-bottom: calc(110px + env(safe-area-inset-bottom)); }
+    .checkout-layout { grid-template-columns: minmax(0, 1fr); gap: 20px; }
+    .checkout-summary { padding: 16px; }
+    .checkout-summary .checkout-section-label { display: none; }
+    .checkout-summary h2 { font-size: 20px; margin-bottom: 4px; }
+    .checkout-summary > p { margin-block: 4px; }
+    .checkout-details-toggle { display: flex; align-items: center; justify-content: space-between; width: 100%; padding: 8px 0; margin-top: 4px; border: 0; background: transparent; color: var(--text-secondary); }
+    .checkout-details[data-expanded="false"] { display: none; }
+    .checkout-processing .checkout-details { display: block; }
+    .checkout-processing .checkout-details-toggle { display: none; }
+    .checkout-payment { padding: 0; }
+    .checkout-confirm { position: fixed; inset-inline: 0; bottom: 0; z-index: 35; margin: 0; padding: 12px 16px calc(12px + env(safe-area-inset-bottom)); background: var(--surface); border-top: 1px solid var(--border); }
+    .checkout-page:has(input:focus:not([type="radio"]):not([type="checkbox"])) .checkout-confirm { position: static; padding: 12px 0; border-top: 0; }
+    .checkout-page .purchase-steps { margin-bottom: 20px; }
+}
+
+@media (max-width: 800px) {
+    .usage-bars { overflow-x: auto; overflow-y: hidden; padding: 4px 2px; }
+    .app.user .usage-day { min-width: 24px; }
+}

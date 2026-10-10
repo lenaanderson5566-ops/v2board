@@ -351,6 +351,9 @@ export function PlanSelection({
                                 {tx(billingPeriods[key])}
                             </span>
                             <strong>{money(plan[key])}</strong>
+                            {billingPeriodMonths[key] && <span className="period-equivalent">
+                                {pc("equivalent", { price: money(Number(plan[key]) / billingPeriodMonths[key]) })}
+                            </span>}
                             {periodSavings(plan, key) > 0 && (
                                 <small
                                     className="period-saving"

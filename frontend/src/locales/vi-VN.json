@@ -425,5 +425,7 @@
   "到账金额": "Số tiền được cộng",
   "订单状态暂不可用，请刷新后重试。": "Chưa thể xem trạng thái đơn hàng. Hãy tải lại để thử.",
   "请选择转账网络": "Chọn mạng chuyển tiền",
-  "请确认付款钱包的币种与网络和所选渠道一致。": "Đảm bảo loại tiền và mạng của ví khớp với phương thức đã chọn."
+  "请确认付款钱包的币种与网络和所选渠道一致。": "Đảm bảo loại tiền và mạng của ví khớp với phương thức đã chọn.",
+  "网络连接中断，请检查网络后确认操作结果": "Kết nối bị gián đoạn. Hãy kiểm tra mạng và xác nhận kết quả.",
+  "未能确认支付请求结果，正在检查订单状态，请勿重复付款。": "Chưa xác định được kết quả yêu cầu thanh toán. Đang kiểm tra đơn hàng; vui lòng không thanh toán lại."
 }

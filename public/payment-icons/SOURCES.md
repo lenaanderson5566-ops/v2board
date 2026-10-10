@@ -7,7 +7,7 @@ ratio; Stripe, Tether and Bitcoin receive their brand fill colors.
 
 | Icons | Source and pinned revision | License |
 | --- | --- | --- |
-| Alipay, UnionPay, generic card, PayPal, Visa, Mastercard | [aaronfagan/svg-credit-card-payment-icons](https://github.com/aaronfagan/svg-credit-card-payment-icons/tree/6dd023ae32415ed7b01bf809f15a25613a52098c), `flat-rounded/` | Apache 2.0; see LICENSE-credit-card-icons.txt |
+| UnionPay, generic card, PayPal, Visa, Mastercard | [aaronfagan/svg-credit-card-payment-icons](https://github.com/aaronfagan/svg-credit-card-payment-icons/tree/6dd023ae32415ed7b01bf809f15a25613a52098c), `flat-rounded/` | Apache 2.0; see LICENSE-credit-card-icons.txt |
 | WeChat Pay, Apple Pay, Google Pay | [datatrans/payment-logos](https://github.com/datatrans/payment-logos/tree/b4175c79813792f1e2ab16c10cfd9f15d5af0e77), `assets/apm/` and `assets/wallets/` | CC BY-SA 4.0; see LICENSE-payment-logos.txt |
 | Stripe, Tether (USDT), Bitcoin | [Simple Icons](https://github.com/simple-icons/simple-icons/tree/98820a4dc8c363ca72fa2c0d294ea4a0a9bba75d), `icons/` | CC0; see LICENSE-simple-icons.txt |
 
@@ -21,3 +21,5 @@ matching rounded tile. These are inspired by the supplied dashboard layout,
 not assets extracted from or distributed by Stripe.
 
 Crypto coin/network icons: [spothq/cryptocurrency-icons](https://github.com/spothq/cryptocurrency-icons/tree/1a63530be6e374711a8554f31b17e4cb92c25fa5), revision `1a63530be6e374711a8554f31b17e4cb92c25fa5`, `svg/color`; CC0-1.0 (LICENSE-cryptocurrency-icons.md).
+
+Alipay transparent symbol: [ant-design/ant-design-icons](https://github.com/ant-design/ant-design-icons/tree/7f2516ac91226d2b41f93b35cb5197c8d94f7189), packages/icons-svg/svg/outlined/alipay.svg. MIT (LICENSE-ant-design-icons.txt). Fill changed to blue #1677FF; original viewBox preserved.

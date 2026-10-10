@@ -292,3 +292,18 @@
         max-width: none;
     }
 }
+
+@media (max-width: 600px) {
+    .compact-selection .period-options label { grid-template-columns: 16px minmax(0, 1fr) auto; align-items: center; gap: 6px 10px; }
+    .compact-selection .period-options label input { grid-column: 1; grid-row: 1; }
+    .compact-selection .period-name { grid-column: 2; grid-row: 1; }
+    .compact-selection .period-options label strong { grid-column: 3; grid-row: 1; white-space: normal; text-align: end; overflow-wrap: anywhere; }
+    .compact-selection .period-options label .period-saving { grid-column: 2 / -1; grid-row: 2; justify-self: start; white-space: normal; }
+}
+
+.compact-selection .period-options .period-equivalent { grid-column: 2 / -1; grid-row: 2; font-size: 12px; color: var(--text-secondary); overflow-wrap: anywhere; }
+.compact-selection .period-options label:has(.period-equivalent) .period-saving { grid-column: 4; grid-row: 1; }
+@media (max-width: 600px) {
+    .compact-selection .period-options label:has(.period-equivalent) .period-saving { grid-column: 3; grid-row: 2; justify-self: end; }
+    .compact-selection .period-options label:has(.period-saving) .period-equivalent { grid-column: 2; }
+}

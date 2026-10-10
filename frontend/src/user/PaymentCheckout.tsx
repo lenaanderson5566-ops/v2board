@@ -43,6 +43,7 @@ export function PaymentCheckout({
     const [pollError, setPollError] = useState("");
     const [pollStopped, setPollStopped] = useState(false);
     const [pollRun, setPollRun] = useState(0);
+    const [summaryOpen, setSummaryOpen] = useState(false);
     const inFlight = useRef(false);
     const refresh = useRef(reload);
     refresh.current = reload;
@@ -52,7 +53,7 @@ export function PaymentCheckout({
             ? waiting ? issuedFee : paymentFee(due, method)
             : Number(order.handling_amount || 0);
     const feeReady = status !== 0 || waiting || due <= 0 || Boolean(method);
-    const awaitingConfirmation = waiting && !error;
+    const awaitingConfirmation = waiting;
     useEffect(() => {
         if (
             !waiting && selected !== 0 && methods.data?.length &&
@@ -128,7 +129,7 @@ export function PaymentCheckout({
                 trade_no: order.trade_no,
                 method: id,
                 ...(token ? { token } : {}),
-            });
+            }, { timeoutMs: 45000 });
             setIssuedFee(paymentFee(due, methods.data?.find((item) => Number(item.id) === id)));
             if (result.type === -1 || result.type === 2) {
                 setWaiting(true);
@@ -153,7 +154,13 @@ export function PaymentCheckout({
                     tx("此支付方式需要专用客户端，请选择其他方式。"),
                 );
         } catch (problem) {
-            setError((problem as Error).message);
+            const failure = problem as Error & { code?: string; status?: number };
+            if (["NETWORK_ERROR", "REQUEST_TIMEOUT"].includes(failure.code || "") || (failure.status || 0) >= 500) {
+                setIssuedFee(paymentFee(due, methods.data?.find((item) => Number(item.id) === id)));
+                setWaiting(true);
+                setPollRun((run) => run + 1);
+                setError(tx("未能确认支付请求结果，正在检查订单状态，请勿重复付款。"));
+            } else setError(failure.message);
             if (token) setCardMethod(null);
         } finally {
             inFlight.current = false;
@@ -221,6 +228,11 @@ export function PaymentCheckout({
                             : tx(billingPeriods[order.period] || "账户充值")}
                     </p>
                     {Number(order.credit_bytes) > 0 && <p className="checkout-product-quantity">{bytes(order.credit_bytes)}</p>}
+                    <button className="checkout-details-toggle" type="button" aria-expanded={summaryOpen}
+                        onClick={() => setSummaryOpen((open) => !open)}>
+                        {tx("订单详情")} <span aria-hidden="true">{summaryOpen ? "−" : "+"}</span>
+                    </button>
+                    <div className="checkout-details" data-expanded={summaryOpen}>
                     <dl className="checkout-lines">
                         <div>
                             <dt>{tx(deposit ? "充值金额" : Number(order.credit_bytes) > 0 ? "额度价格" : "套餐价格")}</dt>
@@ -277,6 +289,7 @@ export function PaymentCheckout({
                         </p>
                         <p>{c("created")}<br />{minuteDate(order.created_at)}</p>
                     </details>
+                    </div>
                 </section>
                 {status === 0 && (
                     <section className="checkout-payment">
@@ -379,6 +392,7 @@ export function PaymentCheckout({
                                     onClick={() => {
                                         setWaiting(false);
                                         setQr("");
+                                        setError("");
                                     }}
                                 >
                                     {tx("重新发起支付")}

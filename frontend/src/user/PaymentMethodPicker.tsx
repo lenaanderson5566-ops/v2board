@@ -61,10 +61,11 @@ export function PaymentMethodPicker({ methods, selected, disabled, onSelect }: {
                 }}>
                     <span className="payment-selection-slot" aria-hidden="true">{active && !isOpen && <Check size={16} />}</span>
                     <PaymentIcon key={String(first.icon || first.asset_icon)} source={first.icon || first.asset_icon} />
-                    <span className="payment-option-copy"><span>{first.asset}{active && ` · ${active.network_name || active.network}`}</span>{!active && <span className="payment-channel-name">{tx("请选择转账网络")}</span>}</span>
+                    <span className="payment-option-copy"><span>{first.asset}{active && ` · ${active.network_name || active.network}`}</span></span>
                     <ChevronDown size={18} className={isOpen ? "expanded" : ""} aria-hidden="true" />
                 </button>
                 <div id={`${prefix}-${index}`} className="payment-network-options" hidden={!isOpen}>
+                    {isOpen && !active && <p className="payment-network-prompt">{tx("请选择转账网络")}</p>}
                     {group.methods.map(item => option(item, true, group.methods.filter(other => other.network === item.network).length > 1))}
                 </div>
             </div>;

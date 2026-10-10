@@ -1,3 +1,4 @@
+import { StatusBadge } from "./StatusBadge";
 import { useState, useRef, type ReactNode } from "react";
 import { boot, request, rows, query, date, type Row } from "./api";
 import { tx } from "./i18n";
@@ -142,11 +143,11 @@ export function Tickets({
                                     "status",
                                     tx("状态"),
                                     (r) => (
-                                        <span className="badge">
-                                            {r.status === 0
+                                        <StatusBadge tone={Number(r.status) === 0 ? "info" : "neutral"}>
+                                            {Number(r.status) === 0
                                                 ? tx("处理中")
                                                 : tx("已关闭")}
-                                        </span>
+                                        </StatusBadge>
                                     ),
                                 ],
                                 [

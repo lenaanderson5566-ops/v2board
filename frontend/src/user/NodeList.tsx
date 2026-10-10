@@ -1,3 +1,4 @@
+import { StatusBadge } from "../shared/StatusBadge";
 import { Globe } from "lucide-react";
 import { type Row } from "../shared/api";
 import { locale, tx } from "../shared/i18n";
@@ -101,11 +102,9 @@ export function NodeList({ nodes }: { nodes: Row[] }) {
                     "is_online",
                     tx("状态"),
                     (node) => (
-                        <span
-                            className={`badge ${node.is_online ? "success" : ""}`}
-                        >
+                        <StatusBadge tone={node.is_online ? "success" : "danger"}>
                             {node.is_online ? tx("在线") : tx("离线")}
-                        </span>
+                        </StatusBadge>
                     ),
                 ],
             ]}

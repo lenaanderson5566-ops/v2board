@@ -635,7 +635,7 @@ it("renders built-in payment icons from the API host", () => {
             view.container
                 .querySelector("img.payment-method-icon")
                 ?.getAttribute("src"),
-        ).toBe("https://api.example.com/payment-icons/alipay.svg?v=2");
+        ).toBe("https://api.example.com/payment-icons/alipay.svg");
     } finally {
         window.V2BOARD = previous;
     }

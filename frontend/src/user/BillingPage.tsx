@@ -1,3 +1,4 @@
+import { StatusBadge, orderStatusTone } from "../shared/StatusBadge";
 import { GiftCardRedemption } from "./GiftCardRedemption";
 import { TrafficCredits } from "./TrafficCredits";
 import { c } from "../shared/credit-copy";
@@ -131,14 +132,12 @@ export function BillingPage() {
                                                 {date(order.created_at)}
                                             </small>
                                         </span>
-                                        <span
-                                            className={`badge ${Number(order.status) === 3 ? "success" : ""}`}
-                                        >
+                                        <StatusBadge tone={orderStatusTone(order.status)}>
                                             {tx(
                                                 status[order.status] ||
                                                     String(order.status),
                                             )}
-                                        </span>
+                                        </StatusBadge>
                                         <strong>
                                             {money(
                                                 order.total_amount,

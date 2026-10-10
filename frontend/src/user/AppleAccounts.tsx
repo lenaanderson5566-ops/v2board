@@ -1,3 +1,4 @@
+import { StatusBadge } from "../shared/StatusBadge";
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import i18n, { tx } from "../shared/i18n";
@@ -49,7 +50,7 @@ export function AccountList() {
     return <div className="pad">
         <p>{t("1")}</p>
         {busy ? <p role="status">{t("2")}</p> : error ? <p role="alert">{t("3")}</p> : accounts.length === 0 ? <p>{t("4")}</p> : accounts.map((account, index) => <section key={index} className="apple-account-card">
-            <div className="apple-account-heading"><strong>{account.region_display || "App Store"}</strong><span className={`badge ${account.available ? "success" : ""}`}>{tx(account.available ? "正常" : account.status === "disabled" ? "已停用" : "暂不可用")}</span></div>
+            <div className="apple-account-heading"><strong>{account.region_display || "App Store"}</strong><StatusBadge tone={account.available ? "success" : account.status === "disabled" ? "neutral" : "warning"}>{tx(account.available ? "正常" : account.status === "disabled" ? "已停用" : "暂不可用")}</StatusBadge></div>
             <p dir="ltr">{account.username}</p>
             <p className="apple-account-password" dir="ltr">{account.available && (visible[index] ? account.password : "••••••••")}</p>
             {account.available && account.password && <div className="quick-actions"><button onClick={() => copy(account.username)}>{t("6")}</button><button onClick={() => copy(account.password!)}>{t("7")}</button><button onClick={() => setVisible(previous => ({ ...previous, [index]: !previous[index] }))}>{t(visible[index] ? "9" : "8")}</button></div>}

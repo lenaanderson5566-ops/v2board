@@ -1,3 +1,4 @@
+import { StatusBadge, type StatusTone } from "../shared/StatusBadge";
 import invitationArt from "../assets/invite-friends.jpg";
 import { RegistrationDomains } from "./RegistrationDomains";
 import { registrationEmailError } from "./registration-policy";
@@ -7,6 +8,7 @@ import { boot, request, query, bytes, type Row } from "../shared/api";
 import { Modal, State, useData } from "../shared/ui";
 import { tx } from "../shared/i18n";
 
+const statusTones: Record<string, StatusTone> = { queued: "warning", sent: "info", accepted: "success", expired: "neutral", failed: "danger" };
 const statuses: Record<string, string> = {
     queued: "等待发送",
     sent: "已发送",
@@ -181,15 +183,13 @@ export function EmailInvites({ rewards }: { rewards?: { registrationBytes?: numb
                                                     >
                                                         {record.email}
                                                     </span>
-                                                    <span
-                                                        className={`invite-status ${record.status}`}
-                                                    >
+                                                    <StatusBadge className="invite-status" tone={statusTones[record.status] || "neutral"}>
                                                         {tx(
                                                             statuses[
                                                                 record.status
                                                             ] || "等待发送",
                                                         )}
-                                                    </span>
+                                                    </StatusBadge>
                                                 </li>
                                             ))}
                                         </ul>

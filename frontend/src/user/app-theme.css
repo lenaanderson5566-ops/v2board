@@ -23,10 +23,15 @@ body[data-console="user"] {
     --success: #22724f;
     --success-soft: #edf5e9;
     --success-border: #dce9d5;
-    --warning: #8c713e;
+    --warning: #805b14;
     --warning-soft: #fff8ed;
+    --warning-border: #ead6ad;
+    --info: #245a96;
+    --info-soft: #edf4fc;
+    --info-border: #cadcf0;
     --danger: #b42318;
     --danger-soft: #fcf0ef;
+    --danger-border: #efccc8;
     /* Shared component compatibility aliases. Define them only here. */
     --accent: var(--brand);
     --primary: var(--brand);

@@ -21,7 +21,7 @@ export function OrderReceipt({ order }: { order: Row }) {
                 {c("back")}
             </a>
             <div
-                className={`receipt-status ${cancelled ? "cancelled" : "completed"}`}
+                className={`receipt-status ${cancelled ? "cancelled" : applied ? "applied" : "completed"}`}
             >
                 <Icon size={28} aria-hidden="true" />
                 <div>

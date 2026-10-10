@@ -243,8 +243,6 @@
 }
 .app.user .account-entry .entry-symbol {
     border-radius: 16px;
-    background: var(--surface-tint);
-    color: var(--text-secondary);
 }
 .app.user .account-entry h2 {
     font-weight: 550;
@@ -993,7 +991,7 @@
     margin-top: 4px;
     color: var(--success);
 }
-.receipt-status.cancelled > svg {
+.receipt-status.cancelled > svg, .receipt-status.applied > svg {
     color: var(--muted);
 }
 .receipt-status h1 {

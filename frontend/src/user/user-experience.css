@@ -1294,7 +1294,7 @@ body:has(.browser-notice) #custom-footer {
 .checkout-payment .payment-options label { flex-wrap: nowrap; min-height: 64px; padding: 14px 16px; gap: 14px; border-radius: 10px; background: var(--surface); }
 .checkout-payment .payment-options .selected { border-color: var(--line); background: var(--surface-tint); box-shadow: none; }
 .checkout-payment .payment-options input[type="radio"] { appearance: none; -webkit-appearance: none; width: 16px; height: 16px; padding: 0; border: 1px solid #9ca3af; border-radius: 50%; background: var(--surface); display: grid; place-content: center; cursor: pointer; }
-.checkout-payment .payment-options input[type="radio"]::before { content: ""; width: 5px; height: 5px; border-radius: 50%; background: #fff; transform: scale(0); }
+.checkout-payment .payment-options input[type="radio"]::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: #fff; transform: scale(0); }
 .checkout-payment .payment-options input[type="radio"]:checked { background: var(--ink); border-color: var(--ink); }
 .checkout-payment .payment-options input[type="radio"]:checked::before { transform: scale(1); }
 .checkout-payment .payment-options input[type="radio"]:disabled { cursor: default; opacity: .55; }

@@ -23,3 +23,7 @@ not assets extracted from or distributed by Stripe.
 Crypto coin/network icons: [spothq/cryptocurrency-icons](https://github.com/spothq/cryptocurrency-icons/tree/1a63530be6e374711a8554f31b17e4cb92c25fa5), revision `1a63530be6e374711a8554f31b17e4cb92c25fa5`, `svg/color`; CC0-1.0 (LICENSE-cryptocurrency-icons.md).
 
 Alipay transparent symbol: [ant-design/ant-design-icons](https://github.com/ant-design/ant-design-icons/tree/7f2516ac91226d2b41f93b35cb5197c8d94f7189), packages/icons-svg/svg/outlined/alipay.svg. MIT (LICENSE-ant-design-icons.txt). Fill changed to blue #1677FF; original viewBox preserved.
+
+`wechat-pay-transparent.svg` uses the same symbol and placement as `wechat-pay.svg`,
+with the pale background rectangle removed. Derived from the pinned datatrans
+artwork above under CC BY-SA 4.0; the original tile and wordmark options remain available.

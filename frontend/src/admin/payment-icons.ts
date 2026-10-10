@@ -1,6 +1,7 @@
 import alipaySvg from "../../../public/payment-icons/alipay.svg?raw";
 import alipayBlue from "../../../public/payment-icons/alipay-blue.png?inline";
 import wechatSvg from "../../../public/payment-icons/wechat.svg?raw";
+import wechatPayTransparentSvg from "../../../public/payment-icons/wechat-pay-transparent.svg?raw";
 import wechatPaySvg from "../../../public/payment-icons/wechat-pay.svg?raw";
 import unionpaySvg from "../../../public/payment-icons/unionpay.svg?raw";
 import cardSvg from "../../../public/payment-icons/card.svg?raw";
@@ -20,6 +21,7 @@ const inlineSvg = (source: string) => `data:image/svg+xml,${encodeURIComponent(s
 export const paymentIcons = [
     { id: "alipay", label: "支付宝（透明底）", source: inlineSvg(alipaySvg) },
     { id: "alipay-blue", label: "支付宝（蓝底）", source: alipayBlue },
+    { id: "wechat-pay-transparent", label: "微信支付（透明底）", source: inlineSvg(wechatPayTransparentSvg) },
     { id: "wechat", label: "微信支付", source: inlineSvg(wechatSvg) },
     { id: "wechat-pay", label: "微信支付（方形）", source: inlineSvg(wechatPaySvg) },
     { id: "unionpay", label: "银联", source: inlineSvg(unionpaySvg) },

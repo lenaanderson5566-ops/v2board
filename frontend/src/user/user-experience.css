@@ -1204,6 +1204,13 @@ body:has(.browser-notice) #custom-footer {
 .purchase-intro a { white-space: nowrap; font-size: 13px; }
 .pending-order { display: flex; justify-content: space-between; align-items: center; gap: 16px; padding: 20px; border: 1px solid var(--line); border-radius: 16px; background: var(--surface-soft); margin-bottom: 24px; }
 .pending-order p { margin: 6px 0 0; color: var(--text-secondary); }
+.pending-order-summary { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; min-width: 0; }
+.pending-order-summary strong { overflow-wrap: anywhere; }
+.pending-order-amount { white-space: nowrap; }
+.pending-order-actions { display: flex; align-items: center; gap: 12px; flex-shrink: 0; }
+.app.user .pending-order-cancel { padding: 8px 0; border: 0; background: transparent; color: var(--text-secondary); box-shadow: none; white-space: nowrap; }
+.app.user .pending-order-cancel:hover { color: var(--ink); text-decoration: underline; }
+@media (max-width: 700px) { .pending-order-actions { width: 100%; justify-content: flex-end; } .pending-order-actions .button { flex: 1; } }
 .plan-card { display: flex; flex-direction: column; align-items: stretch; }
 .plan-card > .primary { margin-top: auto; min-height: 44px; justify-content: center; }
 .purchase-selection { padding: 24px; }

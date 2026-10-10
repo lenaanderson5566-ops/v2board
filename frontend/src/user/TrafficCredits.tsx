@@ -1,3 +1,4 @@
+import { PendingOrderNotice } from "./PendingOrderNotice";
 import { useRef, useState } from "react";
 import { Plus } from "lucide-react";
 import { boot, bytes, money, navigate, request, type Row } from "../shared/api";
@@ -92,15 +93,7 @@ export function CreditPurchase({ close }: { close: () => void }) {
                     }}
                 >
                     {pending ? (
-                        <div className="pending-order">
-                            <p>{tx("你有一笔待支付订单")}</p>
-                            <a
-                                className="button primary"
-                                href={`#/order/${pending.trade_no}`}
-                            >
-                                {tx("查看")}
-                            </a>
-                        </div>
+                        <PendingOrderNotice order={pending} reload={orders.reload} />
                     ) : pack ? (
                         <>
                             <label htmlFor="credit-quantity">

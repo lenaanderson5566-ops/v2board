@@ -1,3 +1,4 @@
+import { PendingOrderNotice } from "./PendingOrderNotice";
 import { useState, useRef, type FormEvent } from "react";
 import { pricingCopy as pc } from "./pricing-copy";
 import "./pricing.css";
@@ -86,36 +87,7 @@ export function SubscriptionPurchase() {
         <section className="subscription-catalog">
             <State {...orders} retry={orders.reload}>
                 {pending && (
-                    <div className="pending-order" role="status">
-                        <div className="pending-order-summary">
-                            <span>
-                                {tx(
-                                    Number(pending.status) === 1
-                                        ? "你的订单正在开通"
-                                        : "待支付",
-                                )}
-                            </span>
-                            <strong>
-                                {pending.plan?.name || tx("账户充值")}
-                            </strong>
-                            <span className="pending-order-amount">
-                                {money(
-                                    pending.total_amount,
-                                    pending.currency || "CNY",
-                                )}
-                            </span>
-                        </div>
-                        <a
-                            className="button primary"
-                            href={`#/order/${pending.trade_no}`}
-                        >
-                            {tx(
-                                Number(pending.status) === 1
-                                    ? "查看开通进度"
-                                    : "继续支付",
-                            )}
-                        </a>
-                    </div>
+                    <PendingOrderNotice order={pending} reload={orders.reload} />
                 )}
             </State>
             <State {...plans} retry={plans.reload}>

@@ -232,17 +232,13 @@
     min-width: 0;
     flex-wrap: wrap;
 }
-.app.user .pending-order-summary > span:first-child {
-    color: var(--text-secondary);
-    font-size: 13px;
-}
 .app.user .pending-order-summary strong {
     overflow-wrap: anywhere;
 }
 .app.user .pending-order-amount {
     white-space: nowrap;
 }
-.app.user .subscription-catalog .pending-order > .button {
+.app.user .subscription-catalog .pending-order-actions > .button {
     flex-shrink: 0;
     white-space: nowrap;
     min-height: 44px;
@@ -267,10 +263,7 @@
         gap: 3px 6px;
         font-size: 13px;
     }
-    .app.user .pending-order-summary > span:first-child {
-        display: none;
-    }
-    .app.user .subscription-catalog .pending-order > .button {
+    .app.user .subscription-catalog .pending-order-actions > .button {
         padding-inline: 10px;
         font-size: 13px;
     }

@@ -29,6 +29,7 @@ class Kernel extends ConsoleKernel
         Cache::put(CacheKey::get('SCHEDULE_LAST_CHECK_AT', null), time());
         $schedule->command('nodes:sync-ddns')->everyMinute()->withoutOverlapping(5);
         // traffic
+        $schedule->command('traffic:process-batches')->everyMinute()->withoutOverlapping(10);
         $schedule->command('credits:expire')->everyMinute()->withoutOverlapping();
         $schedule->command('traffic:update')->everyMinute()->withoutOverlapping();
         // v2board

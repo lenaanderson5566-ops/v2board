@@ -1,3 +1,4 @@
+import { ServerTrafficBudgets } from "./ServerTrafficBudgets";
 import { nodeDeploymentCommand, nodeIPCommand } from "./node-deployment";
 import nodeLocations from "../../../resources/client/node-locations.json";
 import { PaymentCategoryEditor, paymentCategoryInitial } from "./PaymentCategoryEditor";
@@ -2086,6 +2087,7 @@ function PaymentEditor({
 }
 const nodeTypes = ["v2node", "v2box"] as const satisfies readonly NodeBackendType[];
 export function Nodes() {
+    const [budgetsOpen,setBudgetsOpen]=useState(false);
     const groups = useData<Row[]>(admin("server/group/fetch"));
     const routes = useData<Row[]>(admin("server/route/fetch"));
     const d = useData<Row[]>(admin("server/manage/getNodes"));
@@ -2096,11 +2098,13 @@ export function Nodes() {
     const schema = useData<Row>(query(admin("console/nodeSchema"), { type }));
     return (
         <>
+            {budgetsOpen && <ServerTrafficBudgets nodes={rows(d.data)} close={()=>setBudgetsOpen(false)} onSaved={d.reload}/>}
             <Panel
                 title="节点管理"
                 actions={
                     <>
                         <Reload onClick={d.reload} />
+                        <button onClick={()=>setBudgetsOpen(true)}>服务器流量</button>
                         <SortButton
                             path={admin("server/manage/sort")}
                             kind="nodes"
@@ -2136,6 +2140,8 @@ export function Nodes() {
                             name,
                             ["type", "类型"],
                             ["host", "主机"],
+                            ["current_ip", "当前 IP", (r) => <span title="优先显示公网 IP 上报；否则显示节点连接面板的来源 IP">{r.current_ip || "未获取"}</span>],
+                            ["traffic_budget", "服务器额度", r=>r.traffic_budget ? `${bytes(r.traffic_budget.usedBytes)} / ${r.traffic_budget.limitBytes?bytes(r.traffic_budget.limitBytes):"不限"}${r.traffic_budget.blocked?" · 已限制":""}` : "未设置"],
                             ["port", "端口"],
                             ["rate", "倍率"],
                             [

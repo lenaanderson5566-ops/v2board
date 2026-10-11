@@ -263,6 +263,9 @@ class V2nodeController extends Controller
             if (!$server) {
                 abort(500, '服务器不存在');
             }
+            if (!empty($params['parent_id'])) {
+                abort_if(\Illuminate\Support\Facades\DB::table('v2_server_traffic_binding')->where('node_type',$backend)->where('node_id',$server->id)->exists(),422,'请先解除服务器额度绑定，再设置为子节点');
+            }
             try {
                 $server->update($params);
             } catch (\Exception $e) {

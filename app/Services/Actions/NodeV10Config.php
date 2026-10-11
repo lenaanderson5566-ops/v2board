@@ -69,6 +69,6 @@ class NodeV10Config {
         }
         $source['sing_box'] = \App\Services\NodeRouteService::forNode($node);
         if (isset($source['sing_box']['route'])) $source['sing_box']['route'] = (object) $source['sing_box']['route'];
-        return self::fields($source, self::FIELDS);
+        return self::fields($source, self::FIELDS) + ['trafficBatchDedup'=>true,'trafficBudgetSupported'=>true];
     }
 }

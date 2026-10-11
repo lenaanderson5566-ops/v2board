@@ -28,7 +28,7 @@
 
 如果三份 `GeoLite2-ASN.mmdb`、`GeoLite2-City.mmdb`、`GeoLite2-Country.mmdb` 已被跟踪但被本地更新，预检允许这些普通文件的修改。正式升级在完整站点归档校验后，还会将修改文件单独复制到 `tracked/storage/geoip`，再恢复仓库版本以完成切换。预检不恢复或移动文件；其他已跟踪文件修改仍会停止。
 
-当前 Laravel 12 要求 PHP 8.2+，先同步升级 CLI、PHP-FPM、队列和调度器使用的 PHP。update.sh 不安装系统 PHP，平台要求不满足时会在停机前阻止升级。可下载新版脚本后先预检：
+当前 Laravel 13 分支的锁定依赖要求 PHP 8.4+，先同步升级 CLI、PHP-FPM、队列和调度器使用的 PHP。update.sh 不安装系统 PHP，平台要求不满足时会在停机前阻止升级。可下载新版脚本后先预检：
 
 ```bash
 cd /www/wwwroot/api.adanalytics-service.com
@@ -135,3 +135,9 @@ V2Box 接入新增白名单迁移 `2026_10_11_000001_create_v2box_nodes.php`，�
 `php artisan v2board:update` 的旧 SQL 重放入口已停用，返回非零状态并指向 `bash update.sh`，避免重新创建已删除的旧节点表。
 
 后台进程需要在本站宝塔 Supervisor 配置 autorestart=true，并使用与 PHP-FPM 一致的 PHP 路径。若升级在 restart-jobs 阶段失败，修复并启动本站后台进程、确认 Horizon 正常，再执行 php artisan up；脚本会保留维护模式，以免依赖任务处理的业务在无队列状态下恢复。
+
+### 后台进程恢复检测
+
+默认等待 60 秒，支持 `--jobs-restart-timeout 120`（允许 2-600 秒）。重启后的本站 Horizon、队列及调度器应在连续两次检查中保持相同进程身份；缺失或持续更换身份的进程不会被当作恢复成功。等待超时保留维护模式，输出所需服务及观察到的服务，提示检查 Supervisor 自动重启、PHP 路径、运行用户和进程错误日志。
+
+修复并启动本站服务、确认 Horizon/队列和调度器正常后，再执行 `php artisan up`。不要仅为退出 503 重复安装依赖。`bash tests/update-restart.sh` 验证稳定启动、延迟启动、反复重启及服务缺失；现有升级回归包含 26 个隔离场景。

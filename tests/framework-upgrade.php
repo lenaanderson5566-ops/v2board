@@ -10,7 +10,7 @@ $assert = function ($ok, $message) use (&$checks) {
     if (!$ok) throw new RuntimeException($message);
     $checks++;
 };
-$assert(str_starts_with($app->version(), '12.'), 'Unexpected framework version');
+$assert(str_starts_with($app->version(), '13.'), 'Unexpected framework version');
 foreach (["a@example.com\r\nBcc:b@example.com", "a@example.com\n", "a@example.com\0", 'a @example.com'] as $email) {
     $assert(validator(['email'=>$email], ['email'=>'email'])->fails(), 'Unsafe email accepted');
 }
@@ -49,4 +49,4 @@ $path = 'framework-tests/'.bin2hex(random_bytes(8)).'.txt';
 try {
     $assert($disk->put($path, 'roundtrip') && $disk->get($path) === 'roundtrip', 'Flysystem write/read failed');
 } finally { $disk->delete($path); }
-echo "Laravel 12: $checks checks passed; no real mail sent.\n";
+echo "Laravel 13: $checks checks passed; no real mail sent.\n";

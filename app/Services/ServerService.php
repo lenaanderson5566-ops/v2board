@@ -166,6 +166,8 @@ class ServerService
             $this->getAllV2node('v2box')
         );
         $this->mergeData($servers);
+        $servers = NodeAddressService::forNodes($servers);
+        $servers = ServerTrafficBudgetService::decorateNodes($servers);
         $tmp = array_column($servers, 'sort');
         array_multisort($tmp, SORT_ASC, $servers);
         return $servers;

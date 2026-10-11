@@ -32,6 +32,9 @@ try {
     $assert(!$store->lock($key.':lock',30)->get(),'Legacy lock bypassed');
     $store->put($key,'new-value',60);
     $assert($redis->get($legacyPrefix.$key)===serialize('new-value'),'New writes changed namespace');
+    $redis->setex($legacyPrefix.$key,60,serialize(['value'=>'safe','object'=>(object)['name'=>'probe']]));
+    $decoded=$store->get($key);
+    $assert($decoded['value']==='safe' && $decoded['object'] instanceof \__PHP_Incomplete_Class, 'Cached PHP object was restored');
 } finally {
     $redis->del($legacyPrefix.$key,$legacyPrefix.$key.':lock');
 }

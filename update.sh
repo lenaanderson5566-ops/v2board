@@ -26,6 +26,7 @@ OPEN_ON_SUCCESS=0
 AUTO_HORIZON=0
 AUTO_QUEUE=0
 AUTO_SCHEDULER=0
+JOBS_RESTART_TIMEOUT=60
 JOB_PIDS=()
 JOB_STARTS=()
 JOB_COMMANDS=()
@@ -62,6 +63,7 @@ Usage: bash update.sh [options]
   --database-backup PATH  Optional: copy an existing database backup into file backup
   --backup-dir PATH       Private backup parent OUTSIDE the website
   --web-user NAME         Runtime user (default: www)
+  --jobs-restart-timeout N Wait 2-600 seconds for stable workers (default: 60)
   --jobs-stopped          Manual mode: jobs already stopped; leave maintenance ON
   --check                 Preflight only; no checkout/install/migration
   --help
@@ -142,6 +144,36 @@ if(is_array($value)) $check($value);
     done
     printf 'Site jobs drained; maintenance prevents new jobs during migration.\n'
 }
+wait_site_jobs() {
+    local deadline=$((SECONDS+JOBS_RESTART_TIMEOUT)) previous= signature i
+    local have_horizon have_queue have_scheduler
+    while (( SECONDS < deadline )); do
+        snapshot_site_jobs
+        have_horizon=0; have_queue=0; have_scheduler=0; signature=
+        for i in "${!JOB_COMMANDS[@]}"; do
+            case "${JOB_COMMANDS[$i]}" in
+                horizon) have_horizon=1;;
+                queue:work|queue:listen) have_queue=1;;
+                schedule:work) have_scheduler=1;;
+                *) continue;;
+            esac
+            signature+="${JOB_COMMANDS[$i]}:${JOB_PIDS[$i]}:${JOB_STARTS[$i]} "
+        done
+        if (( have_horizon >= AUTO_HORIZON && have_queue >= AUTO_QUEUE && have_scheduler >= AUTO_SCHEDULER )); then
+            if [[ -n "$signature" && "$signature" == "$previous" ]]; then return 0; fi
+            previous=$signature
+        else
+            previous=
+        fi
+        sleep 1
+    done
+    printf 'Expected background services: horizon=%s queue=%s scheduler=%s\n' "$AUTO_HORIZON" "$AUTO_QUEUE" "$AUTO_SCHEDULER" >&2
+    printf 'Observed background services: horizon=%s queue=%s scheduler=%s\n' "$have_horizon" "$have_queue" "$have_scheduler" >&2
+    printf 'Check this site Supervisor autorestart, PHP executable, runtime user and process error logs.\n' >&2
+    printf 'After repairing and starting the services, verify them and run: %q artisan up\n' "$PHP_BIN" >&2
+    return 1
+}
+
 cleanup() {
     local result=$?
     trap - EXIT
@@ -155,13 +187,13 @@ trap cleanup EXIT
 trap 'report_failure "$LINENO"' ERR
 while (( $# )); do
     case "$1" in
-        --project|--branch|--php|--composer|--lock-file|--database-backup|--backup-dir|--web-user)
+        --project|--branch|--php|--composer|--lock-file|--database-backup|--backup-dir|--web-user|--jobs-restart-timeout)
             (( $# >= 2 )) || die "Missing value for $1"
             case "$1" in
                 --project) PROJECT=$2;; --branch) BRANCH=$2;; --php) PHP_BIN=$2;;
                 --composer) COMPOSER_BIN=$2;; --lock-file) LOCK_FILE=$2;;
                 --database-backup) DATABASE_BACKUP=$2;; --backup-dir) BACKUP_DIR=$2;;
-                --web-user) WEB_USER=$2;;
+                --web-user) WEB_USER=$2;; --jobs-restart-timeout) JOBS_RESTART_TIMEOUT=$2;;
             esac
             shift 2;;
         --jobs-stopped) JOBS_STOPPED=1; shift;;
@@ -171,6 +203,9 @@ while (( $# )); do
         *) die "Unknown option: $1";;
     esac
 done
+[[ "$JOBS_RESTART_TIMEOUT" =~ ^[0-9]{1,3}$ ]] || die 'Invalid jobs restart timeout; use 2-600 seconds'
+JOBS_RESTART_TIMEOUT=$((10#$JOBS_RESTART_TIMEOUT))
+(( JOBS_RESTART_TIMEOUT >= 2 && JOBS_RESTART_TIMEOUT <= 600 )) || die 'Invalid jobs restart timeout; use 2-600 seconds'
 for tool in git tar sha256sum realpath cmp flock awk readlink; do command -v "$tool" >/dev/null || die "Missing $tool"; done
 PROJECT=$(realpath "$PROJECT")
 cd "$PROJECT"
@@ -415,18 +450,7 @@ if (( JOBS_STOPPED == 0 )); then
     drain_site_jobs
     if (( AUTO_HORIZON == 1 || AUTO_QUEUE == 1 || AUTO_SCHEDULER == 1 )); then
         # BaoTa Supervisor should respawn the master with the new code/config.
-        found=0
-        for attempt in {1..30}; do
-            snapshot_site_jobs
-            have_horizon=0; have_queue=0; have_scheduler=0
-            for command in "${JOB_COMMANDS[@]}"; do
-                case "$command" in horizon) have_horizon=1;; queue:work|queue:listen) have_queue=1;; schedule:work) have_scheduler=1;; esac
-            done
-            if (( have_horizon >= AUTO_HORIZON && have_queue >= AUTO_QUEUE && have_scheduler >= AUTO_SCHEDULER )); then found=1; fi
-            (( found == 0 )) || break
-            sleep 1
-        done
-        (( found == 1 )) || die 'Background service did not restart; enable autorestart in this site BaoTa Supervisor. Maintenance retained'
+        wait_site_jobs || die 'Background services did not become stable before timeout; maintenance retained'
     fi
     if (( OPEN_ON_SUCCESS == 1 )); then "$PHP_BIN" artisan up; MAINTENANCE=0; fi
 fi

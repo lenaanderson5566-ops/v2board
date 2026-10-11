@@ -868,40 +868,7 @@
             }
           },
           "409": {
-            "description": "Node API problem",
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "type": {
-                      "type": "string"
-                    },
-                    "title": {
-                      "type": "string"
-                    },
-                    "status": {
-                      "type": "integer",
-                      "minimum": 0
-                    },
-                    "code": {
-                      "type": "string"
-                    },
-                    "requestId": {
-                      "type": "string"
-                    }
-                  },
-                  "required": [
-                    "type",
-                    "title",
-                    "status",
-                    "code",
-                    "requestId"
-                  ],
-                  "additionalProperties": false
-                }
-              }
-            }
+            "description": "CONFLICT: batch ID reused with a different payload"
           },
           "422": {
             "description": "Node API problem",
@@ -988,6 +955,11 @@
                     "items": {
                       "$ref": "#/components/schemas/nodeTrafficRecord"
                     }
+                  },
+                  "batchId": {
+                    "type": "string",
+                    "format": "uuid",
+                    "description": "Optional for legacy clients. Required for durable deduplicated batches; retries reuse the ID and identical records."
                   }
                 },
                 "required": [
@@ -998,7 +970,7 @@
             }
           }
         },
-        "description": "Byte deltas; deduplication is not implemented. Do not assume idempotency."
+        "description": "With batchId, 202 acknowledges durable receipt. Billing and daily statistics are applied atomically once per node and batch. Different records under the same ID return 409. Without batchId the existing non-deduplicated accounting path remains."
       }
     },
     "/server/online-users": {
@@ -1644,6 +1616,84 @@
           }
         }
       }
+    },
+    "/server/traffic-budget": {
+      "get": {
+        "operationId": "nodeTrafficBudget",
+        "tags": [
+          "V2Box node communication"
+        ],
+        "security": [
+          {
+            "nodeBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "X-Node-Type",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "v2box"
+              ]
+            }
+          },
+          {
+            "name": "X-Node-ID",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            }
+          },
+          {
+            "name": "If-None-Match",
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Node-Capabilities",
+            "in": "header",
+            "schema": {
+              "type": "string"
+            },
+            "description": "Comma-separated features. native-routing-v1 is required when singBox is configured."
+          }
+        ],
+        "description": "Server-wide raw proxy byte quota. Null means unbound. Higher limits recover service after the next poll; zero means unlimited. V2Box retains local limits during panel outages. Shared quotas across processes are eventually synchronized.",
+        "responses": {
+          "200": {
+            "description": "Current server traffic budget",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/nodeTrafficBudget"
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthenticated"
+          },
+          "404": {
+            "description": "Node not found"
+          }
+        }
+      }
     }
   },
   "schemas": {
@@ -2032,6 +2082,14 @@
         "singBox": {
           "$ref": "#/components/schemas/nodeNativeConfig",
           "description": "Resolved native sing-box configuration from the V2Box-only routing catalog. Selected native rules are merged in selection order; legacy routes cannot be mixed with native rules."
+        },
+        "trafficBatchDedup": {
+          "type": "boolean",
+          "description": "When true, the panel supports durable deduplicated traffic batches. Missing means unsupported."
+        },
+        "trafficBudgetSupported": {
+          "type": "boolean",
+          "description": "When true, GET /server/traffic-budget is supported."
         }
       },
       "required": [
@@ -2075,6 +2133,105 @@
           }
         }
       }
+    },
+    "nodeTrafficBatch": {
+      "type": "object",
+      "properties": {
+        "records": {
+          "type": "array",
+          "items": {
+            "$ref": "#/components/schemas/nodeTrafficRecord"
+          }
+        },
+        "batchId": {
+          "type": "string",
+          "format": "uuid",
+          "description": "Optional for legacy clients. Required for durable deduplicated batches; retries reuse the ID and identical records."
+        }
+      },
+      "required": [
+        "batchId",
+        "records"
+      ],
+      "additionalProperties": false
+    },
+    "nodeTrafficBudget": {
+      "type": "object",
+      "nullable": true,
+      "properties": {
+        "id": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "name": {
+          "type": "string"
+        },
+        "limitBytes": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "usedBytes": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "countingMode": {
+          "type": "string",
+          "enum": [
+            "upload",
+            "download",
+            "both"
+          ]
+        },
+        "resetDay": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 28
+        },
+        "blocked": {
+          "type": "boolean"
+        },
+        "periodStart": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "periodEnd": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "periodEndUnix": {
+          "type": "integer"
+        },
+        "traffic": {
+          "type": "object",
+          "properties": {
+            "uploadBytes": {
+              "type": "integer"
+            },
+            "downloadBytes": {
+              "type": "integer"
+            }
+          },
+          "required": [
+            "uploadBytes",
+            "downloadBytes"
+          ],
+          "additionalProperties": false
+        }
+      },
+      "required": [
+        "id",
+        "name",
+        "limitBytes",
+        "usedBytes",
+        "countingMode",
+        "resetDay",
+        "blocked",
+        "periodStart",
+        "periodEnd",
+        "periodEndUnix",
+        "traffic"
+      ],
+      "additionalProperties": false
     }
   },
   "endpoints": [
@@ -2112,6 +2269,11 @@
       "legacy": "None (scoped DDNS reporter)",
       "method": "POST",
       "path": "/server/addresses"
+    },
+    {
+      "legacy": "New server-wide traffic quota",
+      "method": "GET",
+      "path": "/server/traffic-budget"
     }
   ]
 }

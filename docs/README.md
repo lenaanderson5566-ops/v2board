@@ -25,7 +25,7 @@
 - [sing-box template requirements](sing-box-template.md)
 - [用户导航与订阅支付流程](subscription-checkout.md)
 - [独立流量额度与老用户迁移](traffic-credits.md)
-- [Laravel 12 升级与 PHP 要求](laravel12-upgrade.md)
+- [Laravel 13 升级与 PHP 要求](laravel13-upgrade.md)
 - [宝塔分支升级脚本](update-script.md)
 - [账单、使用情况和重置](usage-resets.md)
 - [用户语言偏好](user-language-preference.md)

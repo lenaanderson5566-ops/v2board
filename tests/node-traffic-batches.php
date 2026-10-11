@@ -1,0 +1,75 @@
+<?php
+require __DIR__.'/../vendor/autoload.php';
+$app=require __DIR__.'/../bootstrap/app.php';
+$app->make(Illuminate\Contracts\Console\Kernel::class)->bootstrap();
+if (!app()->environment('local')) throw new RuntimeException('Local test only');
+use App\Services\Actions\NodeTrafficBatch as Batches;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Queue;
+use Illuminate\Http\Request;
+use App\Models\User;
+use App\Models\ServerV2box;
+use Illuminate\Support\Str;
+set_exception_handler(function($e){fwrite(STDERR,$e->getMessage()."\n");exit(1);});
+$checks=0;
+$assert=function($ok,$label)use(&$checks){if(!$ok)throw new RuntimeException($label);$checks++;};
+config(['cache.default'=>'array','v2board.server_token'=>'batch-test-token']);Queue::fake();
+$kernel=$app->make(Illuminate\Contracts\Http\Kernel::class);
+DB::beginTransaction();
+try {
+ $user=User::create(['email'=>'batch-'.Str::uuid().'@example.test','password'=>'test','uuid'=>(string)Str::uuid(),'token'=>Str::random(32),'u'=>0,'d'=>0,'transfer_enable'=>100000,'expired_at'=>time()+86400,'group_id'=>1]);
+ $base=['name'=>'Batch test','group_id'=>[1],'host'=>'example.test','port'=>'443','server_port'=>443,'protocol'=>'vless','network'=>'tcp','tls'=>0,'rate'=>2,'show'=>1,'disable_sni'=>0,'zero_rtt_handshake'=>0];
+ (new App\Http\Controllers\V1\Admin\Server\V2boxController())->save(Request::create('/','POST',$base));
+ $node=ServerV2box::where('name','Batch test')->firstOrFail();
+ $id=(string)Str::uuid();$records=[['userId'=>$user->id,'uploadBytes'=>100,'downloadBytes'=>50]];
+ $call=function($body,$token='batch-test-token')use($kernel,$node){return $kernel->handle(Request::create('/api/v10/server/traffic','POST',[],[],[],['CONTENT_TYPE'=>'application/json','HTTP_ACCEPT'=>'application/json','HTTP_AUTHORIZATION'=>'Bearer '.$token,'HTTP_X_NODE_TYPE'=>'v2box','HTTP_X_NODE_ID'=>(string)$node->id],json_encode($body)));};
+ $assert($call(['batchId'=>$id,'records'=>$records],'bad')->getStatusCode()===401,'Authentication required');
+ $assert($call(['batchId'=>'invalid','records'=>$records])->getStatusCode()===422,'Batch ID validated');
+ $assert($call(['batchId'=>$id,'records'=>$records])->getStatusCode()===202,'Durable receipt accepted');
+ $batch=DB::table('v2_node_traffic_batch')->where('batch_id',$id)->first();
+ $assert($batch && $batch->payload!==null && $batch->processed_at===null,'Durable work precedes acknowledgement');
+ $assert($call(['batchId'=>$id,'records'=>$records])->getStatusCode()===202,'Retry acknowledged');
+ $assert(DB::table('v2_node_traffic_batch')->where('batch_id',$id)->count()===1,'One receipt per batch');
+ $changed=$records;$changed[0]['uploadBytes']=101;
+ $r=$call(['batchId'=>$id,'records'=>$changed]);
+ $assert($r->getStatusCode()===409 && json_decode($r->getContent(),true)['code']==='CONFLICT','Conflicting payload rejected: '.$r->getStatusCode().' '.$r->getContent());
+ Illuminate\Support\Facades\Redis::setex('traffic_reset_lock',30,1);
+ try { Batches::process($batch->id); $assert(DB::table('v2_node_traffic_batch')->find($batch->id)->processed_at===null,'Reset lock preserves pending batch'); } finally { Illuminate\Support\Facades\Redis::del('traffic_reset_lock'); }
+ Batches::process($batch->id);Batches::process($batch->id);
+ $assert($user->refresh()->u===200 && $user->d===100,'Weighted user usage applied once');
+ $stat=DB::table('v2_stat_server')->where('server_id',$node->id)->where('server_type','v2box')->first();
+ $assert($stat->u===100 && $stat->d===50,'Raw server traffic applied once');
+ $stat=DB::table('v2_stat_user')->where('user_id',$user->id)->where('server_rate',2)->first();
+ $assert($stat->u===100 && $stat->d===50,'Raw user statistics applied once');
+ $receipt=DB::table('v2_node_traffic_batch')->find($batch->id);
+ $assert($receipt->processed_at!==null && $receipt->payload===null,'Processed receipt compacted');
+ $assert($call(['batchId'=>$id,'records'=>$records])->getStatusCode()===202,'Late retry acknowledged');
+ $second=Batches::receive($node,(string)Str::uuid(),[$user->id=>[100,50]]);
+ $fail=true;DB::listen(function($query)use(&$fail){if($fail && str_starts_with($query->sql,'INSERT INTO v2_stat_server'))throw new RuntimeException('Injected statistics failure');});
+ try {Batches::process($second);throw new RuntimeException('Failure injection missing');}catch(RuntimeException $e){$assert($e->getMessage()==='Injected statistics failure','Processing failure propagated');}
+ $assert($user->refresh()->u===200 && $user->d===100,'User usage rolled back with statistics');
+ $assert(DB::table('v2_node_traffic_batch')->find($second)->processed_at===null,'Failed batch still pending');
+ $fail=false;Batches::process($second);
+ $assert($user->refresh()->u===400 && $user->d===200,'Retry after rollback applied exactly once');
+ $assert($call(['records'=>$records])->getStatusCode()===202,'Old V2Box traffic still accepted');
+ Queue::assertPushed(App\Jobs\TrafficFetchJob::class);$checks++;
+ // Recover a received batch without relying on successful queue dispatch.
+ $previousQueue=Queue::getFacadeRoot();
+ Illuminate\Support\Facades\Queue::shouldReceive('connection')->andThrow(new RuntimeException('Queue unavailable'));
+ $recoveryId=(string)Str::uuid();
+ $assert($call(['batchId'=>$recoveryId,'records'=>$records])->getStatusCode()===202,'Queue outage still acknowledges durable work');
+ Queue::swap($previousQueue);
+ Illuminate\Support\Facades\Artisan::call('traffic:process-batches');
+ $assert($user->refresh()->u===600 && $user->d===300,'Scheduler recovers enqueue failure');
+ $bulk=[$user->id=>[100,50]];
+ for($i=0;$i<501;$i++)$bulk[2100000000+$i]=[1,2];
+ $bulkUuid=(string)Str::uuid();$bulkId=Batches::receive($node,$bulkUuid,$bulk);
+ $assert(Batches::receive($node,$bulkUuid,array_reverse($bulk,true))===$bulkId,'Record order does not change batch identity');
+ Batches::process($bulkId);Batches::process($bulkId);
+ $assert(DB::table('v2_stat_user')->whereBetween('user_id',[2100000000,2100000500])->sum('u')==501,'Statistics cross the 500-row chunk boundary exactly once');
+ $assert($user->refresh()->u===800 && $user->d===400,'Bulk processing retains weighted user accounting');
+ $other=clone $node;$other->id=$node->id+1000000;
+ $otherId=Batches::receive($other,$id,[$user->id=>[100,50]]);
+ $assert($otherId!==$batch->id,'Batch identity scoped to node');
+ echo "Node traffic batches: {$checks} checks passed\n";
+} finally { DB::rollBack(); }

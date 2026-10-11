@@ -17,6 +17,7 @@ class NodeController extends Controller {
         abort_unless(ctype_digit((string) $id) && filter_var($id, FILTER_VALIDATE_INT, ['options'=>['min_range'=>1]]) !== false, 422);
         $node = (new ServerService())->getServer((int) $id, 'v2box');
         abort_unless($node, 404);
+        \App\Services\NodeAddressService::observe($request, 'v2box', (int) $id);
         return $node;
     }
     private function cached(Request $request, array $data) {
@@ -41,9 +42,14 @@ class NodeController extends Controller {
         Cache::put('V2BOX_CAPABILITIES:'.$node->id, $data, 86400);
         return response()->json(['data'=>['accepted'=>true]]);
     }
+    public function trafficBudget(Request $request) {
+        $node=$this->node($request);
+        $budget=\App\Services\ServerTrafficBudgetService::forNode('v2box',(int)$node->id);
+        return response()->json(['data'=>$budget]);
+    }
     public function users(Request $request) {
         $node = $this->node($request);
-        $users = (new ServerService())->getAvailableUsers($node->group_id)->map(fn($u) => [
+        $users = (\App\Services\ServerTrafficBudgetService::blocked('v2box',(int)$node->id) ? collect() : (new ServerService())->getAvailableUsers($node->group_id))->map(fn($u) => [
             'id'=>(int)$u->id, 'uuid'=>$u->uuid, 'speedLimit'=>(int)$u->speed_limit, 'deviceLimit'=>(int)$u->device_limit,
         ])->values()->all();
         return $this->cached($request, $users);
@@ -57,10 +63,19 @@ class NodeController extends Controller {
     }
     public function traffic(Request $request) {
         $node = $this->node($request);
-        $input = $request->validate(['records'=>'present|array|max:100000', 'records.*.userId'=>'required|integer|min:1|distinct', 'records.*.uploadBytes'=>'required|integer|min:0', 'records.*.downloadBytes'=>'required|integer|min:0']);
+        $input = $request->validate(['batchId'=>'sometimes|required|uuid', 'records'=>'present|array|max:100000', 'records.*.userId'=>'required|integer|min:1|distinct', 'records.*.uploadBytes'=>'required|integer|min:0', 'records.*.downloadBytes'=>'required|integer|min:0']);
         $data = [];
-        foreach ($input['records'] as $r) $data[$r['userId']] = [$r['uploadBytes'], $r['downloadBytes']];
-        // Same accounting jobs as legacy. Batch deduplication is intentionally deferred.
+        foreach ($input['records'] as $r) $data[(int)$r['userId']] = [(int)$r['uploadBytes'], (int)$r['downloadBytes']];
+        if (isset($input['batchId'])) {
+            $id = \App\Services\Actions\NodeTrafficBatch::receive($node, $input['batchId'], $data);
+            // Scheduler recovers the durable batch if enqueueing fails or the worker dies.
+            try { \App\Jobs\ProcessNodeTrafficBatch::dispatch($id); }
+            catch (\Throwable $e) { \Log::error('Node traffic batch enqueue failed', ['batchRecordId'=>$id]); }
+            Cache::put(\App\Utils\CacheKey::get('SERVER_V2BOX_ONLINE_USER', $node->id), count($data), 3600);
+            Cache::put(\App\Utils\CacheKey::get('SERVER_V2BOX_LAST_PUSH_AT', $node->id), time(), 3600);
+            return response()->json(['data'=>['accepted'=>true]], 202);
+        }
+        // Older V2Box clients retain the legacy accounting path.
         $legacy = Request::create('/', 'POST', [], [], [], ['CONTENT_TYPE'=>'application/json'], json_encode((object)$data));
         (new NodeCommunication($node, 'v2box'))->push($legacy);
         return response()->json(['data'=>['accepted'=>true]], 202);

@@ -83,6 +83,10 @@ new_site() {
     ARGS=(--project "$PWD" --php "$TMP/php" --composer "$TMP/composer.phar" --lock-file "$TMP/tested.lock" --backup-dir "$TMP/backups" --database-backup "$TMP/db.sql" --web-user "$(id -un)")
 }
 reject() { if bash "$SOURCE" "${ARGS[@]}" "$@" > "$TMP/output" 2>&1; then echo 'Unexpected success'; exit 1; fi; }
+new_site invalidrestarttimeout
+reject --jobs-restart-timeout 601
+[[ ! -e storage/framework/down ]]
+grep -q 'Invalid jobs restart timeout' "$TMP/output"
 new_site check
 bash "$SOURCE" "${ARGS[@]}" --check > "$TMP/output" 2>&1
 [[ $(git rev-parse HEAD) == "$OLD" && ! -e storage/framework/down ]]
@@ -247,4 +251,4 @@ bash update.sh "${ARGS[@]}" --jobs-stopped > "$TMP/output" 2>&1
 [[ $(grep -c 'Using target updater' "$TMP/output") == 1 ]]
 [[ $(git rev-parse HEAD) == $(git rev-parse origin/codex/payment-icon-picker) && -e storage/framework/down ]]
 grep -q 'All approved migrations completed' "$TMP/output"
-echo 'Updater: 25 isolated scenarios passed'
+echo 'Updater: 26 isolated scenarios passed'

@@ -30,7 +30,7 @@ class NodeCommunication
     {
         ini_set('memory_limit', -1);
         Cache::put(CacheKey::get('SERVER_' . strtoupper($this->nodeType) . '_LAST_CHECK_AT', $this->nodeInfo->id), time(), 3600);
-        $users = $this->serverService->getAvailableUsers($this->nodeInfo->group_id)
+        $users = (\App\Services\ServerTrafficBudgetService::blocked($this->nodeType,(int)$this->nodeId) ? collect() : $this->serverService->getAvailableUsers($this->nodeInfo->group_id))
             ->map(function ($user) {
                 return array_filter($user->toArray(), function ($v) {
                     return !is_null($v);

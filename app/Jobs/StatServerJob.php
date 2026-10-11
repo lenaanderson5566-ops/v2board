@@ -78,6 +78,7 @@ class StatServerJob implements ShouldQueue
                     'record_at' => $recordAt
                 ]);
             }
+            \App\Services\ServerTrafficBudgetService::record(\App\Services\ServerTrafficBudgetService::budgetId($this->protocol,(int)$this->server['id'],true),$u,$d,$recordAt);
             DB::commit();
         } catch (\Exception $e) {
             DB::rollback();

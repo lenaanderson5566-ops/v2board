@@ -35,6 +35,7 @@ class UniProxyController extends Controller
         $this->serverService = new ServerService();
         $this->nodeInfo = $this->serverService->getServer($this->nodeId, $this->nodeType);
         if (!$this->nodeInfo) abort(500, 'server is not exist');
+        \App\Services\NodeAddressService::observe($request, $this->nodeType, (int) $this->nodeId);
     }
 
     public function user(Request $request) { return (new \App\Services\Actions\NodeCommunication($this->nodeInfo, $this->nodeType))->user($request); }

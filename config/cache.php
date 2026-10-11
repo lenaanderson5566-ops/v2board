@@ -8,6 +8,9 @@ $legacyStorePrefix = !empty($cachePrefix) ? $cachePrefix . ':' : '';
 
 return [
 
+    // Application cache payloads are scalars and arrays, never PHP objects.
+    'serializable_classes' => false,
+
     /*
     |--------------------------------------------------------------------------
     | Default Cache Store

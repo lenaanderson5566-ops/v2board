@@ -3,6 +3,7 @@ require __DIR__ . '/../vendor/autoload.php';
 $app = require __DIR__ . '/../bootstrap/app.php';
 $app->make(Illuminate\Contracts\Console\Kernel::class)->bootstrap();
 if (!app()->environment('local')) throw new RuntimeException('Local test only');
+set_exception_handler(function ($error) { fwrite(STDERR, $error->getMessage()."\n"); exit(1); });
 
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Route;
@@ -29,11 +30,11 @@ try {
 
     mkdir($temporary . '/console/.vite', 0700, true);
     file_put_contents($temporary . '/console/.vite/manifest.json', json_encode(['index.html' => ['file' => 'missing.js'], 'admin.html' => ['file' => 'missing-admin.js']]));
-    $app->instance('path.public', $temporary);
+    $app->usePublicPath($temporary);
     $assert(Artisan::call('console:verify') === 1 && strpos(Artisan::output(), 'Missing or invalid console asset') !== false, 'Missing asset not detected');
 } finally {
     config(['v2board' => $originalConfig]);
-    $app->instance('path.public', $originalPublic);
+    $app->usePublicPath($originalPublic);
     Route::setRoutes($originalRoutes);
     if (is_file($temporary . '/console/.vite/manifest.json')) unlink($temporary . '/console/.vite/manifest.json');
     if (is_dir($temporary . '/console/.vite')) rmdir($temporary . '/console/.vite');

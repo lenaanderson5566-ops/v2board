@@ -68,6 +68,10 @@ try {
     $written=DB::table('v2_log')->orderByDesc('id')->first();
     $assert($written->request_id===$uuid && $written->http_status===200 && $written->metadata_indexed===1,'new log metadata indexed at write time');
     $assert(!str_contains(json_encode($written),'new-secret'),'new request secrets not captured');
+    $assert($written->level==='INFO', 'Monolog 3 level stored as a string');
+    $logger->error('unsafe exception text', ['requestId'=>$uuid, 'exception'=>new RuntimeException('private-exception-secret'), 'password'=>'private-password-secret']);
+    $error=DB::table('v2_log')->orderByDesc('id')->first();
+    $assert($error->level==='ERROR' && $error->title==='Application exception' && !str_contains(json_encode($error),'private-'), 'Monolog 3 exception context remains redacted');
     $explain=DB::select('EXPLAIN SELECT id FROM v2_log WHERE request_id = ? ORDER BY created_at DESC,id DESC',[$uuid]);
     $assert(str_contains($explain[0]->possible_keys ?? '', 'log_request_id_idx'),'request lookup has usable index');
     foreach(['v2_login_log','v2_subscribe_log'] as $table){$plan=DB::select('EXPLAIN SELECT id FROM '.$table.' WHERE created_at < ? ORDER BY created_at,id LIMIT 1000',[$now]);$assert(str_contains($plan[0]->possible_keys ?? '',$table.'_created_id_idx'),'cleanup has time index');}

@@ -4,12 +4,13 @@ require __DIR__.'/../vendor/autoload.php';
 $app = require __DIR__.'/../bootstrap/app.php';
 $app->make(Illuminate\Contracts\Console\Kernel::class)->bootstrap();
 if (!app()->environment('local')) throw new RuntimeException('Local test only');
+set_exception_handler(function ($error) { fwrite(STDERR, $error->getMessage()."\n"); exit(1); });
 $checks = 0;
 $assert = function ($ok, $message) use (&$checks) {
     if (!$ok) throw new RuntimeException($message);
     $checks++;
 };
-$assert(str_starts_with($app->version(), '9.52.'), 'Unexpected framework version');
+$assert(str_starts_with($app->version(), '10.'), 'Unexpected framework version');
 foreach (["a@example.com\r\nBcc:b@example.com", "a@example.com\n", "a@example.com\0", 'a @example.com'] as $email) {
     $assert(validator(['email'=>$email], ['email'=>'email'])->fails(), 'Unsafe email accepted');
 }
@@ -48,4 +49,4 @@ $path = 'framework-tests/'.bin2hex(random_bytes(8)).'.txt';
 try {
     $assert($disk->put($path, 'roundtrip') && $disk->get($path) === 'roundtrip', 'Flysystem write/read failed');
 } finally { $disk->delete($path); }
-echo "Laravel 9: $checks checks passed; no real mail sent.\n";
+echo "Laravel 10: $checks checks passed; no real mail sent.\n";

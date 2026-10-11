@@ -84,7 +84,7 @@ try {
     $assert($allowed===1,'Concurrent workers exceeded shared budget');
     $fakeLimiter=new class extends MailRateLimiter { public $delay=0; public $cooldowns=0; public function acquire($email,$bulk,$priority=false) { return $this->delay; } public function cooldown($email, $priority=false) { $this->cooldowns++; } };
     $app->instance(MailRateLimiter::class,$fakeLimiter);
-    $transport=new class { public $sent=0; public $error; public $rejected=[]; public function failures() { return $this->rejected; } public function forgetMailers() {} public function send($views, $data, $callback) { foreach ($views as $view) view($view, $data)->render(); $this->sent++; if($this->error) throw $this->error; } };
+    $transport=new class { public $sent=0; public $error; public function forgetMailers() {} public function send($views, $data, $callback) { foreach ($views as $view) view($view, $data)->render(); $this->sent++; if($this->error) throw $this->error; } };
     Mail::swap($transport);
     $job=new SendEmailJob($base,'send_email_mass');
     $fakeLimiter->delay=10;
@@ -100,11 +100,20 @@ try {
     $transport->error=new RuntimeException('Expected response code 250 but got code "550"');
     $job->handle(); $assert($queued->hasFailed(), 'Permanent SMTP failure was retried');
     $transport->error=null;
-    $transport->rejected=[$user->email];
+    $transport->error=new Symfony\Component\Mailer\Exception\TransportException('Expected response code 250 but got code "550"');
     $result=(new SendEmailJob($base))->handle(); $assert(!empty($result['error']), 'Rejected recipient marked delivered');
-    $transport->rejected=[];
+    $transport->error=null;
     $result=(new SendEmailJob($base))->handle();
     $assert(empty($result['error']) && !isset($result['config']),'Success or SMTP secrecy incorrect');
+    $unsafe=$base; $unsafe['email']="valid@example.com\r\nBcc:other@example.com";
+    $before=$transport->sent;
+    $invalid=(new SendEmailJob($unsafe))->handle();
+    $assert(!empty($invalid['error']) && $invalid['permanent'] && $transport->sent===$before, 'Legacy queued unsafe address reached transport');
+    config(['v2board.email_host'=>'smtp.example.test', 'v2board.email_port'=>465, 'v2board.email_encryption'=>'ssl',
+        'v2board.email_username'=>'test-user', 'v2board.email_password'=>'test-password', 'v2board.email_from_address'=>'sender@example.test']);
+    (new SendEmailJob($base))->handle();
+    $assert(config('mail.host')==='smtp.example.test' && config('mail.scheme')==='smtps' && config('mail.timeout')===15, 'Persisted SMTP settings not applied');
+    config(['v2board.email_host'=>null]);
     $otp=['email'=>$user->email,'language'=>'ko-KR','template_name'=>'verify','template_value'=>['code'=>'123456']];
     $otpJob=new SendEmailJob($otp);
     $assert($otpJob->connection==='redis' && $otpJob->queue==='send_email_priority' && $otpJob->backoff()[0]===5, 'Verification lacks priority queue / fast retry');

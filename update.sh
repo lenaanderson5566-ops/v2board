@@ -46,6 +46,10 @@ SERVICE_MAIL_MIGRATION=database/migrations/2026_10_08_000001_add_service_notific
 PAYMENT_HISTORY_MIGRATION=database/migrations/2026_10_10_000001_add_order_payment_snapshot.php
 V2BOX_MIGRATION=database/migrations/2026_10_11_000001_create_v2box_nodes.php
 RETIRED_NODE_TABLES_MIGRATION=database/migrations/2026_10_11_000002_drop_retired_node_tables.php
+V2BOX_SINGBOX_MIGRATION=database/migrations/2026_10_11_000003_add_v2box_sing_box.php
+NODE_ROUTES_MIGRATION=database/migrations/2026_10_11_000004_separate_node_routes.php
+NODE_DDNS_MIGRATION=database/migrations/2026_10_11_000005_create_node_ddns.php
+LOG_METADATA_MIGRATION=database/migrations/2026_10_11_000006_index_log_metadata.php
 usage() {
     cat <<'HELP'
 Usage: bash update.sh [options]
@@ -53,7 +57,7 @@ Usage: bash update.sh [options]
   --branch NAME           Default: codex/payment-icon-picker
   --php PATH              PHP matching the website PHP-FPM
   --composer PATH         Existing Composer executable or phar
-  --lock-file PATH        Tested target composer.lock (existing lock otherwise)
+  --lock-file PATH        Override the committed target composer.lock
   --resolve-dependencies Resolve merged dependencies in an isolated temp directory
   --database-backup PATH  Optional: copy an existing database backup into file backup
   --backup-dir PATH       Private backup parent OUTSIDE the website
@@ -175,7 +179,7 @@ git check-ref-format --branch "$BRANCH" >/dev/null || die 'Invalid branch'
 git diff --cached --quiet || die 'Review staged changes first'
 while IFS= read -r changed; do
     case "$changed" in
-        ''|composer.json) ;;
+        ''|composer.json|composer.lock) ;;
         storage/geoip/GeoLite2-ASN.mmdb|storage/geoip/GeoLite2-City.mmdb|storage/geoip/GeoLite2-Country.mmdb)
             [[ -f "$changed" && ! -L "$changed" ]] || die "GeoIP change is not a regular file: $changed"
             LOCAL_GEOIP+=("$changed");;
@@ -190,8 +194,10 @@ if [[ -z "$COMPOSER_BIN" ]]; then
 fi
 [[ -f "$COMPOSER_BIN" ]] || die 'Provide an existing Composer executable/phar with --composer'
 COMPOSER_BIN=$(realpath "$COMPOSER_BIN")
-LOCK_FILE=$(realpath "${LOCK_FILE:-$PROJECT/composer.lock}")
-[[ -s "$LOCK_FILE" ]] || die 'Provide tested target composer.lock with --lock-file'
+if [[ -n "$LOCK_FILE" ]]; then
+    LOCK_FILE=$(realpath "$LOCK_FILE")
+    [[ -s "$LOCK_FILE" ]] || die 'Provided target composer.lock is missing'
+fi
 OLD_COMMIT=$(git rev-parse HEAD)
 OLD_BRANCH=$(git symbolic-ref --short -q HEAD || true)
 git fetch origin "refs/heads/$BRANCH"
@@ -233,8 +239,12 @@ git cat-file -e "$TARGET:$RETIRED_NODE_TABLES_MIGRATION" || die 'Target lacks re
 git cat-file -e "$TARGET:$V2BOX_MIGRATION" || die 'Target lacks V2Box migration'
 git cat-file -e "$TARGET:$NODE_DISPLAY_MIGRATION" || die 'Target lacks the node display metadata migration'
 git cat-file -e "$TARGET:$RESET_MIGRATION" || die 'Target lacks the usage reset migration'
+git cat-file -e "$TARGET:$V2BOX_SINGBOX_MIGRATION" || die 'Target lacks v2box_singbox migration'
+git cat-file -e "$TARGET:$NODE_ROUTES_MIGRATION" || die 'Target lacks node_routes migration'
+git cat-file -e "$TARGET:$NODE_DDNS_MIGRATION" || die 'Target lacks node_ddns migration'
+git cat-file -e "$TARGET:$LOG_METADATA_MIGRATION" || die 'Target lacks log_metadata migration'
 while IFS= read -r changed; do
-    [[ -z "$changed" || "$changed" == "$MIGRATION" || "$changed" == "$INVITATION_MIGRATION" || "$changed" == "$LANGUAGE_MIGRATION" || "$changed" == "$CURRENCY_MIGRATION" || "$changed" == "$EXPIRY_MIGRATION" || "$changed" == "$REWARD_MIGRATION" || "$changed" == "$RESET_MIGRATION" || "$changed" == "$NOTICE_MIGRATION" || "$changed" == "$CREDIT_MIGRATION" || "$changed" == "$CONTENT_MIGRATION" || "$changed" == "$BANNER_MIGRATION" || "$changed" == "$RETIRED_NODE_TABLES_MIGRATION" || "$changed" == "$V2BOX_MIGRATION" || "$changed" == "$NODE_DISPLAY_MIGRATION" || "$changed" == "$PAYMENT_HISTORY_MIGRATION" || "$changed" == "$SERVICE_MAIL_MIGRATION" || "$changed" == "$RETIRED_PAYMENT_MIGRATION" ]] || die "Unexpected migration: $changed; review scope first"
+    [[ -z "$changed" || "$changed" == "$MIGRATION" || "$changed" == "$INVITATION_MIGRATION" || "$changed" == "$LANGUAGE_MIGRATION" || "$changed" == "$CURRENCY_MIGRATION" || "$changed" == "$EXPIRY_MIGRATION" || "$changed" == "$REWARD_MIGRATION" || "$changed" == "$RESET_MIGRATION" || "$changed" == "$NOTICE_MIGRATION" || "$changed" == "$CREDIT_MIGRATION" || "$changed" == "$CONTENT_MIGRATION" || "$changed" == "$BANNER_MIGRATION" || "$changed" == "$RETIRED_NODE_TABLES_MIGRATION" || "$changed" == "$V2BOX_MIGRATION" || "$changed" == "$V2BOX_SINGBOX_MIGRATION" || "$changed" == "$NODE_ROUTES_MIGRATION" || "$changed" == "$NODE_DDNS_MIGRATION" || "$changed" == "$LOG_METADATA_MIGRATION" || "$changed" == "$NODE_DISPLAY_MIGRATION" || "$changed" == "$PAYMENT_HISTORY_MIGRATION" || "$changed" == "$SERVICE_MAIL_MIGRATION" || "$changed" == "$RETIRED_PAYMENT_MIGRATION" ]] || die "Unexpected migration: $changed; review scope first"
 done < <(git diff --name-only "$OLD_COMMIT" "$TARGET" -- database/migrations)
 git show "$TARGET:composer.json" > "$WORK_DIR/composer.json"
 git show "$OLD_COMMIT:composer.json" > "$WORK_DIR/original-composer.json"
@@ -278,7 +288,11 @@ foreach (array_merge([$argv[1]],glob($argv[4]."/*.json")) as $candidate) {
 }
 throw new RuntimeException("No committed Composer baseline matches local file. ".$firstError->getMessage());
 ' "$WORK_DIR/original-composer.json" "$PROJECT/composer.json" "$WORK_DIR/composer.json" "$WORK_DIR/composer-history" "$WORK_DIR/matched-composer.json"
-cp -- "$LOCK_FILE" "$WORK_DIR/composer.lock"
+if [[ -n "$LOCK_FILE" ]]; then
+    cp -- "$LOCK_FILE" "$WORK_DIR/composer.lock"
+else
+    git show "$TARGET:composer.lock" > "$WORK_DIR/composer.lock" || die 'Target lacks a tested lock; provide --lock-file'
+fi
 if (( RESOLVE_DEPENDENCIES == 1 )); then
     # Resolve a candidate lock without modifying the live vendor tree.
     (cd "$WORK_DIR"; COMPOSER="$WORK_DIR/composer.json" "$PHP_BIN" "$COMPOSER_BIN" --no-plugins --no-scripts update --no-install --no-interaction --prefer-dist)
@@ -292,7 +306,7 @@ MANUAL_USERS=$("$PHP_BIN" -r 'require $argv[1]."/vendor/autoload.php"; $app=requ
 while IFS= read -r -d '' file; do
     if [[ -e "$file" || -L "$file" ]]; then
         if ! git ls-files --error-unmatch -- "$file" >/dev/null 2>&1; then
-            [[ "$file" == storage/geoip/* && -f "$file" && ! -L "$file" ]] || die "Untracked target collision: $file"
+            [[ ( "$file" == storage/geoip/* || "$file" == composer.lock ) && -f "$file" && ! -L "$file" ]] || die "Untracked target collision: $file"
             printf '%s\0' "$file" >> "$WORK_DIR/geoip-collisions"
         fi
     fi
@@ -350,6 +364,9 @@ tar --exclude='./.git' --exclude='./frontend/node_modules' --exclude='./node_mod
 tar -tzf "$BACKUP/site.tar.gz" >/dev/null
 # Release the local tracked edit only after the full backup has been verified.
 git restore --source=HEAD -- composer.json
+if git ls-files --error-unmatch composer.lock >/dev/null 2>&1; then
+    git restore --source=HEAD -- composer.lock
+fi
 for file in "${LOCAL_GEOIP[@]}"; do
     mkdir -p -- "$BACKUP/tracked/$(dirname "$file")"
     cp -- "$file" "$BACKUP/tracked/$file"
@@ -382,7 +399,7 @@ PHASE=cache-preparation
 "$PHP_BIN" artisan route:clear
 "$PHP_BIN" artisan view:clear
 PHASE=migrations
-for migration in "$MIGRATION" "$INVITATION_MIGRATION" "$LANGUAGE_MIGRATION" "$RESET_MIGRATION" "$NOTICE_MIGRATION" "$CREDIT_MIGRATION" "$CONTENT_MIGRATION" "$BANNER_MIGRATION" "$REWARD_MIGRATION" "$EXPIRY_MIGRATION" "$CURRENCY_MIGRATION" "$NODE_DISPLAY_MIGRATION" "$RETIRED_PAYMENT_MIGRATION" "$SERVICE_MAIL_MIGRATION" "$PAYMENT_HISTORY_MIGRATION" "$V2BOX_MIGRATION" "$RETIRED_NODE_TABLES_MIGRATION"; do
+for migration in "$MIGRATION" "$INVITATION_MIGRATION" "$LANGUAGE_MIGRATION" "$RESET_MIGRATION" "$NOTICE_MIGRATION" "$CREDIT_MIGRATION" "$CONTENT_MIGRATION" "$BANNER_MIGRATION" "$REWARD_MIGRATION" "$EXPIRY_MIGRATION" "$CURRENCY_MIGRATION" "$NODE_DISPLAY_MIGRATION" "$RETIRED_PAYMENT_MIGRATION" "$SERVICE_MAIL_MIGRATION" "$PAYMENT_HISTORY_MIGRATION" "$V2BOX_MIGRATION" "$RETIRED_NODE_TABLES_MIGRATION" "$V2BOX_SINGBOX_MIGRATION" "$NODE_ROUTES_MIGRATION" "$NODE_DDNS_MIGRATION" "$LOG_METADATA_MIGRATION"; do
     run_migration "$migration"
 done
 printf '\nAll approved migrations completed.\n'

@@ -1,5 +1,9 @@
 <?php
 require __DIR__.'/../vendor/autoload.php';
+$app=require __DIR__.'/../bootstrap/app.php';
+$app->make(Illuminate\Contracts\Console\Kernel::class)->bootstrap();
+if (!app()->environment('local')) throw new RuntimeException('Local test only');
+config(['v2board.app_url'=>'https://example.com', 'cors.allowed_origins'=>[]]);
 use App\Http\Middleware\CORS;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\BinaryFileResponse;
@@ -8,14 +12,14 @@ use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpFoundation\JsonResponse;
 
 $n=0;
-foreach ([['Origin'=>'https://example.com'], ['Referer'=>'https://example.com/app'], []] as $headers) {
+foreach ([['Origin'=>'https://example.com'], ['Referer'=>'https://example.com/app'], ['Origin'=>'https://untrusted.example'], []] as $headers) {
     $request=Request::create('/client-mirrors/test');
     foreach ($headers as $key=>$value) $request->headers->set($key,$value);
     $file=new BinaryFileResponse(__FILE__);
     $file->setContentDisposition('attachment','installer.bin');
     foreach ([$file,new StreamedResponse(function(){echo 'stream';}),new Response('page'),new JsonResponse(['ok'=>true])] as $response) {
         $result=(new CORS)->handle($request,fn()=>$response);
-        if ($result!==$response || $result->headers->get('Access-Control-Allow-Origin')!==($headers?'https://example.com':'')
+        if ($result!==$response || ($result->headers->get('Access-Control-Allow-Origin') ?? '')!==(($headers['Origin'] ?? '')==='https://example.com'?'https://example.com':'')
             || $result->headers->get('Access-Control-Allow-Methods')!=='GET,POST,OPTIONS,HEAD') throw new RuntimeException('CORS response regression');
         if ($result instanceof BinaryFileResponse && (!str_contains($result->headers->get('Content-Disposition'),'installer.bin') || $result->getFile()->getPathname()!==__FILE__)) throw new RuntimeException('Download changed');
         $n++;

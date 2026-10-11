@@ -23,6 +23,8 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot()
     {
-        // Both user and admin interfaces are rendered by the React console.
+        \Illuminate\Support\Facades\Validator::resolver(function ($translator, $data, $rules, $messages, $attributes) {
+            return new \App\Validation\Validator($translator, $data, $rules, $messages, $attributes);
+        });
     }
 }

@@ -51,7 +51,7 @@ class MailRateLimiter
     {
         if (preg_match('/rate.?limit|too many|quota exceeded|daily.*limit|频率|频繁/i', $exception->getMessage())) return false;
         $code = (int)$exception->getCode();
-        // Swift includes both expected and received SMTP codes; only inspect the received code.
+        // The SMTP transport includes both expected and received SMTP codes; only inspect the received code.
         if (preg_match('/got code ["\']?(\d{3})/i', $exception->getMessage(), $match)) $code = (int)$match[1];
         return $code >= 500 && $code < 600;
     }

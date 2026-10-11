@@ -30,7 +30,8 @@
 
 # **V2Board**
 
-- PHP7.3+
+- PHP 8.1+（CLI、PHP-FPM、队列使用相同版本）
+- Laravel 9.52.22（过渡版本，升级说明见 [Laravel 9 升级](docs/laravel9-upgrade.md)）
 - Composer
 - MySQL5.5+
 - Redis

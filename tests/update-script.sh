@@ -40,6 +40,12 @@ echo '<?php // fixture' > database/migrations/2026_10_08_000001_add_service_noti
 echo '<?php // fixture' > database/migrations/2026_10_10_000001_add_order_payment_snapshot.php
 echo '<?php // fixture' > database/migrations/2026_10_11_000001_create_v2box_nodes.php
 echo '<?php // fixture' > database/migrations/2026_10_11_000002_drop_retired_node_tables.php
+echo '<?php // fixture' > database/migrations/2026_10_11_000003_add_v2box_sing_box.php
+echo '<?php // fixture' > database/migrations/2026_10_11_000004_separate_node_routes.php
+echo '<?php // fixture' > database/migrations/2026_10_11_000005_create_node_ddns.php
+echo '<?php // fixture' > database/migrations/2026_10_11_000006_index_log_metadata.php
+echo '{}' > composer.lock
+git add -f composer.lock
 mkdir -p storage/geoip
 echo 'new mmdb' > storage/geoip/GeoLite2-ASN.mmdb
 git add -f storage/geoip/GeoLite2-ASN.mmdb
@@ -80,6 +86,12 @@ reject() { if bash "$SOURCE" "${ARGS[@]}" "$@" > "$TMP/output" 2>&1; then echo '
 new_site check
 bash "$SOURCE" "${ARGS[@]}" --check > "$TMP/output" 2>&1
 [[ $(git rev-parse HEAD) == "$OLD" && ! -e storage/framework/down ]]
+new_site targetlock
+ARGS=(--project "$PWD" --php "$TMP/php" --composer "$TMP/composer.phar" --backup-dir "$TMP/backups" --web-user "$(id -un)")
+bash "$SOURCE" "${ARGS[@]}" --jobs-stopped > "$TMP/output" 2>&1
+[[ $(git rev-parse HEAD) == "$TARGET" ]]
+cmp composer.lock "$TMP/seed/composer.lock"
+grep -q 'migrate --path=database/migrations/2026_10_11_000006_index_log_metadata.php --force --no-interaction' calls.log
 new_site dirty
 echo changed >> composer.json
 reject --jobs-stopped
@@ -235,4 +247,4 @@ bash update.sh "${ARGS[@]}" --jobs-stopped > "$TMP/output" 2>&1
 [[ $(grep -c 'Using target updater' "$TMP/output") == 1 ]]
 [[ $(git rev-parse HEAD) == $(git rev-parse origin/codex/payment-icon-picker) && -e storage/framework/down ]]
 grep -q 'All approved migrations completed' "$TMP/output"
-echo 'Updater: 24 isolated scenarios passed'
+echo 'Updater: 25 isolated scenarios passed'

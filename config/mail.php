@@ -16,7 +16,9 @@ return [
     |
     */
 
-    'driver' => env('MAIL_DRIVER', 'smtp'),
+    'scheme' => env('MAIL_SCHEME', env('MAIL_ENCRYPTION', 'tls') === 'ssl' || (int) env('MAIL_PORT', 587) === 465 ? 'smtps' : 'smtp'),
+
+    'driver' => env('MAIL_MAILER', env('MAIL_DRIVER', 'smtp')),
 
     /*
     |--------------------------------------------------------------------------

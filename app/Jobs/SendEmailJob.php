@@ -51,6 +51,7 @@ class SendEmailJob implements ShouldQueue
             foreach (['host','port','encryption','username','password'] as $field) Config::set('mail.'.$field, config('v2board.email_'.$field));
             Config::set('mail.from.address', config('v2board.email_from_address'));
         }
+        Config::set('mail.scheme', config('mail.encryption') === 'ssl' || (int) config('mail.port') === 465 ? 'smtps' : 'smtp');
         Config::set('mail.timeout', 15);
         $data = app(ProductMail::class)->data($params);
         Config::set('mail.from.name', $data['brand']);
@@ -63,12 +64,15 @@ class SendEmailJob implements ShouldQueue
         }
         $log = ['email'=>$params['email'], 'subject'=>$data['subject'], 'template_name'=>'mail.product.'. $params['template_name'], 'error'=>null];
         try {
+            // Also protect legacy queued jobs that predate stricter request validation.
+            if (validator(['email'=>$params['email']], ['email'=>'required|string|email:rfc'])->fails()) {
+                throw new \InvalidArgumentException('Invalid recipient email address.', 550);
+            }
             // MailManager caches the transport; rebuild it after applying persisted SMTP settings.
             Mail::forgetMailers();
             Mail::send(['html'=>'mail.product.message', 'text'=>'mail.product.text'], $data, function ($message) use ($params, $data) {
                 $message->to($params['email'])->subject($data['subject']);
             });
-            if (Mail::failures()) throw new \RuntimeException('SMTP did not accept the recipient.');
         } catch (\Exception $exception) {
             $permanent = $limiter->permanent($exception);
             $log['error'] = substr($exception->getMessage(), 0, 2000);

@@ -1,3 +1,5 @@
+import { AdminDDNS } from "./AdminDDNS";
+import { adminUserLabel } from "./admin-user-label";
 import { AdminLightsail } from "./AdminLightsail";
 import { ServerTrafficBudgets } from "./ServerTrafficBudgets";
 import { nodeDeploymentCommand, nodeIPCommand } from "./node-deployment";
@@ -314,8 +316,11 @@ export const resources: Record<string, Resource> = {
         fetch: admin("user/fetch"),
         save: admin("user/update"),
         columns: [
-            ["id", "ID"],
-            ["email", "邮箱"],
+            [
+                "id",
+                "用户（ID / 邮箱）",
+                (r) => adminUserLabel({ user_id: r.id, email: r.email }),
+            ],
             ["credit_balance", "剩余额度", (r) => bytes(r.credit_balance || 0)],
             [
                 "banned",
@@ -426,7 +431,7 @@ export const resources: Record<string, Resource> = {
                         }) as Row
                     )[r.period] || r.period,
             ],
-            ["user_id", "用户 ID"],
+            ["user_id", "用户（ID / 邮箱）", (r) => adminUserLabel(r)],
             ["plan_id", "套餐 ID"],
             [
                 "credit_bytes",
@@ -717,7 +722,7 @@ export const resources: Record<string, Resource> = {
         columns: [
             [
                 "user_id",
-                "用户（邮箱 / ID）",
+                "用户（ID / 邮箱）",
                 (r) => <AdminUserActivityLink row={r} />,
             ],
             ["ip", "IP 地址"],
@@ -732,7 +737,7 @@ export const resources: Record<string, Resource> = {
         columns: [
             [
                 "user_id",
-                "用户（邮箱 / ID）",
+                "用户（ID / 邮箱）",
                 (r) => <AdminUserActivityLink row={r} />,
             ],
             ["subscription_plan", "订阅套餐"],
@@ -754,7 +759,7 @@ export const resources: Record<string, Resource> = {
         columns: [
             [
                 "user_id",
-                "用户（邮箱 / ID）",
+                "用户（ID / 邮箱）",
                 (r) => <AdminUserActivityLink row={r} />,
             ],
             ["ip", "IP"],
@@ -771,7 +776,7 @@ export const resources: Record<string, Resource> = {
         columns: [
             [
                 "user_id",
-                "用户（邮箱 / ID）",
+                "用户（ID / 邮箱）",
                 (r) => <AdminUserActivityLink row={r} />,
             ],
             ["ip", "IP"],
@@ -787,7 +792,7 @@ export const resources: Record<string, Resource> = {
         columns: [
             [
                 "user_id",
-                "用户（邮箱 / ID）",
+                "用户（ID / 邮箱）",
                 (r) => <AdminUserActivityLink row={r} />,
             ],
             ["ip", "IP"],
@@ -802,7 +807,7 @@ export const resources: Record<string, Resource> = {
         columns: [
             [
                 "user_id",
-                "用户（邮箱 / ID）",
+                "用户（ID / 邮箱）",
                 (r) => <AdminUserActivityLink row={r} />,
             ],
             ["rule_key", "规则"],
@@ -2387,7 +2392,10 @@ const nodeTypes = [
     "v2node",
     "v2box",
 ] as const satisfies readonly NodeBackendType[];
-export function Nodes() {
+export function Nodes({
+    initialTab = "nodes",
+}: { initialTab?: "nodes" | "ddns" } = {}) {
+    const [tab, setTab] = useState(initialTab);
     const [budgetsOpen, setBudgetsOpen] = useState(false);
     const [lightsailOpen, setLightsailOpen] = useState(false);
     const [nodeSearch, setNodeSearch] = useState("");
@@ -2407,13 +2415,31 @@ export function Nodes() {
         (n) =>
             (!backendFilter || n.type === backendFilter) &&
             (!quotaFilter || n.traffic_budget?.blocked) &&
-            `${n.name} ${n.host} ${n.current_ip || ""}`
+            `${n.id} ${n.name} ${n.host} ${n.current_ip || ""} ${n.protocol || ""}`
                 .toLowerCase()
                 .includes(nodeSearch.trim().toLowerCase()),
     );
 
     return (
         <>
+            <nav className="node-management-tabs" aria-label="节点管理功能">
+                <button
+                    aria-pressed={tab === "nodes"}
+                    onClick={() => {
+                        setTab("nodes");
+                        d.reload();
+                    }}
+                >
+                    节点列表
+                </button>
+                <button
+                    aria-pressed={tab === "ddns"}
+                    onClick={() => setTab("ddns")}
+                >
+                    Cloudflare DDNS
+                </button>
+            </nav>
+            {tab === "ddns" && <AdminDDNS />}
             {lightsailOpen && (
                 <AdminLightsail
                     nodes={rows(d.data)}
@@ -2427,222 +2453,228 @@ export function Nodes() {
                     onSaved={d.reload}
                 />
             )}
-            <Panel
-                title="节点管理"
-                actions={
-                    <>
-                        <Reload onClick={d.reload} />
-                        <button onClick={() => setBudgetsOpen(true)}>
-                            服务器流量
-                        </button>
-                        <button onClick={() => setLightsailOpen(true)}>
-                            Lightsail IP
-                        </button>
-                        <SortButton
-                            path={admin("server/manage/sort")}
-                            kind="nodes"
-                            items={rows(d.data)}
-                            onSaved={d.reload}
-                        />
-                        <button
-                            className="primary"
-                            onClick={() =>
-                                setEditing({
-                                    type,
-                                    group_id: [],
-                                    route_id: [],
-                                    rate: 1,
-                                    tls: 0,
-                                    network: "tcp",
-                                    disable_sni: 0,
-                                    zero_rtt_handshake: 0,
-                                })
-                            }
-                        >
-                            添加节点
-                        </button>
-                    </>
-                }
-            >
-                <State {...d}>
-                    {error && <div className="alert">{error}</div>}
-                    <div className="node-management-tools">
-                        <label>
-                            搜索节点
-                            <input
-                                placeholder="名称、域名或当前 IP"
-                                value={nodeSearch}
-                                onChange={(e) => setNodeSearch(e.target.value)}
+            {tab === "nodes" && (
+                <Panel
+                    title="节点管理"
+                    actions={
+                        <>
+                            <Reload onClick={d.reload} />
+                            <button onClick={() => setBudgetsOpen(true)}>
+                                服务器流量
+                            </button>
+                            <button onClick={() => setLightsailOpen(true)}>
+                                Lightsail IP
+                            </button>
+                            <SortButton
+                                path={admin("server/manage/sort")}
+                                kind="nodes"
+                                items={rows(d.data)}
+                                onSaved={d.reload}
                             />
-                        </label>
-                        <label>
-                            筛选节点类型
-                            <select
-                                value={backendFilter}
-                                onChange={(e) =>
-                                    setBackendFilter(e.target.value)
+                            <button
+                                className="primary"
+                                onClick={() =>
+                                    setEditing({
+                                        type,
+                                        group_id: [],
+                                        route_id: [],
+                                        rate: 1,
+                                        tls: 0,
+                                        network: "tcp",
+                                        disable_sni: 0,
+                                        zero_rtt_handshake: 0,
+                                    })
                                 }
                             >
-                                <option value="">全部类型</option>
-                                <option value="v2node">V2Node</option>
-                                <option value="v2box">V2Box</option>
-                            </select>
-                        </label>
-                        <label className="node-quota-filter">
-                            <input
-                                type="checkbox"
-                                checked={quotaFilter}
-                                onChange={(e) =>
-                                    setQuotaFilter(e.target.checked)
+                                添加节点
+                            </button>
+                        </>
+                    }
+                >
+                    <State {...d}>
+                        {error && <div className="alert">{error}</div>}
+                        <div
+                            className="node-management-summary"
+                            aria-label="节点概况"
+                        >
+                            <div>
+                                <span>全部节点</span>
+                                <strong>{nodeRows.length}</strong>
+                            </div>
+                            <div>
+                                <span>V2Node</span>
+                                <strong>
+                                    {
+                                        nodeRows.filter(
+                                            (n) => n.type === "v2node",
+                                        ).length
+                                    }
+                                </strong>
+                            </div>
+                            <div>
+                                <span>V2Box</span>
+                                <strong>
+                                    {
+                                        nodeRows.filter(
+                                            (n) => n.type === "v2box",
+                                        ).length
+                                    }
+                                </strong>
+                            </div>
+                            <div>
+                                <span>额度受限</span>
+                                <strong>
+                                    {
+                                        nodeRows.filter(
+                                            (n) => n.traffic_budget?.blocked,
+                                        ).length
+                                    }
+                                </strong>
+                            </div>
+                        </div>
+                        <div className="node-management-tools">
+                            <label>
+                                搜索节点
+                                <input
+                                    placeholder="ID、名称、域名、IP 或协议"
+                                    value={nodeSearch}
+                                    onChange={(e) =>
+                                        setNodeSearch(e.target.value)
+                                    }
+                                />
+                            </label>
+                            <label>
+                                筛选节点类型
+                                <select
+                                    value={backendFilter}
+                                    onChange={(e) =>
+                                        setBackendFilter(e.target.value)
+                                    }
+                                >
+                                    <option value="">全部类型</option>
+                                    <option value="v2node">V2Node</option>
+                                    <option value="v2box">V2Box</option>
+                                </select>
+                            </label>
+                            <label className="node-quota-filter">
+                                <input
+                                    type="checkbox"
+                                    checked={quotaFilter}
+                                    onChange={(e) =>
+                                        setQuotaFilter(e.target.checked)
+                                    }
+                                />
+                                仅显示额度受限节点
+                            </label>
+                            <span className="muted">
+                                显示 {filteredNodes.length} / {nodeRows.length}{" "}
+                                个节点
+                            </span>
+                        </div>
+                        <Table
+                            data={filteredNodes}
+                            columns={[
+                                ["id", "ID"],
+                                name,
+                                ["type", "类型"],
+                                ["protocol", "协议"],
+                                ["host", "主机"],
+                                [
+                                    "current_ip",
+                                    "当前 IP",
+                                    (r) => (
+                                        <span title="优先显示公网 IP 上报；否则显示节点连接面板的来源 IP">
+                                            {r.current_ip || "未获取"}
+                                        </span>
+                                    ),
+                                ],
+                                [
+                                    "traffic_budget",
+                                    "服务器额度",
+                                    (r) =>
+                                        r.traffic_budget
+                                            ? `${bytes(r.traffic_budget.usedBytes)} / ${r.traffic_budget.limitBytes ? bytes(r.traffic_budget.limitBytes) : "不限"}${r.traffic_budget.blocked ? " · 已限制" : ""}`
+                                            : "未设置",
+                                ],
+                                ["port", "端口"],
+                                ["rate", "倍率"],
+                                [
+                                    "show",
+                                    "显隐",
+                                    (r) => (
+                                        <AdminSwitch
+                                            label={`${r.name} 显示`}
+                                            checked={Number(r.show) === 1}
+                                            onChange={async (checked) => {
+                                                await request(
+                                                    admin(
+                                                        `server/${r.type}/update`,
+                                                    ),
+                                                    {
+                                                        id: r.id,
+                                                        show: checked ? 1 : 0,
+                                                    },
+                                                );
+                                                d.reload();
+                                            }}
+                                        />
+                                    ),
+                                ],
+                                [
+                                    "group_id",
+                                    "权限组",
+                                    (r) =>
+                                        (r.group_id || [])
+                                            .map(
+                                                (id: number) =>
+                                                    rows(groups.data).find(
+                                                        (g) => g.id === id,
+                                                    )?.name || id,
+                                            )
+                                            .join(" / "),
+                                ],
+                                ["online", "在线用户"],
+                                [
+                                    "available_status",
+                                    "状态",
+                                    (r) =>
+                                        ["离线", "未上报流量", "正常"][
+                                            r.available_status
+                                        ],
+                                ],
+                            ]}
+                            onReorder={async (items) => {
+                                try {
+                                    await request(
+                                        admin("server/manage/sort"),
+                                        sortPayload("nodes", items),
+                                    );
+                                    d.reload();
+                                } catch (e) {
+                                    setError((e as Error).message);
                                 }
-                            />
-                            仅显示额度受限节点
-                        </label>
-                        <span className="muted">
-                            显示 {filteredNodes.length} / {nodeRows.length}{" "}
-                            个节点
-                        </span>
-                    </div>
-                    <Table
-                        data={filteredNodes}
-                        columns={[
-                            ["id", "ID"],
-                            name,
-                            ["type", "类型"],
-                            ["host", "主机"],
-                            [
-                                "current_ip",
-                                "当前 IP",
-                                (r) => (
-                                    <span title="优先显示公网 IP 上报；否则显示节点连接面板的来源 IP">
-                                        {r.current_ip || "未获取"}
-                                    </span>
-                                ),
-                            ],
-                            [
-                                "traffic_budget",
-                                "服务器额度",
-                                (r) =>
-                                    r.traffic_budget
-                                        ? `${bytes(r.traffic_budget.usedBytes)} / ${r.traffic_budget.limitBytes ? bytes(r.traffic_budget.limitBytes) : "不限"}${r.traffic_budget.blocked ? " · 已限制" : ""}`
-                                        : "未设置",
-                            ],
-                            ["port", "端口"],
-                            ["rate", "倍率"],
-                            [
-                                "show",
-                                "显隐",
-                                (r) => (
-                                    <AdminSwitch
-                                        label={`${r.name} 显示`}
-                                        checked={Number(r.show) === 1}
-                                        onChange={async (checked) => {
-                                            await request(
-                                                admin(
-                                                    `server/${r.type}/update`,
-                                                ),
-                                                {
-                                                    id: r.id,
-                                                    show: checked ? 1 : 0,
-                                                },
-                                            );
-                                            d.reload();
+                            }}
+                            actions={(r) => (
+                                <>
+                                    {r.install_command && (
+                                        <button onClick={() => setCommand(r)}>
+                                            安装命令
+                                        </button>
+                                    )}
+                                    <button
+                                        onClick={() => {
+                                            setType(r.type);
+                                            setEditing(r);
                                         }}
-                                    />
-                                ),
-                            ],
-                            [
-                                "group_id",
-                                "权限组",
-                                (r) =>
-                                    (r.group_id || [])
-                                        .map(
-                                            (id: number) =>
-                                                rows(groups.data).find(
-                                                    (g) => g.id === id,
-                                                )?.name || id,
-                                        )
-                                        .join(" / "),
-                            ],
-                            ["online", "在线用户"],
-                            [
-                                "available_status",
-                                "状态",
-                                (r) =>
-                                    ["离线", "未上报流量", "正常"][
-                                        r.available_status
-                                    ],
-                            ],
-                        ]}
-                        onReorder={async (items) => {
-                            try {
-                                await request(
-                                    admin("server/manage/sort"),
-                                    sortPayload("nodes", items),
-                                );
-                                d.reload();
-                            } catch (e) {
-                                setError((e as Error).message);
-                            }
-                        }}
-                        actions={(r) => (
-                            <>
-                                {r.install_command && (
-                                    <button onClick={() => setCommand(r)}>
-                                        安装命令
+                                    >
+                                        编辑
                                     </button>
-                                )}
-                                <button
-                                    onClick={() => {
-                                        setType(r.type);
-                                        setEditing(r);
-                                    }}
-                                >
-                                    编辑
-                                </button>
-                                <button
-                                    onClick={async () => {
-                                        try {
-                                            await request(
-                                                admin(`server/${r.type}/copy`),
-                                                { id: r.id },
-                                            );
-                                            d.reload();
-                                        } catch (e) {
-                                            setError((e as Error).message);
-                                        }
-                                    }}
-                                >
-                                    复制
-                                </button>
-                                <button
-                                    onClick={async () => {
-                                        try {
-                                            await request(
-                                                admin(
-                                                    `server/${r.type}/update`,
-                                                ),
-                                                {
-                                                    id: r.id,
-                                                    show: r.show ? 0 : 1,
-                                                },
-                                            );
-                                            d.reload();
-                                        } catch (e) {
-                                            setError((e as Error).message);
-                                        }
-                                    }}
-                                >
-                                    切换展示
-                                </button>
-                                <button
-                                    className="danger"
-                                    onClick={async () => {
-                                        if (confirm("确认删除节点？")) {
+                                    <button
+                                        onClick={async () => {
                                             try {
                                                 await request(
                                                     admin(
-                                                        `server/${r.type}/drop`,
+                                                        `server/${r.type}/copy`,
                                                     ),
                                                     { id: r.id },
                                                 );
@@ -2650,21 +2682,63 @@ export function Nodes() {
                                             } catch (e) {
                                                 setError((e as Error).message);
                                             }
-                                        }
-                                    }}
-                                >
-                                    删除
-                                </button>
-                            </>
-                        )}
-                    />
-                </State>
-            </Panel>
+                                        }}
+                                    >
+                                        复制
+                                    </button>
+                                    <button
+                                        onClick={async () => {
+                                            try {
+                                                await request(
+                                                    admin(
+                                                        `server/${r.type}/update`,
+                                                    ),
+                                                    {
+                                                        id: r.id,
+                                                        show: r.show ? 0 : 1,
+                                                    },
+                                                );
+                                                d.reload();
+                                            } catch (e) {
+                                                setError((e as Error).message);
+                                            }
+                                        }}
+                                    >
+                                        切换展示
+                                    </button>
+                                    <button
+                                        className="danger"
+                                        onClick={async () => {
+                                            if (confirm("确认删除节点？")) {
+                                                try {
+                                                    await request(
+                                                        admin(
+                                                            `server/${r.type}/drop`,
+                                                        ),
+                                                        { id: r.id },
+                                                    );
+                                                    d.reload();
+                                                } catch (e) {
+                                                    setError(
+                                                        (e as Error).message,
+                                                    );
+                                                }
+                                            }
+                                        }}
+                                    >
+                                        删除
+                                    </button>
+                                </>
+                            )}
+                        />
+                    </State>
+                </Panel>
+            )}
             {command && (
                 <Modal title="节点安装命令" close={() => setCommand(null)}>
                     <div className="pad">
                         <p>
-                            可选：在侧栏“Cloudflare
+                            可选：在节点管理的“Cloudflare
                             DDNS”保存凭据并绑定此节点，然后配置节点 IP 上报。
                         </p>
                         <p className="muted">

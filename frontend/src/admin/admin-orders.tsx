@@ -1,3 +1,4 @@
+import { adminUserLabel } from "./admin-user-label";
 import { useState } from "react";
 import { admin, request, query, money, date, type Row } from "../shared/api";
 import { useData, Modal, Editor, State, Table } from "../shared/ui";
@@ -326,7 +327,7 @@ function OrderDetail({ row }: { row: Row }) {
                         <dl className="detail-grid">
                             {[
                                 ["trade_no", "订单号"],
-                                ["user_id", "用户 ID"],
+                                ["user_id", "用户（ID / 邮箱）"],
                                 ["plan_id", "套餐 ID"],
                                 ["period", "周期"],
                                 ["callback_no", "回调单号"],
@@ -366,7 +367,9 @@ function OrderDetail({ row }: { row: Row }) {
                                             : key.includes("amount") ||
                                                 key.includes("balance")
                                               ? money(r[key])
-                                              : String(r[key] ?? "—")}
+                                              : key === "user_id"
+                                                ? adminUserLabel(r)
+                                                : String(r[key] ?? "—")}
                                     </dd>
                                 </div>
                             ))}
@@ -375,7 +378,15 @@ function OrderDetail({ row }: { row: Row }) {
                         <Table
                             data={r.commission_log || []}
                             columns={[
-                                ["invite_user_id", "邀请人"],
+                                [
+                                    "invite_user_id",
+                                    "邀请人（ID / 邮箱）",
+                                    (r) =>
+                                        adminUserLabel({
+                                            user_id: r.invite_user_id,
+                                            email: r.invite_email,
+                                        }),
+                                ],
                                 [
                                     "get_amount",
                                     "金额",

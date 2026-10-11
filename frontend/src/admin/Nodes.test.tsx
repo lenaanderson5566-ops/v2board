@@ -247,7 +247,7 @@ it("guides deployment to panel-managed DDNS", async () => {
     });
     render(<Nodes />);
     fireEvent.click(await screen.findByRole("button", { name: "安装命令" }));
-    expect(screen.getByText(/在侧栏“Cloudflare DDNS”/)).toBeTruthy();
+    expect(screen.getByText(/在节点管理的“Cloudflare DDNS”/)).toBeTruthy();
     expect(
         (screen.getByLabelText("查询服务器 IP 命令") as HTMLTextAreaElement)
             .value,
@@ -355,4 +355,13 @@ it("filters nodes by name, backend and exhausted server budget", async () => {
         target: { value: "nomatch" },
     });
     expect(screen.queryByText("Budget restricted")).toBeNull();
+});
+
+it("opens DDNS inside node management and returns to the node list", async () => {
+    render(<Nodes />);
+    fireEvent.click(screen.getByRole("button", { name: "Cloudflare DDNS" }));
+    expect(await screen.findByText("Cloudflare 凭据")).toBeTruthy();
+    expect(screen.queryByLabelText("搜索节点")).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "节点列表" }));
+    expect(await screen.findByLabelText("搜索节点")).toBeTruthy();
 });

@@ -10,7 +10,6 @@ export const legacyAdminMenu = [
     ["payments", "支付配置", "credit-card", "设置"],
     ["nodes", "节点管理", "layers", "服务器"],
     ["groups", "权限组管理", "wrench", "服务器"],
-    ["ddns", "Cloudflare DDNS", "globe", "服务器"],
     ["routes", "路由管理", "shuffle", "服务器"],
     ["plans", "订阅管理", "bag", "财务"],
     ["orders", "订单管理", "list", "财务"],

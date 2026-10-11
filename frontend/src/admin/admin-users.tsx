@@ -1,3 +1,4 @@
+import { adminUserLabel } from "./admin-user-label";
 import { AdminMailComposer } from "./AdminMailComposer";
 import { useState } from "react";
 import { AdminUsageReset } from "./AdminUsageReset";
@@ -422,7 +423,7 @@ export function UsersPage() {
             )}
             {detail && (
                 <Modal
-                    title={`${detail.row.email} · ${{ assign: "分配订单", orders: "订单", traffic: "流量记录", link: "订阅链接" }[detail.kind as "assign"] || ""}`}
+                    title={`${adminUserLabel({ user_id: detail.row.id, email: detail.row.email })} · ${{ assign: "分配订单", orders: "订单", traffic: "流量记录", link: "订阅链接" }[detail.kind as "assign"] || ""}`}
                     close={() => setDetail(null)}
                 >
                     {detail.kind === "assign" ? (
@@ -937,7 +938,15 @@ function UserOrders({ row }: { row: Row }) {
                         <Table
                             data={detail.data?.commission_log || []}
                             columns={[
-                                ["invite_user_id", "邀请人 ID"],
+                                [
+                                    "invite_user_id",
+                                    "邀请人（ID / 邮箱）",
+                                    (r) =>
+                                        adminUserLabel({
+                                            user_id: r.invite_user_id,
+                                            email: r.invite_email,
+                                        }),
+                                ],
                                 [
                                     "get_amount",
                                     "金额",

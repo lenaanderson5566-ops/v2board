@@ -16,7 +16,11 @@ export default function AdminWorkspace({
     const current = adminPage(path);
     return (
         <EditorFieldContext.Provider value={adminEditorField}>
-            <AdminShell current={current} user={user} logout={logout}>
+            <AdminShell
+                current={current === "ddns" ? "nodes" : current}
+                user={user}
+                logout={logout}
+            >
                 <AdminContent current={current} />
             </AdminShell>
         </EditorFieldContext.Provider>

@@ -135,7 +135,7 @@ export function RiskOverview() {
                                     </span>
                                 ),
                             ],
-                            ["user_id", "用户（邮箱 / ID）", r => <AdminUserActivityLink row={r} />],
+                            ["user_id", "用户（ID / 邮箱）", r => <AdminUserActivityLink row={r} />],
                             ["ip", "IP"],
                             ["hit_at", "时间", (r) => date(r.hit_at)],
                         ]}

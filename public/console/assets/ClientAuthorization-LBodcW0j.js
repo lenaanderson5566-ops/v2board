@@ -1,4 +1,4 @@
-import{c as f,r as e,t as a,a as m,j as t}from"./ui-BOgwikeL.js";import{M as B}from"./app-B_tDG0Vw.js";import"./runtime-config-Cv-haVB5.js";import"./Captcha-39py0rNf.js";/**
+import{c as f,r as e,t as a,a as m,j as t}from"./ui-BOgwikeL.js";import{M as B}from"./app-CNPZh8Vi.js";import"./runtime-config-Cv-haVB5.js";import"./Captcha-39py0rNf.js";/**
  * @license lucide-react v0.468.0 - ISC
  *
  * This source code is licensed under the ISC license.

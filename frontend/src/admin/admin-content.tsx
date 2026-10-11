@@ -1,3 +1,4 @@
+import { adminUserLabel } from "./admin-user-label";
 import { useState } from "react";
 import { admin, query, date, type Row } from "../shared/api";
 import { Modal, State, Html, useData } from "../shared/ui";
@@ -27,6 +28,7 @@ export function AdminTickets() {
             adminColumns={[
                 ["id", "#"],
                 ["subject", "主题"],
+                ["user_id", "用户（ID / 邮箱）", (r) => adminUserLabel(r)],
                 [
                     "level",
                     "工单级别",

@@ -41,9 +41,11 @@ class OrderController extends Controller
     {
         $order = Order::find($request->input('id'));
         if (!$order) abort(500, '订单不存在');
+        \App\Services\AdminUserIdentity::append(collect([$order]));
         $order['payment_display'] = \App\Services\OrderPaymentHistory::display($order, \App\Models\Payment::find($order->payment_id));
         $order['payment_provider'] = $order->payment_snapshot['provider'] ?? null;
         $order['commission_log'] = CommissionLog::where('trade_no', $order->trade_no)->get();
+        \App\Services\AdminUserIdentity::append($order['commission_log']);
         if ($order->surplus_order_ids) {
             $order['surplus_orders'] = Order::whereIn('id', $order->surplus_order_ids)->get();
         }
@@ -66,6 +68,7 @@ class OrderController extends Controller
         $total = $orderModel->count();
         $res = $orderModel->forPage($current, $pageSize)
             ->get();
+        \App\Services\AdminUserIdentity::append($res);
         $plan = Plan::get();
         $payments = \App\Models\Payment::whereIn('id', $res->pluck('payment_id')->filter())->get()->keyBy('id');
         for ($i = 0; $i < count($res); $i++) {

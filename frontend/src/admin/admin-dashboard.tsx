@@ -1,3 +1,4 @@
+import { adminUserLabel } from "./admin-user-label";
 import { AdminIcon } from "./AdminIcon";
 import { useState } from "react";
 import { admin, money, type Row } from "../shared/api";
@@ -119,8 +120,12 @@ export function Overview() {
                                             [
                                                 String(key),
                                                 key === "email"
-                                                    ? "用户邮箱"
+                                                    ? "用户（ID / 邮箱）"
                                                     : "节点",
+                                                (r) =>
+                                                    key === "email"
+                                                        ? adminUserLabel(r)
+                                                        : r[String(key)],
                                             ],
                                             [
                                                 "total",

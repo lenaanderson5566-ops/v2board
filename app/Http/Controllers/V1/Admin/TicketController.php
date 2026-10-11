@@ -21,6 +21,7 @@ class TicketController extends Controller
             if (!$ticket) {
                 abort(500, '工单不存在');
             }
+            \App\Services\AdminUserIdentity::append(collect([$ticket]));
             $ticket['message'] = TicketMessage::where('ticket_id', $ticket->id)->get();
             for ($i = 0; $i < count($ticket['message']); $i++) {
                 if ($ticket['message'][$i]['user_id'] !== $ticket->user_id) {
@@ -49,6 +50,7 @@ class TicketController extends Controller
         $total = $model->count();
         $res = $model->forPage($current, $pageSize)
             ->get();
+        \App\Services\AdminUserIdentity::append($res);
         return response([
             'data' => $res,
             'total' => $total

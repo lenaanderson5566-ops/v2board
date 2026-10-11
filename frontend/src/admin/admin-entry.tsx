@@ -1,5 +1,4 @@
 import { AdminSystemLogs } from "./AdminSystemLogs";
-import { AdminDDNS } from "./AdminDDNS";
 import { RiskOverview, RiskRules } from "./AdminRisk";
 import { AdminClientReleases } from "./AdminClientReleases";
 import { AdminBanners } from "./AdminBanners";
@@ -19,7 +18,7 @@ import { UsersPage } from "./admin-users";
 import { Overview } from "./admin-dashboard";
 export default function AdminContent({ current }: { current: string }) {
     if (current === "system-log") return <AdminSystemLogs />;
-    if (current === "ddns") return <AdminDDNS />;
+    if (current === "ddns") return <Nodes key="ddns" initialTab="ddns" />;
     if (current === "users") return <UsersPage />;
     if (current === "orders") return <OrdersPage />;
     if (current === "knowledge" || current === "notices")
@@ -44,7 +43,7 @@ export default function AdminContent({ current }: { current: string }) {
         case "payments":
             return <Payments />;
         case "nodes":
-            return <Nodes />;
+            return <Nodes key="nodes" />;
         case "system":
             return <System />;
         default:

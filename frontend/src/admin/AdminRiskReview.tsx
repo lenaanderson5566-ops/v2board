@@ -1,3 +1,4 @@
+import { adminUserLabel } from "./admin-user-label";
 import {useState} from "react";
 import {ops,request,date,type Row} from "../shared/api";
 import {Modal} from "../shared/ui";
@@ -6,7 +7,7 @@ const evidence:Record<string,string>={threshold:"命中阈值",window_seconds:"�
 export function AdminRiskReview({row}:{row:Row}){
  const [open,setOpen]=useState(false),[review,setReview]=useState(row.payload?.review || {}),[state,setState]=useState(row.payload?.review?.state || "pending"),[note,setNote]=useState(row.payload?.review?.note || ""),[busy,setBusy]=useState(false),[error,setError]=useState("");
  return <><button onClick={()=>setOpen(true)}>{states[review.state] || "待处理"} · 证据</button>{open && <Modal title="命中证据与人工复核" close={()=>setOpen(false)}><div className="pad">
- <p>{row.email || "未识别账号"} · ID {row.user_id || "—"}</p><p>{row.rule_key} · {date(row.hit_at)}</p>
+ <p>{adminUserLabel(row)}</p><p>{row.rule_key} · {date(row.hit_at)}</p>
  <p className="muted">复核仅针对这组中最新一条原始记录（#{row.id}），不封禁用户、不修改其他命中。IP 或客户端类型数量不等于设备数量。</p>
  <dl>{Object.entries(row.payload || {}).filter(([k])=>evidence[k]).map(([k,v])=><div key={k}><dt>{evidence[k]}</dt><dd style={{overflowWrap:"anywhere"}}>{String(v)}</dd></div>)}</dl>
  {!Object.keys(row.payload || {}).some(k=>evidence[k]) && <p>此历史记录没有可展示的命中数值。</p>}

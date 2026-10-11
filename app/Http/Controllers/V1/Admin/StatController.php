@@ -193,10 +193,10 @@ class StatController extends Controller
             ->toArray();
         $data = [];
         $idIndexMap = [];
+        $emails = User::whereIn('id', array_column($statistics, 'user_id'))->pluck('email', 'id');
         foreach ($statistics as $k => $v) {
             $id = $statistics[$k]['user_id'];
-            $user = User::where('id', $id)->first();
-            $statistics[$k]['email'] = empty($user) ? "null" : $user['email'];
+            $statistics[$k]['email'] = $emails->get($id);
             $statistics[$k]['total'] = $statistics[$k]['total'] * $statistics[$k]['server_rate'] / 1073741824;
             if (isset($idIndexMap[$id])) {
                 $index = $idIndexMap[$id];
@@ -233,10 +233,10 @@ class StatController extends Controller
             ->toArray();
         $data = [];
         $idIndexMap = [];
+        $emails = User::whereIn('id', array_column($statistics, 'user_id'))->pluck('email', 'id');
         foreach ($statistics as $k => $v) {
             $id = $statistics[$k]['user_id'];
-            $user = User::where('id', $id)->first();
-            $statistics[$k]['email'] = empty($user) ? "null" : $user['email'];
+            $statistics[$k]['email'] = $emails->get($id);
             $statistics[$k]['total'] = $statistics[$k]['total'] * $statistics[$k]['server_rate'] / 1073741824;
             if (isset($idIndexMap[$id])) {
 

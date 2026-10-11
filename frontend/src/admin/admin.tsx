@@ -1,3 +1,8 @@
+import {
+    NodeDiagnostics,
+    SystemHealth,
+    nodeRuntimeLabels,
+} from "./AdminDiagnostics";
 import { AdminDDNS } from "./AdminDDNS";
 import { adminUserLabel } from "./admin-user-label";
 import { AdminLightsail } from "./AdminLightsail";
@@ -2394,10 +2399,10 @@ const nodeTypes = [
 ] as const satisfies readonly NodeBackendType[];
 export function Nodes({
     initialTab = "nodes",
-}: { initialTab?: "nodes" | "ddns" } = {}) {
+}: { initialTab?: "nodes" | "ddns" | "lightsail" | "traffic" } = {}) {
     const [tab, setTab] = useState(initialTab);
-    const [budgetsOpen, setBudgetsOpen] = useState(false);
-    const [lightsailOpen, setLightsailOpen] = useState(false);
+    const [diagnosticNode, setDiagnosticNode] = useState<Row | null>(null);
+    const [statusFilter, setStatusFilter] = useState("");
     const [nodeSearch, setNodeSearch] = useState("");
     const [backendFilter, setBackendFilter] = useState("");
     const [quotaFilter, setQuotaFilter] = useState(false);
@@ -2414,6 +2419,8 @@ export function Nodes({
     const filteredNodes = nodeRows.filter(
         (n) =>
             (!backendFilter || n.type === backendFilter) &&
+            (!statusFilter ||
+                (n.runtime_status || "unknown") === statusFilter) &&
             (!quotaFilter || n.traffic_budget?.blocked) &&
             `${n.id} ${n.name} ${n.host} ${n.current_ip || ""} ${n.protocol || ""}`
                 .toLowerCase()
@@ -2422,6 +2429,12 @@ export function Nodes({
 
     return (
         <>
+            {diagnosticNode && (
+                <NodeDiagnostics
+                    node={diagnosticNode}
+                    close={() => setDiagnosticNode(null)}
+                />
+            )}
             <nav className="node-management-tabs" aria-label="节点管理功能">
                 <button
                     aria-pressed={tab === "nodes"}
@@ -2438,20 +2451,23 @@ export function Nodes({
                 >
                     Cloudflare DDNS
                 </button>
+                <button
+                    aria-pressed={tab === "lightsail"}
+                    onClick={() => setTab("lightsail")}
+                >
+                    Lightsail IP
+                </button>
+                <button
+                    aria-pressed={tab === "traffic"}
+                    onClick={() => setTab("traffic")}
+                >
+                    服务器流量
+                </button>
             </nav>
             {tab === "ddns" && <AdminDDNS />}
-            {lightsailOpen && (
-                <AdminLightsail
-                    nodes={rows(d.data)}
-                    close={() => setLightsailOpen(false)}
-                />
-            )}
-            {budgetsOpen && (
-                <ServerTrafficBudgets
-                    nodes={rows(d.data)}
-                    close={() => setBudgetsOpen(false)}
-                    onSaved={d.reload}
-                />
+            {tab === "lightsail" && <AdminLightsail nodes={rows(d.data)} />}
+            {tab === "traffic" && (
+                <ServerTrafficBudgets nodes={rows(d.data)} onSaved={d.reload} />
             )}
             {tab === "nodes" && (
                 <Panel
@@ -2459,12 +2475,6 @@ export function Nodes({
                     actions={
                         <>
                             <Reload onClick={d.reload} />
-                            <button onClick={() => setBudgetsOpen(true)}>
-                                服务器流量
-                            </button>
-                            <button onClick={() => setLightsailOpen(true)}>
-                                Lightsail IP
-                            </button>
                             <SortButton
                                 path={admin("server/manage/sort")}
                                 kind="nodes"
@@ -2556,6 +2566,24 @@ export function Nodes({
                                     <option value="v2box">V2Box</option>
                                 </select>
                             </label>
+                            <label>
+                                筛选运行状态
+                                <select
+                                    value={statusFilter}
+                                    onChange={(e) =>
+                                        setStatusFilter(e.target.value)
+                                    }
+                                >
+                                    <option value="">全部状态</option>
+                                    {Object.entries(nodeRuntimeLabels).map(
+                                        ([key, label]) => (
+                                            <option key={key} value={key}>
+                                                {label}
+                                            </option>
+                                        ),
+                                    )}
+                                </select>
+                            </label>
                             <label className="node-quota-filter">
                                 <input
                                     type="checkbox"
@@ -2578,6 +2606,19 @@ export function Nodes({
                                 name,
                                 ["type", "类型"],
                                 ["protocol", "协议"],
+                                [
+                                    "runtime_status",
+                                    "运行状态",
+                                    (r) => (
+                                        <span
+                                            title={`最近通信：${date(Math.max(Number(r.last_check_at || 0), Number(r.last_push_at || 0)))}`}
+                                        >
+                                            {nodeRuntimeLabels[
+                                                r.runtime_status
+                                            ] || nodeRuntimeLabels.unknown}
+                                        </span>
+                                    ),
+                                ],
                                 ["host", "主机"],
                                 [
                                     "current_ip",
@@ -2635,12 +2676,9 @@ export function Nodes({
                                 ],
                                 ["online", "在线用户"],
                                 [
-                                    "available_status",
-                                    "状态",
-                                    (r) =>
-                                        ["离线", "未上报流量", "正常"][
-                                            r.available_status
-                                        ],
+                                    "last_push_at",
+                                    "最近流量上报",
+                                    (r) => date(r.last_push_at),
                                 ],
                             ]}
                             onReorder={async (items) => {
@@ -2656,6 +2694,11 @@ export function Nodes({
                             }}
                             actions={(r) => (
                                 <>
+                                    <button
+                                        onClick={() => setDiagnosticNode(r)}
+                                    >
+                                        运行状态
+                                    </button>
                                     {r.install_command && (
                                         <button onClick={() => setCommand(r)}>
                                             安装命令
@@ -3115,6 +3158,7 @@ export function System() {
         queue = useData(admin("system/getQueueStats"));
     return (
         <>
+            <SystemHealth />
             <div className="split">
                 {[
                     [status, "系统状态"],

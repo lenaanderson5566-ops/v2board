@@ -365,3 +365,17 @@ it("opens DDNS inside node management and returns to the node list", async () =>
     fireEvent.click(screen.getByRole("button", { name: "节点列表" }));
     expect(await screen.findByLabelText("搜索节点")).toBeTruthy();
 });
+
+it("manages Lightsail and traffic in peer pages without an outer dialog", async () => {
+    render(<Nodes />);
+    fireEvent.click(screen.getByRole("button", { name: "Lightsail IP" }));
+    expect(await screen.findByText("Lightsail 公网 IP 管理")).toBeTruthy();
+    expect(screen.queryByRole("dialog")).toBeNull();
+    expect(screen.getByRole("button", { name: "Lightsail IP" }).getAttribute("aria-pressed")).toBe("true");
+    fireEvent.click(screen.getByRole("button", { name: "服务器流量" }));
+    expect(await screen.findByRole("button", { name: "添加服务器额度" })).toBeTruthy();
+    expect(screen.queryByText("Lightsail 公网 IP 管理")).toBeNull();
+    expect(screen.queryByRole("dialog")).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "节点列表" }));
+    expect(await screen.findByLabelText("搜索节点")).toBeTruthy();
+});

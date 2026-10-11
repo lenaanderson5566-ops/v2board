@@ -54,6 +54,10 @@ class ServerService
             $this->getAvailableV2node($user),
             $this->getAvailableV2node($user, 'v2box')
         );
+        foreach ($servers as &$server) {
+            $server['runtime_status'] = NodeRuntimeService::connection($server['last_check_at'], $server['last_push_at'], (bool) ($server['traffic_budget']['blocked'] ?? false));
+        }
+        unset($server);
         $tmp = array_column($servers, 'sort');
         array_multisort($tmp, SORT_ASC, $servers);
         return array_map(function ($server) {

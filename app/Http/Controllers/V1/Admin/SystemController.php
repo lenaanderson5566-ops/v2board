@@ -18,6 +18,11 @@ use Laravel\Horizon\WaitTimeCalculator;
 
 class SystemController extends Controller
 {
+    public function health()
+    {
+        return response(['data' => (new \App\Services\SystemHealthService())->inspect()]);
+    }
+
     public function getSystemStatus()
     {
         return response([

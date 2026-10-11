@@ -55,6 +55,7 @@ class ServerController extends Controller
         if ($error = $this->initialize($request)) return $error;
         $response = \App\Services\Actions\NodeConfiguration::build($this->nodeInfo);
 
+        \App\Services\NodeRuntimeService::record($request->input('node_type', 'v2node'), (int) $this->nodeInfo->id, $response, 'v2');
         $rsp = json_encode($response);
         $eTag = sha1($rsp);
 

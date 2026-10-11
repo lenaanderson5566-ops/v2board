@@ -15,6 +15,14 @@ class ManageController extends Controller
         return response(['data' => (new ServerService())->getAllServers()]);
     }
 
+    public function runtime(Request $request)
+    {
+        $input = $request->validate(['type' => 'required|in:v2node,v2box', 'id' => 'required|integer|min:1']);
+        $node = (new ServerService())->getServer($input['id'], $input['type']);
+        abort_unless($node, 404, '节点不存在');
+        return response(['data' => \App\Services\NodeRuntimeService::inspect($input['type'], $node)]);
+    }
+
     public function sort(Request $request)
     {
         $models = ['v2node' => ServerV2node::class, 'v2box' => ServerV2box::class];

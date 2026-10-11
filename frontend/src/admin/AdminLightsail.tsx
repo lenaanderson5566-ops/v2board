@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { admin, request, type Row } from "../shared/api";
-import { Modal, State, useData } from "../shared/ui";
+import { Modal, Panel, State, useData } from "../shared/ui";
 const labels: Record<string, string> = {
     ready: "待操作",
     queued: "等待队列",
@@ -14,7 +14,7 @@ export function AdminLightsail({
     close,
 }: {
     nodes: Row[];
-    close: () => void;
+    close?: () => void;
 }) {
     const data = useData<Row[]>(admin("server/lightsail/fetch"));
     const [editing, setEditing] = useState<Row | null>(null),
@@ -65,13 +65,8 @@ export function AdminLightsail({
             setBusy(false);
         }
     }
-    return (
-        <Modal
-            title="Lightsail 公网 IP 管理"
-            close={close}
-            wide
-            className="lightsail-dialog"
-        >
+    const content = (
+        <>
             <div className="lightsail-content">
                 <div className="infrastructure-notice">
                     <strong>有计划地更换公网地址</strong>
@@ -442,6 +437,23 @@ export function AdminLightsail({
                     </Modal>
                 )}
             </div>
+        </>
+    );
+    return close ? (
+        <Modal
+            title="Lightsail 公网 IP 管理"
+            close={close}
+            wide
+            className="lightsail-dialog"
+        >
+            {content}
         </Modal>
+    ) : (
+        <Panel
+            title="Lightsail 公网 IP 管理"
+            actions={<button onClick={data.reload}>刷新状态</button>}
+        >
+            {content}
+        </Panel>
     );
 }

@@ -1498,3 +1498,34 @@ body[data-console="admin"] .node-management-tools .node-quota-filter input {
         grid-template-columns: repeat(2, minmax(0, 1fr));
     }
 }
+
+.health-check-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+    gap: 14px;
+}
+.health-check {
+    border: 1px solid #e2e8f0;
+    border-left: 4px solid #22c55e;
+    padding: 16px;
+    border-radius: 10px;
+}
+.health-check > span {
+    float: right;
+    color: #15803d;
+}
+.health-check.warning {
+    border-left-color: #f59e0b;
+}
+.health-check.warning > span {
+    color: #a16207;
+}
+.health-check.error {
+    border-left-color: #ef4444;
+}
+.health-check.error > span {
+    color: #b91c1c;
+}
+.health-check p {
+    margin: 12px 0;
+}

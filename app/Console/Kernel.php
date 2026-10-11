@@ -26,7 +26,7 @@ class Kernel extends ConsoleKernel
      */
     protected function schedule(Schedule $schedule)
     {
-        Cache::put(CacheKey::get('SCHEDULE_LAST_CHECK_AT', null), time());
+        $schedule->call(fn () => Cache::put(CacheKey::get('SCHEDULE_LAST_CHECK_AT', null), time()))->everyMinute()->name('scheduler-heartbeat');
         $schedule->command('nodes:sync-ddns')->everyMinute()->withoutOverlapping(5);
         // traffic
         $schedule->command('traffic:process-batches')->everyMinute()->withoutOverlapping(10);

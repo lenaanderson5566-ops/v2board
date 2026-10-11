@@ -32,6 +32,7 @@ class NodeController extends Controller {
             $features = explode(',', $request->header('X-Node-Capabilities', ''));
             abort_unless(in_array('native-routing-v1', $features, true), 409);
         }
+        \App\Services\NodeRuntimeService::record('v2box', (int) $node->id, $configuration, 'v10');
         return $this->cached($request, $configuration);
     }
     public function capabilities(Request $request) {

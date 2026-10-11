@@ -19,7 +19,7 @@ export const legacyAdminMenu = [
     ["notices", "公告管理", "speech", "用户"],
     ["tickets", "工单管理", "support", "用户"],
     ["knowledge", "知识库管理", "bulb", "用户"],
-    ["system", "队列监控", "bar-chart", "指标"],
+    ["system", "系统监控", "bar-chart", "指标"],
     ["operations", "风控概览", "speedometer", "风控与客户端"],
     ["client-releases", "客户端更新", "refresh", "风控与客户端"],
     ["risk", "风控规则", "shield", "风控与客户端"],

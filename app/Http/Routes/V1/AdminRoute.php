@@ -54,6 +54,7 @@ class AdminRoute
             $router->post('/server/lightsail/operate', 'V1\\Admin\\LightsailController@operate')->middleware('throttle:5,1');
             $router->get('/server/traffic-budget/fetch', 'V1\\Admin\\ServerTrafficBudgetController@fetch');
             $router->post('/server/traffic-budget/save', 'V1\\Admin\\ServerTrafficBudgetController@save');
+            $router->get('/server/manage/runtime', 'V1\\Admin\\Server\\ManageController@runtime')->middleware('throttle:60,1');
             $router->get ('/server/manage/getNodes', 'V1\\Admin\\Server\\ManageController@getNodes');
             $router->post('/server/manage/sort', 'V1\\Admin\\Server\\ManageController@sort');
             $router->group([
@@ -140,6 +141,7 @@ class AdminRoute
             $router->post('/payment/show', 'V1\\Admin\\PaymentController@show');
             $router->post('/payment/sort', 'V1\\Admin\\PaymentController@sort');
             // System
+            $router->get('/system/health', 'V1\\Admin\\SystemController@health')->middleware('throttle:20,1');
             $router->get ('/system/getSystemStatus', 'V1\\Admin\\SystemController@getSystemStatus');
             $router->get ('/system/getQueueStats', 'V1\\Admin\\SystemController@getQueueStats');
             $router->get ('/system/getQueueWorkload', 'V1\\Admin\\SystemController@getQueueWorkload');

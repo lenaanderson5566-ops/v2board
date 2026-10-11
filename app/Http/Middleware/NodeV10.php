@@ -18,6 +18,6 @@ class NodeV10 {
             $codes = [401 => 'NODE_UNAUTHENTICATED', 403 => 'NODE_FORBIDDEN', 404 => 'NODE_NOT_FOUND', 409 => 'NODE_CAPABILITY_REQUIRED', 422 => 'NODE_INVALID_REQUEST'];
             $response = response()->json(['type' => 'about:blank', 'title' => $codes[$status] ?? 'NODE_INTERNAL_ERROR', 'status' => $status, 'code' => $codes[$status] ?? 'NODE_INTERNAL_ERROR', 'requestId' => $id], $status, ['Content-Type' => 'application/problem+json']);
         }
-        return $response->header('X-Request-Id', $id)->header('Content-Language', 'en')->header('Cache-Control', 'private, no-cache');
+        return $response->header('X-Request-Id', $id)->header('Content-Language', 'en')->header('Cache-Control', 'private, no-cache')->header('Vary', 'Authorization, X-Node-Type, X-Node-ID, X-Node-Capabilities');
     }
 }

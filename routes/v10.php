@@ -80,9 +80,9 @@
 \Illuminate\Support\Facades\Route::match(['GET', 'HEAD'], 'public/fastai/entrypoints', [\App\Http\Controllers\V10\GuestFastaiController::class, 'getPublicFastaiEntrypoints'])->middleware(['throttle:60,1'])->name('v10.getPublicFastaiEntrypoints');
 
 // Node machine API: independent bearer authentication; legacy V2Node remains supported.
-\Illuminate\Support\Facades\Route::get('nodes/v2box/{nodeId}/configuration', [\App\Http\Controllers\V10\NodeController::class, 'configuration'])->middleware(\App\Http\Middleware\NodeV10::class)->name('v10.nodes.configuration');
-\Illuminate\Support\Facades\Route::get('nodes/v2box/{nodeId}/users', [\App\Http\Controllers\V10\NodeController::class, 'users'])->middleware(\App\Http\Middleware\NodeV10::class)->name('v10.nodes.users');
-\Illuminate\Support\Facades\Route::get('nodes/v2box/{nodeId}/online-counts', [\App\Http\Controllers\V10\NodeController::class, 'onlineCounts'])->middleware(\App\Http\Middleware\NodeV10::class)->name('v10.nodes.onlineCounts');
-\Illuminate\Support\Facades\Route::post('nodes/v2box/{nodeId}/traffic', [\App\Http\Controllers\V10\NodeController::class, 'traffic'])->middleware(\App\Http\Middleware\NodeV10::class)->name('v10.nodes.traffic');
-\Illuminate\Support\Facades\Route::post('nodes/v2box/{nodeId}/online-users', [\App\Http\Controllers\V10\NodeController::class, 'onlineUsers'])->middleware(\App\Http\Middleware\NodeV10::class)->name('v10.nodes.onlineUsers');
-\Illuminate\Support\Facades\Route::post('nodes/v2box/{nodeId}/capabilities', [\App\Http\Controllers\V10\NodeController::class, 'capabilities'])->middleware(\App\Http\Middleware\NodeV10::class)->name('v10.nodes.capabilities');
+\Illuminate\Support\Facades\Route::get('server/configuration', [\App\Http\Controllers\V10\NodeController::class, 'configuration'])->middleware(\App\Http\Middleware\NodeV10::class)->name('v10.server.configuration');
+\Illuminate\Support\Facades\Route::get('server/users', [\App\Http\Controllers\V10\NodeController::class, 'users'])->middleware(\App\Http\Middleware\NodeV10::class)->name('v10.server.users');
+\Illuminate\Support\Facades\Route::get('server/online-counts', [\App\Http\Controllers\V10\NodeController::class, 'onlineCounts'])->middleware(\App\Http\Middleware\NodeV10::class)->name('v10.server.onlineCounts');
+\Illuminate\Support\Facades\Route::post('server/traffic', [\App\Http\Controllers\V10\NodeController::class, 'traffic'])->middleware(\App\Http\Middleware\NodeV10::class)->name('v10.server.traffic');
+\Illuminate\Support\Facades\Route::post('server/online-users', [\App\Http\Controllers\V10\NodeController::class, 'onlineUsers'])->middleware(\App\Http\Middleware\NodeV10::class)->name('v10.server.onlineUsers');
+\Illuminate\Support\Facades\Route::post('server/capabilities', [\App\Http\Controllers\V10\NodeController::class, 'capabilities'])->middleware(\App\Http\Middleware\NodeV10::class)->name('v10.server.capabilities');

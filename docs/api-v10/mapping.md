@@ -99,9 +99,9 @@ V2Node and explicitly configured legacy V2Box installations retain their existin
 
 | Legacy | V10 |
 |---|---|
-| `GET /api/v2/server/config` | `GET /api/v10/nodes/v2box/{nodeId}/configuration` |
-| `GET /api/v1/server/UniProxy/user` | `GET /api/v10/nodes/v2box/{nodeId}/users` |
-| `GET /api/v1/server/UniProxy/alivelist` | `GET /api/v10/nodes/v2box/{nodeId}/online-counts` |
-| `POST /api/v1/server/UniProxy/push` | `POST /api/v10/nodes/v2box/{nodeId}/traffic` |
-| `POST /api/v1/server/UniProxy/alive` | `POST /api/v10/nodes/v2box/{nodeId}/online-users` |
-| `New resource` | `POST /api/v10/nodes/v2box/{nodeId}/capabilities` |
+| `GET /api/v2/server/config` | `GET /api/v10/server/configuration` |
+| `GET /api/v1/server/UniProxy/user` | `GET /api/v10/server/users` |
+| `GET /api/v1/server/UniProxy/alivelist` | `GET /api/v10/server/online-counts` |
+| `POST /api/v1/server/UniProxy/push` | `POST /api/v10/server/traffic` |
+| `POST /api/v1/server/UniProxy/alive` | `POST /api/v10/server/online-users` |
+| `New resource` | `POST /api/v10/server/capabilities` |

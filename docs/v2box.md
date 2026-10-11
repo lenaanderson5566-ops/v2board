@@ -36,6 +36,8 @@ V2Box 支持 Shadowsocks、VMess、VLESS、Trojan、TUIC、Hysteria2、AnyTLS、
 
 管理端 V2Box 编辑页新增“sing-box 路由与 DNS”JSON 字段。开放 dns、route、outbounds，支持 HTTPS DNS、DNS 分流、inline/HTTPS remote 规则集及代理出口；非空配置替代旧 route_id 路由。保留直连出口 direct。不能覆盖入站用户、计费、服务、本机证书路径，也不能配置 auth_user 或本机 rule-set 文件。原生配置字段随节点固定的 sing-box 1.14.3 校验，错误配置先预检再重载。
 
-节点通过 POST capabilities 上报 coreVersion 和 features，缓存 24 小时，随配置轮询更新；原生配置下发要求 X-V2Box-Capabilities 包含 native-routing-v1。节点能力不进入用户订阅。详细接口契约见 [node-api.json](api-v10/node-api.json)。旧节点通信仍调用相同的共享业务动作，流量上报暂未增加批次去重，202 仅表示已接受入队。
+节点通过 POST capabilities 上报 coreVersion 和 features，缓存 24 小时，随配置轮询更新；原生配置下发要求 X-Node-Capabilities 包含 native-routing-v1。节点能力不进入用户订阅。详细接口契约见 [node-api.json](api-v10/node-api.json)。旧节点通信仍调用相同的共享业务动作，流量上报暂未增加批次去重，202 仅表示已接受入队。
 
 ACME 申请失败保护在节点本地实现，不通过面板清除；修复后按节点 README 恢复，重启不会绕过暂停状态。
+
+V10 节点身份通过 `X-Node-Type: v2box` 和 `X-Node-ID: 节点编号` 请求头传递；URL 统一为 `/api/v10/server/...`。当前仅接受 v2box 类型，V2Node 继续使用旧接口。类型或编号缺失、非法时返回 422；未知节点返回 404。旧 `/api/v10/nodes/v2box/{id}/...` 路径已移除，面板与节点应同步升级。

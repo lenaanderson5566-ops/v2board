@@ -7,6 +7,7 @@ node = json.loads((root / 'docs/api-v10/node-api.json').read_text(encoding='utf-
 target = root / 'docs/api-v10/openapi.json'
 document = json.loads(target.read_text(encoding='utf-8'))
 document['info']['description'] = 'User API and V2Box machine API. Administrative, staff, operations and legacy node contracts remain available separately.'
+document['paths'] = {path: value for path, value in document['paths'].items() if not path.startswith('/nodes/v2box/')}
 document['paths'].update(node['paths'])
 document['components']['schemas'].update(node['schemas'])
 document['components']['securitySchemes']['nodeBearer'] = {'type': 'http', 'scheme': 'bearer', 'description': 'Panel server_token for V2Box machine API. Query tokens are not accepted.'}

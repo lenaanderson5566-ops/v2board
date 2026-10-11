@@ -1,6 +1,6 @@
 {
   "paths": {
-    "/nodes/v2box/{nodeId}/configuration": {
+    "/server/configuration": {
       "get": {
         "operationId": "nodeConfiguration",
         "tags": [
@@ -13,8 +13,19 @@
         ],
         "parameters": [
           {
-            "name": "nodeId",
-            "in": "path",
+            "name": "X-Node-Type",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "v2box"
+              ]
+            }
+          },
+          {
+            "name": "X-Node-ID",
+            "in": "header",
             "required": true,
             "schema": {
               "type": "integer",
@@ -29,7 +40,7 @@
             }
           },
           {
-            "name": "X-V2Box-Capabilities",
+            "name": "X-Node-Capabilities",
             "in": "header",
             "schema": {
               "type": "string"
@@ -243,7 +254,7 @@
         }
       }
     },
-    "/nodes/v2box/{nodeId}/users": {
+    "/server/users": {
       "get": {
         "operationId": "nodeUsers",
         "tags": [
@@ -256,8 +267,19 @@
         ],
         "parameters": [
           {
-            "name": "nodeId",
-            "in": "path",
+            "name": "X-Node-Type",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "v2box"
+              ]
+            }
+          },
+          {
+            "name": "X-Node-ID",
+            "in": "header",
             "required": true,
             "schema": {
               "type": "integer",
@@ -481,7 +503,7 @@
         }
       }
     },
-    "/nodes/v2box/{nodeId}/online-counts": {
+    "/server/online-counts": {
       "get": {
         "operationId": "nodeOnlineCounts",
         "tags": [
@@ -494,8 +516,19 @@
         ],
         "parameters": [
           {
-            "name": "nodeId",
-            "in": "path",
+            "name": "X-Node-Type",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "v2box"
+              ]
+            }
+          },
+          {
+            "name": "X-Node-ID",
+            "in": "header",
             "required": true,
             "schema": {
               "type": "integer",
@@ -709,7 +742,7 @@
         }
       }
     },
-    "/nodes/v2box/{nodeId}/traffic": {
+    "/server/traffic": {
       "post": {
         "operationId": "nodeTraffic",
         "tags": [
@@ -722,8 +755,19 @@
         ],
         "parameters": [
           {
-            "name": "nodeId",
-            "in": "path",
+            "name": "X-Node-Type",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "v2box"
+              ]
+            }
+          },
+          {
+            "name": "X-Node-ID",
+            "in": "header",
             "required": true,
             "schema": {
               "type": "integer",
@@ -957,7 +1001,7 @@
         "description": "Byte deltas; deduplication is not implemented. Do not assume idempotency."
       }
     },
-    "/nodes/v2box/{nodeId}/online-users": {
+    "/server/online-users": {
       "post": {
         "operationId": "nodeOnlineUsers",
         "tags": [
@@ -970,8 +1014,19 @@
         ],
         "parameters": [
           {
-            "name": "nodeId",
-            "in": "path",
+            "name": "X-Node-Type",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "v2box"
+              ]
+            }
+          },
+          {
+            "name": "X-Node-ID",
+            "in": "header",
             "required": true,
             "schema": {
               "type": "integer",
@@ -1204,7 +1259,7 @@
         }
       }
     },
-    "/nodes/v2box/{nodeId}/capabilities": {
+    "/server/capabilities": {
       "post": {
         "operationId": "nodeCapabilities",
         "tags": [
@@ -1217,8 +1272,19 @@
         ],
         "parameters": [
           {
-            "name": "nodeId",
-            "in": "path",
+            "name": "X-Node-Type",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "v2box"
+              ]
+            }
+          },
+          {
+            "name": "X-Node-ID",
+            "in": "header",
             "required": true,
             "schema": {
               "type": "integer",
@@ -1839,32 +1905,32 @@
   "endpoints": [
     {
       "method": "GET",
-      "path": "/nodes/v2box/{nodeId}/configuration",
+      "path": "/server/configuration",
       "legacy": "GET /api/v2/server/config"
     },
     {
       "method": "GET",
-      "path": "/nodes/v2box/{nodeId}/users",
+      "path": "/server/users",
       "legacy": "GET /api/v1/server/UniProxy/user"
     },
     {
       "method": "GET",
-      "path": "/nodes/v2box/{nodeId}/online-counts",
+      "path": "/server/online-counts",
       "legacy": "GET /api/v1/server/UniProxy/alivelist"
     },
     {
       "method": "POST",
-      "path": "/nodes/v2box/{nodeId}/traffic",
+      "path": "/server/traffic",
       "legacy": "POST /api/v1/server/UniProxy/push"
     },
     {
       "method": "POST",
-      "path": "/nodes/v2box/{nodeId}/online-users",
+      "path": "/server/online-users",
       "legacy": "POST /api/v1/server/UniProxy/alive"
     },
     {
       "method": "POST",
-      "path": "/nodes/v2box/{nodeId}/capabilities",
+      "path": "/server/capabilities",
       "legacy": "New resource"
     }
   ]

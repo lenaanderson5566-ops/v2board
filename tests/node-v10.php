@@ -16,8 +16,9 @@ $assert=function($ok,$label)use(&$checks){if(!$ok)throw new RuntimeException($la
 config(['v2board.server_token'=>'node-v10-test-secret', 'cache.default'=>'array']);
 Queue::fake();
 $kernel=$app->make(Illuminate\Contracts\Http\Kernel::class);
-$call=function($method,$path,$body=[],$headers=[])use($kernel){
-    $server=array_merge(['CONTENT_TYPE'=>'application/json','HTTP_ACCEPT'=>'application/json','HTTP_AUTHORIZATION'=>'Bearer node-v10-test-secret','HTTP_X_V2BOX_CAPABILITIES'=>'native-routing-v1,dns-v1,outbounds-v1'], $headers);
+$nodeId=0;
+$call=function($method,$path,$body=[],$headers=[])use($kernel,&$nodeId){
+    $server=array_merge(['CONTENT_TYPE'=>'application/json','HTTP_ACCEPT'=>'application/json','HTTP_AUTHORIZATION'=>'Bearer node-v10-test-secret','HTTP_X_NODE_TYPE'=>'v2box','HTTP_X_NODE_ID'=>(string)$nodeId,'HTTP_X_NODE_CAPABILITIES'=>'native-routing-v1,dns-v1,outbounds-v1'], $headers);
     $request=Request::create($path,$method,[],[],[],$server,json_encode($body));
     return $kernel->handle($request);
 };
@@ -28,7 +29,8 @@ try {
     $admin=new V2boxController();$admin->save(Request::create('/','POST',$base+['sing_box'=>$native]));
     $node=ServerV2box::where('name',$base['name'])->firstOrFail();
     $assert($node->sing_box===$native,'Native config persisted');
-    $root='/api/v10/nodes/v2box/'.$node->id;
+    $nodeId=$node->id;
+    $root='/api/v10/server';
     $r=$call('POST',$root.'/capabilities',['coreVersion'=>'v1.14.3','features'=>['native-routing-v1']]);
     $assert($r->getStatusCode()===200,'Capabilities accepted');
     $assert(Cache::get('V2BOX_CAPABILITIES:'.$node->id)['coreVersion']==='v1.14.3','Capability cache');
@@ -38,7 +40,7 @@ try {
     $assert(is_object(json_decode($r->getContent())->data->tlsSettings),'Empty TLS settings encoded as object');
     $assert(is_object(json_decode($r->getContent())->data->networkSettings) && is_object(json_decode($r->getContent())->data->encryptionSettings),'Empty protocol settings encoded as objects');
     $assert($call('GET',$root.'/configuration',[],['HTTP_IF_NONE_MATCH'=>$r->headers->get('ETag')])->getStatusCode()===304,'Config ETag');
-    $assert($call('GET',$root.'/configuration',[],['HTTP_X_V2BOX_CAPABILITIES'=>''])->getStatusCode()===409,'Capability guard');
+    $assert($call('GET',$root.'/configuration',[],['HTTP_X_NODE_CAPABILITIES'=>''])->getStatusCode()===409,'Capability guard');
     $r=$call('GET',$root.'/users');$assert($r->getStatusCode()===200 && json_decode($r->getContent(),true)['data']===[],'Empty user table');
     $assert($call('GET',$root.'/users',[],['HTTP_IF_NONE_MATCH'=>$r->headers->get('ETag')])->getStatusCode()===304,'User ETag');
     foreach (['','Bearer wrong'] as $auth) {
@@ -47,7 +49,11 @@ try {
         $body=json_decode($r->getContent(),true);$assert($body['requestId']===$r->headers->get('X-Request-ID'),'Problem request ID');
         $assert(!isset($body['exception'],$body['trace']),'No exception details');
     }
-    $assert($call('GET','/api/v10/nodes/v2box/999999999/configuration')->getStatusCode()===404,'Unknown node');
+    $assert($call('GET',$root.'/configuration',[],['HTTP_X_NODE_ID'=>'999999999'])->getStatusCode()===404,'Unknown node');
+    foreach (['', '0', '-1', '1.5', '999999999999999999999999'] as $id) $assert($call('GET',$root.'/users',[],['HTTP_X_NODE_ID'=>$id])->getStatusCode()===422,'Invalid/missing node ID rejected');
+    foreach (['', 'v2node', 'unknown'] as $type) $assert($call('GET',$root.'/users',[],['HTTP_X_NODE_TYPE'=>$type])->getStatusCode()===422,'Unsupported/missing node type rejected');
+    $assert($call('GET',$root.'/users?node_id='.$nodeId.'&node_type=v2box',[],['HTTP_X_NODE_ID'=>''])->getStatusCode()===422,'Query identity cannot replace headers');
+    $assert($call('GET','/api/v10/nodes/v2box/'.$nodeId.'/users')->getStatusCode()===404,'Product-specific path retired');
     $traffic=['records'=>[['userId'=>42,'uploadBytes'=>1024,'downloadBytes'=>2048]]];
     $assert($call('POST',$root.'/traffic',$traffic)->getStatusCode()===202,'Traffic queued');
     $assert(Queue::pushed(App\Jobs\TrafficFetchJob::class)->count()===1,'Exactly one accounting job');

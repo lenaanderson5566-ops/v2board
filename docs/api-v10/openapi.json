@@ -14416,7 +14416,6 @@
             "nullable": true
           },
           "protocol": {
-            "description": "Underlying protocol; includes naive for V2Box HTTPS/HTTP2 nodes. Client support depends on subscription format.",
             "type": "string",
             "nullable": true
           },
@@ -14880,6 +14879,9 @@
           "commissionLevelThree": {
             "type": "number",
             "nullable": true
+          },
+          "couponsAvailable": {
+            "type": "boolean"
           }
         },
         "additionalProperties": false

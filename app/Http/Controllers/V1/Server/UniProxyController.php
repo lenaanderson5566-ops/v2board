@@ -20,7 +20,7 @@ class UniProxyController extends Controller
     private $nodeId;
     private $serverService;
 
-    public function __construct(Request $request)
+    private function initialize(Request $request): void
     {
         $token = $request->input('token');
         if (empty($token)) {
@@ -38,8 +38,8 @@ class UniProxyController extends Controller
         \App\Services\NodeAddressService::observe($request, $this->nodeType, (int) $this->nodeId);
     }
 
-    public function user(Request $request) { return (new \App\Services\Actions\NodeCommunication($this->nodeInfo, $this->nodeType))->user($request); }
-    public function push(Request $request) { return (new \App\Services\Actions\NodeCommunication($this->nodeInfo, $this->nodeType))->push($request); }
-    public function alivelist(Request $request) { return (new \App\Services\Actions\NodeCommunication($this->nodeInfo, $this->nodeType))->alivelist($request); }
-    public function alive(Request $request) { return (new \App\Services\Actions\NodeCommunication($this->nodeInfo, $this->nodeType))->alive($request); }
+    public function user(Request $request) { $this->initialize($request); return (new \App\Services\Actions\NodeCommunication($this->nodeInfo, $this->nodeType))->user($request); }
+    public function push(Request $request) { $this->initialize($request); return (new \App\Services\Actions\NodeCommunication($this->nodeInfo, $this->nodeType))->push($request); }
+    public function alivelist(Request $request) { $this->initialize($request); return (new \App\Services\Actions\NodeCommunication($this->nodeInfo, $this->nodeType))->alivelist($request); }
+    public function alive(Request $request) { $this->initialize($request); return (new \App\Services\Actions\NodeCommunication($this->nodeInfo, $this->nodeType))->alive($request); }
 }

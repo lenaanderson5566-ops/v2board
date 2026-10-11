@@ -47,6 +47,11 @@ class AdminRoute
             $router->get ('/server/route/fetch', 'V1\\Admin\\Server\\RouteController@fetch');
             $router->post('/server/route/save', 'V1\\Admin\\Server\\RouteController@save');
             $router->post('/server/route/drop', 'V1\\Admin\\Server\\RouteController@drop');
+            $router->get('/server/lightsail/fetch', 'V1\\Admin\\LightsailController@fetch');
+            $router->get('/server/lightsail/inspect', 'V1\\Admin\\LightsailController@inspect')->middleware('throttle:20,1');
+            $router->post('/server/lightsail/save', 'V1\\Admin\\LightsailController@save');
+            $router->post('/server/lightsail/drop', 'V1\\Admin\\LightsailController@drop');
+            $router->post('/server/lightsail/operate', 'V1\\Admin\\LightsailController@operate')->middleware('throttle:5,1');
             $router->get('/server/traffic-budget/fetch', 'V1\\Admin\\ServerTrafficBudgetController@fetch');
             $router->post('/server/traffic-budget/save', 'V1\\Admin\\ServerTrafficBudgetController@save');
             $router->get ('/server/manage/getNodes', 'V1\\Admin\\Server\\ManageController@getNodes');

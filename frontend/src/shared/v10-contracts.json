@@ -843,6 +843,10 @@
       "commissionLevelThree": [
         "commission_distribution_l3",
         "number"
+      ],
+      "couponsAvailable": [
+        "coupons_available",
+        "boolean"
       ]
     },
     "task": {

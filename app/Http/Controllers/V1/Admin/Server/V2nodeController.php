@@ -265,6 +265,7 @@ class V2nodeController extends Controller
             }
             if (!empty($params['parent_id'])) {
                 abort_if(\Illuminate\Support\Facades\DB::table('v2_server_traffic_binding')->where('node_type',$backend)->where('node_id',$server->id)->exists(),422,'请先解除服务器额度绑定，再设置为子节点');
+                abort_if(\Illuminate\Support\Facades\DB::table('v2_lightsail_server')->where('node_type',$backend)->where('node_id',$server->id)->exists(),422,'请先移除 Lightsail 配置，再设置为子节点');
             }
             try {
                 $server->update($params);
@@ -293,7 +294,13 @@ class V2nodeController extends Controller
             }
         }
         return response([
-            'data' => $server->delete()
+            'data' => \Illuminate\Support\Facades\DB::transaction(function()use($server){
+                $server=$this->model::whereKey($server->id)->lockForUpdate()->firstOrFail();
+                $type=$this->model===\App\Models\ServerV2box::class ? 'v2box' : 'v2node';
+                $cloud=\Illuminate\Support\Facades\DB::table('v2_lightsail_server')->where('node_type',$type)->where('node_id',$server->id)->lockForUpdate()->first();
+                abort_if($cloud,409,'请先移除 Lightsail 配置再删除节点');
+                return $server->delete();
+            })
         ]);
     }
 

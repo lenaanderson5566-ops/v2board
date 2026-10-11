@@ -49,4 +49,9 @@ $path = 'framework-tests/'.bin2hex(random_bytes(8)).'.txt';
 try {
     $assert($disk->put($path, 'roundtrip') && $disk->get($path) === 'roundtrip', 'Flysystem write/read failed');
 } finally { $disk->delete($path); }
+$legacy = app(App\Http\Controllers\V1\Server\UniProxyController::class);
+$configController = app(App\Http\Controllers\V2\Server\ServerController::class);
+$assert($legacy instanceof App\Http\Controllers\Controller && $configController instanceof App\Http\Controllers\Controller, 'Route tooling can resolve controllers without node credentials');
+foreach(['user','push','alive','alivelist'] as $method){try{$legacy->$method(Request::create('/'));throw new RuntimeException('Legacy authentication bypass');}catch(Symfony\Component\HttpKernel\Exception\HttpException $e){$assert($e->getStatusCode()===500 && $e->getMessage()==='token is null','Legacy authentication still runs before each action');}}
+$invalid=$configController->config(Request::create('/'));$assert($invalid->getStatusCode()===200 && $invalid->getData(true)['message']==='token is null','V2 failure response contract preserved without process exit');
 echo "Laravel 13: $checks checks passed; no real mail sent.\n";

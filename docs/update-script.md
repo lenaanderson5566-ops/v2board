@@ -143,3 +143,5 @@ V2Box 接入新增白名单迁移 `2026_10_11_000001_create_v2box_nodes.php`，�
 修复并启动本站服务、确认 Horizon/队列和调度器正常后，再执行 `php artisan up`。不要仅为退出 503 重复安装依赖。`bash tests/update-restart.sh` 验证稳定启动、延迟启动、反复重启及服务缺失；现有升级回归包含 26 个隔离场景。
 
 服务器流量额度与去重升级会依次执行 `2026_10_11_000007_create_node_traffic_batches.php`、`2026_10_11_000008_create_server_traffic_budgets.php` 和 `2026_10_11_000009_create_server_traffic_imports.php`。早期脚本遗漏这些迁移；已升级站点请重新运行完整更新脚本补齐，已完成的迁移会跳过。
+
+Lightsail IP 管理新增 `2026_10_11_000010_create_lightsail_servers.php` 定向迁移及 AWS PHP SDK，更新后由 Horizon 的 infrastructure 队列执行任务。详情见 [Lightsail IP 管理](lightsail-ip-management.md)。

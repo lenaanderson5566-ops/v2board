@@ -13,26 +13,24 @@ class ServerController extends Controller
     private $nodeId;
     private $serverService;
 
-    public function __construct(Request $request)
+    private function initialize(Request $request): ?\Illuminate\Http\JsonResponse
     {
         $token = $request->input('token');
 
         // token 为空（业务失败，不抛异常）
         if (empty($token)) {
-            response()->json([
+            return response()->json([
                 'status' => 'fail',
                 'message' => 'token is null'
-            ], 200)->send();
-            exit;
+            ], 200);
         }
 
         // token 错误
         if ($token !== config('v2board.server_token')) {
-            response()->json([
+            return response()->json([
                 'status' => 'fail',
                 'message' => 'token is error'
-            ], 200)->send();
-            exit;
+            ], 200);
         }
 
         $this->nodeId = $request->input('node_id');
@@ -43,17 +41,18 @@ class ServerController extends Controller
 
         // 节点不存在
         if (!$this->nodeInfo) {
-            response()->json([
+            return response()->json([
                 'status' => 'fail',
                 'message' => 'server is not exist'
-            ], 200)->send();
-            exit;
+            ], 200);
         }
+        return null;
     }
 
     // 后端获取配置
     public function config(Request $request)
     {
+        if ($error = $this->initialize($request)) return $error;
         $response = \App\Services\Actions\NodeConfiguration::build($this->nodeInfo);
 
         $rsp = json_encode($response);

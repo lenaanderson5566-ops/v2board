@@ -1,8 +1,16 @@
+import { AdminLightsail } from "./AdminLightsail";
 import { ServerTrafficBudgets } from "./ServerTrafficBudgets";
 import { nodeDeploymentCommand, nodeIPCommand } from "./node-deployment";
 import nodeLocations from "../../../resources/client/node-locations.json";
-import { PaymentCategoryEditor, paymentCategoryInitial } from "./PaymentCategoryEditor";
-import { paymentIcons, paymentIconInitial, resolvePaymentIcon } from "./payment-icons";
+import {
+    PaymentCategoryEditor,
+    paymentCategoryInitial,
+} from "./PaymentCategoryEditor";
+import {
+    paymentIcons,
+    paymentIconInitial,
+    resolvePaymentIcon,
+} from "./payment-icons";
 import { AdminEntrypoints } from "./AdminEntrypoints";
 import { AdminFastaiDownloads } from "./AdminFastaiDownloads";
 import { AdminRiskReview } from "./AdminRiskReview";
@@ -229,17 +237,45 @@ export const resources: Record<string, Resource> = {
         columns: [
             ["id", "ID"],
             ["remarks", "备注"],
-            ["backend", "适用内核", r => r.backend === "v2box" ? "V2Box / sing-box" : "V2Node / Xray"],
+            [
+                "backend",
+                "适用内核",
+                (r) =>
+                    r.backend === "v2box"
+                        ? "V2Box / sing-box"
+                        : "V2Node / Xray",
+            ],
             [
                 "match",
                 "规则数量",
-                (r) => r.action === "sing_box" ? (r.sing_box?.route?.rules?.length || 0) + (r.sing_box?.dns?.rules?.length || 0) : (Array.isArray(r.match) ? r.match.length : 0),
+                (r) =>
+                    r.action === "sing_box"
+                        ? (r.sing_box?.route?.rules?.length || 0) +
+                          (r.sing_box?.dns?.rules?.length || 0)
+                        : Array.isArray(r.match)
+                          ? r.match.length
+                          : 0,
             ],
-            ["action", "格式 / 动作", r => r.action === "sing_box" ? "sing-box 原生" : `${r.backend === "v2box" ? "兼容格式 / " : ""}${r.action}`],
+            [
+                "action",
+                "格式 / 动作",
+                (r) =>
+                    r.action === "sing_box"
+                        ? "sing-box 原生"
+                        : `${r.backend === "v2box" ? "兼容格式 / " : ""}${r.action}`,
+            ],
         ],
         fields: [
             f("remarks", "备注", "text", true),
-            { key: "backend", label: "适用内核", type: "select", options: [["v2node", "V2Node / Xray"], ["v2box", "V2Box / sing-box"]] },
+            {
+                key: "backend",
+                label: "适用内核",
+                type: "select",
+                options: [
+                    ["v2node", "V2Node / Xray"],
+                    ["v2box", "V2Box / sing-box"],
+                ],
+            },
             f("match", "匹配条件", "json", true),
             {
                 key: "action",
@@ -258,10 +294,20 @@ export const resources: Record<string, Resource> = {
                 ],
             },
             f("action_value", "动作参数"),
-            { key: "sing_box", label: "sing-box 规则配置", type: "json", required: true,
-              hint: '支持 route、dns、outbounds。节点按选择顺序合并规则；相同标签或默认设置冲突时会拒绝保存。direct 出口自动保留。示例：{"route":{"rules":[{"domain_suffix":["example.com"],"action":"reject"}]}}' },
+            {
+                key: "sing_box",
+                label: "sing-box 规则配置",
+                type: "json",
+                required: true,
+                hint: '支持 route、dns、outbounds。节点按选择顺序合并规则；相同标签或默认设置冲突时会拒绝保存。direct 出口自动保留。示例：{"route":{"rules":[{"domain_suffix":["example.com"],"action":"reject"}]}}',
+            },
         ],
-        defaults: { backend: "v2node", match: [], action: "block", sing_box: { route: { rules: [] } } },
+        defaults: {
+            backend: "v2node",
+            match: [],
+            action: "block",
+            sing_box: { route: { rules: [] } },
+        },
     },
     users: {
         title: "用户管理",
@@ -311,7 +357,11 @@ export const resources: Record<string, Resource> = {
             f("transfer_enable", "流量 (GB)", "number"),
             f("u", "已用上传（GB）", "number"),
             f("d", "已用下载（GB）", "number"),
-            { ...f("balance", "余额（CNY）", "number"), scale: 100, step: 0.01 },
+            {
+                ...f("balance", "余额（CNY）", "number"),
+                scale: 100,
+                step: 0.01,
+            },
             f("expired_at", "到期时间", "datetime-local"),
             f("device_limit", "设备限制", "number"),
             f("speed_limit", "速率限制", "number"),
@@ -614,7 +664,10 @@ export const resources: Record<string, Resource> = {
         fields: [
             f("client_type", "客户端标识", "text", true),
             f("client_name", "名称"),
-            {...f("min_version", "最低版本"), hint:"按标识识别版本：sing / meta 对应内核；verge / flclash 对应应用。无法识别且设置了最低版本时沿用拒绝策略。"},
+            {
+                ...f("min_version", "最低版本"),
+                hint: "按标识识别版本：sing / meta 对应内核；verge / flclash 对应应用。无法识别且设置了最低版本时沿用拒绝策略。",
+            },
             toggle("is_enabled", "启用"),
             f("sort", "排序", "number"),
         ],
@@ -662,7 +715,11 @@ export const resources: Record<string, Resource> = {
         title: "在线用户",
         fetch: ops("risk/online-user/fetch"),
         columns: [
-            ["user_id", "用户（邮箱 / ID）", r => <AdminUserActivityLink row={r} />],
+            [
+                "user_id",
+                "用户（邮箱 / ID）",
+                (r) => <AdminUserActivityLink row={r} />,
+            ],
             ["ip", "IP 地址"],
             ["node", "节点"],
             ["online_at", "最近活跃", (r) => date(r.online_at)],
@@ -673,12 +730,20 @@ export const resources: Record<string, Resource> = {
         title: "用户活动",
         fetch: ops("risk/user-usage/fetch"),
         columns: [
-            ["user_id", "用户（邮箱 / ID）", r => <AdminUserActivityLink row={r} />],
+            [
+                "user_id",
+                "用户（邮箱 / ID）",
+                (r) => <AdminUserActivityLink row={r} />,
+            ],
             ["subscription_plan", "订阅套餐"],
             ["last_subscribe_at", "最近订阅", (r) => date(r.last_subscribe_at)],
             ["last_online_ip", "最近在线 IP"],
             ["last_online_node", "最近在线节点"],
-            ["paid_total_amount", "累计订单金额", r => money(r.paid_total_amount)],
+            [
+                "paid_total_amount",
+                "累计订单金额",
+                (r) => money(r.paid_total_amount),
+            ],
             ["balance_cents", "余额", (r) => money(r.balance_cents)],
         ],
         fields: [],
@@ -687,7 +752,11 @@ export const resources: Record<string, Resource> = {
         title: "登录日志",
         fetch: ops("log/login/fetch"),
         columns: [
-            ["user_id", "用户（邮箱 / ID）", r => <AdminUserActivityLink row={r} />],
+            [
+                "user_id",
+                "用户（邮箱 / ID）",
+                (r) => <AdminUserActivityLink row={r} />,
+            ],
             ["ip", "IP"],
             ["country", "国家"],
             ["city", "城市"],
@@ -700,7 +769,11 @@ export const resources: Record<string, Resource> = {
         title: "订阅日志",
         fetch: ops("log/subscribe/fetch"),
         columns: [
-            ["user_id", "用户（邮箱 / ID）", r => <AdminUserActivityLink row={r} />],
+            [
+                "user_id",
+                "用户（邮箱 / ID）",
+                (r) => <AdminUserActivityLink row={r} />,
+            ],
             ["ip", "IP"],
             ["client_type", "客户端类型"],
             ["user_agent", "UA"],
@@ -712,7 +785,11 @@ export const resources: Record<string, Resource> = {
         title: "连接日志",
         fetch: ops("log/user-connection/fetch"),
         columns: [
-            ["user_id", "用户（邮箱 / ID）", r => <AdminUserActivityLink row={r} />],
+            [
+                "user_id",
+                "用户（邮箱 / ID）",
+                (r) => <AdminUserActivityLink row={r} />,
+            ],
             ["ip", "IP"],
             ["node", "节点"],
             ["connected_at", "连接时间", (r) => date(r.connected_at)],
@@ -723,13 +800,21 @@ export const resources: Record<string, Resource> = {
         title: "风控命中日志",
         fetch: ops("log/rule-hit/fetch?grouped=1"),
         columns: [
-            ["user_id", "用户（邮箱 / ID）", r => <AdminUserActivityLink row={r} />],
+            [
+                "user_id",
+                "用户（邮箱 / ID）",
+                (r) => <AdminUserActivityLink row={r} />,
+            ],
             ["rule_key", "规则"],
             ["ip", "IP"],
             ["status", "原请求结果"],
-            ["review", "最新记录复核", r => <AdminRiskReview key={r.id} row={r}/>],
+            [
+                "review",
+                "最新记录复核",
+                (r) => <AdminRiskReview key={r.id} row={r} />,
+            ],
             ["hit_count", "命中次数"],
-            ["first_hit_at", "首次命中", r => date(r.first_hit_at)],
+            ["first_hit_at", "首次命中", (r) => date(r.first_hit_at)],
             ["hit_at", "最后命中", (r) => date(r.hit_at)],
         ],
         fields: [],
@@ -870,7 +955,12 @@ export function ResourcePage({
             page: page,
             pageSize,
             page_size: pageSize,
-            email: resource.title.includes("日志") || resource === resources.online || resource === resources.usage ? search : undefined,
+            email:
+                resource.title.includes("日志") ||
+                resource === resources.online ||
+                resource === resources.usage
+                    ? search
+                    : undefined,
             keyword: resource.title.includes("黑名单") ? search : undefined,
             ...queryParams,
             ...(resource === resources.routes ? { backend: routeBackend } : {}),
@@ -922,9 +1012,18 @@ export function ResourcePage({
                             <div className="search">
                                 <Search size={16} />
                                 <input
-                                    placeholder={resource === resources.online || resource === resources.usage || resource.title.includes("日志") ? "搜索邮箱…" : "搜索当前列表…"}
+                                    placeholder={
+                                        resource === resources.online ||
+                                        resource === resources.usage ||
+                                        resource.title.includes("日志")
+                                            ? "搜索邮箱…"
+                                            : "搜索当前列表…"
+                                    }
                                     value={search}
-                                    onChange={(e) => { setSearch(e.target.value); setPage(1); }}
+                                    onChange={(e) => {
+                                        setSearch(e.target.value);
+                                        setPage(1);
+                                    }}
                                     aria-label="搜索列表"
                                 />
                             </div>
@@ -934,7 +1033,18 @@ export function ResourcePage({
                             <button
                                 className="primary"
                                 onClick={() =>
-                                    setEditing({ ...resource.defaults, ...(resource === resources.routes ? { backend: routeBackend, action: routeBackend === "v2box" ? "sing_box" : "block" } : {}) })
+                                    setEditing({
+                                        ...resource.defaults,
+                                        ...(resource === resources.routes
+                                            ? {
+                                                  backend: routeBackend,
+                                                  action:
+                                                      routeBackend === "v2box"
+                                                          ? "sing_box"
+                                                          : "block",
+                                              }
+                                            : {}),
+                                    })
                                 }
                             >
                                 <Plus size={16} />
@@ -955,10 +1065,46 @@ export function ResourcePage({
                     </div>
                 )}
                 {toolbar}
-                {resource === resources.routes && <div className="pad"><label>适用内核 <select aria-label="路由内核" value={routeBackend} onChange={e => { setRouteBackend(e.target.value); setPage(1); }}><option value="v2node">V2Node / Xray</option><option value="v2box">V2Box / sing-box</option></select></label><p className="muted">两类规则独立维护。修改规则会应用到选择它的节点；正在使用的规则不能删除。</p></div>}
-                {resource === resources.online && <p className="pad muted">近 10 分钟活跃且有节点缓存记录；不是即时连接状态。用户 {d.meta?.users ?? "—"} · IP {d.meta?.ips ?? "—"} · 连接记录 {d.total} · 查询时间 {date(d.meta?.updated_at)}。节点未上报时可能不显示。</p>}
-                {resource === resources.usage && <p className="pad muted">用户历史活动与账户资料，最近在线记录不代表当前在线。</p>}
-                {resource === resources["log-risk"] && <p className="pad muted">近 30 天，同一用户、规则、IP 和处理结果按固定 10 分钟窗口合并；总数为合并后的事件数。点击用户查看原始活动。</p>}
+                {resource === resources.routes && (
+                    <div className="pad">
+                        <label>
+                            适用内核{" "}
+                            <select
+                                aria-label="路由内核"
+                                value={routeBackend}
+                                onChange={(e) => {
+                                    setRouteBackend(e.target.value);
+                                    setPage(1);
+                                }}
+                            >
+                                <option value="v2node">V2Node / Xray</option>
+                                <option value="v2box">V2Box / sing-box</option>
+                            </select>
+                        </label>
+                        <p className="muted">
+                            两类规则独立维护。修改规则会应用到选择它的节点；正在使用的规则不能删除。
+                        </p>
+                    </div>
+                )}
+                {resource === resources.online && (
+                    <p className="pad muted">
+                        近 10 分钟活跃且有节点缓存记录；不是即时连接状态。用户{" "}
+                        {d.meta?.users ?? "—"} · IP {d.meta?.ips ?? "—"} ·
+                        连接记录 {d.total} · 查询时间 {date(d.meta?.updated_at)}
+                        。节点未上报时可能不显示。
+                    </p>
+                )}
+                {resource === resources.usage && (
+                    <p className="pad muted">
+                        用户历史活动与账户资料，最近在线记录不代表当前在线。
+                    </p>
+                )}
+                {resource === resources["log-risk"] && (
+                    <p className="pad muted">
+                        近 30 天，同一用户、规则、IP 和处理结果按固定 10
+                        分钟窗口合并；总数为合并后的事件数。点击用户查看原始活动。
+                    </p>
+                )}
                 <State {...d} retry={d.reload}>
                     {error && <div className="alert">{error}</div>}
                     <Table
@@ -1310,7 +1456,12 @@ export function ResourcePage({
                                                     );
                                             },
                                         );
-                                    if (resource === resources.routes && editing.id) clean.backend = editing.backend || "v2node";
+                                    if (
+                                        resource === resources.routes &&
+                                        editing.id
+                                    )
+                                        clean.backend =
+                                            editing.backend || "v2node";
                                     if (resource.defaults)
                                         Object.entries(
                                             resource.defaults,
@@ -1518,19 +1669,18 @@ export function Settings() {
                     !k.startsWith("frontend_") &&
                     k !== "email_template" &&
                     k !== "invite_never_expire" &&
-                    k !== "fastai_releases" && !k.startsWith("fastai_entrypoint"),
+                    k !== "fastai_releases" &&
+                    !k.startsWith("fastai_entrypoint"),
             )
             .map(([k, v]) =>
                 k === "credit_base_group_id"
-                    ? { key: k, label: "额度基础权限组", type: "select" as const, options: [["", "未配置（沿用原权限）"] as [string, string], ...rows(creditGroups.data).map((r) => [String(r.id), r.name] as [string, string])] }
-                    : k === "try_out_plan_id"
                     ? {
                           key: k,
-                          label: "试用套餐",
+                          label: "额度基础权限组",
                           type: "select" as const,
                           options: [
-                              ["0", "不指定套餐"] as [string, string],
-                              ...rows(plans.data).map(
+                              ["", "未配置（沿用原权限）"] as [string, string],
+                              ...rows(creditGroups.data).map(
                                   (r) =>
                                       [String(r.id), r.name] as [
                                           string,
@@ -1539,7 +1689,39 @@ export function Settings() {
                               ),
                           ],
                       }
-                     : /^client_(primary|secondary)_/.test(k) ? {key:k,label:labels[k],type:"select" as const,options:[["","使用默认推荐"] as [string,string],...recommendationClients(k.split("_").pop() as RecommendationDevice).map(c=>[c.id,c.name] as [string,string])]} : configField(k, v, schema.data?.[k], labels[k] || k),
+                    : k === "try_out_plan_id"
+                      ? {
+                            key: k,
+                            label: "试用套餐",
+                            type: "select" as const,
+                            options: [
+                                ["0", "不指定套餐"] as [string, string],
+                                ...rows(plans.data).map(
+                                    (r) =>
+                                        [String(r.id), r.name] as [
+                                            string,
+                                            string,
+                                        ],
+                                ),
+                            ],
+                        }
+                      : /^client_(primary|secondary)_/.test(k)
+                        ? {
+                              key: k,
+                              label: labels[k],
+                              type: "select" as const,
+                              options: [
+                                  ["", "使用默认推荐"] as [string, string],
+                                  ...recommendationClients(
+                                      k
+                                          .split("_")
+                                          .pop() as RecommendationDevice,
+                                  ).map(
+                                      (c) => [c.id, c.name] as [string, string],
+                                  ),
+                              ],
+                          }
+                        : configField(k, v, schema.data?.[k], labels[k] || k),
             ),
     );
     return (
@@ -1561,8 +1743,15 @@ export function Settings() {
                 ))}
             </div>
             <State
-                loading={d.loading || schema.loading || plans.loading || creditGroups.loading}
-                error={d.error || schema.error || plans.error || creditGroups.error}
+                loading={
+                    d.loading ||
+                    schema.loading ||
+                    plans.loading ||
+                    creditGroups.loading
+                }
+                error={
+                    d.error || schema.error || plans.error || creditGroups.error
+                }
                 retry={() => {
                     d.reload();
                     schema.reload();
@@ -1570,31 +1759,75 @@ export function Settings() {
                     creditGroups.reload();
                 }}
             >
-                {group === "entrypoints" && <AdminEntrypoints key={JSON.stringify(raw.fastai_entrypoints)} initial={raw.fastai_entrypoints || []} publicKey={raw.fastai_entrypoint_public_key} version={raw.fastai_entrypoints_version || 1} save={async entries => { await request(admin("config/save"), { fastai_entrypoints: entries }); d.reload(); }} />}
-                {group === "app" && <AdminFastaiDownloads key={JSON.stringify(raw.fastai_releases)} initial={raw.fastai_releases || []} save={async releases => { await request(admin("config/save"), { fastai_releases: releases }); }} />}
-                {group !== "entrypoints" && <Editor
-                    key={group + JSON.stringify(raw)}
-                    fields={fields}
-                    initial={raw}
-                    resolveFields={settingsFields}
-                    linkValues={linkSettings}
-                    onDirty={() => {
-                        setSaved("");
-                        setDirty(true);
-                        setActionResult("");
-                    }}
-                    validate={validateSettings}
-                    onSave={async (body) => {
-                        const changes = changedSettings(body, raw);
-                        if (Object.keys(changes).length)
-                            await request(admin("config/save"), changes);
-                        setSaved("设置已保存");
-                        setDirty(false);
-                        d.reload();
-                    }}
-                />}
-                {group === "subscribe" && <p className="pad muted">设置额度基础权限组后：订阅有效时，额度沿用订阅权限；订阅到期或无订阅时，额度仅可使用基础组节点。适用于所有额度用户（含已迁移的一次性套餐）。额度余额、套餐记录及限速、设备限制不变。节点在下次拉取用户时更新权限，客户端需更新订阅以刷新节点列表。</p>}
-                {group === "app" && <div className="pad"><p className="muted">填写 AppleAuto 的 HTTPS 接口域名及分享链接最后一段代码。接口地址不包含 /share 或 /client 路径。仅有效订阅或有剩余额度的用户可查看。请先保存，再测试连接；启用后刷新用户页面。</p><button disabled={dirty || actionBusy} onClick={() => runAction("config/testAppleAccount")}>测试下载账号连接</button></div>}
+                {group === "entrypoints" && (
+                    <AdminEntrypoints
+                        key={JSON.stringify(raw.fastai_entrypoints)}
+                        initial={raw.fastai_entrypoints || []}
+                        publicKey={raw.fastai_entrypoint_public_key}
+                        version={raw.fastai_entrypoints_version || 1}
+                        save={async (entries) => {
+                            await request(admin("config/save"), {
+                                fastai_entrypoints: entries,
+                            });
+                            d.reload();
+                        }}
+                    />
+                )}
+                {group === "app" && (
+                    <AdminFastaiDownloads
+                        key={JSON.stringify(raw.fastai_releases)}
+                        initial={raw.fastai_releases || []}
+                        save={async (releases) => {
+                            await request(admin("config/save"), {
+                                fastai_releases: releases,
+                            });
+                        }}
+                    />
+                )}
+                {group !== "entrypoints" && (
+                    <Editor
+                        key={group + JSON.stringify(raw)}
+                        fields={fields}
+                        initial={raw}
+                        resolveFields={settingsFields}
+                        linkValues={linkSettings}
+                        onDirty={() => {
+                            setSaved("");
+                            setDirty(true);
+                            setActionResult("");
+                        }}
+                        validate={validateSettings}
+                        onSave={async (body) => {
+                            const changes = changedSettings(body, raw);
+                            if (Object.keys(changes).length)
+                                await request(admin("config/save"), changes);
+                            setSaved("设置已保存");
+                            setDirty(false);
+                            d.reload();
+                        }}
+                    />
+                )}
+                {group === "subscribe" && (
+                    <p className="pad muted">
+                        设置额度基础权限组后：订阅有效时，额度沿用订阅权限；订阅到期或无订阅时，额度仅可使用基础组节点。适用于所有额度用户（含已迁移的一次性套餐）。额度余额、套餐记录及限速、设备限制不变。节点在下次拉取用户时更新权限，客户端需更新订阅以刷新节点列表。
+                    </p>
+                )}
+                {group === "app" && (
+                    <div className="pad">
+                        <p className="muted">
+                            填写 AppleAuto 的 HTTPS
+                            接口域名及分享链接最后一段代码。接口地址不包含
+                            /share 或 /client
+                            路径。仅有效订阅或有剩余额度的用户可查看。请先保存，再测试连接；启用后刷新用户页面。
+                        </p>
+                        <button
+                            disabled={dirty || actionBusy}
+                            onClick={() => runAction("config/testAppleAccount")}
+                        >
+                            测试下载账号连接
+                        </button>
+                    </div>
+                )}
                 {group === "email" && (
                     <div className="pad">
                         <p className="muted">
@@ -1659,8 +1892,28 @@ export function RiskSettings() {
             <State {...d} retry={d.reload}>
                 <Editor
                     fields={[
-                        { key: "connection_log_interval", label: "连接日志采样间隔", type: "number", required: true, min: 60, max: 86400, step: 1, unit: "秒", hint: "建议 3600 秒。间隔越短，日志写入量越大；不影响登录与订阅规则的统计窗口。" },
-                        { key: "connection_log_retention_days", label: "连接日志保留时间", type: "number", required: true, min: 1, max: 365, step: 1, unit: "天", hint: "建议 30 天。每 5 分钟分批清理过期连接日志；也可在系统日志页面设置。" },
+                        {
+                            key: "connection_log_interval",
+                            label: "连接日志采样间隔",
+                            type: "number",
+                            required: true,
+                            min: 60,
+                            max: 86400,
+                            step: 1,
+                            unit: "秒",
+                            hint: "建议 3600 秒。间隔越短，日志写入量越大；不影响登录与订阅规则的统计窗口。",
+                        },
+                        {
+                            key: "connection_log_retention_days",
+                            label: "连接日志保留时间",
+                            type: "number",
+                            required: true,
+                            min: 1,
+                            max: 365,
+                            step: 1,
+                            unit: "天",
+                            hint: "建议 30 天。每 5 分钟分批清理过期连接日志；也可在系统日志页面设置。",
+                        },
                     ]}
                     initial={d.data || {}}
                     onSave={async (b) => {
@@ -1973,9 +2226,15 @@ function PaymentEditor({
     onSave: (b: Row) => Promise<void>;
 }) {
     const [method, setMethod] = useState(initial.payment || methods[0] || "");
-    const [commonDraft, setCommonDraft] = useState<Row>(() => paymentIconInitial(initial));
-    const [iconPreset, setIconPreset] = useState(() => paymentIconInitial(initial).iconPreset);
-    const [category, setCategory] = useState(() => paymentCategoryInitial(initial.config));
+    const [commonDraft, setCommonDraft] = useState<Row>(() =>
+        paymentIconInitial(initial),
+    );
+    const [iconPreset, setIconPreset] = useState(
+        () => paymentIconInitial(initial).iconPreset,
+    );
+    const [category, setCategory] = useState(() =>
+        paymentCategoryInitial(initial.config),
+    );
     const d = useData(method ? admin("payment/getPaymentForm") : "", {
         payment: method,
         id: method === initial.payment ? initial.id : undefined,
@@ -1996,26 +2255,50 @@ function PaymentEditor({
                 </label>
             </div>
             <PaymentCategoryEditor value={category} onChange={setCategory} />
-            {category.category === "regular" && <div className="pad payment-icon-settings">
-                <span>支付图标</span>
-                <div className="payment-icon-options" role="group" aria-label="选择支付图标">
-                    {paymentIcons.map((item) => (
-                        <button type="button" key={item.id}
-                            aria-pressed={iconPreset === item.id}
-                            onClick={() => setIconPreset(item.id)}>
-                            <img src={item.source} alt="" />
-                            <span>{item.label}</span>
-                        </button>
-                    ))}
+            {category.category === "regular" && (
+                <div className="pad payment-icon-settings">
+                    <span>支付图标</span>
+                    <div
+                        className="payment-icon-options"
+                        role="group"
+                        aria-label="选择支付图标"
+                    >
+                        {paymentIcons.map((item) => (
+                            <button
+                                type="button"
+                                key={item.id}
+                                aria-pressed={iconPreset === item.id}
+                                onClick={() => setIconPreset(item.id)}
+                            >
+                                <img src={item.source} alt="" />
+                                <span>{item.label}</span>
+                            </button>
+                        ))}
+                    </div>
+                    <div className="payment-icon-preview">
+                        <span>当前图标</span>
+                        <img
+                            key={resolvePaymentIcon(
+                                commonDraft.icon,
+                                iconPreset,
+                            )}
+                            src={
+                                commonDraft.icon?.trim() ||
+                                paymentIcons.find(
+                                    (item) => item.id === iconPreset,
+                                )?.source
+                            }
+                            alt="支付图标预览"
+                            onError={(event) => {
+                                event.currentTarget.hidden = true;
+                            }}
+                        />
+                        <span className="muted">
+                            填写图标链接后优先使用链接图片，清空后使用所选图标。
+                        </span>
+                    </div>
                 </div>
-                <div className="payment-icon-preview">
-                    <span>当前图标</span>
-                    <img key={resolvePaymentIcon(commonDraft.icon, iconPreset)}
-                        src={commonDraft.icon?.trim() || paymentIcons.find((item) => item.id === iconPreset)?.source} alt="支付图标预览"
-                        onError={(event) => { event.currentTarget.hidden = true; }} />
-                    <span className="muted">填写图标链接后优先使用链接图片，清空后使用所选图标。</span>
-                </div>
-            </div>}
+            )}
             <State {...d} retry={d.reload}>
                 {Object.entries(d.data || {})
                     .filter(([, v]) => v.type === "alert")
@@ -2028,7 +2311,13 @@ function PaymentEditor({
                     key={method}
                     fields={[
                         f("name", "显示名称", "text", true),
-                        { ...f("icon", "支付图标链接", "url"), hint: category.category === "crypto" ? "可选，填写后覆盖币种图标" : "可选，填写后覆盖上方所选图标" },
+                        {
+                            ...f("icon", "支付图标链接", "url"),
+                            hint:
+                                category.category === "crypto"
+                                    ? "可选，填写后覆盖币种图标"
+                                    : "可选，填写后覆盖上方所选图标",
+                        },
                         f("notify_domain", "通知域名", "url"),
                         {
                             ...f(
@@ -2077,7 +2366,16 @@ function PaymentEditor({
                     }
                     onSave={async (b) => {
                         await onSave(
-                            paymentPayload({ ...b, iconPreset, checkoutCategory: category }, d.data || {}, method, initial),
+                            paymentPayload(
+                                {
+                                    ...b,
+                                    iconPreset,
+                                    checkoutCategory: category,
+                                },
+                                d.data || {},
+                                method,
+                                initial,
+                            ),
                         );
                     }}
                 />
@@ -2085,9 +2383,17 @@ function PaymentEditor({
         </>
     );
 }
-const nodeTypes = ["v2node", "v2box"] as const satisfies readonly NodeBackendType[];
+const nodeTypes = [
+    "v2node",
+    "v2box",
+] as const satisfies readonly NodeBackendType[];
 export function Nodes() {
-    const [budgetsOpen,setBudgetsOpen]=useState(false);
+    const [budgetsOpen, setBudgetsOpen] = useState(false);
+    const [lightsailOpen, setLightsailOpen] = useState(false);
+    const [nodeSearch, setNodeSearch] = useState("");
+    const [backendFilter, setBackendFilter] = useState("");
+    const [quotaFilter, setQuotaFilter] = useState(false);
+
     const groups = useData<Row[]>(admin("server/group/fetch"));
     const routes = useData<Row[]>(admin("server/route/fetch"));
     const d = useData<Row[]>(admin("server/manage/getNodes"));
@@ -2096,15 +2402,42 @@ export function Nodes() {
     const [error, setError] = useState("");
     const [command, setCommand] = useState<Row | null>(null);
     const schema = useData<Row>(query(admin("console/nodeSchema"), { type }));
+    const nodeRows = rows(d.data);
+    const filteredNodes = nodeRows.filter(
+        (n) =>
+            (!backendFilter || n.type === backendFilter) &&
+            (!quotaFilter || n.traffic_budget?.blocked) &&
+            `${n.name} ${n.host} ${n.current_ip || ""}`
+                .toLowerCase()
+                .includes(nodeSearch.trim().toLowerCase()),
+    );
+
     return (
         <>
-            {budgetsOpen && <ServerTrafficBudgets nodes={rows(d.data)} close={()=>setBudgetsOpen(false)} onSaved={d.reload}/>}
+            {lightsailOpen && (
+                <AdminLightsail
+                    nodes={rows(d.data)}
+                    close={() => setLightsailOpen(false)}
+                />
+            )}
+            {budgetsOpen && (
+                <ServerTrafficBudgets
+                    nodes={rows(d.data)}
+                    close={() => setBudgetsOpen(false)}
+                    onSaved={d.reload}
+                />
+            )}
             <Panel
                 title="节点管理"
                 actions={
                     <>
                         <Reload onClick={d.reload} />
-                        <button onClick={()=>setBudgetsOpen(true)}>服务器流量</button>
+                        <button onClick={() => setBudgetsOpen(true)}>
+                            服务器流量
+                        </button>
+                        <button onClick={() => setLightsailOpen(true)}>
+                            Lightsail IP
+                        </button>
                         <SortButton
                             path={admin("server/manage/sort")}
                             kind="nodes"
@@ -2133,15 +2466,67 @@ export function Nodes() {
             >
                 <State {...d}>
                     {error && <div className="alert">{error}</div>}
+                    <div className="node-management-tools">
+                        <label>
+                            搜索节点
+                            <input
+                                placeholder="名称、域名或当前 IP"
+                                value={nodeSearch}
+                                onChange={(e) => setNodeSearch(e.target.value)}
+                            />
+                        </label>
+                        <label>
+                            筛选节点类型
+                            <select
+                                value={backendFilter}
+                                onChange={(e) =>
+                                    setBackendFilter(e.target.value)
+                                }
+                            >
+                                <option value="">全部类型</option>
+                                <option value="v2node">V2Node</option>
+                                <option value="v2box">V2Box</option>
+                            </select>
+                        </label>
+                        <label className="node-quota-filter">
+                            <input
+                                type="checkbox"
+                                checked={quotaFilter}
+                                onChange={(e) =>
+                                    setQuotaFilter(e.target.checked)
+                                }
+                            />
+                            仅显示额度受限节点
+                        </label>
+                        <span className="muted">
+                            显示 {filteredNodes.length} / {nodeRows.length}{" "}
+                            个节点
+                        </span>
+                    </div>
                     <Table
-                        data={rows(d.data)}
+                        data={filteredNodes}
                         columns={[
                             ["id", "ID"],
                             name,
                             ["type", "类型"],
                             ["host", "主机"],
-                            ["current_ip", "当前 IP", (r) => <span title="优先显示公网 IP 上报；否则显示节点连接面板的来源 IP">{r.current_ip || "未获取"}</span>],
-                            ["traffic_budget", "服务器额度", r=>r.traffic_budget ? `${bytes(r.traffic_budget.usedBytes)} / ${r.traffic_budget.limitBytes?bytes(r.traffic_budget.limitBytes):"不限"}${r.traffic_budget.blocked?" · 已限制":""}` : "未设置"],
+                            [
+                                "current_ip",
+                                "当前 IP",
+                                (r) => (
+                                    <span title="优先显示公网 IP 上报；否则显示节点连接面板的来源 IP">
+                                        {r.current_ip || "未获取"}
+                                    </span>
+                                ),
+                            ],
+                            [
+                                "traffic_budget",
+                                "服务器额度",
+                                (r) =>
+                                    r.traffic_budget
+                                        ? `${bytes(r.traffic_budget.usedBytes)} / ${r.traffic_budget.limitBytes ? bytes(r.traffic_budget.limitBytes) : "不限"}${r.traffic_budget.blocked ? " · 已限制" : ""}`
+                                        : "未设置",
+                            ],
                             ["port", "端口"],
                             ["rate", "倍率"],
                             [
@@ -2278,10 +2663,40 @@ export function Nodes() {
             {command && (
                 <Modal title="节点安装命令" close={() => setCommand(null)}>
                     <div className="pad">
-                        <p>可选：在侧栏“Cloudflare DDNS”保存凭据并绑定此节点，然后配置节点 IP 上报。</p>
-                        <p className="muted">查询部署服务器公网 IPv4 / IPv6：在节点服务器执行以下命令。DDNS 默认关闭，Cloudflare Token 加密保存在面板。</p>
-                        <textarea aria-label="查询服务器 IP 命令" readOnly rows={3} value={nodeIPCommand} />
-                        <button onClick={async () => { try { await navigator.clipboard.writeText(nodeIPCommand); setCommand({ ...command, ipCopied: true }); } catch { setCommand({ ...command, error: "复制失败，请手动复制命令" }); } }}>{command.ipCopied ? "IP 查询命令已复制" : "复制 IP 查询命令"}</button>
+                        <p>
+                            可选：在侧栏“Cloudflare
+                            DDNS”保存凭据并绑定此节点，然后配置节点 IP 上报。
+                        </p>
+                        <p className="muted">
+                            查询部署服务器公网 IPv4 /
+                            IPv6：在节点服务器执行以下命令。DDNS
+                            默认关闭，Cloudflare Token 加密保存在面板。
+                        </p>
+                        <textarea
+                            aria-label="查询服务器 IP 命令"
+                            readOnly
+                            rows={3}
+                            value={nodeIPCommand}
+                        />
+                        <button
+                            onClick={async () => {
+                                try {
+                                    await navigator.clipboard.writeText(
+                                        nodeIPCommand,
+                                    );
+                                    setCommand({ ...command, ipCopied: true });
+                                } catch {
+                                    setCommand({
+                                        ...command,
+                                        error: "复制失败，请手动复制命令",
+                                    });
+                                }
+                            }}
+                        >
+                            {command.ipCopied
+                                ? "IP 查询命令已复制"
+                                : "复制 IP 查询命令"}
+                        </button>
                     </div>
                     <div className="pad">
                         <p className="muted">
@@ -2318,11 +2733,12 @@ export function Nodes() {
             )}
             {editing && (
                 <Modal title="节点配置" close={() => setEditing(null)}>
-                    {(
+                    {
                         <div className="pad">
                             <label>
                                 节点类型
-                                <select aria-label="节点类型"
+                                <select
+                                    aria-label="节点类型"
                                     value={type}
                                     onChange={(e) => setType(e.target.value)}
                                 >
@@ -2332,8 +2748,13 @@ export function Nodes() {
                                 </select>
                             </label>
                         </div>
+                    }
+                    {editing.id && type !== editing.type && (
+                        <p className="pad muted">
+                            保存后会将此节点转换为 {type}，分配目标类型的节点
+                            ID。请重新选择对应路由和父节点，并核对协议参数；保存后需要更换节点服务及安装配置。切换类型会重新载入已保存配置。
+                        </p>
                     )}
-                    {editing.id && type !== editing.type && <p className="pad muted">保存后会将此节点转换为 {type}，分配目标类型的节点 ID。请重新选择对应路由和父节点，并核对协议参数；保存后需要更换节点服务及安装配置。切换类型会重新载入已保存配置。</p>}
                     <State
                         loading={
                             schema.loading || groups.loading || routes.loading
@@ -2371,7 +2792,12 @@ export function Nodes() {
                                                                           String(
                                                                               editing.id,
                                                                           ) &&
-                                                                      (!["v2node", "v2box"].includes(type) ||
+                                                                      (![
+                                                                          "v2node",
+                                                                          "v2box",
+                                                                      ].includes(
+                                                                          type,
+                                                                      ) ||
                                                                           r.protocol ===
                                                                               values.protocol),
                                                               )
@@ -2410,20 +2836,36 @@ export function Nodes() {
                                         )
                                             return {
                                                 key: k,
-                                                label: k === "route_id" ? (type === "v2box" ? "sing-box 路由规则" : "Xray 路由规则") : nodeLabels[k] || k,
-                                                hint: k === "route_id" ? "在路由管理中维护规则；仅显示当前内核的规则，按选择顺序应用。" : undefined,
+                                                label:
+                                                    k === "route_id"
+                                                        ? type === "v2box"
+                                                            ? "sing-box 路由规则"
+                                                            : "Xray 路由规则"
+                                                        : nodeLabels[k] || k,
+                                                hint:
+                                                    k === "route_id"
+                                                        ? "在路由管理中维护规则；仅显示当前内核的规则，按选择顺序应用。"
+                                                        : undefined,
                                                 type: "multiselect",
                                                 required: k === "group_id",
                                                 options: rows(
                                                     k === "group_id"
                                                         ? groups.data
                                                         : routes.data,
-                                                ).filter(r => k !== "route_id" || (r.backend || "v2node") === type).map((r) => [
-                                                    String(r.id),
-                                                    r.name ||
-                                                        r.remarks ||
+                                                )
+                                                    .filter(
+                                                        (r) =>
+                                                            k !== "route_id" ||
+                                                            (r.backend ||
+                                                                "v2node") ===
+                                                                type,
+                                                    )
+                                                    .map((r) => [
                                                         String(r.id),
-                                                ]),
+                                                        r.name ||
+                                                            r.remarks ||
+                                                            String(r.id),
+                                                    ]),
                                             } as Field;
                                         const str = Array.isArray(rule)
                                             ? rule.join("|")
@@ -2442,10 +2884,22 @@ export function Nodes() {
                                                     ],
                                                 ],
                                             } as Field;
-                                        if (k === "region_code") return {
-                                            key: k, label: nodeLabels[k], type: "select", nullable: true,
-                                            options: [["", "保留原节点名称"], ...Object.entries(nodeLocations.regions).map(([code, names]) => [code, `${names["zh-CN"]} (${code})`])],
-                                        } as Field;
+                                        if (k === "region_code")
+                                            return {
+                                                key: k,
+                                                label: nodeLabels[k],
+                                                type: "select",
+                                                nullable: true,
+                                                options: [
+                                                    ["", "保留原节点名称"],
+                                                    ...Object.entries(
+                                                        nodeLocations.regions,
+                                                    ).map(([code, names]) => [
+                                                        code,
+                                                        `${names["zh-CN"]} (${code})`,
+                                                    ]),
+                                                ],
+                                            } as Field;
                                         const enumRule =
                                             str.match(/(?:^|\|)in:([^|]+)/);
                                         if (enumRule)
@@ -2484,7 +2938,9 @@ export function Nodes() {
                                         );
                                     }),
                             )}
-                            initial={nodeSettingsInitial(nodeBackendInitial(editing, type))}
+                            initial={nodeSettingsInitial(
+                                nodeBackendInitial(editing, type),
+                            )}
                             onSave={async (b) => {
                                 b = nodeSettingsPayload(b);
                                 if (
@@ -2499,7 +2955,8 @@ export function Nodes() {
                                     if (!k.includes(".") && b[k] !== undefined)
                                         clean[k] = b[k];
                                 });
-                                const converting = editing.id && type !== editing.type;
+                                const converting =
+                                    editing.id && type !== editing.type;
                                 if (converting) {
                                     clean.source_type = editing.type;
                                     clean.source_id = editing.id;
@@ -2514,8 +2971,14 @@ export function Nodes() {
                                 setEditing(null);
                                 d.reload();
                                 if (converting) {
-                                    const updated = await request<Row[]>(admin("server/manage/getNodes"));
-                                    const converted = rows(updated.data).find(r => r.type === type && r.id === saved.data.id);
+                                    const updated = await request<Row[]>(
+                                        admin("server/manage/getNodes"),
+                                    );
+                                    const converted = rows(updated.data).find(
+                                        (r) =>
+                                            r.type === type &&
+                                            r.id === saved.data.id,
+                                    );
                                     if (converted) setCommand(converted);
                                 }
                             }}

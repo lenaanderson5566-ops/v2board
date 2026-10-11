@@ -107,3 +107,5 @@ V2Node and explicitly configured legacy V2Box installations retain their existin
 | `New resource` | `POST /api/v10/server/capabilities` |
 | `None (scoped DDNS reporter)` | `POST /api/v10/server/addresses` |
 | `New server-wide traffic quota` | `GET /api/v10/server/traffic-budget` |
+
+`GET /api/v10/me/preferences/options` exposes boolean `couponsAvailable`. It is true only when an enabled coupon is within its validity period and has remaining uses (or unlimited uses). No coupon codes are disclosed.

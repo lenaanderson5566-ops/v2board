@@ -87,7 +87,10 @@ export function SubscriptionPurchase() {
         <section className="subscription-catalog">
             <State {...orders} retry={orders.reload}>
                 {pending && (
-                    <PendingOrderNotice order={pending} reload={orders.reload} />
+                    <PendingOrderNotice
+                        order={pending}
+                        reload={orders.reload}
+                    />
                 )}
             </State>
             <State {...plans} retry={plans.reload}>
@@ -297,6 +300,8 @@ export function PlanSelection({
             ? plan.initialPeriod
             : available[0] || "",
     );
+    const options = useData<Row>("user/comm/config");
+    const couponsAvailable = options.data?.coupons_available === true;
     const [coupon, setCoupon] = useState("");
     const [busy, setBusy] = useState(false);
     const [error, setError] = useState("");
@@ -311,7 +316,9 @@ export function PlanSelection({
             const result = await request<string>("user/order/save", {
                 plan_id: plan.id,
                 period,
-                ...(coupon.trim() ? { coupon_code: coupon.trim() } : {}),
+                ...(couponsAvailable && coupon.trim()
+                    ? { coupon_code: coupon.trim() }
+                    : {}),
                 ...(replaceTradeNo ? { replace_trade_no: replaceTradeNo } : {}),
             });
             window.dispatchEvent(new Event("data-changed"));
@@ -351,9 +358,16 @@ export function PlanSelection({
                                 {tx(billingPeriods[key])}
                             </span>
                             <strong>{money(plan[key])}</strong>
-                            {billingPeriodMonths[key] && <span className="period-equivalent">
-                                {pc("equivalent", { price: money(Number(plan[key]) / billingPeriodMonths[key]) })}
-                            </span>}
+                            {billingPeriodMonths[key] && (
+                                <span className="period-equivalent">
+                                    {pc("equivalent", {
+                                        price: money(
+                                            Number(plan[key]) /
+                                                billingPeriodMonths[key],
+                                        ),
+                                    })}
+                                </span>
+                            )}
                             {periodSavings(plan, key) > 0 && (
                                 <small
                                     className="period-saving"
@@ -369,17 +383,21 @@ export function PlanSelection({
                         </label>
                     ))}
                 </div>
-                <details className="coupon-disclosure">
-                    <summary>{tx("使用优惠码")}</summary>
-                    <label>
-                        {tx("优惠码（可选）")}
-                        <input
-                            value={coupon}
-                            onChange={(event) => setCoupon(event.target.value)}
-                            autoComplete="off"
-                        />
-                    </label>
-                </details>
+                {couponsAvailable && (
+                    <details className="coupon-disclosure">
+                        <summary>{tx("使用优惠码")}</summary>
+                        <label>
+                            {tx("优惠码（可选）")}
+                            <input
+                                value={coupon}
+                                onChange={(event) =>
+                                    setCoupon(event.target.value)
+                                }
+                                autoComplete="off"
+                            />
+                        </label>
+                    </details>
+                )}
                 <dl className="checkout-lines">
                     <div>
                         <dt>{tx("套餐价格")}</dt>

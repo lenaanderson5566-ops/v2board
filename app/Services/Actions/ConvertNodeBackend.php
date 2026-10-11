@@ -30,6 +30,12 @@ class ConvertNodeBackend {
             foreach (['v2_server_traffic_binding','v2_server_traffic_import'] as $table) {
                 DB::table($table)->where('node_type',$sourceType)->where('node_id',$id)->update(['node_type'=>$targetType,'node_id'=>$target->id]);
             }
+            $cloud=DB::table('v2_lightsail_server')->where('node_type',$sourceType)->where('node_id',$id)->lockForUpdate()->first();
+            if($cloud){
+                abort_unless(in_array($cloud->status,['ready','completed','restored'],true),409,'请先完成 Lightsail IP 操作再切换节点类型');
+                abort_if($target->parent_id,422,'Lightsail 配置只支持主节点');
+                DB::table('v2_lightsail_server')->where('id',$cloud->id)->update(['node_type'=>$targetType,'node_id'=>$target->id]);
+            }
             $source->delete();
             return $target;
         });

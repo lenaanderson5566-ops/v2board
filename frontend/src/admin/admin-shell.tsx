@@ -77,6 +77,12 @@ export function AdminShell({
     children: ReactNode;
     logout: () => void;
 }) {
+    const [navSearch, setNavSearch] = useState("");
+    const visibleMenu = legacyAdminMenu.filter(([key, label, , group]) =>
+        `${key} ${label} ${group}`
+            .toLowerCase()
+            .includes(navSearch.trim().toLowerCase()),
+    );
     const [open, setOpen] = useState(false);
     const [menu, setMenu] = useState(false);
     const dropdown = useRef<HTMLDivElement>(null);
@@ -135,14 +141,24 @@ export function AdminShell({
                 </div>
                 <div className="content-side">
                     <ul className="nav-main">
-                        {legacyAdminMenu.map(([key, label, icon, group], i) => (
+                        <li className="admin-nav-search">
+                            <input
+                                aria-label="搜索后台功能"
+                                placeholder="搜索功能…"
+                                value={navSearch}
+                                onChange={(e) => setNavSearch(e.target.value)}
+                            />
+                        </li>
+                        {visibleMenu.length === 0 && (
+                            <li className="admin-nav-empty">没有匹配的功能</li>
+                        )}
+                        {visibleMenu.map(([key, label, icon, group], i) => (
                             <li key={key} className="nav-main-item">
-                                {group &&
-                                    group !== legacyAdminMenu[i - 1]?.[3] && (
-                                        <div className="nav-main-heading">
-                                            {group}
-                                        </div>
-                                    )}
+                                {group && group !== visibleMenu[i - 1]?.[3] && (
+                                    <div className="nav-main-heading">
+                                        {group}
+                                    </div>
+                                )}
                                 <a
                                     className={`nav-main-link ${current === key ? "active" : ""}`}
                                     aria-current={
@@ -150,7 +166,10 @@ export function AdminShell({
                                     }
                                     href={`#/${key}`}
                                 >
-                                    <AdminIcon name={icon} className="nav-main-link-icon" />
+                                    <AdminIcon
+                                        name={icon}
+                                        className="nav-main-link-icon"
+                                    />
                                     <span className="nav-main-link-name">
                                         {label}
                                     </span>
@@ -188,10 +207,7 @@ export function AdminShell({
                                 <ChevronDown size={16} aria-hidden="true" />
                             </button>
                             {menu && (
-                                <div
-                                    className="admin-account-menu"
-                                    role="menu"
-                                >
+                                <div className="admin-account-menu" role="menu">
                                     <a
                                         className="admin-account-item"
                                         role="menuitem"

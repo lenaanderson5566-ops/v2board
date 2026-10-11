@@ -11,6 +11,7 @@ import {
     act,
 } from "@testing-library/react";
 const mocks = vi.hoisted(() => ({
+    couponsAvailable: true,
     request: vi.fn(),
     navigate: vi.fn(),
     plans: [] as any[],
@@ -49,15 +50,17 @@ vi.mock("../shared/experience-copy", () => ({ e: (key: string) => key }));
 vi.mock("../shared/ui", () => ({
     useData: (path: string) => ({
         data:
-            path === "user/plan/fetch"
-                ? mocks.plans
-                : path === "user/order/fetch"
-                  ? mocks.orders
-                  : path === "user/getSubscribe"
-                    ? mocks.sub
-                    : path.startsWith("user/order/detail")
-                      ? mocks.detail
-                      : mocks.methods,
+            path === "user/comm/config"
+                ? { coupons_available: mocks.couponsAvailable }
+                : path === "user/plan/fetch"
+                  ? mocks.plans
+                  : path === "user/order/fetch"
+                    ? mocks.orders
+                    : path === "user/getSubscribe"
+                      ? mocks.sub
+                      : path.startsWith("user/order/detail")
+                        ? mocks.detail
+                        : mocks.methods,
         loading: path.startsWith("user/order/detail") && mocks.detailLoading,
         error: "",
         reload: vi.fn(),
@@ -112,6 +115,7 @@ const order = {
     discount_amount: 100,
 };
 beforeEach(() => {
+    mocks.couponsAvailable = true;
     mocks.request.mockReset();
     mocks.navigate.mockReset();
     mocks.plans = [plan];
@@ -275,10 +279,14 @@ it("selects a method without charging and shows fixed plus percentage fees befor
     expect(mocks.request).not.toHaveBeenCalled();
     fireEvent.click(screen.getByRole("button", { name: "确认支付" }));
     await waitFor(() =>
-        expect(mocks.request).toHaveBeenCalledWith("user/order/checkout", {
-            trade_no: "test-order",
-            method: 2,
-        }),
+        expect(mocks.request).toHaveBeenCalledWith(
+            "user/order/checkout",
+            {
+                trade_no: "test-order",
+                method: 2,
+            },
+            { timeoutMs: 45000 },
+        ),
     );
     expect(screen.getByText("正在等待支付确认，请勿重复付款。")).toBeTruthy();
     expect(screen.queryByText("订单已完成")).toBeNull();
@@ -376,11 +384,15 @@ it("closes the card dialog and exposes a failed card charge without claiming suc
     await screen.findAllByRole("alert");
     expect(screen.queryByRole("dialog")).toBeNull();
     expect(screen.getAllByText("card declined").length).toBeGreaterThan(0);
-    expect(mocks.request).toHaveBeenCalledWith("user/order/checkout", {
-        trade_no: "test-order",
-        method: 3,
-        token: "test-card-token",
-    });
+    expect(mocks.request).toHaveBeenCalledWith(
+        "user/order/checkout",
+        {
+            trade_no: "test-order",
+            method: 3,
+            token: "test-card-token",
+        },
+        { timeoutMs: 45000 },
+    );
 });
 it("allows zero-due activation even with no payment methods", async () => {
     mocks.methods = [];
@@ -388,10 +400,14 @@ it("allows zero-due activation even with no payment methods", async () => {
     const view = checkout({ total_amount: 0 });
     fireEvent.click(screen.getByRole("button", { name: "确认开通" }));
     await waitFor(() =>
-        expect(mocks.request).toHaveBeenCalledWith("user/order/checkout", {
-            trade_no: "test-order",
-            method: 0,
-        }),
+        expect(mocks.request).toHaveBeenCalledWith(
+            "user/order/checkout",
+            {
+                trade_no: "test-order",
+                method: 0,
+            },
+            { timeoutMs: 45000 },
+        ),
     );
     expect(view.reload).toHaveBeenCalled();
     expect(screen.queryByText("订单已完成")).toBeNull();
@@ -724,4 +740,12 @@ it("shows monthly equivalent without inventing savings when no monthly price exi
     render(<SubscriptionPurchase />);
     expect(screen.getByText('equivalent{"price":"¥30.00"}')).toBeTruthy();
     expect(document.querySelector(".pricing-saving")).toBeNull();
+});
+
+it("hides coupon controls when no enabled usable coupons exist", () => {
+    mocks.couponsAvailable = false;
+    render(<SubscriptionPurchase />);
+    fireEvent.click(screen.getByRole("button", { name: "subscribe{}" }));
+    expect(screen.queryByText("使用优惠码")).toBeNull();
+    expect(screen.queryByLabelText("优惠码（可选）")).toBeNull();
 });

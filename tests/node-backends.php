@@ -16,7 +16,7 @@ $svc=new ServerService();
 foreach($legacy as $type){
     $assert($svc->getServer(1,$type)===null,'Legacy lookup removed '.$type);
     $reject(fn()=>(new App\Http\Controllers\V1\Admin\ConsoleController())->nodeSchema(Request::create('/','GET',['type'=>$type])));
-    $reject(fn()=>new App\Http\Controllers\V1\Server\UniProxyController(Request::create('/','GET',['token'=>config('v2board.server_token'),'node_type'=>$type,'node_id'=>1])));
+    $reject(fn()=>(new App\Http\Controllers\V1\Server\UniProxyController())->user(Request::create('/','GET',['token'=>config('v2board.server_token'),'node_type'=>$type,'node_id'=>1])));
     $reject(fn()=>(new App\Http\Controllers\V1\Admin\Server\ManageController())->sort(Request::create('/','POST',[$type=>[1=>1]])));
 }
 $routes=app('router')->getRoutes();

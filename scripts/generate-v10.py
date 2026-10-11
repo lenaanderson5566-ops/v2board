@@ -71,7 +71,7 @@ schema('resetHistory','id:id kind:kind quantity:quantity uploadedBefore:u_before
 schema('reset','available:available credits:credits:array:resetCredit canReset:can_reset:boolean disabledReason:disabled_reason history:history:array:resetHistory')
 schema('resetResult','outcome:outcome')
 schema('publicSettings','termsUrl:tos_url emailVerificationRequired:is_email_verify:boolean invitationRequired:is_invite_force:boolean emailSuffixes:email_whitelist_suffix:strings captchaRequired:is_recaptcha:boolean captchaSiteKey:recaptcha_site_key description:app_description appUrl:app_url logoUrl:logo')
-schema('preferences','telegramEnabled:is_telegram:boolean telegramCommunityUrl:telegram_discuss_link stripePublicKey:stripe_pk withdrawalMethods:withdraw_methods withdrawalsClosed:withdraw_close:boolean currency:currency currencySymbol:currency_symbol commissionDistributionEnabled:commission_distribution_enable:boolean commissionLevelOne:commission_distribution_l1 commissionLevelTwo:commission_distribution_l2 commissionLevelThree:commission_distribution_l3')
+schema('preferences','telegramEnabled:is_telegram:boolean telegramCommunityUrl:telegram_discuss_link stripePublicKey:stripe_pk withdrawalMethods:withdraw_methods withdrawalsClosed:withdraw_close:boolean currency:currency currencySymbol:currency_symbol commissionDistributionEnabled:commission_distribution_enable:boolean commissionLevelOne:commission_distribution_l1 commissionLevelTwo:commission_distribution_l2 commissionLevelThree:commission_distribution_l3 couponsAvailable:coupons_available:boolean')
 schema('task','taskId:task_id status:status')
 schema('bot','username:username')
 schema('loginState','authenticated:is_login:boolean administrator:is_admin:boolean')

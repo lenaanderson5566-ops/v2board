@@ -13,6 +13,7 @@ class CommActions
     {
         return response([
             'data' => [
+                'coupons_available' => \App\Models\Coupon::where('show', 1)->where('started_at', '<=', time())->where('ended_at', '>=', time())->where(fn ($q) => $q->whereNull('limit_use')->orWhere('limit_use', '>', 0))->exists(),
                 'is_telegram' => (int)config('v2board.telegram_bot_enable', 0),
                 'telegram_discuss_link' => config('v2board.telegram_discuss_link'),
                 'stripe_pk' => config('v2board.stripe_pk_live'),

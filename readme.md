@@ -31,7 +31,7 @@
 # **V2Board**
 
 - PHP 8.2+（CLI、PHP-FPM、队列使用相同版本）
-- Laravel 11.57.0（过渡版本，升级说明见 [Laravel 11 升级](docs/laravel11-upgrade.md)）
+- Laravel 12.69.3（升级说明见 [Laravel 12 升级](docs/laravel12-upgrade.md)）
 - Composer 2.2+
 - MySQL 5.7+
 - Redis

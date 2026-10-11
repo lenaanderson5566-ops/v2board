@@ -28,7 +28,7 @@
 
 如果三份 `GeoLite2-ASN.mmdb`、`GeoLite2-City.mmdb`、`GeoLite2-Country.mmdb` 已被跟踪但被本地更新，预检允许这些普通文件的修改。正式升级在完整站点归档校验后，还会将修改文件单独复制到 `tracked/storage/geoip`，再恢复仓库版本以完成切换。预检不恢复或移动文件；其他已跟踪文件修改仍会停止。
 
-当前 Laravel 11 要求 PHP 8.2+，先同步升级 CLI、PHP-FPM、队列和调度器使用的 PHP。update.sh 不安装系统 PHP，平台要求不满足时会在停机前阻止升级。可下载新版脚本后先预检：
+当前 Laravel 12 要求 PHP 8.2+，先同步升级 CLI、PHP-FPM、队列和调度器使用的 PHP。update.sh 不安装系统 PHP，平台要求不满足时会在停机前阻止升级。可下载新版脚本后先预检：
 
 ```bash
 cd /www/wwwroot/api.adanalytics-service.com
@@ -133,3 +133,5 @@ V2Box 接入新增白名单迁移 `2026_10_11_000001_create_v2box_nodes.php`，�
 旧节点表清理：`2026_10_11_000002_drop_retired_node_tables.php` 在 V2Box 建表迁移之后执行，定向删除 `v2_server_shadowsocks`、`v2_server_vmess`、`v2_server_vless`、`v2_server_trojan`、`v2_server_tuic`、`v2_server_hysteria`、`v2_server_anytls`。存在的数据一并删除，重复执行安全；down 不伪造空表回滚。保留 V2Node/V2Box、共享权限组、路由、用户订单和统计表。历史 `database/update.sql` 不重放。
 
 `php artisan v2board:update` 的旧 SQL 重放入口已停用，返回非零状态并指向 `bash update.sh`，避免重新创建已删除的旧节点表。
+
+后台进程需要在本站宝塔 Supervisor 配置 autorestart=true，并使用与 PHP-FPM 一致的 PHP 路径。若升级在 restart-jobs 阶段失败，修复并启动本站后台进程、确认 Horizon 正常，再执行 php artisan up；脚本会保留维护模式，以免依赖任务处理的业务在无队列状态下恢复。

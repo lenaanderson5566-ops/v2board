@@ -30,7 +30,12 @@ class Bootstrap implements Extension
     public function prepare(): void
     {
         $console=$this->createApplication()->make(Kernel::class);
-        foreach (['config:cache', 'event:cache'] as $command) $console->call($command);
+        try {
+            foreach (['config:cache', 'event:cache'] as $command) $console->call($command);
+        } finally {
+            // Do not carry the preparation application's handlers into individual tests.
+            \Illuminate\Foundation\Bootstrap\HandleExceptions::flushState();
+        }
     }
 
     public function cleanup(): void

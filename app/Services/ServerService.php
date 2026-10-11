@@ -41,7 +41,9 @@ class ServerService
                     $v2node[$key]['encryption_settings'] = array_diff_key($v2node[$key]['encryption_settings'], array('private_key' => ''));
                 }
             }
-            $servers[] = $v2node[$key]->toArray();
+            $publicNode = $v2node[$key]->toArray();
+            unset($publicNode['sing_box']); // Server egress credentials are never subscription data.
+            $servers[] = $publicNode;
         }
         return $servers;
     }

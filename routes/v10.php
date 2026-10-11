@@ -1,5 +1,5 @@
 <?php
-// Explicit V10 resources. Administrative and node routes remain unchanged.
+// Explicit V10 resources. Administrative and legacy node routes remain available separately.
 \Illuminate\Support\Facades\Route::match(['GET', 'HEAD'], 'subscriptions/{subscriptionToken}', [\App\Http\Controllers\V10\ClientClientController::class, 'getSubscriptionsSubscriptionToken'])->name('v10.getSubscriptionsSubscriptionToken');
 \Illuminate\Support\Facades\Route::match(['GET', 'HEAD'], 'subscriptions/{subscriptionToken}/application-config', [\App\Http\Controllers\V10\ClientAppController::class, 'getSubscriptionsSubscriptionTokenApplicationConfig'])->name('v10.getSubscriptionsSubscriptionTokenApplicationConfig');
 \Illuminate\Support\Facades\Route::match(['GET', 'HEAD'], 'subscriptions/{subscriptionToken}/application-version', [\App\Http\Controllers\V10\ClientAppController::class, 'getSubscriptionsSubscriptionTokenApplicationVersion'])->name('v10.getSubscriptionsSubscriptionTokenApplicationVersion');
@@ -78,3 +78,11 @@
 \Illuminate\Support\Facades\Route::match(['POST'], 'auth/browser-session', [\App\Http\Controllers\V10\PassportBrowserSessionController::class, 'postAuthBrowserSession'])->middleware(['throttle:30,1'])->name('v10.postAuthBrowserSession');
 \Illuminate\Support\Facades\Route::match(['DELETE'], 'auth/browser-session', [\App\Http\Controllers\V10\PassportBrowserSessionController::class, 'deleteAuthBrowserSession'])->middleware(['throttle:30,1'])->name('v10.deleteAuthBrowserSession');
 \Illuminate\Support\Facades\Route::match(['GET', 'HEAD'], 'public/fastai/entrypoints', [\App\Http\Controllers\V10\GuestFastaiController::class, 'getPublicFastaiEntrypoints'])->middleware(['throttle:60,1'])->name('v10.getPublicFastaiEntrypoints');
+
+// Node machine API: independent bearer authentication; legacy V2Node remains supported.
+\Illuminate\Support\Facades\Route::get('nodes/v2box/{nodeId}/configuration', [\App\Http\Controllers\V10\NodeController::class, 'configuration'])->middleware(\App\Http\Middleware\NodeV10::class)->name('v10.nodes.configuration');
+\Illuminate\Support\Facades\Route::get('nodes/v2box/{nodeId}/users', [\App\Http\Controllers\V10\NodeController::class, 'users'])->middleware(\App\Http\Middleware\NodeV10::class)->name('v10.nodes.users');
+\Illuminate\Support\Facades\Route::get('nodes/v2box/{nodeId}/online-counts', [\App\Http\Controllers\V10\NodeController::class, 'onlineCounts'])->middleware(\App\Http\Middleware\NodeV10::class)->name('v10.nodes.onlineCounts');
+\Illuminate\Support\Facades\Route::post('nodes/v2box/{nodeId}/traffic', [\App\Http\Controllers\V10\NodeController::class, 'traffic'])->middleware(\App\Http\Middleware\NodeV10::class)->name('v10.nodes.traffic');
+\Illuminate\Support\Facades\Route::post('nodes/v2box/{nodeId}/online-users', [\App\Http\Controllers\V10\NodeController::class, 'onlineUsers'])->middleware(\App\Http\Middleware\NodeV10::class)->name('v10.nodes.onlineUsers');
+\Illuminate\Support\Facades\Route::post('nodes/v2box/{nodeId}/capabilities', [\App\Http\Controllers\V10\NodeController::class, 'capabilities'])->middleware(\App\Http\Middleware\NodeV10::class)->name('v10.nodes.capabilities');

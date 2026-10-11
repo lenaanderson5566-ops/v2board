@@ -184,7 +184,7 @@ export function validateResource(values: Row): string | undefined {
         return "结束时间必须晚于开始时间";
     return undefined;
 }
-const tlsRequired = ["trojan", "tuic", "hysteria2", "anytls"];
+const tlsRequired = ["trojan", "tuic", "hysteria2", "anytls", "naive"];
 export function linkNode(key: string, next: unknown, values: Row): Row {
     const result = { ...values, [key]: next };
     if (key === "region_code") {
@@ -198,11 +198,20 @@ export function linkNode(key: string, next: unknown, values: Row): Row {
         if (tlsRequired.includes(String(next))) result.tls = 1;
         else if (next !== "vless" && Number(values.tls) === 2) result.tls = 1;
         if (
-            ["shadowsocks", "tuic", "hysteria2", "anytls"].includes(
+            ["shadowsocks", "tuic", "hysteria2", "anytls", "naive"].includes(
                 String(next),
             )
         )
             result.network = "tcp";
+        if (next === "naive") {
+            result.disable_sni = 0;
+            result.network_settings = {};
+            for (const field of Object.keys(result)) {
+                if (field.startsWith("network_settings.")) delete result[field];
+            }
+            result["tls_settings.allow_insecure"] = 0;
+            if (!["http", "dns", "file"].includes(String(values["tls_settings.cert_mode"]))) result["tls_settings.cert_mode"] = "http";
+        }
         if (next !== "vless") result.flow = "";
     }
     if (key === "version") {
@@ -228,6 +237,7 @@ export function nodeFields(
                 f.key.startsWith("tls_settings.ech") ||
                 ["tls_settings.xver", "tls_settings.reject_unknown_sni", "tls_settings.mldsa65Seed", "network_settings.acceptProxyProtocol"].includes(f.key)
             )) return false;
+            if (protocol === "naive" && ["disable_sni", "tls_settings.allow_insecure", "tls_settings.fingerprint", "tls_settings.pinned_peer_cert_sha256"].includes(f.key)) return false;
             const [root, ...parts] = f.key.split(".");
             const parameter = parts.join(".");
             if (["tls_settings", "tlsSettings"].includes(root) && parameter) {
@@ -276,7 +286,7 @@ export function nodeFields(
             ) {
                 if (
                     ["v2node", "v2box"].includes(type) &&
-                    ["shadowsocks", "tuic", "hysteria2", "anytls"].includes(
+                    ["shadowsocks", "tuic", "hysteria2", "anytls", "naive"].includes(
                         protocol,
                     )
                 )
@@ -302,7 +312,7 @@ export function nodeFields(
             if (["network_settings", "networkSettings"].includes(f.key))
                 return (
                     !["v2node", "v2box"].includes(type) ||
-                    !["shadowsocks", "tuic", "hysteria2", "anytls"].includes(
+                    !["shadowsocks", "tuic", "hysteria2", "anytls", "naive"].includes(
                         protocol,
                     )
                 );
@@ -344,6 +354,8 @@ export function nodeFields(
             return true;
         })
         .map((f) => {
+            if (protocol === "naive" && f.key === "tls_settings.cert_mode") return { ...f, required: true, options: [["http", "HTTP 申请"], ["dns", "DNS 申请"], ["file", "已有证书文件"]] as [string, string][], hint: "Naive 需要客户端信任的有效证书。" };
+            if (protocol === "naive" && f.key === "tls_settings.server_name") return { ...f, required: true };
             if (f.key === "tls_settings.server_name" && tls === 2)
                 return {
                     ...f,
@@ -430,6 +442,8 @@ export function nodeFields(
                         ],
                     ],
                 };
+            if (f.key === "sing_box")
+                return { ...f, label: "sing-box 路由与 DNS", type: "json", hint: '仅支持 dns、route、outbounds；使用 sing-box 原生 JSON。启用后替代此节点的旧路由配置，直连出口 direct 自动保留。' };
             if (f.key === "padding_scheme")
                 return {
                     ...f,
@@ -472,7 +486,7 @@ export function nodeFields(
                     ...f,
                     type: "select",
                     options: (["v2node", "v2box"].includes(type) &&
-                    ["shadowsocks", "tuic", "hysteria2", "anytls"].includes(
+                    ["shadowsocks", "tuic", "hysteria2", "anytls", "naive"].includes(
                         protocol,
                     )
                         ? ["tcp"]

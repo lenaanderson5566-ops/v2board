@@ -75,6 +75,9 @@ class Singbox
                     $tuicConfig = $this->buildTuic($this->user['uuid'], $item);
                     $proxies[] = $tuicConfig;
                     break;
+                case 'naive':
+                    $proxies[] = $this->buildNaive($this->user['uuid'], $item);
+                    break;
                 case 'anytls':
                     $anytlsConfig = $this->buildAnyTLS($this->user['uuid'], $item);
                     $proxies[] = $anytlsConfig;
@@ -360,6 +363,23 @@ class Singbox
         $array['tls']['server_name'] = $server['server_name'] ?? ($tlsSettings['server_name'] ?? '');
 
         return $array;
+    }
+
+    protected function buildNaive($password, $server)
+    {
+        return [
+            'type' => 'naive',
+            'tag' => $server['name'],
+            'server' => $server['host'],
+            'server_port' => (int) $server['port'],
+            'username' => $password,
+            'password' => $password,
+            'domain_resolver' => 'local',
+            'tls' => [
+                'enabled' => true,
+                'server_name' => $server['tls_settings']['server_name'] ?? $server['host'],
+            ],
+        ];
     }
 
     protected function buildAnyTLS($password, $server)

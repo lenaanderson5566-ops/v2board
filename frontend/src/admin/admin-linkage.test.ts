@@ -248,3 +248,22 @@ it("offers V2Box alongside V2Node with compatible transports", () => {
     expect(nodeFields("v2node", list, { protocol: "vless" }).find(f => f.key === "network")?.options?.map(o => o[0])).toContain("xhttp");
     expect(nodeFields("v2box", list, { protocol: "hysteria2" }).find(f => f.key === "network")?.options?.map(o => o[0])).toEqual(["tcp"]);
 });
+
+it("links Naive to HTTPS/HTTP2 and trusted certificate modes", () => {
+    const values = linkNode("protocol", "naive", { tls: 2, network: "ws", network_settings: { maxEarlyData: 2048 }, "network_settings.path": "/old-ws", disable_sni: 1, "tls_settings.cert_mode": "remote", "tls_settings.allow_insecure": 1 });
+    expect(values).toMatchObject({ tls: 1, network: "tcp", disable_sni: 0, "tls_settings.cert_mode": "http", "tls_settings.allow_insecure": 0 });
+    expect(nodeSettingsPayload(values).network_settings).toEqual({});
+    const list = nodeFields("v2box", fields("network", "tls", "tls_settings.cert_mode", "tls_settings.server_name", "tls_settings.fingerprint", "tls_settings.allow_insecure", "disable_sni", "network_settings.path"), values);
+    expect(list.find(f => f.key === "network")?.options).toEqual([["tcp", "tcp"]]);
+    expect(list.find(f => f.key === "tls")?.options?.map(o => o[0])).toEqual(["1"]);
+    expect(list.find(f => f.key === "tls_settings.cert_mode")?.options?.map(o => o[0])).toEqual(["http", "dns", "file"]);
+    expect(list.find(f => f.key === "tls_settings.server_name")?.required).toBe(true);
+    expect(list.some(f => ["tls_settings.fingerprint", "tls_settings.allow_insecure", "disable_sni", "network_settings.path"].includes(f.key))).toBe(false);
+});
+
+it("keeps native sing-box configuration as structured JSON", () => {
+    const config = { dns: { servers: [{ type: "https", tag: "dns", server: "1.1.1.1" }] }, route: { final: "direct" } };
+    const list = nodeFields("v2box", fields("sing_box"), { protocol: "vless", network: "tcp" });
+    expect(list.find((f) => f.key === "sing_box")?.type).toBe("json");
+    expect(nodeSettingsPayload(nodeSettingsInitial({ sing_box: config })).sing_box).toEqual(config);
+});

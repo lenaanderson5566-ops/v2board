@@ -89,4 +89,19 @@ Admin, operations/risk, staff and supported node APIs retain their API versions.
 
 V2Box support: administrative `server/v2box/{save,update,copy,drop}` routes use the existing admin prefix. Node config `/api/v2/server/config` and retained UniProxy endpoints accept `node_type=v2box`. V10 subscription paths and resource shapes are unchanged; stable node identities distinguish `v2box` from `v2node`. See [V2Box integration](../v2box.md).
 
+Naive is a V2Box-only protocol value on the same routes/table. V10 subscriptions export sing-box Naive outbounds or General naive+https links; native node protocol strings may now contain `naive`. No new endpoint or authentication contract is introduced. HTTPS/HTTP2 with validated certificates is required; see the V2Box integration guide and `tests/naive.php`.
+
 Standalone legacy node types (vmess, vless, shadowsocks, trojan, hysteria, tuic, anytls) are retired as management types. Only v2node/v2box are listed, subscribed, sorted and accepted by node communication. Underlying protocols remain available within these two backends. Removed old admin CRUD routes and Deepbwork/Tidalab routes; the seven retired node configuration tables are dropped by the targeted migration; shared accounting records are retained. Node communication now uses explicit GET user/alivelist/config and POST push/alive routes.
+
+## V2Box node V10 API
+
+V2Node and explicitly configured legacy V2Box installations retain their existing routes. These new machine endpoints use a separate bearer credential. See node-api.json for schemas.
+
+| Legacy | V10 |
+|---|---|
+| `GET /api/v2/server/config` | `GET /api/v10/nodes/v2box/{nodeId}/configuration` |
+| `GET /api/v1/server/UniProxy/user` | `GET /api/v10/nodes/v2box/{nodeId}/users` |
+| `GET /api/v1/server/UniProxy/alivelist` | `GET /api/v10/nodes/v2box/{nodeId}/online-counts` |
+| `POST /api/v1/server/UniProxy/push` | `POST /api/v10/nodes/v2box/{nodeId}/traffic` |
+| `POST /api/v1/server/UniProxy/alive` | `POST /api/v10/nodes/v2box/{nodeId}/online-users` |
+| `New resource` | `POST /api/v10/nodes/v2box/{nodeId}/capabilities` |

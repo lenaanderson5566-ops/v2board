@@ -19,6 +19,7 @@ class ConsoleController extends Controller
         preg_match_all("/'([^']+)'\\s*=>\\s*'([^']*)'/", $block[1] ?? '', $matches, PREG_SET_ORDER);
         $rules = [];
         foreach ($matches as $match) $rules[$match[1]] = $match[2];
+        $rules['protocol'] = 'required|in:shadowsocks,vmess,vless,trojan,tuic,hysteria2,anytls';
         if ($type === 'v2box') $rules = array_merge($rules, array_filter(\App\Http\Controllers\V1\Admin\Server\V2boxController::RULES, fn ($key) => strpos($key, '.') === false, ARRAY_FILTER_USE_KEY));
         if (isset($rules['group_id']) && strpos($rules['group_id'], 'array') === false) $rules['group_id'] .= '|array';
         return response(['data' => $rules]);

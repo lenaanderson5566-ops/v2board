@@ -12,6 +12,13 @@ class V2nodeController extends Controller
 {
     protected $model = ServerV2node::class;
 
+    protected function protocolRule()
+    {
+        return 'required|in:shadowsocks,vmess,vless,trojan,tuic,hysteria2,anytls';
+    }
+
+    protected function extraParams(Request $request): array { return []; }
+
     public function save(Request $request)
     {
         $request->merge(\App\Services\NodeDisplayService::normalizeInput($request->all()));
@@ -24,7 +31,7 @@ class V2nodeController extends Controller
             'listen_ip' => 'nullable',
             'port' => 'required',
             'server_port' => 'required',
-            'protocol' => 'required|in:shadowsocks,vmess,vless,trojan,tuic,hysteria2,anytls',
+            'protocol' => $this->protocolRule(),
             'tls' => 'required|in:0,1,2',
             'tls_settings' => 'nullable|array',
             'flow' => 'nullable|in:xtls-rprx-vision',
@@ -51,6 +58,7 @@ class V2nodeController extends Controller
             'show' => 'nullable|in:0,1',
             'sort' => 'nullable'
         ], \App\Services\NodeDisplayService::validationMessages());
+        $params = array_merge($params, $this->extraParams($request));
         if ($params['protocol'] == 'anytls' && $params['tls'] === 0) {
             $params['tls'] = 1;
         }

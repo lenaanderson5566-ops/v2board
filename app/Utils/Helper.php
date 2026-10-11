@@ -188,6 +188,13 @@ class Helper
         return '';
     }
 
+    public static function buildNaiveUri($uuid, $server)
+    {
+        $credential = rawurlencode($uuid);
+        return self::buildUriString('naive+https', "{$credential}:{$credential}", $server,
+            rawurlencode($server['name']), ['sni' => $server['tls_settings']['server_name'] ?? $server['host']]);
+    }
+
     public static function buildUriString($scheme, $auth, $server, $name, $params = [])
     {
         $host = self::formatHost($server['host']);

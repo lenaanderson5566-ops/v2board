@@ -51,6 +51,9 @@ V2BOX_SINGBOX_MIGRATION=database/migrations/2026_10_11_000003_add_v2box_sing_box
 NODE_ROUTES_MIGRATION=database/migrations/2026_10_11_000004_separate_node_routes.php
 NODE_DDNS_MIGRATION=database/migrations/2026_10_11_000005_create_node_ddns.php
 LOG_METADATA_MIGRATION=database/migrations/2026_10_11_000006_index_log_metadata.php
+NODE_TRAFFIC_BATCH_MIGRATION=database/migrations/2026_10_11_000007_create_node_traffic_batches.php
+SERVER_TRAFFIC_BUDGET_MIGRATION=database/migrations/2026_10_11_000008_create_server_traffic_budgets.php
+SERVER_TRAFFIC_IMPORT_MIGRATION=database/migrations/2026_10_11_000009_create_server_traffic_imports.php
 usage() {
     cat <<'HELP'
 Usage: bash update.sh [options]
@@ -278,8 +281,11 @@ git cat-file -e "$TARGET:$V2BOX_SINGBOX_MIGRATION" || die 'Target lacks v2box_si
 git cat-file -e "$TARGET:$NODE_ROUTES_MIGRATION" || die 'Target lacks node_routes migration'
 git cat-file -e "$TARGET:$NODE_DDNS_MIGRATION" || die 'Target lacks node_ddns migration'
 git cat-file -e "$TARGET:$LOG_METADATA_MIGRATION" || die 'Target lacks log_metadata migration'
+git cat-file -e "$TARGET:$NODE_TRAFFIC_BATCH_MIGRATION" || die 'Target lacks node_traffic_batch_migration migration'
+git cat-file -e "$TARGET:$SERVER_TRAFFIC_BUDGET_MIGRATION" || die 'Target lacks server_traffic_budget_migration migration'
+git cat-file -e "$TARGET:$SERVER_TRAFFIC_IMPORT_MIGRATION" || die 'Target lacks server_traffic_import_migration migration'
 while IFS= read -r changed; do
-    [[ -z "$changed" || "$changed" == "$MIGRATION" || "$changed" == "$INVITATION_MIGRATION" || "$changed" == "$LANGUAGE_MIGRATION" || "$changed" == "$CURRENCY_MIGRATION" || "$changed" == "$EXPIRY_MIGRATION" || "$changed" == "$REWARD_MIGRATION" || "$changed" == "$RESET_MIGRATION" || "$changed" == "$NOTICE_MIGRATION" || "$changed" == "$CREDIT_MIGRATION" || "$changed" == "$CONTENT_MIGRATION" || "$changed" == "$BANNER_MIGRATION" || "$changed" == "$RETIRED_NODE_TABLES_MIGRATION" || "$changed" == "$V2BOX_MIGRATION" || "$changed" == "$V2BOX_SINGBOX_MIGRATION" || "$changed" == "$NODE_ROUTES_MIGRATION" || "$changed" == "$NODE_DDNS_MIGRATION" || "$changed" == "$LOG_METADATA_MIGRATION" || "$changed" == "$NODE_DISPLAY_MIGRATION" || "$changed" == "$PAYMENT_HISTORY_MIGRATION" || "$changed" == "$SERVICE_MAIL_MIGRATION" || "$changed" == "$RETIRED_PAYMENT_MIGRATION" ]] || die "Unexpected migration: $changed; review scope first"
+    [[ -z "$changed" || "$changed" == "$MIGRATION" || "$changed" == "$INVITATION_MIGRATION" || "$changed" == "$LANGUAGE_MIGRATION" || "$changed" == "$CURRENCY_MIGRATION" || "$changed" == "$EXPIRY_MIGRATION" || "$changed" == "$REWARD_MIGRATION" || "$changed" == "$RESET_MIGRATION" || "$changed" == "$NOTICE_MIGRATION" || "$changed" == "$CREDIT_MIGRATION" || "$changed" == "$CONTENT_MIGRATION" || "$changed" == "$BANNER_MIGRATION" || "$changed" == "$RETIRED_NODE_TABLES_MIGRATION" || "$changed" == "$V2BOX_MIGRATION" || "$changed" == "$V2BOX_SINGBOX_MIGRATION" || "$changed" == "$NODE_ROUTES_MIGRATION" || "$changed" == "$NODE_DDNS_MIGRATION" || "$changed" == "$LOG_METADATA_MIGRATION" || "$changed" == "$NODE_TRAFFIC_BATCH_MIGRATION" || "$changed" == "$SERVER_TRAFFIC_BUDGET_MIGRATION" || "$changed" == "$SERVER_TRAFFIC_IMPORT_MIGRATION" || "$changed" == "$NODE_DISPLAY_MIGRATION" || "$changed" == "$PAYMENT_HISTORY_MIGRATION" || "$changed" == "$SERVICE_MAIL_MIGRATION" || "$changed" == "$RETIRED_PAYMENT_MIGRATION" ]] || die "Unexpected migration: $changed; review scope first"
 done < <(git diff --name-only "$OLD_COMMIT" "$TARGET" -- database/migrations)
 git show "$TARGET:composer.json" > "$WORK_DIR/composer.json"
 git show "$OLD_COMMIT:composer.json" > "$WORK_DIR/original-composer.json"
@@ -434,7 +440,7 @@ PHASE=cache-preparation
 "$PHP_BIN" artisan route:clear
 "$PHP_BIN" artisan view:clear
 PHASE=migrations
-for migration in "$MIGRATION" "$INVITATION_MIGRATION" "$LANGUAGE_MIGRATION" "$RESET_MIGRATION" "$NOTICE_MIGRATION" "$CREDIT_MIGRATION" "$CONTENT_MIGRATION" "$BANNER_MIGRATION" "$REWARD_MIGRATION" "$EXPIRY_MIGRATION" "$CURRENCY_MIGRATION" "$NODE_DISPLAY_MIGRATION" "$RETIRED_PAYMENT_MIGRATION" "$SERVICE_MAIL_MIGRATION" "$PAYMENT_HISTORY_MIGRATION" "$V2BOX_MIGRATION" "$RETIRED_NODE_TABLES_MIGRATION" "$V2BOX_SINGBOX_MIGRATION" "$NODE_ROUTES_MIGRATION" "$NODE_DDNS_MIGRATION" "$LOG_METADATA_MIGRATION"; do
+for migration in "$MIGRATION" "$INVITATION_MIGRATION" "$LANGUAGE_MIGRATION" "$RESET_MIGRATION" "$NOTICE_MIGRATION" "$CREDIT_MIGRATION" "$CONTENT_MIGRATION" "$BANNER_MIGRATION" "$REWARD_MIGRATION" "$EXPIRY_MIGRATION" "$CURRENCY_MIGRATION" "$NODE_DISPLAY_MIGRATION" "$RETIRED_PAYMENT_MIGRATION" "$SERVICE_MAIL_MIGRATION" "$PAYMENT_HISTORY_MIGRATION" "$V2BOX_MIGRATION" "$RETIRED_NODE_TABLES_MIGRATION" "$V2BOX_SINGBOX_MIGRATION" "$NODE_ROUTES_MIGRATION" "$NODE_DDNS_MIGRATION" "$LOG_METADATA_MIGRATION" "$NODE_TRAFFIC_BATCH_MIGRATION" "$SERVER_TRAFFIC_BUDGET_MIGRATION" "$SERVER_TRAFFIC_IMPORT_MIGRATION"; do
     run_migration "$migration"
 done
 printf '\nAll approved migrations completed.\n'

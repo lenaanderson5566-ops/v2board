@@ -44,6 +44,9 @@ echo '<?php // fixture' > database/migrations/2026_10_11_000003_add_v2box_sing_b
 echo '<?php // fixture' > database/migrations/2026_10_11_000004_separate_node_routes.php
 echo '<?php // fixture' > database/migrations/2026_10_11_000005_create_node_ddns.php
 echo '<?php // fixture' > database/migrations/2026_10_11_000006_index_log_metadata.php
+echo '<?php // fixture' > database/migrations/2026_10_11_000007_create_node_traffic_batches.php
+echo '<?php // fixture' > database/migrations/2026_10_11_000008_create_server_traffic_budgets.php
+echo '<?php // fixture' > database/migrations/2026_10_11_000009_create_server_traffic_imports.php
 echo '{}' > composer.lock
 git add -f composer.lock
 mkdir -p storage/geoip
@@ -96,6 +99,9 @@ bash "$SOURCE" "${ARGS[@]}" --jobs-stopped > "$TMP/output" 2>&1
 [[ $(git rev-parse HEAD) == "$TARGET" ]]
 cmp composer.lock "$TMP/seed/composer.lock"
 grep -q 'migrate --path=database/migrations/2026_10_11_000006_index_log_metadata.php --force --no-interaction' calls.log
+grep -q 'migrate --path=database/migrations/2026_10_11_000007_create_node_traffic_batches.php --force --no-interaction' calls.log
+grep -q 'migrate --path=database/migrations/2026_10_11_000008_create_server_traffic_budgets.php --force --no-interaction' calls.log
+grep -q 'migrate --path=database/migrations/2026_10_11_000009_create_server_traffic_imports.php --force --no-interaction' calls.log
 new_site dirty
 echo changed >> composer.json
 reject --jobs-stopped

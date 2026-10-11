@@ -141,3 +141,5 @@ V2Box 接入新增白名单迁移 `2026_10_11_000001_create_v2box_nodes.php`，�
 默认等待 60 秒，支持 `--jobs-restart-timeout 120`（允许 2-600 秒）。重启后的本站 Horizon、队列及调度器应在连续两次检查中保持相同进程身份；缺失或持续更换身份的进程不会被当作恢复成功。等待超时保留维护模式，输出所需服务及观察到的服务，提示检查 Supervisor 自动重启、PHP 路径、运行用户和进程错误日志。
 
 修复并启动本站服务、确认 Horizon/队列和调度器正常后，再执行 `php artisan up`。不要仅为退出 503 重复安装依赖。`bash tests/update-restart.sh` 验证稳定启动、延迟启动、反复重启及服务缺失；现有升级回归包含 26 个隔离场景。
+
+服务器流量额度与去重升级会依次执行 `2026_10_11_000007_create_node_traffic_batches.php`、`2026_10_11_000008_create_server_traffic_budgets.php` 和 `2026_10_11_000009_create_server_traffic_imports.php`。早期脚本遗漏这些迁移；已升级站点请重新运行完整更新脚本补齐，已完成的迁移会跳过。

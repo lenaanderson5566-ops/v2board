@@ -18,7 +18,7 @@ foreach ($entries as $entry) {
     $mapping[$entry['action']][]=(str_starts_with($entry['path'],'webhooks/payments/') ? 'GET/POST' : $entry['method']).' /api/v10/'.$entry['path'];
 }
 foreach (app('router')->getRoutes() as $route) {
-    $routeCount++; $uri=$route->uri(); $action=$route->getActionName(); $middleware=$route->gatherMiddleware();
+    $routeCount++; $uri=$route->uri(); $action=$route->getActionName(); $middleware=preg_match('#^api/v[12]/server/#',$uri) ? $route->middleware() : $route->gatherMiddleware();
     if ($action!=='Closure' && str_contains($action,'@')) {
         [$class,$method]=explode('@',$action,2);
         if (!class_exists($class) || !method_exists($class,$method)) {
@@ -75,13 +75,12 @@ if (in_array('--write-inventory',$argv,true)) {
         foreach ($rows as $row) $doc.='| '.$row['method'].' | `'.$row['path'].'` | '.$row['new']." |\n";
         $doc.="\n";
     }
-    $doc.="## 节点通信（继续使用，不迁移）\n\nV1 实际注册通配路由 `/api/v1/server/{class}/{action}`，支持 GET/HEAD/POST/PUT/PATCH/DELETE/OPTIONS。下表列出当前控制器自身声明的业务方法，不代表新增静态路由，也不包括构造函数或框架继承方法。认证仍由各节点控制器校验节点凭证。\n\n| 控制器段 | 业务 action |\n|---|---|\n";
-    foreach (glob(app_path('Http/Controllers/V1/Server/*Controller.php')) as $file) {
-        $name=basename($file,'.php'); $class='App\\Http\\Controllers\\V1\\Server\\'.$name; $methods=[];
-        foreach ((new ReflectionClass($class))->getMethods(ReflectionMethod::IS_PUBLIC) as $method) if ($method->getDeclaringClass()->getName()===$class && !$method->isConstructor()) $methods[]=$method->getName();
-        $doc.='| `'.lcfirst(substr($name,0,-10)).'` | `'.implode('`, `',$methods)."` |\n";
+    $doc.="## 节点通信\n\n仅支持 `node_type=v2node` 和 `node_type=v2box`。节点通信保留原 API 版本，使用显式路由。\n\n| 方法 | 路径 |\n|---|---|\n";
+    foreach (app('router')->getRoutes() as $route) {
+        if (!preg_match('#^api/v[12]/server/#', $route->uri())) continue;
+        $doc.='| '.implode('/', array_diff($route->methods(), ['HEAD'])).' | `/'.$route->uri()."` |\n";
     }
-    $doc.="\nV2 保留 `/api/v2/server/config`（同样接受以上方法），使用节点 token 和 node_id；当前没有 V2 用户接口。\n\n## 其他保留入口\n\n| 方法 | 路径 | 用途与条件 |\n|---|---|---|\n| GET/HEAD | 管理员配置的 `subscribe_path` | 自定义订阅路径，使用原 token 规则；与 V10 同时可用；旧默认路径已移除 |\n| GET/HEAD | `/api/v10/public/client-installers/{installerId}/content` | 镜像下载新版入口；原 `/client-mirrors/{id}` 已移除 |\n\n`/` 与 `/app` 是网页入口而非 API，也继续保留。后台安全路径、运营路径和客服 `/api/v1/staff/*` 不在本清单范围内。\n\n## 兼容说明\n\n- 上表旧用户/登录/公共/客户端路由共 {$count} 条；前端用户业务已通过集中传输层使用 V10，仅保留后台依赖、历史回调及订阅入口。\n- 旧用户业务 API（包括 `invite/save`）已移除；使用 V10。\n- 支付新订单与后台展示统一使用 V10 回调，旧支付回调兼容此前订单；两者保持原验签和应答。Telegram 保持已有兼容规则。\n- 不再注册旧用户业务中的 GET 写操作。\n- 原节点动态分发属于明确保留的历史协议，未将这种设计带入 V10。\n";
+    $doc.="\nV2 配置接口未填写 node_type 时默认 v2node。旧 Deepbwork、Tidalab、UniProxy/config 与动态控制器分发已移除。\n\n## 其他保留入口\n\n| 方法 | 路径 | 用途与条件 |\n|---|---|---|\n| GET/HEAD | 管理员配置的 `subscribe_path` | 自定义订阅路径，使用原 token 规则；与 V10 同时可用；旧默认路径已移除 |\n| GET/HEAD | `/api/v10/public/client-installers/{installerId}/content` | 镜像下载新版入口；原 `/client-mirrors/{id}` 已移除 |\n\n`/` 与 `/app` 是网页入口而非 API，也继续保留。后台安全路径、运营路径和客服 `/api/v1/staff/*` 不在本清单范围内。\n\n## 兼容说明\n\n- 上表旧用户/登录/公共/客户端路由共 {$count} 条；前端用户业务已通过集中传输层使用 V10，仅保留后台依赖、历史回调及订阅入口。\n- 旧用户业务 API（包括 `invite/save`）已移除；使用 V10。\n- 支付新订单与后台展示统一使用 V10 回调，旧支付回调兼容此前订单；两者保持原验签和应答。Telegram 保持已有兼容规则。\n- 不再注册旧用户业务中的 GET 写操作。\n- 节点管理、订阅、排序及当前节点排行仅使用 V2Node/V2Box；历史数据库记录保留。\n";
     file_put_contents(base_path('docs/api-v10/retained-endpoints.md'),$doc);
 }
 echo "Route audit: {$routeCount} registered routes, {$protectedCount} V10 authentication checks, {$checks} checks passed\n";

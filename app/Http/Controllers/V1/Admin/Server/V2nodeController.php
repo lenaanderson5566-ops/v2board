@@ -10,6 +10,8 @@ use App\Utils\Helper;
 
 class V2nodeController extends Controller
 {
+    protected $model = ServerV2node::class;
+
     public function save(Request $request)
     {
         $request->merge(\App\Services\NodeDisplayService::normalizeInput($request->all()));
@@ -237,7 +239,7 @@ class V2nodeController extends Controller
         }
 
         if ($request->input('id')) {
-            $server = ServerV2node::find($request->input('id'));
+            $server = $this->model::find($request->input('id'));
             if (!$server) {
                 abort(500, '服务器不存在');
             }
@@ -251,7 +253,7 @@ class V2nodeController extends Controller
             ]);
         }
 
-        if (!ServerV2node::create($params)) {
+        if (!$this->model::create($params)) {
             abort(500, '创建失败');
         }
         return response([
@@ -262,7 +264,7 @@ class V2nodeController extends Controller
     public function drop(Request $request)
     {
         if ($request->input('id')) {
-            $server = ServerV2node::find($request->input('id'));
+            $server = $this->model::find($request->input('id'));
             if (!$server) {
                 abort(500, '节点ID不存在');
             }
@@ -278,7 +280,7 @@ class V2nodeController extends Controller
             'show' => 'nullable|in:0,1',
         ]);
 
-        $server = ServerV2node::find($request->input('id'));
+        $server = $this->model::find($request->input('id'));
 
         if (!$server) {
             abort(500, '该服务器不存在');
@@ -295,12 +297,12 @@ class V2nodeController extends Controller
 
     public function copy(Request $request)
     {
-        $server = ServerV2node::find($request->input('id'));
-        $server->show = 0;
+        $server = $this->model::find($request->input('id'));
         if (!$server) {
             abort(500, '服务器不存在');
         }
-        if (!ServerV2node::create($server->toArray())) {
+        $server->show = 0;
+        if (!$this->model::create($server->toArray())) {
             abort(500, '复制失败');
         }
 

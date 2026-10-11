@@ -127,3 +127,5 @@ bash /tmp/v2board-update.sh \
 网站使用 Nginx/Apache + PHP-FPM，入口为 `public/index.php`。Webman/Adapterman 入口 `webman.php`、`start.php` 和专用 `cli-php.ini` 已移除；安装脚本不再安装 Adapterman，保存后台设置也不再读取或终止缓存中的 Webman PID。Horizon 队列、定时任务和 `pm2.yaml` 的队列配置保持不变。
 
 升级脚本仍保留本地新增 Composer 依赖，避免覆盖自定义部署。测试中的 Adapterman 包仅用于验证历史依赖保留，并不表示仍支持该 HTTP 运行方式。已安装的可选依赖不会在本次升级中被强行删除；运行站点无需它们。以前通过 `php -c cli-php.ini` 启动的自定义进程须改用各自正常的 PHP CLI 配置，不能继续引用已移除的配置文件。
+
+V2Box 接入新增白名单迁移 `2026_10_11_000001_create_v2box_nodes.php`，在节点显示字段迁移之后执行，创建独立空表 `v2_server_v2box`。已有 V2Node 数据保持原位；重新执行会跳过已完成的迁移。

@@ -33,18 +33,19 @@
 | GET | `/api/v1/client/app/getConfig` | GET /api/v10/subscriptions/{subscriptionToken}/application-config |
 | GET | `/api/v1/client/app/getVersion` | GET /api/v10/subscriptions/{subscriptionToken}/application-version |
 
-## 节点通信（继续使用，不迁移）
+## 节点通信
 
-V1 实际注册通配路由 `/api/v1/server/{class}/{action}`，支持 GET/HEAD/POST/PUT/PATCH/DELETE/OPTIONS。下表列出当前控制器自身声明的业务方法，不代表新增静态路由，也不包括构造函数或框架继承方法。认证仍由各节点控制器校验节点凭证。
+仅支持 `node_type=v2node` 和 `node_type=v2box`。节点通信保留原 API 版本，使用显式路由。
 
-| 控制器段 | 业务 action |
+| 方法 | 路径 |
 |---|---|
-| `deepbwork` | `user`, `submit`, `config` |
-| `shadowsocksTidalab` | `user`, `submit` |
-| `trojanTidalab` | `user`, `submit`, `config` |
-| `uniProxy` | `user`, `push`, `alivelist`, `alive`, `config` |
+| GET | `/api/v1/server/UniProxy/user` |
+| GET | `/api/v1/server/UniProxy/alivelist` |
+| POST | `/api/v1/server/UniProxy/push` |
+| POST | `/api/v1/server/UniProxy/alive` |
+| GET | `/api/v2/server/config` |
 
-V2 保留 `/api/v2/server/config`（同样接受以上方法），使用节点 token 和 node_id；当前没有 V2 用户接口。
+V2 配置接口未填写 node_type 时默认 v2node。旧 Deepbwork、Tidalab、UniProxy/config 与动态控制器分发已移除。
 
 ## 其他保留入口
 
@@ -61,4 +62,4 @@ V2 保留 `/api/v2/server/config`（同样接受以上方法），使用节点 t
 - 旧用户业务 API（包括 `invite/save`）已移除；使用 V10。
 - 支付新订单与后台展示统一使用 V10 回调，旧支付回调兼容此前订单；两者保持原验签和应答。Telegram 保持已有兼容规则。
 - 不再注册旧用户业务中的 GET 写操作。
-- 原节点动态分发属于明确保留的历史协议，未将这种设计带入 V10。
+- 节点管理、订阅、排序及当前节点排行仅使用 V2Node/V2Box；历史数据库记录保留。

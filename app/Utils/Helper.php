@@ -176,7 +176,7 @@ class Helper
 
     public static function buildUri($uuid, $server)
     {
-        if ($server['type'] == 'v2node') {
+        if (in_array($server['type'], ['v2node', 'v2box'], true)) {
             $server['type'] = $server['protocol'];
         } 
         $method = "build" . ucfirst($server['type']) . "Uri";

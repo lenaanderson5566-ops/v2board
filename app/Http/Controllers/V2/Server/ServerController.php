@@ -37,7 +37,9 @@ class ServerController extends Controller
 
         $this->nodeId = $request->input('node_id');
         $this->serverService = new ServerService();
-        $this->nodeInfo = $this->serverService->getServer($this->nodeId, "v2node");
+        $nodeType = $request->input('node_type', 'v2node');
+        abort_unless(in_array($nodeType, ['v2node', 'v2box'], true), 422, 'Unsupported node type');
+        $this->nodeInfo = $this->serverService->getServer($this->nodeId, $nodeType);
 
         // 节点不存在
         if (!$this->nodeInfo) {

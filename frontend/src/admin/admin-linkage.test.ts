@@ -238,3 +238,13 @@ describe("admin dependency behavior", () => {
         ).toBe(false);
     });
 });
+
+it("offers V2Box alongside V2Node with compatible transports", () => {
+    const list = fields("protocol", "network", "encryption", "trusted_x_forwarded_for", "tls");
+    const box = nodeFields("v2box", list, { protocol: "vless", tls: 2 });
+    expect(box.find(f => f.key === "network")?.options?.map(o => o[0])).toEqual(["tcp", "ws", "grpc", "httpupgrade"]);
+    expect(box.some(f => f.key === "encryption")).toBe(false);
+    expect(box.some(f => f.key === "trusted_x_forwarded_for")).toBe(false);
+    expect(nodeFields("v2node", list, { protocol: "vless" }).find(f => f.key === "network")?.options?.map(o => o[0])).toContain("xhttp");
+    expect(nodeFields("v2box", list, { protocol: "hysteria2" }).find(f => f.key === "network")?.options?.map(o => o[0])).toEqual(["tcp"]);
+});

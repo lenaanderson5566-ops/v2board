@@ -5,8 +5,10 @@
 [![](https://img.shields.io/badge/TgChat-@UnOfficialV2board讨论-blue.svg)](https://t.me/unofficialV2board)
 
 ## 本分支支持的后端
- - [修改版V2bX](https://github.com/wyx2685/V2bX)
- - [v2node](https://github.com/wyx2685/v2node)
+ - [V2Node](https://github.com/wyx2685/v2node)
+ - [V2Box](https://github.com/lenaanderson5566-ops/v2box)
+
+后台仅保留这两类节点；底层协议在节点内选择。旧独立节点类型已退役，历史数据保留，升级前请迁移仍在使用的线路。参见 [节点接入与类型说明](docs/v2box.md)。
 
 ## 原版迁移步骤
 

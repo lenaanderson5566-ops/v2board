@@ -16,13 +16,13 @@ describe("admin ordering", () => {
         });
         expect(sortPayload("payments", [{ id: 4 }])).toEqual({ ids: [4] });
     });
-    it("keeps colliding node IDs distinct by protocol while maintaining global order", () => {
+    it("keeps colliding node IDs distinct by backend while maintaining global order", () => {
         expect(
             sortPayload("nodes", [
-                { type: "vmess", id: 1 },
-                { type: "vless", id: 1 },
-                { type: "vmess", id: 2 },
+                { type: "v2node", id: 1 },
+                { type: "v2box", id: 1 },
+                { type: "v2node", id: 2 },
             ]),
-        ).toEqual({ vmess: { 1: 1, 2: 3 }, vless: { 1: 2 } });
+        ).toEqual({ v2node: { 1: 1, 2: 3 }, v2box: { 1: 2 } });
     });
 });

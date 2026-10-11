@@ -9,7 +9,6 @@ use App\Models\RiskSetting;
 use App\Services\ServerService;
 use App\Services\UserService;
 use App\Utils\CacheKey;
-use App\Utils\Helper;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
 use MessagePack\Packer;
@@ -31,8 +30,7 @@ class UniProxyController extends Controller
             abort(500, 'token is error');
         }
         $this->nodeType = $request->input('node_type');
-        if ($this->nodeType === 'v2ray') $this->nodeType = 'vmess';
-        if ($this->nodeType === 'hysteria2') $this->nodeType = 'hysteria';
+        abort_unless(in_array($this->nodeType, ['v2node', 'v2box'], true), 422, 'Unsupported node type');
         $this->nodeId = $request->input('node_id');
         $this->serverService = new ServerService();
         $this->nodeInfo = $this->serverService->getServer($this->nodeId, $this->nodeType);
@@ -291,103 +289,4 @@ class UniProxyController extends Controller
         UserConnectionLog::query()->where('connected_at', '<', $expiredBefore)->delete();
     }
 
-    // 后端获取配置
-    public function config(Request $request)
-    {
-        switch ($this->nodeType) {
-            case 'shadowsocks':
-                $response = [
-                    'server_port' => $this->nodeInfo->server_port,
-                    'cipher' => $this->nodeInfo->cipher,
-                    'obfs' => $this->nodeInfo->obfs,
-                    'obfs_settings' => $this->nodeInfo->obfs_settings
-                ];
-
-                if ($this->nodeInfo->cipher === '2022-blake3-aes-128-gcm') {
-                    $response['server_key'] = Helper::getServerKey($this->nodeInfo->created_at, 16);
-                }
-                if ($this->nodeInfo->cipher === '2022-blake3-aes-256-gcm') {
-                    $response['server_key'] = Helper::getServerKey($this->nodeInfo->created_at, 32);
-                }
-                break;
-            case 'vmess':
-                $response = [
-                    'server_port' => $this->nodeInfo->server_port,
-                    'network' => $this->nodeInfo->network,
-                    'networkSettings' => $this->nodeInfo->networkSettings,
-                    'tls' => $this->nodeInfo->tls
-                ];
-                break;
-            case 'vless':
-                $response = [
-                    'server_port' => $this->nodeInfo->server_port,
-                    'network' => $this->nodeInfo->network,
-                    'networkSettings' => $this->nodeInfo->network_settings,
-                    'tls' => $this->nodeInfo->tls,
-                    'flow' => $this->nodeInfo->flow,
-                    'tls_settings' => $this->nodeInfo->tls_settings,
-                    'encryption' => $this->nodeInfo->encryption,
-                    'encryption_settings' => $this->nodeInfo->encryption_settings
-                ];
-                break;
-            case 'trojan':
-                $response = [
-                    'host' => $this->nodeInfo->host,
-                    'network' => $this->nodeInfo->network,
-                    'networkSettings' => $this->nodeInfo->network_settings,
-                    'server_port' => $this->nodeInfo->server_port,
-                    'server_name' => $this->nodeInfo->server_name,
-                ];
-                break;
-            case 'tuic':
-                $response = [
-                    'server_port' => $this->nodeInfo->server_port,
-                    'server_name' => $this->nodeInfo->server_name,
-                    'congestion_control' => $this->nodeInfo->congestion_control,
-                    'zero_rtt_handshake' => $this->nodeInfo->zero_rtt_handshake ? true : false,
-                ];
-                break;
-            case 'hysteria':
-                $response = [
-                    'version' => $this->nodeInfo->version,
-                    'host' => $this->nodeInfo->host,
-                    'server_port' => $this->nodeInfo->server_port,
-                    'server_name' => $this->nodeInfo->server_name,
-                    'up_mbps' => $this->nodeInfo->up_mbps,
-                    'down_mbps' => $this->nodeInfo->down_mbps
-                ];
-                if ($this->nodeInfo->version == 1) {
-                    $response['obfs'] = $this->nodeInfo->obfs_password ?? null;
-                } elseif ($this->nodeInfo->version == 2) {
-                    if ($this->nodeInfo->up_mbps == 0 && $this->nodeInfo->down_mbps == 0) {
-                        $response['ignore_client_bandwidth'] = true;
-                    } else {
-                        $response['ignore_client_bandwidth'] = false;
-                    }
-                    $response['obfs'] = $this->nodeInfo->obfs ?? null;
-                    $response['obfs-password'] = $this->nodeInfo->obfs_password ?? null;
-                }
-                break;
-            case 'anytls':
-                $response = [
-                    'server_port' => $this->nodeInfo->server_port,
-                    'server_name' => $this->nodeInfo->server_name,
-                    'padding_scheme' => $this->nodeInfo->padding_scheme
-                ];
-                break;
-        }
-        $response['base_config'] = [
-            'push_interval' => (int)config('v2board.server_push_interval', 60),
-            'pull_interval' => (int)config('v2board.server_pull_interval', 60)
-        ];
-        if ($this->nodeInfo['route_id']) {
-            $response['routes'] = $this->serverService->getRoutes($this->nodeInfo['route_id']);
-        }
-        $eTag = sha1(json_encode($response));
-        if (strpos($request->header('If-None-Match'), $eTag) !== false) {
-            abort(304);
-        }
-
-        return response($response)->header('ETag', "\"{$eTag}\"");
-    }
 }

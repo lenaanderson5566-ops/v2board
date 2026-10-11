@@ -686,3 +686,6 @@ CREATE TABLE IF NOT EXISTS `v2_traffic_credit_log` (
   `created_at` int unsigned NOT NULL,
   PRIMARY KEY (`id`), UNIQUE KEY (`reference`), KEY (`user_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- Independent V2Box nodes, with the same protocol/display columns as V2Node.
+CREATE TABLE IF NOT EXISTS `v2_server_v2box` LIKE `v2_server_v2node`;

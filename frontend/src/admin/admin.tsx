@@ -24,6 +24,7 @@ import {
     bytes,
     money,
     date,
+    type NodeBackendType,
     type Row,
 } from "../shared/api";
 import {
@@ -2066,16 +2067,7 @@ function PaymentEditor({
         </>
     );
 }
-const nodeTypes = [
-    "v2node",
-    "vmess",
-    "vless",
-    "trojan",
-    "shadowsocks",
-    "hysteria",
-    "tuic",
-    "anytls",
-];
+const nodeTypes = ["v2node", "v2box"] as const satisfies readonly NodeBackendType[];
 export function Nodes() {
     const groups = useData<Row[]>(admin("server/group/fetch"));
     const routes = useData<Row[]>(admin("server/route/fetch"));
@@ -2349,8 +2341,7 @@ export function Nodes() {
                                                                           String(
                                                                               editing.id,
                                                                           ) &&
-                                                                      (type !==
-                                                                          "v2node" ||
+                                                                      (!["v2node", "v2box"].includes(type) ||
                                                                           r.protocol ===
                                                                               values.protocol),
                                                               )
@@ -2478,7 +2469,7 @@ export function Nodes() {
                                         clean[k] = b[k];
                                 });
                                 if (editing.id) clean.id = editing.id;
-                                if (type === "v2node")
+                                if (["v2node", "v2box"].includes(type))
                                     clean.zero_rtt_handshake ??=
                                         editing.zero_rtt_handshake ?? 0;
                                 await request(

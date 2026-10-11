@@ -37,6 +37,7 @@ echo '<?php // fixture' > database/migrations/2026_10_05_000003_add_order_curren
 echo '<?php // fixture' > database/migrations/2026_10_06_000001_add_node_display_metadata.php
 echo '<?php // fixture' > database/migrations/2026_10_07_000001_disable_retired_payment_methods.php
 echo '<?php // fixture' > database/migrations/2026_10_08_000001_add_service_notifications.php
+echo '<?php // fixture' > database/migrations/2026_10_11_000001_create_v2box_nodes.php
 mkdir -p storage/geoip
 echo 'new mmdb' > storage/geoip/GeoLite2-ASN.mmdb
 git add -f storage/geoip/GeoLite2-ASN.mmdb

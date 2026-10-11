@@ -31,7 +31,7 @@ class Shadowrocket
         }
 
         foreach ($this->servers as $server) {
-            if ($server['type'] === 'vmess' || ($server['type'] === 'v2node' && $server['protocol'] === 'vmess')) {
+            if ($server['type'] === 'vmess' || (in_array($server['type'], ['v2node', 'v2box'], true) && $server['protocol'] === 'vmess')) {
                 $uri .= self::buildVmess($user['uuid'], $server);
             } else {
                 $uri .= Helper::buildUri($this->user['uuid'], $server);

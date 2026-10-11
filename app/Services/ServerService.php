@@ -2,212 +2,36 @@
 
 namespace App\Services;
 
-use App\Models\ServerHysteria;
 use App\Models\ServerLog;
 use App\Models\ServerRoute;
-use App\Models\ServerShadowsocks;
-use App\Models\ServerVless;
 use App\Models\ServerV2node;
+use App\Models\ServerV2box;
 use App\Models\User;
-use App\Models\ServerVmess;
-use App\Models\ServerTrojan;
-use App\Models\ServerTuic;
-use App\Models\ServerAnytls;
 use App\Utils\CacheKey;
-use App\Utils\Helper;
 use Illuminate\Support\Facades\Cache;
 
 class ServerService
 {
-    public function getAvailableVless(User $user): array
+    public function getAvailableV2node(User $user, string $type = 'v2node')
     {
         $servers = [];
-        $model = ServerVless::orderBy('sort', 'ASC');
-        $server = $model->get();
-        foreach ($server as $key => $v) {
-            if (!$v['show']) continue;
-            $server[$key]['type'] = 'vless';
-            if (!in_array(TrafficCreditService::effectiveGroupId($user), $server[$key]['group_id'])) continue;
-            if (strpos($server[$key]['port'], '-') !== false) {
-                $server[$key]['port'] = Helper::randomPort($server[$key]['port']);
-            }
-            if ($server[$key]['parent_id']) {
-                $server[$key]['last_check_at'] = Cache::get(CacheKey::get('SERVER_VLESS_LAST_CHECK_AT', $server[$key]['parent_id']));
-            } else {
-                $server[$key]['last_check_at'] = Cache::get(CacheKey::get('SERVER_VLESS_LAST_CHECK_AT', $server[$key]['id']));
-            }
-            if (isset($server[$key]['tls_settings'])) {
-                $server[$key]['tls_settings'] = array_diff_key(
-                    $server[$key]['tls_settings'],
-                    array_flip(array_filter(['private_key', 'ech_key'], function($k) use ($server, $key) {
-                        return isset($server[$key]['tls_settings'][$k]);
-                    }))
-                );
-            }
-            if (isset($server[$key]['encryption_settings'])) {
-                if (isset($server[$key]['encryption_settings']['private_key'])) {
-                    $server[$key]['encryption_settings'] = array_diff_key($server[$key]['encryption_settings'], array('private_key' => ''));
-                }
-            }
-            $servers[] = $server[$key]->toArray();
-        }
-
-
-        return $servers;
-    }
-
-    public function getAvailableVmess(User $user): array
-    {
-        $servers = [];
-        $model = ServerVmess::orderBy('sort', 'ASC');
-        $vmess = $model->get();
-        foreach ($vmess as $key => $v) {
-            if (!$v['show']) continue;
-            $vmess[$key]['type'] = 'vmess';
-            if (!in_array(TrafficCreditService::effectiveGroupId($user), $vmess[$key]['group_id'])) continue;
-            if (strpos($vmess[$key]['port'], '-') !== false) {
-                $vmess[$key]['port'] = Helper::randomPort($vmess[$key]['port']);
-            }
-            if ($vmess[$key]['parent_id']) {
-                $vmess[$key]['last_check_at'] = Cache::get(CacheKey::get('SERVER_VMESS_LAST_CHECK_AT', $vmess[$key]['parent_id']));
-            } else {
-                $vmess[$key]['last_check_at'] = Cache::get(CacheKey::get('SERVER_VMESS_LAST_CHECK_AT', $vmess[$key]['id']));
-            }
-            $servers[] = $vmess[$key]->toArray();
-        }
-
-
-        return $servers;
-    }
-
-    public function getAvailableTrojan(User $user): array
-    {
-        $servers = [];
-        $model = ServerTrojan::orderBy('sort', 'ASC');
-        $trojan = $model->get();
-        foreach ($trojan as $key => $v) {
-            if (!$v['show']) continue;
-            $trojan[$key]['type'] = 'trojan';
-            if (!in_array(TrafficCreditService::effectiveGroupId($user), $trojan[$key]['group_id'])) continue;
-            if (strpos($trojan[$key]['port'], '-') !== false) {
-                $trojan[$key]['port'] = Helper::randomPort($trojan[$key]['port']);
-            }
-            if ($trojan[$key]['parent_id']) {
-                $trojan[$key]['last_check_at'] = Cache::get(CacheKey::get('SERVER_TROJAN_LAST_CHECK_AT', $trojan[$key]['parent_id']));
-            } else {
-                $trojan[$key]['last_check_at'] = Cache::get(CacheKey::get('SERVER_TROJAN_LAST_CHECK_AT', $trojan[$key]['id']));
-            }
-            $servers[] = $trojan[$key]->toArray();
-        }
-        return $servers;
-    }
-
-    public function getAvailableTuic(User $user)
-    {
-        $availableServers = [];
-        $model = ServerTuic::orderBy('sort', 'ASC');
-        $servers = $model->get()->keyBy('id');
-        foreach ($servers as $key => $v) {
-            if (!$v['show']) continue;
-            $servers[$key]['type'] = 'tuic';
-            $servers[$key]['last_check_at'] = Cache::get(CacheKey::get('SERVER_TUIC_LAST_CHECK_AT', $v['id']));
-            if (!in_array(TrafficCreditService::effectiveGroupId($user), $v['group_id'])) continue;
-            if (isset($servers[$v['parent_id']])) {
-                $servers[$key]['last_check_at'] = Cache::get(CacheKey::get('SERVER_TUIC_LAST_CHECK_AT', $v['parent_id']));
-                $servers[$key]['created_at'] = $servers[$v['parent_id']]['created_at'];
-            }
-            $availableServers[] = $servers[$key]->toArray();
-        }
-        return $availableServers;
-    }
-
-    public function getAvailableHysteria(User $user)
-    {
-        $availableServers = [];
-        $model = ServerHysteria::orderBy('sort', 'ASC');
-        $servers = $model->get()->keyBy('id');
-        foreach ($servers as $key => $v) {
-            if (!$v['show']) continue;
-            $servers[$key]['type'] = 'hysteria';
-            $servers[$key]['last_check_at'] = Cache::get(CacheKey::get('SERVER_HYSTERIA_LAST_CHECK_AT', $v['id']));
-            if (!in_array(TrafficCreditService::effectiveGroupId($user), $v['group_id'])) continue;
-            if (isset($servers[$v['parent_id']])) {
-                $servers[$key]['last_check_at'] = Cache::get(CacheKey::get('SERVER_HYSTERIA_LAST_CHECK_AT', $v['parent_id']));
-                $servers[$key]['created_at'] = $servers[$v['parent_id']]['created_at'];
-            }
-            $servers[$key]['server_key'] = Helper::getServerKey($servers[$key]['created_at'], 16);
-            $availableServers[] = $servers[$key]->toArray();
-        }
-        return $availableServers;
-    }
-
-    public function getAvailableShadowsocks(User $user)
-    {
-        $servers = [];
-        $model = ServerShadowsocks::orderBy('sort', 'ASC');
-        $shadowsocks = $model->get()->keyBy('id');
-        foreach ($shadowsocks as $key => $v) {
-            if (!$v['show']) continue;
-            $shadowsocks[$key]['type'] = 'shadowsocks';
-            $shadowsocks[$key]['last_check_at'] = Cache::get(CacheKey::get('SERVER_SHADOWSOCKS_LAST_CHECK_AT', $v['id']));
-            if (!in_array(TrafficCreditService::effectiveGroupId($user), $v['group_id'])) continue;
-            if (strpos($v['port'], '-') !== false) {
-                $shadowsocks[$key]['port'] = Helper::randomPort($v['port']);
-            }
-            if (isset($shadowsocks[$v['parent_id']])) {
-                $shadowsocks[$key]['last_check_at'] = Cache::get(CacheKey::get('SERVER_SHADOWSOCKS_LAST_CHECK_AT', $v['parent_id']));
-                $shadowsocks[$key]['created_at'] = $shadowsocks[$v['parent_id']]['created_at'];
-            }
-            if ($v['obfs'] === 'http') {
-                $shadowsocks[$key]['obfs'] = 'http';
-                $shadowsocks[$key]['obfs-host'] = $v['obfs_settings']['host'];
-                $shadowsocks[$key]['obfs-path'] = $v['obfs_settings']['path'];
-            }
-            $servers[] = $shadowsocks[$key]->toArray();
-        }
-        return $servers;
-    }
-
-    public function getAvailableAnyTLS(User $user)
-    {
-        $servers = [];
-        $model = ServerAnytls::orderBy('sort', 'ASC');
-        $anytls = $model->get()->keyBy('id');
-        foreach ($anytls as $key => $v) {
-            if (!$v['show']) continue;
-            $anytls[$key]['type'] = 'anytls';
-            $anytls[$key]['last_check_at'] = Cache::get(CacheKey::get('SERVER_ANYTLS_LAST_CHECK_AT', $v['id']));
-            if (!in_array(TrafficCreditService::effectiveGroupId($user), $v['group_id'])) continue;
-            if (strpos($v['port'], '-') !== false) {
-                $anytls[$key]['port'] = Helper::randomPort($v['port']);
-            }
-            if (isset($anytls[$v['parent_id']])) {
-                $anytls[$key]['last_check_at'] = Cache::get(CacheKey::get('SERVER_ANYTLS_LAST_CHECK_AT', $v['parent_id']));
-                $anytls[$key]['created_at'] = $anytls[$v['parent_id']]['created_at'];
-            }
-            $servers[] = $anytls[$key]->toArray();
-        }
-        return $servers;
-    }
-
-    public function getAvailableV2node(User $user)
-    {
-        $servers = [];
-        $model = ServerV2node::orderBy('sort', 'ASC');
+        if (!in_array($type, ['v2node', 'v2box'], true)) throw new \InvalidArgumentException('Unsupported node type');
+        $modelClass = $type === 'v2box' ? ServerV2box::class : ServerV2node::class;
+        $model = $modelClass::orderBy('sort', 'ASC');
         $v2node = $model->get()->keyBy('id');
         foreach ($v2node as $key => $v) {
             if (!$v['show']) continue;
-            $v2node[$key]['type'] = 'v2node';
-            $v2node[$key]['last_check_at'] = Cache::get(CacheKey::get('SERVER_V2NODE_LAST_CHECK_AT', $v['id']));
+            $v2node[$key]['type'] = $type;
+            $v2node[$key]['last_check_at'] = Cache::get(CacheKey::get('SERVER_' . strtoupper($type) . '_LAST_CHECK_AT', $v['id']));
             if (!in_array(TrafficCreditService::effectiveGroupId($user), $v['group_id'])) continue;
             if (isset($v2node[$v['parent_id']])) {
-                $v2node[$key]['last_check_at'] = Cache::get(CacheKey::get('SERVER_V2NODE_LAST_CHECK_AT', $v['parent_id']));
+                $v2node[$key]['last_check_at'] = Cache::get(CacheKey::get('SERVER_' . strtoupper($type) . '_LAST_CHECK_AT', $v['parent_id']));
                 $v2node[$key]['created_at'] = $v2node[$v['parent_id']]['created_at'];
             }
             if (isset($v2node[$key]['tls_settings'])) {
                 $v2node[$key]['tls_settings'] = array_diff_key(
                     $v2node[$key]['tls_settings'],
-                    array_flip(array_filter(['private_key', 'ech_key'], function($k) use ($v2node, $key) {
+                    array_flip(array_filter(['private_key', 'ech_key', 'tls_key'], function($k) use ($v2node, $key) {
                         return isset($v2node[$key]['tls_settings'][$k]);
                     }))
                 );
@@ -225,14 +49,8 @@ class ServerService
     public function getAvailableServers(User $user)
     {
         $servers = array_merge(
-            $this->getAvailableShadowsocks($user),
-            $this->getAvailableVmess($user),
-            $this->getAvailableTrojan($user),
-            $this->getAvailableTuic($user),
-            $this->getAvailableHysteria($user),
-            $this->getAvailableVless($user),
-            $this->getAvailableAnyTLS($user),
-            $this->getAvailableV2node($user)
+            $this->getAvailableV2node($user),
+            $this->getAvailableV2node($user, 'v2box')
         );
         $tmp = array_column($servers, 'sort');
         array_multisort($tmp, SORT_ASC, $servers);
@@ -292,93 +110,15 @@ class ServerService
         }
     }
 
-    public function getAllShadowsocks()
+    public function getAllV2node(string $type = 'v2node')
     {
-        $servers = ServerShadowsocks::orderBy('sort', 'ASC')
+        if (!in_array($type, ['v2node', 'v2box'], true)) throw new \InvalidArgumentException('Unsupported node type');
+        $modelClass = $type === 'v2box' ? ServerV2box::class : ServerV2node::class;
+        $servers = $modelClass::orderBy('sort', 'ASC')
             ->get()
             ->toArray();
         foreach ($servers as $k => $v) {
-            $servers[$k]['type'] = 'shadowsocks';
-        }
-        return $servers;
-    }
-
-    public function getAllVMess()
-    {
-        $servers = ServerVmess::orderBy('sort', 'ASC')
-            ->get()
-            ->toArray();
-        foreach ($servers as $k => $v) {
-            $servers[$k]['type'] = 'vmess';
-        }
-        return $servers;
-    }
-
-    public function getAllVLess()
-    {
-        $servers = ServerVless::orderBy('sort', 'ASC')
-            ->get()
-            ->toArray();
-        foreach ($servers as $k => $v) {
-            $servers[$k]['type'] = 'vless';
-        }
-        return $servers;
-    }
-
-    public function getAllTrojan()
-    {
-        $servers = ServerTrojan::orderBy('sort', 'ASC')
-            ->get()
-            ->toArray();
-        foreach ($servers as $k => $v) {
-            $servers[$k]['type'] = 'trojan';
-        }
-        return $servers;
-    }
-
-    public function getAllTuic()
-    {
-        $servers = ServerTuic::orderBy('sort', 'ASC')
-            ->get()
-            ->toArray();
-        foreach ($servers as $k => $v) {
-            $servers[$k]['type'] = 'tuic';
-        }
-        return $servers;
-    }
-
-    public function getAllHysteria()
-    {
-        $servers = ServerHysteria::orderBy('sort', 'ASC')
-            ->get()
-            ->toArray();
-        foreach ($servers as $k => $v) {
-            $servers[$k]['type'] = 'hysteria';
-        }
-        return $servers;
-    }
-
-    public function getAllAnyTLS()
-    {
-        $servers = ServerAnytls::orderBy('sort', 'ASC')
-            ->get()
-            ->toArray();
-        foreach ($servers as $k => $v) {
-            $servers[$k]['type'] = 'anytls';
-            if (isset($v['padding_scheme'])) {
-                $servers[$k]['padding_scheme'] = json_encode($v['padding_scheme']);
-            }
-        }
-        return $servers;
-    }
-
-    public function getAllV2node()
-    {
-        $servers = ServerV2node::orderBy('sort', 'ASC')
-            ->get()
-            ->toArray();
-        foreach ($servers as $k => $v) {
-            $servers[$k]['type'] = 'v2node';
+            $servers[$k]['type'] = $type;
             if (isset($v['padding_scheme'])) {
                 $servers[$k]['padding_scheme'] = json_encode($v['padding_scheme']);
             }
@@ -389,7 +129,9 @@ class ServerService
             $apiHostArg = escapeshellarg((string) $apiHost);
             $apiKeyArg = escapeshellarg((string) $apiKey);
             $servers[$k]['install_command'] = sprintf(
-                'wget -N https://raw.githubusercontent.com/wyx2685/v2node/master/script/install.sh && bash install.sh --api-host %s --node-id %d --api-key %s',
+                $type === 'v2box'
+                    ? 'curl -fSL https://raw.githubusercontent.com/lenaanderson5566-ops/v2box/main/script/install.sh -o install-v2box.sh && bash install-v2box.sh --node-type v2box --api-host %s --node-id %d --api-key %s'
+                    : 'wget -N https://raw.githubusercontent.com/wyx2685/v2node/master/script/install.sh && bash install.sh --api-host %s --node-id %d --api-key %s',
                 $apiHostArg,
                 $nodeId,
                 $apiKeyArg
@@ -418,14 +160,8 @@ class ServerService
     public function getAllServers()
     {
         $servers = array_merge(
-            $this->getAllShadowsocks(),
-            $this->getAllVMess(),
-            $this->getAllTrojan(),
-            $this->getAllTuic(),
-            $this->getAllHysteria(),
-            $this->getAllVLess(),
-            $this->getAllAnyTLS(),
-            $this->getAllV2node()
+            $this->getAllV2node(),
+            $this->getAllV2node('v2box')
         );
         $this->mergeData($servers);
         $tmp = array_column($servers, 'sort');
@@ -451,24 +187,10 @@ class ServerService
     public function getServer($serverId, $serverType)
     {
         switch ($serverType) {
+            case 'v2box':
+                return ServerV2box::find($serverId);
             case 'v2node':
                 return ServerV2node::find($serverId);
-            case 'vmess':
-                return ServerVmess::find($serverId);
-            case 'shadowsocks':
-                return ServerShadowsocks::find($serverId);
-            case 'trojan':
-                return ServerTrojan::find($serverId);
-            case 'tuic':
-                return ServerTuic::find($serverId);
-            case 'hysteria':
-                return ServerHysteria::find($serverId);
-            case 'vless':
-                return ServerVless::find($serverId);
-            case 'anytls':
-                return ServerAnytls::find($serverId);
-            default:
-                return false;
         }
     }
 }

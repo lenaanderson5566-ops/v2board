@@ -4,7 +4,7 @@ Payment methods expose category (regular/crypto), asset, assetIconUrl, network, 
 
 Account notification preference: `GET/PATCH /me` exposes boolean `serviceNotifications`, mapped to shared `remind_service` (default true).
 
-Admin, operations/risk, staff and node APIs retain all existing paths and schemas. Legacy symbols are historical mappings, not a list of callable routes. Only the explicit retained-endpoints allowlist remains callable. See contracts.json for exact field projections.
+Admin, operations/risk, staff and supported node APIs retain their API versions. Retired standalone node management and communication routes are removed as described below. Legacy symbols are historical mappings, not a list of callable routes. Only the explicit retained-endpoints allowlist remains callable. See contracts.json for exact field projections.
 
 | Existing symbol | V10 method and path | Permission | Resource |
 |---|---|---|---|
@@ -86,3 +86,7 @@ Admin, operations/risk, staff and node APIs retain all existing paths and schema
 | `New native resource` | `POST /api/v10/auth/browser-session` | public | browserSession |
 | `New native resource` | `DELETE /api/v10/auth/browser-session` | public | scalar |
 | `New native resource` | `GET /api/v10/public/fastai/entrypoints` | public | signedEntrypoints |
+
+V2Box support: administrative `server/v2box/{save,update,copy,drop}` routes use the existing admin prefix. Node config `/api/v2/server/config` and retained UniProxy endpoints accept `node_type=v2box`. V10 subscription paths and resource shapes are unchanged; stable node identities distinguish `v2box` from `v2node`. See [V2Box integration](../v2box.md).
+
+Standalone legacy node types (vmess, vless, shadowsocks, trojan, hysteria, tuic, anytls) are retired as management types. Only v2node/v2box are listed, subscribed, sorted and accepted by node communication. Underlying protocols remain available within these two backends. Removed old admin CRUD routes and Deepbwork/Tidalab routes; historical tables and accounting records are retained. Node communication now uses explicit GET user/alivelist/config and POST push/alive routes.

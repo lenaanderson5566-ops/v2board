@@ -25,17 +25,7 @@ $assert($normalize(['city_code'=>'圣何塞'])['city_code']==='san-jose', 'Catal
 $assert($normalize(['region_code'=>' us '])['region_code']==='US', 'Country code normalized');
 $assert($normalize([])===[], 'Omitted fields stay omitted');
 $assert($normalize(['city_code'=>['invalid']])===[], 'Invalid types retained for validator rejection');
-foreach (['Shadowsocks', 'Trojan', 'Vmess'] as $protocol) {
-    $class = 'App\\Http\\Requests\\Admin\\Server'.$protocol.'Save';
-    $request = $class::create('/', 'POST', ['city_code'=>'San Jose']);
-    $prepare = new ReflectionMethod($request, 'prepareForValidation');
-    $prepare->setAccessible(true);
-    $prepare->invoke($request);
-    $assert($request->input('city_code')==='san-jose', $protocol.' request normalizes before validation');
-    $validator = Illuminate\Support\Facades\Validator::make(['city_code'=>'未知城市'], ['city_code'=>$request->rules()['city_code']], $request->messages());
-    $assert($validator->fails() && $validator->errors()->first('city_code')!== 'validation.regex', $protocol.' shows readable city error');
-}
-foreach (['anytls','hysteria','tuic','v2node','vless'] as $protocol) {
+foreach (['v2node','v2box'] as $protocol) {
     $response = app(App\Http\Controllers\V1\Admin\ConsoleController::class)->nodeSchema(Illuminate\Http\Request::create('/', 'GET', ['type'=>$protocol]));
     $schema = json_decode($response->getContent(), true)['data'];
     $assert(isset($schema['city_code'], $schema['region_code'], $schema['rate']), $protocol.' schema retained');

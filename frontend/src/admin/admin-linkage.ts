@@ -217,11 +217,17 @@ export function nodeFields(
     values: Row,
 ): Field[] {
     const protocol =
-        type === "v2node" ? String(values.protocol || "shadowsocks") : type;
+        ["v2node", "v2box"].includes(type) ? String(values.protocol || "shadowsocks") : type;
     const tls = Number(values.tls || 0),
         network = values.network || "tcp";
     return fields
         .filter((f) => {
+            if (type === "v2box" && (
+                ["encryption", "encryption_settings", "trusted_x_forwarded_for"].includes(f.key) ||
+                f.key.startsWith("encryption_settings.") ||
+                f.key.startsWith("tls_settings.ech") ||
+                ["tls_settings.xver", "tls_settings.reject_unknown_sni", "tls_settings.mldsa65Seed", "network_settings.acceptProxyProtocol"].includes(f.key)
+            )) return false;
             const [root, ...parts] = f.key.split(".");
             const parameter = parts.join(".");
             if (["tls_settings", "tlsSettings"].includes(root) && parameter) {
@@ -236,7 +242,7 @@ export function nodeFields(
                         "pinned_peer_cert_sha256",
                     ].includes(parameter)
                 ) {
-                    if (type !== "v2node") return false;
+                    if (!["v2node", "v2box"].includes(type)) return false;
                     if (tls !== 1) return false;
                     const mode = values[root + ".cert_mode"] || "self";
                     if (["provider", "dns_env"].includes(parameter))
@@ -269,7 +275,7 @@ export function nodeFields(
                 parameter
             ) {
                 if (
-                    type === "v2node" &&
+                    ["v2node", "v2box"].includes(type) &&
                     ["shadowsocks", "tuic", "hysteria2", "anytls"].includes(
                         protocol,
                     )
@@ -295,7 +301,7 @@ export function nodeFields(
             if (["tls_settings", "tlsSettings"].includes(f.key)) return tls > 0;
             if (["network_settings", "networkSettings"].includes(f.key))
                 return (
-                    type !== "v2node" ||
+                    !["v2node", "v2box"].includes(type) ||
                     !["shadowsocks", "tuic", "hysteria2", "anytls"].includes(
                         protocol,
                     )
@@ -314,7 +320,7 @@ export function nodeFields(
                 );
             if (["obfs_settings", "obfs_password"].includes(f.key))
                 return Boolean(values.obfs);
-            if (type === "v2node") {
+            if (["v2node", "v2box"].includes(type)) {
                 if (["cipher"].includes(f.key))
                     return protocol === "shadowsocks";
                 if (
@@ -434,7 +440,7 @@ export function nodeFields(
                 return { ...f, type: "number", min: 0 };
             if (f.key === "server_port")
                 return { ...f, type: "number", min: 1, max: 65535, step: 1 };
-            if (f.key === "cipher" && type === "v2node")
+            if (f.key === "cipher" && ["v2node", "v2box"].includes(type))
                 return {
                     ...f,
                     type: "select",
@@ -460,17 +466,17 @@ export function nodeFields(
                 };
             if (
                 f.key === "network" &&
-                (!f.options?.length || type === "v2node")
+                (!f.options?.length || ["v2node", "v2box"].includes(type))
             )
                 return {
                     ...f,
                     type: "select",
-                    options: (type === "v2node" &&
+                    options: (["v2node", "v2box"].includes(type) &&
                     ["shadowsocks", "tuic", "hysteria2", "anytls"].includes(
                         protocol,
                     )
                         ? ["tcp"]
-                        : ["tcp", "ws", "grpc", "http", "httpupgrade", "xhttp"]
+                        : type === "v2box" ? ["tcp", "ws", "grpc", "httpupgrade"] : ["tcp", "ws", "grpc", "http", "httpupgrade", "xhttp"]
                     ).map((v) => [v, v]),
                 };
             if (["disable_sni", "zero_rtt_handshake"].includes(f.key))

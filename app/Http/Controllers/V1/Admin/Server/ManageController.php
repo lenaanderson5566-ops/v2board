@@ -1,8 +1,9 @@
 <?php
-
 namespace App\Http\Controllers\V1\Admin\Server;
 
 use App\Http\Controllers\Controller;
+use App\Models\ServerV2node;
+use App\Models\ServerV2box;
 use App\Services\ServerService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -11,50 +12,28 @@ class ManageController extends Controller
 {
     public function getNodes(Request $request)
     {
-        $serverService = new ServerService();
-        return response([
-            'data' => $serverService->getAllServers()
-        ]);
+        return response(['data' => (new ServerService())->getAllServers()]);
     }
 
     public function sort(Request $request)
     {
-        ini_set('post_max_size', '5m');
-        $params = $request->only(
-            'shadowsocks',
-            'vmess',
-            'vless',
-            'trojan',
-            'tuic',
-            'hysteria',
-            'anytls',
-            'v2node'
-        ) ?? [];
-        if (empty($params)) {
-            $params = [
-                'shadowsocks' => $_POST['shadowsocks'] ?? null,
-                'vmess'       => $_POST['vmess'] ?? null,
-                'vless'       => $_POST['vless'] ?? null,
-                'trojan'      => $_POST['trojan'] ?? null,
-                'tuic'        => $_POST['tuic'] ?? null,
-                'hysteria'    => $_POST['hysteria'] ?? null,
-                'anytls'      => $_POST['anytls'] ?? null,
-                'v2node'      => $_POST['v2node'] ?? null,
-            ];
-        }
-        DB::beginTransaction();
-        foreach ($params as $k => $v) {
-            $model = 'App\\Models\\Server' . ucfirst($k);
-            foreach($v as $id => $sort) {
-                if (!$model::find($id)->update(['sort' => $sort])) {
-                    DB::rollBack();
-                    abort(500, '保存失败');
+        $models = ['v2node' => ServerV2node::class, 'v2box' => ServerV2box::class];
+        abort_unless(!array_diff(array_keys($request->all()), array_keys($models)), 422, '不支持的节点类型');
+        $params = $request->validate([
+            'v2node' => 'sometimes|array',
+            'v2node.*' => 'integer|min:0',
+            'v2box' => 'sometimes|array',
+            'v2box.*' => 'integer|min:0',
+        ]);
+        DB::transaction(function () use ($params, $models) {
+            foreach ($params as $type => $items) {
+                foreach ($items as $id => $sort) {
+                    $server = $models[$type]::find($id);
+                    abort_unless($server, 422, '节点不存在');
+                    $server->update(['sort' => $sort]);
                 }
             }
-        }
-        DB::commit();
-        return response([
-            'data' => true
-        ]);
+        });
+        return response(['data' => true]);
     }
 }

@@ -42,7 +42,7 @@ class ClashMeta
 
         foreach ($servers as $item) {
             // Singbox-style inline adaptation: unwrap v2node
-            if (($item['type'] ?? null) === 'v2node' && isset($item['protocol'])) {
+            if (in_array(($item['type'] ?? null), ['v2node', 'v2box'], true) && isset($item['protocol'])) {
                 $item['type'] = $item['protocol'];
             }
             switch ($item['type']) {

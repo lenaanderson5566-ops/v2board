@@ -3,7 +3,7 @@
   "info": {
     "title": "FastDog user API",
     "version": "10.0.0",
-    "description": "Parallel user API. Administrative, staff, operations and node communication contracts are unchanged."
+    "description": "Parallel user API. Administrative, staff, operations and node communication remain outside V10. Subscriptions include only V2Node and V2Box nodes, using their underlying protocols. Legacy standalone node types are retired; node identities use v2node or v2box."
   },
   "servers": [
     {

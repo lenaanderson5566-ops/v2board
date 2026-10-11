@@ -51,7 +51,7 @@ class Singbox
         $proxies = [];
     
         foreach ($this->servers as $item) {
-            if ($item['type'] === 'v2node') {
+            if (in_array($item['type'], ['v2node', 'v2box'], true)) {
                 $item['type'] = $item['protocol'];
             }
             switch ($item['type']) {

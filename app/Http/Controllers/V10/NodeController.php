@@ -26,11 +26,12 @@ class NodeController extends Controller {
     }
     public function configuration(Request $request) {
         $node = $this->node($request);
-        if (!empty($node->sing_box)) {
+        $configuration = NodeV10Config::build($node);
+        if (!empty($configuration['singBox'])) {
             $features = explode(',', $request->header('X-Node-Capabilities', ''));
             abort_unless(in_array('native-routing-v1', $features, true), 409);
         }
-        return $this->cached($request, NodeV10Config::build($node));
+        return $this->cached($request, $configuration);
     }
     public function capabilities(Request $request) {
         $node = $this->node($request);

@@ -11,6 +11,8 @@ document['paths'] = {path: value for path, value in document['paths'].items() if
 document['paths'].update(node['paths'])
 document['components']['schemas'].update(node['schemas'])
 document['components']['securitySchemes']['nodeBearer'] = {'type': 'http', 'scheme': 'bearer', 'description': 'Panel server_token for V2Box machine API. Query tokens are not accepted.'}
+document['components']['securitySchemes']['nodeReportBearer'] = {'type':'http','scheme':'bearer','description':'Per-node DDNS report key. Stored hashed; cannot call other machine endpoints.'}
+
 target.write_text(json.dumps(document, ensure_ascii=False, indent=2) + '\n', encoding='utf-8')
 
 marker = '\n## V2Box node V10 API\n'

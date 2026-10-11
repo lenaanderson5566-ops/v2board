@@ -1504,6 +1504,146 @@
           }
         }
       }
+    },
+    "/server/addresses": {
+      "post": {
+        "operationId": "nodeAddresses",
+        "tags": [
+          "Node address reporting"
+        ],
+        "description": "V2Node and V2Box scoped DDNS reporting. Bearer report key identifies one configured node. Neither the Cloudflare token nor the panel server_token is accepted. Each family must be public and allowed by the binding. Missing families retain their independent freshness timestamp; reports never reset provider backoff.",
+        "security": [
+          {
+            "nodeReportBearer": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/nodeAddressReport"
+              }
+            }
+          }
+        },
+        "responses": {
+          "202": {
+            "description": "Accepted",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/nodeAddressAccepted"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "UNAUTHENTICATED",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "code",
+                    "requestId",
+                    "status"
+                  ],
+                  "properties": {
+                    "code": {
+                      "type": "string"
+                    },
+                    "requestId": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "type": "integer"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "FORBIDDEN",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "code",
+                    "requestId",
+                    "status"
+                  ],
+                  "properties": {
+                    "code": {
+                      "type": "string"
+                    },
+                    "requestId": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "type": "integer"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "VALIDATION_FAILED",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "code",
+                    "requestId",
+                    "status"
+                  ],
+                  "properties": {
+                    "code": {
+                      "type": "string"
+                    },
+                    "requestId": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "type": "integer"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "RATE_LIMITED",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "code",
+                    "requestId",
+                    "status"
+                  ],
+                  "properties": {
+                    "code": {
+                      "type": "string"
+                    },
+                    "requestId": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "type": "integer"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "schemas": {
@@ -1890,7 +2030,8 @@
           }
         },
         "singBox": {
-          "$ref": "#/components/schemas/nodeNativeConfig"
+          "$ref": "#/components/schemas/nodeNativeConfig",
+          "description": "Resolved native sing-box configuration from the V2Box-only routing catalog. Selected native rules are merged in selection order; legacy routes cannot be mixed with native rules."
         }
       },
       "required": [
@@ -1900,6 +2041,40 @@
         "singBox"
       ],
       "additionalProperties": false
+    },
+    "nodeAddressReport": {
+      "type": "object",
+      "additionalProperties": false,
+      "minProperties": 1,
+      "properties": {
+        "ipv4": {
+          "type": "string",
+          "format": "ipv4"
+        },
+        "ipv6": {
+          "type": "string",
+          "format": "ipv6"
+        }
+      }
+    },
+    "nodeAddressAccepted": {
+      "type": "object",
+      "required": [
+        "data"
+      ],
+      "properties": {
+        "data": {
+          "type": "object",
+          "required": [
+            "accepted"
+          ],
+          "properties": {
+            "accepted": {
+              "type": "boolean"
+            }
+          }
+        }
+      }
     }
   },
   "endpoints": [
@@ -1932,6 +2107,11 @@
       "method": "POST",
       "path": "/server/capabilities",
       "legacy": "New resource"
+    },
+    {
+      "legacy": "None (scoped DDNS reporter)",
+      "method": "POST",
+      "path": "/server/addresses"
     }
   ]
 }

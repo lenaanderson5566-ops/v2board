@@ -26,9 +26,10 @@ DB::beginTransaction();
 try {
     $base=['group_id'=>[999997],'name'=>'V10 node test','host'=>'example.test','port'=>'443','server_port'=>443,'listen_ip'=>'0.0.0.0','protocol'=>'vless','tls'=>0,'network'=>'tcp','network_settings'=>[],'encryption_settings'=>[],'disable_sni'=>0,'zero_rtt_handshake'=>0,'rate'=>'1','show'=>1];
     $native=['dns'=>['servers'=>[['type'=>'https','tag'=>'resolver','server'=>'1.1.1.1']],'final'=>'resolver'],'route'=>['rule_set'=>[['type'=>'inline','tag'=>'private','rules'=>[['ip_cidr'=>['127.0.0.0/8']]]]],'rules'=>[['rule_set'=>['private'],'action'=>'reject']],'final'=>'direct']];
-    $admin=new V2boxController();$admin->save(Request::create('/','POST',$base+['sing_box'=>$native]));
+    $profile=App\Models\ServerRoute::create(['backend'=>'v2box','remarks'=>'V10 native test','match'=>'[]','action'=>'sing_box','sing_box'=>$native]);
+    $admin=new V2boxController();$admin->save(Request::create('/','POST',$base+['route_id'=>[$profile->id]]));
     $node=ServerV2box::where('name',$base['name'])->firstOrFail();
-    $assert($node->sing_box===$native,'Native config persisted');
+    $assert(App\Services\NodeRouteService::forNode($node)===$native,'Native config persisted');
     $nodeId=$node->id;
     $root='/api/v10/server';
     $r=$call('POST',$root.'/capabilities',['coreVersion'=>'v1.14.3','features'=>['native-routing-v1']]);
@@ -41,6 +42,12 @@ try {
     $assert(is_object(json_decode($r->getContent())->data->networkSettings) && is_object(json_decode($r->getContent())->data->encryptionSettings),'Empty protocol settings encoded as objects');
     $assert($call('GET',$root.'/configuration',[],['HTTP_IF_NONE_MATCH'=>$r->headers->get('ETag')])->getStatusCode()===304,'Config ETag');
     $assert($call('GET',$root.'/configuration',[],['HTTP_X_NODE_CAPABILITIES'=>''])->getStatusCode()===409,'Capability guard');
+    $tag=$r->headers->get('ETag');
+    $updated=$native;$updated['route']['rules'][]=['domain_suffix'=>['updated.test'],'action'=>'reject'];
+    $profile->update(['sing_box'=>$updated]);
+    $changed=$call('GET',$root.'/configuration',[],['HTTP_IF_NONE_MATCH'=>$tag]);
+    $assert($changed->getStatusCode()===200 && $changed->headers->get('ETag')!==$tag,'Catalog rule edit changes configuration ETag');
+    $profile->update(['sing_box'=>$native]);
     $r=$call('GET',$root.'/users');$assert($r->getStatusCode()===200 && json_decode($r->getContent(),true)['data']===[],'Empty user table');
     $assert($call('GET',$root.'/users',[],['HTTP_IF_NONE_MATCH'=>$r->headers->get('ETag')])->getStatusCode()===304,'User ETag');
     foreach (['','Bearer wrong'] as $auth) {
@@ -71,11 +78,11 @@ try {
     $assert(json_decode($legacy->getContent(),true)['protocol']==='vless','Legacy configuration still works');
     $legacyUsers=(new App\Http\Controllers\V1\Server\UniProxyController($request))->user($request);
     $assert(isset(json_decode($legacyUsers->getContent(),true)['users']),'Legacy users still work');
-    $route = App\Models\ServerRoute::create(['remarks'=>'V10 test','match'=>json_encode(['domain:example.test']),'action'=>'block']);
+    $route = App\Models\ServerRoute::create(['backend'=>'v2box','remarks'=>'V10 test','match'=>json_encode(['domain:example.test']),'action'=>'block']);
+    if ($fixture=getenv('NODE_V10_FIXTURE')) file_put_contents($fixture,$call('GET',$root.'/configuration')->getContent());
     $node->route_id=[$route->id];$node->save();
     $r=$call('GET',$root.'/configuration');
     $assert($r->getStatusCode()===200 && json_decode($r->getContent(),true)['data']['routes'][0]['action']==='block','Legacy routes projected into V10');
-    if ($fixture=getenv('NODE_V10_FIXTURE')) file_put_contents($fixture,$r->getContent());
     $user=new App\Models\User(['email'=>'node-v10-test@example.test','password'=>'unused','uuid'=>'b831381d-6324-4d53-ad4f-8cda48b30811','token'=>'node-v10-test','group_id'=>999997,'expired_at'=>null,'transfer_enable'=>1024,'u'=>0,'d'=>0,'banned'=>0]);$user->save();
     $r=$call('GET',$root.'/users');$list=json_decode($r->getContent(),true)['data'];
     $assert(count($list)===1 && $list[0]['uuid']===$user->uuid && array_key_exists('speedLimit',$list[0]),'User resource projection');

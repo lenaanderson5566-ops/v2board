@@ -86,3 +86,5 @@
 \Illuminate\Support\Facades\Route::post('server/traffic', [\App\Http\Controllers\V10\NodeController::class, 'traffic'])->middleware(\App\Http\Middleware\NodeV10::class)->name('v10.server.traffic');
 \Illuminate\Support\Facades\Route::post('server/online-users', [\App\Http\Controllers\V10\NodeController::class, 'onlineUsers'])->middleware(\App\Http\Middleware\NodeV10::class)->name('v10.server.onlineUsers');
 \Illuminate\Support\Facades\Route::post('server/capabilities', [\App\Http\Controllers\V10\NodeController::class, 'capabilities'])->middleware(\App\Http\Middleware\NodeV10::class)->name('v10.server.capabilities');
+
+\Illuminate\Support\Facades\Route::post('/server/addresses', [\App\Http\Controllers\V10\NodeAddressController::class, 'store'])->middleware('throttle:12,1')->name('nodeAddresses');

@@ -18,6 +18,18 @@ class V2boxFeatures {
         if (strlen(json_encode($value)) > 262144) self::fail('Configuration exceeds 256 KiB');
         self::keys($value, ['dns','route','outbounds']);
         self::walk($value);
+        foreach (['outbounds'=> $value['outbounds'] ?? [], 'dns.servers'=>$value['dns']['servers'] ?? [], 'dns.rules'=>$value['dns']['rules'] ?? [], 'route.rules'=>$value['route']['rules'] ?? [], 'route.rule_set'=>$value['route']['rule_set'] ?? []] as $path=>$items) {
+            if (!is_array($items) || array_values($items) !== $items) self::fail($path.' must be an array');
+            $tags = [];
+            foreach ($items as $item) {
+                if (!is_array($item) || array_values($item) === $item) self::fail($path.' entries must be objects');
+                if (in_array($path, ['outbounds','dns.servers','route.rule_set'], true)) {
+                    $tag = $item['tag'] ?? null;
+                    if (!is_string($tag) || $tag === '' || isset($tags[$tag])) self::fail('Missing or duplicate tag in '.$path);
+                    $tags[$tag] = true;
+                }
+            }
+        }
         if (isset($value['dns'])) {
             if (!is_array($value['dns'])) self::fail('dns must be an object');
             self::keys($value['dns'], ['servers','rules','final','strategy','disable_cache','disable_expire','independent_cache','cache_capacity','client_subnet']);

@@ -1,3 +1,5 @@
+import { AdminSystemLogs } from "./AdminSystemLogs";
+import { AdminDDNS } from "./AdminDDNS";
 import { RiskOverview, RiskRules } from "./AdminRisk";
 import { AdminClientReleases } from "./AdminClientReleases";
 import { AdminBanners } from "./AdminBanners";
@@ -16,6 +18,8 @@ import { AdminTickets, ContentPage } from "./admin-content";
 import { UsersPage } from "./admin-users";
 import { Overview } from "./admin-dashboard";
 export default function AdminContent({ current }: { current: string }) {
+    if (current === "system-log") return <AdminSystemLogs />;
+    if (current === "ddns") return <AdminDDNS />;
     if (current === "users") return <UsersPage />;
     if (current === "orders") return <OrdersPage />;
     if (current === "knowledge" || current === "notices")

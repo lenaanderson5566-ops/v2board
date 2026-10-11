@@ -67,7 +67,7 @@ class NodeV10Config {
         foreach (['network_settings', 'encryption_settings'] as $key) {
             if (is_array($source[$key] ?? null)) $source[$key] = (object) $source[$key];
         }
-        $source['sing_box'] = $node->sing_box ?: null;
+        $source['sing_box'] = \App\Services\NodeRouteService::forNode($node);
         if (isset($source['sing_box']['route'])) $source['sing_box']['route'] = (object) $source['sing_box']['route'];
         return self::fields($source, self::FIELDS);
     }

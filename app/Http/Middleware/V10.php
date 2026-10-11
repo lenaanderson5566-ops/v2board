@@ -50,7 +50,8 @@ class V10
             $problem=$response->getStatusCode()>=400 ? json_decode($response->getContent(),true) : [];
             $context+=['userId'=>$request->attributes->get('v10.userId'), 'clientVersion'=>$request->attributes->get('client.version'), 'platform'=>$request->attributes->get('client.platform'), 'outcome'=>$response->getStatusCode()<300 ? 'success' : 'failed', 'code'=>$problem['code'] ?? null];
         }
-        Log::info($request->is('api/v10/me/client-config') ? 'Client configuration request' : 'API request',$context);
+        // Successful IP heartbeats are represented by DDNS last-seen timestamps.
+        if (!$request->is('api/v10/server/addresses') || $response->getStatusCode() >= 400) Log::info($request->is('api/v10/me/client-config') ? 'Client configuration request' : 'API request',$context);
         return $response;
     }
     public function exceptionResponse($request, \Throwable $e)

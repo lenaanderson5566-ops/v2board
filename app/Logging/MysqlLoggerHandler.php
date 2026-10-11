@@ -1,7 +1,6 @@
 <?php
 namespace App\Logging;
 
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Monolog\Handler\AbstractProcessingHandler;
 use Monolog\Logger;
@@ -17,30 +16,29 @@ class MysqlLoggerHandler extends AbstractProcessingHandler
     protected function write(array $record): void
     {
         try{
-            if(isset($record['context']['exception']) && is_object($record['context']['exception'])){
-                $record['context']['exception'] = (array)$record['context']['exception'];
-            }
-            $v10 = request()->is('api/v10', 'api/v10/*');
-            $record['request_data'] = $v10 ? [] : (request()->all() ?? []);
+            // Never collect request bodies, query values, exception objects or arbitrary context.
+            $context = array_intersect_key($record['context'] ?? [], array_flip(['requestId','route','method','status','durationMs']));
+            $context = array_filter($context, 'is_scalar');
             $route = request()->route();
+            $safeTitles = ['API request','Admin operation','Client configuration request','V10 request failed'];
             $log = [
-                'title' => $record['message'],
+                'title' => in_array($record['message'], $safeTitles, true) ? $record['message'] : (isset($record['context']['exception']) ? 'Application exception' : 'Application event'),
                 'level' => $record['level_name'],
                 'host' => $record['request_host'] ?? request()->getSchemeAndHttpHost(),
-                'uri' => $v10 ? ($route ? '/'.$route->uri() : request()->getPathInfo()) : ($record['request_uri'] ?? request()->getRequestUri()),
+                'uri' => $route ? '/'.$route->uri() : 'unmatched',
                 'method' => $record['request_method'] ?? request()->getMethod(),
                 'ip' => request()->getClientIp(),
-                'data' => json_encode($record['request_data']) ,
-                'context' => isset($record['context']) ? json_encode($record['context']) : '',
-                'created_at' => strtotime($record['datetime']),
-                'updated_at' => strtotime($record['datetime']),
+                'data' => '[]' ,
+                'context' => json_encode($context),
+                'created_at' => $record['datetime']->getTimestamp(),
+                'updated_at' => $record['datetime']->getTimestamp(),
             ];
 
-            LogModel::insert(
-                $log
-            );
-        }catch (\Exception $e){
-            Log::channel('daily')->error($e->getMessage().$e->getFile().$e->getTraceAsString());
+            $log += \App\Services\SystemLogService::metadata($context);
+            $log['route_template'] = $route ? substr('/'.$route->uri(),0,512) : 'unmatched';
+            LogModel::insert($log);
+        }catch (\Throwable $e){
+            Log::channel('daily')->error('Database log write failed');
         }
     }
 }

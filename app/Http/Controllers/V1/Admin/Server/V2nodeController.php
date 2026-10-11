@@ -25,6 +25,7 @@ class V2nodeController extends Controller
         $params = $request->validate([
             'group_id' => 'required',
             'route_id' => 'nullable|array',
+            'route_id.*' => 'integer|min:1|distinct',
             'name' => 'required',
             'parent_id' => 'nullable|integer',
             'host' => 'required',
@@ -59,6 +60,11 @@ class V2nodeController extends Controller
             'sort' => 'nullable'
         ], \App\Services\NodeDisplayService::validationMessages());
         $params = array_merge($params, $this->extraParams($request));
+        $backend = $this->model === \App\Models\ServerV2box::class ? 'v2box' : 'v2node';
+        if (array_key_exists('route_id', $params)) {
+            $selected = \App\Services\NodeRouteService::selected($params['route_id'] ?? [], $backend);
+            if ($backend === 'v2box') \App\Services\NodeRouteService::native($selected);
+        }
         if ($params['protocol'] == 'anytls' && $params['tls'] === 0) {
             $params['tls'] = 1;
         }
@@ -244,6 +250,12 @@ class V2nodeController extends Controller
 
         if ($params['protocol'] == 'shadowsocks' && !isset($params['cipher'])) {
             $params['cipher'] = 'aes-128-gcm';
+        }
+
+        if ($request->has('source_type') || $request->has('source_id')) {
+            $conversion = $request->validate(['source_type'=>'required|in:v2node,v2box', 'source_id'=>'required|integer|min:1', 'id'=>'prohibited']);
+            $server = \App\Services\Actions\ConvertNodeBackend::run($conversion['source_type'], (int)$conversion['source_id'], $backend, $params);
+            return response(['data'=>['id'=>$server->id, 'type'=>$backend]]);
         }
 
         if ($request->input('id')) {

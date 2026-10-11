@@ -10,6 +10,7 @@ class ServerRoute extends Model
     protected $dateFormat = 'U';
     protected $guarded = ['id'];
     protected $casts = [
+        'sing_box' => 'array',
         'created_at' => 'timestamp',
         'updated_at' => 'timestamp',
     ];

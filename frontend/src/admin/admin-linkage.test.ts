@@ -1,4 +1,4 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi } from "vitest";
 import type { Field } from "../shared/ui";
 import {
     settingsFields,
@@ -14,6 +14,7 @@ import {
 import {
     nodeSettingsFields,
     nodeSettingsInitial,
+    nodeBackendInitial,
     nodeSettingsPayload,
 } from "./node-settings";
 const fields = (...keys: string[]): Field[] =>
@@ -261,9 +262,32 @@ it("links Naive to HTTPS/HTTP2 and trusted certificate modes", () => {
     expect(list.some(f => ["tls_settings.fingerprint", "tls_settings.allow_insecure", "disable_sni", "network_settings.path"].includes(f.key))).toBe(false);
 });
 
-it("keeps native sing-box configuration as structured JSON", () => {
-    const config = { dns: { servers: [{ type: "https", tag: "dns", server: "1.1.1.1" }] }, route: { final: "direct" } };
-    const list = nodeFields("v2box", fields("sing_box"), { protocol: "vless", network: "tcp" });
-    expect(list.find((f) => f.key === "sing_box")?.type).toBe("json");
-    expect(nodeSettingsPayload(nodeSettingsInitial({ sing_box: config })).sing_box).toEqual(config);
+it("edits persisted node settings without secure-context structuredClone", () => {
+    vi.stubGlobal("structuredClone", undefined);
+    try {
+        const initial = { id: 42, tls_settings: { server_name: "node.example", extra: { enabled: true } }, network_settings: { headers: { Host: "ws.example" } } };
+        const before = JSON.stringify(initial);
+        const form = nodeSettingsInitial(initial);
+        form["tls_settings.server_name"] = "edited.example";
+        const saved = nodeSettingsPayload(form);
+        expect(saved.tls_settings.server_name).toBe("edited.example");
+        expect(saved.network_settings.headers.Host).toBe("ws.example");
+        expect(JSON.stringify(initial)).toBe(before);
+    } finally { vi.unstubAllGlobals(); }
+});
+it("selects routes on nodes and edits native rules only in route management", () => {
+    expect(nodeFields("v2box", fields("sing_box", "route_id"), { protocol: "vless" }).map(f => f.key)).toEqual(["route_id"]);
+    const list = resourceFields("routes", fields("backend", "match", "action_value", "sing_box"), { id: 1, backend: "v2box", action: "sing_box" });
+    expect(list.map(f => f.key)).toEqual(["sing_box"]);
+    expect(linkResource("routes", [], "backend", "v2box", {}).action).toBe("sing_box");
+});
+
+it("clears backend-scoped settings and requires a compatible protocol on conversion", () => {
+    const source = { id: 7, type: "v2node", protocol: "vless", route_id: [1], parent_id: 3, network: "xhttp", encryption: "mlkem768x25519plus", tls_settings: { server_name: "keep.example", ech: "custom", ech_key: "key" } };
+    const target = nodeBackendInitial(source, "v2box");
+    expect(target).toMatchObject({ route_id: [], parent_id: null, network: "", tls_settings: { server_name: "keep.example" } });
+    expect(target.encryption).toBeUndefined();
+    expect(target.tls_settings.ech).toBeUndefined();
+    expect(source.route_id).toEqual([1]);
+    expect(nodeBackendInitial({ id: 8, type: "v2box", protocol: "naive" }, "v2node").protocol).toBe("");
 });

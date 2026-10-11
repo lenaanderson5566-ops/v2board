@@ -130,7 +130,6 @@ class NodeCommunication
         }
         $updateAt = time();
         $connectionLogInterval = $this->getConnectionLogInterval();
-        $this->cleanupExpiredConnectionLogs($updateAt);
 
         $cacheKeys = [];
         $keyMap = [];
@@ -251,30 +250,5 @@ class NodeCommunication
         });
     }
 
-
-    private function getConnectionLogRetentionDays(): int
-    {
-        return (int) Cache::remember('RISK_CONNECTION_LOG_RETENTION_DAYS', 60, function () {
-            $raw = RiskSetting::query()->where('key', 'connection_log_retention_days')->value('value');
-            $value = (int) $raw;
-            if ($value < 1) {
-                $value = 30;
-            }
-            return min($value, 365);
-        });
-    }
-
-    private function cleanupExpiredConnectionLogs(int $now): void
-    {
-        $cleanupLockKey = 'RISK_CONNECTION_LOG_CLEANUP_LOCK';
-        if (Cache::has($cleanupLockKey)) {
-            return;
-        }
-
-        Cache::put($cleanupLockKey, 1, 3600);
-        $retentionDays = $this->getConnectionLogRetentionDays();
-        $expiredBefore = $now - ($retentionDays * 86400);
-        UserConnectionLog::query()->where('connected_at', '<', $expiredBefore)->delete();
-    }
 
 }

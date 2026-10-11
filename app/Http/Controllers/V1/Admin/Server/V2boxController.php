@@ -9,7 +9,6 @@ class V2boxController extends V2nodeController
     protected $model = ServerV2box::class;
 
     public const RULES = [
-        'sing_box' => 'nullable|array:dns,route,outbounds',
         'protocol' => 'required|in:shadowsocks,vmess,vless,trojan,tuic,hysteria2,anytls,naive',
         'network' => 'required|in:tcp,ws,grpc,httpupgrade',
         'encryption' => 'nullable|in:none',
@@ -24,12 +23,6 @@ class V2boxController extends V2nodeController
         'cipher' => 'nullable|in:aes-128-gcm,aes-192-gcm,aes-256-gcm,chacha20-ietf-poly1305,xchacha20-ietf-poly1305,2022-blake3-aes-128-gcm,2022-blake3-aes-256-gcm',
     ];
 
-    protected function extraParams(Request $request): array {
-        $params = $request->validate(['sing_box' => self::RULES['sing_box']]);
-        if (!empty($params['sing_box'])) \App\Services\V2boxFeatures::validate($params['sing_box']);
-        return $params;
-    }
-
     protected function protocolRule()
     {
         return self::RULES['protocol'];
@@ -37,7 +30,7 @@ class V2boxController extends V2nodeController
 
     public function save(Request $request)
     {
-        $request->validate(self::RULES);
+        $request->validate(self::RULES + ['sing_box'=>'prohibited']);
         if (in_array($request->input('protocol'), ['shadowsocks', 'tuic', 'hysteria2', 'anytls', 'naive'], true)) {
             $request->validate(['network' => 'required|in:tcp']);
         }

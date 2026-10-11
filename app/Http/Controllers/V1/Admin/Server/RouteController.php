@@ -1,69 +1,61 @@
 <?php
-
 namespace App\Http\Controllers\V1\Admin\Server;
 
 use App\Http\Controllers\Controller;
 use App\Models\ServerRoute;
+use App\Models\ServerV2box;
+use App\Models\ServerV2node;
+use App\Services\NodeRouteService;
+use App\Services\V2boxFeatures;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\DB;
 
-class RouteController extends Controller
-{
-    public function fetch(Request $request)
-    {
-        $routes = ServerRoute::get();
-        foreach ($routes as $k => $route) {
-            $array = json_decode($route->match, true);
-            if (is_array($array)) $routes[$k]['match'] = $array;
-        }
-        return [
-            'data' => $routes
-        ];
+class RouteController extends Controller {
+    public function fetch(Request $request) {
+        $request->validate(['backend'=>'nullable|in:v2node,v2box']);
+        $query = ServerRoute::orderBy('id');
+        if ($request->filled('backend')) $query->where('backend', $request->input('backend'));
+        $routes = $query->get();
+        foreach ($routes as $route) $route->match = json_decode($route->match, true) ?? [];
+        return ['data'=>$routes];
     }
-
-    public function save(Request $request)
-    {
+    public function save(Request $request) {
+        $route = $request->input('id') ? ServerRoute::findOrFail($request->input('id')) : new ServerRoute();
+        $backend = $request->input('backend', $route->backend ?? 'v2node');
+        $request->merge(['backend'=>$backend]);
         $params = $request->validate([
-            'remarks' => 'required',
-            'match' => 'array|required_unless:action,default_out',
-            'action' => 'required|in:block,block_ip,block_port,protocol,dns,route,route_ip,default_out',
-            'action_value' => 'nullable'
-        ], [
-            'remarks.required' => '备注不能为空',
-            'match.required_unless' => '匹配值不能为空',
-            'action.required' => '动作类型不能为空',
-            'action.in' => '动作类型参数有误'
+            'backend'=>'required|in:v2node,v2box', 'remarks'=>'required|string|max:255',
+            'action'=>'required|in:block,block_ip,block_port,protocol,dns,route,route_ip,default_out,sing_box',
         ]);
-        if (($params['action'] ?? '') === 'default_out') {
-            $normalizedMatch = [];
+        abort_if($route->exists && $route->backend !== $backend, 422, '已保存规则不能更换内核，请新建对应内核的规则');
+        if ($params['action'] === 'sing_box') {
+            abort_unless($backend === 'v2box', 422, 'Xray 节点不能使用 sing-box 规则');
+            $params += $request->validate(['sing_box'=>'required|array:dns,route,outbounds']);
+            V2boxFeatures::validate($params['sing_box']);
+            $params += ['match'=>'[]', 'action_value'=>null];
         } else {
-            $normalizedMatch = array_filter((array)($params['match'] ?? []));
+            $params += $request->validate(['match'=>'array|required_unless:action,default_out', 'match.*'=>'string', 'action_value'=>'nullable|string']);
+            $params['match'] = json_encode($params['action'] === 'default_out' ? [] : array_values(array_filter($params['match'] ?? [])));
+            $params['sing_box'] = null;
         }
-        $params['match'] = json_encode($normalizedMatch);
-        if ($request->input('id')) {
-            try {
-                $route = ServerRoute::find($request->input('id'));
-                $route->update($params);
-                return [
-                    'data' => true
-                ];
-            } catch (\Exception $e) {
-                abort(500, '保存失败');
+        DB::transaction(function () use ($route, $params, $backend) {
+            $route->fill($params)->save();
+            if ($backend === 'v2box') {
+                // Reject edits that would invalidate another rule selected on an existing node.
+                foreach (ServerV2box::cursor() as $node) {
+                    if (in_array($route->id, $node->route_id ?? [])) NodeRouteService::forNode($node);
+                }
             }
-        }
-        if (!ServerRoute::create($params)) abort(500, '创建失败');
-        return [
-            'data' => true
-        ];
+        });
+        return ['data'=>true];
     }
-
-    public function drop(Request $request)
-    {
-        $route = ServerRoute::find($request->input('id'));
-        if (!$route) abort(500, '路由不存在');
-        if (!$route->delete()) abort(500, '删除失败');
-        return [
-            'data' => true
-        ];
+    public function drop(Request $request) {
+        $route = ServerRoute::findOrFail($request->input('id'));
+        $model = $route->backend === 'v2box' ? ServerV2box::class : ServerV2node::class;
+        foreach ($model::cursor() as $node) {
+            abort_if(in_array($route->id, $node->route_id ?? []), 422, '规则正在被节点使用，请先取消节点的规则选择');
+        }
+        $route->delete();
+        return ['data'=>true];
     }
 }

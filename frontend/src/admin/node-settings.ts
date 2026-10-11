@@ -1,3 +1,4 @@
+import { anytlsPresets, paddingPreset, applyPaddingPreset } from "./anytls-padding";
 import type { Row } from "../shared/api";
 import type { Field } from "../shared/ui";
 const nested: Record<string, Field[]> = {
@@ -144,7 +145,7 @@ const nested: Record<string, Field[]> = {
 };
 const object = (value: unknown): Row =>
     value && typeof value === "object" && !Array.isArray(value)
-        ? structuredClone(value as Row)
+        ? JSON.parse(JSON.stringify(value)) as Row
         : {};
 function get(source: Row, path: string): unknown {
     return path
@@ -169,7 +170,9 @@ function put(source: Row, path: string, value: unknown) {
 }
 export function nodeSettingsFields(fields: Field[]): Field[] {
     return fields.flatMap((field) =>
-        nested[field.key]
+        field.key === "padding_scheme" ? [
+            { key: "padding_preset", label: "AnyTLS 填充预设", type: "select" as const, options: [...anytlsPresets.map(p => [p.id, p.label] as [string, string]), ["custom", "自定义"] as [string, string]] }, field,
+        ] : nested[field.key]
             ? [
                   ...nested[field.key].map((f) => ({
                       ...f,
@@ -191,7 +194,7 @@ export function nodeSettingsFields(fields: Field[]): Field[] {
     );
 }
 export function nodeSettingsInitial(initial: Row): Row {
-    const values = { ...initial };
+    const values: Row = { ...initial, padding_preset: paddingPreset(initial.padding_scheme) };
     for (const [root, fields] of Object.entries(nested)) {
         const source = object(initial[root]);
         const advanced = object(source);
@@ -216,6 +219,30 @@ export function nodeSettingsPayload(values: Row): Row {
             result[root] = object(result[root]);
             put(result[root], field.key, value);
         }
+    }
+    return applyPaddingPreset(result);
+}
+
+// Start a backend conversion from the saved record; routes and parents are scoped
+// to the original backend and must be selected again for the target backend.
+export function nodeBackendInitial(initial: Row, backend: string): Row {
+    if (!initial.id || initial.type === backend) return initial;
+    const result = JSON.parse(JSON.stringify(initial)) as Row;
+    result.route_id = [];
+    result.parent_id = null;
+    delete result.sing_box;
+    if (backend === "v2node" && result.protocol === "naive") result.protocol = "";
+    if (backend === "v2box") {
+        delete result.encryption;
+        delete result.encryption_settings;
+        delete result.trusted_x_forwarded_for;
+        for (const key of ["ech", "ech_key", "ech_config", "ech_server_name", "xver", "reject_unknown_sni", "mldsa65Seed", "server_names"])
+            if (result.tls_settings) delete result.tls_settings[key];
+        if (!["tcp", "ws", "grpc", "httpupgrade"].includes(result.network)) {
+            result.network = "";
+            result.network_settings = {};
+        }
+        if (result.network_settings) delete result.network_settings.acceptProxyProtocol;
     }
     return result;
 }

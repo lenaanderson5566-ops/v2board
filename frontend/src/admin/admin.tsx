@@ -1,3 +1,4 @@
+import { nodeDeploymentCommand, nodeIPCommand } from "./node-deployment";
 import nodeLocations from "../../../resources/client/node-locations.json";
 import { PaymentCategoryEditor, paymentCategoryInitial } from "./PaymentCategoryEditor";
 import { paymentIcons, paymentIconInitial, resolvePaymentIcon } from "./payment-icons";
@@ -64,6 +65,7 @@ import {
 import {
     nodeSettingsFields,
     nodeSettingsInitial,
+    nodeBackendInitial,
     nodeSettingsPayload,
 } from "./node-settings";
 const f = (
@@ -226,21 +228,24 @@ export const resources: Record<string, Resource> = {
         columns: [
             ["id", "ID"],
             ["remarks", "备注"],
+            ["backend", "适用内核", r => r.backend === "v2box" ? "V2Box / sing-box" : "V2Node / Xray"],
             [
                 "match",
-                "匹配数量",
-                (r) => (Array.isArray(r.match) ? r.match.length : 0),
+                "规则数量",
+                (r) => r.action === "sing_box" ? (r.sing_box?.route?.rules?.length || 0) + (r.sing_box?.dns?.rules?.length || 0) : (Array.isArray(r.match) ? r.match.length : 0),
             ],
-            ["action", "动作"],
+            ["action", "格式 / 动作", r => r.action === "sing_box" ? "sing-box 原生" : `${r.backend === "v2box" ? "兼容格式 / " : ""}${r.action}`],
         ],
         fields: [
             f("remarks", "备注", "text", true),
+            { key: "backend", label: "适用内核", type: "select", options: [["v2node", "V2Node / Xray"], ["v2box", "V2Box / sing-box"]] },
             f("match", "匹配条件", "json", true),
             {
                 key: "action",
                 label: "动作",
                 type: "select",
                 options: [
+                    ["sing_box", "sing-box 原生规则"],
                     ["block", "阻断"],
                     ["dns", "DNS"],
                     ["block_ip", "阻断 IP"],
@@ -252,8 +257,10 @@ export const resources: Record<string, Resource> = {
                 ],
             },
             f("action_value", "动作参数"),
+            { key: "sing_box", label: "sing-box 规则配置", type: "json", required: true,
+              hint: '支持 route、dns、outbounds。节点按选择顺序合并规则；相同标签或默认设置冲突时会拒绝保存。direct 出口自动保留。示例：{"route":{"rules":[{"domain_suffix":["example.com"],"action":"reject"}]}}' },
         ],
-        defaults: { match: [], action: "block" },
+        defaults: { backend: "v2node", match: [], action: "block", sing_box: { route: { rules: [] } } },
     },
     users: {
         title: "用户管理",
@@ -731,7 +738,12 @@ export const resources: Record<string, Resource> = {
         fetch: admin("system/getSystemLog"),
         columns: [
             ["level", "级别"],
-            ["message", "消息"],
+            ["title", "事件"],
+            ["method", "方法"],
+            ["uri", "路由"],
+            ["http_status", "状态码"],
+            ["duration_ms", "耗时（ms）"],
+            ["request_id", "请求 ID"],
             ["created_at", "时间", (r) => date(r.created_at)],
         ],
         fields: [],
@@ -758,6 +770,7 @@ export function ResourcePage({
     tableSort?: { key: string; direction: string; fields: string[] };
     onTableSort?: (key: string, direction: string) => void;
 }) {
+    const [routeBackend, setRouteBackend] = useState("v2node");
     const groups = useData<Row[]>(
         resource.fields.some((f) => f.key === "group_id")
             ? admin("server/group/fetch")
@@ -859,6 +872,7 @@ export function ResourcePage({
             email: resource.title.includes("日志") || resource === resources.online || resource === resources.usage ? search : undefined,
             keyword: resource.title.includes("黑名单") ? search : undefined,
             ...queryParams,
+            ...(resource === resources.routes ? { backend: routeBackend } : {}),
         }),
     );
     useEffect(() => {
@@ -919,7 +933,7 @@ export function ResourcePage({
                             <button
                                 className="primary"
                                 onClick={() =>
-                                    setEditing({ ...resource.defaults })
+                                    setEditing({ ...resource.defaults, ...(resource === resources.routes ? { backend: routeBackend, action: routeBackend === "v2box" ? "sing_box" : "block" } : {}) })
                                 }
                             >
                                 <Plus size={16} />
@@ -940,6 +954,7 @@ export function ResourcePage({
                     </div>
                 )}
                 {toolbar}
+                {resource === resources.routes && <div className="pad"><label>适用内核 <select aria-label="路由内核" value={routeBackend} onChange={e => { setRouteBackend(e.target.value); setPage(1); }}><option value="v2node">V2Node / Xray</option><option value="v2box">V2Box / sing-box</option></select></label><p className="muted">两类规则独立维护。修改规则会应用到选择它的节点；正在使用的规则不能删除。</p></div>}
                 {resource === resources.online && <p className="pad muted">近 10 分钟活跃且有节点缓存记录；不是即时连接状态。用户 {d.meta?.users ?? "—"} · IP {d.meta?.ips ?? "—"} · 连接记录 {d.total} · 查询时间 {date(d.meta?.updated_at)}。节点未上报时可能不显示。</p>}
                 {resource === resources.usage && <p className="pad muted">用户历史活动与账户资料，最近在线记录不代表当前在线。</p>}
                 {resource === resources["log-risk"] && <p className="pad muted">近 30 天，同一用户、规则、IP 和处理结果按固定 10 分钟窗口合并；总数为合并后的事件数。点击用户查看原始活动。</p>}
@@ -1294,6 +1309,7 @@ export function ResourcePage({
                                                     );
                                             },
                                         );
+                                    if (resource === resources.routes && editing.id) clean.backend = editing.backend || "v2node";
                                     if (resource.defaults)
                                         Object.entries(
                                             resource.defaults,
@@ -1643,7 +1659,7 @@ export function RiskSettings() {
                 <Editor
                     fields={[
                         { key: "connection_log_interval", label: "连接日志采样间隔", type: "number", required: true, min: 60, max: 86400, step: 1, unit: "秒", hint: "建议 3600 秒。间隔越短，日志写入量越大；不影响登录与订阅规则的统计窗口。" },
-                        { key: "connection_log_retention_days", label: "连接日志保留时间", type: "number", required: true, min: 1, max: 365, step: 1, unit: "天", hint: "建议 30 天。清理任务运行时删除超过保留期的连接日志。" },
+                        { key: "connection_log_retention_days", label: "连接日志保留时间", type: "number", required: true, min: 1, max: 365, step: 1, unit: "天", hint: "建议 30 天。每 5 分钟分批清理过期连接日志；也可在系统日志页面设置。" },
                     ]}
                     initial={d.data || {}}
                     onSave={async (b) => {
@@ -2256,19 +2272,25 @@ export function Nodes() {
             {command && (
                 <Modal title="节点安装命令" close={() => setCommand(null)}>
                     <div className="pad">
+                        <p>可选：在侧栏“Cloudflare DDNS”保存凭据并绑定此节点，然后配置节点 IP 上报。</p>
+                        <p className="muted">查询部署服务器公网 IPv4 / IPv6：在节点服务器执行以下命令。DDNS 默认关闭，Cloudflare Token 加密保存在面板。</p>
+                        <textarea aria-label="查询服务器 IP 命令" readOnly rows={3} value={nodeIPCommand} />
+                        <button onClick={async () => { try { await navigator.clipboard.writeText(nodeIPCommand); setCommand({ ...command, ipCopied: true }); } catch { setCommand({ ...command, error: "复制失败，请手动复制命令" }); } }}>{command.ipCopied ? "IP 查询命令已复制" : "复制 IP 查询命令"}</button>
+                    </div>
+                    <div className="pad">
                         <p className="muted">
                             命令包含节点通讯凭据，仅在目标服务器使用。
                         </p>
                         <textarea
                             readOnly
                             aria-label="节点安装命令"
-                            value={command.install_command}
+                            value={nodeDeploymentCommand(command)}
                         />
                         <button
                             onClick={async () => {
                                 try {
                                     await navigator.clipboard.writeText(
-                                        command.install_command,
+                                        nodeDeploymentCommand(command),
                                     );
                                     setCommand({ ...command, copied: true });
                                 } catch (e) {
@@ -2290,11 +2312,11 @@ export function Nodes() {
             )}
             {editing && (
                 <Modal title="节点配置" close={() => setEditing(null)}>
-                    {!editing.id && (
+                    {(
                         <div className="pad">
                             <label>
                                 节点类型
-                                <select
+                                <select aria-label="节点类型"
                                     value={type}
                                     onChange={(e) => setType(e.target.value)}
                                 >
@@ -2305,6 +2327,7 @@ export function Nodes() {
                             </label>
                         </div>
                     )}
+                    {editing.id && type !== editing.type && <p className="pad muted">保存后会将此节点转换为 {type}，分配目标类型的节点 ID。请重新选择对应路由和父节点，并核对协议参数；保存后需要更换节点服务及安装配置。切换类型会重新载入已保存配置。</p>}
                     <State
                         loading={
                             schema.loading || groups.loading || routes.loading
@@ -2317,7 +2340,7 @@ export function Nodes() {
                         }}
                     >
                         <Editor
-                            key={type}
+                            key={`${type}:${editing.id || "new"}`}
                             resolveFields={(fields, values) =>
                                 formPresentation(
                                     nodeFields(
@@ -2381,14 +2404,15 @@ export function Nodes() {
                                         )
                                             return {
                                                 key: k,
-                                                label: nodeLabels[k] || k,
+                                                label: k === "route_id" ? (type === "v2box" ? "sing-box 路由规则" : "Xray 路由规则") : nodeLabels[k] || k,
+                                                hint: k === "route_id" ? "在路由管理中维护规则；仅显示当前内核的规则，按选择顺序应用。" : undefined,
                                                 type: "multiselect",
                                                 required: k === "group_id",
                                                 options: rows(
                                                     k === "group_id"
                                                         ? groups.data
                                                         : routes.data,
-                                                ).map((r) => [
+                                                ).filter(r => k !== "route_id" || (r.backend || "v2node") === type).map((r) => [
                                                     String(r.id),
                                                     r.name ||
                                                         r.remarks ||
@@ -2454,7 +2478,7 @@ export function Nodes() {
                                         );
                                     }),
                             )}
-                            initial={nodeSettingsInitial(editing)}
+                            initial={nodeSettingsInitial(nodeBackendInitial(editing, type))}
                             onSave={async (b) => {
                                 b = nodeSettingsPayload(b);
                                 if (
@@ -2469,16 +2493,25 @@ export function Nodes() {
                                     if (!k.includes(".") && b[k] !== undefined)
                                         clean[k] = b[k];
                                 });
-                                if (editing.id) clean.id = editing.id;
+                                const converting = editing.id && type !== editing.type;
+                                if (converting) {
+                                    clean.source_type = editing.type;
+                                    clean.source_id = editing.id;
+                                } else if (editing.id) clean.id = editing.id;
                                 if (["v2node", "v2box"].includes(type))
                                     clean.zero_rtt_handshake ??=
                                         editing.zero_rtt_handshake ?? 0;
-                                await request(
+                                const saved = await request(
                                     admin(`server/${type}/save`),
                                     clean,
                                 );
                                 setEditing(null);
                                 d.reload();
+                                if (converting) {
+                                    const updated = await request<Row[]>(admin("server/manage/getNodes"));
+                                    const converted = rows(updated.data).find(r => r.type === type && r.id === saved.data.id);
+                                    if (converted) setCommand(converted);
+                                }
                             }}
                         />
                     </State>

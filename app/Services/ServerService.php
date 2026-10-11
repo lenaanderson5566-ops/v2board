@@ -171,11 +171,13 @@ class ServerService
         return $servers;
     }
 
-    public function getRoutes(array $routeIds)
+    public function getRoutes(array $routeIds, string $backend = 'v2node')
     {
+        if (!$routeIds) return collect();
         $routeIds = array_map('intval', $routeIds);
         $order = implode(',', $routeIds);
         $routes = ServerRoute::select(['id', 'match', 'action', 'action_value'])
+            ->where('backend', $backend)->where('action', '!=', 'sing_box')
             ->whereIn('id', $routeIds)
             ->orderByRaw("FIELD(id, $order)")
             ->get();

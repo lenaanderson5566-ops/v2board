@@ -105,3 +105,4 @@ V2Node and explicitly configured legacy V2Box installations retain their existin
 | `POST /api/v1/server/UniProxy/push` | `POST /api/v10/server/traffic` |
 | `POST /api/v1/server/UniProxy/alive` | `POST /api/v10/server/online-users` |
 | `New resource` | `POST /api/v10/server/capabilities` |
+| `None (scoped DDNS reporter)` | `POST /api/v10/server/addresses` |

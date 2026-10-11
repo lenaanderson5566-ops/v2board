@@ -110,16 +110,25 @@ class SystemController extends Controller
     }
 
     public function getSystemLog(Request $request) {
-        $current = $request->input('current') ? $request->input('current') : 1;
-        $pageSize = $request->input('page_size') >= 10 ? $request->input('page_size') : 10;
-        $builder = LogModel::orderBy('created_at', 'DESC')
-            ->setFilterAllowKeys('level');
-        $total = $builder->count();
-        $res = $builder->forPage($current, $pageSize)
-            ->get();
-        return response([
-            'data' => $res,
-            'total' => $total
+        $params=$request->validate([
+            'current'=>'nullable|integer|min:1','page_size'=>'nullable|integer|min:1|max:100',
+            'level'=>'nullable|in:DEBUG,INFO,NOTICE,WARNING,ERROR,CRITICAL,ALERT,EMERGENCY',
+            'status'=>'nullable|integer|between:100,599','request_id'=>'nullable|uuid',
+            'from'=>'nullable|integer|min:0','to'=>'nullable|integer|min:0',
         ]);
+        if (isset($params['from'],$params['to']) && $params['to']<$params['from']) abort(422,'结束时间不能早于开始时间');
+        $builder=LogModel::orderByDesc('created_at')->orderByDesc('id')->setFilterAllowKeys('level');
+        foreach (['level'=>'level','status'=>'http_status','request_id'=>'request_id'] as $input=>$column) if (isset($params[$input])) $builder->where($column,$input==='request_id' ? strtolower($params[$input]) : $params[$input]);
+        if (isset($params['from'])) $builder->where('created_at','>=',$params['from']);
+        if (isset($params['to'])) $builder->where('created_at','<=',$params['to']);
+        $total=(clone $builder)->count();
+        $rows=$builder->select(['id','title','level','method','route_template','request_id','http_status','duration_ms','created_at'])->forPage($params['current'] ?? 1,$params['page_size'] ?? 20)->get();
+        return response(['data'=>$rows->map(fn($row)=>\App\Services\SystemLogService::resource($row)),'total'=>$total]);
+    }
+    public function getLogRetention(\App\Services\LogRetentionService $service) {
+        return ['data'=>['settings'=>$service->settings(),'lastRun'=>\Illuminate\Support\Facades\Cache::get('LOG_RETENTION_LAST_RUN')]];
+    }
+    public function saveLogRetention(Request $request, \App\Services\LogRetentionService $service) {
+        return ['data'=>$service->save($request->only(array_keys(\App\Services\LogRetentionService::DEFAULTS)))];
     }
 }

@@ -27,6 +27,7 @@ class Kernel extends ConsoleKernel
     protected function schedule(Schedule $schedule)
     {
         Cache::put(CacheKey::get('SCHEDULE_LAST_CHECK_AT', null), time());
+        $schedule->command('nodes:sync-ddns')->everyMinute()->withoutOverlapping(5);
         // traffic
         $schedule->command('credits:expire')->everyMinute()->withoutOverlapping();
         $schedule->command('traffic:update')->everyMinute()->withoutOverlapping();
@@ -39,7 +40,8 @@ class Kernel extends ConsoleKernel
         $schedule->command('check:renewal')->dailyAt('22:30');
         // reset
         $schedule->command('reset:traffic')->daily();
-        $schedule->command('reset:log')->daily();
+        $schedule->command('reset:log')->daily()->withoutOverlapping();
+        $schedule->command('logs:prune')->everyFiveMinutes()->withoutOverlapping(5)->runInBackground();
         // send
         $schedule->command('send:remindMail')->dailyAt('11:30');
         // horizon metrics

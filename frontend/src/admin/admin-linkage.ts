@@ -1,3 +1,4 @@
+import { anytlsPresets } from "./anytls-padding";
 import nodeLocations from "../../../resources/client/node-locations.json";
 import type { Row } from "../shared/api";
 import type { Field } from "../shared/ui";
@@ -89,7 +90,10 @@ export function resourceFields(
         .filter(
             (f) =>
                 kind !== "routes" ||
-                ((f.key !== "match" || values.action !== "default_out") &&
+                ((f.key !== "backend" || !values.id) &&
+                    (f.key !== "sing_box" || values.action === "sing_box") &&
+                    (!["match", "action_value"].includes(f.key) || values.action !== "sing_box") &&
+                    (f.key !== "match" || values.action !== "default_out") &&
                     (f.key !== "action_value" || values.action !== "block")),
         )
         .filter(
@@ -102,6 +106,7 @@ export function resourceFields(
                     (f.key !== "value" || Number(values.type) !== 4)),
         )
         .map((f) => {
+            if (kind === "routes" && f.key === "action") return { ...f, options: (f.options || []).filter(([key]) => key !== "sing_box" || values.backend === "v2box") };
             if (kind === "routes" && f.key === "action_value")
                 return {
                     ...f,
@@ -111,7 +116,7 @@ export function resourceFields(
                             : values.action === "default_out"
                               ? "默认出口参数"
                               : "动作参数",
-                    hint: "参数须与所选动作一致。",
+                    hint: values.backend === "v2box" ? "旧格式兼容规则：路由出口参数使用 sing-box outbound JSON；新规则建议选择 sing-box 原生规则。" : "Xray 路由出口参数使用 Xray outbound JSON；DNS 动作填写 DNS 地址。",
                 };
             if (kind === "giftcards" && f.key === "value")
                 return {
@@ -157,6 +162,12 @@ export function linkResource(
     values: Row,
 ): Row {
     const result = { ...values, [key]: next };
+    if (kind === "routes" && key === "backend") {
+        result.action = next === "v2box" ? "sing_box" : "block";
+        result.match = [];
+        result.action_value = "";
+        result.sing_box = { route: { rules: [] } };
+    }
     if (
         ["giftcards", "coupons"].includes(kind) &&
         key === "type" &&
@@ -187,6 +198,10 @@ export function validateResource(values: Row): string | undefined {
 const tlsRequired = ["trojan", "tuic", "hysteria2", "anytls", "naive"];
 export function linkNode(key: string, next: unknown, values: Row): Row {
     const result = { ...values, [key]: next };
+    if (key === "padding_preset") {
+        const preset = anytlsPresets.find(p => p.id === next);
+        if (preset) result.padding_scheme = preset.scheme;
+    }
     if (key === "region_code") {
         const city = String(values.city_code ?? "") as keyof typeof nodeLocations.cityRegions;
         if (next && nodeLocations.cityRegions[city] && nodeLocations.cityRegions[city] !== String(next).toUpperCase())
@@ -231,6 +246,7 @@ export function nodeFields(
         network = values.network || "tcp";
     return fields
         .filter((f) => {
+            if (f.key === "sing_box") return false;
             if (type === "v2box" && (
                 ["encryption", "encryption_settings", "trusted_x_forwarded_for"].includes(f.key) ||
                 f.key.startsWith("encryption_settings.") ||
@@ -347,13 +363,15 @@ export function nodeFields(
                     ].includes(f.key)
                 )
                     return protocol === "tuic";
-                if (f.key === "padding_scheme") return protocol === "anytls";
+                if (f.key === "padding_preset") return protocol === "anytls";
+                if (f.key === "padding_scheme") return protocol === "anytls" && (!values.padding_preset || values.padding_preset === "custom");
                 if (["encryption", "encryption_settings"].includes(f.key))
                     return protocol === "vless";
             }
             return true;
         })
         .map((f) => {
+            if (f.key === "protocol" && values.protocol === "") return { ...f, options: [["", "请选择目标内核支持的协议"], ...(f.options || [])] as [string, string][] };
             if (protocol === "naive" && f.key === "tls_settings.cert_mode") return { ...f, required: true, options: [["http", "HTTP 申请"], ["dns", "DNS 申请"], ["file", "已有证书文件"]] as [string, string][], hint: "Naive 需要客户端信任的有效证书。" };
             if (protocol === "naive" && f.key === "tls_settings.server_name") return { ...f, required: true };
             if (f.key === "tls_settings.server_name" && tls === 2)
@@ -442,8 +460,7 @@ export function nodeFields(
                         ],
                     ],
                 };
-            if (f.key === "sing_box")
-                return { ...f, label: "sing-box 路由与 DNS", type: "json", hint: '仅支持 dns、route、outbounds；使用 sing-box 原生 JSON。启用后替代此节点的旧路由配置，直连出口 direct 自动保留。' };
+            if (f.key === "padding_preset") return { ...f, hint: anytlsPresets.find(p => p.id === values.padding_preset)?.hint || "按 AnyTLS 原生格式填写；填充不保证规避流量识别。" };
             if (f.key === "padding_scheme")
                 return {
                     ...f,
@@ -491,7 +508,7 @@ export function nodeFields(
                     )
                         ? ["tcp"]
                         : type === "v2box" ? ["tcp", "ws", "grpc", "httpupgrade"] : ["tcp", "ws", "grpc", "http", "httpupgrade", "xhttp"]
-                    ).map((v) => [v, v]),
+                    ).map((v) => [v, v]).concat(values.network === "" ? [["", "请选择目标内核支持的传输"]] : []) as [string, string][],
                 };
             if (["disable_sni", "zero_rtt_handshake"].includes(f.key))
                 return { ...f, type: "switch" };

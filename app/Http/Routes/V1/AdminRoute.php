@@ -34,6 +34,13 @@ class AdminRoute
             $router->post('/ops/i18n/plan/save', 'V1\Admin\PlanI18nController@save');
             $router->post('/ops/i18n/plan/generate', 'V1\Admin\PlanI18nController@generate')->middleware('throttle:10,1');
             // Server
+            $router->get('/server/ddns/fetch', 'V1\\Admin\\NodeDdnsController@fetch');
+            $router->get('/server/ddns/events', 'V1\\Admin\\NodeDdnsController@events');
+            $router->post('/server/ddns/credentials/save', 'V1\\Admin\\NodeDdnsController@saveCredential');
+            $router->post('/server/ddns/credentials/drop', 'V1\\Admin\\NodeDdnsController@dropCredential');
+            $router->post('/server/ddns/assignments/save', 'V1\\Admin\\NodeDdnsController@saveAssignment');
+            $router->post('/server/ddns/assignments/drop', 'V1\\Admin\\NodeDdnsController@dropAssignment');
+            $router->post('/server/ddns/assignments/rotate', 'V1\\Admin\\NodeDdnsController@rotate');
             $router->get ('/server/group/fetch', 'V1\\Admin\\Server\\GroupController@fetch');
             $router->post('/server/group/save', 'V1\\Admin\\Server\\GroupController@save');
             $router->post('/server/group/drop', 'V1\\Admin\\Server\\GroupController@drop');
@@ -131,6 +138,8 @@ class AdminRoute
             $router->get ('/system/getQueueWorkload', 'V1\\Admin\\SystemController@getQueueWorkload');
             $router->get ('/system/getQueueMasters', 'V1\\Admin\\SystemController@getQueueMasters');
             $router->get ('/system/getSystemLog', 'V1\\Admin\\SystemController@getSystemLog');
+            $router->get('/system/logRetention', 'V1\\Admin\\SystemController@getLogRetention');
+            $router->post('/system/logRetention', 'V1\\Admin\\SystemController@saveLogRetention');
         });
     }
 }

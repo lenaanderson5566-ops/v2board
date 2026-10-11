@@ -18,7 +18,7 @@ class ManageController extends Controller
     public function sort(Request $request)
     {
         $models = ['v2node' => ServerV2node::class, 'v2box' => ServerV2box::class];
-        abort_unless(!array_diff(array_keys($request->all()), array_keys($models)), 422, '不支持的节点类型');
+        abort_unless(!array_diff(array_keys($request->except(['user', 'auth_data', '_token'])), array_keys($models)), 422, '不支持的节点类型');
         $params = $request->validate([
             'v2node' => 'sometimes|array',
             'v2node.*' => 'integer|min:0',

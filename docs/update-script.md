@@ -129,3 +129,7 @@ bash /tmp/v2board-update.sh \
 升级脚本仍保留本地新增 Composer 依赖，避免覆盖自定义部署。测试中的 Adapterman 包仅用于验证历史依赖保留，并不表示仍支持该 HTTP 运行方式。已安装的可选依赖不会在本次升级中被强行删除；运行站点无需它们。以前通过 `php -c cli-php.ini` 启动的自定义进程须改用各自正常的 PHP CLI 配置，不能继续引用已移除的配置文件。
 
 V2Box 接入新增白名单迁移 `2026_10_11_000001_create_v2box_nodes.php`，在节点显示字段迁移之后执行，创建独立空表 `v2_server_v2box`。已有 V2Node 数据保持原位；重新执行会跳过已完成的迁移。
+
+旧节点表清理：`2026_10_11_000002_drop_retired_node_tables.php` 在 V2Box 建表迁移之后执行，定向删除 `v2_server_shadowsocks`、`v2_server_vmess`、`v2_server_vless`、`v2_server_trojan`、`v2_server_tuic`、`v2_server_hysteria`、`v2_server_anytls`。存在的数据一并删除，重复执行安全；down 不伪造空表回滚。保留 V2Node/V2Box、共享权限组、路由、用户订单和统计表。历史 `database/update.sql` 不重放。
+
+`php artisan v2board:update` 的旧 SQL 重放入口已停用，返回非零状态并指向 `bash update.sh`，避免重新创建已删除的旧节点表。

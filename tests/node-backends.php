@@ -34,7 +34,6 @@ foreach(['/api/v1/server/Deepbwork/user','/api/v1/server/TrojanTidalab/user','/a
 DB::beginTransaction();
 try{
     $group=new App\Models\ServerGroup(); $group->name='Node retirement fixture'; $group->save();
-    $old=App\Models\ServerShadowsocks::create(['group_id'=>[$group->id],'name'=>'Retired test','host'=>'example.test','port'=>'443','server_port'=>443,'cipher'=>'aes-128-gcm','rate'=>'1','show'=>1]);
     $base=['group_id'=>[$group->id],'name'=>'Active test','host'=>'example.test','port'=>'443','server_port'=>443,'listen_ip'=>'0.0.0.0','protocol'=>'vless','network'=>'tcp','tls'=>0,'disable_sni'=>0,'zero_rtt_handshake'=>0,'rate'=>'1','show'=>1,'up_mbps'=>0,'down_mbps'=>0];
     $node=App\Models\ServerV2node::create($base);
     $box=App\Models\ServerV2box::create($base);
@@ -42,7 +41,6 @@ try{
     $available=$svc->getAvailableServers($user);
     $assert(count($available)===2,'Subscriptions contain only two current backends');
     $assert(!array_diff(array_column($svc->getAllServers(),'type'),['v2node','v2box']),'Admin listing excludes legacy');
-    $assert(App\Models\ServerShadowsocks::find($old->id)!==null,'Historical record retained');
     $manage=new App\Http\Controllers\V1\Admin\Server\ManageController();
     $manage->sort(Request::create('/','POST',['v2node'=>[$node->id=>2],'v2box'=>[$box->id=>1]]));
     $assert((int)$node->fresh()->sort===2 && (int)$box->fresh()->sort===1,'Sorting both types works');

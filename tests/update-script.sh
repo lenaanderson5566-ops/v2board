@@ -39,6 +39,7 @@ echo '<?php // fixture' > database/migrations/2026_10_07_000001_disable_retired_
 echo '<?php // fixture' > database/migrations/2026_10_08_000001_add_service_notifications.php
 echo '<?php // fixture' > database/migrations/2026_10_10_000001_add_order_payment_snapshot.php
 echo '<?php // fixture' > database/migrations/2026_10_11_000001_create_v2box_nodes.php
+echo '<?php // fixture' > database/migrations/2026_10_11_000002_drop_retired_node_tables.php
 mkdir -p storage/geoip
 echo 'new mmdb' > storage/geoip/GeoLite2-ASN.mmdb
 git add -f storage/geoip/GeoLite2-ASN.mmdb

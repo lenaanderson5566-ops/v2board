@@ -45,6 +45,7 @@ RETIRED_PAYMENT_MIGRATION=database/migrations/2026_10_07_000001_disable_retired_
 SERVICE_MAIL_MIGRATION=database/migrations/2026_10_08_000001_add_service_notifications.php
 PAYMENT_HISTORY_MIGRATION=database/migrations/2026_10_10_000001_add_order_payment_snapshot.php
 V2BOX_MIGRATION=database/migrations/2026_10_11_000001_create_v2box_nodes.php
+RETIRED_NODE_TABLES_MIGRATION=database/migrations/2026_10_11_000002_drop_retired_node_tables.php
 usage() {
     cat <<'HELP'
 Usage: bash update.sh [options]
@@ -228,11 +229,12 @@ git cat-file -e "$TARGET:$REWARD_MIGRATION" || die 'Target lacks the invitation 
 git cat-file -e "$TARGET:$RETIRED_PAYMENT_MIGRATION" || die 'Target lacks the retired payment migration'
 git cat-file -e "$TARGET:$PAYMENT_HISTORY_MIGRATION" || die 'Target lacks payment history migration'
 git cat-file -e "$TARGET:$SERVICE_MAIL_MIGRATION" || die 'Target lacks the service notification migration'
+git cat-file -e "$TARGET:$RETIRED_NODE_TABLES_MIGRATION" || die 'Target lacks retired node table removal migration'
 git cat-file -e "$TARGET:$V2BOX_MIGRATION" || die 'Target lacks V2Box migration'
 git cat-file -e "$TARGET:$NODE_DISPLAY_MIGRATION" || die 'Target lacks the node display metadata migration'
 git cat-file -e "$TARGET:$RESET_MIGRATION" || die 'Target lacks the usage reset migration'
 while IFS= read -r changed; do
-    [[ -z "$changed" || "$changed" == "$MIGRATION" || "$changed" == "$INVITATION_MIGRATION" || "$changed" == "$LANGUAGE_MIGRATION" || "$changed" == "$CURRENCY_MIGRATION" || "$changed" == "$EXPIRY_MIGRATION" || "$changed" == "$REWARD_MIGRATION" || "$changed" == "$RESET_MIGRATION" || "$changed" == "$NOTICE_MIGRATION" || "$changed" == "$CREDIT_MIGRATION" || "$changed" == "$CONTENT_MIGRATION" || "$changed" == "$BANNER_MIGRATION" || "$changed" == "$V2BOX_MIGRATION" || "$changed" == "$NODE_DISPLAY_MIGRATION" || "$changed" == "$PAYMENT_HISTORY_MIGRATION" || "$changed" == "$SERVICE_MAIL_MIGRATION" || "$changed" == "$RETIRED_PAYMENT_MIGRATION" ]] || die "Unexpected migration: $changed; review scope first"
+    [[ -z "$changed" || "$changed" == "$MIGRATION" || "$changed" == "$INVITATION_MIGRATION" || "$changed" == "$LANGUAGE_MIGRATION" || "$changed" == "$CURRENCY_MIGRATION" || "$changed" == "$EXPIRY_MIGRATION" || "$changed" == "$REWARD_MIGRATION" || "$changed" == "$RESET_MIGRATION" || "$changed" == "$NOTICE_MIGRATION" || "$changed" == "$CREDIT_MIGRATION" || "$changed" == "$CONTENT_MIGRATION" || "$changed" == "$BANNER_MIGRATION" || "$changed" == "$RETIRED_NODE_TABLES_MIGRATION" || "$changed" == "$V2BOX_MIGRATION" || "$changed" == "$NODE_DISPLAY_MIGRATION" || "$changed" == "$PAYMENT_HISTORY_MIGRATION" || "$changed" == "$SERVICE_MAIL_MIGRATION" || "$changed" == "$RETIRED_PAYMENT_MIGRATION" ]] || die "Unexpected migration: $changed; review scope first"
 done < <(git diff --name-only "$OLD_COMMIT" "$TARGET" -- database/migrations)
 git show "$TARGET:composer.json" > "$WORK_DIR/composer.json"
 git show "$OLD_COMMIT:composer.json" > "$WORK_DIR/original-composer.json"
@@ -380,7 +382,7 @@ PHASE=cache-preparation
 "$PHP_BIN" artisan route:clear
 "$PHP_BIN" artisan view:clear
 PHASE=migrations
-for migration in "$MIGRATION" "$INVITATION_MIGRATION" "$LANGUAGE_MIGRATION" "$RESET_MIGRATION" "$NOTICE_MIGRATION" "$CREDIT_MIGRATION" "$CONTENT_MIGRATION" "$BANNER_MIGRATION" "$REWARD_MIGRATION" "$EXPIRY_MIGRATION" "$CURRENCY_MIGRATION" "$NODE_DISPLAY_MIGRATION" "$RETIRED_PAYMENT_MIGRATION" "$SERVICE_MAIL_MIGRATION" "$PAYMENT_HISTORY_MIGRATION" "$V2BOX_MIGRATION"; do
+for migration in "$MIGRATION" "$INVITATION_MIGRATION" "$LANGUAGE_MIGRATION" "$RESET_MIGRATION" "$NOTICE_MIGRATION" "$CREDIT_MIGRATION" "$CONTENT_MIGRATION" "$BANNER_MIGRATION" "$REWARD_MIGRATION" "$EXPIRY_MIGRATION" "$CURRENCY_MIGRATION" "$NODE_DISPLAY_MIGRATION" "$RETIRED_PAYMENT_MIGRATION" "$SERVICE_MAIL_MIGRATION" "$PAYMENT_HISTORY_MIGRATION" "$V2BOX_MIGRATION" "$RETIRED_NODE_TABLES_MIGRATION"; do
     run_migration "$migration"
 done
 printf '\nAll approved migrations completed.\n'

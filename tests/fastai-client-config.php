@@ -25,10 +25,10 @@ try {
         'uuid'=>(string)Illuminate\Support\Str::uuid(), 'token'=>Illuminate\Support\Str::random(32),
         'plan_id'=>1, 'group_id'=>98765, 'transfer_enable'=>1073741824, 'expired_at'=>time()+86400, 'credit_balance'=>1073741824,
     ]);
-    App\Models\ServerShadowsocks::create([
+    App\Models\ServerV2node::create([
         'group_id'=>[98765], 'name'=>'FastAI test node', 'rate'=>'1',
         'host'=>'node.example.com', 'port'=>'443', 'server_port'=>443,
-        'cipher'=>'aes-128-gcm', 'show'=>1,
+        'cipher'=>'aes-128-gcm', 'show'=>1, 'protocol'=>'shadowsocks', 'tls'=>0, 'network'=>'tcp', 'up_mbps'=>0, 'down_mbps'=>0,
     ]);
     config(['v2board.show_info_to_server_enable'=>1]);
     $auth = new App\Services\AuthService($user);

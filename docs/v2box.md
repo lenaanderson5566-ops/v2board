@@ -16,4 +16,4 @@ V2Box 支持 Shadowsocks、VMess、VLESS、Trojan、TUIC、Hysteria2、AnyTLS。
 
 ## 节点类型收敛
 
-节点管理现仅保留 V2Node 和 V2Box。旧独立 VMess、VLESS、Shadowsocks、Trojan、Hysteria、TUIC、AnyTLS 节点入口与后台 CRUD、旧节点通信已移除，旧记录不再进入订阅、排序、权限组节点计数及节点排行。底层协议仍可在 V2Node/V2Box 中选择。历史表与历史账务数据不删除，也不自动转换；升级前应把仍在使用的旧节点重新配置为 V2Node/V2Box，并更新对应服务。
+节点管理现仅保留 V2Node 和 V2Box。旧独立 VMess、VLESS、Shadowsocks、Trojan、Hysteria、TUIC、AnyTLS 节点入口与后台 CRUD、旧节点通信已移除，旧记录不再进入订阅、排序、权限组节点计数及节点排行。底层协议仍可在 V2Node/V2Box 中选择。升级迁移 `2026_10_11_000002_drop_retired_node_tables.php` 删除七张旧节点配置表及其中数据，不自动转换。共享账务、流量历史、权限组和路由表保留。升级前应把仍在使用的旧节点重新配置为 V2Node/V2Box，并更新对应服务。删表无法通过回滚恢复数据，只能从数据库备份恢复。新安装不再创建这些表。

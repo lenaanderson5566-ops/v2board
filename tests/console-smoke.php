@@ -120,7 +120,7 @@ try {
     $rules = json_decode($response->getContent(), true)['data'] ?? [];
     $assert($response->getStatusCode() === 200 && ($rules['email_verify'] ?? '') === 'in:0,1' && ($rules['reset_traffic_method'] ?? '') === 'in:0,1,2,3,4', 'Configuration control schema failed');
     $assert($call('/api/v1/' . $securePath . '/console/nodeSchema?type=v2node')->getStatusCode() === 403, 'Node schema must require admin authentication');
-    foreach (['v2node', 'vmess', 'vless', 'trojan', 'shadowsocks', 'hysteria', 'tuic', 'anytls'] as $type) {
+    foreach (['v2node', 'v2box'] as $type) {
         $response = $call('/api/v1/' . $securePath . '/console/nodeSchema?type=' . $type, null, $token);
         $rules = json_decode($response->getContent(), true)['data'] ?? [];
         $assert($response->getStatusCode() === 200 && isset($rules['host'], $rules['name'], $rules['group_id']), 'Node schema failed: ' . $type);
@@ -144,24 +144,24 @@ try {
     $node->refresh();
     $assert($response->getStatusCode() === 200 && $node->city_code === 'california', 'State name normalizes and persists');
     $nodeVariants = [
-        'vmess' => ['tls' => 1, 'network' => 'xhttp', 'networkSettings' => ['path' => '/test', 'mode' => 'auto', 'security' => 'auto']],
-        'vless' => ['tls' => 1, 'network' => 'tcp', 'tls_settings' => ['server_name' => 'example.invalid']],
-        'trojan' => ['network' => 'tcp', 'allow_insecure' => 0, 'server_name' => 'example.invalid'],
-        'shadowsocks' => ['cipher' => 'aes-128-gcm'],
-        'hysteria' => ['version' => 2, 'insecure' => 0, 'obfs' => 'salamander', 'obfs_password' => 'test-only'],
-        'tuic' => ['insecure' => 0, 'disable_sni' => 0, 'zero_rtt_handshake' => 0, 'udp_relay_mode' => 'quic', 'congestion_control' => 'bbr'],
-        'anytls' => ['insecure' => 0, 'padding_scheme' => '["stop=8","0=30-30"]'],
+        'vmess' => ['tls' => 1, 'network' => 'ws'],
+        'vless' => ['tls' => 1, 'network' => 'tcp'],
+        'trojan' => ['network' => 'tcp'],
+        'shadowsocks' => ['tls' => 0, 'cipher' => 'aes-128-gcm'],
+        'hysteria2' => ['obfs' => 'salamander', 'obfs_password' => 'test-only'],
+        'tuic' => ['udp_relay_mode' => 'quic', 'congestion_control' => 'bbr'],
+        'anytls' => ['padding_scheme' => '["stop=8","0=30-30"]'],
     ];
-    foreach ($nodeVariants as $kind => $variant) {
-        $body = ['name' => 'console-smoke-' . $kind, 'group_id' => [$group->id], 'route_id' => [], 'host' => 'example.invalid', 'port' => '443', 'server_port' => 443, 'rate' => 1, 'show' => 0] + $variant;
-        $response = $call('/api/v1/' . $securePath . '/server/' . $kind . '/save', $body, $token);
-        $assert($response->getStatusCode() === 200, 'Node variant save failed: ' . $kind . ': ' . $response->getContent());
+    foreach (['v2node', 'v2box'] as $backend) foreach ($nodeVariants as $kind => $variant) {
+        $body = array_merge(['name' => 'console-smoke-' . $backend . '-' . $kind, 'protocol' => $kind, 'group_id' => [$group->id], 'route_id' => [], 'host' => 'example.invalid', 'port' => '443', 'server_port' => 443, 'rate' => 1, 'show' => 0, 'tls' => 1, 'network' => 'tcp', 'disable_sni' => 0, 'zero_rtt_handshake' => 0], $variant);
+        $response = $call('/api/v1/' . $securePath . '/server/' . $backend . '/save', $body, $token);
+        $assert($response->getStatusCode() === 200, 'Node variant save failed: ' . $backend . '/' . $kind . ': ' . $response->getContent());
     }
-    $assert(App\Models\ServerAnytls::where('name', 'console-smoke-anytls')->first()->padding_scheme === ['stop=8', '0=30-30'], 'AnyTLS padding JSON failed to round-trip');
-    $assert(App\Models\ServerTuic::where('name', 'console-smoke-tuic')->first()->congestion_control === 'bbr', 'TUIC option did not persist');
+    $assert(App\Models\ServerV2node::where('name', 'console-smoke-v2node-anytls')->first()->padding_scheme === ['stop=8', '0=30-30'], 'AnyTLS padding JSON failed to round-trip');
+    $assert(App\Models\ServerV2box::where('name', 'console-smoke-v2box-tuic')->first()->congestion_control === 'bbr', 'TUIC option did not persist');
     $response = $call('/api/v1/' . $securePath . '/server/manage/getNodes', null, $token);
     $savedNodes = json_decode($response->getContent(), true)['data'] ?? [];
-    foreach (array_merge(['v2node'], array_keys($nodeVariants)) as $kind) {
+    foreach (['v2node', 'v2box'] as $kind) {
         $matches = array_filter($savedNodes, function ($item) use ($kind) { return $item['type'] === $kind && strpos($item['name'], 'console-smoke-') === 0; });
         $assert($response->getStatusCode() === 200 && count($matches) > 0, 'Saved node did not reload: ' . $kind);
     }
@@ -194,9 +194,9 @@ try {
         $payload = json_decode($response->getContent(), true);
         $assert($response->getStatusCode() === 200 && ($payload['generated_count'] ?? 0) === 2 && ($payload['data'] ?? null) === true, 'Batch JSON generation failed: ' . $kind);
     }
-    foreach (array_merge(['v2node'], array_keys($nodeVariants)) as $nodeType) {
+    foreach (['v2node', 'v2box'] as $nodeType) {
         $model = 'App\\Models\\Server' . ucfirst($nodeType);
-        $originalNode = $model::where('name', $nodeType === 'v2node' ? 'console-smoke-node' : 'console-smoke-' . $nodeType)->first();
+        $originalNode = $model::where('name', $nodeType === 'v2node' ? 'console-smoke-node' : 'console-smoke-' . $nodeType . '-vless')->first();
         $response = $call('/api/v1/' . $securePath . '/server/' . $nodeType . '/update', ['id' => $originalNode->id, 'show' => 1], $token);
         $assert($response->getStatusCode() === 200 && $originalNode->refresh()->show == 1, 'Node visibility failed: ' . $nodeType);
         $beforeIds = $model::pluck('id')->all();
@@ -255,9 +255,9 @@ try {
     $assert($response->getStatusCode() === 200 && $payment2->refresh()->enable == 1, 'Payment enable failed');
     $response = $call('/api/v1/' . $securePath . '/payment/drop', ['id' => $payment2->id], $token);
     $assert($response->getStatusCode() === 200 && !App\Models\Payment::find($payment2->id), 'Payment deletion failed');
-    $vmess = App\Models\ServerVmess::where('name', 'console-smoke-vmess')->first();
-    $response = $call('/api/v1/' . $securePath . '/server/manage/sort', ['v2node' => [$node->id => 2], 'vmess' => [$vmess->id => 1]], $token);
-    $assert($response->getStatusCode() === 200 && $node->refresh()->sort == 2 && $vmess->refresh()->sort == 1, 'Cross-protocol node order failed');
+    $vmess = App\Models\ServerV2box::where('name', 'console-smoke-v2box-vmess')->first();
+    $response = $call('/api/v1/' . $securePath . '/server/manage/sort', ['v2node' => [$node->id => 2], 'v2box' => [$vmess->id => 1]], $token);
+    $assert($response->getStatusCode() === 200 && $node->refresh()->sort == 2 && $vmess->refresh()->sort == 1, 'Cross-backend node order failed: ' . $response->getContent());
     $knowledge = [];
     foreach ([1, 2] as $index) {
         $title = 'console-knowledge-' . $index;

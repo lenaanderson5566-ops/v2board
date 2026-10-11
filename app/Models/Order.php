@@ -15,11 +15,13 @@ class Order extends Model
     }
     protected $dateFormat = 'U';
     protected $guarded = ['id'];
+    protected $hidden = ['payment_snapshot'];
     protected $casts = [
         'created_at' => 'timestamp',
         'updated_at' => 'timestamp',
         'surplus_order_ids' => 'array',
         'credit_snapshot' => 'array',
+        'payment_snapshot' => 'array',
         'credit_bytes' => 'integer'
     ];
 }

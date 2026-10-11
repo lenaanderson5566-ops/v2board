@@ -255,12 +255,14 @@ class OrderActions
         }
         $order->payment_id = $method;
         // Claim payment before contacting the provider; replacement must not cancel issued payments.
-        $claimed = DB::transaction(function () use ($order, $method) {
+        $claimed = DB::transaction(function () use ($order, $method, $payment) {
             $fresh = Order::where('id', $order->id)->lockForUpdate()->first();
             if (!$fresh || (int)$fresh->status !== 0) return false;
             $fresh->payment_id = $method;
             $fresh->handling_amount = $order->handling_amount;
-            return $fresh->save();
+            $saved = \App\Services\OrderPaymentHistory::select($fresh, $payment);
+            $order->handling_amount = $fresh->handling_amount;
+            return $saved;
         }, 3);
         if (!$claimed) abort(409, __('Order does not exist or has been paid'));
         $result = $paymentService->pay([

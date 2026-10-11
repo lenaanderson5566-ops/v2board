@@ -330,6 +330,8 @@ function OrderDetail({ row }: { row: Row }) {
                                 ["plan_id", "套餐 ID"],
                                 ["period", "周期"],
                                 ["callback_no", "回调单号"],
+                                ["payment_display", "支付方式"],
+                                ["payment_provider", "支付接口"],
                                 ["status", "订单状态"],
                                 ["commission_status", "佣金状态"],
                                 ...[

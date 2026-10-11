@@ -276,13 +276,13 @@ class OrderService
         $order->surplus_order_ids = array_column($orders, 'id');
     }
 
-    public function paid(string $callbackNo)
+    public function paid(string $callbackNo, array $paymentContext = [])
     {
         $order = $this->order;
         // A stale simultaneous callback must never reopen a completed order.
         $changed = Order::where('id', $order->id)->where('status', 0)->update([
             'status' => 1, 'paid_at' => time(), 'callback_no' => $callbackNo,
-        ]);
+        ] + $paymentContext);
         $order->refresh();
         if (!$changed && (int)$order->status !== 1) return true;
         try {

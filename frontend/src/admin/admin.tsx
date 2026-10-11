@@ -350,6 +350,7 @@ export const resources: Record<string, Resource> = {
                     ] || r.type,
             ],
             ["plan_name", "订阅计划"],
+            ["payment_display", "支付方式"],
             [
                 "period",
                 "周期",

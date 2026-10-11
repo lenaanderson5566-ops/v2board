@@ -687,5 +687,7 @@ CREATE TABLE IF NOT EXISTS `v2_traffic_credit_log` (
   PRIMARY KEY (`id`), UNIQUE KEY (`reference`), KEY (`user_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
+ALTER TABLE `v2_order` ADD COLUMN `payment_snapshot` json NULL;
+
 -- Independent V2Box nodes, with the same protocol/display columns as V2Node.
 CREATE TABLE IF NOT EXISTS `v2_server_v2box` LIKE `v2_server_v2node`;

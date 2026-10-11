@@ -2,6 +2,10 @@
 
 use Illuminate\Support\Str;
 
+$cachePrefix = env('CACHE_PREFIX', Str::slug(env('APP_NAME', 'laravel'), '_') . '_cache');
+// Laravel 10 appended this separator inside these stores; preserve existing keys.
+$legacyStorePrefix = !empty($cachePrefix) ? $cachePrefix . ':' : '';
+
 return [
 
     /*
@@ -54,6 +58,7 @@ return [
 
         'memcached' => [
             'driver' => 'memcached',
+            'prefix' => $legacyStorePrefix,
             'persistent_id' => env('MEMCACHED_PERSISTENT_ID'),
             'sasl' => [
                 env('MEMCACHED_USERNAME'),
@@ -73,11 +78,13 @@ return [
 
         'redis' => [
             'driver' => 'redis',
+            'prefix' => $legacyStorePrefix,
             'connection' => 'cache',
         ],
 
         'dynamodb' => [
             'driver' => 'dynamodb',
+            'prefix' => $legacyStorePrefix,
             'key' => env('AWS_ACCESS_KEY_ID'),
             'secret' => env('AWS_SECRET_ACCESS_KEY'),
             'region' => env('AWS_V2BOARD_REGION', 'us-east-1'),
@@ -98,6 +105,6 @@ return [
     |
     */
 
-    'prefix' => env('CACHE_PREFIX', Str::slug(env('APP_NAME', 'laravel'), '_') . '_cache'),
+    'prefix' => $cachePrefix,
 
 ];

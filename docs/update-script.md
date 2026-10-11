@@ -28,7 +28,7 @@
 
 如果三份 `GeoLite2-ASN.mmdb`、`GeoLite2-City.mmdb`、`GeoLite2-Country.mmdb` 已被跟踪但被本地更新，预检允许这些普通文件的修改。正式升级在完整站点归档校验后，还会将修改文件单独复制到 `tracked/storage/geoip`，再恢复仓库版本以完成切换。预检不恢复或移动文件；其他已跟踪文件修改仍会停止。
 
-针对 PHP 8.1 的宝塔站点，可下载新版脚本后先预检：
+当前 Laravel 11 要求 PHP 8.2+，先同步升级 CLI、PHP-FPM、队列和调度器使用的 PHP。update.sh 不安装系统 PHP，平台要求不满足时会在停机前阻止升级。可下载新版脚本后先预检：
 
 ```bash
 cd /www/wwwroot/api.adanalytics-service.com

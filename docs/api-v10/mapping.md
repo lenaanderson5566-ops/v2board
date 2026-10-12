@@ -122,3 +122,5 @@ The existing operations endpoint `log/user-connection/fetch` now adds nullable `
 Subscription format names additionally accept `clash-party`, `throne`, `nekobox` and `husi`. All newly recognized clients default to denied until explicitly enabled. Retired flag parameters and legacy format names return 422; generated Mihomo imports use `format=mihomo` on both V10 and custom paths. Shared URI rendering does not expose `uri` or `general` as public fallback formats. The user response schema is unchanged; frontend import URL tests cover canonical output.
 
 Client identity migration now consolidates old strategy keys and log identities. The public `format` field maps directly to internal `format`; `flag` is rejected even when format is also supplied. Canonical format enums and frontend types are updated. Authenticated native configuration remains unchanged.
+
+支付回调加固（2026-10-12）：V10 与保留的旧支付回调继续共用 PaymentActions，原生响应及路径不变。EPay、Paytaro、StripeCheckout 核对金额、币种和已选择渠道；历史快照允许先前选择的渠道延迟到账。没有新用户 JSON 字段，前端传输类型保持不变。

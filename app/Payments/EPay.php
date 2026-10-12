@@ -75,11 +75,13 @@ class EPay {
         // 强制要求交易状态为成功，避免未支付/处理中状态被误入账
         $tradeStatus = $params['trade_status'] ?? '';
         if ($tradeStatus !== 'TRADE_SUCCESS') {
-            return('fail');
+            return false;
         }
 
         return [
             'trade_no' => $params['out_trade_no'],
+            'amount' => \App\Services\Money::parseMinor($params['money'] ?? null),
+            'currency' => 'CNY',
             'callback_no' => $params['trade_no']
         ];
     }

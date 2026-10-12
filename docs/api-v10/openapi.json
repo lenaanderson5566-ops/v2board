@@ -463,6 +463,7 @@
           "guest"
         ],
         "summary": "GET webhooks/payments/{provider}/{endpointId}",
+        "description": "Native signed provider callback. Pending orders require a selected payment channel (including historical channel snapshots). EPay, Paytaro and StripeCheckout must report the exact payable amount including the selected channel fee and CNY currency. Verified non-settlement Stripe events are acknowledged without granting entitlement. Legacy callbacks use the same settlement checks.",
         "parameters": [
           {
             "name": "provider",
@@ -538,6 +539,7 @@
           "guest"
         ],
         "summary": "GET webhooks/payments/{provider}/{endpointId}",
+        "description": "Native signed provider callback. Pending orders require a selected payment channel (including historical channel snapshots). EPay, Paytaro and StripeCheckout must report the exact payable amount including the selected channel fee and CNY currency. Verified non-settlement Stripe events are acknowledged without granting entitlement. Legacy callbacks use the same settlement checks.",
         "parameters": [
           {
             "name": "provider",

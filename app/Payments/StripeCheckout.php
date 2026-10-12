@@ -16,7 +16,7 @@ class StripeCheckout {
         return [
             'currency' => [
                 'label' => '货币单位',
-                'description' => '',
+                'description' => '仅支持 CNY（人民币）',
                 'type' => 'input',
             ],
             'stripe_sk_live' => [
@@ -44,11 +44,8 @@ class StripeCheckout {
 
     public function pay($order)
     {
-        $currency = $this->config['currency'];
-        $exchange = $this->exchange('CNY', strtoupper($currency));
-        if (!$exchange) {
-            abort(500, __('Currency conversion has timed out, please try again later'));
-        }
+        $currency = strtolower($this->config['currency'] ?? 'cny');
+        abort_unless($currency === 'cny', 422, 'Only CNY checkout is supported');
         $customFieldName = isset($this->config['stripe_custom_field_name']) ? $this->config['stripe_custom_field_name'] : 'Contact Infomation';
 
         $params = [
@@ -62,7 +59,7 @@ class StripeCheckout {
                         'product_data' => [
                             'name' => $order['trade_no']
                         ],
-                        'unit_amount' => floor($order['total_amount'] * $exchange)
+                        'unit_amount' => (int)$order['total_amount']
                     ],
                     'quantity' => 1
                 ]
@@ -100,10 +97,10 @@ class StripeCheckout {
         try {
             $event = \Stripe\Webhook::constructEvent(
                 request()->getContent() ?: json_encode($_POST),
-                $_SERVER['HTTP_STRIPE_SIGNATURE'],
+                request()->header('Stripe-Signature', ''),
                 $this->config['stripe_webhook_key']
             );
-        } catch (\Stripe\Error\SignatureVerification $e) {
+        } catch (\Stripe\Exception\SignatureVerificationException $e) {
             abort(400);
         }
 
@@ -113,6 +110,8 @@ class StripeCheckout {
                 if ($object->payment_status === 'paid') {
                     return [
                         'trade_no' => $object->client_reference_id,
+                        'amount' => $object->amount_total,
+                        'currency' => strtoupper($object->currency),
                         'callback_no' => $object->payment_intent
                     ];
                 }
@@ -121,19 +120,15 @@ class StripeCheckout {
                 $object = $event->data->object;
                 return [
                     'trade_no' => $object->client_reference_id,
+                    'amount' => $object->amount_total,
+                    'currency' => strtoupper($object->currency),
                     'callback_no' => $object->payment_intent
                 ];
                 break;
             default:
-                abort(500, 'event is not support');
+                return 'success';
         }
         return('success');
     }
 
-    private function exchange($from, $to)
-    {
-        $result = file_get_contents("https://api.exchangerate-api.com/v4/latest/{$from}");
-        $result = json_decode($result, true);
-        return $result['rates'][$to];
-    }
 }

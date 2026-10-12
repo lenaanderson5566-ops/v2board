@@ -21,18 +21,18 @@ class UserController extends Controller
             ->where('id', $request->input('id'))
             ->where('is_staff', 0)
             ->first();
-        if (!$user) abort(500, '用户不存在');
+        if (!$user) abort(404, '用户不存在');
         return response([
-            'data' => $user
+            'data' => $user->only(['id', 'email', 'transfer_enable', 'device_limit', 'expired_at', 'banned', 'plan_id', 'group_id', 'commission_rate', 'discount', 'u', 'd', 'balance', 'commission_balance', 'created_at', 'updated_at'])
         ]);
     }
 
     public function update(UserUpdate $request)
     {
         $params = $request->validated();
-        $user = User::find($request->input('id'));
+        $user = User::where('is_admin', 0)->where('is_staff', 0)->find($request->input('id'));
         if (!$user) {
-            abort(500, '用户不存在');
+            abort(404, '用户不存在');
         }
         if (User::where('email', $params['email'])->first() && $user->email !== $params['email']) {
             abort(500, '邮箱已被使用');
@@ -51,8 +51,10 @@ class UserController extends Controller
             $params['group_id'] = $plan->group_id;
         }
 
+        $revoke = isset($params['password']) || $user->email !== $params['email'] || (int)$params['banned'] === 1;
         try {
             $user->update($params);
+            if ($revoke) (new \App\Services\AuthService($user))->removeAllSession();
         } catch (\Exception $e) {
             abort(500, '保存失败');
         }
@@ -63,10 +65,7 @@ class UserController extends Controller
 
     public function sendMail(UserSendMail $request)
     {
-        $sortType = in_array($request->input('sort_type'), ['ASC', 'DESC']) ? $request->input('sort_type') : 'DESC';
-        $sort = $request->input('sort') ? $request->input('sort') : 'created_at';
-        $builder = User::orderBy($sort, $sortType);
-        $this->filter($request, $builder);
+        $builder = $this->filteredUsers($request);
         $users = $builder->cursor();
         foreach ($users as $user) {
             SendEmailJob::dispatch([
@@ -89,10 +88,7 @@ class UserController extends Controller
 
     public function ban(Request $request)
     {
-        $sortType = in_array($request->input('sort_type'), ['ASC', 'DESC']) ? $request->input('sort_type') : 'DESC';
-        $sort = $request->input('sort') ? $request->input('sort') : 'created_at';
-        $builder = User::orderBy($sort, $sortType);
-        $this->filter($request, $builder);
+        $builder = $this->filteredUsers($request);
         try {
             $builder->update([
                 'banned' => 1
@@ -105,4 +101,35 @@ class UserController extends Controller
             'data' => true
         ]);
     }
+    private function filteredUsers(Request $request)
+    {
+        $rules = (new \App\Http\Requests\Admin\UserFetch())->rules();
+        $rules['sort'] = 'nullable|in:id,created_at,banned,plan_id,group_id,transfer_enable,device_limit,expired_at,balance,commission_balance';
+        $rules['filter.*.key'] = 'required|in:id,email,transfer_enable,device_limit,d,expired_at,invite_by_email,invite_user_id,plan_id,banned';
+        $rules['filter.*.value'] = ['required', function ($attribute, $value, $fail) {
+            if (!is_string($value) && !is_numeric($value)) $fail('过滤值参数有误');
+        }];
+        $request->validate($rules);
+        $builder = User::where('is_admin', 0)->where('is_staff', 0)
+            ->orderBy($request->input('sort') ?: 'created_at', $request->input('sort_type') ?: 'DESC');
+        foreach ($request->input('filter') ?: [] as $filter) {
+            $key = $filter['key'];
+            $condition = $filter['condition'];
+            $value = $filter['value'];
+            if ($condition === '模糊') { $condition = 'like'; $value = "%{$value}%"; }
+            if (in_array($key, ['d', 'transfer_enable'], true)) {
+                abort_unless(is_numeric($value), 422, '流量过滤值必须为数字');
+                $value *= 1073741824;
+            }
+            if ($key === 'invite_by_email') {
+                $builder->whereIn('invite_user_id', User::where('email', $condition, $value)->select('id'));
+            } elseif ($key === 'plan_id' && $value === 'null') {
+                $builder->whereNull('plan_id');
+            } else {
+                $builder->where($key, $condition, $value);
+            }
+        }
+        return $builder;
+    }
+
 }

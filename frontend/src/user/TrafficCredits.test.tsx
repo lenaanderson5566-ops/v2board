@@ -85,7 +85,7 @@ it("routes existing pending orders instead of creating a second charge", () => {
     render(<TrafficCredits />);
     fireEvent.click(screen.getByRole("button", { name: "buy" }));
     expect(
-        screen.getByRole("link", { name: "查看" }).getAttribute("href"),
+        screen.getByRole("link", { name: "继续支付" }).getAttribute("href"),
     ).toBe("#/order/existing");
     expect(screen.queryByRole("button", { name: "checkout" })).toBeNull();
 });

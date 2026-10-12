@@ -42,7 +42,7 @@ $service=new class($dir) extends App\Services\ClientMirrorService {
 $app->instance(App\Services\ClientMirrorService::class,$service);
 try{
     file_put_contents($dir.'/'.$id.'.bin','installer-fixture');
-    $manifest=['items'=>[$id=>['name'=>'client-universal.apk','status'=>'ready']],'published'=>['cmfa_android'=>$id]];
+    $manifest=['items'=>[$id=>['name'=>'client-universal.apk','status'=>'ready','client'=>'cmfa','version'=>'2.11.2']],'published'=>['cmfa_android'=>$id]];
     file_put_contents($dir.'/manifest.json',json_encode($manifest));
     $before=file_get_contents($dir.'/manifest.json');
     $url='/api/v10/public/client-installers/'.$id.'/content';

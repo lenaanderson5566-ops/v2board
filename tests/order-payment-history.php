@@ -31,7 +31,7 @@ try {
     $request=Request::create('/', 'POST',['trade_no'=>$order->trade_no,'method'=>$other->id]); $request->user=['id'=>1];
     (new OrderActions())->checkout($request);
     $notify = function ($channel, $callback) use ($order) {
-        $params=['out_trade_no'=>$order->trade_no,'trade_no'=>$callback,'trade_status'=>'TRADE_SUCCESS'];
+        $params=['out_trade_no'=>$order->trade_no,'trade_no'=>$callback,'trade_status'=>'TRADE_SUCCESS','money'=>number_format((1000 + $channel->handling_fee_fixed)/100,2,'.','')];
         ksort($params); $pairs=[]; foreach($params as $k=>$v) $pairs[]=$k.'='.$v;
         $params['sign']=md5(implode('&',$pairs).'test-secret');
         return (new PaymentActions())->notify('Paytaro',$channel->uuid,Request::create('/','POST',$params));

@@ -91,6 +91,8 @@ class Paytaro
         }
         return [
             'trade_no' => $params['out_trade_no'],
+            'amount' => \App\Services\Money::parseMinor($params['money'] ?? null),
+            'currency' => 'CNY',
             'callback_no' => $params['trade_no'],
             'custom_result' => 'success',
         ];

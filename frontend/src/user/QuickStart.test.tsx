@@ -53,7 +53,7 @@ it("lets users switch systems and copies the correct client format without openi
     fireEvent.click(screen.getAllByRole("button", { name: "复制订阅链接" })[0]);
     await waitFor(() =>
         expect(copy).toHaveBeenCalledWith(
-            "https://example.com/sub?token=test-only&language=zh-CN&flag=sing",
+            "https://example.com/sub?token=test-only&language=zh-CN&format=sing-box",
         ),
     );
 

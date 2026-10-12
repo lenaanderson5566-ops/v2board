@@ -44,8 +44,9 @@ class SystemHealthService
         $check('migrations', '数据库迁移', function () {
             $migrator = app('migrator');
             $files = $migrator->getMigrationFiles(database_path('migrations'));
-            $ran = $migrator->getRepository()->getRan();
-            $pending = array_values(array_diff(array_keys($files), $ran));
+            $ran = $migrator->repositoryExists() ? $migrator->getRepository()->getRan() : [];
+            $pending = MigrationHealthService::pending($files, $ran,
+                \Illuminate\Support\Facades\Schema::hasTable('failed_jobs'));
             return ['status' => $pending ? 'warning' : 'healthy',
                 'message' => $pending ? '存在未执行迁移，请按升级流程运行 update.sh' : '数据库迁移已完成', 'pendingCount' => count($pending)];
         });

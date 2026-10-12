@@ -18,6 +18,7 @@
           "client"
         ],
         "summary": "GET subscriptions/{subscriptionToken}",
+        "description": "Optional subscription UA whitelist checks the actual User-Agent, independently of format. Unknown or unlisted clients receive 403 FORBIDDEN. Application and engine minimum versions are checked independently. Authenticated /me/client-config uses its own dedicated-client policy.",
         "parameters": [
           {
             "name": "subscriptionToken",
@@ -63,6 +64,10 @@
           }
         ],
         "responses": {
+          "403": {
+            "description": "Subscription UA is not allowed by the enabled client whitelist.",
+            "content": { "application/problem+json": { "schema": { "$ref": "#/components/schemas/Problem" } } }
+          },
           "200": {
             "description": "Success",
             "headers": {
@@ -149,6 +154,10 @@
           }
         ],
         "responses": {
+          "403": {
+            "description": "Subscription UA is not allowed by the enabled client whitelist.",
+            "content": { "application/problem+json": { "schema": { "$ref": "#/components/schemas/Problem" } } }
+          },
           "200": {
             "description": "Success",
             "headers": {

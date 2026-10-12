@@ -7,6 +7,8 @@ use Illuminate\Foundation\Http\FormRequest;
 class ConfigSave extends FormRequest
 {
     const RULES = [
+        'subscription_ua_whitelist_enabled' => 'in:0,1',
+        'subscription_ua_whitelist' => 'array|max:30',
         'fastai_enabled' => 'in:0,1',
         'fastai_entrypoints' => 'sometimes|array|max:16',
         'fastai_releases' => 'sometimes|array|max:32',

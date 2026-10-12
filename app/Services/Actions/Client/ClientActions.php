@@ -74,17 +74,20 @@ class ClientActions
         $resolvedClientType = null;
         $resolvedFlag = $this->resolveProtocolFlag($requestedFlag ?: $flag);
         $clientStrategyService = new ClientStrategyService();
+        $uaType = \App\Services\ClientIdentity::identify((string) $request->userAgent());
         $user = $request->user;
         // Imported URLs pin the selected language; old client URLs use the saved preference.
         $language = \App\Services\ProductMail::language($request->input('language'))
             ?: \App\Services\ProductMail::language($user->language)
             ?: \App\Services\ProductMail::language(app()->getLocale()) ?: 'zh-CN';
         app()->setLocale($language);
+        $this->enforceUaWhitelist($request);
         $clientUser = \App\Services\TrafficCreditService::forClient($user);
         // account not expired and is not banned.
         $userService = new UserService();
         if ($userService->isAvailable($user)) {
-            if ($request->attributes->get('client.native') ? !config('v2board.fastai_enabled', 1) : !$clientStrategyService->isEnabled($resolvedFlag)) {
+            $denial = $request->attributes->get('client.native') ? null : $clientStrategyService->accessDenial($resolvedFlag, (string) $request->userAgent());
+            if ($request->attributes->get('client.native') ? !config('v2board.fastai_enabled', 1) : $denial === 'client_disabled') {
                 $riskLogService->createSubscribeLog($this->buildSubscribeLogPayload(
                     $request,
                     $user,
@@ -97,12 +100,7 @@ class ClientActions
                 return $class->handle();
             }
 
-            $resolvedVersion = $request->attributes->get('client.version') ?: $clientStrategyService->resolveClientVersion(
-                $resolvedFlag,
-                (string) $request->input('flag', ''),
-                (string) $request->header('user-agent', '')
-            );
-            if (!$request->attributes->get('client.native') && !$clientStrategyService->isVersionAllowed($resolvedFlag, $resolvedVersion)) {
+            if ($denial === 'client_version_too_low') {
                 $riskLogService->createSubscribeLog($this->buildSubscribeLogPayload(
                     $request,
                     $user,
@@ -128,7 +126,7 @@ class ClientActions
                 $class = $request->attributes->get('client.native')
                     ? ($request->input('core') === 'sing-box' ? new \App\Services\FastaiSingboxConfig($clientUser, $servers) : new \App\Services\FastaiConfig($clientUser, $servers, $this->structuredConfig($request)))
                     : $this->resolveProtocolHandler($resolvedFlag, $clientUser, $servers);
-                $resolvedClientType = $class->flag;
+                $resolvedClientType = $request->attributes->get('client.native') ? $class->flag : ($uaType ?: $class->flag);
                 $riskLogService->createSubscribeLog($this->buildSubscribeLogPayload(
                     $request,
                     $user,
@@ -166,6 +164,27 @@ class ClientActions
         return $class->handle();
     }
 
+    public function enforceApplicationPolicy(Request $request): void
+    {
+        $this->enforceUaWhitelist($request);
+        $reason = (new ClientStrategyService())->accessDenial('meta', (string) $request->userAgent());
+        if ($reason !== null) {
+            (new RiskLogService())->createSubscribeLog($this->buildSubscribeLogPayload($request, $request->user, 'meta', 'failed', $reason));
+            abort(403, 'Subscription client policy rejected this request.');
+        }
+    }
+    public function enforceUaWhitelist(Request $request): void
+    {
+        $uaType = \App\Services\ClientIdentity::identify((string) $request->userAgent());
+        if (!$request->attributes->get('client.native') && !\App\Services\ClientIdentity::whitelistAllows(
+            (string) $request->userAgent(), (bool) config('v2board.subscription_ua_whitelist_enabled', 0),
+            (array) config('v2board.subscription_ua_whitelist', [])
+        )) {
+            (new RiskLogService())->createSubscribeLog($this->buildSubscribeLogPayload($request, $request->user, $uaType ?: 'general', 'failed', 'client_ua_not_allowed'));
+            abort(403, 'Subscription client is not allowed.');
+        }
+    }
+
     private function buildSubscribeLogPayload(Request $request, $user, ?string $flag, string $status, ?string $reason = null): array
     {
         $trafficU = (int) ($user['u'] ?? 0);
@@ -178,7 +197,7 @@ class ClientActions
             'plan_id' => $user->plan_id,
             'plan_name' => $user->plan_id ? optional(Plan::find($user->plan_id))->name : null,
             'expired_at' => $user->expired_at,
-            'client_type' => $flag,
+            'client_type' => $request->attributes->get('client.native') ? $flag : (\App\Services\ClientIdentity::identify((string) $request->userAgent()) ?: $flag),
             'traffic_u' => $trafficU,
             'traffic_d' => $trafficD,
             'traffic_total' => $trafficTotal,
@@ -276,6 +295,8 @@ class ClientActions
             return $this->getGeneralFlag();
         }
 
+        $identified = \App\Services\ClientIdentity::identify($input);
+        if ($identified) return $identified;
         $input = strtolower($input);
         $flags = array_values($this->getProtocolFlags());
         usort($flags, fn ($a, $b) => strlen($b) <=> strlen($a));

@@ -675,15 +675,17 @@ export const resources: Record<string, Resource> = {
             ["client_name", "客户端"],
             ["client_type", "标识"],
             ["min_version", "最低版本"],
+            ["version_source", "判别依据"],
+            ["version_example", "填写示例"],
             ["is_enabled", "启用"],
-            ["subscribe_count_24h", "24 小时订阅"],
+            ["subscribe_flag_count_24h", "24 小时订阅"],
         ],
         fields: [
             f("client_type", "客户端标识", "text", true),
             f("client_name", "名称"),
             {
                 ...f("min_version", "最低版本"),
-                hint: "按标识识别版本：sing / meta 对应内核；verge / flclash 对应应用。无法识别且设置了最低版本时沿用拒绝策略。",
+                hint: "留空不限制。填写示例：meta 内核 1.19.0；sing 内核 1.12.0；verge 应用 2.3.1；flclash 应用 0.8.0。支持 v 前缀和 -rc.1 预发布标记，不填写客户端名称。设置后，UA 未提供对应版本也会拒绝；CMFA、Hiddify 的应用版本不能代替内核版本。",
             },
             toggle("is_enabled", "启用"),
             f("sort", "排序", "number"),
@@ -1620,7 +1622,7 @@ const groupNames: Record<string, string> = {
     telegram: "Telegram",
     ticket: "工单设置",
     deposit: "充值奖励",
-    app: "客户端下载",
+    app: "专用客户端下载",
     entrypoints: "服务入口",
 };
 export function Settings() {
@@ -1656,6 +1658,9 @@ export function Settings() {
             .filter(
                 ([k]) =>
                     !k.startsWith("frontend_") &&
+                    !k.startsWith("client_primary_") &&
+                    !k.startsWith("client_secondary_") &&
+                    !k.startsWith("subscription_ua_") &&
                     k !== "email_template" &&
                     k !== "invite_never_expire" &&
                     k !== "fastai_releases" &&

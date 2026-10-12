@@ -235,3 +235,43 @@ it("consolidates settings and monitoring navigation", () => {
         "日志",
     );
 });
+
+it("renders the backend 24-hour client count", async () => {
+    const { ResourcePage, resources } = await import("./admin");
+    api.request.mockResolvedValue({
+        data: [
+            {
+                client_type: "flclash",
+                client_name: "FlClash",
+                subscribe_flag_count_24h: 27,
+                is_enabled: 1,
+            },
+        ],
+        total: 1,
+    });
+    render(<ResourcePage resource={resources.clients} />);
+    expect(await screen.findByText("27")).toBeTruthy();
+    expect(screen.getByText("24 小时订阅")).toBeTruthy();
+});
+
+it("keeps recommendations out of dedicated client settings", async () => {
+    const { Settings } = await import("./admin");
+    api.request.mockResolvedValue({
+        data: {
+            site: { app_name: "Test" },
+            app: {
+                fastai_enabled: 1,
+                fastai_releases: [],
+                client_primary_android: "cmfa",
+                client_secondary_android: "flclash",
+            },
+        },
+    });
+    render(<Settings />);
+    fireEvent.click(
+        await screen.findByRole("button", { name: "专用客户端下载" }),
+    );
+    expect(screen.queryByText("android · 主推荐客户端")).toBeNull();
+    expect(screen.queryByText("android · 备选客户端")).toBeNull();
+    expect(await screen.findByText("FastAI 客户端下载与更新")).toBeTruthy();
+});

@@ -13,9 +13,8 @@ final class ClientMirrorPolicy
         // CMFA tags identify the application, not its embedded Mihomo engine.
         if ($client === 'cmfa' && $min) return '已设置 Mihomo 最低版本，需人工确认安装包内核版本';
         if ($min) {
-            if (!preg_match('/^v?(\d+(?:\.\d+){1,3})$/i', $version, $current)
-                || !preg_match('/^v?(\d+(?:\.\d+){1,3})$/i', $min, $required)) return '版本无法可靠比较，请人工确认';
-            if (version_compare($current[1], $required[1], '<')) return '官方安装包低于客户端策略要求的最低版本';
+            if (ClientIdentity::normalizeVersion($version) === null || ClientIdentity::normalizeVersion($min) === null) return '版本无法可靠比较，请人工确认';
+            if (!ClientIdentity::allowsVersion($min, $version)) return '官方安装包低于客户端策略要求的最低版本';
         }
         return null;
     }

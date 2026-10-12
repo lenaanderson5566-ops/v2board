@@ -13,6 +13,7 @@ class AppActions
 {
     public function getConfig(Request $request)
     {
+        (new ClientActions())->enforceApplicationPolicy($request);
         $servers = [];
         $user = $request->user;
         $userService = new UserService();

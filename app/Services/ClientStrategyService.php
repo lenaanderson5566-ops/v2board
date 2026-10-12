@@ -74,9 +74,24 @@ class ClientStrategyService
         return ClientStrategy::query()
             ->orderBy('sort')
             ->orderBy('client_name')
-            ->get();
+            ->get()->map(function ($row) {
+                $type = $row->client_type;
+                $examples = ['meta'=>'1.19.0', 'sing'=>'1.12.0', 'verge'=>'2.3.1', 'flclash'=>'0.8.0'];
+                $row->setAttribute('version_source', in_array($type, ['meta','sing'], true) ? '内核版本' : ($type === 'general' ? '无版本识别' : '应用版本'));
+                $row->setAttribute('version_example', $type === 'general' ? '请留空' : ($examples[$type] ?? '1.2.3'));
+                $row->setAttribute('ua_names', implode(' / ', ClientIdentity::ALIASES[$type] ?? []));
+                return $row;
+            });
     }
 
+    public function accessDenial(string $format, string $ua): ?string
+    {
+        $types = array_values(array_unique(array_filter([$format, ClientIdentity::identify($ua)])));
+        if (in_array('verge', $types, true) || in_array('flclash', $types, true)) $types[] = 'meta';
+        foreach ($types as $type) if (!$this->isEnabled($type)) return 'client_disabled';
+        foreach ($types as $type) if (!$this->isVersionAllowed($type, ClientIdentity::version($type, $ua))) return 'client_version_too_low';
+        return null;
+    }
     public function isEnabled(?string $clientType): bool
     {
         $clientType = strtolower((string) $clientType);
@@ -84,7 +99,6 @@ class ClientStrategyService
             return true;
         }
 
-        $this->syncStrategies();
         $strategy = ClientStrategy::query()->where('client_type', $clientType)->first();
 
         if (in_array($clientType, ['flclash', 'verge'], true) && !$this->isEnabled('meta')) return false;
@@ -100,43 +114,17 @@ class ClientStrategyService
             return true;
         }
 
-        $this->syncStrategies();
         $strategy = ClientStrategy::query()->where('client_type', $clientType)->first();
         if (!$strategy) {
             return true;
         }
 
-        $minVersion = $this->normalizeVersion((string) ($strategy->min_version ?? ''));
-        if (!$minVersion) {
-            return true;
-        }
-
-        $currentVersion = $this->normalizeVersion((string) $clientVersion);
-        if (!$currentVersion) {
-            return false;
-        }
-
-        return version_compare($currentVersion, $minVersion, '>=');
+        return ClientIdentity::allowsVersion($strategy->min_version, $clientVersion);
     }
-
     public function resolveClientVersion(string $clientType, string $requestedFlag, string $userAgent): ?string
     {
-        // A subscription flag selects a format, not the installed application version.
-        // Match only an explicitly named application/engine; never use OS versions.
-        $aliases = [
-            'sing'=>['sing-box','singbox'],
-            'meta'=>['mihomo','Clash.Meta'],
-            'verge'=>['ClashVergeRev','Clash-Verge','ClashVerge'],
-            'flclash'=>['FlClash'], 'shadowrocket'=>['Shadowrocket'],
-            'surge'=>['Surge'], 'stash'=>['Stash'], 'quantumult%20x'=>['Quantumult X','QuantumultX'],
-        ];
-        foreach ($aliases[$clientType] ?? [$clientType] as $name) {
-            if (preg_match('/(?:^|[^a-z0-9])'.preg_quote($name, '/').'[\/\s_-]+v?(\d+(?:\.\d+){1,3})(?![\d.])/i', $userAgent, $m)) return $m[1];
-        }
-
-        return null;
+        return ClientIdentity::version($clientType, $userAgent);
     }
-
     public function deleteStrategy(string $clientType): bool
     {
         $clientType = strtolower(trim($clientType));
@@ -154,6 +142,10 @@ class ClientStrategyService
 
     public function updateStrategies(array $items)
     {
+        foreach ($items as $item) {
+            if (($item['client_type'] ?? '') === 'general' && trim((string) ($item['min_version'] ?? '')) !== '') abort(422, '通用格式无法识别版本，请将最低版本留空');
+            if (!empty($item['min_version']) && ClientIdentity::normalizeVersion((string) $item['min_version']) === null) abort(422, '最低版本格式无效，例如 1.19.0、v2.3.1 或 2.0.0-rc.1');
+        }
         $protocols = $this->syncStrategies();
         $allowed = array_flip(array_keys($protocols));
 
@@ -183,20 +175,6 @@ class ClientStrategyService
         }
 
         return $this->getStrategies();
-    }
-
-    private function normalizeVersion(string $version): ?string
-    {
-        $version = trim(strtolower($version));
-        if (!$version) {
-            return null;
-        }
-
-        if (!preg_match('/v?(\d+(?:\.\d+){0,3})/', $version, $m)) {
-            return null;
-        }
-
-        return $m[1];
     }
 
     private function defaultClientName(string $className): string

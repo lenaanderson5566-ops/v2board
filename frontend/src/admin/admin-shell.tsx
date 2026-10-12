@@ -22,7 +22,7 @@ export const legacyAdminMenu = [
     ["banners", "Banner 管理", "picture", "用户"],
     ["tickets", "工单管理", "support", "用户"],
     ["knowledge", "知识库管理", "bulb", "用户"],
-    ["client-releases", "客户端管理", "screen-smartphone", "风控与客户端"],
+    ["client-releases", "开源客户端管理", "screen-smartphone", "风控与客户端"],
     ["risk", "风控规则", "shield", "风控与客户端"],
     ["blacklist-ip", "IP 黑名单", "ban", "风控与客户端"],
     ["blacklist-ua", "UA 黑名单", "ban", "风控与客户端"],

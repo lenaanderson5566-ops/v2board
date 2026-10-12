@@ -109,3 +109,7 @@ V2Node and explicitly configured legacy V2Box installations retain their existin
 | `New server-wide traffic quota` | `GET /api/v10/server/traffic-budget` |
 
 `GET /api/v10/me/preferences/options` exposes boolean `couponsAvailable`. It is true only when an enabled coupon is within its validity period and has remaining uses (or unlimited uses). No coupon codes are disclosed.
+
+### Subscription client policy
+`GET /api/v10/subscriptions/{subscriptionToken}` retains its existing transport and format parameter. When the optional UA whitelist is enabled, an empty, unknown or unselected client User-Agent returns HTTP 403 with the existing `FORBIDDEN` problem schema. Selecting `format` does not establish client identity. Application and requested format policies both apply. Dedicated authenticated `/me/client-config` continues to use its separate release policy. No frontend user transport type changes are required.
+The token-based `/subscriptions/{subscriptionToken}/application-config` endpoint applies the same UA whitelist and 403 problem response; it cannot bypass the subscription whitelist.

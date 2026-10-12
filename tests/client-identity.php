@@ -41,3 +41,11 @@ $assert(App\Services\SubscriptionClientRegistry::flag('quantumult x')==='quantum
 $assert(App\Services\SubscriptionClientRegistry::flag('general')===null,'No general format');
 $assert(App\Services\SubscriptionClientRegistry::flag('fake-meta')===null,'No substring format match');
 echo "Extended client registry checks passed\n";
+
+foreach (array_keys(C::ALIASES) as $type) {
+ foreach (C::matchingAliases($type) as $alias) {
+  $assert(C::identify($alias.'/1.2.3') === $type, 'Displayed UA alias matches '.$alias);
+  $assert(C::identify('Mozilla/5.0 '.$alias.'/1.2.3') === null, 'Embedded UA alias remains rejected '.$alias);
+ }
+}
+echo "Displayed UA aliases match recognition rules\n";

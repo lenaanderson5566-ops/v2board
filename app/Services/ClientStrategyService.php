@@ -72,7 +72,7 @@ class ClientStrategyService
                 $row->setAttribute('version_source', in_array($type, ['meta','sing'], true) ? '内核版本（UA 明确提供时）' : (in_array($type, ['flclash','verge'], true) ? '应用版本' : 'UA 版本／构建号，需核验'));
                 $row->setAttribute('ua_verification', in_array($type, ['flclash','verge','meta'], true) ? '官方来源已核对；支持自定义 UA' : ($type === 'sing' ? 'Hiddify 来源已核对；其他变体未核对' : '兼容规则；官方来源未核对'));
                 $row->setAttribute('version_example', $examples[$type] ?? '1.2.3');
-                $row->setAttribute('ua_names', implode(' / ', ClientIdentity::ALIASES[$type] ?? []));
+                $row->setAttribute('ua_names', implode(' / ', ClientIdentity::matchingAliases($type)));
                 return $row;
             })->sortBy([['sort', 'asc'], ['client_name', 'asc']])->values();
     }

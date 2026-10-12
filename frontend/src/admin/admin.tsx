@@ -669,27 +669,61 @@ export const resources: Record<string, Resource> = {
         title: "客户端策略",
         fetch: ops("client/strategy/fetch"),
         save: ops("client/strategy/update"),
-        drop: ops("client/strategy/delete"),
+
         key: "client_type",
+        create: false,
         columns: [
-            ["client_name", "客户端"],
-            ["client_id", "标准标识"],
-            ["min_version", "最低版本"],
-            ["version_source", "判别依据"],
-            ["ua_verification", "UA 来源核对"],
-            ["ua_observation", "实际观测"],
-            ["ua_last_seen_at", "最近出现", date],
-            ["ua_version_coverage_24h", "24 小时版本识别率"],
-            ["version_example", "填写示例"],
+            [
+                "client_name",
+                "客户端",
+                (r) => (
+                    <>
+                        <span>{r.client_name}</span>
+                        {r.min_version && (
+                            <small className="muted">
+                                （最低版本 {r.min_version}）
+                            </small>
+                        )}
+                    </>
+                ),
+            ],
             ["is_enabled", "允许订阅访问"],
-            ["subscribe_flag_count_24h", "24 小时订阅"],
+            ["ua_names", "允许的 UA 前缀"],
+            [
+                "top_raw_ua",
+                "实际请求 UA",
+                (r) =>
+                    r.raw_ua_stats?.length ? (
+                        <details>
+                            <summary>
+                                {r.top_raw_ua || r.raw_ua_stats[0].ua}
+                            </summary>
+                            {r.raw_ua_stats.map((item: Row) => (
+                                <div
+                                    key={item.ua}
+                                    style={{ overflowWrap: "anywhere" }}
+                                >
+                                    {item.ua} · 24 小时 {item.count_24h} 次
+                                </div>
+                            ))}
+                        </details>
+                    ) : (
+                        "暂无记录"
+                    ),
+            ],
+            ["subscribe_flag_count_24h", "24 小时请求"],
+            [
+                "ua_last_seen_at",
+                "最近出现",
+                (r) =>
+                    r.ua_last_seen_at ? date(r.ua_last_seen_at) : "暂无记录",
+            ],
         ],
         fields: [
-            f("client_type", "兼容标识（请勿修改）", "text", true),
             f("client_name", "名称"),
             {
-                ...f("min_version", "最低版本"),
-                hint: "留空不限制。填写示例：meta 内核 1.19.0；sing 内核 1.12.0；verge 应用 2.3.1；flclash 应用 0.8.0。支持 v 前缀和 -rc.1 预发布标记，不填写客户端名称。设置后，UA 未提供对应版本也会拒绝；CMFA、Hiddify 的应用版本不能代替内核版本。",
+                ...f("min_version", "最低版本（可选）"),
+                hint: "只需检查 UA 时留空。填写后还会检查对应版本，未提供版本也会拒绝。Mihomo / sing-box 填内核版本，FlClash / Clash Verge 填应用版本，例如 1.19.0。",
             },
             toggle("is_enabled", "允许订阅访问"),
             f("sort", "排序", "number"),

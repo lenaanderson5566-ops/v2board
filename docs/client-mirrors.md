@@ -66,3 +66,6 @@ Linux 是操作系统，不是客户端标识；不能放行所有包含 Linux �
 管理接口 `client/strategy/fetch` 保留原字段，增加 `ua_observation`、`ua_last_seen_at`（Unix 秒或 null）、`ua_version_recognized_24h`、`ua_version_coverage_24h`。`raw_ua_stats` 每项增加 `last_seen`、`version`。`is_enabled` 返回实际允许访问状态，并由原 `client/strategy/update` 保存。GET 不再创建策略记录；首次 POST 保存会使用已有风险设置表记录合并状态 `client_access_unified`。旧 `config/save` 的两个 `subscription_ua_whitelist*` 字段停止接受写入，历史配置保留用于首次合并。
 
 风控规则页集中展示订阅限流，并明确区分「拦截」与「仅记录」。禁用异常记录规则不会停用限流或 IP / UA 黑名单；黑名单条目仍在各自管理页维护。客户端准入、版本与推荐只在客户端管理配置。
+## 精简的 UA 访问列表
+管理列表仅展示客户端、允许订阅访问、允许的 UA 前缀、实际请求 UA、24 小时请求与最近出现。前缀由实际识别规则生成，包括 CMFA、Hiddify 和 SFA 等兼容名称；忽略大小写，必须从 UA 开头匹配并满足名称边界，不是任意包含匹配。实际 UA 可展开查看近 30 天样本。最近出现使用 Unix 秒格式化，未观测时显示暂无记录。
+内部存储兼容标识不再可编辑，仍保留映射以兼容已有链接和日志。客户端由内置注册表维护，页面不提供无效的新增或删除入口。最低版本仍为可选编辑项，已设置时在客户端名称旁提示；只检查 UA 可留空。来源核对、版本依据及识别率从常用列表移除，后台接口字段保持兼容。

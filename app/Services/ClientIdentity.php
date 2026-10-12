@@ -44,15 +44,19 @@ class ClientIdentity
     public static function identify(string $ua): ?string
     {
         // First product token only: browsers carrying a client name are not clients.
-        foreach (self::ALIASES as $type => $aliases) {
+        foreach (array_keys(self::ALIASES) as $type) {
+            $aliases = self::matchingAliases($type);
             foreach ($aliases as $alias) {
                 if (preg_match('/^'.preg_quote($alias, '/').'(?=$|[\/\s_-])/i', trim($ua))) return $type;
             }
         }
-        foreach (['ClashMetaForAndroid'=>'meta', 'Hiddify'=>'sing', 'HiddifyNext'=>'sing', 'HiddifyNextX'=>'sing', 'SFA'=>'sing', 'SFI'=>'sing', 'SFM'=>'sing', 'SFT'=>'sing'] as $alias=>$type) {
-            if (preg_match('/^'.preg_quote($alias, '/').'(?=$|[\/\s_-])/i', trim($ua))) return $type;
-        }
         return null;
+    }
+
+    public static function matchingAliases(string $type): array
+    {
+        $extra = ['meta'=>['ClashMetaForAndroid'], 'sing'=>['Hiddify', 'HiddifyNext', 'HiddifyNextX', 'SFA', 'SFI', 'SFM', 'SFT']];
+        return array_merge(self::ALIASES[$type] ?? [], $extra[$type] ?? []);
     }
 
     public static function whitelistAllows(string $ua, bool $enabled, array $allowed): bool

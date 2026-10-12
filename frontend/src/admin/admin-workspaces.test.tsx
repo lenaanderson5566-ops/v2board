@@ -244,6 +244,10 @@ it("renders the backend 24-hour client count", async () => {
                 client_type: "flclash",
                 client_name: "FlClash",
                 subscribe_flag_count_24h: 27,
+                ua_last_seen_at: 1700000000,
+                ua_names: "FlClash",
+                top_raw_ua: "FlClash/0.8.0",
+                raw_ua_stats: [{ ua: "FlClash/0.8.0", count_24h: 27 }],
                 is_enabled: 1,
             },
         ],
@@ -251,7 +255,17 @@ it("renders the backend 24-hour client count", async () => {
     });
     render(<ResourcePage resource={resources.clients} />);
     expect(await screen.findByText("27")).toBeTruthy();
-    expect(screen.getByText("24 小时订阅")).toBeTruthy();
+    expect(screen.getByText("24 小时请求")).toBeTruthy();
+    expect(screen.queryByText("Invalid Date")).toBeNull();
+    const { date } = await import("../shared/api");
+    expect(screen.getByText(date(1700000000))).toBeTruthy();
+    expect(
+        screen.getByText("FlClash/0.8.0", { selector: "summary" }),
+    ).toBeTruthy();
+    expect(screen.queryByText("判别依据")).toBeNull();
+    expect(
+        resources.clients.fields.some((field) => field.key === "client_type"),
+    ).toBe(false);
 });
 
 it("keeps recommendations out of dedicated client settings", async () => {

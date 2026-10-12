@@ -97,6 +97,14 @@ class UserController extends Controller
         $total = $userModel->count();
         $res = $userModel->forPage($current, $pageSize)
             ->get();
+        \App\Services\AdminUserIdentity::append($res);
+        $lastConnections = \App\Models\UserOnlineSnapshot::query()
+            ->whereIn('user_id', $res->pluck('id'))->where('source', 'alive')
+            ->select('user_id')->selectRaw('MAX(online_at) AS last_connected_at')
+            ->groupBy('user_id')->pluck('last_connected_at', 'user_id');
+        foreach ($res as $row) {
+            $row['last_connected_at'] = max((int) $row->t, (int) $lastConnections->get($row->id)) ?: null;
+        }
         $plan = Plan::get();
         for ($i = 0; $i < count($res); $i++) {
             for ($k = 0; $k < count($plan); $k++) {

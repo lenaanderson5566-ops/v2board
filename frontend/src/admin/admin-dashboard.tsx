@@ -1,11 +1,43 @@
 import { adminUserLabel } from "./admin-user-label";
-import { AdminIcon } from "./AdminIcon";
+import { RiskOverview } from "./AdminRisk";
 import { useState } from "react";
 import { admin, money, type Row } from "../shared/api";
 import { Panel, State, Table, Reload, useData } from "../shared/ui";
 
 const colors = ["#1890ff", "#2fc25b", "#facc14", "#f04864", "#8543e0"];
-export function Overview() {
+export function Overview({
+    initialTab = "income",
+}: {
+    initialTab?: "income" | "risk";
+}) {
+    const [tab, setTab] = useState(initialTab);
+    return (
+        <>
+            <div
+                className="section-tabs"
+                role="tablist"
+                aria-label="仪表盘视图"
+            >
+                <button
+                    role="tab"
+                    aria-selected={tab === "income"}
+                    onClick={() => setTab("income")}
+                >
+                    经营概览
+                </button>
+                <button
+                    role="tab"
+                    aria-selected={tab === "risk"}
+                    onClick={() => setTab("risk")}
+                >
+                    风控概览
+                </button>
+            </div>
+            {tab === "risk" ? <RiskOverview /> : <IncomeOverview />}
+        </>
+    );
+}
+function IncomeOverview() {
     const stat = useData<Row>(admin("stat/getOverride"));
     const health = useData<Row>(admin("system/getSystemStatus"));
     const orders = useData<Row[]>(admin("stat/getOrder"));
@@ -30,9 +62,7 @@ export function Overview() {
             {Number(stats.commission_pending_total) > 0 && (
                 <div className="alert">
                     有 {stats.commission_pending_total} 条佣金等待审核{" "}
-                    <a href="#/orders?commission_status=0&commission_balance_min=0">
-                        立即处理
-                    </a>
+                    <a href="#/invitations?tab=commissions">立即处理</a>
                 </div>
             )}
             <Panel
@@ -46,19 +76,6 @@ export function Overview() {
                     />
                 }
             >
-                <div className="legacy-dashboard-shortcuts">
-                    {[
-                        ["settings", "系统设置", "equalizer"],
-                        ["orders", "订单管理", "list"],
-                        ["plans", "订阅管理", "bag"],
-                        ["users", "用户管理", "users"],
-                    ].map(([key, label, icon]) => (
-                        <a key={key} href={`#/${key}`}>
-                            <AdminIcon name={icon} />
-                            {label}
-                        </a>
-                    ))}
-                </div>
                 <State {...stat} retry={stat.reload}>
                     <div className="legacy-stat-main">
                         {[
@@ -76,9 +93,11 @@ export function Overview() {
                         {[
                             ["本月收入", money(stats.month_income || 0)],
                             ["上月收入", money(stats.last_month_income || 0)],
+                            ["本年度收入", money(stats.year_income || 0)],
+                            ["上年度收入", money(stats.last_year_income || 0)],
                             [
-                                "上月佣金支出",
-                                money(stats.commission_last_month_payout || 0),
+                                "上年度同期收入",
+                                money(stats.last_year_same_period_income || 0),
                             ],
                             ["本月新增用户", stats.month_register_total || 0],
                         ].map(([label, value]) => (
@@ -89,8 +108,16 @@ export function Overview() {
                         ))}
                     </div>
                 </State>
+                <p className="pad muted">
+                    收入按实际支付时间统计（CNY）；上年度同期为去年年初至去年同月同日同一时刻，闰日按
+                    2 月末计算。
+                </p>
                 <State {...orders} retry={orders.reload}>
-                    <HistoryChart data={orders.data || []} />
+                    <HistoryChart
+                        data={(orders.data || []).filter(
+                            (r) => !String(r.type).includes("佣金"),
+                        )}
+                    />
                 </State>
             </Panel>
             <div className="legacy-ranks">
@@ -153,83 +180,42 @@ export function Overview() {
                     );
                 })}
             </div>
-            <details className="panel pad">
-                <summary>近 31 天运营记录</summary>
-                <Table
-                    data={orders.data || []}
-                    columns={[
-                        ["date", "日期"],
-                        ["type", "指标"],
-                        ["value", "数值"],
-                    ]}
-                />
-            </details>
         </>
     );
 }
 
-function RankChart({ data, nameKey }: { data: Row[]; nameKey: string }) {
+export function RankChart({ data, nameKey }: { data: Row[]; nameKey: string }) {
     const maximum = Math.max(1, ...data.map((r) => Number(r.total) || 0));
     return (
-        <div className="legacy-chart">
-            <svg viewBox="0 0 600 300" role="img" aria-label="流量排行柱状图">
-                {[0, 1, 2, 3, 4].map((i) => (
-                    <g key={i}>
-                        <line
-                            x1="55"
-                            y1={250 - i * 55}
-                            x2="580"
-                            y2={250 - i * 55}
-                            stroke="#e8e8e8"
-                        />
-                        <text
-                            x="48"
-                            y={254 - i * 55}
-                            textAnchor="end"
-                            fill="#8c8c8c"
-                            fontSize="11"
-                        >
-                            {((maximum * i) / 4).toFixed(1)}
-                        </text>
-                    </g>
-                ))}
-                {data.map((r, i) => {
-                    const width = 510 / Math.max(data.length, 1),
-                        height = (Number(r.total) / maximum) * 220;
-                    return (
-                        <g
-                            key={`${r.server_type || "user"}-${r.server_id || r.user_id || i}`}
-                        >
-                            <rect
-                                x={60 + i * width}
-                                y={250 - height}
-                                width={Math.max(4, width - 8)}
-                                height={height}
-                                fill="#1890ff"
-                            >
-                                <title>
-                                    {r[nameKey]}：{Number(r.total).toFixed(2)}{" "}
-                                    GB
-                                </title>
-                            </rect>
-                            <text
-                                x={60 + i * width + width / 2}
-                                y="270"
-                                fontSize="11"
-                                fill="#8c8c8c"
-                                textAnchor="middle"
-                            >
-                                {String(r[nameKey] || "").slice(0, 10)}
-                            </text>
-                        </g>
-                    );
-                })}
-                {!data.length && (
-                    <text x="310" y="150" textAnchor="middle" fill="#bfbfbf">
-                        暂无数据
-                    </text>
-                )}
-            </svg>
+        <div
+            className="dashboard-rank"
+            role="img"
+            aria-label="流量排行横向柱状图"
+        >
+            {!data.length && <p className="muted">暂无数据</p>}
+            {data.map((r, i) => {
+                const name =
+                    nameKey === "email"
+                        ? adminUserLabel(r)
+                        : String(r[nameKey] || "未知节点");
+                const value = Math.max(0, Number(r.total) || 0);
+                return (
+                    <div
+                        className="dashboard-rank-row"
+                        key={`${r.server_type || "user"}-${r.server_id || r.user_id || i}`}
+                    >
+                        <div className="dashboard-rank-label">
+                            <span title={name}>{name}</span>
+                            <strong>{value.toFixed(2)} GB</strong>
+                        </div>
+                        <div className="dashboard-rank-track">
+                            <div
+                                style={{ width: `${(value / maximum) * 100}%` }}
+                            />
+                        </div>
+                    </div>
+                );
+            })}
         </div>
     );
 }
@@ -263,7 +249,7 @@ function HistoryChart({ data }: { data: Row[] }) {
             <svg
                 viewBox="0 0 1000 300"
                 role="img"
-                aria-label="近 31 天收入、注册与佣金趋势图"
+                aria-label="近 31 天收入与注册趋势图"
             >
                 {[0, 1, 2, 3, 4].map((i) => (
                     <g key={i}>

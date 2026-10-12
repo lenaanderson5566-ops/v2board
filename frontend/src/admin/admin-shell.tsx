@@ -13,27 +13,27 @@ export const legacyAdminMenu = [
     ["routes", "路由管理", "shuffle", "服务器"],
     ["plans", "订阅管理", "bag", "财务"],
     ["orders", "订单管理", "list", "财务"],
+    ["invitations", "邀请管理", "users", "财务"],
     ["coupons", "优惠券管理", "present", "财务"],
     ["giftcards", "礼品卡管理", "star", "财务"],
+    ["translations", "套餐多语言", "globe", "财务"],
     ["users", "用户管理", "users", "用户"],
+    ["online", "在线用户", "users", "用户"],
     ["notices", "公告管理", "speech", "用户"],
+    ["banners", "Banner 管理", "picture", "用户"],
     ["tickets", "工单管理", "support", "用户"],
     ["knowledge", "知识库管理", "bulb", "用户"],
     ["system", "系统监控", "bar-chart", "指标"],
-    ["operations", "风控概览", "speedometer", "风控与客户端"],
     ["client-releases", "客户端更新", "refresh", "风控与客户端"],
     ["risk", "风控规则", "shield", "风控与客户端"],
     ["risk-settings", "风控设置", "settings", "风控与客户端"],
     ["blacklist-ip", "IP 黑名单", "ban", "风控与客户端"],
     ["blacklist-ua", "UA 黑名单", "ban", "风控与客户端"],
     ["clients", "客户端策略", "screen-smartphone", "风控与客户端"],
-    ["online", "在线用户", "users", "运营中台"],
-    ["usage", "用户活动", "graph", "运营中台"],
-    ["banners", "Banner 管理", "picture", "运营中台"],
-    ["translations", "套餐多语言", "globe", "运营中台"],
     ["log-login", "登录日志", "login", "日志"],
     ["log-subscribe", "订阅日志", "notebook", "日志"],
     ["log-connection", "连接日志", "link", "日志"],
+    ["usage", "用户活动", "graph", "日志"],
     ["log-risk", "风控命中", "shield", "日志"],
     ["system-log", "系统日志", "notebook", "日志"],
 ] as const;
@@ -107,7 +107,10 @@ export function AdminShell({
         };
     }, []);
     const title =
-        legacyAdminMenu.find(([key]) => key === current)?.[1] || "仪表盘";
+        legacyAdminMenu.find(
+            ([key]) =>
+                key === (current === "operations" ? "overview" : current),
+        )?.[1] || "仪表盘";
     return (
         <div
             id="page-container"
@@ -159,9 +162,13 @@ export function AdminShell({
                                     </div>
                                 )}
                                 <a
-                                    className={`nav-main-link ${current === key ? "active" : ""}`}
+                                    className={`nav-main-link ${(current === "operations" ? "overview" : current) === key ? "active" : ""}`}
                                     aria-current={
-                                        current === key ? "page" : undefined
+                                        (current === "operations"
+                                            ? "overview"
+                                            : current) === key
+                                            ? "page"
+                                            : undefined
                                     }
                                     href={`#/${key}`}
                                 >

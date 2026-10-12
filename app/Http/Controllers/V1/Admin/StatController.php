@@ -20,13 +20,9 @@ class StatController extends Controller
     public function getOverride(Request $request)
     {
         return [
-            'data' => [
+            'data' => array_merge(\App\Services\DashboardRevenue::summary(), [
                 'online_user' => User::where('t','>=', time() - 600)
                     ->count(),
-                'month_income' => Order::where('created_at', '>=', strtotime(date('Y-m-1')))
-                    ->where('created_at', '<', time())
-                    ->whereNotIn('status', [0, 2])
-                    ->sum('total_amount'),
                 'month_register_total' => User::where('created_at', '>=', strtotime(date('Y-m-1')))
                     ->where('created_at', '<', time())
                     ->count(),
@@ -41,21 +37,13 @@ class StatController extends Controller
                     ->whereNotIn('status', [0, 2])
                     ->where('commission_balance', '>', 0)
                     ->count(),
-                'day_income' => Order::where('created_at', '>=', strtotime(date('Y-m-d')))
-                    ->where('created_at', '<', time())
-                    ->whereNotIn('status', [0, 2])
-                    ->sum('total_amount'),
-                'last_month_income' => Order::where('created_at', '>=', strtotime('-1 month', strtotime(date('Y-m-1'))))
-                    ->where('created_at', '<', strtotime(date('Y-m-1')))
-                    ->whereNotIn('status', [0, 2])
-                    ->sum('total_amount'),
                 'commission_month_payout' => CommissionLog::where('created_at', '>=', strtotime(date('Y-m-1')))
                     ->where('created_at', '<', time())
                     ->sum('get_amount'),
                 'commission_last_month_payout' => CommissionLog::where('created_at', '>=', strtotime('-1 month', strtotime(date('Y-m-1'))))
                     ->where('created_at', '<', strtotime(date('Y-m-1')))
                     ->sum('get_amount'),
-            ]
+            ])
         ];
     }
 

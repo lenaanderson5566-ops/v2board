@@ -23,6 +23,7 @@ import {
 } from "./user-filters";
 
 export function UsersPage() {
+    const [optionalColumns, setOptionalColumns] = useState<string[]>([]);
     const plans = useData<Row[]>(admin("plan/fetch"));
     const [filters, setFilters] = useState<UserFilter[]>(() => {
             const params = new URLSearchParams(
@@ -89,6 +90,11 @@ export function UsersPage() {
             <ResourcePage
                 key={JSON.stringify({ params, pageSize, revision })}
                 resource={resources.users}
+                hiddenColumns={[
+                    "commission_balance",
+                    "group_id",
+                    "device_limit",
+                ].filter((key) => !optionalColumns.includes(key))}
                 queryParams={params}
                 pageSize={pageSize}
                 searchable={false}
@@ -104,6 +110,34 @@ export function UsersPage() {
                 }}
                 toolbar={
                     <div className="pad user-toolbar">
+                        <div className="actions" aria-label="可选显示列">
+                            <span>显示列：</span>
+                            {[
+                                ["commission_balance", "佣金"],
+                                ["group_id", "权限组"],
+                                ["device_limit", "设备数"],
+                            ].map(([key, label]) => (
+                                <button
+                                    type="button"
+                                    key={key}
+                                    aria-pressed={optionalColumns.includes(key)}
+                                    onClick={() =>
+                                        setOptionalColumns((values) =>
+                                            values.includes(key)
+                                                ? values.filter(
+                                                      (value) => value !== key,
+                                                  )
+                                                : [...values, key],
+                                        )
+                                    }
+                                >
+                                    {label}
+                                </button>
+                            ))}
+                        </div>
+                        <p className="muted">
+                            上次连接为节点最近上报活动的时间，未上报显示为空，不代表当前在线。
+                        </p>
                         <form
                             className="actions"
                             onSubmit={(e) => {

@@ -1,5 +1,6 @@
+import { AdminInvitations } from "./AdminInvitations";
 import { AdminSystemLogs } from "./AdminSystemLogs";
-import { RiskOverview, RiskRules } from "./AdminRisk";
+import { RiskRules } from "./AdminRisk";
 import { AdminClientReleases } from "./AdminClientReleases";
 import { AdminBanners } from "./AdminBanners";
 import {
@@ -19,6 +20,7 @@ import { Overview } from "./admin-dashboard";
 export default function AdminContent({ current }: { current: string }) {
     if (current === "system-log") return <AdminSystemLogs />;
     if (current === "ddns") return <Nodes key="ddns" initialTab="ddns" />;
+    if (current === "invitations") return <AdminInvitations />;
     if (current === "users") return <UsersPage />;
     if (current === "orders") return <OrdersPage />;
     if (current === "knowledge" || current === "notices")
@@ -31,7 +33,7 @@ export default function AdminContent({ current }: { current: string }) {
         case "banners":
             return <AdminBanners />;
         case "operations":
-            return <RiskOverview />;
+            return <Overview initialTab="risk" />;
         case "settings":
             return <Settings />;
         case "risk-settings":

@@ -837,7 +837,8 @@ body[data-console="admin"] .legacy-stat-main strong {
 }
 body[data-console="admin"] .legacy-stat-extra {
     display: grid;
-    grid-template-columns: repeat(4, 1fr);
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 20px;
     padding: 24px 36px;
     border-top: 1px solid #e8e8e8;
 }
@@ -1529,3 +1530,12 @@ body[data-console="admin"] .node-management-tools .node-quota-filter input {
 .health-check p {
     margin: 12px 0;
 }
+
+.dashboard-rank { padding: 16px 20px; max-height: 520px; overflow-y: auto; }
+.dashboard-rank-row { margin-bottom: 14px; }
+.dashboard-rank-label { display: flex; justify-content: space-between; gap: 12px; font-size: 12px; margin-bottom: 5px; }
+.dashboard-rank-label span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.dashboard-rank-label strong { flex-shrink: 0; font-variant-numeric: tabular-nums; }
+.dashboard-rank-track { height: 10px; background: #edf2f7; border-radius: 5px; overflow: hidden; }
+.dashboard-rank-track > div { height: 100%; background: #1890ff; border-radius: inherit; }
+body[data-console="admin"] .section-tabs [aria-selected="true"], body[data-console="admin"] .user-toolbar [aria-pressed="true"] { background: #e6f4ff; color: #096dd9; border-color: #91caff; }

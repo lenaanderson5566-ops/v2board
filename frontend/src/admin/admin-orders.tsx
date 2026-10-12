@@ -4,10 +4,42 @@ import { admin, request, query, money, date, type Row } from "../shared/api";
 import { useData, Modal, Editor, State, Table } from "../shared/ui";
 import { ResourcePage, resources } from "./admin";
 import { AssignOrder } from "./admin-users";
-export function OrdersPage() {
+const commissionResource = {
+    ...resources.orders,
+    title: "佣金审核",
+    actions: [],
+    columns: [
+        ...resources.orders.columns.filter(([key]) =>
+            [
+                "trade_no",
+                "user_id",
+                "total_amount",
+                "commission_balance",
+                "commission_status",
+                "created_at",
+            ].includes(key),
+        ),
+        [
+            "invite_user_id",
+            "邀请人（ID / 邮箱）",
+            (r: Row) =>
+                adminUserLabel({
+                    user_id: r.invite_user_id,
+                    email: r.invite_email,
+                }),
+        ] as (typeof resources.orders.columns)[number],
+    ],
+};
+export function OrdersPage({
+    commissionMode = false,
+}: {
+    commissionMode?: boolean;
+}) {
     const params = new URLSearchParams(
         window.location.hash.split("?")[1] || "",
     );
+    if (commissionMode && !params.has("commission_status"))
+        params.set("commission_status", "0");
     const [filter, setFilter] = useState<Row[]>(() =>
         ["user_id", "invite_user_id", "commission_status", "status"]
             .filter((key) => params.has(key))
@@ -35,11 +67,59 @@ export function OrdersPage() {
         <>
             <ResourcePage
                 key={JSON.stringify({ filter, revision })}
-                resource={resources.orders}
+                resource={
+                    commissionMode ? commissionResource : resources.orders
+                }
+                hiddenColumns={
+                    commissionMode
+                        ? []
+                        : ["commission_balance", "commission_status"]
+                }
                 searchable={false}
-                queryParams={{ filter }}
+                queryParams={{
+                    filter,
+                    ...(commissionMode ? { is_commission: 1 } : {}),
+                }}
                 toolbar={
                     <div className="pad actions">
+                        {commissionMode && (
+                            <label>
+                                佣金状态{" "}
+                                <select
+                                    aria-label="佣金状态筛选"
+                                    value={String(
+                                        filter.find(
+                                            (r) =>
+                                                r.key === "commission_status",
+                                        )?.value ?? "",
+                                    )}
+                                    onChange={(e) =>
+                                        setFilter([
+                                            ...filter.filter(
+                                                (r) =>
+                                                    r.key !==
+                                                    "commission_status",
+                                            ),
+                                            ...(e.target.value === ""
+                                                ? []
+                                                : [
+                                                      {
+                                                          key: "commission_status",
+                                                          condition: "=",
+                                                          value: e.target.value,
+                                                      },
+                                                  ]),
+                                        ])
+                                    }
+                                >
+                                    <option value="">全部</option>
+                                    <option value="0">待确认</option>
+                                    <option value="1">有效</option>
+                                    <option value="2">已发放</option>
+                                    <option value="3">无效</option>
+                                </select>
+                            </label>
+                        )}
                         <button
                             onClick={() => {
                                 setDraft(structuredClone(filter));
@@ -54,12 +134,14 @@ export function OrdersPage() {
                         >
                             清除筛选
                         </button>
-                        <button
-                            className="primary"
-                            onClick={() => setAssign(true)}
-                        >
-                            分配订单
-                        </button>
+                        {!commissionMode && (
+                            <button
+                                className="primary"
+                                onClick={() => setAssign(true)}
+                            >
+                                分配订单
+                            </button>
+                        )}
                     </div>
                 }
                 extraActions={(r) => (
@@ -71,17 +153,19 @@ export function OrdersPage() {
                         >
                             查看用户
                         </a>
-                        <button
-                            disabled={
-                                r.status === 0 ||
-                                r.status === 2 ||
-                                !r.commission_balance ||
-                                r.commission_status === 2
-                            }
-                            onClick={() => setCommission(r)}
-                        >
-                            佣金审核
-                        </button>
+                        {commissionMode && (
+                            <button
+                                disabled={
+                                    r.status === 0 ||
+                                    r.status === 2 ||
+                                    !r.commission_balance ||
+                                    r.commission_status === 2
+                                }
+                                onClick={() => setCommission(r)}
+                            >
+                                佣金审核
+                            </button>
+                        )}
                     </>
                 )}
             />
@@ -126,11 +210,17 @@ export function OrdersPage() {
                                             "commission_balance",
                                             "佣金金额（分）",
                                         ],
-                                    ].map(([k, l]) => (
-                                        <option key={k} value={k}>
-                                            {l}
-                                        </option>
-                                    ))}
+                                    ]
+                                        .filter(
+                                            ([key]) =>
+                                                commissionMode ||
+                                                !key.startsWith("commission_"),
+                                        )
+                                        .map(([k, l]) => (
+                                            <option key={k} value={k}>
+                                                {l}
+                                            </option>
+                                        ))}
                                 </select>
                                 <select
                                     aria-label={`订单筛选条件 ${i + 1}`}
@@ -261,7 +351,10 @@ export function OrdersPage() {
             )}
             {selected && (
                 <Modal title="订单详情" close={() => setSelected(null)}>
-                    <OrderDetail row={selected} />
+                    <OrderDetail
+                        row={selected}
+                        commissionMode={commissionMode}
+                    />
                 </Modal>
             )}
             {assign && (
@@ -316,7 +409,13 @@ export function OrdersPage() {
         </>
     );
 }
-function OrderDetail({ row }: { row: Row }) {
+function OrderDetail({
+    row,
+    commissionMode,
+}: {
+    row: Row;
+    commissionMode: boolean;
+}) {
     const d = useData<Row>(admin("order/detail"), { id: row.id });
     const r = d.data;
     return (
@@ -358,47 +457,57 @@ function OrderDetail({ row }: { row: Row }) {
                                 ["created_at", "创建时间"],
                                 ["updated_at", "更新时间"],
                                 ["paid_at", "支付时间"],
-                            ].map(([key, label]) => (
-                                <div key={key}>
-                                    <dt>{label}</dt>
-                                    <dd>
-                                        {key.endsWith("_at")
-                                            ? date(r[key])
-                                            : key.includes("amount") ||
-                                                key.includes("balance")
-                                              ? money(r[key])
-                                              : key === "user_id"
-                                                ? adminUserLabel(r)
-                                                : String(r[key] ?? "—")}
-                                    </dd>
-                                </div>
-                            ))}
+                            ]
+                                .filter(
+                                    ([key]) =>
+                                        commissionMode ||
+                                        !key.includes("commission"),
+                                )
+                                .map(([key, label]) => (
+                                    <div key={key}>
+                                        <dt>{label}</dt>
+                                        <dd>
+                                            {key.endsWith("_at")
+                                                ? date(r[key])
+                                                : key.includes("amount") ||
+                                                    key.includes("balance")
+                                                  ? money(r[key])
+                                                  : key === "user_id"
+                                                    ? adminUserLabel(r)
+                                                    : String(r[key] ?? "—")}
+                                        </dd>
+                                    </div>
+                                ))}
                         </dl>
-                        <h3>佣金记录</h3>
-                        <Table
-                            data={r.commission_log || []}
-                            columns={[
-                                [
-                                    "invite_user_id",
-                                    "邀请人（ID / 邮箱）",
-                                    (r) =>
-                                        adminUserLabel({
-                                            user_id: r.invite_user_id,
-                                            email: r.invite_email,
-                                        }),
-                                ],
-                                [
-                                    "get_amount",
-                                    "金额",
-                                    (x) => money(x.get_amount),
-                                ],
-                                [
-                                    "created_at",
-                                    "时间",
-                                    (x) => date(x.created_at),
-                                ],
-                            ]}
-                        />
+                        {commissionMode && (
+                            <>
+                                <h3>佣金记录</h3>
+                                <Table
+                                    data={r.commission_log || []}
+                                    columns={[
+                                        [
+                                            "invite_user_id",
+                                            "邀请人（ID / 邮箱）",
+                                            (r) =>
+                                                adminUserLabel({
+                                                    user_id: r.invite_user_id,
+                                                    email: r.invite_email,
+                                                }),
+                                        ],
+                                        [
+                                            "get_amount",
+                                            "金额",
+                                            (x) => money(x.get_amount),
+                                        ],
+                                        [
+                                            "created_at",
+                                            "时间",
+                                            (x) => date(x.created_at),
+                                        ],
+                                    ]}
+                                />
+                            </>
+                        )}
                         <h3>折抵订单</h3>
                         <Table
                             data={r.surplus_orders || []}

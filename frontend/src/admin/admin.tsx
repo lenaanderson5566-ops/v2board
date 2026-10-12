@@ -358,6 +358,8 @@ export const resources: Record<string, Resource> = {
             ["expired_at", "到期时间", (r) => date(r.expired_at)],
             ["balance", "余额", (r) => money(r.balance)],
             ["commission_balance", "佣金", (r) => money(r.commission_balance)],
+            ["last_connected_at", "上次连接", (r) => date(r.last_connected_at)],
+            ["last_login_at", "上次登录", (r) => date(r.last_login_at)],
             ["created_at", "加入时间", (r) => date(r.created_at)],
         ],
         fields: [
@@ -855,8 +857,10 @@ export function ResourcePage({
     onTotal,
     tableSort,
     onTableSort,
+    hiddenColumns = [],
 }: {
     resource: Resource;
+    hiddenColumns?: string[];
     queryParams?: Row;
     toolbar?: ReactNode;
     extraActions?: (row: Row, context?: boolean) => ReactNode;
@@ -1119,8 +1123,9 @@ export function ResourcePage({
                     {error && <div className="alert">{error}</div>}
                     <Table
                         data={list}
-                        columns={resource.columns.map(
-                            ([key, label, render]) => {
+                        columns={resource.columns
+                            .filter(([key]) => !hiddenColumns.includes(key))
+                            .map(([key, label, render]) => {
                                 if (
                                     (key === "show" || key === "renew") &&
                                     [
@@ -1175,8 +1180,7 @@ export function ResourcePage({
                                     string,
                                     ((r: Row) => ReactNode)?,
                                 ];
-                            },
-                        )}
+                            })}
                         onReorder={
                             resource.sort && resource.sortKind && !search
                                 ? async (items) => {

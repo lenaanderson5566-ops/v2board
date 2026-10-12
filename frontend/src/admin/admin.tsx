@@ -360,6 +360,7 @@ export const resources: Record<string, Resource> = {
             ["commission_balance", "佣金", (r) => money(r.commission_balance)],
             ["last_connected_at", "上次连接", (r) => date(r.last_connected_at)],
             ["last_login_at", "上次登录", (r) => date(r.last_login_at)],
+            ["last_subscribe_at", "上次订阅时间", (r) => date(r.last_subscribe_at)],
             ["created_at", "加入时间", (r) => date(r.created_at)],
         ],
         fields: [
@@ -738,28 +739,6 @@ export const resources: Record<string, Resource> = {
         ],
         fields: [],
     },
-    usage: {
-        title: "用户活动",
-        fetch: ops("risk/user-usage/fetch"),
-        columns: [
-            [
-                "user_id",
-                "用户（ID / 邮箱）",
-                (r) => <AdminUserActivityLink row={r} />,
-            ],
-            ["subscription_plan", "订阅套餐"],
-            ["last_subscribe_at", "最近订阅", (r) => date(r.last_subscribe_at)],
-            ["last_online_ip", "最近在线 IP"],
-            ["last_online_node", "最近在线节点"],
-            [
-                "paid_total_amount",
-                "累计订单金额",
-                (r) => money(r.paid_total_amount),
-            ],
-            ["balance_cents", "余额", (r) => money(r.balance_cents)],
-        ],
-        fields: [],
-    },
     "log-login": {
         title: "登录日志",
         fetch: ops("log/login/fetch"),
@@ -971,8 +950,7 @@ export function ResourcePage({
             page_size: pageSize,
             email:
                 resource.title.includes("日志") ||
-                resource === resources.online ||
-                resource === resources.usage
+                resource === resources.online
                     ? search
                     : undefined,
             keyword: resource.title.includes("黑名单") ? search : undefined,
@@ -1028,7 +1006,6 @@ export function ResourcePage({
                                 <input
                                     placeholder={
                                         resource === resources.online ||
-                                        resource === resources.usage ||
                                         resource.title.includes("日志")
                                             ? "搜索邮箱…"
                                             : "搜索当前列表…"
@@ -1106,11 +1083,6 @@ export function ResourcePage({
                         {d.meta?.users ?? "—"} · IP {d.meta?.ips ?? "—"} ·
                         连接记录 {d.total} · 查询时间 {date(d.meta?.updated_at)}
                         。节点未上报时可能不显示。
-                    </p>
-                )}
-                {resource === resources.usage && (
-                    <p className="pad muted">
-                        用户历史活动与账户资料，最近在线记录不代表当前在线。
                     </p>
                 )}
                 {resource === resources["log-risk"] && (
@@ -1899,46 +1871,6 @@ export function Settings() {
         </Panel>
     );
 }
-export function RiskSettings() {
-    const d = useData(ops("risk/settings/fetch"));
-    return (
-        <Panel title="风控全局设置">
-            <State {...d} retry={d.reload}>
-                <Editor
-                    fields={[
-                        {
-                            key: "connection_log_interval",
-                            label: "连接日志采样间隔",
-                            type: "number",
-                            required: true,
-                            min: 60,
-                            max: 86400,
-                            step: 1,
-                            unit: "秒",
-                            hint: "建议 3600 秒。间隔越短，日志写入量越大；不影响登录与订阅规则的统计窗口。",
-                        },
-                        {
-                            key: "connection_log_retention_days",
-                            label: "连接日志保留时间",
-                            type: "number",
-                            required: true,
-                            min: 1,
-                            max: 365,
-                            step: 1,
-                            unit: "天",
-                            hint: "建议 30 天。每 5 分钟分批清理过期连接日志；也可在系统日志页面设置。",
-                        },
-                    ]}
-                    initial={d.data || {}}
-                    onSave={async (b) => {
-                        await request(ops("risk/settings/update"), b);
-                        d.reload();
-                    }}
-                />
-            </State>
-        </Panel>
-    );
-}
 export function Translations() {
     const plans = useData<Row[]>(admin("plan/fetch")),
         locales = useData<string[]>(admin("ops/i18n/plan/locales"));
@@ -1951,7 +1883,7 @@ export function Translations() {
             : admin("plan/fetch"),
     );
     return (
-        <Panel title="套餐多语言">
+        <Panel title="订阅多语言">
             <div className="pad actions">
                 <select
                     value={plan}

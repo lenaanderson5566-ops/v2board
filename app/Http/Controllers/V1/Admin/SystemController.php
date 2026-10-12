@@ -131,9 +131,9 @@ class SystemController extends Controller
         return response(['data'=>$rows->map(fn($row)=>\App\Services\SystemLogService::resource($row)),'total'=>$total]);
     }
     public function getLogRetention(\App\Services\LogRetentionService $service) {
-        return ['data'=>['settings'=>$service->settings(),'lastRun'=>\Illuminate\Support\Facades\Cache::get('LOG_RETENTION_LAST_RUN')]];
+        return ['data'=>['settings'=>$service->configuration(),'lastRun'=>\Illuminate\Support\Facades\Cache::get('LOG_RETENTION_LAST_RUN')]];
     }
     public function saveLogRetention(Request $request, \App\Services\LogRetentionService $service) {
-        return ['data'=>$service->save($request->only(array_keys(\App\Services\LogRetentionService::DEFAULTS)))];
+        return ['data'=>$service->save($request->only(array_merge(array_keys(\App\Services\LogRetentionService::DEFAULTS), ['connection_log_interval'])))];
     }
 }

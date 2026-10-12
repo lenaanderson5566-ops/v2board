@@ -16,12 +16,14 @@ vi.mock("../shared/api", async (original) => ({
     request: api.request,
     readRequest: api.request,
 }));
+import { AdminLogSettings } from "./AdminLogSettings";
 import { AdminSystemLogs } from "./AdminSystemLogs";
 afterEach(() => {
     cleanup();
     vi.clearAllMocks();
 });
 const settings = {
+    connection_log_interval: 3600,
     system_log_retention_days: 30,
     connection_log_retention_days: 30,
     login_log_retention_days: 0,
@@ -87,15 +89,17 @@ it("rejects reversed time bounds before querying", async () => {
 });
 it("keeps opt-in retention at zero and saves the selected duration", async () => {
     setup();
-    render(<AdminSystemLogs />);
+    render(<AdminLogSettings />);
     const field = await screen.findByLabelText(/登录日志保留天数/);
     expect((field as HTMLInputElement).value).toBe("0");
     fireEvent.change(field, { target: { value: "90" } });
+    fireEvent.change(screen.getByLabelText(/连接日志采样间隔/), { target: { value: "1800" } });
     fireEvent.click(screen.getByRole("button", { name: "保存" }));
     await waitFor(() =>
         expect(api.request).toHaveBeenCalledWith(
             "test-admin/system/logRetention",
             expect.objectContaining({
+                connection_log_interval: 1800,
                 login_log_retention_days: 90,
                 subscribe_log_retention_days: 0,
                 risk_log_retention_days: 0,

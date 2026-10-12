@@ -34,6 +34,8 @@ import { Overview, RankChart } from "./admin-dashboard";
 import { UsersPage } from "./admin-users";
 import { OrdersPage } from "./admin-orders";
 import { AdminInvitations } from "./AdminInvitations";
+import { AdminSubscriptions } from "./AdminSubscriptions";
+import AdminContent from "./admin-entry";
 import { legacyAdminMenu } from "./admin-shell";
 const order = {
     id: 1,
@@ -74,6 +76,7 @@ beforeEach(() => {
                         invite_email: "inviter@example.com",
                         last_connected_at: 1700000000,
                         last_login_at: 1700000010,
+                        last_subscribe_at: 1700000020,
                     },
                 ],
                 total: 1,
@@ -123,6 +126,9 @@ it("defaults to activity times and toggles optional user columns", async () => {
         await screen.findByRole("columnheader", { name: "上次连接" }),
     ).toBeTruthy();
     expect(screen.getByRole("columnheader", { name: "上次登录" })).toBeTruthy();
+    expect(
+        screen.getByRole("columnheader", { name: "上次订阅时间" }),
+    ).toBeTruthy();
     for (const name of ["佣金", "权限组", "设备数"]) {
         expect(screen.queryByRole("columnheader", { name })).toBeNull();
         fireEvent.click(screen.getByRole("button", { name, pressed: false }));
@@ -178,10 +184,54 @@ it("removes operations grouping and keeps each new group contiguous", () => {
     expect(legacyAdminMenu.some((item) => String(item[3]) === "运营中台")).toBe(
         false,
     );
-    expect(legacyAdminMenu.find(([key]) => key === "usage")?.[3]).toBe("日志");
+    expect(legacyAdminMenu.some(([key]) => (key as string) === "usage")).toBe(
+        false,
+    );
     expect(legacyAdminMenu.find(([key]) => key === "online")?.[3]).toBe("用户");
     const groups = legacyAdminMenu
         .map((item) => item[3])
         .filter((group, index, all) => group !== all[index - 1]);
     expect(new Set(groups).size).toBe(groups.length);
+});
+
+it("opens system monitoring only on its dashboard tab", async () => {
+    render(<Overview />);
+    expect(
+        api.request.mock.calls.some(([path]) => path.includes("getQueueStats")),
+    ).toBe(false);
+    fireEvent.click(screen.getByRole("tab", { name: "系统监控" }));
+    await screen.findByText("队列状态");
+    expect(
+        api.request.mock.calls.some(([path]) => path.includes("getQueueStats")),
+    ).toBe(true);
+});
+it("loads translations from subscription management and supports old links", async () => {
+    const view = render(<AdminSubscriptions />);
+    expect(
+        screen.getByRole("tab", { name: "订阅套餐", selected: true }),
+    ).toBeTruthy();
+    expect(
+        api.request.mock.calls.some(([path]) => path.includes("ops/i18n/plan")),
+    ).toBe(false);
+    fireEvent.click(screen.getByRole("tab", { name: "订阅多语言" }));
+    await screen.findByText("选择套餐后开始翻译");
+    expect(
+        api.request.mock.calls.some(([path]) =>
+            path.includes("ops/i18n/plan/locales"),
+        ),
+    ).toBe(true);
+    view.unmount();
+    render(<AdminContent current="translations" />);
+    expect(
+        screen.getByRole("tab", { name: "订阅多语言", selected: true }),
+    ).toBeTruthy();
+});
+it("consolidates settings and monitoring navigation", () => {
+    for (const key of ["system", "risk-settings", "translations"])
+        expect(legacyAdminMenu.some(([item]) => String(item) === key)).toBe(
+            false,
+        );
+    expect(legacyAdminMenu.find(([key]) => key === "log-settings")?.[3]).toBe(
+        "日志",
+    );
 });

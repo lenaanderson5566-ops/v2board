@@ -19,6 +19,11 @@ try {
     DB::table('v2_risk_setting')->whereIn('key',array_keys(LogRetentionService::DEFAULTS))->delete();
     $assert($retention->settings()===LogRetentionService::DEFAULTS,'safe default policy');
     foreach ([['connection_log_retention_days'=>0],['login_log_retention_days'=>1],['risk_log_retention_days'=>29],['ddns_log_retention_days'=>366],['system_log_retention_days'=>'x']] as $bad) $reject(fn()=>$retention->save($bad));
+    $reject(fn()=>$retention->save(['connection_log_interval'=>59]));
+    $reject(fn()=>$retention->save(['connection_log_interval'=>86401]));
+    Cache::put('RISK_CONNECTION_LOG_INTERVAL',3600);
+    $retention->save(['connection_log_interval'=>1800]);
+    $assert($retention->configuration()['connection_log_interval']===1800 && Cache::get('RISK_CONNECTION_LOG_INTERVAL')===null,'sampling settings and cache invalidation');
     $retention->save(['connection_log_retention_days'=>45]);
     $assert($retention->settings()['system_log_retention_days']===30,'partial update preserves other categories');
     $r=(new App\Http\Controllers\V1\Risk\LogController())->getRiskSettings(Request::create('/'));

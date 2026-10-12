@@ -102,7 +102,12 @@ class UserController extends Controller
             ->whereIn('user_id', $res->pluck('id'))->where('source', 'alive')
             ->select('user_id')->selectRaw('MAX(online_at) AS last_connected_at')
             ->groupBy('user_id')->pluck('last_connected_at', 'user_id');
+        $lastSubscriptions = \App\Models\SubscribeLog::query()
+            ->whereIn('user_id', $res->pluck('id'))
+            ->select('user_id')->selectRaw('MAX(created_at) AS last_subscribe_at')
+            ->groupBy('user_id')->pluck('last_subscribe_at', 'user_id');
         foreach ($res as $row) {
+            $row['last_subscribe_at'] = (int) $lastSubscriptions->get($row->id) ?: null;
             $row['last_connected_at'] = max((int) $row->t, (int) $lastConnections->get($row->id)) ?: null;
         }
         $plan = Plan::get();

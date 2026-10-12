@@ -1,4 +1,5 @@
 import { adminUserLabel } from "./admin-user-label";
+import { System } from "./admin";
 import { RiskOverview } from "./AdminRisk";
 import { useState } from "react";
 import { admin, money, type Row } from "../shared/api";
@@ -8,7 +9,7 @@ const colors = ["#1890ff", "#2fc25b", "#facc14", "#f04864", "#8543e0"];
 export function Overview({
     initialTab = "income",
 }: {
-    initialTab?: "income" | "risk";
+    initialTab?: "income" | "risk" | "system";
 }) {
     const [tab, setTab] = useState(initialTab);
     return (
@@ -32,8 +33,21 @@ export function Overview({
                 >
                     风控概览
                 </button>
+                <button
+                    role="tab"
+                    aria-selected={tab === "system"}
+                    onClick={() => setTab("system")}
+                >
+                    系统监控
+                </button>
             </div>
-            {tab === "risk" ? <RiskOverview /> : <IncomeOverview />}
+            {tab === "risk" ? (
+                <RiskOverview />
+            ) : tab === "system" ? (
+                <System />
+            ) : (
+                <IncomeOverview />
+            )}
         </>
     );
 }

@@ -9,6 +9,15 @@ import { boot } from "../shared/api";
 import { ClientDownload, mirrorDownload, safeDownloadUrl } from "./ClientDownload";
 beforeEach(async () => { await i18n.changeLanguage("zh-CN"); });
 afterEach(cleanup);
+it("uses the universal Mac installer without requiring a chip selection",()=>{
+ const old=boot.clientMirrors;
+ boot.clientMirrors={"clash_macos:universal":"https://mirror.example/universal.dmg","clash_macos:arm64":"https://mirror.example/arm.dmg","clash_macos:x64":"https://mirror.example/intel.dmg"};
+ try {
+  render(<ClientDownload client="clash" device="macos" official="https://github.com/clash-verge-rev/clash-verge-rev/releases" close={()=>{}}/>);
+  expect(screen.queryByRole("combobox")).toBeNull();
+  expect(screen.getByRole("link",{name:/镜像下载/}).getAttribute("href")).toBe("https://mirror.example/universal.dmg");
+ } finally {boot.clientMirrors=old;}
+});
 it("selects mirrors by both client and device and rejects unsafe URLs", () => {
  expect(mirrorDownload("clash", "windows")).toBe("https://mirror.example/clash.exe");
  expect(mirrorDownload("hiddify", "android")).toBe("https://mirror.example/app.apk");

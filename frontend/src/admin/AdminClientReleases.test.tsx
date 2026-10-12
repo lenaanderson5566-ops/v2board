@@ -55,6 +55,7 @@ it("continues after one project fails and restores controls", async () => {
 });
 it("renders upstream release notes as text, not HTML", () => {
     render(<AdminClientReleases />);
+    fireEvent.click(screen.getByText("查看官方版本与更新说明"));
     fireEvent.click(screen.getAllByRole("button", { name: "更新说明" })[1]);
     expect(screen.getByText("<script>test</script>")).toBeTruthy();
     expect(document.querySelector("script")).toBeNull();

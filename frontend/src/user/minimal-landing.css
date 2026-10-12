@@ -1,6 +1,6 @@
 .minimal-landing {
-    background: #f4f5f0;
-    color: #203f38;
+    background: var(--surface-soft, #f5f7fa);
+    color: var(--ink, #182638);
 }
 .minimal-landing-screen {
     position: relative;
@@ -11,7 +11,7 @@
     flex-direction: column;
     padding: 30px clamp(24px, 6vw, 100px) 24px;
     box-sizing: border-box;
-    background: radial-gradient(ellipse at 90% 30%, #e1e9df88, transparent 65%);
+    background: radial-gradient(ellipse at 90% 30%, #dbe7f588, transparent 65%);
 }
 .minimal-landing-header {
     position: relative;
@@ -37,7 +37,7 @@
     place-items: center;
     width: 36px;
     height: 36px;
-    border: 1px solid #264c3930;
+    border: 1px solid var(--line, #e4eaf1);
     border-radius: 50%;
 }
 .minimal-landing-main {
@@ -58,19 +58,19 @@
     gap: 10px;
     font-size: 12px;
     letter-spacing: 0.12em;
-    color: #526c61;
+    color: var(--brand, #153b70);
 }
 .minimal-landing-eyebrow > span {
     width: 6px;
     height: 6px;
     border-radius: 50%;
-    background: #64846a;
-    box-shadow: 0 0 0 5px #64846a10;
+    background: var(--brand, #153b70);
+    box-shadow: 0 0 0 5px #153b7010;
 }
 .minimal-landing-main h1 {
     max-width: 760px;
     font-size: clamp(44px, 6.4vw, 94px);
-    font-weight: 500;
+    font-weight: 600;
     letter-spacing: -0.055em;
     line-height: 1.16;
     margin: 30px 0 26px;
@@ -78,7 +78,7 @@
 }
 .minimal-landing-main p {
     max-width: 480px;
-    color: #627568;
+    color: var(--text-secondary, #687789);
     font-size: clamp(16px, 1.6vw, 20px);
     line-height: 1.8;
     margin: 0;
@@ -90,12 +90,12 @@
     gap: 32px;
     margin-top: 42px;
     padding: 8px 8px 8px 25px;
-    border: 1px solid #294b3d;
-    background: #294b3d;
+    border: 1px solid var(--brand, #153b70);
+    background: var(--brand, #153b70);
     color: #fff;
     border-radius: 100px;
     font-size: 14px;
-    box-shadow: 0 8px 24px #294b3d12;
+    box-shadow: 0 8px 24px #153b7018;
     transition:
         transform 200ms,
         background 200ms,
@@ -111,7 +111,7 @@
 }
 .minimal-landing-enter:hover {
     transform: translateY(-3px);
-    box-shadow: 0 12px 28px #294b3d25;
+    box-shadow: 0 12px 28px #153b7028;
 }
 .minimal-landing-footer {
     position: relative;
@@ -120,12 +120,12 @@
     grid-template-columns: 1fr auto 1fr;
     align-items: center;
     gap: 24px;
-    border-top: 1px solid #294b3d18;
+    border-top: 1px solid var(--line, #e4eaf1);
     padding-top: 20px;
 }
 .minimal-platforms,
 .minimal-footer-brand {
-    color: #67776b;
+    color: var(--text-secondary, #687789);
     font-size: 11px;
     letter-spacing: 0.04em;
 }
@@ -143,7 +143,7 @@
     animation: minimal-down 2.6s ease-in-out infinite;
 }
 .minimal-landing a:focus-visible {
-    outline: 2px solid #34766d;
+    outline: 2px solid var(--brand, #153b70);
     outline-offset: 6px;
 }
 .minimal-landing-art {
@@ -152,7 +152,7 @@
     pointer-events: none;
     width: min(70vw, 1000px);
     aspect-ratio: 1;
-    right: -19%;
+    right: -12%;
     top: 50%;
     transform: translateY(-50%);
 }
@@ -162,15 +162,15 @@
     border-radius: 50%;
     background: radial-gradient(
         circle at 30% 25%,
-        #f5f5d9 0%,
-        #d3dfb6 22%,
-        #90aa88 47%,
-        #416958 74%,
-        #234d41 100%
+        #f7fbff 0%,
+        #dceafa 22%,
+        #8faed4 47%,
+        #345e96 74%,
+        #153b70 100%
     );
     box-shadow:
-        inset -15px -15px 45px #12382c22,
-        30px 35px 75px #3b654422;
+        inset -15px -15px 45px #102d5533,
+        30px 35px 75px #153b7022;
     animation: minimal-float 12s ease-in-out infinite;
 }
 .minimal-sphere::after {
@@ -186,7 +186,7 @@
 }
 .minimal-orbit {
     position: absolute;
-    border: 1px solid #54776026;
+    border: 1px solid #153b7026;
     border-radius: 50%;
     transform: rotate(-28deg);
 }
@@ -195,7 +195,7 @@
 }
 .minimal-orbit-inner {
     inset: 17% 9%;
-    border-color: #54776018;
+    border-color: #153b7018;
 }
 .minimal-orbit-point {
     position: absolute;
@@ -204,8 +204,8 @@
     top: 22%;
     left: 13%;
     border-radius: 50%;
-    background: #789574;
-    box-shadow: 0 0 0 7px #78957410;
+    background: var(--brand, #153b70);
+    box-shadow: 0 0 0 7px #153b7010;
 }
 .minimal-landing-scroll-space {
     height: 100px;
@@ -282,4 +282,119 @@
     .minimal-landing-enter {
         transition: none;
     }
+}
+
+/* Fine technical grid and a wireframe globe share the user console palette. */
+.minimal-landing-screen::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: -2;
+    pointer-events: none;
+    background-image:
+        linear-gradient(#153b7006 1px, transparent 1px),
+        linear-gradient(90deg, #153b7006 1px, transparent 1px);
+    background-size: 64px 64px;
+    mask-image: linear-gradient(90deg, transparent 20%, #000 100%);
+}
+.minimal-brand-mark {
+    color: var(--brand, #153b70);
+    background: var(--brand-soft, #e8eff8);
+    border-radius: 12px;
+}
+.minimal-landing-main h1 {
+    color: var(--brand, #153b70);
+}
+.minimal-landing-eyebrow {
+    border: 1px solid var(--line, #e4eaf1);
+    border-radius: 100px;
+    padding: 9px 14px;
+    background: #ffffffb3;
+}
+.minimal-landing a.minimal-landing-enter:hover {
+    background: var(--brand-hover, #102d55);
+}
+.minimal-globe {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    stroke: #ffffff55;
+    stroke-width: 0.8;
+    transform: rotate(-22deg);
+}
+.minimal-network-nodes {
+    fill: #fff;
+    stroke: #d5eaff;
+    stroke-width: 2;
+    filter: drop-shadow(0 0 5px #ffffffaa);
+}
+.minimal-orbit-outer::after {
+    content: "";
+    position: absolute;
+    inset: 12px;
+    border: 1px dashed #153b7020;
+    border-radius: 50%;
+}
+@media (max-width: 800px) {
+    .minimal-landing-art {
+        right: -360px;
+    }
+}
+
+.minimal-landing-screen::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: -2;
+    pointer-events: none;
+    background-image:
+        linear-gradient(#153b7006 1px, transparent 1px),
+        linear-gradient(90deg, #153b7006 1px, transparent 1px);
+    background-size: 64px 64px;
+    mask-image: linear-gradient(90deg, transparent 20%, #000 100%);
+}
+.minimal-brand-mark {
+    color: var(--brand, #153b70);
+    background: var(--brand-soft, #e8eff8);
+    border-radius: 12px;
+}
+.minimal-landing-main h1 {
+    color: var(--brand, #153b70);
+    font-weight: 600;
+}
+.minimal-landing-eyebrow {
+    border: 1px solid var(--line, #e4eaf1);
+    border-radius: 100px;
+    padding: 9px 14px;
+    background: #ffffffb3;
+}
+.minimal-landing a.minimal-landing-enter {
+    background: var(--brand, #153b70);
+    border-color: var(--brand, #153b70);
+}
+.minimal-landing a.minimal-landing-enter:hover {
+    background: var(--brand-hover, #102d55);
+}
+.minimal-globe {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    stroke: #ffffff55;
+    stroke-width: 0.8;
+    transform: rotate(-22deg);
+}
+.minimal-network-nodes {
+    fill: #fff;
+    stroke: #d5eaff;
+    stroke-width: 2;
+    filter: drop-shadow(0 0 5px #ffffffaa);
+}
+.minimal-orbit-outer::after {
+    content: "";
+    position: absolute;
+    inset: 12px;
+    border: 1px dashed #153b7020;
+    border-radius: 50%;
 }

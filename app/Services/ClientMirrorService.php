@@ -32,7 +32,8 @@ class ClientMirrorService
     }
     public function listing(): array {
         return $this->state(function (&$s) {
-            return ['items'=>array_values(array_reverse($s['items'],true)), 'published'=>$s['published'], 'targets'=>self::TARGETS];
+            return ['items'=>array_values(array_reverse($s['items'],true)), 'published'=>$s['published'], 'targets'=>self::TARGETS,
+                'policies'=>$this->policies(), 'policyReasons'=>$this->policyReasons()];
         });
     }
     public static function architecture(string $name): string {
@@ -44,11 +45,27 @@ class ClientMirrorService
         if (preg_match('/(?:^|[._-])universal(?:[._-]|$)/',$name)) return 'universal';
         return 'unknown';
     }
-    public function enqueue(string $client, int $assetId, string $target): string {
+    protected function policies(): array {
+        $policies=(new ClientStrategyService())->frontendPolicies();
+        $minimum=\App\Models\ClientStrategy::where('client_type','meta')->value('min_version');
+        foreach (['clash','flclash'] as $id) $policies[$id]['engineMinVersion']=$minimum;
+        return $policies;
+    }
+    private function policyReasons(): array {
+        $policies=$this->policies(); $result=[];
+        foreach (array_keys(self::TARGETS) as $client) $result[$client]=ClientMirrorPolicy::reason($client, (string)(Cache::get('client-release:'.$client,[])['version']??''), $policies);
+        return $result;
+    }
+    public function enqueue(string $client, int $assetId, string $target, bool $autoPublish = false): string {
         abort_unless(in_array($target,self::TARGETS[$client]??[],true),422,'不支持此客户端或系统');
         $release=Cache::get('client-release:'.$client,[]);
         $asset=collect($release['assets']??[])->firstWhere('id',$assetId);
         abort_unless($asset && !empty($release['version']),422,'请先检查官方版本，再选择安装包');
+        if ($autoPublish) {
+            $reason=ClientMirrorPolicy::reason($client, (string)$release['version'], $this->policies());
+            abort_if($reason !== null,422,$reason ?? '客户端策略不允许');
+            abort_if(!empty($release['error']) || empty($release['checked_at']) || $release['checked_at'] < time()-86400,422,'官方版本信息已过期，请重新检查');
+        }
         $name=(string)$asset['name']; $size=(int)$asset['size'];
         abort_unless($size>0 && $size<=self::MAX_BYTES && preg_match('/\.(apk|exe|msi|dmg|pkg|zip|deb|rpm|AppImage|tar\.gz)$/i',$name),422,'只支持 512 MiB 以内的安装包');
         $platform=substr($target,strrpos($target,'_')+1);
@@ -57,14 +74,18 @@ class ClientMirrorService
         $url=(string)$asset['browser_download_url'];
         $prefix='https://github.com/'.ClientReleaseService::CLIENTS[$client]['repo'].'/releases/download/';
         abort_unless(str_starts_with($url,$prefix),422,'安装包必须来自对应官方仓库');
-        $id=$this->state(function (&$s) use($client,$asset,$target,$release,$name,$size,$url) {
-            foreach($s['items'] as $row) if($row['client']===$client && $row['asset_id']===$asset['id'] && $row['target']===$target && in_array($row['status'],['queued','downloading','ready'])) return $row['id'];
+        $id=$this->state(function (&$s) use($client,$asset,$target,$release,$name,$size,$url,$autoPublish) {
+            foreach($s['items'] as $row) if($row['client']===$client && $row['asset_id']===$asset['id'] && $row['target']===$target && in_array($row['status'],['queued','downloading','ready'])) {
+                if($autoPublish) $s['items'][$row['id']]['auto_publish']=true;
+                return $row['id'];
+            }
             abort_if(count($s['items'])>=100,422,'镜像记录已达 100 条，请清理未发布文件');
             $id=(string)Str::uuid();
             $s['items'][$id]=['id'=>$id,'client'=>$client,'asset_id'=>$asset['id'],'target'=>$target,'version'=>$release['version'],
-                'publish_key'=>$target.':'.self::architecture($name),'name'=>$name,'size'=>$size,'source'=>$url,'digest'=>$asset['digest']??null,'status'=>'queued','updated_at'=>time(),'created_at'=>time()];
+                'publish_key'=>$target.':'.self::architecture($name),'name'=>$name,'size'=>$size,'source'=>$url,'digest'=>$asset['digest']??null,'auto_publish'=>$autoPublish,'status'=>'queued','updated_at'=>time(),'created_at'=>time()];
             return $id;
         });
+        if ($autoPublish) $this->autoPublish($id);
         try { \App\Jobs\DownloadClientMirror::dispatch($id); }
         catch(\Throwable $e) { $this->fail($id,'无法加入下载队列，请检查 Redis / Horizon'); throw $e; }
         return $id;
@@ -100,19 +121,60 @@ class ClientMirrorService
             if($verified && !hash_equals(strtolower(substr($row['digest'],7)),$sha))throw new \RuntimeException('官方 SHA-256 校验失败');
             if(!rename($part,$dest))throw new \RuntimeException('无法保存安装包');
             $this->state(function(&$s)use($id,$sha,$verified){$s['items'][$id]['status']='ready';$s['items'][$id]['sha256']=$sha;$s['items'][$id]['verified']=(bool)$verified;$s['items'][$id]['updated_at']=time();});
+            $this->autoPublish($id);
         } catch(\Throwable $e) {
             if(is_file($part))unlink($part);
             $this->fail($id,$e instanceof \GuzzleHttp\Exception\GuzzleException ? '官方文件下载失败或超时，请重试' : $e->getMessage());
         }
     }
+    public function autoPublish(string $id): void {
+        $policies=$this->policies();
+        $this->state(function (&$s) use($id,$policies) {
+            $row=$s['items'][$id]??null;
+            if (!$row || empty($row['auto_publish']) || $row['status']!=='ready') return;
+            $reason=ClientMirrorPolicy::reason($row['client'],(string)$row['version'],$policies);
+            $platform=substr($row['target'],strrpos($row['target'],'_')+1);
+            $arch=self::architecture($row['name']);
+            $architectures=['android'=>['universal','arm64','arm32','x64','x86'],'windows'=>['universal','x64','arm64'],'macos'=>['universal','x64','arm64']];
+            if (!$reason && (empty($row['verified']) || !is_file($this->directory().'/'.$id.'.bin'))) $reason='缺少官方 SHA-256 校验，保留下载供人工确认';
+            if (!$reason && ($arch==='unknown' || $platform==='linux' || ($row['client']==='sing-box' && $platform!=='android') || !preg_match('/\.(apk|exe|msi|dmg|pkg)$/i',$row['name']))) $reason='安装格式或架构需人工确认';
+            if (!$reason && (!in_array($arch,$architectures[$platform]??[],true) || preg_match('/debug|symbols|sources?|checksum/i',$row['name']))) $reason='此安装包不是已识别的推荐发行包';
+            $release=Cache::get('client-release:'.$row['client'],[]);
+            $asset=collect($release['assets']??[])->firstWhere('id',$row['asset_id']);
+            if (!$reason && (!empty($release['error']) || empty($release['checked_at']) || $release['checked_at']<time()-86400 || ($release['version']??null)!==$row['version'] || !$asset || ($asset['digest']??null)!==($row['digest']??null))) $reason='官方版本已变化或检查过期，请重新检查后同步';
+            $key=$row['publish_key']??$row['target'];
+            $previous=$s['items'][$s['published'][$key]??'']??null;
+            if (!$reason && $previous && $previous['id']!==$id && ($previous['created_at']>$row['created_at'] || version_compare(ltrim($previous['version'],'vV'),ltrim($row['version'],'vV'),'>'))) $reason='已有更新镜像，未覆盖现有发布';
+            foreach ($s['published'] as $publishedKey=>$publishedId) {
+                $other=$s['items'][$publishedId]??null;
+                if (!$reason && $other && $other['target']===$row['target'] && version_compare(ltrim($other['version'],'vV'),ltrim($row['version'],'vV'),'>')) $reason='已有更新镜像，未覆盖现有发布';
+            }
+            if ($reason) { $s['items'][$id]['publish_reason']=$reason; return; }
+            // A stale universal package must not hide a newer architecture build.
+            foreach ($s['published'] as $publishedKey=>$publishedId) {
+                $other=$s['items'][$publishedId]??null;
+                if (!$other || $other['target']!==$row['target'] || $publishedId===$id) continue;
+                $otherArch=self::architecture($other['name']);
+                $comparison=version_compare(ltrim($other['version'],'vV'),ltrim($row['version'],'vV'));
+                if (($arch==='universal' && $comparison<=0) || ($otherArch==='universal' && $comparison<0)) unset($s['published'][$publishedKey]);
+            }
+            $s['published'][$key]=$id;
+            $s['items'][$id]['publish_reason']='已通过官方校验及客户端策略检查，自动上架';
+        });
+    }
     public function action(string $id,string $action): void {
-        $this->state(function(&$s)use($id,$action){
+        $policies=$this->policies();
+        $this->state(function(&$s)use($id,$action,$policies){
             abort_unless(isset($s['items'][$id]),404);
             $row=$s['items'][$id];$target=$row['publish_key']??$row['target'];
             if($action==='publish') {
+                $clientId=['clash-verge'=>'clash','sing-box'=>'singbox'][$row['client']]??$row['client'];
+                abort_if(($policies[$clientId]['enabled']??true)===false,422,'客户端策略已禁用，请先启用再发布');
+                abort_unless($this->publishedAllowed($row,$policies),422,'安装包不符合当前最低版本策略');
                 abort_unless($row['status']==='ready' && is_file($this->directory().'/'.$id.'.bin'),422,'安装包尚未准备好');
                 $s['published'][$target]=$id;
             } elseif($action==='unpublish') {
+                $s['items'][$id]['auto_publish']=false;
                 if(($s['published'][$target]??null)===$id)unset($s['published'][$target]);
             } elseif($action==='delete') {
                 abort_if(in_array($id,$s['published'],true) || in_array($row['status'],['queued','downloading']),422,'请先下架或等待任务完成');
@@ -124,9 +186,20 @@ class ClientMirrorService
     public function urls(): array {
         $file=storage_path('app/client-mirrors/manifest.json');
         if(!is_file($file))return [];
-        $s=json_decode(file_get_contents($file),true);$out=[];
-        foreach(($s['published']??[]) as $target=>$id)if(preg_match('/^[a-f0-9-]{36}$/i',$id) && is_file(dirname($file).'/'.$id.'.bin'))$out[$target]=url('/api/v10/public/client-installers/'.$id.'/content');
+        $s=json_decode(file_get_contents($file),true);$out=[];$policies=$this->policies();
+        foreach(($s['published']??[]) as $target=>$id) {
+            $row=$s['items'][$id]??null;
+            if (!$row || !$this->publishedAllowed($row,$policies)) continue;
+            if(preg_match('/^[a-f0-9-]{36}$/i',$id) && is_file(dirname($file).'/'.$id.'.bin'))$out[$target]=url('/api/v10/public/client-installers/'.$id.'/content');
+        }
         return $out;
+    }
+    private function publishedAllowed(array $row,array $policies): bool {
+        // CMFA's app version cannot be compared to the Mihomo engine minimum.
+        if ($row['client']==='cmfa') return ($policies['cmfa']['enabled']??true)!==false;
+        foreach ($policies as &$policy) unset($policy['engineMinVersion']);
+        unset($policy);
+        return ClientMirrorPolicy::reason($row['client'],(string)$row['version'],$policies)===null;
     }
     public function serve(string $id) {
         abort_unless(preg_match('/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i', $id),404);
@@ -135,6 +208,7 @@ class ClientMirrorService
         $state=is_file($manifest) ? json_decode(file_get_contents($manifest),true,512,JSON_THROW_ON_ERROR) : [];
         abort_unless(in_array($id,$state['published'] ?? [],true) && isset($state['items'][$id]),404);
         $row=$state['items'][$id];
+        abort_unless($this->publishedAllowed($row,$this->policies()),404);
         $file=$dir.'/'.$id.'.bin';abort_unless(is_file($file),404);
         $name=preg_replace('/[^a-zA-Z0-9._-]/','_', $row['name']);
         return response()->download($file,$name,['Content-Type'=>'application/octet-stream','X-Content-Type-Options'=>'nosniff','Cache-Control'=>'private, max-age=0']);

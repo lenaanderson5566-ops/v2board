@@ -10,8 +10,8 @@ class ClientReleaseController extends Controller
 {
     public function mirrors(\App\Services\ClientMirrorService $service) { return response(['data'=>$service->listing()]); }
     public function download(Request $request, \App\Services\ClientMirrorService $service) {
-        $p=$request->validate(['client'=>'required|string','asset_id'=>'required|integer|min:1','target'=>'required|string']);
-        return response(['data'=>['id'=>$service->enqueue($p['client'],$p['asset_id'],$p['target'])]]);
+        $p=$request->validate(['client'=>'required|string','asset_id'=>'required|integer|min:1','target'=>'required|string','auto_publish'=>'sometimes|boolean']);
+        return response(['data'=>['id'=>$service->enqueue($p['client'],$p['asset_id'],$p['target'],(bool)($p['auto_publish']??false))]]);
     }
     public function mirrorAction(Request $request, \App\Services\ClientMirrorService $service) {
         $p=$request->validate(['id'=>'required|uuid','action'=>'required|in:publish,unpublish,delete']);

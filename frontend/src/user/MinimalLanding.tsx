@@ -24,7 +24,26 @@ export default function MinimalLanding() {
                 <div className="minimal-landing-art" aria-hidden="true">
                     <div className="minimal-orbit minimal-orbit-outer" />
                     <div className="minimal-orbit minimal-orbit-inner" />
-                    <div className="minimal-sphere" />
+                    <div className="minimal-sphere">
+                        <svg
+                            className="minimal-globe"
+                            viewBox="0 0 400 400"
+                            fill="none"
+                        >
+                            <circle cx="200" cy="200" r="192" />
+                            <ellipse cx="200" cy="200" rx="128" ry="192" />
+                            <ellipse cx="200" cy="200" rx="56" ry="192" />
+                            <ellipse cx="200" cy="200" rx="192" ry="64" />
+                            <ellipse cx="200" cy="200" rx="192" ry="136" />
+                            <path d="M8 200h384M200 8v384M56 72l254 252L80 296l242-208" />
+                            <g className="minimal-network-nodes">
+                                <circle cx="56" cy="72" r="4" />
+                                <circle cx="310" cy="324" r="4" />
+                                <circle cx="80" cy="296" r="4" />
+                                <circle cx="322" cy="88" r="4" />
+                            </g>
+                        </svg>
+                    </div>
                     <span className="minimal-orbit-point" />
                 </div>
                 <header className="minimal-landing-header">

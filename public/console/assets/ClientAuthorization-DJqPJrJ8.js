@@ -1,4 +1,4 @@
-import{c as f,r as e,t as a,a as m,j as t}from"./ui-D1DIT2WF.js";import{M as B}from"./app-DQRn0ycx.js";import"./runtime-config-Cv-haVB5.js";import"./Captcha-BNFR0wKk.js";/**
+import{c as f,r as e,t as a,a as m,j as t}from"./ui-D1DIT2WF.js";import{M as B}from"./app-CbF-owHk.js";import"./runtime-config-Cv-haVB5.js";import"./Captcha-BNFR0wKk.js";/**
  * @license lucide-react v0.468.0 - ISC
  *
  * This source code is licensed under the ISC license.

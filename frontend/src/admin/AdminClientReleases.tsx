@@ -67,7 +67,7 @@ export function AdminClientReleases() {
             <div className="release-hero">
                 <div>
                     <span className="release-eyebrow">CLIENT UPDATES</span>
-                    <h2>客户端更新</h2>
+                    <h2>官方版本与安装包</h2>
                     <p>每 6 小时检查官方稳定版，及时掌握客户端与内核变化。</p>
                 </div>
                 <button
@@ -88,7 +88,7 @@ export function AdminClientReleases() {
                     </strong>{" "}
                     个检查正常
                 </span>
-                <span>最新版本需验证兼容性后再推荐给用户</span>
+                <span>通用包优先；官方校验与版本策略通过后自动上架</span>
             </div>
             {busy && (
                 <button
@@ -105,7 +105,8 @@ export function AdminClientReleases() {
                     {message}
                 </p>
             )}
-            <State {...d} retry={d.reload}>
+            <AdminClientMirrors clients={clients} checking={!!busy} checkUpdates={()=>check(clients.filter(c=>["cmfa","clash-verge","flclash","sing-box"].includes(c.id)).map(c=>c.id))} />
+            <details><summary>查看官方版本与更新说明</summary><State {...d} retry={d.reload}>
                 <div className="release-grid">
                     {clients.map((client) => (
                         <article className="release-card" key={client.id}>
@@ -183,8 +184,7 @@ export function AdminClientReleases() {
                         </article>
                     ))}
                 </div>
-            </State>
-            <AdminClientMirrors clients={clients} checking={!!busy} checkUpdates={()=>check(clients.filter(c=>["cmfa","clash-verge","flclash","sing-box"].includes(c.id)).map(c=>c.id))} />
+            </State></details>
             {notes && (
                 <Modal
                     title={`${notes.name} ${notes.version}`}

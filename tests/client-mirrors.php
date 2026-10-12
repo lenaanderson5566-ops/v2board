@@ -9,6 +9,8 @@ use Illuminate\Support\Facades\Queue;
 use Illuminate\Http\Request;
 class TestMirrorService extends ClientMirrorService {
  public $dir; public $body='test-package';
+ public $testPolicies=[];
+ protected function policies():array{return $this->testPolicies;}
  public function directory():string{return $this->dir;}
  protected function httpClient(){return new class($this->body) {
   private $body; function __construct($b){$this->body=$b;}
@@ -53,6 +55,49 @@ try {
   $assert(app(Illuminate\Contracts\Http\Kernel::class)->handle($r)->getStatusCode()===403);
  }
  $assert(config('queue.connections.redis-mirror.retry_after')>config('horizon.environments.*.client-download.timeout'));
+ // Automatic publication is performed by the worker, with a fresh policy check.
+ $asset=['id'=>10,'name'=>'universal.apk','size'=>12,'digest'=>'sha256:'.hash('sha256','test-package'),'browser_download_url'=>'https://github.com/MetaCubeX/ClashMetaForAndroid/releases/download/test/universal.apk'];
+ $release=['version'=>'1.2.0','checked_at'=>time(),'assets'=>[$asset]];
+ Cache::put('client-release:cmfa',$release,60);
+ $auto=$s->enqueue('cmfa',10,'cmfa_android',true);$s->download($auto);
+ $assert(($s->listing()['published']['cmfa_android:universal']??null)===$auto);
+ $s->action($auto,'unpublish');$s->autoPublish($auto);
+ $assert(!isset($s->listing()['published']['cmfa_android:universal']));
+ $assert($s->enqueue('cmfa',10,'cmfa_android',true)===$auto);
+ $assert($s->listing()['published']['cmfa_android:universal']===$auto);
+ $asset['id']=11;unset($asset['digest']);$release['assets']=[$asset];Cache::put('client-release:cmfa',$release,60);
+ $unverified=$s->enqueue('cmfa',11,'cmfa_android',true);$s->download($unverified);
+ $assert(!in_array($unverified,$s->listing()['published'],true));
+ $assert($s->listing()['items'][0]['status']==='ready' && str_contains($s->listing()['items'][0]['publish_reason'],'SHA-256'));
+ $asset['id']=12;$asset['digest']='sha256:'.hash('sha256','test-package');$release['assets']=[$asset];Cache::put('client-release:cmfa',$release,60);
+ $blocked=$s->enqueue('cmfa',12,'cmfa_android',true);
+ $s->testPolicies=['cmfa'=>['enabled'=>false]];$s->download($blocked);
+ $assert(!in_array($blocked,$s->listing()['published'],true));
+ $reject(fn()=>$s->action($blocked,'publish'));$reject(fn()=>$s->serve($auto));
+ $reject(fn()=>$s->enqueue('cmfa',12,'cmfa_android',true));
+ $s->testPolicies=[];
+ $asset['id']=13;$asset['name']='app-arm64.apk';$release['version']='1.3.0';$release['assets']=[$asset];Cache::put('client-release:cmfa',$release,60);
+ $new=$s->enqueue('cmfa',13,'cmfa_android',true);$s->download($new);
+ $assert(!isset($s->listing()['published']['cmfa_android:universal']) && $s->listing()['published']['cmfa_android:arm64']===$new);
+ $asset['id']=14;$asset['name']='universal.apk';$release['version']='1.4.0';$release['assets']=[$asset];Cache::put('client-release:cmfa',$release,60);
+ $universal=$s->enqueue('cmfa',14,'cmfa_android',true);$s->download($universal);
+ $assert(!isset($s->listing()['published']['cmfa_android:arm64']) && $s->listing()['published']['cmfa_android:universal']===$universal);
+ $assert(App\Services\ClientMirrorPolicy::reason('clash-verge','v1.2.0',['clash'=>['enabled'=>true,'minVersion'=>'1.3.0']])!==null);
+ $assert(App\Services\ClientMirrorPolicy::reason('clash-verge','v1.3.0',['clash'=>['enabled'=>true,'minVersion'=>'1.3.0']])===null);
+ $assert(App\Services\ClientMirrorPolicy::reason('cmfa','v9.0.0',['cmfa'=>['enabled'=>true,'minVersion'=>'1.0.0']])!==null);
+ $assert(App\Services\ClientMirrorPolicy::reason('flclash','v9.0.0',['flclash'=>['enabled'=>true,'engineMinVersion'=>'1.0.0']])!==null);
+ // Do not publish an old queued release after the official version changes.
+ $asset['id']=15;$release['version']='1.5.0';$release['assets']=[$asset];Cache::put('client-release:cmfa',$release,60);
+ $stale=$s->enqueue('cmfa',15,'cmfa_android',true);
+ $release['version']='1.6.0';Cache::put('client-release:cmfa',$release,60);$s->download($stale);
+ $assert(!in_array($stale,$s->listing()['published'],true));
+ // Never downgrade an already published newer package, even if upstream moves back.
+ $asset['id']=16;$release['version']='1.3.0';$release['assets']=[$asset];Cache::put('client-release:cmfa',$release,60);
+ $downgrade=$s->enqueue('cmfa',16,'cmfa_android',true);$s->download($downgrade);
+ $assert($s->listing()['published']['cmfa_android:universal']===$universal);
+ $asset['id']=17;$asset['name']='debug-universal.apk';$release['version']='1.7.0';$release['assets']=[$asset];Cache::put('client-release:cmfa',$release,60);
+ $debug=$s->enqueue('cmfa',17,'cmfa_android',true);$s->download($debug);
+ $assert(!in_array($debug,$s->listing()['published'],true));
 }finally{
  if($old===null)Cache::forget('client-release:cmfa');else Cache::forever('client-release:cmfa',$old);
  foreach(glob($s->dir.'/*') as $file)unlink($file);rmdir($s->dir);

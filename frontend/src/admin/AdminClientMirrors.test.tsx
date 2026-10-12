@@ -6,20 +6,30 @@ vi.mock("../shared/api",()=>({admin:(s:string)=>s,ops:(s:string)=>s,request:mock
 vi.mock("../shared/ui",()=>({useData:()=>({data:mocks.data,reload:mocks.reload}),State:({children}:any)=><>{children}</>}));
 import { AdminClientMirrors } from "./AdminClientMirrors";
 afterEach(()=>{cleanup();vi.clearAllMocks();});
+it("uses current policy to skip disabled recommendations",async()=>{
+ mocks.data={items:[],published:{},targets:{cmfa:["cmfa_android"]},policyReasons:{cmfa:"客户端策略已禁用"}};
+ const clients=[{id:"cmfa",version:"1.2.0",assets:[{id:8,name:"universal.apk",size:12}]}];
+ mocks.request.mockImplementation(async(path:string)=>({data:path==="config/fetch"?{app:{}}:path==="client/mirrors/fetch"?mocks.data:clients}));
+ render(<AdminClientMirrors clients={clients}/>);
+ fireEvent.click(screen.getByRole("button",{name:"下载全部推荐客户端"}));
+ await waitFor(()=>expect(screen.getByText(/已加入 0 个下载任务/)).toBeTruthy());
+ expect(mocks.request.mock.calls.some(c=>c[0]==="client/mirrors/download")).toBe(false);
+ expect(screen.getAllByText(/已跳过：客户端策略已禁用/).length).toBeGreaterThan(0);
+});
 it("downloads recommendations from an empty mirror library and deduplicates universal packages",async()=>{
  mocks.data={items:[],published:{},targets:{cmfa:["cmfa_android"]}};
  const clients=[{id:"cmfa",name:"CMFA",version:"2",assets:[{id:8,name:"universal.apk",size:12}]}];
- mocks.request.mockImplementation(async(path:string)=>path==="config/fetch"?{data:{app:{}}}:{data:clients});
+ mocks.request.mockImplementation(async(path:string)=>path==="config/fetch"?{data:{app:{}}}:path==="client/mirrors/fetch"?{data:mocks.data}:{data:clients});
  render(<AdminClientMirrors clients={clients}/>);
  fireEvent.click(screen.getByRole("button",{name:"下载全部推荐客户端"}));
  await waitFor(()=>expect(screen.getByText(/已加入 1 个下载任务/)).toBeTruthy());
  const downloads=mocks.request.mock.calls.filter(c=>c[0]==="client/mirrors/download");
  expect(downloads).toHaveLength(1);
- expect(downloads[0][1]).toEqual({client:"cmfa",target:"cmfa_android",asset_id:8});
+ expect(downloads[0][1]).toEqual({client:"cmfa",target:"cmfa_android",asset_id:8,auto_publish:true});
 });
 it("does not queue stale packages when checking a recommended client fails",async()=>{
  mocks.data={items:[],published:{},targets:{cmfa:["cmfa_android"]}};
- mocks.request.mockImplementation(async(path:string)=>{if(path==="config/fetch")return {data:{app:{}}};throw new Error("offline");});
+ mocks.request.mockImplementation(async(path:string)=>{if(path==="config/fetch")return {data:{app:{}}};if(path==="client/mirrors/fetch")return {data:mocks.data};throw new Error("offline");});
  render(<AdminClientMirrors clients={[{id:"cmfa",version:"old",assets:[{id:8,name:"universal.apk",size:12}]}]}/>);
  fireEvent.click(screen.getByRole("button",{name:"下载全部推荐客户端"}));
  await waitFor(()=>expect(screen.getByText(/已加入 0 个下载任务/)).toBeTruthy());
@@ -28,6 +38,7 @@ it("does not queue stale packages when checking a recommended client fails",asyn
 it("automatically selects the sole platform and universal package",async()=>{
  mocks.request.mockResolvedValue({data:{}});
  render(<AdminClientMirrors clients={[{id:"cmfa",name:"CMFA",assets:[{id:8,name:"universal.apk",size:12}]}]}/>);
+ fireEvent.click(screen.getByText("手动选择安装包"));
  expect((screen.getByLabelText("官方安装包") as HTMLSelectElement).value).toBe("8");
  fireEvent.change(screen.getByLabelText("目标系统"),{target:{value:"cmfa_android"}});
  fireEvent.change(screen.getByLabelText("官方安装包"),{target:{value:"8"}});
@@ -45,7 +56,7 @@ it("does not allow publishing an unfinished download",()=>{
 it("shows per-device reasons and opens manual selection after checking",async()=>{
  mocks.data={items:[{id:"old",client:"cmfa",target:"cmfa_android",name:"old.apk",size:12,asset_id:99,status:"ready"}],published:{},targets:{cmfa:["cmfa_android"]}};
  const clients=[{id:"cmfa",name:"CMFA",version:"2",assets:[{id:8,name:"universal.apk",size:12}]}];
- mocks.request.mockResolvedValue({data:clients});
+ mocks.request.mockImplementation(async(path:string)=>({data:path==="client/mirrors/fetch"?mocks.data:clients}));
  render(<AdminClientMirrors clients={clients}/>);
  fireEvent.click(screen.getByRole("button",{name:"一键下载更新"}));
  await waitFor(()=>expect(screen.getByText(/原安装包架构不明确/)).toBeTruthy());

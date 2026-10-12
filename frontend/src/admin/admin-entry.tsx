@@ -3,7 +3,7 @@ import { AdminSubscriptions } from "./AdminSubscriptions";
 import { AdminInvitations } from "./AdminInvitations";
 import { AdminSystemLogs } from "./AdminSystemLogs";
 import { RiskRules } from "./AdminRisk";
-import { AdminClientReleases } from "./AdminClientReleases";
+import { AdminClients } from "./AdminClients";
 import { AdminBanners } from "./AdminBanners";
 import { ResourcePage, resources, Settings, Payments, Nodes } from "./admin";
 import { OrdersPage } from "./admin-orders";
@@ -25,7 +25,7 @@ export default function AdminContent({ current }: { current: string }) {
     if (current === "knowledge" || current === "notices")
         return <ContentPage kind={current} />;
     if (current === "risk") return <RiskRules />;
-    if (current === "client-releases") return <AdminClientReleases />;
+    if (current === "client-releases" || current === "clients") return <AdminClients key={current} initialTab={current === "clients" ? "policy" : "updates"} />;
     if (resources[current])
         return <ResourcePage key={current} resource={resources[current]} />;
     switch (current) {

@@ -1,10 +1,6 @@
 <?php
 
 use Illuminate\Support\Str;
-use Linfo\Linfo;
-
-$lInfo = new Linfo();
-$parser = $lInfo->getParser();
 
 return [
 
@@ -183,10 +179,9 @@ return [
                 ],
                 'balance' => 'auto',
                 'minProcesses' => 1,
-                'maxProcesses' => min(
-                    (int)ceil($parser->getRam()['total'] / 1024 / 1024 / 1024 * 6),
-                    (int)env('HORIZON_MAX_PROCESSES', 128)
-                ),
+                // Configuration is also loaded by HTTP requests and config:cache.
+                // Do not probe /proc or /sys: restricted hosts cannot read them.
+                'maxProcesses' => max(1, (int)env('HORIZON_MAX_PROCESSES', 6)),
                 'tries' => 1,
                 'balanceCooldown' => 3,
             ],

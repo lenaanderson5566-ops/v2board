@@ -979,6 +979,10 @@ class LogController extends Controller
         $minConnectedAt = time() - ($retentionDays * 86400);
 
         $builder = UserConnectionLog::query()->where('connected_at', '>=', $minConnectedAt);
+        if ($request->filled('email')) {
+            $builder->whereIn('user_id', User::query()->select('id')
+                ->where('email', 'like', '%' . trim((string) $request->input('email')) . '%'));
+        }
         if ($request->filled('user_id')) {
             $builder->where('user_id', (int) $request->input('user_id'));
         }
@@ -990,6 +994,11 @@ class LogController extends Controller
         $data = $builder->orderBy('connected_at', 'desc')
             ->forPage($current, $pageSize)
             ->get();
+
+        $emails = User::query()->whereIn('id', $data->pluck('user_id')->unique())->pluck('email', 'id');
+        $data->each(function ($row) use ($emails) {
+            $row->setAttribute('email', $emails->get($row->user_id));
+        });
 
         return response([
             'data' => $data,

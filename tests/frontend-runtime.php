@@ -12,6 +12,11 @@ try {
     config(['v2board.secure_path' => 'test-admin', 'v2board.smtp_password' => 'must-not-be-exported']);
     $user = App\Support\FrontendRuntime::config('user', false);
     $admin = App\Support\FrontendRuntime::config('admin');
+    config(['v2board.landing_style' => 'minimal']);
+    $assert(App\Support\FrontendRuntime::config('user', true)['landingStyle'] === 'minimal', 'Minimal landing selected');
+    config(['v2board.landing_style' => 'unknown']);
+    $assert(App\Support\FrontendRuntime::config('user', true)['landingStyle'] === 'original', 'Unknown landing style falls back to original');
+    config(['v2board.landing_style' => 'original']);
     $assert($user['adminPath'] === '' && $user['opsPath'] === '', 'User configuration hides administrative paths');
     $assert($admin['adminPath'] === 'test-admin', 'Admin path preserved');
     $assert($user['landing'] === false && !array_key_exists('landing', $admin), 'Server and standalone landing selection');

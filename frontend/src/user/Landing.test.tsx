@@ -4,6 +4,7 @@ import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 const mocks = vi.hoisted(() => ({
     boot: {
         title: "Example AI",
+        landingStyle: "original",
         registerClosed: false,
         inviteRequired: false,
         tosUrl: "https://example.com/terms",
@@ -26,6 +27,44 @@ afterEach(() => {
     cleanup();
     mocks.boot.registerClosed = false;
     mocks.boot.inviteRequired = false;
+    mocks.boot.landingStyle = "original";
+});
+it("selects the minimal landing and keeps a keyboard-accessible auth entry", () => {
+    mocks.boot.landingStyle = "minimal";
+    render(<Landing />);
+    expect(screen.getByRole("heading", { name: "aiTitle" })).toBeTruthy();
+    expect(screen.queryByText("OpenAI")).toBeNull();
+    expect(screen.getByRole("link", { name: "scrollToAuth" }).getAttribute("href")).toBe("/app#/login");
+    expect(screen.getByRole("link", { name: "signIn" }).getAttribute("href")).toBe("/app#/login");
+});
+it("falls back to the original landing for unknown settings", () => {
+    mocks.boot.landingStyle = "unknown";
+    render(<Landing />);
+    expect(screen.getByText("OpenAI")).toBeTruthy();
+});
+it("enters auth only after scrolling and removes its listener on unmount", () => {
+    mocks.boot.landingStyle = "minimal";
+    const add = vi.spyOn(window, "addEventListener");
+    const remove = vi.spyOn(window, "removeEventListener");
+    const view = render(<Landing />);
+    const listener = add.mock.calls.find(([name]) => name === "scroll")?.[1] as () => void;
+    const assign = vi.fn();
+    const fakeWindow = { scrollY: 0, location: { assign } };
+    try {
+        vi.stubGlobal("window", fakeWindow);
+        listener();
+        expect(assign).not.toHaveBeenCalled();
+        fakeWindow.scrollY = 80;
+        listener();
+        listener();
+        expect(assign).toHaveBeenCalledExactlyOnceWith("/app#/login");
+    } finally {
+        vi.unstubAllGlobals();
+        view.unmount();
+    }
+    expect(remove).toHaveBeenCalledWith("scroll", listener);
+    add.mockRestore();
+    remove.mockRestore();
 });
 describe("public product entry", () => {
     it("uses the configured brand and shows AI service brands before setup", () => {

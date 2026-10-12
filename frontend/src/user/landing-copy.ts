@@ -1,5 +1,15 @@
 import i18n from "../shared/i18n";
 export const landingCopy = {
+    scrollToAuth: [
+        "下滑进入登录",
+        "下滑進入登入",
+        "Scroll to sign in",
+        "スクロールしてログイン",
+        "스크롤하여 로그인",
+        "Cuộn để đăng nhập",
+        "Прокрутите для входа",
+        "برای ورود پیمایش کنید",
+    ],
     inviteStart: [
         "受邀注册",
         "受邀註冊",

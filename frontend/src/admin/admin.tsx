@@ -360,7 +360,11 @@ export const resources: Record<string, Resource> = {
             ["commission_balance", "佣金", (r) => money(r.commission_balance)],
             ["last_connected_at", "上次连接", (r) => date(r.last_connected_at)],
             ["last_login_at", "上次登录", (r) => date(r.last_login_at)],
-            ["last_subscribe_at", "上次订阅时间", (r) => date(r.last_subscribe_at)],
+            [
+                "last_subscribe_at",
+                "上次订阅时间",
+                (r) => date(r.last_subscribe_at),
+            ],
             ["created_at", "加入时间", (r) => date(r.created_at)],
         ],
         fields: [
@@ -949,8 +953,7 @@ export function ResourcePage({
             pageSize,
             page_size: pageSize,
             email:
-                resource.title.includes("日志") ||
-                resource === resources.online
+                resource.title.includes("日志") || resource === resources.online
                     ? search
                     : undefined,
             keyword: resource.title.includes("黑名单") ? search : undefined,
@@ -1659,30 +1662,28 @@ export function Settings() {
                     !k.startsWith("fastai_entrypoint"),
             )
             .map(([k, v]) =>
-                k === "credit_base_group_id"
+                k === "landing_style"
                     ? {
                           key: k,
-                          label: "额度基础权限组",
+                          label: "落地页样式",
+                          hint: "极简落地页向下滚动后进入登录界面。",
                           type: "select" as const,
                           options: [
-                              ["", "未配置（沿用原权限）"] as [string, string],
-                              ...rows(creditGroups.data).map(
-                                  (r) =>
-                                      [String(r.id), r.name] as [
-                                          string,
-                                          string,
-                                      ],
-                              ),
-                          ],
+                              ["original", "原版落地页"],
+                              ["minimal", "极简落地页"],
+                          ] as [string, string][],
                       }
-                    : k === "try_out_plan_id"
+                    : k === "credit_base_group_id"
                       ? {
                             key: k,
-                            label: "试用套餐",
+                            label: "额度基础权限组",
                             type: "select" as const,
                             options: [
-                                ["0", "不指定套餐"] as [string, string],
-                                ...rows(plans.data).map(
+                                ["", "未配置（沿用原权限）"] as [
+                                    string,
+                                    string,
+                                ],
+                                ...rows(creditGroups.data).map(
                                     (r) =>
                                         [String(r.id), r.name] as [
                                             string,
@@ -1691,23 +1692,40 @@ export function Settings() {
                                 ),
                             ],
                         }
-                      : /^client_(primary|secondary)_/.test(k)
+                      : k === "try_out_plan_id"
                         ? {
                               key: k,
-                              label: labels[k],
+                              label: "试用套餐",
                               type: "select" as const,
                               options: [
-                                  ["", "使用默认推荐"] as [string, string],
-                                  ...recommendationClients(
-                                      k
-                                          .split("_")
-                                          .pop() as RecommendationDevice,
-                                  ).map(
-                                      (c) => [c.id, c.name] as [string, string],
+                                  ["0", "不指定套餐"] as [string, string],
+                                  ...rows(plans.data).map(
+                                      (r) =>
+                                          [String(r.id), r.name] as [
+                                              string,
+                                              string,
+                                          ],
                                   ),
                               ],
                           }
-                        : configField(k, v, schema.data?.[k], labels[k] || k),
+                        : /^client_(primary|secondary)_/.test(k)
+                          ? {
+                                key: k,
+                                label: labels[k],
+                                type: "select" as const,
+                                options: [
+                                    ["", "使用默认推荐"] as [string, string],
+                                    ...recommendationClients(
+                                        k
+                                            .split("_")
+                                            .pop() as RecommendationDevice,
+                                    ).map(
+                                        (c) =>
+                                            [c.id, c.name] as [string, string],
+                                    ),
+                                ],
+                            }
+                          : configField(k, v, schema.data?.[k], labels[k] || k),
             ),
     );
     return (

@@ -10,6 +10,7 @@ final class FrontendRuntime
         $config = [
             'mode' => $mode,
             'landing' => $landing,
+            'landingStyle' => config('v2board.landing_style') === 'minimal' ? 'minimal' : 'original',
             'title' => config('v2board.app_name', 'V2Board'),
             'description' => $landing ? 'AI 应用配置助手，让设备配置更简单。' : config('v2board.app_description', '连接世界，轻松管理你的订阅。'),
             'adminPath' => $mode === 'admin' ? $securePath : '',

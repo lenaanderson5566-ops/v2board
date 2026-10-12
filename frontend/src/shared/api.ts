@@ -31,6 +31,7 @@ export interface Boot {
     clientMirrors?: Record<string, string>;
     legacyDownloads?: Record<string, string>;
     landing?: boolean;
+    landingStyle?: "original" | "minimal";
     mode: "user" | "admin";
     title: string;
     description: string;

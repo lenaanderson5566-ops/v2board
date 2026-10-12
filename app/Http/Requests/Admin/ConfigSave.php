@@ -43,6 +43,7 @@ class ConfigSave extends FormRequest
         'stop_register' => 'in:0,1',
         'app_name' => '',
         'app_description' => '',
+        'landing_style' => 'sometimes|required|in:original,minimal',
         'app_url' => 'nullable|url',
         'subscribe_url' => 'nullable',
         'subscribe_path' => 'nullable|regex:/^\\//',

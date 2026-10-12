@@ -260,7 +260,7 @@ export function Tickets({
                     close={() => setId(null)}
                 >
                     <State {...detail}>
-                        {isAdmin && detail.data && <p className="pad">ID: {detail.data.user_id || "—"} · {detail.data.email || "邮箱不可用"}</p>}
+                        {isAdmin && detail.data && <p className="pad">ID: {detail.data.user_id || "—"} · {detail.data.email || tx("邮箱不可用")}</p>}
                         <div className="messages">
                             {rows(detail.data?.message).map((m) => (
                                 <div

@@ -22,8 +22,17 @@ import openaiIcon from "../assets/openai.svg";
 import claudeIcon from "../assets/claude.svg";
 import geminiIcon from "../assets/googlegemini.svg";
 import { LanguagePicker } from "../shared/LanguagePicker";
+import MinimalLanding from "./MinimalLanding";
 
 export default function Landing() {
+    return boot.landingStyle === "minimal" ? (
+        <MinimalLanding />
+    ) : (
+        <OriginalLanding />
+    );
+}
+
+function OriginalLanding() {
     const { t } = useTranslation("landing");
     const [menu, setMenu] = useState(false);
     const menuButton = useRef<HTMLButtonElement>(null);

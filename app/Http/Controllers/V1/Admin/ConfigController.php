@@ -96,6 +96,7 @@ class ConfigController extends Controller
                 'force_https' => (int)config('v2board.force_https', 0),
                 'stop_register' => (int)config('v2board.stop_register', 0),
                 'app_name' => config('v2board.app_name', 'V2Board'),
+                'landing_style' => config('v2board.landing_style', 'original'),
                 'app_description' => config('v2board.app_description', 'V2Board is best!'),
                 'app_url' => config('v2board.app_url'),
                 'subscribe_url' => config('v2board.subscribe_url'),

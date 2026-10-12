@@ -30,6 +30,7 @@ JOBS_RESTART_TIMEOUT=60
 JOB_PIDS=()
 JOB_STARTS=()
 JOB_COMMANDS=()
+OPERATIONS_SCHEMA_MIGRATION=database/migrations/2026_10_11_000000_ensure_operations_schema.php
 MIGRATION=database/migrations/2026_10_01_000001_add_trusted_x_forwarded_for_to_v2node.php
 INVITATION_MIGRATION=database/migrations/2026_10_02_000001_create_email_invitations.php
 CREDIT_MIGRATION=database/migrations/2026_10_02_000005_create_traffic_credits.php
@@ -261,6 +262,7 @@ for protected in .env config/v2board.php; do
     if git cat-file -e "$TARGET:$protected" 2>/dev/null; then die "Target must not track $protected"; fi
 done
 git cat-file -e "$TARGET:public/console/.vite/manifest.json" || die 'Target has no built frontend manifest'
+git cat-file -e "$TARGET:$OPERATIONS_SCHEMA_MIGRATION" || die 'Target lacks operations schema migration'
 git cat-file -e "$TARGET:$MIGRATION" || die 'Target lacks the approved migration'
 git cat-file -e "$TARGET:$INVITATION_MIGRATION" || die 'Target lacks the email invitation migration'
 git cat-file -e "$TARGET:$LANGUAGE_MIGRATION" || die 'Target lacks the user language migration'
@@ -287,7 +289,7 @@ git cat-file -e "$TARGET:$SERVER_TRAFFIC_BUDGET_MIGRATION" || die 'Target lacks 
 git cat-file -e "$TARGET:$SERVER_TRAFFIC_IMPORT_MIGRATION" || die 'Target lacks server_traffic_import_migration migration'
 git cat-file -e "$TARGET:$LIGHTSAIL_MIGRATION" || die 'Target lacks lightsail migration'
 while IFS= read -r changed; do
-    [[ -z "$changed" || "$changed" == "$MIGRATION" || "$changed" == "$INVITATION_MIGRATION" || "$changed" == "$LANGUAGE_MIGRATION" || "$changed" == "$CURRENCY_MIGRATION" || "$changed" == "$EXPIRY_MIGRATION" || "$changed" == "$REWARD_MIGRATION" || "$changed" == "$RESET_MIGRATION" || "$changed" == "$NOTICE_MIGRATION" || "$changed" == "$CREDIT_MIGRATION" || "$changed" == "$CONTENT_MIGRATION" || "$changed" == "$BANNER_MIGRATION" || "$changed" == "$RETIRED_NODE_TABLES_MIGRATION" || "$changed" == "$V2BOX_MIGRATION" || "$changed" == "$V2BOX_SINGBOX_MIGRATION" || "$changed" == "$NODE_ROUTES_MIGRATION" || "$changed" == "$NODE_DDNS_MIGRATION" || "$changed" == "$LOG_METADATA_MIGRATION" || "$changed" == "$NODE_TRAFFIC_BATCH_MIGRATION" || "$changed" == "$SERVER_TRAFFIC_BUDGET_MIGRATION" || "$changed" == "$SERVER_TRAFFIC_IMPORT_MIGRATION" || "$changed" == "$LIGHTSAIL_MIGRATION" || "$changed" == "$NODE_DISPLAY_MIGRATION" || "$changed" == "$PAYMENT_HISTORY_MIGRATION" || "$changed" == "$SERVICE_MAIL_MIGRATION" || "$changed" == "$RETIRED_PAYMENT_MIGRATION" ]] || die "Unexpected migration: $changed; review scope first"
+    [[ -z "$changed" || "$changed" == "$OPERATIONS_SCHEMA_MIGRATION" || "$changed" == "$MIGRATION" || "$changed" == "$INVITATION_MIGRATION" || "$changed" == "$LANGUAGE_MIGRATION" || "$changed" == "$CURRENCY_MIGRATION" || "$changed" == "$EXPIRY_MIGRATION" || "$changed" == "$REWARD_MIGRATION" || "$changed" == "$RESET_MIGRATION" || "$changed" == "$NOTICE_MIGRATION" || "$changed" == "$CREDIT_MIGRATION" || "$changed" == "$CONTENT_MIGRATION" || "$changed" == "$BANNER_MIGRATION" || "$changed" == "$RETIRED_NODE_TABLES_MIGRATION" || "$changed" == "$V2BOX_MIGRATION" || "$changed" == "$V2BOX_SINGBOX_MIGRATION" || "$changed" == "$NODE_ROUTES_MIGRATION" || "$changed" == "$NODE_DDNS_MIGRATION" || "$changed" == "$LOG_METADATA_MIGRATION" || "$changed" == "$NODE_TRAFFIC_BATCH_MIGRATION" || "$changed" == "$SERVER_TRAFFIC_BUDGET_MIGRATION" || "$changed" == "$SERVER_TRAFFIC_IMPORT_MIGRATION" || "$changed" == "$LIGHTSAIL_MIGRATION" || "$changed" == "$NODE_DISPLAY_MIGRATION" || "$changed" == "$PAYMENT_HISTORY_MIGRATION" || "$changed" == "$SERVICE_MAIL_MIGRATION" || "$changed" == "$RETIRED_PAYMENT_MIGRATION" ]] || die "Unexpected migration: $changed; review scope first"
 done < <(git diff --name-only "$OLD_COMMIT" "$TARGET" -- database/migrations)
 git show "$TARGET:composer.json" > "$WORK_DIR/composer.json"
 git show "$OLD_COMMIT:composer.json" > "$WORK_DIR/original-composer.json"
@@ -442,7 +444,7 @@ PHASE=cache-preparation
 "$PHP_BIN" artisan route:clear
 "$PHP_BIN" artisan view:clear
 PHASE=migrations
-for migration in "$MIGRATION" "$INVITATION_MIGRATION" "$LANGUAGE_MIGRATION" "$RESET_MIGRATION" "$NOTICE_MIGRATION" "$CREDIT_MIGRATION" "$CONTENT_MIGRATION" "$BANNER_MIGRATION" "$REWARD_MIGRATION" "$EXPIRY_MIGRATION" "$CURRENCY_MIGRATION" "$NODE_DISPLAY_MIGRATION" "$RETIRED_PAYMENT_MIGRATION" "$SERVICE_MAIL_MIGRATION" "$PAYMENT_HISTORY_MIGRATION" "$V2BOX_MIGRATION" "$RETIRED_NODE_TABLES_MIGRATION" "$V2BOX_SINGBOX_MIGRATION" "$NODE_ROUTES_MIGRATION" "$NODE_DDNS_MIGRATION" "$LOG_METADATA_MIGRATION" "$NODE_TRAFFIC_BATCH_MIGRATION" "$SERVER_TRAFFIC_BUDGET_MIGRATION" "$SERVER_TRAFFIC_IMPORT_MIGRATION" "$LIGHTSAIL_MIGRATION"; do
+for migration in "$OPERATIONS_SCHEMA_MIGRATION" "$MIGRATION" "$INVITATION_MIGRATION" "$LANGUAGE_MIGRATION" "$RESET_MIGRATION" "$NOTICE_MIGRATION" "$CREDIT_MIGRATION" "$CONTENT_MIGRATION" "$BANNER_MIGRATION" "$REWARD_MIGRATION" "$EXPIRY_MIGRATION" "$CURRENCY_MIGRATION" "$NODE_DISPLAY_MIGRATION" "$RETIRED_PAYMENT_MIGRATION" "$SERVICE_MAIL_MIGRATION" "$PAYMENT_HISTORY_MIGRATION" "$V2BOX_MIGRATION" "$RETIRED_NODE_TABLES_MIGRATION" "$V2BOX_SINGBOX_MIGRATION" "$NODE_ROUTES_MIGRATION" "$NODE_DDNS_MIGRATION" "$LOG_METADATA_MIGRATION" "$NODE_TRAFFIC_BATCH_MIGRATION" "$SERVER_TRAFFIC_BUDGET_MIGRATION" "$SERVER_TRAFFIC_IMPORT_MIGRATION" "$LIGHTSAIL_MIGRATION"; do
     run_migration "$migration"
 done
 printf '\nAll approved migrations completed.\n'

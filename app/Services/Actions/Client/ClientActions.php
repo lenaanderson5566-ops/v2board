@@ -16,6 +16,7 @@ class ClientActions
 {
     public function authenticatedConfig(Request $request)
     {
+        $request->validate(['core' => 'sometimes|in:mihomo,sing-box']);
         $user = \App\Models\User::findOrFail($request->user['id']);
         $request->attributes->set('client.native', true);
         $request->attributes->set('client.version', $request->input('client_version'));
@@ -25,6 +26,21 @@ class ClientActions
         }
         $request->merge(['user' => $user, 'flag' => 'flclash', 'language' => app()->getLocale()]);
         $yaml = $this->subscribe($request);
+        if ($request->input('core') === 'sing-box') {
+            $configuration = json_decode($yaml->getContent(), true, 512, JSON_THROW_ON_ERROR);
+            $nodes = $request->attributes->get('client.nodes', []);
+            return response()->json(['data' => [
+                'configVersion' => hash('sha256', json_encode([$configuration, $nodes])),
+                'core' => 'sing-box',
+                'coreVersion' => '1.14.3',
+                'configuration' => $configuration,
+                'nodes' => $nodes,
+            ]], 200, [
+                'X-FastAI-Config-Version' => '3',
+                'Cache-Control' => 'private, no-store',
+                'Vary' => 'Accept, Accept-Language',
+            ]);
+        }
         if ($request->attributes->get('client.nodes') !== null) {
             $nodes = $request->attributes->get('client.nodes');
             $version = hash('sha256', $yaml.json_encode($nodes));
@@ -110,7 +126,7 @@ class ClientActions
                     $this->setSubscribeInfoToServers($servers, $user);
                 }
                 $class = $request->attributes->get('client.native')
-                    ? new \App\Services\FastaiConfig($clientUser, $servers, $this->structuredConfig($request))
+                    ? ($request->input('core') === 'sing-box' ? new \App\Services\FastaiSingboxConfig($clientUser, $servers) : new \App\Services\FastaiConfig($clientUser, $servers, $this->structuredConfig($request)))
                     : $this->resolveProtocolHandler($resolvedFlag, $clientUser, $servers);
                 $resolvedClientType = $class->flag;
                 $riskLogService->createSubscribeLog($this->buildSubscribeLogPayload(
@@ -120,7 +136,7 @@ class ClientActions
                     'success'
                 ));
                 $content = $class->handle();
-                if ($class instanceof \App\Services\FastaiConfig && $this->structuredConfig($request)) {
+                if (($class instanceof \App\Services\FastaiConfig && $this->structuredConfig($request)) || $class instanceof \App\Services\FastaiSingboxConfig) {
                     $request->attributes->set('client.nodes', $class->nodes());
                 }
                 return $content;

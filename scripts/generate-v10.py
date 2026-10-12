@@ -136,7 +136,7 @@ for i,e in enumerate(entries):
  if k=='User/PlanController@fetch':imap={'planId':'id'}
  if k=='User/NoticeController@fetch':imap.update({'pageSize':'pageSize'})
  if e['scope']=='client':imap={'format':'flag','language':'language'}
- if k=='Client/ClientController@authenticatedConfig':imap={'clientVersion':'client_version','platform':'platform','architecture':'architecture'}
+ if k=='Client/ClientController@authenticatedConfig':imap={'clientVersion':'client_version','platform':'platform','architecture':'architecture','core':'core'}
  imap={public:internal for public,internal in imap.items() if internal not in e['bindings'].values()}
  if k.startswith('Guest/Telegram'):imap={} # Signed provider payload, native protocol.
  out=outputs.get(k,'authentication' if k in ['Passport/AuthController@login','Passport/AuthController@register','Passport/AuthController@token2Login'] else 'scalar')

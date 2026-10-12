@@ -1916,7 +1916,8 @@
       "input": {
         "clientVersion": "client_version",
         "platform": "platform",
-        "architecture": "architecture"
+        "architecture": "architecture",
+        "core": "core"
       },
       "output": "scalar",
       "role": "user",

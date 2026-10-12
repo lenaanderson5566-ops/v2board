@@ -1,0 +1,83 @@
+{
+    "log": {
+        "level": "warn"
+    },
+    "dns": {
+        "servers": [
+            {
+                "type": "local",
+                "tag": "local"
+            },
+            {
+                "type": "https",
+                "tag": "remote",
+                "server": "1.1.1.1",
+                "path": "/dns-query",
+                "detour": "节点选择"
+            }
+        ],
+        "final": "remote"
+    },
+    "inbounds": [],
+    "outbounds": [
+        {
+            "type": "direct",
+            "tag": "DIRECT"
+        },
+        {
+            "type": "selector",
+            "tag": "GLOBAL",
+            "outbounds": [
+                "节点选择"
+            ],
+            "default": "节点选择"
+        },
+        {
+            "type": "selector",
+            "tag": "节点选择",
+            "outbounds": [
+                "自动选择"
+            ],
+            "interrupt_exist_connections": true
+        },
+        {
+            "type": "urltest",
+            "tag": "自动选择",
+            "outbounds": [],
+            "url": "https://www.gstatic.com/generate_204",
+            "interval": "10m",
+            "tolerance": 50
+        }
+    ],
+    "route": {
+        "auto_detect_interface": true,
+        "default_domain_resolver": {
+            "server": "local"
+        },
+        "rules": [
+            {
+                "action": "sniff"
+            },
+            {
+                "protocol": "dns",
+                "action": "hijack-dns"
+            },
+            {
+                "clash_mode": "Direct",
+                "action": "route",
+                "outbound": "DIRECT"
+            },
+            {
+                "clash_mode": "Global",
+                "action": "route",
+                "outbound": "GLOBAL"
+            },
+            {
+                "ip_is_private": true,
+                "action": "route",
+                "outbound": "DIRECT"
+            }
+        ],
+        "final": "节点选择"
+    }
+}

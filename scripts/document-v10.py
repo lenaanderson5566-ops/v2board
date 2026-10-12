@@ -125,6 +125,7 @@ def input_schema(field):
     if field == 'codeVerifier': return {'type':'string','pattern':'^[A-Za-z0-9._~-]{43,128}$'}
     if field == 'redirectUri': return {'type':'string','maxLength':255}
     if field == 'architecture': return {'type':'string','enum':['x64','arm64','arm','x86']}
+    if field == 'core': return {'type': 'string', 'enum': ['mihomo', 'sing-box']}
     if field == 'clientVersion': return {'type': 'string', 'pattern': r'^\d+(?:\.\d+){1,3}$'}
     if field == 'platform': return {'type': 'string', 'enum': ['windows', 'android', 'macos', 'linux', 'ios']}
     if field in ['page', 'pageSize', 'planId', 'paymentMethodId', 'depositAmount', 'amount', 'days', 'articleId', 'ticketId', 'notificationId', 'version']:
@@ -204,6 +205,12 @@ for path, operations in paths.items():
 document = {'openapi': '3.0.3', 'info': {'title': 'FastDog user API', 'version': '10.0.0', 'description': 'Parallel user API. Administrative, staff, operations and node communication contracts are unchanged.'}, 'servers': [{'url': '/api/v10'}], 'paths': paths, 'components': {'securitySchemes': {'bearerAuth': {'type': 'http', 'scheme': 'bearer', 'bearerFormat': 'JWT'}, 'browserUserCookie': {'type':'apiKey','in':'cookie','name':'__Host-fastdog_user','description':'Scoped HttpOnly session; browser mutations also require X-Browser-Client, X-CSRF-Token and an allowed Origin.'}}, 'schemas': schemas}}
 if '/me/client-config' in document['paths']:
     document['paths']['/me/client-config']['get']['responses']['200']['content']['application/json'] = {'schema': {'type': 'object', 'properties': {'data': {'type': 'object', 'required': ['configVersion', 'yaml', 'nodes'], 'properties': {'configVersion': {'type': 'string'}, 'yaml': {'type': 'string'}, 'nodes': {'type': 'array', 'items': {'type': 'object', 'properties': {'nodeId': {'type': 'string'}, 'proxyName': {'type': 'string'}, 'name': {'type': 'string'}, 'regionCode': {'type': 'string', 'nullable': True}, 'cityCode': {'type': 'string', 'nullable': True}, 'displayLabel': {'type': 'string', 'nullable': True}, 'tags': {'type': 'array', 'items': {'type': 'string'}}, 'displayNames': {'type': 'object', 'additionalProperties': {'type': 'string'}}}}}}}}}}
+
+if '/me/client-config' in document['paths']:
+    native = document['paths']['/me/client-config']['get']['responses']['200']['content']['application/json']['schema']['properties']['data']
+    native['required'] = ['configVersion', 'nodes']
+    native['properties'].update({'core': {'type': 'string', 'enum': ['sing-box']}, 'coreVersion': {'type': 'string', 'example': '1.14.3'}, 'configuration': {'type': 'object', 'description': 'Native sing-box configuration; app supplies local inbounds.'}})
+    native['oneOf'] = [{'required': ['yaml']}, {'required': ['core', 'coreVersion', 'configuration']}]
 
 location_description = 'Canonical location identifier for a state, province or city; legacy cityCode field name is retained for compatibility.'
 if 'cityCode' in schemas.get('node', {}).get('properties', {}):

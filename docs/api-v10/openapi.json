@@ -10417,6 +10417,17 @@
                 "x86"
               ]
             }
+          },
+          {
+            "name": "core",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "mihomo",
+                "sing-box"
+              ]
+            }
           }
         ],
         "responses": {
@@ -10448,7 +10459,6 @@
                       "type": "object",
                       "required": [
                         "configVersion",
-                        "yaml",
                         "nodes"
                       ],
                       "properties": {
@@ -10499,8 +10509,36 @@
                               }
                             }
                           }
+                        },
+                        "core": {
+                          "type": "string",
+                          "enum": [
+                            "sing-box"
+                          ]
+                        },
+                        "coreVersion": {
+                          "type": "string",
+                          "example": "1.14.3"
+                        },
+                        "configuration": {
+                          "type": "object",
+                          "description": "Native sing-box configuration; app supplies local inbounds."
                         }
-                      }
+                      },
+                      "oneOf": [
+                        {
+                          "required": [
+                            "yaml"
+                          ]
+                        },
+                        {
+                          "required": [
+                            "core",
+                            "coreVersion",
+                            "configuration"
+                          ]
+                        }
+                      ]
                     }
                   }
                 }
@@ -16187,6 +16225,13 @@
               "arm64",
               "arm",
               "x86"
+            ]
+          },
+          "core": {
+            "type": "string",
+            "enum": [
+              "mihomo",
+              "sing-box"
             ]
           }
         },

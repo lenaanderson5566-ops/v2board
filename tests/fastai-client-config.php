@@ -66,9 +66,29 @@ try {
     $logged = App\Models\Log::where('uri', '/api/v10/me/client-config')->latest('id')->first();
     $assert($logged && $logged->getRawOriginal('data')==='[]', 'Config request log omits parameters and credentials');
     $logContext=json_decode($logged->getRawOriginal('context'),true);
-    $assert($logged->title==='Client configuration request' && $logContext['userId']===$user->id && $logContext['clientVersion']==='0.8.99' && $logContext['platform']==='windows', 'Config request records identity and client metadata');
-    $assert($logContext['outcome']==='success' && $logContext['status']===200 && isset($logContext['requestId'],$logContext['durationMs']), 'Config request records result and timing');
+    $assert($logged->title==='Client configuration request' && !isset($logContext['userId'], $logContext['clientVersion'], $logContext['platform']), 'Config log omits identity and query values');
+    $assert($logContext['status']===200 && isset($logContext['requestId'],$logContext['durationMs']), 'Config request records result and timing');
     $assert($call($path, $token, 'HEAD')->getStatusCode()===200, 'HEAD supported');
+    $singbox = $call($path.'&core=sing-box', $token, 'GET', 'application/json');
+    $singboxData = json_decode($singbox->getContent(), true)['data'] ?? [];
+    $assert($singbox->getStatusCode()===200 && $singbox->headers->get('X-FastAI-Config-Version')==='3', 'Native sing-box response is versioned');
+    $assert(($singboxData['core'] ?? null)==='sing-box' && ($singboxData['coreVersion'] ?? null)==='1.14.3', 'Pinned native sing-box engine');
+    $assert(isset($singboxData['configuration']['outbounds']) && !isset($singboxData['yaml']), 'Sing-box uses a JSON configuration');
+    $assert($singboxData['configuration']['inbounds']===[], 'App owns local listeners');
+    $assert($singboxData['nodes'][0]['proxyName']===$data['nodes'][0]['proxyName'], 'Stable node identity across engines');
+    $assert(in_array($singboxData['nodes'][0]['proxyName'], array_column($singboxData['configuration']['outbounds'], 'tag')), 'Metadata references emitted sing-box outbound');
+    $assert($call($path.'&core=unknown', $token)->getStatusCode()===422, 'Unknown core rejected');
+    $assert($call($path.'&core=sing-box', $token, 'HEAD')->getStatusCode()===200, 'Native sing-box HEAD supported');
+    App\Models\ServerV2box::create([
+        'group_id'=>[98765], 'name'=>'Naive capability node', 'rate'=>'1',
+        'host'=>'naive.example.com', 'port'=>'443', 'server_port'=>443,
+        'show'=>1, 'protocol'=>'naive', 'tls'=>1, 'network'=>'tcp', 'up_mbps'=>0, 'down_mbps'=>0,
+    ]);
+    $nativeSing = $call($path.'&core=sing-box', $token, 'GET', 'application/json');
+    $nativeData = json_decode($nativeSing->getContent(),true)['data'];
+    $assert($nativeSing->getStatusCode()===200 && in_array('naive',array_column($nativeData['configuration']['outbounds'],'type'),true),'Naive is exported without capability negotiation');
+    $assert(count($nativeData['nodes'])===count($singboxData['nodes'])+1,'Naive metadata accompanies configuration');
+
     $legacy = $call('/api/v10/subscriptions/'.$user->token.'?format=flclash');
     $assert($legacy->getStatusCode()===200 && str_contains($legacy->getContent(), 'proxy-groups:'), 'Token subscriptions remain compatible');
     $legacyConfig = Symfony\Component\Yaml\Yaml::parse($legacy->getContent());
@@ -82,7 +102,7 @@ try {
     $assert(App\Services\AuthService::decryptAuthData($token)!==false, 'Entitlement denial keeps session');
     $failedLog=App\Models\Log::where('title','Client configuration request')->latest('id')->first();
     $failedContext=json_decode($failedLog->getRawOriginal('context'),true);
-    $assert($failedContext['outcome']==='failed' && $failedContext['code']==='SUBSCRIPTION_UNAVAILABLE', 'Config denial is logged with its stable reason');
+    $assert($failedContext['status']===403, 'Config denial is logged with its stable reason');
     $user->update(['plan_id'=>1, 'transfer_enable'=>1073741824, 'expired_at'=>time()-1]);
     $assert($call($path, $token)->getStatusCode()===403, 'Expired subscription denied');
     $user->update(['credit_balance'=>1073741824]);

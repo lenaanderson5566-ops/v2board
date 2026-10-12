@@ -166,7 +166,7 @@ for entry in entries:
     operation = {'operationId': operation_id, 'tags': [entry['scope']], 'summary': entry['method'] + ' ' + entry['path'], 'parameters': params, 'responses': responses, 'security': [{'bearerAuth': []}] if entry['role'] == 'user' else [], 'x-permission': entry['role']}
     if entry['role'] == 'subscription':
         responses['429']['headers'] = {'Retry-After': {'schema': {'type': 'integer', 'minimum': 1}, 'description': 'Seconds until retry is permitted.'}}
-        operation['description'] = 'Subscription credentials are required. Per-IP and shared per-account fixed-window limits apply across token subscription endpoints. Configuration downloads additionally require a recognized client UA and optional whitelist approval; unknown UA returns 403, General and incompatible formats return 422. Authenticated /me/client-config uses its dedicated client policy.'
+        operation['description'] = 'Subscription credentials are required. Per-IP and shared per-account fixed-window limits apply across token subscription endpoints. Configuration downloads additionally require a recognized client UA with subscription access enabled; unknown UA returns 403, General and incompatible formats return 422. Authenticated /me/client-config uses its dedicated client policy.'
     if not entry.get('key'): operation['x-legacy-path'] = '/api/v1/' + entry['legacy']
     if entry.get('key') == 'Public/MirrorController@download':
         operation['description'] = 'Published installer download. Supports HEAD and byte ranges; binary content is not enveloped. Unpublished or unknown IDs return 404.'

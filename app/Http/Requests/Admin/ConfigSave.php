@@ -10,8 +10,8 @@ class ConfigSave extends FormRequest
         'subscription_ip_minute_limit' => 'integer|min:1|max:10000',
         'subscription_user_minute_limit' => 'integer|min:1|max:1000',
         'subscription_user_day_limit' => 'integer|min:1|max:100000',
-        'subscription_ua_whitelist_enabled' => 'in:0,1',
-        'subscription_ua_whitelist' => 'array|max:30',
+        'subscription_ua_whitelist_enabled' => 'missing',
+        'subscription_ua_whitelist' => 'missing',
         'fastai_enabled' => 'in:0,1',
         'fastai_entrypoints' => 'sometimes|array|max:16',
         'fastai_releases' => 'sometimes|array|max:32',
@@ -168,6 +168,8 @@ class ConfigSave extends FormRequest
     {
         // illiteracy prompt
         return [
+            'subscription_ua_whitelist_enabled.missing' => '白名单已合并，请在客户端策略中设置「允许订阅访问」。',
+            'subscription_ua_whitelist.missing' => '白名单已合并，请在客户端策略中设置「允许订阅访问」。',
             'app_url.url' => '站点URL格式不正确，必须携带http(s)://',
             'subscribe_url.url' => '订阅URL格式不正确，必须携带http(s)://',
             'subscribe_path.regex' => '订阅路径必须以/开头',

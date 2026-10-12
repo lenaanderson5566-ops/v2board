@@ -508,7 +508,7 @@ class LogController extends Controller
             ->get();
 
         $uaStatRows = SubscribeLog::query()
-            ->selectRaw('LOWER(TRIM(client_type)) as normalized_client_type, user_agent, SUM(CASE WHEN created_at >= ? THEN 1 ELSE 0 END) as count_24h, COUNT(*) as count_30d', [$cutoff24h])
+            ->selectRaw('LOWER(TRIM(client_type)) as normalized_client_type, user_agent, SUM(CASE WHEN created_at >= ? THEN 1 ELSE 0 END) as count_24h, COUNT(*) as count_30d, MAX(created_at) as last_seen', [$cutoff24h])
             ->whereNotNull('client_type')
             ->where('client_type', '<>', '')
             ->whereNotNull('user_agent')
@@ -565,6 +565,8 @@ class LogController extends Controller
                 'ua' => $ua,
                 'count_24h' => (int) $row->count_24h,
                 'count_30d' => (int) $row->count_30d,
+                'last_seen' => (int) $row->last_seen,
+                'version' => \App\Services\ClientIdentity::identify($ua) === $type ? \App\Services\ClientIdentity::version($type, $ua) : null,
             ];
         }
 
@@ -578,6 +580,14 @@ class LogController extends Controller
             $item['top_raw_ua_count'] = $uaTopMap[$type]['count'] ?? 0;
             $item['raw_ua_stats'] = $uaStatMap[$type] ?? [];
             $item['raw_ua_list'] = array_column($item['raw_ua_stats'], 'ua');
+            $observations = $item['raw_ua_stats'];
+            $lastSeen = $observations ? max(array_column($observations, 'last_seen')) : null;
+            $recognized = array_sum(array_map(fn ($row) => $row['version'] !== null ? $row['count_24h'] : 0, $observations));
+            $total = $item['subscribe_flag_count_24h'];
+            $item['ua_observation'] = $lastSeen ? '近30天已观测（不证明真实性）' : '近30天未观测';
+            $item['ua_last_seen_at'] = $lastSeen;
+            $item['ua_version_recognized_24h'] = $recognized;
+            $item['ua_version_coverage_24h'] = $total ? round($recognized * 100 / $total, 1) . '%（' . $recognized . '/' . $total . '）' : '暂无请求';
             return $item;
         });
     }

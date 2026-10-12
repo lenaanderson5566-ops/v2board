@@ -676,9 +676,12 @@ export const resources: Record<string, Resource> = {
             ["client_id", "标准标识"],
             ["min_version", "最低版本"],
             ["version_source", "判别依据"],
-            ["ua_verification", "UA 核验状态"],
+            ["ua_verification", "UA 来源核对"],
+            ["ua_observation", "实际观测"],
+            ["ua_last_seen_at", "最近出现", date],
+            ["ua_version_coverage_24h", "24 小时版本识别率"],
             ["version_example", "填写示例"],
-            ["is_enabled", "启用"],
+            ["is_enabled", "允许订阅访问"],
             ["subscribe_flag_count_24h", "24 小时订阅"],
         ],
         fields: [
@@ -688,7 +691,7 @@ export const resources: Record<string, Resource> = {
                 ...f("min_version", "最低版本"),
                 hint: "留空不限制。填写示例：meta 内核 1.19.0；sing 内核 1.12.0；verge 应用 2.3.1；flclash 应用 0.8.0。支持 v 前缀和 -rc.1 预发布标记，不填写客户端名称。设置后，UA 未提供对应版本也会拒绝；CMFA、Hiddify 的应用版本不能代替内核版本。",
             },
-            toggle("is_enabled", "启用"),
+            toggle("is_enabled", "允许订阅访问"),
             f("sort", "排序", "number"),
         ],
         defaults: { is_enabled: 1, sort: 0 },
@@ -964,6 +967,18 @@ export function ResourcePage({
             ...(resource === resources.routes ? { backend: routeBackend } : {}),
         }),
     );
+    useEffect(() => {
+        if (resource !== resources.clients) return;
+        const timer = window.setInterval(() => {
+            if (
+                document.visibilityState === "visible" &&
+                !editing &&
+                !d.loading
+            )
+                d.reload();
+        }, 60000);
+        return () => window.clearInterval(timer);
+    }, [resource, editing, d.loading, d.reload]);
     useEffect(() => {
         onTotal?.(d.total);
     }, [d.total, onTotal]);

@@ -275,3 +275,12 @@ it("keeps recommendations out of dedicated client settings", async () => {
     expect(screen.queryByText("android · 备选客户端")).toBeNull();
     expect(await screen.findByText("FastAI 客户端下载与更新")).toBeTruthy();
 });
+
+it("places subscription blocking in risk rules and removes the duplicate whitelist", async () => {
+    render(<AdminContent current="risk" />);
+    expect(await screen.findByText("订阅访问拦截")).toBeTruthy();
+    expect(await screen.findByLabelText("每账号 24 小时窗口上限")).toBeTruthy();
+    expect(screen.queryByLabelText("开启 UA 白名单")).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "登录" }));
+    expect(screen.queryByText("订阅访问拦截")).toBeNull();
+});

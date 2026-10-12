@@ -18,7 +18,7 @@
           "client"
         ],
         "summary": "GET subscriptions/{subscriptionToken}",
-        "description": "A recognized subscription User-Agent is required even without the optional whitelist. Unknown or unlisted clients receive 403 FORBIDDEN. General and incompatible formats receive 422 VALIDATION_FAILED. Per-IP and shared per-account limits return 429 RATE_LIMITED with Retry-After. Application and engine minimum versions are checked independently. Authenticated /me/client-config uses its own dedicated-client policy.",
+        "description": "A recognized subscription User-Agent with client subscription access enabled is required. Unknown or unlisted clients receive 403 FORBIDDEN. General and incompatible formats receive 422 VALIDATION_FAILED. Per-IP and shared per-account limits return 429 RATE_LIMITED with Retry-After. Application and engine minimum versions are checked independently. Authenticated /me/client-config uses its own dedicated-client policy.",
         "parameters": [
           {
             "name": "subscriptionToken",
@@ -74,7 +74,7 @@
             "content": { "application/problem+json": { "schema": { "$ref": "#/components/schemas/Problem" } } }
           },
           "403": {
-            "description": "Subscription UA is not allowed by the enabled client whitelist.",
+            "description": "Subscription UA is unknown or the client is not allowed subscription access.",
             "content": { "application/problem+json": { "schema": { "$ref": "#/components/schemas/Problem" } } }
           },
           "200": {
@@ -173,7 +173,7 @@
             "content": { "application/problem+json": { "schema": { "$ref": "#/components/schemas/Problem" } } }
           },
           "403": {
-            "description": "Subscription UA is not allowed by the enabled client whitelist.",
+            "description": "Subscription UA is unknown or the client is not allowed subscription access.",
             "content": { "application/problem+json": { "schema": { "$ref": "#/components/schemas/Problem" } } }
           },
           "200": {

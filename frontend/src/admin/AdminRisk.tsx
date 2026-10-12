@@ -1,3 +1,4 @@
+import { AdminSubscriptionProtection } from "./AdminSubscriptionProtection";
 import { AdminUserActivityLink } from "./AdminUserActivity";
 import { useState } from "react";
 import "./admin-risk.css";
@@ -135,7 +136,11 @@ export function RiskOverview() {
                                     </span>
                                 ),
                             ],
-                            ["user_id", "用户（ID / 邮箱）", r => <AdminUserActivityLink row={r} />],
+                            [
+                                "user_id",
+                                "用户（ID / 邮箱）",
+                                (r) => <AdminUserActivityLink row={r} />,
+                            ],
                             ["ip", "IP"],
                             ["hit_at", "时间", (r) => date(r.hit_at)],
                         ]}
@@ -201,7 +206,7 @@ export function RiskRules() {
     return (
         <>
             <p className="pad muted">
-                规则用于识别和记录异常；风险等级用于排查排序。需要限制访问时，请配置黑名单或客户端策略。
+                异常检测仅记录事件，风险等级用于排查排序。订阅限流与黑名单负责拦截，客户端准入在客户端策略中管理。
             </p>
             <div className="section-tabs">
                 {[
@@ -218,6 +223,7 @@ export function RiskRules() {
                     </button>
                 ))}
             </div>
+            {scene !== "login" && <AdminSubscriptionProtection />}
             <State {...d} retry={d.reload}>
                 <div className="risk-rule-grid">
                     {rules.map((r) => (
@@ -228,7 +234,9 @@ export function RiskRules() {
                                     {level[r.risk_level]}
                                 </span>
                                 <span className="muted">
-                                    {r.enabled ? "已启用" : "已停用"}
+                                    {r.enabled
+                                        ? "仅记录 · 已启用"
+                                        : "仅记录 · 已停用"}
                                 </span>
                             </div>
                             <p className="muted">
@@ -238,7 +246,11 @@ export function RiskRules() {
                                     ? "黑名单命中记录"
                                     : "异常行为记录"}
                             </p>
-                            <p className="muted">{r.thresholds?.window_seconds ? `观察窗口 ${r.thresholds.window_seconds} 秒；达到 ${r.thresholds.threshold ?? r.thresholds.subscribe_threshold} 次 / 个时记录。${r.thresholds.traffic_growth_threshold_bytes !== undefined ? `同时要求流量增长不超过 ${r.thresholds.traffic_growth_threshold_bytes} 字节。` : ""}` : r.description}</p>
+                            <p className="muted">
+                                {r.thresholds?.window_seconds
+                                    ? `观察窗口 ${r.thresholds.window_seconds} 秒；达到 ${r.thresholds.threshold ?? r.thresholds.subscribe_threshold} 次 / 个时记录。${r.thresholds.traffic_growth_threshold_bytes !== undefined ? `同时要求流量增长不超过 ${r.thresholds.traffic_growth_threshold_bytes} 字节。` : ""}`
+                                    : r.description}
+                            </p>
                             <dl>
                                 {Object.entries(r.thresholds || {}).map(
                                     ([key, value]) => (

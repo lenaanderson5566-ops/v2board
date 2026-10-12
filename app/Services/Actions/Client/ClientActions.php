@@ -180,10 +180,7 @@ class ClientActions
     public function enforceUaWhitelist(Request $request): void
     {
         $uaType = \App\Services\ClientIdentity::identify((string) $request->userAgent());
-        if (!$request->attributes->get('client.native') && (!$uaType || !\App\Services\ClientIdentity::whitelistAllows(
-            (string) $request->userAgent(), (bool) config('v2board.subscription_ua_whitelist_enabled', 0),
-            (array) config('v2board.subscription_ua_whitelist', [])
-        ))) {
+        if (!$request->attributes->get('client.native') && (!$uaType || !(new ClientStrategyService())->isEnabled($uaType))) {
             (new RiskLogService())->createSubscribeLog($this->buildSubscribeLogPayload($request, $request->user, $uaType ?: 'unknown', 'failed', 'client_ua_not_allowed'));
             abort(403, 'Subscription client is not allowed.');
         }

@@ -36,6 +36,7 @@ try {
  $assert($call('FlClash/0.8.0','flclash','/application-config')->getStatusCode()===403,'Legacy config respects app minimum');
  App\Models\ClientStrategy::where('client_type','flclash')->update(['min_version'=>null,'is_enabled'=>0]);
  $assert($service->accessDenial('meta','FlClash/0.8.0')==='client_disabled','Disabled app cannot bypass via general format');
+ $assert($call('FlClash/0.8.0')->getStatusCode()===403,'Disabled client gets HTTP 403');
  App\Models\ClientStrategy::where('client_type','flclash')->update(['is_enabled'=>1]);
  App\Models\ClientStrategy::where('client_type','meta')->update(['min_version'=>'1.19.0']);
  $assert($service->accessDenial('meta','FlClash/0.8.0 mihomo/1.18.0')==='client_version_too_low','Parent kernel policy applies');

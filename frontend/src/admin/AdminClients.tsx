@@ -1,4 +1,3 @@
-import { AdminClientWhitelist } from "./AdminClientWhitelist";
 import { useState } from "react";
 import { admin, request, type Row } from "../shared/api";
 import { State, useData } from "../shared/ui";
@@ -129,7 +128,12 @@ export function AdminClients({
                         小时订阅统计所有拉取请求（包括失败），不是设备数或限制额度。Mihomo
                         内核版本不能由应用版本推断，需要人工确认。
                     </p>
-                    <AdminClientWhitelist />
+                    <p className="muted">
+                        「允许订阅访问」即客户端白名单，未知 UA
+                        始终拒绝。旧白名单限制会自动保留；首次保存后只使用此开关。各客户端独立准入，内核最低版本仍共同生效。UA
+                        来源核对由人工维护；实际观测与版本识别率根据日志自动汇总，每分钟刷新，日志出现不代表真实客户端。UA
+                        可伪造，限流与黑名单请在风控策略中设置。专用客户端使用独立认证入口。
+                    </p>
                     <ResourcePage resource={resources.clients} />
                 </>
             ) : (

@@ -159,8 +159,6 @@ class ConfigController extends Controller
                 'subscription_ip_minute_limit' => (int) config('v2board.subscription_ip_minute_limit', 120),
                 'subscription_user_minute_limit' => (int) config('v2board.subscription_user_minute_limit', 30),
                 'subscription_user_day_limit' => (int) config('v2board.subscription_user_day_limit', 240),
-                'subscription_ua_whitelist_enabled' => (int) config('v2board.subscription_ua_whitelist_enabled', 0),
-                'subscription_ua_whitelist' => config('v2board.subscription_ua_whitelist', []),
                 'fastai_enabled' => config('v2board.fastai_enabled', 1),
                 'fastai_releases' => config('v2board.fastai_releases', []),
                 'client_primary_ios' => config('v2board.client_primary_ios', ''),
@@ -225,18 +223,6 @@ class ConfigController extends Controller
     public function save(ConfigSave $request)
     {
         $data = $request->validated();
-        if (isset($data['subscription_ua_whitelist'])) {
-            foreach ($data['subscription_ua_whitelist'] as $type) {
-                if (!is_string($type) || !array_key_exists($type, \App\Services\ClientIdentity::ALIASES)) {
-                    throw \Illuminate\Validation\ValidationException::withMessages(['subscription_ua_whitelist' => '请选择有效的订阅客户端。']);
-                }
-            }
-            $data['subscription_ua_whitelist'] = array_values(array_unique($data['subscription_ua_whitelist']));
-        }
-        if ((int) ($data['subscription_ua_whitelist_enabled'] ?? config('v2board.subscription_ua_whitelist_enabled', 0)) === 1
-            && !count($data['subscription_ua_whitelist'] ?? config('v2board.subscription_ua_whitelist', []))) {
-            throw \Illuminate\Validation\ValidationException::withMessages(['subscription_ua_whitelist' => '启用白名单前请至少选择一个客户端。']);
-        }
         if (isset($data['fastai_entrypoints'])) {
             $data['fastai_entrypoints'] = \App\Services\FastaiEntrypoints::validate($data['fastai_entrypoints']);
             app(\App\Services\FastaiEntrypoints::class)->requireVerified($data['fastai_entrypoints']);

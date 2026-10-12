@@ -7,6 +7,9 @@ use Illuminate\Foundation\Http\FormRequest;
 class ConfigSave extends FormRequest
 {
     const RULES = [
+        'subscription_ip_minute_limit' => 'integer|min:1|max:10000',
+        'subscription_user_minute_limit' => 'integer|min:1|max:1000',
+        'subscription_user_day_limit' => 'integer|min:1|max:100000',
         'subscription_ua_whitelist_enabled' => 'in:0,1',
         'subscription_ua_whitelist' => 'array|max:30',
         'fastai_enabled' => 'in:0,1',

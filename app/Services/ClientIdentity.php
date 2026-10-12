@@ -49,7 +49,7 @@ class ClientIdentity
                 if (preg_match('/^'.preg_quote($alias, '/').'(?=$|[\/\s_-])/i', trim($ua))) return $type;
             }
         }
-        foreach (['ClashMetaForAndroid'=>'meta', 'Hiddify'=>'sing', 'SFA'=>'sing', 'SFI'=>'sing', 'SFM'=>'sing'] as $alias=>$type) {
+        foreach (['ClashMetaForAndroid'=>'meta', 'Hiddify'=>'sing', 'HiddifyNext'=>'sing', 'HiddifyNextX'=>'sing', 'SFA'=>'sing', 'SFI'=>'sing', 'SFM'=>'sing', 'SFT'=>'sing'] as $alias=>$type) {
             if (preg_match('/^'.preg_quote($alias, '/').'(?=$|[\/\s_-])/i', trim($ua))) return $type;
         }
         return null;

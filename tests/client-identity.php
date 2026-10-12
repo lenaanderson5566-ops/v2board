@@ -24,3 +24,20 @@ $assert(!C::allowsVersion('garbage 2.0','3.0'),'Invalid saved minimum fails clos
 $assert(C::allowsVersion('',null),'Empty minimum unrestricted');
 foreach(['abc1.2','1.2oops','>=1.2','1.2.3.4.5'] as $v) $assert(C::normalizeVersion($v)===null,'Invalid '.$v);
 echo "Client identity: {$n} checks passed\n";
+
+foreach (['HiddifyNext/2.0.0 (linux) like ClashMeta v2ray sing-box', 'HiddifyNextX/2.0.0 (linux) like ClashMeta v2ray sing-box'] as $ua) {
+ $assert(C::identify($ua)==='sing','Official Hiddify prefix');
+ $assert(C::version('sing',$ua)===null,'Do not infer kernel from Hiddify app version');
+}
+$assert(C::identify('FlClash/v0.8.0 clash-verge Platform/linux')==='flclash','Official FlClash UA preserves app identity');
+$assert(C::version('flclash','FlClash/v0.8.0 clash-verge Platform/linux')==='0.8.0','Official FlClash version');
+$assert(C::identify('Linux x86_64')===null,'OS is not a client');
+$assert(C::identify('curl/8.0 FlClash/0.8.0')===null,'Embedded alias is not a client');
+foreach (App\Services\SubscriptionClientRegistry::CLIENTS as $flag=>[$id,$class]) {
+ $assert(App\Services\SubscriptionClientRegistry::flag($id)===$flag,'Canonical mapping '.$id);
+ $assert(class_exists($class),'PSR class filename '.$id);
+}
+$assert(App\Services\SubscriptionClientRegistry::flag('quantumult x')==='quantumult%20x','Legacy Quantumult alias');
+$assert(App\Services\SubscriptionClientRegistry::flag('general')===null,'No general format');
+$assert(App\Services\SubscriptionClientRegistry::flag('fake-meta')===null,'No substring format match');
+echo "Extended client registry checks passed\n";

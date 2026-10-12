@@ -18,7 +18,7 @@
           "client"
         ],
         "summary": "GET subscriptions/{subscriptionToken}",
-        "description": "Optional subscription UA whitelist checks the actual User-Agent, independently of format. Unknown or unlisted clients receive 403 FORBIDDEN. Application and engine minimum versions are checked independently. Authenticated /me/client-config uses its own dedicated-client policy.",
+        "description": "A recognized subscription User-Agent is required even without the optional whitelist. Unknown or unlisted clients receive 403 FORBIDDEN. General and incompatible formats receive 422 VALIDATION_FAILED. Per-IP and shared per-account limits return 429 RATE_LIMITED with Retry-After. Application and engine minimum versions are checked independently. Authenticated /me/client-config uses its own dedicated-client policy.",
         "parameters": [
           {
             "name": "subscriptionToken",
@@ -51,7 +51,7 @@
                 "surge",
                 "quantumult-x",
                 "stash",
-                "general"
+                "mihomo", "clash-nyanpasu", "clash-for-android", "clash-for-windows", "clashx", "loon", "surfboard", "sagernet", "passwall", "ssr-plus", "shadowsocks", "v2rayn", "v2rayng", "v2raytun"
               ]
             }
           },
@@ -64,6 +64,15 @@
           }
         ],
         "responses": {
+          "422": {
+            "description": "General, unknown or incompatible subscription format.",
+            "content": { "application/problem+json": { "schema": { "$ref": "#/components/schemas/Problem" } } }
+          },
+          "429": {
+            "description": "Per-IP or shared per-account subscription rate limit exceeded.",
+            "headers": { "Retry-After": { "description": "Seconds until retry is permitted.", "schema": { "type": "integer", "minimum": 1 } } },
+            "content": { "application/problem+json": { "schema": { "$ref": "#/components/schemas/Problem" } } }
+          },
           "403": {
             "description": "Subscription UA is not allowed by the enabled client whitelist.",
             "content": { "application/problem+json": { "schema": { "$ref": "#/components/schemas/Problem" } } }
@@ -141,7 +150,7 @@
                 "surge",
                 "quantumult-x",
                 "stash",
-                "general"
+                "mihomo", "clash-nyanpasu", "clash-for-android", "clash-for-windows", "clashx", "loon", "surfboard", "sagernet", "passwall", "ssr-plus", "shadowsocks", "v2rayn", "v2rayng", "v2raytun"
               ]
             }
           },
@@ -154,6 +163,15 @@
           }
         ],
         "responses": {
+          "422": {
+            "description": "General, unknown or incompatible subscription format.",
+            "content": { "application/problem+json": { "schema": { "$ref": "#/components/schemas/Problem" } } }
+          },
+          "429": {
+            "description": "Per-IP or shared per-account subscription rate limit exceeded.",
+            "headers": { "Retry-After": { "description": "Seconds until retry is permitted.", "schema": { "type": "integer", "minimum": 1 } } },
+            "content": { "application/problem+json": { "schema": { "$ref": "#/components/schemas/Problem" } } }
+          },
           "403": {
             "description": "Subscription UA is not allowed by the enabled client whitelist.",
             "content": { "application/problem+json": { "schema": { "$ref": "#/components/schemas/Problem" } } }
@@ -231,7 +249,7 @@
                 "surge",
                 "quantumult-x",
                 "stash",
-                "general"
+                "mihomo", "clash-nyanpasu", "clash-for-android", "clash-for-windows", "clashx", "loon", "surfboard", "sagernet", "passwall", "ssr-plus", "shadowsocks", "v2rayn", "v2rayng", "v2raytun"
               ]
             }
           },
@@ -346,6 +364,7 @@
             }
           },
           "429": {
+            "headers": { "Retry-After": { "schema": { "type": "integer", "minimum": 1 } } },
             "description": "Problem details",
             "content": {
               "application/problem+json": {
@@ -15483,7 +15502,7 @@
               "surge",
               "quantumult-x",
               "stash",
-              "general"
+              "mihomo", "clash-nyanpasu", "clash-for-android", "clash-for-windows", "clashx", "loon", "surfboard", "sagernet", "passwall", "ssr-plus", "shadowsocks", "v2rayn", "v2rayng", "v2raytun"
             ]
           },
           "language": {
@@ -15506,7 +15525,7 @@
               "surge",
               "quantumult-x",
               "stash",
-              "general"
+              "mihomo", "clash-nyanpasu", "clash-for-android", "clash-for-windows", "clashx", "loon", "surfboard", "sagernet", "passwall", "ssr-plus", "shadowsocks", "v2rayn", "v2rayng", "v2raytun"
             ]
           },
           "language": {
@@ -15529,7 +15548,7 @@
               "surge",
               "quantumult-x",
               "stash",
-              "general"
+              "mihomo", "clash-nyanpasu", "clash-for-android", "clash-for-windows", "clashx", "loon", "surfboard", "sagernet", "passwall", "ssr-plus", "shadowsocks", "v2rayn", "v2rayng", "v2raytun"
             ]
           },
           "language": {

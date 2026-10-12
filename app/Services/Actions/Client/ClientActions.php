@@ -4,13 +4,13 @@ namespace App\Services\Actions\Client;
 
 
 use App\Models\Plan;
-use App\Protocols\General;
+use App\Services\SubscriptionClientRegistry;
 use App\Services\ServerService;
 use App\Services\UserService;
 use App\Services\RiskLogService;
 use App\Services\ClientStrategyService;
 use Illuminate\Http\Request;
-use ReflectionClass;
+
 
 class ClientActions
 {
@@ -68,11 +68,16 @@ class ClientActions
 
     public function subscribe(Request $request)
     {
+        $this->enforceUaWhitelist($request);
         $riskLogService = new RiskLogService();
         $requestedFlag = strtolower((string) $request->input('flag', ''));
         $flag = $requestedFlag ?: strtolower((string) $request->userAgent());
         $resolvedClientType = null;
-        $resolvedFlag = $this->resolveProtocolFlag($requestedFlag ?: $flag);
+        $resolvedFlag = $this->resolveProtocolFlag($requestedFlag ?: $flag, $requestedFlag !== "");
+        if (!$request->attributes->get('client.native') && !SubscriptionClientRegistry::compatible((string) \App\Services\ClientIdentity::identify((string) $request->userAgent()), $resolvedFlag)) {
+            $riskLogService->createSubscribeLog($this->buildSubscribeLogPayload($request, $request->user, $resolvedFlag, 'failed', 'client_format_not_allowed'));
+            abort(422, 'Requested format is incompatible with the subscription client.');
+        }
         $clientStrategyService = new ClientStrategyService();
         $uaType = \App\Services\ClientIdentity::identify((string) $request->userAgent());
         $user = $request->user;
@@ -81,7 +86,6 @@ class ClientActions
             ?: \App\Services\ProductMail::language($user->language)
             ?: \App\Services\ProductMail::language(app()->getLocale()) ?: 'zh-CN';
         app()->setLocale($language);
-        $this->enforceUaWhitelist($request);
         $clientUser = \App\Services\TrafficCreditService::forClient($user);
         // account not expired and is not banned.
         $userService = new UserService();
@@ -176,11 +180,11 @@ class ClientActions
     public function enforceUaWhitelist(Request $request): void
     {
         $uaType = \App\Services\ClientIdentity::identify((string) $request->userAgent());
-        if (!$request->attributes->get('client.native') && !\App\Services\ClientIdentity::whitelistAllows(
+        if (!$request->attributes->get('client.native') && (!$uaType || !\App\Services\ClientIdentity::whitelistAllows(
             (string) $request->userAgent(), (bool) config('v2board.subscription_ua_whitelist_enabled', 0),
             (array) config('v2board.subscription_ua_whitelist', [])
-        )) {
-            (new RiskLogService())->createSubscribeLog($this->buildSubscribeLogPayload($request, $request->user, $uaType ?: 'general', 'failed', 'client_ua_not_allowed'));
+        ))) {
+            (new RiskLogService())->createSubscribeLog($this->buildSubscribeLogPayload($request, $request->user, $uaType ?: 'unknown', 'failed', 'client_ua_not_allowed'));
             abort(403, 'Subscription client is not allowed.');
         }
     }
@@ -254,17 +258,10 @@ class ClientActions
     private function resolveProtocolHandler(string $resolvedFlag, $user, array $servers)
     {
         $servers = \App\Services\ClientConfigService::uniqueNames($servers, 'name', ['DIRECT', 'REJECT', 'GLOBAL', '自动选择', '故障转移', '节点选择']);
-        foreach (array_reverse(glob(app_path('Protocols') . '/*.php')) as $file) {
-            $file = 'App\\Protocols\\' . basename($file, '.php');
-            $class = new $file($user, $servers);
-            if (strtolower((string) $class->flag) === $resolvedFlag) {
-                return $class;
-            }
-        }
-
-        return new General($user, $servers);
+        $class = SubscriptionClientRegistry::CLIENTS[$resolvedFlag][1] ?? null;
+        if (!$class) abort(422, 'Unsupported subscription format.');
+        return new $class($user, $servers);
     }
-
     private function subscriptionDate(int $timestamp): string
     {
         $date = \Carbon\Carbon::createFromTimestamp($timestamp, config('app.timezone', 'UTC'));
@@ -289,42 +286,11 @@ class ClientActions
         }
     }
 
-    private function resolveProtocolFlag(?string $input): string
+    private function resolveProtocolFlag(?string $input, bool $explicit = false): string
     {
-        if (!$input) {
-            return $this->getGeneralFlag();
-        }
-
-        $identified = \App\Services\ClientIdentity::identify($input);
-        if ($identified) return $identified;
-        $input = strtolower($input);
-        $flags = array_values($this->getProtocolFlags());
-        usort($flags, fn ($a, $b) => strlen($b) <=> strlen($a));
-        foreach ($flags as $flag) {
-            if (strpos($input, $flag) !== false) {
-                return $flag;
-            }
-        }
-
-        return $this->getGeneralFlag();
+        $flag = SubscriptionClientRegistry::flag((string) $input)
+            ?? ($explicit ? null : \App\Services\ClientIdentity::identify((string) $input));
+        if (!$flag) abort(422, 'Unsupported subscription format.');
+        return $flag;
     }
-
-    private function getGeneralFlag(): string
-    {
-        $defaultProperties = (new ReflectionClass(General::class))->getDefaultProperties();
-        return strtolower((string) ($defaultProperties['flag'] ?? 'general'));
-    }
-
-    private function getProtocolFlags(): array
-    {
-        static $flags = null;
-        if (!is_null($flags)) {
-            return $flags;
-        }
-
-        $flags = array_keys((new ClientStrategyService())->scanProtocols());
-
-        return array_combine($flags, $flags) ?: [];
-    }
-
 }

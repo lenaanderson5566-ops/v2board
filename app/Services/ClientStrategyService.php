@@ -3,7 +3,7 @@
 namespace App\Services;
 
 use App\Models\ClientStrategy;
-use ReflectionClass;
+
 
 class ClientStrategyService
 {
@@ -26,24 +26,9 @@ class ClientStrategyService
     public function scanProtocols(): array
     {
         $clients = [];
-        foreach (glob(app_path('Protocols') . '/*.php') as $file) {
-            $class = 'App\\Protocols\\' . basename($file, '.php');
-            if (!class_exists($class)) {
-                continue;
-            }
-
-            $defaultProperties = (new ReflectionClass($class))->getDefaultProperties();
-            $flag = strtolower((string) ($defaultProperties['flag'] ?? ''));
-            if (!$flag) {
-                continue;
-            }
-
-            $clients[$flag] = [
-                'client_type' => $flag,
-                'client_name' => $this->defaultClientName(basename($file, '.php')),
-            ];
+        foreach (SubscriptionClientRegistry::CLIENTS as $flag => [$id, $class, $name]) {
+            $clients[$flag] = ['client_type'=>$flag, 'client_name'=>$name];
         }
-
         ksort($clients);
         return $clients;
     }
@@ -72,13 +57,16 @@ class ClientStrategyService
         $this->syncStrategies();
 
         return ClientStrategy::query()
+            ->whereIn('client_type', array_keys(SubscriptionClientRegistry::CLIENTS))
             ->orderBy('sort')
             ->orderBy('client_name')
             ->get()->map(function ($row) {
                 $type = $row->client_type;
+                $row->setAttribute('client_id', SubscriptionClientRegistry::CLIENTS[$type][0]);
                 $examples = ['meta'=>'1.19.0', 'sing'=>'1.12.0', 'verge'=>'2.3.1', 'flclash'=>'0.8.0'];
-                $row->setAttribute('version_source', in_array($type, ['meta','sing'], true) ? '内核版本' : ($type === 'general' ? '无版本识别' : '应用版本'));
-                $row->setAttribute('version_example', $type === 'general' ? '请留空' : ($examples[$type] ?? '1.2.3'));
+                $row->setAttribute('version_source', in_array($type, ['meta','sing'], true) ? '内核版本（UA 明确提供时）' : (in_array($type, ['flclash','verge'], true) ? '应用版本' : 'UA 版本／构建号，需核验'));
+                $row->setAttribute('ua_verification', in_array($type, ['flclash','verge','meta'], true) ? '官方来源已核对；支持自定义 UA' : ($type === 'sing' ? 'Hiddify 前缀已核对；其他变体待实测' : '兼容规则，待真实日志核验'));
+                $row->setAttribute('version_example', $examples[$type] ?? '1.2.3');
                 $row->setAttribute('ua_names', implode(' / ', ClientIdentity::ALIASES[$type] ?? []));
                 return $row;
             });
@@ -86,8 +74,10 @@ class ClientStrategyService
 
     public function accessDenial(string $format, string $ua): ?string
     {
-        $types = array_values(array_unique(array_filter([$format, ClientIdentity::identify($ua)])));
-        if (in_array('verge', $types, true) || in_array('flclash', $types, true)) $types[] = 'meta';
+        $client = ClientIdentity::identify($ua);
+        if (!$client) return 'client_ua_not_allowed';
+        if (!SubscriptionClientRegistry::compatible($client, $format)) return 'client_format_not_allowed';
+        $types = SubscriptionClientRegistry::policyTypes($client);
         foreach ($types as $type) if (!$this->isEnabled($type)) return 'client_disabled';
         foreach ($types as $type) if (!$this->isVersionAllowed($type, ClientIdentity::version($type, $ua))) return 'client_version_too_low';
         return null;
@@ -143,7 +133,6 @@ class ClientStrategyService
     public function updateStrategies(array $items)
     {
         foreach ($items as $item) {
-            if (($item['client_type'] ?? '') === 'general' && trim((string) ($item['min_version'] ?? '')) !== '') abort(422, '通用格式无法识别版本，请将最低版本留空');
             if (!empty($item['min_version']) && ClientIdentity::normalizeVersion((string) $item['min_version']) === null) abort(422, '最低版本格式无效，例如 1.19.0、v2.3.1 或 2.0.0-rc.1');
         }
         $protocols = $this->syncStrategies();
@@ -177,10 +166,4 @@ class ClientStrategyService
         return $this->getStrategies();
     }
 
-    private function defaultClientName(string $className): string
-    {
-        if ($className === 'FlClash') return 'FlClash';
-        $name = preg_replace('/(?<!^)([A-Z])/', ' $1', $className);
-        return trim((string) $name) ?: $className;
-    }
 }

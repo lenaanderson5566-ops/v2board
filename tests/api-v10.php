@@ -18,6 +18,7 @@ $assert=function($ok,$label) use (&$checks) { if (!$ok) throw new RuntimeExcepti
 $testIp='192.0.2.'.random_int(2,254);
 $call=function($method,$path,$body=[],$token=null,$language='en-US',$extra=[]) use ($app,$testIp) {
     $server=['REMOTE_ADDR'=>$testIp,'HTTP_ACCEPT'=>'application/json','HTTP_ACCEPT_LANGUAGE'=>$language,'HTTP_USER_AGENT'=>'V10ContractTest','CONTENT_TYPE'=>'application/json'];
+    if (str_contains($path, '/subscriptions/') || str_starts_with($path, '/custom-subscription')) $server['HTTP_USER_AGENT']='sing-box/1.12.0';
     $server=array_merge($server,$extra);
     if ($token) $server['HTTP_AUTHORIZATION']=$token;
     $r=Illuminate\Http\Request::create($path,$method,[] ,[],[],$server,$method === 'GET' ? null : json_encode($body));
@@ -119,8 +120,8 @@ try {
     }
     [$r,$j]=$call('GET','/api/v10/subscriptions/'.$user->token.'?format=sing-box&language=ja-JP',[],null,'en-US');
     $assert($r->headers->get('Content-Language')==='ja-JP','Explicit import language takes precedence');
-    foreach (['clash','clash-meta','clash-verge','flclash','shadowrocket','surge','quantumult-x','stash','general'] as $format) {
-        [$r,$j]=$call('GET','/api/v10/subscriptions/'.$user->token.'?format='.$format);
+    foreach (['clash'=>'mihomo/1.19.0','clash-meta'=>'mihomo/1.19.0','clash-verge'=>'clash-verge/v2.3.1','flclash'=>'FlClash/0.8.0','shadowrocket'=>'Shadowrocket/2.2.0','surge'=>'Surge/5.0.0','quantumult-x'=>'Quantumult X/1.5.0','stash'=>'Stash/2.0.0'] as $format=>$ua) {
+        [$r,$j]=$call('GET','/api/v10/subscriptions/'.$user->token.'?format='.$format,[],null,'en-US',['HTTP_USER_AGENT'=>$ua]);
         $assert($r->getStatusCode()===200 && strlen($r->getContent())>0 && !isset($j['data']),'Native format '.$format.' status '.$r->getStatusCode().' '.substr($r->getContent(),0,300));
     }
     foreach ([1,2] as $mode) {

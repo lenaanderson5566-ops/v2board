@@ -27,16 +27,31 @@ it("requires an allowed client before enabling and saves the selection", async (
     expect(
         (
             screen.getByRole("button", {
-                name: "保存白名单",
+                name: "保存访问策略",
             }) as HTMLButtonElement
         ).disabled,
     ).toBe(true);
     fireEvent.click(screen.getByLabelText("FlClash"));
-    fireEvent.click(screen.getByRole("button", { name: "保存白名单" }));
+    fireEvent.click(screen.getByRole("button", { name: "保存访问策略" }));
     await waitFor(() =>
         expect(request).toHaveBeenCalledWith("config/save", {
             subscription_ua_whitelist_enabled: 1,
             subscription_ua_whitelist: ["flclash"],
+        }),
+    );
+});
+
+it("saves per-account limits without enabling the optional whitelist", async () => {
+    render(<AdminClientWhitelist />);
+    fireEvent.change(screen.getByLabelText("每账号 24 小时窗口上限"), {
+        target: { value: "100" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "保存访问策略" }));
+    await waitFor(() =>
+        expect(request).toHaveBeenCalledWith("config/save", {
+            subscription_user_day_limit: 100,
+            subscription_ua_whitelist_enabled: 0,
+            subscription_ua_whitelist: [],
         }),
     );
 });

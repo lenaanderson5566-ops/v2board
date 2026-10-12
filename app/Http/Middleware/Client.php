@@ -18,6 +18,8 @@ class Client
      */
     public function handle($request, Closure $next)
     {
+        $guard = new \App\Services\SubscriptionAccessGuard();
+        $guard->checkIp($request);
         $token = $request->input('token');
         if (empty($token)) {
             abort(403, 'token is null');
@@ -69,6 +71,7 @@ class Client
         if (!$user) {
             abort(403, 'token is error');
         }
+        $guard->checkUser((int) $user->id);
         $request->merge([
             'user' => $user
         ]);

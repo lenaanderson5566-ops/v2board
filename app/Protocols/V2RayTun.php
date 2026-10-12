@@ -4,14 +4,14 @@ namespace App\Protocols;
 
 use App\Utils\Helper;
 
-class v2RayTun
+class V2RayTun
 {
     public $flag = 'v2raytun';
     private $servers;
     private $user;
     private $options;
 
-    public function __construct($user, $servers, array $options = null)
+    public function __construct($user, $servers, ?array $options = null)
     {
         $this->user = $user;
         $this->servers = $servers;

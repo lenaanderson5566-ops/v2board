@@ -156,6 +156,9 @@ class ConfigController extends Controller
                 'fastai_entrypoint_public_key' => app(\App\Services\FastaiEntrypoints::class)->publicKey(),
             ],
             'app' => [
+                'subscription_ip_minute_limit' => (int) config('v2board.subscription_ip_minute_limit', 120),
+                'subscription_user_minute_limit' => (int) config('v2board.subscription_user_minute_limit', 30),
+                'subscription_user_day_limit' => (int) config('v2board.subscription_user_day_limit', 240),
                 'subscription_ua_whitelist_enabled' => (int) config('v2board.subscription_ua_whitelist_enabled', 0),
                 'subscription_ua_whitelist' => config('v2board.subscription_ua_whitelist', []),
                 'fastai_enabled' => config('v2board.fastai_enabled', 1),

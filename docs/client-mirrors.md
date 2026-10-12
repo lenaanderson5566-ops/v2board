@@ -40,3 +40,21 @@
 UA 白名单默认关闭，在同一标签内选择客户端后开启。匹配首个产品标识，忽略大小写，识别应用或内核；不依赖订阅链接的 flag/format。空 UA、浏览器、未知或未选客户端返回 403，并记录 client_ua_not_allowed。共用 Mihomo/sing-box UA 的应用无法进一步区分。UA 可伪造，不替代 token 认证；专用客户端的认证配置接口不受本开关影响。黑名单、客户端禁用及最低版本仍生效。
 
 24 小时订阅显示后端 subscribe_flag_count_24h，统计滚动 24 小时的成功与失败请求，并非限额或设备数。新日志优先按实际 UA 归类，历史日志保留原分类；重新加载策略列表更新计数。未新增数据库迁移。
+
+### 严格识别与防滥用（2026-10-12）
+
+当前配置下载必须识别出已支持的客户端，即使 UA 白名单关闭也不再允许未知 UA。开启白名单后进一步限制到所选客户端。General 公开输出及模糊子串兜底已移除；格式选择只接受明确标识，并检查其与识别客户端的兼容性。v2rayN、v2rayNG 等已识别客户端仍使用各自的 URI 序列化器，不受取消 General 影响。应用配置接口执行相同的 UA 与兼容性检查。
+
+标准标识统一由 SubscriptionClientRegistry 管理：mihomo、sing-box、clash-verge、quantumult-x 等。旧 meta、sing、verge、quantumult%20x 保留为兼容存储键，避免重置既有策略与历史统计。v2RayTun.php / class v2RayTun 规范为 V2RayTun.php / class V2RayTun；路由按明确注册表选择处理器，不再扫描目录猜测格式。旧 General 策略行保留在数据库但退出可用客户端列表。
+
+订阅 token 入口共用 IP、账号限流与黑名单检查，包括自定义订阅路径和旧应用配置入口。默认每 IP 120 次/分钟，每账号 30 次/分钟、240 次/24 小时固定窗口；后台「订阅访问保护」可调整。固定窗口从首次请求计时，非滚动统计；跨 IP/UA/输出格式共享账号额度，返回 429 与 Retry-After。限流计数采用共享缓存锁；缓存服务不可用时请求失败，不放行。缓存键不含明文 token。专用客户端保持独立认证和现有限流。
+
+UA 可被伪造；有效订阅凭证配合伪造 UA 仍可获取权限内的配置。此方案限制未知客户端与频繁下载，不是客户端身份证明，也无法阻止已获授权的用户复制节点信息。疑似泄露需撤销/重置订阅凭证，反向代理还应限制总请求量。
+
+官方来源核对（具体版本号为测试占位示例，不代表推荐版本）：
+- FlClash 默认拼接 `<appName>/v<version> clash-verge Platform/<os>`；Linux 示例 `FlClash/v0.8.0 clash-verge Platform/linux`，仍优先识别为 FlClash。支持全局自定义 UA。[UA 生成](https://github.com/chen08209/FlClash/blob/main/lib/common/package.dart)、[请求使用位置](https://github.com/chen08209/FlClash/blob/main/lib/common/request.dart)。
+- Hiddify 使用 `HiddifyNext/<version> (<os>) like ClashMeta v2ray sing-box`；新增 HiddifyNext/HiddifyNextX 兼容前缀，但不会把其应用版本视为 sing-box 内核版本。[官方源码](https://github.com/hiddify/hiddify-app/blob/main/lib/core/model/app_info_entity.dart)。
+- Clash Verge 默认 `clash-verge/v<version>`，可自定义。[官方说明](https://github.com/clash-verge-rev/clash-verge-rev/blob/dev/PRIVACY.md)。
+- Mihomo 外部资源的默认 UA 可为不带版本的 `clash.meta`，不能据此推断内核版本。[官方文档](https://github.com/MetaCubeX/Meta-Docs/blob/main/docs/config/general.md)。
+
+Linux 是操作系统，不是客户端标识；不能放行所有包含 Linux 的 UA。其余已有 UA 别名标注为兼容规则、待真实日志核验，不能把合成测试通过等同于所有客户端版本均已实测。

@@ -38,7 +38,7 @@ try {
     $assert(str_contains($uri,'sni=naive.example.test') && str_contains($uri,rawurlencode($base['name'])),'URI SNI and name');
     $ipv6=$server;$ipv6['host']='2001:db8::1';
     $assert(str_contains(App\Utils\Helper::buildUri($user['uuid'],$ipv6),'@[2001:db8::1]:443'),'IPv6 URI brackets');
-    $assert(base64_decode((new App\Protocols\General($user,[$server]))->handle())===$uri,'General subscription exports Naive');
+    $assert(base64_decode((new App\Protocols\V2rayN($user,[$server]))->handle())===$uri,'Identified URI client exports Naive');
     $assert(!str_contains(base64_decode((new App\Protocols\Shadowrocket($user,[$server]))->handle()),'naive+https://'),'Unadapted Shadowrocket format omits Naive');
     $clash=Symfony\Component\Yaml\Yaml::parse((new App\Protocols\ClashMeta($user,[$server]))->handle());
     $assert(!array_filter($clash['proxies'] ?? [],fn($p)=>($p['type'] ?? '')==='naive'),'Unadapted Clash format omits Naive');

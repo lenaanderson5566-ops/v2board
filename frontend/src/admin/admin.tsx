@@ -673,15 +673,16 @@ export const resources: Record<string, Resource> = {
         key: "client_type",
         columns: [
             ["client_name", "客户端"],
-            ["client_type", "标识"],
+            ["client_id", "标准标识"],
             ["min_version", "最低版本"],
             ["version_source", "判别依据"],
+            ["ua_verification", "UA 核验状态"],
             ["version_example", "填写示例"],
             ["is_enabled", "启用"],
             ["subscribe_flag_count_24h", "24 小时订阅"],
         ],
         fields: [
-            f("client_type", "客户端标识", "text", true),
+            f("client_type", "兼容标识（请勿修改）", "text", true),
             f("client_name", "名称"),
             {
                 ...f("min_version", "最低版本"),
@@ -1660,7 +1661,7 @@ export function Settings() {
                     !k.startsWith("frontend_") &&
                     !k.startsWith("client_primary_") &&
                     !k.startsWith("client_secondary_") &&
-                    !k.startsWith("subscription_ua_") &&
+                    !k.startsWith("subscription_") &&
                     k !== "email_template" &&
                     k !== "invite_never_expire" &&
                     k !== "fastai_releases" &&

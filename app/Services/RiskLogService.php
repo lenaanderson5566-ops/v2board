@@ -34,7 +34,7 @@ class RiskLogService
             'reason' => null,
         ], $geo, $payload));
 
-        $this->evaluateLoginRules($log);
+        // Login events remain available for auditing without risk evaluation.
     }
 
     public function createSubscribeLog(array $payload): void
@@ -90,68 +90,6 @@ class RiskLogService
         return $rules;
     }
 
-    private function evaluateLoginRules(LoginLog $log): void
-    {
-        $now = time();
-
-        $rule = $this->getRule('login_failed_burst_by_ip_10m');
-        if ((int) $log->is_success === 0 && $rule['enabled']) {
-            $windowSeconds = $this->thresholdInt($rule, 'window_seconds', 600);
-            $threshold = $this->thresholdInt($rule, 'threshold', 5);
-            $failedByIp = LoginLog::query()
-                ->where('ip', $log->ip)
-                ->where('is_success', 0)
-                ->where('created_at', '>=', $now - $windowSeconds)
-                ->count();
-
-            if ($failedByIp >= $threshold) {
-                $this->recordRuleHit('login', $rule['rule_key'], $rule['risk_level'], $log, [
-                    'threshold' => $threshold,
-                    'window_seconds' => $windowSeconds,
-                    'failed_count' => $failedByIp,
-                ]);
-            }
-        }
-
-        $rule = $this->getRule('login_account_multi_ip_1h');
-        if (!empty($log->email) && $rule['enabled']) {
-            $windowSeconds = $this->thresholdInt($rule, 'window_seconds', 3600);
-            $threshold = $this->thresholdInt($rule, 'threshold', 5);
-            $distinctIp = LoginLog::query()
-                ->where('email', $log->email)
-                ->where('created_at', '>=', $now - $windowSeconds)
-                ->distinct('ip')
-                ->count('ip');
-
-            if ($distinctIp >= $threshold) {
-                $this->recordRuleHit('login', $rule['rule_key'], $rule['risk_level'], $log, [
-                    'threshold' => $threshold,
-                    'window_seconds' => $windowSeconds,
-                    'distinct_ip_count' => $distinctIp,
-                ]);
-            }
-        }
-
-        $rule = $this->getRule('login_ua_hash_blacklist_hit');
-        if ($rule['enabled']) {
-            $uaHash = !empty($log->user_agent) ? hash('sha256', $log->user_agent) : null;
-            if ($this->isBlacklisted('ua_hash', $uaHash)) {
-                $this->recordRuleHit('login', $rule['rule_key'], $rule['risk_level'], $log, [
-                    'ua_hash' => $uaHash,
-                ]);
-            }
-        }
-
-        $rule = $this->getRule('login_ip_blacklist_hit');
-        if ($rule['enabled']) {
-            if ($this->isBlacklisted('ip', $log->ip)) {
-                $this->recordRuleHit('login', $rule['rule_key'], $rule['risk_level'], $log, [
-                    'ip' => $log->ip,
-                ]);
-            }
-        }
-    }
-
     private function evaluateSubscribeRules(SubscribeLog $log): void
     {
         $now = time();
@@ -161,15 +99,6 @@ class RiskLogService
             if ($this->isBlacklisted('ua_hash', $log->ua_hash)) {
                 $this->recordRuleHit('subscribe', $rule['rule_key'], $rule['risk_level'], $log, [
                     'ua_hash' => $log->ua_hash,
-                ]);
-            }
-        }
-
-        $rule = $this->getRule('subscribe_ip_blacklist_hit');
-        if ($rule['enabled']) {
-            if ($this->isBlacklisted('ip', $log->ip)) {
-                $this->recordRuleHit('subscribe', $rule['rule_key'], $rule['risk_level'], $log, [
-                    'ip' => $log->ip,
                 ]);
             }
         }
@@ -202,6 +131,8 @@ class RiskLogService
                 $subscribeSuccess = SubscribeLog::query()
                     ->where('user_id', $log->user_id)
                     ->where('status', 'success')
+                    ->whereNotNull('traffic_u')
+                    ->whereNotNull('traffic_d')
                     ->where('created_at', '>=', $now - $windowSeconds);
 
                 $subscribeCount = (clone $subscribeSuccess)->count();
@@ -213,7 +144,7 @@ class RiskLogService
                     ->value('traffic_usage');
                 $trafficGrowth = max((int) $trafficUsageMax - (int) $trafficUsageMin, 0);
 
-                if ($subscribeCount >= $subscribeThreshold && $trafficGrowth <= $trafficThresholdBytes) {
+                if ($log->status === 'success' && $subscribeCount >= max(2, $subscribeThreshold) && $trafficGrowth <= $trafficThresholdBytes) {
                     $this->recordRuleHit('subscribe', $rule['rule_key'], $rule['risk_level'], $log, [
                         'subscribe_threshold' => $subscribeThreshold,
                         'traffic_growth_threshold_bytes' => $trafficThresholdBytes,
@@ -245,24 +176,6 @@ class RiskLogService
             }
         }
 
-        $rule = $this->getRule('subscribe_failed_burst_by_ip_10m');
-        if (!empty($log->ip) && $rule['enabled']) {
-            $windowSeconds = $this->thresholdInt($rule, 'window_seconds', 600);
-            $threshold = $this->thresholdInt($rule, 'threshold', 10);
-            $failedByIp = SubscribeLog::query()
-                ->where('ip', $log->ip)
-                ->where('status', 'failed')
-                ->where('created_at', '>=', $now - $windowSeconds)
-                ->count();
-
-            if ($failedByIp >= $threshold) {
-                $this->recordRuleHit('subscribe', $rule['rule_key'], $rule['risk_level'], $log, [
-                    'threshold' => $threshold,
-                    'window_seconds' => $windowSeconds,
-                    'failed_count' => $failedByIp,
-                ]);
-            }
-        }
     }
 
     private function getRule(string $ruleKey): array
@@ -311,52 +224,6 @@ class RiskLogService
     public static function defaultRuleDefinitions(): array
     {
         return [
-            'login_failed_burst_by_ip_10m' => [
-                'scene' => 'login',
-                'rule_key' => 'login_failed_burst_by_ip_10m',
-                'name' => '登录失败IP爆发',
-                'risk_level' => 'high',
-                'description' => '同一 IP 10 分钟内登录失败次数 >= 5',
-                'thresholds' => [
-                    'threshold' => 5,
-                    'window_seconds' => 600,
-                ],
-                'enabled' => 1,
-                'sort' => 10,
-            ],
-            'login_account_multi_ip_1h' => [
-                'scene' => 'login',
-                'rule_key' => 'login_account_multi_ip_1h',
-                'name' => '账号多IP登录',
-                'risk_level' => 'medium',
-                'description' => '同一账号 1 小时内出现的不同登录 IP 数 >= 5',
-                'thresholds' => [
-                    'threshold' => 5,
-                    'window_seconds' => 3600,
-                ],
-                'enabled' => 1,
-                'sort' => 20,
-            ],
-            'login_ip_blacklist_hit' => [
-                'scene' => 'login',
-                'rule_key' => 'login_ip_blacklist_hit',
-                'name' => '登录IP黑名单命中',
-                'risk_level' => 'high',
-                'description' => '登录请求命中IP黑名单',
-                'thresholds' => [],
-                'enabled' => 1,
-                'sort' => 25,
-            ],
-            'login_ua_hash_blacklist_hit' => [
-                'scene' => 'login',
-                'rule_key' => 'login_ua_hash_blacklist_hit',
-                'name' => '登录UA哈希黑名单命中',
-                'risk_level' => 'high',
-                'description' => '登录请求命中UA哈希黑名单',
-                'thresholds' => [],
-                'enabled' => 1,
-                'sort' => 26,
-            ],
             'subscribe_high_frequency_by_user_10m' => [
                 'scene' => 'subscribe',
                 'rule_key' => 'subscribe_high_frequency_by_user_10m',
@@ -397,29 +264,6 @@ class RiskLogService
                 'enabled' => 1,
                 'sort' => 50,
             ],
-            'subscribe_failed_burst_by_ip_10m' => [
-                'scene' => 'subscribe',
-                'rule_key' => 'subscribe_failed_burst_by_ip_10m',
-                'name' => '订阅失败IP爆发',
-                'risk_level' => 'high',
-                'description' => '同一 IP 10 分钟内订阅失败次数 >= 10',
-                'thresholds' => [
-                    'threshold' => 10,
-                    'window_seconds' => 600,
-                ],
-                'enabled' => 1,
-                'sort' => 60,
-            ],
-            'subscribe_ip_blacklist_hit' => [
-                'scene' => 'subscribe',
-                'rule_key' => 'subscribe_ip_blacklist_hit',
-                'name' => '订阅IP黑名单命中',
-                'risk_level' => 'high',
-                'description' => '订阅请求命中IP黑名单',
-                'thresholds' => [],
-                'enabled' => 1,
-                'sort' => 65,
-            ],
             'subscribe_ua_hash_blacklist_hit' => [
                 'scene' => 'subscribe',
                 'rule_key' => 'subscribe_ua_hash_blacklist_hit',
@@ -431,6 +275,19 @@ class RiskLogService
                 'sort' => 66,
             ],
         ];
+    }
+
+    public static function ruleName(string $key): string
+    {
+        $historical = [
+            'login_failed_burst_by_ip_10m' => '登录失败频繁（已停用）',
+            'login_account_multi_ip_1h' => '账号多IP登录（已停用）',
+            'login_ip_blacklist_hit' => '登录IP黑名单命中（已停用）',
+            'login_ua_hash_blacklist_hit' => '登录UA哈希黑名单命中（已停用）',
+            'subscribe_failed_burst_by_ip_10m' => '订阅失败IP爆发（已停用）',
+            'subscribe_ip_blacklist_hit' => '订阅IP黑名单命中（已停用）',
+        ];
+        return self::defaultRuleDefinitions()[$key]['name'] ?? $historical[$key] ?? '历史规则（已停用）';
     }
 
     private function isBlacklisted(string $type, ?string $value): bool

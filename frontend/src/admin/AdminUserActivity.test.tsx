@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { afterEach, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
-vi.mock("../shared/api", () => ({ ops: (s:string)=>s, date: (s:unknown)=>String(s), rows:(v:any)=>v || [] }));
+vi.mock("../shared/api", () => ({ ops: (s:string)=>s, bytes: (s:unknown)=>String(s), date: (s:unknown)=>String(s), rows:(v:any)=>v || [] }));
 const load = vi.hoisted(()=>vi.fn());
 vi.mock("../shared/ui",()=>({useData:load, Modal:({children,close}:any)=><div role="dialog"><button onClick={close}>关闭</button>{children}</div>,State:({children}:any)=><>{children}</>}));
 import { AdminUserActivityLink } from "./AdminUserActivity";

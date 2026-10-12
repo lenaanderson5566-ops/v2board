@@ -324,7 +324,7 @@ export const resources: Record<string, Resource> = {
             [
                 "id",
                 "用户（ID / 邮箱）",
-                (r) => adminUserLabel({ user_id: r.id, email: r.email }),
+                (r) => <AdminUserActivityLink row={{ user_id: r.id, email: r.email }} />,
             ],
             ["credit_balance", "剩余额度", (r) => bytes(r.credit_balance || 0)],
             [
@@ -359,12 +359,12 @@ export const resources: Record<string, Resource> = {
             ["balance", "余额", (r) => money(r.balance)],
             ["commission_balance", "佣金", (r) => money(r.commission_balance)],
             ["last_connected_at", "上次连接", (r) => date(r.last_connected_at)],
-            ["last_login_at", "上次登录", (r) => date(r.last_login_at)],
             [
                 "last_subscribe_at",
                 "上次订阅时间",
                 (r) => date(r.last_subscribe_at),
             ],
+            ["last_login_at", "上次登录", (r) => date(r.last_login_at)],
             ["created_at", "加入时间", (r) => date(r.created_at)],
         ],
         fields: [
@@ -794,8 +794,6 @@ export const resources: Record<string, Resource> = {
             ],
             ["ip", "IP"],
             ["is_success", "登录结果"],
-            ["country", "国家"],
-            ["city", "城市"],
             ["user_agent", "客户端"],
             created,
         ],
@@ -843,7 +841,7 @@ export const resources: Record<string, Resource> = {
                 "用户（ID / 邮箱）",
                 (r) => <AdminUserActivityLink row={r} />,
             ],
-            ["rule_key", "规则"],
+            ["rule_name", "规则"],
             ["ip", "IP"],
             ["status", "原请求结果"],
             [

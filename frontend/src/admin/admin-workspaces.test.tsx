@@ -295,6 +295,29 @@ it("places subscription blocking in risk rules and removes the duplicate whiteli
     expect(await screen.findByText("订阅访问拦截")).toBeTruthy();
     expect(await screen.findByLabelText("每账号 24 小时窗口上限")).toBeTruthy();
     expect(screen.queryByLabelText("开启 UA 白名单")).toBeNull();
-    fireEvent.click(screen.getByRole("button", { name: "登录" }));
-    expect(screen.queryByText("订阅访问拦截")).toBeNull();
+    expect(screen.queryByRole("button", { name: "登录" })).toBeNull();
+});
+
+it("makes every user column selectable and orders the activity times", async () => {
+    const { resources } = await import("./admin");
+    const keys = resources.users.columns.map(([key]) => key);
+    expect(keys[keys.indexOf("last_connected_at") + 1]).toBe("last_subscribe_at");
+    render(<UsersPage />);
+    const picker = screen.getByLabelText("可选显示列");
+    for (const [, label] of resources.users.columns) expect(within(picker).getByRole("button", { name: label })).toBeTruthy();
+    const connection = within(picker).getByRole("button", { name: "上次连接" });
+    expect(connection.getAttribute("aria-pressed")).toBe("true");
+    fireEvent.click(connection);
+    expect(connection.getAttribute("aria-pressed")).toBe("false");
+});
+
+it("restores saved user columns and can reset defaults", () => {
+    localStorage.setItem("admin.users.view.v1", JSON.stringify({columns:["last_connected_at"],pageSize:20,sort:"created_at",direction:"ASC"}));
+    const view = render(<UsersPage />);
+    const picker = screen.getByLabelText("可选显示列");
+    expect(within(picker).getByRole("button", {name:"上次订阅时间"}).getAttribute("aria-pressed")).toBe("false");
+    fireEvent.click(within(picker).getByRole("button", {name:"恢复默认展示"}));
+    expect(within(screen.getByLabelText("可选显示列")).getByRole("button", {name:"上次订阅时间"}).getAttribute("aria-pressed")).toBe("true");
+    expect(JSON.parse(localStorage.getItem("admin.users.view.v1")!).pageSize).toBe(10);
+    view.unmount(); localStorage.removeItem("admin.users.view.v1");
 });

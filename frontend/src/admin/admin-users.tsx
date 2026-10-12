@@ -1,6 +1,6 @@
 import { adminUserLabel } from "./admin-user-label";
 import { AdminMailComposer } from "./AdminMailComposer";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { AdminUsageReset } from "./AdminUsageReset";
 import {
     admin,
@@ -22,8 +22,14 @@ import {
     type UserFilter,
 } from "./user-filters";
 
+const userViewKey = "admin.users.view.v1";
+function savedUserView(): Record<string, any> {
+    try { const value = JSON.parse(localStorage.getItem(userViewKey) || "{}"); return value && typeof value === "object" ? value : {}; } catch { return {}; }
+}
+const defaultUserColumns = () => resources.users.columns.map(([key]) => key).filter(key => !["commission_balance", "group_id", "device_limit"].includes(key));
 export function UsersPage() {
-    const [optionalColumns, setOptionalColumns] = useState<string[]>([]);
+    const [saved] = useState(savedUserView);
+    const [optionalColumns, setOptionalColumns] = useState<string[]>(() => Array.isArray(saved.columns) ? saved.columns.filter((key: string) => resources.users.columns.some(([id]) => id === key)) : defaultUserColumns());
     const plans = useData<Row[]>(admin("plan/fetch"));
     const [filters, setFilters] = useState<UserFilter[]>(() => {
             const params = new URLSearchParams(
@@ -48,9 +54,10 @@ export function UsersPage() {
         [error, setError] = useState(""),
         [notice, setNotice] = useState(""),
         [busy, setBusy] = useState(false),
-        [pageSize, setPageSize] = useState(10),
-        [sort, setSort] = useState("created_at"),
-        [direction, setDirection] = useState("DESC");
+        [pageSize, setPageSize] = useState([10, 20, 50, 100].includes(saved.pageSize) ? saved.pageSize : 10),
+        [sort, setSort] = useState(userSortFields.some(([key]) => key === saved.sort) ? saved.sort : "created_at"),
+        [direction, setDirection] = useState(saved.direction === "ASC" ? "ASC" : "DESC");
+    useEffect(() => { try { localStorage.setItem(userViewKey, JSON.stringify({columns: optionalColumns, pageSize, sort, direction})); } catch { /* Storage may be disabled. */ } }, [optionalColumns, pageSize, sort, direction]);
     const [detail, setDetail] = useState<{ kind: string; row: Row } | null>(
             null,
         ),
@@ -90,11 +97,7 @@ export function UsersPage() {
             <ResourcePage
                 key={JSON.stringify({ params, pageSize, revision })}
                 resource={resources.users}
-                hiddenColumns={[
-                    "commission_balance",
-                    "group_id",
-                    "device_limit",
-                ].filter((key) => !optionalColumns.includes(key))}
+                hiddenColumns={resources.users.columns.map(([key]) => key).filter(key => !optionalColumns.includes(key))}
                 queryParams={params}
                 pageSize={pageSize}
                 searchable={false}
@@ -112,11 +115,8 @@ export function UsersPage() {
                     <div className="pad user-toolbar">
                         <div className="actions" aria-label="可选显示列">
                             <span>显示列：</span>
-                            {[
-                                ["commission_balance", "佣金"],
-                                ["group_id", "权限组"],
-                                ["device_limit", "设备数"],
-                            ].map(([key, label]) => (
+                            <button type="button" onClick={() => { setOptionalColumns(defaultUserColumns()); setPageSize(10); setSort("created_at"); setDirection("DESC"); }}>恢复默认展示</button>
+                            {resources.users.columns.map(([key, label]) => (
                                 <button
                                     type="button"
                                     key={key}

@@ -36,11 +36,11 @@ class LogController extends Controller
         $definitions = collect((new RiskLogService())->getRuleDefinitions())->keyBy('rule_key');
         $ranking = (clone $query)->select('rule_key')->selectRaw('COUNT(*) as hits')
             ->groupBy('rule_key')->orderByDesc('hits')->limit(10)->get()->map(function ($row) use ($definitions) {
-                return ['rule_key' => $row->rule_key, 'name' => $definitions[$row->rule_key]['name'] ?? $row->rule_key, 'hits' => (int) $row->hits];
+                return ['rule_key' => $row->rule_key, 'name' => RiskLogService::ruleName($row->rule_key), 'hits' => (int) $row->hits];
             });
         $recent = (clone $query)->orderByDesc('hit_at')->limit(20)
             ->get(['id', 'rule_key', 'risk_level', 'scene', 'user_id', 'email', 'ip', 'status', 'hit_at'])->map(function ($row) use ($definitions) {
-                $row->name = $definitions[$row->rule_key]['name'] ?? $row->rule_key;
+                $row->name = RiskLogService::ruleName($row->rule_key);
                 return $row;
             });
         // Fixed epoch buckets avoid loading all hit records into PHP memory.
@@ -743,6 +743,7 @@ class LogController extends Controller
             $data=$grouped->orderByDesc('hit_at')->orderByDesc('id')->forPage($current, $pageSize)->get();
             $events=RiskRuleHit::query()->whereIn('id',$data->pluck('id'))->get()->keyBy('id');
             foreach($data as $row) $row->payload=$events->get($row->id)->payload ?? [];
+            $this->decorateLogRows($data);
             return response(['data'=>$data,'total'=>$total]);
         }
         $total = $builder->count();
@@ -750,6 +751,7 @@ class LogController extends Controller
             ->forPage($current, $pageSize)
             ->get();
 
+        $this->decorateLogRows($data);
         return response([
             'data' => $data,
             'total' => $total,
@@ -943,6 +945,21 @@ class LogController extends Controller
         ]);
     }
 
+    private function decorateLogRows($rows): void
+    {
+        $geo = new GeoIpService();
+        $cache = [];
+        foreach ($rows as $row) {
+            $ip = $this->formatIp($row->ip);
+            $row->ip = $ip;
+            $location = $cache[$ip] ??= $geo->lookup($ip);
+            foreach ($location as $key => $value) {
+                if (empty($row->$key)) $row->$key = $value;
+            }
+            if ($row->rule_key) $row->rule_name = RiskLogService::ruleName($row->rule_key);
+        }
+    }
+
     public function getLoginLogs(Request $request)
     {
         $current = max((int)$request->input('current', 1), 1);
@@ -964,6 +981,7 @@ class LogController extends Controller
             ->forPage($current, $pageSize)
             ->get();
 
+        $this->decorateLogRows($data);
         return response([
             'data' => $data,
             'total' => $total,
@@ -1000,6 +1018,7 @@ class LogController extends Controller
             $row->setAttribute('email', $emails->get($row->user_id));
         });
 
+        $this->decorateLogRows($data);
         return response([
             'data' => $data,
             'total' => $total,
@@ -1030,6 +1049,7 @@ class LogController extends Controller
             ->forPage($current, $pageSize)
             ->get();
 
+        $this->decorateLogRows($data);
         return response([
             'data' => $data,
             'total' => $total,
@@ -1040,20 +1060,22 @@ class LogController extends Controller
     {
         $params = $request->validate(['user_id' => 'required|integer|min:1']);
         $id = $params['user_id'];
-        $user = User::query()->find($id, ['id', 'email', 'expired_at']);
+        $user = User::query()->find($id, ['id', 'email', 'expired_at', 'banned', 'u', 'd', 'credit_balance']);
         $events = collect();
         foreach ([[LoginLog::class, 'created_at', '登录'], [SubscribeLog::class, 'created_at', '订阅'],
             [UserConnectionLog::class, 'connected_at', '连接'], [RiskRuleHit::class, 'hit_at', '风控']] as [$model, $time, $kind]) {
             $columns = ['id', 'user_id', 'ip', $time];
-            if ($kind === '风控') $columns = array_merge($columns, ['rule_key', 'risk_level', 'status']);
-            if ($kind === '登录') $columns[] = 'is_success';
-            if ($kind === '订阅') $columns = array_merge($columns, ['client_type', 'status']);
+            if ($kind === '风控') $columns = array_merge($columns, ['rule_key', 'risk_level', 'status', 'payload', 'reason']);
+            if ($kind === '登录') $columns = array_merge($columns, ['is_success', 'reason']);
+            if ($kind === '订阅') $columns = array_merge($columns, ['client_type', 'status', 'reason', 'user_agent', 'traffic_u', 'traffic_d']);
             if ($kind === '连接') $columns[] = 'node';
             foreach ($model::query()->where('user_id', $id)->orderByDesc($time)->orderByDesc('id')->limit(50)->get($columns) as $row) {
                 $event = $row->toArray();
                 $event['at'] = (int) $row->getRawOriginal($time);
                 $event['kind'] = $kind;
                 $event['ip'] = $this->formatIp($row->ip);
+                $event = array_merge($event, (new GeoIpService())->lookup($event['ip']));
+                if (isset($event['rule_key'])) $event['rule_name'] = RiskLogService::ruleName($event['rule_key']);
                 $events->push($event);
             }
         }

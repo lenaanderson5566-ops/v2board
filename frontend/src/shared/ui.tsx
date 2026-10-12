@@ -1,3 +1,4 @@
+import { IpLocation } from "./IpLocation";
 import { adminStatusCell } from "./admin-status";
 import { browserSessionKey } from "./browser-session";
 import { completePages } from "./paginated-data";
@@ -1103,7 +1104,7 @@ export function Table({
                             {columns.map(([k, label, render]) => (
                                 <td key={k} data-label={label}>
                                     {boot.mode === "admin"
-                                        ? adminStatusCell(k, label, r[k], render ? render(r) : undefined)
+                                        ? k === "ip" && !render ? <IpLocation row={r} /> : adminStatusCell(k, label, r[k], render ? render(r) : undefined)
                                         : render
                                         ? render(r)
                                         : r[k] != null &&

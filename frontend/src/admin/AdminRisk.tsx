@@ -211,7 +211,6 @@ export function RiskRules() {
             <div className="section-tabs">
                 {[
                     ["all", "全部规则"],
-                    ["login", "登录"],
                     ["subscribe", "订阅"],
                 ].map(([key, label]) => (
                     <button

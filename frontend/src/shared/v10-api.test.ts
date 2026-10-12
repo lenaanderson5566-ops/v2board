@@ -36,8 +36,8 @@ describe('V10 wire contracts', () => {
     expect(() => v10Request('user/order/detail')).toThrow('Missing resource identifier');
   });
   it('uses format for V10 and preserves configured legacy subscription links', () => {
-    expect(subscriptionUrl('https://example.com/api/v10/subscriptions/credential','sing')).toBe('https://example.com/api/v10/subscriptions/credential?format=sing-box');
-    expect(subscriptionUrl('https://example.com/custom?token=credential','sing')).toBe('https://example.com/custom?token=credential&flag=sing');
+    expect(subscriptionUrl('https://example.com/api/v10/subscriptions/credential','sing-box')).toBe('https://example.com/api/v10/subscriptions/credential?format=sing-box');
+    expect(subscriptionUrl('https://example.com/custom?token=credential','sing-box')).toBe('https://example.com/custom?token=credential&format=sing-box');
   });
 });
 

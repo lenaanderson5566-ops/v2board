@@ -3,17 +3,21 @@ namespace App\Services;
 
 final class SubscriptionClientRegistry
 {
-    // Storage keys remain stable so existing policies and historical statistics survive.
+    // Canonical client IDs are shared by policy storage, UA recognition and output selection.
     public const CLIENTS = [
-        'meta'=>['mihomo', \App\Protocols\ClashMeta::class, 'Mihomo / Clash Meta'],
-        'sing'=>['sing-box', \App\Protocols\Singbox::class, 'sing-box'],
-        'verge'=>['clash-verge', \App\Protocols\ClashVerge::class, 'Clash Verge'],
+        'clash-party'=>['clash-party', \App\Protocols\ClashMeta::class, 'Clash Party / Mihomo Party'],
+        'throne'=>['throne', \App\Protocols\UriSubscription::class, 'Throne'],
+        'nekobox'=>['nekobox', \App\Protocols\ClashMeta::class, 'NekoBox for Android'],
+        'husi'=>['husi', \App\Protocols\UriSubscription::class, 'Husi'],
+        'mihomo'=>['mihomo', \App\Protocols\ClashMeta::class, 'Mihomo / Clash Meta'],
+        'sing-box'=>['sing-box', \App\Protocols\Singbox::class, 'sing-box'],
+        'clash-verge'=>['clash-verge', \App\Protocols\ClashVerge::class, 'Clash Verge'],
         'flclash'=>['flclash', \App\Protocols\FlClash::class, 'FlClash'],
-        'nyanpasu'=>['clash-nyanpasu', \App\Protocols\ClashNyanpasu::class, 'Clash Nyanpasu'],
-        'clashforandroid'=>['clash-for-android', \App\Protocols\ClashForAndroid::class, 'Clash for Android'],
-        'clashforwindows'=>['clash-for-windows', \App\Protocols\ClashForWindows::class, 'Clash for Windows'],
+        'clash-nyanpasu'=>['clash-nyanpasu', \App\Protocols\ClashNyanpasu::class, 'Clash Nyanpasu'],
+        'clash-for-android'=>['clash-for-android', \App\Protocols\ClashForAndroid::class, 'Clash for Android'],
+        'clash-for-windows'=>['clash-for-windows', \App\Protocols\ClashForWindows::class, 'Clash for Windows'],
         'clashx'=>['clashx', \App\Protocols\ClashX::class, 'ClashX'],
-        'quantumult%20x'=>['quantumult-x', \App\Protocols\QuantumultX::class, 'Quantumult X'],
+        'quantumult-x'=>['quantumult-x', \App\Protocols\QuantumultX::class, 'Quantumult X'],
         'shadowrocket'=>['shadowrocket', \App\Protocols\Shadowrocket::class, 'Shadowrocket'],
         'surge'=>['surge', \App\Protocols\Surge::class, 'Surge'],
         'stash'=>['stash', \App\Protocols\Stash::class, 'Stash'],
@@ -21,30 +25,42 @@ final class SubscriptionClientRegistry
         'surfboard'=>['surfboard', \App\Protocols\Surfboard::class, 'Surfboard'],
         'sagernet'=>['sagernet', \App\Protocols\SagerNet::class, 'SagerNet'],
         'passwall'=>['passwall', \App\Protocols\Passwall::class, 'Passwall'],
-        'ssrplus'=>['ssr-plus', \App\Protocols\SSRPlus::class, 'SSR Plus'],
+        'ssr-plus'=>['ssr-plus', \App\Protocols\SSRPlus::class, 'SSR Plus'],
         'shadowsocks'=>['shadowsocks', \App\Protocols\Shadowsocks::class, 'Shadowsocks'],
         'v2rayn'=>['v2rayn', \App\Protocols\V2rayN::class, 'v2rayN'],
         'v2rayng'=>['v2rayng', \App\Protocols\V2rayNG::class, 'v2rayNG'],
         'v2raytun'=>['v2raytun', \App\Protocols\V2RayTun::class, 'v2RayTun'],
     ];
-    private const MIHOMO = ['meta','verge','flclash','nyanpasu','clashforandroid','clashforwindows','clashx'];
-
-    public static function flag(string $id): ?string
+    private const MIHOMO = ['mihomo','clash-verge','flclash','clash-nyanpasu','clash-for-android','clash-for-windows','clashx','clash-party','nekobox'];
+    private const URI = ['v2rayn', 'v2rayng', 'throne', 'husi'];
+    public static function defaultEnabled(string $client): bool
     {
-        $id = strtolower(trim($id));
-        $id = ['clash'=>'meta', 'clash-meta'=>'meta', 'quantumult x'=>'quantumult%20x'][$id] ?? $id;
-        if (isset(self::CLIENTS[$id])) return $id;
-        foreach (self::CLIENTS as $flag => [$canonical]) if ($canonical === $id) return $flag;
-        return null;
+        return !in_array($client, ['clash-party', 'throne', 'nekobox', 'husi'], true);
     }
 
+    public static function canonicalId(string $id): ?string
+    {
+        $id = strtolower(trim($id));
+        return isset(self::CLIENTS[$id]) ? $id : null;
+    }
+
+    public static function handler(string $id): ?string
+    {
+        $id = self::canonicalId($id);
+        return $id === null ? null : self::CLIENTS[$id][1];
+    }
     public static function compatible(string $client, string $format): bool
     {
-        return $client === $format || (in_array($client, self::MIHOMO, true) && in_array($format, self::MIHOMO, true));
+        $client = self::canonicalId($client);
+        $format = self::canonicalId($format);
+        if ($client === null || $format === null) return false;
+        return $client === $format
+            || (in_array($client, self::MIHOMO, true) && in_array($format, self::MIHOMO, true))
+            || (in_array($client, self::URI, true) && in_array($format, self::URI, true));
     }
 
     public static function policyTypes(string $client): array
     {
-        return in_array($client, self::MIHOMO, true) ? array_values(array_unique([$client, 'meta'])) : [$client];
+        return in_array($client, self::MIHOMO, true) ? array_values(array_unique([$client, 'mihomo'])) : [$client];
     }
 }

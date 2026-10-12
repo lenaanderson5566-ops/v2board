@@ -6,7 +6,6 @@ use App\Utils\Helper;
 
 class Surfboard
 {
-    public $flag = 'surfboard';
     private $servers;
     private $user;
 

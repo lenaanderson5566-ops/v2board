@@ -19,7 +19,7 @@ export const clients = [
     { id: "stash", name: "Stash", platform: "iOS · macOS" },
 ] as const;
 export type ClientId = (typeof clients)[number]["id"];
-export function subscriptionUrl(value: string, flag?: string): string {
+export function subscriptionUrl(value: string, format?: string): string {
     const url = new URL(value);
     if (
         !["http:", "https:"].includes(url.protocol) ||
@@ -27,10 +27,8 @@ export function subscriptionUrl(value: string, flag?: string): string {
         url.password
     )
         throw new Error("Invalid subscription URL");
-    if (flag) {
-        const formats:Record<string,string>={meta:'clash-meta',verge:'clash-verge',flclash:'flclash',sing:'sing-box',shadowrocket:'shadowrocket',surge:'surge','quantumult%20x':'quantumult-x',stash:'stash',clash:'clash'};
-        url.searchParams.set(url.pathname.startsWith('/api/v10/subscriptions/') ? 'format' : 'flag', url.pathname.startsWith('/api/v10/subscriptions/') ? (formats[flag] || flag) : flag);
-    }
+    url.searchParams.delete('flag');
+    if (format) url.searchParams.set('format', format);
     url.hash = "";
     return url.href;
 }
@@ -75,18 +73,18 @@ export function importLink(
 }
 
 export function clientSubscriptionUrl(client: ClientId, value: string): string {
-    const flags: Record<ClientId, string> = {
-        cmfa: "meta",
+    const formats: Record<ClientId, string> = {
+        cmfa: "mihomo",
         flclash: "flclash",
-        clash: "verge",
-        hiddify: "sing",
-        singbox: "sing",
+        clash: "clash-verge",
+        hiddify: "sing-box",
+        singbox: "sing-box",
         shadowrocket: "shadowrocket",
         surge: "surge",
-        quantumult: "quantumult%20x",
+        quantumult: "quantumult-x",
         stash: "stash",
     };
-    return subscriptionUrl(value, flags[client]);
+    return subscriptionUrl(value, formats[client]);
 }
 export function supportedClients(device: Device) {
     const supported: Record<Device, readonly ClientId[]> = {

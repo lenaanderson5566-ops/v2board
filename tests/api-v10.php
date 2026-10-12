@@ -107,12 +107,16 @@ try {
     config(['v2board.subscribe_path'=>'/api/v1/client/subscribe']);
     [$r,$j]=$call('GET','/api/v10/subscriptions/'.$user->token.'?format=sing-box');
     $assert($r->getStatusCode()===200 && !isset($j['data']) && isset($j['outbounds']),'Native subscription configuration '.json_encode($j));
-    [$r,$j]=$call('GET','/api/v1/client/subscribe?token='.$user->token.'&flag=sing');
+    [$r,$j]=$call('GET','/api/v1/client/subscribe?token='.$user->token.'&format=sing-box');
     $assert($r->getStatusCode()===404,'Old default subscription is retired');
     app('router')->get('/custom-subscription', [App\Http\Controllers\CustomSubscriptionController::class, 'subscribe'])->middleware('client');
-    [$r,$j]=$call('GET','/custom-subscription?token='.$user->token.'&flag=sing');
+    [$r,$j]=$call('GET','/custom-subscription?token='.$user->token.'&format=sing-box');
     $assert($r->getStatusCode()===200 && isset($j['outbounds']),'Existing custom subscription remains usable');
     $assert(str_contains($r->headers->get('Cache-Control'),'no-store'),'Custom subscription must not be cached');
+    [$r,$j]=$call('GET','/custom-subscription?token='.$user->token.'&flag=sing');
+    $assert($r->getStatusCode()===422,'Custom subscription rejects retired flag');
+    [$r,$j]=$call('GET','/api/v10/subscriptions/'.$user->token.'?flag=sing');
+    $assert($r->getStatusCode()===422,'V10 rejects retired flag even without format');
     $user->language='zh-TW'; $user->save();
     foreach ([''=>'zh-TW','en-US'=>'en-US','unsupported'=>'zh-TW'] as $header=>$expected) {
         [$r,$j]=$call('GET','/api/v10/subscriptions/'.$user->token.'?format=sing-box',[],null,$header);
@@ -120,7 +124,7 @@ try {
     }
     [$r,$j]=$call('GET','/api/v10/subscriptions/'.$user->token.'?format=sing-box&language=ja-JP',[],null,'en-US');
     $assert($r->headers->get('Content-Language')==='ja-JP','Explicit import language takes precedence');
-    foreach (['clash'=>'mihomo/1.19.0','clash-meta'=>'mihomo/1.19.0','clash-verge'=>'clash-verge/v2.3.1','flclash'=>'FlClash/0.8.0','shadowrocket'=>'Shadowrocket/2.2.0','surge'=>'Surge/5.0.0','quantumult-x'=>'Quantumult X/1.5.0','stash'=>'Stash/2.0.0'] as $format=>$ua) {
+    foreach (['mihomo'=>'mihomo/1.19.0','clash-verge'=>'clash-verge/v2.3.1','flclash'=>'FlClash/0.8.0','shadowrocket'=>'Shadowrocket/2.2.0','surge'=>'Surge/5.0.0','quantumult-x'=>'Quantumult X/1.5.0','stash'=>'Stash/2.0.0'] as $format=>$ua) {
         [$r,$j]=$call('GET','/api/v10/subscriptions/'.$user->token.'?format='.$format,[],null,'en-US',['HTTP_USER_AGENT'=>$ua]);
         $assert($r->getStatusCode()===200 && strlen($r->getContent())>0 && !isset($j['data']),'Native format '.$format.' status '.$r->getStatusCode().' '.substr($r->getContent(),0,300));
     }

@@ -5,7 +5,6 @@ use App\Utils\Helper;
 
 class SSRPlus
 {
-    public $flag = 'ssrplus';
     private $servers;
     private $user;
 

@@ -12,9 +12,9 @@ class ClientStrategyService
     // Read-only public presentation data, no rule details or blacklist information.
     public function frontendPolicies(): array
     {
-        $mapping = ['cmfa'=>'meta', 'clash'=>'verge', 'flclash'=>'flclash', 'hiddify'=>'sing', 'singbox'=>'sing',
-            'shadowrocket'=>'shadowrocket', 'surge'=>'surge', 'quantumult'=>'quantumult%20x', 'stash'=>'stash', 'surfboard'=>'surfboard'];
-        $rows = ClientStrategy::query()->whereIn('client_type', array_merge(array_values($mapping), ['meta']))->get()->keyBy('client_type');
+        $mapping = ['cmfa'=>'mihomo', 'clash'=>'clash-verge', 'flclash'=>'flclash', 'hiddify'=>'sing-box', 'singbox'=>'sing-box',
+            'shadowrocket'=>'shadowrocket', 'surge'=>'surge', 'quantumult'=>'quantumult-x', 'stash'=>'stash', 'surfboard'=>'surfboard'];
+        $rows = ClientStrategy::query()->whereIn('client_type', array_merge(array_values($mapping), ['mihomo']))->get()->keyBy('client_type');
         $enabledMap = $this->enabledMap();
         $result = [];
         foreach ($mapping as $id => $flag) {
@@ -42,7 +42,7 @@ class ClientStrategyService
         foreach ($protocols as $protocol) {
             $strategy = ClientStrategy::query()->firstOrCreate(
                 ['client_type' => $protocol['client_type']],
-                ['client_name' => $protocol['client_name'], 'is_enabled' => $unified ? 0 : 1]
+                ['client_name' => $protocol['client_name'], 'is_enabled' => !$unified && SubscriptionClientRegistry::defaultEnabled($protocol['client_type']) ? 1 : 0]
             );
 
             // Keep administrator custom name unchanged.
@@ -67,10 +67,10 @@ class ClientStrategyService
                 $row = $existing->get($type) ?? new ClientStrategy($defaults + ['is_enabled'=>1, 'sort'=>0]);
                 $type = $row->client_type;
                 $row->setAttribute('is_enabled', $enabledMap[$type]);
-                $row->setAttribute('client_id', SubscriptionClientRegistry::CLIENTS[$type][0]);
-                $examples = ['meta'=>'1.19.0', 'sing'=>'1.12.0', 'verge'=>'2.3.1', 'flclash'=>'0.8.0'];
-                $row->setAttribute('version_source', in_array($type, ['meta','sing'], true) ? '内核版本（UA 明确提供时）' : (in_array($type, ['flclash','verge'], true) ? '应用版本' : 'UA 版本／构建号，需核验'));
-                $row->setAttribute('ua_verification', in_array($type, ['flclash','verge','meta'], true) ? '官方来源已核对；支持自定义 UA' : ($type === 'sing' ? 'Hiddify 来源已核对；其他变体未核对' : '兼容规则；官方来源未核对'));
+                $row->setAttribute('client_id', SubscriptionClientRegistry::canonicalId($type));
+                $examples = ['mihomo'=>'1.19.0', 'sing-box'=>'1.12.0', 'clash-verge'=>'2.3.1', 'flclash'=>'0.8.0'];
+                $row->setAttribute('version_source', in_array($type, ['mihomo','sing-box'], true) ? '内核版本（UA 明确提供时）' : (in_array($type, ['flclash','clash-verge','clash-party','throne','nekobox','husi'], true) ? '应用版本' : 'UA 版本／构建号，需核验'));
+                $row->setAttribute('ua_verification', in_array($type, ['flclash','clash-verge','mihomo','clash-party','throne','nekobox','husi'], true) ? '官方来源已核对；支持自定义 UA' : ($type === 'sing-box' ? 'Hiddify 来源已核对；其他变体未核对' : '兼容规则；官方来源未核对'));
                 $row->setAttribute('version_example', $examples[$type] ?? '1.2.3');
                 $row->setAttribute('ua_names', implode(' / ', ClientIdentity::matchingAliases($type)));
                 return $row;
@@ -91,11 +91,13 @@ class ClientStrategyService
     {
         $unified = RiskSetting::query()->where('key', 'client_access_unified')->exists();
         $rows = ClientStrategy::query()->pluck('is_enabled', 'client_type');
+        // Fail closed during deployment until the authorized data migration has run.
+        if ($rows->keys()->intersect(['meta','clash','clash-meta','sing','verge','nyanpasu','clashforandroid','clashforwindows','quantumult%20x','quantumult x','ssrplus','mihomo-party'])->isNotEmpty()) return array_fill_keys(array_keys(SubscriptionClientRegistry::CLIENTS), false);
         $legacyWhitelist = !$unified && config('v2board.subscription_ua_whitelist_enabled', 0);
         $allowed = (array) config('v2board.subscription_ua_whitelist', []);
         $result = [];
         foreach (array_keys(SubscriptionClientRegistry::CLIENTS) as $type) {
-            $enabled = (bool) ($rows[$type] ?? !$unified);
+            $enabled = (bool) ($rows[$type] ?? (!$unified && SubscriptionClientRegistry::defaultEnabled($type)));
             if (!$unified) {
                 if ($legacyWhitelist && !in_array($type, $allowed, true)) $enabled = false;
                 foreach (SubscriptionClientRegistry::policyTypes($type) as $parent) {
@@ -109,7 +111,7 @@ class ClientStrategyService
 
     public function isEnabled(?string $clientType): bool
     {
-        return $this->enabledMap()[strtolower((string) $clientType)] ?? false;
+        return $this->enabledMap()[SubscriptionClientRegistry::canonicalId((string) $clientType) ?? ''] ?? false;
     }
     public function isVersionAllowed(?string $clientType, ?string $clientVersion): bool
     {
@@ -146,6 +148,10 @@ class ClientStrategyService
 
     public function updateStrategies(array $items)
     {
+        foreach ($items as &$item) {
+            $item['client_type'] = SubscriptionClientRegistry::canonicalId((string) ($item['client_type'] ?? '')) ?? '';
+        }
+        unset($item);
         foreach ($items as $item) {
             if (!isset(SubscriptionClientRegistry::CLIENTS[strtolower((string) ($item['client_type'] ?? ''))])) abort(422, 'invalid client_type');
             if (!empty($item['min_version']) && ClientIdentity::normalizeVersion((string) $item['min_version']) === null) abort(422, '最低版本格式无效，例如 1.19.0、v2.3.1 或 2.0.0-rc.1');

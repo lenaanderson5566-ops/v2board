@@ -4,7 +4,6 @@ namespace App\Protocols;
 
 class Shadowsocks
 {
-    public $flag = 'shadowsocks';
     private $servers;
     private $user;
 

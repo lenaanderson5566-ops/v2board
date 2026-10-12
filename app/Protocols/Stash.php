@@ -7,7 +7,6 @@ use Symfony\Component\Yaml\Yaml;
 
 class Stash
 {
-    public $flag = 'stash';
     private $servers;
     private $user;
 

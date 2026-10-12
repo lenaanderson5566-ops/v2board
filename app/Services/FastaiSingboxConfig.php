@@ -4,7 +4,6 @@ namespace App\Services;
 
 class FastaiSingboxConfig extends \App\Protocols\Singbox
 {
-    public $flag = 'fastai';
     private array $nodeMetadata = [];
 
     public function __construct($user, $servers)

@@ -15,7 +15,7 @@ inputs={
  'subject':'subject','priority':'level','message':'message','withdrawalMethod':'withdraw_method',
  'withdrawalAccount':'withdraw_account','giftCardCode':'giftcard','status':'status','page':'current',
  'pageSize':'page_size','days':'days','articleId':'id','notificationId':'id','version':'version',
- 'platform':'platform','architecture':'architecture','keyword':'keyword','redirect':'redirect','placement':'placement','format':'flag','accessToken':'access_token','code':'code'}
+ 'platform':'platform','architecture':'architecture','keyword':'keyword','redirect':'redirect','placement':'placement','format':'format','accessToken':'access_token','code':'code'}
 allowed={
  'Passport/BrowserSessionController@migrate':'legacyToken',
  'Guest/FastaiController@release':'platform architecture',
@@ -135,7 +135,7 @@ for i,e in enumerate(entries):
  names=allowed.get(k,'').split();imap={n:inputs[n] for n in names}
  if k=='User/PlanController@fetch':imap={'planId':'id'}
  if k=='User/NoticeController@fetch':imap.update({'pageSize':'pageSize'})
- if e['scope']=='client':imap={'format':'flag','language':'language'}
+ if e['scope']=='client':imap={'format':'format','language':'language'}
  if k=='Client/ClientController@authenticatedConfig':imap={'clientVersion':'client_version','platform':'platform','architecture':'architecture','core':'core'}
  imap={public:internal for public,internal in imap.items() if internal not in e['bindings'].values()}
  if k.startswith('Guest/Telegram'):imap={} # Signed provider payload, native protocol.

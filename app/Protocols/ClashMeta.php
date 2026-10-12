@@ -7,7 +7,6 @@ use Symfony\Component\Yaml\Yaml;
 
 class ClashMeta
 {
-    public $flag = 'meta';
     protected $templateName = 'clash';
     protected $subscriptionMetadata = true;
     private $servers;
@@ -51,11 +50,11 @@ class ClashMeta
                     $proxies[] = $item['name'];
                     break;
                 case 'vmess':
-                    $proxy[] = self::buildVmess($user['uuid'], $item);
+                    $proxy[] = static::buildVmess($user['uuid'], $item);
                     $proxies[] = $item['name'];
                     break;
                 case 'vless':
-                    $proxy[] = self::buildVless($user['uuid'], $item);
+                    $proxy[] = static::buildVless($user['uuid'], $item);
                     $proxies[] = $item['name'];
                     break;
                 case 'trojan':

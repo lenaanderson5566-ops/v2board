@@ -4,14 +4,16 @@ namespace App\Services;
 class ClientIdentity
 {
     public const ALIASES = [
-        'flclash' => ['FlClash'], 'verge' => ['ClashVergeRev', 'Clash-Verge', 'ClashVerge'],
-        'nyanpasu' => ['ClashNyanpasu', 'Clash-Nyanpasu'],
-        'clashforandroid' => ['ClashForAndroid'], 'clashforwindows' => ['ClashForWindows'],
-        'clashx' => ['ClashX Pro', 'ClashX'], 'meta' => ['mihomo', 'Clash.Meta', 'ClashMeta'],
-        'sing' => ['sing-box', 'singbox'], 'shadowrocket' => ['Shadowrocket'],
-        'surge' => ['Surge'], 'stash' => ['Stash'], 'quantumult%20x' => ['Quantumult X', 'QuantumultX', 'Quantumult%20X'],
+        'clash-party' => ['mihomo.party'], 'throne' => ['Throne'],
+        'nekobox' => ['NekoBox'], 'husi' => ['husi'],
+        'flclash' => ['FlClash'], 'clash-verge' => ['ClashVergeRev', 'Clash-Verge', 'ClashVerge'],
+        'clash-nyanpasu' => ['ClashNyanpasu', 'Clash-Nyanpasu'],
+        'clash-for-android' => ['ClashForAndroid'], 'clash-for-windows' => ['ClashForWindows'],
+        'clashx' => ['ClashX Pro', 'ClashX'], 'mihomo' => ['mihomo', 'Clash.Meta', 'ClashMeta'],
+        'sing-box' => ['sing-box', 'singbox'], 'shadowrocket' => ['Shadowrocket'],
+        'surge' => ['Surge'], 'stash' => ['Stash'], 'quantumult-x' => ['Quantumult X', 'QuantumultX', 'Quantumult%20X'],
         'loon' => ['Loon'], 'surfboard' => ['Surfboard'], 'sagernet' => ['SagerNet'],
-        'passwall' => ['Passwall'], 'ssrplus' => ['SSRPlus'], 'shadowsocks' => ['Shadowsocks'],
+        'passwall' => ['Passwall'], 'ssr-plus' => ['SSRPlus'], 'shadowsocks' => ['Shadowsocks'],
         'v2rayng' => ['v2rayNG'], 'v2rayn' => ['v2rayN'], 'v2raytun' => ['v2RayTun'],
     ];
 
@@ -33,6 +35,9 @@ class ClientIdentity
 
     public static function version(string $type, string $ua): ?string
     {
+        if (in_array($type, ['nekobox', 'throne'], true)) {
+            $ua = preg_replace('/^(NekoBox|Throne)\/Android\//i', '$1/', trim($ua));
+        }
         foreach (self::ALIASES[$type] ?? [] as $alias) {
             if (preg_match('/(?:^|[^a-z0-9])'.preg_quote($alias, '/').'[\/\s_-]+(v?\d+(?:\.\d+){0,3}(?:-(?:alpha|beta|rc)[.-]?\d*)?(?:\+[a-z0-9.-]+)?)(?=$|[\s;()])/i', $ua, $m)) {
                 return self::normalizeVersion($m[1]);
@@ -55,7 +60,7 @@ class ClientIdentity
 
     public static function matchingAliases(string $type): array
     {
-        $extra = ['meta'=>['ClashMetaForAndroid'], 'sing'=>['Hiddify', 'HiddifyNext', 'HiddifyNextX', 'SFA', 'SFI', 'SFM', 'SFT']];
+        $extra = ['mihomo'=>['ClashMetaForAndroid'], 'sing-box'=>['Hiddify', 'HiddifyNext', 'HiddifyNextX', 'SFA', 'SFI', 'SFM', 'SFT']];
         return array_merge(self::ALIASES[$type] ?? [], $extra[$type] ?? []);
     }
 

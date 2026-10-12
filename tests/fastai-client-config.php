@@ -6,9 +6,9 @@ if (!app()->environment('local')) throw new RuntimeException('Local test only');
 $checks = 0;
 $assert = function ($ok, $label) use (&$checks) { if (!$ok) throw new RuntimeException($label); $checks++; };
 $testIp = '192.0.2.'.random_int(2, 254);
-$call = function ($path, $token = null, $method = 'GET', $accept = 'application/yaml') use ($app, $testIp) {
+$call = function ($path, $token = null, $method = 'GET', $accept = 'application/yaml', $ua = 'fastai/0.8.99') use ($app, $testIp) {
     $request = Illuminate\Http\Request::create($path, $method, [], [], [], [
-        'HTTP_ACCEPT'=>$accept, 'HTTP_ACCEPT_LANGUAGE'=>'en-US', 'HTTP_USER_AGENT'=>'fastai/0.8.99',
+        'HTTP_ACCEPT'=>$accept, 'HTTP_ACCEPT_LANGUAGE'=>'en-US', 'HTTP_USER_AGENT'=>$ua,
         'REMOTE_ADDR'=>$testIp,
     ]);
     if ($token) $request->headers->set('Authorization', 'Bearer '.$token);
@@ -33,7 +33,7 @@ try {
     config(['v2board.show_info_to_server_enable'=>1]);
     $auth = new App\Services\AuthService($user);
     $token = $auth->generateAuthData(Illuminate\Http\Request::create('/'))['auth_data'];
-    App\Models\ClientStrategy::whereIn('client_type', ['meta','flclash'])->update(['is_enabled'=>1, 'min_version'=>null]);
+    App\Models\ClientStrategy::whereIn('client_type', ['mihomo','flclash'])->update(['is_enabled'=>1, 'min_version'=>null]);
     $assert($call($path)->getStatusCode()===401, 'Missing session');
     $assert($call($path.'&accessToken=query-only')->getStatusCode()===401, 'Query credentials rejected');
     $assert($call('/api/v10/me/client-config', $token)->getStatusCode()===422, 'Version and platform required');
@@ -89,7 +89,7 @@ try {
     $assert($nativeSing->getStatusCode()===200 && in_array('naive',array_column($nativeData['configuration']['outbounds'],'type'),true),'Naive is exported without capability negotiation');
     $assert(count($nativeData['nodes'])===count($singboxData['nodes'])+1,'Naive metadata accompanies configuration');
 
-    $legacy = $call('/api/v10/subscriptions/'.$user->token.'?format=flclash');
+    $legacy = $call('/api/v10/subscriptions/'.$user->token.'?format=flclash', null, 'GET', 'application/yaml', 'FlClash/0.8.99');
     $assert($legacy->getStatusCode()===200 && str_contains($legacy->getContent(), 'proxy-groups:'), 'Token subscriptions remain compatible');
     $legacyConfig = Symfony\Component\Yaml\Yaml::parse($legacy->getContent());
     $assert(count($legacyConfig['proxies'])>1, 'Public subscription still includes configured subscription info nodes');

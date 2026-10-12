@@ -6,7 +6,6 @@ use App\Utils\Helper;
 
 class Passwall
 {
-    public $flag = 'passwall';
     private $servers;
     private $user;
 

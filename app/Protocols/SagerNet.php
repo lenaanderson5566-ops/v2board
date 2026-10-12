@@ -7,7 +7,6 @@ use App\Utils\Helper;
 
 class SagerNet
 {
-    public $flag = 'sagernet';
     private $servers;
     private $user;
 

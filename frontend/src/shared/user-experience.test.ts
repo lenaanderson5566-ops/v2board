@@ -47,7 +47,7 @@ describe("device-aware user experience", () => {
                 "https://example.test/a?token=a%2Bb",
             ),
         );
-        expect(url.searchParams.get("flag")).toBe("sing");
+        expect(url.searchParams.get("format")).toBe("sing-box");
         expect(url.searchParams.get("token")).toBe("a+b");
     });
     it("only marks a real plan within its validity period", () => {

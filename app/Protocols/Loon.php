@@ -6,7 +6,6 @@ use App\Utils\Helper;
 
 class Loon
 {
-    public $flag = 'loon';
     private $servers;
     private $user;
 

@@ -6,7 +6,6 @@ use App\Utils\Helper;
 
 class V2RayTun
 {
-    public $flag = 'v2raytun';
     private $servers;
     private $user;
     private $options;

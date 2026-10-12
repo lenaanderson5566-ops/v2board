@@ -18,7 +18,7 @@
           "client"
         ],
         "summary": "GET subscriptions/{subscriptionToken}",
-        "description": "A recognized subscription User-Agent with client subscription access enabled is required. Unknown or unlisted clients receive 403 FORBIDDEN. General and incompatible formats receive 422 VALIDATION_FAILED. Per-IP and shared per-account limits return 429 RATE_LIMITED with Retry-After. Application and engine minimum versions are checked independently. Authenticated /me/client-config uses its own dedicated-client policy.",
+        "description": "A recognized subscription User-Agent with client subscription access enabled is required. Unknown or unlisted clients receive 403 FORBIDDEN. Retired flag parameters, legacy format aliases, General and incompatible formats receive 422 VALIDATION_FAILED. Per-IP and shared per-account limits return 429 RATE_LIMITED with Retry-After. Application and engine minimum versions are checked independently. Authenticated /me/client-config uses its own dedicated-client policy.",
         "parameters": [
           {
             "name": "subscriptionToken",
@@ -42,8 +42,6 @@
             "schema": {
               "type": "string",
               "enum": [
-                "clash",
-                "clash-meta",
                 "clash-verge",
                 "flclash",
                 "sing-box",
@@ -51,7 +49,7 @@
                 "surge",
                 "quantumult-x",
                 "stash",
-                "mihomo", "clash-nyanpasu", "clash-for-android", "clash-for-windows", "clashx", "loon", "surfboard", "sagernet", "passwall", "ssr-plus", "shadowsocks", "v2rayn", "v2rayng", "v2raytun"
+                "mihomo", "clash-nyanpasu", "clash-for-android", "clash-for-windows", "clashx", "loon", "surfboard", "sagernet", "passwall", "ssr-plus", "shadowsocks", "v2rayn", "v2rayng", "v2raytun", "clash-party", "throne", "nekobox", "husi"
               ]
             }
           },
@@ -141,8 +139,6 @@
             "schema": {
               "type": "string",
               "enum": [
-                "clash",
-                "clash-meta",
                 "clash-verge",
                 "flclash",
                 "sing-box",
@@ -150,7 +146,7 @@
                 "surge",
                 "quantumult-x",
                 "stash",
-                "mihomo", "clash-nyanpasu", "clash-for-android", "clash-for-windows", "clashx", "loon", "surfboard", "sagernet", "passwall", "ssr-plus", "shadowsocks", "v2rayn", "v2rayng", "v2raytun"
+                "mihomo", "clash-nyanpasu", "clash-for-android", "clash-for-windows", "clashx", "loon", "surfboard", "sagernet", "passwall", "ssr-plus", "shadowsocks", "v2rayn", "v2rayng", "v2raytun", "clash-party", "throne", "nekobox", "husi"
               ]
             }
           },
@@ -240,8 +236,6 @@
             "schema": {
               "type": "string",
               "enum": [
-                "clash",
-                "clash-meta",
                 "clash-verge",
                 "flclash",
                 "sing-box",
@@ -249,7 +243,7 @@
                 "surge",
                 "quantumult-x",
                 "stash",
-                "mihomo", "clash-nyanpasu", "clash-for-android", "clash-for-windows", "clashx", "loon", "surfboard", "sagernet", "passwall", "ssr-plus", "shadowsocks", "v2rayn", "v2rayng", "v2raytun"
+                "mihomo", "clash-nyanpasu", "clash-for-android", "clash-for-windows", "clashx", "loon", "surfboard", "sagernet", "passwall", "ssr-plus", "shadowsocks", "v2rayn", "v2rayng", "v2raytun", "clash-party", "throne", "nekobox", "husi"
               ]
             }
           },
@@ -15493,8 +15487,6 @@
           "format": {
             "type": "string",
             "enum": [
-              "clash",
-              "clash-meta",
               "clash-verge",
               "flclash",
               "sing-box",
@@ -15502,7 +15494,7 @@
               "surge",
               "quantumult-x",
               "stash",
-              "mihomo", "clash-nyanpasu", "clash-for-android", "clash-for-windows", "clashx", "loon", "surfboard", "sagernet", "passwall", "ssr-plus", "shadowsocks", "v2rayn", "v2rayng", "v2raytun"
+              "mihomo", "clash-nyanpasu", "clash-for-android", "clash-for-windows", "clashx", "loon", "surfboard", "sagernet", "passwall", "ssr-plus", "shadowsocks", "v2rayn", "v2rayng", "v2raytun", "clash-party", "throne", "nekobox", "husi"
             ]
           },
           "language": {
@@ -15516,8 +15508,6 @@
           "format": {
             "type": "string",
             "enum": [
-              "clash",
-              "clash-meta",
               "clash-verge",
               "flclash",
               "sing-box",
@@ -15525,7 +15515,7 @@
               "surge",
               "quantumult-x",
               "stash",
-              "mihomo", "clash-nyanpasu", "clash-for-android", "clash-for-windows", "clashx", "loon", "surfboard", "sagernet", "passwall", "ssr-plus", "shadowsocks", "v2rayn", "v2rayng", "v2raytun"
+              "mihomo", "clash-nyanpasu", "clash-for-android", "clash-for-windows", "clashx", "loon", "surfboard", "sagernet", "passwall", "ssr-plus", "shadowsocks", "v2rayn", "v2rayng", "v2raytun", "clash-party", "throne", "nekobox", "husi"
             ]
           },
           "language": {
@@ -15539,8 +15529,6 @@
           "format": {
             "type": "string",
             "enum": [
-              "clash",
-              "clash-meta",
               "clash-verge",
               "flclash",
               "sing-box",
@@ -15548,7 +15536,7 @@
               "surge",
               "quantumult-x",
               "stash",
-              "mihomo", "clash-nyanpasu", "clash-for-android", "clash-for-windows", "clashx", "loon", "surfboard", "sagernet", "passwall", "ssr-plus", "shadowsocks", "v2rayn", "v2rayng", "v2raytun"
+              "mihomo", "clash-nyanpasu", "clash-for-android", "clash-for-windows", "clashx", "loon", "surfboard", "sagernet", "passwall", "ssr-plus", "shadowsocks", "v2rayn", "v2rayng", "v2raytun", "clash-party", "throne", "nekobox", "husi"
             ]
           },
           "language": {

@@ -47,7 +47,7 @@ class ClientMirrorService
     }
     protected function policies(): array {
         $policies=(new ClientStrategyService())->frontendPolicies();
-        $minimum=\App\Models\ClientStrategy::where('client_type','meta')->value('min_version');
+        $minimum=\App\Models\ClientStrategy::where('client_type','mihomo')->value('min_version');
         foreach (['clash','flclash'] as $id) $policies[$id]['engineMinVersion']=$minimum;
         return $policies;
     }

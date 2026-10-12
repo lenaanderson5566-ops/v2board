@@ -8,7 +8,7 @@
 
 ## 部署
 
-无需数据库迁移。持久化文件及原子更新的索引位于 `storage/app/client-mirrors`，PHP-FPM 与 Horizon 用户均需读写该目录。不要放进 Git 或清理部署脚本。备份时一起备份此目录。多服务器部署需共享此目录，或固定下载与请求到同一台服务器。
+本次客户端标识迁移需运行 update.sh，见文末升级说明。持久化文件及原子更新的索引位于 `storage/app/client-mirrors`，PHP-FPM 与 Horizon 用户均需读写该目录。不要放进 Git 或清理部署脚本。备份时一起备份此目录。多服务器部署需共享此目录，或固定下载与请求到同一台服务器。
 
 更新后运行 `php artisan config:clear`，并通过宝塔重启原有 Horizon 守护进程。新增独立 `client-download` supervisor（一个进程）；使用 `redis-mirror` 连接，任务超时 660 秒、retry_after 900 秒，HTTP 下载最多 600 秒。无需再建一个 Horizon。任务超过 20 分钟未完成时，后台标记失败，可重新下载。失败不会切换线上镜像。
 
@@ -20,7 +20,7 @@
 
 最多保留 100 条记录，未发布、已完成或失败的记录可手动删除。定时任务仅检查版本，不会自行发起下载；管理员发起同步后自动下载并按上述条件发布，旧版本文件不自动删除。下载消耗服务器磁盘和出口流量，当前下载通过 PHP 响应传输；大规模分发可后续采用 Nginx 内部转发或对象存储。
 
-管理 API 的 `client/mirrors/download` 增加可选布尔字段 `auto_publish`（默认 false，兼容旧调用）。`client/mirrors/fetch` 增加 `policies` 和按发行客户端 ID 索引的 `policyReasons`；条目包含 `auto_publish` 和 `publish_reason`，供界面展示自动发布状态与待确认原因。Windows / macOS / Android 镜像定位继续使用原 `target:architecture` 格式，无需数据库迁移。部署代码后需重启 Horizon，使下载任务使用新发布逻辑。
+管理 API 的 `client/mirrors/download` 增加可选布尔字段 `auto_publish`（默认 false，兼容旧调用）。`client/mirrors/fetch` 增加 `policies` 和按发行客户端 ID 索引的 `policyReasons`；条目包含 `auto_publish` 和 `publish_reason`，供界面展示自动发布状态与待确认原因。Windows / macOS / Android 镜像定位继续使用原 `target:architecture` 格式，本次客户端标识迁移需运行 update.sh，见文末升级说明。部署代码后需重启 Horizon，使下载任务使用新发布逻辑。
 
 ## 设备推荐与多架构镜像
 后台按设备选择推荐包：安卓优先 universal APK、其次 ARM64；M 系列 Mac 优先 universal、其次 ARM64；Intel Mac 选择 universal 或 x64；普通 Windows 选择 x64 安装版，Windows ARM 仅匹配 ARM64。Linux 需确认发行版，sing-box 桌面内核包不自动推荐。识别依据官方文件名，未知架构必须人工确认。
@@ -68,4 +68,28 @@ Linux 是操作系统，不是客户端标识；不能放行所有包含 Linux �
 风控规则页集中展示订阅限流，并明确区分「拦截」与「仅记录」。禁用异常记录规则不会停用限流或 IP / UA 黑名单；黑名单条目仍在各自管理页维护。客户端准入、版本与推荐只在客户端管理配置。
 ## 精简的 UA 访问列表
 管理列表仅展示客户端、允许订阅访问、允许的 UA 前缀、实际请求 UA、24 小时请求与最近出现。前缀由实际识别规则生成，包括 CMFA、Hiddify 和 SFA 等兼容名称；忽略大小写，必须从 UA 开头匹配并满足名称边界，不是任意包含匹配。实际 UA 可展开查看近 30 天样本。最近出现使用 Unix 秒格式化，未观测时显示暂无记录。
-内部存储兼容标识不再可编辑，仍保留映射以兼容已有链接和日志。客户端由内置注册表维护，页面不提供无效的新增或删除入口。最低版本仍为可选编辑项，已设置时在客户端名称旁提示；只检查 UA 可留空。来源核对、版本依据及识别率从常用列表移除，后台接口字段保持兼容。
+客户端标识不再可编辑，旧存储键由升级迁移统一；旧 flag 链接需要重新导入。客户端由内置注册表维护，页面不提供无效的新增或删除入口。最低版本仍为可选编辑项，已设置时在客户端名称旁提示；只检查 UA 可留空。来源核对、版本依据及识别率从常用列表移除，后台接口字段保持兼容。
+
+## UA 注册与协议复用
+
+新增独立准入项 Clash Party（`mihomo.party`）、Throne（`Throne`）、NekoBox for Android（`NekoBox/Android/...`）、Husi（`husi`），默认关闭，保存客户端策略后按开关生效。平台与架构不拆分访问策略。Clash Party 和 NekoBox 默认使用 Mihomo YAML，Throne 和 Husi 使用共享的 Base64 URI 输出；协议功能仍以各客户端实际支持为准，不代表每个节点类型均已实机验证。新识别条目不自动增加安装包下载源或用户推荐项。
+
+官方依据：
+- [Clash Party 订阅请求](https://github.com/mihomo-party-org/clash-party/blob/main/src/main/config/profile.ts)：默认 `mihomo.party/v<version> (clash.meta)`。
+- [Throne 默认 UA](https://throneproj.github.io/help/troubleshooting/) 与 [支持格式](https://github.com/throneproj/Throne#subscription-formats)。
+- [NekoBox UA 常量](https://github.com/MatsuriDayo/NekoBoxForAndroid/blob/main/app/src/main/java/io/nekohasekai/sagernet/ktx/Nets.kt) 与 [订阅解析](https://github.com/MatsuriDayo/NekoBoxForAndroid/blob/main/app/src/main/java/io/nekohasekai/sagernet/group/RawUpdater.kt)：`NekoBox/Android/<version> (Prefer ClashMeta Format)`。
+- [Husi UA](https://github.com/xchacha20-poly1305/husi/blob/dev/composeApp/src/commonMain/kotlin/fr/husi/net/UserAgent.kt)：`husi/<version> (sing-box <coreVersion>)`；[订阅解析](https://github.com/xchacha20-poly1305/husi/blob/dev/composeApp/src/commonMain/kotlin/fr/husi/group/RawUpdater.kt) 支持 Base64 URI。
+- Karing 当前公开的订阅模块引用 `HttpUtils.getUserAgent`，本次未取得该实现；不新增未经核验的前缀，其自定义兼容 UA 仍按对应已识别客户端处理。
+
+`SubscriptionClientRegistry` 仅使用规范标识。旧标识只在迁移中出现，运行时不再接受旧名称或 flag 参数。
+
+`V2rayN` 和 `V2rayNG` 继承 `UriSubscription`。`ClashVerge` 继承 `ClashMeta`；`ClashNyanpasu` 仅保留历史 VMess/VLESS 字段差异，其余共用生成器。内部 `UriSubscription` 不注册为公共格式，`uri`、`general` 不可用于未知客户端兜底。格式选择不能绕过 UA 准入。
+## 升级：停用 flag 并迁移旧标识
+
+部署前备份数据库，通过 `update.sh` 在维护期间运行 `2026_10_12_000001_canonicalize_subscription_clients`。本地测试环境已执行；生产环境仍需执行升级。迁移将策略、订阅日志、风控日志中的旧标识统一为 `mihomo`、`sing-box`、`clash-verge`、`clash-nyanpasu`、`clash-for-android`、`clash-for-windows`、`quantumult-x`、`ssr-plus` 等规范名称。
+
+重复策略取禁用优先与更严格的最低版本，保留已有记录的名称、排序；迁移会固化旧白名单和父内核禁用限制。无法解析的最低版本使事务回滚，需要修正数据后重试。日志只改标识，不删除历史。迁移可重复运行；合并无法自动拆回旧数据，回退需恢复升级前备份。迁移前发现旧策略键时，订阅准入暂时拒绝，防止新代码按缺失策略默认放行。
+
+V10 和自定义订阅路径统一使用 `format=<规范标识>`，不传时按 UA 自动选择。带任何 `flag` 参数（即使同时有 format）或旧格式名称的请求返回 422；用户需重新导入配置中心生成的新链接。UA 名称不是内部标识，实际 `Clash.Meta`、`HiddifyNext` 等前缀继续识别。格式选择仍受已识别 UA、客户端开关与兼容格式限制。
+
+协议类不再声明 `$flag`，渲染器只负责输出；客户端身份来自 UA。专用客户端继续独立认证。历史统计接口中 `subscribe_flag_count_*` 等字段名暂时保留，字段内容已经使用统一客户端标识，避免无关后台接口破坏。

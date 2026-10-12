@@ -24,7 +24,7 @@ class ClientActions
         if (!(new \App\Services\FastaiReleaseService())->supports($request->input('client_version'), $request->input('platform'), $request->input('architecture'))) {
             $this->rejectNativeConfig($request, 'CLIENT_VERSION_TOO_LOW', 'Please update your client.', 409);
         }
-        $request->merge(['user' => $user, 'flag' => 'flclash', 'language' => app()->getLocale()]);
+        $request->merge(['user' => $user, 'format' => 'flclash', 'language' => app()->getLocale()]);
         $yaml = $this->subscribe($request);
         if ($request->input('core') === 'sing-box') {
             $configuration = json_decode($yaml->getContent(), true, 512, JSON_THROW_ON_ERROR);
@@ -68,14 +68,15 @@ class ClientActions
 
     public function subscribe(Request $request)
     {
+        if ($request->query->has('flag') || $request->request->has('flag')) abort(422, 'The flag parameter is retired. Re-import your subscription link.');
         $this->enforceUaWhitelist($request);
         $riskLogService = new RiskLogService();
-        $requestedFlag = strtolower((string) $request->input('flag', ''));
-        $flag = $requestedFlag ?: strtolower((string) $request->userAgent());
+        $requestedFormat = strtolower((string) $request->input('format', ''));
+        $flag = $requestedFormat ?: strtolower((string) $request->userAgent());
         $resolvedClientType = null;
-        $resolvedFlag = $this->resolveProtocolFlag($requestedFlag ?: $flag, $requestedFlag !== "");
-        if (!$request->attributes->get('client.native') && !SubscriptionClientRegistry::compatible((string) \App\Services\ClientIdentity::identify((string) $request->userAgent()), $resolvedFlag)) {
-            $riskLogService->createSubscribeLog($this->buildSubscribeLogPayload($request, $request->user, $resolvedFlag, 'failed', 'client_format_not_allowed'));
+        $resolvedFormat = $this->resolveProtocolFormat($requestedFormat ?: $flag, $requestedFormat !== "");
+        if (!$request->attributes->get('client.native') && !SubscriptionClientRegistry::compatible((string) \App\Services\ClientIdentity::identify((string) $request->userAgent()), $resolvedFormat)) {
+            $riskLogService->createSubscribeLog($this->buildSubscribeLogPayload($request, $request->user, $resolvedFormat, 'failed', 'client_format_not_allowed'));
             abort(422, 'Requested format is incompatible with the subscription client.');
         }
         $clientStrategyService = new ClientStrategyService();
@@ -90,17 +91,17 @@ class ClientActions
         // account not expired and is not banned.
         $userService = new UserService();
         if ($userService->isAvailable($user)) {
-            $denial = $request->attributes->get('client.native') ? null : $clientStrategyService->accessDenial($resolvedFlag, (string) $request->userAgent());
+            $denial = $request->attributes->get('client.native') ? null : $clientStrategyService->accessDenial($resolvedFormat, (string) $request->userAgent());
             if ($request->attributes->get('client.native') ? !config('v2board.fastai_enabled', 1) : $denial === 'client_disabled') {
                 $riskLogService->createSubscribeLog($this->buildSubscribeLogPayload(
                     $request,
                     $user,
-                    $resolvedFlag,
+                    $resolvedFormat,
                     'failed',
                     'client_disabled'
                 ));
                 $this->rejectNativeConfig($request, 'CLIENT_DISABLED', 'This client is currently unavailable.');
-                $class = $this->resolveProtocolHandler($resolvedFlag, $user, $this->buildUnavailableServers('client_disabled'));
+                $class = $this->resolveProtocolHandler($resolvedFormat, $user, $this->buildUnavailableServers('client_disabled'));
                 return $class->handle();
             }
 
@@ -108,12 +109,12 @@ class ClientActions
                 $riskLogService->createSubscribeLog($this->buildSubscribeLogPayload(
                     $request,
                     $user,
-                    $resolvedFlag,
+                    $resolvedFormat,
                     'failed',
                     'client_version_too_low'
                 ));
                 $this->rejectNativeConfig($request, 'CLIENT_VERSION_TOO_LOW', 'Please update your client.', 409);
-                $class = $this->resolveProtocolHandler($resolvedFlag, $user, $this->buildUnavailableServers('client_version_too_low'));
+                $class = $this->resolveProtocolHandler($resolvedFormat, $user, $this->buildUnavailableServers('client_version_too_low'));
                 return $class->handle();
             }
 
@@ -124,13 +125,13 @@ class ClientActions
                 if (!$request->attributes->get('client.native')) {
                     $servers = \App\Services\NodeDisplayService::publicServers($servers, $language);
                 }
-                if (!$request->attributes->get('client.native') && $resolvedFlag !== 'sing') {
+                if (!$request->attributes->get('client.native') && $resolvedFormat !== 'sing-box') {
                     $this->setSubscribeInfoToServers($servers, $user);
                 }
                 $class = $request->attributes->get('client.native')
                     ? ($request->input('core') === 'sing-box' ? new \App\Services\FastaiSingboxConfig($clientUser, $servers) : new \App\Services\FastaiConfig($clientUser, $servers, $this->structuredConfig($request)))
-                    : $this->resolveProtocolHandler($resolvedFlag, $clientUser, $servers);
-                $resolvedClientType = $request->attributes->get('client.native') ? $class->flag : ($uaType ?: $class->flag);
+                    : $this->resolveProtocolHandler($resolvedFormat, $clientUser, $servers);
+                $resolvedClientType = $request->attributes->get('client.native') ? 'fastai' : ($uaType ?: 'fastai');
                 $riskLogService->createSubscribeLog($this->buildSubscribeLogPayload(
                     $request,
                     $user,
@@ -146,7 +147,7 @@ class ClientActions
                 $riskLogService->createSubscribeLog($this->buildSubscribeLogPayload(
                     $request,
                     $user,
-                    $resolvedClientType ?: $this->resolveProtocolFlag($requestedFlag ?: $flag),
+                    $resolvedClientType ?: $this->resolveProtocolFormat($requestedFormat ?: $flag),
                     'failed',
                     $e->getMessage()
                 ));
@@ -158,22 +159,23 @@ class ClientActions
         $riskLogService->createSubscribeLog($this->buildSubscribeLogPayload(
             $request,
             $user,
-            $resolvedFlag,
+            $resolvedFormat,
             'failed',
             $reason
         ));
         $this->rejectNativeConfig($request, 'SUBSCRIPTION_UNAVAILABLE', 'No available subscription.');
 
-        $class = $this->resolveProtocolHandler($resolvedFlag, $user, $this->buildUnavailableServers($reason));
+        $class = $this->resolveProtocolHandler($resolvedFormat, $user, $this->buildUnavailableServers($reason));
         return $class->handle();
     }
 
     public function enforceApplicationPolicy(Request $request): void
     {
+        if ($request->query->has('flag') || $request->request->has('flag')) abort(422, 'The flag parameter is retired. Re-import your subscription link.');
         $this->enforceUaWhitelist($request);
-        $reason = (new ClientStrategyService())->accessDenial('meta', (string) $request->userAgent());
+        $reason = (new ClientStrategyService())->accessDenial('mihomo', (string) $request->userAgent());
         if ($reason !== null) {
-            (new RiskLogService())->createSubscribeLog($this->buildSubscribeLogPayload($request, $request->user, 'meta', 'failed', $reason));
+            (new RiskLogService())->createSubscribeLog($this->buildSubscribeLogPayload($request, $request->user, 'mihomo', 'failed', $reason));
             abort(403, 'Subscription client policy rejected this request.');
         }
     }
@@ -252,10 +254,10 @@ class ClientActions
         return $copy[app()->getLocale()] ?? $copy['zh-CN'];
     }
 
-    private function resolveProtocolHandler(string $resolvedFlag, $user, array $servers)
+    private function resolveProtocolHandler(string $resolvedFormat, $user, array $servers)
     {
         $servers = \App\Services\ClientConfigService::uniqueNames($servers, 'name', ['DIRECT', 'REJECT', 'GLOBAL', '自动选择', '故障转移', '节点选择']);
-        $class = SubscriptionClientRegistry::CLIENTS[$resolvedFlag][1] ?? null;
+        $class = SubscriptionClientRegistry::handler($resolvedFormat);
         if (!$class) abort(422, 'Unsupported subscription format.');
         return new $class($user, $servers);
     }
@@ -283,9 +285,9 @@ class ClientActions
         }
     }
 
-    private function resolveProtocolFlag(?string $input, bool $explicit = false): string
+    private function resolveProtocolFormat(?string $input, bool $explicit = false): string
     {
-        $flag = SubscriptionClientRegistry::flag((string) $input)
+        $flag = SubscriptionClientRegistry::canonicalId((string) $input)
             ?? ($explicit ? null : \App\Services\ClientIdentity::identify((string) $input));
         if (!$flag) abort(422, 'Unsupported subscription format.');
         return $flag;

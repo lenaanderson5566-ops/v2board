@@ -999,7 +999,7 @@
   "endpoints": {
     "getSubscriptionsSubscriptionToken": {
       "input": {
-        "format": "flag",
+        "format": "format",
         "language": "language"
       },
       "output": "scalar",
@@ -1015,7 +1015,7 @@
     },
     "getSubscriptionsSubscriptionTokenApplicationConfig": {
       "input": {
-        "format": "flag",
+        "format": "format",
         "language": "language"
       },
       "output": "scalar",
@@ -1031,7 +1031,7 @@
     },
     "getSubscriptionsSubscriptionTokenApplicationVersion": {
       "input": {
-        "format": "flag",
+        "format": "format",
         "language": "language"
       },
       "output": "applicationVersion",

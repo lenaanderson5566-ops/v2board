@@ -6,7 +6,8 @@ describe("subscription import protocols", () => {
         const link = new URL(importLink("clash", url, "测试 & Home"));
         const nested = new URL(link.searchParams.get("url")!);
         expect(nested.searchParams.get("token")).toBe("a+b&c");
-        expect(nested.searchParams.getAll("flag")).toEqual(["verge"]);
+        expect(nested.searchParams.has("flag")).toBe(false);
+        expect(nested.searchParams.getAll("format")).toEqual(["clash-verge"]);
         expect(link.searchParams.get("name")).toBe("测试 & Home");
     });
     it("generates all supported schemes without third-party converters", () => {
@@ -20,12 +21,12 @@ describe("subscription import protocols", () => {
         );
         const sing = new URL(importLink("singbox", url, "My plan"));
         expect(
-            new URL(sing.searchParams.get("url")!).searchParams.get("flag"),
-        ).toBe("sing");
+            new URL(sing.searchParams.get("url")!).searchParams.get("format"),
+        ).toBe("sing-box");
         const qx = new URL(importLink("quantumult", url, "My,plan"));
         const config = JSON.parse(qx.searchParams.get("remote-resource")!);
         expect(config.server_remote[0]).toContain("tag=My plan");
-        expect(config.server_remote[0]).toContain("flag=quantumult%2520x");
+        expect(config.server_remote[0]).toContain("format=quantumult-x");
     });
     it("encodes Shadowrocket links as URL-safe UTF-8 base64", () => {
         const link = importLink(
@@ -41,7 +42,7 @@ describe("subscription import protocols", () => {
                 (c) => c.charCodeAt(0),
             ),
         );
-        expect(new URL(decoded).searchParams.get("flag")).toBe("shadowrocket");
+        expect(new URL(decoded).searchParams.get("format")).toBe("shadowrocket");
     });
     it("rejects unsafe or malformed subscription URLs", () => {
         for (const invalid of [
@@ -69,7 +70,7 @@ it("pins the selected language without changing subscription credentials",()=>{
 it("uses the dedicated FlClash scheme and policy flag", () => {
  const link = new URL(importLink("flclash", url, "Test"));
  expect(link.protocol).toBe("flclash:");
- expect(new URL(link.searchParams.get("url")!).searchParams.get("flag")).toBe("flclash");
+ expect(new URL(link.searchParams.get("url")!).searchParams.get("format")).toBe("flclash");
 });
 
 it("offers sing-box as the second recommendation on every supported platform", () => {
@@ -86,5 +87,10 @@ it("recommends CMFA only on Android with the Meta subscription format", () => {
  expect(supportedClients("windows").some(c => c.id === "cmfa")).toBe(false);
  const link = new URL(importLink("cmfa", url, "Test"));
  expect(link.protocol).toBe("clashmeta:");
- expect(new URL(link.searchParams.get("url")!).searchParams.get("flag")).toBe("meta");
+ expect(new URL(link.searchParams.get("url")!).searchParams.get("format")).toBe("mihomo");
+});
+
+it("generates canonical V10 formats while removing retired flags", () => {
+    expect(new URL(subscriptionUrl("https://example.com/api/v10/subscriptions/test", "mihomo")).searchParams.get("format")).toBe("mihomo");
+    expect(new URL(subscriptionUrl("https://example.com/custom-subscription?token=test", "mihomo")).searchParams.get("format")).toBe("mihomo");
 });

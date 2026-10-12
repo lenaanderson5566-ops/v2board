@@ -6,7 +6,6 @@ use App\Utils\Helper;
 
 class Surge
 {
-    public $flag = 'surge';
     private $servers;
     private $user;
 

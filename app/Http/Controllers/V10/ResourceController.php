@@ -62,10 +62,11 @@ abstract class ResourceController extends \App\Http\Controllers\Controller
         }
         if ($contract['role'] === 'subscription') {
             $input['token'] = $request->route('subscriptionToken');
-            if (isset($input['flag'])) {
-                $flag = \App\Services\SubscriptionClientRegistry::flag((string) $input['flag']);
+            if ($request->query->has('flag') || $request->request->has('flag')) abort(422, 'The flag parameter is retired. Re-import your subscription link.');
+            if (isset($input['format'])) {
+                $flag = \App\Services\SubscriptionClientRegistry::canonicalId((string) $input['format']);
                 if (!$flag) abort(422, __('Unsupported subscription format.'));
-                $input['flag'] = $flag;
+                $input['format'] = $flag;
             }
         }
         // Replace both input sources so query credentials and user IDs cannot override server context.

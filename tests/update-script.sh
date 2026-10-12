@@ -49,6 +49,7 @@ echo '<?php // fixture' > database/migrations/2026_10_11_000007_create_node_traf
 echo '<?php // fixture' > database/migrations/2026_10_11_000008_create_server_traffic_budgets.php
 echo '<?php // fixture' > database/migrations/2026_10_11_000009_create_server_traffic_imports.php
 echo '<?php // fixture' > database/migrations/2026_10_11_000010_create_lightsail_servers.php
+echo '<?php // fixture' > database/migrations/2026_10_12_000001_canonicalize_subscription_clients.php
 echo '{}' > composer.lock
 git add -f composer.lock
 mkdir -p storage/geoip
@@ -105,6 +106,7 @@ grep -q 'migrate --path=database/migrations/2026_10_11_000007_create_node_traffi
 grep -q 'migrate --path=database/migrations/2026_10_11_000008_create_server_traffic_budgets.php --force --no-interaction' calls.log
 grep -q 'migrate --path=database/migrations/2026_10_11_000009_create_server_traffic_imports.php --force --no-interaction' calls.log
 grep -q 'migrate --path=database/migrations/2026_10_11_000010_create_lightsail_servers.php --force --no-interaction' calls.log
+grep -q 'migrate --path=database/migrations/2026_10_12_000001_canonicalize_subscription_clients.php --force --no-interaction' calls.log
 new_site dirty
 echo changed >> composer.json
 reject --jobs-stopped

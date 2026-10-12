@@ -6,7 +6,6 @@ use App\Utils\Helper;
 
 class Shadowrocket
 {
-    public $flag = 'shadowrocket';
     private $servers;
     private $user;
 

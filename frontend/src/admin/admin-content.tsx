@@ -1,3 +1,4 @@
+import { StatusBadge } from "../shared/StatusBadge";
 import { adminUserLabel } from "./admin-user-label";
 import { useState } from "react";
 import { admin, query, date, type Row } from "../shared/api";
@@ -38,15 +39,15 @@ export function AdminTickets() {
                     "reply_status",
                     "工单状态",
                     (r) => (
-                        <span
-                            className={`admin-status ${r.status === 1 ? "success" : r.reply_status ? "processing" : "error"}`}
+                        <StatusBadge
+                            tone={Number(r.status) === 1 ? "neutral" : Number(r.reply_status) === 1 ? "success" : "warning"}
                         >
-                            {r.status === 1
+                            {Number(r.status) === 1
                                 ? "已关闭"
-                                : r.reply_status
+                                : Number(r.reply_status) === 1
                                   ? "已回复"
                                   : "待回复"}
-                        </span>
+                        </StatusBadge>
                     ),
                 ],
                 ["created_at", "创建时间", (r) => date(r.created_at)],

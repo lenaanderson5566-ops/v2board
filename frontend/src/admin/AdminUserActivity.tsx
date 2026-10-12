@@ -1,3 +1,4 @@
+import { AdminStatus } from "../shared/admin-status";
 import { useState } from "react";
 import { ops, date, rows, type Row } from "../shared/api";
 import { Modal, State, useData } from "../shared/ui";
@@ -22,8 +23,9 @@ function Activity({ row, close }: { row: Row; close: () => void }) {
  {r.rule_key && <p>{r.rule_key} · {r.risk_level}</p>}
  {r.node && <p>节点：{r.node}</p>}
  {r.client_type && <p>客户端：{r.client_type}</p>}
- {r.kind === "登录" && <p>{r.is_success ? "登录成功" : "登录失败"}</p>}
- {r.status && <p>结果：{r.status}</p>}
+ {r.kind === "登录" && <p><AdminStatus value={r.is_success} login /></p>}
+ {r.kind !== "登录" && r.status != null && <p>结果：<AdminStatus value={r.status} /></p>}
+ {r.reason && <p>说明：{r.reason}</p>}
  </article>)}
  </State></div></Modal>;
 }

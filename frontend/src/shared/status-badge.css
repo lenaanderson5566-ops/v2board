@@ -17,3 +17,13 @@ body[data-console="user"] .status-badge[data-tone="success"] { color: var(--succ
 body[data-console="user"] .status-badge[data-tone="warning"] { color: var(--warning); background: var(--warning-soft); border-color: var(--warning-border); }
 body[data-console="user"] .status-badge[data-tone="info"] { color: var(--info); background: var(--info-soft); border-color: var(--info-border); }
 body[data-console="user"] .status-badge[data-tone="danger"] { color: var(--danger); background: var(--danger-soft); border-color: var(--danger-border); }
+body[data-console="admin"] .status-badge {
+    display: inline-flex; align-items: center; width: fit-content;
+    padding: 3px 8px; border: 1px solid #d1d5db; border-radius: 6px;
+    background: #f3f4f6; color: #4b5563; font-size: 12px;
+    font-weight: 500; line-height: 1.5; white-space: nowrap;
+}
+body[data-console="admin"] .status-badge[data-tone="success"] { color: #166534; background: #f0fdf4; border-color: #bbf7d0; }
+body[data-console="admin"] .status-badge[data-tone="danger"] { color: #b91c1c; background: #fef2f2; border-color: #fecaca; }
+body[data-console="admin"] .status-badge[data-tone="warning"] { color: #92400e; background: #fffbeb; border-color: #fde68a; }
+body[data-console="admin"] .status-badge[data-tone="info"] { color: #1d4ed8; background: #eff6ff; border-color: #bfdbfe; }

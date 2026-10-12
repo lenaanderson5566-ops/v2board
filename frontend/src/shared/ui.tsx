@@ -1,3 +1,4 @@
+import { adminStatusCell } from "./admin-status";
 import { browserSessionKey } from "./browser-session";
 import { completePages } from "./paginated-data";
 import { WorkspaceSkeleton } from "./WorkspaceSkeleton";
@@ -1101,7 +1102,9 @@ export function Table({
                             )}
                             {columns.map(([k, label, render]) => (
                                 <td key={k} data-label={label}>
-                                    {render
+                                    {boot.mode === "admin"
+                                        ? adminStatusCell(k, label, r[k], render ? render(r) : undefined)
+                                        : render
                                         ? render(r)
                                         : r[k] != null &&
                                             typeof r[k] === "object"

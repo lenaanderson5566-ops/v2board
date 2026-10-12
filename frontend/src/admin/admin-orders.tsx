@@ -1,3 +1,4 @@
+import { adminStatusCell } from "../shared/admin-status";
 import { adminUserLabel } from "./admin-user-label";
 import { useState } from "react";
 import { admin, request, query, money, date, type Row } from "../shared/api";
@@ -474,7 +475,7 @@ function OrderDetail({
                                                   ? money(r[key])
                                                   : key === "user_id"
                                                     ? adminUserLabel(r)
-                                                    : String(r[key] ?? "—")}
+                                                    : adminStatusCell(key, label, r[key])}
                                         </dd>
                                     </div>
                                 ))}

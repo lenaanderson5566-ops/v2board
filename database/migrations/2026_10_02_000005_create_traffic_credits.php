@@ -30,6 +30,11 @@ return new class extends Migration {
             $table->text('snapshot');
             $table->unsignedInteger('created_at');
         });
+        if (!Schema::hasTable('v2_credit_batch')) Schema::create('v2_credit_batch', function (Blueprint $table) {
+            $table->bigIncrements('id'); $table->integer('user_id')->index();
+            $table->string('reference', 100)->unique(); $table->unsignedBigInteger('remaining_bytes');
+            $table->unsignedInteger('expires_at')->index(); $table->unsignedInteger('created_at');
+        });
         // Updater requires queues/scheduler stopped. Per-user transaction permits safe resume.
         User::whereNull('expired_at')->whereNotNull('plan_id')->where('transfer_enable', '>', 0)
             ->whereNull('credit_migrated_at')->select('id')->chunkById(200, function ($users) {

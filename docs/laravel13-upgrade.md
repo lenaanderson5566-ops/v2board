@@ -51,3 +51,10 @@ Lightsail 静态 IP 任务使用 Laravel 13 队列属性 Connection、Queue、Tr
 官方发布说明：https://laravel.com/docs/13.x/releases
 
 旧 UniProxy 和 V2 配置控制器改为在实际动作内校验请求，构造函数不再校验 Token、发送响应或退出进程。Laravel route:list 等工具可解析控制器；旧接口的认证、HTTP 状态与错误格式保留。
+
+## 旧版一次性流量迁移失败后恢复
+
+如果 `2026_10_02_000005_create_traffic_credits` 报 `v2_credit_batch` 不存在，使用修复后的代码重新运行完整 `bash update.sh`（保留原有参数）。
+早期转换迁移会先创建批次表；后续批次补录仅补尚未覆盖的余额，重跑不会重复发放，已存在的过期批次也不会被续期。
+不要删除已完成迁移记录或直接运行无路径限制的 `artisan migrate`。
+升级失败后的维护状态会保留；仅在完整升级成功并确认队列、计划任务恢复后，使用对应 PHP 执行 `php artisan up`。

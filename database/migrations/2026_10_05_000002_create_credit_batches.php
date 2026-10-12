@@ -16,9 +16,15 @@ return new class extends Migration {
         // Upgrade grace period: existing balances retain twelve full calendar months.
         $now=time(); $expires=\Carbon\Carbon::createFromTimestampUTC($now)->addMonthsNoOverflow(12)->timestamp;
         DB::table('v2_user')->where('credit_balance','>',0)->orderBy('id')->chunkById(500,function($users) use ($now,$expires) {
-            foreach($users as $u) DB::table('v2_credit_batch')->insertOrIgnore([
-                'user_id'=>$u->id,'reference'=>'upgrade:'.$u->id,'remaining_bytes'=>$u->credit_balance,'expires_at'=>$expires,'created_at'=>$now,
-            ]);
+            $tracked=DB::table('v2_credit_batch')->whereIn('user_id',$users->pluck('id'))
+                ->select('user_id')->selectRaw('SUM(remaining_bytes) AS remaining')->groupBy('user_id')->pluck('remaining','user_id');
+            foreach($users as $u) {
+                $untracked=max(0,(int)$u->credit_balance-(int)$tracked->get($u->id,0));
+                if (!$untracked) continue;
+                DB::table('v2_credit_batch')->insertOrIgnore([
+                    'user_id'=>$u->id,'reference'=>'upgrade:'.$u->id,'remaining_bytes'=>$untracked,'expires_at'=>$expires,'created_at'=>$now,
+                ]);
+            }
         });
     }
     public function down(): void { throw new RuntimeException('Credit expiry requires coordinated backup restore.'); }

@@ -1,4 +1,44 @@
 import type { Row } from "../shared/api";
+import { recommendedClients } from "../shared/import-links";
+
+export function recommendedMirrorTargets(configured: Record<string, (string | null)[]> = {}, targets: Record<string, string[]> = {}) {
+ const result: {client:string;target:string;supported:boolean}[]=[];
+ for(const platform of ["android","windows","macos","linux","ios"] as const){
+  for(const entry of recommendedClients(platform,configured)){
+   const client=({clash:"clash-verge",singbox:"sing-box"} as Record<string,string>)[entry.id] || entry.id;
+   const target=`${entry.id}_${platform}`;
+   result.push({client,target,supported:(targets[client] || []).includes(target)});
+  }
+ }
+ return result;
+}
+
+export function inspectRecommendedMirrors(clients:Row[], items:Row[], targets:ReturnType<typeof recommendedMirrorTargets>):MirrorUpdateResult[]{
+ const result:MirrorUpdateResult[]=[];
+ const downloads=new Set<string>();
+ for(const target of targets){
+  const platform=target.target.split("_").pop()!;
+  if(!target.supported){result.push({...target,name:target.client,architecture:"—",candidates:[],status:"skipped",reason:"此客户端或系统不支持本地镜像，请使用官方渠道安装"});continue;}
+  for(const profile of deviceProfiles[platform] || []){
+   const client=clients.find(c=>c.id===target.client);
+   const candidates=mirrorAssets(client?.assets || [],target.target,profile.id);
+   const row:MirrorUpdateResult={client:target.client,target:target.target,name:client?.name || target.client,architecture:profile.arch,profile:profile.id,candidates:candidates.map(a=>a.name),status:"manual",reason:""};
+   result.push(row);
+   if(!client?.version || client.error || client.stale){row.status="failed";row.reason=client?.error || "尚未获取有效版本，请重新检查更新";continue;}
+   if(platform==="linux"){row.reason="Linux 需人工确认发行版及安装格式";continue;}
+   if(target.client==="sing-box" && platform!=="android"){row.reason="sing-box 桌面发布包为内核程序，需人工确认";continue;}
+   const matches=candidates.filter(a=>a.recommended);
+   if(!matches.length){row.reason="未找到明确匹配的安装包，请手动确认架构、格式及文件大小";continue;}
+   if(matches[1] && matches[0].rank===matches[1].rank){row.reason="多个安装包优先级相同，请手动选择";continue;}
+   const asset=matches[0];row.name=asset.name;row.asset_id=Number(asset.id);
+   const key=`${target.client}:${target.target}:${asset.id}`;
+   const existing=items.find(i=>i.client===target.client && i.target===target.target && Number(i.asset_id)===Number(asset.id) && ["ready","queued","downloading"].includes(i.status));
+   if(existing || downloads.has(key)){row.status="skipped";row.reason=existing ? "安装包已下载或正在处理，无需重复下载" : "已由另一设备匹配同一通用包，合并下载";continue;}
+   downloads.add(key);row.status="pending";row.reason="已明确匹配，等待加入下载队列";
+  }
+ }
+ return result;
+}
 export const deviceProfiles: Record<string, {id:string; label:string; arch:string}[]> = {
  android:[{id:"phone",label:"安卓手机",arch:"ARM64"},{id:"legacy",label:"旧款安卓手机",arch:"ARM32"}],
  macos:[{id:"apple",label:"Mac · Apple M 系列",arch:"ARM64"},{id:"intel",label:"Mac · Intel",arch:"x64"}],

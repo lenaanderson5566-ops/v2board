@@ -1,6 +1,6 @@
-import { deviceProfiles, mirrorAssets, inspectMirrorUpdates, type MirrorUpdateResult } from "./mirror-assets";
+import { deviceProfiles, mirrorAssets, inspectMirrorUpdates, recommendedMirrorTargets, inspectRecommendedMirrors, type MirrorUpdateResult } from "./mirror-assets";
 import { useEffect, useRef, useState } from "react";
-import { ops, request, rows, bytes, date, type Row } from "../shared/api";
+import { admin, ops, request, rows, bytes, date, type Row } from "../shared/api";
 import { useData, State } from "../shared/ui";
 const labels: Record<string,string> = { queued:"排队中",downloading:"下载中",ready:"已就绪",failed:"失败" };
 export function AdminClientMirrors({clients, checkUpdates, checking}: {clients: Row[]; checkUpdates?:()=>void; checking?:boolean}) {
@@ -27,19 +27,28 @@ export function AdminClientMirrors({clients, checkUpdates, checking}: {clients: 
  const active=items.some(r=>["queued","downloading"].includes(r.status));
  useEffect(()=>{if(!active)return;const timer=setInterval(()=>d.reload(),5000);return()=>clearInterval(timer);},[active]);
  async function run(path:string,body:Row){setBusy(true);setError("");try{await request(ops(path),body);d.reload();}catch(e){setError((e as Error).message);}finally{setBusy(false);}}
- async function downloadUpdates(){
+ async function downloadUpdates(allRecommended=false){
   setBusy(true);setError("");setResults([]);setBatchMessage("正在检查已有镜像的官方版本…");
   let fresh=clients,failed=0,queued=0;
   const failedClients=new Set<string>();
   try {
-   for(const id of [...new Set(items.map(i=>String(i.client)))]){
+   let recommended:ReturnType<typeof recommendedMirrorTargets>=[];
+   if(allRecommended){
+    setBatchMessage("正在读取推荐配置并检查官方版本…");
+    const settings=await request<Row>(admin("config/fetch"));
+    const app=settings.data?.app;
+    if(!app)throw new Error("无法读取客户端推荐配置，请重试");
+    const configured=Object.fromEntries(["android","windows","macos","linux","ios"].map(os=>[os,[app[`client_primary_${os}`],app[`client_secondary_${os}`]]]));
+    recommended=recommendedMirrorTargets(configured,d.data?.targets);
+   }
+   for(const id of [...new Set(allRecommended ? recommended.filter(t=>t.supported).map(t=>t.client) : items.map(i=>String(i.client)))]){
     const controller=new AbortController();const timer=setTimeout(()=>controller.abort(),15000);
-    try{const res=await request<Row[]>(ops("client/releases/check"),{id},{signal:controller.signal});fresh=rows(res.data);if(fresh.find(c=>c.id===id)?.error){failedClients.add(id);failed++;}}
+    try{const res=await request<Row[]>(ops("client/releases/check"),{id},{signal:controller.signal});const checked=rows(res.data).find(c=>c.id===id);if(!checked || checked.error || checked.stale){failedClients.add(id);failed++;}if(checked)fresh=[...fresh.filter(c=>c.id!==id),checked];}
     catch{failedClients.add(id);failed++;}finally{clearTimeout(timer);}
    }
    fresh=fresh.map(c=>failedClients.has(c.id)?{...c,error:c.error || "检查请求失败或超时，请重试"}:c);
    setCheckedClients(fresh);
-   const report=inspectMirrorUpdates(fresh,items);setResults([...report]);
+   const report=allRecommended ? inspectRecommendedMirrors(fresh,items,recommended) : inspectMirrorUpdates(fresh,items);setResults([...report]);
    const updates=report.filter(r=>r.status==="pending");
    for(const update of updates){
     setBatchMessage(`加入下载队列：${update.name}`);
@@ -48,16 +57,18 @@ export function AdminClientMirrors({clients, checkUpdates, checking}: {clients: 
     catch(e){failed++;update.status="failed";update.reason=`提交失败：${(e as Error).message}；可重新检查后重试`;}finally{clearTimeout(timer);setResults(report.map(r=>({...r})));}
    }
    setBatchMessage(`已加入 ${queued} 个下载任务${failed ? `，${failed} 项检查或提交失败，可重试` : ""}。已下载、处理中及无法明确匹配的安装包会跳过；下载完成后请发布。`);
-  }finally{setBusy(false);d.reload();}
+  }catch(e){setError((e as Error).message);setBatchMessage("批量下载未完成，请重试。");}finally{setBusy(false);d.reload();}
  }
  return <section className="release-card"><h3>本地安装包镜像</h3>
  <p className="muted">按设备推荐安装包，优先通用包。下载完成后发布，同一系统可保留不同架构。</p>
+ <p className="muted">“下载全部推荐客户端”按当前已保存的主推荐、备选及用户端默认推荐批量下载，首次使用也可执行；“一键下载更新”仅更新已有镜像。商店安装和需要人工确认的安装包会列出原因。</p>
  {error && <p role="alert">{error}</p>}
  {batchMessage && <p role="status">{batchMessage}</p>}
  <State {...d} retry={d.reload}>
  <div className="actions">
  {checkUpdates && <button disabled={checking || busy} onClick={checkUpdates}>{checking ? "检查中…" : "一键检查更新"}</button>}
- <button disabled={busy || checking || !items.length} onClick={downloadUpdates}>一键下载更新</button>
+ <button disabled={busy || checking || !d.data?.targets} onClick={()=>downloadUpdates(true)}>下载全部推荐客户端</button>
+ <button disabled={busy || checking || !items.length} onClick={()=>downloadUpdates()}>一键下载更新</button>
  <select aria-label="镜像客户端" value={client} onChange={e=>{setClient(e.target.value);setAsset("");setTarget("");setManualProfile(null);}}>{clients.filter(c=>d.data?.targets?.[c.id]).map(c=><option key={c.id} value={c.id}>{c.name}</option>)}</select>
  <select aria-label="目标系统" value={target} onChange={e=>{setTarget(e.target.value);setManualProfile(null);}}><option value="">选择系统</option>{targets.map(t=><option key={t} value={t}>{t.split("_").pop()}</option>)}</select>
  <select aria-label="适用设备" value={profile} onChange={e=>setProfile(e.target.value)}>{profiles.map(p=><option key={p.id} value={p.id}>{p.label}</option>)}</select>

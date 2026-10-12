@@ -21,26 +21,47 @@ export default function MinimalLanding() {
     return (
         <div className="minimal-landing">
             <div className="minimal-landing-screen">
+                <div className="minimal-landing-art" aria-hidden="true">
+                    <div className="minimal-orbit minimal-orbit-outer" />
+                    <div className="minimal-orbit minimal-orbit-inner" />
+                    <div className="minimal-sphere" />
+                    <span className="minimal-orbit-point" />
+                </div>
                 <header className="minimal-landing-header">
                     <a className="minimal-landing-brand" href="/">
-                        <Sparkles size={20} aria-hidden="true" />
+                        <span className="minimal-brand-mark">
+                            <Sparkles size={19} aria-hidden="true" />
+                        </span>
                         <strong>{boot.title}</strong>
                     </a>
                     <LanguagePicker />
                 </header>
                 <main className="minimal-landing-main">
-                    <span className="minimal-landing-eyebrow">{t("tag")}</span>
+                    <span className="minimal-landing-eyebrow">
+                        <span aria-hidden="true" />
+                        {t("tag")}
+                    </span>
                     <h1>{t("aiTitle")}</h1>
                     <p>{t("aiIntro")}</p>
                     <a className="minimal-landing-enter" href="/app#/login">
                         {t("signIn")}{" "}
-                        <ArrowUpRight size={18} aria-hidden="true" />
+                        <span className="minimal-enter-icon">
+                            <ArrowUpRight size={18} aria-hidden="true" />
+                        </span>
                     </a>
                 </main>
-                <a className="minimal-landing-scroll" href="/app#/login">
-                    <span>{t("scrollToAuth")}</span>
-                    <ArrowDown size={20} aria-hidden="true" />
-                </a>
+                <footer className="minimal-landing-footer">
+                    <span className="minimal-platforms">
+                        Windows · macOS · iOS · Android
+                    </span>
+                    <a className="minimal-landing-scroll" href="/app#/login">
+                        <span>{t("scrollToAuth")}</span>
+                        <ArrowDown size={20} aria-hidden="true" />
+                    </a>
+                    <span className="minimal-footer-brand" aria-hidden="true">
+                        {boot.title}
+                    </span>
+                </footer>
             </div>
             <div className="minimal-landing-scroll-space" aria-hidden="true" />
         </div>

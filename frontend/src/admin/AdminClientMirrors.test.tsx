@@ -2,10 +2,29 @@
 import { afterEach, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 const mocks=vi.hoisted(()=>({request:vi.fn(),reload:vi.fn(),data:{items:[],published:{},targets:{cmfa:["cmfa_android"]}} as any}));
-vi.mock("../shared/api",()=>({ops:(s:string)=>s,request:mocks.request,rows:(v:any)=>v||[],bytes:(v:any)=>String(v),date:(v:any)=>String(v)}));
+vi.mock("../shared/api",()=>({admin:(s:string)=>s,ops:(s:string)=>s,request:mocks.request,rows:(v:any)=>v||[],bytes:(v:any)=>String(v),date:(v:any)=>String(v)}));
 vi.mock("../shared/ui",()=>({useData:()=>({data:mocks.data,reload:mocks.reload}),State:({children}:any)=><>{children}</>}));
 import { AdminClientMirrors } from "./AdminClientMirrors";
 afterEach(()=>{cleanup();vi.clearAllMocks();});
+it("downloads recommendations from an empty mirror library and deduplicates universal packages",async()=>{
+ mocks.data={items:[],published:{},targets:{cmfa:["cmfa_android"]}};
+ const clients=[{id:"cmfa",name:"CMFA",version:"2",assets:[{id:8,name:"universal.apk",size:12}]}];
+ mocks.request.mockImplementation(async(path:string)=>path==="config/fetch"?{data:{app:{}}}:{data:clients});
+ render(<AdminClientMirrors clients={clients}/>);
+ fireEvent.click(screen.getByRole("button",{name:"下载全部推荐客户端"}));
+ await waitFor(()=>expect(screen.getByText(/已加入 1 个下载任务/)).toBeTruthy());
+ const downloads=mocks.request.mock.calls.filter(c=>c[0]==="client/mirrors/download");
+ expect(downloads).toHaveLength(1);
+ expect(downloads[0][1]).toEqual({client:"cmfa",target:"cmfa_android",asset_id:8});
+});
+it("does not queue stale packages when checking a recommended client fails",async()=>{
+ mocks.data={items:[],published:{},targets:{cmfa:["cmfa_android"]}};
+ mocks.request.mockImplementation(async(path:string)=>{if(path==="config/fetch")return {data:{app:{}}};throw new Error("offline");});
+ render(<AdminClientMirrors clients={[{id:"cmfa",version:"old",assets:[{id:8,name:"universal.apk",size:12}]}]}/>);
+ fireEvent.click(screen.getByRole("button",{name:"下载全部推荐客户端"}));
+ await waitFor(()=>expect(screen.getByText(/已加入 0 个下载任务/)).toBeTruthy());
+ expect(mocks.request.mock.calls.some(c=>c[0]==="client/mirrors/download")).toBe(false);
+});
 it("automatically selects the sole platform and universal package",async()=>{
  mocks.request.mockResolvedValue({data:{}});
  render(<AdminClientMirrors clients={[{id:"cmfa",name:"CMFA",assets:[{id:8,name:"universal.apk",size:12}]}]}/>);

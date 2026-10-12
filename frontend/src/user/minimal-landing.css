@@ -1,15 +1,21 @@
 .minimal-landing {
-    background: #f7f8fa;
-    color: #182326;
+    background: #f4f5f0;
+    color: #203f38;
 }
 .minimal-landing-screen {
+    position: relative;
+    isolation: isolate;
+    overflow: hidden;
     min-height: 100svh;
     display: flex;
     flex-direction: column;
-    padding: 28px clamp(24px, 6vw, 96px);
+    padding: 30px clamp(24px, 6vw, 100px) 24px;
     box-sizing: border-box;
+    background: radial-gradient(ellipse at 90% 30%, #e1e9df88, transparent 65%);
 }
 .minimal-landing-header {
+    position: relative;
+    z-index: 3;
     display: flex;
     align-items: center;
     justify-content: space-between;
@@ -22,61 +28,258 @@
 .minimal-landing-brand {
     display: inline-flex;
     align-items: center;
-    gap: 10px;
+    gap: 12px;
+    font-size: 17px;
+    letter-spacing: -0.03em;
+}
+.minimal-brand-mark {
+    display: grid;
+    place-items: center;
+    width: 36px;
+    height: 36px;
+    border: 1px solid #264c3930;
+    border-radius: 50%;
 }
 .minimal-landing-main {
+    position: relative;
+    z-index: 1;
     flex: 1;
     display: flex;
     flex-direction: column;
-    align-items: center;
+    align-items: flex-start;
     justify-content: center;
-    text-align: center;
-    padding: 80px 0;
+    padding: 110px 0 130px;
+    max-width: 760px;
+    animation: minimal-reveal 900ms ease both;
 }
 .minimal-landing-eyebrow {
+    display: flex;
+    align-items: center;
+    gap: 10px;
     font-size: 12px;
     letter-spacing: 0.12em;
-    color: #637276;
+    color: #526c61;
+}
+.minimal-landing-eyebrow > span {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: #64846a;
+    box-shadow: 0 0 0 5px #64846a10;
 }
 .minimal-landing-main h1 {
-    max-width: 1000px;
-    font-size: clamp(38px, 6vw, 86px);
+    max-width: 760px;
+    font-size: clamp(44px, 6.4vw, 94px);
     font-weight: 500;
-    letter-spacing: -0.045em;
-    line-height: 1.15;
-    margin: 26px 0 20px;
+    letter-spacing: -0.055em;
+    line-height: 1.16;
+    margin: 30px 0 26px;
     text-wrap: balance;
 }
 .minimal-landing-main p {
-    color: #637276;
-    font-size: clamp(16px, 2vw, 20px);
+    max-width: 480px;
+    color: #627568;
+    font-size: clamp(16px, 1.6vw, 20px);
+    line-height: 1.8;
     margin: 0;
+    text-wrap: pretty;
 }
-.minimal-landing-enter {
+.minimal-landing a.minimal-landing-enter {
     display: inline-flex;
     align-items: center;
-    gap: 16px;
-    margin-top: 40px;
-    padding: 13px 24px;
-    border: 1px solid #c9d1d3;
+    gap: 32px;
+    margin-top: 42px;
+    padding: 8px 8px 8px 25px;
+    border: 1px solid #294b3d;
+    background: #294b3d;
+    color: #fff;
     border-radius: 100px;
+    font-size: 14px;
+    box-shadow: 0 8px 24px #294b3d12;
+    transition:
+        transform 200ms,
+        background 200ms,
+        box-shadow 200ms;
+}
+.minimal-enter-icon {
+    display: grid;
+    place-items: center;
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    background: #ffffff16;
 }
 .minimal-landing-enter:hover {
-    background: #e8edef;
+    transform: translateY(-3px);
+    box-shadow: 0 12px 28px #294b3d25;
+}
+.minimal-landing-footer {
+    position: relative;
+    z-index: 1;
+    display: grid;
+    grid-template-columns: 1fr auto 1fr;
+    align-items: center;
+    gap: 24px;
+    border-top: 1px solid #294b3d18;
+    padding-top: 20px;
+}
+.minimal-platforms,
+.minimal-footer-brand {
+    color: #67776b;
+    font-size: 11px;
+    letter-spacing: 0.04em;
+}
+.minimal-footer-brand {
+    justify-self: end;
 }
 .minimal-landing-scroll {
-    align-self: center;
     display: flex;
-    flex-direction: column;
     align-items: center;
     gap: 14px;
     font-size: 12px;
-    padding: 16px;
+    min-height: 44px;
+}
+.minimal-landing-scroll svg {
+    animation: minimal-down 2.6s ease-in-out infinite;
 }
 .minimal-landing a:focus-visible {
     outline: 2px solid #34766d;
     outline-offset: 6px;
 }
+.minimal-landing-art {
+    position: absolute;
+    z-index: -1;
+    pointer-events: none;
+    width: min(70vw, 1000px);
+    aspect-ratio: 1;
+    right: -19%;
+    top: 50%;
+    transform: translateY(-50%);
+}
+.minimal-sphere {
+    position: absolute;
+    inset: 22%;
+    border-radius: 50%;
+    background: radial-gradient(
+        circle at 30% 25%,
+        #f5f5d9 0%,
+        #d3dfb6 22%,
+        #90aa88 47%,
+        #416958 74%,
+        #234d41 100%
+    );
+    box-shadow:
+        inset -15px -15px 45px #12382c22,
+        30px 35px 75px #3b654422;
+    animation: minimal-float 12s ease-in-out infinite;
+}
+.minimal-sphere::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    background: repeating-linear-gradient(
+        0deg,
+        #ffffff08 0 1px,
+        transparent 1px 4px
+    );
+}
+.minimal-orbit {
+    position: absolute;
+    border: 1px solid #54776026;
+    border-radius: 50%;
+    transform: rotate(-28deg);
+}
+.minimal-orbit-outer {
+    inset: 8% 0;
+}
+.minimal-orbit-inner {
+    inset: 17% 9%;
+    border-color: #54776018;
+}
+.minimal-orbit-point {
+    position: absolute;
+    width: 10px;
+    height: 10px;
+    top: 22%;
+    left: 13%;
+    border-radius: 50%;
+    background: #789574;
+    box-shadow: 0 0 0 7px #78957410;
+}
 .minimal-landing-scroll-space {
     height: 100px;
+}
+@keyframes minimal-reveal {
+    from {
+        opacity: 0;
+        transform: translateY(14px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+@keyframes minimal-float {
+    50% {
+        transform: translateY(-12px);
+    }
+}
+@keyframes minimal-down {
+    50% {
+        transform: translateY(4px);
+    }
+}
+@media (min-width: 1600px) {
+    .minimal-landing-main {
+        max-width: 60%;
+    }
+}
+@media (max-width: 800px) {
+    .minimal-landing-screen {
+        padding: 22px 24px 16px;
+    }
+    .minimal-landing-main {
+        padding: 100px 0 210px;
+        max-width: 100%;
+    }
+    .minimal-landing-main h1 {
+        max-width: 580px;
+        font-size: clamp(42px, 8vw, 64px);
+    }
+    .minimal-landing-art {
+        width: 680px;
+        right: -360px;
+        top: auto;
+        bottom: -190px;
+        transform: none;
+        opacity: 0.65;
+    }
+    .minimal-landing-footer {
+        grid-template-columns: 1fr auto;
+        gap: 12px;
+    }
+    .minimal-platforms {
+        font-size: 9px;
+        max-width: 150px;
+        line-height: 1.8;
+    }
+    .minimal-footer-brand {
+        display: none;
+    }
+}
+@media (max-height: 650px) and (min-width: 801px) {
+    .minimal-landing-main {
+        padding: 55px 0;
+    }
+}
+@media (prefers-reduced-motion: reduce) {
+    .minimal-landing-main,
+    .minimal-sphere,
+    .minimal-landing-scroll svg {
+        animation: none;
+    }
+    .minimal-landing-enter {
+        transition: none;
+    }
 }

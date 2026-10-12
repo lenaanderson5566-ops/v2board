@@ -1,8 +1,11 @@
 import { useEffect } from "react";
-import { ArrowDown, ArrowUpRight, Sparkles } from "lucide-react";
+import { ArrowDown, ArrowUpRight, Sparkles, PenLine, Code2, BookOpen } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { boot } from "../shared/api";
 import { LanguagePicker } from "../shared/LanguagePicker";
+import openaiIcon from "../assets/openai.svg";
+import claudeIcon from "../assets/claude.svg";
+import geminiIcon from "../assets/googlegemini.svg";
 import "./minimal-landing.css";
 
 export default function MinimalLanding() {
@@ -21,31 +24,6 @@ export default function MinimalLanding() {
     return (
         <div className="minimal-landing">
             <div className="minimal-landing-screen">
-                <div className="minimal-landing-art" aria-hidden="true">
-                    <div className="minimal-orbit minimal-orbit-outer" />
-                    <div className="minimal-orbit minimal-orbit-inner" />
-                    <div className="minimal-sphere">
-                        <svg
-                            className="minimal-globe"
-                            viewBox="0 0 400 400"
-                            fill="none"
-                        >
-                            <circle cx="200" cy="200" r="192" />
-                            <ellipse cx="200" cy="200" rx="128" ry="192" />
-                            <ellipse cx="200" cy="200" rx="56" ry="192" />
-                            <ellipse cx="200" cy="200" rx="192" ry="64" />
-                            <ellipse cx="200" cy="200" rx="192" ry="136" />
-                            <path d="M8 200h384M200 8v384M56 72l254 252L80 296l242-208" />
-                            <g className="minimal-network-nodes">
-                                <circle cx="56" cy="72" r="4" />
-                                <circle cx="310" cy="324" r="4" />
-                                <circle cx="80" cy="296" r="4" />
-                                <circle cx="322" cy="88" r="4" />
-                            </g>
-                        </svg>
-                    </div>
-                    <span className="minimal-orbit-point" />
-                </div>
                 <header className="minimal-landing-header">
                     <a className="minimal-landing-brand" href="/">
                         <span className="minimal-brand-mark">
@@ -56,9 +34,10 @@ export default function MinimalLanding() {
                     <LanguagePicker />
                 </header>
                 <main className="minimal-landing-main">
+                    <div className="minimal-landing-copy">
                     <span className="minimal-landing-eyebrow">
                         <span aria-hidden="true" />
-                        {t("tag")}
+                        {t("aiLabel")}
                     </span>
                     <h1>{t("aiTitle")}</h1>
                     <p>{t("aiIntro")}</p>
@@ -68,6 +47,26 @@ export default function MinimalLanding() {
                             <ArrowUpRight size={18} aria-hidden="true" />
                         </span>
                     </a>
+                    <div className="minimal-scenarios">
+                        <span><PenLine size={15} aria-hidden="true" />{t("scenario1")}</span>
+                        <span><BookOpen size={15} aria-hidden="true" />{t("scenario2")}</span>
+                        <span><Code2 size={15} aria-hidden="true" />{t("scenario3")}</span>
+                    </div>
+                    </div>
+                    <section className="minimal-ai-panel" aria-label={t("aiLabel")}>
+                        <div className="minimal-panel-heading"><Sparkles size={16} aria-hidden="true" /><span>{t("aiLabel")}</span><span className="minimal-panel-index" aria-hidden="true">01 / AI</span></div>
+                        <div className="minimal-ai-core" aria-hidden="true">
+                            <div className="minimal-core-ring" />
+                            <div className="minimal-core-ring minimal-core-ring-inner" />
+                            <div className="minimal-core-mark"><Sparkles size={24} /><strong>AI</strong></div>
+                        </div>
+                        <div className="minimal-ai-services">
+                            {[["OpenAI", openaiIcon], ["Claude", claudeIcon], ["Gemini", geminiIcon]].map(([name, icon]) => (
+                                <div className="minimal-ai-service" key={name}><img src={icon} alt="" /><span>{name}</span></div>
+                            ))}
+                        </div>
+                        <p className="minimal-ai-note">{t("aiNote")}</p>
+                    </section>
                 </main>
                 <footer className="minimal-landing-footer">
                     <span className="minimal-platforms">

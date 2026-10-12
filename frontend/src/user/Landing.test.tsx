@@ -33,7 +33,10 @@ it("selects the minimal landing and keeps a keyboard-accessible auth entry", () 
     mocks.boot.landingStyle = "minimal";
     render(<Landing />);
     expect(screen.getByRole("heading", { name: "aiTitle" })).toBeTruthy();
-    expect(screen.queryByText("OpenAI")).toBeNull();
+    expect(screen.getByText("OpenAI")).toBeTruthy();
+    expect(screen.getByText("Claude")).toBeTruthy();
+    expect(screen.getByText("Gemini")).toBeTruthy();
+    expect(screen.getByText("aiNote")).toBeTruthy();
     expect(screen.getByRole("link", { name: "scrollToAuth" }).getAttribute("href")).toBe("/app#/login");
     expect(screen.getByRole("link", { name: "signIn" }).getAttribute("href")).toBe("/app#/login");
 });

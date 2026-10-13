@@ -1,6 +1,6 @@
 # 宝塔分支升级脚本
 
-`update.sh` 默认目标为 `codex/react-typescript-console`，适用于已运行的 Git 安装。保留 `.env`、APP_KEY、`config/v2board.php`、用户数据及既有会话，不删除原锁文件备份，不切回 master。使用现有 Composer 和与网站一致的 PHP。
+`update.sh` 默认目标为 `codex/payment-icon-picker`，适用于已运行的 Git 安装。保留 `.env`、APP_KEY、`config/v2board.php`、用户数据及既有会话，不删除原锁文件备份，不切回 master。使用现有 Composer 和与网站一致的 PHP。
 
 ## 自动迁移与重复执行
 
@@ -145,3 +145,7 @@ V2Box 接入新增白名单迁移 `2026_10_11_000001_create_v2box_nodes.php`，�
 服务器流量额度与去重升级会依次执行 `2026_10_11_000007_create_node_traffic_batches.php`、`2026_10_11_000008_create_server_traffic_budgets.php` 和 `2026_10_11_000009_create_server_traffic_imports.php`。早期脚本遗漏这些迁移；已升级站点请重新运行完整更新脚本补齐，已完成的迁移会跳过。
 
 Lightsail IP 管理新增 `2026_10_11_000010_create_lightsail_servers.php` 定向迁移及 AWS PHP SDK，更新后由 Horizon 的 infrastructure 队列执行任务。详情见 [Lightsail IP 管理](lightsail-ip-management.md)。
+
+## 2026-10-13 诊断与邀请复核
+
+更新白名单已加入支付回调诊断、客户端诊断报告和邀请人工复核三项迁移，预检检查文件，正式更新依次执行，已执行的迁移自动跳过。使用目标分支 `codex/payment-icon-picker`；无需运行全量 `artisan migrate`。

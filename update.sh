@@ -57,6 +57,9 @@ SERVER_TRAFFIC_BUDGET_MIGRATION=database/migrations/2026_10_11_000008_create_ser
 SERVER_TRAFFIC_IMPORT_MIGRATION=database/migrations/2026_10_11_000009_create_server_traffic_imports.php
 LIGHTSAIL_MIGRATION=database/migrations/2026_10_11_000010_create_lightsail_servers.php
 CLIENT_IDENTITY_MIGRATION=database/migrations/2026_10_12_000001_canonicalize_subscription_clients.php
+PAYMENT_CALLBACK_MIGRATION=database/migrations/2026_10_13_000001_create_payment_callback_events.php
+CLIENT_DIAGNOSTIC_MIGRATION=database/migrations/2026_10_13_000002_create_client_diagnostic_reports.php
+INVITATION_REVIEW_MIGRATION=database/migrations/2026_10_13_000003_create_invitation_reviews.php
 usage() {
     cat <<'HELP'
 Usage: bash update.sh [options]
@@ -290,8 +293,11 @@ git cat-file -e "$TARGET:$SERVER_TRAFFIC_BUDGET_MIGRATION" || die 'Target lacks 
 git cat-file -e "$TARGET:$SERVER_TRAFFIC_IMPORT_MIGRATION" || die 'Target lacks server_traffic_import_migration migration'
 git cat-file -e "$TARGET:$LIGHTSAIL_MIGRATION" || die 'Target lacks lightsail migration'
 git cat-file -e "$TARGET:$CLIENT_IDENTITY_MIGRATION" || die 'Target lacks canonical client migration'
+git cat-file -e "$TARGET:$PAYMENT_CALLBACK_MIGRATION" || die "Target lacks 2026_10_13_000001_create_payment_callback_events.php"
+git cat-file -e "$TARGET:$CLIENT_DIAGNOSTIC_MIGRATION" || die "Target lacks 2026_10_13_000002_create_client_diagnostic_reports.php"
+git cat-file -e "$TARGET:$INVITATION_REVIEW_MIGRATION" || die "Target lacks 2026_10_13_000003_create_invitation_reviews.php"
 while IFS= read -r changed; do
-    [[ -z "$changed" || "$changed" == "$OPERATIONS_SCHEMA_MIGRATION" || "$changed" == "$MIGRATION" || "$changed" == "$INVITATION_MIGRATION" || "$changed" == "$LANGUAGE_MIGRATION" || "$changed" == "$CURRENCY_MIGRATION" || "$changed" == "$EXPIRY_MIGRATION" || "$changed" == "$REWARD_MIGRATION" || "$changed" == "$RESET_MIGRATION" || "$changed" == "$NOTICE_MIGRATION" || "$changed" == "$CREDIT_MIGRATION" || "$changed" == "$CONTENT_MIGRATION" || "$changed" == "$BANNER_MIGRATION" || "$changed" == "$RETIRED_NODE_TABLES_MIGRATION" || "$changed" == "$V2BOX_MIGRATION" || "$changed" == "$V2BOX_SINGBOX_MIGRATION" || "$changed" == "$NODE_ROUTES_MIGRATION" || "$changed" == "$NODE_DDNS_MIGRATION" || "$changed" == "$LOG_METADATA_MIGRATION" || "$changed" == "$NODE_TRAFFIC_BATCH_MIGRATION" || "$changed" == "$SERVER_TRAFFIC_BUDGET_MIGRATION" || "$changed" == "$SERVER_TRAFFIC_IMPORT_MIGRATION" || "$changed" == "$LIGHTSAIL_MIGRATION" || "$changed" == "$CLIENT_IDENTITY_MIGRATION" || "$changed" == "$NODE_DISPLAY_MIGRATION" || "$changed" == "$PAYMENT_HISTORY_MIGRATION" || "$changed" == "$SERVICE_MAIL_MIGRATION" || "$changed" == "$RETIRED_PAYMENT_MIGRATION" ]] || die "Unexpected migration: $changed; review scope first"
+    [[ -z "$changed" || "$changed" == "$OPERATIONS_SCHEMA_MIGRATION" || "$changed" == "$MIGRATION" || "$changed" == "$INVITATION_MIGRATION" || "$changed" == "$LANGUAGE_MIGRATION" || "$changed" == "$CURRENCY_MIGRATION" || "$changed" == "$EXPIRY_MIGRATION" || "$changed" == "$REWARD_MIGRATION" || "$changed" == "$RESET_MIGRATION" || "$changed" == "$NOTICE_MIGRATION" || "$changed" == "$CREDIT_MIGRATION" || "$changed" == "$CONTENT_MIGRATION" || "$changed" == "$BANNER_MIGRATION" || "$changed" == "$RETIRED_NODE_TABLES_MIGRATION" || "$changed" == "$V2BOX_MIGRATION" || "$changed" == "$V2BOX_SINGBOX_MIGRATION" || "$changed" == "$NODE_ROUTES_MIGRATION" || "$changed" == "$NODE_DDNS_MIGRATION" || "$changed" == "$LOG_METADATA_MIGRATION" || "$changed" == "$NODE_TRAFFIC_BATCH_MIGRATION" || "$changed" == "$SERVER_TRAFFIC_BUDGET_MIGRATION" || "$changed" == "$SERVER_TRAFFIC_IMPORT_MIGRATION" || "$changed" == "$LIGHTSAIL_MIGRATION" || "$changed" == "$CLIENT_IDENTITY_MIGRATION" || "$changed" == "$PAYMENT_CALLBACK_MIGRATION" || "$changed" == "$CLIENT_DIAGNOSTIC_MIGRATION" || "$changed" == "$INVITATION_REVIEW_MIGRATION" || "$changed" == "$NODE_DISPLAY_MIGRATION" || "$changed" == "$PAYMENT_HISTORY_MIGRATION" || "$changed" == "$SERVICE_MAIL_MIGRATION" || "$changed" == "$RETIRED_PAYMENT_MIGRATION" ]] || die "Unexpected migration: $changed; review scope first"
 done < <(git diff --name-only "$OLD_COMMIT" "$TARGET" -- database/migrations)
 git show "$TARGET:composer.json" > "$WORK_DIR/composer.json"
 git show "$OLD_COMMIT:composer.json" > "$WORK_DIR/original-composer.json"
@@ -446,7 +452,7 @@ PHASE=cache-preparation
 "$PHP_BIN" artisan route:clear
 "$PHP_BIN" artisan view:clear
 PHASE=migrations
-for migration in "$OPERATIONS_SCHEMA_MIGRATION" "$MIGRATION" "$INVITATION_MIGRATION" "$LANGUAGE_MIGRATION" "$RESET_MIGRATION" "$NOTICE_MIGRATION" "$CREDIT_MIGRATION" "$CONTENT_MIGRATION" "$BANNER_MIGRATION" "$REWARD_MIGRATION" "$EXPIRY_MIGRATION" "$CURRENCY_MIGRATION" "$NODE_DISPLAY_MIGRATION" "$RETIRED_PAYMENT_MIGRATION" "$SERVICE_MAIL_MIGRATION" "$PAYMENT_HISTORY_MIGRATION" "$V2BOX_MIGRATION" "$RETIRED_NODE_TABLES_MIGRATION" "$V2BOX_SINGBOX_MIGRATION" "$NODE_ROUTES_MIGRATION" "$NODE_DDNS_MIGRATION" "$LOG_METADATA_MIGRATION" "$NODE_TRAFFIC_BATCH_MIGRATION" "$SERVER_TRAFFIC_BUDGET_MIGRATION" "$SERVER_TRAFFIC_IMPORT_MIGRATION" "$LIGHTSAIL_MIGRATION" "$CLIENT_IDENTITY_MIGRATION"; do
+for migration in "$OPERATIONS_SCHEMA_MIGRATION" "$MIGRATION" "$INVITATION_MIGRATION" "$LANGUAGE_MIGRATION" "$RESET_MIGRATION" "$NOTICE_MIGRATION" "$CREDIT_MIGRATION" "$CONTENT_MIGRATION" "$BANNER_MIGRATION" "$REWARD_MIGRATION" "$EXPIRY_MIGRATION" "$CURRENCY_MIGRATION" "$NODE_DISPLAY_MIGRATION" "$RETIRED_PAYMENT_MIGRATION" "$SERVICE_MAIL_MIGRATION" "$PAYMENT_HISTORY_MIGRATION" "$V2BOX_MIGRATION" "$RETIRED_NODE_TABLES_MIGRATION" "$V2BOX_SINGBOX_MIGRATION" "$NODE_ROUTES_MIGRATION" "$NODE_DDNS_MIGRATION" "$LOG_METADATA_MIGRATION" "$NODE_TRAFFIC_BATCH_MIGRATION" "$SERVER_TRAFFIC_BUDGET_MIGRATION" "$SERVER_TRAFFIC_IMPORT_MIGRATION" "$LIGHTSAIL_MIGRATION" "$CLIENT_IDENTITY_MIGRATION" "$PAYMENT_CALLBACK_MIGRATION" "$CLIENT_DIAGNOSTIC_MIGRATION" "$INVITATION_REVIEW_MIGRATION"; do
     run_migration "$migration"
 done
 printf '\nAll approved migrations completed.\n'

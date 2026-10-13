@@ -13,16 +13,27 @@ class PaymentActions
 {
     public function notify($method, $uuid, Request $request)
     {
+        $stage = 'channel';
         try {
             $paymentService = new PaymentService($method, null, $uuid);
+            $stage = 'verification';
             $verify = $paymentService->notify($request->input());
             if ($verify === 'success') return 'success'; // Verified provider event with no settlement.
             if (!is_array($verify) || empty($verify['trade_no']) || empty($verify['callback_no'])) abort(500, 'verify error');
+            $stage = 'settlement';
             if (!$this->handle($verify['trade_no'], $verify['callback_no'], $method, $uuid, $verify)) {
                 abort(500, 'handle error');
             }
             return(isset($verify['custom_result']) ? $verify['custom_result'] : 'success');
         } catch (\Throwable $e) {
+            $knownReasons = ['gate is not found', 'Payment channel not found', 'gate is not enable', 'verify error', 'handle error', 'order is not found', 'channel mismatch', 'payment amount mismatch'];
+            \Illuminate\Support\Facades\Log::warning('Payment callback failed', [
+                'provider' => in_array($method, ['Paytaro', 'PaytaroQR'], true) ? $method : 'other',
+                'stage' => $stage,
+                'hasAppSecretHeader' => $request->hasHeader('X-App-Secret'),
+                'reason' => in_array($e->getMessage(), $knownReasons, true) ? $e->getMessage() : 'internal_error',
+                'exceptionClass' => get_class($e),
+            ]);
             abort(500, 'fail');
         }
     }

@@ -97,7 +97,7 @@ class PaytaroQR
 
     public function notify($params)
     {
-        $secret = isset($_SERVER['HTTP_X_APP_SECRET']) ? (string) $_SERVER['HTTP_X_APP_SECRET'] : '';
+        $secret = (string) request()->header('X-App-Secret', $_SERVER['HTTP_X_APP_SECRET'] ?? '');
         if ($secret === '' || !hash_equals($this->appSecret(), $secret)) {
             return false;
         }

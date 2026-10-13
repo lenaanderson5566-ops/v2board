@@ -60,7 +60,7 @@ class ClientIdentity
 
     public static function matchingAliases(string $type): array
     {
-        $extra = ['mihomo'=>['ClashMetaForAndroid'], 'sing-box'=>['Hiddify', 'HiddifyNext', 'HiddifyNextX', 'SFA', 'SFI', 'SFM', 'SFT']];
+        $extra = ['mihomo'=>['ClashMetaForAndroid'], 'sing-box'=>['Hiddify', 'HiddifyNext', 'HiddifyNextX', 'SFA', 'SFI', 'SFM', 'SFT', 'SFW', 'SFL']];
         return array_merge(self::ALIASES[$type] ?? [], $extra[$type] ?? []);
     }
 

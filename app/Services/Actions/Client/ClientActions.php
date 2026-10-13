@@ -75,9 +75,10 @@ class ClientActions
         $flag = $requestedFormat ?: strtolower((string) $request->userAgent());
         $resolvedClientType = null;
         $resolvedFormat = $this->resolveProtocolFormat($requestedFormat ?: $flag, $requestedFormat !== "");
-        if (!$request->attributes->get('client.native') && !SubscriptionClientRegistry::compatible((string) \App\Services\ClientIdentity::identify((string) $request->userAgent()), $resolvedFormat)) {
+        $identifiedClient = \App\Services\ClientIdentity::identify((string) $request->userAgent());
+        if (!$request->attributes->get('client.native') && !SubscriptionClientRegistry::compatible((string) $identifiedClient, $resolvedFormat)) {
             $riskLogService->createSubscribeLog($this->buildSubscribeLogPayload($request, $request->user, $resolvedFormat, 'failed', 'client_format_not_allowed'));
-            abort(422, 'Requested format is incompatible with the subscription client.');
+            abort(422, 'Subscription format '.$resolvedFormat.' is incompatible with client '.($identifiedClient ?? 'unknown').'.');
         }
         $clientStrategyService = new ClientStrategyService();
         $uaType = \App\Services\ClientIdentity::identify((string) $request->userAgent());

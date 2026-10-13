@@ -24,6 +24,21 @@ try {
  $assert(str_contains($r->headers->get('Content-Type'),'application/problem+json'),'Problem contract');
  $assert(SubscribeLog::where('user_id',$user->id)->where('reason','client_ua_not_allowed')->exists(),'Blocked request logged');
  $assert($call('FlClash/0.8.0')->getStatusCode()===200,'Allowed UA with compatible format');
+ $reportedFlclash = 'FlClash/v0.8.99 clash-verge Platform/wind';
+ $assert($call($reportedFlclash,'flclash')->getStatusCode()===200,'Reported FlClash UA accepts its own format');
+ $assert($call($reportedFlclash,'clash-verge')->getStatusCode()===200,'Reported FlClash UA accepts compatible Mihomo format');
+ $assert($call($reportedFlclash,'sing-box')->getStatusCode()===422,'Reported FlClash UA cannot import sing-box JSON');
+ App\Models\ClientStrategy::where('client_type','sing-box')->update(['is_enabled'=>1,'min_version'=>'1.14.3']);
+ App\Models\ServerV2node::create([
+  'group_id'=>[98765], 'name'=>'Policy test node', 'rate'=>'1',
+  'host'=>'node.example.test', 'port'=>'443', 'server_port'=>443,
+  'cipher'=>'aes-128-gcm', 'show'=>1, 'protocol'=>'shadowsocks',
+  'tls'=>0, 'network'=>'tcp', 'up_mbps'=>0, 'down_mbps'=>0,
+ ]);
+ $sfw = $call('SFW (sing-box 1.14.3; language zh_CN)','sing-box');
+ $assert($sfw->getStatusCode()===200,'Reported SFW UA accepts sing-box JSON: '.$sfw->getStatusCode().' '.(SubscribeLog::where('user_id',$user->id)->where('status','failed')->latest('id')->value('reason') ?? ''));
+ $assert($service->accessDenial('sing-box','SFW (sing-box 1.14.2; language zh_CN)')==='client_version_too_low','Desktop shell still enforces kernel minimum');
+ $assert($call('SFW (sing-box 1.14.3; language zh_CN)','flclash')->getStatusCode()===422,'SFW rejects Mihomo YAML');
  $assert(SubscribeLog::where('user_id',$user->id)->where('client_type','flclash')->exists(),'Stats use app identity');
  $assert($call('')->getStatusCode()===403,'Empty UA blocked');
  $assert($call('FlClash/0.8.0','general')->getStatusCode()===422,'General removed');

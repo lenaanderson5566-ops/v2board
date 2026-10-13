@@ -29,6 +29,13 @@
 
 ## 导入模板
 
+### 客户端识别与格式拒绝
+
+- sing-box 桌面端的 `SFW (sing-box 1.14.3; language zh_CN)` 和 `SFL` 归入 `sing-box` 策略；最低版本读取明确提供的内核版本，不使用桌面应用版本推测内核版本。来源：<https://github.com/SagerNet/sing-box-for-desktop/blob/main/src/main/userAgent.ts>。
+- `FlClash/v0.8.99 clash-verge Platform/windows` 识别为 `flclash`，可以请求 `format=flclash` 或 `format=clash-verge` 等 Mihomo 格式。后面的 `clash-verge` 标记不会覆盖首个产品标识。
+- `client_format_not_allowed` 表示请求格式与识别客户端不兼容。日志的客户端列是识别结果，并非请求的 `format`；同一 UA 的成功、失败记录不能单独证明请求参数相同。拒绝响应现在明确指出客户端和请求格式，排查时同时核对时间、实际格式与服务实例版本，不收集完整订阅令牌。
+- 客户端开关、最低版本、未知 UA 和不兼容格式仍分别检查；新增识别别名不会绕过管理员策略。
+
 - Clash / Stash 默认关闭局域网开放，绑定本机；需要共享代理的用户可在客户端显式开启。
 - Clash / Stash 保留手动选择，局域网域名不使用 fake IP；Clash / Stash / Surge / Surfboard 默认测速改为 HTTPS、10 分钟。
 - sing-box 默认远端 DNS 经节点选择出站，节点地址仍由本地解析器解析，避免引导循环；TUN MTU 调整为 1500。默认模板使用 sing-box 1.12+ 的 DNS 格式，请检查客户端内置内核版本。

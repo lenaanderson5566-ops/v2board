@@ -31,6 +31,14 @@ foreach (['HiddifyNext/2.0.0 (linux) like ClashMeta v2ray sing-box', 'HiddifyNex
 }
 $assert(C::identify('FlClash/v0.8.0 clash-verge Platform/linux')==='flclash','Official FlClash UA preserves app identity');
 $assert(C::version('flclash','FlClash/v0.8.0 clash-verge Platform/linux')==='0.8.0','Official FlClash version');
+foreach (['SFW', 'SFL'] as $shell) {
+ $ua = $shell.' (sing-box 1.14.3; language zh_CN)';
+ $assert(C::identify($ua)==='sing-box','Desktop shell identity '.$shell);
+ $assert(C::version('sing-box',$ua)==='1.14.3','Desktop shell uses explicit kernel version '.$shell);
+ $assert(C::version('sing-box',$shell.'/2.0.0')===null,'Shell app version is not the kernel version '.$shell);
+ $assert(C::identify('Mozilla/5.0 '.$ua)===null,'Embedded desktop shell rejected '.$shell);
+ $assert(C::identify($shell.'Fake/1.0')===null,'Desktop shell requires product boundary '.$shell);
+}
 $assert(C::identify('Linux x86_64')===null,'OS is not a client');
 $assert(C::identify('curl/8.0 FlClash/0.8.0')===null,'Embedded alias is not a client');
 foreach (App\Services\SubscriptionClientRegistry::CLIENTS as $flag=>[$id,$class]) {

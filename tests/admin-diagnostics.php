@@ -21,6 +21,17 @@ try {
     $assert(NodeRuntimeService::connection(null, time(), false) === 'online');
     $assert(NodeRuntimeService::connection(time(), null, true) === 'limited');
     $assert(NodeRuntimeService::connection(time() - 400, null, true) === 'offline');
+    $servers = Mockery::mock(App\Services\ServerService::class)->makePartial();
+    $servers->shouldReceive('getAllV2node')->withNoArgs()->andReturn([
+        ['id' => $id, 'type' => 'v2node', 'parent_id' => null, 'sort' => 0],
+    ]);
+    $servers->shouldReceive('getAllV2node')->with('v2box')->andReturn([]);
+    Cache::forget($heartbeat);
+    $assert($servers->getAllServers()[0]['runtime_status'] === 'unknown');
+    Cache::put($heartbeat, time(), 3600);
+    $assert($servers->getAllServers()[0]['runtime_status'] === 'online');
+    Cache::put($heartbeat, time() - 400, 3600);
+    $assert($servers->getAllServers()[0]['runtime_status'] === 'offline');
     $assert(NodeRuntimeService::inspect('v2node', $node)['configurationState'] === 'unknown');
     NodeRuntimeService::record('v2node', $id, NodeConfiguration::build($node), 'v2');
     $state = NodeRuntimeService::inspect('v2node', $node);

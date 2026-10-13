@@ -172,6 +172,10 @@ class ServerService
         $this->mergeData($servers);
         $servers = NodeAddressService::forNodes($servers);
         $servers = ServerTrafficBudgetService::decorateNodes($servers);
+        foreach ($servers as &$server) {
+            $server['runtime_status'] = NodeRuntimeService::connection($server['last_check_at'] ?? null, $server['last_push_at'] ?? null, (bool) ($server['traffic_budget']['blocked'] ?? false));
+        }
+        unset($server);
         $tmp = array_column($servers, 'sort');
         array_multisort($tmp, SORT_ASC, $servers);
         return $servers;

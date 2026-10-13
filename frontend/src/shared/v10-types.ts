@@ -143,3 +143,5 @@ export type V10NodeAddressReport = { "ipv4"?: string; "ipv6"?: string };
 export type V10NodeAddressAccepted = { "data": { "accepted": boolean } };
 export type V10NodeTrafficBatch = { "records": Array<V10NodeTrafficRecord>; "batchId": string };
 export type V10NodeTrafficBudget = { "id": number; "name": string; "limitBytes": number; "usedBytes": number; "countingMode": string; "resetDay": number; "blocked": boolean; "periodStart": string; "periodEnd": string; "periodEndUnix": number; "traffic": { "uploadBytes": number; "downloadBytes": number } } | null;
+export type V10NodePreview = { "nodeId"?: string | null; "proxyName"?: string | null; "name"?: string | null; "regionCode"?: string | null; "cityCode"?: string | null; "displayLabel"?: string | null; "tags"?: Array<string>; "displayNames"?: string | null };
+export type V10GetMeNodePreviewsInput = {  };

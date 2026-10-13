@@ -12,6 +12,18 @@ use Illuminate\Support\Facades\DB;
 
 class ServerActions
 {
+    public function previews(Request $request)
+    {
+        $nodes = [];
+        foreach (['v2node' => \App\Models\ServerV2node::class, 'v2box' => \App\Models\ServerV2box::class] as $type => $model) {
+            foreach ($model::where('show', 1)->orderBy('sort')->orderBy('id')->get(['id', 'name', 'region_code', 'city_code', 'display_label', 'tags', 'sort']) as $node) {
+                $nodes[] = \App\Services\NodeDisplayService::enrich([...$node->toArray(), 'type' => $type]);
+            }
+        }
+        usort($nodes, fn ($a, $b) => ($a['sort'] ?? 0) <=> ($b['sort'] ?? 0));
+        return response()->json(['data' => $nodes])->header('Cache-Control', 'private, no-store');
+    }
+
     public function fetch(Request $request)
     {
         $user = User::find($request->user['id']);

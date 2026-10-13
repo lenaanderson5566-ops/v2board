@@ -994,6 +994,32 @@
       "callbackUrl": [
         "callbackUrl"
       ]
+    },
+    "nodePreview": {
+      "nodeId": [
+        "node_id"
+      ],
+      "proxyName": [
+        "proxy_name"
+      ],
+      "name": [
+        "name"
+      ],
+      "regionCode": [
+        "region_code"
+      ],
+      "cityCode": [
+        "city_code"
+      ],
+      "displayLabel": [
+        "display_label"
+      ],
+      "tags": [
+        "tags"
+      ],
+      "displayNames": [
+        "display_names"
+      ]
     }
   },
   "endpoints": {
@@ -2049,6 +2075,17 @@
       "path": "public/fastai/entrypoints",
       "method": "GET",
       "key": "Guest/FastaiController@entrypoints"
+    },
+    "getMeNodePreviews": {
+      "input": {},
+      "output": "array:nodePreview",
+      "role": "user",
+      "status": 200,
+      "raw": false,
+      "bindings": {},
+      "path": "me/node-previews",
+      "method": "GET",
+      "key": "User/ServerController@previews"
     }
   },
   "routes": {

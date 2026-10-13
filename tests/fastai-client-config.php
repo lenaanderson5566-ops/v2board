@@ -100,11 +100,24 @@ try {
     $assert($denied->getStatusCode()===403 && $problem['code']==='SUBSCRIPTION_UNAVAILABLE', 'Unpaid account denied without placeholder config');
     $assert(str_contains($denied->headers->get('Content-Type'), 'application/problem+json') && isset($problem['requestId']), 'Structured error contract');
     $assert(App\Services\AuthService::decryptAuthData($token)!==false, 'Entitlement denial keeps session');
+    $preview = $call('/api/v10/me/node-previews', $token, 'GET', 'application/json');
+    $previews = json_decode($preview->getContent(), true)['data'];
+    $assert($preview->getStatusCode()===200 && count($previews)>=2, 'Unpaid users can preview displayed routes');
+    foreach ($previews as $item) {
+        $assert(count(array_diff(array_keys($item), ['nodeId','proxyName','name','regionCode','cityCode','displayLabel','tags','displayNames']))===0, 'Preview exposes only display fields');
+    }
+    App\Models\ServerV2node::where('name', 'FastAI test node')->update(['show'=>0]);
+    $hiddenPreview = $call('/api/v10/me/node-previews', $token, 'GET', 'application/json');
+    $assert(!in_array('FastAI test node', array_column(json_decode($hiddenPreview->getContent(), true)['data'], 'name')), 'Hidden nodes never appear in previews');
+    App\Models\ServerV2node::where('name', 'FastAI test node')->update(['show'=>1]);
+    $assert($call('/api/v10/me/node-previews')->getStatusCode()===401, 'Preview requires a session');
+
     $failedLog=App\Models\Log::where('title','Client configuration request')->latest('id')->first();
     $failedContext=json_decode($failedLog->getRawOriginal('context'),true);
     $assert($failedContext['status']===403, 'Config denial is logged with its stable reason');
     $user->update(['plan_id'=>1, 'transfer_enable'=>1073741824, 'expired_at'=>time()-1]);
     $assert($call($path, $token)->getStatusCode()===403, 'Expired subscription denied');
+    $assert($call('/api/v10/me/node-previews', $token, 'GET', 'application/json')->getStatusCode()===200, 'Expired users retain route preview');
     $user->update(['credit_balance'=>1073741824]);
     $assert($call($path, $token)->getStatusCode()===200, 'Independent traffic credit remains available');
     App\Models\ClientStrategy::updateOrCreate(['client_type'=>'flclash'], ['is_enabled'=>1, 'min_version'=>'9.0.0']);
@@ -118,7 +131,10 @@ try {
     config(['v2board.fastai_enabled'=>0]);
     $disabled = $call($path, $token);
     $assert($disabled->getStatusCode()===403 && json_decode($disabled->getContent(), true)['code']==='CLIENT_DISABLED', 'Disabled client policy');
+    config(['v2board.fastai_enabled'=>1]);
+    $assert($call($path.'&core=sing-box', $token, 'GET', 'application/json')->getStatusCode()===200, 'Enabling FastAI restores valid users without a new login');
     $user->update(['banned'=>1]);
+    $assert($call('/api/v10/me/node-previews', $token)->getStatusCode()===403, 'Banned accounts cannot preview');
     $assert($call($path, $token)->getStatusCode()===403, 'Banned session denied');
     $user->update(['banned'=>0]);
     $auth->removeAllSession();

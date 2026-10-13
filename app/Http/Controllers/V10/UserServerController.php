@@ -2,6 +2,13 @@
 namespace App\Http\Controllers\V10;
 class UserServerController extends ResourceController
 {
+    public function getMeNodePreviews(\Illuminate\Http\Request $request)
+    {
+        $this->prepare($request, 'getMeNodePreviews');
+        $result = app(\App\Services\Actions\User\ServerActions::class)->previews($request);
+        return $this->respond($request, $result, 'getMeNodePreviews');
+    }
+
     public function getMeNodes(\Illuminate\Http\Request $request)
     {
         $this->prepare($request, 'getMeNodes');

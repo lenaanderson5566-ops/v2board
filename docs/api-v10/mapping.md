@@ -124,3 +124,6 @@ Subscription format names additionally accept `clash-party`, `throne`, `nekobox`
 Client identity migration now consolidates old strategy keys and log identities. The public `format` field maps directly to internal `format`; `flag` is rejected even when format is also supplied. Canonical format enums and frontend types are updated. Authenticated native configuration remains unchanged.
 
 支付回调加固（2026-10-12）：V10 与保留的旧支付回调继续共用 PaymentActions，原生响应及路径不变。EPay、Paytaro、StripeCheckout 核对金额、币种和已选择渠道；历史快照允许先前选择的渠道延迟到账。没有新用户 JSON 字段，前端传输类型保持不变。
+
+### Display-only route previews
+`GET /api/v10/me/node-previews` maps to `UserServerController@getMeNodePreviews` and `ServerActions::previews`. It requires a non-banned authenticated user, but no active subscription. The `nodePreview` projection contains only names, region labels, tags and stable display identities for visible nodes. It has no host, port, UUID, secret, transport or group membership fields. `/me/client-config` retains its entitlement and FastAI access checks. Previews cannot be used to establish a connection.

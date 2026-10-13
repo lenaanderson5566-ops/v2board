@@ -1571,5 +1571,25 @@
     "scope": "guest",
     "status": 200,
     "key": "Guest/FastaiController@entrypoints"
+  },
+  {
+    "legacy": null,
+    "legacyMethod": "GET",
+    "method": "GET",
+    "path": "me/node-previews",
+    "action": "App\\Http\\Controllers\\V10\\UserServerController@getMeNodePreviews",
+    "parameters": [
+      {
+        "name": "request",
+        "type": "Illuminate\\Http\\Request",
+        "optional": false
+      }
+    ],
+    "bindings": {},
+    "middleware": [],
+    "role": "user",
+    "scope": "user",
+    "status": 200,
+    "key": "User/ServerController@previews"
   }
 ]

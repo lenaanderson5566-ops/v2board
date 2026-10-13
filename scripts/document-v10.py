@@ -253,7 +253,7 @@ if telegram_only:
     for path, operation in document['paths'].items():
         if ('/telegram' in path and not timezone_only) or (timezone_only and path in ['/me','/me/subscription','/me/preferences/options']): published['paths'][path] = operation
     for name, schema in document['components']['schemas'].items():
-        if ((name.lower() == 'bot' or 'telegram' in name.lower()) and not timezone_only) or (timezone_only and name in ['account','subscription','preferences','traffic','patchMeInput']): published['components']['schemas'][name] = schema
+        if ((name.lower() == 'bot' or 'telegram' in name.lower()) and not timezone_only) or (timezone_only and name in ['account','subscription','preferences','traffic','timeZoneChoice','patchMeInput']): published['components']['schemas'][name] = schema
     document = published
     new_rows = [] if timezone_only else [line for line in mapping if line.startswith('|') and '/telegram' in line]
     mapping = [line for line in published_mapping.splitlines() if timezone_only or not (line.startswith('|') and '/telegram' in line)]
@@ -279,7 +279,7 @@ types = ['// Phase 1: all monetary values are integer fen; USD is not enabled.',
 for name, schema in schemas.items(): types.append('export type V10' + name[0].upper() + name[1:] + ' = ' + ts_type(schema) + ';')
 if telegram_only:
     updates = [line for line in types if line.startswith('export type V10Bot =') or ('telegram' in line.split('=')[0].lower() and line.startswith('export type'))]
-    if timezone_only: updates = [line for line in types if any(line.startswith('export type V10'+name+' =') for name in ['Account','Subscription','Preferences','Traffic','PatchMeInput'])]
+    if timezone_only: updates = [line for line in types if any(line.startswith('export type V10'+name+' =') for name in ['Account','Subscription','Preferences','Traffic','TimeZoneChoice','PatchMeInput'])]
     types = [line for line in published_types.splitlines() if not any(line.split('=')[0] == update.split('=')[0] for update in updates)] + updates
 
 (root / 'frontend/src/shared/v10-types.ts').write_text('\n'.join(types) + '\n', encoding='utf-8')

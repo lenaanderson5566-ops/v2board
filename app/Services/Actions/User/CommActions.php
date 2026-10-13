@@ -13,6 +13,7 @@ class CommActions
     {
         return response([
             'data' => [
+                'time_zone_choices' => \App\Services\TimeZones::choices(),
                 'time_zones' => \App\Services\TimeZones::all(),
                 'system_timezone' => \App\Services\TimeZones::system(),
                 'coupons_available' => \App\Models\Coupon::where('show', 1)->where('started_at', '<=', time())->where('ended_at', '>=', time())->where(fn ($q) => $q->whereNull('limit_use')->orWhere('limit_use', '>', 0))->exists(),

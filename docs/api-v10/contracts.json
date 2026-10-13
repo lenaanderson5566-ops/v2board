@@ -880,6 +880,11 @@
       ],
       "systemTimeZone": [
         "system_timezone"
+      ],
+      "timeZoneChoices": [
+        "time_zone_choices",
+        "array",
+        "timeZoneChoice"
       ]
     },
     "task": {
@@ -1100,6 +1105,20 @@
       ],
       "expiresAt": [
         "expiresAt"
+      ]
+    },
+    "timeZoneChoice": {
+      "id": [
+        "id",
+        "string"
+      ],
+      "offset": [
+        "offset",
+        "string"
+      ],
+      "preview": [
+        "preview",
+        "string"
       ]
     }
   },

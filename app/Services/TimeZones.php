@@ -3,6 +3,13 @@ namespace App\Services;
 
 class TimeZones {
     public static function all(): array { return \DateTimeZone::listIdentifiers(\DateTimeZone::ALL); }
+    public static function choices(): array {
+        $now=new \DateTimeImmutable('now',new \DateTimeZone('UTC'));
+        return array_map(function ($zone) use ($now) {
+            $local=$now->setTimezone(new \DateTimeZone($zone));
+            return ['id'=>$zone,'offset'=>'UTC'.$local->format('P'),'preview'=>$local->format('Y-m-d H:i:s')];
+        },self::all());
+    }
     public static function valid($zone): bool { return is_string($zone) && in_array($zone,self::all(),true); }
     public static function system(): string {
         $zone=config('v2board.system_timezone','Asia/Shanghai');

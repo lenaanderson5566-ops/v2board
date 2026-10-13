@@ -431,5 +431,20 @@
   "未能确认支付请求结果，正在检查订单状态，请勿重复付款。": "Chưa xác định được kết quả yêu cầu thanh toán. Đang kiểm tra đơn hàng; vui lòng không thanh toán lại.",
   "时间显示时区": "Múi giờ hiển thị",
   "仅改变显示方式，套餐到期与流量重置时刻不变。": "Chỉ thay đổi cách hiển thị. Thời điểm hết hạn gói và đặt lại lưu lượng không thay đổi.",
-  "跟随设备": "Theo thiết bị"
+  "跟随设备": "Theo thiết bị",
+  "北京": "Bắc Kinh",
+  "香港": "Hồng Kông",
+  "东京": "Tokyo",
+  "新加坡": "Singapore",
+  "伦敦": "Luân Đôn",
+  "纽约": "New York",
+  "洛杉矶": "Los Angeles",
+  "悉尼": "Sydney",
+  "更多时区": "Múi giờ khác",
+  "当前时间": "Giờ hiện tại",
+  "搜索时区": "Tìm múi giờ",
+  "搜索城市或时区名称": "Tìm thành phố hoặc múi giờ",
+  "搜索结果": "Kết quả tìm kiếm",
+  "暂无匹配时区": "Không có múi giờ phù hợp",
+  "收起": "Thu gọn"
 }

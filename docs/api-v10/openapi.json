@@ -16042,6 +16042,12 @@
           "systemTimeZone": {
             "type": "string",
             "nullable": true
+          },
+          "timeZoneChoices": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/timeZoneChoice"
+            }
           }
         },
         "additionalProperties": false
@@ -18337,6 +18343,24 @@
       "postMeIntegrationsTelegramGroupInvitationsInput": {
         "type": "object",
         "properties": {}
+      },
+      "timeZoneChoice": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "nullable": true
+          },
+          "offset": {
+            "type": "string",
+            "nullable": true
+          },
+          "preview": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
       }
     }
   }

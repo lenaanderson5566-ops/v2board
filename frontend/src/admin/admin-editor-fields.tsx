@@ -1,3 +1,4 @@
+import { TimeZonePicker } from "../shared/TimeZonePicker";
 import { lazy, Suspense } from "react";
 import { AdminCitySelect } from "./admin-city-select";
 import { AdminRegionSelect } from "./admin-region-select";
@@ -21,6 +22,15 @@ export const adminEditorField: EditorFieldRenderer = (
     onChange,
     values,
 ) => {
+    if (field.key === "system_timezone")
+        return (
+            <TimeZonePicker
+                label={field.label}
+                value={String(value || "Asia/Shanghai")}
+                zones={field.options?.map((option) => option[0]) || []}
+                onChange={onChange}
+            />
+        );
     if (field.key === "region_code" && field.type === "select")
         return (
             <AdminRegionSelect

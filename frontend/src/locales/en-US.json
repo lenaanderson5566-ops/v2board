@@ -433,5 +433,20 @@
   "未能确认支付请求结果，正在检查订单状态，请勿重复付款。": "The payment request result is unknown. Checking order status; please do not pay again.",
   "时间显示时区": "Display time zone",
   "仅改变显示方式，套餐到期与流量重置时刻不变。": "Only changes how times are displayed. Plan expiry and traffic reset instants stay the same.",
-  "跟随设备": "Follow device"
+  "跟随设备": "Follow device",
+  "北京": "Beijing",
+  "香港": "Hong Kong",
+  "东京": "Tokyo",
+  "新加坡": "Singapore",
+  "伦敦": "London",
+  "纽约": "New York",
+  "洛杉矶": "Los Angeles",
+  "悉尼": "Sydney",
+  "更多时区": "More time zones",
+  "当前时间": "Current time",
+  "搜索时区": "Search time zones",
+  "搜索城市或时区名称": "Search city or time zone",
+  "搜索结果": "Search results",
+  "暂无匹配时区": "No matching time zones",
+  "收起": "Collapse"
 }

@@ -1,13 +1,10 @@
+import { TimeZonePicker } from "../shared/TimeZonePicker";
 import { useState, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import { changeLanguage, languages, locale, tx } from "../shared/i18n";
 import { p } from "./profile-copy";
 import { request, boot, type Row } from "../shared/api";
-import {
-    displayTimeZone,
-    setDisplayTimeZone,
-    validZone,
-} from "../shared/timezone";
+import { setDisplayTimeZone } from "../shared/timezone";
 import "../shared/account-preferences.css";
 export function AccountPreferences({ user }: { user: Row }) {
     useTranslation();
@@ -32,20 +29,32 @@ export function AccountPreferences({ user }: { user: Row }) {
                             {tx("时间显示时区")}
                         </label>
                         <p className="muted">
-                            {tx("仅改变显示方式，套餐到期与流量重置时刻不变。")}{" "}
-                            {displayTimeZone()}
+                            {tx(
+                                "仅改变显示方式，套餐到期与流量重置时刻不变。",
+                            )}{" "}
                         </p>
                     </div>
-                    <select
+                    <TimeZonePicker
                         id="profile-timezone"
+                        label={tx("时间显示时区")}
                         value={user.display_timezone || ""}
+                        zones={
+                            boot.timeZones || [
+                                "UTC",
+                                "Asia/Shanghai",
+                                "Asia/Tokyo",
+                                "America/New_York",
+                                "Europe/London",
+                            ]
+                        }
+                        allowDevice
                         disabled={busy}
-                        onChange={async (event) => {
+                        onChange={async (selected) => {
                             if (saving.current) return;
                             saving.current = true;
                             setBusy(true);
                             setError("");
-                            const zone = event.target.value || null;
+                            const zone = selected || null;
                             try {
                                 await request("user/update", {
                                     display_timezone: zone,
@@ -59,24 +68,7 @@ export function AccountPreferences({ user }: { user: Row }) {
                                 setBusy(false);
                             }
                         }}
-                    >
-                        <option value="">{tx("跟随设备")}</option>
-                        {(
-                            boot.timeZones || [
-                                "UTC",
-                                "Asia/Shanghai",
-                                "Asia/Tokyo",
-                                "America/New_York",
-                                "Europe/London",
-                            ]
-                        )
-                            .filter(validZone)
-                            .map((zone) => (
-                                <option key={zone} value={zone}>
-                                    {zone}
-                                </option>
-                            ))}
-                    </select>
+                    />
                 </div>
                 <div className="settings-row">
                     <div>

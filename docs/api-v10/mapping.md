@@ -137,3 +137,7 @@ Client identity migration now consolidates old strategy keys and log identities.
 Both current V10 and retained legacy callbacks use the shared payment action. After X-App-Secret verification, PaytaroQR requires `order_amount` (yuan, positive, maximum two decimal places) and `order_currency`; `Money::parseMinor` converts the original order amount into integer fen. `pay_amount` and `pay_currency` describe the customer's actual payment asset and are not compared against the CNY order. The shared action checks total plus the stored channel fee, including QR retries, before acknowledging a match. Matching retries preserve `success` without another settlement job. Missing/malformed amounts or currency and mismatches return HTTP 500 with native `fail`, with no new settlement. There are no browser transport changes; callback fields remain provider-native.
 
 Provider reference: https://v3.paytaro.com/#/docs/api-notify and https://v3.paytaro.com/#/docs/api-pay (checked 2026-10-13).
+
+## Client diagnostics
+
+POST /api/v10/me/diagnostic-reports accepts manual, user-approved check results only. The server derives account identity and returns reportId. Five reports/account/hour; default retention 30 days, configurable under log settings.

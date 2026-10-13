@@ -3,6 +3,8 @@ import { Editor, Panel, State, useData } from "../shared/ui";
 const time = (value: number) =>
     value ? new Date(value * 1000).toLocaleString() : "—";
 const retentionFields = [
+    ["client_diagnostic_retention_days", "客户端诊断", 1, "默认保留 30 天；用户手动提交的脱敏快照。"],
+    ["registration_signal_retention_days", "注册信号摘要", 1, "默认保留 90 天；清理后无法与更早的注册信号比较，已有复核结论保留。"],
     [
         "payment_callback_retention_days",
         "支付回调诊断",

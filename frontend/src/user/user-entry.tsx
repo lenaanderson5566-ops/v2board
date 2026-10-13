@@ -1,3 +1,4 @@
+import { FastaiDownload } from "./FastaiDownload";
 import { BannerStrip } from "../shared/BannerStrip";
 import {
     UserDashboard,
@@ -12,7 +13,7 @@ import {
     Traffic,
 } from "./user";
 import { AccountSecurity } from "./AccountSecurity";
-export default function UserContent({
+function UserBody({
     current,
     path,
 }: {
@@ -51,4 +52,8 @@ export default function UserContent({
             <UserDashboard />
         </>
     );
+}
+
+export default function UserContent(props: { current: string; path: string }) {
+    return <>{["dashboard", "overview", "subscribe"].includes(props.current) && <FastaiDownload />}<UserBody {...props} /></>;
 }

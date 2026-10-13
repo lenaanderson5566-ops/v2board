@@ -9,7 +9,11 @@ final class Input
     // Public validation is independent of the legacy FormRequests used by shared actions.
     public static function validate(Request $request, array $contract): void
     {
+        if ($contract['key'] === 'User/DiagnosticController@store' && array_diff(array_keys($request->all()), ['clientVersion','platform','checks'])) {
+            throw \Illuminate\Validation\ValidationException::withMessages(['report'=>'Unsupported diagnostic fields.']);
+        }
         $types = [
+            'checks'=>'array|max:9',
             'legacyToken'=>'string|max:8192',
             'codeChallenge'=>'string|regex:/^[A-Za-z0-9_-]{43}$/',
             'state'=>'string|regex:/^[A-Za-z0-9_-]{43}$/',

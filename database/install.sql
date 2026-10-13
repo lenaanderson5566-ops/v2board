@@ -558,3 +558,26 @@ CREATE TABLE IF NOT EXISTS `v2_payment_callback_event` (
   KEY `v2_payment_callback_event_payment_id_created_at_index` (`payment_id`,`created_at`),
   KEY `v2_payment_callback_event_created_at_index` (`created_at`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS `v2_client_diagnostic_report` (
+ `id` bigint unsigned NOT NULL AUTO_INCREMENT, `user_id` int unsigned NOT NULL,
+ `report_id` char(36) NOT NULL, `client_version` varchar(32) NOT NULL, `platform` varchar(16) NOT NULL,
+ `checks` json NOT NULL, `created_at` int unsigned NOT NULL,
+ PRIMARY KEY (`id`), UNIQUE KEY (`report_id`), KEY (`user_id`), KEY (`created_at`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+CREATE TABLE IF NOT EXISTS `v2_registration_signal` (
+ `id` bigint unsigned NOT NULL AUTO_INCREMENT, `user_id` int unsigned NOT NULL,
+ `ip_hash` varchar(64) NULL, `ua_hash` varchar(64) NULL, `created_at` int unsigned NOT NULL,
+ PRIMARY KEY (`id`), UNIQUE KEY (`user_id`), KEY (`created_at`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+CREATE TABLE IF NOT EXISTS `v2_invitation_review` (
+ `id` bigint unsigned NOT NULL AUTO_INCREMENT, `user_id` int unsigned NOT NULL, `inviter_id` int unsigned NOT NULL,
+ `signals` json NOT NULL, `state` varchar(24) NOT NULL DEFAULT 'pending', `revision` int unsigned NOT NULL DEFAULT 0,
+ `created_at` int unsigned NOT NULL, `updated_at` int unsigned NOT NULL,
+ PRIMARY KEY (`id`), UNIQUE KEY (`user_id`), KEY (`inviter_id`), KEY (`state`), KEY (`created_at`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+CREATE TABLE IF NOT EXISTS `v2_invitation_review_event` (
+ `id` bigint unsigned NOT NULL AUTO_INCREMENT, `review_id` bigint unsigned NOT NULL,
+ `admin_id` int unsigned NOT NULL, `state` varchar(24) NOT NULL, `note` varchar(1000) NOT NULL, `created_at` int unsigned NOT NULL,
+ PRIMARY KEY (`id`), KEY (`review_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;

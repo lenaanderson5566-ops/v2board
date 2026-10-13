@@ -26,6 +26,7 @@ export const legacyAdminMenu = [
     ["risk", "风控规则", "shield", "风控与客户端"],
     ["blacklist-ip", "IP 黑名单", "ban", "风控与客户端"],
     ["blacklist-ua", "UA 黑名单", "ban", "风控与客户端"],
+    ["client-diagnostics", "客户端诊断", "screen-smartphone", "日志"],
     ["log-login", "登录日志", "login", "日志"],
     ["log-subscribe", "订阅日志", "notebook", "日志"],
     ["log-connection", "连接日志", "link", "日志"],

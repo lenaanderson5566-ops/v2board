@@ -107,6 +107,7 @@ export interface Resource {
     fetch: string;
     sort?: string;
     sortKind?: "plans" | "knowledge";
+    serverSearch?: boolean;
     save?: string;
     drop?: string;
     fields: Field[];
@@ -974,7 +975,7 @@ export function ResourcePage({
         savedView.routeBackend === "v2box" ? "v2box" : "v2node",
     );
     const groups = useData<Row[]>(
-        resource.fields.some((f) => f.key === "group_id")
+        (resource.fields.some((f) => f.key === "group_id") || resource.columns.some(([key]) => key === "group_id"))
             ? admin("server/group/fetch")
             : "",
     );
@@ -1099,7 +1100,7 @@ export function ResourcePage({
                 resource.title.includes("日志") || resource === resources.online
                     ? search
                     : undefined,
-            keyword: resource.title.includes("黑名单") ? search : undefined,
+            keyword: resource.serverSearch || resource.title.includes("黑名单") ? search : undefined,
             ...logFilters,
             ...queryParams,
             ...(resource === resources.routes ? { backend: routeBackend } : {}),
@@ -1146,7 +1147,7 @@ export function ResourcePage({
     }
     const list = (d.data || []).filter(
         (r) =>
-            Boolean(logKind) ||
+            Boolean(logKind) || resource.serverSearch ||
             !search ||
             Object.values(r).some((v) =>
                 String(v ?? "")
@@ -1269,6 +1270,12 @@ export function ResourcePage({
                         columns={resource.columns
                             .filter(([key]) => !hiddenColumns.includes(key))
                             .map(([key, label, render]) => {
+                                if (key === "group_id" && !render)
+                                    return [key, label, (r: Row) => {
+                                        if (r.group_id == null) return "—";
+                                        const group = rows(groups.data).find((g) => String(g.id) === String(r.group_id));
+                                        return group?.name || `未知权限组 (#${r.group_id})`;
+                                    }] as [string, string, (r: Row) => ReactNode];
                                 if (
                                     (key === "show" || key === "renew") &&
                                     [

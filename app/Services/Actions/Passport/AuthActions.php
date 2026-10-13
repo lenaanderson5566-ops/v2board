@@ -121,6 +121,11 @@ class AuthActions
             );
         }
 
+        try {
+            (new \App\Services\InvitationReviewService())->record($user, $request);
+        } catch (\Throwable $exception) {
+            \Illuminate\Support\Facades\Log::warning('Registration review evidence unavailable');
+        }
         $authService = new AuthService($user);
 
         return response()->json([

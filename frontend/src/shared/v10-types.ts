@@ -145,3 +145,6 @@ export type V10NodeTrafficBatch = { "records": Array<V10NodeTrafficRecord>; "bat
 export type V10NodeTrafficBudget = { "id": number; "name": string; "limitBytes": number; "usedBytes": number; "countingMode": string; "resetDay": number; "blocked": boolean; "periodStart": string; "periodEnd": string; "periodEndUnix": number; "traffic": { "uploadBytes": number; "downloadBytes": number } } | null;
 export type V10NodePreview = { "nodeId"?: string | null; "proxyName"?: string | null; "name"?: string | null; "regionCode"?: string | null; "cityCode"?: string | null; "displayLabel"?: string | null; "tags"?: Array<string>; "displayNames"?: string | null };
 export type V10GetMeNodePreviewsInput = {  };
+
+export type V10DiagnosticReceipt = { "reportId": string };
+export type V10PostMeDiagnosticReportsInput = { "clientVersion": string; "platform": "windows" | "android" | "macos" | "linux" | "ios"; "checks": Array<{ "id": "dns" | "website" | "proxy" | "settings" | "systemProxy" | "route" | "tcp" | "tls" | "reference"; "status": "passed" | "failed" | "skipped" | "unverified"; "elapsedMs"?: number | null }> };

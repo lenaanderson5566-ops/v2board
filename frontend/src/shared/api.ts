@@ -21,6 +21,7 @@ export interface Envelope<T> {
     code?: string;
 }
 export interface Boot {
+    fastaiDownloads?: import("./v10-types").V10FastaiRelease[];
     apiBaseUrl?: string;
     footerHtml?: string;
     clientRecommendations?: Record<string, (string | null)[]>;

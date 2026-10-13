@@ -7,6 +7,18 @@ use Illuminate\Validation\ValidationException;
 
 final class FastaiReleaseService
 {
+    public function publicDownloads(): array
+    {
+        $policy = new ClientStrategyService();
+        if (!$policy->isEnabled('fastai')) return [];
+        return array_values(array_filter(config('v2board.fastai_releases', []), function ($release) use ($policy) {
+            return ($release['channel'] ?? '') === 'stable'
+                && str_starts_with($release['downloadUrl'] ?? '', 'https://')
+                && $policy->isVersionAllowed('fastai', $release['latestVersion'] ?? null)
+                && ClientIdentity::allowsVersion($release['minimumVersion'] ?? null, $release['latestVersion'] ?? null);
+        }));
+    }
+
     public static function validateCatalog(array $catalog): void
     {
         Validator::make(['releases' => $catalog], [

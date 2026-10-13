@@ -1,3 +1,4 @@
+import { AdminClientDiagnostics } from "./AdminClientDiagnostics";
 import { AdminLogSettings } from "./AdminLogSettings";
 import { AdminSubscriptions } from "./AdminSubscriptions";
 import { AdminInvitations } from "./AdminInvitations";
@@ -19,6 +20,7 @@ export default function AdminContent({ current }: { current: string }) {
         return <Overview key="system" initialTab="system" />;
     if (current === "system-log") return <AdminSystemLogs />;
     if (current === "ddns") return <Nodes key="ddns" initialTab="ddns" />;
+    if (current === "client-diagnostics") return <AdminClientDiagnostics />;
     if (current === "invitations") return <AdminInvitations />;
     if (current === "users" || current === "usage") return <UsersPage />;
     if (current === "orders") return <OrdersPage />;

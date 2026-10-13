@@ -1606,3 +1606,18 @@ body[data-console="admin"] .node-management-tools .node-quota-filter input {
 .dashboard-rank-track { height: 10px; background: #edf2f7; border-radius: 5px; overflow: hidden; }
 .dashboard-rank-track > div { height: 100%; background: #1890ff; border-radius: inherit; }
 body[data-console="admin"] .section-tabs [aria-selected="true"], body[data-console="admin"] .user-toolbar [aria-pressed="true"] { background: #e6f4ff; color: #096dd9; border-color: #91caff; }
+
+body[data-console="admin"] .admin-row-popover {
+    position: fixed;
+    margin: 0;
+    width: 210px;
+    max-height: calc(100dvh - 16px);
+    overflow-y: auto;
+    padding: 8px;
+    border: 1px solid var(--border, #ddd);
+    border-radius: 12px;
+    background: var(--surface, white);
+    box-shadow: 0 12px 35px #0003;
+}
+body[data-console="admin"] .admin-row-popover:popover-open { display: grid; gap: 4px; }
+body[data-console="admin"] .admin-row-popover > button { text-align: left; width: 100%; }

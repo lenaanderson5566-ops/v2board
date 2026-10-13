@@ -1020,6 +1020,11 @@
       "displayNames": [
         "display_names"
       ]
+    },
+    "diagnosticReceipt": {
+      "reportId": [
+        "report_id"
+      ]
     }
   },
   "endpoints": {
@@ -2086,6 +2091,21 @@
       "path": "me/node-previews",
       "method": "GET",
       "key": "User/ServerController@previews"
+    },
+    "postMeDiagnosticReports": {
+      "input": {
+        "clientVersion": "clientVersion",
+        "platform": "platform",
+        "checks": "checks"
+      },
+      "output": "diagnosticReceipt",
+      "role": "user",
+      "status": 201,
+      "raw": false,
+      "bindings": {},
+      "path": "me/diagnostic-reports",
+      "method": "POST",
+      "key": "User/DiagnosticController@store"
     }
   }
 }

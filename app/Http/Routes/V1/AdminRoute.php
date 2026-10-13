@@ -13,6 +13,9 @@ class AdminRoute
         ], function ($router) {
             $router->post('/config/testAppleAccount', 'V1\\Admin\\ConfigController@testAppleAccount')->middleware('throttle:10,1');
             $router->post('/config/testFastaiEntrypoint', 'V1\\Admin\\ConfigController@testFastaiEntrypoint')->middleware('throttle:10,1');
+            $router->get('/client-diagnostics/fetch', 'V1\\Admin\\ClientDiagnosticController@fetch');
+            $router->get('/invitation-review/fetch', 'V1\\Admin\\InvitationReviewController@fetch');
+            $router->post('/invitation-review/review', 'V1\\Admin\\InvitationReviewController@review');
             // Config
             $router->get ('/config/fetch', 'V1\\Admin\\ConfigController@fetch');
             $router->post('/config/save', 'V1\\Admin\\ConfigController@save');

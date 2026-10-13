@@ -119,7 +119,11 @@ required = {
 
 required.update({'Passport/ClientAuthorizationController@create':['codeChallenge','state','redirectUri','platform'], 'Passport/ClientAuthorizationController@exchange':['authorizationCode','codeVerifier','redirectUri']})
 
+required['User/DiagnosticController@store'] = ['clientVersion', 'platform', 'checks']
+schemas['diagnosticReceipt'] = {'type':'object','required':['reportId'],'properties':{'reportId':{'type':'string','format':'uuid'}}}
+
 def input_schema(field):
+    if field == 'checks': return {'type': 'array', 'minItems': 1, 'maxItems': 9, 'items': {'type': 'object', 'additionalProperties': False, 'required': ['id', 'status'], 'properties': {'id': {'type': 'string', 'enum': ['dns', 'website', 'proxy', 'settings', 'systemProxy', 'route', 'tcp', 'tls', 'reference']}, 'status': {'type': 'string', 'enum': ['passed', 'failed', 'skipped', 'unverified']}, 'elapsedMs': {'type': 'integer', 'minimum': 0, 'maximum': 300000, 'nullable': True}}}}
     if field in ['state','codeChallenge']: return {'type':'string','pattern':'^[A-Za-z0-9_-]{43}$'}
     if field == 'authorizationCode': return {'type':'string','pattern':'^[a-f0-9]{64}$'}
     if field == 'codeVerifier': return {'type':'string','pattern':'^[A-Za-z0-9._~-]{43,128}$'}
@@ -220,6 +224,11 @@ if 'cityCode' in schemas.get('node', {}).get('properties', {}):
     schemas['node']['properties']['cityCode']['description'] = location_description
 if '/me/client-config' in document['paths']:
     document['paths']['/me/client-config']['get']['responses']['200']['content']['application/json']['schema']['properties']['data']['properties']['nodes']['items']['properties']['cityCode']['description'] = location_description
+
+diagnostic_operation = document['paths']['/me/diagnostic-reports']['post']
+diagnostic_operation['description'] = 'Manual authenticated diagnostic submission; five reports per account per hour. Default retention 30 days, configurable by administrator. No raw parameters, IP addresses, credentials or browsing history.'
+schemas['postMeDiagnosticReportsInput']['additionalProperties'] = False
+mapping.extend(['', '## Client diagnostics', '', 'POST /me/diagnostic-reports accepts manual, user-approved check results only. The server derives account identity and returns reportId. Five reports/account/hour; default retention 30 days, configurable under log settings.'])
 
 (root / 'docs/api-v10/openapi.json').write_text(json.dumps(document, ensure_ascii=False, indent=2) + '\n', encoding='utf-8')
 (root / 'docs/api-v10/mapping.md').write_text('\n'.join(mapping) + '\n', encoding='utf-8')

@@ -2,6 +2,7 @@ import { adminUserLabel } from "./admin-user-label";
 import { AdminMailComposer } from "./AdminMailComposer";
 import { useEffect, useState } from "react";
 import { AdminUsageReset } from "./AdminUsageReset";
+import { AdminRowMenu } from "./AdminRowMenu";
 import {
     admin,
     request,
@@ -333,9 +334,7 @@ export function UsersPage() {
                     </div>
                 }
                 extraActions={(row, context) => (
-                    <details className="row-menu" open={context || undefined}>
-                        <summary>更多操作</summary>
-                        <div className="row-menu-content">
+                    <AdminRowMenu context={context}>
                             <AdminUsageReset
                                 single
                                 filters={[
@@ -392,8 +391,7 @@ export function UsersPage() {
                             >
                                 TA 的流量记录
                             </button>
-                        </div>
-                    </details>
+                    </AdminRowMenu>
                 )}
             />
             {showFilters && (

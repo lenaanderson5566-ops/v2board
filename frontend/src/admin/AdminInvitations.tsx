@@ -1,3 +1,4 @@
+import { InvitationReviews } from "./InvitationReviews";
 import { useState } from "react";
 import { admin, date, type Row } from "../shared/api";
 import { ResourcePage } from "./admin";
@@ -64,8 +65,9 @@ export function AdminInvitations() {
                 >
                     佣金审核
                 </button>
+                <button role="tab" aria-selected={tab === "reviews"} onClick={() => setTab("reviews")}>异常复核</button>
             </div>
-            {tab === "commissions" ? (
+            {tab === "reviews" ? <InvitationReviews /> : tab === "commissions" ? (
                 <OrdersPage commissionMode />
             ) : (
                 <ResourcePage

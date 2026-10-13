@@ -14,9 +14,6 @@ class TelegramController extends Controller {
             'pendingChecks'=>(clone $query)->where('next_check_at','<=',time())->count(),
             'failures'=>(clone $query)->whereNotNull('error_code')->count(),
             'lastSync'=>Cache::get('telegram:last-sync'),
-            'notificationSync'=>Cache::get('telegram:notify-last'),
-            'notificationCounts'=>DB::table('v2_telegram_notification')->selectRaw('status, COUNT(*) as total')->groupBy('status')->pluck('total','status'),
-            'notificationFailures'=>DB::table('v2_telegram_notification')->whereIn('status',['failed','uncertain'])->orderByDesc('id')->limit(20)->get(['id','kind','status','error_code','created_at']),
             'members'=>(clone $query)->orderByRaw('error_code IS NULL')->orderByDesc('checked_at')->limit(50)->get(['telegram_id','status','policy_banned','checked_at','error_code']),
         ]]);
     }

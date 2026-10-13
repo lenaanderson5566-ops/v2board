@@ -76,31 +76,6 @@ export function AdminTelegramCommunity({ disabled }: { disabled: boolean }) {
                                 ? `${formatInstant(d.data.lastSync.at)}，检查 ${d.data.lastSync.checked}，失败 ${d.data.lastSync.failed}`
                                 : "尚未执行，请确认服务器计划任务正常运行"}
                         </p>
-                        <h3>用户通知投递</h3>
-                        <p className="muted">
-                            用户自行开启套餐、工单和到账提醒；默认夜间免打扰。通知记录保留
-                            30
-                            天，不保存消息正文。账号操作和工单回复在网站完成。
-                        </p>
-                        <p>
-                            待发送 {d.data.notificationCounts?.pending || 0} ·
-                            已发送 {d.data.notificationCounts?.sent || 0} · 失败{" "}
-                            {d.data.notificationCounts?.failed || 0} ·
-                            结果不确定{" "}
-                            {d.data.notificationCounts?.uncertain || 0}
-                        </p>
-                        <p className="muted">
-                            通知任务：
-                            {d.data.notificationSync
-                                ? formatInstant(d.data.notificationSync.at)
-                                : "尚未执行"}
-                            。结果不确定时不会自动重发，避免重复发送。
-                        </p>
-                        {(d.data.notificationFailures || []).map((n: any) => (
-                            <p key={n.id} className="muted">
-                                #{n.id} · {n.kind} · {n.status} · {n.error_code}
-                            </p>
-                        ))}
                         <h3>成员检查记录</h3>
                         <div style={{ overflowX: "auto" }}>
                             <table>

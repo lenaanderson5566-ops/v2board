@@ -1,10 +1,7 @@
 <?php
 namespace App\Services;
 
-use App\Jobs\SendTelegramJob;
-use App\Models\User;
 use \Curl\Curl;
-use Illuminate\Mail\Markdown;
 
 class TelegramService {
     protected $api;
@@ -76,7 +73,7 @@ class TelegramService {
         $this->setMyCommands($commands);
         return $this->request('setWebhook', [
             'url' => $url,
-            'allowed_updates' => json_encode(['message','callback_query','chat_join_request','chat_member','my_chat_member']),
+            'allowed_updates' => json_encode(['message','chat_join_request','chat_member','my_chat_member']),
             ...(str_contains($url, '/api/v10/webhooks/telegram') ? ['secret_token'=>md5(config('v2board.telegram_bot_token'))] : [])
         ]);
     }
@@ -86,6 +83,7 @@ class TelegramService {
         $commands = [];
 
         foreach (glob($directory . '/*.php') as $file) {
+            if (!in_array(basename($file, '.php'), ['Start', 'Bind', 'UnBind', 'Group'], true)) continue;
             $className = 'App\\Plugins\\Telegram\\Commands\\' . basename($file, '.php');
 
             if (!class_exists($className)) {
@@ -151,19 +149,18 @@ class TelegramService {
         return $response;
     }
 
-    public function sendMessageWithAdmin($message, $isStaff = false)
+    public function notifyPaymentAdmins(\App\Models\Order $order): void
     {
         if (!config('v2board.telegram_bot_enable', 0)) return;
-        $users = User::where(function ($query) use ($isStaff) {
-            $query->where('is_admin', 1);
-            if ($isStaff) {
-                $query->orWhere('is_staff', 1);
-            }
-        })
-            ->where('telegram_id', '!=', NULL)
-            ->get();
-        foreach ($users as $user) {
-            SendTelegramJob::dispatch($user->telegram_id, $message);
+        $message = sprintf(
+            "成功收款 %s\n订单号：%s",
+            \App\Services\Money::format($order->total_amount),
+            $order->trade_no
+        );
+        $admins = \App\Models\User::where('is_admin', 1)
+            ->where('banned', 0)->whereNotNull('telegram_id')->get();
+        foreach ($admins as $admin) {
+            \App\Jobs\SendTelegramPaymentJob::dispatch((int) $admin->telegram_id, $message);
         }
     }
 }

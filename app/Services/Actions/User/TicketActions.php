@@ -5,11 +5,9 @@ namespace App\Services\Actions\User;
 
 use App\Http\Requests\User\TicketSave;
 use App\Http\Requests\User\TicketWithdraw;
-use App\Jobs\SendTelegramJob;
 use App\Models\User;
 use App\Models\Plan;
 use App\Models\Order;
-use App\Services\TelegramService;
 use App\Services\TicketService;
 use App\Models\Ticket;
 use App\Models\TicketMessage;
@@ -75,7 +73,6 @@ class TicketActions
             ]);
 
             DB::commit();
-            $this->notifySafely($ticket, $request->input('message'),$request->user['id']);
             return response([
                 'data' => $request->is('api/v10/*') ? $ticket : true
             ]);
@@ -116,7 +113,6 @@ class TicketActions
 		) {
             abort(request()->is('api/v10/*') ? 409 : 500, __('Ticket reply failed'));
         }
-        $this->notifySafely($ticket, $request->input('message'), $request->user['id']);
         return response([
             'data' => true
         ]);
@@ -197,23 +193,9 @@ class TicketActions
             abort(request()->is('api/v10/*') ? 409 : 500, __('Failed to open ticket'));
         }
         DB::commit();
-        $this->notifySafely($ticket, $message);
         return response([
             'data' => $request->is('api/v10/*') ? $ticket : true
         ]);
     }
 
-    private function notifySafely(Ticket $ticket, string $message, $userid = null)
-    {
-        if (!(int)config('v2board.telegram_bot_enable', 0)) return;
-        try { $this->sendNotify($ticket, $message, $userid); }
-        catch (\Throwable $e) {
-            \Illuminate\Support\Facades\Log::warning('Ticket notification could not be queued', ['ticketId'=>$ticket->id,'exceptionClass'=>get_class($e)]);
-        }
-    }
-
-    private function sendNotify(Ticket $ticket, string $message, $userid = null)
-    {
-        (new TelegramService())->sendMessageWithAdmin('工单 #'.(int)$ticket->id.' 有新消息，请登录后台查看并处理。',true);
-    }
 }

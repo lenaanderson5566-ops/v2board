@@ -46,7 +46,6 @@ class Kernel extends ConsoleKernel
         // horizon metrics
         $schedule->command('horizon:snapshot')->everyFiveMinutes();
         $schedule->command('clients:check-releases')->cron('17 */6 * * *')->withoutOverlapping(10)->runInBackground();
-        $schedule->command('telegram:notify')->everyMinute()->withoutOverlapping(15)->runInBackground();
         $schedule->command('telegram:sync-members')->everyMinute()->withoutOverlapping(30)->runInBackground();
         $schedule->command('fastai:prune-uploads')->hourly()->withoutOverlapping(10)->runInBackground();
     }

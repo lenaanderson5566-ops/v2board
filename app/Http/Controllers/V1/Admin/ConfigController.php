@@ -152,7 +152,6 @@ class ConfigController extends Controller
                 'telegram_discuss_id' => config('v2board.telegram_discuss_id'),
                 'telegram_group_policy_enable' => (int)config('v2board.telegram_group_policy_enable',0),
                 'telegram_group_grace_days' => (int)config('v2board.telegram_group_grace_days',3),
-                'telegram_discuss_link' => config('v2board.telegram_discuss_link')
             ],
             'entrypoints' => [
                 'fastai_entrypoints' => config('v2board.fastai_entrypoints', []),

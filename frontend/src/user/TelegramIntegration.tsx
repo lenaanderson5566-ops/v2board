@@ -4,7 +4,7 @@ import { request } from "../shared/api";
 import { Panel, State, useData } from "../shared/ui";
 import { tx } from "../shared/i18n";
 
-export function TelegramIntegration({ legacyLink }: { legacyLink?: string }) {
+export function TelegramIntegration() {
     const d = useData("user/telegram/getBotInfo");
     const [busy, setBusy] = useState(false);
     const [error, setError] = useState("");
@@ -49,26 +49,6 @@ export function TelegramIntegration({ legacyLink }: { legacyLink?: string }) {
                                     ? `${tx("已绑定")} · ${info.telegramId}`
                                     : tx("尚未绑定 Telegram")}
                             </p>
-                            {info.linked &&
-                                /^[A-Za-z0-9_]{5,32}$/.test(
-                                    info.username || "",
-                                ) && (
-                                    <div>
-                                        <p className="muted">
-                                            {tx(
-                                                "机器人提供查询和服务提醒。通知默认关闭，可在机器人中按类别开启。账号操作和工单回复请在网站完成。",
-                                            )}
-                                        </p>
-                                        <a
-                                            className="button"
-                                            href={`https://t.me/${info.username}?start=menu`}
-                                            target="_blank"
-                                            rel="noreferrer"
-                                        >
-                                            {tx("打开服务助手与通知设置")}
-                                        </a>
-                                    </div>
-                                )}
                             {info.groupManaged && (
                                 <p>
                                     {tx(
@@ -167,16 +147,6 @@ export function TelegramIntegration({ legacyLink }: { legacyLink?: string }) {
                                     >
                                         {tx("解除绑定")}
                                     </button>
-                                )}
-                                {!info.groupManaged && legacyLink && (
-                                    <a
-                                        className="button"
-                                        href={legacyLink}
-                                        target="_blank"
-                                        rel="noreferrer"
-                                    >
-                                        {tx("加入讨论组")}
-                                    </a>
                                 )}
                             </div>
                         </>

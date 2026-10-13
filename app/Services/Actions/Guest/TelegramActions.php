@@ -31,9 +31,6 @@ class TelegramActions
         $key='telegram:update:'.hash('sha256',(string)config('v2board.telegram_bot_token')).':'.$updateId;
         \Illuminate\Support\Facades\Cache::lock($key.':lock',60)->block(2,function () use ($key,$request) {
             if (\Illuminate\Support\Facades\Cache::has($key)) return;
-            if (is_array($request->input('callback_query'))) {
-                app(\App\Services\TelegramBotMenu::class)->callback($request->input('callback_query'));
-            }
             $this->formatMessage($request->input());
             app(\App\Services\TelegramCommunityService::class)->handleUpdate($request->input());
             $this->handle();
@@ -61,6 +58,7 @@ class TelegramActions
         try {
             foreach (glob(base_path('app//Plugins//Telegram//Commands') . '/*.php') as $file) {
                 $command = basename($file, '.php');
+                if (!in_array($command, ['Start', 'Bind', 'UnBind', 'Group'], true)) continue;
                 $class = '\\App\\Plugins\\Telegram\\Commands\\' . $command;
                 if (!class_exists($class)) continue;
                 $instance = new $class();

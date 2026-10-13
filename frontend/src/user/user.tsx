@@ -462,7 +462,7 @@ export function Profile() {
             <State {...d} retry={d.reload}>
                 <AccountPreferences user={d.data || {}} />
             </State>
-            {Boolean(config.data?.is_telegram) && <TelegramIntegration legacyLink={config.data?.telegram_discuss_link} />}
+            {Boolean(config.data?.is_telegram) && <TelegramIntegration />}
         </div>
     );
 }

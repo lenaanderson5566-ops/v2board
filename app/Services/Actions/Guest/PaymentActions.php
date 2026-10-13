@@ -6,7 +6,6 @@ namespace App\Services\Actions\Guest;
 use App\Models\Order;
 use App\Services\OrderService;
 use App\Services\PaymentService;
-use App\Services\TelegramService;
 use Illuminate\Http\Request;
 
 class PaymentActions
@@ -73,14 +72,12 @@ class PaymentActions
         if (!$orderService->paid($callbackNo, $context)) {
             return false;
         }
-        $telegramService = new TelegramService();
-        $message = sprintf(
-            "💰成功收款%s\n———————————————\n订单号：%s",
-            \App\Services\Money::format($order->total_amount),
-            $order->trade_no
-        );
-        try { $telegramService->sendMessageWithAdmin($message); }
-        catch (\Throwable $e) { \Illuminate\Support\Facades\Log::warning('Payment Telegram notification could not be queued'); }
+        try {
+            (new \App\Services\TelegramService())->notifyPaymentAdmins($order);
+        } catch (\Throwable $e) {
+            // Notification failures must not cause a successful payment to be rejected.
+            \Illuminate\Support\Facades\Log::warning('Payment Telegram notification could not be queued');
+        }
         return true;
     }
 }

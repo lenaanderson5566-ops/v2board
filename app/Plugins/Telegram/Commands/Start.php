@@ -13,6 +13,6 @@ class Start extends Telegram {
             $this->telegramService->sendMessage($message->chat_id,'Telegram 已确认。请回到网站的账号设置，核对 Telegram 账号后点击“确认绑定”。');
             return;
         }
-        app(\App\Services\TelegramBotMenu::class)->send((int)$message->chat_id);
+        $this->telegramService->sendMessage($message->chat_id,'本机器人仅用于账号绑定和用户群资格管理。请在网站账号设置中绑定、解绑或申请入群；使用 /group 查看群资格。请勿发送密码、验证码或订阅链接。');
     }
 }

@@ -448,5 +448,12 @@
   "搜索城市或时区名称": "Search city or time zone",
   "搜索结果": "Search results",
   "暂无匹配时区": "No matching time zones",
-  "收起": "Collapse"
+  "收起": "Collapse",
+  "账号绑定与用户群": "Account linking and user group",
+  "绑定步骤": "Linking steps",
+  "群成员资格": "Group eligibility",
+  "请先完成账号绑定，再申请入群。": "Link your account before requesting to join.",
+  "账号已停用，请联系网站客服。": "Your account is disabled. Please contact website support.",
+  "重新生成链接": "Generate a new link",
+  "链接已过期，请重新获取。": "This link has expired. Please request a new one."
 }

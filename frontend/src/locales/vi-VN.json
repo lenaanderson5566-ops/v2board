@@ -446,5 +446,12 @@
   "搜索城市或时区名称": "Tìm thành phố hoặc múi giờ",
   "搜索结果": "Kết quả tìm kiếm",
   "暂无匹配时区": "Không có múi giờ phù hợp",
-  "收起": "Thu gọn"
+  "收起": "Thu gọn",
+  "账号绑定与用户群": "Liên kết tài khoản và nhóm người dùng",
+  "绑定步骤": "Các bước liên kết",
+  "群成员资格": "Điều kiện tham gia nhóm",
+  "请先完成账号绑定，再申请入群。": "Liên kết tài khoản trước khi yêu cầu tham gia nhóm.",
+  "账号已停用，请联系网站客服。": "Tài khoản đã bị vô hiệu hóa. Vui lòng liên hệ hỗ trợ trên trang web.",
+  "重新生成链接": "Tạo liên kết mới",
+  "链接已过期，请重新获取。": "Liên kết đã hết hạn. Vui lòng lấy liên kết mới."
 }

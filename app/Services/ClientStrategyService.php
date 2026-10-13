@@ -72,6 +72,21 @@ class ClientStrategyService
                 $row->setAttribute('version_source', $type === 'fastai' ? '专用接口 clientVersion（UA 展示应用版本）' : (in_array($type, ['mihomo','sing-box'], true) ? '内核版本（UA 明确提供时）' : (in_array($type, ['flclash','clash-verge','clash-party','throne','nekobox','husi'], true) ? '应用版本' : 'UA 版本／构建号，需核验')));
                 $row->setAttribute('ua_verification', $type === 'fastai' ? '本站专用客户端；使用 Bearer 会话认证' : (in_array($type, ['flclash','clash-verge','mihomo','clash-party','throne','nekobox','husi'], true) ? '官方来源已核对；支持自定义 UA' : ($type === 'sing-box' ? 'Hiddify 来源已核对；其他变体未核对' : '兼容规则；官方来源未核对')));
                 $row->setAttribute('version_example', $examples[$type] ?? '1.2.3');
+                if ($type === 'fastai') {
+                    $minimum = ClientIdentity::normalizeVersion((string) $row->min_version);
+                    $targets = [];
+                    foreach (config('v2board.fastai_releases', []) as $release) {
+                        $effective = ClientIdentity::allowsVersion($row->min_version, $release['minimumVersion']) ? $release['minimumVersion'] : $minimum;
+                        $targets[] = [
+                            'platform' => $release['platform'], 'architecture' => $release['architecture'],
+                            'releaseMinimum' => $release['minimumVersion'], 'effectiveMinimum' => $effective,
+                            'latestVersion' => $release['latestVersion'],
+                            'latestAllowed' => ClientIdentity::allowsVersion($row->min_version, $release['latestVersion']),
+                        ];
+                    }
+                    $row->setAttribute('effective_minimums', $targets);
+                }
+
                 $row->setAttribute('ua_names', implode(' / ', ClientIdentity::matchingAliases($type)));
                 return $row;
             })->sortBy([['sort', 'asc'], ['client_name', 'asc']])->values();

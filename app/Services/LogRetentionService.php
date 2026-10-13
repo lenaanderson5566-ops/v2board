@@ -6,8 +6,9 @@ use Illuminate\Support\Facades\DB;
 
 class LogRetentionService {
     // New categories stay opt-in so deploying this code does not erase historical records.
-    public const DEFAULTS=['system_log_retention_days'=>30,'connection_log_retention_days'=>30,'login_log_retention_days'=>0,'subscribe_log_retention_days'=>0,'risk_log_retention_days'=>0,'ddns_log_retention_days'=>30];
+    public const DEFAULTS=['system_log_retention_days'=>30,'connection_log_retention_days'=>30,'login_log_retention_days'=>0,'subscribe_log_retention_days'=>0,'risk_log_retention_days'=>0,'ddns_log_retention_days'=>30,'payment_callback_retention_days'=>30];
     public const TABLES=[
+        'payment_callback_retention_days'=>['v2_payment_callback_event','created_at'],
         'system_log_retention_days'=>['v2_log','created_at'],
         'connection_log_retention_days'=>['v2_user_connection_log','connected_at'],
         'login_log_retention_days'=>['v2_login_log','created_at'],
@@ -59,7 +60,9 @@ class LogRetentionService {
     }
     public function prune(int $batchSize=1000, int $rounds=5, ?int $now=null): array {
         $now=$now ?? time(); $deadline=microtime(true)+20;
-        $settings=$this->settings(); $counts=array_fill_keys(array_keys(self::TABLES),0);
+        $settings=$this->settings();
+        if (!\Illuminate\Support\Facades\Schema::hasTable('v2_payment_callback_event')) unset($settings['payment_callback_retention_days']);
+        $counts=array_fill_keys(array_keys(self::TABLES),0);
         // Each table gets one small batch per round; no long transaction or full-table DELETE.
         for ($round=0;$round<$rounds;$round++) {
             foreach ($settings as $key=>$days) {

@@ -3,6 +3,12 @@ import { Editor, Panel, State, useData } from "../shared/ui";
 const time = (value: number) =>
     value ? new Date(value * 1000).toLocaleString() : "—";
 const retentionFields = [
+    [
+        "payment_callback_retention_days",
+        "支付回调诊断",
+        1,
+        "默认保留 30 天；仅记录脱敏阶段和结果。",
+    ],
     ["system_log_retention_days", "系统日志", 1, "默认 30 天。"],
     ["connection_log_retention_days", "连接日志", 1, "默认 30 天。"],
     [
@@ -70,7 +76,10 @@ export function AdminLogSettings() {
                                 }),
                             ),
                         ]}
-                        initial={retention.data?.settings || {}}
+                        initial={{
+                            payment_callback_retention_days: 30,
+                            ...retention.data?.settings,
+                        }}
                         onSave={async (b) => {
                             await request(admin("system/logRetention"), b);
                             retention.reload();

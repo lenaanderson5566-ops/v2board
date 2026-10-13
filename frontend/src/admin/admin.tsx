@@ -1,3 +1,5 @@
+import { readListView, saveListView } from "./list-view-state";
+import { ClientUaStats } from "./ClientUaStats";
 import { AdminLogFilters } from "./AdminLogFilters";
 import {
     NodeDiagnostics,
@@ -689,6 +691,38 @@ export const resources: Record<string, Resource> = {
                                 （最低版本 {r.min_version}）
                             </small>
                         )}
+                        {r.client_type === "fastai" && (
+                            <div className="admin-ua-text">
+                                {r.effective_minimums?.length ? (
+                                    r.effective_minimums.map((target: Row) => (
+                                        <small
+                                            key={`${target.platform}-${target.architecture}`}
+                                            style={{ display: "block" }}
+                                        >
+                                            {target.platform} /{" "}
+                                            {target.architecture}：最低{" "}
+                                            {target.effectiveMinimum ||
+                                                "策略配置无效"}
+                                            {!target.latestAllowed && (
+                                                <strong>
+                                                    {" "}
+                                                    · 当前安装包版本也被拦截
+                                                </strong>
+                                            )}
+                                        </small>
+                                    ))
+                                ) : (
+                                    <small>
+                                        未发布平台安装包；最低版本按访问策略执行。
+                                    </small>
+                                )}
+                                {!r.is_enabled && (
+                                    <small>
+                                        客户端已禁用，版本满足也无法连接。
+                                    </small>
+                                )}
+                            </div>
+                        )}
                     </>
                 ),
             ],
@@ -697,24 +731,7 @@ export const resources: Record<string, Resource> = {
             [
                 "top_raw_ua",
                 "实际请求 UA",
-                (r) =>
-                    r.raw_ua_stats?.length ? (
-                        <details>
-                            <summary>
-                                {r.top_raw_ua || r.raw_ua_stats[0].ua}
-                            </summary>
-                            {r.raw_ua_stats.map((item: Row) => (
-                                <div
-                                    key={item.ua}
-                                    style={{ overflowWrap: "anywhere" }}
-                                >
-                                    {item.ua} · 24 小时 {item.count_24h} 次
-                                </div>
-                            ))}
-                        </details>
-                    ) : (
-                        "暂无记录"
-                    ),
+                (r) => <ClientUaStats items={r.raw_ua_stats || []} />,
             ],
             ["subscribe_flag_count_24h", "24 小时请求"],
             [
@@ -728,7 +745,7 @@ export const resources: Record<string, Resource> = {
             f("client_name", "名称"),
             {
                 ...f("min_version", "最低版本（可选）"),
-                hint: "只需检查 UA 时留空。填写后还会检查对应版本，未提供版本也会拒绝。Mihomo / sing-box 填内核版本，FlClash / Clash Verge 填应用版本，例如 1.19.0。",
+                hint: "只需检查 UA 时留空。填写后还会检查对应版本，未提供版本也会拒绝。Mihomo / sing-box 填内核版本，FastAI / FlClash / Clash Verge 填应用版本。FastAI 还需满足安装包发布设置中的平台最低版本；两处限制同时生效。",
             },
             toggle("is_enabled", "允许订阅访问"),
             f("sort", "排序", "number"),
@@ -799,7 +816,13 @@ export const resources: Record<string, Resource> = {
             ],
             ["ip", "IP"],
             ["is_success", "登录结果"],
-            ["user_agent", "客户端"],
+            [
+                "user_agent",
+                "客户端",
+                (r) => (
+                    <span className="admin-ua-text">{r.user_agent || "—"}</span>
+                ),
+            ],
             created,
         ],
         fields: [],
@@ -845,20 +868,7 @@ export const resources: Record<string, Resource> = {
                 "user_agent",
                 "UA",
                 (r) => (
-                    <details>
-                        <summary>
-                            {String(r.user_agent || "未知").slice(0, 48)}
-                        </summary>
-                        <div
-                            style={{
-                                maxWidth: 420,
-                                overflowWrap: "anywhere",
-                                whiteSpace: "normal",
-                            }}
-                        >
-                            {r.user_agent}
-                        </div>
-                    </details>
+                    <span className="admin-ua-text">{r.user_agent || "—"}</span>
                 ),
             ],
             created,
@@ -947,8 +957,22 @@ export function ResourcePage({
             ([key, value]) => key.startsWith("log-") && value === resource,
         )?.[0]
         .slice(4);
-    const [logFilters, setLogFilters] = useState<Row>({});
-    const [routeBackend, setRouteBackend] = useState("v2node");
+    const viewKey = resource.fetch;
+    const [savedView] = useState(() => {
+        const saved = readListView(viewKey);
+        return saved.context === JSON.stringify(queryParams) &&
+            saved.pageSize === pageSize
+            ? saved
+            : {};
+    });
+    const [logFilters, setLogFilters] = useState<Row>(() =>
+        savedView.logFilters && typeof savedView.logFilters === "object"
+            ? savedView.logFilters
+            : {},
+    );
+    const [routeBackend, setRouteBackend] = useState(
+        savedView.routeBackend === "v2box" ? "v2box" : "v2node",
+    );
     const groups = useData<Row[]>(
         resource.fields.some((f) => f.key === "group_id")
             ? admin("server/group/fetch")
@@ -1037,10 +1061,34 @@ export function ResourcePage({
                         }
                       : field,
     );
-    const [page, setPage] = useState(1),
-        [search, setSearch] = useState(""),
+    const [page, setPage] = useState(() =>
+            Number.isInteger(savedView.page) && savedView.page > 0
+                ? savedView.page
+                : 1,
+        ),
+        [search, setSearch] = useState(() =>
+            typeof savedView.search === "string" ? savedView.search : "",
+        ),
         [editing, setEditing] = useState<Row | null>(null),
         [error, setError] = useState("");
+    useEffect(() => {
+        saveListView(viewKey, {
+            context: JSON.stringify(queryParams),
+            pageSize,
+            page,
+            search,
+            logFilters,
+            routeBackend,
+        });
+    }, [
+        viewKey,
+        queryParams,
+        pageSize,
+        page,
+        search,
+        logFilters,
+        routeBackend,
+    ]);
     const d = useData<Row[]>(
         query(resource.fetch, {
             current: page,
@@ -1161,6 +1209,7 @@ export function ResourcePage({
                     <AdminLogFilters
                         key={logKind}
                         kind={logKind}
+                        initialFilters={logFilters}
                         onApply={(filters) => {
                             setLogFilters(filters);
                             setPage(1);
@@ -1208,7 +1257,7 @@ export function ResourcePage({
                     </p>
                 )}
                 {resource === resources["log-risk"] && (
-                    <p className="pad muted">
+                    <p className="admin-log-note muted">
                         近 30 天，同一用户、规则、IP 和处理结果按固定 10
                         分钟窗口合并；总数为合并后的事件数。点击用户查看原始活动。
                     </p>

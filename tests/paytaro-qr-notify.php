@@ -24,6 +24,20 @@ try {
     $assert($call('local-secret', array_replace($body, ['merchant_no'=>'']))===false, 'Missing order must fail');
     $_SERVER['HTTP_X_APP_SECRET']='local-secret';
     $assert($call('wrong-secret', $body)===false, 'Request header must take precedence over a stale global');
+    unset($_SERVER['HTTP_X_APP_SECRET']);
+    $assert($verified['amount'] === 32800 && $verified['currency'] === 'CNY', 'Original order amount converts yuan to integer fen');
+    foreach ([328, '328.00', 328.0] as $amount) {
+        $r = $call('local-secret', array_replace($body, ['order_amount'=>$amount, 'pay_amount'=>45.5, 'pay_currency'=>'USDT']));
+        $assert($r['amount'] === 32800 && $r['currency'] === 'CNY', 'Settlement uses original order currency, not paid token amount');
+    }
+    $r = $call('local-secret', array_replace($body, ['order_amount'=>'0.29', 'status'=>'SUCCESS']));
+    $assert($r['amount'] === 29, 'Decimal precision and manual retry status supported');
+    foreach ([null, -1, 0, '328.001', '1e2', [], true, 'NaN', '99999999999999'] as $amount) {
+        $assert($call('local-secret', array_replace($body, ['order_amount'=>$amount])) === false, 'Invalid or absent amounts fail closed');
+    }
+    foreach ([null, '', [], 'CNY ' ] as $currency) {
+        $assert($call('local-secret', array_replace($body, ['order_currency'=>$currency])) === false, 'Invalid or absent currency fails closed');
+    }
     echo "PaytaroQR notify: {$checks} checks passed\n";
 } finally {
     if ($originalHeader === null) unset($_SERVER['HTTP_X_APP_SECRET']);

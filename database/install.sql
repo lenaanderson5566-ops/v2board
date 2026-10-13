@@ -542,3 +542,19 @@ INSERT INTO `v2_risk_blacklist_ua_hash` (`value`, `ua_raw`, `remark`, `is_enable
 ('14d3f235c661a0290f869f3d4c4d7d2de4b708a1835c38f3244468d2a0a1379e', X'636C6173682D76657267652F76312E332E38', 'default_ua_blacklist', 1, UNIX_TIMESTAMP(), UNIX_TIMESTAMP()),
 ('63279522febcf5538b72996c16a8660ff177cd5536e86fb9c2a577bf32a65430', X'4D6F7A696C6C612F352E30202857696E646F7773204E542031302E303B2057696E36343B2078363429204170706C655765624B69742F3533372E3336', 'default_ua_blacklist', 1, UNIX_TIMESTAMP(), UNIX_TIMESTAMP())
 ON DUPLICATE KEY UPDATE `value` = `value`;
+
+CREATE TABLE IF NOT EXISTS `v2_payment_callback_event` (
+  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
+  `order_id` int unsigned NULL,
+  `payment_id` int unsigned NULL,
+  `provider` varchar(64) NOT NULL,
+  `stage` varchar(24) NOT NULL,
+  `result` varchar(24) NOT NULL,
+  `reason` varchar(64) NULL,
+  `request_id` varchar(36) NULL,
+  `created_at` int unsigned NOT NULL,
+  PRIMARY KEY (`id`),
+  KEY `v2_payment_callback_event_order_id_created_at_index` (`order_id`,`created_at`),
+  KEY `v2_payment_callback_event_payment_id_created_at_index` (`payment_id`,`created_at`),
+  KEY `v2_payment_callback_event_created_at_index` (`created_at`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;

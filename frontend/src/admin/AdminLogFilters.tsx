@@ -4,11 +4,35 @@ import type { Row } from "../shared/api";
 export function AdminLogFilters({
     kind,
     onApply,
+    initialFilters = {},
 }: {
+    initialFilters?: Row;
     kind: string;
     onApply: (filters: Row) => void;
 }) {
-    const [draft, setDraft] = useState<Row>({});
+    const [draft, setDraft] = useState<Row>(() =>
+        Object.fromEntries(
+            Object.entries(initialFilters).map(([key, value]) => {
+                if (
+                    ["from", "to"].includes(key) &&
+                    Number.isFinite(Number(value))
+                ) {
+                    const date = new Date(Number(value) * 1000);
+                    if (Number.isFinite(date.getTime()))
+                        return [
+                            key,
+                            new Date(
+                                date.getTime() -
+                                    date.getTimezoneOffset() * 60000,
+                            )
+                                .toISOString()
+                                .slice(0, 16),
+                        ];
+                }
+                return [key, value];
+            }),
+        ),
+    );
     const [error, setError] = useState("");
     const fields = [
         ["keyword", "关键词", "text"],
@@ -21,7 +45,7 @@ export function AdminLogFilters({
     ];
     return (
         <form
-            className="pad toolbar"
+            className="admin-log-filters"
             onSubmit={(event) => {
                 event.preventDefault();
                 if (draft.from && draft.to && draft.from > draft.to) {

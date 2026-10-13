@@ -1,6 +1,73 @@
 body[data-console="admin"] {
     color-scheme: light;
 }
+body[data-console="admin"] .admin-log-filters {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    gap: 8px 12px;
+    padding: 12px 16px;
+    margin: 0;
+    border-bottom: 1px solid var(--border);
+}
+body[data-console="admin"] .admin-log-filters > label {
+    display: flex;
+    flex: 0 1 168px;
+    flex-direction: column;
+    gap: 4px;
+    margin: 0;
+    font-size: 12px;
+    min-width: 0;
+}
+body[data-console="admin"] .admin-log-filters > label:has(input[type="datetime-local"]) {
+    flex-basis: 192px;
+}
+body[data-console="admin"] .admin-log-filters > label:has(input[aria-label="日志关键词"]),
+body[data-console="admin"] .admin-log-filters > label:has(input[aria-label="日志请求 ID"]) {
+    flex: 1 1 260px;
+}
+body[data-console="admin"] .admin-log-filters input,
+body[data-console="admin"] .admin-log-filters select {
+    width: 100%;
+    min-width: 0;
+    height: 34px;
+    padding: 5px 8px;
+    margin: 0;
+    font-size: 13px;
+}
+body[data-console="admin"] .admin-log-filters > button {
+    height: 34px;
+    margin: 0;
+    padding: 5px 12px;
+}
+body[data-console="admin"] .admin-log-note {
+    margin: 0;
+    padding: 8px 16px;
+    font-size: 12px;
+    line-height: 1.5;
+}
+body[data-console="admin"] .admin-ua-text {
+    display: block;
+    min-width: 180px;
+    max-width: 360px;
+    white-space: normal;
+    overflow-wrap: anywhere;
+    line-height: 1.5;
+    user-select: text;
+}
+body[data-console="admin"] .admin-ua-stats > summary {
+    cursor: pointer;
+    white-space: nowrap;
+}
+body[data-console="admin"] .admin-ua-stats .admin-ua-text {
+    padding: 6px 0;
+    border-bottom: 1px solid var(--border);
+}
+@media (max-width: 600px) {
+    body[data-console="admin"] .admin-log-filters > label {
+        flex: 1 1 140px;
+    }
+}
 /* Application-owned admin components. No external framework or icon fonts. */
 body[data-console="admin"] {
     background: #f0f3f8;

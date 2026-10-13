@@ -1,6 +1,8 @@
+import { readListView, saveListView } from "./list-view-state";
+import { PaymentCallbackHistory } from "./PaymentCallbackHistory";
 import { adminStatusCell } from "../shared/admin-status";
 import { adminUserLabel } from "./admin-user-label";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { admin, request, query, money, date, type Row } from "../shared/api";
 import { useData, Modal, Editor, State, Table } from "../shared/ui";
 import { ResourcePage, resources } from "./admin";
@@ -39,24 +41,52 @@ export function OrdersPage({
     const params = new URLSearchParams(
         window.location.hash.split("?")[1] || "",
     );
+    const explicitFilters = params.size > 0;
     if (commissionMode && !params.has("commission_status"))
         params.set("commission_status", "0");
+    const orderViewKey = commissionMode
+        ? "commission-filters"
+        : "order-filters";
     const [filter, setFilter] = useState<Row[]>(() =>
-        ["user_id", "invite_user_id", "commission_status", "status"]
-            .filter((key) => params.has(key))
-            .map((key) => ({ key, condition: "=", value: params.get(key) }))
-            .concat(
-                params.has("commission_balance_min")
-                    ? [
-                          {
-                              key: "commission_balance",
-                              condition: ">",
-                              value: params.get("commission_balance_min"),
-                          },
-                      ]
-                    : [],
-            ),
+        !explicitFilters && Array.isArray(readListView(orderViewKey).filters)
+            ? readListView(orderViewKey).filters.filter(
+                  (item: Row) =>
+                      item &&
+                      typeof item.key === "string" &&
+                      typeof item.condition === "string" &&
+                      [
+                          "email",
+                          "trade_no",
+                          "status",
+                          "commission_status",
+                          "user_id",
+                          "invite_user_id",
+                          "callback_no",
+                          "commission_balance",
+                      ].includes(item.key),
+              )
+            : ["user_id", "invite_user_id", "commission_status", "status"]
+                  .filter((key) => params.has(key))
+                  .map((key) => ({
+                      key,
+                      condition: "=",
+                      value: params.get(key),
+                  }))
+                  .concat(
+                      params.has("commission_balance_min")
+                          ? [
+                                {
+                                    key: "commission_balance",
+                                    condition: ">",
+                                    value: params.get("commission_balance_min"),
+                                },
+                            ]
+                          : [],
+                  ),
     );
+    useEffect(() => {
+        saveListView(orderViewKey, { filters: filter });
+    }, [orderViewKey, filter]);
     const [draft, setDraft] = useState<Row[]>(filter),
         [showFilter, setShowFilter] = useState(false),
         [selected, setSelected] = useState<Row | null>(null),
@@ -424,6 +454,7 @@ function OrderDetail({
             <State {...d} retry={d.reload}>
                 {r && (
                     <>
+                        <PaymentCallbackHistory history={r.callback_history} />
                         <dl className="detail-grid">
                             {[
                                 ["trade_no", "订单号"],
@@ -475,7 +506,11 @@ function OrderDetail({
                                                   ? money(r[key])
                                                   : key === "user_id"
                                                     ? adminUserLabel(r)
-                                                    : adminStatusCell(key, label, r[key])}
+                                                    : adminStatusCell(
+                                                          key,
+                                                          label,
+                                                          r[key],
+                                                      )}
                                         </dd>
                                     </div>
                                 ))}

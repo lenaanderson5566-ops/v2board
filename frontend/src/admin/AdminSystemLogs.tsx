@@ -28,6 +28,11 @@ const empty: Filters = {
     to: "",
 };
 function recent(): Filters {
+    const requestId = new URLSearchParams(
+        window.location.hash.split("?")[1] || "",
+    ).get("request_id");
+    if (requestId && /^[0-9a-f-]{36}$/i.test(requestId))
+        return { ...empty, request_id: requestId };
     const d = new Date(Date.now() - 86400000);
     const local = new Date(d.getTime() - d.getTimezoneOffset() * 60000);
     return { ...empty, from: local.toISOString().slice(0, 16) };
@@ -65,7 +70,7 @@ export function AdminSystemLogs() {
                 }
             >
                 <form
-                    className="pad toolbar"
+                    className="admin-log-filters"
                     onSubmit={(e) => {
                         e.preventDefault();
                         if (
@@ -166,7 +171,7 @@ export function AdminSystemLogs() {
                         {error}
                     </p>
                 )}
-                <p className="pad muted">
+                <p className="admin-log-note muted">
                     默认查看最近 24
                     小时。历史日志的检索字段由清理任务分批补齐；不展示原始请求参数、异常内容或历史敏感字段。
                 </p>
@@ -200,7 +205,11 @@ export function AdminSystemLogs() {
                                             {r.http_status ?? "—"} ·{" "}
                                             {r.duration_ms ?? "—"} ms
                                         </td>
-                                        <td>{r.request_id || "—"}</td>
+                                        <td>
+                                            <span className="admin-ua-text">
+                                                {r.request_id || "—"}
+                                            </span>
+                                        </td>
                                     </tr>
                                 ))}
                             </tbody>
@@ -229,7 +238,6 @@ export function AdminSystemLogs() {
                     </button>
                 </div>
             </Panel>
-
         </>
     );
 }

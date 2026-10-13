@@ -3,6 +3,29 @@ import { afterEach, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { AdminLogFilters } from "./AdminLogFilters";
 afterEach(cleanup);
+it("restores applied filters and preserves the failed status", () => {
+    const apply = vi.fn();
+    render(
+        <AdminLogFilters
+            kind="login"
+            onApply={apply}
+            initialFilters={{
+                keyword: "FastAI",
+                is_success: "0",
+                from: 1791849600,
+            }}
+        />,
+    );
+    expect(
+        (screen.getByLabelText("日志关键词") as HTMLInputElement).value,
+    ).toBe("FastAI");
+    fireEvent.click(screen.getByText("查询"));
+    expect(apply).toHaveBeenCalledWith({
+        keyword: "FastAI",
+        is_success: "0",
+        from: 1791849600,
+    });
+});
 it("submits filters together, preserves failed login and resets", () => {
     const apply = vi.fn();
     render(<AdminLogFilters kind="login" onApply={apply} />);

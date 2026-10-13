@@ -121,7 +121,18 @@ class PaytaroQR
         if ($tradeNo === '' || $callbackNo === '') {
             return false;
         }
+        try {
+            $amount = \App\Services\Money::parseMinor($params['order_amount'] ?? null);
+        } catch (\InvalidArgumentException $error) {
+            return false;
+        }
+        $currency = $params['order_currency'] ?? null;
+        if ($amount <= 0 || !is_string($currency) || !preg_match('/^[A-Za-z]{3}$/D', $currency)) {
+            return false;
+        }
         return [
+            'amount' => $amount,
+            'currency' => strtoupper($currency),
             'trade_no' => $tradeNo,
             'callback_no' => $callbackNo,
             'custom_result' => 'success',

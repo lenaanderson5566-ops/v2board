@@ -44,6 +44,7 @@ class OrderController extends Controller
         \App\Services\AdminUserIdentity::append(collect([$order]));
         $order['payment_display'] = \App\Services\OrderPaymentHistory::display($order, \App\Models\Payment::find($order->payment_id));
         $order['payment_provider'] = $order->payment_snapshot['provider'] ?? null;
+        $order['callback_history'] = \App\Services\PaymentCallbackHistory::forOrder($order);
         $order['commission_log'] = CommissionLog::where('trade_no', $order->trade_no)->get();
         \App\Services\AdminUserIdentity::append($order['commission_log']);
         if ($order->surplus_order_ids) {

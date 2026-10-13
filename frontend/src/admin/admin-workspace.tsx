@@ -1,3 +1,4 @@
+import { clearListViews } from "./list-view-state";
 import { AdminShell, adminPage } from "./admin-shell";
 import AdminContent from "./admin-entry";
 import type { Row } from "../shared/api";
@@ -29,7 +30,10 @@ export default function AdminWorkspace({
                               : current
                 }
                 user={user}
-                logout={logout}
+                logout={() => {
+                    clearListViews();
+                    logout();
+                }}
             >
                 <AdminContent current={current} />
             </AdminShell>

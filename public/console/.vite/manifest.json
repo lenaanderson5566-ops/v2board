@@ -440,7 +440,7 @@
     ]
   },
   "admin.html": {
-    "file": "assets/admin-NhEr9zaw.js",
+    "file": "assets/admin-B6dX3gjc.js",
     "name": "admin",
     "src": "admin.html",
     "isEntry": true,
@@ -470,7 +470,7 @@
     "src": "node_modules/ace-builds/src-noconflict/worker-json.js"
   },
   "src/admin/AdminApp.tsx": {
-    "file": "assets/AdminApp-Dax6QpYY.js",
+    "file": "assets/AdminApp-PWo_2oy4.js",
     "name": "AdminApp",
     "src": "src/admin/AdminApp.tsx",
     "isDynamicEntry": true,
@@ -493,7 +493,7 @@
       "src/admin/admin-code-editor.tsx"
     ],
     "css": [
-      "assets/AdminApp-BMJk0waU.css"
+      "assets/AdminApp-N8QMwkEb.css"
     ]
   },
   "src/admin/admin-code-editor.tsx": {

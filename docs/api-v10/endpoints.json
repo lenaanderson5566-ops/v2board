@@ -1613,5 +1613,27 @@
     "scope": "user",
     "status": 201,
     "key": "User/DiagnosticController@store"
+  },
+  {
+    "legacy": null,
+    "legacyMethod": null,
+    "method": "POST",
+    "path": "me/client-events",
+    "action": "App\\Http\\Controllers\\V10\\UserDiagnosticController@postMeClientEvents",
+    "parameters": [
+      {
+        "name": "request",
+        "type": "Illuminate\\Http\\Request",
+        "optional": false
+      }
+    ],
+    "bindings": {},
+    "middleware": [
+      "throttle:20,1"
+    ],
+    "role": "user",
+    "scope": "user",
+    "status": 201,
+    "key": "User/ClientEventController@store"
   }
 ]

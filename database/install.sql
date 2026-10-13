@@ -561,9 +561,9 @@ CREATE TABLE IF NOT EXISTS `v2_payment_callback_event` (
 
 CREATE TABLE IF NOT EXISTS `v2_client_diagnostic_report` (
  `id` bigint unsigned NOT NULL AUTO_INCREMENT, `user_id` int unsigned NOT NULL,
- `report_id` char(36) NOT NULL, `client_version` varchar(32) NOT NULL, `platform` varchar(16) NOT NULL,
+ `report_id` char(36) NOT NULL, `report_kind` varchar(16) NOT NULL DEFAULT 'diagnostic', `client_version` varchar(32) NOT NULL, `platform` varchar(16) NOT NULL,
  `checks` json NOT NULL, `created_at` int unsigned NOT NULL,
- PRIMARY KEY (`id`), UNIQUE KEY (`report_id`), KEY (`user_id`), KEY (`created_at`)
+ PRIMARY KEY (`id`), UNIQUE KEY (`report_id`), KEY (`user_id`), KEY (`created_at`), KEY (`report_kind`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 CREATE TABLE IF NOT EXISTS `v2_registration_signal` (
  `id` bigint unsigned NOT NULL AUTO_INCREMENT, `user_id` int unsigned NOT NULL,

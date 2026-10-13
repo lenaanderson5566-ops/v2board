@@ -2106,6 +2106,21 @@
       "path": "me/diagnostic-reports",
       "method": "POST",
       "key": "User/DiagnosticController@store"
+    },
+    "postMeClientEvents": {
+      "input": {
+        "clientVersion": "clientVersion",
+        "platform": "platform",
+        "events": "events"
+      },
+      "output": "diagnosticReceipt",
+      "role": "user",
+      "status": 201,
+      "raw": false,
+      "bindings": {},
+      "path": "me/client-events",
+      "method": "POST",
+      "key": "User/ClientEventController@store"
     }
   }
 }

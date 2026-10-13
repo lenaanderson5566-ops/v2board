@@ -1,3 +1,4 @@
+import "./fastai-download-copy";
 import { useState } from "react";
 import { AccountList } from "./AppleAccounts";
 import "./ios-download-copy";
@@ -29,6 +30,7 @@ export function mirrorDownload(client: ClientId, device: Device) {
 }
 export function ClientDownload({ client, device, official, close }: { client: ClientId; device: Device; official: string; close: () => void }) {
     const { t } = useTranslation("clientDownload");
+    const { t: kind } = useTranslation("fastaiDownload");
     const variants=Object.entries(boot.clientMirrors || {}).filter(([key,url])=>key.startsWith(`${client}_${device}:`) && safeDownloadUrl(url));
     const [architecture,setArchitecture]=useState("");
     const variant=variants.find(([key])=>key.split(":")[1]===architecture);
@@ -38,6 +40,8 @@ export function ClientDownload({ client, device, official, close }: { client: Cl
     const [showAccounts, setShowAccounts] = useState(false);
     return <Modal title={t("title")} close={close} className="client-download-modal">
         <div className="pad download-options">
+            <span className="client-family-badge">{kind("thirdParty")}</span>
+            <p className="muted">{kind("thirdPartyGuide")}</p>
             <p className="download-client">{clients.find(item => item.id === client)?.name}<span>{device === "unknown" ? "" : device}</span></p>
             <a className="download-source" href={safeDownloadUrl(official)} target="_blank" rel="noopener noreferrer"><Globe size={22}/><span><strong>{t("official")}</strong><small>{new URL(official).hostname}</small></span><ArrowUpRight size={18}/></a>
             {device !== "ios" && variants.length>0 && !universal && <select aria-label={t("hint")} value={architecture} onChange={e=>setArchitecture(e.target.value)}>

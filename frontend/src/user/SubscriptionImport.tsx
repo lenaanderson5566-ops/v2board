@@ -1,3 +1,4 @@
+import "./fastai-download-copy";
 import { iosDownloads, ClientDownload } from "./ClientDownload";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -35,6 +36,7 @@ export function SubscriptionImport({
     inline?: boolean;
 }) {
     const { t } = useTranslation("clientImport");
+    const { t: downloadKind } = useTranslation("fastaiDownload");
     const { t: choice } = useTranslation("clientChoice");
     const enabled = (id: ClientId) =>
         boot.clientPolicies?.[id]?.enabled !== false;
@@ -123,6 +125,7 @@ export function SubscriptionImport({
               : downloads[selected];
     const content = (
         <div className="pad import-content">
+            <header className="client-family-header third-party"><span className="client-family-badge">{downloadKind("thirdParty")}</span><p>{downloadKind("thirdPartyGuide")}</p></header>
             <section className="quick-step">
                 <h3>
                     <span>1</span>

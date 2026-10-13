@@ -4,6 +4,10 @@ import { ResourcePage } from "./admin";
 import { Modal } from "../shared/ui";
 
 const checks: Record<string, string> = {
+    connection: "连接",
+    config_sync: "配置同步",
+    subscription_sync: "订阅同步",
+    account_sync: "账号同步",
     dns: "DNS",
     website: "网站",
     proxy: "本地代理",
@@ -14,14 +18,26 @@ const checks: Record<string, string> = {
     tls: "TLS",
     reference: "系统连接参考",
 };
+const errorClasses: Record<string, string> = {
+    none: "无",
+    timeout: "超时",
+    network: "网络",
+    certificate: "证书",
+    authentication: "认证",
+    policy: "策略",
+    server: "服务端",
+    unknown: "未分类",
+};
 const statuses: Record<string, string> = {
+    success: "成功",
+    failure: "失败",
     passed: "通过",
     failed: "失败",
     skipped: "跳过",
     unverified: "未验证",
 };
 const resource = {
-    title: "客户端诊断",
+    title: "客户端运行记录",
     fetch: admin("client-diagnostics/fetch"),
     fields: [],
     create: false,
@@ -32,36 +48,59 @@ const resource = {
         ["client_version", "FastAI 版本"],
         ["platform", "系统"],
         [
+            "report_kind",
+            "来源",
+            (r: Row) => (r.report_kind === "runtime" ? "运行事件" : "旧版诊断"),
+        ],
+        [
             "checks",
-            "失败检查",
+            "失败事件",
             (r: Row) =>
                 (r.checks || [])
-                    .filter((c: Row) => c.status === "failed")
-                    .map((c: Row) => checks[c.id] || c.id)
+                    .filter(
+                        (c: Row) =>
+                            c.status === "failed" || c.outcome === "failure",
+                    )
+                    .map((c: Row) => checks[c.name || c.id] || c.name || c.id)
                     .join("、") || "无",
         ],
         ["created_at", "提交时间", (r: Row) => date(r.created_at)],
     ] as Parameters<typeof ResourcePage>[0]["resource"]["columns"],
 };
 export function AdminClientDiagnostics() {
+    const [kind, setKind] = useState("runtime");
     const [detail, setDetail] = useState<Row | null>(null);
     return (
         <>
             <ResourcePage
+                key={kind}
                 resource={resource}
+                queryParams={kind ? { kind } : {}}
                 toolbar={
-                    <p className="pad muted">
-                        用户手动提交的连接快照，可按邮箱、用户
-                        ID、版本或报告编号检索。只含检查状态与耗时，不含访问记录、节点凭据或配置；不能据此断定故障根因。默认保留
-                        30 天。
-                    </p>
+                    <div className="pad">
+                        <p className="muted">
+                            用户自愿共享的运行事件，按邮箱、用户
+                            ID、版本或报告编号检索。记录连接与同步结果、错误类别和耗时，默认保留
+                            30
+                            天。未开启共享或尚无数据不代表用户离线；数据来自客户端自报。
+                        </p>
+                        <select
+                            aria-label="记录来源"
+                            value={kind}
+                            onChange={(e) => setKind(e.target.value)}
+                        >
+                            <option value="runtime">运行事件</option>
+                            <option value="diagnostic">旧版诊断</option>
+                            <option value="">全部</option>
+                        </select>
+                    </div>
                 }
                 extraActions={(r) => (
                     <button onClick={() => setDetail(r)}>查看报告</button>
                 )}
             />
             {detail && (
-                <Modal title="客户端诊断报告" close={() => setDetail(null)}>
+                <Modal title="客户端运行记录" close={() => setDetail(null)}>
                     <p>
                         {detail.email} · FastAI {detail.client_version} ·{" "}
                         {detail.platform}
@@ -72,16 +111,26 @@ export function AdminClientDiagnostics() {
                     <table>
                         <thead>
                             <tr>
-                                <th>检查</th>
+                                <th>事件</th>
+                                <th>错误类别</th>
                                 <th>结果</th>
                                 <th>耗时</th>
                             </tr>
                         </thead>
                         <tbody>
-                            {detail.checks.map((c: Row) => (
-                                <tr key={c.id}>
-                                    <td>{checks[c.id] || c.id}</td>
-                                    <td>{statuses[c.status] || c.status}</td>
+                            {detail.checks.map((c: Row, index: number) => (
+                                <tr key={index}>
+                                    <td>
+                                        {checks[c.name || c.id] ||
+                                            c.name ||
+                                            c.id}
+                                    </td>
+                                    <td>{errorClasses[c.errorClass] || "—"}</td>
+                                    <td>
+                                        {statuses[c.outcome || c.status] ||
+                                            c.outcome ||
+                                            c.status}
+                                    </td>
                                     <td>
                                         {c.elapsedMs == null
                                             ? "—"

@@ -12,7 +12,11 @@ final class Input
         if ($contract['key'] === 'User/DiagnosticController@store' && array_diff(array_keys($request->all()), ['clientVersion','platform','checks'])) {
             throw \Illuminate\Validation\ValidationException::withMessages(['report'=>'Unsupported diagnostic fields.']);
         }
+        if ($contract['key'] === 'User/ClientEventController@store' && array_diff(array_keys($request->all()), ['clientVersion','platform','events'])) {
+            throw \Illuminate\Validation\ValidationException::withMessages(['report'=>'Unsupported event fields.']);
+        }
         $types = [
+            'events'=>'array|max:30',
             'checks'=>'array|max:9',
             'legacyToken'=>'string|max:8192',
             'codeChallenge'=>'string|regex:/^[A-Za-z0-9_-]{43}$/',

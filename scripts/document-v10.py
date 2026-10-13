@@ -119,10 +119,13 @@ required = {
 
 required.update({'Passport/ClientAuthorizationController@create':['codeChallenge','state','redirectUri','platform'], 'Passport/ClientAuthorizationController@exchange':['authorizationCode','codeVerifier','redirectUri']})
 
+required['User/ClientEventController@store'] = ['clientVersion', 'platform', 'events']
 required['User/DiagnosticController@store'] = ['clientVersion', 'platform', 'checks']
 schemas['diagnosticReceipt'] = {'type':'object','required':['reportId'],'properties':{'reportId':{'type':'string','format':'uuid'}}}
 
 def input_schema(field):
+    if field == 'events': return {'type':'array','minItems':1,'maxItems':30,'items':{'type':'object','additionalProperties':False,'required':['name','outcome','elapsedMs','errorClass'],'properties':{'name':{'type':'string','enum':['connection','config_sync','subscription_sync','account_sync']},'outcome':{'type':'string','enum':['success','failure']},'elapsedMs':{'type':'integer','minimum':0,'maximum':300000},'errorClass':{'type':'string','enum':['none','timeout','network','certificate','authentication','policy','server','unknown']}}}}
+
     if field == 'checks': return {'type': 'array', 'minItems': 1, 'maxItems': 9, 'items': {'type': 'object', 'additionalProperties': False, 'required': ['id', 'status'], 'properties': {'id': {'type': 'string', 'enum': ['dns', 'website', 'proxy', 'settings', 'systemProxy', 'route', 'tcp', 'tls', 'reference']}, 'status': {'type': 'string', 'enum': ['passed', 'failed', 'skipped', 'unverified']}, 'elapsedMs': {'type': 'integer', 'minimum': 0, 'maximum': 300000, 'nullable': True}}}}
     if field in ['state','codeChallenge']: return {'type':'string','pattern':'^[A-Za-z0-9_-]{43}$'}
     if field == 'authorizationCode': return {'type':'string','pattern':'^[a-f0-9]{64}$'}
@@ -224,6 +227,12 @@ if 'cityCode' in schemas.get('node', {}).get('properties', {}):
     schemas['node']['properties']['cityCode']['description'] = location_description
 if '/me/client-config' in document['paths']:
     document['paths']['/me/client-config']['get']['responses']['200']['content']['application/json']['schema']['properties']['data']['properties']['nodes']['items']['properties']['cityCode']['description'] = location_description
+
+event_operation = document['paths']['/me/client-events']['post']
+event_operation['description'] = 'Optional account-linked runtime events, disabled by default in the app. At most 30 events per batch and 12 batches per account per hour; 16 KiB body limit. Default retention 30 days, administrator configurable. No browsing history, addresses, credentials or configuration content. Client-reported results are not proof of connectivity or online status.'
+event_operation['responses']['413'] = {'description':'Request body exceeds 16 KiB'}
+schemas['postMeClientEventsInput']['additionalProperties'] = False
+mapping.extend(['', '## Client runtime events', '', 'POST /api/v10/me/client-events accepts opt-in, account-linked version/platform and bounded connection/synchronization outcomes, durations and error categories. At most 30 events/batch, 12 batches/account/hour and 16 KiB/body; default retention 30 days. No browsing history, addresses, credentials or configuration content. The previous diagnostic endpoint remains compatible with installed older clients.'])
 
 diagnostic_operation = document['paths']['/me/diagnostic-reports']['post']
 diagnostic_operation['description'] = 'Manual authenticated diagnostic submission; five reports per account per hour. Default retention 30 days, configurable by administrator. No raw parameters, IP addresses, credentials or browsing history.'

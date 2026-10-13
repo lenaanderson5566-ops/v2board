@@ -93,3 +93,5 @@
 \Illuminate\Support\Facades\Route::get('server/traffic-budget', [\App\Http\Controllers\V10\NodeController::class, 'trafficBudget'])->middleware(\App\Http\Middleware\NodeV10::class)->name('v10.server.trafficBudget');
 
 \Illuminate\Support\Facades\Route::post('me/diagnostic-reports', [\App\Http\Controllers\V10\UserDiagnosticController::class, 'postMeDiagnosticReports'])->middleware(['throttle:20,1'])->name('v10.postMeDiagnosticReports');
+
+\Illuminate\Support\Facades\Route::post('me/client-events', [\App\Http\Controllers\V10\UserDiagnosticController::class, 'postMeClientEvents'])->middleware(['throttle:20,1'])->name('v10.postMeClientEvents');

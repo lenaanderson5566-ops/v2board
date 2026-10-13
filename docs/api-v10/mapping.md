@@ -141,3 +141,7 @@ Provider reference: https://v3.paytaro.com/#/docs/api-notify and https://v3.payt
 ## Client diagnostics
 
 POST /api/v10/me/diagnostic-reports accepts manual, user-approved check results only. The server derives account identity and returns reportId. Five reports/account/hour; default retention 30 days, configurable under log settings.
+
+## Client runtime events
+
+POST /api/v10/me/client-events accepts opt-in, account-linked version/platform and bounded connection/synchronization outcomes, durations and error categories. At most 30 events/batch, 12 batches/account/hour and 16 KiB/body; default retention 30 days. No browsing history, addresses, credentials or configuration content. The previous diagnostic endpoint remains compatible with installed older clients.

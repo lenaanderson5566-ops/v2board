@@ -17,7 +17,13 @@ export function FastaiDownload() {
     if (!releases.length) return null;
     const available = releases.filter((r) => r.platform === platform);
     return (
-        <section className="panel pad" aria-label="FastAI">
+        <section
+            className="panel pad fastai-download-panel"
+            aria-label="FastAI"
+        >
+            <span className="client-family-badge dedicated">
+                {t("dedicated")}
+            </span>
             <h2>FastAI · {t("title")}</h2>
             <p>{t("guide")}</p>
             <label>
@@ -30,7 +36,15 @@ export function FastaiDownload() {
                         new Set([platform, ...releases.map((r) => r.platform)]),
                     ).map((p) => (
                         <option key={p} value={p}>
-                            {p}
+                            {(
+                                {
+                                    windows: "Windows",
+                                    macos: "macOS",
+                                    android: "Android",
+                                    linux: "Linux",
+                                    ios: "iOS",
+                                } as Record<string, string>
+                            )[p] || p}
                         </option>
                     ))}
                 </select>
@@ -49,7 +63,7 @@ export function FastaiDownload() {
                 ))}
             </div>
             {!available.length && <p className="muted">{t("unavailable")}</p>}
-            <p className="muted">{t("requirement")}</p>
+            <p className="muted">{t("appUpdates")}</p>
         </section>
     );
 }

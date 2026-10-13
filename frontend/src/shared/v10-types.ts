@@ -148,3 +148,4 @@ export type V10GetMeNodePreviewsInput = {  };
 
 export type V10DiagnosticReceipt = { "reportId": string };
 export type V10PostMeDiagnosticReportsInput = { "clientVersion": string; "platform": "windows" | "android" | "macos" | "linux" | "ios"; "checks": Array<{ "id": "dns" | "website" | "proxy" | "settings" | "systemProxy" | "route" | "tcp" | "tls" | "reference"; "status": "passed" | "failed" | "skipped" | "unverified"; "elapsedMs"?: number | null }> };
+export type V10PostMeClientEventsInput = { "clientVersion": string; "platform": "windows" | "android" | "macos" | "linux" | "ios"; "events": Array<{ "name": "connection" | "config_sync" | "subscription_sync" | "account_sync"; "outcome": "success" | "failure"; "elapsedMs": number; "errorClass": "none" | "timeout" | "network" | "certificate" | "authentication" | "policy" | "server" | "unknown" }> };

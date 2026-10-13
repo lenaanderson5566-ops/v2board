@@ -1437,3 +1437,25 @@
     .app.user .notification-options { padding: 0 18px; }
     .app.user .notification-option { gap: 16px; padding: 20px 0; }
 }
+
+body[data-console="user"] .client-family-badge {
+    display: inline-block;
+    padding: 4px 10px;
+    border-radius: 8px;
+    background: var(--surface-raised);
+    color: var(--ink);
+    font-size: 12px;
+    font-weight: 600;
+}
+body[data-console="user"] .client-family-badge.dedicated {
+    background: var(--brand);
+    color: var(--on-brand);
+}
+body[data-console="user"] .fastai-download-panel {
+    border: 1px solid var(--outline);
+    background: linear-gradient(120deg, var(--brand-soft), var(--surface));
+    margin-bottom: 20px;
+}
+body[data-console="user"] .fastai-download-panel .actions { flex-wrap: wrap; margin-top: 14px; }
+body[data-console="user"] .client-family-header { padding-bottom: 12px; border-bottom: 1px solid var(--line); }
+body[data-console="user"] .client-family-header p { color: var(--text-secondary); margin: 8px 0; }

@@ -718,6 +718,7 @@ class LogController extends Controller
         $pageSize = min(max((int)$request->input('page_size', 10), 1), 100);
 
         $builder = RiskRuleHit::query();
+        $this->filterLogSearch($request, $builder, ['email', 'ip', 'rule_key', 'status', 'scene'], 'hit_at');
         if ($request->filled('scene')) {
             $builder->where('scene', $request->input('scene'));
         }
@@ -961,12 +962,33 @@ class LogController extends Controller
         }
     }
 
+    private function filterLogSearch(Request $request, $builder, array $columns, string $timeColumn, bool $relatedEmail = false): void
+    {
+        $params = $request->validate([
+            'keyword' => 'nullable|string|max:200',
+            'from' => 'nullable|integer|min:0',
+            'to' => 'nullable|integer|min:0',
+        ]);
+        if (isset($params['from'], $params['to']) && $params['to'] < $params['from']) abort(422, '结束时间不能早于开始时间');
+        foreach (['from' => '>=', 'to' => '<='] as $key => $operator) {
+            if (isset($params[$key])) $builder->where($timeColumn, $operator, $params[$key]);
+        }
+        $keyword = trim($params['keyword'] ?? '');
+        if ($keyword === '') return;
+        $builder->where(function ($query) use ($keyword, $columns, $relatedEmail) {
+            foreach ($columns as $column) $query->orWhere($column, 'like', '%' . $keyword . '%');
+            if (ctype_digit($keyword)) $query->orWhere('user_id', (int) $keyword);
+            if ($relatedEmail) $query->orWhereIn('user_id', User::query()->select('id')->where('email', 'like', '%' . $keyword . '%'));
+        });
+    }
+
     public function getLoginLogs(Request $request)
     {
         $current = max((int)$request->input('current', 1), 1);
         $pageSize = min(max((int)$request->input('page_size', 10), 1), 100);
 
         $builder = LoginLog::query();
+        $this->filterLogSearch($request, $builder, ['email', 'ip', 'user_agent'], 'created_at');
         if ($request->filled('email')) {
             $builder->where('email', 'like', '%' . $request->input('email') . '%');
         }
@@ -998,6 +1020,7 @@ class LogController extends Controller
         $minConnectedAt = time() - ($retentionDays * 86400);
 
         $builder = UserConnectionLog::query()->where('connected_at', '>=', $minConnectedAt);
+        $this->filterLogSearch($request, $builder, ['ip'], 'connected_at', true);
         if ($request->filled('email')) {
             $builder->whereIn('user_id', User::query()->select('id')
                 ->where('email', 'like', '%' . trim((string) $request->input('email')) . '%'));
@@ -1032,6 +1055,7 @@ class LogController extends Controller
         $pageSize = min(max((int)$request->input('page_size', 10), 1), 100);
 
         $builder = SubscribeLog::query();
+        $this->filterLogSearch($request, $builder, ['email', 'ip', 'user_agent', 'client_type', 'status', 'reason'], 'created_at');
         if ($request->filled('email')) {
             $builder->where('email', 'like', '%' . $request->input('email') . '%');
         }

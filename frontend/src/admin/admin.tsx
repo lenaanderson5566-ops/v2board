@@ -1,3 +1,4 @@
+import { AdminLogFilters } from "./AdminLogFilters";
 import {
     NodeDiagnostics,
     SystemHealth,
@@ -324,7 +325,11 @@ export const resources: Record<string, Resource> = {
             [
                 "id",
                 "用户（ID / 邮箱）",
-                (r) => <AdminUserActivityLink row={{ user_id: r.id, email: r.email }} />,
+                (r) => (
+                    <AdminUserActivityLink
+                        row={{ user_id: r.id, email: r.email }}
+                    />
+                ),
             ],
             ["credit_balance", "剩余额度", (r) => bytes(r.credit_balance || 0)],
             [
@@ -810,9 +815,52 @@ export const resources: Record<string, Resource> = {
             ],
             ["ip", "IP"],
             ["status", "订阅结果"],
-            ["reason", "结果说明"],
+            [
+                "reason",
+                "结果说明",
+                (r) => {
+                    const labels: Record<string, string> = {
+                        client_ua_not_allowed: "客户端 UA 未被允许",
+                        client_format_not_allowed: "客户端与配置格式不兼容",
+                        client_disabled: "客户端已禁用",
+                        client_version_too_low: "客户端版本过低",
+                    };
+                    return labels[r.reason] ? (
+                        <span>
+                            {labels[r.reason]}
+                            <small
+                                className="muted"
+                                style={{ display: "block" }}
+                            >
+                                {r.reason}
+                            </small>
+                        </span>
+                    ) : (
+                        r.reason || "—"
+                    );
+                },
+            ],
             ["client_type", "客户端类型"],
-            ["user_agent", "UA"],
+            [
+                "user_agent",
+                "UA",
+                (r) => (
+                    <details>
+                        <summary>
+                            {String(r.user_agent || "未知").slice(0, 48)}
+                        </summary>
+                        <div
+                            style={{
+                                maxWidth: 420,
+                                overflowWrap: "anywhere",
+                                whiteSpace: "normal",
+                            }}
+                        >
+                            {r.user_agent}
+                        </div>
+                    </details>
+                ),
+            ],
             created,
         ],
         fields: [],
@@ -894,6 +942,12 @@ export function ResourcePage({
     tableSort?: { key: string; direction: string; fields: string[] };
     onTableSort?: (key: string, direction: string) => void;
 }) {
+    const logKind = Object.entries(resources)
+        .find(
+            ([key, value]) => key.startsWith("log-") && value === resource,
+        )?.[0]
+        .slice(4);
+    const [logFilters, setLogFilters] = useState<Row>({});
     const [routeBackend, setRouteBackend] = useState("v2node");
     const groups = useData<Row[]>(
         resource.fields.some((f) => f.key === "group_id")
@@ -998,6 +1052,7 @@ export function ResourcePage({
                     ? search
                     : undefined,
             keyword: resource.title.includes("黑名单") ? search : undefined,
+            ...logFilters,
             ...queryParams,
             ...(resource === resources.routes ? { backend: routeBackend } : {}),
         }),
@@ -1043,6 +1098,7 @@ export function ResourcePage({
     }
     const list = (d.data || []).filter(
         (r) =>
+            Boolean(logKind) ||
             !search ||
             Object.values(r).some((v) =>
                 String(v ?? "")
@@ -1056,7 +1112,7 @@ export function ResourcePage({
                 title={resource.title}
                 actions={
                     <>
-                        {searchable && (
+                        {searchable && !logKind && (
                             <div className="search">
                                 <Search size={16} />
                                 <input
@@ -1101,6 +1157,16 @@ export function ResourcePage({
                     </>
                 }
             >
+                {logKind && (
+                    <AdminLogFilters
+                        key={logKind}
+                        kind={logKind}
+                        onApply={(filters) => {
+                            setLogFilters(filters);
+                            setPage(1);
+                        }}
+                    />
+                )}
                 {resource.sort && resource.sortKind && (
                     <div className="pad">
                         <SortButton

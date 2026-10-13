@@ -1,0 +1,118 @@
+import { useState } from "react";
+import type { Row } from "../shared/api";
+
+export function AdminLogFilters({
+    kind,
+    onApply,
+}: {
+    kind: string;
+    onApply: (filters: Row) => void;
+}) {
+    const [draft, setDraft] = useState<Row>({});
+    const [error, setError] = useState("");
+    const fields = [
+        ["keyword", "关键词", "text"],
+        ["ip", "精确 IP", "text"],
+        ["from", "开始时间", "datetime-local"],
+        ["to", "结束时间", "datetime-local"],
+        ...(kind === "subscribe"
+            ? [["client_type", "客户端类型", "text"]]
+            : []),
+    ];
+    return (
+        <form
+            className="pad toolbar"
+            onSubmit={(event) => {
+                event.preventDefault();
+                if (draft.from && draft.to && draft.from > draft.to) {
+                    setError("结束时间不能早于开始时间");
+                    return;
+                }
+                const filters: Row = {};
+                for (const [key, value] of Object.entries(draft)) {
+                    if (String(value).trim())
+                        filters[key] = ["from", "to"].includes(key)
+                            ? Math.floor(
+                                  new Date(String(value)).getTime() / 1000,
+                              )
+                            : String(value).trim();
+                }
+                setError("");
+                onApply(filters);
+            }}
+        >
+            {fields.map(([key, label, type]) => (
+                <label key={key}>
+                    {label}
+                    <input
+                        aria-label={`日志${label}`}
+                        type={type}
+                        value={draft[key] || ""}
+                        maxLength={key === "keyword" ? 200 : undefined}
+                        placeholder={
+                            key === "keyword"
+                                ? kind === "connection"
+                                    ? "邮箱、用户 ID 或 IP"
+                                    : kind === "risk"
+                                      ? "邮箱、用户 ID、IP、规则或结果代码"
+                                      : kind === "login"
+                                        ? "邮箱、用户 ID、IP 或 UA"
+                                        : "邮箱、用户 ID、IP、UA 或结果代码"
+                                : undefined
+                        }
+                        onChange={(event) =>
+                            setDraft({ ...draft, [key]: event.target.value })
+                        }
+                    />
+                </label>
+            ))}
+            {kind === "subscribe" && (
+                <label>
+                    订阅结果
+                    <select
+                        aria-label="日志订阅结果"
+                        value={draft.status || ""}
+                        onChange={(event) =>
+                            setDraft({ ...draft, status: event.target.value })
+                        }
+                    >
+                        <option value="">全部</option>
+                        <option value="success">成功</option>
+                        <option value="failed">失败</option>
+                    </select>
+                </label>
+            )}
+            {kind === "login" && (
+                <label>
+                    登录结果
+                    <select
+                        aria-label="日志登录结果"
+                        value={draft.is_success ?? ""}
+                        onChange={(event) =>
+                            setDraft({
+                                ...draft,
+                                is_success: event.target.value,
+                            })
+                        }
+                    >
+                        <option value="">全部</option>
+                        <option value="1">成功</option>
+                        <option value="0">失败</option>
+                    </select>
+                </label>
+            )}
+            <button type="submit">查询</button>
+            <button
+                type="button"
+                onClick={() => {
+                    setDraft({});
+                    setError("");
+                    onApply({});
+                }}
+            >
+                重置
+            </button>
+            {error && <span role="alert">{error}</span>}
+        </form>
+    );
+}

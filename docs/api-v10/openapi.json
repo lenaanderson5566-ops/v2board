@@ -10504,6 +10504,7 @@
           "client"
         ],
         "summary": "GET me/client-config",
+        "description": "Authenticated FastAI configuration. Enablement and the application minimum version use the independent fastai client strategy; platform release minimums also apply. CLIENT_DISABLED returns 403 and CLIENT_VERSION_TOO_LOW returns 409. Native logs are classified as fastai. Managed FastAI clients request core=sing-box.",
         "parameters": [
           {
             "name": "Accept-Language",

@@ -1715,6 +1715,7 @@ export function Settings() {
                     k !== "email_template" &&
                     k !== "invite_never_expire" &&
                     k !== "fastai_releases" &&
+                    k !== "fastai_enabled" &&
                     !k.startsWith("fastai_entrypoint"),
             )
             .map(([k, v]) =>

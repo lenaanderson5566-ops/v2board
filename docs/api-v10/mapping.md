@@ -125,5 +125,8 @@ Client identity migration now consolidates old strategy keys and log identities.
 
 支付回调加固（2026-10-12）：V10 与保留的旧支付回调继续共用 PaymentActions，原生响应及路径不变。EPay、Paytaro、StripeCheckout 核对金额、币种和已选择渠道；历史快照允许先前选择的渠道延迟到账。没有新用户 JSON 字段，前端传输类型保持不变。
 
-### Display-only route previews
+### FastAI access policy
+`GET /api/v10/me/client-config` uses the independent `fastai` client strategy for enablement and its application minimum version, evaluated using the validated `clientVersion`. Existing platform release minimums still apply. First creation inherits `fastai_enabled`; after creation, the strategy row is authoritative and the old general-settings toggle is hidden. Native subscription logs use `fastai`; historical `FastAI/...` UA observations previously stored as `flclash` are grouped under `fastai` without rewriting audit records. FastAI is a native client identity, not an additional token-subscription format. Client defaults and managed-profile synchronization request `core=sing-box`; public sing-box and FlClash policies do not govern FastAI. Response schemas and frontend transport fields are unchanged.
+
+### Display-only route preview contract
 `GET /api/v10/me/node-previews` maps to `UserServerController@getMeNodePreviews` and `ServerActions::previews`. It requires a non-banned authenticated user, but no active subscription. The `nodePreview` projection contains only names, region labels, tags and stable display identities for visible nodes. It has no host, port, UUID, secret, transport or group membership fields. `/me/client-config` retains its entitlement and FastAI access checks. Previews cannot be used to establish a connection.

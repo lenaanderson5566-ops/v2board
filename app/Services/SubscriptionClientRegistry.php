@@ -5,6 +5,7 @@ final class SubscriptionClientRegistry
 {
     // Canonical client IDs are shared by policy storage, UA recognition and output selection.
     public const CLIENTS = [
+        'fastai'=>['fastai', \App\Services\FastaiConfig::class, 'FastAI'],
         'clash-party'=>['clash-party', \App\Protocols\ClashMeta::class, 'Clash Party / Mihomo Party'],
         'throne'=>['throne', \App\Protocols\UriSubscription::class, 'Throne'],
         'nekobox'=>['nekobox', \App\Protocols\ClashMeta::class, 'NekoBox for Android'],

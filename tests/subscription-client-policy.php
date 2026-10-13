@@ -64,6 +64,12 @@ try {
  $row=$m->invoke(new App\Http\Controllers\V1\Risk\LogController(),[['client_type'=>$type]])->first();
  $assert($row['subscribe_flag_count_24h']===2,'24 hour success and failure count');
  $assert($row['subscribe_flag_count_30d']===3,'30 day count');
+ foreach (['flclash','fastai'] as $storedType) SubscribeLog::create(['user_id'=>$user->id,'client_type'=>$storedType,'status'=>'success','user_agent'=>'FastAI/89.77.66','created_at'=>time(),'updated_at'=>time()]);
+ $stats=$m->invoke(new App\Http\Controllers\V1\Risk\LogController(),[['client_type'=>'fastai'],['client_type'=>'flclash']])->keyBy('client_type');
+ $sample=collect($stats['fastai']['raw_ua_stats'])->firstWhere('ua','FastAI/89.77.66');
+ $assert($sample && $sample['count_24h']===2 && $sample['version']==='89.77.66','Current and historical FastAI UA counts merge into FastAI');
+ $assert(!in_array('FastAI/89.77.66',$stats['flclash']['raw_ua_list']),'FastAI UA observations no longer appear in FlClash');
+ $assert($call('FastAI/1.0.0','fastai')->getStatusCode()===422,'FastAI format cannot bypass native session authentication');
  $assert($call('FlClash/0.8.0','FlClash/0.8.0')->getStatusCode()===422,'Explicit format is not a UA');
  $assert($call('Throne/1.3.2','throne')->getStatusCode()===403,'New client is denied before opt-in');
  $service->updateStrategies([['client_type'=>'throne','is_enabled'=>true]]);

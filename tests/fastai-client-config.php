@@ -133,6 +133,18 @@ try {
     $assert($disabled->getStatusCode()===403 && json_decode($disabled->getContent(), true)['code']==='CLIENT_DISABLED', 'Disabled client policy');
     config(['v2board.fastai_enabled'=>1]);
     $assert($call($path.'&core=sing-box', $token, 'GET', 'application/json')->getStatusCode()===200, 'Enabling FastAI restores valid users without a new login');
+    $policy = new App\Services\ClientStrategyService();
+    $policy->updateStrategies([['client_type'=>'fastai', 'is_enabled'=>true, 'min_version'=>'0.8.99']]);
+    $assert($policy->getStrategies()->contains('client_type', 'fastai'), 'FastAI has an independent policy row');
+    $assert($call($path, $token)->getStatusCode()===200, 'FastAI minimum accepts matching explicit client version');
+    $policy->updateStrategies([['client_type'=>'fastai', 'min_version'=>'1.0.0']]);
+    $assert($call($path, $token)->getStatusCode()===409, 'FastAI policy rejects lower application version');
+    $policy->updateStrategies([['client_type'=>'fastai', 'min_version'=>null, 'is_enabled'=>false]]);
+    $assert($call($path, $token)->getStatusCode()===403, 'FastAI policy disables native configuration');
+    $policy->updateStrategies([['client_type'=>'fastai', 'is_enabled'=>true]]);
+    App\Models\ClientStrategy::where('client_type', 'sing-box')->update(['is_enabled'=>0, 'min_version'=>'99.0.0']);
+    $assert($call($path.'&core=sing-box', $token, 'GET', 'application/json')->getStatusCode()===200, 'FastAI access is independent of generic sing-box policy');
+    $assert(App\Models\SubscribeLog::where('user_id',$user->id)->where('client_type','fastai')->where('status','success')->exists(), 'Native requests are logged as FastAI');
     $user->update(['banned'=>1]);
     $assert($call('/api/v10/me/node-previews', $token)->getStatusCode()===403, 'Banned accounts cannot preview');
     $assert($call($path, $token)->getStatusCode()===403, 'Banned session denied');

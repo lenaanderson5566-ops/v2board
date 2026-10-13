@@ -21,7 +21,13 @@ class ClientActions
         $request->attributes->set('client.native', true);
         $request->attributes->set('client.version', $request->input('client_version'));
         $request->attributes->set('client.platform', $request->input('platform'));
-        if (!(new \App\Services\FastaiReleaseService())->supports($request->input('client_version'), $request->input('platform'), $request->input('architecture'))) {
+        $strategy = new ClientStrategyService();
+        if (!$strategy->isEnabled('fastai')) {
+            (new RiskLogService())->createSubscribeLog($this->buildSubscribeLogPayload($request, $user, 'fastai', 'failed', 'client_disabled'));
+            $this->rejectNativeConfig($request, 'CLIENT_DISABLED', 'This client is currently unavailable.');
+        }
+        if (!$strategy->isVersionAllowed('fastai', $request->input('client_version')) || !(new \App\Services\FastaiReleaseService())->supports($request->input('client_version'), $request->input('platform'), $request->input('architecture'))) {
+            (new RiskLogService())->createSubscribeLog($this->buildSubscribeLogPayload($request, $user, 'fastai', 'failed', 'client_version_too_low'));
             $this->rejectNativeConfig($request, 'CLIENT_VERSION_TOO_LOW', 'Please update your client.', 409);
         }
         $request->merge(['user' => $user, 'format' => 'flclash', 'language' => app()->getLocale()]);
@@ -93,7 +99,7 @@ class ClientActions
         $userService = new UserService();
         if ($userService->isAvailable($user)) {
             $denial = $request->attributes->get('client.native') ? null : $clientStrategyService->accessDenial($resolvedFormat, (string) $request->userAgent());
-            if ($request->attributes->get('client.native') ? !config('v2board.fastai_enabled', 1) : $denial === 'client_disabled') {
+            if ($request->attributes->get('client.native') ? !$clientStrategyService->isEnabled('fastai') : $denial === 'client_disabled') {
                 $riskLogService->createSubscribeLog($this->buildSubscribeLogPayload(
                     $request,
                     $user,
@@ -201,7 +207,7 @@ class ClientActions
             'plan_id' => $user->plan_id,
             'plan_name' => $user->plan_id ? optional(Plan::find($user->plan_id))->name : null,
             'expired_at' => $user->expired_at,
-            'client_type' => $request->attributes->get('client.native') ? $flag : (\App\Services\ClientIdentity::identify((string) $request->userAgent()) ?: $flag),
+            'client_type' => $request->attributes->get('client.native') ? 'fastai' : (\App\Services\ClientIdentity::identify((string) $request->userAgent()) ?: $flag),
             'traffic_u' => $trafficU,
             'traffic_d' => $trafficD,
             'traffic_total' => $trafficTotal,
@@ -290,7 +296,7 @@ class ClientActions
     {
         $flag = SubscriptionClientRegistry::canonicalId((string) $input)
             ?? ($explicit ? null : \App\Services\ClientIdentity::identify((string) $input));
-        if (!$flag) abort(422, 'Unsupported subscription format.');
+        if (!$flag || $flag === 'fastai') abort(422, 'Unsupported subscription format.');
         return $flag;
     }
 }

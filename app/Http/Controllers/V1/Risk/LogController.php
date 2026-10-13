@@ -454,6 +454,7 @@ class LogController extends Controller
             return $items;
         }
 
+        $clientTypeExpression = "CASE WHEN LOWER(TRIM(user_agent)) REGEXP '^fastai([/ _-]|$)' THEN 'fastai' ELSE LOWER(TRIM(client_type)) END";
         $now = time();
         $cutoff24h = $now - 86400;
         $cutoff30d = $now - (30 * 86400);
@@ -468,54 +469,54 @@ class LogController extends Controller
             ->toArray();
 
         $flag24hRows = SubscribeLog::query()
-            ->selectRaw('LOWER(TRIM(client_type)) as normalized_client_type, COUNT(*) as hit_count')
+            ->selectRaw($clientTypeExpression . ' as normalized_client_type, COUNT(*) as hit_count')
             ->whereNotNull('client_type')
             ->where('client_type', '<>', '')
             ->where('created_at', '>=', $cutoff24h)
-            ->whereIn(DB::raw('LOWER(TRIM(client_type))'), $clientTypes)
-            ->groupBy(DB::raw('LOWER(TRIM(client_type))'))
+            ->whereIn(DB::raw($clientTypeExpression), $clientTypes)
+            ->groupBy(DB::raw($clientTypeExpression))
             ->get();
 
         $flag30dRows = SubscribeLog::query()
-            ->selectRaw('LOWER(TRIM(client_type)) as normalized_client_type, COUNT(*) as hit_count')
+            ->selectRaw($clientTypeExpression . ' as normalized_client_type, COUNT(*) as hit_count')
             ->whereNotNull('client_type')
             ->where('client_type', '<>', '')
             ->where('created_at', '>=', $cutoff30d)
-            ->whereIn(DB::raw('LOWER(TRIM(client_type))'), $clientTypes)
-            ->groupBy(DB::raw('LOWER(TRIM(client_type))'))
+            ->whereIn(DB::raw($clientTypeExpression), $clientTypes)
+            ->groupBy(DB::raw($clientTypeExpression))
             ->get();
 
         $ua24hRows = SubscribeLog::query()
-            ->selectRaw('LOWER(TRIM(client_type)) as normalized_client_type, COUNT(DISTINCT user_agent) as ua_count')
+            ->selectRaw($clientTypeExpression . ' as normalized_client_type, COUNT(DISTINCT user_agent) as ua_count')
             ->whereNotNull('client_type')
             ->where('client_type', '<>', '')
             ->whereNotNull('user_agent')
             ->where('user_agent', '<>', '')
             ->where('created_at', '>=', $cutoff24h)
-            ->whereIn(DB::raw('LOWER(TRIM(client_type))'), $clientTypes)
-            ->groupBy(DB::raw('LOWER(TRIM(client_type))'))
+            ->whereIn(DB::raw($clientTypeExpression), $clientTypes)
+            ->groupBy(DB::raw($clientTypeExpression))
             ->get();
 
         $ua30dRows = SubscribeLog::query()
-            ->selectRaw('LOWER(TRIM(client_type)) as normalized_client_type, COUNT(DISTINCT user_agent) as ua_count')
+            ->selectRaw($clientTypeExpression . ' as normalized_client_type, COUNT(DISTINCT user_agent) as ua_count')
             ->whereNotNull('client_type')
             ->where('client_type', '<>', '')
             ->whereNotNull('user_agent')
             ->where('user_agent', '<>', '')
             ->where('created_at', '>=', $cutoff30d)
-            ->whereIn(DB::raw('LOWER(TRIM(client_type))'), $clientTypes)
-            ->groupBy(DB::raw('LOWER(TRIM(client_type))'))
+            ->whereIn(DB::raw($clientTypeExpression), $clientTypes)
+            ->groupBy(DB::raw($clientTypeExpression))
             ->get();
 
         $uaStatRows = SubscribeLog::query()
-            ->selectRaw('LOWER(TRIM(client_type)) as normalized_client_type, user_agent, SUM(CASE WHEN created_at >= ? THEN 1 ELSE 0 END) as count_24h, COUNT(*) as count_30d, MAX(created_at) as last_seen', [$cutoff24h])
+            ->selectRaw($clientTypeExpression . ' as normalized_client_type, user_agent, SUM(CASE WHEN created_at >= ? THEN 1 ELSE 0 END) as count_24h, COUNT(*) as count_30d, MAX(created_at) as last_seen', [$cutoff24h])
             ->whereNotNull('client_type')
             ->where('client_type', '<>', '')
             ->whereNotNull('user_agent')
             ->where('user_agent', '<>', '')
             ->where('created_at', '>=', $cutoff30d)
-            ->whereIn(DB::raw('LOWER(TRIM(client_type))'), $clientTypes)
-            ->groupBy(DB::raw('LOWER(TRIM(client_type))'), 'user_agent')
+            ->whereIn(DB::raw($clientTypeExpression), $clientTypes)
+            ->groupBy(DB::raw($clientTypeExpression), 'user_agent')
             ->orderBy('count_30d', 'desc')
             ->orderBy('count_24h', 'desc')
             ->get();

@@ -4,6 +4,7 @@ namespace App\Services;
 class ClientIdentity
 {
     public const ALIASES = [
+        'fastai' => ['FastAI'],
         'clash-party' => ['mihomo.party'], 'throne' => ['Throne'],
         'nekobox' => ['NekoBox'], 'husi' => ['husi'],
         'flclash' => ['FlClash'], 'clash-verge' => ['ClashVergeRev', 'Clash-Verge', 'ClashVerge'],

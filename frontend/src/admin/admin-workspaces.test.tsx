@@ -288,6 +288,7 @@ it("keeps recommendations out of dedicated client settings", async () => {
     expect(screen.queryByText("android · 主推荐客户端")).toBeNull();
     expect(screen.queryByText("android · 备选客户端")).toBeNull();
     expect(await screen.findByText("FastAI 客户端下载与更新")).toBeTruthy();
+    expect(screen.queryByText("启用 FastAI 客户端")).toBeNull();
 });
 
 it("places subscription blocking in risk rules and removes the duplicate whitelist", async () => {

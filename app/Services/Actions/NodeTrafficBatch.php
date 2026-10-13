@@ -16,7 +16,7 @@ class NodeTrafficBatch
         // Unique constraint serializes concurrent retries; a receipt always contains its durable work.
         $inserted=DB::table('v2_node_traffic_batch')->insertOrIgnore($key + [
             'payload_hash'=>$hash,'payload'=>$payload,'rate'=>$node->rate,
-            'record_at'=>strtotime(date('Y-m-d')),'created_at'=>time(),
+            'record_timezone'=>\App\Services\TimeZones::system(),'record_at'=>strtotime(date('Y-m-d')),'created_at'=>time(),
         ]);
         $row = DB::table('v2_node_traffic_batch')->where($key)->first();
         abort_unless($row, 500);
@@ -46,10 +46,10 @@ class NodeTrafficBatch
             foreach (array_chunk($data, 500, true) as $chunk) {
                 $values=[]; $bindings=[];
                 foreach ($chunk as $userId=>$bytes) {
-                    $values[]='(?,?,?,?,?,?,?,?)';
-                    array_push($bindings,$userId,$row->rate,$bytes[0],$bytes[1],'d',$row->record_at,$now,$now);
+                    $values[]='(?,?,?,?,?,?,?,?,?)';
+                    array_push($bindings,$userId,$row->rate,$bytes[0],$bytes[1],'d',$row->record_at,$now,$now,$row->record_timezone??'Asia/Shanghai');
                 }
-                DB::statement('INSERT INTO v2_stat_user (user_id,server_rate,u,d,record_type,record_at,created_at,updated_at) VALUES '.implode(',', $values).' ON DUPLICATE KEY UPDATE u=u+VALUES(u),d=d+VALUES(d),updated_at=VALUES(updated_at)', $bindings);
+                DB::statement('INSERT INTO v2_stat_user (user_id,server_rate,u,d,record_type,record_at,created_at,updated_at,record_timezone) VALUES '.implode(',', $values).' ON DUPLICATE KEY UPDATE u=u+VALUES(u),d=d+VALUES(d),updated_at=VALUES(updated_at)', $bindings);
             }
             DB::statement('INSERT INTO v2_stat_server (server_id,server_type,u,d,record_type,record_at,created_at,updated_at) VALUES (?,?,?,?,?,?,?,?) ON DUPLICATE KEY UPDATE u=u+?,d=d+?,updated_at=?',
                 [$row->node_id,$row->node_type,$u,$d,'d',$row->record_at,$now,$now,$u,$d,$now]);

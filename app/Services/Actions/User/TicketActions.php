@@ -213,45 +213,7 @@ class TicketActions
     }
 
     private function sendNotify(Ticket $ticket, string $message, $userid = null)
-	{
-		$telegramService = new TelegramService();
-		if (!empty($userid)) {
-			$user = User::find($userid);
-
-			if ($user) {
-				$transfer_enable = $this->getFlowData($user->transfer_enable); // 总流量
-				$remaining_traffic = $this->getFlowData((\App\Services\TrafficCreditService::hasPeriod($user) ? max(0, $user->transfer_enable - $user->u - $user->d) : 0) + (int)$user->credit_balance); // 剩余流量
-				$u = $this->getFlowData($user->u); // 上传
-				$d = $this->getFlowData($user->d); // 下载
-				$expired_at = date("Y-m-d H:i:s", $user->expired_at); // 到期时间
-                $ip_address = request()->ip();
-                $geo = app(\App\Services\GeoIpService::class)->lookup($ip_address);
-                $location = implode(', ', array_filter([$geo['city'] ?? null, $geo['country'] ?? null])) ?: '无法确定用户地址';
-
-				$plan = Plan::where('id', $user->plan_id)->first();
-				$planName = $plan ? $plan->name : '未找到套餐信息'; // Check if plan data is available
-
-				$money = \App\Services\Money::format($user->balance);
-				$affmoney = \App\Services\Money::format($user->commission_balance);
-				$telegramService->sendMessageWithAdmin("📮工单提醒 #{$ticket->id}\n———————————————\n邮箱：\n`{$user->email}`\n用户位置：\n`{$location}`\nIP:\n{$ip_address}\n套餐与流量：\n`{$planName} of {$transfer_enable}/{$remaining_traffic}`\n上传/下载：\n`{$u}/{$d}`\n到期时间：\n`{$expired_at}`\n余额/佣金余额：\n`{$money}/{$affmoney}`\n主题：\n`{$ticket->subject}`\n内容：\n {$message} ", true);
-			} else {
-				// Handle case where user data is not found
-				$telegramService->sendMessageWithAdmin("User data not found for user ID: {$userid}", true);
-			}
-		} else {
-			$telegramService->sendMessageWithAdmin("📮工单提醒 #{$ticket->id}\n———————————————\n主题：\n`{$ticket->subject}`\n内容：\n {$message} ", true);
-		}
-	}
-
-    private function getFlowData($b)
     {
-        $g = $b / (1024 * 1024 * 1024); // 转换流量数据
-        $m = $b / (1024 * 1024);
-        if ($g >= 1) {
-            $text = round($g, 2) . "GB";
-        } else {
-            $text = round($m, 2) . "MB";
-        }
-        return $text;
+        (new TelegramService())->sendMessageWithAdmin('工单 #'.(int)$ticket->id.' 有新消息，请登录后台查看并处理。',true);
     }
 }

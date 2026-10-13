@@ -74,6 +74,7 @@ class StatUserJob implements ShouldQueue
                             'u' => $trafficData[0],
                             'd' => $trafficData[1],
                             'record_type' => $this->recordType,
+                            'record_timezone' => \App\Services\TimeZones::system(),
                             'record_at' => $recordAt
                         ];
                     }

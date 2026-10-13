@@ -95,3 +95,9 @@
 \Illuminate\Support\Facades\Route::post('me/diagnostic-reports', [\App\Http\Controllers\V10\UserDiagnosticController::class, 'postMeDiagnosticReports'])->middleware(['throttle:20,1'])->name('v10.postMeDiagnosticReports');
 
 \Illuminate\Support\Facades\Route::post('me/client-events', [\App\Http\Controllers\V10\UserDiagnosticController::class, 'postMeClientEvents'])->middleware(['throttle:20,1'])->name('v10.postMeClientEvents');
+
+\Illuminate\Support\Facades\Route::post('me/integrations/telegram/binding-links', [\App\Http\Controllers\V10\UserTelegramController::class, 'postMeIntegrationsTelegramBindingLinks'])->middleware(['throttle:6,1'])->name('v10.postMeIntegrationsTelegramBindingLinks');
+
+\Illuminate\Support\Facades\Route::post('me/integrations/telegram/confirmation', [\App\Http\Controllers\V10\UserTelegramController::class, 'postMeIntegrationsTelegramConfirmation'])->middleware(['throttle:6,1'])->name('v10.postMeIntegrationsTelegramConfirmation');
+
+\Illuminate\Support\Facades\Route::post('me/integrations/telegram/group-invitations', [\App\Http\Controllers\V10\UserTelegramController::class, 'postMeIntegrationsTelegramGroupInvitations'])->middleware(['throttle:6,1'])->name('v10.postMeIntegrationsTelegramGroupInvitations');

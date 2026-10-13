@@ -79,7 +79,8 @@ class PaymentActions
             \App\Services\Money::format($order->total_amount),
             $order->trade_no
         );
-        $telegramService->sendMessageWithAdmin($message);
+        try { $telegramService->sendMessageWithAdmin($message); }
+        catch (\Throwable $e) { \Illuminate\Support\Facades\Log::warning('Payment Telegram notification could not be queued'); }
         return true;
     }
 }

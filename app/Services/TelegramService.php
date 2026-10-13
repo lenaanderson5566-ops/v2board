@@ -11,7 +11,7 @@ class TelegramService {
 
     public function __construct($token = '')
     {
-        $this->api = 'https://api.telegram.org/bot' . config('v2board.telegram_bot_token', $token) . '/';
+        $this->api = 'https://api.telegram.org/bot' . (is_string($token) && trim($token) !== '' ? $token : config('v2board.telegram_bot_token')) . '/';
     }
 
     public function sendMessage(int $chatId, string $text, string $parseMode = '')
@@ -44,7 +44,7 @@ class TelegramService {
 
     public function getMe()
     {
-        return $this->request('getMe');
+        return \Illuminate\Support\Facades\Cache::remember('telegram:bot:'.hash('sha256',$this->api),600,function () { return $this->request('getMe'); });
     }
 
     public function setWebhook(string $url)
@@ -53,6 +53,7 @@ class TelegramService {
         $this->setMyCommands($commands);
         return $this->request('setWebhook', [
             'url' => $url,
+            'allowed_updates' => json_encode(['message','callback_query','chat_join_request','chat_member','my_chat_member']),
             ...(str_contains($url, '/api/v10/webhooks/telegram') ? ['secret_token'=>md5(config('v2board.telegram_bot_token'))] : [])
         ]);
     }
@@ -91,7 +92,7 @@ class TelegramService {
                         : $ref->newInstanceWithoutConstructor()->description;
 
                     $commands[] = [
-                        'command' => $command,
+                        'command' => ltrim($command, '/'),
                         'description' => $description,
                     ];
                 }
@@ -109,15 +110,20 @@ class TelegramService {
         ]);
     }
 
+    public function call(string $method, array $params = []) { return $this->request($method, $params); }
+
     private function request(string $method, array $params = [])
     {
         $curl = new Curl();
-        $curl->get($this->api . $method . '?' . http_build_query($params));
+        $curl->setOpt(CURLOPT_CONNECTTIMEOUT, 3);
+        $curl->setOpt(CURLOPT_TIMEOUT, 8);
+        $curl->setOpt(CURLOPT_FOLLOWLOCATION, false);
+        $curl->post($this->api . $method, $params);
         $response = $curl->response;
         $curl->close();
-        if (!isset($response->ok)) abort(500, '请求失败');
+        if (!isset($response->ok)) throw new \App\Exceptions\TelegramApiException();
         if (!$response->ok) {
-            abort(500, '来自TG的错误：' . $response->description);
+            throw new \App\Exceptions\TelegramApiException((int)($response->error_code??0),(int)($response->parameters->retry_after??60));
         }
         return $response;
     }

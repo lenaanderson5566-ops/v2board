@@ -1,3 +1,5 @@
+import { dateTimeInput } from "../shared/timezone";
+import { AdminTelegramCommunity } from "./AdminTelegramCommunity";
 import { readListView, saveListView } from "./list-view-state";
 import { ClientUaStats } from "./ClientUaStats";
 import { AdminLogFilters } from "./AdminLogFilters";
@@ -1434,20 +1436,7 @@ export function ResourcePage({
                                                               )
                                                                   item[
                                                                       field.key
-                                                                  ] = new Date(
-                                                                      item[
-                                                                          field
-                                                                              .key
-                                                                      ] *
-                                                                          1000 -
-                                                                          new Date().getTimezoneOffset() *
-                                                                              60000,
-                                                                  )
-                                                                      .toISOString()
-                                                                      .slice(
-                                                                          0,
-                                                                          16,
-                                                                      );
+                                                                  ] = dateTimeInput(Number(item[field.key]));
                                                           }
                                                           if (
                                                               resource.title ===
@@ -1769,7 +1758,10 @@ const labels: Record<string, string> = {
     email_from_address: "发件人地址",
     telegram_bot_enable: "启用 Telegram 机器人",
     telegram_bot_token: "机器人 Token",
-    telegram_discuss_link: "Telegram 群链接",
+    telegram_discuss_link: "Telegram 群链接（未启用群资格管理时使用）",
+    telegram_discuss_id: "管理群 ID（负数）",
+    telegram_group_policy_enable: "启用群成员资格管理",
+    telegram_group_grace_days: "套餐到期宽限天数（0–30，默认 3）",
     ticket_status: "工单开放模式",
     deposit_bounus: "充值奖励阶梯",
     plan_change_enable: "允许切换套餐",
@@ -1984,6 +1976,7 @@ export function Settings() {
                             const changes = changedSettings(body, raw);
                             if (Object.keys(changes).length)
                                 await request(admin("config/save"), changes);
+                            if (Object.prototype.hasOwnProperty.call(changes, "system_timezone")) { window.location.reload(); return; }
                             setSaved("设置已保存");
                             setDirty(false);
                             d.reload();
@@ -2047,6 +2040,7 @@ export function Settings() {
                         >
                             设置 Telegram Webhook
                         </button>
+                        <AdminTelegramCommunity disabled={dirty || actionBusy} />
                     </div>
                 )}
                 {dirty && ["email", "telegram"].includes(group) && (

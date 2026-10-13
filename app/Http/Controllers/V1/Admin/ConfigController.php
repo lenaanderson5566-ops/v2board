@@ -92,6 +92,7 @@ class ConfigController extends Controller
                 'commission_distribution_l3' => config('v2board.commission_distribution_l3')
             ],
             'site' => [
+                'system_timezone' => \App\Services\TimeZones::system(),
                 'logo' => config('v2board.logo'),
                 'force_https' => (int)config('v2board.force_https', 0),
                 'stop_register' => (int)config('v2board.stop_register', 0),
@@ -148,6 +149,9 @@ class ConfigController extends Controller
             'telegram' => [
                 'telegram_bot_enable' => config('v2board.telegram_bot_enable', 0),
                 'telegram_bot_token' => config('v2board.telegram_bot_token'),
+                'telegram_discuss_id' => config('v2board.telegram_discuss_id'),
+                'telegram_group_policy_enable' => (int)config('v2board.telegram_group_policy_enable',0),
+                'telegram_group_grace_days' => (int)config('v2board.telegram_group_grace_days',3),
                 'telegram_discuss_link' => config('v2board.telegram_discuss_link')
             ],
             'entrypoints' => [
@@ -223,11 +227,15 @@ class ConfigController extends Controller
     public function save(ConfigSave $request)
     {
         $data = $request->validated();
+        $previousTimezone = \App\Services\TimeZones::system();
         if (isset($data['fastai_entrypoints'])) {
             $data['fastai_entrypoints'] = \App\Services\FastaiEntrypoints::validate($data['fastai_entrypoints']);
             app(\App\Services\FastaiEntrypoints::class)->requireVerified($data['fastai_entrypoints']);
         }
-        if (isset($data['fastai_releases'])) \App\Services\FastaiReleaseService::validateCatalog($data['fastai_releases']);
+        if (isset($data['fastai_releases'])) {
+            \App\Services\FastaiReleaseService::validateCatalog($data['fastai_releases']);
+            foreach ($data['fastai_releases'] as $release) app(\App\Services\FastaiInstallerService::class)->validateRelease($release);
+        }
         if (isset($data['apple_account_url'])) {
             try { $data['apple_account_url'] = \App\Services\AppleAccountService::normalizeOrigin($data['apple_account_url']); }
             catch (\InvalidArgumentException $e) { throw \Illuminate\Validation\ValidationException::withMessages(['apple_account_url' => $e->getMessage()]); }
@@ -258,6 +266,9 @@ class ConfigController extends Controller
             }
         }
         Artisan::call('config:cache');
+        if ($previousTimezone !== ($config['system_timezone'] ?? $previousTimezone)) {
+            \Log::info('System business time zone changed', ['previous_timezone'=>$previousTimezone,'timezone'=>$config['system_timezone']]);
+        }
         return response([
             'data' => true
         ]);

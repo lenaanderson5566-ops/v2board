@@ -1,3 +1,9 @@
+import {
+    displayTimeZone,
+    formatInstant,
+    dateTimeInput,
+    parseDateTimeInput,
+} from "../shared/timezone";
 import { useRef, useState } from "react";
 import { admin, request, Row } from "../shared/api";
 import { Modal, Panel, State, useData } from "../shared/ui";
@@ -15,22 +21,10 @@ const positions: Record<string, string> = {
     landing: "落地页",
 };
 function localDate(value: number) {
-    if (!value) return "";
-    const d = new Date(value * 1000);
-    return new Date(d.getTime() - d.getTimezoneOffset() * 60000)
-        .toISOString()
-        .slice(0, 16);
+    return value ? dateTimeInput(value) : "";
 }
 function dateLabel(value: number) {
-    return value
-        ? new Date(value * 1000).toLocaleString("zh-CN", {
-              year: "numeric",
-              month: "2-digit",
-              day: "2-digit",
-              hour: "2-digit",
-              minute: "2-digit",
-          })
-        : "不限";
+    return value ? formatInstant(value) : "不限";
 }
 export function AdminBanners() {
     const data = useData<Row[]>(admin("banner/fetch"));
@@ -240,10 +234,10 @@ export function BannerEditor({
                 mobile_image_url: draft.mobile_image_url || null,
                 target_url: draft.target_url || null,
                 starts_at: draft.starts_at
-                    ? Math.floor(new Date(draft.starts_at).getTime() / 1000)
+                    ? parseDateTimeInput(draft.starts_at)
                     : null,
                 ends_at: draft.ends_at
-                    ? Math.floor(new Date(draft.ends_at).getTime() / 1000)
+                    ? parseDateTimeInput(draft.ends_at)
                     : null,
             });
             complete();
@@ -379,6 +373,7 @@ export function BannerEditor({
                         上线时间
                         <input
                             type="datetime-local"
+                            title={`时区：${displayTimeZone()}`}
                             value={draft.starts_at}
                             onChange={(e) =>
                                 change("starts_at", e.target.value)
@@ -389,6 +384,7 @@ export function BannerEditor({
                         下线时间
                         <input
                             type="datetime-local"
+                            title={`时区：${displayTimeZone()}`}
                             value={draft.ends_at}
                             onChange={(e) => change("ends_at", e.target.value)}
                         />

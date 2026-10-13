@@ -1,3 +1,4 @@
+import { formatInstant } from "../shared/timezone";
 import { admin, date, type Row } from "../shared/api";
 import { Modal, Panel, State, useData } from "../shared/ui";
 
@@ -58,9 +59,9 @@ export function NodeDiagnostics({
                             {data.data.capabilitiesReportedAt && (
                                 <p>
                                     版本上报时间：
-                                    {new Date(
+                                    {formatInstant(
                                         data.data.capabilitiesReportedAt,
-                                    ).toLocaleString()}
+                                    )}
                                 </p>
                             )}
                             {data.data.inheritedFrom && (

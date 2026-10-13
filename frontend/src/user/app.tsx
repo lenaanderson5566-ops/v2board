@@ -1,3 +1,4 @@
+import { displayTimeZone } from "../shared/timezone";
 import {
     initializeBrowserSession,
     hasBrowserSession,
@@ -471,6 +472,7 @@ export default function UserApp() {
                             </div>
                             <span className="today">
                                 {new Date().toLocaleDateString(locale(), {
+                                    timeZone: displayTimeZone(),
                                     month: "long",
                                     day: "numeric",
                                     weekday: "long",

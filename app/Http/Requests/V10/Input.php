@@ -16,6 +16,8 @@ final class Input
             throw \Illuminate\Validation\ValidationException::withMessages(['report'=>'Unsupported event fields.']);
         }
         $types = [
+            'displayTimeZone'=>'nullable|string|timezone',
+            'telegramId'=>'string|regex:/^[1-9][0-9]{0,15}$/D',
             'events'=>'array|max:30',
             'checks'=>'array|max:9',
             'legacyToken'=>'string|max:8192',
@@ -46,6 +48,7 @@ final class Input
             'placement'=>'in:landing,dashboard','status'=>'in:unpaid,processing,cancelled,completed,discounted'
         ];
         $required = [
+            'User/TelegramController@confirmBinding'=>['telegramId'],
             'Passport/BrowserSessionController@migrate'=>['legacyToken'],
             'Passport/ClientAuthorizationController@create'=>['codeChallenge','state','redirectUri','platform'],
             'Passport/ClientAuthorizationController@exchange'=>['authorizationCode','codeVerifier','redirectUri'],

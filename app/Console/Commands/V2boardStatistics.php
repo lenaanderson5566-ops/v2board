@@ -79,6 +79,7 @@ class V2boardStatistics extends Command
         } catch (\Exception $e) {
             DB::rollback();
             \Log::error($e->getMessage(), ['exception' => $e]);
+            throw $e;
         }
     }
 
@@ -94,6 +95,7 @@ class V2boardStatistics extends Command
             $stats = $statService->getStatUser();
             foreach ($stats as $stat) {
                 if (!StatUser::insert([
+                    'record_timezone' => \App\Services\TimeZones::system(),
                     'user_id' => $stat['user_id'],
                     'u' => $stat['u'],
                     'd' => $stat['d'],
@@ -111,6 +113,7 @@ class V2boardStatistics extends Command
         } catch (\Exception $e) {
             DB::rollback();
             \Log::error($e->getMessage(), ['exception' => $e]);
+            throw $e;
         }
     }
 
@@ -135,6 +138,7 @@ class V2boardStatistics extends Command
             Stat::create($data);
         } catch (\Exception $e) {
             \Log::error($e->getMessage(), ['exception' => $e]);
+            throw $e;
         }
     }
 }

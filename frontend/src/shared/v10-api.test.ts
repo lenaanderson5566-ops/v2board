@@ -52,3 +52,13 @@ it.each([
 ] as const)('preserves required fields for %s', (path, body, expected) => {
   expect(JSON.parse(v10Request(path,body).body!)).toEqual(expected);
 });
+
+it('preserves explicit null for the device time zone',()=>{
+  expect(JSON.parse(v10Request('user/update',{display_timezone:null}).body!)).toEqual({displayTimeZone:null});
+  expect(JSON.parse(v10Request('user/update',{display_timezone:'Asia/Kathmandu'}).body!)).toEqual({displayTimeZone:'Asia/Kathmandu'});
+});
+
+it('decodes the original traffic business date and zone',()=>{
+  const decoded=v10Request('user/stat/getTrafficLog').decode({data:[{businessDate:'2026-10-02',recordTimezone:'Asia/Shanghai',recordedAt:'2026-10-01T16:00:00Z'}]});
+  expect(decoded.data[0]).toMatchObject({business_date:'2026-10-02',record_timezone:'Asia/Shanghai'});
+});

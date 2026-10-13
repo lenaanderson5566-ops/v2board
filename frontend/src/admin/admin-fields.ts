@@ -1,3 +1,5 @@
+import { boot } from "../shared/api";
+import { validZone } from "../shared/timezone";
 import type { Field } from "../shared/ui";
 export const resetOptions: [string, string][] = [
     ["0", "每月首日"],
@@ -56,6 +58,16 @@ export function configField(
     rule: unknown,
     label: string,
 ): Field {
+    if (key === "system_timezone")
+        return {
+            key,
+            label: "系统业务时区",
+            type: "select",
+            options: (boot.timeZones || ["UTC", "Asia/Shanghai"])
+                .filter(validZone)
+                .map((zone) => [zone, zone]),
+            hint: "后台展示、报表日界线和每日任务使用此时区。零点任务按当地日期执行一次；已保存时间戳不变。保存后自动刷新后台。首次升级当天已到执行时间的任务不会再次运行，后续按业务日期执行。",
+        };
     if (
         [
             "email_whitelist_suffix",
@@ -70,8 +82,21 @@ export function configField(
             arrayText: true,
             hint: "使用逗号分隔多个值。",
         };
-    if (key === "currency" || key === "currency_symbol") return { key, label: "当前结算币种", type: "select", options: [["CNY", "CNY · 人民币"]], hint: "当前采用人民币计价；修改符号不会转换金额。USD 将通过独立价格与钱包支持。" };
-    if (key === "fastai_releases") return { key, label, type: "json", hint: "按平台与架构配置稳定版本：latestVersion、latestBuild、minimumVersion、HTTPS downloadUrl、sha256、releaseNotes、UTC publishedAt。空数组表示尚未发布。" };
+    if (key === "currency" || key === "currency_symbol")
+        return {
+            key,
+            label: "当前结算币种",
+            type: "select",
+            options: [["CNY", "CNY · 人民币"]],
+            hint: "当前采用人民币计价；修改符号不会转换金额。USD 将通过独立价格与钱包支持。",
+        };
+    if (key === "fastai_releases")
+        return {
+            key,
+            label,
+            type: "json",
+            hint: "按平台与架构配置稳定版本：latestVersion、latestBuild、minimumVersion、HTTPS downloadUrl、sha256、releaseNotes、UTC publishedAt。空数组表示尚未发布。",
+        };
     const validation = Array.isArray(rule)
         ? rule.join("|")
         : String(rule || "");
@@ -111,10 +136,11 @@ export function configField(
         key,
         label,
         type,
-        step: /^invite_(registration|first_use)_gb$/.test(key) ? 0.01 :
-            validation.includes("integer") || key === "email_port"
-                ? 1
-                : undefined,
+        step: /^invite_(registration|first_use)_gb$/.test(key)
+            ? 0.01
+            : validation.includes("integer") || key === "email_port"
+              ? 1
+              : undefined,
         min:
             key === "email_port" || key === "show_subscribe_expire"
                 ? 1

@@ -1,3 +1,4 @@
+import { displayTimeZone } from "../shared/timezone";
 import { AdminSubscriptionProtection } from "./AdminSubscriptionProtection";
 import { AdminUserActivityLink } from "./AdminUserActivity";
 import { useState } from "react";
@@ -99,9 +100,13 @@ export function RiskOverview() {
                                                 ? {
                                                       hour: "2-digit",
                                                       hour12: false,
+                                                      timeZone:
+                                                          displayTimeZone(),
                                                   }
                                                 : {
                                                       month: "numeric",
+                                                      timeZone:
+                                                          displayTimeZone(),
                                                       day: "numeric",
                                                   },
                                         )}

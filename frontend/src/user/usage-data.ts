@@ -1,5 +1,8 @@
+import { calendarDay } from "../shared/timezone";
 export interface UsageRecord {
     record_at: number;
+    business_date?: string;
+    record_timezone?: string;
     u: number;
     d: number;
 }
@@ -8,17 +11,19 @@ export function usageDays(
     days: "month" | "week" | "30days",
     now = new Date(),
 ) {
-    const start = new Date(now.getFullYear(), now.getMonth(), 1);
+    now = new Date(calendarDay(now) + "T00:00:00Z");
+    const start = new Date(
+        Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1),
+    );
     if (days !== "month") {
-        start.setDate(now.getDate() - (days === "week" ? 6 : 29));
+        start.setUTCDate(now.getUTCDate() - (days === "week" ? 6 : 29));
     }
-    const key = (date: Date) =>
-        `${date.getFullYear()}-${date.getMonth()}-${date.getDate()}`;
+    const key = (date: Date) => date.toISOString().slice(0, 10);
     const totals = new Map<string, { upload: number; download: number }>();
     for (const row of records) {
         const date = new Date(Number(row.record_at) * 1000);
         if (!Number.isFinite(date.getTime())) continue;
-        const id = key(date),
+        const id = row.business_date || calendarDay(date),
             sum = totals.get(id) || { upload: 0, download: 0 };
         sum.upload += Math.max(0, Number(row.u) || 0);
         sum.download += Math.max(0, Number(row.d) || 0);
@@ -28,7 +33,7 @@ export function usageDays(
     for (
         const day = new Date(start);
         day <= now;
-        day.setDate(day.getDate() + 1)
+        day.setUTCDate(day.getUTCDate() + 1)
     ) {
         result.push({
             date: new Date(day),

@@ -1,3 +1,4 @@
+import { parseDateTimeInput, displayTimeZone } from "../shared/timezone";
 import { useRef, useState } from "react";
 import { admin, request } from "../shared/api";
 import { Modal, State, useData } from "../shared/ui";
@@ -85,23 +86,23 @@ function ResetForm({
         lock.current = true;
         setBusy(true);
         setError("");
-        const body = {
-            kind: operation.kind,
-            expected_count: count,
-            ...(global
-                ? { confirmation }
-                : {
-                      quantity,
-                      expires_at: expiry
-                          ? Math.floor(new Date(expiry).getTime() / 1000)
-                          : null,
-                      filter: operation.filters,
-                  }),
-        };
-        const payload = JSON.stringify(body);
-        if (attempt.current.payload !== payload)
-            attempt.current = { payload, key: crypto.randomUUID() };
         try {
+            const body = {
+                kind: operation.kind,
+                expected_count: count,
+                ...(global
+                    ? { confirmation }
+                    : {
+                          quantity,
+                          expires_at: expiry
+                              ? parseDateTimeInput(expiry)
+                              : null,
+                          filter: operation.filters,
+                      }),
+            };
+            const payload = JSON.stringify(body);
+            if (attempt.current.payload !== payload)
+                attempt.current = { payload, key: crypto.randomUUID() };
             await request(admin("user/usageReset"), {
                 ...body,
                 request_key: attempt.current.key,
@@ -161,6 +162,7 @@ function ResetForm({
                         <label>
                             有效期（留空为长期有效）
                             <input
+                                title={displayTimeZone()}
                                 type="datetime-local"
                                 value={expiry}
                                 onChange={(event) =>

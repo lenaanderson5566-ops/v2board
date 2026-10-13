@@ -1,10 +1,20 @@
+import { formatInstant } from "../shared/timezone";
 import { admin, request, type Row } from "../shared/api";
 import { Editor, Panel, State, useData } from "../shared/ui";
-const time = (value: number) =>
-    value ? new Date(value * 1000).toLocaleString() : "—";
+const time = (value: number) => (value ? formatInstant(value) : "—");
 const retentionFields = [
-    ["client_diagnostic_retention_days", "客户端运行记录", 1, "默认保留 30 天；自愿共享的脱敏运行事件及旧版诊断。"],
-    ["registration_signal_retention_days", "注册信号摘要", 1, "默认保留 90 天；清理后无法与更早的注册信号比较，已有复核结论保留。"],
+    [
+        "client_diagnostic_retention_days",
+        "客户端运行记录",
+        1,
+        "默认保留 30 天；自愿共享的脱敏运行事件及旧版诊断。",
+    ],
+    [
+        "registration_signal_retention_days",
+        "注册信号摘要",
+        1,
+        "默认保留 90 天；清理后无法与更早的注册信号比较，已有复核结论保留。",
+    ],
     [
         "payment_callback_retention_days",
         "支付回调诊断",

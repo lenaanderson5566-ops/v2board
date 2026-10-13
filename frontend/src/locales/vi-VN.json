@@ -428,5 +428,8 @@
   "请选择转账网络": "Chọn mạng chuyển tiền",
   "请确认付款钱包的币种与网络和所选渠道一致。": "Đảm bảo loại tiền và mạng của ví khớp với phương thức đã chọn.",
   "网络连接中断，请检查网络后确认操作结果": "Kết nối bị gián đoạn. Hãy kiểm tra mạng và xác nhận kết quả.",
-  "未能确认支付请求结果，正在检查订单状态，请勿重复付款。": "Chưa xác định được kết quả yêu cầu thanh toán. Đang kiểm tra đơn hàng; vui lòng không thanh toán lại."
+  "未能确认支付请求结果，正在检查订单状态，请勿重复付款。": "Chưa xác định được kết quả yêu cầu thanh toán. Đang kiểm tra đơn hàng; vui lòng không thanh toán lại.",
+  "时间显示时区": "Múi giờ hiển thị",
+  "仅改变显示方式，套餐到期与流量重置时刻不变。": "Chỉ thay đổi cách hiển thị. Thời điểm hết hạn gói và đặt lại lưu lượng không thay đổi.",
+  "跟随设备": "Theo thiết bị"
 }

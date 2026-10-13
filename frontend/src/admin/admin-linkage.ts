@@ -189,8 +189,7 @@ export function validateResource(values: Row): string | undefined {
     if (
         values.started_at &&
         values.ended_at &&
-        new Date(values.ended_at).getTime() <=
-            new Date(values.started_at).getTime()
+        values.ended_at <= values.started_at
     )
         return "结束时间必须晚于开始时间";
     return undefined;

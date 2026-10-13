@@ -187,6 +187,15 @@
       "serviceNotifications": [
         "remind_service",
         "boolean"
+      ],
+      "displayTimeZone": [
+        "display_timezone"
+      ],
+      "systemTimeZone": [
+        "system_timezone"
+      ],
+      "expiresAtDisplay": [
+        "expires_at_display"
       ]
     },
     "subscription": {
@@ -254,6 +263,15 @@
       "canAdvancePeriod": [
         "allow_new_period",
         "boolean"
+      ],
+      "resetAtDisplay": [
+        "reset_at_display"
+      ],
+      "expiresAtDisplay": [
+        "expires_at_display"
+      ],
+      "displayTimeZone": [
+        "display_timezone"
       ]
     },
     "creditSnapshot": {
@@ -572,6 +590,14 @@
       "rate": [
         "server_rate",
         "number"
+      ],
+      "businessDate": [
+        "business_date",
+        "string"
+      ],
+      "recordTimezone": [
+        "record_timezone",
+        "string"
       ]
     },
     "invitation": {
@@ -847,6 +873,13 @@
       "couponsAvailable": [
         "coupons_available",
         "boolean"
+      ],
+      "timeZones": [
+        "time_zones",
+        "strings"
+      ],
+      "systemTimeZone": [
+        "system_timezone"
       ]
     },
     "task": {
@@ -860,6 +893,33 @@
     "bot": {
       "username": [
         "username"
+      ],
+      "linked": [
+        "linked",
+        "boolean"
+      ],
+      "telegramId": [
+        "telegramId"
+      ],
+      "pendingTelegramId": [
+        "pendingTelegramId"
+      ],
+      "pendingName": [
+        "pendingName"
+      ],
+      "groupManaged": [
+        "groupManaged",
+        "boolean"
+      ],
+      "eligibility": [
+        "eligibility"
+      ],
+      "graceDays": [
+        "graceDays",
+        "integer"
+      ],
+      "graceEndsAt": [
+        "graceEndsAt"
       ]
     },
     "loginState": {
@@ -1024,6 +1084,22 @@
     "diagnosticReceipt": {
       "reportId": [
         "report_id"
+      ]
+    },
+    "telegramBindingLink": {
+      "bindingUrl": [
+        "bindingUrl"
+      ],
+      "expiresAt": [
+        "expiresAt"
+      ]
+    },
+    "telegramJoinLink": {
+      "inviteUrl": [
+        "inviteUrl"
+      ],
+      "expiresAt": [
+        "expiresAt"
       ]
     }
   },
@@ -1372,7 +1448,8 @@
         "autoRenewal": "auto_renewal",
         "expiryReminders": "remind_expire",
         "trafficReminders": "remind_traffic",
-        "serviceNotifications": "remind_service"
+        "serviceNotifications": "remind_service",
+        "displayTimeZone": "display_timezone"
       },
       "output": "scalar",
       "role": "user",
@@ -2121,6 +2198,41 @@
       "path": "me/client-events",
       "method": "POST",
       "key": "User/ClientEventController@store"
+    },
+    "postMeIntegrationsTelegramBindingLinks": {
+      "input": {},
+      "output": "telegramBindingLink",
+      "role": "user",
+      "status": 201,
+      "raw": false,
+      "bindings": {},
+      "path": "me/integrations/telegram/binding-links",
+      "method": "POST",
+      "key": "User/TelegramController@bindingLink"
+    },
+    "postMeIntegrationsTelegramConfirmation": {
+      "input": {
+        "telegramId": "telegramId"
+      },
+      "output": "scalar",
+      "role": "user",
+      "status": 200,
+      "raw": false,
+      "bindings": {},
+      "path": "me/integrations/telegram/confirmation",
+      "method": "POST",
+      "key": "User/TelegramController@confirmBinding"
+    },
+    "postMeIntegrationsTelegramGroupInvitations": {
+      "input": {},
+      "output": "telegramJoinLink",
+      "role": "user",
+      "status": 201,
+      "raw": false,
+      "bindings": {},
+      "path": "me/integrations/telegram/group-invitations",
+      "method": "POST",
+      "key": "User/TelegramController@joinLink"
     }
   }
 }

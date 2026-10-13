@@ -549,7 +549,7 @@
         "security": [],
         "x-permission": "public",
         "x-legacy-path": "/api/v1/guest/telegram/webhook",
-        "description": "Provider-native signature verification and response. Payment notifications are idempotent; Telegram requires X-Telegram-Bot-Api-Secret-Token. New payments use V10 callback URLs, including custom callback domains. Old payment callbacks remain compatible for existing orders. Historical callback URLs remain supported. PaytaroQR verifies X-App-Secret and requires positive order_amount (major units, up to two decimal places) and order_currency. Original order amount is converted to integer minor units and compared with the stored order total plus its payment fee snapshot; pay_amount/pay_currency are not settlement inputs. Valid and matching duplicate callbacks retain the native success response; invalid amount or currency returns the native failure response. The bot must be enabled with a nonempty configured token; disabled, unconfigured or invalid credentials return 401.",
+        "description": "Provider-native signature verification and response. Payment notifications are idempotent; Telegram requires X-Telegram-Bot-Api-Secret-Token. New payments use V10 callback URLs, including custom callback domains. Old payment callbacks remain compatible for existing orders. Historical callback URLs remain supported. The bot must be enabled with a nonempty configured token; disabled, unconfigured or invalid credentials return 401.",
         "requestBody": {
           "content": {
             "application/json": {
@@ -10494,7 +10494,7 @@
         },
         "security": [],
         "x-permission": "public",
-        "description": "Published installer download. Supports HEAD and byte ranges; binary content is not enveloped. Unpublished or unknown IDs return 404."
+        "description": "Published third-party mirror or uploaded FastAI installer download. FastAI IDs use the fastai- UUID prefix. Uploaded drafts and historical packages not in the current release catalog return 404; current FastAI access/version policy applies. Supports HEAD and byte ranges; binary content is not enveloped. Unknown IDs return 404."
       }
     },
     "/me/client-config": {
@@ -14307,6 +14307,472 @@
           }
         }
       }
+    },
+    "/me/integrations/telegram/binding-links": {
+      "post": {
+        "operationId": "postMeIntegrationsTelegramBindingLinks",
+        "tags": [
+          "user"
+        ],
+        "summary": "POST me/integrations/telegram/binding-links",
+        "parameters": [
+          {
+            "name": "Accept-Language",
+            "in": "header",
+            "schema": {
+              "type": "string"
+            },
+            "description": "Supported language tags with optional quality weights."
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Success",
+            "headers": {
+              "X-Request-ID": {
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "Content-Language": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/telegramBindingLink"
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {
+                        "pagination": {
+                          "$ref": "#/components/schemas/Pagination"
+                        },
+                        "taskId": {
+                          "type": "string"
+                        }
+                      }
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Problem details",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Problem details",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Problem details",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Problem details",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "410": {
+            "description": "Problem details",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Problem details",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Problem details",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Problem details",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          },
+          {
+            "browserUserCookie": []
+          }
+        ],
+        "x-permission": "user",
+        "description": "Requires an active session. Order and ticket identifiers are checked against the authenticated owner. Unauthenticated: 401; banned account: 403."
+      }
+    },
+    "/me/integrations/telegram/confirmation": {
+      "post": {
+        "operationId": "postMeIntegrationsTelegramConfirmation",
+        "tags": [
+          "user"
+        ],
+        "summary": "POST me/integrations/telegram/confirmation",
+        "parameters": [
+          {
+            "name": "Accept-Language",
+            "in": "header",
+            "schema": {
+              "type": "string"
+            },
+            "description": "Supported language tags with optional quality weights."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "headers": {
+              "X-Request-ID": {
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "Content-Language": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/scalar"
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {
+                        "pagination": {
+                          "$ref": "#/components/schemas/Pagination"
+                        },
+                        "taskId": {
+                          "type": "string"
+                        }
+                      }
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Problem details",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Problem details",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Problem details",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Problem details",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "410": {
+            "description": "Problem details",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Problem details",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Problem details",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Problem details",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          },
+          {
+            "browserUserCookie": []
+          }
+        ],
+        "x-permission": "user",
+        "description": "Requires an active session. Order and ticket identifiers are checked against the authenticated owner. Unauthenticated: 401; banned account: 403.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/postMeIntegrationsTelegramConfirmationInput"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/me/integrations/telegram/group-invitations": {
+      "post": {
+        "operationId": "postMeIntegrationsTelegramGroupInvitations",
+        "tags": [
+          "user"
+        ],
+        "summary": "POST me/integrations/telegram/group-invitations",
+        "parameters": [
+          {
+            "name": "Accept-Language",
+            "in": "header",
+            "schema": {
+              "type": "string"
+            },
+            "description": "Supported language tags with optional quality weights."
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Success",
+            "headers": {
+              "X-Request-ID": {
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "Content-Language": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/telegramJoinLink"
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {
+                        "pagination": {
+                          "$ref": "#/components/schemas/Pagination"
+                        },
+                        "taskId": {
+                          "type": "string"
+                        }
+                      }
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Problem details",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Problem details",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Problem details",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Problem details",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "410": {
+            "description": "Problem details",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Problem details",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Problem details",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Problem details",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          },
+          {
+            "browserUserCookie": []
+          }
+        ],
+        "x-permission": "user",
+        "description": "Requires an active session. Order and ticket identifiers are checked against the authenticated owner. Unauthenticated: 401; banned account: 403."
+      }
     }
   },
   "components": {
@@ -14583,6 +15049,18 @@
           },
           "serviceNotifications": {
             "type": "boolean"
+          },
+          "displayTimeZone": {
+            "type": "string",
+            "nullable": true
+          },
+          "systemTimeZone": {
+            "type": "string",
+            "nullable": true
+          },
+          "expiresAtDisplay": {
+            "type": "string",
+            "nullable": true
           }
         },
         "additionalProperties": false
@@ -14668,6 +15146,18 @@
           },
           "canAdvancePeriod": {
             "type": "boolean"
+          },
+          "resetAtDisplay": {
+            "type": "string",
+            "nullable": true
+          },
+          "expiresAtDisplay": {
+            "type": "string",
+            "nullable": true
+          },
+          "displayTimeZone": {
+            "type": "string",
+            "nullable": true
           }
         },
         "additionalProperties": false
@@ -15151,6 +15641,14 @@
           "rate": {
             "type": "number",
             "nullable": true
+          },
+          "businessDate": {
+            "type": "string",
+            "nullable": true
+          },
+          "recordTimezone": {
+            "type": "string",
+            "nullable": true
           }
         },
         "additionalProperties": false
@@ -15534,6 +16032,16 @@
           },
           "couponsAvailable": {
             "type": "boolean"
+          },
+          "timeZones": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "systemTimeZone": {
+            "type": "string",
+            "nullable": true
           }
         },
         "additionalProperties": false
@@ -15556,6 +16064,37 @@
         "type": "object",
         "properties": {
           "username": {
+            "type": "string",
+            "nullable": true
+          },
+          "linked": {
+            "type": "boolean"
+          },
+          "telegramId": {
+            "type": "string",
+            "nullable": true
+          },
+          "pendingTelegramId": {
+            "type": "string",
+            "nullable": true
+          },
+          "pendingName": {
+            "type": "string",
+            "nullable": true
+          },
+          "groupManaged": {
+            "type": "boolean"
+          },
+          "eligibility": {
+            "type": "string",
+            "nullable": true
+          },
+          "graceDays": {
+            "type": "integer",
+            "format": "int64",
+            "nullable": true
+          },
+          "graceEndsAt": {
             "type": "string",
             "nullable": true
           }
@@ -16426,6 +16965,11 @@
           },
           "serviceNotifications": {
             "type": "boolean"
+          },
+          "displayTimeZone": {
+            "type": "string",
+            "nullable": true,
+            "description": "IANA time zone; null follows the device display time zone."
           }
         }
       },
@@ -17746,6 +18290,53 @@
           "events"
         ],
         "additionalProperties": false
+      },
+      "telegramBindingLink": {
+        "type": "object",
+        "properties": {
+          "bindingUrl": {
+            "type": "string",
+            "nullable": true
+          },
+          "expiresAt": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "telegramJoinLink": {
+        "type": "object",
+        "properties": {
+          "inviteUrl": {
+            "type": "string",
+            "nullable": true
+          },
+          "expiresAt": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "postMeIntegrationsTelegramBindingLinksInput": {
+        "type": "object",
+        "properties": {}
+      },
+      "postMeIntegrationsTelegramConfirmationInput": {
+        "type": "object",
+        "properties": {
+          "telegramId": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "telegramId"
+        ]
+      },
+      "postMeIntegrationsTelegramGroupInvitationsInput": {
+        "type": "object",
+        "properties": {}
       }
     }
   }

@@ -14,6 +14,10 @@ class AdminRoute
             $router->post('/config/testAppleAccount', 'V1\\Admin\\ConfigController@testAppleAccount')->middleware('throttle:10,1');
             $router->post('/config/testFastaiEntrypoint', 'V1\\Admin\\ConfigController@testFastaiEntrypoint')->middleware('throttle:10,1');
             $router->get('/client-diagnostics/fetch', 'V1\\Admin\\ClientDiagnosticController@fetch');
+            $router->get('/fastai-installers/fetch', 'V1\\Admin\\FastaiInstallerController@fetch');
+            $router->post('/fastai-installers/create', 'V1\\Admin\\FastaiInstallerController@create')->middleware('throttle:10,1');
+            $router->post('/fastai-installers/chunk', 'V1\\Admin\\FastaiInstallerController@chunk')->middleware('throttle:1200,1');
+            $router->post('/fastai-installers/complete', 'V1\\Admin\\FastaiInstallerController@complete')->middleware('throttle:20,1');
             $router->get('/invitation-review/fetch', 'V1\\Admin\\InvitationReviewController@fetch');
             $router->post('/invitation-review/review', 'V1\\Admin\\InvitationReviewController@review');
             // Config
@@ -22,6 +26,9 @@ class AdminRoute
             $router->get ('/config/getEmailTemplate', 'V1\\Admin\\ConfigController@getEmailTemplate');
             $router->get ('/console/nodeSchema', 'V1\\Admin\\ConsoleController@nodeSchema');
             $router->get ('/console/configSchema', 'V1\\Admin\\ConsoleController@configSchema');
+            $router->get('/telegram/status', 'V1\\Admin\\TelegramController@status');
+            $router->post('/telegram/inspect', 'V1\\Admin\\TelegramController@inspect')->middleware('throttle:6,1');
+            $router->post('/telegram/import', 'V1\\Admin\\TelegramController@import')->middleware('throttle:6,1');
             $router->post('/config/setTelegramWebhook', 'V1\\Admin\\ConfigController@setTelegramWebhook');
             $router->post('/config/testSendMail', 'V1\\Admin\\ConfigController@testSendMail');
             $router->post('/config/previewMail', 'V1\\Admin\\ConfigController@previewMail');

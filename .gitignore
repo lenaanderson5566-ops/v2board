@@ -33,3 +33,4 @@ workerman.log
 /public/console/admin-config.json
 
 /storage/app/fastai-entrypoint.seed
+/storage/app/fastai-installers/

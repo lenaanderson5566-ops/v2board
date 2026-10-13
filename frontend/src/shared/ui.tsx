@@ -1,3 +1,4 @@
+import { parseDateTimeInput, displayTimeZone } from "./timezone";
 import { IpLocation } from "./IpLocation";
 import { adminStatusCell } from "./admin-status";
 import { browserSessionKey } from "./browser-session";
@@ -52,7 +53,12 @@ export function Html({
         />
     );
 }
-export function useData<T = Row>(path: string, body?: Row, allPages = false, options: { refreshOnEvents?: boolean } = {}) {
+export function useData<T = Row>(
+    path: string,
+    body?: Row,
+    allPages = false,
+    options: { refreshOnEvents?: boolean } = {},
+) {
     const refreshOnEvents = options.refreshOnEvents !== false;
     useTranslation();
     const language = locale();
@@ -522,7 +528,7 @@ export function Editor({
                         : null;
                 if (f.type === "datetime-local")
                     body[f.key] = body[f.key]
-                        ? Math.floor(new Date(body[f.key]).getTime() / 1000)
+                        ? parseDateTimeInput(String(body[f.key]))
                         : null;
             }
             await onSave(body);
@@ -548,10 +554,17 @@ export function Editor({
             onChange={() => setSaved(false)}
             aria-busy={busy}
         >
+            {activeFields.some((field) => field.type === "datetime-local") && (
+                <p className="muted">
+                    日期时间按 {displayTimeZone()} 输入和显示。
+                </p>
+            )}
             <fieldset className="field-grid" disabled={busy}>
                 {activeFields.map((f) => {
-                    const extension = renderField?.(f, value[f.key], (next) =>
-                        updateValue(f.key, next),
+                    const extension = renderField?.(
+                        f,
+                        value[f.key],
+                        (next) => updateValue(f.key, next),
                         value,
                     );
                     return (
@@ -1103,14 +1116,25 @@ export function Table({
                             )}
                             {columns.map(([k, label, render]) => (
                                 <td key={k} data-label={label}>
-                                    {boot.mode === "admin"
-                                        ? k === "ip" && !render ? <IpLocation row={r} /> : adminStatusCell(k, label, r[k], render ? render(r) : undefined)
-                                        : render
-                                        ? render(r)
-                                        : r[k] != null &&
-                                            typeof r[k] === "object"
-                                          ? JSON.stringify(r[k])
-                                          : String(r[k] ?? "—")}
+                                    {boot.mode === "admin" ? (
+                                        k === "ip" && !render ? (
+                                            <IpLocation row={r} />
+                                        ) : (
+                                            adminStatusCell(
+                                                k,
+                                                label,
+                                                r[k],
+                                                render ? render(r) : undefined,
+                                            )
+                                        )
+                                    ) : render ? (
+                                        render(r)
+                                    ) : r[k] != null &&
+                                      typeof r[k] === "object" ? (
+                                        JSON.stringify(r[k])
+                                    ) : (
+                                        String(r[k] ?? "—")
+                                    )}
                                 </td>
                             ))}
                             {actions && (

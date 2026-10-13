@@ -26,15 +26,28 @@ class TelegramActions
 
     public function webhook(Request $request)
     {
-        $this->formatMessage($request->input());
-        $this->formatChatJoinRequest($request->input());
-        $this->handle();
+        $updateId=$request->input('update_id');
+        abort_unless(is_int($updateId) && $updateId>=0,422,'Invalid Telegram update');
+        $key='telegram:update:'.hash('sha256',(string)config('v2board.telegram_bot_token')).':'.$updateId;
+        \Illuminate\Support\Facades\Cache::lock($key.':lock',60)->block(2,function () use ($key,$request) {
+            if (\Illuminate\Support\Facades\Cache::has($key)) return;
+            if (is_array($request->input('callback_query'))) {
+                app(\App\Services\TelegramBotMenu::class)->callback($request->input('callback_query'));
+            }
+            $this->formatMessage($request->input());
+            app(\App\Services\TelegramCommunityService::class)->handleUpdate($request->input());
+            $this->handle();
+            \Illuminate\Support\Facades\Cache::put($key,true,86400);
+        });
     }
 
     public function handle()
     {
         if (!$this->msg) return;
         $msg = $this->msg;
+        if (!$msg->is_private || (int)$msg->sender_id!==(int)$msg->chat_id) return;
+        \Illuminate\Support\Facades\Cache::forget('telegram:admin-blocked:'.$msg->sender_id);
+        if (!\Illuminate\Support\Facades\Cache::add('telegram:command-rate:'.$msg->sender_id,true,2)) return;
         $commandName = explode('@', $msg->command);
 
         // To reduce request, only commands contains @ will get the bot name
@@ -65,7 +78,7 @@ class TelegramActions
                 }
             }
         } catch (\Exception $e) {
-            $this->telegramService->sendMessage($msg->chat_id, $e->getMessage());
+            $this->telegramService->sendMessage($msg->chat_id, '操作未完成，请回到网站刷新绑定状态，或重新获取绑定链接。');
         }
     }
 
@@ -84,6 +97,8 @@ class TelegramActions
         $obj->command = $text[0];
         $obj->args = array_slice($text, 1);
         $obj->chat_id = $data['message']['chat']['id'];
+        $obj->sender_id = $data['message']['from']['id'] ?? 0;
+        $obj->sender_name = $data['message']['from']['username'] ?? $data['message']['from']['first_name'] ?? '';
         $obj->message_id = $data['message']['message_id'];
         $obj->message_type = 'message';
         $obj->text = $data['message']['text'];
@@ -95,32 +110,4 @@ class TelegramActions
         $this->msg = $obj;
     }
 
-    private function formatChatJoinRequest(array $data)
-    {
-        if (!isset($data['chat_join_request'])) return;
-        if (!isset($data['chat_join_request']['from']['id'])) return;
-        if (!isset($data['chat_join_request']['chat']['id'])) return;
-        $user = \App\Models\User::where('telegram_id', $data['chat_join_request']['from']['id'])
-            ->first();
-        if (!$user) {
-            $this->telegramService->declineChatJoinRequest(
-                $data['chat_join_request']['chat']['id'],
-                $data['chat_join_request']['from']['id']
-            );
-            return;
-        }
-        $userService = new \App\Services\UserService();
-        if (!$userService->isAvailable($user)) {
-            $this->telegramService->declineChatJoinRequest(
-                $data['chat_join_request']['chat']['id'],
-                $data['chat_join_request']['from']['id']
-            );
-            return;
-        }
-        $userService = new \App\Services\UserService();
-        $this->telegramService->approveChatJoinRequest(
-            $data['chat_join_request']['chat']['id'],
-            $data['chat_join_request']['from']['id']
-        );
-    }
 }

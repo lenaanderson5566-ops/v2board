@@ -1,3 +1,4 @@
+import { businessTimeZone, calendarDay } from "../shared/timezone";
 import { useEffect, useRef, useState } from "react";
 import { e } from "../shared/experience-copy";
 import { tx, locale } from "../shared/i18n";
@@ -13,23 +14,35 @@ export function UsageChart({
     showDetails?: boolean;
     showRecords?: boolean;
 }) {
-    const data = useData<UsageRecord[]>("user/stat/getTrafficLog?days=30&page_size=100", undefined, true);
+    const data = useData<UsageRecord[]>(
+        "user/stat/getTrafficLog?days=30&page_size=100",
+        undefined,
+        true,
+    );
     const [period, setPeriod] = useState<"30days" | "week">(() =>
-        window.matchMedia?.("(max-width: 800px)").matches ? "week" : "30days");
+        window.matchMedia?.("(max-width: 800px)").matches ? "week" : "30days",
+    );
     const days = usageDays(data.data || [], period);
     const [selectedDate, setSelectedDate] = useState<number | null>(null);
-    const selectedDay = days.find((day) => day.date.getTime() === selectedDate) || days[days.length - 1];
+    const selectedDay =
+        days.find((day) => day.date.getTime() === selectedDate) ||
+        days[days.length - 1];
     const bars = useRef<HTMLDivElement>(null);
     useEffect(() => {
         if (bars.current) bars.current.scrollLeft = bars.current.scrollWidth;
     }, [period]);
     const max = Math.max(1, ...days.map((day) => day.upload + day.download));
     const formatDate = (date: Date) =>
-        date.toLocaleDateString(locale(), { month: "short", day: "numeric" });
+        date.toLocaleDateString(locale(), {
+            month: "short",
+            day: "numeric",
+            timeZone: "UTC",
+        });
     return (
         <section className="usage-analysis">
             <header>
                 <h2>{e("usageAnalysis")}</h2>
+                <small>{businessTimeZone()}</small>
                 <div
                     className="usage-period"
                     role="group"
@@ -82,7 +95,11 @@ export function UsageChart({
                                             className="usage-day"
                                             key={day.date.getTime()}
                                             aria-pressed={selectedDay === day}
-                                            onClick={() => setSelectedDate(day.date.getTime())}
+                                            onClick={() =>
+                                                setSelectedDate(
+                                                    day.date.getTime(),
+                                                )
+                                            }
                                             aria-label={label}
                                         >
                                             <span
@@ -109,8 +126,14 @@ export function UsageChart({
                                 })}
                             </div>
                         </div>
-                        <p className="usage-selected-detail" aria-live="polite" aria-atomic="true">
-                            {formatDate(selectedDay.date)} · {tx("上传")} {bytes(selectedDay.upload)} · {tx("下载")} {bytes(selectedDay.download)}
+                        <p
+                            className="usage-selected-detail"
+                            aria-live="polite"
+                            aria-atomic="true"
+                        >
+                            {formatDate(selectedDay.date)} · {tx("上传")}{" "}
+                            {bytes(selectedDay.upload)} · {tx("下载")}{" "}
+                            {bytes(selectedDay.download)}
                         </p>
                         <div className="usage-dates">
                             <span>{formatDate(days[0].date)}</span>
@@ -126,17 +149,24 @@ export function UsageChart({
             {showRecords && !!data.data?.length && (
                 <details className="usage-records">
                     <summary>{b("usageDetails")}</summary>
-                    <Table compact
+                    <Table
+                        compact
                         data={data.data.filter(
                             (row) =>
-                                Number(row.record_at) >=
-                                days[0].date.getTime() / 1000,
+                                (row.business_date ||
+                                    calendarDay(
+                                        new Date(Number(row.record_at) * 1000),
+                                    )) >=
+                                days[0].date.toISOString().slice(0, 10),
                         )}
                         columns={[
                             [
                                 "record_at",
                                 tx("日期"),
-                                (row) => date(row.record_at),
+                                (row) =>
+                                    row.business_date
+                                        ? `${row.business_date} · ${row.record_timezone}`
+                                        : date(row.record_at),
                             ],
                             ["u", tx("上传"), (row) => bytes(row.u)],
                             ["d", tx("下载"), (row) => bytes(row.d)],

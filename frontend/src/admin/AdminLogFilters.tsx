@@ -1,3 +1,8 @@
+import {
+    dateTimeInput,
+    parseDateTimeInput,
+    displayTimeZone,
+} from "../shared/timezone";
 import { useState } from "react";
 import type { Row } from "../shared/api";
 
@@ -17,17 +22,7 @@ export function AdminLogFilters({
                     ["from", "to"].includes(key) &&
                     Number.isFinite(Number(value))
                 ) {
-                    const date = new Date(Number(value) * 1000);
-                    if (Number.isFinite(date.getTime()))
-                        return [
-                            key,
-                            new Date(
-                                date.getTime() -
-                                    date.getTimezoneOffset() * 60000,
-                            )
-                                .toISOString()
-                                .slice(0, 16),
-                        ];
+                    return [key, dateTimeInput(Number(value))];
                 }
                 return [key, value];
             }),
@@ -52,22 +47,27 @@ export function AdminLogFilters({
                     setError("结束时间不能早于开始时间");
                     return;
                 }
-                const filters: Row = {};
-                for (const [key, value] of Object.entries(draft)) {
-                    if (String(value).trim())
-                        filters[key] = ["from", "to"].includes(key)
-                            ? Math.floor(
-                                  new Date(String(value)).getTime() / 1000,
-                              )
-                            : String(value).trim();
+                try {
+                    const filters: Row = {};
+                    for (const [key, value] of Object.entries(draft)) {
+                        if (String(value).trim())
+                            filters[key] = ["from", "to"].includes(key)
+                                ? parseDateTimeInput(String(value))
+                                : String(value).trim();
+                    }
+                    setError("");
+                    onApply(filters);
+                } catch (e) {
+                    setError((e as Error).message);
                 }
-                setError("");
-                onApply(filters);
             }}
         >
             {fields.map(([key, label, type]) => (
                 <label key={key}>
                     {label}
+                    {type === "datetime-local"
+                        ? `（${displayTimeZone()}）`
+                        : ""}
                     <input
                         aria-label={`日志${label}`}
                         type={type}

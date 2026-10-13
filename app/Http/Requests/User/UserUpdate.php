@@ -14,6 +14,7 @@ class UserUpdate extends FormRequest
     public function rules()
     {
         return [
+            'display_timezone' => ['nullable','string',\Illuminate\Validation\Rule::in(\App\Services\TimeZones::all())],
             'language' => \App\Services\LanguagePreferenceService::rule(),
             'auto_renewal' => 'in:0,1',
             'remind_expire' => 'in:0,1',

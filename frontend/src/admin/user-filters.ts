@@ -1,3 +1,4 @@
+import { parseDateTimeInput } from "../shared/timezone";
 export interface UserFilter {
     key: string;
     condition: string;
@@ -29,7 +30,7 @@ export function normalizeUserFilters(filters: UserFilter[]): UserFilter[] {
         if (filter.key === "expired_at") {
             const value = /^\d+$/.test(String(filter.value))
                 ? Number(filter.value)
-                : Math.floor(new Date(filter.value).getTime() / 1000);
+                : parseDateTimeInput(String(filter.value));
             if (!Number.isFinite(value)) throw new Error("到期时间格式无效");
             return { ...filter, value };
         }

@@ -2,7 +2,12 @@ import { useState, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import { changeLanguage, languages, locale, tx } from "../shared/i18n";
 import { p } from "./profile-copy";
-import type { Row } from "../shared/api";
+import { request, boot, type Row } from "../shared/api";
+import {
+    displayTimeZone,
+    setDisplayTimeZone,
+    validZone,
+} from "../shared/timezone";
 import "../shared/account-preferences.css";
 export function AccountPreferences({ user }: { user: Row }) {
     useTranslation();
@@ -20,6 +25,58 @@ export function AccountPreferences({ user }: { user: Row }) {
                         <p className="muted">{p("emailHelp")}</p>
                     </div>
                     <span dir="ltr">{user.email || "—"}</span>
+                </div>
+                <div className="settings-row">
+                    <div>
+                        <label htmlFor="profile-timezone">
+                            {tx("时间显示时区")}
+                        </label>
+                        <p className="muted">
+                            {tx("仅改变显示方式，套餐到期与流量重置时刻不变。")}{" "}
+                            {displayTimeZone()}
+                        </p>
+                    </div>
+                    <select
+                        id="profile-timezone"
+                        value={user.display_timezone || ""}
+                        disabled={busy}
+                        onChange={async (event) => {
+                            if (saving.current) return;
+                            saving.current = true;
+                            setBusy(true);
+                            setError("");
+                            const zone = event.target.value || null;
+                            try {
+                                await request("user/update", {
+                                    display_timezone: zone,
+                                });
+                                setDisplayTimeZone(zone);
+                                window.dispatchEvent(new Event("data-changed"));
+                            } catch (reason) {
+                                setError((reason as Error).message);
+                            } finally {
+                                saving.current = false;
+                                setBusy(false);
+                            }
+                        }}
+                    >
+                        <option value="">{tx("跟随设备")}</option>
+                        {(
+                            boot.timeZones || [
+                                "UTC",
+                                "Asia/Shanghai",
+                                "Asia/Tokyo",
+                                "America/New_York",
+                                "Europe/London",
+                            ]
+                        )
+                            .filter(validZone)
+                            .map((zone) => (
+                                <option key={zone} value={zone}>
+                                    {zone}
+                                </option>
+                            ))}
+                    </select>
                 </div>
                 <div className="settings-row">
                     <div>

@@ -20,7 +20,7 @@ export function v10Request(path: string, body?: Record<string,any>) {
     const contract = contracts[source.id != null && details[base] ? details[base] : id];
     const input: Record<string,any> = {};
     for (const [publicName,internalName] of Object.entries(contract.input)) {
-        const value = source[internalName] ?? (internalName === 'page_size' ? source.pageSize : undefined);
+        const value = Object.prototype.hasOwnProperty.call(source, internalName) ? source[internalName] : (internalName === 'page_size' ? source.pageSize : undefined);
         if (value !== undefined) input[publicName] = value;
     }
     if (input.billingPeriod) input.billingPeriod = periods[input.billingPeriod];

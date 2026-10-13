@@ -1459,3 +1459,15 @@ body[data-console="user"] .fastai-download-panel {
 body[data-console="user"] .fastai-download-panel .actions { flex-wrap: wrap; margin-top: 14px; }
 body[data-console="user"] .client-family-header { padding-bottom: 12px; border-bottom: 1px solid var(--line); }
 body[data-console="user"] .client-family-header p { color: var(--text-secondary); margin: 8px 0; }
+
+.client-authorization { background: radial-gradient(ellipse at 50% 0, var(--brand-soft), transparent 65%); }
+.client-authorization-card { width: min(100%, 480px); border: 1px solid var(--outline, var(--border)); border-radius: 24px; box-shadow: 0 24px 72px #153b7014; padding: clamp(24px, 5vw, 40px); }
+.client-authorization-mark { display: grid; place-items: center; width: 64px; height: 64px; border-radius: 20px; background: var(--brand-soft); }
+.client-authorization-eyebrow { color: var(--muted); font-size: 12px; letter-spacing: .08em; }
+.client-authorization-card h1 { font-size: clamp(24px, 5vw, 30px); letter-spacing: -.03em; }
+.client-authorization-card > p { color: var(--muted); line-height: 1.7; }
+.client-authorization-card .btn { min-height: 46px; justify-content: center; }
+.client-authorization-footer { padding-top: 16px; border-top: 1px solid var(--border); color: var(--muted); font-size: 12px; text-align: center; }
+.telegram-integration { display: grid; gap: 16px; }
+.telegram-integration p { margin: 0; line-height: 1.7; }
+.telegram-integration .actions { flex-wrap: wrap; }

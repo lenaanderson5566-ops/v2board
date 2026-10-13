@@ -1,6 +1,16 @@
+import { displayTimeZone } from "./timezone";
 import i18n, { locale } from "./i18n";
 export const creditCopy = {
-    buyMore: ["购买更多额度", "購買更多額度", "Buy more credits", "クレジットを追加購入", "크레딧 추가 구매", "Mua thêm hạn mức", "Купить ещё кредиты", "خرید اعتبار بیشتر"],
+    buyMore: [
+        "购买更多额度",
+        "購買更多額度",
+        "Buy more credits",
+        "クレジットを追加購入",
+        "크레딧 추가 구매",
+        "Mua thêm hạn mức",
+        "Купить ещё кредиты",
+        "خرید اعتبار بیشتر",
+    ],
     completedHelp: [
         "订单已处理，可在使用情况中查看当前服务状态。",
         "訂單已處理，可在使用情況中查看目前服務狀態。",
@@ -49,8 +59,8 @@ export const creditCopy = {
         "구매한 크레딧은 12개월간 유효하며 단독 사용이 가능하고 요금제 초기화로 소멸하지 않습니다.",
         "Dung lượng mua có hạn 12 tháng, dùng độc lập và không mất khi đặt lại gói.",
         "Купленный трафик действует 12 месяцев, работает отдельно и сохраняется при сбросе тарифа.",
-        "اعتبار خریداری‌شده ۱۲ ماه معتبر است و مستقل از طرح مصرف می‌شود؛ بازنشانی طرح آن را پاک نمی‌کند."
-],
+        "اعتبار خریداری‌شده ۱۲ ماه معتبر است و مستقل از طرح مصرف می‌شود؛ بازنشانی طرح آن را پاک نمی‌کند.",
+    ],
     accessHelp: [
         "购买额度到账后 12 个月内有效，优先消耗最早到期的额度。订阅有效时沿用订阅权限；否则使用基础节点。",
         "購買額度到帳後 12 個月內有效，優先使用最早到期的額度。有效訂閱沿用訂閱權限，否則使用基礎節點。",
@@ -59,8 +69,8 @@ export const creditCopy = {
         "구매 크레딧은 지급 후 12개월간 유효하며 만료가 빠른 것부터 사용합니다. 유효한 구독의 권한을 따르며, 그 외에는 기본 노드를 사용합니다.",
         "Dung lượng mua hết hạn sau 12 tháng; ưu tiên dùng phần sắp hết hạn. Gói còn hạn giữ quyền truy cập; nếu không dùng máy chủ cơ bản.",
         "Купленный трафик действует 12 месяцев; сначала расходуется ближайший к истечению. При активной подписке доступны её узлы, иначе — базовые.",
-        "اعتبار خریداری‌شده ۱۲ ماه اعتبار دارد؛ اعتبار با انقضای نزدیک‌تر زودتر مصرف می‌شود. با اشتراک فعال دسترسی همان طرح و در غیر این صورت گره‌های پایه استفاده می‌شود."
-],
+        "اعتبار خریداری‌شده ۱۲ ماه اعتبار دارد؛ اعتبار با انقضای نزدیک‌تر زودتر مصرف می‌شود. با اشتراک فعال دسترسی همان طرح و در غیر این صورت گره‌های پایه استفاده می‌شود.",
+    ],
     quantity: [
         "选择额度",
         "選擇額度",
@@ -241,7 +251,16 @@ export const creditCopy = {
         "Этот заказ зачтён в последующий заказ тарифа.",
         "این سفارش در سفارش بعدی طرح منظور شده است.",
     ],
-    paidReset: ["付费重置", "付費重置", "Paid reset", "有料リセット", "유료 초기화", "Đặt lại có phí", "Платный сброс", "بازنشانی پولی"],
+    paidReset: [
+        "付费重置",
+        "付費重置",
+        "Paid reset",
+        "有料リセット",
+        "유료 초기화",
+        "Đặt lại có phí",
+        "Платный сброс",
+        "بازنشانی پولی",
+    ],
     paidResetHelp: [
         "重置当前套餐流量，不消耗储备次数。订阅到期时间、原定重置日期和额度余额不变。",
         "重置目前方案流量，不消耗儲備次數。訂閱到期時間、原定重置日期及額度餘額不變。",
@@ -288,7 +307,7 @@ export const c = (
     key: keyof typeof creditCopy,
     values?: Record<string, unknown>,
 ): string => String(i18n.t(key, { ns: "credits", ...values }));
-export function minuteDate(value: unknown, timezone?: string): string {
+export function minuteDate(value: unknown, _timezone?: string): string {
     if (!value || !Number.isFinite(Number(value))) return "—";
     return new Intl.DateTimeFormat(locale(), {
         year: "numeric",
@@ -297,8 +316,7 @@ export function minuteDate(value: unknown, timezone?: string): string {
         hour: "2-digit",
         minute: "2-digit",
         hourCycle: "h23",
-        ...(timezone
-            ? { timeZone: timezone, timeZoneName: "short" as const }
-            : {}),
+        timeZone: displayTimeZone(),
+        timeZoneName: "short",
     }).format(new Date(Number(value) * 1000));
 }

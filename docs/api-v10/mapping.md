@@ -86,6 +86,9 @@ Admin, operations/risk, staff and supported node APIs retain their API versions.
 | `New native resource` | `POST /api/v10/auth/browser-session` | public | browserSession |
 | `New native resource` | `DELETE /api/v10/auth/browser-session` | public | scalar |
 | `New native resource` | `GET /api/v10/public/fastai/entrypoints` | public | signedEntrypoints |
+| `New native resource` | `POST /api/v10/me/integrations/telegram/binding-links` | user | telegramBindingLink |
+| `New native resource` | `POST /api/v10/me/integrations/telegram/confirmation` | user | scalar |
+| `New native resource` | `POST /api/v10/me/integrations/telegram/group-invitations` | user | telegramJoinLink |
 
 V2Box support: administrative `server/v2box/{save,update,copy,drop}` routes use the existing admin prefix. Node config `/api/v2/server/config` and retained UniProxy endpoints accept `node_type=v2box`. V10 subscription paths and resource shapes are unchanged; stable node identities distinguish `v2box` from `v2node`. See [V2Box integration](../v2box.md).
 
@@ -145,3 +148,8 @@ POST /api/v10/me/diagnostic-reports accepts manual, user-approved check results 
 ## Client runtime events
 
 POST /api/v10/me/client-events accepts opt-in, account-linked version/platform and bounded connection/synchronization outcomes, durations and error categories. At most 30 events/batch, 12 batches/account/hour and 16 KiB/body; default retention 30 days. No browsing history, addresses, credentials or configuration content. The previous diagnostic endpoint remains compatible with installed older clients.
+
+
+## Telegram community
+
+Binding uses a 10-minute one-time deep link, bot acknowledgement and an authenticated website confirmation with the expected Telegram ID. Subscription URLs are never binding credentials. Group invitation links require join approval; entitlement is a non-banned bound account with a plan and an unexpired term or configured grace (default 3 days). Traffic exhaustion is not a group removal condition.

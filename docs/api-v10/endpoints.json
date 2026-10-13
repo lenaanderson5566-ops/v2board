@@ -1635,5 +1635,74 @@
     "scope": "user",
     "status": 201,
     "key": "User/ClientEventController@store"
+  },
+  {
+    "legacy": "user/telegram/binding-link",
+    "legacyMethod": "POST",
+    "method": "POST",
+    "path": "me/integrations/telegram/binding-links",
+    "action": "App\\Http\\Controllers\\V1\\User\\TelegramController@bindingLink",
+    "parameters": [
+      {
+        "name": "request",
+        "type": "Illuminate\\Http\\Request",
+        "optional": false
+      }
+    ],
+    "bindings": {},
+    "middleware": [
+      "throttle:6,1"
+    ],
+    "role": "user",
+    "scope": "user",
+    "status": 201,
+    "id": "postMeIntegrationsTelegramBindingLinks",
+    "key": "User/TelegramController@bindingLink"
+  },
+  {
+    "legacy": "user/telegram/confirm-binding",
+    "legacyMethod": "POST",
+    "method": "POST",
+    "path": "me/integrations/telegram/confirmation",
+    "action": "App\\Http\\Controllers\\V1\\User\\TelegramController@confirmBinding",
+    "parameters": [
+      {
+        "name": "request",
+        "type": "Illuminate\\Http\\Request",
+        "optional": false
+      }
+    ],
+    "bindings": {},
+    "middleware": [
+      "throttle:6,1"
+    ],
+    "role": "user",
+    "scope": "user",
+    "status": 200,
+    "id": "postMeIntegrationsTelegramConfirmation",
+    "key": "User/TelegramController@confirmBinding"
+  },
+  {
+    "legacy": "user/telegram/join-link",
+    "legacyMethod": "POST",
+    "method": "POST",
+    "path": "me/integrations/telegram/group-invitations",
+    "action": "App\\Http\\Controllers\\V1\\User\\TelegramController@joinLink",
+    "parameters": [
+      {
+        "name": "request",
+        "type": "Illuminate\\Http\\Request",
+        "optional": false
+      }
+    ],
+    "bindings": {},
+    "middleware": [
+      "throttle:6,1"
+    ],
+    "role": "user",
+    "scope": "user",
+    "status": 201,
+    "id": "postMeIntegrationsTelegramGroupInvitations",
+    "key": "User/TelegramController@joinLink"
   }
 ]

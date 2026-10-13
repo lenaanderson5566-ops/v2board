@@ -23,6 +23,9 @@ afterEach(() => {
     vi.clearAllMocks();
 });
 const settings = {
+    client_diagnostic_retention_days: 30,
+    registration_signal_retention_days: 90,
+    payment_callback_retention_days: 30,
     connection_log_interval: 3600,
     system_log_retention_days: 30,
     connection_log_retention_days: 30,

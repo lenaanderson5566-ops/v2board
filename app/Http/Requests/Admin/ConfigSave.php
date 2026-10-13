@@ -46,6 +46,7 @@ class ConfigSave extends FormRequest
         'logo' => 'nullable|url',
         'force_https' => 'in:0,1',
         'stop_register' => 'in:0,1',
+        'system_timezone' => 'string|timezone',
         'app_name' => '',
         'app_description' => '',
         'landing_style' => 'sometimes|required|in:original,minimal',
@@ -71,7 +72,7 @@ class ConfigSave extends FormRequest
         'show_subscribe_method' => 'in:0,1,2',
         'show_subscribe_expire' => 'nullable|integer|min:1',
         // server
-        'server_api_url' => 'nullable|string',
+        'server_api_url' => 'nullable|url|regex:~^https://[^/?#\s@]+(?:/[^?#\s]*)?$~',
         'server_token' => 'nullable|min:16',
         'server_pull_interval' => 'integer',
         'server_push_interval' => 'integer',
@@ -95,7 +96,9 @@ class ConfigSave extends FormRequest
         // telegram
         'telegram_bot_enable' => 'in:0,1',
         'telegram_bot_token' => '',
-        'telegram_discuss_id' => '',
+        'telegram_discuss_id' => 'nullable|regex:/^-[1-9][0-9]{0,15}$/D',
+        'telegram_group_policy_enable' => 'in:0,1',
+        'telegram_group_grace_days' => 'integer|min:0|max:30',
         'telegram_channel_id' => '',
         'telegram_discuss_link' => 'nullable|url',
         'client_primary_android' => 'nullable|in:cmfa,singbox,flclash',
@@ -139,6 +142,11 @@ class ConfigSave extends FormRequest
      */
     public function withValidator($validator) {
         $validator->after(function ($validator) {
+            if ($this->input('telegram_group_policy_enable',config('v2board.telegram_group_policy_enable',0)) &&
+                (!$this->input('telegram_bot_enable',config('v2board.telegram_bot_enable',0)) || (int)$this->input('telegram_discuss_id',config('v2board.telegram_discuss_id',0))>=0)) {
+                $validator->errors()->add('telegram_group_policy_enable','请先启用 Telegram 机器人，并填写有效的负数群 ID。');
+            }
+            if ($this->has('system_timezone') && !\App\Services\TimeZones::valid($this->input('system_timezone'))) $validator->errors()->add('system_timezone','请选择有效的 IANA 时区。');
             $registration = $this->input('invite_registration_gb', config('v2board.invite_registration_gb', 0));
             $usage = $this->input('invite_first_use_gb', config('v2board.invite_first_use_gb', 0));
             $group = $this->input('credit_base_group_id', config('v2board.credit_base_group_id'));
@@ -171,6 +179,8 @@ class ConfigSave extends FormRequest
             'subscription_ua_whitelist_enabled.missing' => '白名单已合并，请在客户端策略中设置「允许订阅访问」。',
             'subscription_ua_whitelist.missing' => '白名单已合并，请在客户端策略中设置「允许订阅访问」。',
             'app_url.url' => '站点URL格式不正确，必须携带http(s)://',
+            'server_api_url.regex' => '节点通讯地址必须使用 HTTPS，且不能包含账号、查询参数或片段。',
+            'server_api_url.url' => '节点通讯地址必须是有效的 HTTPS 地址。',
             'subscribe_url.url' => '订阅URL格式不正确，必须携带http(s)://',
             'subscribe_path.regex' => '订阅路径必须以/开头',
             'server_token.min' => '通讯密钥长度必须大于16位',

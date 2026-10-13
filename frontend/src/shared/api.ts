@@ -1,4 +1,9 @@
 import {
+    configureTimeZone,
+    setDisplayTimeZone,
+    formatInstant,
+} from "./timezone";
+import {
     browserFetch,
     queueBrowserLogout,
     forgetBrowserSession,
@@ -21,6 +26,8 @@ export interface Envelope<T> {
     code?: string;
 }
 export interface Boot {
+    systemTimeZone?: string;
+    timeZones?: string[];
     fastaiDownloads?: import("./v10-types").V10FastaiRelease[];
     apiBaseUrl?: string;
     footerHtml?: string;
@@ -60,6 +67,10 @@ declare global {
     }
 }
 export const boot = window.V2BOARD;
+configureTimeZone(
+    boot.systemTimeZone || "Asia/Shanghai",
+    boot.mode === "admin",
+);
 export const storageKey = `v2board.${boot.mode}${boot.apiBaseUrl ? "." + encodeURIComponent(boot.apiBaseUrl) : ""}.auth`;
 export const admin = (path: string) => `${boot.adminPath}/${path}`;
 export const ops = (path: string) => `${boot.opsPath}/${path}`;
@@ -148,7 +159,10 @@ export async function request<T = Row>(
                   : {}),
         }).catch((error: unknown) => {
             if (error instanceof TypeError && !controller.signal.aborted) {
-                throw Object.assign(new Error(tx("网络连接中断，请检查网络后确认操作结果")), { code: "NETWORK_ERROR" });
+                throw Object.assign(
+                    new Error(tx("网络连接中断，请检查网络后确认操作结果")),
+                    { code: "NETWORK_ERROR" },
+                );
             }
             throw error;
         });
@@ -201,9 +215,23 @@ export async function request<T = Row>(
             readCache.clear();
             window.dispatchEvent(new Event("data-changed"));
         }
+        if (path.split("?")[0] === "user/info" && json.data) {
+            const account = json.data as Row;
+            configureTimeZone(
+                account.system_timezone ||
+                    boot.systemTimeZone ||
+                    "Asia/Shanghai",
+                false,
+            );
+            setDisplayTimeZone(account.display_timezone);
+        }
         return json;
     } catch (error) {
-        if (timedOut) throw Object.assign(new Error(tx("请求超时，请刷新确认结果后再试")), { code: "REQUEST_TIMEOUT" });
+        if (timedOut)
+            throw Object.assign(
+                new Error(tx("请求超时，请刷新确认结果后再试")),
+                { code: "REQUEST_TIMEOUT" },
+            );
         throw error;
     } finally {
         clearTimeout(timer);
@@ -289,7 +317,7 @@ export const bytes = (n: unknown) => {
     return `${v.toFixed(i ? 2 : 0)} ${units[i]}`;
 };
 export const date = (n: unknown) =>
-    n ? new Date(Number(n) * 1000).toLocaleString(locale()) : "—";
+    n != null && n !== "" ? formatInstant(Number(n)) : "—";
 export const navigate = (path: string) => {
     location.hash = "/" + path;
 };

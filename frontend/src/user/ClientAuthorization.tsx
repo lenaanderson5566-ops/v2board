@@ -102,11 +102,14 @@ export default function ClientAuthorization({ user }: { user: Row }) {
                 <div className="client-authorization-mark">
                     <ShieldCheck size={32} aria-hidden="true" />
                 </div>
-                <h1>{tx(callback ? "授权完成" : "登录 FastAI")}</h1>
+                <div className="client-authorization-eyebrow">
+                    FastAI · {tx("安全登录")}
+                </div>
+                <h1>{tx(callback ? "授权已送达" : "连接你的 FastAI")}</h1>
                 <p>
                     {tx(
                         callback
-                            ? "请返回 FastAI 继续使用。"
+                            ? "请返回 FastAI 完成登录。若客户端未自动打开，可点击下方按钮继续。"
                             : "确认使用当前帐号登录你刚刚打开的 FastAI。",
                     )}
                 </p>
@@ -154,6 +157,9 @@ export default function ClientAuthorization({ user }: { user: Row }) {
                         {tx("取消")}
                     </button>
                 )}
+                <div className="client-authorization-footer">
+                    {tx("FastDog 提供技术支持")}
+                </div>
             </section>
         </main>
     );

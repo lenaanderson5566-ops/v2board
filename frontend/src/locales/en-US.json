@@ -430,5 +430,8 @@
   "请选择转账网络": "Choose a transfer network",
   "请确认付款钱包的币种与网络和所选渠道一致。": "Make sure your wallet uses the currency and network selected here.",
   "网络连接中断，请检查网络后确认操作结果": "Connection interrupted. Check your network and confirm the result.",
-  "未能确认支付请求结果，正在检查订单状态，请勿重复付款。": "The payment request result is unknown. Checking order status; please do not pay again."
+  "未能确认支付请求结果，正在检查订单状态，请勿重复付款。": "The payment request result is unknown. Checking order status; please do not pay again.",
+  "时间显示时区": "Display time zone",
+  "仅改变显示方式，套餐到期与流量重置时刻不变。": "Only changes how times are displayed. Plan expiry and traffic reset instants stay the same.",
+  "跟随设备": "Follow device"
 }

@@ -2,8 +2,14 @@
 import json
 import pathlib
 import re
+import sys
 
 root = pathlib.Path(__file__).resolve().parent.parent
+timezone_only = '--timezone-only' in sys.argv
+telegram_only = '--telegram-only' in sys.argv or timezone_only
+published = json.loads((root / 'docs/api-v10/openapi.json').read_text(encoding='utf-8')) if telegram_only else None
+published_types = (root / 'frontend/src/shared/v10-types.ts').read_text(encoding='utf-8') if telegram_only else None
+published_mapping = (root / 'docs/api-v10/mapping.md').read_text(encoding='utf-8') if telegram_only else None
 contracts = json.loads((root / 'docs/api-v10/contracts.json').read_text(encoding='utf-8'))
 entries = json.loads((root / 'docs/api-v10/endpoints.json').read_text(encoding='utf-8'))
 schemas = {}
@@ -126,6 +132,7 @@ schemas['diagnosticReceipt'] = {'type':'object','required':['reportId'],'propert
 def input_schema(field):
     if field == 'events': return {'type':'array','minItems':1,'maxItems':30,'items':{'type':'object','additionalProperties':False,'required':['name','outcome','elapsedMs','errorClass'],'properties':{'name':{'type':'string','enum':['connection','config_sync','subscription_sync','account_sync']},'outcome':{'type':'string','enum':['success','failure']},'elapsedMs':{'type':'integer','minimum':0,'maximum':300000},'errorClass':{'type':'string','enum':['none','timeout','network','certificate','authentication','policy','server','unknown']}}}}
 
+    if field == 'displayTimeZone': return {'type': 'string', 'nullable': True, 'description': 'IANA time zone; null follows the device display time zone.'}
     if field == 'checks': return {'type': 'array', 'minItems': 1, 'maxItems': 9, 'items': {'type': 'object', 'additionalProperties': False, 'required': ['id', 'status'], 'properties': {'id': {'type': 'string', 'enum': ['dns', 'website', 'proxy', 'settings', 'systemProxy', 'route', 'tcp', 'tls', 'reference']}, 'status': {'type': 'string', 'enum': ['passed', 'failed', 'skipped', 'unverified']}, 'elapsedMs': {'type': 'integer', 'minimum': 0, 'maximum': 300000, 'nullable': True}}}}
     if field in ['state','codeChallenge']: return {'type':'string','pattern':'^[A-Za-z0-9_-]{43}$'}
     if field == 'authorizationCode': return {'type':'string','pattern':'^[a-f0-9]{64}$'}
@@ -144,6 +151,7 @@ def input_schema(field):
     if field == 'format': return {'type': 'string', 'enum': ['clash-verge', 'flclash', 'sing-box', 'shadowrocket', 'surge', 'quantumult-x', 'stash', 'mihomo', 'clash-nyanpasu', 'clash-for-android', 'clash-for-windows', 'clashx', 'loon', 'surfboard', 'sagernet', 'passwall', 'ssr-plus', 'shadowsocks', 'v2rayn', 'v2rayng', 'v2raytun', 'clash-party', 'throne', 'nekobox', 'husi']}
     return {'type': 'string', **({'format': 'email'} if field == 'email' else {})}
 
+required['User/TelegramController@confirmBinding'] = ['telegramId']
 paths = {}
 mapping = ['# Legacy → V10 mapping', '', 'Payment methods expose category (regular/crypto), asset, assetIconUrl, network, networkName and networkIconUrl. Existing channels default to regular. No provider config or credentials are exposed; paymentMethodId and CNY fee semantics remain unchanged.', '', 'Account notification preference: `GET/PATCH /me` exposes boolean `serviceNotifications`, mapped to shared `remind_service` (default true).', '', 'Admin, operations/risk, staff and node APIs retain all existing paths and schemas. Legacy symbols are historical mappings, not a list of callable routes. Only the explicit retained-endpoints allowlist remains callable. See contracts.json for exact field projections.', '', '| Existing symbol | V10 method and path | Permission | Resource |', '|---|---|---|---|']
 for entry in entries:
@@ -176,7 +184,7 @@ for entry in entries:
         operation['description'] = 'Subscription credentials are required. Per-IP and shared per-account fixed-window limits apply across token subscription endpoints. Configuration downloads additionally require a recognized client UA with subscription access enabled; unknown UA returns 403, Retired flag parameters, legacy format names, General and incompatible formats return 422. Authenticated /me/client-config uses its dedicated client policy.'
     if not entry.get('key'): operation['x-legacy-path'] = '/api/v1/' + entry['legacy']
     if entry.get('key') == 'Public/MirrorController@download':
-        operation['description'] = 'Published installer download. Supports HEAD and byte ranges; binary content is not enveloped. Unpublished or unknown IDs return 404.'
+        operation['description'] = 'Published third-party mirror or uploaded FastAI installer download. FastAI IDs use the fastai- UUID prefix. Uploaded drafts and historical packages not in the current release catalog return 404; current FastAI access/version policy applies. Supports HEAD and byte ranges; binary content is not enveloped. Unknown IDs return 404.'
         params.append({'name': 'Range', 'in': 'header', 'schema': {'type': 'string'}})
         responses['206'] = {**success, 'description': 'Partial installer content'}
         responses['416'] = {'description': 'Requested range is not satisfiable'}
@@ -239,6 +247,19 @@ diagnostic_operation['description'] = 'Manual authenticated diagnostic submissio
 schemas['postMeDiagnosticReportsInput']['additionalProperties'] = False
 mapping.extend(['', '## Client diagnostics', '', 'POST /me/diagnostic-reports accepts manual, user-approved check results only. The server derives account identity and returns reportId. Five reports/account/hour; default retention 30 days, configurable under log settings.'])
 
+mapping.extend(['', '## Telegram community', '', 'Binding uses a 10-minute one-time deep link, bot acknowledgement and an authenticated website confirmation with the expected Telegram ID. Subscription URLs are never binding credentials. Group invitation links require join approval; entitlement is a non-banned bound account with a plan and an unexpired term or configured grace (default 3 days). Traffic exhaustion is not a group removal condition.'])
+
+if telegram_only:
+    for path, operation in document['paths'].items():
+        if ('/telegram' in path and not timezone_only) or (timezone_only and path in ['/me','/me/subscription','/me/preferences/options']): published['paths'][path] = operation
+    for name, schema in document['components']['schemas'].items():
+        if ((name.lower() == 'bot' or 'telegram' in name.lower()) and not timezone_only) or (timezone_only and name in ['account','subscription','preferences','traffic','patchMeInput']): published['components']['schemas'][name] = schema
+    document = published
+    new_rows = [] if timezone_only else [line for line in mapping if line.startswith('|') and '/telegram' in line]
+    mapping = [line for line in published_mapping.splitlines() if timezone_only or not (line.startswith('|') and '/telegram' in line)]
+    position = next((i for i, line in enumerate(mapping) if line.startswith('|')), 0) + 2
+    mapping[position:position] = new_rows
+
 (root / 'docs/api-v10/openapi.json').write_text(json.dumps(document, ensure_ascii=False, indent=2) + '\n', encoding='utf-8')
 (root / 'docs/api-v10/mapping.md').write_text('\n'.join(mapping) + '\n', encoding='utf-8')
 
@@ -256,8 +277,13 @@ def ts_type(schema):
 
 types = ['// Phase 1: all monetary values are integer fen; USD is not enabled.', 'export type SettlementCurrency = "CNY";', '// Generated by scripts/document-v10.py from explicit resource schemas. Do not edit.', 'export interface V10Envelope<T> { data: T; meta?: { pagination?: V10Pagination; taskId?: string } }']
 for name, schema in schemas.items(): types.append('export type V10' + name[0].upper() + name[1:] + ' = ' + ts_type(schema) + ';')
+if telegram_only:
+    updates = [line for line in types if line.startswith('export type V10Bot =') or ('telegram' in line.split('=')[0].lower() and line.startswith('export type'))]
+    if timezone_only: updates = [line for line in types if any(line.startswith('export type V10'+name+' =') for name in ['Account','Subscription','Preferences','Traffic','PatchMeInput'])]
+    types = [line for line in published_types.splitlines() if not any(line.split('=')[0] == update.split('=')[0] for update in updates)] + updates
+
 (root / 'frontend/src/shared/v10-types.ts').write_text('\n'.join(types) + '\n', encoding='utf-8')
 
 # Machine contracts are maintained independently from user projections.
 import runpy
-runpy.run_path(str(root / "scripts/document-node-v10.py"))
+if not telegram_only: runpy.run_path(str(root / "scripts/document-node-v10.py"))

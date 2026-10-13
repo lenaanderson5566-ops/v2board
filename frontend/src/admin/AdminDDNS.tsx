@@ -1,3 +1,4 @@
+import { formatInstant } from "../shared/timezone";
 import { useState } from "react";
 import { admin, request, type Row } from "../shared/api";
 import { Modal, Panel, State, useData } from "../shared/ui";
@@ -21,7 +22,7 @@ const labels: Record<string, string> = {
     configuration_removed: "配置已删除",
     report_key_rotated: "上报密钥已更换",
 };
-const date = (v: number) => (v ? new Date(v * 1000).toLocaleString() : "—");
+const date = (v: number) => (v ? formatInstant(v) : "—");
 export function AdminDDNS() {
     const data = useData<Row>(admin("server/ddns/fetch"));
     const nodes = useData<Row[]>(admin("server/manage/getNodes"));
@@ -264,7 +265,9 @@ export function AdminDDNS() {
             <Panel title="DDNS 日志">
                 <div className="pad">
                     <p className="muted">
-                        默认保留 30 天，可在系统日志页面调整；只记录状态变化和实际 DNS 更新。
+                        默认保留 30
+                        天，可在系统日志页面调整；只记录状态变化和实际 DNS
+                        更新。
                     </p>
                     <label>
                         节点筛选

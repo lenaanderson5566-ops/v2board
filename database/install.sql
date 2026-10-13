@@ -345,6 +345,7 @@ CREATE TABLE `v2_stat_server` (
 
 DROP TABLE IF EXISTS `v2_stat_user`;
 CREATE TABLE `v2_stat_user` (
+  `record_timezone` varchar(64) DEFAULT NULL,
                                 `id` int(11) NOT NULL AUTO_INCREMENT,
                                 `user_id` int(11) NOT NULL,
                                 `server_rate` decimal(10,2) NOT NULL,
@@ -390,6 +391,7 @@ CREATE TABLE `v2_ticket_message` (
 
 DROP TABLE IF EXISTS `v2_user`;
 CREATE TABLE `v2_user` (
+  `display_timezone` varchar(64) DEFAULT NULL,
                            `id` int(11) NOT NULL AUTO_INCREMENT,
                            `invite_user_id` int(11) DEFAULT NULL,
                            `telegram_id` bigint(20) DEFAULT NULL,
@@ -580,4 +582,39 @@ CREATE TABLE IF NOT EXISTS `v2_invitation_review_event` (
  `id` bigint unsigned NOT NULL AUTO_INCREMENT, `review_id` bigint unsigned NOT NULL,
  `admin_id` int unsigned NOT NULL, `state` varchar(24) NOT NULL, `note` varchar(1000) NOT NULL, `created_at` int unsigned NOT NULL,
  PRIMARY KEY (`id`), KEY (`review_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS `v2_telegram_binding_challenge` (
+ `user_id` bigint unsigned NOT NULL, `token_hash` char(64) NOT NULL,
+ `telegram_id` bigint DEFAULT NULL, `telegram_name` varchar(128) DEFAULT NULL,
+ `expires_at` int unsigned NOT NULL, PRIMARY KEY (`user_id`), UNIQUE KEY (`token_hash`), KEY (`expires_at`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+CREATE TABLE IF NOT EXISTS `v2_telegram_group_member` (
+ `id` bigint unsigned NOT NULL AUTO_INCREMENT, `chat_id` bigint NOT NULL, `telegram_id` bigint NOT NULL,
+ `status` varchar(32) NOT NULL DEFAULT 'pending', `policy_banned` tinyint(1) NOT NULL DEFAULT 0,
+ `next_check_at` int unsigned NOT NULL DEFAULT 0, `checked_at` int unsigned DEFAULT NULL,
+ `error_code` varchar(48) DEFAULT NULL, PRIMARY KEY (`id`), UNIQUE KEY (`chat_id`,`telegram_id`), KEY (`next_check_at`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS `v2_telegram_preference` (
+  `user_id` bigint unsigned NOT NULL PRIMARY KEY, `telegram_id` bigint NOT NULL,
+  `expiry` tinyint(1) NOT NULL DEFAULT 0, `ticket` tinyint(1) NOT NULL DEFAULT 0,
+  `order` tinyint(1) NOT NULL DEFAULT 0, `quiet` tinyint(1) NOT NULL DEFAULT 1,
+  `blocked` tinyint(1) NOT NULL DEFAULT 0, `updated_at` int unsigned NOT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+CREATE TABLE IF NOT EXISTS `v2_telegram_notification` (
+  `id` bigint unsigned NOT NULL AUTO_INCREMENT PRIMARY KEY, `event_key` char(64) NOT NULL UNIQUE,
+  `user_id` bigint unsigned NOT NULL, `telegram_id` bigint NOT NULL, `kind` varchar(24) NOT NULL,
+  `reference_id` bigint unsigned DEFAULT NULL, `status` varchar(16) NOT NULL DEFAULT 'pending',
+  `attempts` int unsigned NOT NULL DEFAULT 0, `next_at` int unsigned NOT NULL,
+  `created_at` int unsigned NOT NULL, `finished_at` int unsigned DEFAULT NULL,
+  `error_code` varchar(32) DEFAULT NULL, KEY (`next_at`), KEY (`created_at`), KEY `telegram_notification_due` (`status`,`next_at`,`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS `v2_daily_task_run` (
+ `task` varchar(48) NOT NULL, `business_date` date NOT NULL, `timezone` varchar(64) NOT NULL,
+ `status` varchar(16) NOT NULL, `updated_at` int unsigned NOT NULL, PRIMARY KEY (`task`,`business_date`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+CREATE TABLE IF NOT EXISTS `v2_daily_user_reset` (
+ `user_id` bigint unsigned NOT NULL, `business_date` date NOT NULL, PRIMARY KEY (`user_id`,`business_date`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;

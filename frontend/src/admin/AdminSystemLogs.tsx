@@ -1,8 +1,13 @@
+import {
+    formatInstant,
+    dateTimeInput,
+    parseDateTimeInput,
+    displayTimeZone,
+} from "../shared/timezone";
 import { useState } from "react";
 import { admin, type Row } from "../shared/api";
 import { Panel, State, useData } from "../shared/ui";
-const time = (value: number) =>
-    value ? new Date(value * 1000).toLocaleString() : "—";
+const time = (value: number) => (value ? formatInstant(value) : "—");
 const levels = [
     "DEBUG",
     "INFO",
@@ -33,9 +38,13 @@ function recent(): Filters {
     ).get("request_id");
     if (requestId && /^[0-9a-f-]{36}$/i.test(requestId))
         return { ...empty, request_id: requestId };
-    const d = new Date(Date.now() - 86400000);
-    const local = new Date(d.getTime() - d.getTimezoneOffset() * 60000);
-    return { ...empty, from: local.toISOString().slice(0, 16) };
+    const from = dateTimeInput((Date.now() - 86400000) / 1000);
+    try {
+        parseDateTimeInput(from);
+        return { ...empty, from };
+    } catch {
+        return { ...empty };
+    }
 }
 export function AdminSystemLogs() {
     const [draft, setDraft] = useState<Filters>(recent),
@@ -51,7 +60,7 @@ export function AdminSystemLogs() {
             query.set(
                 key,
                 key === "from" || key === "to"
-                    ? String(Math.floor(new Date(value).getTime() / 1000))
+                    ? String(parseDateTimeInput(value))
                     : value,
             );
     const logs = useData<Row[]>(admin(`system/getSystemLog?${query}`));
@@ -73,12 +82,15 @@ export function AdminSystemLogs() {
                     className="admin-log-filters"
                     onSubmit={(e) => {
                         e.preventDefault();
-                        if (
-                            draft.from &&
-                            draft.to &&
-                            new Date(draft.from) > new Date(draft.to)
-                        ) {
+                        if (draft.from && draft.to && draft.from > draft.to) {
                             setError("结束时间不能早于开始时间");
+                            return;
+                        }
+                        try {
+                            if (draft.from) parseDateTimeInput(draft.from);
+                            if (draft.to) parseDateTimeInput(draft.to);
+                        } catch (e) {
+                            setError((e as Error).message);
                             return;
                         }
                         setError("");
@@ -90,7 +102,7 @@ export function AdminSystemLogs() {
                     }}
                 >
                     <label>
-                        开始时间
+                        开始时间（{displayTimeZone()}）
                         <input
                             aria-label="日志开始时间"
                             type="datetime-local"
@@ -101,7 +113,7 @@ export function AdminSystemLogs() {
                         />
                     </label>
                     <label>
-                        结束时间
+                        结束时间（{displayTimeZone()}）
                         <input
                             aria-label="日志结束时间"
                             type="datetime-local"

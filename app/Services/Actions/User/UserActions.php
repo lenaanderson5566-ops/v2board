@@ -291,6 +291,7 @@ class UserActions
                 'id',
                 'email',
                 'language',
+                'display_timezone',
                 'transfer_enable',
                 'credit_balance',
                 'device_limit',
@@ -316,6 +317,8 @@ class UserActions
         if (!$user) {
             abort(request()->is('api/v10/*') ? 409 : 500, __('The user does not exist'));
         }
+        $user['system_timezone'] = \App\Services\TimeZones::system();
+        $user['expires_at_display'] = \App\Services\TimeZones::format($user->expired_at,$user);
         $user['avatar_url'] = 'https://cravatar.cn/avatar/' . md5($user->email) . '?s=64&d=identicon';
         $user['ticket_creation'] = \App\Services\TicketPolicy::creation((int)$user->id);
         $user['account_status'] = (new \App\Services\AccountStatusService())->forUser($user);
@@ -380,7 +383,11 @@ class UserActions
 
         $userService = new UserService();
         $user['reset_at'] = $userService->getResetAt($user);
-        $user['reset_timezone'] = config('app.timezone', 'UTC');
+        $user['reset_timezone'] = \App\Services\TimeZones::system();
+        $displayUser=User::find($request->user['id']);
+        $user['expires_at_display'] = \App\Services\TimeZones::format($user['expired_at']??null,$displayUser);
+        $user['display_timezone'] = $displayUser->display_timezone;
+        $user['reset_at_display'] = \App\Services\TimeZones::format($user['reset_at']??null,$displayUser);
         $user['has_subscription'] = \App\Services\TrafficCreditService::hasPeriod($user);
         $user['reset_day'] = $userService->getResetDay($user);
         $user['allow_new_period'] = config('v2board.allow_new_period', 0);
@@ -395,9 +402,7 @@ class UserActions
         if (!$user) {
             abort(request()->is('api/v10/*') ? 409 : 500, __('The user does not exist'));
         }
-        if (!$user->update(['telegram_id' => null])) {
-            abort(request()->is('api/v10/*') ? 409 : 500, __('Unbind telegram failed'));
-        }
+        app(\App\Services\TelegramCommunityService::class)->unbind($user);
         return response([
             'data' => true
         ]);
@@ -423,6 +428,7 @@ class UserActions
     {
         $updateData = $request->only([
             'language',
+                'display_timezone',
             'auto_renewal',
             'remind_expire',
             'remind_traffic',

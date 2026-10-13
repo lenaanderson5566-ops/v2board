@@ -1,3 +1,4 @@
+import { TelegramIntegration } from "./TelegramIntegration";
 import { NotificationPreferences } from "./NotificationPreferences";
 import { ac } from "../shared/account-copy";
 import { lazy, useState, useEffect, useRef, type ReactNode } from "react";
@@ -456,62 +457,12 @@ export function Notifications() {
 export function Profile() {
     const config = useData("user/comm/config");
     const d = useData("user/info");
-    const [notice, setNotice] = useState("");
     return (
         <div className="settings-content account-preferences">
             <State {...d} retry={d.reload}>
                 <AccountPreferences user={d.data || {}} />
             </State>
-            {notice && (
-                <div className="success-message" role="status">
-                    {notice}
-                </div>
-            )}
-            {Boolean(config.data?.is_telegram) && (
-                <Panel title="Telegram">
-                    <div className="pad actions">
-                        <button
-                            onClick={async () => {
-                                try {
-                                    const bot = await request(
-                                        "user/telegram/getBotInfo",
-                                    );
-                                    location.assign(
-                                        `https://t.me/${bot.data.username}`,
-                                    );
-                                } catch (e) {
-                                    setNotice((e as Error).message);
-                                }
-                            }}
-                        >
-                            {tx("打开机器人")}
-                        </button>
-                        {config.data?.telegram_discuss_link && (
-                            <a
-                                className="button"
-                                href={config.data.telegram_discuss_link}
-                                target="_blank"
-                                rel="noreferrer"
-                            >
-                                {tx("加入讨论组")}
-                            </a>
-                        )}
-                        <button
-                            onClick={async () => {
-                                try {
-                                    await request("user/unbindTelegram");
-                                    setNotice(tx("Telegram 已解绑"));
-                                    d.reload();
-                                } catch (e) {
-                                    setNotice((e as Error).message);
-                                }
-                            }}
-                        >
-                            {tx("解除绑定")}
-                        </button>
-                    </div>
-                </Panel>
-            )}
+            {Boolean(config.data?.is_telegram) && <TelegramIntegration legacyLink={config.data?.telegram_discuss_link} />}
         </div>
     );
 }

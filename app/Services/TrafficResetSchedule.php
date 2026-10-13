@@ -25,7 +25,7 @@ class TrafficResetSchedule
         $candidate = strtotime('tomorrow', $now);
         for ($i = 0; $i < 1462 && $candidate < $expiry; $i++) {
             if (self::due($method, $expiry, $candidate)) return $candidate;
-            $candidate = strtotime('+1 day', $candidate);
+            $candidate = strtotime(date('Y-m-d', strtotime('+1 day', $candidate)) . ' 00:00:00');
         }
         return null;
     }

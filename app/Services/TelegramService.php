@@ -44,7 +44,30 @@ class TelegramService {
 
     public function getMe()
     {
-        return \Illuminate\Support\Facades\Cache::remember('telegram:bot:'.hash('sha256',$this->api),600,function () { return $this->request('getMe'); });
+        // Cache plain data only; callers always receive the validated Telegram envelope.
+        $key = 'telegram:bot:v2:'.hash('sha256', $this->api);
+        $cache = \Illuminate\Support\Facades\Cache::store();
+        $bot = $cache->get($key);
+        if (!$this->validBotIdentity($bot)) {
+            $response = $this->request('getMe');
+            $result = $response->result ?? null;
+            $bot = is_object($result) ? get_object_vars($result) : $result;
+            if (!$this->validBotIdentity($bot)) {
+                throw new \App\Exceptions\TelegramApiException();
+            }
+            $cache->put($key, $bot, 600);
+        }
+        return (object) ['ok' => true, 'result' => (object) $bot];
+    }
+
+    private function validBotIdentity($bot): bool
+    {
+        return is_array($bot)
+            && isset($bot['id'], $bot['username'])
+            && is_numeric($bot['id']) && (int) $bot['id'] > 0
+            && ($bot['is_bot'] ?? false) === true
+            && is_string($bot['username'])
+            && preg_match('/^[A-Za-z0-9_]{5,32}$/D', $bot['username']) === 1;
     }
 
     public function setWebhook(string $url)

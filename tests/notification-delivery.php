@@ -73,7 +73,7 @@ Schema::create('v2_mail_log', function (Blueprint $t) {
 $one=User::create(['email'=>'one@example.test','telegram_id'=>111,'language'=>'zh-TW']);
 User::create(['email'=>'duplicate1@example.test','telegram_id'=>222]);
 User::create(['email'=>'duplicate2@example.test','telegram_id'=>222]);
-foreach (['2026_10_13_000005_add_telegram_membership.php','2026_10_14_000001_harden_telegram_delivery.php','2026_10_14_000002_add_mail_delivery_metadata.php','2026_10_14_000003_add_mail_transport_codes.php','2026_10_14_000004_add_mail_feedback.php','2026_10_14_000005_add_mail_campaigns.php','2026_10_14_000006_add_mail_blocklist.php'] as $name) {
+foreach (['2026_10_13_000005_add_telegram_membership.php','2026_10_14_000001_harden_telegram_delivery.php','2026_10_14_000002_add_mail_delivery_metadata.php','2026_10_14_000003_add_mail_transport_codes.php','2026_10_14_000004_add_mail_feedback.php','2026_10_14_000005_add_mail_campaigns.php','2026_10_14_000006_add_mail_blocklist.php','2026_10_14_000011_add_optional_mfa.php'] as $name) {
     $migration=require __DIR__.'/../database/migrations/'.$name;
     $migration->up(); $migration->up(); // Safe retry after interrupted upgrades.
 }
@@ -353,8 +353,5 @@ $assert(DB::table('v2_telegram_update')->find($interrupted)->status==='uncertain
 $assert(DB::table('v2_telegram_update')->find($expired)->status==='expired' && DB::table('v2_telegram_update')->find($expired)->payload===null,'Expired event processed');
 $assert(count(NotificationTestCurl::$calls)===$before,'Scheduler replayed uncertain side effects');
 echo "PASS interrupted-worker recovery and payload expiry\n";
-require __DIR__.'/mail-api-providers.php';
-require __DIR__.'/mail-feedback.php';
-require __DIR__.'/mail-campaigns.php';
-require __DIR__.'/mail-blocklist.php';
+require __DIR__.'/mail-cases.php';
 echo "Notification delivery: $checks checks passed (".DB::connection()->getDriverName()."). No external messages sent.\n";

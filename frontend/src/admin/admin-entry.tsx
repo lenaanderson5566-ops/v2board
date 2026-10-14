@@ -1,20 +1,59 @@
-import { AdminMailBlocklist } from "./AdminMailBlocklist";
-import { AdminCoupons } from "./AdminCoupons";
-import { AdminMailLogs } from "./AdminMailLogs";
-import { AdminClientDiagnostics } from "./AdminClientDiagnostics";
-import { AdminLogSettings } from "./AdminLogSettings";
+import { lazy, Suspense } from "react";
+const MfaSecurity = lazy(() =>
+    import("../shared/MfaSecurity").then((module) => ({
+        default: module.MfaSecurity,
+    })),
+);
+const AdminMailBlocklist = lazy(() =>
+    import("./AdminMailBlocklist").then((module) => ({
+        default: module.AdminMailBlocklist,
+    })),
+);
+const AdminCoupons = lazy(() =>
+    import("./AdminCoupons").then((module) => ({
+        default: module.AdminCoupons,
+    })),
+);
+const AdminMailLogs = lazy(() =>
+    import("./AdminMailLogs").then((module) => ({
+        default: module.AdminMailLogs,
+    })),
+);
+const AdminClientDiagnostics = lazy(() =>
+    import("./AdminClientDiagnostics").then((module) => ({
+        default: module.AdminClientDiagnostics,
+    })),
+);
+const AdminLogSettings = lazy(() =>
+    import("./AdminLogSettings").then((module) => ({
+        default: module.AdminLogSettings,
+    })),
+);
 import { AdminSubscriptions } from "./AdminSubscriptions";
 import { AdminInvitations } from "./AdminInvitations";
-import { AdminSystemLogs } from "./AdminSystemLogs";
+const AdminSystemLogs = lazy(() =>
+    import("./AdminSystemLogs").then((module) => ({
+        default: module.AdminSystemLogs,
+    })),
+);
 import { RiskRules } from "./AdminRisk";
-import { AdminClients } from "./AdminClients";
-import { AdminBanners } from "./AdminBanners";
+const AdminClients = lazy(() =>
+    import("./AdminClients").then((module) => ({
+        default: module.AdminClients,
+    })),
+);
+const AdminBanners = lazy(() =>
+    import("./AdminBanners").then((module) => ({
+        default: module.AdminBanners,
+    })),
+);
 import { ResourcePage, resources, Settings, Payments, Nodes } from "./admin";
 import { OrdersPage } from "./admin-orders";
 import { AdminTickets, ContentPage } from "./admin-content";
 import { UsersPage } from "./admin-users";
 import { Overview } from "./admin-dashboard";
-export default function AdminContent({ current }: { current: string }) {
+function AdminPageContent({ current }: { current: string }) {
+    if (current === "security") return <MfaSecurity />;
     if (current === "plans" || current === "translations")
         return <AdminSubscriptions key={current} initialTab={current} />;
     if (current === "log-settings" || current === "risk-settings")
@@ -66,4 +105,18 @@ export default function AdminContent({ current }: { current: string }) {
         default:
             return <Overview />;
     }
+}
+
+export default function AdminContent({ current }: { current: string }) {
+    return (
+        <Suspense
+            fallback={
+                <div className="panel pad" role="status">
+                    正在加载页面…
+                </div>
+            }
+        >
+            <AdminPageContent current={current} />
+        </Suspense>
+    );
 }

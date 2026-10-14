@@ -1,7 +1,5 @@
 <?php
-require __DIR__.'/../vendor/autoload.php';
-$app = require __DIR__.'/../bootstrap/app.php';
-$app->make(Illuminate\Contracts\Console\Kernel::class)->bootstrap();
+$app = require __DIR__.'/support/bootstrap.php';
 if (!app()->environment('local')) throw new RuntimeException('Local test only');
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -14,7 +12,7 @@ use App\Http\Controllers\V1\Admin\Server\V2boxController;
 use App\Http\Controllers\V1\Admin\Server\V2nodeController;
 set_exception_handler(function($e) { fwrite(STDERR, $e->getMessage()."\n".$e->getTraceAsString()."\n"); exit(1); });
 $checks=0;
-$assert=function($ok,$label) use (&$checks) { if (!$ok) throw new RuntimeException($label); $checks++; };
+$assert = \Tests\Support\Assertions::counter($checks);
 $reject=function($fn,$label) use ($assert) {
     try { $fn(); } catch (Illuminate\Validation\ValidationException $e) { $assert(true,$label); return; }
     catch (Symfony\Component\HttpKernel\Exception\HttpException $e) { $assert($e->getStatusCode()===422,$label); return; }

@@ -1,7 +1,5 @@
 <?php
-require __DIR__.'/../vendor/autoload.php';
-$app=require __DIR__.'/../bootstrap/app.php';
-$app->make(Illuminate\Contracts\Console\Kernel::class)->bootstrap();
+$app = require __DIR__.'/support/bootstrap.php';
 if (!app()->environment('local')) throw new RuntimeException('Local test only');
 config(['v2board.app_url'=>'https://example.com', 'cors.allowed_origins'=>[]]);
 use App\Http\Middleware\CORS;

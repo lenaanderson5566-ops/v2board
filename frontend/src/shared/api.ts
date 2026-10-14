@@ -211,7 +211,7 @@ export async function request<T = Row>(
             (json.data as Row).authenticated === true
         )
             markBrowserAuthenticated((json.data as Row).accountId);
-        if (body && boot.mode === "user") {
+        if (body && boot.mode === "user" && path !== "passport/mfa/verifications") {
             readCache.clear();
             window.dispatchEvent(new Event("data-changed"));
         }

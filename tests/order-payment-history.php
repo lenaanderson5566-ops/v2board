@@ -1,7 +1,5 @@
 <?php
-require __DIR__.'/../vendor/autoload.php';
-$app = require __DIR__.'/../bootstrap/app.php';
-$app->make(Illuminate\Contracts\Console\Kernel::class)->bootstrap();
+$app = require __DIR__.'/support/bootstrap.php';
 require __DIR__.'/commerce-bootstrap.php';
 if (!app()->environment('local')) throw new RuntimeException('Local test only');
 use App\Models\{Order, Payment};
@@ -12,7 +10,7 @@ use Illuminate\Support\Facades\{DB, Queue};
 use Illuminate\Http\Request;
 Queue::fake();
 $checks = 0;
-$assert = function ($ok, $label) use (&$checks) { if (!$ok) throw new RuntimeException($label); $checks++; };
+$assert = \Tests\Support\Assertions::counter($checks);
 DB::beginTransaction();
 try {
     $payment = Payment::create(['name'=>'Original Alipay','payment'=>'Paytaro','uuid'=>App\Utils\Helper::guid(), 'enable'=>1, 'config'=>['pid'=>'test', 'key'=>'test-secret'], 'handling_fee_fixed'=>10]);

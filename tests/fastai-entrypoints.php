@@ -1,10 +1,8 @@
 <?php
-require __DIR__.'/../vendor/autoload.php';
-$app=require __DIR__.'/../bootstrap/app.php';
-$app->make(Illuminate\Contracts\Console\Kernel::class)->bootstrap();
+$app = require __DIR__.'/support/bootstrap.php';
 if (!app()->environment('local')) throw new RuntimeException('Local test only');
 $checks=0;
-$assert=function($ok,$label) use (&$checks) { if (!$ok) throw new RuntimeException($label); $checks++; };
+$assert = \Tests\Support\Assertions::counter($checks);
 $original=config('v2board');$seed=config('fastai.entrypoint_signing_seed');
 try {
     $catalog=[['origin'=>'https://fastdog.ws','enabled'=>true,'priority'=>2],['origin'=>'https://fastdog66.com','enabled'=>true,'priority'=>1],['origin'=>'https://fastdog.me','enabled'=>false,'priority'=>3]];

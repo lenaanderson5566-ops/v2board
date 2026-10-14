@@ -1,7 +1,5 @@
 <?php
-require __DIR__.'/../vendor/autoload.php';
-$app=require __DIR__.'/../bootstrap/app.php';
-$app->make(Illuminate\Contracts\Console\Kernel::class)->bootstrap();
+$app = require __DIR__.'/support/bootstrap.php';
 if (!app()->environment('local')) throw new RuntimeException('Local tests only');
 set_exception_handler(function(Throwable $e){fwrite(STDERR,(string)$e);exit(1);});
 use Illuminate\Support\Facades\DB;

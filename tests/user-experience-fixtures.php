@@ -1,8 +1,6 @@
 <?php
 // Restricted to the existing local test account. Never changes credentials.
-require __DIR__ . '/../vendor/autoload.php';
-$app = require __DIR__ . '/../bootstrap/app.php';
-$app->make(Illuminate\Contracts\Console\Kernel::class)->bootstrap();
+$app = require __DIR__.'/support/bootstrap.php';
 if (!app()->environment('local')) throw new RuntimeException('Local browser review only');
 $action = $argv[1] ?? '';
 $file = storage_path('framework/user-experience-review.json');

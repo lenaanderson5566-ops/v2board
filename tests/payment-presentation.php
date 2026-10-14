@@ -1,7 +1,5 @@
 <?php
-require __DIR__.'/../vendor/autoload.php';
-$app=require __DIR__.'/../bootstrap/app.php';
-$app->make(Illuminate\Contracts\Console\Kernel::class)->bootstrap();
+$app = require __DIR__.'/support/bootstrap.php';
 require __DIR__.'/commerce-bootstrap.php';
 use App\Services\PaymentPresentation;
 $config=['_console_checkout'=>['category'=>'crypto','asset'=>'USDT','network'=>'tron','networkName'=>'TRON (TRC20)','networkIcon'=>'']];

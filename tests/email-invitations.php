@@ -1,8 +1,6 @@
 <?php
 // Local integration test. All mail and queued jobs are faked; all DB writes roll back.
-require __DIR__.'/../vendor/autoload.php';
-$app = require __DIR__.'/../bootstrap/app.php';
-$app->make(Illuminate\Contracts\Console\Kernel::class)->bootstrap();
+$app = require __DIR__.'/support/bootstrap.php';
 set_exception_handler(function (Throwable $error) { fwrite(STDERR, $error->getMessage().PHP_EOL); exit(1); });
 if (!app()->environment('local')) throw new RuntimeException('Local test only');
 use App\Jobs\SendInvitationEmailJob;
@@ -15,7 +13,7 @@ use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Facades\RateLimiter;
 $checks = 0;
-$assert = function ($condition, $message) use (&$checks) { if (!$condition) throw new RuntimeException($message); $checks++; };
+$assert = \Tests\Support\Assertions::counter($checks);
 $reject = function ($action, $code) use ($assert) {
     try { $action(); throw new RuntimeException('Unexpected success'); }
     catch (Symfony\Component\HttpKernel\Exception\HttpException $error) { $assert($error->getStatusCode()===$code, 'Incorrect rejection status'); }

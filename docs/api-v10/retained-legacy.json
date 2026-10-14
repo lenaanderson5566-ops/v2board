@@ -9,5 +9,7 @@
   "api/v1/guest/telegram/webhook",
   "api/v1/guest/payment/notify/{method}/{uuid}",
   "api/v1/client/app/getConfig",
-  "api/v1/client/app/getVersion"
+  "api/v1/client/app/getVersion",
+  "api/v1/passport/mfa/emails",
+  "api/v1/passport/mfa/verifications"
 ]

@@ -85,7 +85,7 @@ export default function AdminApp() {
         return (
             <>
                 {error && <div className="alert">{error}</div>}
-                <AdminAuth mode={path} onLogin={setUser} />
+                <AdminAuth key={path} mode={path} onLogin={setUser} />
             </>
         );
     return <AdminWorkspace path={path} user={user} logout={logout} />;

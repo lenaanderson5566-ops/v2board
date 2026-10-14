@@ -1,6 +1,5 @@
 <?php
-require __DIR__.'/../vendor/autoload.php';
-$app=require __DIR__.'/../bootstrap/app.php';$app->make(Illuminate\Contracts\Console\Kernel::class)->bootstrap();
+$app = require __DIR__.'/support/bootstrap.php';
 use App\Utils\Helper;
 use App\Models\User;
 use App\Models\EmailInvitation;
@@ -10,7 +9,7 @@ use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\RateLimiter;
 if(!app()->environment('local'))throw new RuntimeException('Local tests only');
-$checks=0;$assert=function($ok,$msg)use(&$checks){if(!$ok)throw new RuntimeException($msg);$checks++;};
+$checks=0;$assert = \Tests\Support\Assertions::counter($checks);
 $reject=function($action)use($assert){try{$action();throw new RuntimeException('Unexpected success');}catch(Symfony\Component\HttpKernel\Exception\HttpException $e){$assert(in_array($e->getStatusCode(),[422,500]),'Wrong rejection');}};
 $assert(Helper::emailSuffixes('[" QQ.COM ","@gmail.com","qq.com"]')===['qq.com','gmail.com'],'Normalization failed');
 $assert(Helper::emailSuffixVerify('Name@QQ.COM',' qq.com , gmail.com '),'Case insensitive match failed');

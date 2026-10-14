@@ -1,6 +1,5 @@
 <?php
-require __DIR__.'/../vendor/autoload.php';
-$app=require __DIR__.'/../bootstrap/app.php';$app->make(Illuminate\Contracts\Console\Kernel::class)->bootstrap();
+$app = require __DIR__.'/support/bootstrap.php';
 require __DIR__.'/commerce-bootstrap.php';
 if(!getenv('COMMERCE_TEST_DATABASE'))throw new RuntimeException('Requires disposable database');
 use Illuminate\Support\Facades\{DB,Schema};

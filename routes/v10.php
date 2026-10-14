@@ -109,3 +109,8 @@
 \Illuminate\Support\Facades\Route::get('me/coupons', [\App\Http\Controllers\V10\UserCouponController::class, 'getMeCoupons'])->middleware(['throttle:30,1'])->name('v10.getMeCoupons');
 \Illuminate\Support\Facades\Route::get('me/coupon-offers', [\App\Http\Controllers\V10\UserCouponController::class, 'getMeCouponOffers'])->middleware(['throttle:30,1'])->name('v10.getMeCouponOffers');
 \Illuminate\Support\Facades\Route::post('me/coupon-claims', [\App\Http\Controllers\V10\UserCouponController::class, 'postMeCouponClaims'])->middleware(['throttle:30,1'])->name('v10.postMeCouponClaims');
+
+\Illuminate\Support\Facades\Route::get('me/security/mfa', [\App\Http\Controllers\V10\MfaController::class, 'state'])->name('v10.getMeMfa');
+\Illuminate\Support\Facades\Route::post('me/security/mfa/challenges', [\App\Http\Controllers\V10\MfaController::class, 'start'])->middleware('throttle:10,1')->name('v10.postMeMfaChallenges');
+\Illuminate\Support\Facades\Route::post('auth/mfa/emails', [\App\Http\Controllers\V10\MfaController::class, 'sendEmail'])->middleware('throttle:10,1')->name('v10.postMfaEmails');
+\Illuminate\Support\Facades\Route::post('auth/mfa/verifications', [\App\Http\Controllers\V10\MfaController::class, 'finish'])->middleware('throttle:30,1')->name('v10.postMfaVerifications');

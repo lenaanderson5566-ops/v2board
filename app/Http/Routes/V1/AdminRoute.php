@@ -28,6 +28,8 @@ class AdminRoute
             $router->get('/mail-logs/health', 'V1\\Admin\\MailLogController@health');
             $router->get('/mail-logs/suppressions', 'V1\\Admin\\MailLogController@suppressions');
             $router->post('/mail-logs/release', 'V1\\Admin\\MailLogController@release')->middleware('throttle:10,1');
+            $router->get('/security/mfa', 'V1\\Admin\\MfaController@state');
+            $router->post('/security/mfa/challenges', 'V1\\Admin\\MfaController@start')->middleware('throttle:10,1');
             // Config
             $router->get ('/config/fetch', 'V1\\Admin\\ConfigController@fetch');
             $router->post('/config/save', 'V1\\Admin\\ConfigController@save');

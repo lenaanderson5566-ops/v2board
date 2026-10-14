@@ -1,10 +1,8 @@
 <?php
-require __DIR__ . '/../vendor/autoload.php';
-$app = require __DIR__ . '/../bootstrap/app.php';
-$app->make(Illuminate\Contracts\Console\Kernel::class)->bootstrap();
+$app = require __DIR__.'/support/bootstrap.php';
 if (!app()->environment('local')) throw new RuntimeException('Local test only');
 $checks = 0;
-$assert = function ($condition, $label) use (&$checks) { if (!$condition) throw new RuntimeException($label); $checks++; };
+$assert = \Tests\Support\Assertions::counter($checks);
 $original = config('v2board');
 $directory = sys_get_temp_dir() . '/frontend-runtime-' . bin2hex(random_bytes(8));
 mkdir($directory, 0700);

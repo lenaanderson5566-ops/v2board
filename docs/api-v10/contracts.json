@@ -2389,6 +2389,63 @@
       "bindings": {},
       "output": "couponClaim",
       "raw": false
+    },
+    "getMeMfa": {
+      "key": "User/MfaController@state",
+      "path": "me/security/mfa",
+      "method": "GET",
+      "input": {},
+      "bindings": {},
+      "role": "user",
+      "output": "mfaState",
+      "status": 200,
+      "raw": false
+    },
+    "postMeMfaChallenges": {
+      "key": "User/MfaController@start",
+      "path": "me/security/mfa/challenges",
+      "method": "POST",
+      "input": {
+        "purpose": "purpose",
+        "password": "password",
+        "verificationCode": "verificationCode",
+        "verificationMethod": "verificationMethod"
+      },
+      "bindings": {},
+      "role": "user",
+      "output": "mfaSetup",
+      "status": 201,
+      "raw": false
+    },
+    "postMfaEmails": {
+      "key": "Passport/MfaController@sendEmail",
+      "path": "auth/mfa/emails",
+      "method": "POST",
+      "input": {
+        "challengeId": "challengeId"
+      },
+      "bindings": {},
+      "role": "public",
+      "output": "scalar",
+      "status": 204,
+      "raw": false
+    },
+    "postMfaVerifications": {
+      "key": "Passport/MfaController@finish",
+      "path": "auth/mfa/verifications",
+      "method": "POST",
+      "input": {
+        "challengeId": "challengeId",
+        "verificationCode": "verificationCode",
+        "verificationMethod": "verificationMethod",
+        "emailCode": "emailCode",
+        "totpCode": "totpCode"
+      },
+      "bindings": {},
+      "role": "public",
+      "output": "mfaVerification",
+      "status": 200,
+      "raw": false
     }
   }
 }

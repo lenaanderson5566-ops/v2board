@@ -1,7 +1,5 @@
 <?php
-require __DIR__.'/../vendor/autoload.php';
-$app = require __DIR__.'/../bootstrap/app.php';
-$app->make(Illuminate\Contracts\Console\Kernel::class)->bootstrap();
+$app = require __DIR__.'/support/bootstrap.php';
 require __DIR__.'/commerce-bootstrap.php';
 if (!app()->environment('local')) throw new RuntimeException('Local test only');
 use App\Models\{Order, Payment};
@@ -10,7 +8,7 @@ use Illuminate\Http\Request;
 Queue::fake();
 config(['v2board.telegram_bot_enable'=>0]);
 $n = 0;
-$assert = function ($ok, $label) use (&$n) { if (!$ok) throw new RuntimeException($label); $n++; };
+$assert = \Tests\Support\Assertions::counter($n);
 DB::beginTransaction();
 try {
     $payment = Payment::create(['name'=>'QR amount fixture', 'payment'=>'PaytaroQR', 'uuid'=>App\Utils\Helper::guid(), 'enable'=>1, 'config'=>['pid'=>'fixture', 'key'=>'fixture-secret']]);

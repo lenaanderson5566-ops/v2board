@@ -113,5 +113,15 @@
     "Reset failed, Please try again later": "重置失败，请稍后再试",
     "This field is required.": "请填写此项。",
     "Please check the format and allowed range of this value.": "请检查此项的格式和允许范围。",
-    "The selected plan does not match the order type.": "所选套餐与订单类型不匹配。"
+    "The selected plan does not match the order type.": "所选套餐与订单类型不匹配。",
+    "Invalid security challenge.": "安全验证请求无效。",
+    "Security challenge expired. Please start again.": "安全验证已过期，请重新开始。",
+    "Incorrect security verification code.": "安全验证码不正确，已使用的动态码不能重复使用。",
+    "Too many security verification attempts. Please try again later.": "安全验证尝试过于频繁，请稍后重试。",
+    "Email verification is not available.": "当前无法使用邮件验证。",
+    "Please wait before requesting another code.": "请等待60秒后重新发送验证码。",
+    "Security settings changed. Please refresh.": "安全设置已变更，请刷新页面。",
+    "Security settings changed. Please start again.": "安全设置已变更，请重新开始验证。",
+    "Security verification is required.": "请先完成安全验证。",
+    "Security verification code": "安全验证码"
 }

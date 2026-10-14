@@ -49,7 +49,7 @@ it.each([
   ['user/invite/email/send',{email:'user@example.com'},{email:'user@example.com'}],
   ['user/changePassword',{old_password:'old',new_password:'new-password'},{oldPassword:'old',newPassword:'new-password'}],
   ['user/order/checkout',{trade_no:'order',method:0},{paymentMethodId:0}],
-] as const)('preserves required fields for %s', (path, body, expected) => {
+] as const)('preserves required fields for %s, body=%j', (path, body, expected) => {
   expect(JSON.parse(v10Request(path,body).body!)).toEqual(expected);
 });
 

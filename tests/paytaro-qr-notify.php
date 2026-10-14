@@ -1,10 +1,8 @@
 <?php
-require __DIR__.'/../vendor/autoload.php';
-$app = require __DIR__.'/../bootstrap/app.php';
-$app->make(Illuminate\Contracts\Console\Kernel::class)->bootstrap();
+$app = require __DIR__.'/support/bootstrap.php';
 set_exception_handler(function (Throwable $e) { fwrite(STDERR, $e->getMessage()."\n"); exit(1); });
 $checks = 0;
-$assert = function ($ok, $message) use (&$checks) { if (!$ok) throw new RuntimeException($message); $checks++; };
+$assert = \Tests\Support\Assertions::counter($checks);
 $gateway = new App\Payments\PaytaroQR(['pid'=>'local-app', 'key'=>'local-secret']);
 $body = ['app_id'=>'local-app', 'merchant_no'=>'local-order', 'callback_no'=>'local-callback', 'status'=>'PAID', 'order_amount'=>328, 'order_currency'=>'CNY'];
 $originalHeader = $_SERVER['HTTP_X_APP_SECRET'] ?? null;

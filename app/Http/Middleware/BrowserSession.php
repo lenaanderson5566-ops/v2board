@@ -33,7 +33,7 @@ final class BrowserSession
         if ($record['credential']) $request->headers->set('Authorization', $request->is('api/v10/*') ? 'Bearer '.$record['credential'] : $record['credential']);
         $response = $next($request);
         $record = $request->attributes->get('browser.session');
-        $grant = $request->isMethod('POST') && $request->is('api/v10/auth/sessions','api/v10/auth/accounts','api/v10/auth/session-exchanges','api/v10/auth/client-session-exchanges','api/v1/passport/auth/login','api/v1/passport/auth/register');
+        $grant = $request->isMethod('POST') && $request->is('api/v10/auth/mfa/verifications','api/v1/passport/mfa/verifications','api/v10/auth/sessions','api/v10/auth/accounts','api/v10/auth/session-exchanges','api/v10/auth/client-session-exchanges','api/v1/passport/auth/login','api/v1/passport/auth/register');
         $payload = $grant && $response->isSuccessful() ? json_decode($response->getContent(), true) : null;
         $credential = $payload['data']['accessToken'] ?? $payload['data']['auth_data'] ?? null;
         if ($grant && $response->isSuccessful() && is_string($credential) && AuthService::decryptAuthData($credential)) {

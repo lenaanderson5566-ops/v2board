@@ -987,3 +987,16 @@ label small {
         padding: 25px;
     }
 }
+
+.mfa-security label, .mfa-login label { display:grid; gap:8px; margin-block:14px; }
+.mfa-security .panel-head h2 { display:flex; align-items:center; gap:10px; }
+.mfa-options { display:grid; grid-template-columns:repeat(auto-fit,minmax(min(100%,260px),1fr)); gap:20px; }
+.mfa-options > div { padding:18px; border:1px solid var(--border); border-radius:12px; }
+.mfa-step { margin-top:24px; padding-top:20px; border-top:1px solid var(--border); max-width:540px; }
+.mfa-qr { display:inline-block; padding:16px; border-radius:12px; background:white; }
+.mfa-security input, .mfa-security textarea, .mfa-login input { max-width:100%; }
+.mfa-security input[readonly], .mfa-security textarea[readonly] { font-family:monospace; direction:ltr; }
+.mfa-security input[type=checkbox] { justify-self:start; }
+.mfa-login { max-width:440px; width:100%; margin:auto; }
+.mfa-login form { display:grid; gap:12px; }
+.mfa-login label { margin:0; }

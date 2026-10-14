@@ -1,10 +1,8 @@
 <?php
-require __DIR__ . '/../vendor/autoload.php';
-$app = require __DIR__ . '/../bootstrap/app.php';
-$app->make(Illuminate\Contracts\Console\Kernel::class)->bootstrap();
+$app = require __DIR__.'/support/bootstrap.php';
 if (!app()->environment('local')) throw new RuntimeException('Local test only');
 $checks = 0;
-$assert = function ($condition, $message) use (&$checks) { if (!$condition) throw new RuntimeException($message); $checks++; };
+$assert = \Tests\Support\Assertions::counter($checks);
 Illuminate\Support\Facades\DB::beginTransaction();
 try {
     $id = random_int(1000000000, 2000000000);

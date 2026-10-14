@@ -1,8 +1,6 @@
 <?php
 // Local-only fixtures for browser review. Does not create accounts or enable providers.
-require __DIR__ . '/../vendor/autoload.php';
-$app = require __DIR__ . '/../bootstrap/app.php';
-$app->make(Illuminate\Contracts\Console\Kernel::class)->bootstrap();
+$app = require __DIR__.'/support/bootstrap.php';
 if (!app()->environment('local')) throw new RuntimeException('Browser fixtures are restricted to the local environment');
 $prefix = 'console-ui-review-';
 $action = $argv[1] ?? '';

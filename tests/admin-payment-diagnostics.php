@@ -1,14 +1,12 @@
 <?php
-require __DIR__.'/../vendor/autoload.php';
-$app = require __DIR__.'/../bootstrap/app.php';
-$app->make(Illuminate\Contracts\Console\Kernel::class)->bootstrap();
+$app = require __DIR__.'/support/bootstrap.php';
 if (!app()->environment('local')) throw new RuntimeException('Local test only');
 use App\Models\{Order, Payment, ClientStrategy};
 use App\Services\{PaymentCallbackHistory, ClientStrategyService};
 use Illuminate\Support\Facades\DB;
 use Illuminate\Http\Request;
 $n = 0;
-$assert = function ($ok, $label) use (&$n) { if (!$ok) throw new RuntimeException($label); $n++; };
+$assert = \Tests\Support\Assertions::counter($n);
 DB::beginTransaction();
 try {
     $payment = Payment::create(['name'=>'Diagnostic test', 'payment'=>'PaytaroQR', 'uuid'=>App\Utils\Helper::guid(), 'enable'=>1, 'config'=>['pid'=>'test', 'key'=>'test-secret']]);

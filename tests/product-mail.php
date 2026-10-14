@@ -1,8 +1,6 @@
 <?php
 // Local only: isolated Redis rate-limit keys; DB changes rolled back; transport always mocked.
-require __DIR__.'/../vendor/autoload.php';
-$app = require __DIR__.'/../bootstrap/app.php';
-$app->make(Illuminate\Contracts\Console\Kernel::class)->bootstrap();
+$app = require __DIR__.'/support/bootstrap.php';
 if (!app()->environment('local')) throw new RuntimeException('Local test only');
 set_exception_handler(function($e) {fwrite(STDERR,'FAIL: '.get_class($e).': '.$e->getMessage().PHP_EOL);exit(1);});
 if ($testDatabase=getenv('PRODUCT_MAIL_DATABASE')) {
@@ -19,7 +17,7 @@ use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Mail;
 $checks=0;
-$assert=function($ok,$message) use (&$checks) { if (!$ok) throw new RuntimeException($message); $checks++; };
+$assert = \Tests\Support\Assertions::counter($checks);
 DB::beginTransaction();
 try {
     config(['v2board.app_name'=>'V2Board','v2board.app_url'=>'https://product.example', 'v2board.email_provider'=>'smtp', 'v2board.email_host'=>null,'v2board.email_public_url'=>'https://api.example.test','v2board.email_announcement_separate'=>0,'v2board.email_announcements_enabled'=>1,'v2board.email_password_encrypted'=>false]);

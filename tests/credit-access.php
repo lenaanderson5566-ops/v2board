@@ -1,7 +1,5 @@
 <?php
-require __DIR__.'/../vendor/autoload.php';
-$app = require __DIR__.'/../bootstrap/app.php';
-$app->make(Illuminate\Contracts\Console\Kernel::class)->bootstrap();
+$app = require __DIR__.'/support/bootstrap.php';
 if (!app()->environment('local')) throw new RuntimeException('Local test only');
 use App\Models\User;
 use App\Services\TrafficCreditService as Credits;
@@ -9,7 +7,7 @@ use App\Services\ServerService;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 $checks = 0;
-$assert = function ($ok, $label) use (&$checks) { if (!$ok) throw new RuntimeException($label); $checks++; };
+$assert = \Tests\Support\Assertions::counter($checks);
 $previous = config('v2board.credit_base_group_id');
 DB::beginTransaction();
 try {

@@ -1704,5 +1704,81 @@
     "status": 201,
     "id": "postMeIntegrationsTelegramGroupInvitations",
     "key": "User/TelegramController@joinLink"
+  },
+  {
+    "legacy": "user/security/mfa",
+    "legacyMethod": "GET",
+    "method": "GET",
+    "path": "me/security/mfa",
+    "action": "App\\Http\\Controllers\\V10\\MfaController@state",
+    "parameters": [
+      {
+        "name": "request",
+        "type": "Illuminate\\Http\\Request",
+        "optional": false
+      }
+    ],
+    "bindings": {},
+    "middleware": [],
+    "role": "user",
+    "scope": "user",
+    "status": 200
+  },
+  {
+    "legacy": "user/security/mfa/challenges",
+    "legacyMethod": "POST",
+    "method": "POST",
+    "path": "me/security/mfa/challenges",
+    "action": "App\\Http\\Controllers\\V10\\MfaController@start",
+    "parameters": [
+      {
+        "name": "request",
+        "type": "Illuminate\\Http\\Request",
+        "optional": false
+      }
+    ],
+    "bindings": {},
+    "middleware": [],
+    "role": "user",
+    "scope": "user",
+    "status": 201
+  },
+  {
+    "legacy": "passport/mfa/emails",
+    "legacyMethod": "POST",
+    "method": "POST",
+    "path": "auth/mfa/emails",
+    "action": "App\\Http\\Controllers\\V10\\MfaController@sendEmail",
+    "parameters": [
+      {
+        "name": "request",
+        "type": "Illuminate\\Http\\Request",
+        "optional": false
+      }
+    ],
+    "bindings": {},
+    "middleware": [],
+    "role": "public",
+    "scope": "public",
+    "status": 204
+  },
+  {
+    "legacy": "passport/mfa/verifications",
+    "legacyMethod": "POST",
+    "method": "POST",
+    "path": "auth/mfa/verifications",
+    "action": "App\\Http\\Controllers\\V10\\MfaController@finish",
+    "parameters": [
+      {
+        "name": "request",
+        "type": "Illuminate\\Http\\Request",
+        "optional": false
+      }
+    ],
+    "bindings": {},
+    "middleware": [],
+    "role": "public",
+    "scope": "public",
+    "status": 200
   }
 ]

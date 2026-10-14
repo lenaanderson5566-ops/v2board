@@ -1,11 +1,9 @@
 <?php
-require __DIR__.'/../vendor/autoload.php';
-$app=require __DIR__.'/../bootstrap/app.php';
-$app->make(Illuminate\Contracts\Console\Kernel::class)->bootstrap();
+$app = require __DIR__.'/support/bootstrap.php';
 if (!app()->environment('local')) throw new RuntimeException('Local test only');
 use Illuminate\Support\Facades\DB;
 use App\Models\SubscribeLog;
-$n=0;$assert=function($ok,$label)use(&$n){if(!$ok)throw new RuntimeException($label);$n++;};
+$n=0;$assert = \Tests\Support\Assertions::counter($n);
 DB::beginTransaction();
 try {
  $service=new App\Services\ClientStrategyService();$service->syncStrategies();

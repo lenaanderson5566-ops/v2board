@@ -1,12 +1,10 @@
 <?php
-require __DIR__.'/../vendor/autoload.php';
-$app = require __DIR__.'/../bootstrap/app.php';
-$app->make(Illuminate\Contracts\Console\Kernel::class)->bootstrap();
+$app = require __DIR__.'/support/bootstrap.php';
 use Illuminate\Support\Facades\Http;
 use App\Services\PlanAutoTranslation;
 config(['plan-translation.url'=>'https://translator.example.test', 'plan-translation.key'=>'test-key', 'plan-translation.region'=>'test-region']);
 $checks = 0;
-$assert = function ($ok, $message) use (&$checks) { if (!$ok) throw new RuntimeException($message); $checks++; };
+$assert = \Tests\Support\Assertions::counter($checks);
 $service = new PlanAutoTranslation;
 Http::swap(new Illuminate\Http\Client\Factory);
 Http::fake(['*'=>Http::response([['translations'=>[['text'=>'50 GB per month']]], ['translations'=>[['text'=>'Up to 4 devices']]]],200)]);

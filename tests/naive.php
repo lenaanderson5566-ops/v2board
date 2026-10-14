@@ -1,7 +1,5 @@
 <?php
-require __DIR__.'/../vendor/autoload.php';
-$app = require __DIR__.'/../bootstrap/app.php';
-$app->make(Illuminate\Contracts\Console\Kernel::class)->bootstrap();
+$app = require __DIR__.'/support/bootstrap.php';
 if (!app()->environment('local')) throw new RuntimeException('Local test only');
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -9,7 +7,7 @@ use App\Models\ServerV2box;
 use App\Http\Controllers\V1\Admin\Server\V2boxController;
 
 $checks=0;
-$assert=function($ok,$message)use(&$checks){if(!$ok)throw new RuntimeException($message);$checks++;};
+$assert = \Tests\Support\Assertions::counter($checks);
 DB::beginTransaction();
 try {
     $admin=new V2boxController();

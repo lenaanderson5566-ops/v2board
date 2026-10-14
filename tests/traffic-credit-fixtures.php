@@ -1,5 +1,5 @@
 <?php
-require __DIR__.'/../vendor/autoload.php';$app=require __DIR__.'/../bootstrap/app.php';$app->make(Illuminate\Contracts\Console\Kernel::class)->bootstrap();
+$app = require __DIR__.'/support/bootstrap.php';
 if(!app()->environment('local'))throw new RuntimeException('Local browser review only');
 use App\Models\User;use App\Models\Plan;use App\Models\Order;use Illuminate\Support\Facades\DB;
 $file=storage_path('framework/traffic-credit-review.json');$action=$argv[1]??'';

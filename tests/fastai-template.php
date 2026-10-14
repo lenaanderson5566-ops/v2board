@@ -1,10 +1,8 @@
 <?php
-require __DIR__.'/../vendor/autoload.php';
-$app = require __DIR__.'/../bootstrap/app.php';
-$app->make(Illuminate\Contracts\Console\Kernel::class)->bootstrap();
+$app = require __DIR__.'/support/bootstrap.php';
 if (!app()->environment('local')) throw new RuntimeException('Local test only');
 $checks = 0;
-$assert = function ($ok, $label) use (&$checks) { if (!$ok) throw new RuntimeException($label); $checks++; };
+$assert = \Tests\Support\Assertions::counter($checks);
 $user = ['uuid'=>'test', 'u'=>0, 'd'=>0, 'transfer_enable'=>1000, 'expired_at'=>time()+86400];
 $nodes = [['name'=>'Real node', 'type'=>'shadowsocks', 'cipher'=>'aes-128-gcm', 'host'=>'node.example', 'port'=>443]];
 $paths = [resource_path('rules/custom.fastai.yaml'), resource_path('rules/custom.clash.yaml')];

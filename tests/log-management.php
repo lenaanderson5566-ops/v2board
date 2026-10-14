@@ -1,7 +1,5 @@
 <?php
-require __DIR__.'/../vendor/autoload.php';
-$app=require __DIR__.'/../bootstrap/app.php';
-$app->make(Illuminate\Contracts\Console\Kernel::class)->bootstrap();
+$app = require __DIR__.'/support/bootstrap.php';
 if (!app()->environment('local')) throw new RuntimeException('Local test only');
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Cache;
@@ -11,7 +9,7 @@ use App\Services\SystemLogService;
 use App\Http\Controllers\V1\Admin\SystemController;
 set_exception_handler(function($e){fwrite(STDERR,$e->getMessage()."\n".$e->getTraceAsString()."\n");exit(1);});
 config(['cache.default'=>'array']);
-$checks=0;$assert=function($ok,$why)use(&$checks){if(!$ok)throw new RuntimeException($why);$checks++;};
+$checks=0;$assert = \Tests\Support\Assertions::counter($checks);
 $reject=function($fn)use($assert){try{$fn();}catch(Illuminate\Validation\ValidationException $e){$assert(true,'validation rejected');return;}catch(Symfony\Component\HttpKernel\Exception\HttpException $e){$assert($e->getStatusCode()===422,'HTTP validation rejected');return;}throw new RuntimeException('Expected rejection');};
 $now=time();DB::beginTransaction();
 try {

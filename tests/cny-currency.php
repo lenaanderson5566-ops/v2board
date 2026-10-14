@@ -1,7 +1,5 @@
 <?php
-require __DIR__.'/../vendor/autoload.php';
-$app=require __DIR__.'/../bootstrap/app.php';
-$app->make(Illuminate\Contracts\Console\Kernel::class)->bootstrap();
+$app = require __DIR__.'/support/bootstrap.php';
 require __DIR__.'/commerce-bootstrap.php';
 if (!app()->environment('local')) throw new RuntimeException('Local tests only');
 set_exception_handler(function(Throwable $e){fwrite(STDERR,(string)$e);exit(1);});
@@ -10,7 +8,7 @@ use App\Http\Resources\V10\Resource;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
 $checks=0;$original=config('v2board');
-$assert=function($v,$msg)use(&$checks){if(!$v)throw new RuntimeException($msg);$checks++;};
+$assert = \Tests\Support\Assertions::counter($checks);
 DB::beginTransaction();
 try {
  config(['v2board.currency'=>'USD','v2board.currency_symbol'=>'$']);

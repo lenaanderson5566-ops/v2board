@@ -14,10 +14,20 @@ vi.mock("./OrderHelp", () => ({ OrderHelp: () => null }));
 vi.mock("./OrderReceipt", () => ({ OrderReceipt: () => null }));
 vi.mock("../shared/credit-copy", () => ({ c: (value: string) => value, minuteDate: () => "" }));
 import { PaymentCheckout } from "./PaymentCheckout";
+function renderCheckout(overrides: Record<string, unknown> = {}, reload = vi.fn()) {
+    return render(
+        <PaymentCheckout
+            order={{ status: 0, plan_id: 1, total_amount: 1000, trade_no: "test-order", plan: { name: "Plan" }, ...overrides }}
+            reload={reload}
+            renderCard={() => null}
+        />,
+    );
+}
+
 afterEach(() => { cleanup(); vi.clearAllMocks(); });
 it("recalculates the exact network fee and submits its channel ID", async () => {
     mock.request.mockResolvedValue({ type: 0, data: "https://example.test/qr" });
-    render(<PaymentCheckout order={{ status: 0, plan_id: 1, total_amount: 1000, trade_no: "test-order", plan: { name: "Plan" } }} reload={vi.fn()} renderCard={() => null} />);
+    renderCheckout();
     await waitFor(() => expect((screen.getByRole("radio", { name: "Alipay" }) as HTMLInputElement).checked).toBe(true));
     fireEvent.click(screen.getByRole("button", { name: /USDT/ }));
     expect((screen.getByRole("button", { name: "确认支付" }) as HTMLButtonElement).disabled).toBe(true);
@@ -34,7 +44,7 @@ it.each(["NETWORK_ERROR", "REQUEST_TIMEOUT"])("checks status without resubmittin
         ? Promise.reject(Object.assign(new Error("Load failed"), { code }))
         : Promise.resolve({ data: 0 }));
     const reload = vi.fn();
-    render(<PaymentCheckout order={{ status: 0, plan_id: 1, total_amount: 1000, trade_no: "uncertain", plan: { name: "Plan" } }} reload={reload} renderCard={() => null} />);
+    renderCheckout({ trade_no: "uncertain" }, reload);
     fireEvent.click(await screen.findByRole("button", { name: "确认支付" }));
     await screen.findByText("未能确认支付请求结果，正在检查订单状态，请勿重复付款。");
     await waitFor(() => expect(mock.request).toHaveBeenCalledWith("user/order/check"));
@@ -53,7 +63,7 @@ it('shows the converted payment amount and confirms it without relabelling the U
  mock.methods=[{id:1,name:'CNY Alipay',handling_fee_fixed:0,quoted_amount:3625,quoted_currency:'CNY',quoted_fee:0} as any];
  try{
   mock.request.mockResolvedValue({type:0,data:'payment-code'});
-  render(<PaymentCheckout order={{status:0,plan_id:1,total_amount:500,currency:'USD',trade_no:'usd-order',plan:{name:'Plan'}}} reload={vi.fn()} renderCard={()=>null}/>);
+  renderCheckout({ total_amount: 500, currency: 'USD', trade_no: 'usd-order' });
   expect(await screen.findByText(/实际付款.*CNY 36.25/)).toBeTruthy();
   fireEvent.click(screen.getByRole('button',{name:'确认支付'}));
   await waitFor(()=>expect(mock.request).toHaveBeenCalledWith('user/order/checkout',expect.objectContaining({expected_payment_amount:3625,expected_payment_currency:'CNY'}),{timeoutMs:45000}));

@@ -196,25 +196,32 @@ class AuthActions
             return response()->json(['message' => __('Your account has been suspended'), 'code' => 'ACCOUNT_BANNED'], $request->is('api/v10/*') ? 403 : 500);
         }
 
-        $riskLogService->createLoginLog([
-            'user_id' => $user->id,
-            'email' => $email,
-            'is_success' => true,
-            'reason' => 'success'
-        ]);
+        return \Illuminate\Support\Facades\DB::transaction(function () use ($user, $request, $riskLogService, $email) {
+            $locked = User::whereKey($user->id)->lockForUpdate()->firstOrFail();
+            abort_unless(hash_equals($user->password, $locked->password) && !$locked->banned, 401, __('Incorrect email or password'));
+            $user = $locked;
+            $challenge = app(\App\Services\MfaService::class)->login($user, $request);
+            if ($challenge) return response(['data' => $challenge]);
+            $riskLogService->createLoginLog([
+                'user_id' => $user->id,
+                'email' => $email,
+                'is_success' => true,
+                'reason' => 'success'
+            ]);
 
-        // An automatic browser locale must not overwrite an account preference.
-        if ($request->filled('language') && ($user->language === null || $request->boolean('language_selected'))) {
-            $user->language = $request->input('language');
-        }
-        $user->last_login_at = time();
-        $user->last_login_ip = $this->encodeIp($request->ip());
-        $user->save();
+            // An automatic browser locale must not overwrite an account preference.
+            if ($request->filled('language') && ($user->language === null || $request->boolean('language_selected'))) {
+                $user->language = $request->input('language');
+            }
+            $user->last_login_at = time();
+            $user->last_login_ip = $this->encodeIp($request->ip());
+            $user->save();
 
-        $authService = new AuthService($user);
-        return response([
-            'data' => $authService->generateAuthData($request)
-        ]);
+            $authService = new AuthService($user);
+            return response([
+                'data' => $authService->generateAuthData($request)
+            ]);
+        }, 3);
     }
 
     public function token2Login(Request $request)
@@ -223,6 +230,8 @@ class AuthActions
             $user = app(\App\Services\SessionAuthorizationCode::class)->exchange(
                 \App\Services\SessionAuthorizationCode::BROWSER, $request->input('verify')
             );
+            $request->attributes->set('mfa.verifiedUserId', (int) $user->id);
+            $request->attributes->set('mfa.verifiedVersion', (int) $user->getRelation('mfaAssurance')->version);
             $user->last_login_at = time();
             $user->last_login_ip = $this->encodeIp($request->ip());
             $user->save();

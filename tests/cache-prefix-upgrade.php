@@ -1,11 +1,9 @@
 <?php
-require __DIR__.'/../vendor/autoload.php';
-$app=require __DIR__.'/../bootstrap/app.php';
-$app->make(Illuminate\Contracts\Console\Kernel::class)->bootstrap();
+$app = require __DIR__.'/support/bootstrap.php';
 if (!app()->environment('local')) throw new RuntimeException('Local test only');
 set_exception_handler(function ($e) { fwrite(STDERR, $e->getMessage()."\n"); exit(1); });
 $checks=0;
-$assert=function ($ok, $why) use (&$checks) { if (!$ok) throw new RuntimeException($why); $checks++; };
+$assert = \Tests\Support\Assertions::counter($checks);
 $store=Illuminate\Support\Facades\Cache::store('redis');
 $prefix=config('cache.prefix');
 $legacyPrefix=!empty($prefix) ? $prefix.':' : '';

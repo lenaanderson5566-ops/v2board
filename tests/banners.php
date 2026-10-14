@@ -1,13 +1,11 @@
 <?php
-require __DIR__.'/../vendor/autoload.php';
-$app=require __DIR__.'/../bootstrap/app.php';
-$app->make(Illuminate\Contracts\Console\Kernel::class)->bootstrap();
+$app = require __DIR__.'/support/bootstrap.php';
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use App\Models\Banner;
 if (!app()->environment('local')) throw new RuntimeException('Local tests only');
-$checks=0;$assert=function($ok,$msg)use(&$checks){if(!$ok)throw new RuntimeException($msg);$checks++;};
+$checks=0;$assert = \Tests\Support\Assertions::counter($checks);
 $admin=new App\Http\Controllers\V1\Admin\BannerController;
 $guest=new App\Services\Actions\Guest\BannerActions;
 $base=['title'=>'测试','image_url'=>'/banners/fastdog-3-launch.png','placements'=>['dashboard'],'languages'=>[],'sort'=>0,'show'=>true];

@@ -1,7 +1,5 @@
 <?php
-require __DIR__.'/../vendor/autoload.php';
-$app=require __DIR__.'/../bootstrap/app.php';
-$app->make(Illuminate\Contracts\Console\Kernel::class)->bootstrap();
+$app = require __DIR__.'/support/bootstrap.php';
 if (!app()->environment('local')) throw new RuntimeException('Local test only');
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Facades\DB;
@@ -10,7 +8,7 @@ use Symfony\Component\HttpKernel\Exception\HttpException;
 $guard=new SubscriptionAccessGuard();
 $id=random_int(100000000,999999999);$ip='198.18.'.random_int(0,255).'.'.random_int(1,254);
 $keys=['user-minute'=>"$id",'user-day'=>"$id",'ip'=>$ip];
-$checks=0;$assert=function($ok,$label)use(&$checks){if(!$ok)throw new RuntimeException($label);$checks++;};
+$checks=0;$assert = \Tests\Support\Assertions::counter($checks);
 $denied=function($run,$status)use($assert){try{$run();throw new RuntimeException('Expected rejection');}catch(HttpException $e){$assert($e->getStatusCode()===$status,'Correct rejection');if($status===429)$assert((int)($e->getHeaders()['Retry-After']??0)>0,'Retry-After present');}};
 DB::beginTransaction();
 try {

@@ -1,5 +1,5 @@
 <?php
-require __DIR__.'/../vendor/autoload.php';$app=require __DIR__.'/../bootstrap/app.php';$app->make(Illuminate\Contracts\Console\Kernel::class)->bootstrap();
+$app = require __DIR__.'/support/bootstrap.php';
 if(!app()->environment('local'))throw new RuntimeException('Local test only');
 use App\Services\ServerTrafficBudgetService as Budgets;
 use App\Services\Actions\NodeTrafficBatch as Batches;
@@ -10,7 +10,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 use Carbon\CarbonImmutable;
 set_exception_handler(function($e){fwrite(STDERR,$e->getMessage()."\n");exit(1);});
-$checks=0;$assert=function($ok,$message)use(&$checks){if(!$ok)throw new RuntimeException($message);$checks++;};
+$checks=0;$assert = \Tests\Support\Assertions::counter($checks);
 config(['cache.default'=>'array','v2board.server_token'=>'budget-test']);Queue::fake();DB::beginTransaction();
 try{
  $base=['name'=>'Budget node '.Str::uuid(),'group_id'=>[999997],'host'=>'example.test','port'=>'443','server_port'=>443,'protocol'=>'vless','network'=>'tcp','tls'=>0,'rate'=>2,'show'=>1,'disable_sni'=>0,'zero_rtt_handshake'=>0];

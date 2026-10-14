@@ -1,7 +1,5 @@
 <?php
-require __DIR__.'/../vendor/autoload.php';
-$app = require __DIR__.'/../bootstrap/app.php';
-$app->make(Illuminate\Contracts\Console\Kernel::class)->bootstrap();
+$app = require __DIR__.'/support/bootstrap.php';
 if (!app()->environment('local')) throw new RuntimeException('Local test only');
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -12,7 +10,7 @@ use App\Services\ServerService;
 use App\Utils\CacheKey;
 config(['v2board.server_token'=>'v2box-local-test']);
 $checks=0;
-$assert=function($ok,$message) use (&$checks) { if (!$ok) throw new RuntimeException($message); $checks++; };
+$assert = \Tests\Support\Assertions::counter($checks);
 DB::beginTransaction();
 $cacheKeys=[];
 try {

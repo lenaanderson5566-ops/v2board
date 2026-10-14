@@ -1,7 +1,5 @@
 <?php
-require __DIR__.'/../vendor/autoload.php';
-$app=require __DIR__.'/../bootstrap/app.php';
-$app->make(Illuminate\Contracts\Console\Kernel::class)->bootstrap();
+$app = require __DIR__.'/support/bootstrap.php';
 if (!app()->environment('local')) throw new RuntimeException('Local test only');
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -11,7 +9,7 @@ use App\Services\NodeDdnsService;
 use App\Http\Controllers\V1\Admin\NodeDdnsController;
 set_exception_handler(function($e) { fwrite(STDERR,$e->getMessage()."\n".$e->getTraceAsString()."\n"); exit(1); });
 config(['cache.default'=>'array']);
-$checks=0; $assert=function($ok,$label) use (&$checks) { if (!$ok) throw new RuntimeException($label); $checks++; };
+$checks=0; $assert = \Tests\Support\Assertions::counter($checks);
 $reject=function($fn,$status) use ($assert) { try {$fn();} catch (Illuminate\Validation\ValidationException $e) {$assert($status===422,'validation rejection');return;} catch (Symfony\Component\HttpKernel\Exception\HttpException $e) {$assert($status===$e->getStatusCode(),'HTTP rejection');return;} throw new RuntimeException('Expected rejection'); };
 $req=fn($body)=>Request::create('/','POST',$body);
 $kernel=app(Illuminate\Contracts\Http\Kernel::class);

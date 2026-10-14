@@ -1,5 +1,12 @@
 # Agent rules
 
+## Tests and verification
+- Reuse the existing test module and common helpers in tests/support; do not create a parallel verification script for each development round.
+- Standalone backend checks are registered in tests/suites.json as unit, integration, api, security or regression. Keep worker scripts and manual fixtures in the helper list; never execute them as independent tests.
+- Run php tests/run.php --validate after changing the inventory. Run actual scripts only in a disposable project copy and test databases; console and migration checks may change files or schemas. Never use production credentials or flush the application's Redis databases.
+- Keep frontend Vitest tests beside their components. Preserve all business/security assertions when combining files and update every executable/documentation reference.
+- Update docs/test-organization.md for test consolidation results and docs/frontend-validation.md for browser validation; do not add date-stamped audit Markdown on each iteration. Runtime logs/results belong in ignored storage/app/test-organization, and must never contain credentials.
+
 ## API contracts
 - New user-facing product APIs belong under /api/v10. Administrative, operations/risk and staff APIs remain on their existing contracts and must not be migrated by this change. Register explicit resource routes; do not dynamically dispatch controllers or proxy requests to /api/v1.
 - Legacy user business/public APIs were explicitly retired. Preserve only the routes in docs/api-v10/retained-legacy.json, administrative/operations/staff APIs, node communication, and configured custom subscriptions. Do not reintroduce retired routes. Mirror downloads use /api/v10/public/client-installers/{installerId}/content; the old /client-mirrors path is retired.

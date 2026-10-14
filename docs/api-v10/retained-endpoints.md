@@ -2,7 +2,7 @@
 
 此清单由实际注册路由生成：`php tests/api-route-audit.php --write-inventory`。不包含 V10 新接口、管理/风控/客服后台接口。GET 路由同时支持 HEAD，表中省略 HEAD。仅表中入口继续保留；其余旧用户业务与公共内容 API 已移除。认证入口供现有后台使用。
 
-## 后台依赖的认证接口（4 条路由）
+## 后台依赖的认证接口（6 条路由）
 
 | 方法 | 保留路径 | V10 对应入口 |
 |---|---|---|
@@ -10,6 +10,8 @@
 | POST | `/api/v1/passport/auth/login` | POST /api/v10/auth/sessions |
 | POST | `/api/v1/passport/auth/forget` | POST /api/v10/auth/password-resets |
 | POST | `/api/v1/passport/comm/sendEmailVerify` | POST /api/v10/auth/email-verifications |
+| POST | `/api/v1/passport/mfa/emails` | 后台 MFA 挑战邮件；用户使用 POST /api/v10/auth/mfa/emails |
+| POST | `/api/v1/passport/mfa/verifications` | 后台 MFA 挑战验证；用户使用 POST /api/v10/auth/mfa/verifications |
 
 ## 后台依赖的账户接口（3 条路由）
 
@@ -58,7 +60,7 @@ V2 配置接口未填写 node_type 时默认 v2node。旧 Deepbwork、Tidalab、
 
 ## 兼容说明
 
-- 上表旧用户/登录/公共/客户端路由共 11 条；前端用户业务已通过集中传输层使用 V10，仅保留后台依赖、历史回调及订阅入口。
+- 上表旧用户/登录/公共/客户端路由共 13 条；前端用户业务已通过集中传输层使用 V10，仅保留后台依赖、历史回调及订阅入口。
 - 旧用户业务 API（包括 `invite/save`）已移除；使用 V10。
 - 支付新订单与后台展示统一使用 V10 回调，旧支付回调兼容此前订单；两者保持原验签和应答。Telegram 保持已有兼容规则。
 - 不再注册旧用户业务中的 GET 写操作。

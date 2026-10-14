@@ -217,6 +217,7 @@ export function Panel({
     );
 }
 export function Modal({
+    dismissible = true,
     title,
     children,
     close,
@@ -227,6 +228,7 @@ export function Modal({
     title: string;
     children: ReactNode;
     close: () => void;
+    dismissible?: boolean;
     variant?: "modal" | "drawer";
     wide?: boolean;
     className?: string;
@@ -234,6 +236,8 @@ export function Modal({
     const dialog = useRef<HTMLElement>(null);
     const closeRef = useRef(close);
     closeRef.current = close;
+    const dismissibleRef = useRef(dismissible);
+    dismissibleRef.current = dismissible;
     useEffect(() => {
         const previous = document.activeElement as HTMLElement | null;
         const previousOverflow = document.body.style.overflow;
@@ -247,7 +251,8 @@ export function Modal({
             )
             ?.focus();
         const fn = (e: KeyboardEvent) => {
-            if (e.key === "Escape") closeRef.current();
+            if (e.key === "Escape" && dismissibleRef.current)
+                closeRef.current();
             if (e.key === "Tab") {
                 const items = [
                     ...(dialog.current?.querySelectorAll<HTMLElement>(
@@ -288,7 +293,7 @@ export function Modal({
                 className
             }
             onMouseDown={(e) => {
-                if (e.target === e.currentTarget) close();
+                if (dismissible && e.target === e.currentTarget) close();
             }}
         >
             <section
@@ -300,13 +305,15 @@ export function Modal({
             >
                 <div className="panel-head">
                     <h2>{title}</h2>
-                    <button
-                        className="icon-button"
-                        onClick={close}
-                        aria-label={tx("关闭")}
-                    >
-                        <X />
-                    </button>
+                    {dismissible && (
+                        <button
+                            className="icon-button"
+                            onClick={close}
+                            aria-label={tx("关闭")}
+                        >
+                            <X />
+                        </button>
+                    )}
                 </div>
                 <ModalClose.Provider value={close}>
                     {children}
@@ -556,7 +563,9 @@ export function Editor({
         >
             {activeFields.some((field) => field.type === "datetime-local") && (
                 <p className="muted">
-                    {tx("日期时间按 {{zone}} 输入和显示。", { zone: displayTimeZone() })}
+                    {tx("日期时间按 {{zone}} 输入和显示。", {
+                        zone: displayTimeZone(),
+                    })}
                 </p>
             )}
             <fieldset className="field-grid" disabled={busy}>
@@ -918,9 +927,22 @@ export function Pager({
         </div>
     );
 }
-export function Reload({ onClick, loading = false, disabled = false }: { onClick: () => void; loading?: boolean; disabled?: boolean }) {
+export function Reload({
+    onClick,
+    loading = false,
+    disabled = false,
+}: {
+    onClick: () => void;
+    loading?: boolean;
+    disabled?: boolean;
+}) {
     return (
-        <button type="button" onClick={onClick} disabled={loading || disabled} aria-busy={loading}>
+        <button
+            type="button"
+            onClick={onClick}
+            disabled={loading || disabled}
+            aria-busy={loading}
+        >
             <RefreshCw size={15} />
             {tx("刷新")}
         </button>

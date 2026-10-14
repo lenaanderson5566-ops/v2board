@@ -1,7 +1,5 @@
 <?php
-require __DIR__.'/../vendor/autoload.php';
-$app = require __DIR__.'/../bootstrap/app.php';
-$app->make(Illuminate\Contracts\Console\Kernel::class)->bootstrap();
+$app = require __DIR__.'/support/bootstrap.php';
 if (!app()->environment('local')) throw new RuntimeException('Local test only');
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -12,7 +10,7 @@ use App\Http\Controllers\V1\Admin\Server\V2boxController;
 
 $checks=0;
 set_exception_handler(function($e) { fwrite(STDERR,$e->getMessage()."\n"); exit(1); });
-$assert=function($ok,$label)use(&$checks){if(!$ok)throw new RuntimeException($label);$checks++;};
+$assert = \Tests\Support\Assertions::counter($checks);
 config(['v2board.server_token'=>'node-v10-test-secret', 'cache.default'=>'array']);
 Queue::fake();
 $kernel=$app->make(Illuminate\Contracts\Http\Kernel::class);

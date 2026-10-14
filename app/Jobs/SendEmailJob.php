@@ -45,8 +45,14 @@ class SendEmailJob implements ShouldQueue
         if ($this->deadline && time() >= $this->deadline) return ['skipped'=>true];
         if (\App\Services\MailBlocklist::contains($params['email'])) return $this->skipBlocked($announcement);
         if (($params['template_name'] ?? '') === 'verify') {
-            $current = Cache::get(CacheKey::get('EMAIL_VERIFY_CODE', strtolower(trim($params['email']))));
-            if (!$current || !hash_equals((string)$current, (string)($params['template_value']['code'] ?? ''))) return ['skipped'=>true];
+            if (isset($params['mfa_challenge_key'])) {
+                $challenge = Cache::get($params['mfa_challenge_key']);
+                if (!$challenge || $challenge['expiresAt'] <= time() || !isset($challenge['emailHash'])
+                    || !hash_equals($challenge['emailHash'], hash_hmac('sha256', (string)($params['template_value']['code'] ?? ''), config('app.key')))) return ['skipped'=>true];
+            } else {
+                $current = Cache::get(CacheKey::get('EMAIL_VERIFY_CODE', strtolower(trim($params['email']))));
+                if (!$current || !hash_equals((string)$current, (string)($params['template_value']['code'] ?? ''))) return ['skipped'=>true];
+            }
         }
         // Queue delays must not deliver reminders after renewal, reset, or an opt-out.
         $type = $params['template_name'] ?? '';

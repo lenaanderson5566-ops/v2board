@@ -1,10 +1,8 @@
 <?php
-require __DIR__.'/../vendor/autoload.php';
-$app = require __DIR__.'/../bootstrap/app.php';
-$app->make(Illuminate\Contracts\Console\Kernel::class)->bootstrap();
+$app = require __DIR__.'/support/bootstrap.php';
 if (!app()->environment('local')) throw new RuntimeException('Local test only');
 $checks = 0;
-$assert = function ($ok, $label) use (&$checks) { if (!$ok) throw new RuntimeException($label); $checks++; };
+$assert = \Tests\Support\Assertions::counter($checks);
 $call = function ($path, $body = [], $token = null, $method = 'GET') use ($app) {
     $request = Illuminate\Http\Request::create('/api/v10/'.$path, $method, $body);
     $request->headers->set('Accept', 'application/json');

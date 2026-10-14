@@ -18,6 +18,7 @@ final class Resource
         if ($name === 'orderStatus') return ['status'=>self::ORDER_STATUSES[(int)$data] ?? 'unknown'];
         if ($name === 'payment') return ['kind'=>[-1=>'confirmed',0=>'qr',1=>'redirect',2=>'pending'][$payload['type'] ?? 2] ?? 'pending', 'value'=>$data];
         if ($name === 'authentication') {
+            if (!empty($data['mfaRequired'])) return $data;
             $token = $data['auth_data'] ?? '';
             $claims = explode('.', $token);
             $claims = isset($claims[1]) ? json_decode(base64_decode(strtr($claims[1], '-_', '+/')), true) : [];

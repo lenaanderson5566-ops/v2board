@@ -1,7 +1,5 @@
 <?php
-require __DIR__.'/../vendor/autoload.php';
-$app = require __DIR__.'/../bootstrap/app.php';
-$app->make(Illuminate\Contracts\Console\Kernel::class)->bootstrap();
+$app = require __DIR__.'/support/bootstrap.php';
 if (!app()->environment('local')) throw new RuntimeException('Local test only');
 set_exception_handler(function (Throwable $e) { fwrite(STDERR,$e->getMessage().PHP_EOL); exit(1); });
 use App\Models\User;
@@ -10,7 +8,7 @@ use App\Services\TicketPolicy;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Redis;
 $checks=0;
-$assert=function($ok,$message) use (&$checks) { if (!$ok) throw new RuntimeException($message); $checks++; };
+$assert = \Tests\Support\Assertions::counter($checks);
 $config=config('v2board'); $auth=null;
 DB::beginTransaction();
 try {

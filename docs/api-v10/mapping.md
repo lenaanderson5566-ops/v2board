@@ -182,3 +182,7 @@ Binding uses a 10-minute one-time deep link, bot acknowledgement and an authenti
 ## Coupon activities and localization
 
 `GET /api/v10/me/coupon-offers` supplies localized activityTitle, activityDescription and name for the activity center. Claiming stays POST; checkout reads owned coupons only. `GET /api/v10/me/coupons` localizes frozen wallet names. Both negotiate Accept-Language and use no-store. Admin copy configuration stays on existing admin coupon-presentation/fetch and coupon-presentation/save contracts.
+
+## Optional MFA
+
+GET /me/security/mfa reads default-off email/TOTP state. POST /me/security/mfa/challenges stages changes after password and current factor proof. POST /auth/mfa/emails sends a purpose-scoped code; POST /auth/mfa/verifications completes a single-use challenge. POST /auth/sessions returns either authentication or mfaChallenge. Browser grants remain cookie-only; administrator settings stay on the retained admin contract. See docs/mfa.md.

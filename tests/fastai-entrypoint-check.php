@@ -3,12 +3,10 @@ namespace App\Services {
     function dns_get_record($host,$type) { return array_map(fn($ip)=>['ip'=>$ip],$GLOBALS['entrypointTestIps']); }
 }
 namespace {
-require __DIR__.'/../vendor/autoload.php';
-$app=require __DIR__.'/../bootstrap/app.php';
-$app->make(Illuminate\Contracts\Console\Kernel::class)->bootstrap();
+$app = require __DIR__.'/support/bootstrap.php';
 if (!app()->environment('local')) throw new RuntimeException('Local test only');
 $checks=0;
-$assert=function($ok,$label) use (&$checks) { if (!$ok) throw new RuntimeException($label); $checks++; };
+$assert = \Tests\Support\Assertions::counter($checks);
 $original=config('v2board');$seed=config('fastai.entrypoint_signing_seed');
 $service=app(App\Services\FastaiEntrypoints::class);
 try {

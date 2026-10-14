@@ -1,10 +1,8 @@
 <?php
-require __DIR__ . '/../vendor/autoload.php';
-$app = require __DIR__ . '/../bootstrap/app.php';
-$app->make(Illuminate\Contracts\Console\Kernel::class)->bootstrap();
+$app = require __DIR__.'/support/bootstrap.php';
 if (!app()->environment('local')) throw new RuntimeException('Local test only');
 $checks = 0;
-$assert = function ($condition, $message) use (&$checks) { if (!$condition) throw new RuntimeException($message); $checks++; };
+$assert = \Tests\Support\Assertions::counter($checks);
 $service = new App\Services\AccountStatusService();
 $base = ['banned'=>0,'plan_id'=>1,'expired_at'=>time()+86400,'transfer_enable'=>100,'u'=>5,'d'=>10];
 foreach ([

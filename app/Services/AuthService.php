@@ -21,11 +21,19 @@ class AuthService
 
     public function generateAuthData(Request $request)
     {
+        $mfa = \Illuminate\Support\Facades\DB::table('v2_user_mfa')->where('user_id', $this->user->id)->first();
+        $version = (int) ($mfa->version ?? 0);
+        // Exchanges retain their validated version even when a concurrent change disables MFA.
+        if ($request->attributes->has('mfa.verifiedVersion') || ($mfa->totp_secret ?? null) || ($mfa->email_enabled ?? false)) {
+            abort_unless($request->attributes->get('mfa.verifiedUserId') === (int) $this->user->id
+                && $request->attributes->get('mfa.verifiedVersion') === $version, 403, __('Security verification is required.'));
+        }
         $guid = Helper::guid();
         $now = time();
         $authData = JWT::encode([
             'id' => $this->user->id,
             'session' => $guid,
+            'mfaVersion' => $version,
             'iat' => $now,
             'exp' => $now + 30 * 86400,
         ], config('app.key'), 'HS256');
@@ -62,14 +70,17 @@ class AuthService
     {
         $data = self::activeClaims($jwt);
         if (!$data) return false;
-        $user = User::select(['id', 'email', 'is_admin', 'is_staff', 'banned'])->find($data['id']);
-        return $user ? $user->toArray() : false;
+        $user = User::select(['v2_user.id', 'v2_user.email', 'v2_user.is_admin', 'v2_user.is_staff', 'v2_user.banned', 'v2_user_mfa.version as mfa_version'])
+            ->leftJoin('v2_user_mfa', 'v2_user_mfa.user_id', '=', 'v2_user.id')->find($data['id']);
+        if (!$user || (int)($data['mfaVersion'] ?? 0) !== (int)($user->mfa_version ?? 0)) return false;
+        unset($user->mfa_version);
+        return $user->toArray();
     }
 
     public static function sessionReference(string $jwt): ?array
     {
         $data = self::activeClaims($jwt);
-        return $data ? ['userId'=>(int)$data['id'], 'sessionId'=>$data['session'], 'expiresAt'=>$data['exp'] ?? null] : null;
+        return $data ? ['userId'=>(int)$data['id'], 'sessionId'=>$data['session'], 'mfaVersion'=>(int)($data['mfaVersion'] ?? 0), 'expiresAt'=>$data['exp'] ?? null] : null;
     }
 
     public static function sessionUser(array $reference): ?User
@@ -77,7 +88,11 @@ class AuthService
         if (!isset($reference['userId'], $reference['sessionId'])) return null;
         if (isset($reference['expiresAt']) && $reference['expiresAt'] <= time()) return null;
         if (!self::checkSession($reference['userId'], $reference['sessionId'])) return null;
-        return User::find($reference['userId']);
+        $user = User::select(['v2_user.*', 'v2_user_mfa.version as mfa_version'])
+            ->leftJoin('v2_user_mfa', 'v2_user_mfa.user_id', '=', 'v2_user.id')->find($reference['userId']);
+        if (!$user || (int)($reference['mfaVersion'] ?? 0) !== (int)($user->mfa_version ?? 0)) return null;
+        unset($user->mfa_version);
+        return $user;
     }
 
     private static function checkSession($userId, $session)

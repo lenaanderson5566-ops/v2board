@@ -1,14 +1,12 @@
 <?php
-require __DIR__.'/../vendor/autoload.php';
-$app=require __DIR__.'/../bootstrap/app.php';
-$app->make(Illuminate\Contracts\Console\Kernel::class)->bootstrap();
+$app = require __DIR__.'/support/bootstrap.php';
 if (!app()->environment('local')) throw new RuntimeException('Local test only');
 set_exception_handler(function($e){fwrite(STDERR,$e->getMessage()." at ".$e->getFile().":".$e->getLine()."\n"); foreach($e->getTrace() as $frame) fwrite(STDERR,($frame["file"]??"").":".($frame["line"]??0)." ".($frame["function"]??"")."\n");exit(1);});
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Database\Schema\Blueprint;
 $checks=0;
-$assert=function($ok,$label)use(&$checks){if(!$ok)throw new RuntimeException($label);$checks++;};
+$assert = \Tests\Support\Assertions::counter($checks);
 $migration=require __DIR__.'/../database/migrations/2026_10_11_000002_drop_retired_node_tables.php';
 $originalConnection=DB::getDefaultConnection();
 $connection=config('database.connections.'.config('database.default'));

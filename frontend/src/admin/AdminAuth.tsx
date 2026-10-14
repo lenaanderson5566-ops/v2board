@@ -1,5 +1,4 @@
-import { useEffect, useRef, useState } from "react";
-import { Sparkles, Globe, ArrowUpRight } from "lucide-react";
+import { useRef, useState } from "react";
 import {
     boot,
     request,
@@ -11,6 +10,10 @@ import {
 import { Editor, type Field } from "../shared/ui";
 import { tx } from "../shared/i18n";
 import { Captcha } from "../shared/Captcha";
+import { MfaLogin } from "../shared/MfaLogin";
+import { useCooldown } from "../shared/useCooldown";
+import type { V10MfaChallenge } from "../shared/v10-types";
+
 export function AdminAuth({
     mode,
     onLogin,
@@ -18,13 +21,14 @@ export function AdminAuth({
     mode: string;
     onLogin: (user: Row) => void;
 }) {
-    const register = mode === "register" && boot.mode === "user",
-        forget = mode === "forget";
-    const [captcha, setCaptcha] = useState(""),
+    const forget = mode === "forget";
+    const [mfa, setMfa] = useState<V10MfaChallenge | null>(null),
+        [captcha, setCaptcha] = useState(""),
         [mailError, setMailError] = useState(""),
-        [sending, setSending] = useState(false),
-        [cooldown, setCooldown] = useState(0);
-    const formRef = useRef<HTMLDivElement>(null);
+        [sending, setSending] = useState(false);
+    const formRef = useRef<HTMLDivElement>(null),
+        sendingLock = useRef(false);
+    const cooldown = useCooldown();
     const fields: Field[] = [
         {
             key: "email",
@@ -37,14 +41,10 @@ export function AdminAuth({
             key: "password",
             label: forget ? tx("新密码") : tx("密码"),
             type: "password",
-            autoComplete:
-                register || forget ? "new-password" : "current-password",
+            autoComplete: forget ? "new-password" : "current-password",
             required: true,
         },
-        ...(register
-            ? [{ key: "invite_code", label: tx("邀请码（可选）") } as Field]
-            : []),
-        ...(forget || (register && boot.emailVerify)
+        ...(forget
             ? [
                   {
                       key: "email_code",
@@ -54,81 +54,46 @@ export function AdminAuth({
               ]
             : []),
     ];
-    useEffect(() => {
-        if (!cooldown) return;
-        const t = setTimeout(() => setCooldown((v) => v - 1), 1000);
-        return () => clearTimeout(t);
-    }, [cooldown]);
+    async function completeLogin() {
+        try {
+            await request(admin("config/fetch"));
+        } catch (error) {
+            await logoutSession();
+            throw error;
+        }
+        const info = await request("user/info");
+        onLogin(info.data);
+        navigate("overview");
+    }
+    if (mfa)
+        return (
+            <div className="auth-layout">
+                <MfaLogin
+                    challenge={mfa}
+                    onCancel={() => setMfa(null)}
+                    onComplete={completeLogin}
+                />
+            </div>
+        );
     return (
         <div className="auth-layout">
-            <section className="auth-brand">
-                <a className="brand" href="/">
-                    <span className="brand-mark">
-                        <Sparkles size={19} aria-hidden="true" />
-                    </span>
-                    {boot.title}
-                </a>
-                <div>
-                    <span className="eyebrow">A BETTER WAY TO CONNECT</span>
-                    <h1>
-                        {tx("更自由的连接。")}
-                        <br />
-                        {tx("更简单的体验。")}
-                    </h1>
-                    <p>
-                        {boot.description ||
-                            tx("你的网络服务，在一个地方轻松管理。")}
-                    </p>
-                    <div className="auth-orbits">
-                        <Globe size={160} strokeWidth={0.65} />
-                    </div>
-                </div>
-                <small>{tx("连接 · 探索 · 发现")}</small>
-            </section>
             <section className="auth-form">
                 <div className="auth-box" ref={formRef}>
-                    <span className="eyebrow">
-                        {boot.mode === "admin" ? "ADMIN CONSOLE" : "WELCOME"}
-                    </span>
-                    <h2>
-                        {forget
-                            ? tx("重置密码")
-                            : register
-                              ? tx("创建账户")
-                              : boot.mode === "admin"
-                                ? boot.title
-                                : tx("欢迎回来")}
-                    </h2>
+                    <span className="eyebrow">ADMIN CONSOLE</span>
+                    <h2>{forget ? tx("重置密码") : boot.title}</h2>
                     <p className="muted">
-                        {boot.mode === "admin"
-                            ? tx("登录统一管理后台")
-                            : forget
-                              ? tx("使用邮箱验证码设置新密码")
-                              : tx("登录以管理你的订阅与账户")}
+                        {forget
+                            ? tx("使用邮箱验证码设置新密码")
+                            : tx("登录统一管理后台")}
                     </p>
                     <Editor
                         key={mode}
-                        fields={
-                            boot.mode === "admin"
-                                ? fields.map((field) => ({
-                                      ...field,
-                                      placeholder: field.label,
-                                  }))
-                                : fields
-                        }
-                        initial={{
-                            invite_code:
-                                new URLSearchParams(
-                                    location.hash.split("?")[1],
-                                ).get("code") || "",
-                        }}
-                        submit={
-                            forget
-                                ? tx("重置密码")
-                                : register
-                                  ? tx("注册账户")
-                                  : tx("登录")
-                        }
+                        fields={fields.map((field) => ({
+                            ...field,
+                            placeholder: field.label,
+                        }))}
+                        initial={{}}
+                        submit={forget ? tx("重置密码") : tx("登录")}
                         onSave={async (body) => {
                             if (boot.recaptchaSiteKey && !captcha)
                                 throw new Error(tx("请先完成安全验证"));
@@ -140,111 +105,92 @@ export function AdminAuth({
                                 navigate("login");
                                 return;
                             }
-                            if (register)
-                                await request("passport/auth/register", {
-                                    ...body,
-                                    recaptcha_data: captcha,
-                                });
-                            await request("passport/auth/login", {
+                            const login = await request("passport/auth/login", {
                                 email: body.email,
                                 password: body.password,
                                 recaptcha_data: captcha,
                             });
-
-                            if (boot.mode === "admin") {
-                                try {
-                                    await request(admin("config/fetch"));
-                                } catch (e) {
-                                    await logoutSession();
-                                    throw e;
-                                }
+                            if (login.data.mfaRequired) {
+                                setCaptcha("");
+                                setMfa(login.data as V10MfaChallenge);
+                                return;
                             }
-                            const info = await request("user/info");
-                            onLogin(info.data);
-                            navigate(
-                                boot.mode === "admin"
-                                    ? "overview"
-                                    : "dashboard",
-                            );
+                            await completeLogin();
                         }}
                     >
                         <Captcha onChange={setCaptcha} />
-                        {(forget || (register && boot.emailVerify)) && (
+                        {forget && (
                             <>
                                 <button
                                     type="button"
-                                    disabled={sending || cooldown > 0}
-                                    onClick={async () => {
+                                    disabled={sending || cooldown.active}
+                                    onClick={() => {
+                                        if (
+                                            sendingLock.current ||
+                                            cooldown.active
+                                        )
+                                            return;
+                                        sendingLock.current = true;
                                         setMailError("");
                                         setSending(true);
-                                        try {
-                                            const email =
-                                                formRef.current?.querySelector<HTMLInputElement>(
-                                                    "input",
-                                                )?.value;
-                                            if (!email)
-                                                throw new Error(
-                                                    tx("请填写邮箱"),
+                                        void (async () => {
+                                            try {
+                                                const email =
+                                                    formRef.current?.querySelector<HTMLInputElement>(
+                                                        'input[type="email"]',
+                                                    )?.value;
+                                                if (!email)
+                                                    throw new Error(
+                                                        tx("请填写邮箱"),
+                                                    );
+                                                if (
+                                                    boot.recaptchaSiteKey &&
+                                                    !captcha
+                                                )
+                                                    throw new Error(
+                                                        tx("请先完成安全验证"),
+                                                    );
+                                                await request(
+                                                    "passport/comm/sendEmailVerify",
+                                                    {
+                                                        email,
+                                                        isforget: 1,
+                                                        recaptcha_data: captcha,
+                                                    },
                                                 );
-                                            await request(
-                                                "passport/comm/sendEmailVerify",
-                                                {
-                                                    email,
-                                                    isforget: forget ? 1 : 0,
-                                                    recaptcha_data: captcha,
-                                                },
-                                            );
-                                            setCooldown(60);
-                                        } catch (e) {
-                                            setMailError((e as Error).message);
-                                        } finally {
-                                            setSending(false);
-                                        }
+                                                cooldown.start();
+                                            } catch (error) {
+                                                setMailError(
+                                                    (error as Error).message,
+                                                );
+                                            } finally {
+                                                sendingLock.current = false;
+                                                setSending(false);
+                                            }
+                                        })();
                                     }}
                                 >
-                                    {cooldown
-                                        ? tx("{{value0}} 秒后重试", {
-                                              value0: cooldown,
-                                          })
-                                        : sending
-                                          ? tx("发送中…")
-                                          : tx("发送邮箱验证码")}
+                                    {tx(
+                                        sending
+                                            ? "发送中…"
+                                            : cooldown.active
+                                              ? "验证码已发送，60秒后可以重新发送。"
+                                              : "发送邮箱验证码",
+                                    )}
                                 </button>
                                 {mailError && (
-                                    <div className="alert">{mailError}</div>
+                                    <p role="alert" className="alert">
+                                        {mailError}
+                                    </p>
                                 )}
                             </>
                         )}
                     </Editor>
-                    {boot.mode === "admin" && (
-                        <div className="auth-links">
-                            <a href={forget ? "#/login" : "#/forget"}>
-                                {forget ? tx("登录") : tx("忘记密码？")}
-                            </a>
-                        </div>
-                    )}
-                    {boot.mode === "user" && (
-                        <div className="auth-links">
-                            <a href="#/login">{tx("登录")}</a>
-                            {!boot.registerClosed && (
-                                <a href="#/register">{tx("创建账户")}</a>
-                            )}
-                            <a href="#/forget">{tx("忘记密码？")}</a>
-                        </div>
-                    )}
-                    {register && boot.tosUrl && (
-                        <p className="muted">
-                            {tx("注册即表示同意")}{" "}
-                            <a
-                                href={boot.tosUrl}
-                                target="_blank"
-                                rel="noreferrer"
-                            >
-                                {tx("服务条款")}
-                            </a>
-                            。
-                        </p>
-                    )}
+                    <div className="auth-links">
+                        <a href={forget ? "#/login" : "#/forget"}>
+                            {forget ? tx("登录") : tx("忘记密码？")}
+                        </a>
+                    </div>
                 </div>
             </section>
         </div>

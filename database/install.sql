@@ -738,3 +738,13 @@ CREATE TABLE IF NOT EXISTS `v2_coupon_campaign_recipient` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 ALTER TABLE `v2_coupon` ADD COLUMN `activity_title` varchar(120) DEFAULT NULL, ADD COLUMN `activity_description` text DEFAULT NULL, ADD COLUMN `translations` text DEFAULT NULL;
+
+CREATE TABLE IF NOT EXISTS `v2_user_mfa` (
+  `user_id` int unsigned NOT NULL,
+  `email_enabled` tinyint(1) NOT NULL DEFAULT 0,
+  `totp_secret` text DEFAULT NULL,
+  `recovery_hashes` text DEFAULT NULL,
+  `last_totp_step` bigint NOT NULL DEFAULT -1,
+  `version` int unsigned NOT NULL DEFAULT 0,
+  PRIMARY KEY (`user_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;

@@ -1,6 +1,5 @@
 <?php
-require __DIR__.'/../vendor/autoload.php';
-$app=require __DIR__.'/../bootstrap/app.php';$app->make(Illuminate\Contracts\Console\Kernel::class)->bootstrap();
+$app = require __DIR__.'/support/bootstrap.php';
 set_exception_handler(function($e) {fwrite(STDERR,get_class($e).': '.$e->getMessage().PHP_EOL);exit(1);});
 if (!app()->environment(['local','testing'])) throw new RuntimeException('Local/test only');
 $name=getenv('NOTIFICATION_INSTALL_DATABASE');

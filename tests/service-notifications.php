@@ -1,8 +1,6 @@
 <?php
 // Local integration test. Queue is faked; committed fixtures are removed in finally.
-require __DIR__.'/../vendor/autoload.php';
-$app = require __DIR__.'/../bootstrap/app.php';
-$app->make(Illuminate\Contracts\Console\Kernel::class)->bootstrap();
+$app = require __DIR__.'/support/bootstrap.php';
 require __DIR__.'/commerce-bootstrap.php';
 if (!app()->environment('local')) throw new RuntimeException('Local test only');
 use App\Models\User;
@@ -19,7 +17,7 @@ use Illuminate\Support\Str;
 Queue::fake();
 config(['v2board.new_order_event_id'=>0, 'v2board.renew_order_event_id'=>0, 'v2board.change_order_event_id'=>0]);
 $checks=0; $users=[]; $cards=[]; $orders=[]; $plan=null;
-$assert=function ($ok,$label) use (&$checks) { if (!$ok) throw new RuntimeException($label); $checks++; };
+$assert = \Tests\Support\Assertions::counter($checks);
 $count=function () { return Queue::pushed(SendEmailJob::class)->count(); };
 $params=function ($job) { $p=new ReflectionProperty($job,'params'); $p->setAccessible(true); return $p->getValue($job); };
 $makeUser=function ($attributes=[]) use (&$users) {

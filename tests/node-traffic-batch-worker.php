@@ -1,6 +1,5 @@
 <?php
-require __DIR__.'/../vendor/autoload.php';
-$app=require __DIR__.'/../bootstrap/app.php';$app->make(Illuminate\Contracts\Console\Kernel::class)->bootstrap();
+$app = require __DIR__.'/support/bootstrap.php';
 if (!app()->environment('local')) exit(1);
 set_exception_handler(function($e){fwrite(STDERR,'Worker failed: '.get_class($e)."\n");exit(1);});
 $node=(object)['id'=>(int)$argv[1],'rate'=>2];

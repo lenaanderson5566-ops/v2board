@@ -1,14 +1,12 @@
 <?php
-require __DIR__.'/../vendor/autoload.php';
-$app=require __DIR__.'/../bootstrap/app.php';
-$app->make(Illuminate\Contracts\Console\Kernel::class)->bootstrap();
+$app = require __DIR__.'/support/bootstrap.php';
 if (!app()->environment('local')) throw new RuntimeException('Local test only');
 set_exception_handler(function($e) { fwrite(STDERR,$e->getMessage()."\n"); exit(1); });
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use App\Services\ServerService;
 $checks=0;
-$assert=function($ok,$label)use(&$checks){if(!$ok)throw new RuntimeException($label);$checks++;};
+$assert = \Tests\Support\Assertions::counter($checks);
 $reject=function($fn)use($assert){try{$fn();throw new RuntimeException('Retired type accepted');}catch(Symfony\Component\HttpKernel\Exception\HttpException $e){$assert($e->getStatusCode()===422,'Retired type rejected');}};
 $legacy=['vmess','vless','shadowsocks','trojan','hysteria','tuic','anytls','v2ray','hysteria2'];
 config(['v2board.server_token'=>'local-node-retirement-test']);

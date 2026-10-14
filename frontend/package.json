@@ -8,7 +8,11 @@
         "build": "tsc --noEmit && vite build && node scripts/package-frontends.mjs",
         "package:frontends": "node scripts/package-frontends.mjs",
         "test": "vitest run",
-        "locales:generate": "node scripts/expand-locales.mjs"
+        "locales:generate": "node scripts/expand-locales.mjs",
+        "test:payments": "vitest run src/user/BillingFlow.test.tsx src/user/PaymentCheckout.test.tsx src/user/PaymentMethodPicker.test.tsx src/user/PaymentPolling.test.tsx src/user/OrderHelp.test.tsx src/user/PendingOrderNotice.test.tsx src/shared/order-price.test.ts src/shared/field-values.test.ts src/shared/v10-api.test.ts src/admin/payment-fields.test.ts src/admin/Payments.test.tsx src/admin/PaymentCallbackHistory.test.tsx src/admin/billing-price-input.test.ts src/admin/AdminBillingCurrency.test.tsx",
+        "test:mfa": "vitest run Mfa UserAuth.test AdminAuth.test",
+        "test:mail": "vitest run AdminMail MailHealth EmailInvites",
+        "test:coupons": "vitest run Coupon"
     },
     "dependencies": {
         "@radix-ui/react-dropdown-menu": "2.2.1",

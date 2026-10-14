@@ -1,14 +1,12 @@
 <?php
-require __DIR__.'/../vendor/autoload.php';
-$app=require __DIR__.'/../bootstrap/app.php';
-$app->make(Illuminate\Contracts\Console\Kernel::class)->bootstrap();
+$app = require __DIR__.'/support/bootstrap.php';
 if(!app()->environment('local'))throw new RuntimeException('Local only');
 set_exception_handler(function(Throwable $e){fwrite(STDERR,get_class($e).': '.$e->getMessage());exit(1);});
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Http\Request;
 DB::beginTransaction(); $auth=null; $userAuth=null; \Illuminate\Support\Facades\Queue::fake();
-$checks=0; $assert=function($ok,$message)use(&$checks){if(!$ok)throw new RuntimeException($message);$checks++;};
+$checks=0; $assert = \Tests\Support\Assertions::counter($checks);
 try {
  $make=function($role){return User::create(['email'=>'audit-'.bin2hex(random_bytes(5)).'@example.com','password'=>password_hash('Original-test-123',PASSWORD_DEFAULT),'uuid'=>App\Utils\Helper::guid(true),'token'=>App\Utils\Helper::guid(),'is_admin'=>$role==='admin'?1:0,'is_staff'=>$role==='staff'?1:0]);};
  $staff=$make('staff');$admin=$make('admin');$user=$make('user');
@@ -26,7 +24,7 @@ try {
  $assert($r->getStatusCode()===200 && !$admin->fresh()->banned,'Batch ban excludes administrators');
  $r=$call('/api/v1/staff/user/ban','POST',['filter'=>[['key'=>'password','condition'=>'=','value'=>'x']]]);
  $assert($r->getStatusCode()===422,'Sensitive filter rejected');
- $r=$call('/api/v1/staff/user/sendMail','POST',['filter'=>$filter,'subject'=>'Audit fixture','content'=>'Fixture']);
+ $r=$call('/api/v1/staff/user/sendMail','POST',['filter'=>$filter,'subject'=>'Audit fixture','content'=>'Fixture','purpose'=>'service','request_key'=>(string)Illuminate\Support\Str::uuid()]);
  $assert($r->getStatusCode()===200,'Mail filter works');
  \Illuminate\Support\Facades\Queue::assertPushed(\App\Jobs\SendEmailJob::class,1);
  $r=$call('/api/v1/staff/user/sendMail','POST',['filter'=>[['key'=>'id','condition'=>'=','value'=>$admin->id]],'subject'=>'Audit fixture','content'=>'Fixture']);

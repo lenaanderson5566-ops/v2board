@@ -1,14 +1,12 @@
 <?php
-require __DIR__.'/../vendor/autoload.php';
-$app=require __DIR__.'/../bootstrap/app.php';
-$app->make(Illuminate\Contracts\Console\Kernel::class)->bootstrap();
+$app = require __DIR__.'/support/bootstrap.php';
 if (!app()->environment('local')) throw new RuntimeException('Local tests only');
 set_exception_handler(function(Throwable $e){fwrite(STDERR,(string)$e);exit(1);});
 use App\Models\User;
 use App\Services\CreditExpiryService as Credits;
 use Illuminate\Support\Facades\DB;
 $checks=0;
-$assert=function($v,$msg) use (&$checks){if(!$v) throw new RuntimeException($msg);$checks++;};
+$assert = \Tests\Support\Assertions::counter($checks);
 DB::beginTransaction();
 try {
  $u=User::create(['email'=>uniqid().'@example.com','password'=>'test','uuid'=>App\Utils\Helper::guid(true),'token'=>App\Utils\Helper::guid(),'u'=>0,'d'=>0,'transfer_enable'=>0,'credit_balance'=>0]);
@@ -38,7 +36,7 @@ try {
  $assert(!(new App\Services\UserService())->isAvailable($u->fresh()),'Expired user still available');
  // No expiry cleanup has run for these batches: reads and authorization must still reject them.
  $assert((int)$u->fresh()->getRawOriginal('credit_balance')>0,'Fixture retains uncleaned expired balance');
- $client=Illuminate\Http\Request::create('/api/v10/subscriptions/test','GET',['flag'=>'general']);
+ $client=Illuminate\Http\Request::create('/api/v10/subscriptions/test','GET',['format'=>'v2rayn'],[],[],['HTTP_USER_AGENT'=>'v2rayN/7.0.0']);
  $client->user=$u->fresh();
  $action=new App\Services\Actions\Client\ClientActions();
  $subscription=$action->subscribe($client);

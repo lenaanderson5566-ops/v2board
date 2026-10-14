@@ -1,12 +1,11 @@
 <?php
-require __DIR__.'/../vendor/autoload.php';
-$app=require __DIR__.'/../bootstrap/app.php';
-$app->make(Illuminate\Contracts\Console\Kernel::class)->bootstrap();
+$app = require __DIR__.'/support/bootstrap.php';
 if (!app()->environment('local')) throw new RuntimeException('Local test only');
 $checks=0; $routeCount=0; $protectedCount=0; $retained=[]; $findings=[];
-$testIp='198.18.'.random_int(0,255).'.'.random_int(1,254);
+$testIpPrefix='198.18.'.random_int(0,255).'.';
+$authorizationProbe=0;
 set_exception_handler(function($e) { fwrite(STDERR,$e->getMessage()."\n"); exit(1); });
-$assert=function($ok,$label) use (&$checks) { if (!$ok) throw new RuntimeException($label); $checks++; };
+$assert = \Tests\Support\Assertions::counter($checks);
 $entries=json_decode(file_get_contents(base_path('docs/api-v10/endpoints.json')),true);
 $contracts=App\Http\Resources\V10\Resource::contracts()['endpoints'];
 $mapping=[];
@@ -27,7 +26,20 @@ foreach (app('router')->getRoutes() as $route) {
         }
         $assert((new ReflectionMethod($class,$method))->isPublic(),'Non-public handler '.$uri);
         if (preg_match('/\\\\V1\\\\(Admin|Risk|Staff)\\\\/',$class)) {
-            $assert(count(array_intersect(['admin','staff'], $middleware))>0,'Unprotected management route '.$uri);
+            $adminMfaLogin = $class === App\Http\Controllers\V1\Admin\MfaController::class
+                && in_array($uri, ['api/v1/passport/mfa/emails', 'api/v1/passport/mfa/verifications'], true);
+            if ($adminMfaLogin) {
+                $assert($route->methods() === ['POST'], 'MFA login verification must be POST');
+                $assert(count(array_filter($middleware, fn($value) => str_starts_with($value, 'throttle:'))) > 0, 'MFA login verification must be throttled');
+                $probe = Illuminate\Http\Request::create('/'.$uri, 'POST', ['challengeId'=>str_repeat('0', 64), 'method'=>'totp', 'code'=>'000000'], [], [], ['HTTP_ACCEPT'=>'application/json']);
+                $app->instance('request', $probe);
+                $response = $app->make(Illuminate\Contracts\Http\Kernel::class)->handle($probe);
+                $assert(in_array($response->getStatusCode(), [401,403,409,419,422], true), 'MFA login cannot succeed without a valid bound challenge');
+                $payload = json_decode($response->getContent(), true);
+                $assert(!isset($payload['data']['auth_data']) && !isset($payload['data']['accessToken']), 'Invalid MFA login cannot issue credentials');
+            } else {
+                $assert(count(array_intersect(['admin','staff'], $middleware))>0,'Unprotected management route '.$uri);
+            }
         }
         if (str_contains($class,'\\V1\\User\\')) $assert(in_array('user',$middleware,true),'Unprotected legacy user route '.$uri);
     }
@@ -42,11 +54,15 @@ $assert(!array_diff($allowlist,$seen),'A required compatibility route is missing
 // This cannot invoke business mutations: authorization must reject first.
 foreach ($entries as $entry) {
     $key=$entry['key'] ?? str_replace('\\','/',str_replace('App\\Http\\Controllers\\V1\\','',$entry['action']));
-    $contract=collect($contracts)->firstWhere('key',$key);
+    $candidates = collect($contracts)->filter(fn($value) => $value['path'] === $entry['path'] && $value['method'] === $entry['method']);
+    $assert($candidates->count() === 1, 'V10 resource needs exactly one method/path contract');
+    $contract = $candidates->first();
     $assert($contract!==null,'Missing contract '.$key);
+    $assert($contract['path'] === $entry['path'] && $contract['method'] === $entry['method'], 'Contract method/path mismatch '.$key);
+    if (isset($entry['key'])) $assert($contract['key'] === $entry['key'], 'Explicit contract key mismatch '.$key);
     if ($contract['role']!=='user') continue;
     $path='/api/v10/'.preg_replace('/\{[^}]+\}/','1',$entry['path']);
-    $request=Illuminate\Http\Request::create($path,$entry['method'],[],[],[],['REMOTE_ADDR'=>$testIp,'HTTP_ACCEPT'=>'application/json','HTTP_USER_AGENT'=>'API-Audit']);
+    $request=Illuminate\Http\Request::create($path,$entry['method'],[],[],[],['REMOTE_ADDR'=>$testIpPrefix.(++$authorizationProbe),'HTTP_ACCEPT'=>'application/json','HTTP_USER_AGENT'=>'API-Audit']);
     $app->instance('request',$request);
     $response=$app->make(Illuminate\Contracts\Http\Kernel::class)->handle($request);
     $assert($response->getStatusCode()===401,'Account route must reject missing credentials: '.$entry['method'].' '.$path.' '.$response->getStatusCode());

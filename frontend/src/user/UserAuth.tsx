@@ -1,3 +1,5 @@
+import { MfaLogin } from "../shared/MfaLogin";
+import type { V10MfaChallenge } from "../shared/v10-types";
 import { RegistrationEmail } from "./RegistrationEmail";
 import { registrationEmailError } from "./registration-policy";
 import { RegistrationDomains } from "./RegistrationDomains";
@@ -26,6 +28,7 @@ export function UserAuth({
     onLogin: (user: Row) => void;
     renderCaptcha: (onChange: (value: string) => void) => ReactNode;
 }) {
+    const [mfa, setMfa] = useState<V10MfaChallenge | null>(null);
     const register = mode === "register",
         forget = mode === "forget",
         verify = forget || (register && boot.emailVerify);
@@ -156,13 +159,19 @@ export function UserAuth({
                 await request("passport/auth/register", body);
                 setRegistered(true);
             }
-            await request("passport/auth/login", {
+            const login = await request("passport/auth/login", {
                 ...loginLanguagePreference(),
                 email: email.trim(),
                 password,
                 recaptcha_data: captcha,
             });
 
+            if (login.data.mfaRequired) {
+                setPassword("");
+                setCaptcha("");
+                setMfa(login.data as V10MfaChallenge);
+                return;
+            }
             const info = await request("user/info");
             await applyAccountLanguage(info.data.language);
             onLogin(info.data);
@@ -234,6 +243,21 @@ export function UserAuth({
             )}
         </label>
     );
+    if (mfa)
+        return (
+            <div className="user-auth">
+                <MfaLogin
+                    challenge={mfa}
+                    onCancel={() => setMfa(null)}
+                    onComplete={async () => {
+                        const info = await request("user/info");
+                        await applyAccountLanguage(info.data.language);
+                        onLogin(info.data);
+                        navigate(redirectPath ?? "dashboard");
+                    }}
+                />
+            </div>
+        );
     if (suspended)
         return (
             <div className="suspended-page">

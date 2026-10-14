@@ -1,6 +1,5 @@
 <?php
-require __DIR__.'/../vendor/autoload.php';
-$app=require __DIR__.'/../bootstrap/app.php';$app->make(Illuminate\Contracts\Console\Kernel::class)->bootstrap();
+$app = require __DIR__.'/support/bootstrap.php';
 require __DIR__.'/commerce-bootstrap.php';
 if (!getenv('COMMERCE_TEST_DATABASE')) throw new RuntimeException('Requires isolated commerce database');
 set_exception_handler(function($e){fwrite(STDERR,get_class($e).': '.$e->getMessage().' at '.basename($e->getFile()).':'.$e->getLine().PHP_EOL);exit(1);});
@@ -9,7 +8,7 @@ use App\Models\{User,Plan,Order,Payment,Coupon};
 use App\Services\{BillingCurrency,ExchangeRate,CouponWallet,OrderService,PaymentQuote};
 use App\Services\Actions\User\OrderActions;
 use App\Http\Requests\User\OrderSave;
-$checks=0;$assert=function($ok,$label)use(&$checks){if(!$ok)throw new RuntimeException($label);$checks++;};
+$checks=0;$assert = \Tests\Support\Assertions::counter($checks);
 if (($argv[1] ?? '')==='install') {
     if(DB::select('SHOW TABLES'))throw new RuntimeException('Requires empty database');
     DB::unprepared(file_get_contents(__DIR__.'/../database/install.sql'));

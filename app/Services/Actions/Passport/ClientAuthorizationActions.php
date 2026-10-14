@@ -69,6 +69,8 @@ final class ClientAuthorizationActions
         $user->last_login_at = time();
         $user->last_login_ip = $request->ip() && filter_var($request->ip(), FILTER_VALIDATE_IP) ? $request->ip() : null;
         $user->save();
+        $request->attributes->set('mfa.verifiedUserId', (int) $user->id);
+        $request->attributes->set('mfa.verifiedVersion', (int) $user->getRelation('mfaAssurance')->version);
         $auth = (new AuthService($user))->generateAuthData($request);
         return response()->json(['data'=>$auth]);
     }

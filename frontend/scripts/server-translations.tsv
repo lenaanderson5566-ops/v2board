@@ -96,3 +96,13 @@ Sending frequently, please try again later|送信の試行が多すぎます。�
 Current product is sold out|この商品は売り切れです|현재 상품은 매진되었습니다|Sản phẩm đã hết|Товар распродан|ظرفیت محصول تمام شده است
 There are too many password errors, please try again after :minute minutes.|パスワードの誤りが多すぎます。:minute 分後に再試行してください|비밀번호 오류가 너무 많습니다. :minute분 후 다시 시도하세요|Sai mật khẩu quá nhiều lần. Thử lại sau :minute phút|Слишком много ошибок пароля. Повторите через :minute мин.|خطاهای رمز عبور زیاد است. پس از :minute دقیقه دوباره تلاش کنید
 Reset failed, Please try again later|リセットに失敗しました。後でもう一度お試しください|초기화에 실패했습니다. 나중에 다시 시도하세요|Đặt lại thất bại. Vui lòng thử lại sau|Сброс не удался. Повторите позже|بازنشانی ناموفق بود. بعداً دوباره تلاش کنید
+Invalid security challenge.|認証リクエストが無効です。|잘못된 보안 인증 요청입니다.|Yêu cầu xác minh không hợp lệ.|Недействительный запрос подтверждения.|درخواست تأیید نامعتبر است.
+Security challenge expired. Please start again.|認証の期限が切れました。やり直してください。|인증 요청이 만료되었습니다. 다시 시작하세요.|Xác minh đã hết hạn. Vui lòng bắt đầu lại.|Запрос истёк. Начните снова.|درخواست تأیید منقضی شد. دوباره شروع کنید.
+Incorrect security verification code.|認証コードが正しくありません。使用済みコードは再利用できません。|인증 코드가 올바르지 않습니다. 사용한 코드는 재사용할 수 없습니다.|Mã xác minh không đúng. Không thể dùng lại mã đã sử dụng.|Неверный код. Использованный код нельзя применить повторно.|کد تأیید نادرست است. کد استفاده‌شده قابل استفاده مجدد نیست.
+Too many security verification attempts. Please try again later.|認証の試行が多すぎます。後ほどお試しください。|인증 시도가 너무 많습니다. 나중에 다시 시도하세요.|Quá nhiều lần xác minh. Vui lòng thử lại sau.|Слишком много попыток. Повторите позже.|تلاش‌های تأیید بیش از حد است. بعداً دوباره تلاش کنید.
+Email verification is not available.|メール認証は利用できません。|이메일 인증을 사용할 수 없습니다.|Không thể sử dụng xác minh email.|Подтверждение по почте недоступно.|تأیید ایمیل در دسترس نیست.
+Please wait before requesting another code.|再送信まで60秒お待ちください。|코드를 다시 보내기 전에 60초 기다리세요.|Vui lòng đợi 60 giây trước khi gửi lại mã.|Подождите 60 секунд перед повторной отправкой.|پیش از درخواست کد جدید ۶۰ ثانیه صبر کنید.
+Security settings changed. Please refresh.|認証設定が変更されました。ページを更新してください。|보안 설정이 변경되었습니다. 페이지를 새로 고치세요.|Cài đặt bảo mật đã thay đổi. Hãy tải lại trang.|Настройки изменились. Обновите страницу.|تنظیمات امنیتی تغییر کرده است. صفحه را تازه کنید.
+Security settings changed. Please start again.|認証設定が変更されました。認証をやり直してください。|보안 설정이 변경되었습니다. 다시 인증하세요.|Cài đặt bảo mật đã thay đổi. Hãy xác minh lại.|Настройки изменились. Начните подтверждение заново.|تنظیمات امنیتی تغییر کرده است. تأیید را دوباره شروع کنید.
+Security verification is required.|認証を完了してください。|보안 인증을 완료하세요.|Vui lòng hoàn tất xác minh bảo mật.|Завершите подтверждение безопасности.|تأیید امنیتی را تکمیل کنید.
+Security verification code|認証コード|보안 인증 코드|Mã xác minh bảo mật|Код подтверждения безопасности|کد تأیید امنیتی

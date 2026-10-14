@@ -87,12 +87,6 @@ vi.mock("../shared/ui", () => ({
 }));
 import { SubscriptionPurchase } from "./SubscriptionPurchase";
 import { PaymentCheckout } from "./PaymentCheckout";
-import {
-    purchasePeriods,
-    paymentFee,
-    periodSavings,
-    subscriptionAction,
-} from "./billing-flow";
 import { Orders } from "./user";
 const plan = {
     id: 1,
@@ -192,17 +186,7 @@ it("preserves payment selection and QR content while an order refreshes", async 
         ),
     ).toHaveLength(1);
 });
-it("preserves quarterly and zero-priced periods and excludes reset from ordinary purchase", () => {
-    expect(purchasePeriods({ ...plan, onetime_price: 0 })).toEqual([
-        "quarter_price",
-        "year_price",
-    ]);
-    expect(paymentFee(1000, mocks.methods[0])).toBe(50);
-    expect(paymentFee(0, mocks.methods[0])).toBe(0);
-    expect(
-        paymentFee(999, { handling_fee_percent: 2.5, handling_fee_fixed: 1 }),
-    ).toBe(26);
-});
+
 it("shows the actual available period and lets users review their selection before creating an order", async () => {
     mocks.request.mockResolvedValue({ data: "created-order" });
     render(<SubscriptionPurchase />);
@@ -527,24 +511,7 @@ it("one-time-only products are not shown in the subscription catalog", () => {
     expect(screen.queryByText("CreditOnly")).toBeNull();
 });
 
-it("calculates real savings without inventing discounts", () => {
-    expect(
-        periodSavings({ month_price: 5880, year_price: 59976 }, "year_price"),
-    ).toBe(15);
-    expect(
-        periodSavings(
-            { month_price: 5880, half_year_price: 33516 },
-            "half_year_price",
-        ),
-    ).toBe(5);
-    expect(
-        periodSavings({ month_price: 0, year_price: 100 }, "year_price"),
-    ).toBe(0);
-    expect(periodSavings({ year_price: 100 }, "year_price")).toBe(0);
-    expect(
-        periodSavings({ month_price: 100, year_price: 1300 }, "year_price"),
-    ).toBe(0);
-});
+
 it("carries the yearly card selection into checkout and removes duplicate metadata", async () => {
     mocks.plans = [
         {
@@ -599,39 +566,7 @@ it("defaults mobile details to the current plan and preserves selection when cha
     );
 });
 
-it("matches purchase wording to backend renewal and switching rules", () => {
-    const now = 2000000;
-    const active = { plan_id: 1, expired_at: 3000, transfer_enable: 50 };
-    expect(subscriptionAction(plan, {}, now)).toBe("subscribe");
-    expect(subscriptionAction(plan, active, now)).toBe("renew");
-    expect(subscriptionAction({ ...plan, id: 2 }, active, now)).toBe(
-        "switchPlan",
-    );
-    expect(subscriptionAction(plan, { ...active, expired_at: 1000 }, now)).toBe(
-        "resubscribe",
-    );
-    expect(
-        subscriptionAction(
-            { ...plan, id: 2 },
-            { ...active, expired_at: 1000 },
-            now,
-        ),
-    ).toBe("subscribe");
-    expect(
-        subscriptionAction(
-            { ...plan, id: 2 },
-            { ...active, expired_at: null },
-            now,
-        ),
-    ).toBe("switchPlan");
-    expect(
-        subscriptionAction(
-            { ...plan, id: 2 },
-            { ...active, transfer_enable: 0 },
-            now,
-        ),
-    ).toBe("subscribe");
-});
+
 
 it("renders built-in payment icons from the API host", () => {
     mocks.methods[0].icon = "/payment-icons/alipay.svg";

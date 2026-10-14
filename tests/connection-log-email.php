@@ -1,14 +1,12 @@
 <?php
-require __DIR__.'/../vendor/autoload.php';
-$app = require __DIR__.'/../bootstrap/app.php';
-$app->make(Illuminate\Contracts\Console\Kernel::class)->bootstrap();
+$app = require __DIR__.'/support/bootstrap.php';
 if (!app()->environment('local')) throw new RuntimeException('Local test only');
 use App\Models\User;
 use App\Models\UserConnectionLog;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Http\Request;
 $n = 0;
-$assert = function ($ok, $label) use (&$n) { if (!$ok) throw new RuntimeException($label); $n++; };
+$assert = \Tests\Support\Assertions::counter($n);
 DB::beginTransaction();
 try {
     $prefix = 'connection-'.bin2hex(random_bytes(6));

@@ -1,11 +1,9 @@
 <?php
-require __DIR__.'/../vendor/autoload.php';
-$app=require __DIR__.'/../bootstrap/app.php';
-$app->make(Illuminate\Contracts\Console\Kernel::class)->bootstrap();
+$app = require __DIR__.'/support/bootstrap.php';
 if (!app()->environment('local')) throw new RuntimeException('Local test only');
 set_exception_handler(function($e) { fwrite(STDERR,$e->getMessage()."\n"); exit(1); });
 $checks=0;
-$assert=function($ok,$label)use(&$checks){if(!$ok)throw new RuntimeException($label);$checks++;};
+$assert = \Tests\Support\Assertions::counter($checks);
 $call=function($method,$path,$headers=[])use($app){
     $request=Illuminate\Http\Request::create($path,$method,[],[],[],array_merge(['HTTP_ACCEPT'=>'application/json','HTTP_USER_AGENT'=>'API-retirement-test'],$headers));
     $app->instance('request',$request);

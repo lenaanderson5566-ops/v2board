@@ -1,8 +1,6 @@
 <?php
 // Run with: php tests/console-smoke.php (requires a configured local database).
-require __DIR__ . '/../vendor/autoload.php';
-$app = require __DIR__ . '/../bootstrap/app.php';
-$app->make(Illuminate\Contracts\Console\Kernel::class)->bootstrap();
+$app = require __DIR__.'/support/bootstrap.php';
 $kernel = $app->make(Illuminate\Contracts\Http\Kernel::class);
 $configPath = base_path('config/v2board.php');
 $originalFile = file_get_contents($configPath);
@@ -10,10 +8,7 @@ $originalConfig = config('v2board');
 $securePath = config('v2board.secure_path', config('v2board.frontend_admin_path', hash('crc32b', config('app.key'))));
 $opsPath = config('v2board.ops_api_path', 'ops');
 $checks = 0;
-$assert = function ($condition, $message) use (&$checks) {
-    if (!$condition) throw new RuntimeException($message);
-    $checks++;
-};
+$assert = \Tests\Support\Assertions::counter($checks);
 $call = function (string $path, ?array $body = null, ?string $token = null, ?string $language = null, string $accept = 'application/json') use ($kernel) {
     $request = Illuminate\Http\Request::create($path, $body === null ? 'GET' : 'POST', $body ?? []);
     $request->headers->set('Accept', $accept);

@@ -1,6 +1,5 @@
 <?php
-require __DIR__.'/../vendor/autoload.php';
-$app=require __DIR__.'/../bootstrap/app.php';$app->make(Illuminate\Contracts\Console\Kernel::class)->bootstrap();
+$app = require __DIR__.'/support/bootstrap.php';
 require __DIR__.'/commerce-bootstrap.php';
 if(!getenv('COMMERCE_TEST_DATABASE'))throw new RuntimeException('Requires isolated database');
 use App\Models\{User,Coupon};
@@ -8,7 +7,7 @@ use App\Services\{CouponPresentation,CouponWallet,CouponCampaign};
 use App\Http\Controllers\V1\Admin\CouponPresentationController;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Http\Request;
-$checks=0;$assert=function($ok,$label)use(&$checks){if(!$ok)throw new RuntimeException($label);$checks++;};
+$checks=0;$assert = \Tests\Support\Assertions::counter($checks);
 $migration=require __DIR__.'/../database/migrations/2026_10_14_000010_add_coupon_presentations.php';$migration->up();$migration->up();
 DB::beginTransaction();
 try {

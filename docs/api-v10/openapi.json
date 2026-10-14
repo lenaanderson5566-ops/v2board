@@ -1266,7 +1266,14 @@
                   "type": "object",
                   "properties": {
                     "data": {
-                      "$ref": "#/components/schemas/authentication"
+                      "oneOf": [
+                        {
+                          "$ref": "#/components/schemas/authentication"
+                        },
+                        {
+                          "$ref": "#/components/schemas/mfaChallenge"
+                        }
+                      ]
                     },
                     "meta": {
                       "type": "object",
@@ -15498,6 +15505,299 @@
           }
         }
       }
+    },
+    "/me/security/mfa": {
+      "get": {
+        "operationId": "getMeMfa",
+        "summary": "getMeMfa",
+        "tags": [
+          "Security"
+        ],
+        "description": "Purpose-scoped, five-minute, single-use MFA challenge. Browser requests require scoped cookie session, CSRF and Origin validation. Settings changes revoke all sessions.",
+        "security": [
+          {
+            "bearerAuth": []
+          },
+          {
+            "browserUserCookie": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful result. Private response uses no-store.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "data"
+                  ],
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/mfaState"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Verification not allowed"
+          },
+          "409": {
+            "description": "Expired or stale challenge"
+          },
+          "422": {
+            "description": "Invalid verification"
+          },
+          "429": {
+            "description": "Too many attempts"
+          }
+        }
+      }
+    },
+    "/me/security/mfa/challenges": {
+      "post": {
+        "operationId": "postMeMfaChallenges",
+        "summary": "postMeMfaChallenges",
+        "tags": [
+          "Security"
+        ],
+        "description": "Purpose-scoped, five-minute, single-use MFA challenge. Browser requests require scoped cookie session, CSRF and Origin validation. Settings changes revoke all sessions.",
+        "security": [
+          {
+            "bearerAuth": []
+          },
+          {
+            "browserUserCookie": []
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Successful result. Private response uses no-store.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "data"
+                  ],
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/mfaSetup"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Verification not allowed"
+          },
+          "409": {
+            "description": "Expired or stale challenge"
+          },
+          "422": {
+            "description": "Invalid verification"
+          },
+          "429": {
+            "description": "Too many attempts"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "purpose",
+                  "password"
+                ],
+                "properties": {
+                  "purpose": {
+                    "type": "string",
+                    "enum": [
+                      "enableEmail",
+                      "disableEmail",
+                      "setupTotp",
+                      "replaceTotp",
+                      "disableTotp",
+                      "recoveryCodes"
+                    ]
+                  },
+                  "password": {
+                    "type": "string",
+                    "maxLength": 128
+                  },
+                  "verificationCode": {
+                    "type": "string",
+                    "maxLength": 40
+                  },
+                  "verificationMethod": {
+                    "type": "string",
+                    "enum": [
+                      "totp",
+                      "recovery"
+                    ]
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/auth/mfa/emails": {
+      "post": {
+        "operationId": "postMfaEmails",
+        "summary": "postMfaEmails",
+        "tags": [
+          "Security"
+        ],
+        "description": "Purpose-scoped, five-minute, single-use MFA challenge. Browser requests require scoped cookie session, CSRF and Origin validation. Settings changes revoke all sessions.",
+        "security": [],
+        "responses": {
+          "204": {
+            "description": "Verification email queued."
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Verification not allowed"
+          },
+          "409": {
+            "description": "Expired or stale challenge"
+          },
+          "422": {
+            "description": "Invalid verification"
+          },
+          "429": {
+            "description": "Too many attempts"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "challengeId"
+                ],
+                "properties": {
+                  "challengeId": {
+                    "type": "string",
+                    "pattern": "^[a-f0-9]{64}$"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/auth/mfa/verifications": {
+      "post": {
+        "operationId": "postMfaVerifications",
+        "summary": "postMfaVerifications",
+        "tags": [
+          "Security"
+        ],
+        "description": "Purpose-scoped, five-minute, single-use MFA challenge. Browser requests require scoped cookie session, CSRF and Origin validation. Settings changes revoke all sessions.",
+        "security": [],
+        "responses": {
+          "200": {
+            "description": "Successful result. Private response uses no-store.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "data"
+                  ],
+                  "properties": {
+                    "data": {
+                      "oneOf": [
+                        {
+                          "$ref": "#/components/schemas/authentication"
+                        },
+                        {
+                          "$ref": "#/components/schemas/mfaSettingsResult"
+                        }
+                      ]
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Verification not allowed"
+          },
+          "409": {
+            "description": "Expired or stale challenge"
+          },
+          "422": {
+            "description": "Invalid verification"
+          },
+          "429": {
+            "description": "Too many attempts"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "challengeId"
+                ],
+                "properties": {
+                  "challengeId": {
+                    "type": "string",
+                    "pattern": "^[a-f0-9]{64}$"
+                  },
+                  "verificationCode": {
+                    "type": "string",
+                    "maxLength": 40
+                  },
+                  "verificationMethod": {
+                    "type": "string",
+                    "enum": [
+                      "totp",
+                      "email",
+                      "recovery"
+                    ]
+                  },
+                  "emailCode": {
+                    "type": "string",
+                    "pattern": "^[0-9]{6}$"
+                  },
+                  "totpCode": {
+                    "type": "string",
+                    "pattern": "^[0-9]{6}$"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -19293,6 +19593,119 @@
           "couponId"
         ],
         "additionalProperties": false
+      },
+      "mfaState": {
+        "type": "object",
+        "required": [
+          "emailEnabled",
+          "totpEnabled",
+          "recoveryCodesRemaining"
+        ],
+        "properties": {
+          "emailEnabled": {
+            "type": "boolean"
+          },
+          "totpEnabled": {
+            "type": "boolean"
+          },
+          "recoveryCodesRemaining": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 10
+          }
+        }
+      },
+      "mfaChallenge": {
+        "type": "object",
+        "required": [
+          "mfaRequired",
+          "challengeId",
+          "methods",
+          "preferredMethod",
+          "expiresAt"
+        ],
+        "properties": {
+          "mfaRequired": {
+            "type": "boolean",
+            "enum": [
+              true
+            ]
+          },
+          "challengeId": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$"
+          },
+          "methods": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": [
+                "totp",
+                "email",
+                "recovery"
+              ]
+            }
+          },
+          "preferredMethod": {
+            "type": "string",
+            "enum": [
+              "totp",
+              "email"
+            ]
+          },
+          "expiresAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "mfaSetup": {
+        "type": "object",
+        "required": [
+          "challengeId",
+          "emailRequired",
+          "expiresAt"
+        ],
+        "properties": {
+          "challengeId": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$"
+          },
+          "emailRequired": {
+            "type": "boolean"
+          },
+          "expiresAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "secret": {
+            "type": "string"
+          },
+          "otpauthUri": {
+            "type": "string"
+          }
+        }
+      },
+      "mfaSettingsResult": {
+        "type": "object",
+        "required": [
+          "recoveryCodes",
+          "reauthenticationRequired"
+        ],
+        "properties": {
+          "recoveryCodes": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "reauthenticationRequired": {
+            "type": "boolean",
+            "enum": [
+              true
+            ]
+          }
+        }
       }
     }
   }

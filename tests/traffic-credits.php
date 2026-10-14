@@ -1,7 +1,5 @@
 <?php
-require __DIR__.'/../vendor/autoload.php';
-$app = require __DIR__.'/../bootstrap/app.php';
-$app->make(Illuminate\Contracts\Console\Kernel::class)->bootstrap();
+$app = require __DIR__.'/support/bootstrap.php';
 require __DIR__.'/commerce-bootstrap.php';
 set_exception_handler(function (Throwable $error) { fwrite(STDERR, $error->getMessage().PHP_EOL); exit(1); });
 if (!app()->environment('local')) throw new RuntimeException('Local test only');
@@ -16,7 +14,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Redis;
 use Illuminate\Support\Str;
 $checks=0;
-$assert=function($ok,$label)use(&$checks){if(!$ok)throw new RuntimeException($label);$checks++;};
+$assert = \Tests\Support\Assertions::counter($checks);
 $kernel=$app->make(Illuminate\Contracts\Http\Kernel::class);
 $index=0;$auths=[];
 $call=function($path,$body,$token=null)use($kernel,&$index){

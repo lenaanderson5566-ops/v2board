@@ -1,7 +1,5 @@
 <?php
-require __DIR__.'/../vendor/autoload.php';
-$app=require __DIR__.'/../bootstrap/app.php';
-$app->make(Illuminate\Contracts\Console\Kernel::class)->bootstrap();
+$app = require __DIR__.'/support/bootstrap.php';
 $controller=new App\Services\Actions\Client\ClientActions;
 $method=new ReflectionMethod($controller,'buildUnavailableServers'); $method->setAccessible(true);
 $copy=require resource_path('client/copy.php');

@@ -1,7 +1,5 @@
 <?php
-require __DIR__.'/../vendor/autoload.php';
-$app=require __DIR__.'/../bootstrap/app.php';
-$app->make(Illuminate\Contracts\Console\Kernel::class)->bootstrap();
+$app = require __DIR__.'/support/bootstrap.php';
 require __DIR__.'/commerce-bootstrap.php';
 if (!app()->environment('local')) throw new RuntimeException('Local test only');
 use App\Models\User;
@@ -15,7 +13,7 @@ config(['v2board.telegram_bot_enable'=>0,'v2board.ticket_status'=>0]);
 $cleanupUsers=[];
 $checks=0;
 set_exception_handler(function($e) { fwrite(STDERR,$e->getMessage()."\n"); exit(1); });
-$assert=function($ok,$label) use (&$checks) { if (!$ok) throw new RuntimeException($label); $checks++; };
+$assert = \Tests\Support\Assertions::counter($checks);
 $testIp='192.0.2.'.random_int(2,254);
 $call=function($method,$path,$body=[],$token=null,$language='en-US',$extra=[]) use ($app,$testIp) {
     $server=['REMOTE_ADDR'=>$testIp,'HTTP_ACCEPT'=>'application/json','HTTP_ACCEPT_LANGUAGE'=>$language,'HTTP_USER_AGENT'=>'V10ContractTest','CONTENT_TYPE'=>'application/json'];

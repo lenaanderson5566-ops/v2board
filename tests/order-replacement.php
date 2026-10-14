@@ -1,7 +1,5 @@
 <?php
-require __DIR__.'/../vendor/autoload.php';
-$app = require __DIR__.'/../bootstrap/app.php';
-$app->make(Illuminate\Contracts\Console\Kernel::class)->bootstrap();
+$app = require __DIR__.'/support/bootstrap.php';
 require __DIR__.'/commerce-bootstrap.php';
 if (!app()->environment('local')) throw new RuntimeException('Local test only');
 use App\Models\User;
@@ -13,7 +11,7 @@ use Illuminate\Support\Str;
 use App\Http\Requests\User\OrderSave;
 use App\Services\Actions\User\OrderActions as OrderController;
 $checks = 0;
-$assert = function ($ok, $label) use (&$checks) { if (!$ok) throw new RuntimeException($label); $checks++; };
+$assert = \Tests\Support\Assertions::counter($checks);
 DB::beginTransaction();
 try {
  $plan = Plan::create(['name'=>'Replacement test','group_id'=>1,'transfer_enable'=>100,'month_price'=>1000,'year_price'=>9000,'show'=>1,'renew'=>1]);

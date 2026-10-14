@@ -9,7 +9,7 @@ const methods = [
     { id: 3, category: "crypto", asset: "USDT", network: "bsc", network_name: "BNB Smart Chain (BEP20)", name: "Channel B" },
     { id: 4, category: "crypto", asset: "BTC", network: "bitcoin", network_name: "Bitcoin", name: "Channel C" },
 ];
-afterEach(cleanup);
+afterEach(() => { cleanup(); vi.unstubAllGlobals(); });
 it("keeps legacy methods separate and groups crypto channels without losing IDs", () => {
     expect(paymentGroups(methods).map(group => group.methods.map(item => item.id))).toEqual([[1], [2, 3], [4]]);
 });
@@ -38,7 +38,7 @@ it("keeps same-network channels distinguishable and selectable", () => {
     expect(select).toHaveBeenLastCalledWith(5);
 });
 it("resolves local PNG and network SVG assets against a separate API host", () => {
-    window.V2BOARD = { apiBaseUrl: "https://api.example.test" } as any;
+    vi.stubGlobal("V2BOARD", { apiBaseUrl: "https://api.example.test" });
     expect(paymentIconUrl("/payment-icons/alipay-blue.png")).toBe("https://api.example.test/payment-icons/alipay-blue.png");
     expect(paymentIconUrl("/payment-icons/crypto-trx.svg")).toBe("https://api.example.test/payment-icons/crypto-trx.svg");
     expect(paymentIconUrl("https://images.example.test/custom.png")).toBe("https://images.example.test/custom.png");

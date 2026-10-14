@@ -1,10 +1,8 @@
 <?php
-require __DIR__ . '/../vendor/autoload.php';
-$app = require __DIR__ . '/../bootstrap/app.php';
-$app->make(Illuminate\Contracts\Console\Kernel::class)->bootstrap();
+$app = require __DIR__.'/support/bootstrap.php';
 if (!app()->environment('local')) throw new RuntimeException('Local test only');
 $checks = 0;
-$assert = function ($ok, $message) use (&$checks) { if (!$ok) throw new RuntimeException($message); $checks++; };
+$assert = \Tests\Support\Assertions::counter($checks);
 $kernel = $app->make(Illuminate\Contracts\Http\Kernel::class);
 $call = function ($path, $body = null, $token = null) use ($kernel) {
     $request = Illuminate\Http\Request::create('/api/v1/'.$path, $body === null ? 'GET' : 'POST', $body ?? []);

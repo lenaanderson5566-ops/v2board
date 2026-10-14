@@ -1,12 +1,10 @@
 <?php
-require __DIR__.'/../vendor/autoload.php';
-$app = require __DIR__.'/../bootstrap/app.php';
-$app->make(Illuminate\Contracts\Console\Kernel::class)->bootstrap();
+$app = require __DIR__.'/support/bootstrap.php';
 if (!app()->environment('local')) throw new RuntimeException('Local test only');
 use App\Services\SubscriptionClientRegistry as R;
 use App\Services\ClientIdentity as C;
 $n=0;
-$assert=function($ok,$label)use(&$n){if(!$ok)throw new RuntimeException($label);$n++;};
+$assert = \Tests\Support\Assertions::counter($n);
 $user=['uuid'=>'b831381d-6324-4d53-ad4f-8cda48b30811','u'=>0,'d'=>0,'transfer_enable'=>1024,'expired_at'=>null];
 $base=['name'=>'Node','host'=>'node.example.test','port'=>'443','tls'=>1,'tls_settings'=>['server_name'=>'node.example.test','allow_insecure'=>0],'network'=>'tcp','network_settings'=>[],'obfs'=>null,'disable_sni'=>0,'zero_rtt_handshake'=>0,'flow'=>'xtls-rprx-vision','cipher'=>'aes-128-gcm','server_key'=>'test','udp_relay_mode'=>'native','congestion_control'=>'bbr','insecure'=>0,'server_name'=>'node.example.test','version'=>2,'up_mbps'=>100,'down_mbps'=>100];
 $servers=[];

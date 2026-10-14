@@ -1,7 +1,5 @@
 <?php
-require __DIR__.'/../vendor/autoload.php';
-$app = require __DIR__.'/../bootstrap/app.php';
-$app->make(Illuminate\Contracts\Console\Kernel::class)->bootstrap();
+$app = require __DIR__.'/support/bootstrap.php';
 if (!app()->environment('local')) throw new RuntimeException('Local test only');
 use App\Models\User;
 use App\Services\UsageResetService;
@@ -16,7 +14,7 @@ $user = User::create(['email'=>'reset-race-'.Str::uuid().'@example.com','passwor
     'uuid'=>App\Utils\Helper::guid(true),'token'=>App\Utils\Helper::guid(),'plan_id'=>App\Models\Plan::firstOrFail()->id,
     'expired_at'=>time()+86400,'transfer_enable'=>1000,'u'=>50,'d'=>50]);
 $batchIds=[]; $checks=0;
-$assert=function($ok,$message) use (&$checks) {if(!$ok) throw new RuntimeException($message);$checks++;};
+$assert = \Tests\Support\Assertions::counter($checks);
 try {
     foreach ([true,false] as $sameKey) {
         $user->update(['u'=>50,'d'=>50]);

@@ -1,10 +1,8 @@
 <?php
-require __DIR__.'/../vendor/autoload.php';
-$app = require __DIR__.'/../bootstrap/app.php';
-$app->make(Illuminate\Contracts\Console\Kernel::class)->bootstrap();
+$app = require __DIR__.'/support/bootstrap.php';
 if (!app()->environment('local')) throw new RuntimeException('Local test only');
 $checks=0;
-$assert=function ($ok,$message) use (&$checks) { if (!$ok) throw new RuntimeException($message); $checks++; };
+$assert = \Tests\Support\Assertions::counter($checks);
 $catalog = App\Services\NodeDisplayService::catalog();
 foreach ($catalog['cityRegions'] as $city => $region) {
     $assert(isset($catalog['cities'][$city], $catalog['regions'][$region]), 'City reference has valid translations and country: '.$city);

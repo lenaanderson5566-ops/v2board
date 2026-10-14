@@ -1,6 +1,5 @@
 <?php
-require __DIR__.'/../vendor/autoload.php';
-$app=require __DIR__.'/../bootstrap/app.php';$app->make(Illuminate\Contracts\Console\Kernel::class)->bootstrap();
+$app = require __DIR__.'/support/bootstrap.php';
 require __DIR__.'/commerce-bootstrap.php';
 if (!getenv('COMMERCE_TEST_DATABASE')) throw new RuntimeException('Requires isolated database');
 use App\Models\{User,Coupon};
@@ -8,7 +7,7 @@ use App\Services\{CouponCampaign,CouponWallet,AdminUserFilters};
 use Illuminate\Support\Facades\DB;
 use Illuminate\Http\Request;
 $checks=0;
-$assert=function($value,$label)use(&$checks){if(!$value)throw new RuntimeException($label);$checks++;};
+$assert = \Tests\Support\Assertions::counter($checks);
 $fails=function($action,$label)use($assert){try{$action();}catch(Illuminate\Validation\ValidationException|Symfony\Component\HttpKernel\Exception\HttpException $e){$assert(true,$label);return;}$assert(false,$label);};
 $user=function($email,$banned=0){return User::create(['email'=>$email,'password'=>'fixture','token'=>uniqid(),'uuid'=>Illuminate\Support\Str::uuid(),'banned'=>$banned,'transfer_enable'=>0]);};
 $coupon=function($stock=10){return Coupon::create(['name'=>'Batch fixture','code'=>uniqid(),'type'=>2,'value'=>10,'show'=>1,'public_claim'=>1,'limit_use'=>$stock,'started_at'=>time()-60,'ended_at'=>time()+3600]);};

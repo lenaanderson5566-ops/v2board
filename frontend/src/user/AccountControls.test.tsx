@@ -1,3 +1,4 @@
+vi.mock("../shared/MfaSecurity", () => ({ MfaSecurity: () => <div>MFA</div> }));
 vi.mock("../shared/browser-session", () => ({ forgetBrowserSession: vi.fn() }));
 // @vitest-environment jsdom
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";

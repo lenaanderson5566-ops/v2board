@@ -1,15 +1,10 @@
 <?php
 // Local only; real framework transports are exercised without network delivery.
-require __DIR__.'/../vendor/autoload.php';
-$app = require __DIR__.'/../bootstrap/app.php';
-$app->make(Illuminate\Contracts\Console\Kernel::class)->bootstrap();
+$app = require __DIR__.'/support/bootstrap.php';
 if (!app()->environment('local')) throw new RuntimeException('Local test only');
 set_exception_handler(function ($error) { fwrite(STDERR, $error->getMessage()."\n"); exit(1); });
 $checks = 0;
-$assert = function ($ok, $message) use (&$checks) {
-    if (!$ok) throw new RuntimeException($message);
-    $checks++;
-};
+$assert = \Tests\Support\Assertions::counter($checks);
 $assert(str_starts_with($app->version(), '13.'), 'Unexpected framework version');
 foreach (["a@example.com\r\nBcc:b@example.com", "a@example.com\n", "a@example.com\0", 'a @example.com'] as $email) {
     $assert(validator(['email'=>$email], ['email'=>'email'])->fails(), 'Unsafe email accepted');

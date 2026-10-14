@@ -1,7 +1,5 @@
 <?php
-require __DIR__.'/../vendor/autoload.php';
-$app = require __DIR__.'/../bootstrap/app.php';
-$app->make(Illuminate\Contracts\Console\Kernel::class)->bootstrap();
+$app = require __DIR__.'/support/bootstrap.php';
 if (!app()->environment('local')) throw new RuntimeException('Local test only');
 set_exception_handler(function(Throwable $e) { fwrite(STDERR,(string)$e."\n"); exit(1); });
 use App\Services\AuthService;
@@ -9,7 +7,7 @@ use App\Services\SessionAuthorizationCode;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Http\Exceptions\HttpResponseException;
 $checks=0;
-$assert=function($ok,$label) use (&$checks) { if (!$ok) throw new RuntimeException($label); $checks++; };
+$assert = \Tests\Support\Assertions::counter($checks);
 $service=new SessionAuthorizationCode();
 $keys=[]; $auth=null;
 $key=function($purpose,$code) use (&$keys) { $key='SESSION_AUTHORIZATION:'.$purpose.':'.hash('sha256',$code); $keys[]=$key; return $key; };

@@ -1,7 +1,5 @@
 <?php
-require __DIR__.'/../vendor/autoload.php';
-$app = require __DIR__.'/../bootstrap/app.php';
-$app->make(Illuminate\Contracts\Console\Kernel::class)->bootstrap();
+$app = require __DIR__.'/support/bootstrap.php';
 if (!app()->environment('local')) throw new RuntimeException('Local test only');
 $id = (int)($argv[2] ?? random_int(1000000000, 2000000000));
 $user = new App\Models\User();
@@ -16,7 +14,7 @@ if (($argv[1] ?? '') === 'worker') {
     exit(0);
 }
 $checks = 0;
-$assert = function ($ok, $message) use (&$checks) {if (!$ok) throw new RuntimeException($message); $checks++;};
+$assert = \Tests\Support\Assertions::counter($checks);
 $run = function (array $operations) use ($id) {
     $children = [];
     foreach ($operations as $args) {

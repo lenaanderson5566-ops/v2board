@@ -116,5 +116,15 @@
     "This payment period cannot be purchased, please choose another period": "This payment cycle cannot be purchased, please choose another cycle",
     "This field is required.": "This field is required.",
     "Please check the format and allowed range of this value.": "Please check the format and allowed range of this value.",
-    "The selected plan does not match the order type.": "The selected plan does not match the order type."
+    "The selected plan does not match the order type.": "The selected plan does not match the order type.",
+    "Invalid security challenge.": "Invalid security challenge.",
+    "Security challenge expired. Please start again.": "Security challenge expired. Please start again.",
+    "Incorrect security verification code.": "Incorrect security verification code.",
+    "Too many security verification attempts. Please try again later.": "Too many security verification attempts. Please try again later.",
+    "Email verification is not available.": "Email verification is not available.",
+    "Please wait before requesting another code.": "Please wait before requesting another code.",
+    "Security settings changed. Please refresh.": "Security settings changed. Please refresh.",
+    "Security settings changed. Please start again.": "Security settings changed. Please start again.",
+    "Security verification is required.": "Security verification is required.",
+    "Security verification code": "Security verification code"
 }

@@ -7,6 +7,7 @@ import { boot, type Row } from "../shared/api";
 // Stable menu order and navigation aliases; styling is owned by admin.css.
 export const legacyAdminMenu = [
     ["overview", "仪表盘", "speedometer", ""],
+    ["security", "账户安全", "shield", "设置"],
     ["settings", "系统配置", "equalizer", "设置"],
     ["payments", "支付配置", "credit-card", "设置"],
     ["nodes", "节点管理", "layers", "服务器"],
@@ -23,12 +24,7 @@ export const legacyAdminMenu = [
     ["banners", "Banner 管理", "picture", "用户"],
     ["tickets", "工单管理", "support", "用户"],
     ["knowledge", "知识库管理", "bulb", "用户"],
-    [
-        "client-releases",
-        "第三方客户端管理",
-        "screen-smartphone",
-        "客户端",
-    ],
+    ["client-releases", "第三方客户端管理", "screen-smartphone", "客户端"],
     ["risk", "风控规则", "shield", "风控与黑名单"],
     ["blacklist-ip", "IP 黑名单", "ban", "风控与黑名单"],
     ["blacklist-ua", "UA 黑名单", "ban", "风控与黑名单"],
@@ -238,6 +234,14 @@ export function AdminShell({
                                                 rel="noreferrer"
                                             >
                                                 用户端
+                                            </a>
+                                        </DropdownMenu.Item>
+                                        <DropdownMenu.Item asChild>
+                                            <a
+                                                className="admin-account-item"
+                                                href="#/security"
+                                            >
+                                                账户安全
                                             </a>
                                         </DropdownMenu.Item>
                                         <DropdownMenu.Item

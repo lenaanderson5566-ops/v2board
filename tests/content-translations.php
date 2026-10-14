@@ -1,14 +1,12 @@
 <?php
-require __DIR__.'/../vendor/autoload.php';
-$app = require __DIR__.'/../bootstrap/app.php';
-$app->make(Illuminate\Contracts\Console\Kernel::class)->bootstrap();
+$app = require __DIR__.'/support/bootstrap.php';
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\DB;
 use App\Http\Controllers\V1\Admin\ContentTranslationController;
 use App\Services\ProductMail;
 if (!app()->environment('local')) throw new RuntimeException('Local tests only');
 $checks=0;
-$assert=function($ok,$message) use (&$checks) { if (!$ok) throw new RuntimeException($message); $checks++; };
+$assert = \Tests\Support\Assertions::counter($checks);
 config(['plan-translation.url'=>'https://translator.example.test','plan-translation.key'=>'fake-key','v2board.app_url'=>'https://app.example.test']);
 Http::swap(new Illuminate\Http\Client\Factory);
 Http::fake(['*'=>Http::response([['translations'=>[['text'=>'維護通知']]],['translations'=>[['text'=>'<p>10 分鐘，<a href="https://example.test">詳情</a></p>']]]],200)]);

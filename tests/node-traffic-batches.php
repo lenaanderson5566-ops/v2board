@@ -1,7 +1,5 @@
 <?php
-require __DIR__.'/../vendor/autoload.php';
-$app=require __DIR__.'/../bootstrap/app.php';
-$app->make(Illuminate\Contracts\Console\Kernel::class)->bootstrap();
+$app = require __DIR__.'/support/bootstrap.php';
 if (!app()->environment('local')) throw new RuntimeException('Local test only');
 use App\Services\Actions\NodeTrafficBatch as Batches;
 use Illuminate\Support\Facades\DB;
@@ -12,7 +10,7 @@ use App\Models\ServerV2box;
 use Illuminate\Support\Str;
 set_exception_handler(function($e){fwrite(STDERR,$e->getMessage()."\n");exit(1);});
 $checks=0;
-$assert=function($ok,$label)use(&$checks){if(!$ok)throw new RuntimeException($label);$checks++;};
+$assert = \Tests\Support\Assertions::counter($checks);
 config(['cache.default'=>'array','v2board.server_token'=>'batch-test-token']);Queue::fake();
 $kernel=$app->make(Illuminate\Contracts\Http\Kernel::class);
 DB::beginTransaction();

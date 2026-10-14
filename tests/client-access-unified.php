@@ -1,7 +1,5 @@
 <?php
-require __DIR__.'/../vendor/autoload.php';
-$app = require __DIR__.'/../bootstrap/app.php';
-$app->make(Illuminate\Contracts\Console\Kernel::class)->bootstrap();
+$app = require __DIR__.'/support/bootstrap.php';
 if (!app()->environment('local')) throw new RuntimeException('Local test only');
 use App\Models\ClientStrategy;
 use App\Models\RiskSetting;
@@ -9,7 +7,7 @@ use App\Models\SubscribeLog;
 use App\Services\ClientStrategyService;
 use Illuminate\Support\Facades\DB;
 $n = 0;
-$assert = function ($ok, $label) use (&$n) { if (!$ok) throw new RuntimeException($label); $n++; };
+$assert = \Tests\Support\Assertions::counter($n);
 DB::beginTransaction();
 try {
     RiskSetting::where('key', 'client_access_unified')->delete();

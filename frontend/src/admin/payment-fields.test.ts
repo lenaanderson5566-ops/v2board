@@ -1,4 +1,5 @@
 import { describe, it, expect } from "vitest";
+import { paymentIcons, paymentIconInitial, resolvePaymentIcon } from "./payment-icons";
 import {
     paymentFields,
     paymentInitial,
@@ -123,4 +124,49 @@ describe("payment configuration", () => {
 it('keeps channel currency separate from provider credentials and preserves old CNY defaults',()=>{
  expect(paymentInitial({}, {},false).currency).toBe('CNY');
  expect(paymentPayload({name:'USD checkout',currency:'USD'}, {},'StripeCheckout',{})).toMatchObject({currency:'USD',payment:'StripeCheckout',config:{}});
+});
+
+describe("payment icon selection", () => {
+    it("stores crypto metadata, uses coin icons, and restores editable defaults", () => {
+        const checkoutCategory = { category: "crypto", asset: "USDT", network: "tron", networkName: "TRON (TRC20)", networkIcon: "" };
+        const saved = paymentPayload({ iconPreset: "card", icon: "", checkoutCategory }, {}, "PaytaroQR", {});
+        expect(saved.config._console_checkout).toEqual(checkoutCategory);
+        expect(saved.icon).toBe("/payment-icons/crypto-usdt.svg");
+        expect(paymentIconInitial(saved).icon).toBe("");
+        expect(() => paymentPayload({ checkoutCategory: { ...checkoutCategory, network: "" } }, {}, "PaytaroQR", {})).toThrow();
+        expect(paymentPayload({ iconPreset: "card", icon: "https://example.test/custom.png", checkoutCategory }, {}, "PaytaroQR", {}).icon).toBe("https://example.test/custom.png");
+        expect(paymentPayload({ checkoutCategory: { category: "regular" } }, {}, "PaytaroQR", saved).config._console_checkout).toEqual({ category: "regular" });
+    });
+    it("previews complete vector assets without font-dependent logos", () => {
+        for (const item of paymentIcons) {
+            if (item.id === "alipay-blue") continue;
+            const svg = decodeURIComponent(item.source.split(",")[1]);
+            expect(svg).toMatch(/viewBox="[^"]+"/);
+            expect(svg).toContain("<path");
+            expect(svg).not.toMatch(/<text\b|<script\b|<foreignObject\b/);
+        }
+    });
+    it("defaults to a card and restores saved selections", () => {
+        expect(paymentIconInitial({}).iconPreset).toBe("card");
+        const alipay = paymentIcons.find((item) => item.id === "alipay")!;
+        expect(paymentIconInitial({ icon: `/payment-icons/${alipay.id}.svg` })).toMatchObject({ icon: "", iconPreset: "alipay" });
+    });
+    it("saves and restores the blue Alipay PNG while allowing a custom URL", () => {
+        expect(paymentIcons.find((item) => item.id === "alipay-blue")?.source).toBeTruthy();
+        expect(resolvePaymentIcon("", "alipay-blue")).toBe("/payment-icons/alipay-blue.png");
+        expect(paymentIconInitial({ icon: "/payment-icons/alipay-blue.png" })).toMatchObject({ icon: "", iconPreset: "alipay-blue" });
+        expect(resolvePaymentIcon("https://example.com/custom.png", "alipay-blue")).toBe("https://example.com/custom.png");
+    });
+    it("prefers custom links and retains the selected fallback", () => {
+        const saved = paymentPayload({ icon: " https://example.com/pay.png ", iconPreset: "wechat" }, {}, "EPay", {});
+        expect(saved.icon).toBe("https://example.com/pay.png");
+        expect(paymentIconInitial(saved)).toMatchObject({ icon: saved.icon, iconPreset: "wechat" });
+        const cleared = paymentPayload({ ...paymentIconInitial(saved), icon: " " }, {}, "EPay", saved);
+        expect(cleared.icon).toBe(resolvePaymentIcon("", "wechat"));
+        expect(cleared.config._console_icon).toBe("wechat");
+    });
+    it("keeps existing custom URLs compatible", () => {
+        expect(paymentIconInitial({ icon: "https://example.com/old.svg" }).icon).toBe("https://example.com/old.svg");
+        expect(paymentPayload({ icon: "https://example.com/old.svg" }, {}, "EPay", {}).icon).toBe("https://example.com/old.svg");
+    });
 });

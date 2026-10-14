@@ -166,3 +166,14 @@ export interface V10CouponOffer extends Omit<V10WalletCoupon, "status"> {
     activityTitle: string;
     activityDescription: string;
 }
+
+export type MfaMethod = "totp" | "email" | "recovery";
+export interface V10MfaChallenge { mfaRequired: true; challengeId: string; methods: MfaMethod[]; preferredMethod: "totp" | "email"; expiresAt: string }
+export interface V10MfaState { emailEnabled: boolean; totpEnabled: boolean; recoveryCodesRemaining: number }
+export type V10LoginResult = V10Authentication | V10MfaChallenge;
+
+export type V10MfaPurpose = "enableEmail" | "disableEmail" | "setupTotp" | "replaceTotp" | "disableTotp" | "recoveryCodes";
+export interface V10MfaSetup { challengeId: string; emailRequired: boolean; expiresAt: string; secret?: string; otpauthUri?: string }
+export interface V10MfaSettingsResult { recoveryCodes: string[]; reauthenticationRequired: true }
+export interface V10PostMeMfaChallengesInput { purpose: V10MfaPurpose; password: string; verificationCode?: string; verificationMethod?: "totp" | "recovery" }
+export interface V10PostMfaVerificationsInput { challengeId: string; verificationCode?: string; verificationMethod?: MfaMethod; emailCode?: string; totpCode?: string }

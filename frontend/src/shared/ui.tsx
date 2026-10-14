@@ -218,6 +218,7 @@ export function Panel({
 }
 export function Modal({
     dismissible = true,
+    initialFocus,
     title,
     children,
     close,
@@ -229,6 +230,7 @@ export function Modal({
     children: ReactNode;
     close: () => void;
     dismissible?: boolean;
+    initialFocus?: string;
     variant?: "modal" | "drawer";
     wide?: boolean;
     className?: string;
@@ -245,11 +247,15 @@ export function Modal({
         const root = document.getElementById("root");
         const previousInert = root?.inert;
         if (root) root.inert = true;
-        dialog.current
-            ?.querySelector<HTMLElement>(
+        const preferred = initialFocus
+            ? dialog.current?.querySelector<HTMLElement>(initialFocus)
+            : null;
+        (
+            preferred ||
+            dialog.current?.querySelector<HTMLElement>(
                 "button, input, select, textarea, a[href]",
             )
-            ?.focus();
+        )?.focus();
         const fn = (e: KeyboardEvent) => {
             if (e.key === "Escape" && dismissibleRef.current)
                 closeRef.current();

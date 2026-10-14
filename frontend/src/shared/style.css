@@ -1031,3 +1031,11 @@ label small {
 .mfa-recovery-dialog h3 { margin:10px 0; }
 .mfa-recovery-dialog textarea { width:100%; font-size:13px; line-height:1.45; background:#fafbfc; }
 @media (max-width:480px) { .mfa-login { padding:20px; } .mfa-step { padding:16px; } .mfa-options > div { padding:16px; } .mfa-step .actions button, .mfa-backup-actions button { flex:1; } }
+
+
+body[data-console] .overlay.mfa-setup-dialog.mfa-security .modal { width:min(560px, calc(100vw - 32px)); max-height:calc(100dvh - 32px); overflow:auto; }
+.mfa-setup-dialog .mfa-progress { margin:0 0 20px; }
+.mfa-setup-dialog form.mfa-step { margin:0; padding:0; border:0; border-radius:0; background:transparent; max-width:none; }
+.mfa-setup-dialog .mfa-qr { display:block; width:fit-content; margin:0 auto; }
+.mfa-setup-dialog .mfa-step .actions { margin-top:8px; }
+@media(max-width:480px) { .mfa-setup-dialog .mfa-progress { gap:8px; font-size:11px; } }

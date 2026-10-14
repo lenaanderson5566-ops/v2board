@@ -85,6 +85,7 @@ import {
     linkNode,
 } from "./admin-linkage";
 import {
+    nodeEditorPresentation,
     nodeSettingsFields,
     nodeSettingsInitial,
     nodeBackendInitial,
@@ -941,7 +942,8 @@ export function ResourcePage({
     toolbar,
     extraActions,
     searchable = true,
-    pageSize = 20,
+    pageSize: initialPageSize = 20,
+    onPageSizeChange,
     onTotal,
     tableSort,
     onTableSort,
@@ -954,10 +956,13 @@ export function ResourcePage({
     extraActions?: (row: Row, context?: boolean) => ReactNode;
     searchable?: boolean;
     pageSize?: number;
+    onPageSizeChange?: (size:number)=>void;
     onTotal?: (total: number) => void;
     tableSort?: { key: string; direction: string; fields: string[] };
     onTableSort?: (key: string, direction: string) => void;
 }) {
+    const [localPageSize,setLocalPageSize]=useState(initialPageSize);
+    const pageSize=onPageSizeChange ? initialPageSize : localPageSize;
     const logKind = Object.entries(resources)
         .find(
             ([key, value]) => key.startsWith("log-") && value === resource,
@@ -1505,11 +1510,13 @@ export function ResourcePage({
                                 : undefined
                         }
                     />
-                    {d.total > 0 && (
+                    {(d.total > 0 || !d.loading) && (
                         <Pager
                             page={page}
                             total={d.total}
                             size={pageSize}
+                            loading={d.loading}
+                            onSizeChange={size=>{setPage(1); if(onPageSizeChange) onPageSizeChange(size); else setLocalPageSize(size);}}
                             onChange={setPage}
                         />
                     )}
@@ -2537,6 +2544,11 @@ export function Nodes({
     initialTab = "nodes",
 }: { initialTab?: "nodes" | "ddns" | "lightsail" | "traffic" } = {}) {
     const [tab, setTab] = useState(initialTab);
+    const [nodeDirty,setNodeDirty]=useState(false);
+    const [nodeBusy,setNodeBusy]=useState(false);
+    const [conversionOpen,setConversionOpen]=useState(false);
+    const [savedNodeNotice,setSavedNodeNotice]=useState("");
+
     const [diagnosticNode, setDiagnosticNode] = useState<Row | null>(null);
     const [statusFilter, setStatusFilter] = useState("");
     const [nodeSearch, setNodeSearch] = useState("");
@@ -2551,6 +2563,18 @@ export function Nodes({
     const [error, setError] = useState("");
     const [command, setCommand] = useState<Row | null>(null);
     const schema = useData<Row>(query(admin("console/nodeSchema"), { type }));
+    useEffect(()=>{setNodeDirty(false);setConversionOpen(false);},[editing]);
+    useEffect(()=>{
+        if (!editing || !nodeDirty) return;
+        const warn=(event:BeforeUnloadEvent)=>{event.preventDefault();event.returnValue="";};
+        window.addEventListener("beforeunload",warn);
+        return ()=>window.removeEventListener("beforeunload",warn);
+    },[editing,nodeDirty]);
+    function closeNode() {
+        if(nodeBusy) return;
+        if(nodeDirty && !window.confirm("节点配置尚未保存，确认放弃修改？")) return;
+        setEditing(null);
+    }
     const nodeRows = rows(d.data);
     const filteredNodes = nodeRows.filter(
         (n) =>
@@ -2571,6 +2595,7 @@ export function Nodes({
                     close={() => setDiagnosticNode(null)}
                 />
             )}
+            {savedNodeNotice && <p className="pad success-message" role="status">{savedNodeNotice}</p>}
             <nav className="node-management-tabs" aria-label="节点管理功能">
                 <button
                     aria-pressed={tab === "nodes"}
@@ -2985,23 +3010,16 @@ export function Nodes({
                 </Modal>
             )}
             {editing && (
-                <Modal title="节点配置" close={() => setEditing(null)}>
-                    {
-                        <div className="pad">
-                            <label>
-                                节点类型
-                                <select
-                                    aria-label="节点类型"
-                                    value={type}
-                                    onChange={(e) => setType(e.target.value)}
-                                >
-                                    {nodeTypes.map((t) => (
-                                        <option key={t}>{t}</option>
-                                    ))}
-                                </select>
-                            </label>
-                        </div>
-                    }
+                <Modal title={editing.id ? `编辑节点 #${editing.id} · ${editing.name || ""}` : "添加节点"} variant="drawer" wide className="node-editor-dialog" dismissible={!nodeBusy} close={closeNode}>
+                    <div className="pad node-editor-intro"><p>依次核对连接地址、协议及权限组。保存配置成功不代表节点已应用，请结合节点最近通信与运行状态确认。</p><p className="muted">切换协议可能清除不兼容配置；高级 JSON 中未单列的扩展参数仍会保留。</p></div>
+                    <div className="pad node-editor-backend">
+                        <strong>节点服务：{type === "v2box" ? "V2Box / sing-box" : "V2Node / Xray"}</strong>
+                        {editing.id && !conversionOpen ? <button type="button" disabled={nodeBusy} onClick={()=>setConversionOpen(true)}>转换节点类型…</button> : <label>节点类型<select aria-label="节点类型" value={type} disabled={nodeBusy} onChange={event=>{
+                            if(nodeDirty && !window.confirm("切换节点类型将重新载入已保存配置，未保存修改会丢失，是否继续？")) return;
+                            setType(event.target.value);setNodeDirty(true);
+                        }}>{nodeTypes.map(t=><option key={t}>{t}</option>)}</select></label>}
+                        {conversionOpen && <p className="alert">类型转换会分配目标类型节点 ID，并需要重新部署服务；这不是普通协议修改。保存前请重新选择路由与父节点。</p>}
+                    </div>
                     {editing.id && type !== editing.type && (
                         <p className="pad muted">
                             保存后会将此节点转换为 {type}，分配目标类型的节点
@@ -3021,8 +3039,11 @@ export function Nodes({
                     >
                         <Editor
                             key={`${type}:${editing.id || "new"}`}
+                            onDirty={()=>setNodeDirty(true)}
+                            onBusyChange={setNodeBusy}
+                            submit={editing.id && type !== editing.type ? "确认转换并保存" : "保存节点配置"}
                             resolveFields={(fields, values) =>
-                                formPresentation(
+                                nodeEditorPresentation(formPresentation(
                                     nodeFields(
                                         type,
                                         fields.map((field) =>
@@ -3074,7 +3095,7 @@ export function Nodes({
                                         values,
                                     ),
                                     "nodes",
-                                )
+                                ))
                             }
                             linkValues={linkNode}
                             fields={nodeSettingsFields(
@@ -3195,6 +3216,7 @@ export function Nodes({
                                 nodeBackendInitial(editing, type),
                             )}
                             onSave={async (b) => {
+                                if(editing.id && type !== editing.type && !window.confirm("确认转换节点类型并保存？此操作会更换节点 ID，之后需要更新节点服务和安装配置。")) throw new Error("已取消转换，配置尚未保存。");
                                 b = nodeSettingsPayload(b);
                                 if (
                                     b.padding_scheme != null &&
@@ -3221,6 +3243,8 @@ export function Nodes({
                                     admin(`server/${type}/save`),
                                     clean,
                                 );
+                                setNodeDirty(false);
+                                setSavedNodeNotice("节点配置已保存。请检查节点最近通信和运行状态；协议、端口或内核变更可能需要同步部署配置。");
                                 setEditing(null);
                                 d.reload();
                                 if (converting) {

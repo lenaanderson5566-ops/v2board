@@ -1,3 +1,4 @@
+import { Pager } from "../shared/ui";
 import {
     formatInstant,
     dateTimeInput,
@@ -47,13 +48,14 @@ function recent(): Filters {
     }
 }
 export function AdminSystemLogs() {
+    const [pageSize, setPageSize] = useState(20);
     const [draft, setDraft] = useState<Filters>(recent),
         [filters, setFilters] = useState<Filters>(recent),
         [page, setPage] = useState(1),
         [error, setError] = useState("");
     const query = new URLSearchParams({
         current: String(page),
-        page_size: "20",
+        page_size: String(pageSize),
     });
     for (const [key, value] of Object.entries(filters))
         if (value)
@@ -225,24 +227,17 @@ export function AdminSystemLogs() {
                         )}
                     </div>
                 </State>
-                <div className="pad">
-                    <button
-                        disabled={page === 1 || logs.loading}
-                        onClick={() => setPage(page - 1)}
-                    >
-                        上一页
-                    </button>
-                    <span>
-                        {" "}
-                        第 {page} 页 · {logs.total} 条{" "}
-                    </span>
-                    <button
-                        disabled={page * 20 >= logs.total || logs.loading}
-                        onClick={() => setPage(page + 1)}
-                    >
-                        下一页
-                    </button>
-                </div>
+                <Pager
+                    page={page}
+                    total={logs.total}
+                    size={pageSize}
+                    loading={logs.loading}
+                    onChange={setPage}
+                    onSizeChange={(size) => {
+                        setPageSize(size);
+                        setPage(1);
+                    }}
+                />
             </Panel>
         </>
     );

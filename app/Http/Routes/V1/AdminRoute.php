@@ -18,6 +18,7 @@ class AdminRoute
             $router->post('/fastai-installers/create', 'V1\\Admin\\FastaiInstallerController@create')->middleware('throttle:10,1');
             $router->post('/fastai-installers/chunk', 'V1\\Admin\\FastaiInstallerController@chunk')->middleware('throttle:1200,1');
             $router->post('/fastai-installers/complete', 'V1\\Admin\\FastaiInstallerController@complete')->middleware('throttle:20,1');
+            $router->get('/invitation-emails/fetch', 'V1\\Admin\\InvitationEmailController@fetch')->middleware('throttle:60,1');
             $router->get('/invitation-review/fetch', 'V1\\Admin\\InvitationReviewController@fetch');
             $router->post('/invitation-review/review', 'V1\\Admin\\InvitationReviewController@review');
             $router->get('/mail-blocklist/fetch', 'V1\\Admin\\MailBlocklistController@fetch');

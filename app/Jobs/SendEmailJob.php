@@ -64,7 +64,7 @@ class SendEmailJob implements ShouldQueue
             if ($type === 'remindTraffic' && (!$user->remind_traffic || !$user->transfer_enable || $user->u + $user->d < $user->transfer_enable * 0.95 || $user->u + $user->d >= $user->transfer_enable)) return ['skipped'=>true];
         }
         if ($type==='notify' && $announcement && !config('v2board.email_announcements_enabled',1)) return ['skipped'=>true,'reason'=>'announcements_paused'];
-        if (\App\Services\MailAudience::blocked($params['email'],$type==='notify' && !$announcement ? 'service' : $type)) return ['skipped'=>true,'reason'=>'recipient_suppressed'];
+        if (\App\Services\MailAudience::blocked($params['email'],$type==='notify' && !$announcement ? 'service' : $type)) return $this->skipBlocked($announcement, 'MAIL_RECIPIENT_SUPPRESSED');
         $provider = config('v2board.email_provider', 'smtp');
         if ($provider === 'smtp' && config('v2board.email_host')) {
             foreach (['host','port','encryption','username'] as $field) Config::set('mail.'.$field, config('v2board.email_'.$field));
@@ -85,6 +85,7 @@ class SendEmailJob implements ShouldQueue
         }
         $log = MailDeliveryLog::begin($params['email'], $type, in_array($provider, ['smtp','mailgun','ses','resend'], true) ? $provider : 'unknown', $announcement ? 'announcement' : 'transactional');
         if (!empty($params['campaign_recipient_id'])) \Illuminate\Support\Facades\DB::table('v2_mail_campaign_recipient')->where('id',$params['campaign_recipient_id'])->update(['mail_log_id'=>$log->id]);
+        $this->linkInvitation($log);
         $started = microtime(true);
         $messageId = null; $transportCode = null; $enhancedCode = null;
         try {
@@ -149,12 +150,21 @@ class SendEmailJob implements ShouldQueue
         MailDeliveryLog::finish($log, 'accepted', null, $messageId, (int)((microtime(true)-$started)*1000), $transportCode, $enhancedCode);
         return ['error'=>null, 'log_id'=>$log->id, 'status'=>'accepted', 'transport_code'=>$transportCode];
     }
-    private function skipBlocked(bool $announcement): array
+    private function linkInvitation(\App\Models\MailLog $log): void
+    {
+        if (($this->params['template_name'] ?? '') !== 'emailInvitation' || empty($this->params['invitation_id']) || empty($this->params['invitation_token_hash'])) return;
+        \App\Models\EmailInvitation::where('id', $this->params['invitation_id'])
+            ->where('token_hash', $this->params['invitation_token_hash'])
+            ->update(['mail_log_id'=>$log->id]);
+    }
+
+    private function skipBlocked(bool $announcement, string $code = 'MAIL_MANUALLY_BLOCKED'): array
     {
         $provider=config('v2board.email_provider','smtp');
         $log=MailDeliveryLog::begin($this->params['email'],$this->params['template_name'] ?? '',in_array($provider,['smtp','mailgun','ses','resend'],true) ? $provider:'unknown',$announcement ? 'announcement':'transactional');
-        MailDeliveryLog::finish($log,'skipped','MAIL_MANUALLY_BLOCKED',null,0);
-        return ['skipped'=>true,'reason'=>'manual_blocklist','log_id'=>$log->id];
+        $this->linkInvitation($log);
+        MailDeliveryLog::finish($log,'skipped',$code,null,0);
+        return ['skipped'=>true,'reason'=>$code,'log_id'=>$log->id];
     }
 
 }

@@ -1,4 +1,8 @@
-import { anytlsPresets, paddingPreset, applyPaddingPreset } from "./anytls-padding";
+import {
+    anytlsPresets,
+    paddingPreset,
+    applyPaddingPreset,
+} from "./anytls-padding";
 import type { Row } from "../shared/api";
 import type { Field } from "../shared/ui";
 const nested: Record<string, Field[]> = {
@@ -145,7 +149,7 @@ const nested: Record<string, Field[]> = {
 };
 const object = (value: unknown): Row =>
     value && typeof value === "object" && !Array.isArray(value)
-        ? JSON.parse(JSON.stringify(value)) as Row
+        ? (JSON.parse(JSON.stringify(value)) as Row)
         : {};
 function get(source: Row, path: string): unknown {
     return path
@@ -170,31 +174,56 @@ function put(source: Row, path: string, value: unknown) {
 }
 export function nodeSettingsFields(fields: Field[]): Field[] {
     return fields.flatMap((field) =>
-        field.key === "padding_scheme" ? [
-            { key: "padding_preset", label: "AnyTLS 填充预设", type: "select" as const, options: [...anytlsPresets.map(p => [p.id, p.label] as [string, string]), ["custom", "自定义"] as [string, string]] }, field,
-        ] : nested[field.key]
+        field.key === "padding_scheme"
             ? [
-                  ...nested[field.key].map((f) => ({
-                      ...f,
-                      key: field.key + "." + f.key,
-                  })),
                   {
-                      ...field,
-                      label: field.label + "（高级扩展 JSON）",
-                      hint: "仅填写未在上方列出的扩展参数；已有扩展参数会保留。",
+                      key: "padding_preset",
+                      label: "AnyTLS 填充预设",
+                      type: "select" as const,
+                      options: [
+                          ...anytlsPresets.map(
+                              (p) => [p.id, p.label] as [string, string],
+                          ),
+                          ["custom", "自定义"] as [string, string],
+                      ],
                   },
+                  field,
               ]
-            : [{ ...field, ...(field.key === "city_code" ? {
-                  label: "城市 / 州（可选）",
-                  hint: "选城市或州即可，留空仅显示国家；支持中英文名称检索。",
-              } : field.key === "display_label" ? {
-                  label: "线路编号 / 后缀（可选）",
-                  hint: "留空不追加编号，也不会追加原节点名称。",
-              } : {}) }],
+            : nested[field.key]
+              ? [
+                    ...nested[field.key].map((f) => ({
+                        ...f,
+                        key: field.key + "." + f.key,
+                    })),
+                    {
+                        ...field,
+                        label: field.label + "（高级扩展 JSON）",
+                        hint: "仅填写未在上方列出的扩展参数；已有扩展参数会保留。",
+                    },
+                ]
+              : [
+                    {
+                        ...field,
+                        ...(field.key === "city_code"
+                            ? {
+                                  label: "城市 / 州（可选）",
+                                  hint: "选城市或州即可，留空仅显示国家；支持中英文名称检索。",
+                              }
+                            : field.key === "display_label"
+                              ? {
+                                    label: "线路编号 / 后缀（可选）",
+                                    hint: "留空不追加编号，也不会追加原节点名称。",
+                                }
+                              : {}),
+                    },
+                ],
     );
 }
 export function nodeSettingsInitial(initial: Row): Row {
-    const values: Row = { ...initial, padding_preset: paddingPreset(initial.padding_scheme) };
+    const values: Row = {
+        ...initial,
+        padding_preset: paddingPreset(initial.padding_scheme),
+    };
     for (const [root, fields] of Object.entries(nested)) {
         const source = object(initial[root]);
         const advanced = object(source);
@@ -231,18 +260,102 @@ export function nodeBackendInitial(initial: Row, backend: string): Row {
     result.route_id = [];
     result.parent_id = null;
     delete result.sing_box;
-    if (backend === "v2node" && result.protocol === "naive") result.protocol = "";
+    if (backend === "v2node" && result.protocol === "naive")
+        result.protocol = "";
     if (backend === "v2box") {
         delete result.encryption;
         delete result.encryption_settings;
         delete result.trusted_x_forwarded_for;
-        for (const key of ["ech", "ech_key", "ech_config", "ech_server_name", "xver", "reject_unknown_sni", "mldsa65Seed", "server_names"])
+        for (const key of [
+            "ech",
+            "ech_key",
+            "ech_config",
+            "ech_server_name",
+            "xver",
+            "reject_unknown_sni",
+            "mldsa65Seed",
+            "server_names",
+        ])
             if (result.tls_settings) delete result.tls_settings[key];
         if (!["tcp", "ws", "grpc", "httpupgrade"].includes(result.network)) {
             result.network = "";
             result.network_settings = {};
         }
-        if (result.network_settings) delete result.network_settings.acceptProxyProtocol;
+        if (result.network_settings)
+            delete result.network_settings.acceptProxyProtocol;
     }
     return result;
+}
+
+// Organize only the visible fields; never drop extension settings for presentation.
+export function nodeEditorPresentation(fields: Field[]): Field[] {
+    const category = (key: string): number => {
+        if (
+            [
+                "name",
+                "region_code",
+                "city_code",
+                "display_label",
+                "tags",
+            ].includes(key)
+        )
+            return 0;
+        if (
+            ["host", "port", "protocol", "network", "tls", "flow"].includes(
+                key,
+            ) ||
+            key.startsWith("network_settings.") ||
+            key.startsWith("networkSettings.") ||
+            key.startsWith("tls_settings.") ||
+            key.startsWith("tlsSettings.")
+        )
+            return 1;
+        if (
+            [
+                "group_id",
+                "rate",
+                "show",
+                "speed_limit",
+                "device_limit",
+            ].includes(key)
+        )
+            return 2;
+        if (["listen_ip", "server_port", "parent_id", "route_id"].includes(key))
+            return 3;
+        return 4;
+    };
+    const titles = [
+        "基本信息",
+        "接入与协议",
+        "访问与计费",
+        "服务端设置",
+        "高级与扩展参数",
+    ];
+    const hints: Record<string, string> = {
+        host: "客户端连接的域名或 IP，不包含协议前缀和路径。",
+        port: "客户端连接的端口；使用转发时可能与服务端口不同。",
+        listen_ip: "节点服务监听的地址；不是客户端连接地址。",
+        server_port: "节点服务实际监听端口，请核对防火墙及转发配置。",
+        protocol:
+            "切换协议可能清除不兼容参数和父节点选择，请先核对并保存当前配置。",
+        rate: "计费流量 = 实际使用流量 × 倍率，不改变节点真实传输量。",
+    };
+    let previous = -1;
+    return [...fields]
+        .sort((a, b) => category(a.key) - category(b.key))
+        .map((field) => {
+            const group = category(field.key),
+                section = group !== previous ? titles[group] : undefined;
+            previous = group;
+            const risky = /allow_?insecure|allowInsecure|^insecure$/.test(
+                field.key,
+            );
+            return {
+                ...field,
+                section,
+                hint: risky
+                    ? "跳过证书校验会降低连接安全性，除明确需要外请保持关闭。"
+                    : hints[field.key] || field.hint,
+            };
+        });
 }

@@ -19,12 +19,13 @@ type CouponPresentation = {
 };
 
 export function AdminCouponPresentation() {
+    const [pageSize, setPageSize] = useState(20);
     const [search, setSearch] = useState(""),
         [query, setQuery] = useState(""),
         [page, setPage] = useState(1);
     const data = useData<CouponPresentation[]>(
         admin(
-            `coupon-presentation/fetch?current=${page}&search=${encodeURIComponent(query)}`,
+            `coupon-presentation/fetch?current=${page}&pageSize=${pageSize}&search=${encodeURIComponent(query)}`,
         ),
     );
     const [selected, setSelected] = useState<CouponPresentation | null>(null),
@@ -91,9 +92,14 @@ export function AdminCouponPresentation() {
                         </select>
                     </label>
                     <Pager
+                        loading={data.loading}
+                        onSizeChange={(size) => {
+                            setPageSize(size);
+                            setPage(1);
+                        }}
                         page={page}
                         total={data.total}
-                        size={20}
+                        size={pageSize}
                         onChange={setPage}
                     />
                 </div>

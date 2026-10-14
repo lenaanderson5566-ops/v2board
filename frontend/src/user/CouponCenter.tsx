@@ -129,9 +129,11 @@ export function ActivityCenter() {
 }
 
 export function MyCoupons() {
+    const [view,setView]=useState("available");
     const activities = useCouponActivities();
     const wallet = useData<V10WalletCoupon[]>("user/coupon/wallet");
     const rows = Array.isArray(wallet.data) ? wallet.data : [];
+    const visible=rows.filter(c=>view === "available" ? c.status === "available" : view === "used" ? c.status !== "available" && c.status !== "expired" : c.status === "expired");
     return (
         <section className="coupon-center">
             <div className="coupon-center-intro">
@@ -151,9 +153,12 @@ export function MyCoupons() {
                     </a>
                 )}
             </div>
+            <div className="coupon-wallet-tabs" role="group" aria-label={tx("我的优惠券")}>
+                {[["available","可使用"],["used","已占用或使用"],["expired","已过期"]].map(([key,label])=><button key={key} aria-pressed={view===key} onClick={()=>setView(key)}>{tx(label)}</button>)}
+            </div>
             <State {...wallet} retry={wallet.reload}>
                 <div className="coupon-center-grid">
-                    {rows.map((coupon) => (
+                    {visible.map((coupon) => (
                         <article
                             key={coupon.id}
                             className={`coupon-activity-card ${coupon.status === "available" ? "" : "inactive"}`}
@@ -178,7 +183,7 @@ export function MyCoupons() {
                         </article>
                     ))}
                 </div>
-                {!rows.length && (
+                {!visible.length && (
                     <div className="coupon-center-empty">
                         <TicketPercent size={34} aria-hidden="true" />
                         <h3>{tx("暂无优惠券")}</h3>

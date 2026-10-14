@@ -25,6 +25,7 @@ export function AdminTickets() {
             isAdmin
             queryParams={params}
             pageSize={pageSize}
+                onPageSizeChange={setPageSize}
             heading="工单管理"
             adminColumns={[
                 ["id", "#"],
@@ -101,17 +102,7 @@ export function AdminTickets() {
                         <option value="0">待回复</option>
                         <option value="1">已回复</option>
                     </select>
-                    <select
-                        aria-label="工单每页数量"
-                        value={pageSize}
-                        onChange={(e) => setPageSize(Number(e.target.value))}
-                    >
-                        {[10, 20, 50, 100].map((n) => (
-                            <option key={n} value={n}>
-                                {n}
-                            </option>
-                        ))}
-                    </select>
+
                     <button
                         type="button"
                         onClick={() => {

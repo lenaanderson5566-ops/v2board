@@ -1,3 +1,4 @@
+import { Pager } from "../shared/ui";
 import { formatInstant } from "../shared/timezone";
 import { useState } from "react";
 import { admin, request, type Row } from "../shared/api";
@@ -24,6 +25,7 @@ const labels: Record<string, string> = {
 };
 const date = (v: number) => (v ? formatInstant(v) : "—");
 export function AdminDDNS() {
+    const [pageSize, setPageSize] = useState(20);
     const data = useData<Row>(admin("server/ddns/fetch"));
     const nodes = useData<Row[]>(admin("server/manage/getNodes"));
     const [editing, setEditing] = useState<Row | null>(null),
@@ -35,7 +37,7 @@ export function AdminDDNS() {
         [filter, setFilter] = useState("");
     const events = useData<Row[]>(
         admin(
-            `server/ddns/events?page=${page}&pageSize=20${filter ? `&assignmentId=${filter}` : ""}`,
+            `server/ddns/events?page=${page}&pageSize=${pageSize}${filter ? `&assignmentId=${filter}` : ""}`,
         ),
     );
     const credentials: Row[] = data.data?.credentials || [],
@@ -309,22 +311,17 @@ export function AdminDDNS() {
                             </tbody>
                         </table>
                     </State>
-                    <button
-                        disabled={page === 1}
-                        onClick={() => setPage(page - 1)}
-                    >
-                        上一页
-                    </button>
-                    <span>
-                        {" "}
-                        第 {page} 页 · {events.total} 条{" "}
-                    </span>
-                    <button
-                        disabled={page * 20 >= events.total}
-                        onClick={() => setPage(page + 1)}
-                    >
-                        下一页
-                    </button>
+                    <Pager
+                        page={page}
+                        total={events.total}
+                        size={pageSize}
+                        loading={events.loading}
+                        onChange={setPage}
+                        onSizeChange={(size) => {
+                            setPageSize(size);
+                            setPage(1);
+                        }}
+                    />
                 </div>
             </Panel>
             {editing && (

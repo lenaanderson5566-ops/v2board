@@ -1,3 +1,4 @@
+import { InvitationEmails } from "./InvitationEmails";
 import { InvitationReviews } from "./InvitationReviews";
 import { useEffect, useState } from "react";
 import { admin, date, type Row } from "../shared/api";
@@ -34,7 +35,7 @@ export function AdminInvitations() {
         const value = new URLSearchParams(
             window.location.hash.split("?")[1] || "",
         ).get("tab");
-        return value === "commissions" || value === "reviews"
+        return value === "commissions" || value === "reviews" || value === "emails"
             ? value
             : "relations";
     };
@@ -44,7 +45,7 @@ export function AdminInvitations() {
         window.addEventListener("hashchange", changed);
         return () => window.removeEventListener("hashchange", changed);
     }, []);
-    const selectTab = (value: "relations" | "commissions" | "reviews") => {
+    const selectTab = (value: "relations" | "commissions" | "reviews" | "emails") => {
         setTab(value);
         window.location.hash =
             value === "relations"
@@ -87,8 +88,9 @@ export function AdminInvitations() {
                 >
                     异常复核
                 </button>
+                <button role="tab" aria-selected={tab === "emails"} onClick={() => selectTab("emails")}>邀请邮件</button>
             </div>
-            {tab === "reviews" ? (
+            {tab === "emails" ? <InvitationEmails /> : tab === "reviews" ? (
                 <InvitationReviews />
             ) : tab === "commissions" ? (
                 <OrdersPage commissionMode />

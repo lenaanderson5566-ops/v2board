@@ -10,11 +10,11 @@ final class CouponPresentationController extends Controller
 {
     public function fetch(Request $request)
     {
-        $input=$request->validate(['search'=>'nullable|string|max:100','current'=>'nullable|integer|min:1']);
+        $input=$request->validate(['search'=>'nullable|string|max:100','current'=>'nullable|integer|min:1','pageSize'=>'nullable|integer|min:1|max:100']);
         $query=Coupon::query()->orderByDesc('id');
         if (!empty($input['search'])) $query->where(function($q)use($input){$q->where('name','like','%'.$input['search'].'%');if(ctype_digit($input['search']))$q->orWhere('id',(int)$input['search']);});
         $total=$query->count();
-        return response(['data'=>$query->forPage($input['current']??1,20)->get(['id','name','public_claim','activity_title','activity_description','translations']),'total'=>$total])->header('Cache-Control','no-store');
+        return response(['data'=>$query->forPage($input['current']??1,$input['pageSize']??20)->get(['id','name','public_claim','activity_title','activity_description','translations']),'total'=>$total])->header('Cache-Control','no-store');
     }
 
     public function save(Request $request)

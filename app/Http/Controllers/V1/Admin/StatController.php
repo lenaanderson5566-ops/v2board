@@ -21,6 +21,7 @@ class StatController extends Controller
     {
         return [
             'data' => array_merge(\App\Services\DashboardRevenue::summary(), [
+                'usage' => \App\Services\DashboardUsage::summary(),
                 'online_user' => User::where('t','>=', time() - 600)
                     ->count(),
                 'month_register_total' => User::where('created_at', '>=', strtotime(date('Y-m-1')))

@@ -1,3 +1,4 @@
+import { SettingsHeading } from "./SettingsHeading";
 import { lazy, Suspense } from "react";
 const MfaSecurity = lazy(() =>
     import("../shared/MfaSecurity").then((module) => ({
@@ -76,10 +77,7 @@ export function AccountSecurity() {
     }
     return (
         <section className="settings-content account-security">
-            <div className="security-overview">
-                <ShieldCheck aria-hidden="true" />
-                <p>{tx("管理登录验证、设备会话与订阅凭据。")}</p>
-            </div>
+            <SettingsHeading icon={<ShieldCheck size={24}/>} title={tx("安全中心")} description={tx("管理登录验证、设备会话与订阅凭据。")} />
             <Suspense fallback={<p role="status">{tx("正在加载账户安全…")}</p>}>
                 <MfaSecurity onSessionsRevoked={() => setMfaUpdated(true)} />
             </Suspense>

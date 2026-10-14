@@ -58,11 +58,11 @@ class MailLogController extends Controller
     }
     public function suppressions(Request $request)
     {
-        $p=$request->validate(['current'=>'nullable|integer|min:1|max:100000','email'=>'nullable|string|email:rfc|max:254']);
+        $p=$request->validate(['page_size'=>'nullable|integer|min:1|max:100','current'=>'nullable|integer|min:1|max:100000','email'=>'nullable|string|email:rfc|max:254']);
         $q=\Illuminate\Support\Facades\DB::table('v2_mail_suppression')->whereNull('released_at');
         if (!empty($p['email'])) $q->where('recipient_hash',MailDeliveryLog::recipientHash($p['email']));
         $total=(clone $q)->count();
-        return response(['total'=>$total,'data'=>$q->orderByDesc('updated_at')->forPage($p['current'] ?? 1,20)->get(['recipient_hash','email','reason','updated_at'])]);
+        return response(['total'=>$total,'data'=>$q->orderByDesc('updated_at')->forPage($p['current'] ?? 1,$p['page_size'] ?? 20)->get(['recipient_hash','email','reason','updated_at'])]);
     }
     public function release(Request $request)
     {

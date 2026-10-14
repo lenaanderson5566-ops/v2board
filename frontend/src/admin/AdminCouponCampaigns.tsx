@@ -13,9 +13,10 @@ import {
 } from "./coupon-campaign";
 
 export function AdminCouponCampaigns() {
+    const [pageSize, setPageSize] = useState(20);
     const [page, setPage] = useState(1);
     const list = useData<CouponCampaign[]>(
-        admin(`coupon-campaign/fetch?current=${page}`),
+        admin(`coupon-campaign/fetch?current=${page}&pageSize=${pageSize}`),
     );
     const [selected, setSelected] = useState<CouponCampaign | null>(null);
     const [cancelling, setCancelling] = useState<CouponCampaign | null>(null);
@@ -107,9 +108,14 @@ export function AdminCouponCampaigns() {
                 </div>
             </State>
             <Pager
+                loading={list.loading}
+                onSizeChange={(size) => {
+                    setPageSize(size);
+                    setPage(1);
+                }}
                 page={page}
                 total={list.total}
-                size={20}
+                size={pageSize}
                 onChange={setPage}
             />
             {selected && (
@@ -169,11 +175,12 @@ export function AdminCouponCampaigns() {
 }
 
 function CouponRecipients({ id }: { id: number }) {
+    const [pageSize, setPageSize] = useState(50);
     const [page, setPage] = useState(1),
         [status, setStatus] = useState("");
     const data = useData<Row[]>(
         admin(
-            `coupon-campaign/recipients?id=${id}&current=${page}&status=${status}`,
+            `coupon-campaign/recipients?id=${id}&current=${page}&pageSize=${pageSize}&status=${status}`,
         ),
     );
     return (
@@ -228,9 +235,14 @@ function CouponRecipients({ id }: { id: number }) {
                 </div>
             </State>
             <Pager
+                loading={data.loading}
+                onSizeChange={(size) => {
+                    setPageSize(size);
+                    setPage(1);
+                }}
                 page={page}
                 total={data.total}
-                size={50}
+                size={pageSize}
                 onChange={setPage}
             />
         </div>

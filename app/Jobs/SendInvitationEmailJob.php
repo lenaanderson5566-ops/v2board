@@ -31,10 +31,11 @@ class SendInvitationEmailJob implements ShouldQueue
         $locale = app()->getLocale();
         try {
             app()->setLocale($this->language);
-            $result = (new SendEmailJob(['email'=>$record->email,'language'=>$sender->language ?: $this->language,'subject'=>__('You are invited to :name',['name'=>$name]),'template_name'=>'emailInvitation','template_value'=>['name'=>$name,'url'=>$link,'expires_at'=>$record->expires_at]]))->handle();
+            $result = (new SendEmailJob(['invitation_id'=>$record->id,'invitation_token_hash'=>$record->token_hash,'email'=>$record->email,'language'=>$sender->language ?: $this->language,'subject'=>__('You are invited to :name',['name'=>$name]),'template_name'=>'emailInvitation','template_value'=>['name'=>$name,'url'=>$link,'expires_at'=>$record->expires_at]]))->handle();
         } finally { app()->setLocale($locale); }
         if (!empty($result['deferred'])) { $this->release($result['deferred']); return; }
         $update = EmailInvitation::where('id',$record->id)->where('token_hash',$record->token_hash)->whereNull('accepted_at');
+        if (!empty($result['skipped'])) return;
         if (!empty($result['error'])) { $update->update(['failed_at'=>time()]); if (!empty($result['permanent'])) { $this->fail(new \RuntimeException('Invitation email rejected.')); return; } throw new \RuntimeException('Invitation email delivery failed.'); }
         $update->update(['sent_at'=>time(),'failed_at'=>null]);
     }

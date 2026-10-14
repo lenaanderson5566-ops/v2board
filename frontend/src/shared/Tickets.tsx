@@ -25,6 +25,7 @@ export function Tickets({
     queryParams = {},
     toolbar,
     pageSize = 20,
+    onPageSizeChange,
     heading,
     adminColumns,
     orderTradeNo,
@@ -33,6 +34,7 @@ export function Tickets({
     queryParams?: Row;
     toolbar?: ReactNode;
     pageSize?: number;
+    onPageSizeChange?: (size:number)=>void;
     heading?: string;
     adminColumns?: [string, string, ((row: Row) => ReactNode)?][];
     orderTradeNo?: string;
@@ -186,11 +188,13 @@ export function Tickets({
                             </>
                         )}
                     />
-                    {d.total > pageSize && (
+                    {(d.total > 0 || !d.loading) && (
                         <Pager
                             page={page}
                             total={d.total}
                             size={pageSize}
+                            loading={d.loading}
+                            onSizeChange={onPageSizeChange ? size=>{setPage(1);onPageSizeChange(size);} : undefined}
                             onChange={setPage}
                         />
                     )}

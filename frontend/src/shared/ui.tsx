@@ -382,6 +382,7 @@ export function Editor({
     linkValues,
     validate,
     onDirty,
+    onBusyChange,
     onValuesChange,
     draftKey,
 }: {
@@ -394,6 +395,7 @@ export function Editor({
     linkValues?: (key: string, next: unknown, values: Row) => Row;
     validate?: (values: Row) => string | undefined;
     onDirty?: () => void;
+    onBusyChange?: (busy: boolean) => void;
     onValuesChange?: (values: Row) => void;
     draftKey?: string;
 }) {
@@ -495,9 +497,11 @@ export function Editor({
     }
     async function save(e: React.FormEvent) {
         e.preventDefault();
+        if (busy) return;
         setError("");
         setSaved(false);
         setBusy(true);
+        onBusyChange?.(true);
         try {
             const body = { ...value };
             for (const field of fields)
@@ -558,6 +562,7 @@ export function Editor({
             setError((e as Error).message);
         } finally {
             setBusy(false);
+            onBusyChange?.(false);
         }
     }
     return (
@@ -883,7 +888,7 @@ export function Editor({
             )}
             <div className="form-bottom">
                 {cancel && (
-                    <button type="button" onClick={cancel}>
+                    <button type="button" disabled={busy} onClick={cancel}>
                         {ux("cancel")}
                     </button>
                 )}
@@ -900,37 +905,107 @@ export function Editor({
         </form>
     );
 }
+export function FilterActions({
+    loading = false,
+    onReset,
+}: {
+    loading?: boolean;
+    onReset: () => void;
+}) {
+    return (
+        <>
+            <button type="submit" className="primary" disabled={loading}>
+                {tx("查询")}
+            </button>
+            <button type="button" disabled={loading} onClick={onReset}>
+                {tx("重置")}
+            </button>
+        </>
+    );
+}
 export function Pager({
     page,
     total,
     size = 20,
+    loading = false,
     onChange,
+    onSizeChange,
 }: {
     page: number;
     total: number;
     size?: number;
+    loading?: boolean;
     onChange: (page: number) => void;
+    onSizeChange?: (size: number) => void;
 }) {
+    const count = Math.max(0, Number(total) || 0),
+        limit = Math.max(1, size);
+    const pages = Math.ceil(count / limit);
     return (
-        <div className="pager">
+        <nav className="pager" aria-label={tx("分页")} aria-busy={loading}>
             <span>
-                {tx("共 {{total}} 条 · 第 {{page}} 页", { total, page })}
+                {tx("共 {{total}} 条 · 第 {{page}} 页", {
+                    total: count,
+                    page: count ? page : 0,
+                })}{" "}
+                · {tx("共 {{total}} 页", { total: pages })}
             </span>
-            <button
-                disabled={page === 1}
-                onClick={() => onChange(page - 1)}
-                aria-label={tx("上一页")}
-            >
-                <ChevronLeft size={16} />
-            </button>
-            <button
-                disabled={page * size >= total}
-                onClick={() => onChange(page + 1)}
-                aria-label={tx("下一页")}
-            >
-                <ChevronRight size={16} />
-            </button>
-        </div>
+            {onSizeChange && (
+                <label className="pager-size">
+                    {tx("每页")}{" "}
+                    <select
+                        aria-label={tx("每页显示行数")}
+                        value={size}
+                        disabled={loading}
+                        onChange={(event) =>
+                            onSizeChange(Number(event.target.value))
+                        }
+                    >
+                        {[...new Set([10, 20, 50, 100, size])]
+                            .sort((a, b) => a - b)
+                            .map((n) => (
+                                <option key={n} value={n}>
+                                    {n}
+                                </option>
+                            ))}
+                    </select>
+                </label>
+            )}
+            <div className="pager-buttons">
+                <button
+                    type="button"
+                    disabled={loading || page <= 1}
+                    onClick={() => onChange(1)}
+                    aria-label={tx("首页")}
+                >
+                    «
+                </button>
+                <button
+                    type="button"
+                    disabled={loading || page <= 1}
+                    onClick={() => onChange(page - 1)}
+                    aria-label={tx("上一页")}
+                >
+                    <ChevronLeft size={16} />
+                </button>
+                <button
+                    type="button"
+                    disabled={loading || page >= pages}
+                    onClick={() => onChange(page + 1)}
+                    aria-label={tx("下一页")}
+                >
+                    <ChevronRight size={16} />
+                </button>
+                <button
+                    type="button"
+                    disabled={loading || page >= pages}
+                    onClick={() => onChange(pages)}
+                    aria-label={tx("末页")}
+                >
+                    »
+                </button>
+            </div>
+        </nav>
     );
 }
 export function Reload({

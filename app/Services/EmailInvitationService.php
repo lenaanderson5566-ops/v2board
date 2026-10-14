@@ -31,7 +31,7 @@ class EmailInvitationService
             if ($record) $pending->where('id','!=',$record->id);
             if ($pending->count() >= max(0, (int)config('v2board.invite_gen_limit',5))) abort(422, __('The maximum number of creations has been reached'));
             $record = $record ?: new EmailInvitation(['user_id'=>$userId,'email'=>$email,'email_hash'=>hash('sha256',$email)]);
-            $record->fill(['token_hash'=>hash('sha256',$token),'expires_at'=>time()+7*86400,'last_requested_at'=>time(),'sent_at'=>null,'failed_at'=>null]);
+            $record->fill(['token_hash'=>hash('sha256',$token),'expires_at'=>time()+7*86400,'last_requested_at'=>time(),'sent_at'=>null,'failed_at'=>null,'mail_log_id'=>null]);
             $record->save();
             RateLimiter::hit($key, 86400);
             return $record;

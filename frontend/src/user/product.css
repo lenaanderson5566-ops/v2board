@@ -1959,3 +1959,21 @@ body[data-console="user"] .client-family-header p {
         align-items: flex-start;
     }
 }
+
+.account-page-heading {display:flex;gap:16px;align-items:center;margin-bottom:28px;padding-bottom:20px;border-bottom:1px solid var(--line);}
+.account-page-icon {display:grid;place-items:center;width:48px;height:48px;border:1px solid var(--line);border-radius:14px;flex-shrink:0;}
+.account-page-heading h2 {margin:0 0 6px;font-size:22px;}
+.account-page-heading p {margin:0;color:var(--muted);line-height:1.6;}
+.account-benefits {display:flex;flex-wrap:wrap;gap:16px;margin:20px 0;}
+.account-benefits>a {display:flex;align-items:center;gap:14px;padding:20px;border:1px solid var(--line);border-radius:14px;text-decoration:none;color:inherit;min-width:0;flex:1 1 260px;}
+.account-benefits>a:hover {border-color:currentColor;}
+.account-benefits a>span {flex:1;min-width:0;}
+.account-benefits small {display:block;margin-top:6px;color:var(--muted);overflow-wrap:anywhere;}
+.account-benefit-activity {background:var(--surface);}
+.coupon-wallet-tabs {display:flex;flex-wrap:wrap;gap:8px;margin:20px 0;}
+.coupon-wallet-tabs button[aria-pressed="true"] {border-color:currentColor;font-weight:600;}
+.account-security .security-maintenance {grid-template-columns:minmax(0,1fr);}
+.account-security .security-maintenance>.settings-section {padding-top:24px;border-top:1px solid var(--line);}
+.account-security .security-maintenance>.settings-section:first-child {border-top:0;padding-top:0;}
+.account-security .security-password-card form {max-width:480px;}
+@media(max-width:600px){.account-page-heading {align-items:flex-start;gap:12px;}.account-page-heading h2 {font-size:20px;}}

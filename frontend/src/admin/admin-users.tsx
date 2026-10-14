@@ -144,6 +144,7 @@ export function UsersPage() {
                     .filter((key) => !optionalColumns.includes(key))}
                 queryParams={params}
                 pageSize={pageSize}
+                onPageSizeChange={setPageSize}
                 searchable={false}
                 onTotal={setTotal}
                 tableSort={{
@@ -330,22 +331,7 @@ export function UsersPage() {
                                         <option value="ASC">升序</option>
                                     </select>
                                 </label>
-                                <label>
-                                    每页{" "}
-                                    <select
-                                        aria-label="用户每页数量"
-                                        value={pageSize}
-                                        onChange={(e) =>
-                                            setPageSize(Number(e.target.value))
-                                        }
-                                    >
-                                        {[10, 20, 50, 100, 150].map((n) => (
-                                            <option key={n} value={n}>
-                                                {n}
-                                            </option>
-                                        ))}
-                                    </select>
-                                </label>
+
                             </div>
                         </details>
                         <p className="muted">
@@ -760,12 +746,13 @@ export function AssignOrder({
     );
 }
 function UserOrders({ row }: { row: Row }) {
+    const [pageSize,setPageSize]=useState(10);
     const [page, setPage] = useState(1),
         [selected, setSelected] = useState<Row | null>(null);
     const d = useData<Row[]>(
         query(admin("order/fetch"), {
             current: page,
-            pageSize: 10,
+            pageSize,
             filter: [{ key: "user_id", condition: "=", value: row.id }],
         }),
     );
@@ -803,7 +790,9 @@ function UserOrders({ row }: { row: Row }) {
                 <Pager
                     page={page}
                     total={d.total}
-                    size={10}
+                    size={pageSize}
+                    loading={d.loading}
+                    onSizeChange={size=>{setPageSize(size);setPage(1);}}
                     onChange={setPage}
                 />
             </State>
@@ -867,12 +856,13 @@ function UserOrders({ row }: { row: Row }) {
     );
 }
 function UserTraffic({ row }: { row: Row }) {
+    const [pageSize,setPageSize]=useState(10);
     const [page, setPage] = useState(1);
     const d = useData<Row[]>(
         query(admin("stat/getStatUser"), {
             user_id: row.id,
             current: page,
-            pageSize: 10,
+            pageSize,
         }),
     );
     return (
@@ -890,7 +880,9 @@ function UserTraffic({ row }: { row: Row }) {
                 <Pager
                     page={page}
                     total={d.total}
-                    size={10}
+                    size={pageSize}
+                    loading={d.loading}
+                    onSizeChange={size=>{setPageSize(size);setPage(1);}}
                     onChange={setPage}
                 />
             </State>

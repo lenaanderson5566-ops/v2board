@@ -37,13 +37,13 @@ final class CouponCampaignController extends Controller
 
     public function recipients(Request $request)
     {
-        $input = $request->validate(['id'=>'required|integer|min:1','current'=>'nullable|integer|min:1',
+        $input = $request->validate(['id'=>'required|integer|min:1','pageSize'=>'nullable|integer|min:1|max:100','current'=>'nullable|integer|min:1',
             'status'=>'nullable|in:pending,issued,skipped,failed,cancelled']);
         $query = DB::table('v2_coupon_campaign_recipient')->where('campaign_id',$input['id']);
         abort_unless(DB::table('v2_coupon_campaign')->where('id',$input['id'])->exists(),404);
         if (!empty($input['status'])) $query->where('status',$input['status']);
         $total = $query->count();
-        return response(['data'=>$query->orderBy('id')->forPage($input['current']??1,50)->get(['user_id','status','reason','wallet_id','attempts','updated_at']),
+        return response(['data'=>$query->orderBy('id')->forPage($input['current']??1,$input['pageSize']??50)->get(['user_id','status','reason','wallet_id','attempts','updated_at']),
             'total'=>$total])->header('Cache-Control','no-store');
     }
 }

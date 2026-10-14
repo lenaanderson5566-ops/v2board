@@ -5,6 +5,13 @@ import { useState } from "react";
 import { admin, money, type Row } from "../shared/api";
 import { Panel, State, Table, Reload, useData } from "../shared/ui";
 
+function usageBytes(value: unknown) {
+    let bytes = Math.max(0, Number(value) || 0);
+    const units = ["B", "KiB", "MiB", "GiB", "TiB", "PiB"];
+    let i = 0;
+    while (bytes >= 1024 && i < units.length - 1) { bytes /= 1024; i++; }
+    return `${bytes.toLocaleString(undefined, {maximumFractionDigits: 2})} ${units[i]}`;
+}
 const colors = ["#1890ff", "#2fc25b", "#facc14", "#f04864", "#8543e0"];
 export function Overview({
     initialTab = "income",
@@ -60,6 +67,7 @@ function IncomeOverview() {
     const todayUsers = useData<Row[]>(admin("stat/getUserTodayRank"));
     const lastUsers = useData<Row[]>(admin("stat/getUserLastRank"));
     const stats = stat.data || {};
+
     return (
         <>
             {health.data && (!health.data.horizon || !health.data.schedule) && (
@@ -94,9 +102,9 @@ function IncomeOverview() {
                 <State {...stat} retry={stat.reload}>
                     <div className="legacy-stat-main">
                         {[
-                            ["在线人数", stats.online_user || 0],
+                            ["近 10 分钟活跃用户", stats.online_user ?? "—"],
                             ["今日收入", money(stats.day_income || 0)],
-                            ["实时注册", stats.day_register_total || 0],
+                            ["今日新增用户", stats.day_register_total ?? "—"],
                         ].map(([label, value]) => (
                             <div key={String(label)}>
                                 <span>{label}</span>
@@ -133,6 +141,24 @@ function IncomeOverview() {
                             (r) => !String(r.type).includes("佣金"),
                         )}
                     />
+                </State>
+            </Panel>
+            <Panel title="用户活跃与流量" actions={<Reload onClick={stat.reload} loading={stat.loading}/> }>
+                <State {...stat} retry={stat.reload}>
+                    {stats.usage ? <>
+                        <div className="dashboard-usage-grid">
+                            {(stats.usage.periods as Row[]).map(period => <article key={period.days} className="dashboard-usage-card">
+                                <span>{period.days === 1 ? "今日" : `近 ${period.days} 天`}</span>
+                                <div><strong>{Number(period.users).toLocaleString()}</strong><span>活跃用户</span></div>
+                                <div><strong>{usageBytes(period.bytes)}</strong><span>实际使用流量</span></div>
+                            </article>)}
+                        </div>
+                        <p className="pad muted">按 {stats.usage.timezone} 自然日统计，近 7 / 30 天均包含今日；有节点上报流量才算活跃，同一用户跨设备、节点及日期去重。流量为上传＋下载，不乘计费倍率。最多缓存 2 分钟，另有节点上报和队列延迟。</p>
+                        {!stats.usage.has_records && <p className="pad muted">近 30 天尚无流量记录；零值仅表示未记录到使用，不能证明历史采集完整。</p>}
+                        {stats.usage.mixed_timezone && <p className="pad alert">存在不同统计时区或未标记时区的历史日汇总，时间边界附近可能有偏差，无法按新的时区精确重分历史流量。</p>}
+                        <div className="pad actions"><span>每日流量趋势</span><span className="muted">单位：GiB · 今日尚未结束 · 没有记录的日期不补零</span></div>
+                        <HistoryChart data={(stats.usage.daily as Row[]).map(r=>({type:"实际流量（GiB）",date:r.date,value:Number(r.bytes)/1073741824}))}/>
+                    </> : <p className="pad muted">暂无活跃与流量统计，请确认后端已更新。</p>}
                 </State>
             </Panel>
             <div className="legacy-ranks">
@@ -236,10 +262,11 @@ export function RankChart({ data, nameKey }: { data: Row[]; nameKey: string }) {
 }
 
 function HistoryChart({ data }: { data: Row[] }) {
-    const [hidden, setHidden] = useState<string[]>([]);
+    const [selected, setSelected] = useState("");
     const types = [...new Set(data.map((r) => String(r.type)))];
     const dates = [...new Set(data.map((r) => String(r.date)))];
-    const shown = data.filter((r) => !hidden.includes(String(r.type)));
+    const active = types.includes(selected) ? selected : types[0];
+    const shown = data.filter((r) => String(r.type) === active);
     const maximum = Math.max(1, ...shown.map((r) => Number(r.value) || 0));
     return (
         <div className="legacy-chart legacy-history">
@@ -247,14 +274,8 @@ function HistoryChart({ data }: { data: Row[] }) {
                 {types.map((type, i) => (
                     <button
                         key={type}
-                        aria-pressed={!hidden.includes(type)}
-                        onClick={() =>
-                            setHidden(
-                                hidden.includes(type)
-                                    ? hidden.filter((x) => x !== type)
-                                    : [...hidden, type],
-                            )
-                        }
+                        aria-pressed={active === type}
+                        onClick={() => setSelected(type)}
                     >
                         <i style={{ background: colors[i % colors.length] }} />
                         {type}
@@ -264,7 +285,7 @@ function HistoryChart({ data }: { data: Row[] }) {
             <svg
                 viewBox="0 0 1000 300"
                 role="img"
-                aria-label="近 31 天收入与注册趋势图"
+                aria-label={`每日趋势：${types.join("、")}`}
             >
                 {[0, 1, 2, 3, 4].map((i) => (
                     <g key={i}>
@@ -305,7 +326,7 @@ function HistoryChart({ data }: { data: Row[] }) {
                         ),
                 )}
                 {types
-                    .filter((t) => !hidden.includes(t))
+                    .filter((t) => t === active)
                     .map((type) => {
                         const color =
                             colors[types.indexOf(type) % colors.length];

@@ -1,3 +1,4 @@
+import { useCouponActivities } from "./useCouponActivities";
 import { useRef, useState } from "react";
 import { Gift, TicketPercent, CheckCircle2, ArrowUpRight } from "lucide-react";
 import { request } from "../shared/api";
@@ -8,7 +9,7 @@ import type { V10WalletCoupon, V10CouponOffer } from "../shared/v10-types";
 import { couponRestrictions, couponStatus } from "./coupon-copy";
 
 export function ActivityCenter() {
-    const offers = useData<V10CouponOffer[]>("user/coupon/offers");
+    const offers = useCouponActivities();
     const rows = Array.isArray(offers.data) ? offers.data : [];
     const lock = useRef(false);
     const [busy, setBusy] = useState<number | null>(null),
@@ -128,6 +129,7 @@ export function ActivityCenter() {
 }
 
 export function MyCoupons() {
+    const activities = useCouponActivities();
     const wallet = useData<V10WalletCoupon[]>("user/coupon/wallet");
     const rows = Array.isArray(wallet.data) ? wallet.data : [];
     return (
@@ -142,10 +144,12 @@ export function MyCoupons() {
                         )}
                     </p>
                 </div>
-                <a href="#/activities">
-                    {tx("查看活动")}
-                    <ArrowUpRight size={16} aria-hidden="true" />
-                </a>
+                {activities.hasActivities && (
+                    <a href="#/activities">
+                        {tx("查看活动")}
+                        <ArrowUpRight size={16} aria-hidden="true" />
+                    </a>
+                )}
             </div>
             <State {...wallet} retry={wallet.reload}>
                 <div className="coupon-center-grid">
@@ -178,7 +182,11 @@ export function MyCoupons() {
                     <div className="coupon-center-empty">
                         <TicketPercent size={34} aria-hidden="true" />
                         <h3>{tx("暂无优惠券")}</h3>
-                        <a href="#/activities">{tx("前往活动中心")}</a>
+                        {activities.hasActivities ? (
+                            <a href="#/activities">{tx("前往活动中心")}</a>
+                        ) : (
+                            <a href="#/plan">{tx("购买订阅")}</a>
+                        )}
                     </div>
                 )}
             </State>

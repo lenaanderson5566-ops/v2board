@@ -18,6 +18,7 @@
 \Illuminate\Support\Facades\Route::match(['GET', 'HEAD'], 'me/download-accounts', [\App\Http\Controllers\V10\UserAppleAccountController::class, 'getMeDownloadAccounts'])->middleware(['throttle:10,1'])->name('v10.getMeDownloadAccounts');
 \Illuminate\Support\Facades\Route::match(['GET', 'HEAD'], 'me/usage-resets', [\App\Http\Controllers\V10\UserUsageResetController::class, 'getMeUsageResets'])->name('v10.getMeUsageResets');
 \Illuminate\Support\Facades\Route::match(['POST'], 'me/usage-resets/consumptions', [\App\Http\Controllers\V10\UserUsageResetController::class, 'postMeUsageResetsConsumptions'])->middleware(['throttle:20,1'])->name('v10.postMeUsageResetsConsumptions');
+\Illuminate\Support\Facades\Route::delete('me/sessions', [\App\Http\Controllers\V10\UserUserController::class, 'deleteMeSessions'])->middleware(['throttle:10,1'])->name('v10.deleteMeSessions');
 \Illuminate\Support\Facades\Route::match(['DELETE'], 'me/session', [\App\Http\Controllers\V10\UserUserController::class, 'deleteMeSession'])->name('v10.deleteMeSession');
 \Illuminate\Support\Facades\Route::match(['DELETE'], 'me/integrations/telegram', [\App\Http\Controllers\V10\UserUserController::class, 'deleteMeIntegrationsTelegram'])->name('v10.deleteMeIntegrationsTelegram');
 \Illuminate\Support\Facades\Route::match(['POST'], 'me/subscription/credential-rotations', [\App\Http\Controllers\V10\UserUserController::class, 'postMeSubscriptionCredentialRotations'])->name('v10.postMeSubscriptionCredentialRotations');

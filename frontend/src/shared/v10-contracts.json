@@ -2411,6 +2411,17 @@
       "output": "mfaVerification",
       "status": 200,
       "raw": false
+    },
+    "deleteMeSessions": {
+      "input": {},
+      "output": "scalar",
+      "role": "user",
+      "status": 204,
+      "raw": false,
+      "bindings": {},
+      "path": "me/sessions",
+      "method": "DELETE",
+      "key": "User/UserController@logoutAll"
     }
   },
   "routes": {
@@ -2489,7 +2500,8 @@
     "user/security/mfa": "getMeMfa",
     "user/security/mfa/challenges": "postMeMfaChallenges",
     "passport/mfa/emails": "postMfaEmails",
-    "passport/mfa/verifications": "postMfaVerifications"
+    "passport/mfa/verifications": "postMfaVerifications",
+    "user/logoutAll": "deleteMeSessions"
   },
   "details": {
     "user/ticket/fetch": "getMeTicketsTicketId",
@@ -2564,6 +2576,7 @@
     "GET public/client-installers/{installerId}/content": "getPublicClientInstallersInstallerIdContent",
     "GET user/client-authorization": "getMeClientAuthorizationsAuthorizationId",
     "POST user/client-authorization/approve": "postMeClientAuthorizationsAuthorizationIdApproval",
-    "POST user/notice/readTicket": "postMeTicketReadReceipts"
+    "POST user/notice/readTicket": "postMeTicketReadReceipts",
+    "POST user/logoutAll": "deleteMeSessions"
   }
 }

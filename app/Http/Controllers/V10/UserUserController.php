@@ -2,6 +2,12 @@
 namespace App\Http\Controllers\V10;
 class UserUserController extends ResourceController
 {
+    public function deleteMeSessions(\Illuminate\Http\Request $request)
+    {
+        $this->prepare($request, 'deleteMeSessions');
+        $result = app(\App\Services\Actions\User\UserActions::class)->logoutAll($this->businessRequest($request, \Illuminate\Http\Request::class));
+        return $this->respond($request, $result, 'deleteMeSessions');
+    }
     public function deleteMeSession(\Illuminate\Http\Request $request)
     {
         $this->prepare($request, 'deleteMeSession');

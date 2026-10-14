@@ -1,9 +1,28 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { request, date, clearReadCache, type Row } from "../shared/api";
 import { forgetBrowserSession } from "../shared/browser-session";
 import { tx } from "../shared/i18n";
 import { Modal, State, Table, useData } from "../shared/ui";
 export function AccountSessions() {
+    const [allOpen, setAllOpen] = useState(false);
+    const allLock = useRef(false);
+    async function removeAll() {
+        if (allLock.current || removing !== null) return;
+        allLock.current = true;
+        setRemoving("all");
+        setError("");
+        try {
+            await request("user/logoutAll", {});
+            clearReadCache();
+            forgetBrowserSession();
+            window.dispatchEvent(new Event("auth-expired"));
+        } catch (problem) {
+            setError((problem as Error).message);
+        } finally {
+            allLock.current = false;
+            setRemoving(null);
+        }
+    }
     const sessions = useData<Row[]>("user/getActiveSession");
     const [error, setError] = useState("");
     const [removing, setRemoving] = useState<string | null>(null);
@@ -30,12 +49,28 @@ export function AccountSessions() {
     }
     return (
         <section className="settings-section">
-            {error && !selected && (
+            {error && !selected && !allOpen && (
                 <p role="alert" className="alert">
                     {error}
                 </p>
             )}
-            <h2>{tx("登录设备")}</h2>
+            <div className="security-section-heading">
+                <h2>{tx("登录设备")}</h2>
+                <button
+                    className="danger"
+                    disabled={
+                        removing !== null ||
+                        sessions.loading ||
+                        !!sessions.error
+                    }
+                    onClick={() => {
+                        setError("");
+                        setAllOpen(true);
+                    }}
+                >
+                    {tx("退出全部会话")}
+                </button>
+            </div>
             <div className="settings-card">
                 <p className="muted">
                     {tx(
@@ -90,6 +125,43 @@ export function AccountSessions() {
                     />
                 </State>
             </div>
+            {allOpen && (
+                <Modal
+                    title={tx("退出全部会话")}
+                    dismissible={removing === null}
+                    close={() => {
+                        if (removing === null) setAllOpen(false);
+                    }}
+                >
+                    <div className="pad">
+                        <p>
+                            {tx(
+                                "所有已登录的浏览器和 App 都需要重新登录，包括当前会话。订阅链接不变，已建立的代理连接不会因此立即断开。",
+                            )}
+                        </p>
+                        {error && (
+                            <p role="alert" className="alert">
+                                {error}
+                            </p>
+                        )}
+                        <div className="actions space">
+                            <button
+                                disabled={removing !== null}
+                                onClick={() => setAllOpen(false)}
+                            >
+                                {tx("取消")}
+                            </button>
+                            <button
+                                className="danger"
+                                disabled={removing !== null}
+                                onClick={removeAll}
+                            >
+                                {tx(removing ? "提交中…" : "确认退出全部会话")}
+                            </button>
+                        </div>
+                    </div>
+                </Modal>
+            )}
             {selected && (
                 <Modal
                     title={tx("退出登录")}

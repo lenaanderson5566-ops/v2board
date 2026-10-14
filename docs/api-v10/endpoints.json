@@ -1780,5 +1780,24 @@
     "role": "public",
     "scope": "public",
     "status": 200
+  },
+  {
+    "legacy": "user/logoutAll",
+    "legacyMethod": "POST",
+    "method": "DELETE",
+    "path": "me/sessions",
+    "action": "App\\Http\\Controllers\\V10\\UserUserController@deleteMeSessions",
+    "parameters": [
+      {
+        "name": "request",
+        "type": "Illuminate\\Http\\Request",
+        "optional": false
+      }
+    ],
+    "bindings": {},
+    "middleware": [],
+    "role": "user",
+    "scope": "user",
+    "status": 204
   }
 ]

@@ -7,7 +7,7 @@ const MfaSecurity = lazy(() =>
 import { forgetBrowserSession } from "../shared/browser-session";
 import { AccountSessions } from "./AccountSessions";
 import { useId, useState, useRef, type FormEvent } from "react";
-import { Eye, EyeOff } from "lucide-react";
+import { Eye, EyeOff, ShieldCheck, AlertTriangle } from "lucide-react";
 import { request, clearReadCache, storageKey } from "../shared/api";
 import { tx } from "../shared/i18n";
 import { Modal } from "../shared/ui";
@@ -76,11 +76,16 @@ export function AccountSecurity() {
     }
     return (
         <section className="settings-content account-security">
+            <div className="security-overview">
+                <ShieldCheck aria-hidden="true" />
+                <p>{tx("管理登录验证、设备会话与订阅凭据。")}</p>
+            </div>
             <Suspense fallback={<p role="status">{tx("正在加载账户安全…")}</p>}>
                 <MfaSecurity onSessionsRevoked={() => setMfaUpdated(true)} />
             </Suspense>
             {!mfaUpdated && (
-                <div>
+                <div className="security-maintenance">
+                    <AccountSessions />
                     <section className="settings-section">
                         <h2>{tx("修改密码")}</h2>
                         <div className="settings-card security-password-card">
@@ -169,7 +174,10 @@ export function AccountSecurity() {
                         </div>
                     </section>
                     <section className="settings-section">
-                        <h2>{tx("订阅安全")}</h2>
+                        <h2>
+                            <AlertTriangle size={20} aria-hidden="true" />{" "}
+                            {tx("订阅安全")}
+                        </h2>
                         <div className="settings-card">
                             <p className="muted">
                                 {tx(
@@ -185,6 +193,7 @@ export function AccountSecurity() {
                                 </p>
                             )}
                             <button
+                                className="danger security-reset-button"
                                 onClick={() => {
                                     setResetError("");
                                     setResetDone(false);
@@ -195,7 +204,6 @@ export function AccountSecurity() {
                             </button>
                         </div>
                     </section>
-                    <AccountSessions />
                     {resetOpen && (
                         <Modal
                             title={tx("重置订阅链接")}
@@ -222,7 +230,7 @@ export function AccountSecurity() {
                                         {tx("取消")}
                                     </button>
                                     <button
-                                        className="primary"
+                                        className="danger security-reset-button"
                                         disabled={resetBusy}
                                         onClick={resetSubscription}
                                     >

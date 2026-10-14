@@ -31,6 +31,13 @@ class UserActions
         )]);
     }
 
+    public function logoutAll(Request $request)
+    {
+        $user = User::findOrFail($request->user['id']);
+        (new AuthService($user))->removeAllSession();
+        return response(['data' => true]);
+    }
+
     public function getActiveSession(Request $request)
     {
         $user = User::find($request->user['id']);

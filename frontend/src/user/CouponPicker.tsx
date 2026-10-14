@@ -1,3 +1,4 @@
+import { useCouponActivities } from "./useCouponActivities";
 import { useId } from "react";
 import { formatInstant } from "../shared/timezone";
 import { TicketPercent, ArrowUpRight } from "lucide-react";
@@ -27,6 +28,7 @@ export function CouponPicker({
     value: number | null;
     onChange: (id: number | null) => void;
 }) {
+    const activities = useCouponActivities();
     const wallet = useData<WalletCoupon[]>("user/coupon/wallet");
     const rows = Array.isArray(wallet.data) ? wallet.data : [];
     const name = useId();
@@ -85,15 +87,21 @@ export function CouponPicker({
                 })}
                 {!rows.length && (
                     <p className="muted">
-                        {tx("暂无优惠券，可前往活动中心查看")}
+                        {tx(
+                            activities.hasActivities
+                                ? "暂无优惠券，可前往活动中心查看"
+                                : "暂无优惠券",
+                        )}
                     </p>
                 )}
             </State>
             <div className="coupon-picker-links">
-                <a href="#/activities">
-                    {tx("查看活动")}
-                    <ArrowUpRight size={14} aria-hidden="true" />
-                </a>
+                {activities.hasActivities && (
+                    <a href="#/activities">
+                        {tx("查看活动")}
+                        <ArrowUpRight size={14} aria-hidden="true" />
+                    </a>
+                )}
                 <a href="#/coupons">{tx("管理优惠券")}</a>
             </div>
         </section>

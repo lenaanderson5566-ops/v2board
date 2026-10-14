@@ -3,7 +3,13 @@ import { GiftCardRedemption } from "./GiftCardRedemption";
 import { TrafficCredits } from "./TrafficCredits";
 import { c } from "../shared/credit-copy";
 import { useState } from "react";
-import { ArrowUpRight, ChevronRight, Gift, Plus } from "lucide-react";
+import {
+    ArrowUpRight,
+    ChevronRight,
+    Gift,
+    Plus,
+    TicketPercent,
+} from "lucide-react";
 import {
     bytes,
     date,
@@ -30,7 +36,13 @@ export function BillingPage() {
     const status = ["待支付", "开通中", "已取消", "已完成", "已折抵"];
     return (
         <div className="settings-content billing-page">
-            <p className="settings-intro">{b("billingIntro")}</p>
+            <div className="billing-shortcuts">
+                <p className="settings-intro">{b("billingIntro")}</p>
+                <a href="#/coupons">
+                    <TicketPercent size={18} aria-hidden="true" />
+                    {tx("我的优惠券")}
+                </a>
+            </div>
             {info.data && info.data.account_status?.state !== "active" && (
                 <a className="billing-usage-link" href="#/traffic">
                     {tx("使用情况")}
@@ -77,7 +89,7 @@ export function BillingPage() {
                     <div className="settings-card balance-card">
                         <div className="settings-row">
                             <strong className="balance-amount">
-                                {money(info.data?.balance,info.data?.currency)}
+                                {money(info.data?.balance, info.data?.currency)}
                             </strong>
                             <button
                                 className="soft-button"
@@ -132,7 +144,9 @@ export function BillingPage() {
                                                 {date(order.created_at)}
                                             </small>
                                         </span>
-                                        <StatusBadge tone={orderStatusTone(order.status)}>
+                                        <StatusBadge
+                                            tone={orderStatusTone(order.status)}
+                                        >
                                             {tx(
                                                 status[order.status] ||
                                                     String(order.status),

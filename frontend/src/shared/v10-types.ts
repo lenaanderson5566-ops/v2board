@@ -177,3 +177,5 @@ export interface V10MfaSetup { challengeId: string; emailRequired: boolean; expi
 export interface V10MfaSettingsResult { recoveryCodes: string[]; reauthenticationRequired: true }
 export interface V10PostMeMfaChallengesInput { purpose: V10MfaPurpose; password: string; verificationCode?: string; verificationMethod?: "totp" | "recovery" }
 export interface V10PostMfaVerificationsInput { challengeId: string; verificationCode?: string; verificationMethod?: MfaMethod; emailCode?: string; totpCode?: string }
+
+export type V10DeleteMeSessionsInput = Record<string, never>;

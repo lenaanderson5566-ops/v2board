@@ -59,6 +59,7 @@ import { InviteCampaign } from "./InviteCampaign";
 import { AccountMenu } from "./AccountMenu";
 import { EmbeddedBrowserNotice } from "./EmbeddedBrowserNotice";
 import { currentDevice } from "../shared/user-experience";
+import { useCouponActivities } from "./useCouponActivities";
 import { userNavigation } from "./user-navigation";
 import {
     WorkspaceSkeleton,
@@ -105,6 +106,9 @@ export default function UserApp() {
         [error, setError] = useState("");
     const [mobile, setMobile] = useState(
         () => matchMedia("(max-width: 800px)").matches,
+    );
+    const activities = useCouponActivities(
+        !!user && user.account_status?.state !== "banned",
     );
     const sidebar = useRef<HTMLElement>(null);
     const loggingOut = useRef(false);
@@ -300,7 +304,10 @@ export default function UserApp() {
                 <ClientAuthorization user={user} />
             </React.Suspense>
         );
-    const userNav = userNavigation(user.account_status?.state).map((item) => ({
+    const userNav = userNavigation(
+        user.account_status?.state,
+        activities.hasActivities,
+    ).map((item) => ({
         ...item,
         icon: (
             {
@@ -467,20 +474,22 @@ export default function UserApp() {
                         </div>
                     </header>
                     <main>
-                        {!path.startsWith("order/") && <div className="page-heading">
-                            <div>
-                                <span className="eyebrow">WORKSPACE</span>
-                                <h1>{tx(item?.label || "总览")}</h1>
+                        {!path.startsWith("order/") && (
+                            <div className="page-heading">
+                                <div>
+                                    <span className="eyebrow">WORKSPACE</span>
+                                    <h1>{tx(item?.label || "总览")}</h1>
+                                </div>
+                                <span className="today">
+                                    {new Date().toLocaleDateString(locale(), {
+                                        timeZone: displayTimeZone(),
+                                        month: "long",
+                                        day: "numeric",
+                                        weekday: "long",
+                                    })}
+                                </span>
                             </div>
-                            <span className="today">
-                                {new Date().toLocaleDateString(locale(), {
-                                    timeZone: displayTimeZone(),
-                                    month: "long",
-                                    day: "numeric",
-                                    weekday: "long",
-                                })}
-                            </span>
-                        </div>}
+                        )}
                         {content}
                         <div className="page-footer">
                             {boot.title}{" "}

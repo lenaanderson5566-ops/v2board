@@ -15,15 +15,18 @@ class CouponGenerate extends FormRequest
     {
         return [
             'generate_count' => 'nullable|integer|max:500',
-            'name' => 'required',
-            'type' => 'required|in:1,2',
-            'value' => 'required|integer',
+            'name' => 'required|string|max:100',
+            'public_claim' => 'sometimes|boolean',
+            'type' => $this->input('id') ? 'required|in:1,2' : 'required|in:2',
+            'value' => 'required|integer|min:1'.((int)$this->input('type') === 2 ? '|max:100' : '|max:99999999'),
             'started_at' => 'required|integer',
-            'ended_at' => 'required|integer',
-            'limit_use' => 'nullable|integer',
-            'limit_use_with_user' => 'nullable|integer',
-            'limit_plan_ids' => 'nullable|array',
-            'limit_period' => 'nullable|array',
+            'ended_at' => 'required|integer|gt:started_at',
+            'limit_use' => 'nullable|integer|min:0',
+            'limit_use_with_user' => 'nullable|integer|min:1',
+            'limit_plan_ids' => 'nullable|array|max:100',
+            'limit_plan_ids.*' => 'integer|min:1|distinct',
+            'limit_period' => 'nullable|array|max:8',
+            'limit_period.*' => 'in:month_price,quarter_price,half_year_price,year_price,two_year_price,three_year_price,onetime_price,reset_price',
             'code' => ''
         ];
     }

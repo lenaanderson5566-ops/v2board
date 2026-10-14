@@ -3,6 +3,7 @@ import { admin, request, type Row } from "../shared/api";
 import { Editor, Panel, State, useData } from "../shared/ui";
 const time = (value: number) => (value ? formatInstant(value) : "—");
 const retentionFields = [
+    ["mail_log_retention_days", "邮件日志", 0, "0 表示不自动清理；可设置 30–365 天，建议 90 天。历史日志不会因升级自动删除。"],
     [
         "client_diagnostic_retention_days",
         "客户端运行记录",

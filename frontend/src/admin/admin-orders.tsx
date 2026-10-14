@@ -503,7 +503,7 @@ function OrderDetail({
                                                 ? date(r[key])
                                                 : key.includes("amount") ||
                                                     key.includes("balance")
-                                                  ? money(r[key])
+                                                  ? money(r[key],r.currency)
                                                   : key === "user_id"
                                                     ? adminUserLabel(r)
                                                     : adminStatusCell(
@@ -533,7 +533,7 @@ function OrderDetail({
                                         [
                                             "get_amount",
                                             "金额",
-                                            (x) => money(x.get_amount),
+                                            (x) => money(x.get_amount,x.currency),
                                         ],
                                         [
                                             "created_at",
@@ -552,7 +552,7 @@ function OrderDetail({
                                 [
                                     "total_amount",
                                     "金额",
-                                    (x) => money(x.total_amount),
+                                    (x) => money(x.total_amount,x.currency),
                                 ],
                             ]}
                         />

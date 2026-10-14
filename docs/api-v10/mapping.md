@@ -153,3 +153,32 @@ POST /api/v10/me/client-events accepts opt-in, account-linked version/platform a
 ## Telegram community
 
 Binding uses a 10-minute one-time deep link, bot acknowledgement and an authenticated website confirmation with the expected Telegram ID. Subscription URLs are never binding credentials. Group invitation links require join approval; entitlement is a non-banned bound account with a plan and an unexpired term or configured grace (default 3 days). Traffic exhaustion is not a group removal condition.
+
+
+## Mail streams and feedback
+
+- `GET/PATCH /me`: boolean `announcementEmails` maps to `announcement_email`; explicit opt-in, default false, separate from transactional preferences.
+- `POST /webhooks/mail/{provider}`: native signed Mailgun, Resend and SES/SNS payloads; public transport, authenticated by provider signature. Request size limit 128 KiB; no raw payload logging.
+- `GET /mail/unsubscribe/{token}`: read-only confirmation HTML. `POST` with `List-Unsubscribe=One-Click` updates only announcement preference; scoped HMAC token, no account session or login credential.
+- Admin `mail-logs/health`, `mail-logs/suppressions`, `mail-logs/release` retain the existing admin prefix and middleware. Release requires `verified=true`, hash-based row identifier, review audit and cannot directly release complaints.
+
+
+## 工单回复通知
+
+`GET /api/v10/me/notifications` 在公告列表之外返回 `ticketReplies`（最多 20 个未读工单，每个只保留最新客服回复的 ticketId/messageId/createdAt）与 `ticketUnread`。仅属于当前用户的工单可返回，不含回复正文、邮箱或其他用户资料。
+
+`POST /api/v10/me/notifications/ticket-read-receipts` 接收 `{ticketId, version}`；version 为已展示的客服 messageId。验证当前用户所有权和回复归属，读回执只前进；204 成功，404 无权访问，422 错误消息版本。浏览器遵守现有会话及 CSRF 规则，GET 不标记已读。旧客户端忽略新增字段即可继续显示公告。
+
+## Coupon wallet and independent CNY / USD billing
+
+- `GET /api/v10/me/coupons`: authenticated wallet (up to 100 entries).
+- `GET /api/v10/me/coupon-offers`: claimable percentage offers; no business mutation.
+- `POST /api/v10/me/coupon-claims` with `couponId`: atomic, idempotent claim per template/account.
+- Order creation accepts `walletCouponId`, mutually exclusive with historical `couponCode`.
+- `GET /api/v10/payment-methods?orderNumber=…` returns payment currency, quoted amount, order-currency fee and rate time. Cross-currency checkout must echo `expectedPaymentAmount` and `expectedPaymentCurrency`; a changed quote returns 409.
+- Existing CNY prices/assets are unchanged. New accounts inherit `new_user_currency` once; account and order currencies cannot be edited. USD plan prices are independent. Balances never exchange automatically.
+- Every payment channel has immutable per-order payment amount/currency snapshots. Old callbacks without conversion snapshots continue using order amount, original handling fee and CNY currency.
+
+## Coupon activities and localization
+
+`GET /api/v10/me/coupon-offers` supplies localized activityTitle, activityDescription and name for the activity center. Claiming stays POST; checkout reads owned coupons only. `GET /api/v10/me/coupons` localizes frozen wallet names. Both negotiate Accept-Language and use no-store. Admin copy configuration stays on existing admin coupon-presentation/fetch and coupon-presentation/save contracts.

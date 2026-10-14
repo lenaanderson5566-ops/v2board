@@ -1,4 +1,7 @@
-import { describe, it, expect } from "vitest";
+// @vitest-environment jsdom
+import { describe, it, expect, vi } from "vitest";
+vi.hoisted(() => { window.V2BOARD = { mode: "admin", adminPath: "test-admin" } as any; });
+import { configureTimeZone } from "../shared/timezone";
 import { normalizeUserFilters, emailSearchFilters } from "./user-filters";
 describe("user filters", () => {
     it("retains zero and GB units for server conversion", () => {
@@ -12,16 +15,18 @@ describe("user filters", () => {
             { key: "transfer_enable", condition: ">", value: 1.5 },
         ]);
     });
-    it("converts dates into Unix seconds", () => {
+    it("converts wall-clock dates in the configured time zone into Unix seconds", () => {
+        configureTimeZone("UTC", true);
         expect(
             normalizeUserFilters([
                 {
                     key: "expired_at",
                     condition: "<",
-                    value: "2026-10-01T00:00:00Z",
+                    value: "2026-10-01T00:00",
                 },
             ])[0].value,
         ).toBe(1790812800);
+        expect(normalizeUserFilters([{ key: "created_at", condition: ">=", value: "2026-10-01T00:00" }])[0].value).toBe(1790812800);
     });
     it("rejects unsupported fields, conditions and missing values", () => {
         for (const filter of [

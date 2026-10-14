@@ -17,7 +17,7 @@ import {
     waitFor,
 } from "@testing-library/react";
 import type { ReactNode } from "react";
-const mocks = vi.hoisted(() => ({ policy: "allowed", tickets: [] as any[], request: vi.fn(), saveError: vi.fn() }));
+const mocks = vi.hoisted(() => ({ detail:null as any, policy: "allowed", tickets: [] as any[], request: vi.fn(), saveError: vi.fn() }));
 vi.mock("../shared/i18n", () => ({
     default: { addResourceBundle: () => undefined },
     tx: (key: string) => key,
@@ -37,7 +37,7 @@ vi.mock("../shared/api", () => ({
 vi.mock("../shared/ui", () => ({
     useData: (path: string) => ({
         data: path === "user/info" ? { ticket_creation: mocks.policy } : path.includes("id=")
-            ? { subject: "现有工单", status: 1, message: [] }
+            ? (mocks.detail || { subject: "现有工单", status: 1, message: [] })
             : mocks.tickets,
         loading: false,
         error: "",
@@ -141,4 +141,13 @@ it.each(["closed", "purchase_required"])("disables new tickets for policy %s", (
     mocks.policy = policy;
     render(<Tickets />);
     expect((screen.getByRole("button", {name: "创建工单"}) as HTMLButtonElement).disabled).toBe(true);
+});
+
+it("acknowledges a displayed reply once even when ticket data refreshes",async()=>{
+ location.hash="#/ticket?ticketId=42";mocks.detail={id:42,subject:"Reply test",status:1,message:[{id:8,is_me:false,message:"Support reply"}]};mocks.request.mockResolvedValue({data:true});
+ const {Tickets}=await import("../shared/Tickets");const view=render(<Tickets/>);
+ await waitFor(()=>expect(mocks.request).toHaveBeenCalledWith("user/notice/readTicket",{id:42,version:8}));
+ mocks.detail={...mocks.detail};view.rerender(<Tickets/>);
+ expect(mocks.request.mock.calls.filter(([path])=>path==="user/notice/readTicket")).toHaveLength(1);
+ mocks.detail=null;location.hash="";
 });

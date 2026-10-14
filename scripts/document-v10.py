@@ -56,7 +56,7 @@ for name, fields in contracts['schemas'].items():
         else:
             prop = {'type': 'string', 'nullable': True}
         if name == 'node' and field == 'displayNames': prop = {'type':'object','additionalProperties':{'type':'string'}}
-        if field == 'currency': prop = {'type': 'string', 'enum': ['CNY']}
+        if field == 'currency': prop = {'type': 'string', 'enum': ['CNY', 'USD']}
         if field == 'ticketCreation': prop = {'type': 'string', 'enum': ['allowed', 'purchase_required', 'closed']}
         if 'Bytes' in field or field == 'bytes': prop['description'] = 'Integer bytes.'
         if field.endswith('Price') or field in ['price', 'balance', 'commissionBalance', 'amount', 'orderAmount', 'fixedFee', 'totalAmount', 'discountAmount', 'creditOffset', 'refundAmount', 'balanceOffset', 'handlingAmount', 'creditedAmount', 'depositBonus']:
@@ -79,7 +79,7 @@ schemas.update({
     'authentication': obj({'accessToken': {'type': 'string'}, 'tokenType': {'type': 'string', 'enum': ['Bearer']}, 'expiresAt': {'type': 'string', 'format': 'date-time', 'nullable': True}, 'account': obj({'id': number, 'administrator': {'type': 'boolean'}})}, ['accessToken', 'tokenType', 'expiresAt', 'account']),
     'summary': obj({k: number for k in ['pendingOrders', 'pendingTickets', 'referrals']}),
     'referrals': obj({**{k: number for k in ['registeredUsers', 'earnedCommission', 'pendingCommission', 'availableCommission']}, 'commissionRate': {'type': 'number'}, 'currency': {'type': 'string'}}),
-    'inbox': obj({'items': resource('array:notification'), 'unread': number}),
+    'inbox': obj({'items': resource('array:notification'), 'unread': number, 'ticketReplies':resource('array:ticketNotification'), 'ticketUnread':number}),
     'articles': {'oneOf': [reference('article'), {'type': 'object', 'additionalProperties': resource('array:article')}]},
     'Pagination': obj({k: number for k in ['page', 'pageSize', 'total', 'totalPages']}, ['page', 'pageSize', 'total', 'totalPages']),
     'Problem': obj({'type': {'type': 'string'}, 'title': {'type': 'string'}, 'status': number, 'detail': {'type': 'string'}, 'code': {'type': 'string'}, 'requestId': {'type': 'string'}, 'errors': {'type': 'object', 'additionalProperties': {'type': 'array', 'items': {'type': 'string'}}}}, ['type', 'title', 'status', 'detail', 'code', 'requestId']),
@@ -99,11 +99,11 @@ release_schema['properties']['downloadUrl'].update({'format': 'uri', 'pattern': 
 release_schema['properties']['sha256']['pattern'] = '^[a-f0-9]{64}$'
 release_schema['properties']['publishedAt']['format'] = 'date-time'
 
-currency_description = 'CNY only in phase 1; integer monetary values are fen (1/100 CNY). Order currency is persisted and does not follow global configuration.'
+currency_description = 'Amounts are integer minor units in explicit CNY or USD. Existing assets remain CNY; account and order currencies are immutable.'
 for schema in schemas.values():
     currency = schema.get('properties', {}).get('currency')
     if currency is not None:
-        currency.update({'enum': ['CNY'], 'description': currency_description})
+        currency.update({'enum': ['CNY', 'USD'], 'description': currency_description})
 schemas['preferences']['properties']['currency']['nullable'] = True
 schemas['referrals']['properties']['rewards'] = obj({
     'registrationBytes': {'type': 'integer', 'minimum': 0, 'description': 'Traffic credit in bytes; 0 disables the reward for new registrations.'},
@@ -120,7 +120,7 @@ required = {
     'User/UserController@transfer': ['amount'], 'User/UserController@redeemgiftcard': ['giftCardCode'],
     'User/UsageResetController@consume': ['requestKey'], 'User/InviteController@sendEmail': ['email'],
     'User/TicketController@save': ['subject', 'priority', 'message'], 'User/TicketController@reply': ['message'],
-    'User/TicketController@withdraw': ['withdrawalMethod', 'withdrawalAccount'], 'User/NoticeController@read': ['notificationId', 'version'], 'User/CouponController@check': ['code'],
+    'User/TicketController@withdraw': ['withdrawalMethod', 'withdrawalAccount'], 'User/NoticeController@readTicket':['ticketId','version'], 'User/NoticeController@read': ['notificationId', 'version'], 'User/CouponController@check': ['code'],
 }
 
 required.update({'Passport/ClientAuthorizationController@create':['codeChallenge','state','redirectUri','platform'], 'Passport/ClientAuthorizationController@exchange':['authorizationCode','codeVerifier','redirectUri']})
@@ -144,7 +144,7 @@ def input_schema(field):
     if field == 'platform': return {'type': 'string', 'enum': ['windows', 'android', 'macos', 'linux', 'ios']}
     if field in ['page', 'pageSize', 'planId', 'paymentMethodId', 'depositAmount', 'amount', 'days', 'articleId', 'ticketId', 'notificationId', 'version']:
         return {'type': 'integer', **({'minimum': 1, 'maximum': 100, 'default': 20} if field == 'pageSize' else {})}
-    if field in ['autoRenewal', 'expiryReminders', 'trafficReminders', 'serviceNotifications', 'resetPassword', 'languageSelected']: return {'type': 'boolean'}
+    if field in ['autoRenewal', 'expiryReminders', 'trafficReminders', 'serviceNotifications', 'announcementEmails', 'resetPassword', 'languageSelected']: return {'type': 'boolean'}
     if field == 'billingPeriod': return {'type': 'string', 'enum': enums['period'][:-1]}
     if field == 'priority': return {'type': 'string', 'enum': enums['priority']}
     if field == 'status': return {'type': 'string', 'enum': enums['orderStatus'][:-1]}
@@ -264,7 +264,7 @@ if telegram_only:
 (root / 'docs/api-v10/mapping.md').write_text('\n'.join(mapping) + '\n', encoding='utf-8')
 
 def ts_type(schema):
-    if schema.get('enum') == ['CNY']: return 'SettlementCurrency' + (' | null' if schema.get('nullable') else '')
+    if schema.get('enum') == ['CNY', 'USD']: return 'SettlementCurrency' + (' | null' if schema.get('nullable') else '')
     if '$ref' in schema: return 'V10' + schema['$ref'].split('/')[-1][0].upper() + schema['$ref'].split('/')[-1][1:]
     if 'oneOf' in schema: base = ' | '.join(ts_type(s) for s in schema['oneOf'])
     elif 'enum' in schema: base = ' | '.join(json.dumps(s) for s in schema['enum'])
@@ -275,7 +275,7 @@ def ts_type(schema):
     else: base = {'integer': 'number', 'number': 'number', 'boolean': 'boolean', 'string': 'string'}.get(schema.get('type'), 'unknown')
     return base + (' | null' if schema.get('nullable') else '')
 
-types = ['// Phase 1: all monetary values are integer fen; USD is not enabled.', 'export type SettlementCurrency = "CNY";', '// Generated by scripts/document-v10.py from explicit resource schemas. Do not edit.', 'export interface V10Envelope<T> { data: T; meta?: { pagination?: V10Pagination; taskId?: string } }']
+types = ['// Monetary amounts use integer minor units in an explicit currency.', 'export type SettlementCurrency = "CNY" | "USD";', '// Generated by scripts/document-v10.py from explicit resource schemas. Do not edit.', 'export interface V10Envelope<T> { data: T; meta?: { pagination?: V10Pagination; taskId?: string } }']
 for name, schema in schemas.items(): types.append('export type V10' + name[0].upper() + name[1:] + ' = ' + ts_type(schema) + ';')
 if telegram_only:
     updates = [line for line in types if line.startswith('export type V10Bot =') or ('telegram' in line.split('=')[0].lower() and line.startswith('export type'))]

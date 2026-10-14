@@ -64,17 +64,22 @@ class CheckCommission extends Command
             ->where('invite_user_id', '!=', NULL)
             ->get();
         foreach ($orders as $order) {
-            DB::beginTransaction();
-            if (!$this->payHandle($order->invite_user_id, $order)) {
-                DB::rollBack();
-                continue;
+            try {
+                DB::transaction(function () use ($order) {
+                    $locked = Order::whereKey($order->id)->lockForUpdate()->first();
+                    if (!$locked || (int)$locked->commission_status !== 1) return;
+                    if (!$this->payHandle($locked->invite_user_id, $locked)) {
+                        throw new \RuntimeException('Commission settlement failed');
+                    }
+                    $locked->commission_status = 2;
+                    if (!$locked->save()) throw new \RuntimeException('Commission settlement failed');
+                }, 3);
+            } catch (\Throwable $e) {
+                // Keep the commission pending and isolate failures from other orders.
+                \Illuminate\Support\Facades\Log::warning('Commission settlement deferred', [
+                    'orderId' => $order->id, 'exceptionClass' => get_class($e),
+                ]);
             }
-            $order->commission_status = 2;
-            if (!$order->save()) {
-                DB::rollBack();
-                continue;
-            }
-            DB::commit();
         }
     }
 
@@ -93,10 +98,11 @@ class CheckCommission extends Command
             ];
         }
         for ($l = 0; $l < $level; $l++) {
-            $inviter = User::find($inviteUserId);
+            $inviter = User::whereKey($inviteUserId)->lockForUpdate()->first();
             if (!$inviter) continue;
             if (!isset($commissionShareLevels[$l])) continue;
-            $commissionBalance = $order->commission_balance * ($commissionShareLevels[$l] / 100);
+            $sourceCommission = (int)floor($order->commission_balance * ($commissionShareLevels[$l] / 100));
+            $commissionBalance = \App\Services\ExchangeRate::convert($sourceCommission, $order->currency ?: 'CNY', $inviter->currency ?: 'CNY', $order->fx_snapshot ?? []);
             if (!$commissionBalance) continue;
             if ((int)config('v2board.withdraw_close_enable', 0)) {
                 $inviter->balance = $inviter->balance + $commissionBalance;
@@ -104,7 +110,6 @@ class CheckCommission extends Command
                 $inviter->commission_balance = $inviter->commission_balance + $commissionBalance;
             }
             if (!$inviter->save()) {
-                DB::rollBack();
                 return false;
             }
             if (!CommissionLog::create([
@@ -112,14 +117,15 @@ class CheckCommission extends Command
                 'user_id' => $order->user_id,
                 'trade_no' => $order->trade_no,
                 'order_amount' => $order->total_amount,
-                'get_amount' => $commissionBalance
+                'get_amount' => $commissionBalance,
+                'currency' => $inviter->currency ?: 'CNY',
+                'order_currency' => $order->currency ?: 'CNY'
             ])) {
-                DB::rollBack();
                 return false;
             }
             $inviteUserId = $inviter->invite_user_id;
             // update order actual commission balance
-            $order->actual_commission_balance = $order->actual_commission_balance + $commissionBalance;
+            $order->actual_commission_balance = $order->actual_commission_balance + $sourceCommission;
         }
         return true;
     }

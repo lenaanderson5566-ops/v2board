@@ -10,6 +10,7 @@ class Coupon extends Model
     protected $dateFormat = 'U';
     protected $guarded = ['id'];
     protected $casts = [
+        'translations' => 'array',
         'created_at' => 'timestamp',
         'updated_at' => 'timestamp',
         'limit_plan_ids' => 'array',

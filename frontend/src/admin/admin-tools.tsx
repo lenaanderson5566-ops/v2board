@@ -133,7 +133,7 @@ export function QueueDetails() {
         <>
             <Panel
                 title="队列工作负载"
-                actions={<Reload onClick={workload.reload} />}
+                actions={<Reload onClick={workload.reload} loading={workload.loading} />}
             >
                 <State {...workload} retry={workload.reload}>
                     <Table
@@ -149,7 +149,7 @@ export function QueueDetails() {
             </Panel>
             <Panel
                 title="队列主进程"
-                actions={<Reload onClick={masters.reload} />}
+                actions={<Reload onClick={masters.reload} loading={masters.loading} />}
             >
                 <State {...masters} retry={masters.reload}>
                     <Table

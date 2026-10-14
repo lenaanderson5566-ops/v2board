@@ -126,3 +126,10 @@ it("renders Markdown previews as plain text and strips executable HTML", () => {
         ),
     ).toBe("Hello & welcome");
 });
+
+it("shows private ticket links without acknowledging unseen replies",()=>{
+ mocks.inbox.ticketReplies=[{ticket_id:42,message_id:7,created_at:100}];mocks.inbox.ticketUnread=1;
+ render(<AnnouncementCenter/>);fireEvent.click(screen.getByRole("button",{name:"unreadLabel 2"}));
+ expect(screen.getByRole("link",{name:/ticketReply #42/}).getAttribute("href")).toBe("#/ticket?ticketId=42");
+ expect(mocks.request).not.toHaveBeenCalled();
+});

@@ -62,3 +62,14 @@ it('decodes the original traffic business date and zone',()=>{
   const decoded=v10Request('user/stat/getTrafficLog').decode({data:[{businessDate:'2026-10-02',recordTimezone:'Asia/Shanghai',recordedAt:'2026-10-01T16:00:00Z'}]});
   expect(decoded.data[0]).toMatchObject({business_date:'2026-10-02',record_timezone:'Asia/Shanghai'});
 });
+
+it('maps coupon wallet selection and confirmed cross-currency payment amounts',()=>{
+ const order=v10Request('user/order/save',{plan_id:1,period:'month_price',wallet_coupon_id:42});
+ expect(JSON.parse(order.body!)).toMatchObject({planId:1,billingPeriod:'monthly',walletCouponId:42});
+ expect(v10Request('user/coupon/wallet').url).toBe('/api/v10/me/coupons');
+ expect(JSON.parse(v10Request('user/coupon/claim',{coupon_id:2}).body!)).toEqual({couponId:2});
+ const methods=v10Request('user/order/getPaymentMethod?trade_no=old-order');expect(methods.url).toContain('orderNumber=old-order');
+ expect(methods.decode({data:[{id:1,currency:'CNY',quotedAmount:3625,quotedCurrency:'CNY',quotedFee:0}]}).data[0]).toMatchObject({quoted_amount:3625,quoted_currency:'CNY',quoted_fee:0});
+ const pay=v10Request('user/order/checkout',{trade_no:'old-order',method:1,expected_payment_amount:3625,expected_payment_currency:'CNY'});
+ expect(JSON.parse(pay.body!)).toMatchObject({expectedPaymentAmount:3625,expectedPaymentCurrency:'CNY'});
+});

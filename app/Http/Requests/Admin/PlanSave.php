@@ -14,6 +14,8 @@ class PlanSave extends FormRequest
     public function rules()
     {
         return [
+            'usd_prices' => 'nullable|array:month_price,quarter_price,half_year_price,year_price,two_year_price,three_year_price,onetime_price,reset_price',
+            'usd_prices.*' => 'nullable|integer|min:0|max:1000000000',
             'name' => 'required',
             'content' => '',
             'group_id' => 'required',

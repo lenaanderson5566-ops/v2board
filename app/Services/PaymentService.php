@@ -58,6 +58,7 @@ class PaymentService
             $returnUrl = url('/#/order/' . $order['trade_no']);
         }
         return $this->payment->pay([
+            'currency' => $order['currency'] ?? 'CNY',
             'notify_url' => $notifyUrl,
             'return_url' => $returnUrl,
             'trade_no' => $order['trade_no'],

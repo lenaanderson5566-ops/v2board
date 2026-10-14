@@ -59,7 +59,7 @@ class ProductMail
             'preheader'=>mb_substr(preg_replace('/\s+/u', ' ', $body ?: html_entity_decode(strip_tags($html), ENT_QUOTES, 'UTF-8')), 0, 140),
             'sensitive'=>in_array($type, ['verify','mailLogin','emailInvitation'], true)];
     }
-    private function safeHtml($html)
+    public function safeHtml($html)
     {
         $document = new \DOMDocument();
         $previous = libxml_use_internal_errors(true);

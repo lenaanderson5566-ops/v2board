@@ -4,6 +4,14 @@ require __DIR__.'/../vendor/autoload.php';
 $app = require __DIR__.'/../bootstrap/app.php';
 $app->make(Illuminate\Contracts\Console\Kernel::class)->bootstrap();
 if (!app()->environment('local')) throw new RuntimeException('Local test only');
+set_exception_handler(function($e) {fwrite(STDERR,'FAIL: '.get_class($e).': '.$e->getMessage().PHP_EOL);exit(1);});
+if ($testDatabase=getenv('PRODUCT_MAIL_DATABASE')) {
+    if (!preg_match('/^notification_install_[a-f0-9]{8}$/D',$testDatabase)) throw new RuntimeException('Unsafe test database');
+    $connection=config('database.connections.mysql');$connection['database']=$testDatabase;
+    config(['database.connections.product_mail_test'=>$connection,'database.default'=>'product_mail_test','cache.prefix'=>'mail-test:'.$testDatabase.':']);
+    Illuminate\Support\Facades\DB::purge('product_mail_test');
+}
+
 use App\Services\ProductMail;
 use App\Services\MailRateLimiter;
 use App\Jobs\SendEmailJob;
@@ -14,7 +22,7 @@ $checks=0;
 $assert=function($ok,$message) use (&$checks) { if (!$ok) throw new RuntimeException($message); $checks++; };
 DB::beginTransaction();
 try {
-    config(['v2board.app_name'=>'V2Board','v2board.app_url'=>'https://product.example', 'v2board.email_host'=>null]);
+    config(['v2board.app_name'=>'V2Board','v2board.app_url'=>'https://product.example', 'v2board.email_provider'=>'smtp', 'v2board.email_host'=>null,'v2board.email_public_url'=>'https://api.example.test','v2board.email_announcement_separate'=>0,'v2board.email_announcements_enabled'=>1,'v2board.email_password_encrypted'=>false]);
     $renderer = new ProductMail;
     foreach (App\Services\LanguagePreferenceService::SUPPORTED as $language) {
         $data = $renderer->data(['template_name'=>'ticketReply', 'language'=>$language,
@@ -42,7 +50,7 @@ try {
             $assert($data['direction']===($language==='fa-IR'?'rtl':'ltr'),'RTL incorrect');
         }
     }
-    $user=App\Models\User::create(['email'=>'mail-test-'.bin2hex(random_bytes(5)).'@example.com','password'=>'not-a-login','uuid'=>App\Utils\Helper::guid(true),'token'=>App\Utils\Helper::guid(),'language'=>'ja-JP']);
+    $user=App\Models\User::create(['email'=>'mail-test-'.bin2hex(random_bytes(5)).'@example.com','password'=>'not-a-login','uuid'=>App\Utils\Helper::guid(true),'token'=>App\Utils\Helper::guid(),'language'=>'ja-JP','announcement_email'=>1]);
     $base=['email'=>$user->email,'template_name'=>'notify','subject'=>'Fallback','template_value'=>['content'=>'Fallback body']];
     $assert($renderer->data($base)['language']==='ja-JP','Stored language ignored');
     $assert($renderer->data($base+['language'=>'fa_IR'])['language']==='fa-IR','Explicit language ignored');
@@ -53,12 +61,14 @@ try {
     $html=$renderer->data($unsafe)['contentHtml'];
     $assert(strpos($html,'script')===false && strpos($html,'onclick')===false && strpos($html,'<img')===false && strpos($html,'<strong>safe</strong>')!==false && strpos($html,'https://safe.example')!==false,'Announcement sanitization failed');
     $config=new App\Http\Requests\Admin\UserSendMail;
-    $assert(validator(['subject'=>'x','content'=>'y','translations'=>['ja-JP'=>['subject'=>'x']]],$config->rules())->fails(),'Incomplete translation accepted');
-    $assert(validator(['subject'=>'x','content'=>'y','translations'=>['xx'=>['subject'=>'x','content'=>'y']]],$config->rules())->fails(),'Unknown locale accepted');
-    $assert(!validator(['subject'=>'x','content'=>'y','translations'=>['ja-JP'=>['subject'=>'x','content'=>'y']]],$config->rules())->fails(),'Valid translation rejected');
+    $assert(validator(['purpose'=>'service','request_key'=>(string)Illuminate\Support\Str::uuid(),'subject'=>'x','content'=>'y','translations'=>['ja-JP'=>['subject'=>'x']]],$config->rules())->fails(),'Incomplete translation accepted');
+    $assert(validator(['purpose'=>'service','request_key'=>(string)Illuminate\Support\Str::uuid(),'subject'=>'x','content'=>'y','translations'=>['xx'=>['subject'=>'x','content'=>'y']]],$config->rules())->fails(),'Unknown locale accepted');
+    $assert(!validator(['purpose'=>'service','request_key'=>(string)Illuminate\Support\Str::uuid(),'subject'=>'x','content'=>'y','translations'=>['ja-JP'=>['subject'=>'x','content'=>'y']]],$config->rules())->fails(),'Valid translation rejected');
+    $assert(validator(['subject'=>'x','content'=>'y'],$config->rules())->fails(),'Unclassified campaign accepted');
+    $assert(validator(['purpose'=>'other','request_key'=>(string)Illuminate\Support\Str::uuid(),'subject'=>'x','content'=>'y'],$config->rules())->fails(),'Unknown campaign purpose accepted');
     config(['mail.host'=>'isolated-'.bin2hex(random_bytes(8)), 'mail.username'=>'test','mail.from.address'=>'test@example.com']);
     $limiter=new MailRateLimiter;
-    $scope='mail-rate:'.hash('sha256',config('mail.host').'|test|test@example.com');
+    $scope='mail-rate:'.hash('sha256',config('v2board.email_provider', 'smtp').'|'.config('v2board.email_mailgun_domain').'|'.config('mail.host').'|test|test@example.com');
     $redis=Cache::store('redis');
     $assert($limiter->domain('a@qq.com')===$limiter->domain('b@foxmail.com'),'QQ grouping failed');
     $assert($limiter->domain('a@163.com')===$limiter->domain('b@126.com'),'NetEase grouping failed');
@@ -105,7 +115,7 @@ try {
     $transport->error=null;
     $result=(new SendEmailJob($base))->handle();
     $assert(empty($result['error']) && !isset($result['config']),'Success or SMTP secrecy incorrect');
-    $unsafe=$base; $unsafe['email']="valid@example.com\r\nBcc:other@example.com";
+    $unsafe=$base; $unsafe['template_name']='test'; $unsafe['email']="valid@example.com\r\nBcc:other@example.com";
     $before=$transport->sent;
     $invalid=(new SendEmailJob($unsafe))->handle();
     $assert(!empty($invalid['error']) && $invalid['permanent'] && $transport->sent===$before, 'Legacy queued unsafe address reached transport');

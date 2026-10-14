@@ -57,29 +57,7 @@ class UserController extends Controller
 
     private function filter(Request $request, $builder)
     {
-        $request->validate((new UserFetch())->rules());
-        $filters = $request->input('filter');
-        if ($filters) {
-            foreach ($filters as $k => $filter) {
-                if ($filter['condition'] === '模糊') {
-                    $filter['condition'] = 'like';
-                    $filter['value'] = "%{$filter['value']}%";
-                }
-                if ($filter['key'] === 'd' || $filter['key'] === 'transfer_enable') {
-                    $filter['value'] = $filter['value'] * 1073741824;
-                }
-                if ($filter['key'] === 'invite_by_email') {
-                    $builder->whereIn('invite_user_id', User::where('email', $filter['condition'], $filter['value'])->select('id'));
-                    unset($filters[$k]);
-                    continue;
-                }
-                if ($filter['key'] === 'plan_id' && $filter['value'] == 'null') {
-                    $builder->whereNull('plan_id');
-                    continue;
-                }
-                $builder->where($filter['key'], $filter['condition'], $filter['value']);
-            }
-        }
+        \App\Services\AdminUserFilters::apply($request, $builder);
     }
 
     public function fetch(UserFetch $request)
@@ -230,10 +208,10 @@ class UserController extends Controller
             $notUseFlow = (($user['transfer_enable'] - ($user['u'] + $user['d'])) / 1073741824) ?? 0;
             $planName = $user['plan_name'] ?? '无订阅';
             $subscribeUrl =  Helper::getSubscribeUrl($user['token']);
-            $rows[] = [$user['email'], $balance, $commissionBalance, $transferEnable, $deviceLimit, $notUseFlow, $expireDate, $planName, $subscribeUrl];
+            $rows[] = [$user['email'], $user['currency'] ?? 'CNY', $balance, $commissionBalance, $transferEnable, $deviceLimit, $notUseFlow, $expireDate, $planName, $subscribeUrl];
 
         }
-        return $this->csvResponse(['邮箱', '余额 (CNY)', '推广佣金 (CNY)', '总流量', '设备数限制', '剩余流量', '套餐到期时间', '订阅计划', '订阅地址'], $rows, 'users.csv');
+        return $this->csvResponse(['邮箱', '币种', '余额', '推广佣金', '总流量', '设备数限制', '剩余流量', '套餐到期时间', '订阅计划', '订阅地址'], $rows, 'users.csv');
     }
 
     private function checkScope(Request $request, $builder)
@@ -307,6 +285,7 @@ class UserController extends Controller
         $users = [];
         for ($i = 0;$i < $request->input('generate_count');$i++) {
             $user = [
+                'currency' => config('v2board.new_user_currency','CNY'),
                 'email' => Helper::randomChar(6) . '@' . $request->input('email_suffix'),
                 'plan_id' => isset($plan->id) ? $plan->id : NULL,
                 'group_id' => isset($plan->group_id) ? $plan->group_id : NULL,
@@ -340,29 +319,22 @@ class UserController extends Controller
 
     public function sendMail(UserSendMail $request)
     {
-        $sortType = in_array($request->input('sort_type'), ['ASC', 'DESC']) ? $request->input('sort_type') : 'DESC';
-        $sort = $request->input('sort') ? $request->input('sort') : 'created_at';
-        $builder = User::orderBy($sort, $sortType);
-        $this->filter($request, $builder);
-        $this->checkScope($request, $builder);
-        foreach ($builder->cursor() as $user) {
-            SendEmailJob::dispatch([
-                'email' => $user->email,
-                'subject' => $request->input('subject'),
-                'translations' => $request->input('translations', []),
-                'source_language' => $request->input('source_language'),
-                'template_name' => 'notify',
-                'template_value' => [
-                    'name' => config('v2board.app_name', 'V2Board'),
-                    'url' => config('v2board.app_url'),
-                    'content' => $request->input('content')
-                ]
-            ], 'send_email_mass');
+        $purpose=$request->input('purpose');
+        if($purpose==='marketing') {
+            abort_unless(config('v2board.email_announcements_enabled',1),422,'推广邮件已暂停。');
+            try { \App\Services\MailAudience::origin(); } catch (\Throwable $e) { abort(422,'请先配置 HTTPS 邮件回调与退订 API 地址。'); }
         }
+        $builder=User::orderBy('id');
+        $this->filter($request,$builder); $this->checkScope($request,$builder);
+        $id=\App\Services\MailCampaign::create($builder,$request->validated(),(int)$request->user['id']);
+        return response(['data'=>['campaign_id'=>$id]],202);
+    }
 
-        return response([
-            'data' => true
-        ]);
+    public function previewMailAudience(Request $request)
+    {
+        $request->validate(['purpose'=>'required|in:service,marketing']);
+        $builder=User::orderBy('id'); $this->filter($request,$builder); $this->checkScope($request,$builder);
+        return response(['data'=>\App\Services\MailCampaign::preview($builder,$request->input('purpose'))]);
     }
 
     public function ban(Request $request)

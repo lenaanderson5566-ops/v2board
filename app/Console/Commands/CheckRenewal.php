@@ -73,23 +73,28 @@ class CheckRenewal extends Command
                     if (!$plan->renew) {
                         throw new Exception('This subscription cannot be renewed');
                     }
-                    if($user->balance < $plan[$latestPeriod]) {
+                    $price = \App\Services\BillingCurrency::price($plan,$latestPeriod,$user->currency ?: 'CNY');
+                    if ($price === null) throw new Exception('Renewal price unavailable');
+                    if($user->balance < $price) {
                         throw new Exception('No enough balance');
                     }
 
                     DB::beginTransaction();
+                    $user = User::whereKey($user->id)->lockForUpdate()->firstOrFail();
+                    if (!$user->auto_renewal || !$user->expired_at || $user->expired_at <= time() || $user->expired_at-time() >= 86400*2 || $user->balance < $price) { DB::rollBack(); continue; }
                     $order = new Order();
+                    $order->currency = $user->currency ?: 'CNY';
                     $orderService = new OrderService($order);
                     $order->user_id = $user->id;
                     $order->plan_id = $plan->id;
                     $order->period = $latestPeriod;
                     $order->trade_no = Helper::generateOrderNo();
-                    $order->balance_amount = $plan[$latestPeriod];
+                    $order->balance_amount = $price;
                     $order->total_amount = 0;
                     $orderService->setVipDiscount($user);
                     $order->type = 2;
                     
-                    $user->balance = $user->balance - $plan[$latestPeriod];
+                    $user->balance = $user->balance - $price;
                     $user->expired_at = $this->getTime($latestPeriod, $user->expired_at);
                     if (!$user->save()) {
                         DB::rollback();

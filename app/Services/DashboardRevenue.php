@@ -21,7 +21,7 @@ class DashboardRevenue
             'last_year_income' => [$lastYear, $year],
             'last_year_same_period_income' => [$lastYear, $now->subYearNoOverflow()->addSecond()],
         ];
-        $query = Order::query()->whereNotIn('status', [0, 2])
+        $query = Order::query()->where('currency','CNY')->whereNotIn('status', [0, 2])
             ->where('paid_at', '>=', $lastYear->timestamp)
             ->where('paid_at', '<=', $now->timestamp);
         foreach ($ranges as $key => [$start, $end]) {

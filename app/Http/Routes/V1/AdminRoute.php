@@ -20,6 +20,14 @@ class AdminRoute
             $router->post('/fastai-installers/complete', 'V1\\Admin\\FastaiInstallerController@complete')->middleware('throttle:20,1');
             $router->get('/invitation-review/fetch', 'V1\\Admin\\InvitationReviewController@fetch');
             $router->post('/invitation-review/review', 'V1\\Admin\\InvitationReviewController@review');
+            $router->get('/mail-blocklist/fetch', 'V1\\Admin\\MailBlocklistController@fetch');
+            $router->get('/mail-blocklist/history', 'V1\\Admin\\MailBlocklistController@history');
+            $router->post('/mail-blocklist/add', 'V1\\Admin\\MailBlocklistController@add')->middleware('throttle:30,1');
+            $router->post('/mail-blocklist/change', 'V1\\Admin\\MailBlocklistController@change')->middleware('throttle:30,1');
+            $router->get('/mail-logs/fetch', 'V1\\Admin\\MailLogController@fetch');
+            $router->get('/mail-logs/health', 'V1\\Admin\\MailLogController@health');
+            $router->get('/mail-logs/suppressions', 'V1\\Admin\\MailLogController@suppressions');
+            $router->post('/mail-logs/release', 'V1\\Admin\\MailLogController@release')->middleware('throttle:10,1');
             // Config
             $router->get ('/config/fetch', 'V1\\Admin\\ConfigController@fetch');
             $router->post('/config/save', 'V1\\Admin\\ConfigController@save');
@@ -30,7 +38,7 @@ class AdminRoute
             $router->post('/telegram/inspect', 'V1\\Admin\\TelegramController@inspect')->middleware('throttle:6,1');
             $router->post('/telegram/import', 'V1\\Admin\\TelegramController@import')->middleware('throttle:6,1');
             $router->post('/config/setTelegramWebhook', 'V1\\Admin\\ConfigController@setTelegramWebhook');
-            $router->post('/config/testSendMail', 'V1\\Admin\\ConfigController@testSendMail');
+            $router->post('/config/testSendMail', 'V1\\Admin\\ConfigController@testSendMail')->middleware('throttle:3,1');
             $router->post('/config/previewMail', 'V1\\Admin\\ConfigController@previewMail');
             $router->post('/ops/i18n/content/generate', 'V1\\Admin\\ContentTranslationController@generate')->middleware('throttle:30,1');
             // Plan
@@ -98,6 +106,8 @@ class AdminRoute
             $router->get ('/user/getUserInfoById', 'V1\\Admin\\UserController@getUserInfoById');
             $router->post('/user/generate', 'V1\\Admin\\UserController@generate');
             $router->post('/user/dumpCSV', 'V1\\Admin\\UserController@dumpCSV');
+            $router->get('/mail-campaigns/fetch', 'V1\\Admin\\MailCampaignController@fetch');
+            $router->post('/user/previewMailAudience', 'V1\\Admin\\UserController@previewMailAudience')->middleware('throttle:20,1');
             $router->post('/user/sendMail', 'V1\\Admin\\UserController@sendMail');
             $router->post('/user/ban', 'V1\\Admin\\UserController@ban');
             $router->post('/user/resetSecret', 'V1\\Admin\\UserController@resetSecret');
@@ -126,7 +136,18 @@ class AdminRoute
             $router->get ('/ticket/fetch', 'V1\\Admin\\TicketController@fetch');
             $router->post('/ticket/reply', 'V1\\Admin\\TicketController@reply');
             $router->post('/ticket/close', 'V1\\Admin\\TicketController@close');
+            $router->get('/billing-currency/fetch', 'V1\\Admin\\BillingCurrencyController@fetch');
+            $router->post('/billing-currency/refresh', 'V1\\Admin\\BillingCurrencyController@refresh')->middleware('throttle:2,1');
+            $router->post('/billing-currency/prices', 'V1\\Admin\\BillingCurrencyController@prices');
             // Coupon
+            $router->get('/coupon-presentation/fetch', 'V1\\Admin\\CouponPresentationController@fetch');
+            $router->post('/coupon-presentation/save', 'V1\\Admin\\CouponPresentationController@save')->middleware('throttle:20,1');
+            $router->post('/coupon-campaign/preview', 'V1\\Admin\\CouponCampaignController@preview')->middleware('throttle:5,1');
+            $router->post('/coupon-campaign/confirm', 'V1\\Admin\\CouponCampaignController@confirm')->middleware('throttle:5,1');
+            $router->post('/coupon-campaign/cancel', 'V1\\Admin\\CouponCampaignController@cancel')->middleware('throttle:5,1');
+            $router->get('/coupon-campaign/fetch', 'V1\\Admin\\CouponCampaignController@fetch');
+            $router->get('/coupon-campaign/recipients', 'V1\\Admin\\CouponCampaignController@recipients');
+            $router->post('/coupon/issue', 'V1\\Admin\\CouponController@issue')->middleware('throttle:20,1');
             $router->get ('/coupon/fetch', 'V1\\Admin\\CouponController@fetch');
             $router->post('/coupon/generate', 'V1\\Admin\\CouponController@generate');
             $router->post('/coupon/drop', 'V1\\Admin\\CouponController@drop');

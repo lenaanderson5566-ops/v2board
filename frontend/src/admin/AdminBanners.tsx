@@ -56,7 +56,6 @@ export function AdminBanners() {
             title="Banner 管理"
             actions={
                 <>
-                    <button onClick={() => data.reload()}>刷新</button>
                     <button
                         className="primary"
                         onClick={() =>

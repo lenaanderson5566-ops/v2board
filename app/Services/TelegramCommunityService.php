@@ -38,9 +38,13 @@ class TelegramCommunityService
         $bot = (new TelegramService())->getMe()->result;
         $token = bin2hex(random_bytes(24));
         $expires = time()+600;
-        DB::table('v2_telegram_binding_challenge')->updateOrInsert(['user_id'=>$user->id], [
-            'token_hash'=>hash('sha256',$token), 'telegram_id'=>null, 'telegram_name'=>null, 'expires_at'=>$expires,
-        ]);
+        DB::transaction(function () use ($user,$token,$expires) {
+            $account=User::where('id',$user->id)->lockForUpdate()->firstOrFail();
+            abort_if($account->telegram_id,409,'Telegram is already linked');
+            DB::table('v2_telegram_binding_challenge')->updateOrInsert(['user_id'=>$account->id], [
+                'token_hash'=>hash('sha256',$token), 'telegram_id'=>null, 'telegram_name'=>null, 'expires_at'=>$expires,
+            ]);
+        },3);
         return ['bindingUrl'=>'https://t.me/'.$bot->username.'?start=bind_'.$token, 'expiresAt'=>gmdate('c',$expires)];
     }
     public function acceptBinding(string $token, int $telegramId, string $name): void {
@@ -55,32 +59,30 @@ class TelegramCommunityService
     }
     public function confirmBinding(User $user, string $expectedTelegramId): void {
         abort_unless(config('v2board.telegram_bot_enable',0),409,'Telegram is disabled');
-        Cache::lock('telegram:binding-write', 15)->block(5, function () use ($user, $expectedTelegramId) {
-            DB::transaction(function () use ($user, $expectedTelegramId) {
-                $row = DB::table('v2_telegram_binding_challenge')->where('user_id',$user->id)->lockForUpdate()->first();
-                $account = User::where('id',$user->id)->lockForUpdate()->firstOrFail();
-                abort_unless($row && $row->expires_at>time() && (string)$row->telegram_id === $expectedTelegramId, 409, 'Confirm the link in Telegram first');
-                abort_if($account->telegram_id || User::where('telegram_id',$row->telegram_id)->exists(),409,'Telegram account already linked');
-                DB::table('v2_telegram_preference')->where('user_id',$account->id)->delete();
-                $account->telegram_id=$row->telegram_id;
-                $account->save();
-                DB::table('v2_telegram_binding_challenge')->where('user_id',$user->id)->delete();
-                $this->observe((int)$row->telegram_id);
-            });
-        });
+        DB::transaction(function () use ($user, $expectedTelegramId) {
+            $account = User::where('id',$user->id)->lockForUpdate()->firstOrFail();
+            $row = DB::table('v2_telegram_binding_challenge')->where('user_id',$user->id)->lockForUpdate()->first();
+            abort_unless($row && $row->expires_at>time() && $row->telegram_id && (string)$row->telegram_id === $expectedTelegramId,409,'Confirm the link in Telegram first');
+            abort_if($account->telegram_id || User::where('telegram_id',$row->telegram_id)->exists(),409,'Telegram account already linked');
+            // A unique database claim remains authoritative across cache expiry and multiple hosts.
+            $claimed = DB::table('v2_telegram_identity')->insertOrIgnore(['telegram_id'=>$row->telegram_id,'user_id'=>$account->id]);
+            abort_unless($claimed === 1,409,'Telegram account already linked');
+            $account->telegram_id=$row->telegram_id;
+            $account->save();
+            DB::table('v2_telegram_binding_challenge')->where('user_id',$account->id)->delete();
+            $this->observe((int)$row->telegram_id);
+        },3);
     }
     public function unbind(User $user): void {
-        Cache::lock('telegram:binding-write',15)->block(5,function () use ($user) {
-            DB::transaction(function () use ($user) {
-                $account=User::where('id',$user->id)->lockForUpdate()->firstOrFail();
-                if ($account->telegram_id) $this->observe((int)$account->telegram_id);
-                DB::table('v2_telegram_preference')->where('user_id',$account->id)->delete();
-                DB::table('v2_telegram_notification')->where('user_id',$account->id)->where('status','pending')->update(['status'=>'cancelled','finished_at'=>time()]);
-                $account->telegram_id=null;
-                $account->save();
-                DB::table('v2_telegram_binding_challenge')->where('user_id',$user->id)->delete();
-            });
-        });
+        DB::transaction(function () use ($user) {
+            $account=User::where('id',$user->id)->lockForUpdate()->firstOrFail();
+            if ($account->telegram_id) $this->observe((int)$account->telegram_id);
+            DB::table('v2_telegram_identity')->where('user_id',$account->id)->delete();
+            DB::table('v2_telegram_payment_notice')->where('user_id',$account->id)->where('status','pending')->update(['status'=>'cancelled']);
+            $account->telegram_id=null;
+            $account->save();
+            DB::table('v2_telegram_binding_challenge')->where('user_id',$account->id)->delete();
+        },3);
     }
     public function status(User $user): array {
         $pending=DB::table('v2_telegram_binding_challenge')->where('user_id',$user->id)->where('expires_at','>',time())->first();
@@ -112,7 +114,9 @@ class TelegramCommunityService
             $id=(int)($join['from']['id']??0);
             if ($id<=0 || ($join['from']['is_bot']??false)) return;
             $this->observe($id);
-            if ($this->eligible($this->userForTelegram($id))) $api->approveChatJoinRequest($this->chatId(),$id);
+            $this->reconcile($id);
+            $state=DB::table('v2_telegram_group_member')->where('chat_id',$this->chatId())->where('telegram_id',$id)->first();
+            if ($this->eligible($this->userForTelegram($id)) && $state && $state->status!=='kicked' && !$state->error_code) $api->approveChatJoinRequest($this->chatId(),$id);
             else $api->declineChatJoinRequest($this->chatId(),$id);
         }
         $member=$data['chat_member'] ?? null;
@@ -149,14 +153,10 @@ class TelegramCommunityService
                 $query->update(['policy_banned'=>false]);
                 $row->policy_banned=false;
             }
-            if ($eligible && $row->policy_banned && $status==='kicked') {
-                $api->call('unbanChatMember',['chat_id'=>$this->chatId(),'user_id'=>$telegramId,'only_if_banned'=>true]);
-                $query->update(['policy_banned'=>false]);
-                $status='left';
-            } elseif (!$eligible && ($status==='member' || ($status==='restricted' && ($member->is_member??false)))) {
+            if (!$eligible && ($status==='member' || ($status==='restricted' && ($member->is_member??false)))) {
                 // Persist an uncertain outcome separately; never automatically unban a manual/ambiguous ban.
                 $query->update(['status'=>'ban_pending','error_code'=>'BAN_OUTCOME_PENDING']);
-                $api->call('banChatMember',['chat_id'=>$this->chatId(),'user_id'=>$telegramId]);
+                $api->call('banChatMember',['chat_id'=>$this->chatId(),'user_id'=>$telegramId,'until_date'=>time()+120]);
                 $query->update(['policy_banned'=>true]);
                 $row->policy_banned=true;
                 $status='kicked';

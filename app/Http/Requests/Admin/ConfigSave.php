@@ -57,6 +57,7 @@ class ConfigSave extends FormRequest
         'try_out_plan_id' => 'integer',
         'try_out_hour' => 'numeric',
         'tos_url' => 'nullable|url',
+        'new_user_currency' => 'sometimes|required|in:CNY,USD',
         'currency' => 'sometimes|required|in:CNY',
         'currency_symbol' => 'sometimes|required|in:CNY',
         // subscribe
@@ -82,6 +83,16 @@ class ConfigSave extends FormRequest
         // Custom footer is independent of any frontend theme.
         'custom_footer_html' => 'nullable|string',
         // email
+        'email_provider' => 'in:smtp,mailgun,ses,resend',
+        'email_resend_api_key' => 'nullable|string|max:256|regex:/^re_[A-Za-z0-9_-]+$/D',
+        'email_ses_region' => ['string', 'max:32', 'regex:/^(us|eu|ap|ca|sa|me|af|il|mx)-(?:[a-z]+-)?[a-z]+-[1-9]$/D'],
+        'email_ses_auth' => 'in:role,key',
+        'email_ses_access_key' => 'nullable|string|regex:/^AKIA[A-Z0-9]{16}$/D',
+        'email_ses_secret_key' => 'nullable|string|max:128|regex:/^[A-Za-z0-9+\/=]+$/D',
+        'email_ses_configuration_set' => 'nullable|string|max:64|regex:/^[A-Za-z0-9_-]+$/D',
+        'email_mailgun_region' => 'in:us,eu',
+        'email_mailgun_domain' => 'nullable|string|max:253|regex:/^(?:[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?\.)+[a-zA-Z]{2,63}$/D',
+        'email_mailgun_api_key' => 'nullable|string|max:256|regex:/^[A-Za-z0-9_-]+$/D',
         'email_template' => '',
         'email_default_language' => 'in:zh-CN,zh-TW,en-US,ja-JP,ko-KR,vi-VN,ru-RU,fa-IR',
         'email_send_interval' => 'integer|min:1|max:3600',
@@ -90,7 +101,7 @@ class ConfigSave extends FormRequest
         'email_host' => '',
         'email_port' => '',
         'email_username' => '',
-        'email_password' => '',
+        'email_password' => 'nullable|string|max:512',
         'email_encryption' => '',
         'email_from_address' => '',
         // telegram
@@ -155,9 +166,21 @@ class ConfigSave extends FormRequest
         });
     }
 
+    public static function allRules(): array
+    {
+        $rules=self::RULES;
+        foreach (\App\Services\MailChannel::FIELDS as $field) if (isset($rules['email_'.$field])) $rules['email_announcement_'.$field]=$rules['email_'.$field];
+        $rules['email_public_url']='nullable|string|max:2048|url|regex:~^https://[^/?#@]+/?$~iD';
+        $rules['email_announcement_separate']='in:0,1';
+        $rules['email_announcements_enabled']='in:0,1';
+        $rules['email_mailgun_webhook_key']='nullable|string|max:256|regex:/^[A-Za-z0-9_-]+$/D';
+        $rules['email_resend_webhook_key']='nullable|string|max:256|regex:/^whsec_[A-Za-z0-9+\/=]+$/D';
+        $rules['email_ses_topic_arn']='nullable|string|max:256|regex:/^arn:aws:sns:[a-z0-9-]+:[0-9]{12}:[A-Za-z0-9_-]+$/D';
+        return $rules;
+    }
     public function rules()
     {
-        $rules = self::RULES;
+        $rules = self::allRules();
 
         $rules['deposit_bounus'][] = function ($attribute, $value, $fail) {
             foreach ($value as $tier) {

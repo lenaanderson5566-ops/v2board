@@ -36,7 +36,7 @@ class OrderActions
         for ($i = 0; $i < count($order); $i++) {
             for ($x = 0; $x < count($plan); $x++) {
                 if ($order[$i]['plan_id'] === $plan[$x]['id']) {
-                    $order[$i]['plan'] = $plan[$x];
+                    $order[$i]['plan'] = \App\Services\BillingCurrency::present(clone $plan[$x], $order[$i]->currency ?: 'CNY');
                 }
             }
         }
@@ -54,12 +54,14 @@ class OrderActions
         if (!$order) {
             abort(request()->is('api/v10/*') ? 409 : 500, __('Order does not exist or has been paid'));
         }
+        $order->payment_amount = $order->payment_snapshot['payment_amount'] ?? null;
+        $order->payment_currency = $order->payment_snapshot['payment_currency'] ?? null;
         if ($order->plan_id == 0) {
             $order['plan'] = [
                 'id' => 0,
                 'name' => 'deposit'
             ];
-            $order->bounus = $this->getbounus($order->total_amount);
+            $order->bounus = ($order->currency ?: 'CNY') === 'CNY' ? $this->getbounus($order->total_amount) : 0;
             $order->get_amount = $order->total_amount + $order->bounus;
 
             return response([
@@ -67,6 +69,7 @@ class OrderActions
             ]);
         }
         $order['plan'] = Plan::find($order->plan_id);
+        if ($order['plan']) \App\Services\BillingCurrency::present($order['plan'], $order->currency ?: 'CNY');
         $order['try_out_plan_id'] = (int)config('v2board.try_out_plan_id');
         if (!$order['plan']) $order['plan'] = ['id' => $order->plan_id, 'name' => $order->credit_snapshot['name'] ?? '#'.$order->plan_id];
         if ($order->surplus_order_ids) {
@@ -115,6 +118,7 @@ class OrderActions
             $user = User::find($request->user['id']);
             $order = new Order();
             $orderService = new OrderService($order);
+            $order->currency = \App\Services\BillingCurrency::account($user);
             $order->user_id = $request->user['id'];
             $order->plan_id = $request->input('plan_id');
             $order->period = 'deposit';
@@ -141,13 +145,15 @@ class OrderActions
             abort(request()->is('api/v10/*') ? 409 : 500, __('Subscription plan does not exist'));
         }
 
+        $currency = \App\Services\BillingCurrency::account($user);
+        $price = \App\Services\BillingCurrency::price($plan, $request->input('period'), $currency);
         $isCredit = $request->input('period') === 'onetime_price';
         if ($isCredit && (!$plan->show || $plan->transfer_enable <= 0 || $plan->group_id === null)) abort(422, __('Current product is sold out'));
         if ($user->plan_id !== $plan->id && !$planService->haveCapacity() && $request->input('period') !== 'reset_price') {
             abort(request()->is('api/v10/*') ? 409 : 500, __('Current product is sold out'));
         }
 
-        if ($plan[$request->input('period')] === NULL || $plan[$request->input('period')] < 0) {
+        if ($price === null || $price < 0) {
             abort(request()->is('api/v10/*') ? 409 : 500, __('This payment period cannot be purchased, please choose another period'));
         }
 
@@ -177,13 +183,17 @@ class OrderActions
         $order->plan_id = $plan->id;
         $order->period = $request->input('period');
         $order->trade_no = Helper::generateOrderNo();
-        $order->total_amount = $plan[$request->input('period')];
+        $order->currency = $currency;
+        $order->total_amount = $price;
         if ($isCredit) {
             $order->credit_bytes = (int)round($plan->transfer_enable * 1073741824);
             $order->credit_snapshot = $plan->only(['name','group_id','speed_limit','device_limit']);
         }
 
-        if ($request->input('coupon_code')) {
+        abort_if($request->filled('wallet_coupon_id') && $request->filled('coupon_code'), 422, 'Select one coupon.');
+        if ($request->filled('wallet_coupon_id')) {
+            \App\Services\CouponWallet::reserve($order, (int)$request->input('wallet_coupon_id'));
+        } elseif ($request->input('coupon_code')) {
             $couponService = new CouponService($request->input('coupon_code'));
             if (!$couponService->use($order)) {
                 abort(request()->is('api/v10/*') ? 409 : 500, __('Coupon failed'));
@@ -218,6 +228,9 @@ class OrderActions
             abort(request()->is('api/v10/*') ? 409 : 500, __('Failed to create order'));
         }
 
+        if ($request->filled('wallet_coupon_id')) {
+            DB::table('v2_coupon_wallet')->where('id', $request->input('wallet_coupon_id'))->where('user_id', $order->user_id)->update(['order_id'=>$order->id]);
+        }
         return response([
             'data' => $order->trade_no
         ]);
@@ -249,25 +262,28 @@ class OrderActions
         $payment = Payment::find($method);
         if (!$payment || $payment->enable !== 1) abort(request()->is('api/v10/*') ? 409 : 500, __('Payment method is not available'));
         $paymentService = new PaymentService($payment->payment, $payment->id);
-        $order->handling_amount = NULL;
-        if ($payment->handling_fee_fixed || $payment->handling_fee_percent) {
-            $order->handling_amount = round(($order->total_amount * ($payment->handling_fee_percent / 100)) + $payment->handling_fee_fixed);
+        $quote = \App\Services\PaymentQuote::make($order, $payment);
+        if (($order->currency ?: 'CNY') !== $quote['payment_currency']) {
+            abort_unless((int)$request->input('expected_payment_amount') === $quote['payment_amount']
+                && $request->input('expected_payment_currency') === $quote['payment_currency'], 409, __('Payment quote changed. Reload and confirm the payment amount.'));
         }
+        $order->handling_amount = $quote['handling_amount'];
         $order->payment_id = $method;
         // Claim payment before contacting the provider; replacement must not cancel issued payments.
-        $claimed = DB::transaction(function () use ($order, $method, $payment) {
+        $claimed = DB::transaction(function () use ($order, $method, $payment, $quote) {
             $fresh = Order::where('id', $order->id)->lockForUpdate()->first();
             if (!$fresh || (int)$fresh->status !== 0) return false;
             $fresh->payment_id = $method;
             $fresh->handling_amount = $order->handling_amount;
-            $saved = \App\Services\OrderPaymentHistory::select($fresh, $payment);
+            $saved = \App\Services\OrderPaymentHistory::select($fresh, $payment, $quote);
             $order->handling_amount = $fresh->handling_amount;
             return $saved;
         }, 3);
         if (!$claimed) abort(409, __('Order does not exist or has been paid'));
         $result = $paymentService->pay([
             'trade_no' => $tradeNo,
-            'total_amount' => isset($order->handling_amount) ? ($order->total_amount + $order->handling_amount) : $order->total_amount,
+            'total_amount' => $quote['payment_amount'],
+            'currency' => $quote['payment_currency'],
             'user_id' => $order->user_id,
             'stripe_token' => $request->input('token')
         ]);
@@ -291,9 +307,12 @@ class OrderActions
         ]);
     }
 
-    public function getPaymentMethod()
+    public function getPaymentMethod(?Request $request = null)
     {
+        $request ??= request();
+        $order = $request->input('trade_no') ? Order::where('trade_no', $request->input('trade_no'))->where('user_id', $request->user['id'])->firstOrFail() : null;
         $methods = Payment::select([
+            'currency',
             'id',
             'name',
             'payment',
@@ -306,11 +325,15 @@ class OrderActions
             ->whereNotIn('payment', PaymentService::RETIRED_METHODS)
             ->orderBy('sort', 'ASC')
             ->get()
-            ->map(function ($method) {
+            ->map(function ($method) use ($order) {
                 $fields = \App\Services\PaymentPresentation::fields($method->config ?? []);
                 // Provider credentials must never be exposed by the public resource.
+                if ($order && $order->total_amount > 0) {
+                    try { $quote = \App\Services\PaymentQuote::make($order, $method); } catch (\Symfony\Component\HttpKernel\Exception\HttpException $e) { if (!in_array($e->getStatusCode(),[422,503],true)) throw $e; return null; }
+                    $fields += ['quoted_amount'=>$quote['payment_amount'], 'quoted_currency'=>$quote['payment_currency'], 'quoted_fee'=>$quote['handling_amount'], 'rate_time'=>$quote['fx']['quotedAt'] ?? null];
+                }
                 return array_merge($method->makeHidden('config')->toArray(), $fields);
-            });
+            })->filter()->values();
 
         return response([
             'data' => $methods

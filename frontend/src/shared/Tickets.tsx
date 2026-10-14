@@ -1,5 +1,5 @@
 import { StatusBadge } from "./StatusBadge";
-import { useState, useRef, type ReactNode } from "react";
+import { useEffect, useState, useRef, type ReactNode } from "react";
 import { boot, request, rows, query, date, type Row } from "./api";
 import { tx } from "./i18n";
 import {
@@ -41,7 +41,7 @@ export function Tickets({
     const prefix = isAdmin ? boot.adminPath : "user";
     const ticketAccount = useData(isAdmin ? "" : "user/info");
     const ticketPolicy = ticketAccount.data?.ticket_creation;
-    const [id, setId] = useState<number | null>(null),
+    const [id, setId] = useState<number | null>(()=>{const value=Number(new URLSearchParams(location.hash.split("?")[1]).get("ticketId"));return !isAdmin && Number.isSafeInteger(value) && value>0 ? value:null;}),
         [creating, setCreating] = useState(false);
     const d = useData<Row[]>(
             query(`${prefix}/ticket/fetch`, {
@@ -55,6 +55,16 @@ export function Tickets({
                 ? query(`${prefix}/ticket/fetch`, { id })
                 : `${prefix}/ticket/fetch`,
         );
+    useEffect(()=>{
+        if(isAdmin) return;
+        const openFromHash=()=>{const value=Number(new URLSearchParams(location.hash.split("?")[1]).get("ticketId"));if(Number.isSafeInteger(value) && value>0)setId(value);};
+        window.addEventListener("hashchange",openFromHash);return ()=>window.removeEventListener("hashchange",openFromHash);
+    },[isAdmin]);
+    const readVersion=!isAdmin && id && Number(detail.data?.id)===id && !detail.error
+        ? Math.max(0,...(detail.data?.message || []).filter((m:Row)=>m.is_me===false).map((m:Row)=>Number(m.id))) : 0;
+    useEffect(()=>{
+        if(id && readVersion) request("user/notice/readTicket",{id,version:readVersion}).catch(()=>{});
+    },[id,readVersion]);
     const openTicket = unresolvedTicket(d.data || []);
     const closingRef = useRef(false);
     const [closing, setClosing] = useState(false);
@@ -257,7 +267,13 @@ export function Tickets({
             {id && (
                 <Modal
                     title={detail.data?.subject || tx("工单对话")}
-                    close={() => setId(null)}
+                    close={() => {
+                        setId(null);
+                        if(!isAdmin && location.hash.startsWith("#/ticket?")) {
+                            const params=new URLSearchParams(location.hash.split("?")[1]);params.delete("ticketId");
+                            history.replaceState(history.state,"",`${location.pathname}${location.search}#/ticket${params.size ? `?${params}`:""}`);
+                        }
+                    }}
                 >
                     <State {...detail}>
                         {isAdmin && detail.data && <p className="pad">ID: {detail.data.user_id || "—"} · {detail.data.email || tx("邮箱不可用")}</p>}

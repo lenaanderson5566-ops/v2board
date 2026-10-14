@@ -2,6 +2,7 @@
 require __DIR__.'/../vendor/autoload.php';
 $app=require __DIR__.'/../bootstrap/app.php';
 $app->make(Illuminate\Contracts\Console\Kernel::class)->bootstrap();
+require __DIR__.'/commerce-bootstrap.php';
 if (!app()->environment('local')) throw new RuntimeException('Local tests only');
 set_exception_handler(function(Throwable $e){fwrite(STDERR,(string)$e);exit(1);});
 use App\Models\Order;
@@ -26,8 +27,8 @@ try {
  $assert($prefs['currency']==='CNY' && $prefs['currency_symbol']==='CNY','Preferences override allowed');
  foreach(['currency'=>'USD','currency_symbol'=>'$'] as $key=>$value) $assert(Validator::make([$key=>$value],App\Http\Requests\Admin\ConfigSave::RULES)->fails(),'Unsafe admin currency accepted');
  $assert(Validator::make(['currency'=>'CNY','currency_symbol'=>'CNY'],App\Http\Requests\Admin\ConfigSave::RULES)->passes(),'CNY config rejected');
- $rejected=false;try {Order::create(['currency'=>'USD']);}catch(InvalidArgumentException $e){$rejected=true;}
- $assert($rejected,'USD order enabled prematurely');
+ $rejected=false;try {Order::create(['currency'=>'EUR']);}catch(InvalidArgumentException $e){$rejected=true;}
+ $assert($rejected,'Unsupported currency accepted');
  $assert(App\Services\Money::format(2880)==='CNY 28.80','Money format incorrect');
  echo "CNY currency: $checks checks passed; rollback.\n";
 } finally {DB::rollBack();config(['v2board'=>$original]);}

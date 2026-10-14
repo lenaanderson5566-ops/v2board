@@ -1,3 +1,6 @@
+import { AdminMailBlocklist } from "./AdminMailBlocklist";
+import { AdminCoupons } from "./AdminCoupons";
+import { AdminMailLogs } from "./AdminMailLogs";
 import { AdminClientDiagnostics } from "./AdminClientDiagnostics";
 import { AdminLogSettings } from "./AdminLogSettings";
 import { AdminSubscriptions } from "./AdminSubscriptions";
@@ -18,6 +21,16 @@ export default function AdminContent({ current }: { current: string }) {
         return <AdminLogSettings />;
     if (current === "system")
         return <Overview key="system" initialTab="system" />;
+    if (current === "mail-blocklist")
+        return (
+            <section className="panel">
+                <div className="panel-head">
+                    <h2>邮件禁发名单</h2>
+                </div>
+                <AdminMailBlocklist />
+            </section>
+        );
+    if (current === "mail-logs") return <AdminMailLogs />;
     if (current === "system-log") return <AdminSystemLogs />;
     if (current === "ddns") return <Nodes key="ddns" initialTab="ddns" />;
     if (current === "client-diagnostics") return <AdminClientDiagnostics />;
@@ -27,7 +40,14 @@ export default function AdminContent({ current }: { current: string }) {
     if (current === "knowledge" || current === "notices")
         return <ContentPage kind={current} />;
     if (current === "risk") return <RiskRules />;
-    if (current === "client-releases" || current === "clients") return <AdminClients key={current} initialTab={current === "clients" ? "policy" : "updates"} />;
+    if (current === "client-releases" || current === "clients")
+        return (
+            <AdminClients
+                key={current}
+                initialTab={current === "clients" ? "policy" : "updates"}
+            />
+        );
+    if (current === "coupons") return <AdminCoupons />;
     if (resources[current])
         return <ResourcePage key={current} resource={resources[current]} />;
     switch (current) {

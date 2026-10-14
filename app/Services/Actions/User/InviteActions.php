@@ -38,6 +38,8 @@ class InviteActions
                 'trade_no',
                 'order_amount',
                 'get_amount',
+                'currency',
+                'order_currency',
                 'created_at'
             ])
             ->orderBy('created_at', 'DESC');
@@ -57,10 +59,10 @@ class InviteActions
         if ($user->commission_rate) {
             $commission_rate = $user->commission_rate;
         }
-        $uncheck_commission_balance = (int)Order::where('status', 3)
-            ->where('commission_status', 0)
-            ->where('invite_user_id', $request->user['id'])
-            ->sum('commission_balance');
+        $uncheck_commission_balance = 0;
+        foreach (Order::where('status',3)->where('commission_status',0)->where('invite_user_id',$user->id)->get() as $order) {
+            $uncheck_commission_balance += \App\Services\ExchangeRate::convert((int)$order->commission_balance, $order->currency ?: 'CNY', $user->currency ?: 'CNY', $order->fx_snapshot ?? []);
+        }
         if (config('v2board.commission_distribution_enable', 0)) {
             $uncheck_commission_balance = $uncheck_commission_balance * (config('v2board.commission_distribution_l1') / 100);
         }
@@ -80,6 +82,7 @@ class InviteActions
         return response([
             'data' => [
                 'stat' => $stat,
+                'currency' => $user->currency ?: 'CNY',
                 'rewards' => \App\Services\InvitationRewardService::settings()
             ]
         ]);

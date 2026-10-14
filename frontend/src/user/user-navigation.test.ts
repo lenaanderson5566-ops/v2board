@@ -5,6 +5,7 @@ it("prioritizes setup and usage during a valid subscription", () => {
         "使用情况",
         "配置中心",
         "账单",
+        "活动中心",
         "帮助中心",
     ]);
     expect(userNavigation("active").some((item) => item.key === "plan")).toBe(

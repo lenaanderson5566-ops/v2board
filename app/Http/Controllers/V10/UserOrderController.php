@@ -35,7 +35,7 @@ class UserOrderController extends ResourceController
     public function getPaymentMethods(\Illuminate\Http\Request $request)
     {
         $this->prepare($request, 'getPaymentMethods');
-        $result = app(\App\Services\Actions\User\OrderActions::class)->getPaymentMethod();
+        $result = app(\App\Services\Actions\User\OrderActions::class)->getPaymentMethod($request);
         return $this->respond($request, $result, 'getPaymentMethods');
     }
     public function postMeOrdersOrderNumberCancellation(\Illuminate\Http\Request $request)

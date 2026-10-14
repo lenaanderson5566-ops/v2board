@@ -1,5 +1,12 @@
 import { useEffect, useState } from "react";
-import { Settings, Users, LogOut, Shield, Bell } from "lucide-react";
+import {
+    Settings,
+    Users,
+    LogOut,
+    Shield,
+    Bell,
+    TicketPercent,
+} from "lucide-react";
 import { type Row } from "../shared/api";
 import { useData } from "../shared/ui";
 import { tx } from "../shared/i18n";
@@ -14,7 +21,8 @@ export function AccountMenu({
     logout: () => void;
 }) {
     const sub = useData("user/getSubscribe");
-    const { id, open, setOpen, root, trigger, toggle, onBlur } = useHeaderPopover();
+    const { id, open, setOpen, root, trigger, toggle, onBlur } =
+        useHeaderPopover();
     const [clock, setClock] = useState(0);
     useEffect(() => {
         const expiry = Number(sub.data?.expired_at) * 1000;
@@ -36,11 +44,7 @@ export function AccountMenu({
         .slice(0, 1)
         .toUpperCase();
     return (
-        <div
-            className="account-control"
-            ref={root}
-            onBlur={onBlur}
-        >
+        <div className="account-control" ref={root} onBlur={onBlur}>
             <button
                 ref={trigger}
                 className="account-trigger"
@@ -80,6 +84,11 @@ export function AccountMenu({
                         { key: "profile", label: "账户设置", icon: Settings },
                         { key: "notifications", label: "通知设置", icon: Bell },
                         { key: "security", label: "账户安全", icon: Shield },
+                        {
+                            key: "coupons",
+                            label: "我的优惠券",
+                            icon: TicketPercent,
+                        },
                         { key: "invite", label: "邀请好友", icon: Users },
                     ].map(({ key, label, icon: Icon }) => (
                         <a

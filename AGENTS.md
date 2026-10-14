@@ -18,4 +18,4 @@
 
 - Payment initiation and administrative callback displays use /api/v10/webhooks/payments/{provider}/{endpointId}, including custom notify domains. Retain old payment callbacks for in-flight orders. User payment APIs stay on V10; do not modify provider SDK signing or native responses for API versioning.
 
-- Currency phase 1 is CNY-only. Existing integers are fen, never relabel CNY assets as USD using global display settings. Orders persist currency; future USD requires independent prices, wallets, payment verification and a separate release. Preserve payment SDK signing and provider contracts.
+- Currency phase 2 supports CNY and USD (explicitly authorized). Historical assets and prices remain CNY. Account currency is immutable and denominates its balance/commission wallet; new accounts inherit the configured default once. USD plan prices are independent. Never relabel or automatically exchange existing balances. Payment conversion uses immutable per-channel order snapshots, explicit amount/currency verification, and preserves old callback SDK signing/contracts.

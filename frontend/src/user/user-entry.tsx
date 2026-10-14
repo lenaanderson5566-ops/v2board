@@ -1,3 +1,4 @@
+import { ActivityCenter, MyCoupons } from "./CouponCenter";
 import { FastaiDownload } from "./FastaiDownload";
 import { BannerStrip } from "../shared/BannerStrip";
 import {
@@ -13,14 +14,12 @@ import {
     Traffic,
 } from "./user";
 import { AccountSecurity } from "./AccountSecurity";
-function UserBody({
-    current,
-    path,
-}: {
-    current: string;
-    path: string;
-}) {
-    return current === "subscribe" ? (
+function UserBody({ current, path }: { current: string; path: string }) {
+    return current === "activities" ? (
+        <ActivityCenter />
+    ) : current === "coupons" ? (
+        <MyCoupons />
+    ) : current === "subscribe" ? (
         <Subscribe />
     ) : current === "plan" ? (
         <Plans />
@@ -55,5 +54,12 @@ function UserBody({
 }
 
 export default function UserContent(props: { current: string; path: string }) {
-    return <>{["dashboard", "overview", "subscribe"].includes(props.current) && <FastaiDownload />}<UserBody {...props} /></>;
+    return (
+        <>
+            {["dashboard", "overview", "subscribe"].includes(props.current) && (
+                <FastaiDownload />
+            )}
+            <UserBody {...props} />
+        </>
+    );
 }

@@ -32,6 +32,8 @@ export function UsageChart({
         if (bars.current) bars.current.scrollLeft = bars.current.scrollWidth;
     }, [period]);
     const max = Math.max(1, ...days.map((day) => day.upload + day.download));
+    const totalUpload = days.reduce((sum, day) => sum + day.upload, 0);
+    const totalDownload = days.reduce((sum, day) => sum + day.download, 0);
     const formatDate = (date: Date) =>
         date.toLocaleDateString(locale(), {
             month: "short",
@@ -71,6 +73,12 @@ export function UsageChart({
             <State {...data} retry={data.reload}>
                 {data.data?.length ? (
                     <>
+                        <dl className="usage-summary">
+                            <div><dt>{tx("上传")}</dt><dd>{bytes(totalUpload)}</dd></div>
+                            <div><dt>{tx("下载")}</dt><dd>{bytes(totalDownload)}</dd></div>
+                            <div><dt>{tx("周期总用量")}</dt><dd>{bytes(totalUpload + totalDownload)}</dd></div>
+                            <div><dt>{tx("日均用量（含今天）")}</dt><dd>{bytes((totalUpload + totalDownload) / Math.max(1, days.length))}</dd></div>
+                        </dl>
                         <div className="usage-legend">
                             <span>
                                 <i className="download-dot" />

@@ -6,7 +6,7 @@ import {
 } from "../shared/timezone";
 import { useState } from "react";
 import { admin, type Row } from "../shared/api";
-import { Panel, State, useData } from "../shared/ui";
+import { Panel, Reload, State, useData } from "../shared/ui";
 const time = (value: number) => (value ? formatInstant(value) : "—");
 const levels = [
     "DEBUG",
@@ -69,13 +69,7 @@ export function AdminSystemLogs() {
             <Panel
                 title="系统日志"
                 actions={
-                    <button
-                        onClick={() => {
-                            logs.reload();
-                        }}
-                    >
-                        刷新
-                    </button>
+                    <Reload onClick={logs.reload} loading={logs.loading} />
                 }
             >
                 <form

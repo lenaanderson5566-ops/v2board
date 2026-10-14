@@ -45,7 +45,8 @@ class NoticeActions
             ->orderBy('v2_notice.created_at', 'DESC')->orderBy('v2_notice.id', 'DESC')
             ->forPage($request->input('current', 1), $request->is('api/v10/*') ? (int)$request->input('page_size',20) : 10)->get();
         $items->each(function ($notice) use ($request) { $this->localized($notice, $request); });
-        return response(['data' => ['items' => $items, 'total' => $total, 'unread' => $unread]]);
+        $tickets=app(TicketNotificationActions::class)->inbox((int)$request->user['id']);
+        return response(['data' => ['items' => $items, 'total' => $total, 'unread' => $unread, 'ticket_replies'=>$tickets['items'],'ticket_unread'=>$tickets['unread']]]);
     }
 
     public function read(Request $request)

@@ -10,9 +10,9 @@ class Start extends Telegram {
         $argument=$message->args[0]??'';
         if (str_starts_with($argument,'bind_')) {
             app(TelegramCommunityService::class)->acceptBinding(substr($argument,5),(int)$message->sender_id,$message->sender_name);
-            $this->telegramService->sendMessage($message->chat_id,'Telegram 已确认。请回到网站的账号设置，核对 Telegram 账号后点击“确认绑定”。');
+            $this->telegramService->sendMessage($message->chat_id,\App\Services\TelegramText::get('confirmed',$message->language));
             return;
         }
-        $this->telegramService->sendMessage($message->chat_id,'本机器人仅用于账号绑定和用户群资格管理。请在网站账号设置中绑定、解绑或申请入群；使用 /group 查看群资格。请勿发送密码、验证码或订阅链接。');
+        $this->telegramService->sendMessage($message->chat_id,\App\Services\TelegramText::get('intro',$message->language));
     }
 }

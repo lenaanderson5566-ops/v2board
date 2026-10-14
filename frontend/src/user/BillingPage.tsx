@@ -77,7 +77,7 @@ export function BillingPage() {
                     <div className="settings-card balance-card">
                         <div className="settings-row">
                             <strong className="balance-amount">
-                                {money(info.data?.balance)}
+                                {money(info.data?.balance,info.data?.currency)}
                             </strong>
                             <button
                                 className="soft-button"
@@ -185,7 +185,7 @@ export function BillingPage() {
                             {
                                 key: "deposit_amount",
                                 label: e("depositAmount", {
-                                    currency: "CNY",
+                                    currency: info.data?.currency || "CNY",
                                 }),
                                 type: "number",
                                 scale: 100,

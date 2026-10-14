@@ -42,6 +42,7 @@ export function paymentInitial(
 ): Row {
     return {
         ...initial,
+        currency: initial.currency || "CNY",
         ...Object.fromEntries(
             Object.entries(form)
                 .filter(([, v]) => v.type !== "alert")
@@ -84,6 +85,7 @@ export function paymentPayload(
                 "name",
                 "icon",
                 "notify_domain",
+                "currency",
                 "handling_fee_fixed",
                 "handling_fee_percent",
             ]

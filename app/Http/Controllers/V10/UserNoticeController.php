@@ -2,6 +2,12 @@
 namespace App\Http\Controllers\V10;
 class UserNoticeController extends ResourceController
 {
+    public function postMeTicketReadReceipts(\Illuminate\Http\Request $request)
+    {
+        $this->prepare($request,'postMeTicketReadReceipts');
+        $result=app(\App\Services\Actions\User\TicketNotificationActions::class)->read($request);
+        return $this->respond($request,$result,'postMeTicketReadReceipts');
+    }
     public function getMeNotifications(\Illuminate\Http\Request $request)
     {
         $this->prepare($request, 'getMeNotifications');

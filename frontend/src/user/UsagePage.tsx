@@ -412,7 +412,7 @@ export function PaidTrafficReset({ plan, used }: { plan: Row; used: number }) {
         <div className="settings-row">
             <strong>{c("paidReset")}</strong>
             <button className="soft-button" disabled={used <= 0 || orders.loading || Boolean(orders.error) || Boolean(pending)} onClick={() => setOpen(true)}>
-                {c("paidReset")} · {money(plan.reset_price)}
+                {c("paidReset")} · {money(plan.reset_price,plan.currency)}
             </button>
         </div>
         <p className="muted">{c("paidResetHelp")}</p>

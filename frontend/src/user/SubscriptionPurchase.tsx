@@ -1,3 +1,4 @@
+import { CouponPicker } from "./CouponPicker";
 import { PendingOrderNotice } from "./PendingOrderNotice";
 import { useState, useRef, type FormEvent } from "react";
 import { pricingCopy as pc } from "./pricing-copy";
@@ -173,7 +174,7 @@ export function SubscriptionPurchase() {
                                     </div>
                                     <div className="pricing-summary">
                                         <div className="plan-price">
-                                            {money(plan[displayed])}
+                                            {money(plan[displayed],plan.currency)}
                                             <small>
                                                 {" "}
                                                 /{" "}
@@ -200,7 +201,7 @@ export function SubscriptionPurchase() {
                                                             ) /
                                                                 billingPeriodMonths[
                                                                     displayed
-                                                                ],
+                                                                ], plan.currency,
                                                         ),
                                                     })}
                                                 </span>
@@ -300,9 +301,7 @@ export function PlanSelection({
             ? plan.initialPeriod
             : available[0] || "",
     );
-    const options = useData<Row>("user/comm/config");
-    const couponsAvailable = options.data?.coupons_available === true;
-    const [coupon, setCoupon] = useState("");
+    const [coupon, setCoupon] = useState<number|null>(null);
     const [busy, setBusy] = useState(false);
     const [error, setError] = useState("");
     const submitting = useRef(false);
@@ -316,8 +315,8 @@ export function PlanSelection({
             const result = await request<string>("user/order/save", {
                 plan_id: plan.id,
                 period,
-                ...(couponsAvailable && coupon.trim()
-                    ? { coupon_code: coupon.trim() }
+                ...(coupon !== null
+                    ? { wallet_coupon_id: coupon }
                     : {}),
                 ...(replaceTradeNo ? { replace_trade_no: replaceTradeNo } : {}),
             });
@@ -352,18 +351,18 @@ export function PlanSelection({
                                 name="period"
                                 value={key}
                                 checked={period === key}
-                                onChange={() => setPeriod(key)}
+                                onChange={() => { setPeriod(key); setCoupon(null); }}
                             />
                             <span className="period-name">
                                 {tx(billingPeriods[key])}
                             </span>
-                            <strong>{money(plan[key])}</strong>
+                            <strong>{money(plan[key],plan.currency)}</strong>
                             {billingPeriodMonths[key] && (
                                 <span className="period-equivalent">
                                     {pc("equivalent", {
                                         price: money(
                                             Number(plan[key]) /
-                                                billingPeriodMonths[key],
+                                                billingPeriodMonths[key], plan.currency,
                                         ),
                                     })}
                                 </span>
@@ -383,25 +382,11 @@ export function PlanSelection({
                         </label>
                     ))}
                 </div>
-                {couponsAvailable && (
-                    <details className="coupon-disclosure">
-                        <summary>{tx("使用优惠码")}</summary>
-                        <label>
-                            {tx("优惠码（可选）")}
-                            <input
-                                value={coupon}
-                                onChange={(event) =>
-                                    setCoupon(event.target.value)
-                                }
-                                autoComplete="off"
-                            />
-                        </label>
-                    </details>
-                )}
+                <CouponPicker planId={Number(plan.id)} period={period} value={coupon} onChange={setCoupon}/>
                 <dl className="checkout-lines">
                     <div>
                         <dt>{tx("套餐价格")}</dt>
-                        <dd>{money(plan[period])}</dd>
+                        <dd>{money(plan[period],plan.currency)}</dd>
                     </div>
                 </dl>
                 <details className="purchase-fee-note">

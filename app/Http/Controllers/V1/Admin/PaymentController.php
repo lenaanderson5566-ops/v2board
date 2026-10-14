@@ -72,6 +72,7 @@ class PaymentController extends Controller
             abort(500, '请在站点配置中配置站点地址');
         }
         $params = $request->validate([
+            'currency' => 'sometimes|required|in:CNY,USD',
             'name' => 'required',
             'icon' => 'nullable',
             'payment' => ['required', 'string', \Illuminate\Validation\Rule::notIn(PaymentService::RETIRED_METHODS)],
@@ -87,6 +88,9 @@ class PaymentController extends Controller
             'handling_fee_fixed.integer' => '固定手续费格式有误',
             'handling_fee_percent.between' => '百分比手续费范围须在0-100之间'
         ]);
+        $currency = $params['currency'] ?? ($request->input('id') ? Payment::findOrFail($request->input('id'))->currency : 'CNY');
+        abort_unless($currency === 'CNY' || $params['payment'] === 'StripeCheckout',422,'该支付接口仅支持人民币计价；美元订单可按汇率换算后支付。');
+        $params['currency'] = $currency;
         \App\Services\PaymentPresentation::validate($params['config']);
         if ($request->input('id')) {
             $payment = Payment::find($request->input('id'));

@@ -110,7 +110,7 @@ export function CreditPurchase({ close }: { close: () => void }) {
                                 {catalog.data?.map((item) => (
                                     <option key={item.id} value={item.id}>
                                         {c("creditOrder", { amount: bytes(item.bytes) })} —{" "}
-                                        {money(item.price)}
+                                        {money(item.price,item.currency)}
                                     </option>
                                 ))}
                             </select>
@@ -121,7 +121,7 @@ export function CreditPurchase({ close }: { close: () => void }) {
                                         amount: bytes(pack.bytes),
                                     })}
                                 </strong>
-                                <strong>{money(pack.price)}</strong>
+                                <strong>{money(pack.price,pack.currency)}</strong>
                             </div>
 
                             <button

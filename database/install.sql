@@ -40,6 +40,8 @@ CREATE TABLE `failed_jobs` (
 
 DROP TABLE IF EXISTS `v2_commission_log`;
 CREATE TABLE `v2_commission_log` (
+  `currency` varchar(3) NOT NULL DEFAULT 'CNY',
+  `order_currency` varchar(3) NOT NULL DEFAULT 'CNY',
                                      `id` int(11) NOT NULL AUTO_INCREMENT,
                                      `invite_user_id` int(11) NOT NULL,
                                      `user_id` int(11) NOT NULL,
@@ -54,6 +56,7 @@ CREATE TABLE `v2_commission_log` (
 
 DROP TABLE IF EXISTS `v2_coupon`;
 CREATE TABLE `v2_coupon` (
+  `public_claim` tinyint(1) NOT NULL DEFAULT 0,
                              `id` int(11) NOT NULL AUTO_INCREMENT,
                              `code` varchar(255) NOT NULL,
                              `name` varchar(255) CHARACTER SET utf8mb4 NOT NULL,
@@ -137,6 +140,12 @@ CREATE TABLE `v2_log` (
 
 DROP TABLE IF EXISTS `v2_mail_log`;
 CREATE TABLE `v2_mail_log` (
+  `stream` varchar(24) DEFAULT NULL,
+  `delivery_status` varchar(24) DEFAULT NULL,
+  `delivery_at` int unsigned DEFAULT NULL,
+  KEY `v2_mail_log_stream_index` (`stream`),
+  KEY `v2_mail_log_delivery_status_index` (`delivery_status`),
+  KEY `mail_provider_message` (`provider`,`message_id`),
                                `id` int(11) NOT NULL AUTO_INCREMENT,
                                `email` varchar(64) NOT NULL,
                                `subject` varchar(255) NOT NULL,
@@ -144,6 +153,18 @@ CREATE TABLE `v2_mail_log` (
                                `error` text,
                                `created_at` int(11) NOT NULL,
                                `updated_at` int(11) NOT NULL,
+                               `transport_code` smallint unsigned DEFAULT NULL,
+                               `enhanced_code` varchar(11) DEFAULT NULL,
+                               `user_id` bigint unsigned DEFAULT NULL,
+                               KEY `v2_mail_log_user_id_index` (`user_id`),
+                               `provider` varchar(24) DEFAULT NULL,
+                               `status` varchar(24) DEFAULT NULL,
+                               `error_code` varchar(64) DEFAULT NULL,
+                               `message_id` varchar(255) DEFAULT NULL,
+                               `recipient_hash` varchar(64) DEFAULT NULL,
+                               `duration_ms` int unsigned DEFAULT NULL,
+                               KEY `v2_mail_log_recipient_hash_index` (`recipient_hash`),
+                               KEY `mail_delivery_created_id` (`created_at`, `id`),
                                PRIMARY KEY (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
@@ -164,6 +185,8 @@ CREATE TABLE `v2_notice` (
 
 DROP TABLE IF EXISTS `v2_order`;
 CREATE TABLE `v2_order` (
+  `currency` varchar(3) NOT NULL DEFAULT 'CNY',
+  `fx_snapshot` text DEFAULT NULL,
                             `id` int(11) NOT NULL AUTO_INCREMENT,
                             `invite_user_id` int(11) DEFAULT NULL,
                             `user_id` int(11) NOT NULL,
@@ -197,6 +220,7 @@ CREATE TABLE `v2_order` (
 
 DROP TABLE IF EXISTS `v2_payment`;
 CREATE TABLE `v2_payment` (
+  `currency` varchar(3) NOT NULL DEFAULT 'CNY',
                               `id` int(11) NOT NULL AUTO_INCREMENT,
                               `uuid` char(32) NOT NULL,
                               `payment` varchar(16) NOT NULL,
@@ -216,6 +240,7 @@ CREATE TABLE `v2_payment` (
 
 DROP TABLE IF EXISTS `v2_plan`;
 CREATE TABLE `v2_plan` (
+  `usd_prices` text DEFAULT NULL,
                            `id` int(11) NOT NULL AUTO_INCREMENT,
                            `group_id` int(11) NOT NULL,
                            `transfer_enable` int(11) NOT NULL,
@@ -391,6 +416,8 @@ CREATE TABLE `v2_ticket_message` (
 
 DROP TABLE IF EXISTS `v2_user`;
 CREATE TABLE `v2_user` (
+  `currency` varchar(3) NOT NULL DEFAULT 'CNY',
+  `announcement_email` tinyint(1) NOT NULL DEFAULT 0,
   `display_timezone` varchar(64) DEFAULT NULL,
                            `id` int(11) NOT NULL AUTO_INCREMENT,
                            `invite_user_id` int(11) DEFAULT NULL,
@@ -618,3 +645,96 @@ CREATE TABLE IF NOT EXISTS `v2_daily_task_run` (
 CREATE TABLE IF NOT EXISTS `v2_daily_user_reset` (
  `user_id` bigint unsigned NOT NULL, `business_date` date NOT NULL, PRIMARY KEY (`user_id`,`business_date`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS `v2_telegram_identity` (
+ `telegram_id` bigint NOT NULL PRIMARY KEY, `user_id` bigint unsigned NOT NULL UNIQUE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+CREATE TABLE IF NOT EXISTS `v2_telegram_update` (
+ `id` bigint unsigned NOT NULL AUTO_INCREMENT PRIMARY KEY, `bot_key` char(64) NOT NULL, `update_id` bigint unsigned NOT NULL,
+ `payload` mediumtext NULL, `status` varchar(16) NOT NULL DEFAULT 'pending', `attempts` int unsigned NOT NULL DEFAULT 0,
+ `next_at` int unsigned NOT NULL DEFAULT 0, `created_at` int unsigned NOT NULL, `error_code` varchar(48) NULL,
+ UNIQUE KEY (`bot_key`,`update_id`), KEY (`next_at`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+CREATE TABLE IF NOT EXISTS `v2_telegram_payment_notice` (
+ `id` bigint unsigned NOT NULL AUTO_INCREMENT PRIMARY KEY, `order_id` bigint unsigned NOT NULL, `user_id` bigint unsigned NOT NULL,
+ `telegram_id` bigint NOT NULL, `bot_key` char(64) NOT NULL, `status` varchar(16) NOT NULL DEFAULT 'pending',
+ `next_at` int unsigned NOT NULL DEFAULT 0, `attempts` int unsigned NOT NULL DEFAULT 0, `created_at` int unsigned NOT NULL,
+ `error_code` varchar(48) NULL, UNIQUE KEY (`order_id`,`user_id`), KEY (`next_at`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS `v2_mail_event` (
+ `id` bigint unsigned NOT NULL AUTO_INCREMENT PRIMARY KEY,
+ `event_key` varchar(64) NOT NULL UNIQUE, `provider` varchar(24) NOT NULL,
+ `message_id` varchar(255) NOT NULL, `recipient_hash` varchar(64) NOT NULL,
+ `state` varchar(24) NOT NULL, `occurred_at` int unsigned NOT NULL,
+ `created_at` int unsigned NOT NULL, `applied_at` int unsigned DEFAULT NULL,
+ KEY `mail_event_message` (`provider`,`message_id`), KEY `v2_mail_event_created_at_index` (`created_at`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+CREATE TABLE IF NOT EXISTS `v2_mail_suppression` (
+ `recipient_hash` varchar(64) NOT NULL PRIMARY KEY, `email` varchar(64) NOT NULL,
+ `reason` varchar(24) NOT NULL, `released_at` int unsigned DEFAULT NULL,
+ `created_at` int unsigned NOT NULL, `updated_at` int unsigned NOT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS `v2_mail_campaign` (
+ `id` bigint unsigned NOT NULL AUTO_INCREMENT, `request_key` char(36) NOT NULL, `administrator_id` bigint unsigned NOT NULL, `purpose` varchar(16) NOT NULL,
+ `subject` varchar(200) NOT NULL, `content` longtext NOT NULL, `translations` longtext NOT NULL, `source_language` varchar(16) DEFAULT NULL,
+ `created_at` int unsigned NOT NULL, `expires_at` int unsigned NOT NULL, PRIMARY KEY (`id`), UNIQUE KEY `mail_campaign_request` (`request_key`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+CREATE TABLE IF NOT EXISTS `v2_mail_campaign_recipient` (
+ `id` bigint unsigned NOT NULL AUTO_INCREMENT, `campaign_id` bigint unsigned NOT NULL, `user_id` bigint unsigned NOT NULL,
+ `recipient_hash` varchar(64) NOT NULL, `status` varchar(16) NOT NULL DEFAULT 'queued', `reason` varchar(40) DEFAULT NULL,
+ `mail_log_id` bigint unsigned DEFAULT NULL, `delivery_status` varchar(24) DEFAULT NULL, `scheduled_at` int unsigned NOT NULL DEFAULT 0, `attempts` int unsigned NOT NULL DEFAULT 0, `available_at` int unsigned NOT NULL, `updated_at` int unsigned NOT NULL,
+ PRIMARY KEY (`id`), UNIQUE KEY `mail_campaign_user` (`campaign_id`,`user_id`), KEY `mail_campaign_pending` (`status`,`available_at`), KEY `mail_campaign_log` (`mail_log_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+CREATE TABLE IF NOT EXISTS `v2_ticket_notification_read` (
+ `ticket_id` bigint unsigned NOT NULL, `user_id` bigint unsigned NOT NULL, `message_id` bigint unsigned NOT NULL, `read_at` int unsigned NOT NULL,
+ PRIMARY KEY (`ticket_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS `v2_mail_blocklist` (
+ `recipient_hash` varchar(64) NOT NULL, `email_encrypted` text NOT NULL, `note` varchar(1000) NOT NULL,
+ `revision` int unsigned NOT NULL DEFAULT 1, `administrator_id` bigint unsigned NOT NULL,
+ `created_at` int unsigned NOT NULL, `updated_at` int unsigned NOT NULL, `released_at` int unsigned DEFAULT NULL,
+ PRIMARY KEY (`recipient_hash`), KEY `mail_blocklist_active` (`released_at`,`updated_at`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+CREATE TABLE IF NOT EXISTS `v2_mail_blocklist_audit` (
+ `id` bigint unsigned NOT NULL AUTO_INCREMENT, `recipient_hash` varchar(64) NOT NULL, `administrator_id` bigint unsigned NOT NULL,
+ `action` varchar(16) NOT NULL, `created_at` int unsigned NOT NULL,
+ PRIMARY KEY (`id`), KEY `mail_blocklist_history` (`recipient_hash`,`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS `v2_coupon_wallet` (
+  `id` bigint unsigned NOT NULL AUTO_INCREMENT PRIMARY KEY,
+  `user_id` int unsigned NOT NULL, `coupon_id` int unsigned NOT NULL,
+  `snapshot` text NOT NULL, `order_id` int unsigned DEFAULT NULL,
+  `administrator_id` int unsigned DEFAULT NULL, `created_at` int unsigned NOT NULL,
+  UNIQUE KEY `coupon_wallet_user` (`user_id`,`coupon_id`), UNIQUE KEY `coupon_wallet_order` (`order_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+CREATE TABLE IF NOT EXISTS `v2_exchange_rate` (
+  `id` int unsigned NOT NULL PRIMARY KEY, `usd_cny_micros` bigint unsigned DEFAULT NULL,
+  `quoted_at` int unsigned DEFAULT NULL, `fetched_at` int unsigned DEFAULT NULL,
+  `automatic_day` varchar(10) DEFAULT NULL, `attempted_at` int unsigned DEFAULT NULL,
+  `last_error` varchar(32) DEFAULT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+INSERT IGNORE INTO `v2_exchange_rate` (`id`) VALUES (1);
+
+CREATE TABLE IF NOT EXISTS `v2_coupon_campaign` (
+ `id` bigint unsigned NOT NULL AUTO_INCREMENT PRIMARY KEY, `preview_key` char(36) NOT NULL,
+ `administrator_id` bigint unsigned NOT NULL, `coupon_id` int unsigned NOT NULL,
+ `terms` text NOT NULL, `template_hash` varchar(64) NOT NULL, `scope` varchar(16) NOT NULL,
+ `status` varchar(16) NOT NULL DEFAULT 'draft', `matched_count` int unsigned NOT NULL,
+ `reserved_remaining` int unsigned NOT NULL DEFAULT 0, `limited_stock` tinyint(1) NOT NULL DEFAULT 0,
+ `created_at` int unsigned NOT NULL, `expires_at` int unsigned NOT NULL,
+ `confirmed_at` int unsigned DEFAULT NULL, `finished_at` int unsigned DEFAULT NULL,
+ UNIQUE KEY `coupon_campaign_preview` (`preview_key`), KEY `coupon_campaign_state` (`status`,`expires_at`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+CREATE TABLE IF NOT EXISTS `v2_coupon_campaign_recipient` (
+ `id` bigint unsigned NOT NULL AUTO_INCREMENT PRIMARY KEY, `campaign_id` bigint unsigned NOT NULL,
+ `user_id` int unsigned NOT NULL, `status` varchar(16) NOT NULL, `reason` varchar(32) DEFAULT NULL,
+ `wallet_id` bigint unsigned DEFAULT NULL, `attempts` int unsigned NOT NULL DEFAULT 0,
+ `available_at` int unsigned NOT NULL, `updated_at` int unsigned NOT NULL,
+ UNIQUE KEY `coupon_campaign_user` (`campaign_id`,`user_id`), KEY `coupon_campaign_pending` (`status`,`available_at`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+ALTER TABLE `v2_coupon` ADD COLUMN `activity_title` varchar(120) DEFAULT NULL, ADD COLUMN `activity_description` text DEFAULT NULL, ADD COLUMN `translations` text DEFAULT NULL;

@@ -39,10 +39,10 @@ class StatController extends Controller
                     ->count(),
                 'commission_month_payout' => CommissionLog::where('created_at', '>=', strtotime(date('Y-m-1')))
                     ->where('created_at', '<', time())
-                    ->sum('get_amount'),
+                    ->where('currency','CNY')->sum('get_amount'),
                 'commission_last_month_payout' => CommissionLog::where('created_at', '>=', strtotime('-1 month', strtotime(date('Y-m-1'))))
                     ->where('created_at', '<', strtotime(date('Y-m-1')))
-                    ->sum('get_amount'),
+                    ->where('currency','CNY')->sum('get_amount'),
             ])
         ];
     }

@@ -347,7 +347,7 @@ export function Invite() {
             <section className="invite-wallet">
                 <div className="invite-wallet-balance">
                     <span className="muted">{tx("可用佣金")}</span>
-                    <strong>{money(stat[4])}</strong>
+                    <strong>{money(stat[4],v.currency)}</strong>
                     <div className="invite-wallet-facts">
                         <span>{tx("邀请用户")} <b>{stat[0] || 0}</b></span>
                         <span>{tx("佣金比例")} <b>{stat[3] || 0}%</b></span>
@@ -367,12 +367,12 @@ export function Invite() {
                             [
                                 "order_amount",
                                 tx("订单金额"),
-                                (r) => money(r.order_amount),
+                                (r) => money(r.order_amount,r.order_currency || r.currency),
                             ],
                             [
                                 "get_amount",
                                 tx("佣金"),
-                                (r) => money(r.get_amount),
+                                (r) => money(r.get_amount,r.currency),
                             ],
                             [
                                 "created_at",

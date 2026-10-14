@@ -28,7 +28,7 @@ export function PaymentCheckout({
     const deposit = Number(order.plan_id) === 0;
     const due = Number(order.total_amount || 0);
     const methods = useData<Row[]>(
-        status === 0 && due > 0 ? "user/order/getPaymentMethod" : "",
+        status === 0 && due > 0 ? query("user/order/getPaymentMethod",{trade_no:order.trade_no}) : "",
         undefined,
         false,
         // A successful checkout emits data-changed immediately before navigation.
@@ -55,9 +55,11 @@ export function PaymentCheckout({
     const method = methods.data?.find((item) => Number(item.id) === selected);
     const fee =
         status === 0
-            ? waiting ? issuedFee : paymentFee(due, method)
+            ? waiting ? issuedFee : Number(method?.quoted_fee ?? paymentFee(due, method))
             : Number(order.handling_amount || 0);
     const feeReady = status !== 0 || waiting || due <= 0 || Boolean(method);
+    const paymentAmount = method?.quoted_amount;
+    const paymentCurrency = method?.quoted_currency;
     const awaitingConfirmation = waiting;
     useEffect(() => {
         if (
@@ -133,9 +135,11 @@ export function PaymentCheckout({
             const result = await request("user/order/checkout", {
                 trade_no: order.trade_no,
                 method: id,
+                expected_payment_amount: methods.data?.find(item=>Number(item.id)===id)?.quoted_amount,
+                expected_payment_currency: methods.data?.find(item=>Number(item.id)===id)?.quoted_currency,
                 ...(token ? { token } : {}),
             }, { timeoutMs: 45000 });
-            setIssuedFee(paymentFee(due, methods.data?.find((item) => Number(item.id) === id)));
+            setIssuedFee(Number(methods.data?.find(item=>Number(item.id)===id)?.quoted_fee ?? paymentFee(due, methods.data?.find((item) => Number(item.id) === id))));
             if (result.type === -1 || result.type === 2) {
                 setWaiting(true);
                 setCardMethod(null);
@@ -160,8 +164,9 @@ export function PaymentCheckout({
                 );
         } catch (problem) {
             const failure = problem as Error & { code?: string; status?: number };
+            if (failure.status === 409) methods.reload();
             if (["NETWORK_ERROR", "REQUEST_TIMEOUT"].includes(failure.code || "") || (failure.status || 0) >= 500) {
-                setIssuedFee(paymentFee(due, methods.data?.find((item) => Number(item.id) === id)));
+                setIssuedFee(Number(methods.data?.find(item=>Number(item.id)===id)?.quoted_fee ?? paymentFee(due, methods.data?.find((item) => Number(item.id) === id))));
                 setWaiting(true);
                 setPollRun((run) => run + 1);
                 setError(tx("未能确认支付请求结果，正在检查订单状态，请勿重复付款。"));
@@ -281,6 +286,7 @@ export function PaymentCheckout({
                             </div>
                         )}
                     </dl>
+                    {paymentCurrency && paymentCurrency !== order.currency && <div className="alert"><strong>{tx("实际付款")} {formatMoney(paymentAmount,paymentCurrency)}</strong><p>{tx("订单与余额币种保持不变，付款金额按确认时的汇率锁定。")}</p><a href="https://www.exchangerate-api.com" target="_blank" rel="noreferrer">Rates By Exchange Rate API</a></div>}
                     {deposit && Number(order.bounus) > 0 && <div className="checkout-deposit-benefit">
                         <span>{tx("充值赠送")} +{money(order.bounus)}</span>
                         <strong>{tx("到账金额")} {money(order.get_amount)}</strong>

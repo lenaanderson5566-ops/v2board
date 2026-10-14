@@ -44,11 +44,15 @@ class ConfigController extends Controller
 
     public function testSendMail(Request $request)
     {
+        $request->validate(['stream'=>'nullable|in:transactional,announcement']);
+        abort_if($request->input('stream')==='announcement' && !config('v2board.email_announcement_separate'),422,'尚未启用公告独立通道。');
         $obj = new SendEmailJob([
+            'test_stream'=>$request->input('stream','transactional'),
             'email' => $request->user['email'], 'template_name' => 'test',
             'template_value' => ['url' => config('v2board.app_url')]
         ]);
         $result = $obj->handle();
+        if (!empty($result['skipped'])) $result += ['error'=>'MAIL_TEST_SKIPPED','advice'=>'当前管理员邮箱被限制发送，请在人工禁发名单或邮件抑制名单核查；本次未发送邮件。'];
         return response(['data'=>empty($result['error']), 'log'=>$result]);
     }
 
@@ -105,6 +109,7 @@ class ConfigController extends Controller
                 'try_out_plan_id' => (int)config('v2board.try_out_plan_id', 0),
                 'try_out_hour' => (int)config('v2board.try_out_hour', 1),
                 'tos_url' => config('v2board.tos_url'),
+                'new_user_currency' => config('v2board.new_user_currency','CNY'),
                 'currency' => \App\Services\Money::CURRENCY,
                 'currency_symbol' => \App\Services\Money::CURRENCY,
             ],
@@ -134,11 +139,25 @@ class ConfigController extends Controller
                 'device_limit_mode' => config('v2board.device_limit_mode', 0)
             ],
             'email' => [
+                'email_provider' => config('v2board.email_provider', 'smtp'),
+                'email_ses_region' => config('v2board.email_ses_region', 'us-east-1'),
+                'email_ses_auth' => config('v2board.email_ses_auth', 'role'),
+                'email_ses_configuration_set' => config('v2board.email_ses_configuration_set', ''),
+                'email_ses_access_key' => '',
+                'email_ses_secret_key' => '',
+                'email_ses_key_configured' => (bool)config('v2board.email_ses_access_key') && (bool)config('v2board.email_ses_secret_key'),
+                'email_resend_api_key' => '',
+                'email_resend_key_configured' => (bool)config('v2board.email_resend_api_key'),
+                'email_mailgun_region' => config('v2board.email_mailgun_region', 'us'),
+                'email_mailgun_domain' => config('v2board.email_mailgun_domain', ''),
+                'email_mailgun_api_key' => '',
+                'email_mailgun_key_configured' => (bool)config('v2board.email_mailgun_api_key'),
                 'email_template' => config('v2board.email_template', 'default'),
                 'email_host' => config('v2board.email_host'),
                 'email_port' => config('v2board.email_port'),
                 'email_username' => config('v2board.email_username'),
-                'email_password' => config('v2board.email_password'),
+                'email_password' => '',
+                'email_smtp_key_configured' => (bool)config('v2board.email_password'),
                 'email_encryption' => config('v2board.email_encryption'),
                 'email_from_address' => config('v2board.email_from_address'),
                 'email_default_language' => config('v2board.email_default_language', 'zh-CN'),
@@ -197,6 +216,7 @@ class ConfigController extends Controller
                 'password_limit_expire' => config('v2board.password_limit_expire', 60)
             ]
         ];
+        $data['email']=array_merge($data['email'], \App\Services\MailChannel::settings());
         if ($key && isset($data[$key])) {
             return response([
                 'data' => [
@@ -226,6 +246,53 @@ class ConfigController extends Controller
     public function save(ConfigSave $request)
     {
         $data = $request->validated();
+        if (($data['new_user_currency'] ?? null) === 'USD') {
+            abort_unless(\App\Models\Plan::where('show',1)->whereNotNull('usd_prices')->get()->contains(fn($p)=>collect($p->usd_prices)->contains(fn($v)=>$v !== null)),422,'请先为至少一个在售套餐配置美元价格。');
+            abort_unless(\App\Models\Payment::where('enable',1)->whereIn('payment',['EPay','Paytaro','PaytaroQR','StripeCheckout'])->exists(),422,'请先启用支付方式。');
+            \App\Services\ExchangeRate::snapshot();
+        }
+        if (!empty($data['email_announcement_ses_access_key']) xor !empty($data['email_announcement_ses_secret_key'])) throw \Illuminate\Validation\ValidationException::withMessages(['email_announcement_ses_access_key'=>'公告通道的 AWS 密钥须成对填写。']);
+        foreach (['password','mailgun_api_key','resend_api_key','ses_access_key','ses_secret_key'] as $field) {
+            $key='email_announcement_'.$field;
+            if (empty($data[$key])) unset($data[$key]);
+            else $data[$key]=\Illuminate\Support\Facades\Crypt::encryptString($data[$key]);
+        }
+        if (isset($data['email_announcement_password'])) $data['email_announcement_password_encrypted']=true;
+        foreach (['email_mailgun_webhook_key','email_resend_webhook_key'] as $key) {
+            if (empty($data[$key])) unset($data[$key]);
+            else $data[$key]=\Illuminate\Support\Facades\Crypt::encryptString($data[$key]);
+        }
+        $announcement=array_merge(config('v2board'),$data);
+        if (!empty($announcement['email_announcement_separate'])) {
+            $provider=$announcement['email_announcement_provider'] ?? 'smtp';
+            $required=match($provider) { 'smtp'=>['host','port'], 'mailgun'=>['mailgun_domain','mailgun_api_key'], 'resend'=>['resend_api_key'], 'ses'=>['ses_region'], default=>['provider'] };
+            if ($provider==='ses' && ($announcement['email_announcement_ses_auth'] ?? 'role')==='key') $required=array_merge($required,['ses_access_key','ses_secret_key']);
+            foreach ($required as $field) if (empty($announcement['email_announcement_'.$field])) throw \Illuminate\Validation\ValidationException::withMessages(['email_announcement_'.$field=>'请完成公告独立通道配置。']);
+            if (validator(['email'=>$announcement['email_announcement_from_address'] ?? null],['email'=>'required|email:rfc'])->fails()) throw \Illuminate\Validation\ValidationException::withMessages(['email_announcement_from_address'=>'请填写公告发件地址。']);
+        }
+        if (!empty($data['email_ses_access_key']) xor !empty($data['email_ses_secret_key'])) {
+            throw \Illuminate\Validation\ValidationException::withMessages(['email_ses_access_key'=>'轮换 AWS 密钥时请同时填写 Access Key ID 和 Secret Access Key。']);
+        }
+        foreach (['email_password','email_mailgun_api_key','email_resend_api_key','email_ses_access_key','email_ses_secret_key'] as $secret) {
+            if (empty($data[$secret])) unset($data[$secret]);
+            else $data[$secret] = \Illuminate\Support\Facades\Crypt::encryptString($data[$secret]);
+        }
+        if (isset($data['email_password'])) $data['email_password_encrypted'] = true;
+        $effective = array_merge(config('v2board'), $data);
+        $provider = $effective['email_provider'] ?? 'smtp';
+        if (in_array($provider, ['ses','resend'], true)) {
+            $invalid = validator(['email'=>$effective['email_from_address'] ?? null], ['email'=>'required|email:rfc'])->fails();
+            if ($provider === 'resend') $invalid = $invalid || empty($effective['email_resend_api_key']);
+            if ($provider === 'ses' && ($effective['email_ses_auth'] ?? 'role') === 'key') $invalid = $invalid || empty($effective['email_ses_access_key']) || empty($effective['email_ses_secret_key']);
+            if ($invalid) throw \Illuminate\Validation\ValidationException::withMessages(['email_provider'=>'请填写有效发件人邮箱及所选通道的必要凭据。']);
+        }
+        if (($data['email_provider'] ?? config('v2board.email_provider', 'smtp')) === 'mailgun') {
+            $effective = array_merge(config('v2board'), $data);
+            if (empty($effective['email_mailgun_domain']) || empty($effective['email_mailgun_api_key'])
+                || validator(['email'=>$effective['email_from_address'] ?? null], ['email'=>'required|email:rfc'])->fails()) {
+                throw \Illuminate\Validation\ValidationException::withMessages(['email_provider'=>'使用 Mailgun 前请填写发送域名、API Key 和有效发件人邮箱。']);
+            }
+        }
         $previousTimezone = \App\Services\TimeZones::system();
         if (isset($data['fastai_entrypoints'])) {
             $data['fastai_entrypoints'] = \App\Services\FastaiEntrypoints::validate($data['fastai_entrypoints']);
@@ -245,8 +312,8 @@ class ConfigController extends Controller
         foreach (['frontend_theme', 'frontend_theme_sidebar', 'frontend_theme_header', 'frontend_theme_color', 'frontend_background_url'] as $legacyKey) {
             unset($config[$legacyKey]);
         }
-        foreach (ConfigSave::RULES as $k => $v) {
-            if (!in_array($k, array_keys(ConfigSave::RULES))) {
+        foreach (ConfigSave::allRules() as $k => $v) {
+            if (!in_array($k, array_keys(ConfigSave::allRules()))) {
                 unset($config[$k]);
                 continue;
             }
@@ -254,6 +321,7 @@ class ConfigController extends Controller
                 $config[$k] = $data[$k];
             }
         }
+        foreach (['email_password_encrypted','email_announcement_password_encrypted'] as $flag) if (isset($data[$flag])) $config[$flag]=$data[$flag];
         if (isset($data['fastai_entrypoints'])) $config['fastai_entrypoints_version'] = max((int)($config['fastai_entrypoints_version'] ?? 1)+1,(int)floor(microtime(true)*1000));
         $data = var_export($config, 1);
         if (!File::put(base_path() . '/config/v2board.php', "<?php\n return $data ;")) {

@@ -6,7 +6,7 @@ const mock = vi.hoisted(() => ({ request: vi.fn(), methods: [
     { id: 2, name: "USDT A", category: "crypto", asset: "USDT", network: "tron", network_name: "TRON", handling_fee_fixed: 10 },
     { id: 3, name: "USDT B", category: "crypto", asset: "USDT", network: "bsc", network_name: "BSC", handling_fee_fixed: 100, handling_fee_percent: 5 },
 ] }));
-vi.mock("../shared/api", () => ({ request: mock.request, bytes: String, money: (amount: number) => `CNY ${(Number(amount) / 100).toFixed(2)}`, query: (path: string) => path }));
+vi.mock("../shared/api", () => ({ request: mock.request, bytes: String, money: (amount: number, currency="CNY") => `${currency} ${(Number(amount) / 100).toFixed(2)}`, query: (path: string) => path }));
 vi.mock("../shared/i18n", () => ({ tx: (value: string) => value, locale: () => "zh-CN" }));
 vi.mock("../shared/ui", () => ({ useData: () => ({ data: mock.methods, loading: false, reload: vi.fn() }), State: ({ children }: any) => children, Modal: ({ children }: any) => children }));
 vi.mock("./SubscriptionPurchase", () => ({ PurchaseSteps: () => null }));
@@ -46,4 +46,16 @@ it.each(["NETWORK_ERROR", "REQUEST_TIMEOUT"])("checks status without resubmittin
     fireEvent.click(screen.getByRole("button", { name: "重新发起支付" }));
     expect(screen.queryByText("未能确认支付请求结果，正在检查订单状态，请勿重复付款。")).toBeNull();
     expect(screen.getByRole("button", { name: "确认支付" })).toBeTruthy();
+});
+
+it('shows the converted payment amount and confirms it without relabelling the USD order',async()=>{
+ const old=mock.methods;
+ mock.methods=[{id:1,name:'CNY Alipay',handling_fee_fixed:0,quoted_amount:3625,quoted_currency:'CNY',quoted_fee:0} as any];
+ try{
+  mock.request.mockResolvedValue({type:0,data:'payment-code'});
+  render(<PaymentCheckout order={{status:0,plan_id:1,total_amount:500,currency:'USD',trade_no:'usd-order',plan:{name:'Plan'}}} reload={vi.fn()} renderCard={()=>null}/>);
+  expect(await screen.findByText(/实际付款.*CNY 36.25/)).toBeTruthy();
+  fireEvent.click(screen.getByRole('button',{name:'确认支付'}));
+  await waitFor(()=>expect(mock.request).toHaveBeenCalledWith('user/order/checkout',expect.objectContaining({expected_payment_amount:3625,expected_payment_currency:'CNY'}),{timeoutMs:45000}));
+ }finally{mock.methods=old;}
 });

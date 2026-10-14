@@ -47,6 +47,7 @@
 \Illuminate\Support\Facades\Route::match(['GET', 'HEAD'], 'me/commissions', [\App\Http\Controllers\V10\UserInviteController::class, 'getMeCommissions'])->name('v10.getMeCommissions');
 \Illuminate\Support\Facades\Route::match(['POST'], 'me/invitations', [\App\Http\Controllers\V10\UserInviteController::class, 'postMeInvitations'])->middleware(['throttle:10,1'])->name('v10.postMeInvitations');
 \Illuminate\Support\Facades\Route::match(['GET', 'HEAD'], 'me/invitations', [\App\Http\Controllers\V10\UserInviteController::class, 'getMeInvitations'])->name('v10.getMeInvitations');
+\Illuminate\Support\Facades\Route::post('me/notifications/ticket-read-receipts', [\App\Http\Controllers\V10\UserNoticeController::class, 'postMeTicketReadReceipts'])->middleware(['throttle:120,1'])->name('v10.postMeTicketReadReceipts');
 \Illuminate\Support\Facades\Route::match(['GET', 'HEAD'], 'me/notifications', [\App\Http\Controllers\V10\UserNoticeController::class, 'getMeNotifications'])->name('v10.getMeNotifications');
 \Illuminate\Support\Facades\Route::match(['POST'], 'me/notifications/read-receipts', [\App\Http\Controllers\V10\UserNoticeController::class, 'postMeNotificationsReadReceipts'])->middleware(['throttle:120,1'])->name('v10.postMeNotificationsReadReceipts');
 \Illuminate\Support\Facades\Route::match(['GET', 'HEAD'], 'announcements', [\App\Http\Controllers\V10\UserNoticeController::class, 'getAnnouncements'])->name('v10.getAnnouncements');
@@ -101,3 +102,10 @@
 \Illuminate\Support\Facades\Route::post('me/integrations/telegram/confirmation', [\App\Http\Controllers\V10\UserTelegramController::class, 'postMeIntegrationsTelegramConfirmation'])->middleware(['throttle:6,1'])->name('v10.postMeIntegrationsTelegramConfirmation');
 
 \Illuminate\Support\Facades\Route::post('me/integrations/telegram/group-invitations', [\App\Http\Controllers\V10\UserTelegramController::class, 'postMeIntegrationsTelegramGroupInvitations'])->middleware(['throttle:6,1'])->name('v10.postMeIntegrationsTelegramGroupInvitations');
+
+\Illuminate\Support\Facades\Route::post('webhooks/mail/{provider}', [\App\Http\Controllers\V10\MailController::class,'webhook'])->where('provider','mailgun|resend|ses')->middleware('throttle:600,1')->name('v10.postWebhooksMailProvider');
+\Illuminate\Support\Facades\Route::get('mail/unsubscribe/{token}', [\App\Http\Controllers\V10\MailController::class,'unsubscribe'])->middleware('throttle:60,1')->name('v10.getMailUnsubscribeToken');
+\Illuminate\Support\Facades\Route::post('mail/unsubscribe/{token}', [\App\Http\Controllers\V10\MailController::class,'unsubscribe'])->middleware('throttle:60,1')->name('v10.postMailUnsubscribeToken');
+\Illuminate\Support\Facades\Route::get('me/coupons', [\App\Http\Controllers\V10\UserCouponController::class, 'getMeCoupons'])->middleware(['throttle:30,1'])->name('v10.getMeCoupons');
+\Illuminate\Support\Facades\Route::get('me/coupon-offers', [\App\Http\Controllers\V10\UserCouponController::class, 'getMeCouponOffers'])->middleware(['throttle:30,1'])->name('v10.getMeCouponOffers');
+\Illuminate\Support\Facades\Route::post('me/coupon-claims', [\App\Http\Controllers\V10\UserCouponController::class, 'postMeCouponClaims'])->middleware(['throttle:30,1'])->name('v10.postMeCouponClaims');

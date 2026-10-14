@@ -183,6 +183,7 @@ class TicketActions
             __('Withdrawal method') . "：" . $request->input('withdraw_method'),
             __('Withdrawal account') . "：" . $request->input('withdraw_account')
         );
+        $message .= "\r\n" . 'Currency: ' . ($user->currency ?: 'CNY');
         $ticketMessage = TicketMessage::create([
             'user_id' => $request->user['id'],
             'ticket_id' => $ticket->id,

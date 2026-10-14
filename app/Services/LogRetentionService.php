@@ -6,8 +6,9 @@ use Illuminate\Support\Facades\DB;
 
 class LogRetentionService {
     // New categories stay opt-in so deploying this code does not erase historical records.
-    public const DEFAULTS=['registration_signal_retention_days'=>90,'client_diagnostic_retention_days'=>30,'system_log_retention_days'=>30,'connection_log_retention_days'=>30,'login_log_retention_days'=>0,'subscribe_log_retention_days'=>0,'risk_log_retention_days'=>0,'ddns_log_retention_days'=>30,'payment_callback_retention_days'=>30];
+    public const DEFAULTS=['mail_log_retention_days'=>0,'registration_signal_retention_days'=>90,'client_diagnostic_retention_days'=>30,'system_log_retention_days'=>30,'connection_log_retention_days'=>30,'login_log_retention_days'=>0,'subscribe_log_retention_days'=>0,'risk_log_retention_days'=>0,'ddns_log_retention_days'=>30,'payment_callback_retention_days'=>30];
     public const TABLES=[
+        'mail_log_retention_days'=>['v2_mail_log','created_at'],
         'registration_signal_retention_days'=>['v2_registration_signal','created_at'],
         'client_diagnostic_retention_days'=>['v2_client_diagnostic_report','created_at'],
         'payment_callback_retention_days'=>['v2_payment_callback_event','created_at'],
@@ -25,7 +26,7 @@ class LogRetentionService {
             $raw=$values[$key] ?? null;
             if ($raw===null || filter_var($raw,FILTER_VALIDATE_INT)===false) continue;
             $value=(int)$raw;
-            $optional=in_array($key,['login_log_retention_days','subscribe_log_retention_days','risk_log_retention_days'],true);
+            $optional=in_array($key,['mail_log_retention_days','login_log_retention_days','subscribe_log_retention_days','risk_log_retention_days'],true);
             if ($value<=365 && ($value>=($optional ? 30 : 1) || ($optional && $value===0))) $result[$key]=$value;
         }
         return $result;
@@ -36,10 +37,10 @@ class LogRetentionService {
     }
     public function save(array $values): array {
         $rules=[];
-        foreach (self::DEFAULTS as $key=>$default) $rules[$key]='sometimes|required|integer|between:'.(in_array($key,['login_log_retention_days','subscribe_log_retention_days','risk_log_retention_days']) ? '0' : '1').',365';
+        foreach (self::DEFAULTS as $key=>$default) $rules[$key]='sometimes|required|integer|between:'.(in_array($key,['mail_log_retention_days','login_log_retention_days','subscribe_log_retention_days','risk_log_retention_days']) ? '0' : '1').',365';
         $rules['connection_log_interval']='sometimes|required|integer|between:60,86400';
         $values=validator($values,$rules)->validate();
-        foreach (['login_log_retention_days','subscribe_log_retention_days','risk_log_retention_days'] as $key) {
+        foreach (['mail_log_retention_days','login_log_retention_days','subscribe_log_retention_days','risk_log_retention_days'] as $key) {
             if (isset($values[$key]) && $values[$key]>0 && $values[$key]<30) throw \Illuminate\Validation\ValidationException::withMessages([$key=>'请填写 0（不自动清理）或 30 至 365 天，以保留最近 30 天统计。']);
         }
         DB::transaction(function () use ($values) {

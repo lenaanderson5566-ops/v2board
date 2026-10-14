@@ -56,7 +56,7 @@ class CouponController extends Controller
 
         $params = $request->validated();
         if (!$request->input('id')) {
-            if (!isset($params['code'])) {
+            if (empty($params['code'])) {
                 $params['code'] = Helper::randomChar(8);
             }
             if (!Coupon::create($params)) {
@@ -125,6 +125,8 @@ class CouponController extends Controller
         if (!$coupon) {
             abort(500, '优惠券不存在');
         }
+        abort_if(DB::table('v2_coupon_wallet')->where('coupon_id', $coupon->id)->exists(), 409, '已有发放记录，请停用领券入口，保留历史记录。');
+        abort_if(DB::table('v2_coupon_campaign')->where('coupon_id',$coupon->id)->where('status','queued')->exists(),409,'存在待发放批次，请先取消批次。');
         if (!$coupon->delete()) {
             abort(500, '删除失败');
         }
@@ -132,5 +134,16 @@ class CouponController extends Controller
         return response([
             'data' => true
         ]);
+    }
+    public function issue(Request $request)
+    {
+        $values = $request->validate(['coupon_id'=>'required|integer|min:1','user_ids'=>'required|array|min:1|max:100','user_ids.*'=>'required|integer|min:1|distinct|exists:v2_user,id']);
+        $ids = DB::transaction(function() use ($values, $request) {
+            $result = [];
+            $users = $values['user_ids']; sort($users, SORT_NUMERIC);
+            foreach ($users as $id) $result[] = \App\Services\CouponWallet::issue((int)$id, (int)$values['coupon_id'], (int)$request->user['id']);
+            return $result;
+        }, 3);
+        return response(['data'=>['issued'=>count($ids)]]);
     }
 }

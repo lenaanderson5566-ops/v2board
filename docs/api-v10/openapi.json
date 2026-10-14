@@ -3140,7 +3140,7 @@
         ],
         "x-permission": "user",
         "x-legacy-path": "/api/v1/user/telegram/getBotInfo",
-        "description": "Requires an active session. Order and ticket identifiers are checked against the authenticated owner. Unauthenticated: 401; banned account: 403."
+        "description": "Returns local binding and membership eligibility without contacting Telegram. Bot username may be null; use the binding-links endpoint to obtain a verified Telegram URL."
       }
     },
     "/me/subscription/credential-rotations": {
@@ -5764,6 +5764,16 @@
               "type": "string"
             },
             "description": "Supported language tags with optional quality weights."
+          },
+          {
+            "name": "orderNumber",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "maxLength": 64
+            },
+            "description": "Owned order to quote. Cross-currency payments require confirmation of quotedAmount and quotedCurrency."
           }
         ],
         "responses": {
@@ -14773,6 +14783,721 @@
         "x-permission": "user",
         "description": "Requires an active session. Order and ticket identifiers are checked against the authenticated owner. Unauthenticated: 401; banned account: 403."
       }
+    },
+    "/webhooks/mail/{provider}": {
+      "post": {
+        "operationId": "postWebhooksMailProvider",
+        "summary": "Verified mail feedback",
+        "security": [],
+        "parameters": [
+          {
+            "name": "provider",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Provider acknowledgement or unsubscribe HTML"
+          },
+          "403": {
+            "description": "Invalid signature"
+          },
+          "422": {
+            "description": "Invalid payload"
+          }
+        }
+      }
+    },
+    "/mail/unsubscribe/{token}": {
+      "get": {
+        "operationId": "getMailUnsubscribeToken",
+        "summary": "Announcement unsubscribe (GET confirms; POST changes preference)",
+        "security": [],
+        "parameters": [
+          {
+            "name": "token",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Provider acknowledgement or unsubscribe HTML"
+          },
+          "403": {
+            "description": "Invalid signature"
+          },
+          "422": {
+            "description": "Invalid payload"
+          }
+        }
+      },
+      "post": {
+        "operationId": "postMailUnsubscribeToken",
+        "summary": "Announcement unsubscribe (GET confirms; POST changes preference)",
+        "security": [],
+        "parameters": [
+          {
+            "name": "token",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Provider acknowledgement or unsubscribe HTML"
+          },
+          "403": {
+            "description": "Invalid signature"
+          },
+          "422": {
+            "description": "Invalid payload"
+          }
+        }
+      }
+    },
+    "/me/notifications/ticket-read-receipts": {
+      "post": {
+        "operationId": "postMeTicketReadReceipts",
+        "tags": [
+          "user"
+        ],
+        "summary": "Mark the displayed ticket reply as read",
+        "parameters": [
+          {
+            "name": "Accept-Language",
+            "in": "header",
+            "schema": {
+              "type": "string"
+            },
+            "description": "Supported language tags with optional quality weights."
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Success",
+            "headers": {
+              "X-Request-ID": {
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "Content-Language": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Problem details",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Problem details",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Problem details",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Problem details",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "410": {
+            "description": "Problem details",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Problem details",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Problem details",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Problem details",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          },
+          {
+            "browserUserCookie": []
+          }
+        ],
+        "x-permission": "user",
+        "x-legacy-path": "/api/v1/user/notice/read",
+        "description": "Requires an active session. Order and ticket identifiers are checked against the authenticated owner. Unauthenticated: 401; banned account: 403.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "ticketId",
+                  "version"
+                ],
+                "properties": {
+                  "ticketId": {
+                    "type": "integer",
+                    "minimum": 1
+                  },
+                  "version": {
+                    "type": "integer",
+                    "minimum": 1
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/me/coupons": {
+      "get": {
+        "operationId": "getMeCoupons",
+        "tags": [
+          "user"
+        ],
+        "summary": "GET /me/coupons",
+        "parameters": [
+          {
+            "name": "Accept-Language",
+            "in": "header",
+            "schema": {
+              "type": "string"
+            },
+            "description": "Supported language tags with optional quality weights."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "headers": {
+              "X-Request-ID": {
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "Content-Language": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "maxItems": 100,
+                      "items": {
+                        "$ref": "#/components/schemas/walletCoupon"
+                      }
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {
+                        "pagination": {
+                          "$ref": "#/components/schemas/Pagination"
+                        },
+                        "taskId": {
+                          "type": "string"
+                        }
+                      }
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Problem details",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Problem details",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Problem details",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Problem details",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "410": {
+            "description": "Problem details",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Problem details",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Problem details",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Problem details",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          },
+          {
+            "browserUserCookie": []
+          }
+        ],
+        "x-permission": "user",
+        "description": "Authenticated coupon wallet. Claims reserve inventory atomically, once per account per template. Issued terms are immutable; order cancellation releases the reservation."
+      }
+    },
+    "/me/coupon-offers": {
+      "get": {
+        "operationId": "getMeCouponOffers",
+        "tags": [
+          "user"
+        ],
+        "summary": "GET /me/coupon-offers",
+        "parameters": [
+          {
+            "name": "Accept-Language",
+            "in": "header",
+            "schema": {
+              "type": "string"
+            },
+            "description": "Supported language tags with optional quality weights."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "headers": {
+              "X-Request-ID": {
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "Content-Language": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "maxItems": 100,
+                      "items": {
+                        "$ref": "#/components/schemas/couponOffer"
+                      }
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {
+                        "pagination": {
+                          "$ref": "#/components/schemas/Pagination"
+                        },
+                        "taskId": {
+                          "type": "string"
+                        }
+                      }
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Problem details",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Problem details",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Problem details",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Problem details",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "410": {
+            "description": "Problem details",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Problem details",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Problem details",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Problem details",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          },
+          {
+            "browserUserCookie": []
+          }
+        ],
+        "x-permission": "user",
+        "description": "Authenticated coupon wallet. Claims reserve inventory atomically, once per account per template. Issued terms are immutable; order cancellation releases the reservation."
+      }
+    },
+    "/me/coupon-claims": {
+      "post": {
+        "operationId": "postMeCouponClaims",
+        "tags": [
+          "user"
+        ],
+        "summary": "POST /me/coupon-claims",
+        "parameters": [
+          {
+            "name": "Accept-Language",
+            "in": "header",
+            "schema": {
+              "type": "string"
+            },
+            "description": "Supported language tags with optional quality weights."
+          }
+        ],
+        "responses": {
+          "401": {
+            "description": "Problem details",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Problem details",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Problem details",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Problem details",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "410": {
+            "description": "Problem details",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Problem details",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Problem details",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Problem details",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "201": {
+            "description": "Success",
+            "headers": {
+              "X-Request-ID": {
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "Content-Language": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "integer"
+                        }
+                      },
+                      "required": [
+                        "id"
+                      ]
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {
+                        "pagination": {
+                          "$ref": "#/components/schemas/Pagination"
+                        },
+                        "taskId": {
+                          "type": "string"
+                        }
+                      }
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          },
+          {
+            "browserUserCookie": []
+          }
+        ],
+        "x-permission": "user",
+        "description": "Authenticated coupon wallet. Claims reserve inventory atomically, once per account per template. Issued terms are immutable; order cancellation releases the reservation.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/postMeCouponClaimsInput"
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -14895,9 +15620,10 @@
             "type": "string",
             "example": "CNY",
             "enum": [
-              "CNY"
+              "CNY",
+              "USD"
             ],
-            "description": "CNY only in phase 1; integer monetary values are fen (1/100 CNY). Order currency is persisted and does not follow global configuration."
+            "description": "Immutable monetary currency. Amounts use integer minor units. Historical assets remain CNY."
           }
         },
         "additionalProperties": false
@@ -15035,9 +15761,10 @@
             "type": "string",
             "example": "CNY",
             "enum": [
-              "CNY"
+              "CNY",
+              "USD"
             ],
-            "description": "CNY only in phase 1; integer monetary values are fen (1/100 CNY). Order currency is persisted and does not follow global configuration."
+            "description": "Immutable monetary currency. Amounts use integer minor units. Historical assets remain CNY."
           },
           "ticketCreation": {
             "type": "string",
@@ -15061,6 +15788,10 @@
           "expiresAtDisplay": {
             "type": "string",
             "nullable": true
+          },
+          "announcementEmails": {
+            "type": "boolean",
+            "description": "Explicit opt-in to announcement emails; defaults to false."
           }
         },
         "additionalProperties": false
@@ -15304,9 +16035,22 @@
             "type": "string",
             "example": "CNY",
             "enum": [
-              "CNY"
+              "CNY",
+              "USD"
             ],
-            "description": "CNY only in phase 1; integer monetary values are fen (1/100 CNY). Order currency is persisted and does not follow global configuration."
+            "description": "Immutable monetary currency. Amounts use integer minor units. Historical assets remain CNY."
+          },
+          "paymentAmount": {
+            "type": "integer",
+            "nullable": true
+          },
+          "paymentCurrency": {
+            "type": "string",
+            "enum": [
+              "CNY",
+              "USD"
+            ],
+            "nullable": true
           }
         },
         "additionalProperties": false
@@ -15345,9 +16089,10 @@
             "type": "string",
             "example": "CNY",
             "enum": [
-              "CNY"
+              "CNY",
+              "USD"
             ],
-            "description": "CNY only in phase 1; integer monetary values are fen (1/100 CNY). Order currency is persisted and does not follow global configuration."
+            "description": "Immutable monetary currency. Amounts use integer minor units. Historical assets remain CNY."
           },
           "category": {
             "type": "string",
@@ -15371,6 +16116,26 @@
           },
           "networkIconUrl": {
             "type": "string",
+            "nullable": true
+          },
+          "quotedAmount": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "quotedCurrency": {
+            "type": "string",
+            "enum": [
+              "CNY",
+              "USD"
+            ]
+          },
+          "quotedFee": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "rateTime": {
+            "type": "string",
+            "format": "date-time",
             "nullable": true
           }
         },
@@ -15404,9 +16169,10 @@
             "type": "string",
             "example": "CNY",
             "enum": [
-              "CNY"
+              "CNY",
+              "USD"
             ],
-            "description": "CNY only in phase 1; integer monetary values are fen (1/100 CNY). Order currency is persisted and does not follow global configuration."
+            "description": "Immutable monetary currency. Amounts use integer minor units. Historical assets remain CNY."
           }
         },
         "additionalProperties": false
@@ -15715,9 +16481,17 @@
             "type": "string",
             "example": "CNY",
             "enum": [
-              "CNY"
+              "CNY",
+              "USD"
             ],
-            "description": "CNY only in phase 1; integer monetary values are fen (1/100 CNY). Order currency is persisted and does not follow global configuration."
+            "description": "Immutable monetary currency. Amounts use integer minor units. Historical assets remain CNY."
+          },
+          "orderCurrency": {
+            "type": "string",
+            "enum": [
+              "CNY",
+              "USD"
+            ]
           }
         },
         "additionalProperties": false
@@ -16006,9 +16780,10 @@
           "currency": {
             "type": "string",
             "enum": [
-              "CNY"
+              "CNY",
+              "USD"
             ],
-            "description": "CNY only in phase 1; integer monetary values are fen (1/100 CNY). Order currency is persisted and does not follow global configuration.",
+            "description": "Immutable monetary currency. Amounts use integer minor units. Historical assets remain CNY.",
             "nullable": true
           },
           "currencySymbol": {
@@ -16160,9 +16935,10 @@
             "type": "string",
             "example": "CNY",
             "enum": [
-              "CNY"
+              "CNY",
+              "USD"
             ],
-            "description": "CNY only in phase 1; integer monetary values are fen (1/100 CNY). Order currency is persisted and does not follow global configuration."
+            "description": "Immutable monetary currency. Amounts use integer minor units. Historical assets remain CNY."
           }
         },
         "additionalProperties": false
@@ -16498,9 +17274,10 @@
           "currency": {
             "type": "string",
             "enum": [
-              "CNY"
+              "CNY",
+              "USD"
             ],
-            "description": "CNY only in phase 1; integer monetary values are fen (1/100 CNY). Order currency is persisted and does not follow global configuration."
+            "description": "Immutable monetary currency. Amounts use integer minor units. Historical assets remain CNY."
           },
           "rewards": {
             "type": "object",
@@ -16535,6 +17312,27 @@
             }
           },
           "unread": {
+            "type": "integer"
+          },
+          "ticketReplies": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "ticketId": {
+                  "type": "integer"
+                },
+                "messageId": {
+                  "type": "integer"
+                },
+                "createdAt": {
+                  "type": "string",
+                  "format": "date-time"
+                }
+              }
+            }
+          },
+          "ticketUnread": {
             "type": "integer"
           }
         }
@@ -16976,6 +17774,10 @@
             "type": "string",
             "nullable": true,
             "description": "IANA time zone; null follows the device display time zone."
+          },
+          "announcementEmails": {
+            "type": "boolean",
+            "description": "Explicit opt-in to announcement emails; defaults to false."
           }
         }
       },
@@ -17046,6 +17848,11 @@
           },
           "couponCode": {
             "type": "string"
+          },
+          "walletCouponId": {
+            "type": "integer",
+            "minimum": 1,
+            "description": "Owned coupon wallet entry. Mutually exclusive with couponCode."
           }
         },
         "required": [
@@ -17061,6 +17868,17 @@
           },
           "paymentToken": {
             "type": "string"
+          },
+          "expectedPaymentAmount": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "expectedPaymentCurrency": {
+            "type": "string",
+            "enum": [
+              "CNY",
+              "USD"
+            ]
           }
         },
         "required": [
@@ -18360,6 +19178,120 @@
             "nullable": true
           }
         },
+        "additionalProperties": false
+      },
+      "couponOffer": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer"
+          },
+          "name": {
+            "type": "string"
+          },
+          "discountPercent": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 100
+          },
+          "expiresAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "planIds": {
+            "type": "array",
+            "items": {
+              "type": "integer"
+            }
+          },
+          "billingPeriods": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "activityTitle": {
+            "type": "string",
+            "description": "Localized activity title with default copy fallback."
+          },
+          "activityDescription": {
+            "type": "string",
+            "description": "Localized plain text activity description."
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "discountPercent",
+          "expiresAt",
+          "planIds",
+          "billingPeriods",
+          "activityTitle",
+          "activityDescription"
+        ],
+        "additionalProperties": false
+      },
+      "walletCoupon": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer"
+          },
+          "name": {
+            "type": "string"
+          },
+          "discountPercent": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 100
+          },
+          "expiresAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "planIds": {
+            "type": "array",
+            "items": {
+              "type": "integer"
+            }
+          },
+          "billingPeriods": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "available",
+              "expired",
+              "reservedOrUsed"
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "discountPercent",
+          "expiresAt",
+          "planIds",
+          "billingPeriods",
+          "status"
+        ],
+        "additionalProperties": false
+      },
+      "postMeCouponClaimsInput": {
+        "type": "object",
+        "properties": {
+          "couponId": {
+            "type": "integer",
+            "minimum": 1
+          }
+        },
+        "required": [
+          "couponId"
+        ],
         "additionalProperties": false
       }
     }

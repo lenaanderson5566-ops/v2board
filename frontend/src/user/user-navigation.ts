@@ -15,6 +15,7 @@ export function userNavigation(state?: string) {
                   group: "工作空间",
               },
         { key: "order", label: "账单", group: "工作空间" },
+        { key: "activities", label: "活动中心", group: "工作空间" },
         { key: "knowledge", label: "帮助中心", group: "帮助" },
     ];
 }

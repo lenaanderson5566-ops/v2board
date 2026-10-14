@@ -7,7 +7,7 @@ import { renderMarkdown } from "../shared/markdown";
 import { tx } from "../shared/i18n";
 import { a } from "./announcement-copy";
 
-type Inbox = { items: Row[]; total: number; unread: number };
+type Inbox = { items: Row[]; total: number; unread: number; ticketReplies?: Row[]; ticketUnread?: number };
 
 export function announcementSummary(content: unknown) {
     const html = DOMPurify.sanitize(renderMarkdown(content));
@@ -25,7 +25,7 @@ export function AnnouncementCenter() {
     const [page, setPage] = useState(1);
     const [selected, setSelected] = useState<number | null>(null);
     const inbox = useData<Inbox>(`user/notice/inbox?current=${page}&page_size=10`);
-    const unread = inbox.data?.unread || 0;
+    const unread = (inbox.data?.unread || 0)+(inbox.data?.ticketUnread || 0);
     const trigger = useRef<HTMLButtonElement>(null);
     const close = () => {
         setOpen(false);
@@ -78,6 +78,7 @@ export function AnnouncementCenter() {
                                     </span>
                                 )}
                             </div>
+                            {Boolean(inbox.data?.ticketReplies?.length) && <section className="pad"><h3>{a("ticketReplies")}</h3>{inbox.data?.ticketReplies?.map(item=><a className="announcement-item" key={item.ticket_id} href={`#/ticket?ticketId=${item.ticket_id}`} onClick={close}><strong>{a("ticketReply")} #{item.ticket_id}</strong><time>{date(item.created_at)}</time></a>)}{(inbox.data?.ticketUnread || 0)>20 && <a href="#/ticket" onClick={close}>{a("allTickets")}</a>}</section>}
                             <div
                                 className="announcement-list"
                                 aria-busy={inbox.loading}

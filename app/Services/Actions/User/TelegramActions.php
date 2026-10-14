@@ -8,7 +8,8 @@ class TelegramActions {
     private function user(): User { return User::findOrFail(request()->user['id']); }
     public function getBotInfo() {
         $data=app(TelegramCommunityService::class)->status($this->user());
-        $data['username']=config('v2board.telegram_bot_enable',0) ? (new TelegramService())->getMe()->result->username : null;
+        // Reading local binding status must not depend on Telegram availability.
+        $data['username']=null;
         return response(['data'=>$data]);
     }
     public function bindingLink(Request $request) {

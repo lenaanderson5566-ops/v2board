@@ -14,7 +14,7 @@ class PlanActions
 {
     public function credits(Request $request)
     {
-        $plans = Plan::where('show', 1)->whereNotNull('onetime_price')->where('transfer_enable', '>', 0)
+        $plans = Plan::where('show', 1)->where('transfer_enable', '>', 0)
             ->whereNotNull('group_id')->orderBy('sort')->get();
         $user = User::findOrFail($request->user['id']);
         $counts = PlanService::countActiveUsers();
@@ -23,9 +23,10 @@ class PlanActions
                 || $plan->capacity_limit > ($counts[$plan->id]->count ?? 0);
         })->values();
         (new PlanTranslationService())->translateCollection($plans, app()->getLocale());
-        return response(['data' => $plans->map(function ($plan) {
+        foreach ($plans as $plan) \App\Services\BillingCurrency::present($plan, \App\Services\BillingCurrency::account($user));
+        return response(['data' => $plans->filter(fn($plan)=>$plan->onetime_price !== null)->values()->map(function ($plan) {
             return ['id' => $plan->id, 'name' => $plan->name, 'bytes' => (int)round($plan->transfer_enable * 1073741824),
-                'price' => $plan->onetime_price];
+                'price' => $plan->onetime_price, 'currency'=>$plan->currency];
         })]);
     }
 
@@ -42,6 +43,7 @@ class PlanActions
             }
             $translationService = new PlanTranslationService();
             $translationService->translateSingle($plan, app()->getLocale());
+            \App\Services\BillingCurrency::present($plan, \App\Services\BillingCurrency::account($user));
 
             return response([
                 'data' => $plan
@@ -49,9 +51,7 @@ class PlanActions
         }
 
         $counts = PlanService::countActiveUsers();
-        $plans = Plan::where('show', 1)->where(function ($q) {
-            foreach (array_keys(\App\Services\OrderService::STR_TO_TIME) as $period) $q->orWhereNotNull($period);
-        })
+        $plans = Plan::where('show', 1)
             ->orderBy('sort', 'ASC')
             ->get();
         foreach ($plans as $k => $v) {
@@ -61,6 +61,8 @@ class PlanActions
         }
         $translationService = new PlanTranslationService();
         $translationService->translateCollection($plans, app()->getLocale());
+        foreach ($plans as $plan) \App\Services\BillingCurrency::present($plan, \App\Services\BillingCurrency::account($user));
+        $plans = $plans->filter(fn($plan)=>collect(array_keys(\App\Services\OrderService::STR_TO_TIME))->contains(fn($period)=>$plan->$period !== null))->values();
 
         return response([
             'data' => $plans

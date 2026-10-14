@@ -17,7 +17,7 @@ class UserFetch extends FormRequest
             'filter' => 'nullable|array',
             'sort' => 'nullable|in:id,created_at,banned,plan_id,group_id,total_used,transfer_enable,device_limit,expired_at,balance,commission_balance',
             'sort_type' => 'nullable|in:ASC,DESC',
-            'filter.*.key' => 'required|in:id,email,transfer_enable,device_limit,d,expired_at,uuid,token,invite_by_email,invite_user_id,plan_id,banned,remarks,is_admin',
+            'filter.*.key' => 'required|in:id,email,transfer_enable,device_limit,d,expired_at,created_at,uuid,token,invite_by_email,invite_user_id,plan_id,banned,remarks,is_admin',
             'filter.*.condition' => 'required|in:>,<,=,>=,<=,模糊,!=',
             'filter.*.value' => 'required'
         ];

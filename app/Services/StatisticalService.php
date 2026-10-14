@@ -59,7 +59,7 @@ class StatisticalService {
             ->count();
         $data['order_total'] = Order::where('created_at', '>=', $startAt)
             ->where('created_at', '<', $endAt)
-            ->sum('total_amount');
+            ->where('currency','CNY')->sum('total_amount');
         $data['paid_count'] = Order::where('paid_at', '>=', $startAt)
             ->where('paid_at', '<', $endAt)
             ->whereNotIn('status', [0, 2])
@@ -67,11 +67,11 @@ class StatisticalService {
         $data['paid_total'] = Order::where('paid_at', '>=', $startAt)
             ->where('paid_at', '<', $endAt)
             ->whereNotIn('status', [0, 2])
-            ->sum('total_amount');
+            ->where('currency','CNY')->sum('total_amount');
         $commissionLogBuilder = CommissionLog::where('created_at', '>=', $startAt)
             ->where('created_at', '<', $endAt);
         $data['commission_count'] = $commissionLogBuilder->count();
-        $data['commission_total'] = $commissionLogBuilder->sum('get_amount');
+        $data['commission_total'] = (clone $commissionLogBuilder)->where('currency','CNY')->sum('get_amount');
         $data['register_count'] = User::where('created_at', '>=', $startAt)
             ->where('created_at', '<', $endAt)
             ->count();

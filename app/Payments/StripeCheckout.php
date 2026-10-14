@@ -14,11 +14,6 @@ class StripeCheckout {
     public function form()
     {
         return [
-            'currency' => [
-                'label' => '货币单位',
-                'description' => '仅支持 CNY（人民币）',
-                'type' => 'input',
-            ],
             'stripe_sk_live' => [
                 'label' => 'SK_LIVE',
                 'description' => 'API 密钥',
@@ -44,8 +39,8 @@ class StripeCheckout {
 
     public function pay($order)
     {
-        $currency = strtolower($this->config['currency'] ?? 'cny');
-        abort_unless($currency === 'cny', 422, 'Only CNY checkout is supported');
+        $currency = strtolower($order['currency'] ?? 'cny');
+        abort_unless(in_array($currency,['cny','usd'],true), 422, 'Unsupported checkout currency');
         $customFieldName = isset($this->config['stripe_custom_field_name']) ? $this->config['stripe_custom_field_name'] : 'Contact Infomation';
 
         $params = [

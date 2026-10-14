@@ -82,6 +82,7 @@ function IncomeOverview() {
             <Panel
                 actions={
                     <Reload
+                        loading={stat.loading || health.loading || orders.loading}
                         onClick={() => {
                             stat.reload();
                             health.reload();
@@ -146,7 +147,7 @@ function IncomeOverview() {
                         <Panel
                             key={String(title)}
                             title={String(title)}
-                            actions={<Reload onClick={d.reload} />}
+                            actions={<Reload onClick={d.reload} loading={d.loading} />}
                         >
                             <State {...d} retry={d.reload}>
                                 <RankChart

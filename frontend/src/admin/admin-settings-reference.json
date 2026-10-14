@@ -76,7 +76,7 @@
     },
     "currency": {
       "label": "当前结算币种",
-      "hint": "当前所有价格、余额和佣金均为 CNY。USD 将通过独立价格与钱包支持，不能通过修改此设置转换金额。",
+      "hint": "历史资金基准为人民币。新用户币种单独设置，余额不会自动转换。",
       "placeholder": "CNY",
       "child": false,
       "line": 5783
@@ -97,6 +97,12 @@
       "label": "头部风格",
       "child": false,
       "line": 6198
+    },
+    "new_user_currency": {
+      "label": "新用户默认币种",
+      "hint": "账号创建后币种固定；老用户保留人民币。",
+      "child": false,
+      "line": 0
     }
   },
   "safe": {
@@ -510,6 +516,204 @@
       "hint": "QQ / Foxmail、163 / 126、Gmail 分组限速；默认 30 秒。限流拒收后自动退避。",
       "child": false,
       "line": 9003
+    },
+    "email_provider": {
+      "label": "事务邮件发送通道",
+      "hint": "选择 SMTP、Mailgun、Amazon SES 或 Resend。保存后重启队列服务。",
+      "child": false,
+      "line": 6300
+    },
+    "email_mailgun_region": {
+      "label": "Mailgun 区域",
+      "hint": "必须与 Mailgun 发送域名所在区域一致。",
+      "child": true,
+      "line": 6301
+    },
+    "email_mailgun_domain": {
+      "label": "Mailgun 发送域名",
+      "hint": "填写已验证的域名，例如 mg.example.com，不包含协议或路径。",
+      "child": true,
+      "line": 6302
+    },
+    "email_mailgun_api_key": {
+      "label": "Mailgun API Key",
+      "hint": "建议使用域名专用发送密钥；加密保存，不回显。留空保留已有密钥。",
+      "child": true,
+      "line": 6303
+    },
+    "email_ses_region": {
+      "label": "SES 区域",
+      "hint": "填写已验证发送身份所在区域，例如 us-east-1、ap-southeast-1。各区域配额及沙盒状态独立。",
+      "child": true,
+      "line": 6304
+    },
+    "email_ses_auth": {
+      "label": "SES 身份凭据",
+      "hint": "AWS 主机建议使用 IAM 角色；其他服务器可使用仅允许 SES 发送的专用 IAM 密钥。",
+      "child": true,
+      "line": 6305
+    },
+    "email_ses_access_key": {
+      "label": "AWS Access Key ID",
+      "hint": "与 Secret Access Key 同时填写以轮换。加密保存，留空保留。临时凭据请使用服务器凭据模式。",
+      "child": true,
+      "line": 6306
+    },
+    "email_ses_secret_key": {
+      "label": "AWS Secret Access Key",
+      "hint": "使用 IAM 访问密钥，不是 SES SMTP 密码。加密保存，不回显。",
+      "child": true,
+      "line": 6307
+    },
+    "email_ses_configuration_set": {
+      "label": "SES 配置集（可选）",
+      "hint": "用于 AWS 侧投递、退信和投诉事件监控，必须在当前区域存在。",
+      "child": true,
+      "line": 6308
+    },
+    "email_resend_api_key": {
+      "label": "Resend API Key",
+      "hint": "使用仅发送权限且限制域名的密钥。加密保存，不回显，留空保留。",
+      "child": true,
+      "line": 6309
+    },
+    "email_announcement_provider": {
+      "label": "推广 · 发送通道",
+      "hint": "选择 SMTP、Mailgun、Amazon SES 或 Resend。保存后重启队列服务。",
+      "child": true,
+      "line": 6500
+    },
+    "email_announcement_host": {
+      "label": "推广 · SMTP服务器地址",
+      "hint": "由邮件服务商提供的服务地址",
+      "placeholder": "请输入",
+      "child": true,
+      "line": 6501
+    },
+    "email_announcement_port": {
+      "label": "推广 · SMTP服务端口",
+      "hint": "常见的端口有25, 465, 587",
+      "placeholder": "请输入",
+      "child": true,
+      "line": 6502
+    },
+    "email_announcement_username": {
+      "label": "推广 · SMTP账号",
+      "hint": "由邮件服务商提供的账号",
+      "placeholder": "请输入",
+      "child": true,
+      "line": 6503
+    },
+    "email_announcement_password": {
+      "label": "推广 · SMTP密码",
+      "hint": "由邮件服务商提供的密码",
+      "placeholder": "请输入",
+      "child": true,
+      "line": 6504
+    },
+    "email_announcement_encryption": {
+      "label": "推广 · SMTP加密方式",
+      "hint": "465端口加密方式一般为SSL，587端口加密方式一般为TLS",
+      "placeholder": "请输入",
+      "child": true,
+      "line": 6505
+    },
+    "email_announcement_from_address": {
+      "label": "推广 · 发件地址",
+      "hint": "由邮件服务商提供的发件地址",
+      "placeholder": "请输入",
+      "child": true,
+      "line": 6506
+    },
+    "email_announcement_mailgun_domain": {
+      "label": "推广 · Mailgun 发送域名",
+      "hint": "填写已验证的域名，例如 mg.example.com，不包含协议或路径。",
+      "child": true,
+      "line": 6507
+    },
+    "email_announcement_mailgun_region": {
+      "label": "推广 · Mailgun 区域",
+      "hint": "必须与 Mailgun 发送域名所在区域一致。",
+      "child": true,
+      "line": 6508
+    },
+    "email_announcement_mailgun_api_key": {
+      "label": "推广 · Mailgun API Key",
+      "hint": "建议使用域名专用发送密钥；加密保存，不回显。留空保留已有密钥。",
+      "child": true,
+      "line": 6509
+    },
+    "email_announcement_ses_region": {
+      "label": "推广 · SES 区域",
+      "hint": "填写已验证发送身份所在区域，例如 us-east-1、ap-southeast-1。各区域配额及沙盒状态独立。",
+      "child": true,
+      "line": 6510
+    },
+    "email_announcement_ses_auth": {
+      "label": "推广 · SES 身份凭据",
+      "hint": "AWS 主机建议使用 IAM 角色；其他服务器可使用仅允许 SES 发送的专用 IAM 密钥。",
+      "child": true,
+      "line": 6511
+    },
+    "email_announcement_ses_access_key": {
+      "label": "推广 · AWS Access Key ID",
+      "hint": "与 Secret Access Key 同时填写以轮换。加密保存，留空保留。临时凭据请使用服务器凭据模式。",
+      "child": true,
+      "line": 6512
+    },
+    "email_announcement_ses_secret_key": {
+      "label": "推广 · AWS Secret Access Key",
+      "hint": "使用 IAM 访问密钥，不是 SES SMTP 密码。加密保存，不回显。",
+      "child": true,
+      "line": 6513
+    },
+    "email_announcement_ses_configuration_set": {
+      "label": "推广 · SES 配置集（可选）",
+      "hint": "用于 AWS 侧投递、退信和投诉事件监控，必须在当前区域存在。",
+      "child": true,
+      "line": 6514
+    },
+    "email_announcement_resend_api_key": {
+      "label": "推广 · Resend API Key",
+      "hint": "使用仅发送权限且限制域名的密钥。加密保存，不回显，留空保留。",
+      "child": true,
+      "line": 6515
+    },
+    "email_announcements_enabled": {
+      "label": "允许发送推广邮件",
+      "hint": "关闭后已排队的推广邮件也会停止发送；验证码与服务通知不受影响。",
+      "child": false,
+      "line": 6490
+    },
+    "email_announcement_separate": {
+      "label": "推广邮件使用独立发送通道",
+      "hint": "开启后可独立设置服务商、凭据与发件子域名；关闭则使用事务通道。",
+      "child": false,
+      "line": 6491
+    },
+    "email_public_url": {
+      "label": "邮件回调与退订 API 地址",
+      "hint": "填写实际运行后端 API 的 HTTPS 根地址，如 https://api.example.com，不含路径。需允许公网访问邮件回调及退订接口。",
+      "child": false,
+      "line": 6492
+    },
+    "email_mailgun_webhook_key": {
+      "label": "Mailgun Webhook Signing Key",
+      "hint": "独立于发送 API Key，用于验证投递与退信回调；加密保存，留空保留。",
+      "child": false,
+      "line": 6543
+    },
+    "email_resend_webhook_key": {
+      "label": "Resend Webhook Signing Secret",
+      "hint": "填写 whsec_ 开头的端点签名密钥，独立于发送 API Key；加密保存，留空保留。",
+      "child": false,
+      "line": 6544
+    },
+    "email_ses_topic_arn": {
+      "label": "SES 通知 SNS Topic ARN",
+      "hint": "只接受此主题的签名通知。将事务和推广配置集的投递、退信、投诉事件发送到该主题，订阅本系统 HTTPS 回调。",
+      "child": false,
+      "line": 6545
     }
   },
   "telegram": {

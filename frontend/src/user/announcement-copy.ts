@@ -1,9 +1,12 @@
 import i18n from "../shared/i18n";
 export const announcementCopy = {
+    ticketReplies: ["工单回复","工單回覆","Ticket replies","お問い合わせへの返信","문의 답변","Phản hồi hỗ trợ","Ответы поддержки","پاسخ‌های پشتیبانی"],
+    ticketReply: ["工单有新回复","工單有新回覆","New ticket reply","新しい返信","새 문의 답변","Phản hồi mới","Новый ответ","پاسخ جدید"],
+    allTickets: ["查看全部工单","查看全部工單","View all tickets","すべてのお問い合わせ","모든 문의 보기","Xem tất cả yêu cầu","Все обращения","همه درخواست‌ها"],
     title: [
-        "公告",
-        "公告",
-        "Announcements",
+        "通知",
+        "通知",
+        "Notifications",
         "お知らせ",
         "공지",
         "Thông báo",
@@ -21,9 +24,9 @@ export const announcementCopy = {
         "به‌روزرسانی محصول و اخبار سرویس",
     ],
     unreadLabel: [
-        "公告，{{count}} 条未读",
-        "公告，{{count}} 則未讀",
-        "Announcements, {{count}} unread",
+        "通知，{{count}} 条未读",
+        "通知，{{count}} 則未讀",
+        "Notifications, {{count}} unread",
         "お知らせ、未読 {{count}} 件",
         "공지, 읽지 않음 {{count}}개",
         "Thông báo, {{count}} chưa đọc",

@@ -4,6 +4,20 @@ import type { Row } from "../shared/api";
 import type { Field } from "../shared/ui";
 const on = (value: unknown) => Number(value) === 1;
 const dependencies: Record<string, (values: Row) => boolean> = {
+    email_host: (v) => (!v.email_provider || v.email_provider === "smtp"),
+    email_port: (v) => (!v.email_provider || v.email_provider === "smtp"),
+    email_encryption: (v) => (!v.email_provider || v.email_provider === "smtp"),
+    email_username: (v) => (!v.email_provider || v.email_provider === "smtp"),
+    email_password: (v) => (!v.email_provider || v.email_provider === "smtp"),
+    email_resend_api_key: (v) => v.email_provider === "resend",
+    email_ses_region: (v) => v.email_provider === "ses",
+    email_ses_auth: (v) => v.email_provider === "ses",
+    email_ses_configuration_set: (v) => v.email_provider === "ses",
+    email_ses_access_key: (v) => v.email_provider === "ses" && v.email_ses_auth === "key",
+    email_ses_secret_key: (v) => v.email_provider === "ses" && v.email_ses_auth === "key",
+    email_mailgun_region: (v) => v.email_provider === "mailgun",
+    email_mailgun_domain: (v) => v.email_provider === "mailgun",
+    email_mailgun_api_key: (v) => v.email_provider === "mailgun",
     try_out_hour: (v) => Number(v.try_out_plan_id) > 0,
     email_whitelist_suffix: (v) => on(v.email_whitelist_enable),
     recaptcha_key: (v) => on(v.recaptcha_enable),
@@ -24,7 +38,15 @@ const dependencies: Record<string, (values: Row) => boolean> = {
 };
 export function settingsFields(fields: Field[], values: Row): Field[] {
     return fields.filter(
-        (f) => !dependencies[f.key] || dependencies[f.key](values),
+        (f) => {
+            if (f.key.startsWith("email_announcement_") && f.key !== "email_announcement_separate") {
+                if (!on(values.email_announcement_separate)) return false;
+                const base=f.key.replace("email_announcement_","email_");
+                const scoped=Object.fromEntries(Object.entries(values).filter(([k])=>k.startsWith("email_announcement_")).map(([k,v])=>[k.replace("email_announcement_","email_"),v]));
+                return !dependencies[base] || dependencies[base](scoped);
+            }
+            return !dependencies[f.key] || dependencies[f.key](values);
+        },
     );
 }
 export function changedSettings(body: Row, initial: Row): Row {

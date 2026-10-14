@@ -26,8 +26,10 @@ class CouponService
         $this->setUserId($order->user_id);
         $this->setPeriod($order->period);
         $this->check();
+        abort_if(DB::table('v2_coupon_wallet')->where('user_id',$order->user_id)->where('coupon_id',$this->coupon->id)->exists(),409,__('Please select this coupon from your wallet.'));
         switch ($this->coupon->type) {
             case 1:
+                abort_unless(($order->currency ?: 'CNY') === 'CNY', 422, __('This coupon is only valid for CNY orders.'));
                 $order->discount_amount = $this->coupon->value;
                 break;
             case 2:

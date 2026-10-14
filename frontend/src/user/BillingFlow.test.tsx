@@ -32,6 +32,7 @@ vi.mock("../shared/api", () => ({
 }));
 vi.mock("../shared/i18n", () => ({
     default: { addResourceBundle: () => undefined },
+    locale: () => "zh-CN",
     tx: (key: string, args: any = {}) =>
         key.replace(/{{(\w+)}}/g, (_, name) => String(args[name])),
 }));
@@ -50,7 +51,7 @@ vi.mock("../shared/experience-copy", () => ({ e: (key: string) => key }));
 vi.mock("../shared/ui", () => ({
     useData: (path: string) => ({
         data:
-            path === "user/comm/config"
+            path === "user/coupon/wallet" ? (mocks.couponsAvailable ? [{id:7,name:"SAVE",discountPercent:10,expiresAt:"2030-01-01T00:00:00Z",status:"available",planIds:[],billingPeriods:[]}] : []) : path === "user/coupon/offers" ? [] : path === "user/comm/config"
                 ? { coupons_available: mocks.couponsAvailable }
                 : path === "user/plan/fetch"
                   ? mocks.plans
@@ -209,17 +210,14 @@ it("shows the actual available period and lets users review their selection befo
     fireEvent.click(screen.getByRole("button", { name: "subscribe{}" }));
     expect(screen.queryByRole("radio", { name: /流量重置/ })).toBeNull();
     fireEvent.click(screen.getByRole("radio", { name: /年付/ }));
-    fireEvent.click(screen.getByText("使用优惠码"));
-    fireEvent.change(screen.getByLabelText("优惠码（可选）"), {
-        target: { value: " SAVE " },
-    });
+    fireEvent.click(screen.getByRole("radio", {name:/SAVE/}));
     expect(mocks.request).not.toHaveBeenCalled();
     fireEvent.click(screen.getByRole("button", { name: "创建订单并继续" }));
     await waitFor(() =>
         expect(mocks.request).toHaveBeenCalledWith("user/order/save", {
             plan_id: 1,
             period: "year_price",
-            coupon_code: "SAVE",
+            wallet_coupon_id: 7,
         }),
     );
     expect(mocks.navigate).toHaveBeenCalledWith("order/created-order");

@@ -119,3 +119,8 @@ describe("payment configuration", () => {
         });
     });
 });
+
+it('keeps channel currency separate from provider credentials and preserves old CNY defaults',()=>{
+ expect(paymentInitial({}, {},false).currency).toBe('CNY');
+ expect(paymentPayload({name:'USD checkout',currency:'USD'}, {},'StripeCheckout',{})).toMatchObject({currency:'USD',payment:'StripeCheckout',config:{}});
+});

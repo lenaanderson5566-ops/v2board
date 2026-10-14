@@ -1505,3 +1505,36 @@ body[data-console="user"] .client-family-header p { color: var(--text-secondary)
  .telegram-integration .tg-unbind { margin-inline-start:0; }
  .telegram-integration .tg-id { width:100%; margin-inline-start:30px; }
 }
+
+.usage-summary { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:12px; margin:16px 0; }
+.usage-summary > div { padding:14px; border-radius:12px; background:var(--surface-soft); min-width:0; }
+.usage-summary dt { color:var(--text-secondary); font-size:12px; }
+.usage-summary dd { margin:6px 0 0; font-size:18px; font-weight:600; overflow-wrap:anywhere; }
+@media (max-width:600px) { .usage-summary { grid-template-columns:repeat(2,minmax(0,1fr)); } }
+
+.coupon-wallet { border:1px solid var(--border);border-radius:12px;padding:16px;margin-block:16px; }
+.coupon-wallet h3 { display:flex;gap:8px;align-items:center; }
+.coupon-option { display:flex;gap:12px;align-items:center;justify-content:space-between;padding:10px 0; }
+.coupon-option small { display:block;color:var(--muted);margin-top:4px; }
+
+/* Coupon activities and wallet share readable, responsive cards. */
+.app.user .coupon-center-intro { display:flex; align-items:flex-start; gap:14px; margin-bottom:24px; }
+.app.user .coupon-center-intro > div { flex:1; min-width:0; }
+.app.user .coupon-center-intro h2 { margin:0 0 8px; }
+.app.user .coupon-center-intro p { margin:0; color:var(--text-secondary); }
+.app.user .coupon-center-intro > a, .coupon-picker-links { display:flex; gap:8px; align-items:center; flex-wrap:wrap; }
+.app.user .coupon-center-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(min(100%,280px),1fr)); gap:18px; }
+.app.user .coupon-activity-card { display:flex; flex-direction:column; gap:12px; padding:24px; border:1px solid var(--border); border-radius:18px; background:var(--surface); overflow-wrap:anywhere; }
+.app.user .coupon-activity-card h3, .app.user .coupon-activity-card p { margin:0; }
+.app.user .coupon-activity-card small { color:var(--text-secondary); }
+.app.user .coupon-discount { font-size:24px; font-weight:700; color:var(--brand); }
+.app.user .coupon-activity-description { white-space:pre-wrap; line-height:1.7; }
+.app.user .coupon-activity-terms { display:grid; gap:10px; padding-top:16px; border-top:1px solid var(--border); margin-top:auto; }
+.app.user .coupon-activity-terms strong, .app.user .coupon-claim-success { display:flex; gap:8px; align-items:center; flex-wrap:wrap; }
+.app.user .coupon-claim-success { padding:16px; border-radius:12px; background:var(--surface-soft); }
+.app.user .coupon-center-empty { padding:48px 20px; text-align:center; color:var(--text-secondary); }
+.app.user .coupon-activity-card.inactive { background:var(--surface-soft); }
+.app.user .coupon-activity-card.inactive .coupon-discount { color:var(--text-secondary); }
+.app.user .coupon-state { font-size:13px; font-weight:600; }
+.coupon-picker-links { margin-top:14px; }
+@media(max-width:600px) { .app.user .coupon-center-intro { flex-wrap:wrap; } .app.user .coupon-center-intro > div { flex-basis:calc(100% - 42px); } .app.user .coupon-center-intro > a { margin-inline-start:38px; } }

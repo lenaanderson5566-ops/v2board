@@ -216,6 +216,7 @@ class UserActions
 
             switch ($giftcard->type) {
                 case 1:
+                    abort_unless(($user->currency ?? 'CNY') === 'CNY', 422, __('This gift card is only valid for CNY accounts.'));
                     $user->balance += $giftcard->value;
                     break;
                 case 2:
@@ -303,8 +304,9 @@ class UserActions
                 'auto_renewal',
                 'remind_expire',
                 'remind_traffic',
-                'remind_service',
+                'announcement_email', 'remind_service',
                 'expired_at',
+                'currency',
                 'balance',
                 'commission_balance',
                 'plan_id',
@@ -432,7 +434,7 @@ class UserActions
             'auto_renewal',
             'remind_expire',
             'remind_traffic',
-            'remind_service'
+            'announcement_email', 'remind_service'
         ]);
 
         $user = User::find($request->user['id']);
@@ -461,6 +463,7 @@ class UserActions
                 abort(request()->is('api/v10/*') ? 409 : 500, __('Insufficient commission balance'));
             }
             $order = new Order();
+            $order->currency = $user->currency ?: 'CNY';
             $orderService = new OrderService($order);
             $order->user_id = $request->user['id'];
             $order->plan_id = 0;

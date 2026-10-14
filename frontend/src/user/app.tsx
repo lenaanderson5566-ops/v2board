@@ -309,6 +309,7 @@ export default function UserApp() {
                 plan: ShoppingBag,
                 order: ReceiptText,
                 knowledge: BookOpen,
+                activities: Gift,
             } as Record<string, typeof Globe>
         )[item.key],
     }));
@@ -323,6 +324,7 @@ export default function UserApp() {
             { key: "security", label: "账户安全" },
             { key: "notifications", label: "通知设置" },
             { key: "profile", label: "账户设置" },
+            { key: "coupons", label: "我的优惠券" },
             {
                 key: "plan",
                 label:
@@ -499,6 +501,7 @@ export default function UserApp() {
                                     "plan",
                                     "subscribe",
                                     "knowledge",
+                                    "activities",
                                     "profile",
                                 ].includes(n.key),
                             )

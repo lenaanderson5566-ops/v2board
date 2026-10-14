@@ -1,6 +1,7 @@
 import { Menu, XCircle, CircleUser, ChevronDown, LogOut } from "lucide-react";
 import { AdminIcon } from "./AdminIcon";
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
+import * as DropdownMenu from "@radix-ui/react-dropdown-menu";
 import { boot, type Row } from "../shared/api";
 
 // Stable menu order and navigation aliases; styling is owned by admin.css.
@@ -22,16 +23,23 @@ export const legacyAdminMenu = [
     ["banners", "Banner 管理", "picture", "用户"],
     ["tickets", "工单管理", "support", "用户"],
     ["knowledge", "知识库管理", "bulb", "用户"],
-    ["client-releases", "第三方客户端管理", "screen-smartphone", "风控与客户端"],
-    ["risk", "风控规则", "shield", "风控与客户端"],
-    ["blacklist-ip", "IP 黑名单", "ban", "风控与客户端"],
-    ["blacklist-ua", "UA 黑名单", "ban", "风控与客户端"],
+    [
+        "client-releases",
+        "第三方客户端管理",
+        "screen-smartphone",
+        "客户端",
+    ],
+    ["risk", "风控规则", "shield", "风控与黑名单"],
+    ["blacklist-ip", "IP 黑名单", "ban", "风控与黑名单"],
+    ["blacklist-ua", "UA 黑名单", "ban", "风控与黑名单"],
+    ["mail-blocklist", "邮件禁发名单", "ban", "风控与黑名单"],
     ["client-diagnostics", "客户端运行记录", "screen-smartphone", "日志"],
     ["log-login", "登录日志", "login", "日志"],
     ["log-subscribe", "订阅日志", "notebook", "日志"],
     ["log-connection", "连接日志", "link", "日志"],
     ["log-risk", "风控命中", "shield", "日志"],
     ["log-settings", "日志设置", "settings", "日志"],
+    ["mail-logs", "邮件日志", "notebook", "日志"],
     ["system-log", "系统日志", "notebook", "日志"],
 ] as const;
 export function adminPage(path: string): string {
@@ -82,25 +90,19 @@ export function AdminShell({
     );
     const [open, setOpen] = useState(false);
     const [menu, setMenu] = useState(false);
-    const dropdown = useRef<HTMLDivElement>(null);
     useEffect(() => {
         setOpen(false);
         setMenu(false);
     }, [current]);
     useEffect(() => {
-        const close = (e: MouseEvent) => {
-            if (!dropdown.current?.contains(e.target as Node)) setMenu(false);
-        };
         const escape = (e: KeyboardEvent) => {
             if (e.key === "Escape") {
                 setMenu(false);
                 setOpen(false);
             }
         };
-        document.addEventListener("mousedown", close);
         document.addEventListener("keydown", escape);
         return () => {
-            document.removeEventListener("mousedown", close);
             document.removeEventListener("keydown", escape);
         };
     }, []);
@@ -196,42 +198,62 @@ export function AdminShell({
                     </button>
                     <h1 className="v2board-container-title">{title}</h1>
                     <div className="admin-header-actions">
-                        <div className="admin-account" ref={dropdown}>
-                            <button
-                                className="admin-account-trigger"
-                                id="page-header-user-dropdown"
-                                aria-haspopup="menu"
-                                aria-expanded={menu}
-                                onClick={() => setMenu(!menu)}
-                            >
-                                <CircleUser size={20} aria-hidden="true" />
-                                <span className="admin-account-email">
-                                    {user.email}
-                                </span>
-                                <ChevronDown size={16} aria-hidden="true" />
-                            </button>
-                            {menu && (
-                                <div className="admin-account-menu" role="menu">
-                                    <a
-                                        className="admin-account-item"
-                                        role="menuitem"
-                                        href="/"
-                                        target="_blank"
-                                        rel="noreferrer"
-                                    >
-                                        用户端
-                                    </a>
+                        <DropdownMenu.Root
+                            open={menu}
+                            onOpenChange={setMenu}
+                            modal={false}
+                        >
+                            <div className="admin-account">
+                                <DropdownMenu.Trigger asChild>
                                     <button
-                                        className="admin-account-item"
-                                        role="menuitem"
-                                        onClick={logout}
+                                        className="admin-account-trigger"
+                                        aria-label="账户菜单"
+                                        id="page-header-user-dropdown"
                                     >
-                                        登出
-                                        <LogOut size={16} aria-hidden="true" />
+                                        <CircleUser
+                                            size={20}
+                                            aria-hidden="true"
+                                        />
+                                        <span className="admin-account-email">
+                                            {user.email}
+                                        </span>
+                                        <ChevronDown
+                                            size={16}
+                                            aria-hidden="true"
+                                        />
                                     </button>
-                                </div>
-                            )}
-                        </div>
+                                </DropdownMenu.Trigger>
+                                <DropdownMenu.Portal>
+                                    <DropdownMenu.Content
+                                        className="admin-account-menu"
+                                        align="end"
+                                        sideOffset={8}
+                                        collisionPadding={12}
+                                    >
+                                        <DropdownMenu.Item asChild>
+                                            <a
+                                                className="admin-account-item"
+                                                href="/"
+                                                target="_blank"
+                                                rel="noreferrer"
+                                            >
+                                                用户端
+                                            </a>
+                                        </DropdownMenu.Item>
+                                        <DropdownMenu.Item
+                                            className="admin-account-item"
+                                            onSelect={logout}
+                                        >
+                                            登出
+                                            <LogOut
+                                                size={16}
+                                                aria-hidden="true"
+                                            />
+                                        </DropdownMenu.Item>
+                                    </DropdownMenu.Content>
+                                </DropdownMenu.Portal>
+                            </div>
+                        </DropdownMenu.Root>
                     </div>
                 </div>
             </header>

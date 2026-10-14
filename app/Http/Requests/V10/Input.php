@@ -36,9 +36,11 @@ final class Input
             'captchaToken'=>'string|max:8192','verificationToken'=>'string|max:128',
             'planId'=>'integer|min:0','replacementOrderNumber'=>'string|max:64',
             'billingPeriod'=>'string|in:monthly,quarterly,semiannual,annual,biennial,triennial,credits,reset,deposit',
+            'orderNumber'=>'string|max:64','expectedPaymentAmount'=>'integer|min:1|max:1000000000','expectedPaymentCurrency'=>'in:CNY,USD',
             'paymentMethodId'=>'integer|min:0','paymentToken'=>'string|max:1024','depositAmount'=>'integer|min:1|max:9999998',
+            'walletCouponId'=>'integer|min:1','couponId'=>'integer|min:1',
             'couponCode'=>'string|max:128','code'=>'string|max:128','giftCardCode'=>'string|max:128',
-            'amount'=>'integer|min:1','autoRenewal'=>'boolean','expiryReminders'=>'boolean','trafficReminders'=>'boolean','serviceNotifications'=>'boolean',
+            'amount'=>'integer|min:1','autoRenewal'=>'boolean','expiryReminders'=>'boolean','trafficReminders'=>'boolean','announcementEmails'=>'boolean','serviceNotifications'=>'boolean',
             'resetPassword'=>'boolean','languageSelected'=>'boolean','language'=>\App\Services\LanguagePreferenceService::rule(),
             'requestKey'=>'uuid','page'=>'integer|min:1','pageSize'=>'integer|min:1|max:100',
             'days'=>'integer|in:7,30,90','subject'=>'string|max:255','priority'=>'in:normal,high,urgent',
@@ -48,6 +50,7 @@ final class Input
             'placement'=>'in:landing,dashboard','status'=>'in:unpaid,processing,cancelled,completed,discounted'
         ];
         $required = [
+            'User/NoticeController@readTicket'=>['ticketId','version'],
             'User/TelegramController@confirmBinding'=>['telegramId'],
             'Passport/BrowserSessionController@migrate'=>['legacyToken'],
             'Passport/ClientAuthorizationController@create'=>['codeChallenge','state','redirectUri','platform'],

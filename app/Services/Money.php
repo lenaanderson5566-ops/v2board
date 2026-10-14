@@ -8,5 +8,5 @@ final class Money {
         if (!preg_match('/^(0|[1-9][0-9]{0,12})(?:\.([0-9]{1,2}))?$/D', $value, $parts)) throw new \InvalidArgumentException('Invalid payment amount');
         return (int)$parts[1] * 100 + (int)str_pad($parts[2] ?? '', 2, '0');
     }
-    public static function format($minor): string { return self::CURRENCY.' '.number_format((int)$minor/100,2,'.',','); }
+    public static function format($minor, string $currency = self::CURRENCY): string { return $currency.' '.number_format((int)$minor/100,2,'.',','); }
 }

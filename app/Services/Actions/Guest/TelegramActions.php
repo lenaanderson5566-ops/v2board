@@ -26,16 +26,14 @@ class TelegramActions
 
     public function webhook(Request $request)
     {
-        $updateId=$request->input('update_id');
-        abort_unless(is_int($updateId) && $updateId>=0,422,'Invalid Telegram update');
-        $key='telegram:update:'.hash('sha256',(string)config('v2board.telegram_bot_token')).':'.$updateId;
-        \Illuminate\Support\Facades\Cache::lock($key.':lock',60)->block(2,function () use ($key,$request) {
-            if (\Illuminate\Support\Facades\Cache::has($key)) return;
-            $this->formatMessage($request->input());
-            app(\App\Services\TelegramCommunityService::class)->handleUpdate($request->input());
-            $this->handle();
-            \Illuminate\Support\Facades\Cache::put($key,true,86400);
-        });
+        app(\App\Services\TelegramDeliveryService::class)->receive($request->input());
+    }
+
+    public function processUpdate(array $update): void
+    {
+        $this->formatMessage($update);
+        app(\App\Services\TelegramCommunityService::class)->handleUpdate($update);
+        $this->handle();
     }
 
     public function handle()
@@ -43,8 +41,16 @@ class TelegramActions
         if (!$this->msg) return;
         $msg = $this->msg;
         if (!$msg->is_private || (int)$msg->sender_id!==(int)$msg->chat_id) return;
-        \Illuminate\Support\Facades\Cache::forget('telegram:admin-blocked:'.$msg->sender_id);
-        if (!\Illuminate\Support\Facades\Cache::add('telegram:command-rate:'.$msg->sender_id,true,2)) return;
+        $menuKey='telegram:menu:'.\App\Services\TelegramDeliveryService::botKey().':'.$msg->sender_id;
+        if (\Illuminate\Support\Facades\Cache::get($menuKey)!==$msg->language) {
+            try {
+                $this->telegramService->call('setMyCommands',[
+                    'commands'=>json_encode(\App\Services\TelegramText::commandsFor($msg->language),JSON_UNESCAPED_UNICODE),
+                    'scope'=>json_encode(['type'=>'chat','chat_id'=>$msg->chat_id]),
+                ]);
+                \Illuminate\Support\Facades\Cache::put($menuKey,$msg->language,86400);
+            } catch (\App\Exceptions\TelegramApiException $e) { /* Menu refresh must not block binding. */ }
+        }
         $commandName = explode('@', $msg->command);
 
         // To reduce request, only commands contains @ will get the bot name
@@ -75,8 +81,10 @@ class TelegramActions
                     return;
                 }
             }
-        } catch (\Exception $e) {
-            $this->telegramService->sendMessage($msg->chat_id, '操作未完成，请回到网站刷新绑定状态，或重新获取绑定链接。');
+        } catch (\App\Exceptions\TelegramApiException $e) {
+            throw $e;
+        } catch (\Symfony\Component\HttpKernel\Exception\HttpException $e) {
+            $this->telegramService->sendMessage($msg->chat_id, \App\Services\TelegramText::get('error', $msg->language));
         }
     }
 
@@ -91,12 +99,13 @@ class TelegramActions
         if (!isset($data['message'])) return;
         if (!isset($data['message']['text'])) return;
         $obj = new \StdClass();
-        $text = explode(' ', $data['message']['text']);
+        $text = preg_split('/\s+/', trim($data['message']['text']));
         $obj->command = $text[0];
         $obj->args = array_slice($text, 1);
         $obj->chat_id = $data['message']['chat']['id'];
         $obj->sender_id = $data['message']['from']['id'] ?? 0;
         $obj->sender_name = $data['message']['from']['username'] ?? $data['message']['from']['first_name'] ?? '';
+        $obj->language = \App\Services\TelegramText::language((int)$obj->sender_id, (string)($data['message']['from']['language_code'] ?? ''), $obj->args[0] ?? '');
         $obj->message_id = $data['message']['message_id'];
         $obj->message_type = 'message';
         $obj->text = $data['message']['text'];

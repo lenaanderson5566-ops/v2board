@@ -1,7 +1,7 @@
-import { dateTimeInput } from "../shared/timezone";
+import { UserFilters } from "./UserFilters";
 import { adminUserLabel } from "./admin-user-label";
 import { AdminMailComposer } from "./AdminMailComposer";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { AdminUsageReset } from "./AdminUsageReset";
 import { AdminRowMenu } from "./AdminRowMenu";
 import {
@@ -19,7 +19,6 @@ import { ResourcePage, resources, GenerateUsers } from "./admin";
 import {
     userFilterFields,
     userSortFields,
-    normalizeUserFilters,
     emailSearchFilters,
     type UserFilter,
 } from "./user-filters";
@@ -528,181 +527,6 @@ export function UsersPage() {
         </div>
     );
 }
-function UserFilters({
-    initial,
-    plans,
-    onApply,
-}: {
-    initial: UserFilter[];
-    plans: Row[];
-    onApply: (filters: UserFilter[]) => void;
-}) {
-    const [draft, setDraft] = useState(
-            initial.map((f) =>
-                f.key === "expired_at"
-                    ? {
-                          ...f,
-                          value: dateTimeInput(Number(f.value)),
-                      }
-                    : { ...f },
-            ),
-        ),
-        [error, setError] = useState("");
-    function change(index: number, value: Partial<UserFilter>) {
-        setDraft(draft.map((f, i) => (i === index ? { ...f, ...value } : f)));
-        setError("");
-    }
-    return (
-        <form
-            className="pad user-filters"
-            onSubmit={(e) => {
-                e.preventDefault();
-                try {
-                    onApply(normalizeUserFilters(draft));
-                } catch (err) {
-                    setError((err as Error).message);
-                }
-            }}
-        >
-            <p className="muted">
-                多个条件同时满足。流量单位为 GB，到期时间按本地时间输入。
-            </p>
-            {draft.map((f, i) => {
-                const spec = userFilterFields.find(([key]) => key === f.key)!;
-                const options =
-                    f.key === "plan_id"
-                        ? [
-                              ["null", "无套餐"],
-                              ...plans.map((p) => [String(p.id), p.name]),
-                          ]
-                        : f.key === "banned"
-                          ? [
-                                ["0", "正常"],
-                                ["1", "封禁"],
-                            ]
-                          : f.key === "is_admin"
-                            ? [
-                                  ["0", "否"],
-                                  ["1", "是"],
-                              ]
-                            : null;
-                return (
-                    <div className="user-filter-row" key={i}>
-                        <select
-                            aria-label={`筛选字段 ${i + 1}`}
-                            value={f.key}
-                            onChange={(e) => {
-                                const key = e.target.value;
-                                change(i, {
-                                    key,
-                                    condition: userFilterFields.find(
-                                        ([k]) => k === key,
-                                    )![2][0],
-                                    value: ["banned", "is_admin"].includes(key)
-                                        ? "0"
-                                        : key === "plan_id"
-                                          ? "null"
-                                          : "",
-                                });
-                            }}
-                        >
-                            {userFilterFields.map(([key, label]) => (
-                                <option key={key} value={key}>
-                                    {label}
-                                </option>
-                            ))}
-                        </select>
-                        <select
-                            aria-label={`筛选条件 ${i + 1}`}
-                            value={f.condition}
-                            onChange={(e) =>
-                                change(i, { condition: e.target.value })
-                            }
-                        >
-                            {spec[2].map((c) => (
-                                <option key={c}>{c}</option>
-                            ))}
-                        </select>
-                        {options ? (
-                            <select
-                                aria-label={`筛选值 ${i + 1}`}
-                                value={f.value}
-                                onChange={(e) =>
-                                    change(i, { value: e.target.value })
-                                }
-                            >
-                                {options.map(([v, l]) => (
-                                    <option value={v} key={v}>
-                                        {l}
-                                    </option>
-                                ))}
-                            </select>
-                        ) : (
-                            <input
-                                aria-label={`筛选值 ${i + 1}`}
-                                type={
-                                    f.key === "expired_at"
-                                        ? "datetime-local"
-                                        : ["uuid", "token"].includes(f.key)
-                                          ? "password"
-                                          : [
-                                                  "id",
-                                                  "transfer_enable",
-                                                  "device_limit",
-                                                  "d",
-                                                  "invite_user_id",
-                                              ].includes(f.key)
-                                            ? "number"
-                                            : "text"
-                                }
-                                min="0"
-                                step="any"
-                                required
-                                value={f.value}
-                                onChange={(e) =>
-                                    change(i, { value: e.target.value })
-                                }
-                            />
-                        )}
-                        <button
-                            type="button"
-                            aria-label={`删除筛选条件 ${i + 1}`}
-                            onClick={() =>
-                                setDraft(
-                                    draft.filter((_, index) => index !== i),
-                                )
-                            }
-                        >
-                            删除条件
-                        </button>
-                    </div>
-                );
-            })}
-            <div className="actions">
-                <button
-                    type="button"
-                    onClick={() =>
-                        setDraft([
-                            ...draft,
-                            { key: "email", condition: "模糊", value: "" },
-                        ])
-                    }
-                >
-                    添加条件
-                </button>
-                <button type="button" onClick={() => setDraft([])}>
-                    重置条件
-                </button>
-                <button className="primary">应用筛选</button>
-            </div>
-            {error && (
-                <p className="alert" role="alert">
-                    {error}
-                </p>
-            )}
-        </form>
-    );
-}
 function BulkUsers({
     operation,
     onComplete,
@@ -710,7 +534,10 @@ function BulkUsers({
     operation: { kind: string; filters: UserFilter[]; count: number };
     onComplete: () => void;
 }) {
+    const mailRequestKey=useRef(crypto.randomUUID());
     const [confirmed, setConfirmed] = useState(false);
+    const [purpose,setPurpose]=useState("service"),[audience,setAudience]=useState<Row|null>(null),[previewError,setPreviewError]=useState(""),[previewBusy,setPreviewBusy]=useState(false);
+    useEffect(()=>{setAudience(null);setConfirmed(false);},[purpose]);
     const endpoint =
         operation.kind === "mail"
             ? admin("user/sendMail")
@@ -728,8 +555,9 @@ function BulkUsers({
                     ? "用户及关联订单、邀请码和工单会被永久删除。"
                     : operation.kind === "ban"
                       ? "账户将被封禁，已有登录会话会被注销。"
-                      : "邮件将进入群发队列，发送进度取决于队列和 SMTP 配置。"}
+                      : "必要服务通知仅用于维护、故障及影响现有服务的调整；优惠与推广请选择活动与推广。所有用途都遵守退信和投诉停发规则。"}
             </p>
+            {operation.kind === "mail" && <div className="pad"><label>邮件用途<select disabled={previewBusy} value={purpose} onChange={e=>setPurpose(e.target.value)}><option value="service">必要服务通知</option><option value="marketing">活动与推广（需用户订阅）</option></select></label><button type="button" disabled={previewBusy} onClick={async()=>{setPreviewBusy(true);setPreviewError("");setConfirmed(false);try{const r=await request(admin("user/previewMailAudience"),{purpose,filter:operation.filters,expected_count:operation.count});setAudience(r.data);}catch(e){setPreviewError((e as Error).message);}finally{setPreviewBusy(false);}}}>检查收件范围</button>{previewError && <p role="alert">{previewError}</p>}{audience && <p>预计发送 {audience.eligible} 人；未订阅推广 {audience.not_subscribed} 人，人工禁发 {audience.manual_blocklist || 0} 人，退信或投诉停发 {audience.suppressed} 人，禁用 {audience.account_disabled} 人。实际发送前还会重新检查。记录可在「邮件日志 → 群发记录」查看。</p>}</div>}
             <label>
                 <input
                     type="checkbox"
@@ -740,10 +568,12 @@ function BulkUsers({
             </label>
             {operation.kind === "mail" ? (
                 <AdminMailComposer
-                    confirmed={confirmed}
+                    confirmed={confirmed && Boolean(audience)}
                     onSave={async (body) => {
                         await request(endpoint, {
                             ...body,
+                            purpose,
+                            request_key:mailRequestKey.current,
                             filter: operation.filters,
                             expected_count: operation.count,
                         });
@@ -799,7 +629,7 @@ export function AssignOrder({
     error: string;
 }) {
     const [trade, setTrade] = useState("");
-    const eligible = plans.filter((p) =>
+    const eligible = plans.map(p=>row.currency === "USD" ? {...p,...Object.fromEntries(periods.map(([key])=>[key,p.usd_prices?.[key] ?? null]))} : p).filter((p) =>
         periods.some(([key]) => p[key] != null),
     );
     const first = eligible.find((p) => p.id === row.plan_id) || eligible[0];
@@ -847,7 +677,7 @@ export function AssignOrder({
                             },
                             {
                                 key: "total_amount",
-                                label: "订单金额（CNY）",
+                                label: `订单金额（${row.currency || "CNY"}）`,
                                 type: "number",
                                 min: 0,
                                 step: 0.01,
@@ -951,7 +781,7 @@ function UserOrders({ row }: { row: Row }) {
                     columns={[
                         ["trade_no", "订单号"],
                         ["plan_name", "套餐"],
-                        ["total_amount", "金额", (r) => money(r.total_amount)],
+                        ["total_amount", "金额", (r) => money(r.total_amount,r.currency)],
                         [
                             "status",
                             "状态",
@@ -990,17 +820,17 @@ function UserOrders({ row }: { row: Row }) {
                                 [
                                     "total_amount",
                                     "订单金额",
-                                    (r) => money(r.total_amount),
+                                    (r) => money(r.total_amount,r.currency),
                                 ],
                                 [
                                     "balance_amount",
                                     "余额抵扣",
-                                    (r) => money(r.balance_amount),
+                                    (r) => money(r.balance_amount,r.currency),
                                 ],
                                 [
                                     "commission_balance",
                                     "佣金",
-                                    (r) => money(r.commission_balance),
+                                    (r) => money(r.commission_balance,r.currency),
                                 ],
                                 ["paid_at", "付款时间", (r) => date(r.paid_at)],
                             ]}
@@ -1021,7 +851,7 @@ function UserOrders({ row }: { row: Row }) {
                                 [
                                     "get_amount",
                                     "金额",
-                                    (r) => money(r.get_amount),
+                                    (r) => money(r.get_amount,r.currency),
                                 ],
                                 [
                                     "created_at",

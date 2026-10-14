@@ -11,5 +11,5 @@
 @if ($contentHtml)<div style="overflow-wrap:anywhere">{!! $contentHtml !!}</div>@endif
 @if ($url)<p style="margin:28px 0"><a href="{{ $url }}" style="display:inline-block;background:#202123;color:#fff;text-decoration:none;border-radius:24px;padding:12px 24px">{{ $action }}</a></p>@endif
 @if ($sensitive)<p style="font-size:13px;color:#777;margin-top:24px">{{ $ignore }}</p>@endif
-</td></tr><tr><td style="padding:24px 8px;font-size:12px;color:#777">{{ $brand }}<br>{{ $footer }}</td></tr></table>
+</td></tr><tr><td style="padding:24px 8px;font-size:12px;color:#777">{{ $brand }}<br>{{ $footer }}@if (!empty($unsubscribeUrl))<br><a href="{{ $unsubscribeUrl }}" style="color:#626262">{{ $unsubscribeLabel }}</a>@endif</td></tr></table>
 </td></tr></table></body></html>

@@ -82,3 +82,12 @@ it("blocks duplicate clicks while other settings save independently", async () =
     expect(service.getAttribute("aria-checked")).toBe("false");
     expect(screen.getByRole("switch", { name: "quotaNotice" }).getAttribute("aria-checked")).toBe("true");
 });
+
+it("lets users explicitly opt into announcement emails", async () => {
+    mocks.request.mockResolvedValue({data:true});
+    render(<Notifications/>);
+    const announcement=await screen.findByRole("switch",{name:"活动与推广邮件"});
+    expect(announcement.getAttribute("aria-checked")).toBe("false");
+    fireEvent.click(announcement);
+    await waitFor(()=>expect(mocks.request).toHaveBeenCalledWith("user/update",{announcement_email:1}));
+});

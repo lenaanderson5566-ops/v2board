@@ -50,6 +50,10 @@ echo '<?php // fixture' > database/migrations/2026_10_11_000008_create_server_tr
 echo '<?php // fixture' > database/migrations/2026_10_11_000009_create_server_traffic_imports.php
 echo '<?php // fixture' > database/migrations/2026_10_11_000010_create_lightsail_servers.php
 echo '<?php // fixture' > database/migrations/2026_10_12_000001_canonicalize_subscription_clients.php
+# Keep the fixture synchronized with the updater's explicit migration allowlist.
+while IFS= read -r migration; do
+    printf '<?php // isolated migration fixture\n' > "$migration"
+done < <(sed -n 's/^[A-Z_]*MIGRATION=\(database\/migrations\/[^[:space:]]*\)$/\1/p' "$SOURCE")
 echo '{}' > composer.lock
 git add -f composer.lock
 mkdir -p storage/geoip

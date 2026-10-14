@@ -12,6 +12,7 @@ export const userFilterFields: [string, string, string[]][] = [
     ["d", "已用下行（GB）", [">=", ">", "<", "<="]],
     ["device_limit", "设备限制", ["=", ">=", ">", "<", "<="]],
     ["expired_at", "到期时间", [">=", ">", "<", "<="]],
+    ["created_at", "注册时间", [">=", ">", "<", "<="]],
     ["uuid", "UUID", ["="]],
     ["token", "Token", ["="]],
     ["banned", "账户状态", ["="]],
@@ -27,7 +28,7 @@ export function normalizeUserFilters(filters: UserFilter[]): UserFilter[] {
             throw new Error("筛选字段或条件无效");
         if (String(filter.value).trim() === "")
             throw new Error("请填写每个筛选条件的值");
-        if (filter.key === "expired_at") {
+        if (["expired_at", "created_at"].includes(filter.key)) {
             const value = /^\d+$/.test(String(filter.value))
                 ? Number(filter.value)
                 : parseDateTimeInput(String(filter.value));

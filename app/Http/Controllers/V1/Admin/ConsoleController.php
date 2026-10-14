@@ -8,7 +8,7 @@ class ConsoleController extends Controller
 {
     public function configSchema()
     {
-        return response(['data' => \App\Http\Requests\Admin\ConfigSave::RULES]);
+        return response(['data' => \App\Http\Requests\Admin\ConfigSave::allRules()]);
     }
     public function nodeSchema(Request $request)
     {

@@ -556,7 +556,7 @@ export function Editor({
         >
             {activeFields.some((field) => field.type === "datetime-local") && (
                 <p className="muted">
-                    日期时间按 {displayTimeZone()} 输入和显示。
+                    {tx("日期时间按 {{zone}} 输入和显示。", { zone: displayTimeZone() })}
                 </p>
             )}
             <fieldset className="field-grid" disabled={busy}>
@@ -918,9 +918,9 @@ export function Pager({
         </div>
     );
 }
-export function Reload({ onClick }: { onClick: () => void }) {
+export function Reload({ onClick, loading = false, disabled = false }: { onClick: () => void; loading?: boolean; disabled?: boolean }) {
     return (
-        <button onClick={onClick}>
+        <button type="button" onClick={onClick} disabled={loading || disabled} aria-busy={loading}>
             <RefreshCw size={15} />
             {tx("刷新")}
         </button>

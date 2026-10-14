@@ -20,8 +20,16 @@ class MysqlLoggerHandler extends AbstractProcessingHandler
             // Never collect request bodies, query values, exception objects or arbitrary context.
             $context = array_intersect_key($record->context ?? [], array_flip(['requestId','route','method','status','durationMs']));
             $context = array_filter($context, 'is_scalar');
+            if (isset($record->context['exceptionClass'])) {
+                $context['errorCode'] = match ($record->context['exceptionClass']) {
+                    \App\Exceptions\TelegramApiException::class => 'TELEGRAM_UNAVAILABLE',
+                    \Illuminate\Database\QueryException::class => 'DATABASE_ERROR',
+                    \ErrorException::class => 'INVALID_RESPONSE',
+                    default => 'APPLICATION_ERROR',
+                };
+            }
             $route = request()->route();
-            $safeTitles = ['API request','Admin operation','Client configuration request','V10 request failed'];
+            $safeTitles = ['API request','Admin operation','Client configuration request','V10 request failed','V10 exception'];
             $log = [
                 'title' => in_array($record->message, $safeTitles, true) ? $record->message : (isset($record->context['exception']) ? 'Application exception' : 'Application event'),
                 'level' => $record->level->getName(),

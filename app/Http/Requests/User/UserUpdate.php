@@ -19,6 +19,7 @@ class UserUpdate extends FormRequest
             'auto_renewal' => 'in:0,1',
             'remind_expire' => 'in:0,1',
             'remind_traffic' => 'in:0,1',
+            'announcement_email'=>'in:0,1',
             'remind_service' => 'in:0,1'
         ];
     }

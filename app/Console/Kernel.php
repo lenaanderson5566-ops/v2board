@@ -26,6 +26,10 @@ class Kernel extends ConsoleKernel
      */
     protected function schedule(Schedule $schedule)
     {
+        $schedule->command('billing:exchange-rates')->hourly()->withoutOverlapping();
+        $schedule->command('mail:campaigns')->everyMinute()->withoutOverlapping();
+        $schedule->command('coupons:campaigns')->everyMinute()->withoutOverlapping();
+        $schedule->command('mail:feedback')->everyFiveMinutes()->withoutOverlapping();
         $schedule->call(fn () => Cache::put(CacheKey::get('SCHEDULE_LAST_CHECK_AT', null), time()))->everyMinute()->name('scheduler-heartbeat');
         $schedule->command('nodes:sync-ddns')->everyMinute()->withoutOverlapping(5);
         foreach (\App\Console\Commands\RunDailyTask::TASKS as $task=>$at) {
@@ -46,6 +50,7 @@ class Kernel extends ConsoleKernel
         // horizon metrics
         $schedule->command('horizon:snapshot')->everyFiveMinutes();
         $schedule->command('clients:check-releases')->cron('17 */6 * * *')->withoutOverlapping(10)->runInBackground();
+        $schedule->command('telegram:process')->everyMinute()->withoutOverlapping(30)->runInBackground();
         $schedule->command('telegram:sync-members')->everyMinute()->withoutOverlapping(30)->runInBackground();
         $schedule->command('fastai:prune-uploads')->hourly()->withoutOverlapping(10)->runInBackground();
     }

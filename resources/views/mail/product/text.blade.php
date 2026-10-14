@@ -14,3 +14,7 @@
 @endif
 
 {!! $footer !!}
+
+@if (!empty($unsubscribeUrl))
+{!! $unsubscribeLabel !!}: {!! $unsubscribeUrl !!}
+@endif

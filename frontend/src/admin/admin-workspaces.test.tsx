@@ -236,7 +236,11 @@ it("loads translations from subscription management and supports old links", asy
     expect(
         api.request.mock.calls.some(([path]) => path.includes("ops/i18n/plan")),
     ).toBe(false);
-    fireEvent.click(screen.getByRole("tab", { name: "订阅多语言" }));
+    // Radix activates pointer tabs on primary-button mousedown.
+    fireEvent.mouseDown(screen.getByRole("tab", { name: "订阅多语言" }), {
+        button: 0,
+        ctrlKey: false,
+    });
     await screen.findByText("选择套餐后开始翻译");
     expect(
         api.request.mock.calls.some(([path]) =>
@@ -250,6 +254,7 @@ it("loads translations from subscription management and supports old links", asy
     ).toBeTruthy();
 });
 it("consolidates settings and monitoring navigation", () => {
+    expect(legacyAdminMenu.find(([key]) => key === "mail-blocklist")?.[1]).toBe("邮件禁发名单");
     for (const key of ["system", "risk-settings", "translations"])
         expect(legacyAdminMenu.some(([item]) => String(item) === key)).toBe(
             false,

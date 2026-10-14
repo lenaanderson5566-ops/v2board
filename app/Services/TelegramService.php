@@ -52,6 +52,7 @@ class TelegramService {
             if (!$this->validBotIdentity($bot)) {
                 throw new \App\Exceptions\TelegramApiException();
             }
+            $bot = array_intersect_key($bot, array_flip(['id','username','is_bot']));
             $cache->put($key, $bot, 600);
         }
         return (object) ['ok' => true, 'result' => (object) $bot];
@@ -69,8 +70,11 @@ class TelegramService {
 
     public function setWebhook(string $url)
     {
-        $commands = $this->discoverCommands(base_path('app/Plugins/Telegram/Commands'));
+        $commands = TelegramText::commandMenus()['en'];
         $this->setMyCommands($commands);
+        foreach (TelegramText::commandMenus() as $language=>$menu) {
+            $this->request('setMyCommands',['commands'=>json_encode($menu,JSON_UNESCAPED_UNICODE),'language_code'=>$language]);
+        }
         return $this->request('setWebhook', [
             'url' => $url,
             'allowed_updates' => json_encode(['message','chat_join_request','chat_member','my_chat_member']),
@@ -152,15 +156,15 @@ class TelegramService {
     public function notifyPaymentAdmins(\App\Models\Order $order): void
     {
         if (!config('v2board.telegram_bot_enable', 0)) return;
-        $message = sprintf(
-            "成功收款 %s\n订单号：%s",
-            \App\Services\Money::format($order->total_amount),
-            $order->trade_no
-        );
-        $admins = \App\Models\User::where('is_admin', 1)
-            ->where('banned', 0)->whereNotNull('telegram_id')->get();
+        $admins = \App\Models\User::where('is_admin', 1)->where('banned', 0)->whereNotNull('telegram_id')->get();
         foreach ($admins as $admin) {
-            \App\Jobs\SendTelegramPaymentJob::dispatch((int) $admin->telegram_id, $message);
+            \Illuminate\Support\Facades\DB::table('v2_telegram_payment_notice')->insertOrIgnore([
+                'order_id'=>$order->id,'user_id'=>$admin->id,'telegram_id'=>$admin->telegram_id,
+                'bot_key'=>TelegramDeliveryService::botKey(),'created_at'=>time(),
+            ]);
+            $id=\Illuminate\Support\Facades\DB::table('v2_telegram_payment_notice')->where('order_id',$order->id)->where('user_id',$admin->id)->value('id');
+            try { if (config('queue.connections.'.config('queue.default').'.driver') !== 'sync') \App\Jobs\SendTelegramPaymentJob::dispatch((int)$id); }
+            catch (\Throwable $e) { /* The persistent pending record is picked up by the scheduler. */ }
         }
     }
 }

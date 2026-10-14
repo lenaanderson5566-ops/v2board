@@ -7,7 +7,7 @@ class MailRateLimiter
 {
     private function scope()
     {
-        return 'mail-rate:' . hash('sha256', config('mail.host').'|'.config('mail.username').'|'.config('mail.from.address'));
+        return 'mail-rate:' . hash('sha256', config('v2board.email_provider', 'smtp').'|'.config('v2board.email_mailgun_domain').'|'.config('mail.host').'|'.config('mail.username').'|'.config('mail.from.address'));
     }
     public function domain($email)
     {

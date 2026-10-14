@@ -14,6 +14,8 @@ class UserSendMail extends FormRequest
     public function rules()
     {
         return [
+            'request_key' => 'required|uuid',
+            'purpose' => 'required|in:service,marketing',
             'subject' => 'required|string|max:200',
             'content' => 'required|string|max:100000',
             'source_language' => 'sometimes|in:zh-CN,zh-TW,en-US,ja-JP,ko-KR,vi-VN,ru-RU,fa-IR',

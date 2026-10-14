@@ -9,6 +9,7 @@ use Carbon\CarbonImmutable as C;
 use App\Services\DashboardRevenue;
 config(['database.default' => 'dashboard_test', 'database.connections.dashboard_test' => ['driver' => 'sqlite', 'database' => ':memory:', 'prefix' => '']]);
 Schema::create('v2_order', function (Blueprint $table) {
+    $table->string('currency',3)->default('CNY');
     $table->increments('id'); $table->integer('paid_at')->nullable();
     $table->integer('created_at'); $table->integer('status'); $table->integer('total_amount');
 });

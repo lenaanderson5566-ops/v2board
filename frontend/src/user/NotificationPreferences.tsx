@@ -4,7 +4,7 @@ import { ac } from "../shared/account-copy";
 import { tx } from "../shared/i18n";
 import { ux } from "../shared/ux";
 
-type Preference = "remind_service" | "remind_expire" | "remind_traffic";
+type Preference = "announcement_email" | "remind_service" | "remind_expire" | "remind_traffic";
 type SaveState = "saving" | "saved" | "failed";
 
 export function NotificationPreferences({ initial }: { initial: Row }) {
@@ -28,6 +28,7 @@ export function NotificationPreferences({ initial }: { initial: Row }) {
         }
     }
     const options: { key: Preference; label: string; hint: string }[] = [
+        { key: "announcement_email", label: tx("活动与推广邮件"), hint: tx("自愿订阅，可随时关闭；不影响验证码、账单和服务通知。") },
         { key: "remind_service", label: ac("serviceNotice"), hint: ac("serviceHelp") },
         { key: "remind_expire", label: tx("到期提醒"), hint: ac("expiryHelp") },
         { key: "remind_traffic", label: ac("quotaNotice"), hint: ac("quotaHelp") },

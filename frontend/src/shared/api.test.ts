@@ -91,13 +91,13 @@ describe("API client", () => {
                 new Response(JSON.stringify({ data: true }), { status: 200 }),
             );
         vi.stubGlobal("fetch", fetchMock);
-        await request("user/update", { remind_expire: 1, remind_service: false });
+        await request("user/update", { remind_expire: 1, remind_service: false, announcement_email: true });
         expect(fetchMock.mock.calls[0][0]).toBe("/api/v10/me");
         expect(fetchMock.mock.calls[0][1].headers.Authorization).toBeUndefined();
         expect(fetchMock.mock.calls[0][1].headers["Accept-Language"]).toBe(
             "zh-CN",
         );
-        expect(fetchMock.mock.calls[0][1].body).toBe('{"expiryReminders":1,"serviceNotifications":false}');
+        expect(fetchMock.mock.calls[0][1].body).toBe('{"expiryReminders":1,"serviceNotifications":false,"announcementEmails":true}');
     });
     it("clears expired sessions and reports access errors", async () => {
         storage.set(storageKey, "expired");
@@ -305,4 +305,12 @@ it("normalizes browser network failures without retrying the request", async () 
     vi.stubGlobal("fetch", fetcher);
     await expect(request("user/info")).rejects.toMatchObject({ code: "NETWORK_ERROR", message: "网络连接中断，请检查网络后确认操作结果" });
     expect(fetcher).toHaveBeenCalledTimes(1);
+});
+
+it("maps private ticket notification receipts to their explicit V10 route",async()=>{
+ session.active=true;
+ const send=vi.fn().mockResolvedValue(new Response(null,{status:204}));vi.stubGlobal("fetch",send);
+ await request("user/notice/readTicket",{id:42,version:7});
+ expect(send.mock.calls[0][0]).toBe("/api/v10/me/notifications/ticket-read-receipts");
+ expect(JSON.parse(send.mock.calls[0][1].body)).toEqual({ticketId:42,version:7});
 });

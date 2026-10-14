@@ -62,6 +62,16 @@ CLIENT_DIAGNOSTIC_MIGRATION=database/migrations/2026_10_13_000002_create_client_
 INVITATION_REVIEW_MIGRATION=database/migrations/2026_10_13_000003_create_invitation_reviews.php
 TIMEZONE_MIGRATION=database/migrations/2026_10_13_000007_add_timezones.php
 TELEGRAM_NOTIFICATION_MIGRATION=database/migrations/2026_10_13_000006_add_telegram_notifications.php
+BILLING_CURRENCIES_MIGRATION=database/migrations/2026_10_14_000008_add_billing_currencies.php
+COUPON_PRESENTATION_MIGRATION=database/migrations/2026_10_14_000010_add_coupon_presentations.php
+COUPON_CAMPAIGN_MIGRATION=database/migrations/2026_10_14_000009_add_coupon_campaigns.php
+COUPON_WALLET_MIGRATION=database/migrations/2026_10_14_000007_add_coupon_wallet.php
+MAIL_BLOCKLIST_MIGRATION=database/migrations/2026_10_14_000006_add_mail_blocklist.php
+MAIL_CAMPAIGN_MIGRATION=database/migrations/2026_10_14_000005_add_mail_campaigns.php
+MAIL_FEEDBACK_MIGRATION=database/migrations/2026_10_14_000004_add_mail_feedback.php
+MAIL_TRANSPORT_MIGRATION=database/migrations/2026_10_14_000003_add_mail_transport_codes.php
+MAIL_DELIVERY_MIGRATION=database/migrations/2026_10_14_000002_add_mail_delivery_metadata.php
+TELEGRAM_HARDENING_MIGRATION=database/migrations/2026_10_14_000001_harden_telegram_delivery.php
 TELEGRAM_MEMBERSHIP_MIGRATION=database/migrations/2026_10_13_000005_add_telegram_membership.php
 CLIENT_REPORT_KIND_MIGRATION=database/migrations/2026_10_13_000004_add_client_report_kind.php
 usage() {
@@ -116,7 +126,7 @@ snapshot_site_jobs() {
             [[ "$arg" == artisan || "$arg" == "$PROJECT/artisan" ]] && found=1
         done
         case "$command" in
-            horizon|horizon:supervisor|horizon:work|queue:work|queue:listen|schedule:run|schedule:work|traffic:update|reset:traffic|reset:log|check:order|check:commission|check:ticket|check:renewal|send:remindMail|v2board:statistics|clients:check-releases|credits:expire)
+            horizon|horizon:supervisor|horizon:work|queue:work|queue:listen|schedule:run|schedule:work|coupons:campaigns|mail:campaigns|traffic:update|reset:traffic|reset:log|check:order|check:commission|check:ticket|check:renewal|send:remindMail|v2board:statistics|clients:check-releases|credits:expire)
                 for arg in "${args[@]}"; do [[ "$arg" != --force && "$arg" != --force=* ]] || die 'A site worker bypasses maintenance with --force; stop it manually and use --jobs-stopped'; done
                 JOB_PIDS+=("$pid")
                 JOB_STARTS+=("$(awk '{print $22}' "$proc/stat" 2>/dev/null || true)")
@@ -296,6 +306,16 @@ git cat-file -e "$TARGET:$NODE_TRAFFIC_BATCH_MIGRATION" || die 'Target lacks nod
 git cat-file -e "$TARGET:$SERVER_TRAFFIC_BUDGET_MIGRATION" || die 'Target lacks server_traffic_budget_migration migration'
 git cat-file -e "$TARGET:$SERVER_TRAFFIC_IMPORT_MIGRATION" || die 'Target lacks server_traffic_import_migration migration'
 git cat-file -e "$TARGET:$LIGHTSAIL_MIGRATION" || die 'Target lacks lightsail migration'
+git cat-file -e "$TARGET:$BILLING_CURRENCIES_MIGRATION" || die 'Target lacks billing currency migration'
+git cat-file -e "$TARGET:$COUPON_PRESENTATION_MIGRATION" || die 'Target lacks coupon presentation migration'
+git cat-file -e "$TARGET:$COUPON_CAMPAIGN_MIGRATION" || die 'Target lacks coupon campaign migration'
+git cat-file -e "$TARGET:$COUPON_WALLET_MIGRATION" || die 'Target lacks coupon wallet migration'
+git cat-file -e "$TARGET:$MAIL_BLOCKLIST_MIGRATION" || die 'Target lacks mail blocklist migration'
+git cat-file -e "$TARGET:$MAIL_CAMPAIGN_MIGRATION" || die 'Target lacks mail campaign migration'
+git cat-file -e "$TARGET:$MAIL_FEEDBACK_MIGRATION" || die 'Target lacks mail feedback migration'
+git cat-file -e "$TARGET:$MAIL_TRANSPORT_MIGRATION" || die 'Target lacks mail transport migration'
+git cat-file -e "$TARGET:$MAIL_DELIVERY_MIGRATION" || die 'Target lacks mail delivery migration'
+git cat-file -e "$TARGET:$TELEGRAM_HARDENING_MIGRATION" || die 'Target lacks Telegram hardening migration'
 git cat-file -e "$TARGET:$TIMEZONE_MIGRATION" || die 'Target lacks timezone migration'
 git cat-file -e "$TARGET:$TELEGRAM_NOTIFICATION_MIGRATION" || die 'Target lacks Telegram notification migration'
 git cat-file -e "$TARGET:$TELEGRAM_MEMBERSHIP_MIGRATION" || die 'Target lacks Telegram membership migration'
@@ -305,7 +325,7 @@ git cat-file -e "$TARGET:$PAYMENT_CALLBACK_MIGRATION" || die "Target lacks 2026_
 git cat-file -e "$TARGET:$CLIENT_DIAGNOSTIC_MIGRATION" || die "Target lacks 2026_10_13_000002_create_client_diagnostic_reports.php"
 git cat-file -e "$TARGET:$INVITATION_REVIEW_MIGRATION" || die "Target lacks 2026_10_13_000003_create_invitation_reviews.php"
 while IFS= read -r changed; do
-    [[ -z "$changed" || "$changed" == "$OPERATIONS_SCHEMA_MIGRATION" || "$changed" == "$MIGRATION" || "$changed" == "$INVITATION_MIGRATION" || "$changed" == "$LANGUAGE_MIGRATION" || "$changed" == "$CURRENCY_MIGRATION" || "$changed" == "$EXPIRY_MIGRATION" || "$changed" == "$REWARD_MIGRATION" || "$changed" == "$RESET_MIGRATION" || "$changed" == "$NOTICE_MIGRATION" || "$changed" == "$CREDIT_MIGRATION" || "$changed" == "$CONTENT_MIGRATION" || "$changed" == "$BANNER_MIGRATION" || "$changed" == "$RETIRED_NODE_TABLES_MIGRATION" || "$changed" == "$V2BOX_MIGRATION" || "$changed" == "$V2BOX_SINGBOX_MIGRATION" || "$changed" == "$NODE_ROUTES_MIGRATION" || "$changed" == "$NODE_DDNS_MIGRATION" || "$changed" == "$LOG_METADATA_MIGRATION" || "$changed" == "$NODE_TRAFFIC_BATCH_MIGRATION" || "$changed" == "$SERVER_TRAFFIC_BUDGET_MIGRATION" || "$changed" == "$SERVER_TRAFFIC_IMPORT_MIGRATION" || "$changed" == "$LIGHTSAIL_MIGRATION" || "$changed" == "$CLIENT_IDENTITY_MIGRATION" || "$changed" == "$PAYMENT_CALLBACK_MIGRATION" || "$changed" == "$CLIENT_DIAGNOSTIC_MIGRATION" || "$changed" == "$TIMEZONE_MIGRATION" || "$changed" == "$TELEGRAM_NOTIFICATION_MIGRATION" || "$changed" == "$TELEGRAM_MEMBERSHIP_MIGRATION" || "$changed" == "$CLIENT_REPORT_KIND_MIGRATION" || "$changed" == "$INVITATION_REVIEW_MIGRATION" || "$changed" == "$NODE_DISPLAY_MIGRATION" || "$changed" == "$PAYMENT_HISTORY_MIGRATION" || "$changed" == "$SERVICE_MAIL_MIGRATION" || "$changed" == "$RETIRED_PAYMENT_MIGRATION" ]] || die "Unexpected migration: $changed; review scope first"
+    [[ -z "$changed" || "$changed" == "$OPERATIONS_SCHEMA_MIGRATION" || "$changed" == "$MIGRATION" || "$changed" == "$INVITATION_MIGRATION" || "$changed" == "$LANGUAGE_MIGRATION" || "$changed" == "$CURRENCY_MIGRATION" || "$changed" == "$EXPIRY_MIGRATION" || "$changed" == "$REWARD_MIGRATION" || "$changed" == "$RESET_MIGRATION" || "$changed" == "$NOTICE_MIGRATION" || "$changed" == "$CREDIT_MIGRATION" || "$changed" == "$CONTENT_MIGRATION" || "$changed" == "$BANNER_MIGRATION" || "$changed" == "$RETIRED_NODE_TABLES_MIGRATION" || "$changed" == "$V2BOX_MIGRATION" || "$changed" == "$V2BOX_SINGBOX_MIGRATION" || "$changed" == "$NODE_ROUTES_MIGRATION" || "$changed" == "$NODE_DDNS_MIGRATION" || "$changed" == "$LOG_METADATA_MIGRATION" || "$changed" == "$NODE_TRAFFIC_BATCH_MIGRATION" || "$changed" == "$SERVER_TRAFFIC_BUDGET_MIGRATION" || "$changed" == "$SERVER_TRAFFIC_IMPORT_MIGRATION" || "$changed" == "$LIGHTSAIL_MIGRATION" || "$changed" == "$CLIENT_IDENTITY_MIGRATION" || "$changed" == "$PAYMENT_CALLBACK_MIGRATION" || "$changed" == "$CLIENT_DIAGNOSTIC_MIGRATION" || "$changed" == "$BILLING_CURRENCIES_MIGRATION" || "$changed" == "$COUPON_PRESENTATION_MIGRATION" || "$changed" == "$COUPON_CAMPAIGN_MIGRATION" || "$changed" == "$COUPON_WALLET_MIGRATION" || "$changed" == "$MAIL_BLOCKLIST_MIGRATION" || "$changed" == "$MAIL_CAMPAIGN_MIGRATION" || "$changed" == "$MAIL_FEEDBACK_MIGRATION" || "$changed" == "$MAIL_TRANSPORT_MIGRATION" || "$changed" == "$MAIL_DELIVERY_MIGRATION" || "$changed" == "$TELEGRAM_HARDENING_MIGRATION" || "$changed" == "$TIMEZONE_MIGRATION" || "$changed" == "$TELEGRAM_NOTIFICATION_MIGRATION" || "$changed" == "$TELEGRAM_MEMBERSHIP_MIGRATION" || "$changed" == "$CLIENT_REPORT_KIND_MIGRATION" || "$changed" == "$INVITATION_REVIEW_MIGRATION" || "$changed" == "$NODE_DISPLAY_MIGRATION" || "$changed" == "$PAYMENT_HISTORY_MIGRATION" || "$changed" == "$SERVICE_MAIL_MIGRATION" || "$changed" == "$RETIRED_PAYMENT_MIGRATION" ]] || die "Unexpected migration: $changed; review scope first"
 done < <(git diff --name-only "$OLD_COMMIT" "$TARGET" -- database/migrations)
 git show "$TARGET:composer.json" > "$WORK_DIR/composer.json"
 git show "$OLD_COMMIT:composer.json" > "$WORK_DIR/original-composer.json"
@@ -460,7 +480,7 @@ PHASE=cache-preparation
 "$PHP_BIN" artisan route:clear
 "$PHP_BIN" artisan view:clear
 PHASE=migrations
-for migration in "$OPERATIONS_SCHEMA_MIGRATION" "$MIGRATION" "$INVITATION_MIGRATION" "$LANGUAGE_MIGRATION" "$RESET_MIGRATION" "$NOTICE_MIGRATION" "$CREDIT_MIGRATION" "$CONTENT_MIGRATION" "$BANNER_MIGRATION" "$REWARD_MIGRATION" "$EXPIRY_MIGRATION" "$CURRENCY_MIGRATION" "$NODE_DISPLAY_MIGRATION" "$RETIRED_PAYMENT_MIGRATION" "$SERVICE_MAIL_MIGRATION" "$PAYMENT_HISTORY_MIGRATION" "$V2BOX_MIGRATION" "$RETIRED_NODE_TABLES_MIGRATION" "$V2BOX_SINGBOX_MIGRATION" "$NODE_ROUTES_MIGRATION" "$NODE_DDNS_MIGRATION" "$LOG_METADATA_MIGRATION" "$NODE_TRAFFIC_BATCH_MIGRATION" "$SERVER_TRAFFIC_BUDGET_MIGRATION" "$SERVER_TRAFFIC_IMPORT_MIGRATION" "$LIGHTSAIL_MIGRATION" "$CLIENT_IDENTITY_MIGRATION" "$PAYMENT_CALLBACK_MIGRATION" "$CLIENT_DIAGNOSTIC_MIGRATION" "$INVITATION_REVIEW_MIGRATION" "$CLIENT_REPORT_KIND_MIGRATION" "$TELEGRAM_MEMBERSHIP_MIGRATION" "$TELEGRAM_NOTIFICATION_MIGRATION" "$TIMEZONE_MIGRATION"; do
+for migration in "$OPERATIONS_SCHEMA_MIGRATION" "$MIGRATION" "$INVITATION_MIGRATION" "$LANGUAGE_MIGRATION" "$RESET_MIGRATION" "$NOTICE_MIGRATION" "$CREDIT_MIGRATION" "$CONTENT_MIGRATION" "$BANNER_MIGRATION" "$REWARD_MIGRATION" "$EXPIRY_MIGRATION" "$CURRENCY_MIGRATION" "$NODE_DISPLAY_MIGRATION" "$RETIRED_PAYMENT_MIGRATION" "$SERVICE_MAIL_MIGRATION" "$PAYMENT_HISTORY_MIGRATION" "$V2BOX_MIGRATION" "$RETIRED_NODE_TABLES_MIGRATION" "$V2BOX_SINGBOX_MIGRATION" "$NODE_ROUTES_MIGRATION" "$NODE_DDNS_MIGRATION" "$LOG_METADATA_MIGRATION" "$NODE_TRAFFIC_BATCH_MIGRATION" "$SERVER_TRAFFIC_BUDGET_MIGRATION" "$SERVER_TRAFFIC_IMPORT_MIGRATION" "$LIGHTSAIL_MIGRATION" "$CLIENT_IDENTITY_MIGRATION" "$PAYMENT_CALLBACK_MIGRATION" "$CLIENT_DIAGNOSTIC_MIGRATION" "$INVITATION_REVIEW_MIGRATION" "$CLIENT_REPORT_KIND_MIGRATION" "$TELEGRAM_MEMBERSHIP_MIGRATION" "$TELEGRAM_NOTIFICATION_MIGRATION" "$TIMEZONE_MIGRATION" "$TELEGRAM_HARDENING_MIGRATION" "$MAIL_DELIVERY_MIGRATION" "$MAIL_TRANSPORT_MIGRATION" "$MAIL_FEEDBACK_MIGRATION" "$MAIL_CAMPAIGN_MIGRATION" "$MAIL_BLOCKLIST_MIGRATION" "$COUPON_WALLET_MIGRATION" "$BILLING_CURRENCIES_MIGRATION" "$COUPON_CAMPAIGN_MIGRATION" "$COUPON_PRESENTATION_MIGRATION"; do
     run_migration "$migration"
 done
 printf '\nAll approved migrations completed.\n'

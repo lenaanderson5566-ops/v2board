@@ -9,6 +9,9 @@ export const resetOptions: [string, string][] = [
     ["4", "每年按到期日"],
 ];
 const choices: Record<string, [string, string][]> = {
+    email_provider: [["smtp", "SMTP（现有通道）"], ["mailgun", "Mailgun HTTP API"], ["ses", "Amazon SES API"], ["resend", "Resend API"]],
+    email_ses_auth: [["role", "IAM 角色 / 服务器凭据（推荐）"], ["key", "独立访问密钥"]],
+    email_mailgun_region: [["us", "美国（US）"], ["eu", "欧盟（EU）"]],
     email_default_language: [
         ["zh-CN", "简体中文"],
         ["zh-TW", "繁體中文"],
@@ -58,6 +61,8 @@ export function configField(
     rule: unknown,
     label: string,
 ): Field {
+    if (key.startsWith("email_announcement_") && key !== "email_announcement_separate") return {...configField(key.replace("email_announcement_","email_"),value,rule,label),key};
+    if (key.endsWith("_webhook_key")) return {key,label,type:"password"};
     if (key === "system_timezone")
         return {
             key,
@@ -82,13 +87,14 @@ export function configField(
             arrayText: true,
             hint: "使用逗号分隔多个值。",
         };
+    if (key === "new_user_currency") return {key,label:"新用户默认币种",type:"select",options:[["CNY","人民币 CNY"],["USD","美元 USD"]],hint:"只对之后创建的账号生效。账号币种固定，历史人民币余额不兑换。启用美元前请在订阅管理配置美元价格和汇率。"};
     if (key === "currency" || key === "currency_symbol")
         return {
             key,
             label: "当前结算币种",
             type: "select",
             options: [["CNY", "CNY · 人民币"]],
-            hint: "当前采用人民币计价；修改符号不会转换金额。USD 将通过独立价格与钱包支持。",
+            hint: "历史资金基准为人民币；新用户币种由独立设置控制，修改符号不会转换金额。",
         };
     if (key === "fastai_releases")
         return {
@@ -116,7 +122,7 @@ export function configField(
             type: "select",
             options: enumValues.map((v) => [v, v]),
         };
-    const secret = /(?:password|token)$/.test(key) || key === "recaptcha_key";
+    const secret = /(?:password|token)$/.test(key) || key === "recaptcha_key" || ["email_mailgun_api_key", "email_resend_api_key", "email_ses_access_key", "email_ses_secret_key"].includes(key);
     const type: Field["type"] =
         key === "custom_footer_html"
             ? "textarea"

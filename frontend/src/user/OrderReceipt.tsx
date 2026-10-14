@@ -124,6 +124,7 @@ export function OrderReceipt({ order }: { order: Row }) {
                             <dd>{money(order.refund_amount)}</dd>
                         </div>
                     )}
+                    {order.payment_currency && order.payment_currency !== order.currency && <div><dt>{tx("实际付款")}</dt><dd>{formatMoney(order.payment_amount,order.payment_currency)}</dd></div>}
                 </dl>
                 {!cancelled && deposit && Number(order.bounus) > 0 && <div className="checkout-deposit-benefit">
                     <span>{tx("充值赠送")} +{money(order.bounus)}</span>

@@ -47,9 +47,10 @@ class OrderService
             return;
         }
         $this->user = User::where('id', $order->user_id)->lockForUpdate()->firstOrFail();
+        if (BillingCurrency::account($this->user) !== ($order->currency ?: 'CNY')) throw new \RuntimeException('Order wallet currency mismatch');
         if ($order->type == 9) {
             DB::beginTransaction();
-            $this->user->balance += $order->total_amount + $this->getbounus($order->total_amount);
+            $this->user->balance += $order->total_amount + (($order->currency ?: 'CNY') === 'CNY' ? $this->getbounus($order->total_amount) : 0);
 
             if (!$this->user->save()) {
                 DB::rollBack();
@@ -154,7 +155,10 @@ class OrderService
         if ($user->discount) {
             $order->discount_amount = $order->discount_amount + ($order->total_amount * ($user->discount / 100));
         }
-        $order->total_amount = $order->total_amount - $order->discount_amount;
+        // Preserve historical CNY payable rounding while storing consistent integer totals.
+        $payable = (int)round(max(0, $order->total_amount - $order->discount_amount));
+        $order->discount_amount = (int)$order->total_amount - $payable;
+        $order->total_amount = $payable;
     }
 
     public function setInvite(User $user):void
@@ -179,6 +183,14 @@ class OrderService
         }
 
         if (!$isCommission) return;
+        $cursor = $inviter; $visited = [];
+        $levels = (int)config('v2board.commission_distribution_enable', 0) ? 3 : 1;
+        for ($level=0; $cursor && $level<$levels; $level++) {
+            if (in_array($cursor->id, $visited, true)) break;
+            $visited[] = $cursor->id;
+            if (BillingCurrency::account($cursor) !== ($order->currency ?: 'CNY')) $order->fx_snapshot = ExchangeRate::snapshot();
+            $cursor = User::find($cursor->invite_user_id);
+        }
         if ($inviter && $inviter->commission_rate) {
             $order->commission_balance = $order->total_amount * ($inviter->commission_rate / 100);
         } else {
@@ -300,6 +312,8 @@ class OrderService
             $affected = Order::where('id', $order->id)->where('status', 0)->update(['status' => 2]);
             if ($affected !== 1) return false;
             $user = User::where('id', $order->user_id)->lockForUpdate()->firstOrFail();
+            if (BillingCurrency::account($user) !== ($order->currency ?: 'CNY')) throw new \RuntimeException('Order wallet currency mismatch');
+            DB::table('v2_coupon_wallet')->where('order_id', $order->id)->update(['order_id'=>null]);
             $user->balance += (int)$order->balance_amount;
             (new TrafficCreditService())->migrateUser($user);
             if (!$user->save()) throw new \RuntimeException('Order cancellation failed');

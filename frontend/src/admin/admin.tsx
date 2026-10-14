@@ -66,6 +66,7 @@ import {
 import { SortButton, QueueDetails } from "./admin-tools";
 import { AdminSwitch } from "./admin-switch";
 import { sortPayload } from "./admin-actions";
+import { mailCredentialField, mailProviders } from "./mail-settings";
 import { configField, resetOptions } from "./admin-fields";
 import {
     paymentFields,
@@ -366,8 +367,9 @@ export const resources: Record<string, Resource> = {
                 (r) => `${r.alive_ip || 0} / ${r.device_limit || "不限"}`,
             ],
             ["expired_at", "到期时间", (r) => date(r.expired_at)],
-            ["balance", "余额", (r) => money(r.balance)],
-            ["commission_balance", "佣金", (r) => money(r.commission_balance)],
+            ["currency", "账号币种", (r) => r.currency || "CNY"],
+            ["balance", "余额", (r) => money(r.balance,r.currency)],
+            ["commission_balance", "佣金", (r) => money(r.commission_balance,r.currency)],
             ["last_connected_at", "上次连接", (r) => date(r.last_connected_at)],
             [
                 "last_subscribe_at",
@@ -385,7 +387,7 @@ export const resources: Record<string, Resource> = {
             f("u", "已用上传（GB）", "number"),
             f("d", "已用下载（GB）", "number"),
             {
-                ...f("balance", "余额（CNY）", "number"),
+                ...f("balance", "余额（账号币种）", "number"),
                 scale: 100,
                 step: 0.01,
             },
@@ -408,7 +410,7 @@ export const resources: Record<string, Resource> = {
                 ],
             },
             {
-                ...f("commission_balance", "佣金余额（CNY）", "number"),
+                ...f("commission_balance", "佣金余额（账号币种）", "number"),
                 scale: 100,
                 step: 0.01,
             },
@@ -464,7 +466,7 @@ export const resources: Record<string, Resource> = {
             [
                 "commission_balance",
                 "佣金金额",
-                (r) => money(r.commission_balance),
+                (r) => money(r.commission_balance,r.currency),
             ],
             [
                 "commission_status",
@@ -561,26 +563,27 @@ export const resources: Record<string, Resource> = {
         ],
         fields: [
             f("name", "名称", "text", true),
-            f("code", "指定兑换码（可选）"),
+            f("code", "历史兼容券码（可选）"),
+            { key: "public_claim", label: "在活动中心开放领取", type: "switch" },
             {
                 key: "type",
                 label: "优惠类型",
                 type: "select",
                 options: [
-                    ["1", "固定金额（CNY）"],
+                    ["1", "历史固定金额券（仅编辑）"],
                     ["2", "百分比"],
                 ],
             },
-            f("value", "优惠值", "number", true),
+            f("value", "减免百分比（10 表示减 10%，即九折）", "number", true),
             f("generate_count", "生成数量", "number"),
-            f("limit_use", "使用次数", "number"),
-            f("limit_use_with_user", "每个用户使用次数", "number"),
+            f("limit_use", "剩余可领取库存（留空不限）", "number"),
+            f("limit_use_with_user", "历史券码每人使用次数（券包固定一次）", "number"),
             f("started_at", "开始时间", "datetime-local", true),
             f("ended_at", "截止时间", "datetime-local", true),
             f("limit_plan_ids", "限制套餐 ID 数组", "json"),
             f("limit_period", "限制周期数组", "json"),
         ],
-        defaults: { type: 1, generate_count: 1 },
+        defaults: { type: 2, public_claim: 0 },
         actions: [["切换启用", admin("coupon/show")]],
     },
     giftcards: {
@@ -1182,7 +1185,9 @@ export function ResourcePage({
                                 />
                             </div>
                         )}
-                        <Reload onClick={d.reload} />
+                        {resource !== resources.plans && resource !== resources.groups && resource !== resources.notices && resource !== resources.knowledge && (
+                            <Reload onClick={d.reload} loading={d.loading} />
+                        )}
                         {resource.save && resource.create !== false && (
                             <button
                                 className="primary"
@@ -1799,16 +1804,16 @@ export function Settings() {
     const [dirty, setDirty] = useState(false),
         [actionBusy, setActionBusy] = useState(false),
         [actionResult, setActionResult] = useState("");
-    async function runAction(endpoint: string) {
+    async function runAction(endpoint: string, body: Record<string, unknown> = {}) {
         setActionBusy(true);
         setActionResult("");
         try {
-            const response = await request(admin(endpoint), {});
+            const response = await request(admin(endpoint), body);
             const log = (
-                response as typeof response & { log?: { error?: string } }
+                response as typeof response & { log?: { error?: string; transport_code?: number; enhanced_code?: string; advice?: string } }
             ).log;
-            if (log?.error) throw new Error(log.error);
-            setActionResult("操作成功");
+            if (log?.error) throw new Error([log.error, log.transport_code ? `状态码 ${log.transport_code}` : "", log.enhanced_code, log.advice].filter(Boolean).join(" · "));
+            setActionResult(endpoint === "config/testSendMail" ? "邮件已被发送服务接受，请检查收件箱；最终投递结果需核查服务商记录。" : "操作成功");
         } catch (e) {
             setActionResult((e as Error).message);
         } finally {
@@ -1826,6 +1831,7 @@ export function Settings() {
                     !k.startsWith("client_secondary_") &&
                     !k.startsWith("subscription_") &&
                     k !== "email_template" &&
+                    !/^email_.*_key_configured$/.test(k) &&
                     k !== "invite_never_expire" &&
                     k !== "fastai_releases" &&
                     k !== "fastai_enabled" &&
@@ -1897,7 +1903,7 @@ export function Settings() {
                             }
                           : configField(k, v, schema.data?.[k], labels[k] || k),
             ),
-    );
+    ).map(field => mailCredentialField(field, raw));
     return (
         <Panel title="系统配置" className="settings-panel">
             <div className="section-tabs">
@@ -1958,6 +1964,7 @@ export function Settings() {
                         }}
                     />
                 )}
+                {group === "email" && <div className="pad" role="note"><strong>当前已保存的事务通道：{mailProviders[raw.email_provider || "smtp"] || "未知"}</strong><p className="muted">验证码、账单和服务提醒使用事务通道；必要服务群发使用事务通道。活动与推广可独立配置服务商与发件子域名，只发给主动订阅的用户。修改后保存并重启队列。星号表示凭据已设置，不代表已验证可用。</p></div>}
                 {group !== "entrypoints" && (
                     <Editor
                         key={group + JSON.stringify(raw)}
@@ -2006,20 +2013,22 @@ export function Settings() {
                 {group === "email" && (
                     <div className="pad">
                         <p className="muted">
-                            测试邮件发往当前管理员邮箱，使用已保存的 SMTP
-                            配置。修改邮件配置后需重启队列服务。
+                            测试邮件发往当前管理员邮箱，使用已保存的发送通道。修改邮件配置后需重启队列服务。发送成功仅代表服务商接受。
                         </p>
                         <button
                             disabled={
                                 dirty ||
                                 actionBusy ||
-                                !raw.email_host ||
+                                (raw.email_provider === "mailgun" ? (!raw.email_mailgun_domain || !raw.email_mailgun_key_configured) : raw.email_provider === "resend" ? !raw.email_resend_key_configured : raw.email_provider === "ses" ? (!raw.email_ses_region || (raw.email_ses_auth === "key" && !raw.email_ses_key_configured)) : !raw.email_host) ||
                                 !raw.email_from_address
                             }
                             onClick={() => runAction("config/testSendMail")}
                         >
                             发送测试邮件
                         </button>
+                        <p className="muted">{raw.email_provider === "ses" && raw.email_ses_auth !== "key" ? "使用服务器 IAM 凭据，发送测试邮件可检查权限。" : raw.email_provider !== "smtp" && (<>通道密钥：{raw[`email_${raw.email_provider}_key_configured`] ? "已配置（留空保留）" : "未配置"} · </>)}<a href="#/mail-logs">查看邮件日志</a></p>
+                        <button disabled={dirty || actionBusy || !raw.email_announcement_separate} onClick={() => runAction("config/testSendMail", {stream:"announcement"})}>测试推广通道（发往管理员）</button>
+                        <details><summary>投递回调配置</summary><p className="muted">在服务商订阅 delivered / bounce / complaint 事件。SMTP 本身没有通用异步回调。两个通道若使用不同账号，需将回调统一到同一可信账号或主题；目前每个服务商配置一组回调凭据。</p>{["mailgun","resend","ses"].map(provider=><p key={provider}>{mailProviders[provider]}：<code>{String(raw.email_public_url || "https://你的API域名").replace(/\/$/,"")}/api/v10/webhooks/mail/{provider}</code></p>)}</details>
                         <AdminMailPreview />
                     </div>
                 )}
@@ -2226,7 +2235,6 @@ export function Payments() {
                 actions={
                     <>
                         {" "}
-                        <Reload onClick={d.reload} />
                         <SortButton
                             path={admin("payment/sort")}
                             kind="payments"
@@ -2454,11 +2462,12 @@ function PaymentEditor({
                                     ? "可选，填写后覆盖币种图标"
                                     : "可选，填写后覆盖上方所选图标",
                         },
-                        f("notify_domain", "通知域名", "url"),
+                        {key:"currency",label:"付款币种（美元仅支持 StripeCheckout）",type:"select",options:[["CNY","人民币 CNY"],["USD","美元 USD"]]},
+                          f("notify_domain", "通知域名", "url"),
                         {
                             ...f(
                                 "handling_fee_fixed",
-                                "固定手续费（CNY）",
+                                "固定手续费（支付币种）",
                                 "number",
                             ),
                             min: 0,
@@ -2488,6 +2497,7 @@ function PaymentEditor({
                                     "name",
                                     "icon",
                                     "notify_domain",
+                                    "currency",
                                     "handling_fee_fixed",
                                     "handling_fee_percent",
                                 ].map((key) => [
@@ -2600,7 +2610,7 @@ export function Nodes({
                     title="节点管理"
                     actions={
                         <>
-                            <Reload onClick={d.reload} />
+                            <Reload onClick={d.reload} loading={d.loading} />
                             <SortButton
                                 path={admin("server/manage/sort")}
                                 kind="nodes"
@@ -3295,7 +3305,7 @@ export function System() {
                         <Panel
                             key={title as string}
                             title={title as string}
-                            actions={<Reload onClick={data.reload} />}
+                            actions={<Reload onClick={data.reload} loading={data.loading} />}
                         >
                             <State {...data}>
                                 <div className="stats-list">

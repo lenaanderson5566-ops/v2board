@@ -1,14 +1,17 @@
 import { formatInstant } from "../shared/timezone";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { admin, request } from "../shared/api";
-import { State, useData } from "../shared/ui";
+import { Reload, State, useData } from "../shared/ui";
 
 export function AdminTelegramCommunity({ disabled }: { disabled: boolean }) {
     const d = useData(admin("telegram/status"));
+    const inFlight = useRef(false);
     const [busy, setBusy] = useState(false);
     const [ids, setIds] = useState("");
     const [message, setMessage] = useState("");
     async function run(action: string) {
+        if (inFlight.current) return;
+        inFlight.current = true;
         setBusy(true);
         setMessage("");
         try {
@@ -33,6 +36,7 @@ export function AdminTelegramCommunity({ disabled }: { disabled: boolean }) {
         } catch (e) {
             setMessage((e as Error).message);
         } finally {
+            inFlight.current = false;
             setBusy(false);
         }
     }
@@ -55,9 +59,7 @@ export function AdminTelegramCommunity({ disabled }: { disabled: boolean }) {
                 >
                     检查机器人权限
                 </button>
-                <button disabled={busy} onClick={d.reload}>
-                    刷新管理状态
-                </button>
+                <Reload onClick={d.reload} loading={d.loading} disabled={busy} />
             </div>
             {message && <p role="status">{message}</p>}
             <State {...d} retry={d.reload}>
@@ -76,6 +78,12 @@ export function AdminTelegramCommunity({ disabled }: { disabled: boolean }) {
                                 ? `${formatInstant(d.data.lastSync.at)}，检查 ${d.data.lastSync.checked}，失败 ${d.data.lastSync.failed}`
                                 : "尚未执行，请确认服务器计划任务正常运行"}
                         </p>
+                        <h3>事件与到账通知</h3>
+                        <p className="muted">Webhook 待处理 {d.data.webhookCounts?.pending || 0} · 失败 {d.data.webhookCounts?.failed || 0} · 结果不确定 {d.data.webhookCounts?.uncertain || 0}</p>
+                        <p className="muted">到账提醒待发送 {d.data.paymentNoticeCounts?.pending || 0} · 已发送 {d.data.paymentNoticeCounts?.sent || 0} · 失败 {d.data.paymentNoticeCounts?.failed || 0} · 结果不确定 {d.data.paymentNoticeCounts?.uncertain || 0}</p>
+                        <p className="muted">网络中断后的执行结果可能不确定，不会自动重复发送或操作群成员。请核查 Telegram 实际状态；积压持续增长时检查队列与计划任务。</p>
+                        {(d.data.deliveryFailures || []).map((r: any) => <p key={`event-${r.id}`} className="muted">Webhook #{r.id} · {r.status} · {r.error_code}</p>)}
+                        {(d.data.paymentFailures || []).map((r: any) => <p key={`payment-${r.id}`} className="muted">到账提醒 #{r.id} · {r.status} · {r.error_code}</p>)}
                         <h3>成员检查记录</h3>
                         <div style={{ overflowX: "auto" }}>
                             <table>

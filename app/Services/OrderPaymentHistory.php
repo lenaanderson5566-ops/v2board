@@ -9,13 +9,14 @@ class OrderPaymentHistory {
             array_intersect_key($fields, array_flip(['category', 'asset', 'network', 'network_name'])));
     }
     // One immutable snapshot per chosen channel, not a payment-attempt log.
-    public static function select(Order $order, Payment $payment): bool {
+    public static function select(Order $order, Payment $payment, array $quote = []): bool {
         $channels = $order->payment_snapshot['channels'] ?? [];
         $key = (string)$payment->id;
         if (!isset($channels[$key])) {
-            $channels[$key] = self::capture($payment) + ['uuid' => $payment->uuid, 'handling_amount' => (int)$order->handling_amount];
+            $channels[$key] = self::capture($payment) + $quote + ['uuid' => $payment->uuid, 'handling_amount' => (int)$order->handling_amount];
         }
         if ((int)$channels[$key]['handling_amount'] !== (int)$order->handling_amount) abort(409, __('Payment method is not available'));
+        if ($quote && isset($channels[$key]['payment_amount']) && ($channels[$key]['payment_amount'] !== $quote['payment_amount'] || $channels[$key]['payment_currency'] !== $quote['payment_currency'])) abort(409, 'Payment quote changed');
         $order->handling_amount = $channels[$key]['handling_amount'];
         $order->payment_snapshot = $channels[$key] + ['channels' => $channels];
         return $order->save();

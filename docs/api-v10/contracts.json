@@ -196,6 +196,10 @@
       ],
       "expiresAtDisplay": [
         "expires_at_display"
+      ],
+      "announcementEmails": [
+        "announcement_email",
+        "boolean"
       ]
     },
     "subscription": {
@@ -363,6 +367,14 @@
       ],
       "currency": [
         "currency"
+      ],
+      "paymentAmount": [
+        "payment_amount",
+        "integer"
+      ],
+      "paymentCurrency": [
+        "payment_currency",
+        "string"
       ]
     },
     "paymentMethod": {
@@ -407,6 +419,22 @@
       ],
       "networkIconUrl": [
         "network_icon"
+      ],
+      "quotedAmount": [
+        "quoted_amount",
+        "integer"
+      ],
+      "quotedCurrency": [
+        "quoted_currency",
+        "string"
+      ],
+      "quotedFee": [
+        "quoted_fee",
+        "integer"
+      ],
+      "rateTime": [
+        "rate_time",
+        "time"
       ]
     },
     "credit": {
@@ -642,6 +670,10 @@
       ],
       "currency": [
         "currency"
+      ],
+      "orderCurrency": [
+        "order_currency",
+        "string"
       ]
     },
     "article": {
@@ -1120,6 +1152,20 @@
         "preview",
         "string"
       ]
+    },
+    "ticketNotification": {
+      "ticketId": [
+        "ticket_id",
+        "integer"
+      ],
+      "messageId": [
+        "message_id",
+        "integer"
+      ],
+      "createdAt": [
+        "created_at",
+        "time"
+      ]
     }
   },
   "endpoints": {
@@ -1468,7 +1514,8 @@
         "expiryReminders": "remind_expire",
         "trafficReminders": "remind_traffic",
         "serviceNotifications": "remind_service",
-        "displayTimeZone": "display_timezone"
+        "displayTimeZone": "display_timezone",
+        "announcementEmails": "announcement_email"
       },
       "output": "scalar",
       "role": "user",
@@ -1569,7 +1616,8 @@
         "replacementOrderNumber": "replace_trade_no",
         "billingPeriod": "period",
         "depositAmount": "deposit_amount",
-        "couponCode": "coupon_code"
+        "couponCode": "coupon_code",
+        "walletCouponId": "wallet_coupon_id"
       },
       "output": "orderCreated",
       "role": "user",
@@ -1583,7 +1631,9 @@
     "postMeOrdersOrderNumberPayments": {
       "input": {
         "paymentMethodId": "method",
-        "paymentToken": "token"
+        "paymentToken": "token",
+        "expectedPaymentAmount": "expected_payment_amount",
+        "expectedPaymentCurrency": "expected_payment_currency"
       },
       "output": "payment",
       "role": "user",
@@ -1638,7 +1688,9 @@
       "key": "User/OrderController@fetch"
     },
     "getPaymentMethods": {
-      "input": {},
+      "input": {
+        "orderNumber": "trade_no"
+      },
       "output": "array:paymentMethod",
       "role": "user",
       "status": 200,
@@ -2252,6 +2304,91 @@
       "path": "me/integrations/telegram/group-invitations",
       "method": "POST",
       "key": "User/TelegramController@joinLink"
+    },
+    "postWebhooksMailProvider": {
+      "input": {},
+      "output": "scalar",
+      "role": "public",
+      "status": 200,
+      "raw": true,
+      "bindings": {
+        "provider": "provider"
+      },
+      "path": "webhooks/mail/{provider}",
+      "method": "POST",
+      "key": "MailController@webhook"
+    },
+    "getMailUnsubscribeToken": {
+      "input": {},
+      "output": "scalar",
+      "role": "public",
+      "status": 200,
+      "raw": true,
+      "bindings": {
+        "token": "token"
+      },
+      "path": "mail/unsubscribe/{token}",
+      "method": "GET",
+      "key": "MailController@unsubscribe"
+    },
+    "postMailUnsubscribeToken": {
+      "input": {},
+      "output": "scalar",
+      "role": "public",
+      "status": 200,
+      "raw": true,
+      "bindings": {
+        "token": "token"
+      },
+      "path": "mail/unsubscribe/{token}",
+      "method": "POST",
+      "key": "MailController@unsubscribe"
+    },
+    "postMeTicketReadReceipts": {
+      "input": {
+        "ticketId": "id",
+        "version": "version"
+      },
+      "output": "scalar",
+      "role": "user",
+      "status": 204,
+      "raw": false,
+      "bindings": {},
+      "path": "me/notifications/ticket-read-receipts",
+      "method": "POST",
+      "key": "User/NoticeController@readTicket"
+    },
+    "getMeCoupons": {
+      "key": "User/CouponController@getMeCoupons",
+      "role": "user",
+      "path": "me/coupons",
+      "method": "GET",
+      "input": {},
+      "bindings": {},
+      "output": "couponWallet",
+      "raw": false
+    },
+    "getMeCouponOffers": {
+      "key": "User/CouponController@getMeCouponOffers",
+      "role": "user",
+      "path": "me/coupon-offers",
+      "method": "GET",
+      "input": {},
+      "bindings": {},
+      "output": "couponOffers",
+      "raw": false
+    },
+    "postMeCouponClaims": {
+      "key": "User/CouponController@postMeCouponClaims",
+      "role": "user",
+      "path": "me/coupon-claims",
+      "method": "POST",
+      "input": {
+        "couponId": "coupon_id"
+      },
+      "bindings": {},
+      "output": "couponClaim",
+      "raw": false
     }
   }
 }

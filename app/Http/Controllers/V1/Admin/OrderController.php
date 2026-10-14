@@ -168,6 +168,7 @@ class OrderController extends Controller
 
         DB::beginTransaction();
         $order = new Order();
+            $order->currency = $user->currency ?: 'CNY';
         $orderService = new OrderService($order);
         $order->user_id = $user->id;
         $order->plan_id = $plan->id;

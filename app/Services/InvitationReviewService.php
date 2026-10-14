@@ -21,7 +21,8 @@ final class InvitationReviewService {
             ];
             DB::table('v2_invitation_review')->insertOrIgnore([
                 'user_id'=>$user->id,'inviter_id'=>$user->invite_user_id,'signals'=>json_encode($signals),
-                'state'=>in_array(true,$signals,true) ? 'pending' : (in_array(null,$signals,true) ? 'insufficient' : 'no_signal'),
+                // UA alone is too common to justify a manual-review queue item.
+                'state'=>$signals['sameRegistrationIp'] === true ? 'pending' : (in_array(null,$signals,true) ? 'insufficient' : 'no_signal'),
                 'revision'=>0,'created_at'=>time(),'updated_at'=>time(),
             ]);
         });

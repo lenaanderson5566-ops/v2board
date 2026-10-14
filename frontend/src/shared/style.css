@@ -1000,3 +1000,34 @@ label small {
 .mfa-login { max-width:440px; width:100%; margin:auto; }
 .mfa-login form { display:grid; gap:12px; }
 .mfa-login label { margin:0; }
+.mfa-emblem { width:56px; height:56px; display:grid; place-items:center; margin-block-end:16px; border:1px solid var(--border); border-radius:16px; background:#f5f7f8; color:var(--accent); }
+.mfa-login { padding:28px; }
+.mfa-login > h2 { margin:0 0 10px; }
+.mfa-help { color:var(--muted); font-size:13px; line-height:1.65; }
+.mfa-options > div { display:flex; flex-direction:column; align-items:flex-start; gap:12px; }
+.mfa-options h3 { display:flex; align-items:center; gap:10px; margin:0; font-size:16px; }
+.mfa-options p { margin:0; }
+.mfa-options > div > button, .mfa-options > div > .actions { margin-top:auto; }
+.mfa-options .actions, .mfa-step .actions, .mfa-backup-actions { flex-wrap:wrap; }
+.mfa-state { display:inline-flex; align-items:center; gap:6px; padding:4px 9px; border-radius:20px; background:#f3f4f6; font-size:12px; }
+.mfa-state::before { content:""; width:6px; height:6px; border-radius:50%; background:#9ca3af; }
+.mfa-state.enabled { color:#166534; background:#ecfdf3; }
+.mfa-state.enabled::before { background:#16a34a; }
+.mfa-progress { display:flex; gap:12px; padding:0; margin:24px 0 0; list-style:none; font-size:12px; color:var(--muted); flex-wrap:wrap; }
+.mfa-progress li { display:flex; align-items:center; gap:7px; }
+.mfa-progress li > span { width:24px; height:24px; display:grid; place-items:center; border:1px solid var(--border); border-radius:50%; }
+.mfa-progress [aria-current=step] { color:var(--accent); font-weight:600; }
+.mfa-progress [aria-current=step] > span { color:white; background:var(--accent); border-color:var(--accent); }
+.mfa-step { padding:20px; border:1px solid var(--border); border-radius:12px; background:#fafbfc; }
+.mfa-security form.mfa-step { display:grid; gap:14px; }
+.mfa-step > h3, .mfa-step > p, .mfa-step label { margin:0; }
+.mfa-code { font-family:monospace; font-size:22px; letter-spacing:0.25em; padding:12px; }
+.mfa-code-recovery { font-size:15px; letter-spacing:0.04em; }
+.mfa-security .mfa-saved { display:flex; flex-direction:row; align-items:flex-start; gap:10px; line-height:1.5; }
+.mfa-saved input { flex:0 0 auto; margin-top:3px; }
+.mfa-security .mfa-saved input { min-height:0; width:18px; height:18px; }
+.mfa-recovery-dialog .modal { width:min(560px,calc(100vw - 32px)); }
+.mfa-recovery-dialog .mfa-emblem { width:40px; height:40px; margin-bottom:10px; }
+.mfa-recovery-dialog h3 { margin:10px 0; }
+.mfa-recovery-dialog textarea { width:100%; font-size:13px; line-height:1.45; background:#fafbfc; }
+@media (max-width:480px) { .mfa-login { padding:20px; } .mfa-step { padding:16px; } .mfa-options > div { padding:16px; } .mfa-step .actions button, .mfa-backup-actions button { flex:1; } }

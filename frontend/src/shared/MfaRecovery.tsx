@@ -4,6 +4,7 @@ import { Modal } from "./ui";
 import { clearReadCache } from "./api";
 import { forgetBrowserSession } from "./browser-session";
 import { tx } from "./i18n";
+import { Copy, Download, ShieldCheck } from "lucide-react";
 
 const RecoveryContext = createContext<((codes: string[]) => void) | null>(null);
 export function useMfaRecovery() {
@@ -17,6 +18,29 @@ export function MfaRecoveryProvider({ children }: { children: ReactNode }) {
     useTranslation();
     const [codes, setCodes] = useState<string[] | null>(null),
         [saved, setSaved] = useState(false);
+    const [notice, setNotice] = useState("");
+    async function copy() {
+        try {
+            await navigator.clipboard.writeText(codes!.join("\n"));
+            setNotice(tx("恢复码已复制，请保存在安全的位置。"));
+        } catch {
+            setNotice(tx("无法复制，请手动选中恢复码保存。"));
+        }
+    }
+    function download() {
+        const url = URL.createObjectURL(
+            new Blob([codes!.join("\n") + "\n"], {
+                type: "text/plain;charset=utf-8",
+            }),
+        );
+        const link = document.createElement("a");
+        link.href = url;
+        link.download = "recovery-codes.txt";
+        document.body.append(link);
+        link.click();
+        link.remove();
+        setTimeout(() => URL.revokeObjectURL(url), 1000);
+    }
     function acknowledge() {
         if (codes?.length && !saved) return;
         setCodes(null);
@@ -29,6 +53,7 @@ export function MfaRecoveryProvider({ children }: { children: ReactNode }) {
         <RecoveryContext.Provider
             value={(next) => {
                 setSaved(false);
+                setNotice("");
                 setCodes([...next]);
             }}
         >
@@ -43,6 +68,9 @@ export function MfaRecoveryProvider({ children }: { children: ReactNode }) {
                     <div className="pad mfa-security">
                         {codes.length > 0 && (
                             <>
+                                <div className="mfa-emblem">
+                                    <ShieldCheck size={28} aria-hidden="true" />
+                                </div>
                                 <h3>{tx("保存恢复码")}</h3>
                                 <p>
                                     {tx(
@@ -57,7 +85,24 @@ export function MfaRecoveryProvider({ children }: { children: ReactNode }) {
                                     dir="ltr"
                                     autoComplete="off"
                                 />
-                                <label>
+                                <div className="actions mfa-backup-actions">
+                                    <button
+                                        type="button"
+                                        onClick={() => void copy()}
+                                    >
+                                        <Copy size={16} aria-hidden="true" />
+                                        {tx("复制恢复码")}
+                                    </button>
+                                    <button type="button" onClick={download}>
+                                        <Download
+                                            size={16}
+                                            aria-hidden="true"
+                                        />
+                                        {tx("下载恢复码")}
+                                    </button>
+                                </div>
+                                {notice && <p role="status">{notice}</p>}
+                                <label className="mfa-saved">
                                     <input
                                         type="checkbox"
                                         checked={saved}

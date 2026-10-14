@@ -372,8 +372,6 @@
     "订阅二维码": "Subscription QR code",
     "订阅链接和二维码包含访问凭据，请勿分享。": "Your link and QR code contain access credentials. Do not share them.",
     "{{count}} 台设备": "{{count}} devices",
-    "{{count}} 台设备_one": "{{count}} device",
-    "{{count}} 台设备_other": "{{count}} devices",
     "服务没有返回 CSV 文件": "The server did not return a CSV file",
     "管理账户信息、通知设置与账户安全。": "Manage account details, notifications and security.",
     "邮件邀请注册": "Register by email invitation",
@@ -537,5 +535,17 @@
     "安全验证为可选项，默认关闭。邮件与身份验证器可同时开启，登录时优先使用身份验证器。": "Verification is optional and disabled by default. Email and authenticator can both be enabled; sign-in prefers the authenticator.",
     "正在加载账户安全…": "Loading account security…",
     "重试进入账户": "Retry opening account",
-    "剩余恢复码：{{value0}}": "Recovery codes remaining: {{value0}}"
+    "剩余恢复码：{{value0}}": "Recovery codes remaining: {{value0}}",
+    "复制恢复码": "Copy recovery codes",
+    "下载恢复码": "Download recovery codes",
+    "恢复码已复制，请保存在安全的位置。": "Recovery codes copied. Store them securely.",
+    "无法复制，请手动选中恢复码保存。": "Copy failed. Select and save the codes manually.",
+    "{{value0}}秒后重试": "Retry in {{value0}}s",
+    "输入身份验证器中的6位动态码。": "Enter the 6-digit code from your authenticator.",
+    "输入发送到账号邮箱的6位验证码。": "Enter the 6-digit code sent to your account email.",
+    "登录时验证账号邮箱中的验证码。": "Verify a code sent to your email when signing in.",
+    "使用身份验证器生成动态码，无需等待邮件。": "Generate codes in your authenticator without waiting for email.",
+    "安全验证步骤": "Security verification steps",
+    "{{count}} 台设备_one": "{{count}} device",
+    "{{count}} 台设备_other": "{{count}} devices"
 }

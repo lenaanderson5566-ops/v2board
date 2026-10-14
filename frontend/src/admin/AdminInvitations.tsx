@@ -1,5 +1,5 @@
 import { InvitationReviews } from "./InvitationReviews";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { admin, date, type Row } from "../shared/api";
 import { ResourcePage } from "./admin";
 import { OrdersPage } from "./admin-orders";
@@ -30,12 +30,27 @@ const invitationResource = {
     ] as Parameters<typeof ResourcePage>[0]["resource"]["columns"],
 };
 export function AdminInvitations() {
-    const params = new URLSearchParams(
-        window.location.hash.split("?")[1] || "",
-    );
-    const [tab, setTab] = useState(
-        params.get("tab") === "commissions" ? "commissions" : "relations",
-    );
+    const readTab = () => {
+        const value = new URLSearchParams(
+            window.location.hash.split("?")[1] || "",
+        ).get("tab");
+        return value === "commissions" || value === "reviews"
+            ? value
+            : "relations";
+    };
+    const [tab, setTab] = useState(readTab);
+    useEffect(() => {
+        const changed = () => setTab(readTab());
+        window.addEventListener("hashchange", changed);
+        return () => window.removeEventListener("hashchange", changed);
+    }, []);
+    const selectTab = (value: "relations" | "commissions" | "reviews") => {
+        setTab(value);
+        window.location.hash =
+            value === "relations"
+                ? "#/invitations"
+                : `#/invitations?tab=${value}`;
+    };
     const [email, setEmail] = useState("");
     const [search, setSearch] = useState("");
     const filter = [
@@ -54,20 +69,28 @@ export function AdminInvitations() {
                 <button
                     role="tab"
                     aria-selected={tab === "relations"}
-                    onClick={() => setTab("relations")}
+                    onClick={() => selectTab("relations")}
                 >
                     邀请关系
                 </button>
                 <button
                     role="tab"
                     aria-selected={tab === "commissions"}
-                    onClick={() => setTab("commissions")}
+                    onClick={() => selectTab("commissions")}
                 >
                     佣金审核
                 </button>
-                <button role="tab" aria-selected={tab === "reviews"} onClick={() => setTab("reviews")}>异常复核</button>
+                <button
+                    role="tab"
+                    aria-selected={tab === "reviews"}
+                    onClick={() => selectTab("reviews")}
+                >
+                    异常复核
+                </button>
             </div>
-            {tab === "reviews" ? <InvitationReviews /> : tab === "commissions" ? (
+            {tab === "reviews" ? (
+                <InvitationReviews />
+            ) : tab === "commissions" ? (
                 <OrdersPage commissionMode />
             ) : (
                 <ResourcePage

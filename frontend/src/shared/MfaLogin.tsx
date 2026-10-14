@@ -41,9 +41,20 @@ export function MfaLogin({
     }
     return (
         <section className="mfa-login panel pad">
-            <ShieldCheck size={28} aria-hidden="true" />
+            <div className="mfa-emblem">
+                <ShieldCheck size={28} aria-hidden="true" />
+            </div>
             <h2>{tx("登录安全验证")}</h2>
             <p>{tx("密码已验证，请完成安全验证后继续。")}</p>
+            <p className="mfa-help">
+                {tx(
+                    method === "recovery"
+                        ? "恢复码只显示一次，每个只能使用一次。请保存在安全的位置，不要与密码放在一起。"
+                        : method === "totp"
+                          ? "输入身份验证器中的6位动态码。"
+                          : "输入发送到账号邮箱的6位验证码。",
+                )}
+            </p>
             {error && (
                 <p role="alert" className="alert">
                     {error}
@@ -108,7 +119,11 @@ export function MfaLogin({
                             disabled={busy || cooldown.active}
                             onClick={() => void send()}
                         >
-                            {tx(sent ? "重新发送验证码" : "发送验证码")}
+                            {cooldown.active
+                                ? tx("{{value0}}秒后重试", {
+                                      value0: cooldown.remaining,
+                                  })
+                                : tx(sent ? "重新发送验证码" : "发送验证码")}
                         </button>
                         {sent && (
                             <p role="status">
@@ -120,13 +135,24 @@ export function MfaLogin({
                 <label>
                     {tx(method === "recovery" ? "恢复码" : "验证码")}
                     <input
+                        className={
+                            method === "recovery"
+                                ? "mfa-code mfa-code-recovery"
+                                : "mfa-code"
+                        }
                         required={!verified}
                         autoFocus
                         autoComplete="one-time-code"
                         inputMode={method === "recovery" ? "text" : "numeric"}
-                        maxLength={method === "recovery" ? 40 : 6}
+                        maxLength={method === "recovery" ? 40 : 12}
                         value={code}
-                        onChange={(event) => setCode(event.target.value)}
+                        onChange={(event) =>
+                            setCode(
+                                method === "recovery"
+                                    ? event.target.value
+                                    : event.target.value.replace(/\s/g, ""),
+                            )
+                        }
                         disabled={busy || verified}
                         dir="ltr"
                         pattern={method === "recovery" ? undefined : "[0-9]{6}"}

@@ -11,7 +11,10 @@ it("reenables sending at the deadline without another user interaction", () => {
     const { result } = renderHook(() => useCooldown());
     act(() => result.current.start());
     expect(result.current.active).toBe(true);
-    act(() => vi.advanceTimersByTime(59999));
+    expect(result.current.remaining).toBe(60);
+    act(() => vi.advanceTimersByTime(1000));
+    expect(result.current.remaining).toBe(59);
+    act(() => vi.advanceTimersByTime(58999));
     expect(result.current.active).toBe(true);
     act(() => vi.advanceTimersByTime(1));
     expect(result.current.active).toBe(false);

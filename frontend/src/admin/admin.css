@@ -1917,3 +1917,192 @@ body[data-console="admin"] .admin-account-menu .admin-account-item {
         transition: none;
     }
 }
+
+/* Invitation review: queue, evidence and explicit decisions. */
+.invitation-toolbar {
+    padding: 16px 20px;
+    display: flex;
+    gap: 16px;
+    align-items: center;
+    justify-content: space-between;
+}
+.invitation-toolbar p {
+    margin: 0;
+    max-width: 660px;
+}
+.invitation-toolbar label {
+    min-width: 160px;
+}
+.invitation-notice {
+    padding: 12px 16px;
+    border: 1px solid var(--line);
+    border-radius: 10px;
+}
+.invitation-trigger {
+    font-weight: 600;
+}
+.invitation-review-form {
+    padding: 20px;
+    display: grid;
+    gap: 20px;
+}
+.invitation-review-form h3,
+.invitation-review-form p {
+    margin-top: 0;
+}
+.invitation-summary {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+}
+.invitation-summary > svg {
+    width: 24px;
+    height: 24px;
+    flex-shrink: 0;
+}
+.invitation-summary p {
+    margin: 5px 0 0;
+}
+.invitation-people {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 16px;
+}
+.invitation-person,
+.invitation-evidence {
+    padding: 16px;
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    min-width: 0;
+}
+.invitation-person h3 {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+.invitation-person h3 svg {
+    width: 18px;
+    height: 18px;
+}
+.invitation-person > strong {
+    display: block;
+    overflow-wrap: anywhere;
+}
+.invitation-review-form dl {
+    margin: 14px 0;
+}
+.invitation-review-form dl > div {
+    display: grid;
+    grid-template-columns: 100px minmax(0, 1fr);
+    gap: 12px;
+    margin: 10px 0;
+}
+.invitation-review-form dt {
+    color: var(--muted);
+}
+.invitation-review-form dd {
+    margin: 0;
+    overflow-wrap: anywhere;
+}
+.invitation-review-form small {
+    display: block;
+    font-size: 12px;
+    color: var(--muted);
+    line-height: 1.6;
+}
+.invitation-decisions {
+    margin: 0;
+    padding: 16px;
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    min-width: 0;
+}
+.invitation-decisions legend {
+    padding: 0 8px;
+    font-weight: 600;
+}
+.invitation-decisions [role="group"] {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 10px;
+    margin-bottom: 16px;
+}
+.invitation-decisions [role="group"] button {
+    display: flex;
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 6px;
+    padding: 12px;
+    text-align: left;
+    height: auto;
+    white-space: normal;
+}
+.invitation-decisions [role="group"] button svg {
+    width: 20px;
+    height: 20px;
+}
+.invitation-decisions [role="group"] button[aria-pressed="true"] {
+    outline: 2px solid var(--primary, #2563eb);
+    outline-offset: 1px;
+}
+.invitation-reasons {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin: 12px 0;
+}
+.invitation-reasons button {
+    font-size: 12px;
+    white-space: normal;
+    text-align: left;
+    height: auto;
+}
+.invitation-decisions textarea {
+    min-height: 110px;
+    resize: vertical;
+}
+.invitation-decisions > p {
+    margin: 10px 0 0;
+}
+.invitation-review-footer {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    padding: 14px 0;
+    border-top: 1px solid var(--line);
+}
+.invitation-history article {
+    padding: 12px 0;
+    border-bottom: 1px solid var(--line);
+}
+.invitation-history article p {
+    margin: 6px 0 0;
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+}
+@media (max-width: 600px) {
+    .invitation-toolbar {
+        align-items: stretch;
+        flex-direction: column;
+    }
+    .invitation-review-form {
+        padding: 16px;
+    }
+    .invitation-people,
+    .invitation-decisions [role="group"] {
+        grid-template-columns: minmax(0, 1fr);
+    }
+    .invitation-review-form dl > div {
+        grid-template-columns: 82px minmax(0, 1fr);
+    }
+    .invitation-review-footer button {
+        flex: 1;
+    }
+}
+
+.invitation-review-footer {
+    position: sticky;
+    bottom: 0;
+    background: var(--panel, #fff);
+    z-index: 1;
+}

@@ -106,3 +106,23 @@ Security settings changed. Please refresh.|認証設定が変更されました�
 Security settings changed. Please start again.|認証設定が変更されました。認証をやり直してください。|보안 설정이 변경되었습니다. 다시 인증하세요.|Cài đặt bảo mật đã thay đổi. Hãy xác minh lại.|Настройки изменились. Начните подтверждение заново.|تنظیمات امنیتی تغییر کرده است. تأیید را دوباره شروع کنید.
 Security verification is required.|認証を完了してください。|보안 인증을 완료하세요.|Vui lòng hoàn tất xác minh bảo mật.|Завершите подтверждение безопасности.|تأیید امنیتی را تکمیل کنید.
 Security verification code|認証コード|보안 인증 코드|Mã xác minh bảo mật|Код подтверждения безопасности|کد تأیید امنیتی
+Configure the site URL before sending invitations.|招待を送信する前にサイトURLを設定してください。|초대 전에 사이트 URL을 설정하세요.|Hãy cấu hình URL trang trước khi gửi lời mời.|Сначала настройте адрес сайта.|ابتدا نشانی سایت را تنظیم کنید.
+Your account is restricted.|アカウントは制限されています。|계정이 제한되었습니다.|Tài khoản đã bị hạn chế.|Ваш аккаунт ограничен.|حساب شما محدود شده است.
+You cannot invite yourself.|自分自身を招待できません。|자신을 초대할 수 없습니다.|Không thể mời chính mình.|Нельзя пригласить себя.|نمی‌توانید خودتان را دعوت کنید.
+This email already has an account.|このメールアドレスは登録済みです。|이 이메일은 이미 등록되었습니다.|Email này đã có tài khoản.|Этот адрес уже зарегистрирован.|این ایمیل قبلاً حساب دارد.
+This invitation has already been accepted.|この招待は承認済みです。|이미 수락된 초대입니다.|Lời mời đã được chấp nhận.|Приглашение уже принято.|این دعوت قبلاً پذیرفته شده است.
+Please wait a minute before resending.|再送する前に1分お待ちください。|1분 후 다시 보내세요.|Vui lòng đợi một phút trước khi gửi lại.|Подождите минуту перед повторной отправкой.|برای ارسال مجدد یک دقیقه صبر کنید.
+The daily invitation limit has been reached.|1日の招待送信上限に達しました。|일일 초대 한도에 도달했습니다.|Đã đạt giới hạn lời mời hằng ngày.|Достигнут дневной лимит приглашений.|به سقف روزانه دعوت رسیده‌اید.
+The email invitation is invalid or expired.|メール招待は無効または期限切れです。|이메일 초대가 유효하지 않거나 만료되었습니다.|Lời mời email không hợp lệ hoặc đã hết hạn.|Приглашение недействительно или истекло.|دعوت ایمیلی نامعتبر یا منقضی شده است.
+Public invite codes are no longer supported. Use an email invitation.|公開招待コードは廃止されました。メール招待を使用してください。|공개 초대 코드는 중단되었습니다. 이메일 초대를 사용하세요.|Mã mời công khai đã ngừng hỗ trợ. Hãy dùng lời mời email.|Публичные коды отключены. Используйте приглашение по почте.|کد دعوت عمومی غیرفعال شده است. از دعوت ایمیلی استفاده کنید.
+An email invitation is required to register.|登録にはメール招待が必要です。|가입하려면 이메일 초대가 필요합니다.|Đăng ký cần lời mời email.|Для регистрации нужно приглашение по почте.|ثبت‌نام به دعوت ایمیلی نیاز دارد.
+You are invited to :name|:name への招待|:name에 초대되었습니다|Bạn được mời dùng :name|Вас приглашают в :name|به :name دعوت شده‌اید
+Create an account using this email address. This private invitation expires in 7 days and can only be accepted once.|このメールアドレスで登録してください。招待は7日間有効で、1回のみ利用できます。|이 이메일로 가입하세요. 초대는 7일간 유효하며 한 번만 수락할 수 있습니다.|Hãy đăng ký bằng email này. Lời mời có hiệu lực 7 ngày và chỉ được chấp nhận một lần.|Зарегистрируйтесь с этим адресом. Приглашение действует 7 дней и используется один раз.|با این ایمیل ثبت‌نام کنید. دعوت ۷ روز معتبر است و فقط یک بار پذیرفته می‌شود.
+Accept invitation|招待を承認|초대 수락|Chấp nhận lời mời|Принять приглашение|پذیرش دعوت
+If you do not wish to join, you can ignore this email.|参加しない場合、このメールは無視してください。|참여하지 않으려면 이 이메일을 무시하세요.|Nếu không muốn tham gia, bạn có thể bỏ qua email này.|Если не хотите присоединяться, проигнорируйте письмо.|اگر نمی‌خواهید بپیوندید، این ایمیل را نادیده بگیرید.
+This payment period cannot be purchased, please choose another period|この請求期間は選べません。別の期間を選択してください|이 결제 주기는 구매할 수 없습니다. 다른 주기를 선택하세요|Không thể mua chu kỳ này. Vui lòng chọn chu kỳ khác|Этот период оплаты недоступен. Выберите другой|این دوره پرداخت قابل خرید نیست. دوره دیگری انتخاب کنید
+Plan period cannot be empty|請求期間を選択してください|결제 주기를 선택하세요|Vui lòng chọn chu kỳ|Выберите период оплаты|دوره پرداخت را انتخاب کنید
+Wrong plan period|請求期間が無効です|결제 주기가 유효하지 않습니다|Chu kỳ không hợp lệ|Недопустимый период оплаты|دوره پرداخت نامعتبر است
+This field is required.|この項目は必須です。|필수 항목입니다.|Vui lòng điền trường này.|Это поле обязательно.|تکمیل این فیلد الزامی است.
+Please check the format and allowed range of this value.|この値の形式と許容範囲を確認してください。|입력값의 형식과 허용 범위를 확인해 주세요.|Vui lòng kiểm tra định dạng và phạm vi cho phép của giá trị này.|Проверьте формат и допустимый диапазон значения.|قالب و محدوده مجاز این مقدار را بررسی کنید.
+The selected plan does not match the order type.|選択したプランが注文の種類と一致しません。|선택한 요금제가 주문 유형과 일치하지 않습니다.|Gói đã chọn không khớp với loại đơn hàng.|Выбранный тариф не соответствует типу заказа.|طرح انتخاب‌شده با نوع سفارش مطابقت ندارد.

@@ -535,5 +535,15 @@
     "安全验证为可选项，默认关闭。邮件与身份验证器可同时开启，登录时优先使用身份验证器。": "Xác minh là tùy chọn và mặc định tắt. Có thể bật cả email và ứng dụng; đăng nhập ưu tiên ứng dụng.",
     "正在加载账户安全…": "Đang tải bảo mật tài khoản…",
     "重试进入账户": "Thử mở lại tài khoản",
-    "剩余恢复码：{{value0}}": "Mã khôi phục còn lại: {{value0}}"
+    "剩余恢复码：{{value0}}": "Mã khôi phục còn lại: {{value0}}",
+    "复制恢复码": "Sao chép mã khôi phục",
+    "下载恢复码": "Tải mã khôi phục",
+    "恢复码已复制，请保存在安全的位置。": "Đã sao chép mã. Hãy lưu ở nơi an toàn.",
+    "无法复制，请手动选中恢复码保存。": "Không thể sao chép. Hãy chọn và lưu mã thủ công.",
+    "{{value0}}秒后重试": "Thử lại sau {{value0}} giây",
+    "输入身份验证器中的6位动态码。": "Nhập mã 6 chữ số từ ứng dụng xác thực.",
+    "输入发送到账号邮箱的6位验证码。": "Nhập mã 6 chữ số đã gửi đến email tài khoản.",
+    "登录时验证账号邮箱中的验证码。": "Xác minh mã gửi qua email khi đăng nhập.",
+    "使用身份验证器生成动态码，无需等待邮件。": "Tạo mã trong ứng dụng xác thực, không cần chờ email.",
+    "安全验证步骤": "Các bước xác minh bảo mật"
 }

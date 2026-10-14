@@ -150,3 +150,18 @@ it("retries loading the account without replaying an already verified challenge"
     await waitFor(() => expect(complete).toHaveBeenCalledTimes(2));
     expect(mocks.request).toHaveBeenCalledTimes(1);
 });
+
+it("accepts a pasted code with spaces without changing leading zeroes", () => {
+    render(
+        <MfaLogin
+            challenge={challenge}
+            onComplete={vi.fn()}
+            onCancel={vi.fn()}
+        />,
+    );
+    const input = screen.getByLabelText("验证码") as HTMLInputElement;
+    fireEvent.change(input, { target: { value: "012 345" } });
+    expect(input.value).toBe("012345");
+    expect(input.pattern).toBe("[0-9]{6}");
+    expect(input.inputMode).toBe("numeric");
+});

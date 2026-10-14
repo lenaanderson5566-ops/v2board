@@ -7,7 +7,7 @@ import type {
 import { useCooldown } from "./useCooldown";
 import { useRef, useState } from "react";
 import { QRCodeSVG } from "qrcode.react";
-import { ShieldCheck } from "lucide-react";
+import { ShieldCheck, Mail, Smartphone } from "lucide-react";
 import { request } from "./api";
 import { State, useData } from "./ui";
 import { tx } from "./i18n";
@@ -45,6 +45,7 @@ export function MfaSecurity({
         setSetup(null);
         setPassword("");
         setCurrentCode("");
+        setMethod("totp");
         setEmailCode("");
         setTotpCode("");
         setError("");
@@ -89,13 +90,25 @@ export function MfaSecurity({
                         <>
                             <div className="mfa-options">
                                 <div>
-                                    <h3>{tx("邮件登录验证")}</h3>
-                                    <p>
+                                    <h3>
+                                        <Mail size={20} aria-hidden="true" />
+                                        {tx("邮件登录验证")}
+                                    </h3>
+                                    <p
+                                        className={
+                                            state.data.emailEnabled
+                                                ? "mfa-state enabled"
+                                                : "mfa-state"
+                                        }
+                                    >
                                         {tx(
                                             state.data.emailEnabled
                                                 ? "已开启"
                                                 : "未开启",
                                         )}
+                                    </p>
+                                    <p className="mfa-help">
+                                        {tx("登录时验证账号邮箱中的验证码。")}
                                     </p>
                                     <button
                                         disabled={busy || purpose !== null}
@@ -116,12 +129,29 @@ export function MfaSecurity({
                                     </button>
                                 </div>
                                 <div>
-                                    <h3>{tx("身份验证器 TOTP")}</h3>
-                                    <p>
+                                    <h3>
+                                        <Smartphone
+                                            size={20}
+                                            aria-hidden="true"
+                                        />
+                                        {tx("身份验证器 TOTP")}
+                                    </h3>
+                                    <p
+                                        className={
+                                            state.data.totpEnabled
+                                                ? "mfa-state enabled"
+                                                : "mfa-state"
+                                        }
+                                    >
                                         {tx(
                                             state.data.totpEnabled
                                                 ? "已开启"
                                                 : "未开启",
+                                        )}
+                                    </p>
+                                    <p className="mfa-help">
+                                        {tx(
+                                            "使用身份验证器生成动态码，无需等待邮件。",
                                         )}
                                     </p>
                                     {state.data.totpEnabled && (
@@ -177,6 +207,32 @@ export function MfaSecurity({
                                     )}
                                 </div>
                             </div>
+                            {purpose && (
+                                <ol
+                                    className="mfa-progress"
+                                    aria-label={tx("安全验证步骤")}
+                                >
+                                    {[
+                                        "确认身份",
+                                        "确认更新安全验证",
+                                        "重新登录",
+                                    ].map((step, index) => (
+                                        <li
+                                            key={step}
+                                            aria-current={
+                                                index === (setup ? 1 : 0)
+                                                    ? "step"
+                                                    : undefined
+                                            }
+                                        >
+                                            <span aria-hidden="true">
+                                                {index + 1}
+                                            </span>
+                                            {tx(step)}
+                                        </li>
+                                    ))}
+                                </ol>
+                            )}
                             {purpose && !setup && (
                                 <form
                                     className="mfa-step"
@@ -211,6 +267,7 @@ export function MfaSecurity({
                                         {tx("当前密码")}
                                         <input
                                             type="password"
+                                            autoFocus
                                             required
                                             autoComplete="current-password"
                                             maxLength={128}
@@ -251,13 +308,40 @@ export function MfaSecurity({
                                                         : "当前动态码",
                                                 )}
                                                 <input
+                                                    className={
+                                                        method === "recovery"
+                                                            ? "mfa-code mfa-code-recovery"
+                                                            : "mfa-code"
+                                                    }
+                                                    inputMode={
+                                                        method === "recovery"
+                                                            ? "text"
+                                                            : "numeric"
+                                                    }
+                                                    pattern={
+                                                        method === "recovery"
+                                                            ? undefined
+                                                            : "[0-9]{6}"
+                                                    }
+                                                    dir="ltr"
                                                     required
                                                     autoComplete="one-time-code"
-                                                    maxLength={40}
+                                                    maxLength={
+                                                        method === "recovery"
+                                                            ? 40
+                                                            : 6
+                                                    }
                                                     value={currentCode}
                                                     onChange={(event) =>
                                                         setCurrentCode(
-                                                            event.target.value,
+                                                            method ===
+                                                                "recovery"
+                                                                ? event.target
+                                                                      .value
+                                                                : event.target.value.replace(
+                                                                      /\s/g,
+                                                                      "",
+                                                                  ),
                                                         )
                                                     }
                                                     disabled={busy}
@@ -330,20 +414,27 @@ export function MfaSecurity({
                                                     readOnly
                                                     value={setup.secret}
                                                     autoComplete="off"
+                                                    dir="ltr"
                                                 />
                                             </label>
                                             <label>
                                                 {tx("新动态码")}
                                                 <input
+                                                    className="mfa-code"
+                                                    autoFocus
+                                                    dir="ltr"
                                                     required
                                                     inputMode="numeric"
                                                     pattern="[0-9]{6}"
-                                                    maxLength={6}
+                                                    maxLength={12}
                                                     autoComplete="one-time-code"
                                                     value={totpCode}
                                                     onChange={(event) =>
                                                         setTotpCode(
-                                                            event.target.value,
+                                                            event.target.value.replace(
+                                                                /\s/g,
+                                                                "",
+                                                            ),
                                                         )
                                                     }
                                                     disabled={busy}
@@ -356,15 +447,20 @@ export function MfaSecurity({
                                             <label>
                                                 {tx("邮箱验证码")}
                                                 <input
+                                                    className="mfa-code"
+                                                    dir="ltr"
                                                     required
                                                     inputMode="numeric"
                                                     pattern="[0-9]{6}"
-                                                    maxLength={6}
+                                                    maxLength={12}
                                                     autoComplete="one-time-code"
                                                     value={emailCode}
                                                     onChange={(event) =>
                                                         setEmailCode(
-                                                            event.target.value,
+                                                            event.target.value.replace(
+                                                                /\s/g,
+                                                                "",
+                                                            ),
                                                         )
                                                     }
                                                     disabled={busy}
@@ -391,11 +487,15 @@ export function MfaSecurity({
                                                     })
                                                 }
                                             >
-                                                {tx(
-                                                    sent
-                                                        ? "重新发送验证码"
-                                                        : "发送验证码",
-                                                )}
+                                                {cooldown.active
+                                                    ? tx("{{value0}}秒后重试", {
+                                                          value0: cooldown.remaining,
+                                                      })
+                                                    : tx(
+                                                          sent
+                                                              ? "重新发送验证码"
+                                                              : "发送验证码",
+                                                      )}
                                             </button>
                                             {sent && (
                                                 <p role="status">

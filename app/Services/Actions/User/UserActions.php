@@ -47,7 +47,12 @@ class UserActions
         $authService = new AuthService($user);
         $current = AuthService::sessionReference($request->header('Authorization') ?? '');
         $sessions = $authService->getSessions();
+        $geo = new \App\Services\GeoIpService();
+        $countries = [];
         foreach ($sessions as $id => &$session) {
+            $ip = is_string($session['ip'] ?? null) ? $session['ip'] : null;
+            $session['country_code'] = $ip ? ($countries[$ip] ??= $geo->sessionCountry($ip)) : null;
+            $session['ip'] = \App\Services\GeoIpService::maskSessionIp($ip);
             unset($session['auth_data']);
             $session['current'] = $id === ($current['sessionId'] ?? null);
             $session['client_kind'] = $session['client_kind'] ?? 'unknown';

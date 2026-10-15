@@ -28,6 +28,7 @@ vi.mock("../shared/api", async (importOriginal) => ({
 import { Nodes, ResourcePage, resources } from "./admin";
 afterEach(() => {
     cleanup();
+    vi.restoreAllMocks();
     vi.clearAllMocks();
     vi.unstubAllGlobals();
 });
@@ -95,7 +96,7 @@ it.each(["v2node", "v2box"])(
             ),
         ).toBeNull();
         fireEvent.change(name, { target: { value: "Updated node" } });
-        fireEvent.click(screen.getByRole("button", { name: "保存" }));
+        fireEvent.click(screen.getByRole("button", { name: "保存节点配置" }));
         await waitFor(() =>
             expect(api.request).toHaveBeenCalledWith(
                 `test-admin/server/${backend}/save`,
@@ -205,11 +206,15 @@ it.each(["v2node", "v2box"])(
         render(<Nodes />);
         fireEvent.click(await screen.findByRole("button", { name: "编辑" }));
         await screen.findByDisplayValue("Convert node");
+        fireEvent.click(screen.getByRole("button", { name: "转换节点类型…" }));
+        vi.spyOn(window, "confirm").mockReturnValue(true);
         fireEvent.change(screen.getByLabelText("节点类型"), {
             target: { value: target },
         });
         await screen.findByDisplayValue("Convert node");
-        fireEvent.click(await screen.findByRole("button", { name: "保存" }));
+        fireEvent.click(
+            await screen.findByRole("button", { name: "确认转换并保存" }),
+        );
         await waitFor(() =>
             expect(api.request).toHaveBeenCalledWith(
                 `test-admin/server/${target}/save`,
@@ -293,7 +298,7 @@ it("saves an AnyTLS preset through the real node form", async () => {
         await screen.findByRole("combobox", { name: /AnyTLS 填充预设/ }),
         { target: { value: "light" } },
     );
-    fireEvent.click(screen.getByRole("button", { name: "保存" }));
+    fireEvent.click(screen.getByRole("button", { name: "保存节点配置" }));
     await waitFor(() =>
         expect(api.request).toHaveBeenCalledWith(
             "test-admin/server/v2box/save",
@@ -371,9 +376,15 @@ it("manages Lightsail and traffic in peer pages without an outer dialog", async 
     fireEvent.click(screen.getByRole("button", { name: "Lightsail IP" }));
     expect(await screen.findByText("Lightsail 公网 IP 管理")).toBeTruthy();
     expect(screen.queryByRole("dialog")).toBeNull();
-    expect(screen.getByRole("button", { name: "Lightsail IP" }).getAttribute("aria-pressed")).toBe("true");
+    expect(
+        screen
+            .getByRole("button", { name: "Lightsail IP" })
+            .getAttribute("aria-pressed"),
+    ).toBe("true");
     fireEvent.click(screen.getByRole("button", { name: "服务器流量" }));
-    expect(await screen.findByRole("button", { name: "添加服务器额度" })).toBeTruthy();
+    expect(
+        await screen.findByRole("button", { name: "添加服务器额度" }),
+    ).toBeTruthy();
     expect(screen.queryByText("Lightsail 公网 IP 管理")).toBeNull();
     expect(screen.queryByRole("dialog")).toBeNull();
     fireEvent.click(screen.getByRole("button", { name: "节点列表" }));

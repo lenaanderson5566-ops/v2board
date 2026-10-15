@@ -164,83 +164,42 @@ class StatController extends Controller
 
     public function getUserTodayRank()
     {
-        $startAt = strtotime(date('Y-m-d'));
-        $endAt = time();
-        $statistics = StatUser::select([
-            'user_id',
-            'server_rate',
-            'u',
-            'd',
-            DB::raw('(u+d) as total')
-        ])
-            ->where('record_at', '>=', $startAt)
-            ->where('record_at', '<', $endAt)
-            ->where('record_type', 'd')
-            ->limit(30)
-            ->orderBy('total', 'DESC')
-            ->get()
-            ->toArray();
-        $data = [];
-        $idIndexMap = [];
-        $emails = User::whereIn('id', array_column($statistics, 'user_id'))->pluck('email', 'id');
-        foreach ($statistics as $k => $v) {
-            $id = $statistics[$k]['user_id'];
-            $statistics[$k]['email'] = $emails->get($id);
-            $statistics[$k]['total'] = $statistics[$k]['total'] * $statistics[$k]['server_rate'] / 1073741824;
-            if (isset($idIndexMap[$id])) {
-                $index = $idIndexMap[$id];
-                $data[$index]['total'] += $statistics[$k]['total'];
-            } else {
-                unset($statistics[$k]['server_rate']);
-                $data[] = $statistics[$k];
-                $idIndexMap[$id] = count($data) - 1;
-            }
-        }
-        array_multisort(array_column($data, 'total'), SORT_DESC, $data);
-        return [
-            'data' => array_slice($data, 0, 15)
-        ];
+        return $this->userRank(strtotime(date('Y-m-d')), time());
     }
 
     public function getUserLastRank()
     {
-        $startAt = strtotime('-1 day', strtotime(date('Y-m-d')));
         $endAt = strtotime(date('Y-m-d'));
+        return $this->userRank(strtotime('-1 day', $endAt), $endAt);
+    }
+
+    private function userRank(int $startAt, int $endAt): array
+    {
+        // Aggregate all rate buckets before limiting; a busy user can have many rows.
         $statistics = StatUser::select([
             'user_id',
-            'server_rate',
-            'u',
-            'd',
-            DB::raw('(u+d) as total')
+            DB::raw('SUM(u) as u'),
+            DB::raw('SUM(d) as d'),
+            DB::raw('SUM((u + d) * server_rate) as total'),
         ])
             ->where('record_at', '>=', $startAt)
             ->where('record_at', '<', $endAt)
             ->where('record_type', 'd')
-            ->limit(30)
+            ->groupBy('user_id')
             ->orderBy('total', 'DESC')
+            ->orderBy('user_id')
+            ->limit(15)
             ->get()
             ->toArray();
-        $data = [];
-        $idIndexMap = [];
         $emails = User::whereIn('id', array_column($statistics, 'user_id'))->pluck('email', 'id');
-        foreach ($statistics as $k => $v) {
-            $id = $statistics[$k]['user_id'];
-            $statistics[$k]['email'] = $emails->get($id);
-            $statistics[$k]['total'] = $statistics[$k]['total'] * $statistics[$k]['server_rate'] / 1073741824;
-            if (isset($idIndexMap[$id])) {
-
-                $index = $idIndexMap[$id];
-                $data[$index]['total'] += $statistics[$k]['total'];
-            } else {
-                unset($statistics[$k]['server_rate']);
-                $data[] = $statistics[$k];
-                $idIndexMap[$id] = count($data) - 1;
-            }
+        foreach ($statistics as &$row) {
+            $row['email'] = $emails->get($row['user_id']);
+            $row['u'] = (int) $row['u'];
+            $row['d'] = (int) $row['d'];
+            $row['total'] = $row['total'] / 1073741824;
         }
-        array_multisort(array_column($data, 'total'), SORT_DESC, $data);
-        return [
-            'data' => array_slice($data, 0, 15)
-        ];
+        unset($row);
+        return ['data' => $statistics];
     }
 
     public function getStatUser(Request $request)
@@ -248,8 +207,8 @@ class StatController extends Controller
         $request->validate([
             'user_id' => 'required|integer'
         ]);
-        $current = $request->input('current') ? $request->input('current') : 1;
-        $pageSize = $request->input('pageSize') >= 10 ? $request->input('pageSize') : 10;
+        $current = max(1, (int) $request->input('current', 1));
+        $pageSize = min(100, max(10, (int) $request->input('pageSize', 10)));
         $builder = StatUser::orderBy('record_at', 'DESC')->where('user_id', $request->input('user_id'));
 
         $total = $builder->count();

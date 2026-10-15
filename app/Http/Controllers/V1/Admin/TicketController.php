@@ -34,8 +34,8 @@ class TicketController extends Controller
                 'data' => $ticket
             ]);
         }
-        $current = $request->input('current') ? $request->input('current') : 1;
-        $pageSize = $request->input('pageSize') >= 10 ? $request->input('pageSize') : 10;
+        $current = max(1, (int) $request->input('current', 1));
+        $pageSize = min(100, max(10, (int) $request->input('pageSize', 10)));
         $model = Ticket::orderBy('updated_at', 'DESC');
         if ($request->input('status') !== NULL) {
             $model->where('status', $request->input('status'));

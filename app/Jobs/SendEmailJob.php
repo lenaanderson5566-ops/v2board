@@ -164,7 +164,8 @@ class SendEmailJob implements ShouldQueue
         $log=MailDeliveryLog::begin($this->params['email'],$this->params['template_name'] ?? '',in_array($provider,['smtp','mailgun','ses','resend'],true) ? $provider:'unknown',$announcement ? 'announcement':'transactional');
         $this->linkInvitation($log);
         MailDeliveryLog::finish($log,'skipped',$code,null,0);
-        return ['skipped'=>true,'reason'=>$code,'log_id'=>$log->id];
+        // Keep the job result compatible with the late transport-time block check.
+        return ['skipped'=>true,'reason'=>$code === 'MAIL_MANUALLY_BLOCKED' ? 'manual_blocklist' : $code,'log_id'=>$log->id];
     }
 
 }

@@ -760,6 +760,9 @@
       ],
       "clientKind": [
         "client_kind"
+      ],
+      "countryCode": [
+        "country_code"
       ]
     },
     "resetCredit": {

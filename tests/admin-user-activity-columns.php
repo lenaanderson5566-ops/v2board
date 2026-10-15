@@ -49,3 +49,15 @@ $assert($data[1]['last_subscribe_at'] === 180 && $data[2]['last_subscribe_at'] =
 $assert(count(array_filter(DB::getQueryLog(), fn ($query) => str_contains($query['query'], 'v2_subscribe_log'))) === 1);
 $assert(count(array_filter(DB::getQueryLog(), fn ($query) => str_contains($query['query'], 'v2_user_online_snapshot'))) === 1);
 echo "User activity columns: identity, timestamps, source filtering and batched lookup passed\n";
+
+for ($id = 4; $id <= 113; $id++) {
+    DB::table('v2_user')->insert(['id'=>$id,'email'=>'page'.$id.'@example.test','invite_user_id'=>null,'t'=>0,'last_login_at'=>0]);
+}
+foreach ([[1000, -2, 100, 1], [1, 1, 10, 1], [20, 2, 20, 21]] as [$size, $page, $expectedCount, $firstId]) {
+    $request = UserFetch::create('/', 'GET', ['sort'=>'id','sort_type'=>'ASC','pageSize'=>$size,'current'=>$page]);
+    $request->setContainer(app())->setRedirector(app('redirect'));
+    $result = json_decode((new UserController())->fetch($request)->getContent(), true);
+    $assert($result['total'] === 113 && count($result['data']) === $expectedCount);
+    $assert($result['data'][0]['id'] === $firstId);
+}
+echo "User pagination: bounded size, negative page and page offsets passed\n";

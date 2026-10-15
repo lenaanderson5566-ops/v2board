@@ -34,7 +34,8 @@ vi.mock("../shared/api", () => ({
         path + "?" + new URLSearchParams(params),
     date: () => "date",
 }));
-vi.mock("../shared/ui", () => ({
+vi.mock("../shared/ui", async (importOriginal) => ({
+    ...(await importOriginal<typeof import("../shared/ui")>()),
     useData: (path: string) => ({
         data: path === "user/info" ? { ticket_creation: mocks.policy } : path.includes("id=")
             ? (mocks.detail || { subject: "现有工单", status: 1, message: [] })

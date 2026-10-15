@@ -154,9 +154,13 @@ it("defaults to activity times and toggles optional user columns", async () => {
     ).toBeTruthy();
     for (const name of ["佣金", "权限组", "设备数"]) {
         expect(screen.queryByRole("columnheader", { name })).toBeNull();
+        fireEvent.click(screen.getByRole("button", { name: "显示设置" }));
         fireEvent.click(screen.getByRole("button", { name, pressed: false }));
+        fireEvent.click(screen.getByRole("button", { name: "完成" }));
         expect(screen.getByRole("columnheader", { name })).toBeTruthy();
+        fireEvent.click(screen.getByRole("button", { name: "显示设置" }));
         fireEvent.click(screen.getByRole("button", { name, pressed: true }));
+        fireEvent.click(screen.getByRole("button", { name: "完成" }));
         expect(screen.queryByRole("columnheader", { name })).toBeNull();
     }
 });
@@ -254,7 +258,9 @@ it("loads translations from subscription management and supports old links", asy
     ).toBeTruthy();
 });
 it("consolidates settings and monitoring navigation", () => {
-    expect(legacyAdminMenu.find(([key]) => key === "mail-blocklist")?.[1]).toBe("邮件禁发名单");
+    expect(legacyAdminMenu.find(([key]) => key === "mail-blocklist")?.[1]).toBe(
+        "邮件禁发名单",
+    );
     for (const key of ["system", "risk-settings", "translations"])
         expect(legacyAdminMenu.some(([item]) => String(item) === key)).toBe(
             false,
@@ -334,6 +340,7 @@ it("makes every user column selectable and orders the activity times", async () 
         "last_subscribe_at",
     );
     render(<UsersPage />);
+    fireEvent.click(screen.getByRole("button", { name: "显示设置" }));
     const picker = screen.getByLabelText("可选显示列");
     for (const [, label] of resources.users.columns)
         expect(
@@ -356,6 +363,7 @@ it("restores saved user columns and can reset defaults", () => {
         }),
     );
     const view = render(<UsersPage />);
+    fireEvent.click(screen.getByRole("button", { name: "显示设置" }));
     const picker = screen.getByLabelText("可选显示列");
     expect(
         within(picker)

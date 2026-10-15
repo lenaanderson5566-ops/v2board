@@ -51,6 +51,29 @@ class GeoIpService
         return $result;
     }
 
+    public function sessionCountry(?string $ip): ?string
+    {
+        if (!$ip || !filter_var($ip, FILTER_VALIDATE_IP) || $this->isPrivateIp($ip)) return null;
+        foreach (['country','city'] as $type) {
+            try {
+                $reader=$this->getReader($type);
+                if (!$reader) continue;
+                $record=$type==='country' ? $reader->country($ip) : $reader->city($ip);
+                $code=strtoupper((string)$record->country->isoCode);
+                if (preg_match('/^[A-Z]{2}$/D',$code)) return $code;
+            } catch (\Throwable $ignored) { /* GeoIP must not prevent session management. */ }
+        }
+        return null;
+    }
+
+    public static function maskSessionIp(?string $ip): ?string
+    {
+        if (!$ip || !filter_var($ip,FILTER_VALIDATE_IP)) return null;
+        if (filter_var($ip,FILTER_VALIDATE_IP,FILTER_FLAG_IPV4)) return substr($ip,0,strrpos($ip,'.')).'.***';
+        $hex=bin2hex(inet_pton($ip));
+        return implode(':',array_map(fn($part)=>dechex(hexdec($part)),str_split(substr($hex,0,12),4))).':****:****:****:****:****';
+    }
+
     private function getReader(string $type): ?Reader
     {
         if (array_key_exists($type, self::$readers)) {

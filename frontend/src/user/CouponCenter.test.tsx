@@ -91,11 +91,26 @@ it("retains an offer after failure so it can be retried", async () => {
     );
     expect(mocks.reload).not.toHaveBeenCalled();
 });
-it("offers an activity entry when wallet is empty", () => {
+it("offers an activity entry when wallet is empty and offers exist", () => {
+    mocks.offers = [coupon];
     render(<MyCoupons />);
     expect(
         screen.getByRole("link", { name: "前往活动中心" }).getAttribute("href"),
     ).toBe("#/activities");
+});
+it("hides the activity entry when no offers exist and avoids repeating the page title", () => {
+    render(<MyCoupons />);
+    expect(screen.queryByRole("link", { name: "前往活动中心" })).toBeNull();
+    expect(screen.getByRole("link", { name: "购买订阅" })).toBeTruthy();
+    expect(screen.queryByRole("heading", { name: "我的优惠券" })).toBeNull();
+});
+it("distinguishes an empty category from an empty wallet", () => {
+    mocks.wallet = [{ ...coupon, name: "Expired", status: "expired" }];
+    render(<MyCoupons />);
+    expect(screen.getByRole("heading", { name: "当前分类暂无优惠券" })).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "已过期" }));
+    expect(screen.getByRole("heading", { name: "Expired" })).toBeTruthy();
+    expect(screen.queryByRole("link", { name: "选择套餐使用" })).toBeNull();
 });
 it("only available wallet entries have a purchase link", () => {
     mocks.wallet = [
@@ -107,7 +122,10 @@ it("only available wallet entries have a purchase link", () => {
     expect(screen.getAllByRole("link", { name: "选择套餐使用" })).toHaveLength(
         1,
     );
-    expect(screen.getByText("已过期")).toBeTruthy();
-    expect(screen.getByText("已占用或使用")).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "已过期" }));
+    expect(screen.getByRole("heading", { name: "Expired" })).toBeTruthy();
+    expect(screen.queryByRole("link", { name: "选择套餐使用" })).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "已占用或使用" }));
+    expect(screen.getByRole("heading", { name: "Used" })).toBeTruthy();
     expect(mocks.request).not.toHaveBeenCalled();
 });

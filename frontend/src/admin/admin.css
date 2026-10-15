@@ -671,25 +671,24 @@ body[data-console="admin"] .user-toolbar {
 body[data-console="admin"] .user-toolbar .muted {
     flex-basis: 100%;
 }
-body[data-console="admin"] .user-display-options {
-    position: relative;
+body[data-console="admin"] .user-display-panel > .actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin: 16px 0;
 }
-body[data-console="admin"] .user-display-options > summary {
-    cursor: pointer;
-    color: var(--admin-text);
-    padding: 4px 12px;
-    border: 1px solid #cbd5e1;
-    border-radius: 6px;
+body[data-console="admin"] .user-display-panel [aria-label="可选显示列"] {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
 }
-body[data-console="admin"] .user-display-options > .actions {
-    position: absolute;
-    z-index: 20;
-    top: 100%;
-    right: 0;
-    width: 320px;
-    padding: 16px;
-    background: #fff;
-    box-shadow: 0 2px 8px #00000026;
+body[data-console="admin"] .user-display-panel [aria-pressed="true"] {
+    background: #e6f4ff;
+    color: #096dd9;
+    border-color: #91caff;
+}
+body[data-console="admin"] .user-display-panel button {
+    white-space: normal;
+    min-height: 36px;
 }
 body[data-console="admin"] .users-page > .panel .table-scroll th:last-child,
 body[data-console="admin"] .users-page > .panel .table-scroll td:last-child {
@@ -976,11 +975,13 @@ body[data-console="admin"] .alert {
     }
     body[data-console="admin"] #sidebar {
         transform: translateX(-100%);
+        visibility: hidden;
         width: 80%;
         transition: transform 0.2s;
     }
     body[data-console="admin"] .admin-nav-open #sidebar {
         transform: translateX(0);
+        visibility: visible;
     }
     body[data-console="admin"] #page-header {
         left: 0;

@@ -4,6 +4,10 @@ if (!app()->environment('local')) throw new RuntimeException('Local test only');
 $checks = 0;
 set_exception_handler(function ($e) { fwrite(STDERR, $e->getMessage()."\n"); exit(1); });
 $assert = \Tests\Support\Assertions::counter($checks);
+$assert(App\Services\GeoIpService::maskSessionIp('203.0.113.47') === '203.0.113.***', 'IPv4 must be masked');
+$assert(App\Services\GeoIpService::maskSessionIp('2001:db8:1234:5678::1') === '2001:db8:1234:****:****:****:****:****', 'IPv6 must be masked');
+$assert(App\Services\GeoIpService::maskSessionIp('invalid') === null, 'Malformed IP should not be echoed');
+$assert(app(App\Services\GeoIpService::class)->sessionCountry('127.0.0.1') === null, 'Private IP has no public location');
 Illuminate\Support\Facades\DB::beginTransaction();
 $auth = null; $cacheTokens = []; $limitKey = null;
 $originalConfig = config('v2board');
@@ -35,6 +39,10 @@ try {
         return $kernel->handle($request);
     };
     $sessions = json_decode($call('me/sessions',$first)->getContent(),true)['data'];
+    foreach ($sessions as $session) {
+        $assert(array_key_exists('countryCode', $session), 'Session location contract missing');
+        $assert(!filter_var($session['ip'] ?? '', FILTER_VALIDATE_IP), 'Session API leaked an unmasked IP');
+    }
     $assert(count($sessions)===2 && count(array_filter($sessions,fn($meta)=>isset($meta['auth_data'])))===0, 'Session list leaked login tokens');
     $assert(count(array_filter($sessions,fn($meta)=>$meta['current'] ?? false))===1, 'Current session must be identified exactly once');
     $assert(count(array_filter($sessions,fn($meta)=>($meta['clientKind'] ?? null)==='native'))===2, 'Native session type missing');

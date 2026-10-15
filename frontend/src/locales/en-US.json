@@ -551,5 +551,18 @@
   "退出全部会话": "Sign out all sessions",
   "确认退出全部会话": "Confirm sign out of all sessions",
   "管理登录验证、设备会话与订阅凭据。": "Manage login verification, device sessions, and subscription credentials.",
-  "所有已登录的浏览器和 App 都需要重新登录，包括当前会话。订阅链接不变，已建立的代理连接不会因此立即断开。": "All signed-in browsers and apps, including this session, will need to sign in again. Subscription links remain unchanged; existing proxy connections are not immediately disconnected."
+  "所有已登录的浏览器和 App 都需要重新登录，包括当前会话。订阅链接不变，已建立的代理连接不会因此立即断开。": "All signed-in browsers and apps, including this session, will need to sign in again. Subscription links remain unchanged; existing proxy connections are not immediately disconnected.",
+  "位置未知": "Unknown location",
+  "登录位置": "Login location",
+  "位置根据登录 IP 估算，可能显示代理出口所在地。": "Location is estimated from the login IP and may show a proxy exit location.",
+  "查询": "Search",
+  "首页": "First page",
+  "末页": "Last page",
+  "当前分类暂无优惠券": "No coupons in this category",
+  "分页": "Pagination",
+  "重置": "Reset",
+  "共 {{total}} 页": "{{total}} pages",
+  "每页": "Per page",
+  "每页显示行数": "Rows per page",
+  "安全中心": "Security center"
 }

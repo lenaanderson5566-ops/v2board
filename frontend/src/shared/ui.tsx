@@ -24,6 +24,8 @@ import { renderMarkdown } from "./markdown";
 import { moveItem } from "./array-items";
 import { inputValue, apiValue } from "./field-values";
 const ModalClose = createContext<(() => void) | undefined>(undefined);
+const modalStack: HTMLElement[] = [];
+let restoreModalPage: (() => void) | undefined;
 import {
     X,
     Inbox,
@@ -63,6 +65,8 @@ export function useData<T = Row>(
     useTranslation();
     const language = locale();
     const serializedBody = body ? JSON.stringify(body) : undefined;
+    const queryKey = JSON.stringify([path, serializedBody, language, allPages]);
+    const [resultKey, setResultKey] = useState(queryKey);
     const [meta, setMeta] = useState<Row | undefined>();
     const [data, setData] = useState<T | null>(null),
         [error, setError] = useState(""),
@@ -71,10 +75,18 @@ export function useData<T = Row>(
         [total, setTotal] = useState(0);
     useEffect(() => {
         let live = true;
+        setResultKey(queryKey);
+        if (resultKey !== queryKey) {
+            setData(null);
+            setTotal(0);
+            setMeta(undefined);
+        }
         if (!path) {
             setLoading(false);
             setData(null);
             setError("");
+            setTotal(0);
+            setMeta(undefined);
             return;
         }
         setLoading(true);
@@ -133,11 +145,11 @@ export function useData<T = Row>(
         };
     }, [path, refreshOnEvents]);
     return {
-        data,
-        error,
-        loading,
-        total,
-        meta,
+        data: path && resultKey === queryKey ? data : null,
+        error: path && resultKey === queryKey ? error : "",
+        loading: !!path && (resultKey !== queryKey || loading),
+        total: path && resultKey === queryKey ? total : 0,
+        meta: path && resultKey === queryKey ? meta : undefined,
         reload: () => setVersion((v) => v + 1),
     };
 }
@@ -167,7 +179,7 @@ export function State({
         );
     if (loading)
         return (
-            <div className="state">
+            <div className="state" role="status" aria-live="polite">
                 <span className="spinner" />
                 {tx("正在加载…")}
             </div>
@@ -208,7 +220,7 @@ export function Panel({
         <section className={`panel ${className}`}>
             {(title || actions) && (
                 <div className="panel-head">
-                    <h2>{title}</h2>
+                    {title ? <h2>{title}</h2> : <span />}
                     <div className="actions">{actions}</div>
                 </div>
             )}
@@ -242,23 +254,38 @@ export function Modal({
     dismissibleRef.current = dismissible;
     useEffect(() => {
         const previous = document.activeElement as HTMLElement | null;
-        const previousOverflow = document.body.style.overflow;
-        document.body.style.overflow = "hidden";
-        const root = document.getElementById("root");
-        const previousInert = root?.inert;
-        if (root) root.inert = true;
+        const element = dialog.current!;
+        if (!modalStack.length) {
+            const previousOverflow = document.body.style.overflow;
+            const root = document.getElementById("root");
+            const previousInert = root?.inert;
+            document.body.style.overflow = "hidden";
+            if (root) root.inert = true;
+            restoreModalPage = () => {
+                document.body.style.overflow = previousOverflow;
+                if (root) root.inert = previousInert || false;
+            };
+        }
+        modalStack.forEach((modal) => {
+            modal.inert = true;
+        });
+        modalStack.push(element);
         const preferred = initialFocus
             ? dialog.current?.querySelector<HTMLElement>(initialFocus)
             : null;
         (
             preferred ||
             dialog.current?.querySelector<HTMLElement>(
-                "button, input, select, textarea, a[href]",
-            )
+                "button:not(:disabled), input:not(:disabled), select:not(:disabled), textarea:not(:disabled), a[href]",
+            ) ||
+            element
         )?.focus();
         const fn = (e: KeyboardEvent) => {
-            if (e.key === "Escape" && dismissibleRef.current)
+            if (modalStack.at(-1) !== element) return;
+            if (e.key === "Escape" && dismissibleRef.current) {
+                e.preventDefault();
                 closeRef.current();
+            }
             if (e.key === "Tab") {
                 const items = [
                     ...(dialog.current?.querySelectorAll<HTMLElement>(
@@ -267,7 +294,14 @@ export function Modal({
                 ];
                 const first = items[0],
                     last = items.at(-1);
-                if (e.shiftKey && document.activeElement === first) {
+                if (!first) {
+                    e.preventDefault();
+                    element.focus();
+                } else if (
+                    e.shiftKey &&
+                    (document.activeElement === first ||
+                        document.activeElement === element)
+                ) {
                     e.preventDefault();
                     last?.focus();
                 } else if (!e.shiftKey && document.activeElement === last) {
@@ -279,9 +313,20 @@ export function Modal({
         document.addEventListener("keydown", fn);
         return () => {
             document.removeEventListener("keydown", fn);
-            document.body.style.overflow = previousOverflow;
-            if (root) root.inert = previousInert || false;
-            previous?.focus();
+            const wasTop = modalStack.at(-1) === element;
+            const index = modalStack.indexOf(element);
+            if (index >= 0) modalStack.splice(index, 1);
+            const top = modalStack.at(-1);
+            if (top) top.inert = false;
+            else {
+                restoreModalPage?.();
+                restoreModalPage = undefined;
+            }
+            if (wasTop) {
+                if (previous?.isConnected && (!top || top.contains(previous)))
+                    previous.focus();
+                else top?.focus();
+            }
         };
     }, []);
     return createPortal(
@@ -306,6 +351,7 @@ export function Modal({
                 className="modal"
                 ref={dialog}
                 role="dialog"
+                tabIndex={-1}
                 aria-modal="true"
                 aria-label={title}
             >
@@ -447,6 +493,7 @@ export function Editor({
         [busy, setBusy] = useState(false),
         [saved, setSaved] = useState(false),
         [revealed, setRevealed] = useState<Record<string, boolean>>({});
+    const submitting = useRef(false);
     const activeFields = (
         resolveFields ? resolveFields(fields, value) : fields
     ).map((field) =>
@@ -497,7 +544,8 @@ export function Editor({
     }
     async function save(e: React.FormEvent) {
         e.preventDefault();
-        if (busy) return;
+        if (submitting.current) return;
+        submitting.current = true;
         setError("");
         setSaved(false);
         setBusy(true);
@@ -561,6 +609,7 @@ export function Editor({
         } catch (e) {
             setError((e as Error).message);
         } finally {
+            submitting.current = false;
             setBusy(false);
             onBusyChange?.(false);
         }
@@ -1098,6 +1147,7 @@ export function Table({
                             >
                                 {sort?.fields.includes(k) && onSort ? (
                                     <button
+                                        type="button"
                                         className="table-sort"
                                         onClick={() =>
                                             onSort(

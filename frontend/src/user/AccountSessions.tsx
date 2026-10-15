@@ -1,7 +1,8 @@
+import { LogOut } from "lucide-react";
 import { useRef, useState } from "react";
 import { request, date, clearReadCache, type Row } from "../shared/api";
 import { forgetBrowserSession } from "../shared/browser-session";
-import { tx } from "../shared/i18n";
+import { tx, locale } from "../shared/i18n";
 import { Modal, State, Table, useData } from "../shared/ui";
 export function AccountSessions() {
     const [allOpen, setAllOpen] = useState(false);
@@ -77,6 +78,9 @@ export function AccountSessions() {
                         "这里展示账号登录会话，不代表代理在线设备。同一设备可能有多个登录会话。",
                     )}
                 </p>
+                <p className="muted">
+                    {tx("位置根据登录 IP 估算，可能显示代理出口所在地。")}
+                </p>
                 <State {...sessions}>
                     <Table
                         data={Object.entries(sessions.data || {})
@@ -87,7 +91,19 @@ export function AccountSessions() {
                             )
                             .map(([id, value]) => ({ ...value, id }))}
                         columns={[
-                            ["ip", tx("IP 地址")],
+                            [
+                                "ip",
+                                tx("登录位置"),
+                                (r) => (
+                                    <span>
+                                        <strong>
+                                            {sessionCountry(r.country_code)}
+                                        </strong>
+                                        <br />
+                                        <small dir="ltr">{r.ip || "—"}</small>
+                                    </span>
+                                ),
+                            ],
                             [
                                 "ua",
                                 tx("客户端"),
@@ -113,13 +129,16 @@ export function AccountSessions() {
                         ]}
                         actions={(r) => (
                             <button
+                                className="icon-button session-signout"
+                                aria-label={tx("退出登录")}
+                                title={tx("退出登录")}
                                 disabled={removing !== null}
                                 onClick={() => {
                                     setError("");
                                     setSelected(r);
                                 }}
                             >
-                                {tx("退出登录")}
+                                <LogOut size={20} aria-hidden="true" />
                             </button>
                         )}
                     />
@@ -229,4 +248,21 @@ function deviceName(value: unknown): string {
                 ? "Linux"
                 : "";
     return [app || browser, os].filter(Boolean).join(" / ") || tx("未知设备");
+}
+
+function sessionCountry(value: unknown): string {
+    const code = typeof value === "string" ? value.toUpperCase() : "";
+    if (!/^[A-Z]{2}$/.test(code)) return tx("位置未知");
+    for (const language of [locale(), "en-US"]) {
+        try {
+            const name = new Intl.DisplayNames([language], {
+                type: "region",
+                fallback: "none",
+            }).of(code);
+            if (name) return name;
+        } catch {
+            /* Older browsers fall back to the country code. */
+        }
+    }
+    return code;
 }

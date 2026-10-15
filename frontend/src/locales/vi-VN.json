@@ -549,5 +549,18 @@
   "退出全部会话": "Đăng xuất mọi phiên",
   "确认退出全部会话": "Xác nhận đăng xuất mọi phiên",
   "管理登录验证、设备会话与订阅凭据。": "Quản lý xác minh đăng nhập, phiên thiết bị và thông tin xác thực đăng ký.",
-  "所有已登录的浏览器和 App 都需要重新登录，包括当前会话。订阅链接不变，已建立的代理连接不会因此立即断开。": "Mọi trình duyệt và ứng dụng đã đăng nhập, gồm phiên hiện tại, cần đăng nhập lại. Liên kết đăng ký không đổi; kết nối proxy hiện có không bị ngắt ngay."
+  "所有已登录的浏览器和 App 都需要重新登录，包括当前会话。订阅链接不变，已建立的代理连接不会因此立即断开。": "Mọi trình duyệt và ứng dụng đã đăng nhập, gồm phiên hiện tại, cần đăng nhập lại. Liên kết đăng ký không đổi; kết nối proxy hiện có không bị ngắt ngay.",
+  "位置未知": "Không rõ vị trí",
+  "登录位置": "Vị trí đăng nhập",
+  "位置根据登录 IP 估算，可能显示代理出口所在地。": "Vị trí được ước tính từ IP đăng nhập và có thể là vị trí đầu ra của proxy.",
+  "查询": "Tìm kiếm",
+  "首页": "Trang đầu",
+  "末页": "Trang cuối",
+  "当前分类暂无优惠券": "Chưa có phiếu giảm giá trong mục này",
+  "分页": "Phân trang",
+  "重置": "Đặt lại",
+  "共 {{total}} 页": "{{total}} trang",
+  "每页": "Mỗi trang",
+  "每页显示行数": "Số dòng mỗi trang",
+  "安全中心": "Trung tâm bảo mật"
 }

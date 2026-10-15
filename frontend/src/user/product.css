@@ -1977,3 +1977,5 @@ body[data-console="user"] .client-family-header p {
 .account-security .security-maintenance>.settings-section:first-child {border-top:0;padding-top:0;}
 .account-security .security-password-card form {max-width:480px;}
 @media(max-width:600px){.account-page-heading {align-items:flex-start;gap:12px;}.account-page-heading h2 {font-size:20px;}}
+
+.session-signout {min-width:44px;min-height:44px;display:inline-flex;align-items:center;justify-content:center;}

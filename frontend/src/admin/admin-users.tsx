@@ -69,6 +69,7 @@ export function UsersPage() {
         }),
         [email, setEmail] = useState(""),
         [showFilters, setShowFilters] = useState(false),
+        [showDisplay, setShowDisplay] = useState(false),
         [total, setTotal] = useState(0),
         [revision, setRevision] = useState(0),
         [error, setError] = useState(""),
@@ -136,28 +137,16 @@ export function UsersPage() {
     }
     return (
         <div className="users-page">
-            <ResourcePage
-                key={JSON.stringify({ params, pageSize, revision })}
-                resource={resources.users}
-                hiddenColumns={resources.users.columns
-                    .map(([key]) => key)
-                    .filter((key) => !optionalColumns.includes(key))}
-                queryParams={params}
-                pageSize={pageSize}
-                onPageSizeChange={setPageSize}
-                searchable={false}
-                onTotal={setTotal}
-                tableSort={{
-                    key: sort,
-                    direction,
-                    fields: userSortFields.map(([key]) => key),
-                }}
-                onTableSort={(key, next) => {
-                    setSort(key);
-                    setDirection(next);
-                }}
-                toolbar={
-                    <div className="pad user-toolbar">
+            {showDisplay && (
+                <Modal
+                    title="用户显示设置"
+                    variant="modal"
+                    close={() => setShowDisplay(false)}
+                >
+                    <div className="pad user-display-panel">
+                        <p className="muted">
+                            选择需要查看的信息。设置自动保存，仅影响当前浏览器。
+                        </p>
                         <div className="actions" aria-label="可选显示列">
                             <span>显示列：</span>
                             <button
@@ -193,6 +182,69 @@ export function UsersPage() {
                         <p className="muted">
                             上次连接为节点最近上报活动的时间，未上报显示为空，不代表当前在线。
                         </p>
+                        <div className="actions">
+                            <label>
+                                排序字段{" "}
+                                <select
+                                    aria-label="用户排序字段"
+                                    value={sort}
+                                    onChange={(e) => setSort(e.target.value)}
+                                >
+                                    {userSortFields.map(([value, label]) => (
+                                        <option key={value} value={value}>
+                                            {label}
+                                        </option>
+                                    ))}
+                                </select>
+                            </label>
+                            <label>
+                                顺序{" "}
+                                <select
+                                    aria-label="用户排序方向"
+                                    value={direction}
+                                    onChange={(e) =>
+                                        setDirection(e.target.value)
+                                    }
+                                >
+                                    <option value="DESC">降序</option>
+                                    <option value="ASC">升序</option>
+                                </select>
+                            </label>
+                        </div>
+                        <div className="actions">
+                            <button
+                                className="primary"
+                                type="button"
+                                onClick={() => setShowDisplay(false)}
+                            >
+                                完成
+                            </button>
+                        </div>
+                    </div>
+                </Modal>
+            )}
+            <ResourcePage
+                key={JSON.stringify({ params, pageSize, revision })}
+                resource={resources.users}
+                hiddenColumns={resources.users.columns
+                    .map(([key]) => key)
+                    .filter((key) => !optionalColumns.includes(key))}
+                queryParams={params}
+                pageSize={pageSize}
+                onPageSizeChange={setPageSize}
+                searchable={false}
+                onTotal={setTotal}
+                tableSort={{
+                    key: sort,
+                    direction,
+                    fields: userSortFields.map(([key]) => key),
+                }}
+                onTableSort={(key, next) => {
+                    setSort(key);
+                    setDirection(next);
+                }}
+                toolbar={
+                    <div className="pad user-toolbar">
                         <form
                             className="actions"
                             onSubmit={(e) => {
@@ -294,46 +346,13 @@ export function UsersPage() {
                                 生成用户
                             </button>
                         </div>
-                        <details className="user-display-options">
-                            <summary>显示设置</summary>
-                            <div className="actions">
-                                <label>
-                                    排序字段{" "}
-                                    <select
-                                        aria-label="用户排序字段"
-                                        value={sort}
-                                        onChange={(e) =>
-                                            setSort(e.target.value)
-                                        }
-                                    >
-                                        {userSortFields.map(
-                                            ([value, label]) => (
-                                                <option
-                                                    key={value}
-                                                    value={value}
-                                                >
-                                                    {label}
-                                                </option>
-                                            ),
-                                        )}
-                                    </select>
-                                </label>
-                                <label>
-                                    顺序{" "}
-                                    <select
-                                        aria-label="用户排序方向"
-                                        value={direction}
-                                        onChange={(e) =>
-                                            setDirection(e.target.value)
-                                        }
-                                    >
-                                        <option value="DESC">降序</option>
-                                        <option value="ASC">升序</option>
-                                    </select>
-                                </label>
+                        <button
+                            type="button"
+                            onClick={() => setShowDisplay(true)}
+                        >
+                            显示设置
+                        </button>
 
-                            </div>
-                        </details>
                         <p className="muted">
                             {filters.length
                                 ? `当前筛选结果 ${total} 名用户；导出和批量操作使用全部匹配结果，不限当前页。`
@@ -520,10 +539,16 @@ function BulkUsers({
     operation: { kind: string; filters: UserFilter[]; count: number };
     onComplete: () => void;
 }) {
-    const mailRequestKey=useRef(crypto.randomUUID());
+    const mailRequestKey = useRef(crypto.randomUUID());
     const [confirmed, setConfirmed] = useState(false);
-    const [purpose,setPurpose]=useState("service"),[audience,setAudience]=useState<Row|null>(null),[previewError,setPreviewError]=useState(""),[previewBusy,setPreviewBusy]=useState(false);
-    useEffect(()=>{setAudience(null);setConfirmed(false);},[purpose]);
+    const [purpose, setPurpose] = useState("service"),
+        [audience, setAudience] = useState<Row | null>(null),
+        [previewError, setPreviewError] = useState(""),
+        [previewBusy, setPreviewBusy] = useState(false);
+    useEffect(() => {
+        setAudience(null);
+        setConfirmed(false);
+    }, [purpose]);
     const endpoint =
         operation.kind === "mail"
             ? admin("user/sendMail")
@@ -543,7 +568,61 @@ function BulkUsers({
                       ? "账户将被封禁，已有登录会话会被注销。"
                       : "必要服务通知仅用于维护、故障及影响现有服务的调整；优惠与推广请选择活动与推广。所有用途都遵守退信和投诉停发规则。"}
             </p>
-            {operation.kind === "mail" && <div className="pad"><label>邮件用途<select disabled={previewBusy} value={purpose} onChange={e=>setPurpose(e.target.value)}><option value="service">必要服务通知</option><option value="marketing">活动与推广（需用户订阅）</option></select></label><button type="button" disabled={previewBusy} onClick={async()=>{setPreviewBusy(true);setPreviewError("");setConfirmed(false);try{const r=await request(admin("user/previewMailAudience"),{purpose,filter:operation.filters,expected_count:operation.count});setAudience(r.data);}catch(e){setPreviewError((e as Error).message);}finally{setPreviewBusy(false);}}}>检查收件范围</button>{previewError && <p role="alert">{previewError}</p>}{audience && <p>预计发送 {audience.eligible} 人；未订阅推广 {audience.not_subscribed} 人，人工禁发 {audience.manual_blocklist || 0} 人，退信或投诉停发 {audience.suppressed} 人，禁用 {audience.account_disabled} 人。实际发送前还会重新检查。记录可在「邮件日志 → 群发记录」查看。</p>}</div>}
+            {operation.kind === "mail" && (
+                <div className="pad">
+                    <label>
+                        邮件用途
+                        <select
+                            disabled={previewBusy}
+                            value={purpose}
+                            onChange={(e) => setPurpose(e.target.value)}
+                        >
+                            <option value="service">必要服务通知</option>
+                            <option value="marketing">
+                                活动与推广（需用户订阅）
+                            </option>
+                        </select>
+                    </label>
+                    <button
+                        type="button"
+                        disabled={previewBusy}
+                        onClick={async () => {
+                            setPreviewBusy(true);
+                            setPreviewError("");
+                            setConfirmed(false);
+                            try {
+                                const r = await request(
+                                    admin("user/previewMailAudience"),
+                                    {
+                                        purpose,
+                                        filter: operation.filters,
+                                        expected_count: operation.count,
+                                    },
+                                );
+                                setAudience(r.data);
+                            } catch (e) {
+                                setPreviewError((e as Error).message);
+                            } finally {
+                                setPreviewBusy(false);
+                            }
+                        }}
+                    >
+                        检查收件范围
+                    </button>
+                    {previewError && <p role="alert">{previewError}</p>}
+                    {audience && (
+                        <p>
+                            预计发送 {audience.eligible} 人；未订阅推广{" "}
+                            {audience.not_subscribed} 人，人工禁发{" "}
+                            {audience.manual_blocklist || 0} 人，退信或投诉停发{" "}
+                            {audience.suppressed} 人，禁用{" "}
+                            {audience.account_disabled}{" "}
+                            人。实际发送前还会重新检查。记录可在「邮件日志 →
+                            群发记录」查看。
+                        </p>
+                    )}
+                </div>
+            )}
             <label>
                 <input
                     type="checkbox"
@@ -559,7 +638,7 @@ function BulkUsers({
                         await request(endpoint, {
                             ...body,
                             purpose,
-                            request_key:mailRequestKey.current,
+                            request_key: mailRequestKey.current,
                             filter: operation.filters,
                             expected_count: operation.count,
                         });
@@ -615,9 +694,21 @@ export function AssignOrder({
     error: string;
 }) {
     const [trade, setTrade] = useState("");
-    const eligible = plans.map(p=>row.currency === "USD" ? {...p,...Object.fromEntries(periods.map(([key])=>[key,p.usd_prices?.[key] ?? null]))} : p).filter((p) =>
-        periods.some(([key]) => p[key] != null),
-    );
+    const eligible = plans
+        .map((p) =>
+            row.currency === "USD"
+                ? {
+                      ...p,
+                      ...Object.fromEntries(
+                          periods.map(([key]) => [
+                              key,
+                              p.usd_prices?.[key] ?? null,
+                          ]),
+                      ),
+                  }
+                : p,
+        )
+        .filter((p) => periods.some(([key]) => p[key] != null));
     const first = eligible.find((p) => p.id === row.plan_id) || eligible[0];
     const period = periods.find(([key]) => first?.[key] != null)?.[0];
     return (
@@ -746,7 +837,7 @@ export function AssignOrder({
     );
 }
 function UserOrders({ row }: { row: Row }) {
-    const [pageSize,setPageSize]=useState(10);
+    const [pageSize, setPageSize] = useState(10);
     const [page, setPage] = useState(1),
         [selected, setSelected] = useState<Row | null>(null);
     const d = useData<Row[]>(
@@ -768,7 +859,11 @@ function UserOrders({ row }: { row: Row }) {
                     columns={[
                         ["trade_no", "订单号"],
                         ["plan_name", "套餐"],
-                        ["total_amount", "金额", (r) => money(r.total_amount,r.currency)],
+                        [
+                            "total_amount",
+                            "金额",
+                            (r) => money(r.total_amount, r.currency),
+                        ],
                         [
                             "status",
                             "状态",
@@ -792,7 +887,10 @@ function UserOrders({ row }: { row: Row }) {
                     total={d.total}
                     size={pageSize}
                     loading={d.loading}
-                    onSizeChange={size=>{setPageSize(size);setPage(1);}}
+                    onSizeChange={(size) => {
+                        setPageSize(size);
+                        setPage(1);
+                    }}
                     onChange={setPage}
                 />
             </State>
@@ -809,17 +907,18 @@ function UserOrders({ row }: { row: Row }) {
                                 [
                                     "total_amount",
                                     "订单金额",
-                                    (r) => money(r.total_amount,r.currency),
+                                    (r) => money(r.total_amount, r.currency),
                                 ],
                                 [
                                     "balance_amount",
                                     "余额抵扣",
-                                    (r) => money(r.balance_amount,r.currency),
+                                    (r) => money(r.balance_amount, r.currency),
                                 ],
                                 [
                                     "commission_balance",
                                     "佣金",
-                                    (r) => money(r.commission_balance,r.currency),
+                                    (r) =>
+                                        money(r.commission_balance, r.currency),
                                 ],
                                 ["paid_at", "付款时间", (r) => date(r.paid_at)],
                             ]}
@@ -840,7 +939,7 @@ function UserOrders({ row }: { row: Row }) {
                                 [
                                     "get_amount",
                                     "金额",
-                                    (r) => money(r.get_amount,r.currency),
+                                    (r) => money(r.get_amount, r.currency),
                                 ],
                                 [
                                     "created_at",
@@ -856,7 +955,7 @@ function UserOrders({ row }: { row: Row }) {
     );
 }
 function UserTraffic({ row }: { row: Row }) {
-    const [pageSize,setPageSize]=useState(10);
+    const [pageSize, setPageSize] = useState(10);
     const [page, setPage] = useState(1);
     const d = useData<Row[]>(
         query(admin("stat/getStatUser"), {
@@ -882,7 +981,10 @@ function UserTraffic({ row }: { row: Row }) {
                     total={d.total}
                     size={pageSize}
                     loading={d.loading}
-                    onSizeChange={size=>{setPageSize(size);setPage(1);}}
+                    onSizeChange={(size) => {
+                        setPageSize(size);
+                        setPage(1);
+                    }}
                     onChange={setPage}
                 />
             </State>

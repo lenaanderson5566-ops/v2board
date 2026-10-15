@@ -2,15 +2,30 @@
 import { afterEach, expect, it, vi } from "vitest";
 import { act, cleanup, renderHook, waitFor } from "@testing-library/react";
 const read = vi.hoisted(() => vi.fn());
-vi.mock("./api", () => ({ boot: { mode: "user" }, readRequest: read, request: vi.fn() }));
-vi.mock("./i18n", () => ({ default: { addResourceBundle: vi.fn() }, tx: (s: string) => s, locale: () => "zh-CN" }));
+vi.mock("./api", () => ({
+    boot: { mode: "user" },
+    readRequest: read,
+    request: vi.fn(),
+}));
+vi.mock("./i18n", () => ({
+    default: { addResourceBundle: vi.fn() },
+    tx: (s: string) => s,
+    locale: () => "zh-CN",
+}));
 vi.mock("react-i18next", () => ({ useTranslation: () => ({}) }));
 vi.mock("./browser-session", () => ({ browserSessionKey: () => "test" }));
 import { useData } from "./ui";
-afterEach(() => { cleanup(); read.mockReset(); });
+afterEach(() => {
+    cleanup();
+    read.mockReset();
+});
 it("keeps payment methods stable during redirect events but allows manual retry", async () => {
     read.mockResolvedValue({ data: [{ id: 1 }] });
-    const { result } = renderHook(() => useData("user/order/getPaymentMethod", undefined, false, { refreshOnEvents: false }));
+    const { result } = renderHook(() =>
+        useData("user/order/getPaymentMethod", undefined, false, {
+            refreshOnEvents: false,
+        }),
+    );
     await waitFor(() => expect(result.current.loading).toBe(false));
     act(() => {
         window.dispatchEvent(new Event("data-changed"));
@@ -28,4 +43,56 @@ it("preserves automatic refresh for other data", async () => {
     act(() => window.dispatchEvent(new Event("data-changed")));
     await waitFor(() => expect(read).toHaveBeenCalledTimes(2));
 });
-
+it("clears old rows on query changes and ignores a late refresh", async () => {
+    let old!: (value: any) => void;
+    let next!: (value: any) => void;
+    read.mockResolvedValueOnce({
+        data: ["first"],
+        total: 40,
+        meta: { page: 1 },
+    })
+        .mockImplementationOnce(
+            () =>
+                new Promise((resolve) => {
+                    old = resolve;
+                }),
+        )
+        .mockImplementationOnce(
+            () =>
+                new Promise((resolve) => {
+                    next = resolve;
+                }),
+        );
+    const { result, rerender } = renderHook(
+        ({ page }) => useData("items", { page }),
+        { initialProps: { page: 1 } },
+    );
+    await waitFor(() => expect(result.current.data).toEqual(["first"]));
+    act(() => result.current.reload());
+    expect(result.current.data).toEqual(["first"]);
+    rerender({ page: 2 });
+    expect(result.current).toMatchObject({
+        data: null,
+        total: 0,
+        meta: undefined,
+    });
+    await act(async () => old({ data: ["stale"], total: 40 }));
+    expect(result.current.data).toBeNull();
+    await act(async () => next({ data: ["second"], total: 1 }));
+    expect(result.current.data).toEqual(["second"]);
+});
+it("clears data and pagination when a conditional request is disabled", async () => {
+    read.mockResolvedValue({ data: [1], total: 9, meta: { page: 1 } });
+    const { result, rerender } = renderHook(({ path }) => useData(path), {
+        initialProps: { path: "items" },
+    });
+    await waitFor(() => expect(result.current.total).toBe(9));
+    rerender({ path: "" });
+    expect(result.current).toMatchObject({
+        data: null,
+        total: 0,
+        loading: false,
+        error: "",
+        meta: undefined,
+    });
+});

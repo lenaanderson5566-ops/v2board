@@ -17014,9 +17014,11 @@
         "type": "object",
         "properties": {
           "ip": {
+            "description": "Masked login IP; IPv4 last octet and IPv6 trailing 80 bits are omitted.",
             "type": "string",
             "nullable": true
           },
+          "countryCode": {"type":"string","nullable":true,"description":"ISO 3166-1 alpha-2 login country, null when unavailable"},
           "loginAt": {
             "type": "string",
             "format": "date-time",

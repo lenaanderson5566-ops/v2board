@@ -41,7 +41,6 @@ export function ActivityCenter() {
             <div className="coupon-center-intro">
                 <Gift size={24} aria-hidden="true" />
                 <div>
-                    <h2>{tx("活动中心")}</h2>
                     <p>
                         {tx("先了解活动并领取优惠券，购买套餐时再选择使用。")}
                     </p>
@@ -139,7 +138,6 @@ export function MyCoupons() {
             <div className="coupon-center-intro">
                 <TicketPercent size={24} aria-hidden="true" />
                 <div>
-                    <h2>{tx("我的优惠券")}</h2>
                     <p>
                         {tx(
                             "领取和管理员发放的优惠券都在这里，结算时选择使用。",
@@ -186,7 +184,7 @@ export function MyCoupons() {
                 {!visible.length && (
                     <div className="coupon-center-empty">
                         <TicketPercent size={34} aria-hidden="true" />
-                        <h3>{tx("暂无优惠券")}</h3>
+                        <h3>{tx(rows.length ? "当前分类暂无优惠券" : "暂无优惠券")}</h3>
                         {activities.hasActivities ? (
                             <a href="#/activities">{tx("前往活动中心")}</a>
                         ) : (

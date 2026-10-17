@@ -35,9 +35,6 @@ export function AnalyticsPrivacy() {
     const [expanded, setExpanded] = useState(false);
     const detailsId = useId();
     const [error, setError] = useState(false);
-    const [chosenAt, setChosenAt] = useState<number | null>(
-        () => privacyChoice()?.chosenAt ?? null,
-    );
     const region = useRef<HTMLElement>(null);
     const [height, setHeight] = useState(0);
     useEffect(() => {
@@ -120,7 +117,7 @@ export function AnalyticsPrivacy() {
         const sync = (event: StorageEvent) => {
             if (event.key !== privacyKey && event.key !== null) return;
             const choice = privacyChoice();
-            setChosenAt(choice?.chosenAt ?? null);
+
             setCollection(
                 !!current.current?.enabled &&
                     !!choice &&
@@ -144,7 +141,7 @@ export function AnalyticsPrivacy() {
             configuration?.retentionDays ?? 30,
         );
         setError(!stored);
-        setChosenAt(stored ? (privacyChoice()?.chosenAt ?? null) : null);
+
         setCollection(
             stored && configuration?.enabled === true && value === "allow",
         );
@@ -192,12 +189,6 @@ export function AnalyticsPrivacy() {
                                     {e("analyticsRetention")}{" "}
                                     {configuration.retentionDays}{" "}
                                     {e("analyticsDays")}
-                                </p>
-                            )}
-                            {chosenAt && (
-                                <p>
-                                    {e("analyticsChosenAt")}{" "}
-                                    {new Date(chosenAt).toLocaleString()}
                                 </p>
                             )}
                         </details>

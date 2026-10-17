@@ -1,6 +1,6 @@
 # 用户语言偏好
 
-账户语言存储在 `v2_user.language`，可空的 varchar(10)，支持 zh-CN、zh-TW、en-US、ja-JP、ko-KR、vi-VN、ru-RU、fa-IR、es-ES、pt-BR。
+账户语言存储在 `v2_user.language`，可空的 varchar(10)，支持 zh-CN、zh-TW、en-US、ja-JP、ko-KR、vi-VN、ru-RU、fa-IR、es-ES、pt-BR、fr-FR、de-DE、id-ID、th-TH。
 
 - 未登录：本地选择优先于浏览器自动识别；主动切换标记只在当前浏览器会话保留。
 - 注册：保存当前界面语言。
@@ -14,3 +14,5 @@
 通知邮件和 Telegram 优先使用账户语言；邮件默认语言、公告和套餐翻译选项支持同一语言集合。自定义套餐名称、描述和公告需由管理员提供翻译，缺少翻译时保留原文。新增语言包按需加载，不批量修改已有账户偏好。
 
 验证：frontend npm test / npm run build；隔离副本中的 `php tests/run.php --only=api-v10,product-mail,client-import-language,node-display,content-translations,plan-translations,banners`；bash tests/update-script.sh。
+
+新增法语（fr-FR）、德语（de-DE）、印尼语（id-ID）和泰语（th-TH）后，共支持 14 种语言。English 固定在首位，其余按语言代码稳定排列，显示语言本名。所有新增前端资源均独立按需加载；后端错误、邮件、Telegram、安全验证、退订与订阅提示均有对应资源。无需新增数据库迁移。套餐和公告的管理员自定义内容仍需单独提供翻译。

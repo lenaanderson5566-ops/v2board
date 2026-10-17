@@ -112,10 +112,12 @@ export function UserStatusGate({
     logout,
     support,
     onStatus,
+    fallbackFooter,
 }: {
     children: ReactNode;
     logout: () => void;
     support: ReactNode;
+    fallbackFooter?: ReactNode;
     onStatus?: (user: import("../shared/api").Row) => void;
 }) {
     const info = useData("user/info");
@@ -143,18 +145,24 @@ export function UserStatusGate({
     }, [info.data]);
     if (!info.data)
         return (
-            <State {...info} retry={info.reload}>
-                <></>
-            </State>
+            <div className="access-page">
+                <State {...info} retry={info.reload}>
+                    <></>
+                </State>
+                {fallbackFooter}
+            </div>
         );
     if (info.data?.account_status?.state === "banned")
         return (
-            <div className="suspended-page">
-                <AccountEntry
-                    state="banned"
-                    onBack={logout}
-                    support={support}
-                />
+            <div className="access-page">
+                <div className="suspended-page">
+                    <AccountEntry
+                        state="banned"
+                        onBack={logout}
+                        support={support}
+                    />
+                </div>
+                {fallbackFooter}
             </div>
         );
     return children;

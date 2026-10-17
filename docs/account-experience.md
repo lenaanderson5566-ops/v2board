@@ -25,3 +25,9 @@ New accounts keep **Choose a plan / Documentation**. Configuration is useful aft
 Apply `database/migrations/2026_10_08_000001_add_service_notifications.php` before serving the new code, then restart queue workers. The approved updater includes the migration; the installation SQL also includes the field. A Git pull alone does not apply database changes.
 
 Relevant checks: `tests/service-notifications.php`, `tests/product-mail.php`, `tests/api-v10.php`, `tests/update-script.sh`, frontend GiftCardRedemption/UsageBilling/Notifications/AccountControls/AccountSessions/AccountEntry tests and production build. Mail tests use fakes and never send real messages.
+
+## 隐私偏好入口
+
+- 访问统计偏好使用共享入口：落地页并入现有页脚，登录及授权页使用紧凑页脚，已登录页面置于主内容区页脚；移除独立通栏及固定 90px 留白。
+- 账户设置保留普通设置行作为辅助入口。匿名、账户受限和内嵌浏览器提示页面仍可访问偏好；移动端沿用主内容区的底部导航安全间距。
+- 页脚采用低强调文本按钮，保留盾牌图标、44px 点击高度和键盘焦点。首次确认横幅、拒绝和撤回机制、采集范围及本地偏好有效期保持原有规则。

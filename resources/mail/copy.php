@@ -520,6 +520,214 @@ return json_decode(<<<'JSON'
       "Renovação concluída",
       "Seu serviço foi renovado e o vencimento atualizado. Confira os detalhes da assinatura em Cobrança."
     ]
+  },
+  "fr-FR": {
+    "verify": [
+      "Vérifiez votre adresse e-mail",
+      "Entrez le code ci-dessous pour vérifier votre adresse e-mail. Il expire 5 minutes après votre demande. Ne partagez ce code avec personne."
+    ],
+    "mailLogin": [
+      "Connectez-vous à votre compte",
+      "Utilisez le bouton ci-dessous pour vous connecter. Ce lien ne peut être utilisé qu'une seule fois et expire 5 minutes après votre demande. Ne le transmettez pas."
+    ],
+    "remindTraffic": [
+      "Les allocations de votre forfait sont faibles",
+      "Vous avez utilisé plus de 95 % de l'allocation de votre régime. Vérifiez votre allocation restante et la date de réinitialisation. Des crédits supplémentaires sont disponibles si nécessaire."
+    ],
+    "remindExpire": [
+      "Votre abonnement se termine dans les 24 heures",
+      "Vérifiez votre date d'expiration et renouvelez-la si nécessaire. Les crédits indépendants achetés ne sont pas concernés par l'expiration de l'abonnement et conservent leur propre durée de validité."
+    ],
+    "notify": [
+      "Mise à jour du compte",
+      "Vous avez une notification de nouveau compte."
+    ],
+    "emailInvitation": [
+      "Vous avez reçu une invitation",
+      "Vous avez été invité à utiliser ce service. Utilisez le bouton ci-dessous pour créer un compte. La page d'inscription confirme si l'invitation est toujours valable."
+    ],
+    "ticketReply": [
+      "Nouvelle réponse à votre demande d'assistance",
+      "Notre équipe d'assistance a répondu à votre ticket. Connectez-vous pour afficher la réponse complète et poursuivre la conversation dans le centre d'aide."
+    ],
+    "test": [
+      "Test de livraison des emails",
+      "Cet e-mail de test vous aide à vérifier vos paramètres de livraison et l'apparence de votre e-mail."
+    ],
+    "action": "Espace de travail ouvert",
+    "footer": "Il s'agit d'un e-mail automatisé. Pour obtenir de l’aide, visitez le centre d’aide. Répondre à cet e-mail ne crée pas de demande d'assistance.",
+    "ignore": "Si vous n'avez pas fait cette demande ou si vous n'attendiez pas cette invitation, vous pouvez ignorer cet e-mail.",
+    "inviteAction": "Accepter l'invitation",
+    "loginAction": "Connectez-vous",
+    "securityIgnore": "Si vous n'avez pas fait cette demande, vous pouvez ignorer cet e-mail.",
+    "usageAction": "Afficher l'utilisation",
+    "billingAction": "Gérer l'abonnement",
+    "supportAction": "Afficher la réponse",
+    "ticketReference": "Ticket d’assistance",
+    "serviceActivated": [
+      "Votre service est prêt",
+      "Votre service a été activé avec succès. Connectez-vous pour afficher les détails de votre service et commencer."
+    ],
+    "serviceRenewed": [
+      "Renouvellement terminé",
+      "Votre service a été renouvelé et sa date d'expiration mise à jour. Consultez la facturation pour connaître les derniers détails de votre abonnement."
+    ]
+  },
+  "de-DE": {
+    "verify": [
+      "Bestätigen Sie Ihre E-Mail-Adresse",
+      "Geben Sie den folgenden Code ein, um Ihre E-Mail-Adresse zu bestätigen. Er läuft 5 Minuten nach Ihrer Anfrage ab. Geben Sie diesen Code an niemanden weiter."
+    ],
+    "mailLogin": [
+      "Bei Ihrem Konto anmelden",
+      "Melden Sie sich über die Schaltfläche an. Dieser Link kann nur einmal verwendet werden und läuft 5 Minuten nach Ihrer Anfrage ab. Leiten Sie ihn nicht weiter."
+    ],
+    "remindTraffic": [
+      "Ihr Datenkontingent wird knapp",
+      "Sie haben mehr als 95 % Ihres Tarifkontingents verbraucht. Prüfen Sie das Restkontingent und das Datum der Zurücksetzung. Bei Bedarf können Sie zusätzliche Daten-Credits kaufen."
+    ],
+    "remindExpire": [
+      "Ihr Abonnement endet innerhalb von 24 Stunden",
+      "Prüfen Sie das Ablaufdatum und verlängern Sie bei Bedarf. Gekaufte unabhängige Daten-Credits behalten auch nach Ablauf des Abonnements ihre eigene Gültigkeitsdauer."
+    ],
+    "notify": [
+      "Kontomitteilung",
+      "Sie haben eine neue Kontomitteilung."
+    ],
+    "emailInvitation": [
+      "Sie haben eine Einladung erhalten",
+      "Sie wurden eingeladen, diesen Dienst zu nutzen. Erstellen Sie Ihr Konto über die Schaltfläche. Die Registrierungsseite prüft, ob die Einladung noch gültig ist."
+    ],
+    "ticketReply": [
+      "Neue Antwort auf Ihre Supportanfrage",
+      "Unser Support hat auf Ihr Ticket geantwortet. Melden Sie sich an, um die vollständige Antwort anzuzeigen und das Gespräch im Hilfecenter fortzusetzen."
+    ],
+    "test": [
+      "Test der E-Mail-Zustellung",
+      "Mit dieser Test-E-Mail können Sie Ihre Versandeinstellungen und die Darstellung prüfen."
+    ],
+    "action": "Arbeitsbereich öffnen",
+    "footer": "Dies ist eine automatische E-Mail. Hilfe finden Sie im Hilfecenter. Eine Antwort auf diese E-Mail erstellt keine Supportanfrage.",
+    "ignore": "Wenn Sie diese Anfrage nicht gestellt oder diese Einladung nicht erwartet haben, können Sie diese E-Mail ignorieren.",
+    "inviteAction": "Einladung annehmen",
+    "loginAction": "Anmelden",
+    "securityIgnore": "Wenn Sie diese Anfrage nicht gestellt haben, können Sie diese E-Mail ignorieren.",
+    "usageAction": "Nutzung anzeigen",
+    "billingAction": "Abonnement verwalten",
+    "supportAction": "Antwort anzeigen",
+    "ticketReference": "Support-Ticket",
+    "serviceActivated": [
+      "Ihr Dienst ist bereit",
+      "Ihr Dienst wurde erfolgreich aktiviert. Melden Sie sich an, um die Details anzuzeigen und zu beginnen."
+    ],
+    "serviceRenewed": [
+      "Verlängerung abgeschlossen",
+      "Ihr Dienst wurde verlängert und das Ablaufdatum aktualisiert. Die aktuellen Abonnementdetails finden Sie unter Abrechnung."
+    ]
+  },
+  "id-ID": {
+    "verify": [
+      "Verifikasi alamat email Anda",
+      "Masukkan kode di bawah ini untuk memverifikasi alamat email Anda. Masa berlakunya habis 5 menit setelah permintaan Anda. Jangan bagikan kode ini kepada siapa pun."
+    ],
+    "mailLogin": [
+      "Masuk ke akun Anda",
+      "Gunakan tombol di bawah untuk masuk. Tautan ini dapat digunakan satu kali dan kedaluwarsa 5 menit setelah permintaan Anda. Jangan meneruskannya."
+    ],
+    "remindTraffic": [
+      "kuota paketmu hampir habis",
+      "Anda telah menggunakan lebih dari 95% kuota paket Anda. Periksa sisa uang saku Anda dan tanggal reset. Kredit tambahan tersedia jika diperlukan."
+    ],
+    "remindExpire": [
+      "Langganan Anda berakhir dalam waktu 24 jam",
+      "Tinjau tanggal kedaluwarsa Anda dan perbarui jika diperlukan. Kredit independen yang dibeli tidak terpengaruh oleh berakhirnya langganan dan tetap memiliki masa berlakunya sendiri."
+    ],
+    "notify": [
+      "Pembaruan akun",
+      "Anda mendapat notifikasi akun baru."
+    ],
+    "emailInvitation": [
+      "Anda telah menerima undangan",
+      "Anda telah diundang untuk menggunakan layanan ini. Gunakan tombol di bawah untuk membuat akun. Halaman pendaftaran mengkonfirmasi apakah undangan masih berlaku."
+    ],
+    "ticketReply": [
+      "Balasan baru untuk permintaan dukungan Anda",
+      "Tim dukungan kami telah membalas tiket Anda. Masuk untuk melihat balasan lengkap dan melanjutkan percakapan di pusat bantuan."
+    ],
+    "test": [
+      "Tes pengiriman email",
+      "Email percobaan ini membantu Anda memeriksa pengaturan pengiriman dan tampilan email Anda."
+    ],
+    "action": "Buka ruang kerja",
+    "footer": "Ini adalah email otomatis. Untuk bantuan, kunjungi pusat bantuan. Membalas email ini tidak membuat permintaan dukungan.",
+    "ignore": "Jika Anda tidak membuat permintaan ini atau mengharapkan undangan ini, Anda dapat mengabaikan email ini.",
+    "inviteAction": "Terima undangan",
+    "loginAction": "Masuk",
+    "securityIgnore": "Jika Anda tidak membuat permintaan ini, Anda dapat mengabaikan email ini.",
+    "usageAction": "Lihat penggunaan",
+    "billingAction": "Kelola langganan",
+    "supportAction": "Lihat balasan",
+    "ticketReference": "Tiket dukungan",
+    "serviceActivated": [
+      "Layanan Anda sudah siap",
+      "Layanan Anda telah berhasil diaktifkan. Masuk untuk melihat detail layanan Anda dan memulai."
+    ],
+    "serviceRenewed": [
+      "Pembaruan selesai",
+      "Layanan Anda telah diperbarui dan tanggal habis masa berlakunya diperbarui. Lihat penagihan untuk detail langganan terbaru Anda."
+    ]
+  },
+  "th-TH": {
+    "verify": [
+      "ยืนยันที่อยู่อีเมลของคุณ",
+      "กรอกรหัสด้านล่างเพื่อยืนยันที่อยู่อีเมลของคุณ จะหมดอายุภายใน 5 นาทีหลังจากที่คุณร้องขอ อย่าแชร์รหัสนี้กับใคร"
+    ],
+    "mailLogin": [
+      "ลงชื่อเข้าใช้บัญชีของคุณ",
+      "ใช้ปุ่มด้านล่างเพื่อลงชื่อเข้าใช้ ลิงก์นี้สามารถใช้ได้เพียงครั้งเดียวและจะหมดอายุใน 5 นาทีหลังจากที่คุณร้องขอ อย่าส่งต่อมัน"
+    ],
+    "remindTraffic": [
+      "โควตาแพ็กเกจของคุณเหลือน้อยแล้ว",
+      "คุณได้ใช้เงินเผื่อแพ็กเกจของคุณไปแล้วมากกว่า 95% ตรวจสอบโควตาคงเหลือของคุณและวันที่รีเซ็ต มีเครดิตเพิ่มเติมหากจำเป็น"
+    ],
+    "remindExpire": [
+      "การสมัครของคุณจะสิ้นสุดภายใน 24 ชั่วโมง",
+      "ตรวจสอบวันหมดอายุของคุณและต่ออายุหากจำเป็น เครดิตอิสระที่ซื้อจะไม่ได้รับผลกระทบจากการหมดอายุการสมัครสมาชิกและยังคงรักษาระยะเวลาที่ถูกต้องไว้"
+    ],
+    "notify": [
+      "อัปเดตบัญชี",
+      "คุณมีการแจ้งเตือนเกี่ยวกับบัญชีใหม่"
+    ],
+    "emailInvitation": [
+      "คุณได้รับคำเชิญ",
+      "คุณได้รับเชิญให้ใช้บริการนี้ ใช้ปุ่มด้านล่างเพื่อสร้างบัญชี หน้าลงทะเบียนยืนยันว่าคำเชิญยังคงใช้ได้อยู่หรือไม่"
+    ],
+    "ticketReply": [
+      "ตอบกลับคำขอการสนับสนุนของคุณใหม่",
+      "ทีมสนับสนุนของเราตอบกลับคำร้องของคุณแล้ว ลงชื่อเข้าใช้เพื่อดูการตอบกลับแบบเต็มและสนทนาต่อในศูนย์ช่วยเหลือ"
+    ],
+    "test": [
+      "การทดสอบการส่งอีเมล",
+      "อีเมลทดสอบนี้ช่วยคุณตรวจสอบการตั้งค่าการจัดส่งและลักษณะที่ปรากฏของอีเมล"
+    ],
+    "action": "เปิดพื้นที่ทำงาน",
+    "footer": "นี่คืออีเมลอัตโนมัติ หากต้องการความช่วยเหลือ โปรดไปที่ศูนย์ช่วยเหลือ การตอบกลับอีเมลนี้ไม่ได้สร้างคำขอการสนับสนุน",
+    "ignore": "หากคุณไม่ได้ส่งคำขอนี้หรือคาดหวังคำเชิญนี้ คุณสามารถเพิกเฉยต่ออีเมลฉบับนี้ได้",
+    "inviteAction": "ตอบรับคำเชิญ",
+    "loginAction": "เข้าสู่ระบบ",
+    "securityIgnore": "หากคุณไม่ได้ส่งคำขอนี้ คุณสามารถเพิกเฉยต่ออีเมลฉบับนี้ได้",
+    "usageAction": "ดูการใช้งาน",
+    "billingAction": "จัดการการสมัครสมาชิก",
+    "supportAction": "ดูการตอบกลับ",
+    "ticketReference": "คำร้องขอความช่วยเหลือ",
+    "serviceActivated": [
+      "บริการของคุณพร้อมแล้ว",
+      "บริการของคุณเปิดใช้งานเรียบร้อยแล้ว ลงชื่อเข้าใช้เพื่อดูรายละเอียดบริการของคุณและเริ่มต้นใช้งาน"
+    ],
+    "serviceRenewed": [
+      "การต่ออายุเสร็จสมบูรณ์",
+      "บริการของคุณได้รับการต่ออายุและอัปเดตวันหมดอายุแล้ว ดูการเรียกเก็บเงินสำหรับรายละเอียดการสมัครล่าสุดของคุณ"
+    ]
   }
 }
 JSON, true);

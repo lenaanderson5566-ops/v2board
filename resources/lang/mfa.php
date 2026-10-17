@@ -16,4 +16,20 @@ return [
         'title' => 'Verificação de segurança atualizada',
         'body' => 'As configurações de segurança mudaram e todas as sessões foram encerradas. Se não foi você, contate o suporte imediatamente e proteja seu e-mail.',
     ],
+    'fr-FR' => [
+        'title' => 'Vérification de sécurité mise à jour',
+        'body' => 'Vos paramètres de vérification de sécurité ont changé et toutes les sessions ont été déconnectées. Si vous n’êtes pas à l’origine de ce changement, contactez immédiatement l’assistance et sécurisez votre messagerie.',
+    ],
+    'de-DE' => [
+        'title' => 'Sicherheitsprüfung aktualisiert',
+        'body' => 'Ihre Einstellungen zur Sicherheitsprüfung wurden geändert und alle Sitzungen abgemeldet. Falls Sie dies nicht veranlasst haben, kontaktieren Sie sofort den Support und sichern Sie Ihr E-Mail-Konto.',
+    ],
+    'id-ID' => [
+        'title' => 'Verifikasi keamanan diperbarui',
+        'body' => 'Pengaturan verifikasi keamanan Anda berubah dan semua sesi telah keluar. Jika bukan Anda yang melakukannya, segera hubungi dukungan dan amankan akun email Anda.',
+    ],
+    'th-TH' => [
+        'title' => 'อัปเดตการยืนยันความปลอดภัยแล้ว',
+        'body' => 'การตั้งค่าการยืนยันความปลอดภัยของคุณเปลี่ยนไปและทุกเซสชันออกจากระบบแล้ว หากคุณไม่ได้ดำเนินการ โปรดติดต่อฝ่ายสนับสนุนทันทีและรักษาความปลอดภัยบัญชีอีเมลของคุณ',
+    ],
 ];

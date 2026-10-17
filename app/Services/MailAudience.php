@@ -33,7 +33,7 @@ class MailAudience
     {
         $user=User::where('email',$email)->firstOrFail();
         $origin=self::origin();
-        $labels=['zh-CN'=>'退订推广邮件','zh-TW'=>'取消訂閱推廣郵件','en-US'=>'Unsubscribe from marketing emails','ja-JP'=>'販促メールの配信停止','ko-KR'=>'홍보 이메일 수신 거부','vi-VN'=>'Hủy nhận email tiếp thị','ru-RU'=>'Отписаться от рассылки','es-ES'=>'Cancelar correos promocionales','pt-BR'=>'Cancelar e-mails promocionais','fa-IR'=>'لغو اشتراک تبلیغات'];
+        $labels=['zh-CN'=>'退订推广邮件','zh-TW'=>'取消訂閱推廣郵件','en-US'=>'Unsubscribe from marketing emails','ja-JP'=>'販促メールの配信停止','ko-KR'=>'홍보 이메일 수신 거부','vi-VN'=>'Hủy nhận email tiếp thị','ru-RU'=>'Отписаться от рассылки','es-ES'=>'Cancelar correos promocionales','pt-BR'=>'Cancelar e-mails promocionais','fr-FR'=>'Se désabonner des e-mails promotionnels','de-DE'=>'Marketing-E-Mails abbestellen','id-ID'=>'Berhenti menerima email promosi','th-TH'=>'ยกเลิกการรับอีเมลส่งเสริมการขาย','fa-IR'=>'لغو اشتراک تبلیغات'];
         $data['unsubscribeUrl']=$origin.'/api/v10/mail/unsubscribe/'.self::token($user);
         $data['unsubscribeLabel']=$labels[$data['language']] ?? $labels['en-US'];
         return $data;

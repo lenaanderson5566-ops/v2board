@@ -15,7 +15,7 @@ $result=(new ContentTranslationController)->generate($request)->getOriginalConte
 $assert($result['subject']==='維護通知','Traditional subject missing');
 $assert(strpos($result['content'],'詳情')!==false,'Traditional body missing');
 $assert(Http::recorded(function($r) { return strpos($r->url(),'to=zh-Hant')!==false && count($r->data())===2; })->count()===1,'Title/body must share one bounded request');
-foreach (['es-ES'=>'es', 'pt-BR'=>'pt'] as $locale=>$providerCode) {
+foreach (['es-ES'=>'es', 'pt-BR'=>'pt', 'fr-FR'=>'fr', 'de-DE'=>'de', 'id-ID'=>'id', 'th-TH'=>'th'] as $locale=>$providerCode) {
     Http::swap(new Illuminate\Http\Client\Factory);
     Http::fake(['*'=>Http::response([['translations'=>[['text'=>'Notice']]],['translations'=>[['text'=>'Body']]]],200)]);
     $additional=Illuminate\Http\Request::create('/', 'POST', ['source'=>'en-US','locale'=>$locale,'subject'=>'Update','content'=>'Details','format'=>'html']);

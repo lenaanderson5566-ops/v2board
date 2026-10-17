@@ -110,4 +110,48 @@ Pedido: :order',
         'payment' => 'Pagamento recebido: :amount
 Pedido: :order',
     ],
+    'fr-FR' => [
+        'confirmed' => 'Telegram confirmé. Revenez aux paramètres du compte sur le site, vérifiez le compte Telegram et confirmez la liaison.',
+        'intro' => 'Ce bot gère la liaison du compte et l’accès au groupe. Utilisez les paramètres du compte sur le site pour lier, délier ou demander l’accès. Utilisez /group pour vérifier votre éligibilité. N’envoyez jamais de mots de passe, de codes ou de liens d’abonnement.',
+        'bind' => 'Connectez-vous au site et obtenez un lien à usage unique dans les paramètres du compte. N’envoyez jamais de mots de passe, de codes ou de liens d’abonnement.',
+        'unbind' => 'Connectez-vous au site et dissociez Telegram dans les paramètres du compte.',
+        'eligible' => 'Vous êtes éligible. Demandez une invitation au groupe dans les paramètres du compte sur le site. Le lien est valable 10 minutes.',
+        'ineligible' => 'Vous n’êtes pas éligible pour le moment. Vérifiez la liaison du compte et la validité du forfait sur le site. Le délai de grâce est de :days jours.',
+        'error' => 'Impossible de terminer l’action. Actualisez les paramètres du compte sur le site ou demandez un nouveau lien de liaison.',
+        'payment' => 'Paiement reçu : :amount
+Commande : :order',
+    ],
+    'de-DE' => [
+        'confirmed' => 'Telegram bestätigt. Kehren Sie zu den Kontoeinstellungen der Website zurück, prüfen Sie das Telegram-Konto und bestätigen Sie die Verknüpfung.',
+        'intro' => 'Dieser Bot verwaltet die Kontoverknüpfung und den Gruppenzugang. Verknüpfen, trennen oder beantragen Sie den Zugang in den Kontoeinstellungen der Website. Mit /group prüfen Sie Ihre Berechtigung. Senden Sie niemals Passwörter, Codes oder Abonnementlinks.',
+        'bind' => 'Melden Sie sich auf der Website an und erhalten Sie in den Kontoeinstellungen einen einmaligen Link. Senden Sie niemals Passwörter, Codes oder Abonnementlinks.',
+        'unbind' => 'Melden Sie sich auf der Website an und trennen Sie Telegram in den Kontoeinstellungen.',
+        'eligible' => 'Sie sind berechtigt. Fordern Sie in den Kontoeinstellungen der Website eine Gruppeneinladung an. Der Link gilt 10 Minuten.',
+        'ineligible' => 'Sie sind derzeit nicht berechtigt. Prüfen Sie auf der Website die Kontoverknüpfung und die Gültigkeit Ihres Tarifs. Die Kulanzfrist beträgt :days Tage.',
+        'error' => 'Die Aktion konnte nicht abgeschlossen werden. Aktualisieren Sie die Kontoeinstellungen der Website oder fordern Sie einen neuen Verknüpfungslink an.',
+        'payment' => 'Zahlung eingegangen: :amount
+Bestellung: :order',
+    ],
+    'id-ID' => [
+        'confirmed' => 'Telegram dikonfirmasi. Kembali ke pengaturan akun di situs, periksa akun Telegram, lalu konfirmasi penautan.',
+        'intro' => 'Bot ini mengelola penautan akun dan kelayakan masuk grup. Gunakan pengaturan akun di situs untuk menautkan, memutuskan, atau meminta akses. Gunakan /group untuk memeriksa kelayakan. Jangan kirim kata sandi, kode, atau tautan langganan.',
+        'bind' => 'Masuk ke situs dan dapatkan tautan sekali pakai di pengaturan akun. Jangan kirim kata sandi, kode, atau tautan langganan.',
+        'unbind' => 'Masuk ke situs dan putuskan tautan Telegram di pengaturan akun.',
+        'eligible' => 'Anda memenuhi syarat. Minta undangan grup di pengaturan akun pada situs. Tautan berlaku selama 10 menit.',
+        'ineligible' => 'Anda belum memenuhi syarat. Periksa penautan akun dan masa berlaku paket di situs. Masa tenggang adalah :days hari.',
+        'error' => 'Tindakan tidak dapat diselesaikan. Muat ulang pengaturan akun di situs atau minta tautan penautan baru.',
+        'payment' => 'Pembayaran diterima: :amount
+Pesanan: :order',
+    ],
+    'th-TH' => [
+        'confirmed' => 'ยืนยัน Telegram แล้ว โปรดกลับไปที่การตั้งค่าบัญชีบนเว็บไซต์ ตรวจสอบบัญชี Telegram และยืนยันการเชื่อมโยง',
+        'intro' => 'บอตนี้จัดการการเชื่อมโยงบัญชีและสิทธิ์เข้ากลุ่ม โปรดเชื่อมโยง ยกเลิกการเชื่อมโยง หรือขอเข้ากลุ่มผ่านการตั้งค่าบัญชีบนเว็บไซต์ ใช้ /group เพื่อตรวจสอบสิทธิ์ ห้ามส่งรหัสผ่าน รหัสยืนยัน หรือลิงก์การสมัครสมาชิก',
+        'bind' => 'เข้าสู่ระบบเว็บไซต์และรับลิงก์ใช้ครั้งเดียวในการตั้งค่าบัญชี ห้ามส่งรหัสผ่าน รหัสยืนยัน หรือลิงก์การสมัครสมาชิก',
+        'unbind' => 'เข้าสู่ระบบเว็บไซต์และยกเลิกการเชื่อมโยง Telegram ในการตั้งค่าบัญชี',
+        'eligible' => 'คุณมีสิทธิ์เข้ากลุ่ม ขอคำเชิญได้ที่การตั้งค่าบัญชีบนเว็บไซต์ ลิงก์มีอายุ 10 นาที',
+        'ineligible' => 'ขณะนี้คุณยังไม่มีสิทธิ์ โปรดตรวจสอบการเชื่อมโยงบัญชีและอายุแพ็กเกจบนเว็บไซต์ ระยะผ่อนผันคือ :days วัน',
+        'error' => 'ดำเนินการไม่สำเร็จ โปรดรีเฟรชการตั้งค่าบัญชีบนเว็บไซต์หรือขอลิงก์เชื่อมโยงใหม่',
+        'payment' => 'ได้รับการชำระเงิน: :amount
+คำสั่งซื้อ: :order',
+    ],
 ];

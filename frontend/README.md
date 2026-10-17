@@ -6,7 +6,7 @@ Laravel retains all authentication, billing, node, risk and persistence logic.
 The public `/` route displays the Studio assistant-themed landing page. The
 examples use predefined translated text and do not call a model. Account pages
 live under `/app#/dashboard`; existing `/#/…` bookmarks redirect to `/app`.
-The landing page and its metadata use neutral standalone copy in ten languages.
+The landing page and its metadata use neutral standalone copy in fourteen languages.
 Custom footer HTML remains on account pages and is excluded from the public page.
 
 Admin setting controls follow the authenticated `console/configSchema` endpoint.
@@ -69,7 +69,7 @@ Article and plan HTML is separately sanitized with DOMPurify.
 ## Languages and mobile UI
 
 The user portal includes Simplified Chinese, Traditional Chinese, English,
-Japanese, Korean, Vietnamese, Russian, Persian, Spanish and Brazilian Portuguese. `react-i18next` manages
+Japanese, Korean, Vietnamese, Russian, Persian, Spanish, Brazilian Portuguese, French, German, Indonesian and Thai. `react-i18next` manages
 reactive switching, English fallback, whole-message interpolation and plurals.
 The language picker is available before and after sign-in. A saved choice takes
 priority over browser language, and `html` language/direction follows that choice.
@@ -140,6 +140,8 @@ Use the existing component and flow tests when moving code. Update obsolete labe
 
 TypeScript also rejects unused imports, local declarations and parameters (`noUnusedLocals` / `noUnusedParameters`) as part of the normal build. Remove abandoned helpers and test their production replacements directly; keep intentional compatibility exports and dynamically referenced resources. Identical country flags and default/custom rule templates can have distinct runtime roles and must not be removed based on content hashes alone.
 
-Language selectors share `src/shared/language-options.ts`: native names in stable BCP 47 code order, independent of the selected language. The existing language icon, current language name, selected marker, keyboard navigation and RTL isolation are retained. Display ordering does not alter saved preferences or resource mapping.
+Language selectors share `src/shared/language-options.ts`: native names with English first and the other languages in stable BCP 47 code order, independent of the selected language. The existing language icon, current language name, selected marker, keyboard navigation and RTL isolation are retained. Display ordering does not alter saved preferences or resource mapping.
 
 Translation consolidation preserves existing namespace keys and message values. The two retired coupon-code entry messages were removed across all languages. Language resources are validated by the existing localization tests, not a parallel generation workflow.
+
+French, German, Indonesian and Thai are static locale catalogs. Initial drafts were assisted by an external translation service with explicit user authorization; domain terminology, critical messages and placeholders were checked locally. There is no runtime dependency on that translation service.

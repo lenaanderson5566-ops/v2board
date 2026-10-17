@@ -1,4 +1,8 @@
-import { AnalyticsPrivacy, AnalyticsPrivacyEntry } from "./AnalyticsPrivacy";
+import {
+    AnalyticsPrivacy,
+    AnalyticsPrivacyFooter,
+    PrivacyFooterLinks,
+} from "./AnalyticsPrivacy";
 import { displayTimeZone } from "../shared/timezone";
 import {
     initializeBrowserSession,
@@ -72,9 +76,6 @@ export default function App() {
     return (
         <>
             <UserApp />
-            <footer className="analytics-privacy-footer">
-                <AnalyticsPrivacyEntry />
-            </footer>
             <AnalyticsPrivacy />
         </>
     );
@@ -271,7 +272,12 @@ function UserApp() {
         };
     }, []);
     if (boot.mode === "user" && currentDevice().embedded)
-        return <EmbeddedBrowserNotice />;
+        return (
+            <div className="access-page">
+                <EmbeddedBrowserNotice />
+                <AnalyticsPrivacyFooter />
+            </div>
+        );
     if (boot.landing)
         return (
             <React.Suspense fallback={<LandingSkeleton />}>
@@ -289,7 +295,7 @@ function UserApp() {
         );
     if (!user)
         return (
-            <>
+            <div className="access-page">
                 {boot.mode === "user" && (
                     <div className="auth-language">
                         <LanguagePicker />
@@ -307,13 +313,17 @@ function UserApp() {
                     }
                     renderCaptcha={(handler) => <Captcha onChange={handler} />}
                 />
-            </>
+                <AnalyticsPrivacyFooter />
+            </div>
         );
     if (path === "client-authorize")
         return (
-            <React.Suspense fallback={<WorkspaceSkeleton full />}>
-                <ClientAuthorization user={user} />
-            </React.Suspense>
+            <div className="access-page">
+                <React.Suspense fallback={<WorkspaceSkeleton full />}>
+                    <ClientAuthorization user={user} />
+                </React.Suspense>
+                <AnalyticsPrivacyFooter />
+            </div>
         );
     const userNav = userNavigation(user.account_status?.state).map((item) => ({
         ...item,
@@ -378,6 +388,7 @@ function UserApp() {
         <UserStatusGate
             onStatus={setUser}
             logout={handleLogout}
+            fallbackFooter={<AnalyticsPrivacyFooter />}
             support={
                 <React.Suspense fallback={<WorkspaceSkeleton />}>
                     <UserContent current="ticket" path="ticket" />
@@ -500,10 +511,13 @@ function UserApp() {
                             </div>
                         )}
                         <div className="user-page-content">{content}</div>
-                        <div className="page-footer">
-                            {boot.title}{" "}
-                            <span>{tx("简洁连接，无限可能。")}</span>
-                        </div>
+                        <footer className="page-footer workspace-footer">
+                            <div className="workspace-footer-brand">
+                                {boot.title}
+                                <span>{tx("简洁连接，无限可能。")}</span>
+                            </div>
+                            <PrivacyFooterLinks />
+                        </footer>
                     </main>
                 </div>
                 {boot.mode === "user" && (

@@ -36,6 +36,10 @@ const localeLoaders: Record<string, () => Promise<{ default: Catalog }>> = {
     "fa-IR": () => import("../locales/fa-IR.json"),
     "es-ES": () => import("../locales/es-ES.json"),
     "pt-BR": () => import("../locales/pt-BR.json"),
+    "fr-FR": () => import("../locales/fr-FR.json"),
+    "de-DE": () => import("../locales/de-DE.json"),
+    "id-ID": () => import("../locales/id-ID.json"),
+    "th-TH": () => import("../locales/th-TH.json"),
 };
 async function loadCatalog(language: string): Promise<Catalog> {
     const { default: catalog } = await localeLoaders[language]();

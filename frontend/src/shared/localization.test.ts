@@ -47,7 +47,14 @@ const catalogs = Object.fromEntries(
 );
 const placeholders = (v: string) =>
     [...v.matchAll(/{{\s*(\w+)\s*}}/g)].map((m) => m[1]).sort();
-await i18n.loadLanguages(["es-ES", "pt-BR"]);
+await i18n.loadLanguages([
+    "es-ES",
+    "pt-BR",
+    "fr-FR",
+    "de-DE",
+    "id-ID",
+    "th-TH",
+]);
 describe("landing and interactive control translations", () => {
     for (const { code } of languages)
         it(`${code} provides landing and control namespaces`, () => {
@@ -80,7 +87,7 @@ describe("landing and interactive control translations", () => {
     });
 });
 describe("additional language namespaces", () => {
-    for (const code of ["es-ES", "pt-BR"])
+    for (const code of ["es-ES", "pt-BR", "fr-FR", "de-DE", "id-ID", "th-TH"])
         it(`${code} covers all user namespaces without fallback`, () => {
             const bundle = resources[code];
             for (const namespace of Object.keys(bundle).filter(
@@ -201,8 +208,8 @@ describe("localization resources", () => {
     });
     it("keeps all selectors in stable language-code order", () => {
         const codes = languages.map(({ code }) => code);
-        expect(codes).toEqual([...codes].sort());
-        expect(new Set(codes).size).toBe(10);
+        expect(codes.slice(1)).toEqual([...codes.slice(1)].sort());
+        expect(new Set(codes).size).toBe(14);
         expect(codes[0]).toBe("en-US");
         expect(codes.slice(-2)).toEqual(["zh-CN", "zh-TW"]);
     });
@@ -212,7 +219,11 @@ describe("localization resources", () => {
         expect(resolvePreferredLanguage(["es-MX"])).toBe("es-ES");
         expect(resolvePreferredLanguage(["pt-PT"])).toBe("pt-BR");
         expect(resolvePreferredLanguage(["fa-AF"])).toBe("fa-IR");
-        expect(resolvePreferredLanguage(["de-DE"])).toBe("en-US");
+        expect(resolvePreferredLanguage(["de-AT"])).toBe("de-DE");
+        expect(resolvePreferredLanguage(["fr-CA"])).toBe("fr-FR");
+        expect(resolvePreferredLanguage(["id"])).toBe("id-ID");
+        expect(resolvePreferredLanguage(["th"])).toBe("th-TH");
+        expect(resolvePreferredLanguage(["nl-NL"])).toBe("en-US");
     });
     it("persists language, updates document direction, and resolves plural forms", async () => {
         await changeLanguage("fa-IR");

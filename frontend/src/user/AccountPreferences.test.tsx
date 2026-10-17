@@ -119,3 +119,26 @@ it("persists the display zone and allows following the device again", async () =
         }),
     );
 });
+
+it("keeps privacy preferences in a regular settings row and opens the same preference control", () => {
+    const listener = vi.fn();
+    window.addEventListener("analytics-preferences", listener);
+    try {
+        const { container } = render(
+            <AccountPreferences user={{ email: "settings@example.com" }} />,
+        );
+        const entry = screen.getByRole("button", {
+            name: "analyticsManage: analyticsPrivacy",
+        });
+        expect(entry.textContent).toContain("analyticsManage");
+        expect(entry.closest(".settings-row")).not.toBeNull();
+        expect(container.querySelectorAll(".settings-card")).toHaveLength(1);
+        expect(entry.classList.contains("analytics-privacy-entry-button")).toBe(
+            true,
+        );
+        fireEvent.click(entry);
+        expect(listener).toHaveBeenCalledOnce();
+    } finally {
+        window.removeEventListener("analytics-preferences", listener);
+    }
+});

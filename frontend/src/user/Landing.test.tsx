@@ -1,5 +1,9 @@
 // @vitest-environment jsdom
-vi.mock("../shared/i18n", () => ({ locale: () => "zh-CN" }));
+vi.mock("../shared/i18n", () => ({
+    locale: () => "zh-CN",
+    tx: (key: string) => key,
+}));
+vi.mock("../shared/experience-copy", () => ({ e: (key: string) => key }));
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 const mocks = vi.hoisted(() => ({
@@ -37,8 +41,12 @@ it("selects the minimal landing and keeps a keyboard-accessible auth entry", () 
     expect(screen.getByText("Claude")).toBeTruthy();
     expect(screen.getByText("Gemini")).toBeTruthy();
     expect(screen.getByText("aiNote")).toBeTruthy();
-    expect(screen.getByRole("link", { name: "scrollToAuth" }).getAttribute("href")).toBe("/app#/login");
-    expect(screen.getByRole("link", { name: "signIn" }).getAttribute("href")).toBe("/app#/login");
+    expect(
+        screen.getByRole("link", { name: "scrollToAuth" }).getAttribute("href"),
+    ).toBe("/app#/login");
+    expect(
+        screen.getByRole("link", { name: "signIn" }).getAttribute("href"),
+    ).toBe("/app#/login");
 });
 it("falls back to the original landing for unknown settings", () => {
     mocks.boot.landingStyle = "unknown";
@@ -50,7 +58,9 @@ it("enters auth only after scrolling and removes its listener on unmount", () =>
     const add = vi.spyOn(window, "addEventListener");
     const remove = vi.spyOn(window, "removeEventListener");
     const view = render(<Landing />);
-    const listener = add.mock.calls.find(([name]) => name === "scroll")?.[1] as () => void;
+    const listener = add.mock.calls.find(
+        ([name]) => name === "scroll",
+    )?.[1] as () => void;
     const assign = vi.fn();
     const fakeWindow = { scrollY: 0, location: { assign } };
     try {
@@ -99,7 +109,7 @@ describe("public product entry", () => {
         ).toBe(true);
         expect(document.querySelector('a[href="/app#/ticket"]')).toBeNull();
         expect(
-            screen.getByRole("link", { name: "terms" }).getAttribute("href"),
+            screen.getByRole("link", { name: "服务条款" }).getAttribute("href"),
         ).toBe(mocks.boot.tosUrl);
     });
     it("closes mobile navigation with Escape and restores focus", () => {
@@ -122,3 +132,27 @@ it("labels invitation-only entry clearly", () => {
             .every((el) => el.getAttribute("href") === "/app#/register"),
     ).toBe(true);
 });
+
+it.each(["original", "minimal"])(
+    "keeps one privacy entry in the %s landing footer",
+    (style) => {
+        mocks.boot.landingStyle = style;
+        const listener = vi.fn();
+        window.addEventListener("analytics-preferences", listener);
+        try {
+            const { container } = render(<Landing />);
+            const entry = screen.getByRole("button", {
+                name: "analyticsPrivacy",
+            });
+            expect(entry.closest("footer")).not.toBeNull();
+            expect(container.querySelectorAll("footer")).toHaveLength(1);
+            expect(
+                container.querySelector(".analytics-privacy-footer"),
+            ).toBeNull();
+            fireEvent.click(entry);
+            expect(listener).toHaveBeenCalledOnce();
+        } finally {
+            window.removeEventListener("analytics-preferences", listener);
+        }
+    },
+);

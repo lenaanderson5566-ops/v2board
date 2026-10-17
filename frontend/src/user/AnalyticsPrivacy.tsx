@@ -10,23 +10,55 @@ import {
     savePrivacyChoice,
     setCollection,
 } from "./product-analytics";
+import { boot } from "../shared/api";
+import { tx } from "../shared/i18n";
 import type { V10AnalyticsConfiguration } from "../shared/v10-types";
 
-export function AnalyticsPrivacyEntry() {
+export function AnalyticsPrivacyEntry({
+    label,
+    appearance = "link",
+}: {
+    label?: string;
+    appearance?: "link" | "button";
+}) {
     useTranslation();
     return (
         <button
             type="button"
-            className="analytics-privacy-entry"
+            className={`analytics-privacy-entry analytics-privacy-entry-${appearance}`}
+            aria-label={
+                label ? `${label}: ${e("analyticsPrivacy")}` : undefined
+            }
             onClick={() =>
                 window.dispatchEvent(new Event("analytics-preferences"))
             }
         >
             <ShieldCheck size={16} aria-hidden />
-            {e("analyticsPrivacy")}
+            {label || e("analyticsPrivacy")}
         </button>
     );
 }
+export function PrivacyFooterLinks() {
+    useTranslation();
+    return (
+        <div className="privacy-footer-links">
+            {boot.tosUrl && (
+                <a href={boot.tosUrl} target="_blank" rel="noopener noreferrer">
+                    {tx("服务条款")}
+                </a>
+            )}
+            <AnalyticsPrivacyEntry />
+        </div>
+    );
+}
+export function AnalyticsPrivacyFooter() {
+    return (
+        <footer className="access-footer">
+            <PrivacyFooterLinks />
+        </footer>
+    );
+}
+
 export function AnalyticsPrivacy() {
     useTranslation();
     const [configuration, setConfiguration] =

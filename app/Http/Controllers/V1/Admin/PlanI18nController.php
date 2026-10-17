@@ -59,8 +59,8 @@ class PlanI18nController extends Controller
     {
         $params = $request->validate([
             'plan_id'=>'required|integer',
-            'source'=>'required|in:zh-CN,zh-TW,en-US,ja-JP,ko-KR,vi-VN,ru-RU,fa-IR,es-ES,pt-BR',
-            'locale'=>'required|in:zh-CN,zh-TW,en-US,ja-JP,ko-KR,vi-VN,ru-RU,fa-IR,es-ES,pt-BR',
+            'source'=>'required|in:zh-CN,zh-TW,en-US,ja-JP,ko-KR,vi-VN,ru-RU,fa-IR,es-ES,pt-BR,fr-FR,de-DE,id-ID,th-TH',
+            'locale'=>'required|in:zh-CN,zh-TW,en-US,ja-JP,ko-KR,vi-VN,ru-RU,fa-IR,es-ES,pt-BR,fr-FR,de-DE,id-ID,th-TH',
         ]);
         $plan = Plan::findOrFail($params['plan_id']);
         $content = (string) $plan->content;

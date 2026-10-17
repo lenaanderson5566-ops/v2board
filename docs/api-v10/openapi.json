@@ -19884,7 +19884,11 @@
               "ru-RU",
               "fa-IR",
               "es-ES",
-              "pt-BR"
+              "pt-BR",
+              "fr-FR",
+              "de-DE",
+              "id-ID",
+              "th-TH"
             ]
           },
           "consent": {
@@ -19955,7 +19959,11 @@
               "ru-RU",
               "fa-IR",
               "es-ES",
-              "pt-BR"
+              "pt-BR",
+              "fr-FR",
+              "de-DE",
+              "id-ID",
+              "th-TH"
             ]
           },
           "consent": {

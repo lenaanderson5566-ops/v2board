@@ -65,10 +65,16 @@ try {
     [$r,$j]=$call('GET','/api/v10/me',[],$bearer);
     $assert($r->getStatusCode()===200 && $j['data']['email']===$user->email && !isset($j['data']['password']),'Account resource');
     $assert($r->headers->get('Content-Language')==='en-US','Language negotiation');
-    foreach (['es-MX'=>'es-ES', 'pt-PT'=>'pt-BR'] as $header=>$expectedLanguage) {
+    foreach (['es-MX'=>'es-ES', 'pt-PT'=>'pt-BR', 'fr-CA'=>'fr-FR', 'de-AT'=>'de-DE', 'id'=>'id-ID', 'th'=>'th-TH'] as $header=>$expectedLanguage) {
         [$r,$j]=$call('GET','/api/v10/me',[],$bearer,$header);
         $assert($r->getStatusCode()===200 && $r->headers->get('Content-Language')===$expectedLanguage,'Additional language negotiation: '.$header);
     }
+    $originalLanguage=$user->fresh()->language;
+    foreach (['fr-FR','de-DE','id-ID','th-TH'] as $newLanguage) {
+        [$r,$j]=$call('PATCH','/api/v10/me',['language'=>$newLanguage],$bearer,$newLanguage);
+        $assert($r->getStatusCode()===204 && $user->fresh()->language===$newLanguage,'New account language is persisted: '.$newLanguage);
+    }
+    $user->language=$originalLanguage; $user->save();
     [$r,$j]=$call('GET','/api/v1/user/info',[],$credentials['auth_data']);
     $assert($r->getStatusCode()===200 && $j['data']['email']===$user->email,'Legacy account interoperability');
     [$r,$j]=$call('GET','/api/v10/plans',[],$bearer);

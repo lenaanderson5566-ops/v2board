@@ -1,3 +1,4 @@
+import { e } from "../shared/experience-copy";
 import { AnalyticsPrivacyEntry } from "./AnalyticsPrivacy";
 import { TimeZonePicker } from "../shared/TimeZonePicker";
 import { useState, useRef } from "react";
@@ -109,10 +110,12 @@ export function AccountPreferences({ user }: { user: Row }) {
                         ))}
                     </select>
                 </div>
-            </div>
-            <div className="settings-card">
                 <div className="settings-row">
-                    <AnalyticsPrivacyEntry />
+                    <strong>{e("analyticsPrivacy")}</strong>
+                    <AnalyticsPrivacyEntry
+                        label={e("analyticsManage")}
+                        appearance="button"
+                    />
                 </div>
             </div>
             {error && (

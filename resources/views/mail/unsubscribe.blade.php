@@ -9,6 +9,10 @@ $copy = [
 'ru-RU'=>['Рекламная рассылка','Отписаться','Коды подтверждения, счета и важные уведомления не затронуты.','Вы отписались от рассылки.'],
 'es-ES'=>['Correos promocionales','Cancelar suscripción','Los códigos de verificación, la facturación y los avisos esenciales no se ven afectados.','Has cancelado los correos promocionales.'],
 'pt-BR'=>['E-mails promocionais','Cancelar assinatura','Códigos de verificação, cobrança e avisos essenciais não são afetados.','Você cancelou os e-mails promocionais.'],
+'fr-FR'=>['E-mails promotionnels', 'Se désabonner', 'Les codes de vérification, la facturation et les notifications essentielles ne sont pas concernés.', 'Vous êtes désabonné des e-mails promotionnels.'],
+'de-DE'=>['Marketing-E-Mails', 'Abbestellen', 'Bestätigungscodes, Abrechnung und notwendige Servicemitteilungen bleiben unverändert.', 'Sie haben die Marketing-E-Mails abbestellt.'],
+'id-ID'=>['Email promosi', 'Berhenti berlangganan', 'Kode verifikasi, tagihan, dan pemberitahuan layanan penting tidak terpengaruh.', 'Anda telah berhenti menerima email promosi.'],
+'th-TH'=>['อีเมลส่งเสริมการขาย', 'ยกเลิกการรับอีเมล', 'รหัสยืนยัน การเรียกเก็บเงิน และประกาศบริการที่จำเป็นจะไม่ได้รับผลกระทบ', 'คุณยกเลิกการรับอีเมลส่งเสริมการขายแล้ว'],
 'fa-IR'=>['ایمیل‌های تبلیغاتی','لغو اشتراک','کدهای تأیید، صورتحساب و پیام‌های ضروری تغییری نمی‌کنند.','اشتراک تبلیغات لغو شد.']
 ][$language] ?? ['Marketing emails','Unsubscribe','Essential account emails are unaffected.','You have unsubscribed.'];
 @endphp

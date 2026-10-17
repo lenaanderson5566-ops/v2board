@@ -40,8 +40,7 @@
 .minimal-ai-service img { width: 28px; height: 28px; object-fit: contain; }
 .minimal-ai-panel .minimal-ai-note { font-size: 11px; line-height: 1.7; color: var(--text-secondary); text-align: center; margin: 18px 0 0; }
 .minimal-landing-footer { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: 20px; border-top: 1px solid var(--line); padding-top: 16px; }
-.minimal-platforms, .minimal-footer-brand { font-size: 11px; color: var(--text-secondary); }
-.minimal-footer-brand { justify-self: end; }
+.minimal-platforms { font-size: 11px; color: var(--text-secondary); }
 .minimal-landing-scroll { display: flex; align-items: center; gap: 12px; min-height: 44px; font-size: 12px; }
 .minimal-landing a:focus-visible { outline: 2px solid var(--brand); outline-offset: 5px; }
 .minimal-landing-scroll-space { height: 100px; }
@@ -60,7 +59,6 @@
     .minimal-panel-index { display: none; }
     .minimal-landing-footer { grid-template-columns: 1fr auto; gap: 12px; }
     .minimal-platforms { max-width: 160px; line-height: 1.8; }
-    .minimal-footer-brand { display: none; }
 }
 @media (prefers-reduced-motion: reduce) {
     .minimal-core-mark { animation: none; }

@@ -1,3 +1,4 @@
+import { PrivacyFooterLinks } from "./AnalyticsPrivacy";
 import { useAnalyticsPage } from "./product-analytics";
 import { BannerStrip } from "../shared/BannerStrip";
 import { useEffect, useRef, useState } from "react";
@@ -293,20 +294,12 @@ function OriginalLanding() {
                 <p>{t("footer")}</p>
                 <div>
                     <a href="/app#/knowledge">{t("about")}</a>
-                    {boot.tosUrl && (
-                        <a
-                            href={boot.tosUrl}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                        >
-                            {t("terms")}
-                        </a>
-                    )}
                     <a href="/app#/login">
                         {t("signIn")}
                         <ArrowUpRight size={14} aria-hidden="true" />
                     </a>
                 </div>
+                <PrivacyFooterLinks />
             </footer>
         </div>
     );

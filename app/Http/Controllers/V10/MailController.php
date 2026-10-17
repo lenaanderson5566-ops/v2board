@@ -7,7 +7,7 @@ class MailController extends \App\Http\Controllers\Controller
     public function webhook(Request $request,string $provider) { app(MailWebhook::class)->receive($provider,$request); return response('ok',200); }
     public function unsubscribe(Request $request,string $token)
     {
-        $user=MailAudience::recipient($token); abort_unless($user,404,'Invalid unsubscribe link');
+        $user=MailAudience::recipient($token); abort_unless($user,404,__('Invalid unsubscribe link'));
         $done=false;
         if ($request->isMethod('POST')) {
             abort_unless($request->input('List-Unsubscribe')==='One-Click',422);

@@ -91,3 +91,12 @@ php tests/run.php --only=mfa,mfa-api,mfa-concurrency
 - 检查前端静态/动态导入、重导出与测试引用；本轮未确认可安全删除的整份源码文件。当前 `public/console/assets` 与 Vite 清单核对后无孤立构建资源。内容相同的地区旗帜和默认/自定义规则模板有不同资源标识或配置用途，保留。
 - 清理 9 个文件中的 34 个未使用导入；移除仅测试使用的 `resolveLanguage` 和 `mirrorUpdates` 包装函数，原断言直接覆盖生产使用的 `resolvePreferredLanguage` 和 `inspectMirrorUpdates`。保留现有测试文件、用例与兼容导出，未删除迁移或检查脚本。
 - 将 TypeScript 未使用声明与参数检查接入正常构建，避免引入第二套检查工具。完整 Vitest 104 文件、596 项通过；TypeScript 和生产构建通过。未进行浏览器或 PHP 动态调用链验证，不据此认定后端动态引用代码无冗余。
+
+
+## 多语言漏译回归整理
+
+- 复用 localization.test.ts 自动扫描用户端及公共组件，取消固定文件名单；仅排除有意保留的语言本名与管理员状态词。检查中文文案注册、直接 JSX 硬编码、14 种语言全部功能命名空间及插值变量。品牌、平台、单位和服务商要求的署名保留原文。
+- 将重复的 6 组新增语言命名空间测试合并到 14 种语言的完整检查；原有实际加载断言保留在全语言资源加载检查中，另增加旧语言支付说明非英文占位断言。测试由 629 项调整为 624 项，未跳过或减少语言、业务、安全场景。
+- 复用 client-import-language.php 核对后端实际 __() 字面量调用与语言资源、占位符、内置浏览器提示及波斯语方向；api-v10.php 覆盖 14 种语言的未授权问题响应与稳定状态码、code、Content-Language。
+- 完整前端回归 104 文件、624 项通过；TypeScript 检查与生产构建通过。隔离副本及临时数据库执行 api-v10、client-import-language、product-mail、apple-accounts，4 个脚本全部通过。第一次后端执行因本地账号建库权限不足而未能运行，改用本地测试环境的数据库管理员权限后通过；第一次前端全量的一个旧按钮文字定位已更新并全量复测通过。
+- 本轮没有新增测试脚本或 Markdown 报告。运行日志位于忽略的 storage/app/test-organization/localization-repair；未进行浏览器验证或生产环境操作。

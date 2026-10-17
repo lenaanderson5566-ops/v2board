@@ -105,7 +105,7 @@ export default function ClientAuthorization({ user }: { user: Row }) {
                 <div className="client-authorization-eyebrow">
                     FastAI · {tx("安全登录")}
                 </div>
-                <h1>{tx(callback ? "授权已送达" : "连接你的 FastAI")}</h1>
+                <h1>{tx(callback ? "授权完成" : "登录 FastAI")}</h1>
                 <p>
                     {tx(
                         callback

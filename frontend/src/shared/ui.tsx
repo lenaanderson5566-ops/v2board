@@ -633,7 +633,7 @@ export function Editor({
                     /^-?\d+(\.\d+)?$/.test(String(body[f.key]))
                 )
                     body[f.key] = Number(body[f.key]);
-                body[f.key] = apiValue(f, body[f.key]);
+                body[f.key] = apiValue(f, body[f.key], tx);
                 if (f.type === "json" && typeof body[f.key] === "string")
                     body[f.key] = body[f.key].trim()
                         ? JSON.parse(body[f.key])

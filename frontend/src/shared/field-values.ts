@@ -5,7 +5,11 @@ export function inputValue(field: Field | undefined, value: unknown): unknown {
     if (field?.scale) return Number(value) / field.scale;
     return typeof value === "boolean" ? Number(value) : value;
 }
-export function apiValue(field: Field, value: unknown): unknown {
+export function apiValue(
+    field: Field,
+    value: unknown,
+    translate = (message: string) => message,
+): unknown {
     if (field.type === "number")
         value = value == null || value === "" ? null : Number(value);
     if (field.arrayText)
@@ -14,6 +18,7 @@ export function apiValue(field: Field, value: unknown): unknown {
             .filter(Boolean);
     if (!field.scale || value == null || value === "") return value;
     const result = Math.round(Number(value) * field.scale);
-    if (!Number.isSafeInteger(result)) throw new Error("金额格式无效");
+    if (!Number.isSafeInteger(result))
+        throw new Error(translate("金额格式无效"));
     return result;
 }

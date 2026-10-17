@@ -298,7 +298,7 @@ export function UserAuth({
             </a>
             <div className="user-auth-layout">
                 <section className="user-auth-intro">
-                    <span className="eyebrow">AI SETUP COMPANION</span>
+                    <span className="eyebrow">{tx("AI 配置助手")}</span>
                     <h1>{e("authIntro")}</h1>
                     <p>{e("authDetail")}</p>
                     <div className="auth-illustration" aria-hidden="true">

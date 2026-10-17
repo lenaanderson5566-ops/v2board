@@ -76,7 +76,8 @@ class V10
     {
         $names=[401=>'Unauthenticated',403=>'Forbidden',404=>'Not found',409=>'Conflict',410=>'Gone',422=>'Validation failed',429=>'Too many requests',500=>'Internal server error',503=>'Service unavailable'];
         $codes=[401=>'UNAUTHENTICATED',403=>'FORBIDDEN',404=>'NOT_FOUND',409=>'CONFLICT',410=>'GONE',422=>'VALIDATION_FAILED',429=>'RATE_LIMITED',500=>'INTERNAL_ERROR',503=>'UNAVAILABLE'];
-        $response=response()->json(['type'=>'about:blank','title'=>$names[$status] ?? 'Request failed','status'=>$status,'detail'=>$detail ?: ($names[$status] ?? 'Request failed'),'code'=>$code ?? ($codes[$status] ?? 'REQUEST_FAILED'),'requestId'=>$requestId,'errors'=>(object)$errors],$status,['Content-Type'=>'application/problem+json']);
+        $title=__($names[$status] ?? 'Request failed');
+        $response=response()->json(['type'=>'about:blank','title'=>$title,'status'=>$status,'detail'=>$detail ? __($detail) : $title,'code'=>$code ?? ($codes[$status] ?? 'REQUEST_FAILED'),'requestId'=>$requestId,'errors'=>(object)$errors],$status,['Content-Type'=>'application/problem+json']);
         if ($status===401) $response->headers->set('WWW-Authenticate','Bearer');
         return $response;
     }

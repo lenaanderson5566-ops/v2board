@@ -100,7 +100,7 @@ it("only sends email after the enabled email method is chosen", async () => {
     fireEvent.change(screen.getByRole("combobox"), {
         target: { value: "email" },
     });
-    fireEvent.click(screen.getByRole("button", { name: "发送验证码" }));
+    fireEvent.click(screen.getByRole("button", { name: "发送邮箱验证码" }));
     await waitFor(() =>
         expect(mocks.send).toHaveBeenCalledWith(challenge.challengeId),
     );

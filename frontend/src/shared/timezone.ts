@@ -1,4 +1,4 @@
-import { locale } from "./i18n";
+import { locale, tx } from "./i18n";
 
 let preference: string | null = null;
 let systemZone = "Asia/Shanghai";
@@ -83,13 +83,13 @@ export function parseDateTimeInput(
     zone = displayTimeZone(),
 ): number {
     if (!/^\d{4}-\d\d-\d\dT\d\d:\d\d$/.test(value))
-        throw new Error("日期时间格式无效");
+        throw new Error(tx("日期时间格式无效"));
     const wall = Date.parse(value + ":00Z");
     if (
         !Number.isFinite(wall) ||
         new Date(wall).toISOString().slice(0, 16) !== value
     )
-        throw new Error("日期时间无效");
+        throw new Error(tx("日期时间无效"));
     const offsets = new Set<number>();
     for (let hours = -36; hours <= 36; hours += 3) {
         const at = wall + hours * 3600000;
@@ -100,9 +100,11 @@ export function parseDateTimeInput(
         .filter((at) => dateTimeInput(at, zone) === value);
     if (candidates.length !== 1)
         throw new Error(
-            candidates.length
-                ? "此时间因夏令时重复，请选择无歧义的时间。"
-                : "此时间在所选时区不存在，请重新选择。",
+            tx(
+                candidates.length
+                    ? "此时间因夏令时重复，请选择无歧义的时间。"
+                    : "此时间在所选时区不存在，请重新选择。",
+            ),
         );
     return candidates[0];
 }

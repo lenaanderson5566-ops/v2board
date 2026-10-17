@@ -82,7 +82,7 @@ schemas.update({
     'inbox': obj({'items': resource('array:notification'), 'unread': number, 'ticketReplies':resource('array:ticketNotification'), 'ticketUnread':number}),
     'articles': {'oneOf': [reference('article'), {'type': 'object', 'additionalProperties': resource('array:article')}]},
     'Pagination': obj({k: number for k in ['page', 'pageSize', 'total', 'totalPages']}, ['page', 'pageSize', 'total', 'totalPages']),
-    'Problem': obj({'type': {'type': 'string'}, 'title': {'type': 'string'}, 'status': number, 'detail': {'type': 'string'}, 'code': {'type': 'string'}, 'requestId': {'type': 'string'}, 'errors': {'type': 'object', 'additionalProperties': {'type': 'array', 'items': {'type': 'string'}}}}, ['type', 'title', 'status', 'detail', 'code', 'requestId']),
+    'Problem': obj({'type': {'type': 'string'}, 'title': {'type': 'string', 'description': 'Human-readable summary localized using Accept-Language; use code for programmatic handling.'}, 'status': number, 'detail': {'type': 'string', 'description': 'Localized, safe explanation. Does not contain stack traces or internal paths.'}, 'code': {'type': 'string'}, 'requestId': {'type': 'string'}, 'errors': {'type': 'object', 'additionalProperties': {'type': 'array', 'items': {'type': 'string'}}}}, ['type', 'title', 'status', 'detail', 'code', 'requestId']),
 })
 
 

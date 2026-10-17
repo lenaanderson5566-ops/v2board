@@ -15,7 +15,10 @@ describe("admin currency adapters", () => {
     it("rounds fractional inputs without float errors and refuses invalid amounts", () => {
         expect(apiValue(price, 19.9)).toBe(1990);
         expect(apiValue(price, 0.29)).toBe(29);
-        expect(() => apiValue(price, Infinity)).toThrow();
+        expect(() => apiValue(price, Infinity)).toThrow("金额格式无效");
+        expect(() =>
+            apiValue(price, Infinity, () => "Invalid amount format"),
+        ).toThrow("Invalid amount format");
     });
     it("does not scale percentages, bytes or IDs", () => {
         expect(apiValue({ key: "rate", label: "比例" }, 20)).toBe(20);

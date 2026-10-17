@@ -4,6 +4,47 @@ $controller=new App\Services\Actions\Client\ClientActions;
 $method=new ReflectionMethod($controller,'buildUnavailableServers'); $method->setAccessible(true);
 $copy=require resource_path('client/copy.php');
 $checks=0;
+$serverCatalogs=[];
+foreach (App\Services\LanguagePreferenceService::SUPPORTED as $language) {
+    $serverCatalogs[$language]=json_decode(file_get_contents(resource_path('lang/'.$language.'.json')), true, 512, JSON_THROW_ON_ERROR);
+}
+foreach ($serverCatalogs as $language=>$catalog) {
+    foreach ($serverCatalogs['en-US'] as $key=>$english) {
+        if (empty($catalog[$key])) throw new RuntimeException('Missing server translation '.$language.' '.$key);
+        preg_match_all('/:\w+/', $english, $expected);
+        preg_match_all('/:\w+/', $catalog[$key], $actual);
+        sort($expected[0]); sort($actual[0]);
+        if ($expected[0] !== $actual[0]) throw new RuntimeException('Invalid server placeholders '.$language.' '.$key);
+        $checks++;
+    }
+}
+// Audit actual call sites, so complete-but-outdated catalogs cannot hide new missing messages.
+foreach (new RecursiveIteratorIterator(new RecursiveDirectoryIterator(app_path())) as $file) {
+    if (!$file->isFile() || $file->getExtension() !== 'php' || str_contains(str_replace('\\','/',$file->getPathname()), '/Admin/')) continue;
+    $tokens=token_get_all(file_get_contents($file->getPathname()));
+    foreach ($tokens as $index=>$token) {
+        if (!is_array($token) || $token[0] !== T_STRING || $token[1] !== '__') continue;
+        $following=[];
+        for ($next=$index+1; $next<count($tokens) && count($following)<2; $next++) {
+            if (is_array($tokens[$next]) && in_array($tokens[$next][0],[T_WHITESPACE,T_COMMENT,T_DOC_COMMENT],true)) continue;
+            $following[]=$tokens[$next];
+        }
+        if (($following[0] ?? null) !== '(' || !is_array($following[1] ?? null) || $following[1][0] !== T_CONSTANT_ENCAPSED_STRING) continue;
+        $literal=$following[1][1];
+        $key=$literal[0] === "'" ? str_replace(["\\'",'\\\\'],["'",'\\'],substr($literal,1,-1)) : stripcslashes(substr($literal,1,-1));
+        if (!isset($serverCatalogs['en-US'][$key])) throw new RuntimeException('Unregistered server message '.$file->getFilename().':'.$token[2].' '.$key);
+        $checks++;
+    }
+}
+foreach (App\Services\LanguagePreferenceService::SUPPORTED as $language) {
+    $request=Illuminate\Http\Request::create('/app');
+    $request->headers->set('User-Agent','MicroMessenger');
+    $request->headers->set('Accept-Language',$language);
+    $response=(new App\Http\Middleware\UAfilter)->handle($request,fn()=>response('unexpected'));
+    if ($response->headers->get('Content-Language') !== $language || !str_contains($response->getContent(),e($serverCatalogs[$language]['Unsupported browser']))) throw new RuntimeException('Untranslated browser notice '.$language);
+    if ($language==='fa-IR' && !str_contains($response->getContent(),'dir="rtl"')) throw new RuntimeException('Browser notice direction');
+    $checks++;
+}
 foreach (['client/copy.php', 'lang/telegram.php', 'lang/mfa.php'] as $resource) {
     $catalog = require resource_path($resource);
     foreach (App\Services\LanguagePreferenceService::SUPPORTED as $language) {

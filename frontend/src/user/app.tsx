@@ -497,7 +497,7 @@ function UserApp() {
                         {!path.startsWith("order/") && (
                             <div className="page-heading">
                                 <div>
-                                    <span className="eyebrow">WORKSPACE</span>
+                                    <span className="eyebrow">{tx("工作空间")}</span>
                                     <h1>{tx(item?.label || "总览")}</h1>
                                 </div>
                                 <span className="today">

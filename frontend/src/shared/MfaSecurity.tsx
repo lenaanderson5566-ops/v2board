@@ -572,7 +572,7 @@ export function MfaSecurity({
                                                                 : tx(
                                                                       sent
                                                                           ? "重新发送验证码"
-                                                                          : "发送验证码",
+                                                                          : "发送邮箱验证码",
                                                                   )}
                                                         </button>
                                                         {sent && (

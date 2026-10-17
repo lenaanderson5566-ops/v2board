@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from "vitest";
-import { readFileSync } from "node:fs";
+import { readFileSync, readdirSync } from "node:fs";
 import ts from "typescript";
 const storage = new Map<string, string>();
 const pending = new Map<string, string>();
@@ -57,18 +57,16 @@ await i18n.loadLanguages([
 ]);
 describe("landing and interactive control translations", () => {
     for (const { code } of languages)
-        it(`${code} provides landing and control namespaces`, () => {
-            for (const namespace of [
-                "landing",
-                "ux",
-                "experience",
-                "billing",
-                "announcements",
-                "credits",
-                "help",
-            ]) {
-                const base = resources["zh-CN"][namespace];
+        it(`${code} provides every feature namespace without missing keys`, () => {
+            for (const namespace of Object.keys(resources["en-US"]).filter(
+                (namespace) => namespace !== "translation",
+            )) {
+                const base = resources["en-US"][namespace];
                 const translated = resources[code][namespace];
+                expect(translated, `${code}/${namespace}`).toBeTruthy();
+                expect(Object.keys(translated).sort()).toEqual(
+                    Object.keys(base).sort(),
+                );
                 for (const [key, value] of Object.entries(base)) {
                     expect(
                         translated[key],
@@ -86,34 +84,6 @@ describe("landing and interactive control translations", () => {
                 expect(value).not.toMatch(/vpn|翻墙|代理|节点|订阅|流量/i);
     });
 });
-describe("additional language namespaces", () => {
-    for (const code of ["es-ES", "pt-BR", "fr-FR", "de-DE", "id-ID", "th-TH"])
-        it(`${code} covers all user namespaces without fallback`, () => {
-            const bundle = resources[code];
-            for (const namespace of Object.keys(bundle).filter(
-                (namespace) => namespace !== "translation",
-            )) {
-                const english = i18n.getResourceBundle("en-US", namespace);
-                expect(english, namespace).toBeTruthy();
-                expect(Object.keys(bundle[namespace]).sort()).toEqual(
-                    Object.keys(english).sort(),
-                );
-                for (const [key, value] of Object.entries(english)) {
-                    expect(
-                        bundle[namespace][key],
-                        `${code}/${namespace}/${key}`,
-                    ).toBeTruthy();
-                    expect(placeholders(bundle[namespace][key])).toEqual(
-                        placeholders(String(value)),
-                    );
-                    expect(i18n.getResource(code, namespace, key)).toBe(
-                        bundle[namespace][key],
-                    );
-                }
-            }
-        });
-});
-
 describe("localization resources", () => {
     it("loads only the requested extra catalog and keeps language switching translated", async () => {
         expect(i18n.hasResourceBundle("zh-TW", "translation")).toBe(true);
@@ -147,39 +117,44 @@ describe("localization resources", () => {
         for (const catalog of Object.values(catalogs)) {
             expect(catalog["使用优惠码"]).toBeUndefined();
             expect(catalog["优惠码（可选）"]).toBeUndefined();
+            expect(catalog["领券中心"]).toBeUndefined();
+            expect(catalog["暂无优惠券，可在下方领取"]).toBeUndefined();
         }
     });
+    it("does not leave payment explanations in English in older language packs", () => {
+        for (const code of ["ja-JP", "ko-KR", "vi-VN", "ru-RU", "fa-IR"])
+            for (const key of [
+                "实际付款",
+                "订单与余额币种保持不变，付款金额按确认时的汇率锁定。",
+            ])
+                expect(catalogs[code][key], `${code}/${key}`).not.toBe(
+                    catalogs["en-US"][key],
+                );
+    });
     it("all static user interface messages exist in the catalog", () => {
-        for (const name of [
-            "../user/app.tsx",
-            "../user/user.tsx",
-            "Tickets.tsx",
-            "../user/BillingPage.tsx",
-            "../user/UsagePage.tsx",
-            "../user/TrafficCredits.tsx",
-            "../user/OrderReceipt.tsx",
-            "../user/AnnouncementCenter.tsx",
-            "ui.tsx",
-            "api.ts",
-            "LanguagePicker.tsx",
-            "../user/SubscriptionImport.tsx",
-            "../user/UserAuth.tsx",
-            "../user/AccountEntry.tsx",
-            "../user/AccountMenu.tsx",
-            "../user/AccountSecurity.tsx",
-            "../user/HelpGuides.tsx",
-            "support-flow.ts",
-            "PlanDescription.tsx",
-            "../user/EmailInvites.tsx",
-            "../user/SubscriptionPurchase.tsx",
-            "../user/PaymentCheckout.tsx",
-            "../user/billing-flow.ts",
-            "../user/user-navigation.ts",
-            "../user/UsageChart.tsx",
-            "../user/EmbeddedBrowserNotice.tsx",
-            "WorkspaceSkeleton.tsx",
-        ]) {
-            const path = new URL(`./${name}`, import.meta.url);
+        const collect = (directory: URL): URL[] =>
+            readdirSync(directory, { withFileTypes: true }).flatMap((entry) => {
+                const path = new URL(
+                    entry.name + (entry.isDirectory() ? "/" : ""),
+                    directory,
+                );
+                return entry.isDirectory() ? collect(path) : [path];
+            });
+        const files = [
+            ...collect(new URL("../user/", import.meta.url)),
+            ...collect(new URL("./", import.meta.url)),
+        ].filter(
+            (path) =>
+                /\.tsx?$/.test(path.pathname) &&
+                !/\.test\./.test(path.pathname) &&
+                // Native language names and administrator-only status labels are intentional.
+                !/\/(language-options\.ts|admin-status\.tsx)$/.test(
+                    path.pathname,
+                ),
+        );
+        expect(files.length).toBeGreaterThan(90);
+        for (const path of files) {
+            const name = path.pathname;
             const source = ts.createSourceFile(
                 name,
                 readFileSync(path, "utf8"),
@@ -196,11 +171,30 @@ describe("localization resources", () => {
                         catalogs["zh-CN"][node.text],
                         `${name}: ${node.text}`,
                     ).toBeTruthy();
-                if (ts.isJsxText(node))
+                if (ts.isJsxText(node)) {
                     expect(
                         /[\u3400-\u9fff]/.test(node.text),
                         `${name}: unlocalized JSX`,
                     ).toBe(false);
+                    // Product names, platform names, units and required provider attribution stay verbatim.
+                    if (/[a-z]/i.test(node.text))
+                        expect(
+                            [
+                                "FastAI ·",
+                                "FastAI",
+                                "Windows · macOS",
+                                "iOS · Android",
+                                "01 / AI",
+                                "AI",
+                                "Windows · macOS · iOS · Android",
+                                "Rates By Exchange Rate API",
+                                "ID ·",
+                                "0 B",
+                                "ID:",
+                            ],
+                            `${name}: hardcoded JSX: ${node.text.trim()}`,
+                        ).toContain(node.text.trim());
+                }
                 ts.forEachChild(node, visit);
             }
             visit(source);

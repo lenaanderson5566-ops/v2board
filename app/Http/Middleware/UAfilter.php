@@ -18,13 +18,22 @@ class UAfilter
     {
         if ($request->is('api/v10','api/v10/*')) return $next($request);
         if (strpos($request->header('User-Agent'), 'MicroMessenger') !== false || strpos($request->header('User-Agent'), 'QQ/') !== false) {
+            $language = 'zh-CN';
+            foreach ($request->getLanguages() as $candidate) {
+                $matched = \App\Services\ProductMail::language($candidate);
+                if ($matched) { $language = $matched; break; }
+            }
+            $heading = e(__('Unsupported browser', [], $language));
+            $description = e(__('This page cannot be opened in the WeChat or QQ browser.', [], $language));
+            $instruction = e(__('Open the menu in the top right and choose to open in your browser.', [], $language));
+            $direction = $language === 'fa-IR' ? 'rtl' : 'ltr';
             $html = <<<HTML
 <!DOCTYPE html>
-<html lang="en">
+<html lang="{$language}" dir="{$direction}">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Unsupported Browser</title>
+    <title>{$heading}</title>
     <style>
         body { font-family: Arial, sans-serif; text-align: center; padding: 50px; }
         h1 { color: #333; }
@@ -32,13 +41,13 @@ class UAfilter
     </style>
 </head>
 <body>
-    <h1>浏览器不支持</h1>
-    <p>很抱歉，我们的页面在QQ和微信浏览器中无法正常访问。</p>
-    <p>请点击右上方，选择在浏览器中打开。</p>
+    <h1>{$heading}</h1>
+    <p>{$description}</p>
+    <p>{$instruction}</p>
 </body>
 </html>
 HTML;
-            return response($html, 200)->header('Content-Type', 'text/html');
+            return response($html, 200)->header('Content-Type', 'text/html')->header('Content-Language', $language);
         }
 
         if (strpos($request->header('User-Agent'), 'python-requests')) {

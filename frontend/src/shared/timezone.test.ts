@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-vi.mock("./i18n", () => ({ locale: () => "en-GB" }));
+vi.mock("./i18n", () => ({ locale: () => "en-GB", tx: (key: string) => key }));
 import {
     calendarDay,
     configureTimeZone,
@@ -29,11 +29,13 @@ describe("time zone conversion", () => {
     it("rejects nonexistent and ambiguous DST times", () => {
         expect(() =>
             parseDateTimeInput("2026-03-08T02:30", "America/New_York"),
-        ).toThrow();
+        ).toThrow("此时间在所选时区不存在，请重新选择。");
         expect(() =>
             parseDateTimeInput("2026-11-01T01:30", "America/New_York"),
-        ).toThrow();
-        expect(() => parseDateTimeInput("2026-02-30T12:00", "UTC")).toThrow();
+        ).toThrow("此时间因夏令时重复，请选择无歧义的时间。");
+        expect(() => parseDateTimeInput("2026-02-30T12:00", "UTC")).toThrow(
+            "日期时间无效",
+        );
     });
     it("uses the account preference and preserves the same instant", () => {
         setDisplayTimeZone("America/New_York");

@@ -59,6 +59,13 @@ try {
     $assert($r->getStatusCode()===401 && $r->headers->get('WWW-Authenticate')==='Bearer','Invalid login uses 401');
     [$r,$j]=$call('GET','/api/v10/me');
     $assert($r->getStatusCode()===401 && $j['code']==='UNAUTHENTICATED','Missing authentication');
+    foreach (App\Services\LanguagePreferenceService::SUPPORTED as $language) {
+        [$localized,$problem]=$call('GET','/api/v10/me',[],null,$language);
+        $catalog=json_decode(file_get_contents(resource_path('lang/'.$language.'.json')),true);
+        $assert($localized->getStatusCode()===401 && $problem['code']==='UNAUTHENTICATED','Localized errors preserve status and stable code: '.$language);
+        $assert($problem['title']===$catalog['Unauthenticated'] && $problem['detail']===$catalog['Unauthenticated.'],'Localized authentication error: '.$language);
+        $assert($localized->headers->get('Content-Language')===$language,'Localized problem language header: '.$language);
+    }
     $assert(str_contains($r->headers->get('Content-Type'),'application/problem+json') && isset($j['requestId']),'Problem contract');
     [$r,$j]=$call('GET','/api/v10/me?auth_data='.urlencode($credentials['auth_data']));
     $assert($r->getStatusCode()===401,'Query credential rejected');

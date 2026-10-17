@@ -123,7 +123,7 @@ export function MfaLogin({
                                 ? tx("{{value0}}秒后重试", {
                                       value0: cooldown.remaining,
                                   })
-                                : tx(sent ? "重新发送验证码" : "发送验证码")}
+                                : tx(sent ? "重新发送验证码" : "发送邮箱验证码")}
                         </button>
                         {sent && (
                             <p role="status">

@@ -13,7 +13,7 @@ class AppleAccountActions
     {
         abort_unless(config('v2board.apple_account_enable', 0), 404);
         $user = User::findOrFail($request->user['id']);
-        abort_unless((new UserService)->isAvailable($user), 403, 'An active subscription or remaining credits are required.');
+        abort_unless((new UserService)->isAvailable($user), 403, __('An active subscription or remaining credits are required.'));
         try {
             $accounts = $service->accounts();
         } catch (\Throwable $e) {

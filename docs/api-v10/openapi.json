@@ -17810,13 +17810,15 @@
             "type": "string"
           },
           "title": {
-            "type": "string"
+            "type": "string",
+            "description": "Human-readable summary localized using Accept-Language; use code for programmatic handling."
           },
           "status": {
             "type": "integer"
           },
           "detail": {
-            "type": "string"
+            "type": "string",
+            "description": "Localized, safe explanation. Does not contain stack traces or internal paths."
           },
           "code": {
             "type": "string"

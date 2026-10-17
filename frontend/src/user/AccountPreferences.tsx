@@ -20,7 +20,7 @@ export function AccountPreferences({ user }: { user: Row }) {
             <div className="settings-card">
                 <div className="settings-row profile-email">
                     <div>
-                        <strong>{tx("邮箱")}</strong>
+                        <strong>{tx("邮箱地址")}</strong>
                         <p className="muted">{p("emailHelp")}</p>
                     </div>
                     <span dir="ltr">{user.email || "—"}</span>

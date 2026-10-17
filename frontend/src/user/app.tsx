@@ -85,11 +85,11 @@ import "./product.css";
 export default function App() {
     return (
         <>
-            <AnalyticsPrivacy />
             <UserApp />
             <footer className="analytics-privacy-footer">
                 <AnalyticsPrivacyEntry />
             </footer>
+            <AnalyticsPrivacy />
         </>
     );
 }

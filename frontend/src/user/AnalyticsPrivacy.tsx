@@ -37,6 +37,17 @@ export function AnalyticsPrivacy() {
         () => privacyChoice()?.chosenAt ?? null,
     );
     const region = useRef<HTMLElement>(null);
+    const [height, setHeight] = useState(0);
+    useEffect(() => {
+        if (!open || !region.current) return;
+        const element = region.current;
+        const measure = () =>
+            setHeight(Math.ceil(element.getBoundingClientRect().height));
+        measure();
+        const observer = new ResizeObserver(measure);
+        observer.observe(element);
+        return () => observer.disconnect();
+    }, [open]);
     const current = useRef<V10AnalyticsConfiguration | null>(null);
     const requested = useRef(false);
     const opener = useRef<HTMLElement | null>(null);
@@ -101,8 +112,7 @@ export function AnalyticsPrivacy() {
             requested.current = true;
             setOpen(true);
             requestAnimationFrame(() => {
-                region.current?.scrollIntoView({ block: "start" });
-                region.current?.focus();
+                region.current?.focus({ preventScroll: true });
             });
         };
         const sync = (event: StorageEvent) => {
@@ -146,50 +156,59 @@ export function AnalyticsPrivacy() {
     }
     if (!open) return null;
     return (
-        <aside
-            ref={region}
-            tabIndex={-1}
-            className="analytics-privacy"
-            aria-label={e("analyticsPrivacy")}
-        >
-            <strong>
-                <ShieldCheck size={18} aria-hidden />
-                {e("analyticsPrivacy")}
-            </strong>
-            <p>{e("analyticsConsent")}</p>
-            <details>
-                <summary>{e("analyticsDetails")}</summary>
-                <p>{e("analyticsExplanation")}</p>
-                {configuration && (
-                    <p>
-                        {e("analyticsRetention")} {configuration.retentionDays}{" "}
-                        {e("analyticsDays")}
-                    </p>
-                )}
-                {chosenAt && (
-                    <p>
-                        {e("analyticsChosenAt")}{" "}
-                        {new Date(chosenAt).toLocaleString()}
-                    </p>
-                )}
-            </details>
-            {!configuration?.enabled && <p>{e("analyticsUnavailable")}</p>}
-            {privacySignal() && <p>{e("analyticsSignal")}</p>}
-            {error && <p role="status">{e("analyticsStorageError")}</p>}
-            <div className="actions">
-                <button type="button" onClick={() => choose("deny")}>
-                    {e("analyticsDecline")}
-                </button>
-                <button
-                    type="button"
-                    disabled={
-                        !configuration?.enabled || privacySignal() || error
-                    }
-                    onClick={() => choose("allow")}
-                >
-                    {e("analyticsAllow")}
-                </button>
-            </div>
-        </aside>
+        <>
+            <div
+                className="analytics-privacy-spacer"
+                style={{ height: height + 32 }}
+                aria-hidden="true"
+            />
+            <aside
+                ref={region}
+                tabIndex={-1}
+                className="analytics-privacy"
+                aria-label={e("analyticsPrivacy")}
+            >
+                <div className="analytics-privacy-heading">
+                    <span className="analytics-privacy-icon">
+                        <ShieldCheck size={20} aria-hidden />
+                    </span>
+                    <strong>{e("analyticsPrivacy")}</strong>
+                </div>
+                <p>{e("analyticsConsent")}</p>
+                <details>
+                    <summary>{e("analyticsDetails")}</summary>
+                    <p>{e("analyticsExplanation")}</p>
+                    {configuration && (
+                        <p>
+                            {e("analyticsRetention")}{" "}
+                            {configuration.retentionDays} {e("analyticsDays")}
+                        </p>
+                    )}
+                    {chosenAt && (
+                        <p>
+                            {e("analyticsChosenAt")}{" "}
+                            {new Date(chosenAt).toLocaleString()}
+                        </p>
+                    )}
+                </details>
+                {!configuration?.enabled && <p>{e("analyticsUnavailable")}</p>}
+                {privacySignal() && <p>{e("analyticsSignal")}</p>}
+                {error && <p role="status">{e("analyticsStorageError")}</p>}
+                <div className="actions">
+                    <button type="button" onClick={() => choose("deny")}>
+                        {e("analyticsDecline")}
+                    </button>
+                    <button
+                        type="button"
+                        disabled={
+                            !configuration?.enabled || privacySignal() || error
+                        }
+                        onClick={() => choose("allow")}
+                    >
+                        {e("analyticsAllow")}
+                    </button>
+                </div>
+            </aside>
+        </>
     );
 }

@@ -57,8 +57,111 @@ const reasons: Record<string, string[]> = {
     ],
     confirmed: [],
 };
-const signal = (value: unknown) =>
-    value == null ? "无记录" : value === true ? "相同" : "不同";
+function SignalBadge({ value, label }: { value: unknown; label?: string }) {
+    const state =
+        value === true ? "same" : value === false ? "different" : "missing";
+    return (
+        <span className={`invitation-signal invitation-signal-${state}`}>
+            {label && `${label}：`}
+            {state === "same"
+                ? "相同"
+                : state === "different"
+                  ? "不同"
+                  : "无记录"}
+        </span>
+    );
+}
+function EvidenceComparison({ row }: { row: Row }) {
+    const from = Number(row.inviter_registered_at),
+        to = Number(row.user_registered_at);
+    const known =
+        row.inviter_registered_at != null &&
+        row.user_registered_at != null &&
+        Number.isFinite(from) &&
+        Number.isFinite(to);
+    const seconds = to - from;
+    const interval = !known
+        ? "无记录"
+        : seconds < 0
+          ? "受邀用户早于邀请人注册，请核查历史数据"
+          : seconds < 60
+            ? "不足 1 分钟"
+            : seconds < 3600
+              ? `${Math.floor(seconds / 60)} 分钟`
+              : seconds < 86400
+                ? `${Math.floor(seconds / 3600)} 小时 ${Math.floor((seconds % 3600) / 60)} 分钟`
+                : `${Math.floor(seconds / 86400)} 天 ${Math.floor((seconds % 86400) / 3600)} 小时`;
+    return (
+        <section className="invitation-evidence">
+            <h3>注册来源对比</h3>
+            <div className="table-wrap">
+                <table className="invitation-comparison">
+                    <thead>
+                        <tr>
+                            <th>对比项</th>
+                            <th>邀请人</th>
+                            <th>受邀用户</th>
+                            <th>比对结果</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {[
+                            {
+                                label: "注册 IP",
+                                value: row.signals?.sameRegistrationIp,
+                            },
+                            {
+                                label: "注册 UA",
+                                value: row.signals?.sameRegistrationUa,
+                            },
+                        ].map(({ label, value }) => (
+                            <tr key={label}>
+                                <th scope="row">{label}</th>
+                                <td>
+                                    {typeof value === "boolean"
+                                        ? "注册摘要已参与比对"
+                                        : "无法确认资料是否完整"}
+                                </td>
+                                <td>
+                                    {typeof value === "boolean"
+                                        ? "注册摘要已参与比对"
+                                        : "无法确认资料是否完整"}
+                                </td>
+                                <td>
+                                    <SignalBadge value={value} />
+                                </td>
+                            </tr>
+                        ))}
+                        <tr>
+                            <th scope="row">注册时间</th>
+                            <td>
+                                {row.inviter_registered_at == null
+                                    ? "无记录"
+                                    : date(row.inviter_registered_at)}
+                            </td>
+                            <td>
+                                {row.user_registered_at == null
+                                    ? "无记录"
+                                    : date(row.user_registered_at)}
+                            </td>
+                            <td>{interval}</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+            <p className="muted">
+                IP、UA
+                结果为受邀用户注册时的摘要比对，不是当前登录来源。系统未保存原始注册
+                IP 或
+                UA，无法显示地址、地区、浏览器或系统版本；无记录不代表不同。
+            </p>
+            <p className="muted">
+                相同 IP 可能来自家庭、公司、校园网或代理出口；相同 UA
+                可能来自相同客户端版本。时间接近也仅是辅助线索，不能据此单独认定自邀。
+            </p>
+        </section>
+    );
+}
 function trigger(row: Row) {
     const s = row.signals || {};
     if (s.sameRegistrationIp === true)
@@ -109,7 +212,16 @@ const resource = {
             "signals",
             "核查原因",
             (r: Row) => (
-                <span className="invitation-trigger">{trigger(r)}</span>
+                <div className="invitation-signal-list">
+                    <SignalBadge
+                        label="IP"
+                        value={r.signals?.sameRegistrationIp}
+                    />
+                    <SignalBadge
+                        label="UA"
+                        value={r.signals?.sameRegistrationUa}
+                    />
+                </div>
             ),
         ],
         [
@@ -364,31 +476,10 @@ export function InvitationReviews() {
                             <Person row={detail} inviter />
                             <Person row={detail} inviter={false} />
                         </div>
+                        <EvidenceComparison row={detail} />
                         <section className="invitation-evidence">
-                            <h3>核查参考</h3>
+                            <h3>其他核查参考</h3>
                             <dl>
-                                <div>
-                                    <dt>注册 IP</dt>
-                                    <dd>
-                                        {signal(
-                                            detail.signals?.sameRegistrationIp,
-                                        )}
-                                        <small>
-                                            家庭、公司、校园网可能共用 IP。
-                                        </small>
-                                    </dd>
-                                </div>
-                                <div>
-                                    <dt>注册 UA</dt>
-                                    <dd>
-                                        {signal(
-                                            detail.signals?.sameRegistrationUa,
-                                        )}
-                                        <small>
-                                            同一客户端版本可能使用相同 UA。
-                                        </small>
-                                    </dd>
-                                </div>
                                 <div>
                                     <dt>邀请人近期邀请</dt>
                                     <dd>

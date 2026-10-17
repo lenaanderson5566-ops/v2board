@@ -2206,3 +2206,11 @@ body[data-console="admin"] .panel-body > :last-child { margin-bottom: 0; }
 @media (max-width: 700px) {
     body[data-console="admin"] .panel > .panel-body { padding: 16px; }
 }
+
+body[data-console="admin"] .invitation-signal-list { display: flex; flex-wrap: wrap; gap: 6px; }
+body[data-console="admin"] .invitation-signal { display: inline-flex; padding: 3px 8px; border-radius: 6px; font-size: 12px; white-space: nowrap; }
+body[data-console="admin"] .invitation-signal-same { background: #fff4db; color: #855400; }
+body[data-console="admin"] .invitation-signal-different { background: #eef2f6; color: #425466; }
+body[data-console="admin"] .invitation-signal-missing { background: #f4f4f5; color: #666; border: 1px dashed #cbd5e1; }
+body[data-console="admin"] .invitation-comparison { min-width: 620px; }
+body[data-console="admin"] .invitation-comparison td { white-space: normal; overflow-wrap: anywhere; }

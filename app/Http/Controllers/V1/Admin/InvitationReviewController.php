@@ -60,7 +60,7 @@ final class InvitationReviewController extends \App\Http\Controllers\Controller 
             $row->commissions = $commissions->get($row->user_id.':'.$row->inviter_id,collect())
                 ->map(fn($item) => ['currency'=>$item->currency ?: 'CNY','amount'=>(int)$item->amount])->values();
         }
-        return response()->json(['data'=>$data,'total'=>$total]);
+        return response()->json(['data'=>$data,'total'=>$total])->header('Cache-Control','no-store');
     }
     public function review(Request $request) {
         if (is_string($request->input('note'))) $request->merge(['note'=>trim($request->input('note'))]);

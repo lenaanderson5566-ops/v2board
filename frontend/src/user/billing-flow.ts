@@ -85,3 +85,31 @@ export function orderOriginalAmount(order: Row): number {
         Number(order.refund_amount || 0)
     );
 }
+
+// Preview uses configured cycle prices and the same integer-cent coupon rounding as checkout.
+export function purchaseQuote(plan: Row, period: string, percent = 0) {
+    const price = Number(plan[period]);
+    const amount = Number.isSafeInteger(price) && price >= 0 ? price : 0;
+    const months = billingPeriodMonths[period] || 0;
+    const monthly = Number(plan.month_price);
+    const baseline =
+        months &&
+        plan.month_price != null &&
+        Number.isSafeInteger(monthly) &&
+        monthly > 0
+            ? monthly * months
+            : amount;
+    const cycleSaving = Math.max(0, baseline - amount);
+    const couponSaving =
+        Number.isInteger(percent) && percent >= 0 && percent <= 100
+            ? Math.floor((amount * percent) / 100)
+            : 0;
+    return {
+        amount,
+        months,
+        baseline,
+        cycleSaving,
+        couponSaving,
+        subtotal: amount - couponSaving,
+    };
+}

@@ -6,6 +6,7 @@ import {
     Shield,
     Bell,
     TicketPercent,
+    Gift,
 } from "lucide-react";
 import { type Row } from "../shared/api";
 import { useData } from "../shared/ui";
@@ -13,6 +14,7 @@ import { tx } from "../shared/i18n";
 import { e } from "../shared/experience-copy";
 import { activePlan } from "../shared/user-experience";
 import { useHeaderPopover } from "../shared/useHeaderPopover";
+import { useCouponActivities } from "./useCouponActivities";
 export function AccountMenu({
     user,
     logout,
@@ -20,6 +22,7 @@ export function AccountMenu({
     user: Row;
     logout: () => void;
 }) {
+    const activities = useCouponActivities();
     const sub = useData("user/getSubscribe");
     const { id, open, setOpen, root, trigger, toggle, onBlur } =
         useHeaderPopover();
@@ -89,6 +92,15 @@ export function AccountMenu({
                             label: "我的优惠券",
                             icon: TicketPercent,
                         },
+                        ...(activities.hasActivities
+                            ? [
+                                  {
+                                      key: "activities",
+                                      label: "活动中心",
+                                      icon: Gift,
+                                  },
+                              ]
+                            : []),
                         { key: "invite", label: "邀请好友", icon: Users },
                     ].map(({ key, label, icon: Icon }) => (
                         <a

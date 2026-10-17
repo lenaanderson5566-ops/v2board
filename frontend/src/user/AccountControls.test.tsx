@@ -14,6 +14,7 @@ const mocks = vi.hoisted(() => ({
     clearReadCache: vi.fn(),
     changeLanguage: vi.fn(),
     language: "en-US",
+    offers: [] as any[],
 }));
 vi.mock("../shared/api", () => ({
     request: mocks.request,
@@ -32,7 +33,7 @@ vi.mock("../shared/i18n", () => ({
 }));
 vi.mock("../shared/experience-copy", () => ({ e: (key: string) => key }));
 vi.mock("../shared/ui", () => ({
-    useData: () => ({ data: { plan: { name: "PRO" }, expired_at: null } }),
+    useData: (path: string) => ({ data: path === "user/coupon/offers" ? mocks.offers : { plan: { name: "PRO" }, expired_at: null } }),
     Modal: ({ title, children, close }: any) => (
         <div role="dialog" aria-label={title}>
             <button onClick={close}>关闭</button>
@@ -46,6 +47,7 @@ vi.mock("./AccountSessions", () => ({ AccountSessions: () => <div>Sessions</div>
 import { AccountSecurity } from "./AccountSecurity";
 afterEach(cleanup);
 beforeEach(() => {
+    mocks.offers = [];
     mocks.request.mockReset();
     mocks.clearReadCache.mockReset();
     mocks.changeLanguage.mockReset();
@@ -215,4 +217,15 @@ describe("account password changes", () => {
         );
         expect(localStorage.getItem("controls-test")).toBe("test-session");
     });
+});
+
+it("keeps the wallet entry and only adds activities when offers are available", () => {
+    const view = render(<AccountMenu user={{ email: "test@example.com" }} logout={vi.fn()} />);
+    fireEvent.click(screen.getByRole("button", { name: "account" }));
+    expect(screen.getByRole("link", { name: "我的优惠券" }).getAttribute("href")).toBe("#/coupons");
+    expect(screen.queryByRole("link", { name: "活动中心" })).toBeNull();
+    mocks.offers = [{ id: 1 }];
+    view.rerender(<AccountMenu user={{ email: "test@example.com" }} logout={vi.fn()} />);
+    fireEvent.click(screen.getByRole("link", { name: "活动中心" }));
+    expect(screen.queryByRole("link", { name: "活动中心" })).toBeNull();
 });

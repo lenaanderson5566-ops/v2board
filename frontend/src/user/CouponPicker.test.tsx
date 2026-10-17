@@ -55,7 +55,7 @@ it("selects a wallet entry without entering a coupon code", () => {
             onChange={change}
         />,
     );
-    fireEvent.click(screen.getByRole("radio", { name: /Welcome/ }));
+    fireEvent.change(screen.getByRole("combobox", { name: "我的优惠券" }), { target: { value: "1" } });
     expect(change).toHaveBeenCalledWith(1, coupon);
     expect(screen.queryByRole("textbox")).toBeNull();
 });
@@ -74,8 +74,7 @@ it("disables expired, used and ineligible coupons", () => {
             onChange={vi.fn()}
         />,
     );
-    fireEvent.click(screen.getByText(/unavailableCoupons/));
-    const radios = screen.getAllByRole("radio") as HTMLInputElement[];
+    const radios = screen.getAllByRole("option") as HTMLOptionElement[];
     expect(radios[0].disabled).toBe(false);
     expect(radios.slice(1).every((r) => r.disabled)).toBe(true);
 });
@@ -103,9 +102,8 @@ it("sorts usable coupons by savings, previews integer-cent discounts and clears 
     mocks.wallet = [coupon, { ...coupon, id: 2, name: "Better", discountPercent: 25 }];
     const change = vi.fn();
     const view = render(<CouponPicker planId={1} period="month_price" value={1} onChange={change} amount={999} currency="USD" />);
-    expect(screen.getAllByRole("radio")[1].getAttribute("name")).toBeTruthy();
-    expect(screen.getAllByRole("radio")[1].closest("label")?.textContent).toContain("Better");
-    expect(screen.getByText("couponSaving USD 2.49")).toBeTruthy();
+    expect(screen.getAllByRole("option")[1].textContent).toContain("Better");
+    expect(screen.getByRole("option", { name: /couponSaving USD 2.49/ })).toBeTruthy();
     mocks.wallet = [{ ...coupon, planIds: [1] }];
     view.rerender(<CouponPicker planId={2} period="month_price" value={1} onChange={change} />);
     expect(change).toHaveBeenCalledWith(null);

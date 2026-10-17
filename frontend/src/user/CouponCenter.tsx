@@ -6,6 +6,7 @@ import { State, useData } from "../shared/ui";
 import { tx } from "../shared/i18n";
 import { formatInstant } from "../shared/timezone";
 import type { V10WalletCoupon, V10CouponOffer } from "../shared/v10-types";
+import { pricingCopy as pc } from "./pricing-copy";
 import { couponRestrictions, couponStatus } from "./coupon-copy";
 
 export function ActivityCenter() {
@@ -37,10 +38,14 @@ export function ActivityCenter() {
         }
     }
     return (
-        <section className="coupon-center">
-            <div className="coupon-center-intro">
-                <Gift size={24} aria-hidden="true" />
-                <div>
+        <section className="coupon-center activity-center">
+            <div className="coupon-center-intro activity-hero">
+                <div className="activity-hero-art" aria-hidden="true">
+                    <Gift size={60} />
+                    <TicketPercent size={32} />
+                </div>
+                <div className="activity-hero-copy">
+                    <h2>{pc("activityHero")}</h2>
                     <p>
                         {tx("先了解活动并领取优惠券，购买套餐时再选择使用。")}
                     </p>
@@ -50,6 +55,10 @@ export function ActivityCenter() {
                     <ArrowUpRight size={16} aria-hidden="true" />
                 </a>
             </div>
+            <p className="activity-steps">
+                <CheckCircle2 size={17} aria-hidden="true" />
+                {pc("activitySteps")}
+            </p>
             {error && (
                 <p className="alert" role="alert">
                     {error}
@@ -66,7 +75,7 @@ export function ActivityCenter() {
                 <div className="coupon-center-grid">
                     {rows.map((offer) => (
                         <article
-                            className="coupon-activity-card"
+                            className={`coupon-activity-card activity-offer ${claimed.includes(offer.id) ? "claimed" : ""}`}
                             key={offer.id}
                         >
                             <span className="coupon-discount">
@@ -91,9 +100,7 @@ export function ActivityCenter() {
                                     {tx("有效期至")}{" "}
                                     {formatInstant(offer.expiresAt)}
                                 </small>
-                                <small>
-                                    {tx("每人限领一次，数量有限，领完即止。")}
-                                </small>
+                                <small>{pc("claimLimit")}</small>
                             </div>
                             <button
                                 className="primary"
@@ -128,11 +135,17 @@ export function ActivityCenter() {
 }
 
 export function MyCoupons() {
-    const [view,setView]=useState("available");
+    const [view, setView] = useState("available");
     const activities = useCouponActivities();
     const wallet = useData<V10WalletCoupon[]>("user/coupon/wallet");
     const rows = Array.isArray(wallet.data) ? wallet.data : [];
-    const visible=rows.filter(c=>view === "available" ? c.status === "available" : view === "used" ? c.status !== "available" && c.status !== "expired" : c.status === "expired");
+    const visible = rows.filter((c) =>
+        view === "available"
+            ? c.status === "available"
+            : view === "used"
+              ? c.status !== "available" && c.status !== "expired"
+              : c.status === "expired",
+    );
     return (
         <section className="coupon-center">
             <div className="coupon-center-intro">
@@ -151,8 +164,24 @@ export function MyCoupons() {
                     </a>
                 )}
             </div>
-            <div className="coupon-wallet-tabs" role="group" aria-label={tx("我的优惠券")}>
-                {[["available","可使用"],["used","已占用或使用"],["expired","已过期"]].map(([key,label])=><button key={key} aria-pressed={view===key} onClick={()=>setView(key)}>{tx(label)}</button>)}
+            <div
+                className="coupon-wallet-tabs"
+                role="group"
+                aria-label={tx("我的优惠券")}
+            >
+                {[
+                    ["available", "可使用"],
+                    ["used", "已占用或使用"],
+                    ["expired", "已过期"],
+                ].map(([key, label]) => (
+                    <button
+                        key={key}
+                        aria-pressed={view === key}
+                        onClick={() => setView(key)}
+                    >
+                        {tx(label)}
+                    </button>
+                ))}
             </div>
             <State {...wallet} retry={wallet.reload}>
                 <div className="coupon-center-grid">
@@ -184,7 +213,13 @@ export function MyCoupons() {
                 {!visible.length && (
                     <div className="coupon-center-empty">
                         <TicketPercent size={34} aria-hidden="true" />
-                        <h3>{tx(rows.length ? "当前分类暂无优惠券" : "暂无优惠券")}</h3>
+                        <h3>
+                            {tx(
+                                rows.length
+                                    ? "当前分类暂无优惠券"
+                                    : "暂无优惠券",
+                            )}
+                        </h3>
                         {activities.hasActivities ? (
                             <a href="#/activities">{tx("前往活动中心")}</a>
                         ) : (

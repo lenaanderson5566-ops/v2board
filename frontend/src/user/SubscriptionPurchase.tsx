@@ -14,6 +14,7 @@ import {
     purchasePeriods,
     unfinishedOrder,
     periodSavings,
+    purchaseQuote,
     subscriptionAction,
 } from "./billing-flow";
 
@@ -174,7 +175,10 @@ export function SubscriptionPurchase() {
                                     </div>
                                     <div className="pricing-summary">
                                         <div className="plan-price">
-                                            {money(plan[displayed],plan.currency)}
+                                            {money(
+                                                plan[displayed],
+                                                plan.currency,
+                                            )}
                                             <small>
                                                 {" "}
                                                 /{" "}
@@ -201,7 +205,8 @@ export function SubscriptionPurchase() {
                                                             ) /
                                                                 billingPeriodMonths[
                                                                     displayed
-                                                                ], plan.currency,
+                                                                ],
+                                                            plan.currency,
                                                         ),
                                                     })}
                                                 </span>
@@ -305,6 +310,7 @@ export function PlanSelection({
     const [busy, setBusy] = useState(false);
     const [error, setError] = useState("");
     const submitting = useRef(false);
+    const quote = purchaseQuote(plan, period, coupon?.discountPercent);
     async function submit(event: FormEvent) {
         event.preventDefault();
         if (submitting.current || !period) return;
@@ -315,9 +321,7 @@ export function PlanSelection({
             const result = await request<string>("user/order/save", {
                 plan_id: plan.id,
                 period,
-                ...(coupon !== null
-                    ? { wallet_coupon_id: coupon.id }
-                    : {}),
+                ...(coupon !== null ? { wallet_coupon_id: coupon.id } : {}),
                 ...(replaceTradeNo ? { replace_trade_no: replaceTradeNo } : {}),
             });
             window.dispatchEvent(new Event("data-changed"));
@@ -337,88 +341,178 @@ export function PlanSelection({
             aria-busy={busy}
         >
             <fieldset disabled={busy}>
-                <legend>
-                    {tx(plan.resetOnly ? "流量重置" : "选择订阅周期")}
-                </legend>
-                <div className="period-options">
-                    {available.map((key) => (
-                        <label
-                            key={key}
-                            className={period === key ? "selected" : ""}
+                <div className="purchase-body">
+                    <section className="purchase-choices">
+                        <h3>
+                            {tx(plan.resetOnly ? "流量重置" : "选择订阅周期")}
+                        </h3>
+                        <div
+                            className="period-options"
+                            role="group"
+                            aria-label={tx("选择订阅周期")}
                         >
-                            <input
-                                type="radio"
-                                name="period"
-                                value={key}
-                                checked={period === key}
-                                onChange={() => { setPeriod(key); setCoupon(null); }}
-                            />
-                            <span className="period-name">
-                                {tx(billingPeriods[key])}
-                            </span>
-                            <strong>{money(plan[key],plan.currency)}</strong>
-                            {billingPeriodMonths[key] && (
-                                <span className="period-equivalent">
-                                    {pc("equivalent", {
-                                        price: money(
-                                            Number(plan[key]) /
-                                                billingPeriodMonths[key], plan.currency,
-                                        ),
-                                    })}
-                                </span>
-                            )}
-                            {periodSavings(plan, key) > 0 && (
-                                <small
-                                    className="period-saving"
-                                    title={pc("save", {
-                                        percent: periodSavings(plan, key),
-                                    })}
+                            {available.map((key) => (
+                                <label
+                                    key={key}
+                                    className={period === key ? "selected" : ""}
                                 >
-                                    {pc("savingBadge", {
-                                        percent: periodSavings(plan, key),
-                                    })}
-                                </small>
+                                    <input
+                                        type="radio"
+                                        name="period"
+                                        value={key}
+                                        checked={period === key}
+                                        onChange={() => {
+                                            setPeriod(key);
+                                            setCoupon(null);
+                                        }}
+                                    />
+                                    <span className="period-name">
+                                        {tx(billingPeriods[key])}
+                                    </span>
+                                    <strong>
+                                        {money(plan[key], plan.currency)}
+                                    </strong>
+                                    {periodSavings(plan, key) > 0 && (
+                                        <small
+                                            className="period-saving"
+                                            title={pc("save", {
+                                                percent: periodSavings(
+                                                    plan,
+                                                    key,
+                                                ),
+                                            })}
+                                        >
+                                            {pc("cycleBadge", {
+                                                percent: periodSavings(
+                                                    plan,
+                                                    key,
+                                                ),
+                                            })}
+                                        </small>
+                                    )}
+                                </label>
+                            ))}
+                        </div>
+                        <CouponPicker
+                            planId={Number(plan.id)}
+                            period={period}
+                            value={coupon?.id ?? null}
+                            amount={quote.amount}
+                            currency={plan.currency}
+                            onChange={(_id, selected) =>
+                                setCoupon(selected ?? null)
+                            }
+                        />
+                    </section>
+                    <section
+                        className="purchase-breakdown"
+                        aria-label={pc("priceDetails")}
+                    >
+                        <h3>{pc("priceDetails")}</h3>
+                        <dl className="checkout-lines" aria-live="polite">
+                            {quote.cycleSaving > 0 && (
+                                <>
+                                    <div>
+                                        <dt>
+                                            {pc("monthlyBaseline", {
+                                                months: quote.months,
+                                            })}
+                                        </dt>
+                                        <dd>
+                                            {money(
+                                                quote.baseline,
+                                                plan.currency,
+                                            )}
+                                        </dd>
+                                    </div>
+                                    <div className="discount-line">
+                                        <dt>{pc("cycleDiscount")}</dt>
+                                        <dd>
+                                            −
+                                            {money(
+                                                quote.cycleSaving,
+                                                plan.currency,
+                                            )}
+                                        </dd>
+                                    </div>
+                                </>
                             )}
-                        </label>
-                    ))}
-                </div>
-                <CouponPicker planId={Number(plan.id)} period={period} value={coupon?.id ?? null} amount={Number(plan[period])} currency={plan.currency} onChange={(_id, selected) => setCoupon(selected ?? null)}/>
-                <dl className="checkout-lines purchase-estimate" aria-live="polite">
-                    <div>
-                        <dt>{tx("套餐价格")}</dt>
-                        <dd>{money(plan[period],plan.currency)}</dd>
-                    </div>
-                    {coupon && <>
-                        <div className="discount-line"><dt>{tx("优惠金额")}</dt><dd>−{money(Math.floor(Number(plan[period]) * coupon.discountPercent / 100), plan.currency)}</dd></div>
-                        <div className="checkout-total"><dt>{pc("couponEstimate")}</dt><dd>{money(Number(plan[period]) - Math.floor(Number(plan[period]) * coupon.discountPercent / 100), plan.currency)}</dd></div>
-                    </>}
-                </dl>
-                <p className="muted purchase-estimate-help">{pc("couponPreviewHelp")}</p>
-                <details className="purchase-fee-note">
-                    <summary>{pc("feeDetails")}</summary>
-                    <p className="muted">
-                        {tx(
-                            "优惠、旧套餐折抵和余额抵扣以创建后的订单为准。创建订单会预占可用余额，取消订单后返还。",
+                            <div>
+                                <dt>
+                                    {tx("套餐价格")} ·{" "}
+                                    {tx(billingPeriods[period] || "")}
+                                </dt>
+                                <dd>{money(quote.amount, plan.currency)}</dd>
+                            </div>
+                            {coupon && (
+                                <div className="discount-line">
+                                    <dt>
+                                        {tx("优惠金额")}
+                                        <small>
+                                            {pc("couponBase", {
+                                                percent: coupon.discountPercent,
+                                                amount: money(
+                                                    quote.amount,
+                                                    plan.currency,
+                                                ),
+                                            })}
+                                        </small>
+                                    </dt>
+                                    <dd>
+                                        −
+                                        {money(
+                                            quote.couponSaving,
+                                            plan.currency,
+                                        )}
+                                    </dd>
+                                </div>
+                            )}
+                        </dl>
+                        {quote.months > 1 && (
+                            <p className="purchase-equivalent">
+                                {pc("equivalent", {
+                                    price: money(
+                                        quote.amount / quote.months,
+                                        plan.currency,
+                                    ),
+                                })}
+                            </p>
                         )}
-                    </p>
-                </details>
-                {error && (
-                    <div className="alert" role="alert">
-                        {error}
-                        <a href="#/order">{tx("查看订单记录")}</a>
+                        <details className="purchase-fee-note">
+                            <summary>{pc("feeDetails")}</summary>
+                            <p>{pc("discountOrder")}</p>
+                            <p>
+                                {tx(
+                                    "优惠、旧套餐折抵和余额抵扣以创建后的订单为准。创建订单会预占可用余额，取消订单后返还。",
+                                )}
+                            </p>
+                        </details>
+                        {replaceTradeNo && (
+                            <p className="muted" role="note">
+                                {pc("replaceConfirm")}
+                            </p>
+                        )}
+                        {error && (
+                            <div className="alert" role="alert">
+                                {error}
+                                <a href="#/order">{tx("查看订单记录")}</a>
+                            </div>
+                        )}
+                    </section>
+                </div>
+                <div className="purchase-footer">
+                    <div className="purchase-footer-total" aria-live="polite">
+                        <span>{pc("couponEstimate")}</span>
+                        <strong>{money(quote.subtotal, plan.currency)}</strong>
+                        <small>{pc("estimateExclusions")}</small>
                     </div>
-                )}
-                {replaceTradeNo && (
-                    <p className="muted" role="note">
-                        {pc("replaceConfirm")}
-                    </p>
-                )}
-                <button
-                    className="primary purchase-primary"
-                    disabled={busy || !period}
-                >
-                    {tx(busy ? "提交中…" : "创建订单并继续")}
-                </button>
+                    <button
+                        className="primary purchase-primary"
+                        disabled={busy || !period}
+                    >
+                        {tx(busy ? "提交中…" : "创建订单并继续")}
+                    </button>
+                </div>
             </fieldset>
         </form>
     );

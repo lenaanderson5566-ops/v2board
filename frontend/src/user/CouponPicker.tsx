@@ -42,36 +42,115 @@ export function CouponPicker({
         (!coupon.planIds.length || coupon.planIds.includes(planId)) &&
         (!coupon.billingPeriods.length ||
             coupon.billingPeriods.includes(periods[period]));
-    const usable = (coupon: WalletCoupon) => coupon.status === "available" && applicable(coupon);
-    const available = rows.filter(usable).sort((a, b) => b.discountPercent - a.discountPercent || Date.parse(a.expiresAt) - Date.parse(b.expiresAt));
+    const usable = (coupon: WalletCoupon) =>
+        coupon.status === "available" && applicable(coupon);
+    const available = rows
+        .filter(usable)
+        .sort(
+            (a, b) =>
+                b.discountPercent - a.discountPercent ||
+                Date.parse(a.expiresAt) - Date.parse(b.expiresAt),
+        );
     const unavailable = rows.filter((coupon) => !usable(coupon));
     useEffect(() => {
-        if (value !== null && !wallet.loading && !wallet.error && wallet.data && !rows.some((coupon) => coupon.id === value && usable(coupon))) onChange(null);
-    }, [value, wallet.data, wallet.loading, wallet.error, planId, period, onChange]);
-    const option = (coupon: WalletCoupon) => (
-        <label key={coupon.id} className={`coupon-option ${value === coupon.id ? "selected" : ""} ${!usable(coupon) ? "unavailable" : ""}`}>
-            <input type="radio" name={name} disabled={!usable(coupon)} checked={value === coupon.id} onChange={() => onChange(coupon.id, coupon)} />
-            <span>
-                <strong>{coupon.name} · {tx("减免")} {coupon.discountPercent}%</strong>
-                <small>{formatInstant(coupon.expiresAt)} · {tx(usable(coupon) ? "可使用" : coupon.status === "available" ? "不适用当前套餐或周期" : coupon.status === "expired" ? "已过期" : "已占用或使用")}</small>
-                {usable(coupon) && amount > 0 && <span className="coupon-saving">{pc("couponSaving", { amount: money(Math.floor(amount * coupon.discountPercent / 100), currency) })}</span>}
-            </span>
-        </label>
+        if (
+            value !== null &&
+            !wallet.loading &&
+            !wallet.error &&
+            wallet.data &&
+            !rows.some((coupon) => coupon.id === value && usable(coupon))
+        )
+            onChange(null);
+    }, [
+        value,
+        wallet.data,
+        wallet.loading,
+        wallet.error,
+        planId,
+        period,
+        onChange,
+    ]);
+    const selected = rows.find(
+        (coupon) => coupon.id === value && usable(coupon),
     );
+    const unavailableReason = (coupon: WalletCoupon) =>
+        tx(
+            coupon.status === "available"
+                ? "不适用当前套餐或周期"
+                : coupon.status === "expired"
+                  ? "已过期"
+                  : "已占用或使用",
+        );
     return (
-        <section className="coupon-wallet">
-            <h3><TicketPercent size={18} aria-hidden="true" />{tx("我的优惠券")}</h3>
-            <label className={`coupon-option ${value === null ? "selected" : ""}`}>
-                <input type="radio" name={name} checked={value === null} onChange={() => onChange(null)} />
-                <span>{tx("不使用优惠券")}</span>
+        <section className="coupon-wallet coupon-picker-compact">
+            <label htmlFor={name} className="coupon-picker-label">
+                <TicketPercent size={18} aria-hidden="true" />
+                {tx("我的优惠券")}
             </label>
             <State {...wallet} retry={wallet.reload}>
-                <div className="coupon-options">{available.map(option)}</div>
-                {unavailable.length > 0 && <details className="coupon-unavailable"><summary>{pc("unavailableCoupons")} ({unavailable.length})</summary>{unavailable.map(option)}</details>}
-                {!rows.length && <p className="muted">{tx(activities.hasActivities ? "暂无优惠券，可前往活动中心查看" : "暂无优惠券")}</p>}
+                {rows.length > 0 ? (
+                    <>
+                        <select
+                            id={name}
+                            value={selected?.id ?? ""}
+                            onChange={(event) => {
+                                const next = available.find(
+                                    (coupon) =>
+                                        String(coupon.id) ===
+                                        event.target.value,
+                                );
+                                onChange(next?.id ?? null, next);
+                            }}
+                        >
+                            <option value="">{tx("不使用优惠券")}</option>
+                            {available.map((coupon) => (
+                                <option key={coupon.id} value={coupon.id}>
+                                    {coupon.name} · {tx("减免")}{" "}
+                                    {coupon.discountPercent}%
+                                    {amount > 0
+                                        ? ` · ${pc("couponSaving", { amount: money(Math.floor((amount * coupon.discountPercent) / 100), currency) })}`
+                                        : ""}
+                                </option>
+                            ))}
+                            {unavailable.length > 0 && (
+                                <optgroup label={pc("unavailableCoupons")}>
+                                    {unavailable.map((coupon) => (
+                                        <option
+                                            key={coupon.id}
+                                            disabled
+                                            value={coupon.id}
+                                        >
+                                            {coupon.name} ·{" "}
+                                            {unavailableReason(coupon)}
+                                        </option>
+                                    ))}
+                                </optgroup>
+                            )}
+                        </select>
+                        {selected && (
+                            <small className="coupon-selected-detail">
+                                {tx("有效期至")}{" "}
+                                {formatInstant(selected.expiresAt)}
+                            </small>
+                        )}
+                    </>
+                ) : (
+                    <p className="muted">
+                        {tx(
+                            activities.hasActivities
+                                ? "暂无优惠券，可前往活动中心查看"
+                                : "暂无优惠券",
+                        )}
+                    </p>
+                )}
             </State>
             <div className="coupon-picker-links">
-                {activities.hasActivities && <a href="#/activities">{tx("查看活动")}<ArrowUpRight size={14} aria-hidden="true" /></a>}
+                {activities.hasActivities && (
+                    <a href="#/activities">
+                        {tx("查看活动")}
+                        <ArrowUpRight size={14} aria-hidden="true" />
+                    </a>
+                )}
                 <a href="#/coupons">{tx("管理优惠券")}</a>
             </div>
         </section>

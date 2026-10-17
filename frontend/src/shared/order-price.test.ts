@@ -89,3 +89,14 @@ it("calculates real savings without inventing discounts", () => {
         periodSavings({ month_price: 100, year_price: 1300 }, "year_price"),
     ).toBe(0);
 });
+
+import { purchaseQuote } from "../user/billing-flow";
+it("applies a coupon to the discounted cycle price instead of adding percentages", () => {
+    expect(purchaseQuote({ month_price: 5880, year_price: 59976 }, "year_price", 20)).toEqual({
+        amount: 59976, months: 12, baseline: 70560, cycleSaving: 10584, couponSaving: 11995, subtotal: 47981,
+    });
+    expect(purchaseQuote({ year_price: 59976 }, "year_price", 20).cycleSaving).toBe(0);
+    expect(purchaseQuote({ month_price: 100, year_price: 1500 }, "year_price", 100).subtotal).toBe(0);
+    expect(purchaseQuote({ month_price: 100, year_price: 1500 }, "year_price", 100).cycleSaving).toBe(0);
+    expect(purchaseQuote({ reset_price: 999 }, "reset_price", 10).subtotal).toBe(900);
+});

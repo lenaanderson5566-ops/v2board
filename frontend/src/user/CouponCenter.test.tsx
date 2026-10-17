@@ -13,6 +13,7 @@ const mocks = vi.hoisted(() => ({
     wallet: [] as any[],
     offers: [] as any[],
 }));
+vi.mock("./pricing-copy", () => ({ pricingCopy: (key: string) => key }));
 vi.mock("../shared/api", () => ({ request: mocks.request }));
 vi.mock("../shared/i18n", () => ({
     locale: () => "en-US",

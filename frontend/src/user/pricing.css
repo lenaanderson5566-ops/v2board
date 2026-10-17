@@ -6,6 +6,8 @@
     border-radius: 999px;
     background: var(--surface-tint);
     width: fit-content;
+    max-width: 100%;
+    flex-wrap: wrap;
     margin: 0;
     flex-shrink: 0;
 }
@@ -166,37 +168,6 @@
     display: none;
 }
 
-.compact-selection .period-options {
-    grid-template-columns: minmax(0, 1fr);
-    gap: 8px;
-}
-.compact-selection .period-options label {
-    display: grid;
-    grid-template-columns: 16px minmax(0, 1fr) auto auto;
-    gap: 10px;
-    padding: 14px;
-    min-height: 54px;
-}
-.compact-selection .period-options label strong {
-    width: auto;
-    padding: 0;
-    white-space: nowrap;
-}
-.compact-selection .period-options .period-name {
-    overflow-wrap: anywhere;
-}
-.compact-selection .period-options label .period-saving {
-    width: auto;
-    padding: 2px 6px;
-    white-space: nowrap;
-    color: var(--brand);
-    background: var(--surface-tint);
-    border-radius: 5px;
-    font-size: 12px;
-}
-.compact-selection .coupon-disclosure {
-    margin-top: 12px;
-}
 .compact-selection .checkout-lines {
     margin: 12px 0 4px;
 }
@@ -213,13 +184,6 @@
     margin: 4px 0;
     line-height: 1.6;
 }
-@media (max-width: 380px) {
-    .compact-selection .period-options label {
-        gap: 6px;
-        padding: 12px 10px;
-    }
-}
-
 .app.user .subscription-catalog .pending-order {
     padding: 10px 14px;
     margin-bottom: 12px;
@@ -293,17 +257,193 @@
     }
 }
 
-@media (max-width: 600px) {
-    .compact-selection .period-options label { grid-template-columns: 16px minmax(0, 1fr) auto; align-items: center; gap: 6px 10px; }
-    .compact-selection .period-options label input { grid-column: 1; grid-row: 1; }
-    .compact-selection .period-name { grid-column: 2; grid-row: 1; }
-    .compact-selection .period-options label strong { grid-column: 3; grid-row: 1; white-space: normal; text-align: end; overflow-wrap: anywhere; }
-    .compact-selection .period-options label .period-saving { grid-column: 2 / -1; grid-row: 2; justify-self: start; white-space: normal; }
+/* Keep confirmation separate from the only scrollable area, including short viewports. */
+.overlay .modal:has(> .purchase-selection) {
+    width: min(860px, calc(100vw - 24px));
+    max-height: calc(100dvh - 40px);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
 }
-
-.compact-selection .period-options .period-equivalent { grid-column: 2 / -1; grid-row: 2; font-size: 12px; color: var(--text-secondary); overflow-wrap: anywhere; }
-.compact-selection .period-options label:has(.period-equivalent) .period-saving { grid-column: 4; grid-row: 1; }
+.overlay .modal:has(> .purchase-selection) > .panel-head {
+    position: static;
+    flex: 0 0 auto;
+    padding: 18px 24px;
+}
+.modal > .purchase-selection {
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    padding: 0;
+}
+.purchase-selection > fieldset {
+    display: contents;
+}
+.purchase-body {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(260px, 0.9fr);
+    gap: 24px;
+    padding: 22px 24px;
+    overflow-y: auto;
+    min-height: 0;
+    overscroll-behavior: contain;
+}
+.purchase-body h3 {
+    font-size: 15px;
+    margin: 0 0 12px;
+}
+.purchase-choices,
+.purchase-breakdown {
+    min-width: 0;
+}
+.purchase-breakdown {
+    background: var(--surface-soft);
+    border-radius: 12px;
+    padding: 16px;
+    align-self: start;
+}
+.purchase-breakdown .checkout-lines {
+    margin: 0;
+}
+.purchase-breakdown .checkout-lines > div {
+    gap: 12px;
+    align-items: start;
+}
+.purchase-breakdown .checkout-lines dd {
+    text-align: end;
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+}
+.purchase-breakdown .checkout-lines dt small {
+    display: block;
+    color: var(--text-secondary);
+    font-size: 11px;
+    margin-top: 4px;
+}
+.purchase-breakdown .discount-line {
+    color: var(--success);
+}
+.purchase-equivalent {
+    font-size: 12px;
+    color: var(--text-secondary);
+    margin: 12px 0 0;
+}
+.purchase-body .period-options {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+}
+.purchase-body .period-options label {
+    grid-template-columns: 16px minmax(0, 1fr);
+    gap: 5px 8px;
+    padding: 10px;
+    align-content: start;
+}
+.purchase-body .period-options label input {
+    grid-column: 1;
+    grid-row: 1;
+}
+.purchase-body .period-options label .period-name {
+    grid-column: 2;
+    grid-row: 1;
+}
+.purchase-body .period-options label strong {
+    grid-column: 2;
+    grid-row: 2;
+    font-size: 13px;
+    white-space: normal;
+    overflow-wrap: anywhere;
+    text-align: start;
+}
+.purchase-body .period-options label .period-saving {
+    grid-column: 2;
+    grid-row: 3;
+    justify-self: start;
+    white-space: normal;
+    font-size: 11px;
+}
+.purchase-body .coupon-picker-compact {
+    padding: 0;
+    border: 0;
+    margin: 18px 0 0;
+}
+.coupon-picker-compact .coupon-picker-label {
+    display: flex;
+    flex-direction: row;
+    gap: 8px;
+    align-items: center;
+    font-weight: 600;
+    margin-bottom: 10px;
+}
+.coupon-picker-compact select {
+    width: 100%;
+    min-width: 0;
+    min-height: 44px;
+    font-size: 13px;
+    text-overflow: ellipsis;
+}
+.coupon-selected-detail {
+    display: block;
+    color: var(--text-secondary);
+    margin-top: 6px;
+    font-size: 11px;
+}
+.coupon-picker-compact .coupon-picker-links {
+    margin-top: 8px;
+    font-size: 12px;
+}
+.purchase-selection .purchase-footer {
+    flex: 0 0 auto;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(160px, auto);
+    gap: 20px;
+    align-items: center;
+    border-top: 1px solid var(--border);
+    padding: 16px 24px;
+    background: var(--surface);
+}
+.purchase-footer-total {
+    display: grid;
+    gap: 4px;
+}
+.purchase-footer-total > span,
+.purchase-footer-total small {
+    font-size: 12px;
+    color: var(--text-secondary);
+}
+.purchase-footer-total strong {
+    font-size: 24px;
+    font-variant-numeric: tabular-nums;
+    overflow-wrap: anywhere;
+}
+.purchase-selection .purchase-footer .purchase-primary {
+    position: static;
+    box-shadow: none;
+    margin: 0;
+    width: 100%;
+    min-height: 44px;
+    white-space: normal;
+}
 @media (max-width: 600px) {
-    .compact-selection .period-options label:has(.period-equivalent) .period-saving { grid-column: 3; grid-row: 2; justify-self: end; }
-    .compact-selection .period-options label:has(.period-saving) .period-equivalent { grid-column: 2; }
+    .overlay .modal:has(> .purchase-selection) {
+        max-height: calc(100dvh - 24px);
+    }
+    .overlay .modal:has(> .purchase-selection) > .panel-head {
+        padding: 14px 16px;
+    }
+    .purchase-body {
+        grid-template-columns: minmax(0, 1fr);
+        gap: 14px;
+        padding: 16px;
+    }
+    .purchase-breakdown {
+        padding: 12px;
+    }
+    .purchase-selection .purchase-footer {
+        grid-template-columns: minmax(0, 1fr) minmax(130px, 1fr);
+        gap: 12px;
+        padding: 12px 16px max(12px, env(safe-area-inset-bottom));
+    }
+    .purchase-footer-total strong {
+        font-size: 21px;
+    }
 }

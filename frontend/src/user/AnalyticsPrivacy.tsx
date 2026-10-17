@@ -183,20 +183,24 @@ export function AnalyticsPrivacy() {
                         hidden={!expanded}
                         className="analytics-privacy-details"
                     >
-                        <p>{e("analyticsExplanation")}</p>
-                        {configuration && (
-                            <p>
-                                {e("analyticsRetention")}{" "}
-                                {configuration.retentionDays}{" "}
-                                {e("analyticsDays")}
-                            </p>
-                        )}
-                        {chosenAt && (
-                            <p>
-                                {e("analyticsChosenAt")}{" "}
-                                {new Date(chosenAt).toLocaleString()}
-                            </p>
-                        )}
+                        <p>{e("analyticsSummary")}</p>
+                        <details>
+                            <summary>{e("analyticsDetails")}</summary>
+                            <p>{e("analyticsExplanation")}</p>
+                            {configuration && (
+                                <p>
+                                    {e("analyticsRetention")}{" "}
+                                    {configuration.retentionDays}{" "}
+                                    {e("analyticsDays")}
+                                </p>
+                            )}
+                            {chosenAt && (
+                                <p>
+                                    {e("analyticsChosenAt")}{" "}
+                                    {new Date(chosenAt).toLocaleString()}
+                                </p>
+                            )}
+                        </details>
                     </div>
                     {!configuration?.enabled && (
                         <p>{e("analyticsUnavailable")}</p>

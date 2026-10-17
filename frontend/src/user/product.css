@@ -2521,3 +2521,6 @@ body[data-console="user"] .client-family-header p {
     .analytics-privacy .actions button:first-child { grid-column: 1 / -1; }
     body:has(.bottom-nav) .analytics-privacy { bottom: var(--chat-navigation-offset, calc(76px + env(safe-area-inset-bottom))); }
 }
+
+.analytics-privacy-details summary { cursor: pointer; width: fit-content; padding-block: 10px; color: var(--ink); }
+.analytics-privacy-details summary:focus-visible { outline: 2px solid var(--brand); outline-offset: 3px; }

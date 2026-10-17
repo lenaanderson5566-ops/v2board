@@ -8,7 +8,7 @@ body[data-console="user"] {
     --brand-soft: #e8eff8;
     --on-brand: #fff;
     --ink: #182638;
-    --text-secondary: #687789;
+    --text-secondary: #59687a;
     --outline: #bac6d4;
     --line: #e4eaf1;
     --surface: #fff;
@@ -34,9 +34,6 @@ body[data-console="user"] {
     --danger: #b42318;
     --danger-soft: #fcf0ef;
     --danger-border: #efccc8;
-    --offer: #7040a0;
-    --offer-soft: #f4eefb;
-    --offer-border: #e0cfee;
     /* Shared component compatibility aliases. Define them only here. */
     --accent: var(--brand);
     --primary: var(--brand);

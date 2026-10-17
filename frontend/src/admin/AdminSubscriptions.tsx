@@ -10,9 +10,9 @@ export function AdminSubscriptions({
     const [tab, setTab] = useState<string>(initialTab);
     return (
         <Tabs.Root value={tab} onValueChange={setTab} activationMode="manual">
-            <Tabs.List className="section-tabs" aria-label="订阅管理视图">
-                <Tabs.Trigger value="plans">订阅套餐</Tabs.Trigger>
-                <Tabs.Trigger value="translations">订阅多语言</Tabs.Trigger>
+            <Tabs.List className="section-tabs" aria-label="套餐管理视图">
+                <Tabs.Trigger value="plans">套餐列表</Tabs.Trigger>
+                <Tabs.Trigger value="translations">套餐翻译</Tabs.Trigger>
                 <Tabs.Trigger value="currencies">价格与币种</Tabs.Trigger>
             </Tabs.List>
             <Tabs.Content value="plans">

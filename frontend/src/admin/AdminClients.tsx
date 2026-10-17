@@ -106,7 +106,7 @@ export function AdminClients({
     const [revision, setRevision] = useState(0);
     return (
         <div className="release-monitor">
-            <h2>第三方客户端管理</h2>
+            <h2>第三方客户端</h2>
             <div className="section-tabs">
                 <button
                     className={tab === "updates" ? "selected" : ""}

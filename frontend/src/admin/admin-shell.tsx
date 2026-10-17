@@ -6,40 +6,61 @@ import { boot, type Row } from "../shared/api";
 
 // Stable menu order and navigation aliases; styling is owned by admin.css.
 export const legacyAdminMenu = [
-    ["overview", "仪表盘", "speedometer", ""],
-    ["security", "账户安全", "shield", "设置"],
-    ["settings", "系统配置", "equalizer", "设置"],
-    ["payments", "支付配置", "credit-card", "设置"],
-    ["nodes", "节点管理", "layers", "服务器"],
-    ["groups", "权限组管理", "wrench", "服务器"],
-    ["routes", "路由管理", "shuffle", "服务器"],
-    ["plans", "订阅管理", "bag", "财务"],
-    ["orders", "订单管理", "list", "财务"],
-    ["invitations", "邀请管理", "users", "财务"],
-    ["coupons", "优惠券管理", "present", "财务"],
-    ["giftcards", "礼品卡管理", "star", "财务"],
-    ["analytics", "访问与转化", "bar-chart", "用户"],
-    ["users", "用户管理", "users", "用户"],
-    ["online", "在线用户", "users", "用户"],
-    ["notices", "公告管理", "speech", "用户"],
-    ["banners", "Banner 管理", "picture", "用户"],
-    ["tickets", "工单管理", "support", "用户"],
-    ["knowledge", "知识库管理", "bulb", "用户"],
+    ["overview", "仪表盘", "speedometer", "概览"],
+    ["analytics", "访问与转化", "bar-chart", "概览"],
+    ["users", "用户管理", "users", "用户与支持"],
+    ["online", "在线用户", "users", "用户与支持"],
+    ["tickets", "工单管理", "support", "用户与支持"],
+    ["knowledge", "知识库", "bulb", "用户与支持"],
+    ["plans", "套餐管理", "bag", "套餐与支付"],
+    ["orders", "订单管理", "list", "套餐与支付"],
+    ["payments", "支付渠道", "credit-card", "套餐与支付"],
+    ["coupons", "优惠券管理", "present", "营销与内容"],
+    ["giftcards", "礼品卡管理", "star", "营销与内容"],
+    ["invitations", "邀请与奖励", "users", "营销与内容"],
+    ["notices", "公告管理", "speech", "营销与内容"],
+    ["banners", "横幅管理", "picture", "营销与内容"],
+    ["nodes", "节点管理", "layers", "节点与接入"],
+    ["groups", "节点权限组", "wrench", "节点与接入"],
+    ["routes", "路由管理", "shuffle", "节点与接入"],
     ["clients", "访问与版本策略", "shield", "客户端"],
-    ["client-releases", "第三方客户端管理", "screen-smartphone", "客户端"],
-    ["risk", "风控规则", "shield", "风控与黑名单"],
-    ["blacklist-ip", "IP 黑名单", "ban", "风控与黑名单"],
-    ["blacklist-ua", "UA 黑名单", "ban", "风控与黑名单"],
-    ["mail-blocklist", "邮件禁发名单", "ban", "风控与黑名单"],
-    ["client-diagnostics", "客户端运行记录", "screen-smartphone", "日志"],
-    ["log-login", "登录日志", "login", "日志"],
-    ["log-subscribe", "订阅日志", "notebook", "日志"],
-    ["log-connection", "连接日志", "link", "日志"],
-    ["log-risk", "风控命中", "shield", "日志"],
-    ["log-settings", "日志设置", "settings", "日志"],
-    ["mail-logs", "邮件日志", "notebook", "日志"],
-    ["system-log", "系统日志", "notebook", "日志"],
+    ["client-releases", "第三方客户端", "screen-smartphone", "客户端"],
+    ["risk", "风控规则", "shield", "安全与风控"],
+    ["blacklist-ip", "IP 黑名单", "ban", "安全与风控"],
+    ["blacklist-ua", "UA 黑名单", "ban", "安全与风控"],
+    ["mail-blocklist", "邮件禁发名单", "ban", "安全与风控"],
+    ["log-login", "登录日志", "login", "日志与诊断"],
+    ["log-subscribe", "订阅请求日志", "notebook", "日志与诊断"],
+    ["log-connection", "连接日志", "link", "日志与诊断"],
+    ["log-risk", "风控命中日志", "shield", "日志与诊断"],
+    ["mail-logs", "邮件发送日志", "notebook", "日志与诊断"],
+    ["client-diagnostics", "客户端运行记录", "screen-smartphone", "日志与诊断"],
+    ["system-log", "系统日志", "notebook", "日志与诊断"],
+    ["settings", "系统配置", "equalizer", "系统设置"],
+    ["log-settings", "日志与保留策略", "settings", "系统设置"],
+    ["security", "管理员账户安全", "shield", "系统设置"],
 ] as const;
+// Keep old labels and common task terms searchable after regrouping.
+const adminMenuKeywords: Record<string, string> = {
+    overview: "运营概览 系统状态 队列 风控概览",
+    analytics: "访问统计 漏斗 转化率 隐私",
+    plans: "订阅管理 订阅套餐 套餐翻译 订阅多语言 价格 币种 汇率",
+    payments: "支付配置 支付方式 支付接口",
+    groups: "权限组管理 服务器",
+    invitations: "邀请管理 佣金 审核 复核 邀请邮件",
+    banners: "Banner 管理 轮播图",
+    knowledge: "知识库管理 帮助中心",
+    coupons: "优惠码 活动 发放 券包",
+    nodes: "服务器 DDNS 域名 流量预算 Lightsail",
+    clients: "FastAI 专用客户端 UA 最低版本 下载",
+    "client-releases": "第三方客户端管理 推荐 下载",
+    "log-subscribe": "订阅日志",
+    "log-risk": "风控命中",
+    "mail-logs": "邮件日志 退信 投诉 送达",
+    "mail-blocklist": "邮件黑名单 禁发邮箱 风控与黑名单",
+    "log-settings": "日志设置 清理 保留期",
+    security: "账户安全 MFA TOTP 恢复码",
+};
 export function adminPage(path: string): string {
     return (
         (
@@ -96,11 +117,16 @@ export function AdminShell({
     const canLeave = () =>
         !document.querySelector('[data-unsaved="true"]') ||
         window.confirm("有尚未保存的修改，确认离开当前页面？");
-    const visibleMenu = legacyAdminMenu.filter(([key, label, , group]) =>
-        `${key} ${label} ${group}`
-            .toLowerCase()
-            .includes(navSearch.trim().toLowerCase()),
-    );
+    const searchTerms = navSearch
+        .trim()
+        .toLowerCase()
+        .split(/\s+/)
+        .filter(Boolean);
+    const visibleMenu = legacyAdminMenu.filter(([key, label, , group]) => {
+        const searchable =
+            `${key} ${label} ${group} ${adminMenuKeywords[key] || ""}`.toLowerCase();
+        return searchTerms.every((term) => searchable.includes(term));
+    });
     const [open, setOpen] = useState(false);
     const [menu, setMenu] = useState(false);
     useEffect(() => {
@@ -111,7 +137,10 @@ export function AdminShell({
     useEffect(() => {
         const escape = (e: KeyboardEvent) => {
             if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "k") {
-                if (document.querySelector('[role="dialog"][aria-modal="true"]')) return;
+                if (
+                    document.querySelector('[role="dialog"][aria-modal="true"]')
+                )
+                    return;
                 e.preventDefault();
                 setOpen(true);
                 requestAnimationFrame(() => searchInput.current?.focus());
@@ -139,7 +168,7 @@ export function AdminShell({
                 operations: "运营概览",
                 clients: "访问与版本策略",
                 translations: "套餐翻译",
-                "risk-settings": "日志设置",
+                "risk-settings": "日志与保留策略",
                 ddns: "动态域名",
             } as Record<string, string>
         )[current] ||

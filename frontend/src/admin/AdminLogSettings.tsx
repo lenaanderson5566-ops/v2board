@@ -48,7 +48,7 @@ export function AdminLogSettings() {
     const retention = useData<Row>(admin("system/logRetention"));
     return (
         <>
-            <Panel title="日志设置">
+            <Panel title="日志与保留策略">
                 <div className="pad">
                     <p>
                         保存后由定时任务每 5

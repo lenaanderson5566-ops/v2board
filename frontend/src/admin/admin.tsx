@@ -138,7 +138,7 @@ const price = (key: string, label: string): Field => ({
 });
 export const resources: Record<string, Resource> = {
     plans: {
-        title: "订阅管理",
+        title: "套餐管理",
         fetch: admin("plan/fetch"),
         sort: admin("plan/sort"),
         sortKind: "plans",
@@ -232,7 +232,7 @@ export const resources: Record<string, Resource> = {
         ],
     },
     groups: {
-        title: "权限组管理",
+        title: "节点权限组",
         fetch: admin("server/group/fetch"),
         save: admin("server/group/save"),
         drop: admin("server/group/drop"),
@@ -2098,7 +2098,7 @@ export function Translations() {
             : admin("plan/fetch"),
     );
     return (
-        <Panel title="订阅多语言">
+        <Panel title="套餐翻译">
             <div className="pad actions">
                 <select
                     value={plan}
@@ -2247,7 +2247,7 @@ export function Payments() {
     return (
         <>
             <Panel
-                title="支付配置"
+                title="支付渠道"
                 actions={
                     <>
                         {" "}

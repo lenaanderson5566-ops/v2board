@@ -100,7 +100,7 @@ export function AdminMailLogs() {
     );
     return (
         <Panel
-            title="邮件日志"
+            title="邮件发送日志"
             actions={
                 view === "logs" ? (
                     <Reload onClick={logs.reload} loading={logs.loading} />

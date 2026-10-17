@@ -53,7 +53,7 @@ export function AdminBanners() {
     }
     return (
         <Panel
-            title="Banner 管理"
+            title="横幅管理"
             actions={
                 <>
                     <button

@@ -12,8 +12,7 @@ export function AdminSubscriptionProtection() {
             <h3>订阅访问拦截</h3>
             <p className="muted">
                 这里的限流与 IP / UA
-                黑名单会实际拦截请求。下方异常检测规则仅记录风险事件；关闭记录不影响拦截。客户端准入与最低版本统一在「第三方客户端管理
-                → 访问与版本策略」设置。
+                黑名单会实际拦截请求。下方异常检测规则仅记录风险事件；关闭记录不影响拦截。客户端准入与最低版本统一在「客户端 → 访问与版本策略」设置。
             </p>{" "}
             <State {...d} retry={d.reload}>
                 <div className="release-grid">

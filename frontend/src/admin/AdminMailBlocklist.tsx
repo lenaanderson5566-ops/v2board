@@ -11,6 +11,11 @@ const actions: Record<string, string> = {
     note: "修改备注",
     release: "解除人工禁发",
 };
+interface ImportDetails {
+    existingUserEmails: string[];
+    skippedEmails: string[];
+    duplicateEmails: { email: string; extraRows: number }[];
+}
 export function AdminMailBlocklist() {
     const [pageSize, setPageSize] = useState(20);
     const [query, setQuery] = useState(""),
@@ -28,6 +33,9 @@ export function AdminMailBlocklist() {
     const [historySize, setHistorySize] = useState(20);
     const [bulk, setBulk] = useState(false);
     const [result, setResult] = useState("");
+    const [importDetails, setImportDetails] = useState<ImportDetails | null>(
+        null,
+    );
     const lock = useRef(false);
     const list = useData<Row[]>(
         admin(
@@ -47,6 +55,7 @@ export function AdminMailBlocklist() {
         setBusy(true);
         setError("");
         setResult("");
+        setImportDetails(null);
         try {
             const response = await request(admin(path), body);
             done(response.data);
@@ -87,6 +96,7 @@ export function AdminMailBlocklist() {
                         setEmail("");
                         setError("");
                         setResult("");
+                        setImportDetails(null);
                     }}
                 >
                     单个添加
@@ -100,6 +110,7 @@ export function AdminMailBlocklist() {
                         setEmail("");
                         setError("");
                         setResult("");
+                        setImportDetails(null);
                     }}
                 >
                     多行导入
@@ -123,6 +134,13 @@ export function AdminMailBlocklist() {
                             ? { emails, note: note.trim() }
                             : { email: email.trim(), note: note.trim() },
                         (data) => {
+                            if (bulk)
+                                setImportDetails({
+                                    existingUserEmails:
+                                        data.existingUserEmails ?? [],
+                                    skippedEmails: data.skippedEmails ?? [],
+                                    duplicateEmails: data.duplicateEmails ?? [],
+                                });
                             setResult(
                                 bulk
                                     ? `导入完成：新增或重新禁发 ${data.added} 个，现有用户跳过 ${data.existingUsers ?? 0} 个，已禁发跳过 ${data.skipped} 个，重复行 ${data.duplicates} 个。`
@@ -189,6 +207,60 @@ export function AdminMailBlocklist() {
                 <p className="pad" role="status">
                     {result}
                 </p>
+            )}
+            {importDetails && (
+                <div className="mail-blocklist-results">
+                    {[
+                        {
+                            title: "现有用户，未导入",
+                            rows: importDetails.existingUserEmails.map(
+                                (email) => ({
+                                    email,
+                                    description: "已注册账号",
+                                }),
+                            ),
+                        },
+                        {
+                            title: "已禁发，保留原记录",
+                            rows: importDetails.skippedEmails.map((email) => ({
+                                email,
+                                description: "未覆盖原备注",
+                            })),
+                        },
+                        {
+                            title: "本次输入中的重复邮箱",
+                            rows: importDetails.duplicateEmails.map(
+                                ({ email, extraRows }) => ({
+                                    email,
+                                    description: `多余 ${extraRows} 行已去重`,
+                                }),
+                            ),
+                        },
+                    ]
+                        .filter((group) => group.rows.length > 0)
+                        .map((group) => (
+                            <section key={group.title}>
+                                <h4>
+                                    {group.title} · {group.rows.length} 个邮箱
+                                </h4>
+                                <ul aria-label={group.title}>
+                                    {group.rows.map((row) => (
+                                        <li key={row.email}>
+                                            <span>{row.email}</span>
+                                            <small className="muted">
+                                                {row.description}
+                                            </small>
+                                        </li>
+                                    ))}
+                                </ul>
+                            </section>
+                        ))}
+                    {importDetails.duplicateEmails.length > 0 && (
+                        <p className="muted">
+                            重复项仅忽略多余行；该邮箱是否导入取决于现有用户及禁发状态。
+                        </p>
+                    )}
+                </div>
             )}
             {error && !editing && (
                 <p className="pad" role="alert">

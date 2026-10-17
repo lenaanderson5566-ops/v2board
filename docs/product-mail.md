@@ -227,3 +227,5 @@ Resend/SES 明确 Permanent bounce 和投诉进入全用途抑制名单；Mailgu
 邮件禁发名单支持多行导入：每行一个邮箱，每批最多 200 行，忽略空行、规范化大小写并去重；共用选填备注。服务端先校验全批邮箱，使用事务写入，已禁发记录跳过且保留原备注，已解除记录重新禁发，每条实际变更保留审计记录。管理员接口 POST mail-blocklist/import，限流每分钟 5 次，返回 added、skipped、duplicates 计数。
 
 新增禁发保护：单个添加与重新禁发均在服务端检查 v2_user（邮箱忽略大小写），现有用户不可加入；多行导入跳过现有用户并返回 existingUsers 数量，其余合法邮箱继续处理。不按套餐、到期或封禁状态排除用户，不自动更改历史禁发记录。
+
+导入响应保留原计数，新增 existingUserEmails、skippedEmails 和 duplicateEmails（email、extraRows）供管理员查看具体地址与重复行数；仅返回本次提交中的邮箱，沿用管理员权限与 no-store。页面分组展示明细，重复项表示多余行被忽略，不代表该邮箱未导入。

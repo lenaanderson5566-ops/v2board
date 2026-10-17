@@ -39,16 +39,23 @@ class MailBlocklistController extends \App\Http\Controllers\Controller
         validator(['emails'=>$emails],['emails.*'=>'required|email:rfc|max:254'])->validate();
         $unique=array_values(array_unique($emails));
         sort($unique);
+        $duplicateEmails=[];
+        foreach (array_count_values($emails) as $email=>$count) {
+            if ($count>1) $duplicateEmails[]=['email'=>$email,'extraRows'=>$count-1];
+        }
         $result=DB::transaction(function() use($unique,$p,$request){
             $registered=DB::table('v2_user')->whereIn(DB::raw('LOWER(email)'),$unique)->pluck('email')->map(static function($email){ return strtolower($email); })->all();
             $eligible=array_diff($unique,$registered);
             $count=0;
+            $skippedEmails=[];
             foreach ($eligible as $email) {
                 if (MailBlocklist::add($email,trim($p['note'] ?? ''),(int)$request->user['id'],true)) $count++;
+                else $skippedEmails[]=$email;
             }
-            return ['added'=>$count,'skipped'=>count($eligible)-$count,'existingUsers'=>count($unique)-count($eligible)];
+            $existingUserEmails=array_values(array_intersect($unique,$registered));
+            return ['added'=>$count,'skipped'=>count($skippedEmails),'existingUsers'=>count($existingUserEmails),'skippedEmails'=>$skippedEmails,'existingUserEmails'=>$existingUserEmails];
         },3);
-        return response(['data'=>$result+['duplicates'=>count($emails)-count($unique)]],201)->header('Cache-Control','no-store');
+        return response(['data'=>$result+['duplicates'=>count($emails)-count($unique),'duplicateEmails'=>$duplicateEmails]],201)->header('Cache-Control','no-store');
     }
 
     public function change(Request $request)

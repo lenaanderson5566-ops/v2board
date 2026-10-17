@@ -9,6 +9,7 @@ class Coupon extends Model
     protected $table = 'v2_coupon';
     protected $dateFormat = 'U';
     protected $guarded = ['id'];
+    protected $hidden = ['code', 'limit_use_with_user'];
     protected $casts = [
         'translations' => 'array',
         'created_at' => 'timestamp',

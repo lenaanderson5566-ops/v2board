@@ -9,7 +9,7 @@ inputs={
  'emailCode':'email_code','invitation':'invitation','inviteCode':'invite_code','captchaToken':'recaptcha_data',
  'language':'language','languageSelected':'language_selected','verificationToken':'verify','resetPassword':'isforget',
  'planId':'plan_id','replacementOrderNumber':'replace_trade_no','billingPeriod':'period','depositAmount':'deposit_amount',
- 'couponCode':'coupon_code','paymentMethodId':'method','paymentToken':'token','amount':'transfer_amount',
+ 'walletCouponId':'wallet_coupon_id','paymentMethodId':'method','paymentToken':'token','amount':'transfer_amount',
  'autoRenewal':'auto_renewal','expiryReminders':'remind_expire','trafficReminders':'remind_traffic','announcementEmails':'announcement_email','serviceNotifications':'remind_service',
  'requestKey':'request_key','sessionId':'session_id','orderNumber':'trade_no','ticketId':'id',
  'subject':'subject','priority':'level','message':'message','withdrawalMethod':'withdraw_method',
@@ -29,9 +29,9 @@ allowed={
  'User/UserController@update':'language autoRenewal expiryReminders trafficReminders serviceNotifications announcementEmails',
  'User/UserController@changePassword':'oldPassword newPassword',
  'User/UserController@transfer':'amount', 'User/UserController@getQuickLoginUrl':'redirect', 'User/UserController@redeemgiftcard':'giftCardCode',
- 'User/OrderController@save':'planId replacementOrderNumber billingPeriod depositAmount couponCode',
+ 'User/OrderController@save':'planId replacementOrderNumber billingPeriod depositAmount walletCouponId',
  'User/OrderController@checkout':'paymentMethodId paymentToken', 'User/OrderController@fetch':'status page pageSize',
- 'User/PlanController@fetch':'planId', 'User/CouponController@check':'code planId billingPeriod',
+ 'User/PlanController@fetch':'planId',
  'User/InviteController@sendEmail':'email language', 'User/InviteController@emailHistory':'days page pageSize',
  'User/InviteController@details':'page pageSize', 'User/TicketController@save':'subject priority message',
  'User/TicketController@reply':'message', 'User/TicketController@fetch':'ticketId page pageSize',
@@ -75,11 +75,10 @@ schema('preferences','telegramEnabled:is_telegram:boolean telegramCommunityUrl:t
 schema('task','taskId:task_id status:status')
 schema('bot','username:username')
 schema('loginState','authenticated:is_login:boolean administrator:is_admin:boolean')
-schema('coupon','id:id code:code name:name discountType:type:couponType value:value startedAt:started_at:time expiresAt:ended_at:time')
 schema('signedEntrypoints','payload:payload signature:signature')
 schema('fastaiRelease','platform:platform architecture:architecture channel:channel latestVersion:latestVersion latestBuild:latestBuild:integer minimumVersion:minimumVersion downloadUrl:downloadUrl sha256:sha256 releaseNotes:releaseNotes publishedAt:publishedAt')
 schema('applicationVersion','platform:platform version:version downloadUrl:download_url')
-for name in ['plan','account','order','paymentMethod','credit','commission','coupon']:
+for name in ['plan','account','order','paymentMethod','credit','commission']:
  schemas[name]['currency']=['currency']
 schemas['account']['ticketCreation']=['ticket_creation']
 # Explicit integer wire conversions, including nullable prices (null means unavailable).
@@ -95,7 +94,7 @@ for name,fields in {
  for field in fields: schemas[name][field].append('integer')
 for name,fields in {
  'plan':['speedLimitMbps','resetMethod'], 'account':['discountPercent','commissionRate'],
- 'paymentMethod':['percentageFee'], 'node':['rate'], 'traffic':['rate'], 'coupon':['value'],
+ 'paymentMethod':['percentageFee'], 'node':['rate'], 'traffic':['rate'],
  'preferences':['commissionLevelOne','commissionLevelTwo','commissionLevelThree']
 }.items():
  for field in fields: schemas[name][field].append('number')
@@ -118,7 +117,7 @@ outputs={
  'User/InviteController@fetch':'referrals','User/UserController@getStat':'summary',
  'User/KnowledgeController@fetch':'articles','User/KnowledgeController@getCategory':'strings',
  'User/CommController@config':'preferences','User/TelegramController@getBotInfo':'bot',
- 'User/CouponController@check':'coupon','Guest/CommController@config':'publicSettings',
+ 'Guest/CommController@config':'publicSettings',
  'Guest/BannerController@fetch':'array:banner','Client/AppController@getVersion':'applicationVersion'}
 inputs.update({field:field for field in ['codeChallenge','state','redirectUri','authorizationCode','codeVerifier']})
 allowed.update({'Passport/ClientAuthorizationController@create':'codeChallenge state redirectUri platform', 'Passport/ClientAuthorizationController@exchange':'authorizationCode codeVerifier redirectUri'})

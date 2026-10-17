@@ -64,7 +64,6 @@ Admin, operations/risk, staff and supported node APIs retain their API versions.
 | `GET user/ticket/fetch` | `GET /api/v10/me/tickets` | user | flex:ticket |
 | `POST user/ticket/withdraw` | `POST /api/v10/me/commission-withdrawals` | user | ticket |
 | `GET user/server/fetch` | `GET /api/v10/me/nodes` | user | array:node |
-| `POST user/coupon/check` | `POST /api/v10/me/coupon-validations` | user | coupon |
 | `GET user/telegram/getBotInfo` | `GET /api/v10/me/integrations/telegram` | user | bot |
 | `GET user/comm/config` | `GET /api/v10/me/preferences/options` | user | preferences |
 | `POST user/comm/getStripePublicKey` | `GET /api/v10/payment-methods/{paymentId}/public-key` | user | scalar |
@@ -174,7 +173,7 @@ Binding uses a 10-minute one-time deep link, bot acknowledgement and an authenti
 - `GET /api/v10/me/coupons`: authenticated wallet (up to 100 entries).
 - `GET /api/v10/me/coupon-offers`: claimable percentage offers; no business mutation.
 - `POST /api/v10/me/coupon-claims` with `couponId`: atomic, idempotent claim per template/account.
-- Order creation accepts `walletCouponId`, mutually exclusive with historical `couponCode`.
+- Order creation accepts `walletCouponId` only. Legacy coupon-code parameters are rejected with 422, and the former coupon-validation endpoint has been removed.
 - `GET /api/v10/payment-methods?orderNumber=…` returns payment currency, quoted amount, order-currency fee and rate time. Cross-currency checkout must echo `expectedPaymentAmount` and `expectedPaymentCurrency`; a changed quote returns 409.
 - Existing CNY prices/assets are unchanged. New accounts inherit `new_user_currency` once; account and order currencies cannot be edited. USD plan prices are independent. Balances never exchange automatically.
 - Every payment channel has immutable per-order payment amount/currency snapshots. Old callbacks without conversion snapshots continue using order amount, original handling fee and CNY currency.

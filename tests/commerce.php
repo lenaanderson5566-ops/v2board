@@ -108,6 +108,10 @@ try {
     [$r,$data]=$call('plans',null,$usdAuth);$assert($r->getStatusCode()===200 && collect($data['data'])->firstWhere('id',$plan->id)['monthlyPrice']===500,'USD plan resource not independently priced');
     [$r,$data]=$call('plans',null,$auth);$assert(collect($data['data'])->firstWhere('id',$plan->id)['monthlyPrice']===3000,'CNY plan resource changed');
     [$r]=$call('payment-methods?orderNumber='.$paymentOrder->trade_no,null,$auth);$assert($r->getStatusCode()===404,'Foreign order quotation disclosed');
+    foreach (['couponCode','coupon_code'] as $retiredField) {
+        [$r]=$call('me/orders',['planId'=>1,'billingPeriod'=>'monthly',$retiredField=>'historical-record'],$auth);
+        $assert($r->getStatusCode()===422,'Retired coupon field must be rejected, not silently ignored');
+    }
     [$r]=$call('me/coupon-claims',['couponId'=>-1],$auth);$assert($r->getStatusCode()===422,'Invalid coupon id accepted');
 
     DB::table('v2_exchange_rate')->where('id',1)->update(['quoted_at'=>time(),'usd_cny_micros'=>8000000]);

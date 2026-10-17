@@ -17,7 +17,7 @@ enums = {
     'period': ['monthly', 'quarterly', 'semiannual', 'annual', 'biennial', 'triennial', 'credits', 'reset', 'deposit', 'unknown'],
     'orderStatus': ['unpaid', 'processing', 'cancelled', 'completed', 'discounted', 'unknown'],
     'ticketStatus': ['open', 'closed', 'unknown'], 'orderKind': ['new', 'renewal', 'switch', 'reset', 'other'],
-    'priority': ['normal', 'high', 'urgent'], 'couponType': ['amount', 'percentage', 'unknown'],
+    'priority': ['normal', 'high', 'urgent'],
     'replyStatus': ['awaiting-user', 'awaiting-staff'],
 }
 
@@ -62,7 +62,7 @@ for name, fields in contracts['schemas'].items():
         if field.endswith('Price') or field in ['price', 'balance', 'commissionBalance', 'amount', 'orderAmount', 'fixedFee', 'totalAmount', 'discountAmount', 'creditOffset', 'refundAmount', 'balanceOffset', 'handlingAmount', 'creditedAmount', 'depositBonus']:
             prop['description'] = 'Integer minor currency units; currency is declared on the resource. Null prices are unavailable.'
         props[field] = prop
-    if name in ['plan', 'order', 'credit', 'account', 'paymentMethod', 'commission', 'coupon']:
+    if name in ['plan', 'order', 'credit', 'account', 'paymentMethod', 'commission']:
         props['currency'] = {'type': 'string', 'example': 'CNY'}
     schemas[name] = {'type': 'object', 'properties': props, 'additionalProperties': False}
 
@@ -125,7 +125,7 @@ required = {
     'User/UserController@transfer': ['amount'], 'User/UserController@redeemgiftcard': ['giftCardCode'],
     'User/UsageResetController@consume': ['requestKey'], 'User/InviteController@sendEmail': ['email'],
     'User/TicketController@save': ['subject', 'priority', 'message'], 'User/TicketController@reply': ['message'],
-    'User/TicketController@withdraw': ['withdrawalMethod', 'withdrawalAccount'], 'User/NoticeController@readTicket':['ticketId','version'], 'User/NoticeController@read': ['notificationId', 'version'], 'User/CouponController@check': ['code'],
+    'User/TicketController@withdraw': ['withdrawalMethod', 'withdrawalAccount'], 'User/NoticeController@readTicket':['ticketId','version'], 'User/NoticeController@read': ['notificationId', 'version'],
 }
 
 required.update({'Passport/ClientAuthorizationController@create':['codeChallenge','state','redirectUri','platform'], 'Passport/ClientAuthorizationController@exchange':['authorizationCode','codeVerifier','redirectUri']})

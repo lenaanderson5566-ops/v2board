@@ -75,13 +75,11 @@ export function formPresentation(fields: Field[], kind: string): Field[] {
               : kind === "coupons"
                 ? [
                       "name",
-                      "code",
                       "type",
                       "value",
                       "started_at",
                       "ended_at",
                       "limit_use",
-                      "limit_use_with_user",
                       "limit_plan_ids",
                       "limit_period",
                       "generate_count",

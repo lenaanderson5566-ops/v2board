@@ -16,6 +16,8 @@ class OrderSave extends FormRequest
         return [
             'plan_id' => 'required',
             'wallet_coupon_id' => 'nullable|integer|min:1',
+            'coupon_code' => 'prohibited',
+            'couponCode' => 'prohibited',
             'replace_trade_no' => 'nullable|string|max:64',
             'period' => 'required|in:month_price,quarter_price,half_year_price,year_price,two_year_price,three_year_price,onetime_price,reset_price,deposit'
         ];

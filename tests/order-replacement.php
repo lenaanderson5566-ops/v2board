@@ -23,8 +23,10 @@ try {
  };
  $old = $save(['plan_id'=>$plan->id,'period'=>'month_price']);
  $assert($user->fresh()->balance === 500, 'Initial balance reservation');
- try { $save(['plan_id'=>$plan->id,'period'=>'year_price','replace_trade_no'=>$old,'coupon_code'=>'nonexistent-test-coupon']); throw new RuntimeException('Invalid coupon accepted'); }
- catch (Symfony\Component\HttpKernel\Exception\HttpException $e) {}
+ try { $save(['plan_id'=>$plan->id,'period'=>'year_price','replace_trade_no'=>$old,'coupon_code'=>'nonexistent-test-coupon']); throw new RuntimeException('Retired coupon code accepted'); }
+ catch (Symfony\Component\HttpKernel\Exception\HttpException $e) { $assert($e->getStatusCode() === 422, 'Retired code must reject replacement'); }
+ try { $save(['plan_id'=>$plan->id,'period'=>'year_price','replace_trade_no'=>$old,'wallet_coupon_id'=>PHP_INT_MAX]); throw new RuntimeException('Invalid wallet coupon accepted'); }
+ catch (Symfony\Component\HttpKernel\Exception\HttpException $e) { $assert($e->getStatusCode() === 409, 'Invalid wallet coupon must fail after replacement cancellation'); }
  $assert(Order::where('trade_no',$old)->first()->status === 0 && $user->fresh()->balance === 500, 'Failed replacement must restore order and balance');
  $new = $save(['plan_id'=>$plan->id,'period'=>'year_price','replace_trade_no'=>$old]);
  $previous = Order::where('trade_no',$old)->firstOrFail();

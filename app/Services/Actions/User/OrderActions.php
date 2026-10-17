@@ -8,7 +8,6 @@ use App\Models\Order;
 use App\Models\Payment;
 use App\Models\Plan;
 use App\Models\User;
-use App\Services\CouponService;
 use App\Services\OrderService;
 use App\Services\PaymentService;
 use App\Services\PlanService;
@@ -82,6 +81,7 @@ class OrderActions
 
     public function save(OrderSave $request)
     {
+        abort_if($request->exists('coupon_code') || $request->exists('couponCode'), 422, __('Please select this coupon from your wallet.'));
         // Serialize order creation and keep cancellation/refund/new order atomic.
         return DB::transaction(function () use ($request) {
             User::where('id', $request->user['id'])->lockForUpdate()->firstOrFail();
@@ -190,15 +190,8 @@ class OrderActions
             $order->credit_snapshot = $plan->only(['name','group_id','speed_limit','device_limit']);
         }
 
-        abort_if($request->filled('wallet_coupon_id') && $request->filled('coupon_code'), 422, 'Select one coupon.');
         if ($request->filled('wallet_coupon_id')) {
             \App\Services\CouponWallet::reserve($order, (int)$request->input('wallet_coupon_id'));
-        } elseif ($request->input('coupon_code')) {
-            $couponService = new CouponService($request->input('coupon_code'));
-            if (!$couponService->use($order)) {
-                abort(request()->is('api/v10/*') ? 409 : 500, __('Coupon failed'));
-            }
-            $order->coupon_id = $couponService->getId();
         }
 
         $orderService->setVipDiscount($user);

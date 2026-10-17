@@ -15,6 +15,28 @@ $preview=function($coupon,$scope='all',$filter=[],$ids=null,$admin=1){$r=Request
 DB::beginTransaction();
 try {
     config(['v2board.new_user_currency'=>'CNY']);
+    $saveTemplate = function(array $values) {
+        $request = App\Http\Requests\Admin\CouponGenerate::create('/', 'POST', $values, [], [], ['HTTP_ACCEPT'=>'application/json']);
+        $validator = Illuminate\Support\Facades\Validator::make($request->all(), $request->rules());
+        $validator->validate();
+        $request->setValidator($validator);
+        return (new App\Http\Controllers\V1\Admin\CouponController())->generate($request);
+    };
+    $terms = ['name'=>'Wallet-only fixture','type'=>2,'value'=>10,'started_at'=>time()-60,'ended_at'=>time()+3600];
+    $saveTemplate($terms);
+    $noCode = Coupon::where('name','Wallet-only fixture')->firstOrFail();
+    $assert($noCode->code === '', 'Coupon template unexpectedly generated a code');
+    foreach (['code'=>'old-code','generate_codes'=>true,'limit_use_with_user'=>2] as $key=>$value) {
+        $fails(fn()=>$saveTemplate($terms + [$key=>$value]), 'Retired coupon parameter accepted: '.$key);
+    }
+    $saveTemplate(array_replace($terms,['name'=>'Batch-wallet fixture','generate_count'=>2]));
+    $assert(Coupon::where('name','Batch-wallet fixture')->where('code','')->count() === 2, 'Batch templates must not generate codes');
+    $fails(fn()=>$saveTemplate($terms + ['generate_count'=>2,'generate_codes'=>true]), 'Retired batch code generation accepted');
+    $legacy = Coupon::create(array_replace($terms,['name'=>'Historical fixture','code'=>'historical-record','limit_use_with_user'=>2]));
+    $saveTemplate(array_replace($terms,['id'=>$legacy->id,'name'=>'Edited historical fixture']));
+    $assert($legacy->fresh()->code === 'historical-record', 'Historical storage was overwritten');
+    $adminResponse=json_decode((new App\Http\Controllers\V1\Admin\CouponController())->fetch(Request::create('/', 'GET'))->getContent(),true);
+    foreach ($adminResponse['data'] as $row) $assert(!array_key_exists('code',$row) && !array_key_exists('limit_use_with_user',$row), 'Admin response exposed retired code data');
     $a=$user('a@example.test');$b=$user('b@example.test');$disabled=$user('disabled@example.test',1);
     $c=$coupon(3);CouponWallet::issue($a->id,$c->id,1);
     $batch=$preview($c);

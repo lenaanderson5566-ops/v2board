@@ -1119,25 +1119,6 @@
     "status": 200
   },
   {
-    "legacy": "user/coupon/check",
-    "legacyMethod": "POST",
-    "method": "POST",
-    "path": "me/coupon-validations",
-    "action": "App\\Http\\Controllers\\V1\\User\\CouponController@check",
-    "parameters": [
-      {
-        "name": "request",
-        "type": "Illuminate\\Http\\Request",
-        "optional": false
-      }
-    ],
-    "bindings": {},
-    "middleware": [],
-    "role": "user",
-    "scope": "user",
-    "status": 200
-  },
-  {
     "legacy": "user/telegram/getBotInfo",
     "legacyMethod": "GET",
     "method": "GET",

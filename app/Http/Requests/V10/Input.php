@@ -15,6 +15,9 @@ final class Input
         if ($contract['key'] === 'User/ClientEventController@store' && array_diff(array_keys($request->all()), ['clientVersion','platform','events'])) {
             throw \Illuminate\Validation\ValidationException::withMessages(['report'=>'Unsupported event fields.']);
         }
+        if ($contract['key'] === 'User/OrderController@save' && ($request->exists('couponCode') || $request->exists('coupon_code'))) {
+            throw \Illuminate\Validation\ValidationException::withMessages(['couponCode'=>__('Please select this coupon from your wallet.')]);
+        }
         $types = [
             'displayTimeZone'=>'nullable|string|timezone',
             'telegramId'=>'string|regex:/^[1-9][0-9]{0,15}$/D',
@@ -39,7 +42,7 @@ final class Input
             'orderNumber'=>'string|max:64','expectedPaymentAmount'=>'integer|min:1|max:1000000000','expectedPaymentCurrency'=>'in:CNY,USD',
             'paymentMethodId'=>'integer|min:0','paymentToken'=>'string|max:1024','depositAmount'=>'integer|min:1|max:9999998',
             'walletCouponId'=>'integer|min:1','couponId'=>'integer|min:1',
-            'couponCode'=>'string|max:128','code'=>'string|max:128','giftCardCode'=>'string|max:128',
+            'code'=>'string|max:128','giftCardCode'=>'string|max:128',
             'amount'=>'integer|min:1','autoRenewal'=>'boolean','expiryReminders'=>'boolean','trafficReminders'=>'boolean','announcementEmails'=>'boolean','serviceNotifications'=>'boolean',
             'resetPassword'=>'boolean','languageSelected'=>'boolean','language'=>\App\Services\LanguagePreferenceService::rule(),
             'requestKey'=>'uuid','page'=>'integer|min:1','pageSize'=>'integer|min:1|max:100',
@@ -73,7 +76,6 @@ final class Input
             'User/TicketController@reply'=>['message'],
             'User/TicketController@withdraw'=>['withdrawalMethod','withdrawalAccount'],
             'User/NoticeController@read'=>['notificationId','version'],
-            'User/CouponController@check'=>['code']
         ];
         $rules=[];
         foreach ($contract['input'] as $field=>$internal) {

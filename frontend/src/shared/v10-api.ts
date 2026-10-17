@@ -12,6 +12,7 @@ export type { V10Problem, V10Pagination, V10Envelope, V10Authentication } from '
 // Existing components keep their view models; the wire contract is explicitly mapped here.
 export function v10Request(path: string, body?: Record<string,any>) {
     const [base,search] = path.split('?');
+    if (base === 'user/order/save' && (Object.prototype.hasOwnProperty.call(body || {}, 'coupon_code') || Object.prototype.hasOwnProperty.call(body || {}, 'couponCode'))) throw new Error('Coupon codes are no longer supported. Please select a coupon from your wallet.');
     const methodRoutes = definitions.methodRoutes as Record<string,string>;
     const id = methodRoutes[`${body ? 'POST' : 'GET'} ${base}`] ?? routes[base];
     if (!id) throw new Error(`User API has no V10 contract: ${base}`);
@@ -77,7 +78,6 @@ function decode(name:string,value:any):any {
         else if (type === 'orderKind') v=({new:1,renewal:2,switch:3,reset:4} as Record<string,number>)[v] || 0;
         else if (type === 'ticketStatus') v=v === 'closed' ? 1 : 0;
         else if (type === 'priority') v=['normal','high','urgent'].indexOf(v);
-        else if (type === 'couponType') v=v === 'percentage' ? 2 : 1;
         else if (type === 'replyStatus') v=v === 'awaiting-user' ? 1 : 0;
         else if (type === 'object') v=decode(child,v);
         else if (type === 'array') v=decode(`array:${child}`,v);

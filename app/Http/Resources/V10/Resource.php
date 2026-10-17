@@ -63,14 +63,13 @@ final class Resource
             elseif ($type === 'ticketStatus') $v=['open','closed'][(int)$v] ?? 'unknown';
             elseif ($type === 'orderKind') $v=[1=>'new',2=>'renewal',3=>'switch',4=>'reset'][(int)$v] ?? 'other';
             elseif ($type === 'priority') $v=['normal','high','urgent'][(int)$v] ?? 'normal';
-            elseif ($type === 'couponType') $v=[1=>'amount',2=>'percentage'][(int)$v] ?? 'unknown';
             elseif ($type === 'replyStatus') $v=(int)$v === 1 ? 'awaiting-user' : 'awaiting-staff';
             elseif ($type === 'object') $v=self::encode($spec[2],$v);
             elseif ($type === 'array') $v=self::encode('array:'.$spec[2],$v);
             if (in_array($external,['imageUrl','mobileImageUrl'],true) && is_string($v)) $v=str_replace('/api/v1/guest/banner/image/','/api/v10/public/banner-images/',$v);
             $out[$external]=$v;
         }
-        if (in_array($name,['plan','order','credit','account','paymentMethod','commission','coupon'],true)) $out['currency']=($data['currency'] ?? \App\Services\Money::CURRENCY);
+        if (in_array($name,['plan','order','credit','account','paymentMethod','commission'],true)) $out['currency']=($data['currency'] ?? \App\Services\Money::CURRENCY);
         return $out;
     }
     private static function time($value): ?string

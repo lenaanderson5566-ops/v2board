@@ -61,7 +61,6 @@
 \Illuminate\Support\Facades\Route::match(['POST'], 'me/commission-withdrawals', [\App\Http\Controllers\V10\UserTicketController::class, 'postMeCommissionWithdrawals'])->name('v10.postMeCommissionWithdrawals');
 \Illuminate\Support\Facades\Route::match(['GET', 'HEAD'], 'me/nodes', [\App\Http\Controllers\V10\UserServerController::class, 'getMeNodes'])->name('v10.getMeNodes');
 \Illuminate\Support\Facades\Route::match(['GET', 'HEAD'], 'me/node-previews', [\App\Http\Controllers\V10\UserServerController::class, 'getMeNodePreviews'])->name('v10.getMeNodePreviews');
-\Illuminate\Support\Facades\Route::match(['POST'], 'me/coupon-validations', [\App\Http\Controllers\V10\UserCouponController::class, 'postMeCouponValidations'])->name('v10.postMeCouponValidations');
 \Illuminate\Support\Facades\Route::match(['GET', 'HEAD'], 'me/integrations/telegram', [\App\Http\Controllers\V10\UserTelegramController::class, 'getMeIntegrationsTelegram'])->name('v10.getMeIntegrationsTelegram');
 \Illuminate\Support\Facades\Route::match(['GET', 'HEAD'], 'me/preferences/options', [\App\Http\Controllers\V10\UserCommController::class, 'getMePreferencesOptions'])->name('v10.getMePreferencesOptions');
 \Illuminate\Support\Facades\Route::match(['GET', 'HEAD'], 'payment-methods/{paymentId}/public-key', [\App\Http\Controllers\V10\UserCommController::class, 'getPaymentMethodsPaymentIdPublicKey'])->name('v10.getPaymentMethodsPaymentIdPublicKey');

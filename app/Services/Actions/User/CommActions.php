@@ -16,7 +16,7 @@ class CommActions
                 'time_zone_choices' => \App\Services\TimeZones::choices(),
                 'time_zones' => \App\Services\TimeZones::all(),
                 'system_timezone' => \App\Services\TimeZones::system(),
-                'coupons_available' => \App\Models\Coupon::where('show', 1)->where('started_at', '<=', time())->where('ended_at', '>=', time())->where(fn ($q) => $q->whereNull('limit_use')->orWhere('limit_use', '>', 0))->exists(),
+                'coupons_available' => \App\Models\Coupon::where('show', 1)->where('type', 2)->where('started_at', '<=', time())->where('ended_at', '>=', time())->where(fn ($q) => $q->whereNull('limit_use')->orWhere('limit_use', '>', 0))->exists(),
                 'is_telegram' => (int)config('v2board.telegram_bot_enable', 0),
                 'telegram_discuss_link' => null,
                 'stripe_pk' => config('v2board.stripe_pk_live'),

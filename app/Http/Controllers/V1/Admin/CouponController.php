@@ -5,7 +5,6 @@ namespace App\Http\Controllers\V1\Admin;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\CouponGenerate;
 use App\Models\Coupon;
-use App\Utils\Helper;
 use App\Utils\Csv;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -49,16 +48,14 @@ class CouponController extends Controller
 
     public function generate(CouponGenerate $request)
     {
-        if ($request->input('generate_count')) {
+        if ((int)$request->input('generate_count', 1) > 1) {
             return $this->multiGenerate($request);
         }
 
         $params = $request->validated();
-        unset($params['id'], $params['generate_count']);
+        unset($params['id'], $params['generate_count'], $params['code'], $params['generate_codes'], $params['limit_use_with_user']);
         if (!$request->input('id')) {
-            if (empty($params['code'])) {
-                $params['code'] = Helper::randomChar(8);
-            }
+            $params['code'] = ''; // Retained NOT NULL column; code redemption is retired.
             if (!Coupon::create($params)) {
                 abort(500, '创建失败');
             }
@@ -81,9 +78,9 @@ class CouponController extends Controller
         $coupon = $request->validated();
         $coupon['created_at'] = $coupon['updated_at'] = time();
         $coupon['show'] = 1;
-        unset($coupon['generate_count']);
+        unset($coupon['id'], $coupon['generate_count'], $coupon['generate_codes'], $coupon['limit_use_with_user']);
         for ($i = 0;$i < $request->input('generate_count');$i++) {
-            $coupon['code'] = Helper::randomChar(8);
+            $coupon['code'] = '';
             array_push($coupons, $coupon);
         }
         DB::beginTransaction();
@@ -110,10 +107,10 @@ class CouponController extends Controller
             $limitUse = $coupon['limit_use'] ?? '不限制';
             $createTime = date('Y-m-d H:i:s', $coupon['created_at']);
             $limitPlanIds = isset($coupon['limit_plan_ids']) ? implode("/", $coupon['limit_plan_ids']) : '不限制';
-            $rows[] = [$coupon['name'], $type, $value, $startTime, $endTime, $limitUse, $limitPlanIds, $coupon['code'], $createTime];
+            $rows[] = [$coupon['name'], $type, $value, $startTime, $endTime, $limitUse, $limitPlanIds, $createTime];
         }
         if ($request->expectsJson() && $request->input('format') !== 'csv') return response(['data' => true, 'generated_count' => count($coupons)]);
-        return Csv::response(['名称', '类型', '金额或比例', '开始时间', '结束时间', '可用次数', '可用于订阅', '券码', '生成时间'], $rows, 'coupons.csv');
+        return Csv::response(['名称', '类型', '金额或比例', '开始时间', '结束时间', '可用次数', '可用于订阅', '生成时间'], $rows, 'coupons.csv');
     }
 
     public function drop(Request $request)

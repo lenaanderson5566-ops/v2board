@@ -73,3 +73,11 @@ it('maps coupon wallet selection and confirmed cross-currency payment amounts',(
  const pay=v10Request('user/order/checkout',{trade_no:'old-order',method:1,expected_payment_amount:3625,expected_payment_currency:'CNY'});
  expect(JSON.parse(pay.body!)).toMatchObject({expectedPaymentAmount:3625,expectedPaymentCurrency:'CNY'});
 });
+
+it("rejects retired coupon code calls instead of silently placing undiscounted orders", () => {
+    expect(() => v10Request("user/coupon/check", {code:"old-code"})).toThrow("no V10 contract");
+    for (const key of ["coupon_code", "couponCode"]) {
+        expect(() => v10Request("user/order/save", {plan_id:1, period:"month_price", [key]:"old-code"})).toThrow("no longer supported");
+    }
+    expect(JSON.parse(v10Request("user/order/save", {plan_id:1, period:"month_price", wallet_coupon_id:7}).body!)).toMatchObject({walletCouponId:7});
+});

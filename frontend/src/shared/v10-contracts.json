@@ -972,36 +972,6 @@
         "boolean"
       ]
     },
-    "coupon": {
-      "id": [
-        "id"
-      ],
-      "code": [
-        "code"
-      ],
-      "name": [
-        "name"
-      ],
-      "discountType": [
-        "type",
-        "couponType"
-      ],
-      "value": [
-        "value",
-        "number"
-      ],
-      "startedAt": [
-        "started_at",
-        "time"
-      ],
-      "expiresAt": [
-        "ended_at",
-        "time"
-      ],
-      "currency": [
-        "currency"
-      ]
-    },
     "signedEntrypoints": {
       "payload": [
         "payload"
@@ -1648,7 +1618,6 @@
         "replacementOrderNumber": "replace_trade_no",
         "billingPeriod": "period",
         "depositAmount": "deposit_amount",
-        "couponCode": "coupon_code",
         "walletCouponId": "wallet_coupon_id"
       },
       "output": "orderCreated",
@@ -1959,21 +1928,6 @@
       "path": "me/nodes",
       "method": "GET",
       "key": "User/ServerController@fetch"
-    },
-    "postMeCouponValidations": {
-      "input": {
-        "code": "code",
-        "planId": "plan_id",
-        "billingPeriod": "period"
-      },
-      "output": "coupon",
-      "role": "user",
-      "status": 200,
-      "raw": false,
-      "bindings": {},
-      "path": "me/coupon-validations",
-      "method": "POST",
-      "key": "User/CouponController@check"
     },
     "getMeIntegrationsTelegram": {
       "input": {},
@@ -2547,7 +2501,6 @@
     "user/ticket/fetch": "getMeTickets",
     "user/ticket/withdraw": "postMeCommissionWithdrawals",
     "user/server/fetch": "getMeNodes",
-    "user/coupon/check": "postMeCouponValidations",
     "user/telegram/getBotInfo": "getMeIntegrationsTelegram",
     "user/comm/config": "getMePreferencesOptions",
     "user/comm/getStripePublicKey": "getPaymentMethodsPaymentIdPublicKey",
@@ -2633,7 +2586,6 @@
     "GET user/ticket/fetch": "getMeTickets",
     "POST user/ticket/withdraw": "postMeCommissionWithdrawals",
     "GET user/server/fetch": "getMeNodes",
-    "POST user/coupon/check": "postMeCouponValidations",
     "GET user/telegram/getBotInfo": "getMeIntegrationsTelegram",
     "GET user/comm/config": "getMePreferencesOptions",
     "POST user/comm/getStripePublicKey": "getPaymentMethodsPaymentIdPublicKey",

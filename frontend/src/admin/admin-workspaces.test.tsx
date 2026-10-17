@@ -392,3 +392,12 @@ it("opens coupon template editing with issued-rights notice and without batch ge
     expect(within(dialog).queryByLabelText(/生成数量/)).toBeNull();
     expect(within(dialog).getByDisplayValue("Issued coupon")).toBeTruthy();
 });
+
+it("exposes wallet coupon templates without legacy code controls", async () => {
+    const { resources } = await import("./admin");
+    for (const key of ["code", "generate_codes", "limit_use_with_user"]) {
+        expect(resources.coupons.fields.some(field => field.key === key)).toBe(false);
+        expect(resources.coupons.columns.some(column => column[0] === key)).toBe(false);
+    }
+    expect(resources.coupons.fields.some(field => field.key === "public_claim")).toBe(true);
+});

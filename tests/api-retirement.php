@@ -30,6 +30,8 @@ foreach ([App\Http\Controllers\V1\User\UserController::class=>['info','update','
         if ($method->getDeclaringClass()->getName()===$class) $assert(in_array($method->getName(),$keep,true),'Unused legacy wrapper: '.$method->getName());
     }
 }
+$assert($call('POST','/api/v1/user/coupon/check')->getStatusCode()===404,'Legacy coupon validation must remain retired');
+$assert($call('POST','/api/v10/me/coupon-validations')->getStatusCode()===404,'Coupon code validation must be removed');
 $dir=sys_get_temp_dir().'/v10-mirror-'.bin2hex(random_bytes(6));mkdir($dir);
 $id=(string)Illuminate\Support\Str::uuid();
 $service=new class($dir) extends App\Services\ClientMirrorService {

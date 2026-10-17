@@ -38,4 +38,7 @@ foreach ($routes as $route) {
         $assert(in_array('admin',$route->gatherMiddleware(),true),'Analytics reports/settings require server-side administrator authorization');
     }
 }
+$assert(!isset($openapi['paths']['/me/coupon-validations']), 'Retired code validation must not be advertised');
+$assert(!isset($openapi['components']['schemas']['postMeOrdersInput']['properties']['couponCode']), 'Retired code input must not be advertised');
+foreach ($routes as $route) $assert($route->uri() !== 'api/v10/me/coupon-validations','Retired coupon validation route remains active');
 echo "V10 inventory: $checks checks passed\n";

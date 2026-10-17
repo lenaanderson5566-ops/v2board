@@ -362,7 +362,11 @@ export const resources: Record<string, Resource> = {
                 ],
             },
             {
-                ...field("commission_balance", "佣金余额（账号币种）", "number"),
+                ...field(
+                    "commission_balance",
+                    "佣金余额（账号币种）",
+                    "number",
+                ),
                 scale: 100,
                 step: 0.01,
             },
@@ -501,7 +505,6 @@ export const resources: Record<string, Resource> = {
                         ? `金额优惠 ${money(r.value)}`
                         : `比例优惠 ${r.value}%`,
             ],
-            ["code", "券码"],
             [
                 "limit_use",
                 "剩余次数",
@@ -515,7 +518,6 @@ export const resources: Record<string, Resource> = {
         ],
         fields: [
             field("name", "名称", "text", true),
-            field("code", "历史兼容券码（可选）"),
             {
                 key: "public_claim",
                 label: "在活动中心开放领取",
@@ -530,14 +532,14 @@ export const resources: Record<string, Resource> = {
                     ["2", "百分比"],
                 ],
             },
-            field("value", "减免百分比（10 表示减 10%，即九折）", "number", true),
-            field("generate_count", "生成数量", "number"),
-            field("limit_use", "剩余可领取库存（留空不限）", "number"),
             field(
-                "limit_use_with_user",
-                "历史券码每人使用次数（券包固定一次）",
+                "value",
+                "减免百分比（10 表示减 10%，即九折）",
                 "number",
+                true,
             ),
+            field("generate_count", "创建模板数量", "number"),
+            field("limit_use", "剩余可领取库存（留空不限）", "number"),
             field("started_at", "开始时间", "datetime-local", true),
             field("ended_at", "截止时间", "datetime-local", true),
             field("limit_plan_ids", "限制套餐 ID 数组", "json"),
@@ -1548,7 +1550,7 @@ export function ResourcePage({
                 >
                     {resource === resources.coupons && editing.id && (
                         <p className="alert" role="note">
-                            修改仅影响今后领取及使用券码的新订单。已领取的券保留原优惠和有效期，历史订单不变。剩余库存是当前可继续发放的数量；停用入口不会撤销已领取的券。
+                            修改仅影响今后领取的券。已领取的券保留原优惠和有效期，历史订单不变。剩余库存是当前可继续发放的数量；停用入口不会撤销已领取的券。
                         </p>
                     )}
                     <State
@@ -1735,7 +1737,11 @@ export function Translations() {
                         key={plan + locale + JSON.stringify(d.data)}
                         fields={[
                             field("name", "翻译名称"),
-                            field("content", "翻译说明（JSON / HTML）", "textarea"),
+                            field(
+                                "content",
+                                "翻译说明（JSON / HTML）",
+                                "textarea",
+                            ),
                         ]}
                         initial={{
                             plan_id: Number(plan),

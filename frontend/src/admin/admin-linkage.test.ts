@@ -118,12 +118,12 @@ describe("admin dependency behavior", () => {
             )?.required,
         ).toBe(true);
     });
-    it("limits percentage coupons and hides specified codes for batch generation", () => {
+    it("limits percentage coupons and hides gift-card codes for batch generation", () => {
         expect(
             resourceFields("coupons", fields("value"), { type: 2 })[0].max,
         ).toBe(100);
         expect(
-            resourceFields("coupons", fields("code"), { generate_count: 3 }),
+            resourceFields("giftcards", fields("code"), { generate_count: 3 }),
         ).toEqual([]);
     });
     it("loads assigned plan limits without touching balances or expiration", () => {

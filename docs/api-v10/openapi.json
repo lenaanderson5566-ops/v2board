@@ -8778,169 +8778,6 @@
         "description": "Requires an active session. Order and ticket identifiers are checked against the authenticated owner. Unauthenticated: 401; banned account: 403."
       }
     },
-    "/me/coupon-validations": {
-      "post": {
-        "operationId": "postMeCouponValidations",
-        "tags": [
-          "user"
-        ],
-        "summary": "POST me/coupon-validations",
-        "parameters": [
-          {
-            "name": "Accept-Language",
-            "in": "header",
-            "schema": {
-              "type": "string"
-            },
-            "description": "Supported language tags with optional quality weights."
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Success",
-            "headers": {
-              "X-Request-ID": {
-                "schema": {
-                  "type": "string"
-                }
-              },
-              "Content-Language": {
-                "schema": {
-                  "type": "string"
-                }
-              }
-            },
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "data": {
-                      "$ref": "#/components/schemas/coupon"
-                    },
-                    "meta": {
-                      "type": "object",
-                      "properties": {
-                        "pagination": {
-                          "$ref": "#/components/schemas/Pagination"
-                        },
-                        "taskId": {
-                          "type": "string"
-                        }
-                      }
-                    }
-                  },
-                  "required": [
-                    "data"
-                  ]
-                }
-              }
-            }
-          },
-          "401": {
-            "description": "Problem details",
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Problem"
-                }
-              }
-            }
-          },
-          "403": {
-            "description": "Problem details",
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Problem"
-                }
-              }
-            }
-          },
-          "404": {
-            "description": "Problem details",
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Problem"
-                }
-              }
-            }
-          },
-          "409": {
-            "description": "Problem details",
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Problem"
-                }
-              }
-            }
-          },
-          "410": {
-            "description": "Problem details",
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Problem"
-                }
-              }
-            }
-          },
-          "422": {
-            "description": "Problem details",
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Problem"
-                }
-              }
-            }
-          },
-          "429": {
-            "description": "Problem details",
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Problem"
-                }
-              }
-            }
-          },
-          "500": {
-            "description": "Problem details",
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Problem"
-                }
-              }
-            }
-          }
-        },
-        "security": [
-          {
-            "bearerAuth": []
-          },
-          {
-            "browserUserCookie": []
-          }
-        ],
-        "x-permission": "user",
-        "x-legacy-path": "/api/v1/user/coupon/check",
-        "description": "Requires an active session. Order and ticket identifiers are checked against the authenticated owner. Unauthenticated: 401; banned account: 403.",
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/postMeCouponValidationsInput"
-              }
-            }
-          }
-        }
-      }
-    },
     "/me/preferences/options": {
       "get": {
         "operationId": "getMePreferencesOptions",
@@ -17533,55 +17370,6 @@
         },
         "additionalProperties": false
       },
-      "coupon": {
-        "type": "object",
-        "properties": {
-          "id": {
-            "type": "string",
-            "nullable": true
-          },
-          "code": {
-            "type": "string",
-            "nullable": true
-          },
-          "name": {
-            "type": "string",
-            "nullable": true
-          },
-          "discountType": {
-            "type": "string",
-            "enum": [
-              "amount",
-              "percentage",
-              "unknown"
-            ]
-          },
-          "value": {
-            "type": "number",
-            "nullable": true
-          },
-          "startedAt": {
-            "type": "string",
-            "format": "date-time",
-            "nullable": true
-          },
-          "expiresAt": {
-            "type": "string",
-            "format": "date-time",
-            "nullable": true
-          },
-          "currency": {
-            "type": "string",
-            "example": "CNY",
-            "enum": [
-              "CNY",
-              "USD"
-            ],
-            "description": "Immutable monetary currency. Amounts use integer minor units. Historical assets remain CNY."
-          }
-        },
-        "additionalProperties": false
-      },
       "signedEntrypoints": {
         "type": "object",
         "properties": {
@@ -18485,13 +18273,10 @@
           "depositAmount": {
             "type": "integer"
           },
-          "couponCode": {
-            "type": "string"
-          },
           "walletCouponId": {
             "type": "integer",
             "minimum": 1,
-            "description": "Owned coupon wallet entry. Mutually exclusive with couponCode."
+            "description": "Owned coupon wallet entry. Coupons must be selected from the wallet."
           }
         },
         "required": [
@@ -18750,34 +18535,6 @@
       "getMeNodesInput": {
         "type": "object",
         "properties": {}
-      },
-      "postMeCouponValidationsInput": {
-        "type": "object",
-        "properties": {
-          "code": {
-            "type": "string"
-          },
-          "planId": {
-            "type": "integer"
-          },
-          "billingPeriod": {
-            "type": "string",
-            "enum": [
-              "monthly",
-              "quarterly",
-              "semiannual",
-              "annual",
-              "biennial",
-              "triennial",
-              "credits",
-              "reset",
-              "deposit"
-            ]
-          }
-        },
-        "required": [
-          "code"
-        ]
       },
       "getMeIntegrationsTelegramInput": {
         "type": "object",

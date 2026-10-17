@@ -14,7 +14,7 @@ export const languages = [
     { code: "fa-IR", name: "فارسی" },
 ] as const;
 export const languageKey = "v2board.language";
-export function resolveLanguage(value: string): string {
+function matchLanguage(value: string): string | undefined {
     if (/^zh(-|$)/i.test(value))
         return /TW|HK|MO|Hant/i.test(value) ? "zh-TW" : "zh-CN";
     const base = value.toLowerCase().split("-")[0];
@@ -22,9 +22,22 @@ export function resolveLanguage(value: string): string {
         (l) => l.code.toLowerCase().split("-")[0] === base,
     );
     if (matched) return matched.code;
+    return undefined;
+}
+export function resolveLanguage(value: string): string {
+    return matchLanguage(value) || "en-US";
+}
+export function resolvePreferredLanguage(values: readonly string[]): string {
+    for (const value of values) {
+        const matched = matchLanguage(value);
+        if (matched) return matched;
+    }
     return "en-US";
 }
-const localeLoaders: Record<string, () => Promise<{ default: Record<string, string> }>> = {
+const localeLoaders: Record<
+    string,
+    () => Promise<{ default: Record<string, string> }>
+> = {
     "zh-TW": () => import("../locales/zh-TW.json"),
     "ja-JP": () => import("../locales/ja-JP.json"),
     "ko-KR": () => import("../locales/ko-KR.json"),
@@ -36,10 +49,24 @@ const localeLoaders: Record<string, () => Promise<{ default: Record<string, stri
 i18next.use({
     type: "backend",
     init() {},
-    read(language: string, namespace: string, callback: (error: Error | null, data: Record<string, string> | null) => void) {
-        const loader = namespace === "translation" ? localeLoaders[language] : undefined;
-        if (!loader) { callback(null, {}); return; }
-        loader().then(({ default: catalog }) => callback(null, catalog), (error: Error) => callback(error, null));
+    read(
+        language: string,
+        namespace: string,
+        callback: (
+            error: Error | null,
+            data: Record<string, string> | null,
+        ) => void,
+    ) {
+        const loader =
+            namespace === "translation" ? localeLoaders[language] : undefined;
+        if (!loader) {
+            callback(null, {});
+            return;
+        }
+        loader().then(
+            ({ default: catalog }) => callback(null, catalog),
+            (error: Error) => callback(error, null),
+        );
     },
 });
 const saved = localStorage.getItem(languageKey);
@@ -54,7 +81,10 @@ export const languageReady = i18next.use(initReactI18next).init({
             ? "zh-CN"
             : saved && languages.some((l) => l.code === saved)
               ? saved
-              : resolveLanguage(navigator.language || "en-US"),
+              : resolvePreferredLanguage([
+                    ...(navigator.languages || []),
+                    navigator.language || "en-US",
+                ]),
     supportedLngs: languages.map((l) => l.code),
     fallbackLng: "en-US",
     load: "currentOnly",
@@ -76,21 +106,31 @@ export const tx = (key: string, values?: Record<string, unknown>): string =>
     String(i18next.t(key, values || {}));
 const pendingLanguageKey = `${languageKey}.pending`;
 let persistLanguage: ((value: string) => Promise<boolean>) | undefined;
-export function setLanguagePersistence(save: (value: string) => Promise<boolean>) {
+export function setLanguagePersistence(
+    save: (value: string) => Promise<boolean>,
+) {
     persistLanguage = save;
 }
 export function loginLanguagePreference() {
-    return { language: locale(), language_selected: sessionStorage.getItem(pendingLanguageKey) === locale() };
+    return {
+        language: locale(),
+        language_selected:
+            sessionStorage.getItem(pendingLanguageKey) === locale(),
+    };
 }
 async function ensureCatalog(value: string) {
-    if (!i18next.hasResourceBundle(value, "translation") && localeLoaders[value]) {
+    if (
+        !i18next.hasResourceBundle(value, "translation") &&
+        localeLoaders[value]
+    ) {
         const { default: catalog } = await localeLoaders[value]();
         i18next.addResourceBundle(value, "translation", catalog, true, true);
     }
 }
 export async function applyAccountLanguage(value: unknown) {
     sessionStorage.removeItem(pendingLanguageKey);
-    if (typeof value !== "string" || !languages.some((l) => l.code === value)) return;
+    if (typeof value !== "string" || !languages.some((l) => l.code === value))
+        return;
     await ensureCatalog(value);
     localStorage.setItem(languageKey, value);
     await i18next.changeLanguage(value);
@@ -100,7 +140,9 @@ export async function changeLanguage(value: string) {
     // Do not change the saved preference if the language chunk cannot be downloaded.
     await ensureCatalog(value);
     // Save first: a failed request leaves the previous preference intact.
-    const savedToAccount = persistLanguage ? await persistLanguage(value) : false;
+    const savedToAccount = persistLanguage
+        ? await persistLanguage(value)
+        : false;
     if (savedToAccount) sessionStorage.removeItem(pendingLanguageKey);
     else sessionStorage.setItem(pendingLanguageKey, value);
     localStorage.setItem(languageKey, value);

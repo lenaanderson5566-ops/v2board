@@ -477,8 +477,8 @@
 /* Billing and usage share one restrained settings layout. */
 .app.user .settings-content {
     width: 100%;
-    max-width: 920px;
-    margin: 0 auto;
+    min-width: 0;
+    margin: 0;
 }
 .app.user .usage-records {
     margin-top: 24px;

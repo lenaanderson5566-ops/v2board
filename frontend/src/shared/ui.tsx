@@ -244,11 +244,13 @@ export function Panel({
     children,
     actions,
     className = "",
+    padded = false,
 }: {
     title?: string;
     children: ReactNode;
     actions?: ReactNode;
     className?: string;
+    padded?: boolean;
 }) {
     return (
         <section className={`panel ${className}`}>
@@ -258,7 +260,7 @@ export function Panel({
                     <div className="actions">{actions}</div>
                 </div>
             )}
-            {children}
+            {padded ? <div className="panel-body">{children}</div> : children}
         </section>
     );
 }

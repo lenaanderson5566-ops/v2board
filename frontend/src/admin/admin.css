@@ -2198,3 +2198,11 @@ body[data-console="admin"] .mail-blocklist-results h4 { margin: 0; padding: 12px
 body[data-console="admin"] .mail-blocklist-results ul { list-style: none; margin: 0; padding: 0 16px; max-height: 240px; overflow-y: auto; }
 body[data-console="admin"] .mail-blocklist-results li { display: flex; flex-wrap: wrap; gap: 8px 16px; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid var(--border); overflow-wrap: anywhere; }
 body[data-console="admin"] .mail-blocklist-results li:last-child { border-bottom: 0; }
+
+/* Opt-in body spacing for panels containing prose, filters and charts. */
+body[data-console="admin"] .panel > .panel-body { padding: 20px; min-width: 0; }
+body[data-console="admin"] .panel-body > :first-child { margin-top: 0; }
+body[data-console="admin"] .panel-body > :last-child { margin-bottom: 0; }
+@media (max-width: 700px) {
+    body[data-console="admin"] .panel > .panel-body { padding: 16px; }
+}

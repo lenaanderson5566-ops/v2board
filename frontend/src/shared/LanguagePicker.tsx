@@ -6,31 +6,33 @@ import { useHeaderPopover } from "./useHeaderPopover";
 export function LanguagePicker() {
     useTranslation();
     const saving = useRef(false);
-    const [busy, setBusy] = useState(false), [error, setError] = useState("");
-    const { id, open, setOpen, root, trigger, toggle, onBlur } = useHeaderPopover();
+    const [busy, setBusy] = useState(false),
+        [error, setError] = useState("");
+    const { id, open, setOpen, root, trigger, toggle, onBlur } =
+        useHeaderPopover();
     const selected =
         languages.find((language) => language.code === locale()) ||
         languages[0];
     return (
-        <div
-            className="language-picker"
-            ref={root}
-            onBlur={onBlur}
-        >
+        <div className="language-picker" ref={root} onBlur={onBlur}>
             <button
                 ref={trigger}
                 className="language-trigger"
-                aria-label={tx("界面语言")}
+                aria-label={`${tx("界面语言")}: ${selected.name}`}
                 aria-haspopup="menu"
                 aria-expanded={open}
                 aria-controls={id}
                 title={selected.name}
                 aria-disabled={busy}
                 aria-busy={busy}
-                onClick={() => { if (!busy) toggle(); }}
+                onClick={() => {
+                    if (!busy) toggle();
+                }}
             >
                 <Languages size={18} aria-hidden="true" />
-                <span className="language-name">{selected.name}</span>
+                <span className="language-name" lang={selected.code}>
+                    <bdi>{selected.name}</bdi>
+                </span>
                 <ChevronDown
                     size={12}
                     className="language-chevron"
@@ -57,19 +59,23 @@ export function LanguagePicker() {
                             onClick={async () => {
                                 if (saving.current) return;
                                 saving.current = true;
-                                setBusy(true); setError("");
+                                setBusy(true);
+                                setError("");
                                 try {
                                     await changeLanguage(language.code);
                                     setOpen(false);
                                 } catch (reason) {
                                     setError((reason as Error).message);
                                 } finally {
-                                    saving.current = false; setBusy(false);
+                                    saving.current = false;
+                                    setBusy(false);
                                     trigger.current?.focus();
                                 }
                             }}
                         >
-                            <span>{language.name}</span>
+                            <span>
+                                <bdi>{language.name}</bdi>
+                            </span>
                             {language.code === selected.code && (
                                 <Check size={16} aria-hidden="true" />
                             )}

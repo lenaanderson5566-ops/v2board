@@ -1,7 +1,19 @@
 .analytics-page {
     display: grid;
+    grid-template-columns: minmax(0, 1fr);
     gap: 20px;
+    min-width: 0;
 }
+body[data-console="admin"] .analytics-page > .panel { margin-bottom: 0; min-width: 0; }
+body[data-console="admin"] .analytics-page .analytics-settings label { flex-direction: row; flex-wrap: wrap; margin: 0; }
+body[data-console="admin"] .analytics-page .analytics-settings select { width: auto; min-width: 120px; max-width: 100%; margin: 0; }
+body[data-console="admin"] .analytics-page .analytics-settings input[type="checkbox"] { flex: 0 0 18px; margin: 0; }
+.analytics-page .panel-body { overflow-wrap: anywhere; }
+.analytics-page .panel-body > p { line-height: 1.7; }
+.analytics-page .panel-body > .analytics-settings { margin-block: 16px; }
+.analytics-page .table-wrap { max-width: 100%; overflow-x: auto; }
+.analytics-metrics > div, .analytics-funnel > li { min-width: 0; }
+
 .analytics-settings {
     display: flex;
     align-items: center;
@@ -48,7 +60,7 @@
 .analytics-funnel {
     list-style: none;
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(min(190px, 100%), 1fr));
     gap: 20px;
     padding: 0;
     margin: 20px 0;

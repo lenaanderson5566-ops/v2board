@@ -50,7 +50,7 @@ const labels: Record<string, string> = {
     order_detail: "订单详情",
     activities: "活动中心",
     coupons: "我的优惠券",
-    subscribe: "配置中心",
+    subscribe: "连接与下载",
     knowledge: "帮助中心",
     profile: "账户设置",
     security: "安全中心",
@@ -180,7 +180,7 @@ export function AdminAnalytics() {
     const data = report.data;
     return (
         <div className="analytics-page">
-            <Panel title="访问与转化">
+            <Panel padded title="访问与转化">
                 <p className="muted">
                     <BarChart3 size={16} aria-hidden />{" "}
                     了解用户浏览、确认订单和付款之间的流失。页面漏斗与业务结果分别统计，避免混淆点击和实际支付。
@@ -273,7 +273,7 @@ export function AdminAnalytics() {
             </Panel>
             {data && (
                 <>
-                    <Panel title="数据质量与每日趋势">
+                    <Panel padded title="数据质量与每日趋势">
                         <p className="muted">
                             首次开启：
                             {data.collectionStartedAt
@@ -348,7 +348,7 @@ export function AdminAnalytics() {
                             按会话开始日归属浏览次数，今日及窗口边界日可能不完整。未收集时不补造历史数据；趋势空白不代表没有真实访问。
                         </p>
                     </Panel>
-                    <Panel title="购买路径 · 同一访问会话">
+                    <Panel padded title="购买路径 · 同一访问会话">
                         <Funnel
                             steps={data.funnel.map((step) => ({
                                 label: labels[step.step],
@@ -365,7 +365,7 @@ export function AdminAnalytics() {
                             天保留期内的数据。拒绝统计、网络拦截和漏报会影响结果。
                         </p>
                     </Panel>
-                    <Panel title="注册后的业务转化 · 7 天观察窗">
+                    <Panel padded title="注册后的业务转化 · 7 天观察窗">
                         <p className="muted">
                             注册区间：{formatInstant(data.cohort.from)} 至{" "}
                             {formatInstant(data.cohort.to)}
@@ -396,7 +396,7 @@ export function AdminAnalytics() {
                             按用户去重，包含网站与客户端注册，排除管理员；不受访问设备筛选影响。订单和支付时间取自后台，含余额支付及零元订单，不含充值、流量重置。“已完成”反映当前状态，可能晚于观察窗。
                         </p>
                     </Panel>
-                    <Panel title="页面表现">
+                    <Panel padded title="页面表现">
                         {data.pages.length ? (
                             <div className="table-wrap">
                                 <table>
@@ -446,7 +446,7 @@ export function AdminAnalytics() {
                                 .join(" · ")}
                         </p>
                     </Panel>
-                    <Panel title="隐私与保留设置">
+                    <Panel padded title="隐私与保留设置">
                         <p>
                             <ShieldCheck size={16} aria-hidden />{" "}
                             第一方统计，数据存放在本站数据库。

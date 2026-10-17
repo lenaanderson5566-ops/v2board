@@ -27,16 +27,15 @@ class MailBlocklistController extends \App\Http\Controllers\Controller
     {
         $email=$request->input('email'); $note=$request->input('note');
         $request->merge(['email'=>is_string($email) ? strtolower(trim($email)):$email,'note'=>is_string($note) ? trim($note):$note]);
-        $p=$request->validate(['email'=>'required|string|email:rfc|max:254','note'=>'required|string|max:1000']);
-        MailBlocklist::add($p['email'],$p['note'],(int)$request->user['id']);
+        $p=$request->validate(['email'=>'required|string|email:rfc|max:254','note'=>'nullable|string|max:1000']);
+        MailBlocklist::add($p['email'],$p['note'] ?? '',(int)$request->user['id']);
         return response(['data'=>true],201);
     }
 
     public function change(Request $request)
     {
-        $p=$request->validate(['recipient_hash'=>'required|string|regex:/^[a-f0-9]{64}$/D','revision'=>'required|integer|min:1','action'=>'required|in:note,release','note'=>'required_if:action,note|nullable|string|max:1000']);
-        $note=isset($p['note']) ? trim($p['note']):null;
-        abort_if($p['action']==='note' && !$note,422,'请填写备注。');
+        $p=$request->validate(['recipient_hash'=>'required|string|regex:/^[a-f0-9]{64}$/D','revision'=>'required|integer|min:1','action'=>'required|in:note,release','note'=>'nullable|string|max:1000']);
+        $note=$p['action']==='note' ? trim($p['note'] ?? '') : null;
         MailBlocklist::change($p['recipient_hash'],(int)$p['revision'],$p['action'],$note,(int)$request->user['id']);
         return response(['data'=>true]);
     }

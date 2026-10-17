@@ -87,13 +87,16 @@ body[data-console="admin"] {
         "Microsoft YaHei",
         sans-serif;
     font-size: 14px;
-    --accent: #2563eb;
-    --border: #e2e8f0;
-    --muted: #64748b;
-    --admin-canvas: #f4f6fa;
-    --admin-text: #334155;
-    --admin-heading: #0f172a;
-    --admin-radius: 10px;
+    --accent: #635bff;
+    --primary: #635bff;
+    --line: #e5e7eb;
+    --surface: #fff;
+    --border: #e5e7eb;
+    --muted: #697386;
+    --admin-canvas: #f7f8fa;
+    --admin-text: #414552;
+    --admin-heading: #1a1f36;
+    --admin-radius: 8px;
 }
 body[data-console="admin"] #page-container {
     min-height: 100vh;
@@ -101,32 +104,40 @@ body[data-console="admin"] #page-container {
 }
 body[data-console="admin"] #sidebar {
     width: 250px;
-    background: #172235;
-    color: #c3ccda;
+    background: #f8f9fb;
+    color: #525866;
     position: fixed;
     inset: 0 auto 0 0;
     z-index: 999;
     padding: 0;
     overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    height: 100dvh;
+    border-right: 1px solid var(--border);
 }
 body[data-console="admin"] #sidebar .content-header {
-    height: 52px;
+    height: 60px;
     padding: 0 18px;
-    background: #172235;
-    border-bottom: 1px solid #ffffff12;
+    background: #f8f9fb;
+    border-bottom: 1px solid var(--border);
     display: flex;
     align-items: center;
-    justify-content: center;
+    justify-content: flex-start;
+    flex-shrink: 0;
 }
 body[data-console="admin"] #sidebar .content-header a {
-    color: #fff;
+    color: var(--admin-heading);
     font-size: 20px;
     margin: 0;
     padding: 0;
 }
 body[data-console="admin"] #sidebar .content-side {
     padding: 12px;
-    height: calc(100dvh - 78px);
+    flex: 1;
+    min-height: 0;
+    height: auto;
+    scrollbar-width: thin;
     overflow: auto;
 }
 body[data-console="admin"] #sidebar .nav-main {
@@ -135,10 +146,10 @@ body[data-console="admin"] #sidebar .nav-main {
     list-style: none;
 }
 body[data-console="admin"] #sidebar .nav-main-heading {
-    padding: 20px 12px 8px;
+    padding: 22px 10px 8px;
     font-size: 12px;
     text-transform: none;
-    color: #93a4bc;
+    color: #697386;
     font-weight: 700;
 }
 body[data-console="admin"] #sidebar .nav-main-link {
@@ -146,9 +157,9 @@ body[data-console="admin"] #sidebar .nav-main-link {
     align-items: center;
     gap: 0;
     margin: 0 0 4px;
-    padding: 9px 10px;
+    padding: 8px 10px;
     border-radius: 7px;
-    color: #c3ccda;
+    color: #525866;
     font-size: 14px;
     font-weight: 600;
     line-height: 20px;
@@ -161,30 +172,30 @@ body[data-console="admin"] #sidebar .nav-main-link-icon {
 }
 body[data-console="admin"] #sidebar .nav-main-link:hover,
 body[data-console="admin"] #sidebar .nav-main-link.active {
-    color: #fff;
-    background: #ffffff0e;
+    color: var(--admin-heading);
+    background: #edf0f5;
 }
 body[data-console="admin"] #sidebar .v2board-copyright {
-    position: absolute;
-    left: 15px;
-    bottom: 10px;
-    font-size: 10px;
-    opacity: 0.2;
+    padding: 10px 22px;
+    flex-shrink: 0;
+    font-size: 11px;
+    color: var(--muted);
+    border-top: 1px solid var(--border);
 }
 body[data-console="admin"] #page-header {
     position: fixed;
     top: 0;
     left: 250px;
     right: 0;
-    height: 52px;
+    height: 60px;
     background: #fff;
-    box-shadow: 0 2px 4px #e8eaf266;
-    border: 0;
+    box-shadow: none;
+    border-bottom: 1px solid var(--border);
     z-index: 998;
     padding: 0;
 }
 body[data-console="admin"] #page-header .content-header {
-    height: 52px;
+    height: 60px;
     padding: 0 28px;
     display: flex;
     align-items: center;
@@ -203,6 +214,8 @@ body[data-console="admin"] #page-header h1 {
     color: var(--admin-heading);
 }
 body[data-console="admin"] .admin-header-actions {
+    margin-inline-start: auto;
+    flex-shrink: 0;
     display: flex;
     align-items: center;
     gap: 8px;
@@ -229,7 +242,7 @@ body[data-console="admin"] #main-container {
     width: 100%;
     min-width: 0;
     margin-left: 0;
-    padding: 52px 0 0;
+    padding: 60px 0 0;
     min-height: 100vh;
     background: var(--admin-canvas);
     max-width: none;
@@ -351,8 +364,8 @@ body[data-console="admin"] textarea {
 body[data-console="admin"] input:focus,
 body[data-console="admin"] select:focus,
 body[data-console="admin"] textarea:focus {
-    border-color: #40a9ff;
-    box-shadow: 0 0 0 2px #2563eb24;
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px #635bff18;
 }
 body[data-console="admin"] .toggle-control {
     border: 0;
@@ -432,7 +445,7 @@ body[data-console="admin"] td {
     color: var(--admin-text);
 }
 body[data-console="admin"] tbody tr:hover {
-    background: #f1f6ff;
+    background: #f8f9fc;
 }
 body[data-console="admin"] td:last-child {
     position: sticky;
@@ -660,7 +673,7 @@ body[data-console="admin"] .admin-bulk-content button {
     padding: 8px 16px;
 }
 body[data-console="admin"] .admin-bulk-content button:hover {
-    background: #f1f6ff;
+    background: #f8f9fc;
 }
 body[data-console="admin"] .user-toolbar {
     display: flex;
@@ -748,7 +761,7 @@ body[data-console="admin"] .admin-context-menu a {
     padding: 8px 16px;
 }
 body[data-console="admin"] .admin-context-menu button:hover {
-    background: #f1f6ff;
+    background: #f8f9fc;
 }
 body[data-console="admin"] .admin-code-editor {
     border: 1px solid #d9d9d9;
@@ -1223,7 +1236,7 @@ body[data-console="admin"]
     .admin-region-select
     .admin-select-options
     button[data-active="true"] {
-    background: #f1f6ff;
+    background: #f8f9fc;
 }
 body[data-console="admin"] .admin-region-select .admin-select-options > .muted {
     display: block;
@@ -1348,7 +1361,7 @@ body[data-console="admin"] .v2board-nav-mask {
         justify-content: space-between;
     }
     body[data-console="admin"] #sidebar .admin-mobile-toggle {
-        color: #fff;
+        color: var(--admin-text);
         background: transparent;
         border: 0;
     }
@@ -1465,8 +1478,8 @@ body[data-console="admin"] .admin-nav-search input {
     width: 100%;
     box-sizing: border-box;
     border-radius: 8px;
-    background: #ffffff12;
-    border: 1px solid #ffffff30;
+    background: #fff;
+    border: 1px solid var(--border);
     color: inherit;
     padding: 9px 12px;
 }
@@ -1889,8 +1902,8 @@ body[data-console="admin"] .admin-operation-notice.error {
     border-color: #f2cccc;
 }
 body[data-console="admin"] #sidebar .nav-main-link.active {
-    color: #fff;
-    background: #2563eb;
+    color: #5145cd;
+    background: #eeecff;
 }
 body[data-console="admin"] #sidebar .nav-main-link.active .nav-main-link-icon {
     opacity: 1;
@@ -2120,7 +2133,7 @@ body[data-console="admin"] .node-editor-intro p {margin:0 0 8px;line-height:1.6;
 /* Shared administration navigation, feedback and form hierarchy. */
 body[data-console="admin"] .admin-skip-link { position: fixed; top: -80px; left: 16px; z-index: 10000; padding: 12px 18px; background: #fff; color: #153b70; border: 2px solid #153b70; border-radius: 8px; }
 body[data-console="admin"] .admin-skip-link:focus { top: 12px; }
-body[data-console="admin"] .admin-page-heading { min-width: 0; display: flex; align-items: center; gap: 12px; }
+body[data-console="admin"] .admin-page-heading { flex: 1; min-width: 0; display: flex; align-items: center; gap: 12px; }
 body[data-console="admin"] .admin-page-group { font-size: 12px; color: var(--muted,#64748b); padding-right: 12px; border-right: 1px solid var(--border,#e2e8f0); white-space: nowrap; }
 body[data-console="admin"] .admin-nav-empty button { display: block; margin-top: 8px; }
 body[data-console="admin"] .admin-refresh-note { padding: 10px 16px; border-bottom: 1px solid var(--border,#e2e8f0); color: var(--muted,#64748b); font-size: 12px; }
@@ -2132,3 +2145,45 @@ body[data-console="admin"] :is(button,a,input,select,textarea,summary):focus-vis
 body[data-console="admin"] .table-wrap { overscroll-behavior-x: contain; }
 @media(max-width:700px) { body[data-console="admin"] .admin-page-group { display: none; } body[data-console="admin"] .editor > .form-bottom { flex-wrap: wrap; } }
 @media(prefers-reduced-motion:reduce) { body[data-console="admin"] *, body[data-console="admin"] *::before, body[data-console="admin"] *::after { scroll-behavior: auto !important; animation-duration: .01ms !important; transition-duration: .01ms !important; } }
+
+/* Form and navigation geometry shared by the administration workspace. */
+body[data-console="admin"] #page-header .content-header { gap: 20px; box-sizing: border-box; }
+body[data-console="admin"] .admin-account-trigger { display: inline-flex; align-items: center; gap: 8px; max-width: 320px; }
+body[data-console="admin"] .admin-account-email { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 13px; }
+body[data-console="admin"] .admin-page-heading h1 { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+body[data-console="admin"] label { color: var(--admin-text); }
+body[data-console="admin"] .pager { align-items: center; gap: 16px; flex-wrap: wrap; }
+body[data-console="admin"] .pager > span { margin-inline-end: auto; }
+body[data-console="admin"] .pager .pager-size { display: flex; flex-direction: row; align-items: center; gap: 8px; margin: 0; }
+body[data-console="admin"] .pager .pager-size select { width: auto; min-width: 72px; margin: 0; height: 32px; }
+body[data-console="admin"] .pager-buttons { align-items: center; }
+body[data-console="admin"] button.primary:not(:disabled):hover { background: #5145cd; border-color: #5145cd; color: #fff; }
+body[data-console="admin"] :is(input,select,textarea):focus-visible { outline: none; }
+body[data-console="admin"] .mail-blocklist-intro { display: flex; gap: 12px; padding: 24px; border-bottom: 1px solid var(--border); }
+body[data-console="admin"] .mail-blocklist-intro h3 { margin: 0 0 6px; font-size: 15px; color: var(--admin-heading); }
+body[data-console="admin"] .mail-blocklist-intro p { margin: 0; line-height: 1.7; max-width: 880px; }
+body[data-console="admin"] .mail-blocklist-icon { display: grid; place-items: center; flex-shrink: 0; width: 36px; height: 36px; border-radius: 8px; color: #5145cd; background: #eeecff; }
+body[data-console="admin"] .mail-blocklist-intro details { margin-top: 8px; font-size: 12px; }
+body[data-console="admin"] .mail-blocklist-intro summary { cursor: pointer; color: var(--muted); }
+body[data-console="admin"] .mail-blocklist-create { display: grid; grid-template-columns: minmax(200px, 1fr) minmax(240px, 1.4fr) auto; align-items: end; gap: 16px; padding: 24px; background: #fcfcfd; border-bottom: 1px solid var(--border); }
+body[data-console="admin"] :is(.mail-blocklist-create,.mail-blocklist-filters,.mail-blocklist-edit) label { display: flex; flex-direction: column; gap: 8px; margin: 0; min-width: 0; font-size: 13px; font-weight: 500; }
+body[data-console="admin"] :is(.mail-blocklist-create,.mail-blocklist-filters) :is(input,select) { height: 38px; width: 100%; margin: 0; box-sizing: border-box; }
+body[data-console="admin"] .mail-blocklist-create textarea { height: 38px; min-height: 38px; width: 100%; resize: vertical; margin: 0; box-sizing: border-box; }
+body[data-console="admin"] :is(.mail-blocklist-create,.mail-blocklist-filters) button { display: inline-flex; align-items: center; justify-content: center; gap: 6px; height: 38px; margin: 0; white-space: nowrap; }
+body[data-console="admin"] .mail-blocklist-filters { display: flex; flex-wrap: wrap; align-items: end; gap: 12px; padding: 20px 24px; }
+body[data-console="admin"] .mail-blocklist-filters label:first-child { flex: 0 1 300px; }
+body[data-console="admin"] .mail-blocklist-filters label:nth-child(2) { flex: 0 1 140px; }
+body[data-console="admin"] .mail-blocklist-edit { display: grid; gap: 16px; }
+body[data-console="admin"] .mail-blocklist-edit textarea { width: 100%; resize: vertical; }
+body[data-console="admin"] .mail-blocklist-edit > button { justify-self: end; }
+@media (max-width: 1200px) {
+    body[data-console="admin"] .mail-blocklist-create { grid-template-columns: minmax(0,1fr) minmax(0,1fr); }
+    body[data-console="admin"] .mail-blocklist-create > button { grid-column: 1 / -1; justify-self: start; }
+}
+@media (max-width: 600px) {
+    body[data-console="admin"] .mail-blocklist-create { grid-template-columns: minmax(0,1fr); }
+    body[data-console="admin"] :is(.mail-blocklist-intro,.mail-blocklist-create,.mail-blocklist-filters) { padding: 16px; }
+    body[data-console="admin"] .mail-blocklist-filters label:first-child { flex-basis: 100%; }
+    body[data-console="admin"] .pager > span { margin-inline-end: 0; }
+    body[data-console="admin"] .pager { justify-content: center; }
+}

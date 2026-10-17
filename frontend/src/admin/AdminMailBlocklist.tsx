@@ -1,4 +1,5 @@
-import { Pager } from "../shared/ui";
+import { MailX, Plus, Search } from "lucide-react";
+import { Pager, Empty } from "../shared/ui";
 import { useRef, useState } from "react";
 import { admin, request, type Row } from "../shared/api";
 import { Modal, State, useData } from "../shared/ui";
@@ -55,12 +56,26 @@ export function AdminMailBlocklist() {
         }
     }
     return (
-        <section className="pad">
-            <h3>人工邮件禁发名单</h3>
-            <p className="muted">
-                按完整邮箱匹配，覆盖验证码、找回密码、工单、账单、推广及测试邮件。用户页面保持原有响应，账户与站内通知正常；被禁发的邮箱将收不到登录及找回密码邮件。已交给服务商的邮件无法撤回。解除后不补发历史邮件，也不解除退信或投诉限制。
-            </p>
+        <section className="mail-blocklist">
+            <div className="mail-blocklist-intro">
+                <span className="mail-blocklist-icon">
+                    <MailX size={20} aria-hidden />
+                </span>
+                <div>
+                    <h3>管理邮件发送权限</h3>
+                    <p className="muted">
+                        禁发后，该邮箱将收不到任何邮件，包括登录验证码和密码找回邮件。账户与站内通知仍可正常使用。
+                    </p>
+                    <details>
+                        <summary>了解禁发范围与解除规则</summary>
+                        <p className="muted">
+                            按完整邮箱匹配，覆盖工单、账单、推广及测试邮件。用户页面保持原有响应。已交给服务商的邮件无法撤回；解除后不补发历史邮件，也不解除退信或投诉限制。
+                        </p>
+                    </details>
+                </div>
+            </div>
             <form
+                className="mail-blocklist-create"
                 onSubmit={(e) => {
                     e.preventDefault();
                     void mutate(
@@ -89,25 +104,22 @@ export function AdminMailBlocklist() {
                     />
                 </label>
                 <label>
-                    禁发备注
+                    禁发备注（选填）
                     <textarea
-                        required
+                        rows={2}
                         maxLength={1000}
                         value={note}
                         onChange={(e) => setNote(e.target.value)}
                         placeholder="记录禁发原因，勿填写密码、验证码或密钥"
                     />
                 </label>
-                <button
-                    className="primary"
-                    disabled={busy || !email.trim() || !note.trim()}
-                >
-                    加入禁发名单
+                <button className="primary" disabled={busy || !email.trim()}>
+                    <Plus size={16} aria-hidden /> 加入禁发名单
                 </button>
             </form>
             {error && !editing && <p role="alert">{error}</p>}
             <form
-                className="actions"
+                className="mail-blocklist-filters"
                 onSubmit={(e) => {
                     e.preventDefault();
                     setEmailFilter(query.trim());
@@ -136,7 +148,9 @@ export function AdminMailBlocklist() {
                         <option value="all">全部</option>
                     </select>
                 </label>
-                <button>查询</button>
+                <button>
+                    <Search size={16} aria-hidden /> 查询
+                </button>
             </form>
             <State {...list} retry={list.reload}>
                 <div className="table-wrap">
@@ -161,7 +175,9 @@ export function AdminMailBlocklist() {
                                             maxWidth: 400,
                                         }}
                                     >
-                                        {row.note}
+                                        {row.note || (
+                                            <span className="muted">—</span>
+                                        )}
                                     </td>
                                     <td>
                                         {row.released_at ? "已解除" : "禁发中"}
@@ -176,7 +192,7 @@ export function AdminMailBlocklist() {
                                                 disabled={busy}
                                                 onClick={() => {
                                                     setEditing(row);
-                                                    setEditNote(row.note);
+                                                    setEditNote(row.note || "");
                                                     setError("");
                                                 }}
                                             >
@@ -221,7 +237,7 @@ export function AdminMailBlocklist() {
                             ))}
                         </tbody>
                     </table>
-                    {!list.data?.length && <p>暂无匹配的禁发记录</p>}
+                    {!list.data?.length && <Empty text="暂无匹配的禁发记录" />}
                 </div>
             </State>
             <Pager
@@ -243,7 +259,7 @@ export function AdminMailBlocklist() {
                     }}
                 >
                     <form
-                        className="pad"
+                        className="pad mail-blocklist-edit"
                         onSubmit={(e) => {
                             e.preventDefault();
                             void mutate(
@@ -260,18 +276,16 @@ export function AdminMailBlocklist() {
                     >
                         <p>{editing.email}</p>
                         <label>
-                            备注
+                            备注（选填）
                             <textarea
-                                required
+                                rows={3}
                                 maxLength={1000}
                                 value={editNote}
                                 onChange={(e) => setEditNote(e.target.value)}
                             />
                         </label>
                         {error && <p role="alert">{error}</p>}
-                        <button disabled={busy || !editNote.trim()}>
-                            保存备注
-                        </button>
+                        <button disabled={busy}>保存备注</button>
                     </form>
                 </Modal>
             )}

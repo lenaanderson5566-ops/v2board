@@ -12,6 +12,7 @@ class PruneLogs extends Command {
         $start=microtime(true);
         try {
             $counts=$service->prune();
+            $counts['analytics_sessions']=app(\App\Services\ProductAnalytics::class)->prune();
             $indexed=(new \App\Services\SystemLogService())->backfill();
             Cache::put('LOG_RETENTION_LAST_RUN',['at'=>time(),'durationMs'=>(int)round((microtime(true)-$start)*1000),'deleted'=>$counts,'indexed'=>$indexed],172800);
             $this->info('Expired log cleanup completed: '.array_sum($counts).' rows');

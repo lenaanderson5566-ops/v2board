@@ -254,7 +254,7 @@ it("loads translations from subscription management and supports old links", asy
     view.unmount();
     render(<AdminContent current="translations" />);
     expect(
-        screen.getByRole("tab", { name: "订阅多语言", selected: true }),
+        await screen.findByRole("tab", { name: "订阅多语言", selected: true }),
     ).toBeTruthy();
 });
 it("consolidates settings and monitoring navigation", () => {

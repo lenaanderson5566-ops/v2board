@@ -135,6 +135,8 @@ class EPayQrcode
         return [
             'trade_no' => (string) $params['out_trade_no'],
             'callback_no' => (string) $params['trade_no'],
+            'amount' => \App\Services\Money::parseMinor($params['money'] ?? null),
+            'currency' => 'CNY',
         ];
     }
 

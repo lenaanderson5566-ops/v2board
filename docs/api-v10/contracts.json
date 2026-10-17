@@ -1169,6 +1169,34 @@
         "created_at",
         "time"
       ]
+    },
+    "analyticsConfiguration": {
+      "enabled": [
+        "enabled",
+        "boolean"
+      ],
+      "retentionDays": [
+        "retentionDays",
+        "integer"
+      ]
+    },
+    "analyticsEvent": {
+      "sessionId": [
+        "sessionId"
+      ],
+      "page": [
+        "page"
+      ],
+      "device": [
+        "device"
+      ],
+      "language": [
+        "language"
+      ],
+      "consent": [
+        "consent",
+        "boolean"
+      ]
     }
   },
   "endpoints": {
@@ -2460,6 +2488,34 @@
       "path": "me/sessions",
       "method": "DELETE",
       "key": "User/UserController@logoutAll"
+    },
+    "getPublicAnalyticsConfiguration": {
+      "input": {},
+      "output": "analyticsConfiguration",
+      "role": "public",
+      "status": 200,
+      "raw": false,
+      "bindings": {},
+      "path": "public/analytics/configuration",
+      "method": "GET",
+      "key": "ProductAnalyticsController@configuration"
+    },
+    "postPublicAnalyticsEvents": {
+      "input": {
+        "sessionId": "sessionId",
+        "page": "page",
+        "device": "device",
+        "language": "language",
+        "consent": "consent"
+      },
+      "output": "scalar",
+      "role": "public",
+      "status": 204,
+      "raw": false,
+      "bindings": {},
+      "path": "public/analytics/events",
+      "method": "POST",
+      "key": "ProductAnalyticsController@store"
     }
   }
 }

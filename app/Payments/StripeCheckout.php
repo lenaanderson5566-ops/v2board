@@ -77,7 +77,7 @@ class StripeCheckout {
         try {
             $session = Session::create($params);
         } catch (\Exception $e) {
-            info($e);
+            \Illuminate\Support\Facades\Log::warning('Payment initiation failed', ['provider'=>'StripeCheckout', 'exceptionClass'=>get_class($e)]);
             abort(500, "Failed to create order. Error: {$e->getMessage}");
         }
         return [

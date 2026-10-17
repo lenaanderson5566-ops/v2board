@@ -46,17 +46,11 @@ class PaymentService
     public function pay($order)
     {
         // New payments use V10; historical callbacks remain registered.
-        $notifyUrl = url("/api/v10/webhooks/payments/{$this->method}/{$this->config['uuid']}");
-        if ($this->config['notify_domain']) {
-            $parseUrl = parse_url($notifyUrl);
-            $notifyUrl = $this->config['notify_domain'] . $parseUrl['path'];
-        }
-        $currentBase = $this->currentBase();
-        if ($currentBase) {
-            $returnUrl = $currentBase . '/#/order/' . $order['trade_no'];
-        } else {
-            $returnUrl = url('/#/order/' . $order['trade_no']);
-        }
+        $base = $this->configuredBase();
+        $notifyBase = !empty($this->config['notify_domain'])
+            ? rtrim($this->config['notify_domain'], '/') : $base;
+        $notifyUrl = $notifyBase . "/api/v10/webhooks/payments/{$this->method}/{$this->config['uuid']}";
+        $returnUrl = $this->currentBase($base) . '/#/order/' . rawurlencode($order['trade_no']);
         return $this->payment->pay([
             'currency' => $order['currency'] ?? 'CNY',
             'notify_url' => $notifyUrl,
@@ -78,28 +72,26 @@ class PaymentService
         return $form;
     }
 
-    private function currentBase()
+    private function configuredBase(): string
+    {
+        $base = rtrim((string)(config('v2board.app_url') ?: config('app.url')), '/');
+        $parts = parse_url($base);
+        abort_unless($parts && in_array($parts['scheme'] ?? '', ['https', 'http'], true)
+            && !empty($parts['host']) && !isset($parts['user']) && !isset($parts['pass'])
+            && !isset($parts['query']) && !isset($parts['fragment']), 500, 'Invalid payment base URL');
+        return $base;
+    }
+
+    private function currentBase(string $fallback): string
     {
         $origin = request()->header('Origin');
-
-        if ($origin && preg_match('#^https?://[A-Za-z0-9.\-:\[\]]+$#i', $origin)) {
+        // Native clients have no Origin. Never trust Host or raw forwarding headers.
+        $parts = parse_url($fallback);
+        $own = $parts['scheme'].'://'.$parts['host'].(isset($parts['port']) ? ':'.$parts['port'] : '');
+        $allowed = array_filter(array_merge([$own], config('cors.allowed_origins', [])), fn($value)=>$value && $value !== '*');
+        if ($origin && in_array($origin, $allowed, true)) {
             return rtrim($origin, '/');
         }
-
-        $host = request()->header('X-Forwarded-Host')
-            ?: request()->header('X-Original-Host')
-            ?: request()->header('Host');
-
-        if ($host) {
-            $host = trim(explode(',', $host)[0]);
-
-            if (preg_match('/^[A-Za-z0-9.\-:\[\]]+$/', $host)) {
-                $scheme = request()->header('X-Forwarded-Proto')
-                    ?: (request()->secure() ? 'https' : 'http');
-                return $scheme . '://' . $host;
-            }
-        }
-
-        return '';
+        return $fallback;
     }
 }

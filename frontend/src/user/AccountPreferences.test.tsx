@@ -1,4 +1,5 @@
 // @vitest-environment jsdom
+vi.mock("../shared/experience-copy", () => ({ e: (key: string) => key }));
 import { afterEach, expect, it, vi } from "vitest";
 import {
     cleanup,

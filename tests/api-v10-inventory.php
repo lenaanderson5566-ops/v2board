@@ -27,4 +27,15 @@ foreach ($entries as $entry) {
     $assert($found,'Unregistered resource '.$entry['path']);
 }
 $assert(is_file(base_path('frontend/src/shared/v10-types.ts')) && is_file(base_path('AGENTS.md')),'Types and agent rules exist');
+// Analytics has a closed, public event contract and a separate administrator boundary.
+$analytics=$openapi['components']['schemas']['postPublicAnalyticsEventsInput'];
+$assert($analytics['additionalProperties']===false,'Analytics rejects unexpected fields');
+$assert($analytics['required']===['sessionId','page','device','language','consent'],'Analytics consent and anonymous event fields are explicit');
+$assert($analytics['properties']['page']['enum']===App\Services\ProductAnalytics::PAGES,'Analytics page allowlist matches the published contract');
+$assert($openapi['paths']['/public/analytics/events']['post']['security']===[],'Public analytics never requires account credentials');
+foreach ($routes as $route) {
+    if (str_contains($route->getActionName(),'V1\\Admin\\ProductAnalyticsController')) {
+        $assert(in_array('admin',$route->gatherMiddleware(),true),'Analytics reports/settings require server-side administrator authorization');
+    }
+}
 echo "V10 inventory: $checks checks passed\n";

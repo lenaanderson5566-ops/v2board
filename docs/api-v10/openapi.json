@@ -15922,6 +15922,215 @@
           }
         }
       }
+    },
+    "/public/analytics/configuration": {
+      "get": {
+        "operationId": "getPublicAnalyticsConfiguration",
+        "tags": [
+          "public"
+        ],
+        "security": [],
+        "x-permission": "public",
+        "summary": "GET public/analytics/configuration",
+        "description": "Returns only whether optional analytics is enabled and its retention period. No credentials required; no tracking identifier created.",
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "data"
+                  ],
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/analyticsConfiguration"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Problem details",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Problem details",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "415": {
+            "description": "Problem details",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Problem details",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Problem details",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Problem details",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Problem details",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/public/analytics/events": {
+      "post": {
+        "operationId": "postPublicAnalyticsEvents",
+        "tags": [
+          "public"
+        ],
+        "security": [],
+        "x-permission": "public",
+        "summary": "POST public/analytics/events",
+        "description": "First-party, consent-gated anonymous view statistics. Exact allowed Origin, JSON only, 1024-byte maximum, 60 requests/minute per IP. No query parameters, credentials, user IDs, URLs or additional fields. GPC/DNT and disabled collection return 204 without recording. Client events are estimates, not proof of payment.",
+        "responses": {
+          "204": {
+            "description": "Success"
+          },
+          "403": {
+            "description": "Problem details",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Problem details",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "415": {
+            "description": "Problem details",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Problem details",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Problem details",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Problem details",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Problem details",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/postPublicAnalyticsEventsInput"
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "Origin",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ]
+      }
     }
   },
   "components": {
@@ -17018,7 +17227,11 @@
             "type": "string",
             "nullable": true
           },
-          "countryCode": {"type":"string","nullable":true,"description":"ISO 3166-1 alpha-2 login country, null when unavailable"},
+          "countryCode": {
+            "type": "string",
+            "nullable": true,
+            "description": "ISO 3166-1 alpha-2 login country, null when unavailable"
+          },
           "loginAt": {
             "type": "string",
             "format": "date-time",
@@ -19826,6 +20039,165 @@
             }
           },
           "reauthenticationRequired": {
+            "type": "boolean",
+            "enum": [
+              true
+            ]
+          }
+        }
+      },
+      "analyticsConfiguration": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "enabled",
+          "retentionDays"
+        ],
+        "properties": {
+          "enabled": {
+            "type": "boolean"
+          },
+          "retentionDays": {
+            "type": "integer",
+            "enum": [
+              7,
+              30,
+              90
+            ]
+          }
+        }
+      },
+      "analyticsEvent": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "sessionId",
+          "page",
+          "device",
+          "language",
+          "consent"
+        ],
+        "properties": {
+          "sessionId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "page": {
+            "type": "string",
+            "enum": [
+              "landing",
+              "register",
+              "login",
+              "forget",
+              "dashboard",
+              "plan",
+              "confirmation",
+              "payment",
+              "order",
+              "order_detail",
+              "activities",
+              "coupons",
+              "subscribe",
+              "knowledge",
+              "profile",
+              "security",
+              "invite",
+              "traffic",
+              "notifications",
+              "ticket"
+            ]
+          },
+          "device": {
+            "type": "string",
+            "enum": [
+              "desktop",
+              "mobile",
+              "tablet"
+            ]
+          },
+          "language": {
+            "type": "string",
+            "enum": [
+              "zh-CN",
+              "zh-TW",
+              "en-US",
+              "ja-JP",
+              "ko-KR",
+              "vi-VN",
+              "ru-RU",
+              "fa-IR"
+            ]
+          },
+          "consent": {
+            "type": "boolean",
+            "enum": [
+              true
+            ]
+          }
+        }
+      },
+      "postPublicAnalyticsEventsInput": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "sessionId",
+          "page",
+          "device",
+          "language",
+          "consent"
+        ],
+        "properties": {
+          "sessionId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "page": {
+            "type": "string",
+            "enum": [
+              "landing",
+              "register",
+              "login",
+              "forget",
+              "dashboard",
+              "plan",
+              "confirmation",
+              "payment",
+              "order",
+              "order_detail",
+              "activities",
+              "coupons",
+              "subscribe",
+              "knowledge",
+              "profile",
+              "security",
+              "invite",
+              "traffic",
+              "notifications",
+              "ticket"
+            ]
+          },
+          "device": {
+            "type": "string",
+            "enum": [
+              "desktop",
+              "mobile",
+              "tablet"
+            ]
+          },
+          "language": {
+            "type": "string",
+            "enum": [
+              "zh-CN",
+              "zh-TW",
+              "en-US",
+              "ja-JP",
+              "ko-KR",
+              "vi-VN",
+              "ru-RU",
+              "fa-IR"
+            ]
+          },
+          "consent": {
             "type": "boolean",
             "enum": [
               true

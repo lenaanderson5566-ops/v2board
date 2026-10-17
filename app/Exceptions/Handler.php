@@ -62,17 +62,23 @@ class Handler extends ExceptionHandler
             if ($request->attributes->has('browser.session')) $response->headers->set('Cache-Control', 'private, no-store');
             return $response;
         }
-        if ($exception instanceof ViewException) {
+        // API failures must not negotiate an HTML debug page, even before routing.
+        if ($request->is('api', 'api/*')) $request->headers->set('Accept', 'application/json');
+        if ($exception instanceof ViewException && !$request->is('api', 'api/*')) {
             abort(500, "主题渲染失败。如更新主题，参数可能发生变化请重新配置主题后再试。");
         }
         $response = parent::render($request, $exception);
-        if ($request->attributes->has('browser.session')) $response->headers->set('Cache-Control', 'private, no-store');
+        if ($request->is('api', 'api/*') || $request->attributes->has('browser.session')) $response->headers->set('Cache-Control', 'private, no-store');
         return $response;
     }
 
 
     protected function convertExceptionToArray(Throwable $e)
     {
+        if (request()->is('api', 'api/*')) {
+            return ['message' => $this->isHttpException($e) && $e->getStatusCode() < 500
+                ? $e->getMessage() : __("Uh-oh, we've had some problems, we're working on it.")];
+        }
         return config('app.debug') ? [
             'message' => $e->getMessage(),
             'exception' => get_class($e),

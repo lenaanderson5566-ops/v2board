@@ -32,17 +32,41 @@ export default function AdminApp() {
             await logoutSession();
             setUser(null);
             navigate("login");
+        } catch (reason) {
+            window.alert(
+                reason instanceof Error ? reason.message : "退出失败，请重试。",
+            );
         } finally {
             loggingOut.current = false;
         }
     }
     useEffect(() => {
         document.body.classList.remove("admin-dark");
-        localStorage.removeItem("v2board.admin.dark");
+        try {
+            localStorage.removeItem("v2board.admin.dark");
+        } catch {
+            /* Optional preference cleanup. */
+        }
         let live = true;
-        const changed = () =>
+        let acceptedUrl = location.href;
+        let expiring = false;
+        const changed = () => {
+            if (location.href === acceptedUrl) return;
+            if (
+                !expiring &&
+                !loggingOut.current &&
+                document.querySelector('[data-unsaved="true"]') &&
+                !window.confirm("有尚未保存的修改，确认离开当前页面？")
+            ) {
+                history.replaceState(history.state, "", acceptedUrl);
+                return;
+            }
+            expiring = false;
+            acceptedUrl = location.href;
             setPath(location.hash.slice(2).split("?")[0] || "");
+        };
         const expired = () => {
+            expiring = true;
             setUser(null);
             navigate("login");
         };

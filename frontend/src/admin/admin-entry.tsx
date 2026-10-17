@@ -1,4 +1,10 @@
+import { ErrorBoundary } from "../shared/ErrorBoundary";
 import { lazy, Suspense } from "react";
+const AdminAnalytics = lazy(() =>
+    import("./AdminAnalytics").then((module) => ({
+        default: module.AdminAnalytics,
+    })),
+);
 const MfaSecurity = lazy(() =>
     import("../shared/MfaSecurity").then((module) => ({
         default: module.MfaSecurity,
@@ -29,14 +35,24 @@ const AdminLogSettings = lazy(() =>
         default: module.AdminLogSettings,
     })),
 );
-import { AdminSubscriptions } from "./AdminSubscriptions";
-import { AdminInvitations } from "./AdminInvitations";
+const AdminSubscriptions = lazy(() =>
+    import("./AdminSubscriptions").then((module) => ({
+        default: module.AdminSubscriptions,
+    })),
+);
+const AdminInvitations = lazy(() =>
+    import("./AdminInvitations").then((module) => ({
+        default: module.AdminInvitations,
+    })),
+);
 const AdminSystemLogs = lazy(() =>
     import("./AdminSystemLogs").then((module) => ({
         default: module.AdminSystemLogs,
     })),
 );
-import { RiskRules } from "./AdminRisk";
+const RiskRules = lazy(() =>
+    import("./AdminRisk").then((module) => ({ default: module.RiskRules })),
+);
 const AdminClients = lazy(() =>
     import("./AdminClients").then((module) => ({
         default: module.AdminClients,
@@ -48,11 +64,29 @@ const AdminBanners = lazy(() =>
     })),
 );
 import { ResourcePage, resources, Settings, Payments, Nodes } from "./admin";
-import { OrdersPage } from "./admin-orders";
-import { AdminTickets, ContentPage } from "./admin-content";
-import { UsersPage } from "./admin-users";
-import { Overview } from "./admin-dashboard";
+const OrdersPage = lazy(() =>
+    import("./admin-orders").then((module) => ({ default: module.OrdersPage })),
+);
+const AdminTickets = lazy(() =>
+    import("./admin-content").then((module) => ({
+        default: module.AdminTickets,
+    })),
+);
+const ContentPage = lazy(() =>
+    import("./admin-content").then((module) => ({
+        default: module.ContentPage,
+    })),
+);
+const UsersPage = lazy(() =>
+    import("./admin-users").then((module) => ({ default: module.UsersPage })),
+);
+const Overview = lazy(() =>
+    import("./admin-dashboard").then((module) => ({
+        default: module.Overview,
+    })),
+);
 function AdminPageContent({ current }: { current: string }) {
+    if (current === "analytics") return <AdminAnalytics />;
     if (current === "security") return <MfaSecurity />;
     if (current === "plans" || current === "translations")
         return <AdminSubscriptions key={current} initialTab={current} />;
@@ -102,21 +136,36 @@ function AdminPageContent({ current }: { current: string }) {
             return <Payments />;
         case "nodes":
             return <Nodes key="nodes" />;
-        default:
+        case "overview":
             return <Overview />;
+        default:
+            return (
+                <section className="panel pad">
+                    <h2>页面未找到</h2>
+                    <p className="muted">
+                        链接可能已变更，请从左侧导航选择功能。
+                    </p>
+                    <a href="#/overview">返回仪表盘</a>
+                </section>
+            );
     }
 }
 
 export default function AdminContent({ current }: { current: string }) {
     return (
-        <Suspense
-            fallback={
-                <div className="panel pad" role="status">
-                    正在加载页面…
-                </div>
-            }
+        <ErrorBoundary
+            key={current}
+            message="此页面暂时无法加载。可以从左侧进入其他功能，或重新加载页面；未保存的输入可能丢失。"
         >
-            <AdminPageContent current={current} />
-        </Suspense>
+            <Suspense
+                fallback={
+                    <div className="panel pad" role="status">
+                        正在加载页面…
+                    </div>
+                }
+            >
+                <AdminPageContent current={current} />
+            </Suspense>
+        </ErrorBoundary>
     );
 }

@@ -1,3 +1,4 @@
+import { useAnalyticsPage } from "./product-analytics";
 import { CouponPicker, type WalletCoupon } from "./CouponPicker";
 import { PendingOrderNotice } from "./PendingOrderNotice";
 import { useState, useRef, type FormEvent } from "react";
@@ -304,6 +305,7 @@ export function PlanSelection({
     close: () => void;
     replaceTradeNo?: string;
 }) {
+    useAnalyticsPage(plan.resetOnly ? null : "confirmation");
     const available = plan.resetOnly ? ["reset_price"] : purchasePeriods(plan);
     const [period, setPeriod] = useState(
         available.includes(plan.initialPeriod)

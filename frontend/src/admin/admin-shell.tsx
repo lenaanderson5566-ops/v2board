@@ -1,6 +1,6 @@
 import { Menu, XCircle, CircleUser, ChevronDown, LogOut } from "lucide-react";
 import { AdminIcon } from "./AdminIcon";
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import * as DropdownMenu from "@radix-ui/react-dropdown-menu";
 import { boot, type Row } from "../shared/api";
 
@@ -18,12 +18,14 @@ export const legacyAdminMenu = [
     ["invitations", "邀请管理", "users", "财务"],
     ["coupons", "优惠券管理", "present", "财务"],
     ["giftcards", "礼品卡管理", "star", "财务"],
+    ["analytics", "访问与转化", "bar-chart", "用户"],
     ["users", "用户管理", "users", "用户"],
     ["online", "在线用户", "users", "用户"],
     ["notices", "公告管理", "speech", "用户"],
     ["banners", "Banner 管理", "picture", "用户"],
     ["tickets", "工单管理", "support", "用户"],
     ["knowledge", "知识库管理", "bulb", "用户"],
+    ["clients", "访问与版本策略", "shield", "客户端"],
     ["client-releases", "第三方客户端管理", "screen-smartphone", "客户端"],
     ["risk", "风控规则", "shield", "风控与黑名单"],
     ["blacklist-ip", "IP 黑名单", "ban", "风控与黑名单"],
@@ -79,6 +81,21 @@ export function AdminShell({
     logout: () => void;
 }) {
     const [navSearch, setNavSearch] = useState("");
+    const searchInput = useRef<HTMLInputElement>(null);
+    const mobileToggle = useRef<HTMLButtonElement>(null);
+    const [offline, setOffline] = useState(() => !navigator.onLine);
+    useEffect(() => {
+        const update = () => setOffline(!navigator.onLine);
+        window.addEventListener("online", update);
+        window.addEventListener("offline", update);
+        return () => {
+            window.removeEventListener("online", update);
+            window.removeEventListener("offline", update);
+        };
+    }, []);
+    const canLeave = () =>
+        !document.querySelector('[data-unsaved="true"]') ||
+        window.confirm("有尚未保存的修改，确认离开当前页面？");
     const visibleMenu = legacyAdminMenu.filter(([key, label, , group]) =>
         `${key} ${label} ${group}`
             .toLowerCase()
@@ -89,12 +106,21 @@ export function AdminShell({
     useEffect(() => {
         setOpen(false);
         setMenu(false);
+        setNavSearch("");
     }, [current]);
     useEffect(() => {
         const escape = (e: KeyboardEvent) => {
+            if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "k") {
+                if (document.querySelector('[role="dialog"][aria-modal="true"]')) return;
+                e.preventDefault();
+                setOpen(true);
+                requestAnimationFrame(() => searchInput.current?.focus());
+            }
             if (e.key === "Escape") {
                 setMenu(false);
                 setOpen(false);
+                if (document.activeElement?.closest("#sidebar"))
+                    mobileToggle.current?.focus();
             }
         };
         document.addEventListener("keydown", escape);
@@ -106,12 +132,55 @@ export function AdminShell({
         legacyAdminMenu.find(
             ([key]) =>
                 key === (current === "operations" ? "overview" : current),
-        )?.[1] || "仪表盘";
+        )?.[1] ||
+        (
+            {
+                system: "系统状态",
+                operations: "运营概览",
+                clients: "访问与版本策略",
+                translations: "套餐翻译",
+                "risk-settings": "日志设置",
+                ddns: "动态域名",
+            } as Record<string, string>
+        )[current] ||
+        "页面未找到";
+    const group = legacyAdminMenu.find(([key]) => key === current)?.[3];
     return (
         <div
             id="page-container"
             className={`admin-shell ${open ? "admin-nav-open" : ""}`}
+            onClickCapture={(event) => {
+                const anchor = (
+                    event.target as HTMLElement
+                ).closest<HTMLAnchorElement>("a[href]");
+                if (
+                    !anchor ||
+                    anchor.target === "_blank" ||
+                    event.ctrlKey ||
+                    event.metaKey ||
+                    event.shiftKey ||
+                    event.altKey ||
+                    anchor.getAttribute("href")?.startsWith("#")
+                )
+                    return;
+                if (anchor.href !== location.href && !canLeave()) {
+                    event.preventDefault();
+                    event.stopPropagation();
+                }
+            }}
         >
+            <a
+                className="admin-skip-link"
+                href="#admin-main-content"
+                onClick={(event) => {
+                    event.preventDefault();
+                    const main = document.getElementById("admin-main-content");
+                    main?.focus();
+                    main?.scrollIntoView({ block: "start" });
+                }}
+            >
+                跳转到页面内容
+            </a>
             {open && (
                 <div
                     className="v2board-nav-mask"
@@ -141,14 +210,28 @@ export function AdminShell({
                     <ul className="nav-main">
                         <li className="admin-nav-search">
                             <input
+                                ref={searchInput}
+                                type="search"
+                                aria-keyshortcuts="Control+k Meta+k"
                                 aria-label="搜索后台功能"
-                                placeholder="搜索功能…"
+                                placeholder="搜索功能… Ctrl / ⌘ K"
                                 value={navSearch}
                                 onChange={(e) => setNavSearch(e.target.value)}
                             />
                         </li>
                         {visibleMenu.length === 0 && (
-                            <li className="admin-nav-empty">没有匹配的功能</li>
+                            <li className="admin-nav-empty" role="status">
+                                没有匹配的功能
+                                <button
+                                    type="button"
+                                    onClick={() => {
+                                        setNavSearch("");
+                                        searchInput.current?.focus();
+                                    }}
+                                >
+                                    清除搜索
+                                </button>
+                            </li>
                         )}
                         {visibleMenu.map(([key, label, icon, group], i) => (
                             <li key={key} className="nav-main-item">
@@ -186,13 +269,20 @@ export function AdminShell({
                 <div className="content-header">
                     <button
                         className="admin-mobile-toggle"
+                        ref={mobileToggle}
+                        aria-controls="sidebar"
                         aria-label="打开导航"
                         aria-expanded={open}
                         onClick={() => setOpen(!open)}
                     >
                         <Menu size={20} aria-hidden="true" />
                     </button>
-                    <h1 className="v2board-container-title">{title}</h1>
+                    <div className="admin-page-heading">
+                        {group && (
+                            <span className="admin-page-group">{group}</span>
+                        )}
+                        <h1 className="v2board-container-title">{title}</h1>
+                    </div>
                     <div className="admin-header-actions">
                         <DropdownMenu.Root
                             open={menu}
@@ -246,7 +336,13 @@ export function AdminShell({
                                         </DropdownMenu.Item>
                                         <DropdownMenu.Item
                                             className="admin-account-item"
-                                            onSelect={logout}
+                                            onSelect={(event) => {
+                                                if (!canLeave()) {
+                                                    event.preventDefault();
+                                                    return;
+                                                }
+                                                logout();
+                                            }}
                                         >
                                             登出
                                             <LogOut
@@ -262,7 +358,17 @@ export function AdminShell({
                 </div>
             </header>
             <main id="main-container">
-                <div className="admin-content" data-page={current}>
+                <div
+                    id="admin-main-content"
+                    tabIndex={-1}
+                    className="admin-content"
+                    data-page={current}
+                >
+                    {offline && (
+                        <div className="alert" role="status">
+                            网络连接已断开。页面上的数据可能不是最新状态，请恢复网络后刷新；提交失败时请先核查记录再重试。
+                        </div>
+                    )}
                     {children}
                 </div>
             </main>

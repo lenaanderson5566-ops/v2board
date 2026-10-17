@@ -1,4 +1,5 @@
 // @vitest-environment jsdom
+vi.mock("../shared/experience-copy", () => ({ e: (key: string) => key }));
 import { afterEach, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 const mock = vi.hoisted(() => ({ request: vi.fn(), methods: [
@@ -54,6 +55,8 @@ it.each(["NETWORK_ERROR", "REQUEST_TIMEOUT"])("checks status without resubmittin
     expect(reload).toHaveBeenCalled();
     expect(mock.request.mock.calls.filter(([path]) => path === "user/order/checkout")).toHaveLength(1);
     fireEvent.click(screen.getByRole("button", { name: "重新发起支付" }));
+    fireEvent.click(screen.getAllByRole("button", { name: "重新发起支付" }).at(-1)!);
+    await screen.findByRole("button", { name: "确认支付" });
     expect(screen.queryByText("未能确认支付请求结果，正在检查订单状态，请勿重复付款。")).toBeNull();
     expect(screen.getByRole("button", { name: "确认支付" })).toBeTruthy();
 });

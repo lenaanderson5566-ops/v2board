@@ -109,7 +109,7 @@ it("distinguishes an empty category from an empty wallet", () => {
     mocks.wallet = [{ ...coupon, name: "Expired", status: "expired" }];
     render(<MyCoupons />);
     expect(screen.getByRole("heading", { name: "当前分类暂无优惠券" })).toBeTruthy();
-    fireEvent.click(screen.getByRole("button", { name: "已过期" }));
+    fireEvent.click(screen.getByRole("button", { name: /^已过期/ }));
     expect(screen.getByRole("heading", { name: "Expired" })).toBeTruthy();
     expect(screen.queryByRole("link", { name: "选择套餐使用" })).toBeNull();
 });
@@ -123,10 +123,10 @@ it("only available wallet entries have a purchase link", () => {
     expect(screen.getAllByRole("link", { name: "选择套餐使用" })).toHaveLength(
         1,
     );
-    fireEvent.click(screen.getByRole("button", { name: "已过期" }));
+    fireEvent.click(screen.getByRole("button", { name: /^已过期/ }));
     expect(screen.getByRole("heading", { name: "Expired" })).toBeTruthy();
     expect(screen.queryByRole("link", { name: "选择套餐使用" })).toBeNull();
-    fireEvent.click(screen.getByRole("button", { name: "已占用或使用" }));
+    fireEvent.click(screen.getByRole("button", { name: /^已占用或使用/ }));
     expect(screen.getByRole("heading", { name: "Used" })).toBeTruthy();
     expect(mocks.request).not.toHaveBeenCalled();
 });

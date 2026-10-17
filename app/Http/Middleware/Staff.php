@@ -16,7 +16,8 @@ class Staff
      */
     public function handle($request, Closure $next)
     {
-        $authorization = $request->input('auth_data') ?? $request->header('authorization');
+        $authorization = $request->header('authorization') ?? ($request->isMethod('POST')
+            ? ($request->isJson() ? $request->json('auth_data') : $request->request->get('auth_data')) : null);
         if (!$authorization) abort(403, '未登录或登陆已过期');
 
         $user = AuthService::decryptAuthData($authorization);
@@ -24,6 +25,8 @@ class Staff
         $request->merge([
             'user' => $user
         ]);
-        return $next($request);
+        $response = $next($request);
+        $response->headers->set('Cache-Control', 'private, no-store');
+        return $response;
     }
 }

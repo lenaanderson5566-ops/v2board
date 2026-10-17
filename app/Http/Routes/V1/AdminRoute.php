@@ -11,6 +11,8 @@ class AdminRoute
             'prefix' => config('v2board.secure_path', config('v2board.frontend_admin_path', hash('crc32b', config('app.key')))),
             'middleware' => ['admin', 'log'],
         ], function ($router) {
+            $router->get('/analytics/report', 'V1\\Admin\\ProductAnalyticsController@report')->middleware('throttle:30,1,analytics-report:');
+            $router->post('/analytics/settings', 'V1\\Admin\\ProductAnalyticsController@settings')->middleware('throttle:10,1,analytics-settings:');
             $router->post('/config/testAppleAccount', 'V1\\Admin\\ConfigController@testAppleAccount')->middleware('throttle:10,1');
             $router->post('/config/testFastaiEntrypoint', 'V1\\Admin\\ConfigController@testFastaiEntrypoint')->middleware('throttle:10,1');
             $router->get('/client-diagnostics/fetch', 'V1\\Admin\\ClientDiagnosticController@fetch');

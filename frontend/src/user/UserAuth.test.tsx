@@ -272,7 +272,7 @@ describe("user account steps", () => {
         await screen.findByRole("heading", { name: "review" });
         fireEvent.click(screen.getByRole("button", { name: "注册账户" }));
         await screen.findByRole("alert");
-        fireEvent.click(screen.getByRole("button", { name: "注册账户" }));
+        fireEvent.click(screen.getByRole("button", { name: "登录" }));
         await waitFor(() => expect(onLogin).toHaveBeenCalled());
         expect(
             mocks.request.mock.calls.filter(

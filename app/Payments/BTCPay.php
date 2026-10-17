@@ -4,6 +4,7 @@ namespace App\Payments;
 
 
 class BTCPay {
+    protected array $config;
     public function __construct($config) {
         $this->config = $config;
     }
@@ -39,7 +40,7 @@ class BTCPay {
         $params = [
             'jsonResponse' => true,
             'amount' => sprintf('%.2f', $order['total_amount'] / 100),
-            'currency' => 'CNY',
+            'currency' => $order['currency'] ?? 'CNY',
             'metadata' => [
                 'orderId' => $order['trade_no']
             ]
@@ -61,46 +62,41 @@ class BTCPay {
     }
 
     public function notify($params) {
-        $payload = trim(request()->getContent() ?: json_encode($_POST));
-
-        $headers = getallheaders();
-
-        //IS Btcpay-Sig
-        //NOT BTCPay-Sig
-        //API doc is WRONG!
-        $headerName = 'Btcpay-Sig';
-        $signraturHeader = isset($headers[$headerName]) ? $headers[$headerName] : '';
-        $json_param = json_decode($payload, true);
-
-        $computedSignature = "sha256=" . \hash_hmac('sha256', $payload, $this->config['btcpay_webhook_key']);
-
-        if (!self::hashEqual($signraturHeader, $computedSignature)) {
-            abort(400, 'HMAC signature does not match');
-            return false;
-        }
-
-        //get order id store in metadata
-        $context = stream_context_create(array(
-            'http' => array(
-                'method' => 'GET',
-                'header' => "Authorization:" . "token " . $this->config['btcpay_api_key'] . "\r\n"
-            )
-        ));
-
-        $invoiceDetail = file_get_contents($this->config['btcpay_url'] . 'api/v1/stores/' . $this->config['btcpay_storeId'] . '/invoices/' . $json_param['invoiceId'], false, $context);
-        $invoiceDetail = json_decode($invoiceDetail, true);
-
-    
-        $out_trade_no = $invoiceDetail['metadata']["orderId"];
-        $pay_trade_no=$json_param['invoiceId'];
-        return [
-            'trade_no' => $out_trade_no,
-            'callback_no' => $pay_trade_no
-        ];
-        http_response_code(200);
-        return('success');
+        $payload = request()->getContent();
+        $secret = (string)($this->config['btcpay_webhook_key'] ?? '');
+        abort_if($secret === '' || $payload === '' || !hash_equals('sha256='.hash_hmac('sha256', $payload, $secret),
+            (string)request()->header('Btcpay-Sig')), 400, 'HMAC signature does not match');
+        $body = json_decode($payload, true);
+        $event = $body;
+        abort_unless(is_array($event) && is_string($event['type'] ?? null), 400, 'Invalid payment event');
+        if ($event['type'] !== 'InvoiceSettled') return 'success';
+        $id = $event['invoiceId'] ?? null;
+        abort_unless(is_string($id) && $id !== '' && strlen($id) <= 128, 400, 'Invalid invoice ID');
+        $invoice = $this->fetchInvoice($id);
+        abort_unless(($invoice['id'] ?? null) === $id && ($invoice['status'] ?? null) === 'Settled'
+            && in_array($invoice['additionalStatus'] ?? null, ['None','PaidLate','PaidOver'], true), 400, 'Invoice is not settled');
+        $trade = $invoice['metadata']['orderId'] ?? null;
+        $price = $invoice;
+        abort_unless(is_string($trade) && $trade !== '' && is_string($id) && $id !== '', 400, 'Invalid payment identity');
+        $currency = $price['currency'] ?? null;
+        abort_unless(is_string($currency) && in_array(strtoupper($currency), ['CNY','USD'], true), 400, 'Invalid payment currency');
+        return ['trade_no'=>$trade, 'callback_no'=>$id,
+            'amount'=>\App\Services\Money::parseMinor($price['amount'] ?? null), 'currency'=>strtoupper($currency)];
     }
 
+    protected function fetchInvoice(string $id): array
+    {
+        // Do not forward store API credentials to redirect targets.
+        $url = rtrim($this->config['btcpay_url'], '/') . '/api/v1/stores/'
+            . rawurlencode($this->config['btcpay_storeId']) . '/invoices/' . rawurlencode($id);
+        $response = (new \GuzzleHttp\Client())->get($url, ['headers'=>[
+            'Authorization'=>'token '.$this->config['btcpay_api_key'], 'Accept'=>'application/json'],
+            'connect_timeout'=>5, 'timeout'=>15, 'allow_redirects'=>false]);
+        abort_unless($response->getStatusCode() === 200, 502, 'Invoice verification failed');
+        $invoice = json_decode((string)$response->getBody(), true);
+        abort_unless(is_array($invoice), 502, 'Invalid invoice response');
+        return $invoice;
+    }
 
     private function _curlPost($url,$params=false){
         
@@ -119,30 +115,4 @@ class BTCPay {
     }
 
 
-    /**
-     * @param string $str1
-     * @param string $str2
-     * @return bool
-     */
-    private function hashEqual($str1, $str2)
-    {   
-
-        if (function_exists('hash_equals')) {
-            return \hash_equals($str1, $str2);
-        }
-
-        if (strlen($str1) != strlen($str2)) {
-            return false;
-        } else {
-            $res = $str1 ^ $str2;
-            $ret = 0;
-
-            for ($i = strlen($res) - 1; $i >= 0; $i--) {
-                $ret |= ord($res[$i]);
-            }
-            return !$ret;
-        }
-    }
-    
 }
-

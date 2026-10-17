@@ -1799,5 +1799,37 @@
     "role": "user",
     "scope": "user",
     "status": 204
+  },
+  {
+    "key": "ProductAnalyticsController@configuration",
+    "legacy": "",
+    "legacyMethod": "GET",
+    "method": "GET",
+    "path": "public/analytics/configuration",
+    "action": "App\\Http\\Controllers\\V10\\ProductAnalyticsController@configuration",
+    "parameters": [],
+    "bindings": {},
+    "middleware": [
+      "throttle:60,1,product-analytics:"
+    ],
+    "role": "public",
+    "scope": "public",
+    "status": 200
+  },
+  {
+    "key": "ProductAnalyticsController@store",
+    "legacy": "",
+    "legacyMethod": "POST",
+    "method": "POST",
+    "path": "public/analytics/events",
+    "action": "App\\Http\\Controllers\\V10\\ProductAnalyticsController@store",
+    "parameters": [],
+    "bindings": {},
+    "middleware": [
+      "throttle:60,1,product-analytics:"
+    ],
+    "role": "public",
+    "scope": "public",
+    "status": 204
   }
 ]

@@ -1,4 +1,5 @@
 // @vitest-environment jsdom
+vi.mock("../shared/i18n", () => ({ locale: () => "zh-CN" }));
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 const mocks = vi.hoisted(() => ({

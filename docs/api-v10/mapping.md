@@ -188,3 +188,7 @@ Binding uses a 10-minute one-time deep link, bot acknowledgement and an authenti
 GET /me/security/mfa reads default-off email/TOTP state. POST /me/security/mfa/challenges stages changes after password and current factor proof. POST /auth/mfa/emails sends a purpose-scoped code; POST /auth/mfa/verifications completes a single-use challenge. POST /auth/sessions returns either authentication or mfaChallenge. Browser grants remain cookie-only; administrator settings stay on the retained admin contract. See docs/mfa.md.
 
 - `user/logoutAll` is a frontend transport alias only: `DELETE /api/v10/me/sessions`, 204. Revokes all caller login sessions, including the current browser; does not rotate subscription credentials. No V1 route is introduced.
+
+## Website analytics
+
+New first-party resources (no legacy V1 alias): `GET /api/v10/public/analytics/configuration` and `POST /api/v10/public/analytics/events`. Explicit anonymous event schema; credentials omitted. The historical `/public/page-views` invitation counter remains unchanged. Admin report/settings remain under the existing protected V1 admin prefix at `/analytics/report` (GET) and `/analytics/settings` (POST).

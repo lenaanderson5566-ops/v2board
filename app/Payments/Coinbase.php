@@ -3,6 +3,7 @@
 namespace App\Payments;
 
 class Coinbase {
+    protected array $config;
     public function __construct($config) {
         $this->config = $config;
     }
@@ -36,7 +37,7 @@ class Coinbase {
             'pricing_type' => 'fixed_price',
             'local_price' => [
                 'amount' => sprintf('%.2f', $order['total_amount'] / 100),
-                'currency' => 'CNY'
+                'currency' => $order['currency'] ?? 'CNY'
             ],
             'metadata' => [
                 "outTradeNo" => $order['trade_no'],
@@ -59,30 +60,23 @@ class Coinbase {
     }
 
     public function notify($params) {
-        
-        $payload = trim(request()->getContent() ?: json_encode($_POST));
-        $json_param = json_decode($payload, true); 
-
-
-        $headerName = 'X-Cc-Webhook-Signature';
-        $headers = getallheaders();
-        $signatureHeader = isset($headers[$headerName]) ? $headers[$headerName] : '';
-        $computedSignature = \hash_hmac('sha256', $payload, $this->config['coinbase_webhook_key']);
-
-        if (!self::hashEqual($signatureHeader, $computedSignature)) {
-            abort(400, 'HMAC signature does not match');
-        }
-        
-        $out_trade_no = $json_param['event']['data']['metadata']['outTradeNo'];
-        $pay_trade_no=$json_param['event']['id'];
-        return [
-            'trade_no' => $out_trade_no,
-            'callback_no' => $pay_trade_no
-        ];
-        http_response_code(200);
-        return('success');
+        $payload = request()->getContent();
+        $secret = (string)($this->config['coinbase_webhook_key'] ?? '');
+        abort_if($secret === '' || $payload === '' || !hash_equals(hash_hmac('sha256', $payload, $secret),
+            (string)request()->header('X-CC-Webhook-Signature')), 400, 'HMAC signature does not match');
+        $body = json_decode($payload, true);
+        $event = $body['event'] ?? null;
+        abort_unless(is_array($event) && is_string($event['type'] ?? null), 400, 'Invalid payment event');
+        if ($event['type'] !== 'charge:confirmed') return 'success';
+        $trade = $event['data']['metadata']['outTradeNo'] ?? null;
+        $id = $event['id'] ?? null;
+        $price = $event['data']['pricing']['local'] ?? [];
+        abort_unless(is_string($trade) && $trade !== '' && is_string($id) && $id !== '', 400, 'Invalid payment identity');
+        $currency = $price['currency'] ?? null;
+        abort_unless(is_string($currency) && in_array(strtoupper($currency), ['CNY','USD'], true), 400, 'Invalid payment currency');
+        return ['trade_no'=>$trade, 'callback_no'=>$id,
+            'amount'=>\App\Services\Money::parseMinor($price['amount'] ?? null), 'currency'=>strtoupper($currency)];
     }
-
 
     private function _curlPost($url,$params=false){
         
@@ -101,29 +95,4 @@ class Coinbase {
     }
 
 
-    /**
-     * @param string $str1
-     * @param string $str2
-     * @return bool
-     */
-    public function hashEqual($str1, $str2)
-    {
-        if (function_exists('hash_equals')) {
-            return \hash_equals($str1, $str2);
-        }
-
-        if (strlen($str1) != strlen($str2)) {
-            return false;
-        } else {
-            $res = $str1 ^ $str2;
-            $ret = 0;
-
-            for ($i = strlen($res) - 1; $i >= 0; $i--) {
-                $ret |= ord($res[$i]);
-            }
-            return !$ret;
-        }
-    }
-    
 }
-

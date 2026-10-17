@@ -2,7 +2,7 @@ import React, { type ReactNode } from "react";
 import { Panel } from "./ui";
 import { tx } from "./i18n";
 export class ErrorBoundary extends React.Component<
-    { children: ReactNode },
+    { children: ReactNode; message?: string },
     { error: string }
 > {
     state = { error: "" };
@@ -13,7 +13,7 @@ export class ErrorBoundary extends React.Component<
         return this.state.error ? (
             <Panel title={tx("页面暂时无法加载")}>
                 <div className="pad">
-                    <p>{this.state.error}</p>
+                    <p>{this.props.message || this.state.error}</p>
                     <button onClick={() => location.reload()}>
                         {tx("重新加载")}
                     </button>

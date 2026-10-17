@@ -1,3 +1,4 @@
+import { AnalyticsPrivacy, AnalyticsPrivacyEntry } from "./AnalyticsPrivacy";
 import { displayTimeZone } from "../shared/timezone";
 import {
     initializeBrowserSession,
@@ -81,7 +82,18 @@ import { useTranslation } from "react-i18next";
 import { LanguagePicker } from "../shared/LanguagePicker";
 import "./user-experience.css";
 import "./product.css";
-export default function UserApp() {
+export default function App() {
+    return (
+        <>
+            <AnalyticsPrivacy />
+            <UserApp />
+            <footer className="analytics-privacy-footer">
+                <AnalyticsPrivacyEntry />
+            </footer>
+        </>
+    );
+}
+function UserApp() {
     useEffect(() => {
         if (
             boot.landing ||

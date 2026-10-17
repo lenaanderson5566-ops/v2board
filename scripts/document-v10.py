@@ -85,6 +85,11 @@ schemas.update({
     'Problem': obj({'type': {'type': 'string'}, 'title': {'type': 'string'}, 'status': number, 'detail': {'type': 'string'}, 'code': {'type': 'string'}, 'requestId': {'type': 'string'}, 'errors': {'type': 'object', 'additionalProperties': {'type': 'array', 'items': {'type': 'string'}}}}, ['type', 'title', 'status', 'detail', 'code', 'requestId']),
 })
 
+
+# Fixed analytics schemas; never infer fields from browser payloads.
+schemas["analyticsConfiguration"] = {'type': 'object', 'additionalProperties': False, 'required': ['enabled', 'retentionDays'], 'properties': {'enabled': {'type': 'boolean'}, 'retentionDays': {'type': 'integer', 'enum': [7, 30, 90]}}}
+schemas["analyticsEvent"] = {'type': 'object', 'additionalProperties': False, 'required': ['sessionId', 'page', 'device', 'language', 'consent'], 'properties': {'sessionId': {'type': 'string', 'format': 'uuid'}, 'page': {'type': 'string', 'enum': ['landing', 'register', 'login', 'forget', 'dashboard', 'plan', 'confirmation', 'payment', 'order', 'order_detail', 'activities', 'coupons', 'subscribe', 'knowledge', 'profile', 'security', 'invite', 'traffic', 'notifications', 'ticket']}, 'device': {'type': 'string', 'enum': ['desktop', 'mobile', 'tablet']}, 'language': {'type': 'string', 'enum': ['zh-CN', 'zh-TW', 'en-US', 'ja-JP', 'ko-KR', 'vi-VN', 'ru-RU', 'fa-IR']}, 'consent': {'type': 'boolean', 'enum': [True]}}}
+
 release_schema = schemas['fastaiRelease']
 release_schema['required'] = ['platform', 'architecture', 'channel', 'latestVersion', 'latestBuild', 'minimumVersion', 'downloadUrl', 'sha256', 'publishedAt']
 for field in release_schema['required']:
@@ -162,6 +167,8 @@ for entry in entries:
     properties = {field: input_schema(field) for field in contract['input']}
     request_name = operation_id + 'Input'
     schemas[request_name] = obj(properties, required.get(contract['key']))
+    if operation_id == 'postPublicAnalyticsEvents':
+        schemas[request_name] = schemas['analyticsEvent']
     status = str(entry['status'])
     success = {'description': 'Success', 'headers': {'X-Request-ID': {'schema': {'type': 'string'}}, 'Content-Language': {'schema': {'type': 'string'}}}}
     if status != '204':

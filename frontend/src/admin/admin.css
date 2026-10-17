@@ -2116,3 +2116,19 @@ body[data-console="admin"] .node-editor-backend {display:flex;flex-wrap:wrap;gap
 body[data-console="admin"] .node-editor-backend>.alert {flex-basis:100%;}
 body[data-console="admin"] .node-editor-intro p {margin:0 0 8px;line-height:1.6;}
 @media(max-width:600px){body[data-console="admin"] .node-editor-dialog .field-grid>label {grid-column:1/-1 !important;}}
+
+/* Shared administration navigation, feedback and form hierarchy. */
+body[data-console="admin"] .admin-skip-link { position: fixed; top: -80px; left: 16px; z-index: 10000; padding: 12px 18px; background: #fff; color: #153b70; border: 2px solid #153b70; border-radius: 8px; }
+body[data-console="admin"] .admin-skip-link:focus { top: 12px; }
+body[data-console="admin"] .admin-page-heading { min-width: 0; display: flex; align-items: center; gap: 12px; }
+body[data-console="admin"] .admin-page-group { font-size: 12px; color: var(--muted,#64748b); padding-right: 12px; border-right: 1px solid var(--border,#e2e8f0); white-space: nowrap; }
+body[data-console="admin"] .admin-nav-empty button { display: block; margin-top: 8px; }
+body[data-console="admin"] .admin-refresh-note { padding: 10px 16px; border-bottom: 1px solid var(--border,#e2e8f0); color: var(--muted,#64748b); font-size: 12px; }
+body[data-console="admin"] .admin-stale-content { opacity: .65; }
+body[data-console="admin"] .admin-stale-warning { display: block; margin: 6px 0; }
+body[data-console="admin"] .admin-dirty-note { color: #805b14; font-size: 12px; margin-right: auto; }
+body[data-console="admin"] .editor > .form-bottom { position: sticky; bottom: 0; z-index: 2; background: var(--surface,#fff); border-top: 1px solid var(--border,#e2e8f0); padding: 14px 18px; }
+body[data-console="admin"] :is(button,a,input,select,textarea,summary):focus-visible { outline: 2px solid var(--primary,#153b70); outline-offset: 3px; }
+body[data-console="admin"] .table-wrap { overscroll-behavior-x: contain; }
+@media(max-width:700px) { body[data-console="admin"] .admin-page-group { display: none; } body[data-console="admin"] .editor > .form-bottom { flex-wrap: wrap; } }
+@media(prefers-reduced-motion:reduce) { body[data-console="admin"] *, body[data-console="admin"] *::before, body[data-console="admin"] *::after { scroll-behavior: auto !important; animation-duration: .01ms !important; transition-duration: .01ms !important; } }

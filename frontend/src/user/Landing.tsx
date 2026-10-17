@@ -1,3 +1,4 @@
+import { useAnalyticsPage } from "./product-analytics";
 import { BannerStrip } from "../shared/BannerStrip";
 import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -25,6 +26,7 @@ import { LanguagePicker } from "../shared/LanguagePicker";
 import MinimalLanding from "./MinimalLanding";
 
 export default function Landing() {
+    useAnalyticsPage("landing");
     return boot.landingStyle === "minimal" ? (
         <MinimalLanding />
     ) : (

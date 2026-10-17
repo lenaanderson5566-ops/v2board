@@ -179,3 +179,39 @@ export interface V10PostMeMfaChallengesInput { purpose: V10MfaPurpose; password:
 export interface V10PostMfaVerificationsInput { challengeId: string; verificationCode?: string; verificationMethod?: MfaMethod; emailCode?: string; totpCode?: string }
 
 export type V10DeleteMeSessionsInput = Record<string, never>;
+
+/** Consent-gated, anonymous website analytics. No account or URL fields. */
+export interface V10AnalyticsConfiguration {
+    enabled: boolean;
+    retentionDays: 7 | 30 | 90;
+}
+export interface V10AnalyticsEvent {
+    sessionId: string;
+    page:
+        | "landing"
+        | "register"
+        | "login"
+        | "forget"
+        | "dashboard"
+        | "plan"
+        | "confirmation"
+        | "payment"
+        | "order"
+        | "order_detail"
+        | "activities"
+        | "coupons"
+        | "subscribe"
+        | "knowledge"
+        | "profile"
+        | "security"
+        | "invite"
+        | "traffic"
+        | "notifications"
+        | "ticket";
+    device: "desktop" | "mobile" | "tablet";
+    language: string;
+    consent: true;
+}
+
+export type V10PostPublicAnalyticsEventsInput = V10AnalyticsEvent;
+export type V10GetPublicAnalyticsConfigurationInput = Record<string, never>;

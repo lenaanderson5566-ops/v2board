@@ -1,3 +1,4 @@
+import { useAnalyticsPage } from "./product-analytics";
 import { MfaLogin } from "../shared/MfaLogin";
 import type { V10MfaChallenge } from "../shared/v10-types";
 import { RegistrationEmail } from "./RegistrationEmail";
@@ -28,6 +29,13 @@ export function UserAuth({
     onLogin: (user: Row) => void;
     renderCaptcha: (onChange: (value: string) => void) => ReactNode;
 }) {
+    useAnalyticsPage(
+        mode === "register"
+            ? "register"
+            : mode === "forget"
+              ? "forget"
+              : "login",
+    );
     const [mfa, setMfa] = useState<V10MfaChallenge | null>(null);
     const register = mode === "register",
         forget = mode === "forget",

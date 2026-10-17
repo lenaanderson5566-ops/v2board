@@ -1,4 +1,6 @@
 <?php
+\Illuminate\Support\Facades\Route::get('public/analytics/configuration', [\App\Http\Controllers\V10\ProductAnalyticsController::class,'configuration'])->middleware('throttle:60,1,product-analytics:')->name('v10.getPublicAnalyticsConfiguration');
+\Illuminate\Support\Facades\Route::post('public/analytics/events', [\App\Http\Controllers\V10\ProductAnalyticsController::class,'store'])->middleware('throttle:60,1,product-analytics:')->name('v10.postPublicAnalyticsEvents');
 // Explicit V10 resources. Administrative and legacy node routes remain available separately.
 \Illuminate\Support\Facades\Route::match(['GET', 'HEAD'], 'subscriptions/{subscriptionToken}', [\App\Http\Controllers\V10\ClientClientController::class, 'getSubscriptionsSubscriptionToken'])->name('v10.getSubscriptionsSubscriptionToken');
 \Illuminate\Support\Facades\Route::match(['GET', 'HEAD'], 'subscriptions/{subscriptionToken}/application-config', [\App\Http\Controllers\V10\ClientAppController::class, 'getSubscriptionsSubscriptionTokenApplicationConfig'])->name('v10.getSubscriptionsSubscriptionTokenApplicationConfig');

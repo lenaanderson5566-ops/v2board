@@ -9,6 +9,7 @@ import {
     screen,
     waitFor,
     act,
+    within,
 } from "@testing-library/react";
 const mocks = vi.hoisted(() => ({
     couponsAvailable: true,
@@ -294,14 +295,16 @@ it("keeps payment status checking available if a previous payment method was rem
         "user/order/check?trade_no=test-order",
     );
 });
-it("uses the fee locked in an issued order even when provider settings change", () => {
+it("uses the fee locked in an issued order even when provider settings change", async () => {
+    mocks.request.mockResolvedValue({ data: 0 });
     checkout({ payment_id: 1, handling_amount: 75 });
     expect(screen.getByText("¥10.75")).toBeTruthy();
     expect(
         screen.getByRole("radio", { name: /Card/ }).matches(":disabled"),
     ).toBe(true);
     fireEvent.click(screen.getByRole("button", { name: "重新发起支付" }));
-    expect(screen.getByText("¥10.50")).toBeTruthy();
+    fireEvent.click(within(screen.getByRole("dialog")).getByRole("button", { name: "重新发起支付" }));
+    expect(await screen.findByText("¥10.50")).toBeTruthy();
     expect(
         screen.getByRole("radio", { name: /Card/ }).matches(":disabled"),
     ).toBe(false);

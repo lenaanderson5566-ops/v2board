@@ -73,5 +73,61 @@ try {
  $assert($stripeNotify('cny',1000,'checkout.session.completed','unpaid')==='success' && $stripeOrder->fresh()->status===0,'Unpaid event acknowledged without settlement');
  $assert($stripeNotify('cny',1000,'checkout.session.expired')==='success' && $stripeOrder->fresh()->status===0,'Unrelated event acknowledged without settlement');
  $assert($stripeNotify('cny',1000)==='success' && $stripeOrder->fresh()->status===1,'Signed Stripe payment settles');
+ // Legacy crypto events must be signed and settled before reaching shared settlement.
+ $cryptoRequest=function(string $payload,string $header,string $signature) use($app) {
+     $r=Request::create('/api/v10/webhooks/payments/test/fixture','POST',[],[],[],[$header=>$signature],$payload);
+     $app->instance('request',$r); return $r;
+ };
+ $coinbase=new App\Payments\Coinbase(['coinbase_webhook_key'=>'crypto-fixture']);
+ foreach (['charge:created','charge:pending','charge:failed','charge:resolved','charge:confirmed'] as $type) {
+     $payload=" ".json_encode(['event'=>['id'=>'evt-fixture','type'=>$type,'data'=>['metadata'=>['outTradeNo'=>'order-fixture'],'pricing'=>['local'=>['amount'=>'10.10','currency'=>'USD']]]]])."\n";
+     $cryptoRequest($payload,'HTTP_X_CC_WEBHOOK_SIGNATURE',hash_hmac('sha256',$payload,'crypto-fixture'));
+     $result=$coinbase->notify([]);
+     $assert($type==='charge:confirmed' ? $result['amount']===1010 && $result['currency']==='USD' : $result==='success','Coinbase only confirmed events settle: '.$type);
+ }
+ $cryptoRequest($payload,'HTTP_X_CC_WEBHOOK_SIGNATURE','invalid');
+ try {$coinbase->notify([]);throw new RuntimeException('Invalid Coinbase signature accepted');} catch (Symfony\Component\HttpKernel\Exception\HttpException $e) {$checks++;}
+ $btcpay=new class(['btcpay_webhook_key'=>'crypto-fixture']) extends App\Payments\BTCPay {
+     public array $invoice=['id'=>'invoice-fixture','status'=>'Settled','additionalStatus'=>'None','amount'=>'10.10','currency'=>'CNY','metadata'=>['orderId'=>'order-fixture']];
+     protected function fetchInvoice(string $id): array {return $this->invoice;}
+ };
+ foreach (['InvoiceCreated','InvoiceProcessing','InvoiceExpired','InvoiceSettled'] as $type) {
+     $payload=json_encode(['type'=>$type,'invoiceId'=>'invoice-fixture'])."\n";
+     $cryptoRequest($payload,'HTTP_BTCPAY_SIG','sha256='.hash_hmac('sha256',$payload,'crypto-fixture'));
+     $result=$btcpay->notify([]);
+     $assert($type==='InvoiceSettled' ? $result['amount']===1010 && $result['currency']==='CNY' : $result==='success','BTCPay only settled events settle: '.$type);
+ }
+ foreach ([['Processing','None'],['Settled','PaidPartial'],['Settled','Marked']] as [$state,$extra]) {
+     $btcpay->invoice['status']=$state;$btcpay->invoice['additionalStatus']=$extra;
+     try {$btcpay->notify([]);throw new RuntimeException('Unsettled invoice accepted');} catch (Symfony\Component\HttpKernel\Exception\HttpException $e) {$checks++;}
+ }
+ $cp=new App\Payments\CoinPayments(['coinpayments_merchant_id'=>'fixture','coinpayments_ipn_secret'=>'crypto-fixture']);
+ $params=['ipn_mode'=>'hmac','merchant'=>'fixture','status'=>'100','item_number'=>'order-fixture','txn_id'=>'tx-fixture','amount1'=>'10.10','currency1'=>'USD'];
+ $payload=http_build_query($params);
+ $cryptoRequest($payload,'HTTP_HMAC',hash_hmac('sha512',$payload,'crypto-fixture'));
+ $result=$cp->notify($params);
+ $assert($result['amount']===1010 && $result['currency']==='USD' && $result['custom_result']==='IPN OK','CoinPayments verifies original bytes and retains native success');
+ $cryptoRequest($payload.'x','HTTP_HMAC',hash_hmac('sha512',$payload,'crypto-fixture'));
+ try {$cp->notify($params);throw new RuntimeException('Tampered IPN accepted');} catch (Symfony\Component\HttpKernel\Exception\HttpException $e) {$checks++;}
+ $legacyChannel=App\Models\Payment::create(['name'=>'Audit Coinbase','payment'=>'Coinbase','uuid'=>App\Utils\Helper::guid(),'enable'=>1,'config'=>['coinbase_webhook_key'=>'crypto-fixture']]);
+ $legacyOrder=App\Models\Order::create(['user_id'=>$user->id,'plan_id'=>1,'type'=>1,'period'=>'month_price','trade_no'=>App\Utils\Helper::generateOrderNo(),'total_amount'=>1000,'payment_id'=>$legacyChannel->id,'status'=>0]);
+ foreach ([['0.01','CNY',false],['10.00','USD',false],['10.00','CNY',true],['10.00','CNY',true]] as [$amount,$currency,$accepted]) {
+     $payload=json_encode(['event'=>['id'=>'evt-settlement','type'=>'charge:confirmed','data'=>['metadata'=>['outTradeNo'=>$legacyOrder->trade_no],'pricing'=>['local'=>['amount'=>$amount,'currency'=>$currency]]]]]);
+     $request=$cryptoRequest($payload,'HTTP_X_CC_WEBHOOK_SIGNATURE',hash_hmac('sha256',$payload,'crypto-fixture'));
+     try {
+         $result=(new App\Services\Actions\Guest\PaymentActions())->notify('Coinbase',$legacyChannel->uuid,$request);
+         $assert($accepted && $result==='success' && $legacyOrder->fresh()->status===1,'Coinbase exact amount settles and repeated callback is idempotent');
+     } catch (Symfony\Component\HttpKernel\Exception\HttpException $e) {
+         $assert(!$accepted && $legacyOrder->fresh()->status===0,'Coinbase amount/currency mismatch leaves order pending');
+     }
+ }
+ $qr=new App\Payments\EPayQrcode(['pid'=>'fixture','key'=>'qr-fixture']);
+ $params=['pid'=>'fixture','money'=>'10.10','out_trade_no'=>'order-fixture','trade_no'=>'tx-fixture','trade_status'=>'TRADE_SUCCESS'];
+ ksort($params);$pairs=[];foreach($params as $key=>$value)$pairs[]=$key.'='.$value;
+ $params['sign']=md5(implode('&',$pairs).'qr-fixture');$params['sign_type']='MD5';
+ $result=$qr->notify($params);
+ $assert($result['amount']===1010 && $result['currency']==='CNY','EPay QR signed amount reaches shared settlement');
+ $params['money']='0.01';
+ $assert($qr->notify($params)===false,'EPay QR rejects altered signed amount');
  echo "Audit security regression: $checks checks passed\n";
 } finally {if($userAuth)$userAuth->removeAllSession();if($auth)$auth->removeAllSession();DB::rollBack();}

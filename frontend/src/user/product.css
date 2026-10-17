@@ -2476,3 +2476,12 @@ body[data-console="user"] .client-family-header p {
         padding-inline: 10px;
     }
 }
+
+.analytics-privacy { margin: 12px auto; width: min(1100px, calc(100% - 24px)); padding: 16px 20px; border: 1px solid var(--line); border-radius: 12px; background: var(--surface); color: var(--ink); font-size: 13px; }
+.analytics-privacy strong, .analytics-privacy-entry { display: inline-flex; align-items: center; gap: 8px; }
+.analytics-privacy p { line-height: 1.6; margin: 8px 0; }
+.analytics-privacy summary { cursor: pointer; color: var(--brand); }
+.analytics-privacy .actions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 12px; }
+.analytics-privacy .actions button { flex: 0 1 180px; padding: 10px 14px; background: var(--surface-soft); color: var(--ink); border: 1px solid var(--outline); }
+.analytics-privacy-footer { padding: 18px 20px 90px; text-align: center; background: var(--surface); }
+.analytics-privacy-entry { font-size: 12px; padding: 8px 12px; }

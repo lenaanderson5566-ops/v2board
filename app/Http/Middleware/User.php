@@ -20,10 +20,12 @@ class User
         if (!$authorization) abort(403, '未登录或登陆已过期');
 
         $user = AuthService::decryptAuthData($authorization);
-        if (!$user) abort(403, '未登录或登陆已过期');
+        if (!$user || $user['banned']) abort(403, '未登录或登陆已过期');
         $request->merge([
             'user' => $user
         ]);
-        return $next($request);
+        $response = $next($request);
+        $response->headers->set('Cache-Control', 'private, no-store');
+        return $response;
     }
 }

@@ -34,7 +34,7 @@ import { PlanDescription } from "../shared/PlanDescription";
 import { AdminPlanAutoTranslation } from "./AdminPlanAutoTranslation";
 import { AdminMailPreview } from "./AdminMailPreview";
 import { formPresentation, settingsPresentation } from "./admin-presentation";
-import { useState, useEffect, type ReactNode } from "react";
+import { useState, useEffect, useRef, type ReactNode } from "react";
 import { Plus, Search } from "lucide-react";
 import {
     admin,
@@ -1814,7 +1814,10 @@ export function Settings() {
     const [dirty, setDirty] = useState(false),
         [actionBusy, setActionBusy] = useState(false),
         [actionResult, setActionResult] = useState("");
+    const actionPending = useRef(false);
     async function runAction(endpoint: string, body: Record<string, unknown> = {}) {
+        if (actionPending.current) return;
+        actionPending.current = true;
         setActionBusy(true);
         setActionResult("");
         try {
@@ -1827,6 +1830,7 @@ export function Settings() {
         } catch (e) {
             setActionResult((e as Error).message);
         } finally {
+            actionPending.current = false;
             setActionBusy(false);
         }
     }
@@ -1922,6 +1926,8 @@ export function Settings() {
                         key={k}
                         className={group === k ? "selected" : ""}
                         onClick={() => {
+                            if (k === group) return;
+                            if (dirty && !window.confirm("当前分类有未保存的修改，确认放弃并切换？")) return;
                             setGroup(k);
                             setSaved("");
                             setDirty(false);
@@ -1992,7 +1998,7 @@ export function Settings() {
                             const changes = changedSettings(body, raw);
                             if (Object.keys(changes).length)
                                 await request(admin("config/save"), changes);
-                            if (Object.prototype.hasOwnProperty.call(changes, "system_timezone")) { window.location.reload(); return; }
+                            if (Object.prototype.hasOwnProperty.call(changes, "system_timezone")) { setTimeout(() => window.location.reload(), 0); return; }
                             setSaved("设置已保存");
                             setDirty(false);
                             d.reload();

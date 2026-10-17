@@ -1,3 +1,4 @@
+import { AnalyticsPrivacyEntry } from "./AnalyticsPrivacy";
 import { TimeZonePicker } from "../shared/TimeZonePicker";
 import { useState, useRef } from "react";
 import { useTranslation } from "react-i18next";
@@ -107,6 +108,11 @@ export function AccountPreferences({ user }: { user: Row }) {
                             </option>
                         ))}
                     </select>
+                </div>
+            </div>
+            <div className="settings-card">
+                <div className="settings-row">
+                    <AnalyticsPrivacyEntry />
                 </div>
             </div>
             {error && (

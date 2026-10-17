@@ -166,6 +166,40 @@ export function State({
     children: ReactNode;
     retry?: () => void;
 }) {
+    if (boot.mode === "admin" && data != null)
+        return (
+            <div className="admin-data-state" aria-busy={loading}>
+                {loading && (
+                    <div
+                        key="loading"
+                        className="admin-refresh-note"
+                        role="status"
+                    >
+                        {e("adminRefreshing")}
+                    </div>
+                )}
+                {error && (
+                    <div key="error" className="alert" role="alert">
+                        {error}
+                        <small className="admin-stale-warning">
+                            {e("adminStale")}
+                        </small>
+                        {retry && (
+                            <button type="button" onClick={retry}>
+                                {tx("重试")}
+                            </button>
+                        )}
+                    </div>
+                )}
+                <div
+                    key="content"
+                    inert={loading || undefined}
+                    className={loading ? "admin-stale-content" : undefined}
+                >
+                    {children}
+                </div>
+            </div>
+        );
     if (loading && boot.mode === "user")
         return data != null ? (
             <div className="refreshing-content" aria-busy="true">
@@ -493,6 +527,17 @@ export function Editor({
         [busy, setBusy] = useState(false),
         [saved, setSaved] = useState(false),
         [revealed, setRevealed] = useState<Record<string, boolean>>({});
+    const [cleanValue, setCleanValue] = useState(() => JSON.stringify(value));
+    const dirty = JSON.stringify(value) !== cleanValue;
+    useEffect(() => {
+        if (boot.mode !== "admin" || !dirty) return;
+        const warn = (event: BeforeUnloadEvent) => {
+            event.preventDefault();
+            event.returnValue = "";
+        };
+        window.addEventListener("beforeunload", warn);
+        return () => window.removeEventListener("beforeunload", warn);
+    }, [dirty]);
     const submitting = useRef(false);
     const activeFields = (
         resolveFields ? resolveFields(fields, value) : fields
@@ -605,6 +650,7 @@ export function Editor({
                 }
                 setValue(initial);
             }
+            setCleanValue(JSON.stringify(draftKey ? initial : value));
             setSaved(true);
         } catch (e) {
             setError((e as Error).message);
@@ -617,6 +663,7 @@ export function Editor({
     return (
         <form
             className="editor"
+            data-unsaved={boot.mode === "admin" && dirty ? "true" : undefined}
             onSubmit={save}
             onChange={() => setSaved(false)}
             aria-busy={busy}
@@ -936,6 +983,11 @@ export function Editor({
                 </div>
             )}
             <div className="form-bottom">
+                {boot.mode === "admin" && dirty && !saved && (
+                    <span className="admin-dirty-note" role="status">
+                        {e("adminUnsaved")}
+                    </span>
+                )}
                 {cancel && (
                     <button type="button" disabled={busy} onClick={cancel}>
                         {ux("cancel")}

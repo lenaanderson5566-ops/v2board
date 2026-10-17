@@ -74,7 +74,7 @@ final class FastaiInstallerService
         $this->locked($id, function ($row, $dir) use ($index, $file) {
             abort_unless($row['status'] === 'uploading', 409, '安装包已完成上传');
             $count = (int)ceil($row['size'] / self::CHUNK_BYTES);
-            abort_unless($index < $count, 422, '分片编号无效');
+            abort_unless($index >= 0 && $index < $count, 422, '分片编号无效');
             $size = min(self::CHUNK_BYTES, $row['size'] - $index * self::CHUNK_BYTES);
             abort_unless($file->getSize() === $size, 422, '分片大小不正确');
             $path = $dir.'/'.$index.'.part';

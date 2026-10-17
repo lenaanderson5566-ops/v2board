@@ -1,3 +1,4 @@
+import { useAnalyticsPage } from "./product-analytics";
 import { OrderReceipt } from "./OrderReceipt";
 import { OrderHelp } from "./OrderHelp";
 import { PaymentMethodPicker } from "./PaymentMethodPicker";
@@ -39,6 +40,11 @@ export function PaymentCheckout({
     const status = Number(order.status);
     const deposit = Number(order.plan_id) === 0;
     const due = Number(order.total_amount || 0);
+    useAnalyticsPage(
+        status === 0 && !deposit && order.period !== "reset_price"
+            ? "payment"
+            : null,
+    );
     const methods = useData<Row[]>(
         status === 0 && due > 0
             ? query("user/order/getPaymentMethod", { trade_no: order.trade_no })

@@ -3,6 +3,7 @@
 namespace App\Payments;
 
 class CoinPayments {
+    protected array $config;
     public function __construct($config) {
         $this->config = $config;
     }
@@ -61,36 +62,28 @@ class CoinPayments {
     public function notify($params)
     {
 
-        if (!isset($params['merchant']) || $params['merchant'] != trim($this->config['coinpayments_merchant_id'])) {
-            abort(500, 'No or incorrect Merchant ID passed');
-        }
+        $payload = request()->getContent();
+        $secret = trim((string)($this->config['coinpayments_ipn_secret'] ?? ''));
+        abort_unless($secret !== '' && $payload !== ''
+            && hash_equals(hash_hmac('sha512', $payload, $secret), (string)request()->header('HMAC')),
+            400, 'HMAC signature does not match');
 
-        $headers = getallheaders();
-
-        ksort($params);
-        reset($params);
-        $request = stripslashes(http_build_query($params));
-
-        $headerName = 'Hmac';
-        $signHeader = isset($headers[$headerName]) ? $headers[$headerName] : '';
-
-        $hmac = hash_hmac("sha512", $request, trim($this->config['coinpayments_ipn_secret']));
-
-        // if ($hmac != $signHeader) { <-- Use this if you are running a version of PHP below 5.6.0 without the hash_equals function
-        //     abort(400, 'HMAC signature does not match');
-        // }
-
-        if (!hash_equals($hmac, $signHeader)) {
-            abort(400, 'HMAC signature does not match');
-        }
-
+        // Only fields from the signed body may authorize settlement; ignore URL parameters.
+        parse_str($payload, $params);
+        abort_unless(is_string($params['merchant'] ?? null) && $params['merchant'] !== ''
+            && hash_equals(trim((string)($this->config['coinpayments_merchant_id'] ?? '')), $params['merchant'])
+            && ($params['ipn_mode'] ?? null) === 'hmac', 400, 'Invalid payment merchant');
         // HMAC Signature verified at this point, load some variables.
-        $status = $params['status'];
+        $status = filter_var($params['status'] ?? null, FILTER_VALIDATE_INT);
+        abort_if($status === false, 400, 'Invalid payment status');
         if ($status >= 100 || $status == 2) {
             // payment is complete or queued for nightly payout, success
             return [
                 'trade_no' => $params['item_number'],
                 'callback_no' => $params['txn_id'],
+                'amount' => \App\Services\Money::parseMinor(is_string($params['amount1'] ?? null)
+                    ? preg_replace('/(\.\d{2})0+$/D', '$1', $params['amount1']) : null),
+                'currency' => strtoupper((string)($params['currency1'] ?? '')),
                 'custom_result' => 'IPN OK'
             ];
         } else if ($status < 0) {

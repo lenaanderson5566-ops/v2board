@@ -1,3 +1,4 @@
+import { useAnalyticsPage } from "./product-analytics";
 import { ActivityCenter, MyCoupons } from "./CouponCenter";
 import { FastaiDownload } from "./FastaiDownload";
 import { BannerStrip } from "../shared/BannerStrip";
@@ -15,6 +16,24 @@ import {
 } from "./user";
 import { AccountSecurity } from "./AccountSecurity";
 function UserBody({ current, path }: { current: string; path: string }) {
+    const names = [
+        "activities",
+        "coupons",
+        "subscribe",
+        "plan",
+        "order",
+        "knowledge",
+        "ticket",
+        "invite",
+        "security",
+        "notifications",
+        "profile",
+        "traffic",
+    ] as const;
+    const page = names.find((name) => name === current) || "dashboard";
+    useAnalyticsPage(
+        page === "order" && path.split("/")[1] ? "order_detail" : page,
+    );
     return current === "activities" ? (
         <ActivityCenter />
     ) : current === "coupons" ? (

@@ -26,6 +26,7 @@ class AdminRoute
             $router->get('/mail-blocklist/fetch', 'V1\\Admin\\MailBlocklistController@fetch');
             $router->get('/mail-blocklist/history', 'V1\\Admin\\MailBlocklistController@history');
             $router->post('/mail-blocklist/add', 'V1\\Admin\\MailBlocklistController@add')->middleware('throttle:30,1');
+            $router->post('/mail-blocklist/import', 'V1\\Admin\\MailBlocklistController@import')->middleware('throttle:5,1');
             $router->post('/mail-blocklist/change', 'V1\\Admin\\MailBlocklistController@change')->middleware('throttle:30,1');
             $router->get('/mail-logs/fetch', 'V1\\Admin\\MailLogController@fetch');
             $router->get('/mail-logs/health', 'V1\\Admin\\MailLogController@health');

@@ -26,6 +26,8 @@ export function AdminMailBlocklist() {
         [busy, setBusy] = useState(false),
         [error, setError] = useState("");
     const [historySize, setHistorySize] = useState(20);
+    const [bulk, setBulk] = useState(false);
+    const [result, setResult] = useState("");
     const lock = useRef(false);
     const list = useData<Row[]>(
         admin(
@@ -39,14 +41,15 @@ export function AdminMailBlocklist() {
               )
             : "",
     );
-    async function mutate(path: string, body: Row, done: () => void) {
+    async function mutate(path: string, body: Row, done: (data: Row) => void) {
         if (lock.current) return;
         lock.current = true;
         setBusy(true);
         setError("");
+        setResult("");
         try {
-            await request(admin(path), body);
-            done();
+            const response = await request(admin(path), body);
+            done(response.data);
             list.reload();
         } catch (e) {
             setError((e as Error).message);
@@ -74,14 +77,57 @@ export function AdminMailBlocklist() {
                     </details>
                 </div>
             </div>
+            <div className="mail-blocklist-mode">
+                <button
+                    type="button"
+                    aria-pressed={!bulk}
+                    disabled={busy}
+                    onClick={() => {
+                        setBulk(false);
+                        setEmail("");
+                        setError("");
+                        setResult("");
+                    }}
+                >
+                    单个添加
+                </button>
+                <button
+                    type="button"
+                    aria-pressed={bulk}
+                    disabled={busy}
+                    onClick={() => {
+                        setBulk(true);
+                        setEmail("");
+                        setError("");
+                        setResult("");
+                    }}
+                >
+                    多行导入
+                </button>
+            </div>
             <form
                 className="mail-blocklist-create"
                 onSubmit={(e) => {
                     e.preventDefault();
+                    const emails = email
+                        .split(/\r?\n/)
+                        .map((value) => value.trim())
+                        .filter(Boolean);
+                    if (bulk && emails.length > 200) {
+                        setError("每次最多导入 200 行邮箱，请分批导入。");
+                        return;
+                    }
                     void mutate(
-                        "mail-blocklist/add",
-                        { email: email.trim(), note: note.trim() },
-                        () => {
+                        bulk ? "mail-blocklist/import" : "mail-blocklist/add",
+                        bulk
+                            ? { emails, note: note.trim() }
+                            : { email: email.trim(), note: note.trim() },
+                        (data) => {
+                            setResult(
+                                bulk
+                                    ? `导入完成：新增或重新禁发 ${data.added} 个，已禁发跳过 ${data.skipped} 个，重复行 ${data.duplicates} 个。`
+                                    : "已加入禁发名单。",
+                            );
                             setEmail("");
                             setNote("");
                             setPage(1);
@@ -93,15 +139,36 @@ export function AdminMailBlocklist() {
                 }}
             >
                 <label>
-                    禁发邮箱
-                    <input
-                        type="email"
-                        required
-                        maxLength={254}
-                        value={email}
-                        onChange={(e) => setEmail(e.target.value)}
-                        autoComplete="off"
-                    />
+                    {bulk ? "禁发邮箱（每行一个，最多 200 个）" : "禁发邮箱"}
+                    {bulk ? (
+                        <textarea
+                            rows={6}
+                            className="mail-blocklist-emails"
+                            required
+                            maxLength={52000}
+                            disabled={busy}
+                            value={email}
+                            onChange={(e) => setEmail(e.target.value)}
+                            placeholder={"alice@example.com\nbob@example.com"}
+                            autoComplete="off"
+                            spellCheck={false}
+                        />
+                    ) : (
+                        <input
+                            type="email"
+                            required
+                            maxLength={254}
+                            value={email}
+                            onChange={(e) => setEmail(e.target.value)}
+                            autoComplete="off"
+                            disabled={busy}
+                        />
+                    )}
+                    {bulk && (
+                        <small className="muted">
+                            自动忽略空行及重复邮箱；已禁发的邮箱保留原备注。已解除的邮箱将重新禁发，格式错误时整批不导入。
+                        </small>
+                    )}
                 </label>
                 <label>
                     禁发备注（选填）
@@ -114,10 +181,20 @@ export function AdminMailBlocklist() {
                     />
                 </label>
                 <button className="primary" disabled={busy || !email.trim()}>
-                    <Plus size={16} aria-hidden /> 加入禁发名单
+                    <Plus size={16} aria-hidden />{" "}
+                    {busy ? "处理中…" : bulk ? "导入禁发名单" : "加入禁发名单"}
                 </button>
             </form>
-            {error && !editing && <p role="alert">{error}</p>}
+            {result && (
+                <p className="pad" role="status">
+                    {result}
+                </p>
+            )}
+            {error && !editing && (
+                <p className="pad" role="alert">
+                    {error}
+                </p>
+            )}
             <form
                 className="mail-blocklist-filters"
                 onSubmit={(e) => {

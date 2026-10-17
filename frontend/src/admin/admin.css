@@ -2187,3 +2187,7 @@ body[data-console="admin"] .mail-blocklist-edit > button { justify-self: end; }
     body[data-console="admin"] .pager > span { margin-inline-end: 0; }
     body[data-console="admin"] .pager { justify-content: center; }
 }
+
+body[data-console="admin"] .mail-blocklist-mode { display: flex; gap: 8px; padding: 20px 24px 0; background: #fcfcfd; }
+body[data-console="admin"] .mail-blocklist-mode [aria-pressed="true"] { color: #5145cd; background: #eeecff; border-color: #c9c3ff; }
+body[data-console="admin"] .mail-blocklist-create textarea.mail-blocklist-emails { height: 144px; min-height: 100px; }

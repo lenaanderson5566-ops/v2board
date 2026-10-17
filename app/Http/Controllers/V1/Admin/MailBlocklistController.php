@@ -32,6 +32,23 @@ class MailBlocklistController extends \App\Http\Controllers\Controller
         return response(['data'=>true],201);
     }
 
+    public function import(Request $request)
+    {
+        $p=$request->validate(['emails'=>'required|array|min:1|max:200','emails.*'=>'required|string|max:254','note'=>'nullable|string|max:1000']);
+        $emails=array_map(static function($email){ return strtolower(trim($email)); },$p['emails']);
+        validator(['emails'=>$emails],['emails.*'=>'required|email:rfc|max:254'])->validate();
+        $unique=array_values(array_unique($emails));
+        sort($unique);
+        $added=DB::transaction(function() use($unique,$p,$request){
+            $count=0;
+            foreach ($unique as $email) {
+                if (MailBlocklist::add($email,trim($p['note'] ?? ''),(int)$request->user['id'],true)) $count++;
+            }
+            return $count;
+        },3);
+        return response(['data'=>['added'=>$added,'skipped'=>count($unique)-$added,'duplicates'=>count($emails)-count($unique)]],201)->header('Cache-Control','no-store');
+    }
+
     public function change(Request $request)
     {
         $p=$request->validate(['recipient_hash'=>'required|string|regex:/^[a-f0-9]{64}$/D','revision'=>'required|integer|min:1','action'=>'required|in:note,release','note'=>'nullable|string|max:1000']);

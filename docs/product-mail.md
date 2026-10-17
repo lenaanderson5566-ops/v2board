@@ -223,3 +223,5 @@ Resend/SES 明确 Permanent bounce 和投诉进入全用途抑制名单；Mailgu
 公开响应不暴露内部限制的原则参考 [OWASP Forgot Password Cheat Sheet](https://cheatsheetseries.owasp.org/cheatsheets/Forgot_Password_Cheat_Sheet.html)。该功能保持现有身份校验行为，并不代表对整个认证流程完成了枚举风险整改。
 
 禁发名单验证结果：前端 93 个文件、531 项测试通过；SQLite 343 项、MySQL 359 项通知/邮件检查通过；邮件模板与限流 396 项检查通过；完整安装 SQL、update.sh 26 个隔离场景及前端生产构建通过。拦截测试覆盖全部邮件模板与四种发送通道，所有外部邮件均模拟，未发送真实邮件。
+
+邮件禁发名单支持多行导入：每行一个邮箱，每批最多 200 行，忽略空行、规范化大小写并去重；共用选填备注。服务端先校验全批邮箱，使用事务写入，已禁发记录跳过且保留原备注，已解除记录重新禁发，每条实际变更保留审计记录。管理员接口 POST mail-blocklist/import，限流每分钟 5 次，返回 added、skipped、duplicates 计数。

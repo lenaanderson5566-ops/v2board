@@ -15,19 +15,21 @@ class MailBlocklist
         if (self::contains($email)) throw new \App\Exceptions\MailSendException('MAIL_MANUALLY_BLOCKED');
     }
 
-    public static function add(string $email,string $note,int $administratorId): void
+    public static function add(string $email,string $note,int $administratorId,bool $skipExisting=false): bool
     {
         $email=strtolower(trim($email));
         $hash=MailDeliveryLog::recipientHash($email);
-        DB::transaction(function() use($email,$note,$administratorId,$hash){
+        return DB::transaction(function() use($email,$note,$administratorId,$hash,$skipExisting){
             $inserted=DB::table('v2_mail_blocklist')->insertOrIgnore(['recipient_hash'=>$hash,'email_encrypted'=>Crypt::encryptString($email),'note'=>$note,'administrator_id'=>$administratorId,'created_at'=>time(),'updated_at'=>time()]);
             $query=DB::table('v2_mail_blocklist')->where('recipient_hash',$hash);
             $row=(clone $query)->lockForUpdate()->first();
             if (!$inserted) {
+                if ($skipExisting && $row->released_at===null) return false;
                 abort_unless($row->released_at,409,'该邮箱已在禁发名单，请使用编辑备注。');
                 $query->update(['email_encrypted'=>Crypt::encryptString($email),'note'=>$note,'administrator_id'=>$administratorId,'released_at'=>null,'updated_at'=>time(),'revision'=>$row->revision+1]);
             }
             self::audit($hash,$administratorId,$inserted ? 'add':'reactivate');
+            return true;
         },3);
     }
 

@@ -291,3 +291,11 @@ it("clears backend-scoped settings and requires a compatible protocol on convers
     expect(source.route_id).toEqual([1]);
     expect(nodeBackendInitial({ id: 8, type: "v2box", protocol: "naive" }, "v2node").protocol).toBe("");
 });
+
+it("allows editing coupon terms without batch generation and restricts new templates to percentage", () => {
+    const schema = [...fields("generate_count", "name", "value"), { key: "type", label: "type", options: [["1", "fixed"], ["2", "percentage"]] } as any];
+    const edit = resourceFields("coupons", schema, { id: 9, type: 2 });
+    expect(edit.map(f => f.key)).not.toContain("generate_count");
+    expect(edit.map(f => f.key)).toContain("value");
+    expect(resourceFields("coupons", schema, { type: 2 }).find(f => f.key === "type")?.options).toEqual([["2", "percentage"]]);
+});

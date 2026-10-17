@@ -1371,7 +1371,7 @@ export function ResourcePage({
                                 ? (r, context) => (
                                       <>
                                           {resource.save &&
-                                              resource.create !== true && (
+                                              (resource.create !== true || resource === resources.coupons) && (
                                                   <button
                                                       onClick={async () => {
                                                           const item = { ...r };
@@ -1545,6 +1545,9 @@ export function ResourcePage({
                     }
                     close={() => setEditing(null)}
                 >
+                    {resource === resources.coupons && editing.id && (
+                        <p className="alert" role="note">修改仅影响今后领取及使用券码的新订单。已领取的券保留原优惠和有效期，历史订单不变。剩余库存是当前可继续发放的数量；停用入口不会撤销已领取的券。</p>
+                    )}
                     <State
                         loading={groups.loading || plans.loading}
                         error={groups.error || plans.error}

@@ -34,6 +34,10 @@ describe("API client", () => {
         expect(money(2880)).toBe("CNY 28.80");
         expect(money(-1234)).toBe("CNY -12.34");
         expect(money(0)).toBe("CNY 0.00");
+        expect(money(123456, "USD")).toBe("USD 1,234.56");
+        expect(money(-0)).toBe("CNY 0.00");
+        expect(money(NaN)).toBe("—");
+        expect(money(Infinity)).toBe("—");
     });
     it("keeps order currency in the frontend decoder", async () => {
         storage.set(storageKey, "session-token");

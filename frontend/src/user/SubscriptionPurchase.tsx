@@ -1,4 +1,4 @@
-import { CouponPicker } from "./CouponPicker";
+import { CouponPicker, type WalletCoupon } from "./CouponPicker";
 import { PendingOrderNotice } from "./PendingOrderNotice";
 import { useState, useRef, type FormEvent } from "react";
 import { pricingCopy as pc } from "./pricing-copy";
@@ -301,7 +301,7 @@ export function PlanSelection({
             ? plan.initialPeriod
             : available[0] || "",
     );
-    const [coupon, setCoupon] = useState<number|null>(null);
+    const [coupon, setCoupon] = useState<WalletCoupon | null>(null);
     const [busy, setBusy] = useState(false);
     const [error, setError] = useState("");
     const submitting = useRef(false);
@@ -316,7 +316,7 @@ export function PlanSelection({
                 plan_id: plan.id,
                 period,
                 ...(coupon !== null
-                    ? { wallet_coupon_id: coupon }
+                    ? { wallet_coupon_id: coupon.id }
                     : {}),
                 ...(replaceTradeNo ? { replace_trade_no: replaceTradeNo } : {}),
             });
@@ -382,13 +382,18 @@ export function PlanSelection({
                         </label>
                     ))}
                 </div>
-                <CouponPicker planId={Number(plan.id)} period={period} value={coupon} onChange={setCoupon}/>
-                <dl className="checkout-lines">
+                <CouponPicker planId={Number(plan.id)} period={period} value={coupon?.id ?? null} amount={Number(plan[period])} currency={plan.currency} onChange={(_id, selected) => setCoupon(selected ?? null)}/>
+                <dl className="checkout-lines purchase-estimate" aria-live="polite">
                     <div>
                         <dt>{tx("套餐价格")}</dt>
                         <dd>{money(plan[period],plan.currency)}</dd>
                     </div>
+                    {coupon && <>
+                        <div className="discount-line"><dt>{tx("优惠金额")}</dt><dd>−{money(Math.floor(Number(plan[period]) * coupon.discountPercent / 100), plan.currency)}</dd></div>
+                        <div className="checkout-total"><dt>{pc("couponEstimate")}</dt><dd>{money(Number(plan[period]) - Math.floor(Number(plan[period]) * coupon.discountPercent / 100), plan.currency)}</dd></div>
+                    </>}
                 </dl>
+                <p className="muted purchase-estimate-help">{pc("couponPreviewHelp")}</p>
                 <details className="purchase-fee-note">
                     <summary>{pc("feeDetails")}</summary>
                     <p className="muted">

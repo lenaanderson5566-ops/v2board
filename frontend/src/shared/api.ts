@@ -304,8 +304,19 @@ export function rows(data: unknown): Row[] {
             .filter((x) => x && typeof x === "object");
     return [];
 }
-export const money = (n: unknown, currency = "CNY") =>
-    `${currency} ${new Intl.NumberFormat(locale(), { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(Number(n || 0) / 100)}`;
+let moneyLocale = "";
+let moneyFormatter: Intl.NumberFormat | undefined;
+export const money = (n: unknown, currency = "CNY") => {
+    const amount = Number(n ?? 0);
+    if (!Number.isFinite(amount)) return "—";
+    const language = locale();
+    if (!moneyFormatter || moneyLocale !== language) {
+        moneyLocale = language;
+        moneyFormatter = new Intl.NumberFormat(language, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    }
+    // Explicit ISO codes distinguish account and settlement currencies, including USD/CNY.
+    return `${currency} ${moneyFormatter.format((Object.is(amount, -0) ? 0 : amount) / 100)}`;
+};
 export const bytes = (n: unknown) => {
     let v = Number(n || 0),
         i = 0;

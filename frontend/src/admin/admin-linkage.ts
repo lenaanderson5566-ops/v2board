@@ -109,6 +109,7 @@ export function resourceFields(
     values: Row,
 ): Field[] {
     return fields
+        .filter((f) => !(kind === "coupons" && values.id && f.key === "generate_count"))
         .filter(
             (f) =>
                 kind !== "routes" ||
@@ -128,6 +129,7 @@ export function resourceFields(
                     (f.key !== "value" || Number(values.type) !== 4)),
         )
         .map((f) => {
+            if (kind === "coupons" && f.key === "type") return { ...f, options: (f.options || []).filter(([key]) => key === "2" || Boolean(values.id)) };
             if (kind === "routes" && f.key === "action") return { ...f, options: (f.options || []).filter(([key]) => key !== "sing_box" || values.backend === "v2box") };
             if (kind === "routes" && f.key === "action_value")
                 return {

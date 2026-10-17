@@ -329,6 +329,7 @@ export default function UserApp() {
             { key: "notifications", label: "通知设置" },
             { key: "profile", label: "账户设置" },
             { key: "coupons", label: "我的优惠券" },
+            { key: "activities", label: "活动中心" },
             {
                 key: "plan",
                 label:
@@ -487,7 +488,7 @@ export default function UserApp() {
                                 </span>
                             </div>
                         )}
-                        {content}
+                        <div className="user-page-content">{content}</div>
                         <div className="page-footer">
                             {boot.title}{" "}
                             <span>{tx("简洁连接，无限可能。")}</span>

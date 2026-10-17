@@ -384,3 +384,14 @@ it("restores saved user columns and can reset defaults", () => {
     view.unmount();
     localStorage.removeItem("admin.users.view.v1");
 });
+
+it("opens coupon template editing with issued-rights notice and without batch generation", async () => {
+    api.request.mockImplementation(async (path: string) => ({ data: path.includes("coupon/fetch") ? [{ id: 41, name: "Issued coupon", type: 2, value: 10, started_at: 1700000000, ended_at: 2000000000, show: 1, limit_use: 0, code: "issued" }] : [], total: 1 }));
+    const { ResourcePage, resources } = await import("./admin");
+    render(<ResourcePage resource={resources.coupons} />);
+    fireEvent.click(await screen.findByRole("button", { name: "编辑" }));
+    const dialog = await screen.findByRole("dialog");
+    expect(within(dialog).getByText(/已领取的券保留原优惠和有效期/)).toBeTruthy();
+    expect(within(dialog).queryByLabelText(/生成数量/)).toBeNull();
+    expect(within(dialog).getByDisplayValue("Issued coupon")).toBeTruthy();
+});

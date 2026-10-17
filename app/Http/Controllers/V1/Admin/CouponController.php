@@ -4,7 +4,6 @@ namespace App\Http\Controllers\V1\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\CouponGenerate;
-use App\Http\Requests\Admin\CouponSave;
 use App\Models\Coupon;
 use App\Utils\Helper;
 use App\Utils\Csv;
@@ -55,6 +54,7 @@ class CouponController extends Controller
         }
 
         $params = $request->validated();
+        unset($params['id'], $params['generate_count']);
         if (!$request->input('id')) {
             if (empty($params['code'])) {
                 $params['code'] = Helper::randomChar(8);
@@ -63,11 +63,11 @@ class CouponController extends Controller
                 abort(500, '创建失败');
             }
         } else {
-            try {
-                Coupon::find($request->input('id'))->update($params);
-            } catch (\Exception $e) {
-                abort(500, '保存失败');
-            }
+            DB::transaction(function () use ($request, $params) {
+                $coupon = Coupon::whereKey($request->input('id'))->lockForUpdate()->firstOrFail();
+                // Wallets, queued campaigns and orders retain their original snapshots.
+                $coupon->update($params);
+            }, 3);
         }
 
         return response([

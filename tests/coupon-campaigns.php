@@ -25,7 +25,17 @@ try {
     $confirmed=CouponCampaign::confirm($batch['previewKey'],1);
     $assert($confirmed['status']==='queued' && (int)$c->fresh()->limit_use===1,'Confirmation did not reserve stock');
     CouponCampaign::confirm($batch['previewKey'],1);$assert((int)$c->fresh()->limit_use===1,'Repeat confirmation double reserved');
-    $c->value=40;$c->save();
+    $editData = ['id'=>$c->id, 'name'=>'Edited template', 'type'=>2, 'value'=>40, 'started_at'=>time()-60, 'ended_at'=>time()+7200, 'limit_use'=>1];
+    $edit = App\Http\Requests\Admin\CouponGenerate::create('/', 'POST', $editData);
+    $validator = Illuminate\Support\Facades\Validator::make($editData, $edit->rules());
+    $assert($validator->passes(), 'Existing issued template should be editable');
+    $edit->setValidator($validator);
+    (new App\Http\Controllers\V1\Admin\CouponController())->generate($edit);
+    $assert((int)$c->fresh()->value === 40, 'Template update did not persist');
+    $invalidEdit = App\Http\Requests\Admin\CouponGenerate::create('/', 'POST', $editData + ['generate_count'=>2]);
+    $assert(Illuminate\Support\Facades\Validator::make($invalidEdit->all(), $invalidEdit->rules())->fails(), 'Editing must not generate new templates');
+    $issued = DB::table('v2_coupon_wallet')->where('user_id',$a->id)->where('coupon_id',$c->id)->first();
+    $assert(json_decode($issued->snapshot,true)['value'] === 10, 'Editing changed an existing wallet');
     CouponCampaign::process();CouponCampaign::process();
     $wallet=DB::table('v2_coupon_wallet')->where('user_id',$b->id)->where('coupon_id',$c->id)->first();
     $assert(json_decode($wallet->snapshot,true)['value']==10,'Campaign terms changed after confirmation');

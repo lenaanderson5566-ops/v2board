@@ -1,5 +1,9 @@
 import i18n, { languages } from "../shared/i18n";
 const copy = {
+    couponEstimate: ["优惠后小计", "優惠後小計", "Subtotal after discount", "割引後の小計", "할인 후 소계", "Tạm tính sau giảm giá", "Сумма со скидкой", "جمع پس از تخفیف"],
+    couponSaving: ["可省 {{amount}}", "可省 {{amount}}", "Save {{amount}}", "{{amount}} お得", "{{amount}} 절약", "Tiết kiệm {{amount}}", "Экономия {{amount}}", "صرفه‌جویی {{amount}}"],
+    unavailableCoupons: ["不可用优惠券", "不可用優惠券", "Unavailable coupons", "利用できないクーポン", "사용 불가 쿠폰", "Phiếu không khả dụng", "Недоступные купоны", "کوپن‌های غیرقابل استفاده"],
+    couponPreviewHelp: ["此处仅预估优惠券减免。折抵、余额及支付手续费将在下一步列明，请确认最终应付金额。", "此處僅預估優惠券減免。折抵、餘額及付款手續費將在下一步列明，請確認最終應付金額。", "This estimates the coupon discount only. Credits, balance and payment fees appear in the next step; review the final amount before paying.", "ここではクーポン割引のみを概算します。充当額、残高、決済手数料は次の画面で表示されます。最終金額をご確認ください。", "쿠폰 할인만 예상한 금액입니다. 차감액, 잔액 및 결제 수수료는 다음 단계에서 최종 금액과 함께 확인하세요.", "Đây chỉ là ước tính giảm giá. Khoản khấu trừ, số dư và phí thanh toán được hiển thị ở bước sau; hãy kiểm tra số tiền cuối cùng.", "Здесь рассчитана только скидка. Зачёты, баланс и комиссия появятся на следующем шаге; проверьте итог перед оплатой.", "این فقط برآورد تخفیف کوپن است. اعتبار، موجودی و کارمزد در مرحله بعد نمایش داده می‌شوند؛ مبلغ نهایی را بررسی کنید."],
     replaceHint: [
         "也可重新选择套餐，确认后替换待支付订单。",
         "也可重新選擇方案，確認後替換待付款訂單。",

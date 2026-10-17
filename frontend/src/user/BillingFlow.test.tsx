@@ -195,6 +195,10 @@ it("shows the actual available period and lets users review their selection befo
     expect(screen.queryByRole("radio", { name: /流量重置/ })).toBeNull();
     fireEvent.click(screen.getByRole("radio", { name: /年付/ }));
     fireEvent.click(screen.getByRole("radio", {name:/SAVE/}));
+    expect(screen.getByText("优惠金额")).toBeTruthy();
+    expect(screen.getByText("couponEstimate{}")).toBeTruthy();
+    expect(screen.getByText("−¥3.00")).toBeTruthy();
+    expect(screen.getByText("¥27.00")).toBeTruthy();
     expect(mocks.request).not.toHaveBeenCalled();
     fireEvent.click(screen.getByRole("button", { name: "创建订单并继续" }));
     await waitFor(() =>

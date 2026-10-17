@@ -13,6 +13,14 @@ vi.mock("../shared/api", () => ({
     query: (s: string) => s,
     request: mocks.request,
 }));
+vi.mock("react-i18next", async () => {
+    const { default: catalog } = await import("../locales/zh-CN.json");
+    return {
+        useTranslation: () => ({
+            t: (key: keyof typeof catalog.banners) => catalog.banners[key],
+        }),
+    };
+});
 vi.mock("../shared/i18n", () => ({
     locale: () => "zh-CN",
     languages: [

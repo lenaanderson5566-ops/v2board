@@ -6,7 +6,7 @@ Laravel retains all authentication, billing, node, risk and persistence logic.
 The public `/` route displays the Studio assistant-themed landing page. The
 examples use predefined translated text and do not call a model. Account pages
 live under `/app#/dashboard`; existing `/#/…` bookmarks redirect to `/app`.
-The landing page and its metadata use neutral standalone copy in eight languages.
+The landing page and its metadata use neutral standalone copy in ten languages.
 Custom footer HTML remains on account pages and is excluded from the public page.
 
 Admin setting controls follow the authenticated `console/configSchema` endpoint.
@@ -69,22 +69,25 @@ Article and plan HTML is separately sanitized with DOMPurify.
 ## Languages and mobile UI
 
 The user portal includes Simplified Chinese, Traditional Chinese, English,
-Japanese, Korean, Vietnamese, Russian and Persian. `react-i18next` manages
+Japanese, Korean, Vietnamese, Russian, Persian, Spanish and Brazilian Portuguese. `react-i18next` manages
 reactive switching, English fallback, whole-message interpolation and plurals.
 The language picker is available before and after sign-in. A saved choice takes
 priority over browser language, and `html` language/direction follows that choice.
 Persian uses RTL layout. Dates and numbers use `Intl` for the selected locale.
 The admin console keeps its Chinese interface independently of the user's choice.
 
-Language files are in `src/locales`. Translation keys are complete source messages;
-do not concatenate translated sentence fragments. Use named interpolation values
-and `count` for quantities. Translations are plain text escaped by React.
-The translation source tables in `scripts` generate the five additional locales
-and server errors; `npm run locales:generate` also generates Traditional Chinese.
-Update the English and Simplified Chinese catalogs and translation tables together.
-`npm test` verifies coverage, interpolation parameters, plural forms and source keys.
+Each `src/locales/<language>.json` is the single source for that language's frontend
+messages. It contains the `translation` namespace and named feature namespaces.
+Do not add inline translation arrays or registration side effects to components.
+Keep contextual keys separate even when their text happens to match. Use named
+interpolation and `count` for quantities; all translations are plain text escaped
+by React. Small typed helpers retain the existing feature APIs. Chinese and English
+are bundled, and other languages load on demand. Backend errors and service messages
+remain in `resources` because they are rendered independently by PHP.
+`npm test` verifies coverage, placeholders, plurals, selectors and source keys.
+The obsolete TSV generation command was removed to prevent it overwriting catalogs.
 
-Requests carry `Content-Language`, which Laravel consumes for validation
+V10 requests carry `Accept-Language`, which Laravel consumes for validation
 messages and plan translations. Plan names, descriptions and knowledge articles
 remain administrator-authored content: add their translations in the admin console.
 Changing the interface language also selects the knowledge article language; it
@@ -136,3 +139,7 @@ attribution are in `storage/geoip/SOURCE.txt`; hashes are in `SHA256SUMS.txt`.
 Use the existing component and flow tests when moving code. Update obsolete labels and mocks without removing security, amount, navigation or payload assertions. Prefer the module test commands for iteration and the complete suite after changes to shared resource infrastructure. Do not create a second check runner or dated reports for each refactor.
 
 TypeScript also rejects unused imports, local declarations and parameters (`noUnusedLocals` / `noUnusedParameters`) as part of the normal build. Remove abandoned helpers and test their production replacements directly; keep intentional compatibility exports and dynamically referenced resources. Identical country flags and default/custom rule templates can have distinct runtime roles and must not be removed based on content hashes alone.
+
+Language selectors share `src/shared/language-options.ts`: native names in stable BCP 47 code order, independent of the selected language. The existing language icon, current language name, selected marker, keyboard navigation and RTL isolation are retained. Display ordering does not alter saved preferences or resource mapping.
+
+Translation consolidation preserves existing namespace keys and message values. The two retired coupon-code entry messages were removed across all languages. Language resources are validated by the existing localization tests, not a parallel generation workflow.

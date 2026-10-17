@@ -94,7 +94,7 @@ class ConfigSave extends FormRequest
         'email_mailgun_domain' => 'nullable|string|max:253|regex:/^(?:[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?\.)+[a-zA-Z]{2,63}$/D',
         'email_mailgun_api_key' => 'nullable|string|max:256|regex:/^[A-Za-z0-9_-]+$/D',
         'email_template' => '',
-        'email_default_language' => 'in:zh-CN,zh-TW,en-US,ja-JP,ko-KR,vi-VN,ru-RU,fa-IR',
+        'email_default_language' => 'in:zh-CN,zh-TW,en-US,ja-JP,ko-KR,vi-VN,ru-RU,fa-IR,es-ES,pt-BR',
         'email_send_interval' => 'integer|min:1|max:3600',
         'email_bulk_interval' => 'integer|min:1|max:3600',
         'email_domain_interval' => 'integer|min:1|max:3600',

@@ -8,7 +8,9 @@
       "ko-KR": "어센션섬",
       "vi-VN": "Đảo Ascension",
       "ru-RU": "о-в Вознесения",
-      "fa-IR": "جزایر آسنسیون"
+      "fa-IR": "جزایر آسنسیون",
+      "es-ES": "Isla de la Ascensión",
+      "pt-BR": "Ilha de Ascensão"
     },
     "AD": {
       "zh-CN": "安道尔",
@@ -18,7 +20,9 @@
       "ko-KR": "안도라",
       "vi-VN": "Andorra",
       "ru-RU": "Андорра",
-      "fa-IR": "آندورا"
+      "fa-IR": "آندورا",
+      "es-ES": "Andorra",
+      "pt-BR": "Andorra"
     },
     "AE": {
       "zh-CN": "阿拉伯联合酋长国",
@@ -28,7 +32,9 @@
       "ko-KR": "아랍에미리트",
       "vi-VN": "Các Tiểu Vương quốc Ả Rập Thống nhất",
       "ru-RU": "ОАЭ",
-      "fa-IR": "امارات متحدهٔ عربی"
+      "fa-IR": "امارات متحدهٔ عربی",
+      "es-ES": "Emiratos Árabes Unidos",
+      "pt-BR": "Emirados Árabes Unidos"
     },
     "AF": {
       "zh-CN": "阿富汗",
@@ -38,7 +44,9 @@
       "ko-KR": "아프가니스탄",
       "vi-VN": "Afghanistan",
       "ru-RU": "Афганистан",
-      "fa-IR": "افغانستان"
+      "fa-IR": "افغانستان",
+      "es-ES": "Afganistán",
+      "pt-BR": "Afeganistão"
     },
     "AG": {
       "zh-CN": "安提瓜和巴布达",
@@ -48,7 +56,9 @@
       "ko-KR": "앤티가 바부다",
       "vi-VN": "Antigua và Barbuda",
       "ru-RU": "Антигуа и Барбуда",
-      "fa-IR": "آنتیگوا و باربودا"
+      "fa-IR": "آنتیگوا و باربودا",
+      "es-ES": "Antigua y Barbuda",
+      "pt-BR": "Antígua e Barbuda"
     },
     "AI": {
       "zh-CN": "安圭拉",
@@ -58,7 +68,9 @@
       "ko-KR": "앵귈라",
       "vi-VN": "Anguilla",
       "ru-RU": "Ангилья",
-      "fa-IR": "آنگویلا"
+      "fa-IR": "آنگویلا",
+      "es-ES": "Anguila",
+      "pt-BR": "Anguila"
     },
     "AL": {
       "zh-CN": "阿尔巴尼亚",
@@ -68,7 +80,9 @@
       "ko-KR": "알바니아",
       "vi-VN": "Albania",
       "ru-RU": "Албания",
-      "fa-IR": "آلبانی"
+      "fa-IR": "آلبانی",
+      "es-ES": "Albania",
+      "pt-BR": "Albânia"
     },
     "AM": {
       "zh-CN": "亚美尼亚",
@@ -78,7 +92,9 @@
       "ko-KR": "아르메니아",
       "vi-VN": "Armenia",
       "ru-RU": "Армения",
-      "fa-IR": "ارمنستان"
+      "fa-IR": "ارمنستان",
+      "es-ES": "Armenia",
+      "pt-BR": "Armênia"
     },
     "AN": {
       "zh-CN": "库拉索",
@@ -88,7 +104,9 @@
       "ko-KR": "퀴라소",
       "vi-VN": "Curaçao",
       "ru-RU": "Кюрасао",
-      "fa-IR": "کوراسائو"
+      "fa-IR": "کوراسائو",
+      "es-ES": "Curazao",
+      "pt-BR": "Curaçao"
     },
     "AO": {
       "zh-CN": "安哥拉",
@@ -98,7 +116,9 @@
       "ko-KR": "앙골라",
       "vi-VN": "Angola",
       "ru-RU": "Ангола",
-      "fa-IR": "آنگولا"
+      "fa-IR": "آنگولا",
+      "es-ES": "Angola",
+      "pt-BR": "Angola"
     },
     "AQ": {
       "zh-CN": "南极洲",
@@ -108,7 +128,9 @@
       "ko-KR": "남극 대륙",
       "vi-VN": "Nam Cực",
       "ru-RU": "Антарктида",
-      "fa-IR": "جنوبگان"
+      "fa-IR": "جنوبگان",
+      "es-ES": "Antártida",
+      "pt-BR": "Antártida"
     },
     "AR": {
       "zh-CN": "阿根廷",
@@ -118,7 +140,9 @@
       "ko-KR": "아르헨티나",
       "vi-VN": "Argentina",
       "ru-RU": "Аргентина",
-      "fa-IR": "آرژانتین"
+      "fa-IR": "آرژانتین",
+      "es-ES": "Argentina",
+      "pt-BR": "Argentina"
     },
     "AS": {
       "zh-CN": "美属萨摩亚",
@@ -128,7 +152,9 @@
       "ko-KR": "아메리칸 사모아",
       "vi-VN": "Samoa thuộc Mỹ",
       "ru-RU": "Американское Самоа",
-      "fa-IR": "ساموآی امریکا"
+      "fa-IR": "ساموآی امریکا",
+      "es-ES": "Samoa Americana",
+      "pt-BR": "Samoa Americana"
     },
     "AT": {
       "zh-CN": "奥地利",
@@ -138,7 +164,9 @@
       "ko-KR": "오스트리아",
       "vi-VN": "Áo",
       "ru-RU": "Австрия",
-      "fa-IR": "اتریش"
+      "fa-IR": "اتریش",
+      "es-ES": "Austria",
+      "pt-BR": "Áustria"
     },
     "AU": {
       "zh-CN": "澳大利亚",
@@ -148,7 +176,9 @@
       "ko-KR": "오스트레일리아",
       "vi-VN": "Úc",
       "ru-RU": "Австралия",
-      "fa-IR": "استرالیا"
+      "fa-IR": "استرالیا",
+      "es-ES": "Australia",
+      "pt-BR": "Austrália"
     },
     "AW": {
       "zh-CN": "阿鲁巴",
@@ -158,7 +188,9 @@
       "ko-KR": "아루바",
       "vi-VN": "Aruba",
       "ru-RU": "Аруба",
-      "fa-IR": "آروبا"
+      "fa-IR": "آروبا",
+      "es-ES": "Aruba",
+      "pt-BR": "Aruba"
     },
     "AX": {
       "zh-CN": "奥兰群岛",
@@ -168,7 +200,9 @@
       "ko-KR": "올란드 제도",
       "vi-VN": "Quần đảo Åland",
       "ru-RU": "Аландские о-ва",
-      "fa-IR": "جزایر آلاند"
+      "fa-IR": "جزایر آلاند",
+      "es-ES": "Islas Aland",
+      "pt-BR": "Ilhas Aland"
     },
     "AZ": {
       "zh-CN": "阿塞拜疆",
@@ -178,7 +212,9 @@
       "ko-KR": "아제르바이잔",
       "vi-VN": "Azerbaijan",
       "ru-RU": "Азербайджан",
-      "fa-IR": "جمهوری آذربایجان"
+      "fa-IR": "جمهوری آذربایجان",
+      "es-ES": "Azerbaiyán",
+      "pt-BR": "Azerbaijão"
     },
     "BA": {
       "zh-CN": "波斯尼亚和黑塞哥维那",
@@ -188,7 +224,9 @@
       "ko-KR": "보스니아 헤르체고비나",
       "vi-VN": "Bosnia và Herzegovina",
       "ru-RU": "Босния и Герцеговина",
-      "fa-IR": "بوسنی و هرزگوین"
+      "fa-IR": "بوسنی و هرزگوین",
+      "es-ES": "Bosnia y Herzegovina",
+      "pt-BR": "Bósnia e Herzegovina"
     },
     "BB": {
       "zh-CN": "巴巴多斯",
@@ -198,7 +236,9 @@
       "ko-KR": "바베이도스",
       "vi-VN": "Barbados",
       "ru-RU": "Барбадос",
-      "fa-IR": "باربادوس"
+      "fa-IR": "باربادوس",
+      "es-ES": "Barbados",
+      "pt-BR": "Barbados"
     },
     "BD": {
       "zh-CN": "孟加拉国",
@@ -208,7 +248,9 @@
       "ko-KR": "방글라데시",
       "vi-VN": "Bangladesh",
       "ru-RU": "Бангладеш",
-      "fa-IR": "بنگلادش"
+      "fa-IR": "بنگلادش",
+      "es-ES": "Bangladés",
+      "pt-BR": "Bangladesh"
     },
     "BE": {
       "zh-CN": "比利时",
@@ -218,7 +260,9 @@
       "ko-KR": "벨기에",
       "vi-VN": "Bỉ",
       "ru-RU": "Бельгия",
-      "fa-IR": "بلژیک"
+      "fa-IR": "بلژیک",
+      "es-ES": "Bélgica",
+      "pt-BR": "Bélgica"
     },
     "BF": {
       "zh-CN": "布基纳法索",
@@ -228,7 +272,9 @@
       "ko-KR": "부르키나파소",
       "vi-VN": "Burkina Faso",
       "ru-RU": "Буркина-Фасо",
-      "fa-IR": "بورکینافاسو"
+      "fa-IR": "بورکینافاسو",
+      "es-ES": "Burkina Faso",
+      "pt-BR": "Burquina Faso"
     },
     "BG": {
       "zh-CN": "保加利亚",
@@ -238,7 +284,9 @@
       "ko-KR": "불가리아",
       "vi-VN": "Bulgaria",
       "ru-RU": "Болгария",
-      "fa-IR": "بلغارستان"
+      "fa-IR": "بلغارستان",
+      "es-ES": "Bulgaria",
+      "pt-BR": "Bulgária"
     },
     "BH": {
       "zh-CN": "巴林",
@@ -248,7 +296,9 @@
       "ko-KR": "바레인",
       "vi-VN": "Bahrain",
       "ru-RU": "Бахрейн",
-      "fa-IR": "بحرین"
+      "fa-IR": "بحرین",
+      "es-ES": "Baréin",
+      "pt-BR": "Barein"
     },
     "BI": {
       "zh-CN": "布隆迪",
@@ -258,7 +308,9 @@
       "ko-KR": "부룬디",
       "vi-VN": "Burundi",
       "ru-RU": "Бурунди",
-      "fa-IR": "بوروندی"
+      "fa-IR": "بوروندی",
+      "es-ES": "Burundi",
+      "pt-BR": "Burundi"
     },
     "BJ": {
       "zh-CN": "贝宁",
@@ -268,7 +320,9 @@
       "ko-KR": "베냉",
       "vi-VN": "Benin",
       "ru-RU": "Бенин",
-      "fa-IR": "بنین"
+      "fa-IR": "بنین",
+      "es-ES": "Benín",
+      "pt-BR": "Benin"
     },
     "BL": {
       "zh-CN": "圣巴泰勒米",
@@ -278,7 +332,9 @@
       "ko-KR": "생바르텔레미",
       "vi-VN": "St. Barthélemy",
       "ru-RU": "Сен-Бартелеми",
-      "fa-IR": "سن بارتلمی"
+      "fa-IR": "سن بارتلمی",
+      "es-ES": "San Bartolomé",
+      "pt-BR": "São Bartolomeu"
     },
     "BM": {
       "zh-CN": "百慕大",
@@ -288,7 +344,9 @@
       "ko-KR": "버뮤다",
       "vi-VN": "Bermuda",
       "ru-RU": "Бермудские о-ва",
-      "fa-IR": "برمودا"
+      "fa-IR": "برمودا",
+      "es-ES": "Bermudas",
+      "pt-BR": "Bermudas"
     },
     "BN": {
       "zh-CN": "文莱",
@@ -298,7 +356,9 @@
       "ko-KR": "브루나이",
       "vi-VN": "Brunei",
       "ru-RU": "Бруней",
-      "fa-IR": "برونئی"
+      "fa-IR": "برونئی",
+      "es-ES": "Brunéi",
+      "pt-BR": "Brunei"
     },
     "BO": {
       "zh-CN": "玻利维亚",
@@ -308,7 +368,9 @@
       "ko-KR": "볼리비아",
       "vi-VN": "Bolivia",
       "ru-RU": "Боливия",
-      "fa-IR": "بولیوی"
+      "fa-IR": "بولیوی",
+      "es-ES": "Bolivia",
+      "pt-BR": "Bolívia"
     },
     "BQ": {
       "zh-CN": "荷属加勒比区",
@@ -318,7 +380,9 @@
       "ko-KR": "네덜란드령 카리브",
       "vi-VN": "Ca-ri-bê Hà Lan",
       "ru-RU": "Бонэйр, Синт-Эстатиус и Саба",
-      "fa-IR": "جزایر کارائیب هلند"
+      "fa-IR": "جزایر کارائیب هلند",
+      "es-ES": "Caribe neerlandés",
+      "pt-BR": "Países Baixos Caribenhos"
     },
     "BR": {
       "zh-CN": "巴西",
@@ -328,7 +392,9 @@
       "ko-KR": "브라질",
       "vi-VN": "Brazil",
       "ru-RU": "Бразилия",
-      "fa-IR": "برزیل"
+      "fa-IR": "برزیل",
+      "es-ES": "Brasil",
+      "pt-BR": "Brasil"
     },
     "BS": {
       "zh-CN": "巴哈马",
@@ -338,7 +404,9 @@
       "ko-KR": "바하마",
       "vi-VN": "Bahamas",
       "ru-RU": "Багамы",
-      "fa-IR": "باهاما"
+      "fa-IR": "باهاما",
+      "es-ES": "Bahamas",
+      "pt-BR": "Bahamas"
     },
     "BT": {
       "zh-CN": "不丹",
@@ -348,7 +416,9 @@
       "ko-KR": "부탄",
       "vi-VN": "Bhutan",
       "ru-RU": "Бутан",
-      "fa-IR": "بوتان"
+      "fa-IR": "بوتان",
+      "es-ES": "Bután",
+      "pt-BR": "Butão"
     },
     "BV": {
       "zh-CN": "布韦岛",
@@ -358,7 +428,9 @@
       "ko-KR": "부베섬",
       "vi-VN": "Đảo Bouvet",
       "ru-RU": "о-в Буве",
-      "fa-IR": "جزیرهٔ بووه"
+      "fa-IR": "جزیرهٔ بووه",
+      "es-ES": "Isla Bouvet",
+      "pt-BR": "Ilha Bouvet"
     },
     "BW": {
       "zh-CN": "博茨瓦纳",
@@ -368,7 +440,9 @@
       "ko-KR": "보츠와나",
       "vi-VN": "Botswana",
       "ru-RU": "Ботсвана",
-      "fa-IR": "بوتسوانا"
+      "fa-IR": "بوتسوانا",
+      "es-ES": "Botsuana",
+      "pt-BR": "Botsuana"
     },
     "BY": {
       "zh-CN": "白俄罗斯",
@@ -378,7 +452,9 @@
       "ko-KR": "벨라루스",
       "vi-VN": "Belarus",
       "ru-RU": "Беларусь",
-      "fa-IR": "بلاروس"
+      "fa-IR": "بلاروس",
+      "es-ES": "Bielorrusia",
+      "pt-BR": "Bielorrússia"
     },
     "BZ": {
       "zh-CN": "伯利兹",
@@ -388,7 +464,9 @@
       "ko-KR": "벨리즈",
       "vi-VN": "Belize",
       "ru-RU": "Белиз",
-      "fa-IR": "بلیز"
+      "fa-IR": "بلیز",
+      "es-ES": "Belice",
+      "pt-BR": "Belize"
     },
     "CA": {
       "zh-CN": "加拿大",
@@ -398,7 +476,9 @@
       "ko-KR": "캐나다",
       "vi-VN": "Canada",
       "ru-RU": "Канада",
-      "fa-IR": "کانادا"
+      "fa-IR": "کانادا",
+      "es-ES": "Canadá",
+      "pt-BR": "Canadá"
     },
     "CC": {
       "zh-CN": "科科斯（基林）群岛",
@@ -408,7 +488,9 @@
       "ko-KR": "코코스 제도",
       "vi-VN": "Quần đảo Cocos (Keeling)",
       "ru-RU": "Кокосовые о-ва",
-      "fa-IR": "جزایر کوکوس"
+      "fa-IR": "جزایر کوکوس",
+      "es-ES": "Islas Cocos",
+      "pt-BR": "Ilhas Cocos (Keeling)"
     },
     "CD": {
       "zh-CN": "刚果（金）",
@@ -418,7 +500,9 @@
       "ko-KR": "콩고-킨샤사",
       "vi-VN": "Congo - Kinshasa",
       "ru-RU": "Конго - Киншаса",
-      "fa-IR": "کنگو - کینشاسا"
+      "fa-IR": "کنگو - کینشاسا",
+      "es-ES": "República Democrática del Congo",
+      "pt-BR": "Congo - Kinshasa"
     },
     "CF": {
       "zh-CN": "中非共和国",
@@ -428,7 +512,9 @@
       "ko-KR": "중앙 아프리카 공화국",
       "vi-VN": "Cộng hòa Trung Phi",
       "ru-RU": "Центрально-Африканская Республика",
-      "fa-IR": "جمهوری افریقای مرکزی"
+      "fa-IR": "جمهوری افریقای مرکزی",
+      "es-ES": "República Centroafricana",
+      "pt-BR": "República Centro-Africana"
     },
     "CG": {
       "zh-CN": "刚果（布）",
@@ -438,7 +524,9 @@
       "ko-KR": "콩고-브라자빌",
       "vi-VN": "Congo - Brazzaville",
       "ru-RU": "Конго - Браззавиль",
-      "fa-IR": "کنگو - برازویل"
+      "fa-IR": "کنگو - برازویل",
+      "es-ES": "Congo",
+      "pt-BR": "República do Congo"
     },
     "CH": {
       "zh-CN": "瑞士",
@@ -448,7 +536,9 @@
       "ko-KR": "스위스",
       "vi-VN": "Thụy Sĩ",
       "ru-RU": "Швейцария",
-      "fa-IR": "سوئیس"
+      "fa-IR": "سوئیس",
+      "es-ES": "Suiza",
+      "pt-BR": "Suíça"
     },
     "CI": {
       "zh-CN": "科特迪瓦",
@@ -458,7 +548,9 @@
       "ko-KR": "코트디부아르",
       "vi-VN": "Côte d’Ivoire",
       "ru-RU": "Кот-д’Ивуар",
-      "fa-IR": "ساحل عاج"
+      "fa-IR": "ساحل عاج",
+      "es-ES": "Côte d’Ivoire",
+      "pt-BR": "Costa do Marfim"
     },
     "CK": {
       "zh-CN": "库克群岛",
@@ -468,7 +560,9 @@
       "ko-KR": "쿡 제도",
       "vi-VN": "Quần đảo Cook",
       "ru-RU": "о-ва Кука",
-      "fa-IR": "جزایر کوک"
+      "fa-IR": "جزایر کوک",
+      "es-ES": "Islas Cook",
+      "pt-BR": "Ilhas Cook"
     },
     "CL": {
       "zh-CN": "智利",
@@ -478,7 +572,9 @@
       "ko-KR": "칠레",
       "vi-VN": "Chile",
       "ru-RU": "Чили",
-      "fa-IR": "شیلی"
+      "fa-IR": "شیلی",
+      "es-ES": "Chile",
+      "pt-BR": "Chile"
     },
     "CM": {
       "zh-CN": "喀麦隆",
@@ -488,7 +584,9 @@
       "ko-KR": "카메룬",
       "vi-VN": "Cameroon",
       "ru-RU": "Камерун",
-      "fa-IR": "کامرون"
+      "fa-IR": "کامرون",
+      "es-ES": "Camerún",
+      "pt-BR": "Camarões"
     },
     "CN": {
       "zh-CN": "中国",
@@ -498,7 +596,9 @@
       "ko-KR": "중국",
       "vi-VN": "Trung Quốc",
       "ru-RU": "Китай",
-      "fa-IR": "چین"
+      "fa-IR": "چین",
+      "es-ES": "China",
+      "pt-BR": "China"
     },
     "CO": {
       "zh-CN": "哥伦比亚",
@@ -508,7 +608,9 @@
       "ko-KR": "콜롬비아",
       "vi-VN": "Colombia",
       "ru-RU": "Колумбия",
-      "fa-IR": "کلمبیا"
+      "fa-IR": "کلمبیا",
+      "es-ES": "Colombia",
+      "pt-BR": "Colômbia"
     },
     "CP": {
       "zh-CN": "克利珀顿岛",
@@ -518,7 +620,9 @@
       "ko-KR": "클리퍼턴섬",
       "vi-VN": "Đảo Clipperton",
       "ru-RU": "о-в Клиппертон",
-      "fa-IR": "جزایر کلیپرتون"
+      "fa-IR": "جزایر کلیپرتون",
+      "es-ES": "Isla Clipperton",
+      "pt-BR": "Ilha de Clipperton"
     },
     "CQ": {
       "zh-CN": "萨克岛",
@@ -528,7 +632,9 @@
       "ko-KR": "사크",
       "vi-VN": "Sark",
       "ru-RU": "Сарк",
-      "fa-IR": "سارک"
+      "fa-IR": "سارک",
+      "es-ES": "Sark",
+      "pt-BR": "Sark"
     },
     "CR": {
       "zh-CN": "哥斯达黎加",
@@ -538,7 +644,9 @@
       "ko-KR": "코스타리카",
       "vi-VN": "Costa Rica",
       "ru-RU": "Коста-Рика",
-      "fa-IR": "کاستاریکا"
+      "fa-IR": "کاستاریکا",
+      "es-ES": "Costa Rica",
+      "pt-BR": "Costa Rica"
     },
     "CU": {
       "zh-CN": "古巴",
@@ -548,7 +656,9 @@
       "ko-KR": "쿠바",
       "vi-VN": "Cuba",
       "ru-RU": "Куба",
-      "fa-IR": "کوبا"
+      "fa-IR": "کوبا",
+      "es-ES": "Cuba",
+      "pt-BR": "Cuba"
     },
     "CV": {
       "zh-CN": "佛得角",
@@ -558,7 +668,9 @@
       "ko-KR": "카보베르데",
       "vi-VN": "Cape Verde",
       "ru-RU": "Кабо-Верде",
-      "fa-IR": "کیپ‌ورد"
+      "fa-IR": "کیپ‌ورد",
+      "es-ES": "Cabo Verde",
+      "pt-BR": "Cabo Verde"
     },
     "CW": {
       "zh-CN": "库拉索",
@@ -568,7 +680,9 @@
       "ko-KR": "퀴라소",
       "vi-VN": "Curaçao",
       "ru-RU": "Кюрасао",
-      "fa-IR": "کوراسائو"
+      "fa-IR": "کوراسائو",
+      "es-ES": "Curazao",
+      "pt-BR": "Curaçao"
     },
     "CX": {
       "zh-CN": "圣诞岛",
@@ -578,7 +692,9 @@
       "ko-KR": "크리스마스섬",
       "vi-VN": "Đảo Giáng Sinh",
       "ru-RU": "о-в Рождества",
-      "fa-IR": "جزیرهٔ کریسمس"
+      "fa-IR": "جزیرهٔ کریسمس",
+      "es-ES": "Isla de Navidad",
+      "pt-BR": "Ilha Christmas"
     },
     "CY": {
       "zh-CN": "塞浦路斯",
@@ -588,7 +704,9 @@
       "ko-KR": "키프로스",
       "vi-VN": "Síp",
       "ru-RU": "Кипр",
-      "fa-IR": "قبرس"
+      "fa-IR": "قبرس",
+      "es-ES": "Chipre",
+      "pt-BR": "Chipre"
     },
     "CZ": {
       "zh-CN": "捷克",
@@ -598,7 +716,9 @@
       "ko-KR": "체코",
       "vi-VN": "Séc",
       "ru-RU": "Чехия",
-      "fa-IR": "چک"
+      "fa-IR": "چک",
+      "es-ES": "Chequia",
+      "pt-BR": "Tchéquia"
     },
     "DE": {
       "zh-CN": "德国",
@@ -608,7 +728,9 @@
       "ko-KR": "독일",
       "vi-VN": "Đức",
       "ru-RU": "Германия",
-      "fa-IR": "آلمان"
+      "fa-IR": "آلمان",
+      "es-ES": "Alemania",
+      "pt-BR": "Alemanha"
     },
     "DG": {
       "zh-CN": "迪戈加西亚岛",
@@ -618,7 +740,9 @@
       "ko-KR": "디에고 가르시아",
       "vi-VN": "Diego Garcia",
       "ru-RU": "Диего-Гарсия",
-      "fa-IR": "دیه‌گو گارسیا"
+      "fa-IR": "دیه‌گو گارسیا",
+      "es-ES": "Diego García",
+      "pt-BR": "Diego Garcia"
     },
     "DJ": {
       "zh-CN": "吉布提",
@@ -628,7 +752,9 @@
       "ko-KR": "지부티",
       "vi-VN": "Djibouti",
       "ru-RU": "Джибути",
-      "fa-IR": "جیبوتی"
+      "fa-IR": "جیبوتی",
+      "es-ES": "Yibuti",
+      "pt-BR": "Djibuti"
     },
     "DK": {
       "zh-CN": "丹麦",
@@ -638,7 +764,9 @@
       "ko-KR": "덴마크",
       "vi-VN": "Đan Mạch",
       "ru-RU": "Дания",
-      "fa-IR": "دانمارک"
+      "fa-IR": "دانمارک",
+      "es-ES": "Dinamarca",
+      "pt-BR": "Dinamarca"
     },
     "DM": {
       "zh-CN": "多米尼克",
@@ -648,7 +776,9 @@
       "ko-KR": "도미니카",
       "vi-VN": "Dominica",
       "ru-RU": "Доминика",
-      "fa-IR": "دومینیکا"
+      "fa-IR": "دومینیکا",
+      "es-ES": "Dominica",
+      "pt-BR": "Dominica"
     },
     "DO": {
       "zh-CN": "多米尼加共和国",
@@ -658,7 +788,9 @@
       "ko-KR": "도미니카 공화국",
       "vi-VN": "Cộng hòa Dominica",
       "ru-RU": "Доминиканская Республика",
-      "fa-IR": "جمهوری دومینیکن"
+      "fa-IR": "جمهوری دومینیکن",
+      "es-ES": "República Dominicana",
+      "pt-BR": "República Dominicana"
     },
     "DZ": {
       "zh-CN": "阿尔及利亚",
@@ -668,7 +800,9 @@
       "ko-KR": "알제리",
       "vi-VN": "Algeria",
       "ru-RU": "Алжир",
-      "fa-IR": "الجزایر"
+      "fa-IR": "الجزایر",
+      "es-ES": "Argelia",
+      "pt-BR": "Argélia"
     },
     "EA": {
       "zh-CN": "休达及梅利利亚",
@@ -678,7 +812,9 @@
       "ko-KR": "세우타 및 멜리야",
       "vi-VN": "Ceuta và Melilla",
       "ru-RU": "Сеута и Мелилья",
-      "fa-IR": "سبته و ملیله"
+      "fa-IR": "سبته و ملیله",
+      "es-ES": "Ceuta y Melilla",
+      "pt-BR": "Ceuta e Melilla"
     },
     "EC": {
       "zh-CN": "厄瓜多尔",
@@ -688,7 +824,9 @@
       "ko-KR": "에콰도르",
       "vi-VN": "Ecuador",
       "ru-RU": "Эквадор",
-      "fa-IR": "اکوادور"
+      "fa-IR": "اکوادور",
+      "es-ES": "Ecuador",
+      "pt-BR": "Equador"
     },
     "EE": {
       "zh-CN": "爱沙尼亚",
@@ -698,7 +836,9 @@
       "ko-KR": "에스토니아",
       "vi-VN": "Estonia",
       "ru-RU": "Эстония",
-      "fa-IR": "استونی"
+      "fa-IR": "استونی",
+      "es-ES": "Estonia",
+      "pt-BR": "Estônia"
     },
     "EG": {
       "zh-CN": "埃及",
@@ -708,7 +848,9 @@
       "ko-KR": "이집트",
       "vi-VN": "Ai Cập",
       "ru-RU": "Египет",
-      "fa-IR": "مصر"
+      "fa-IR": "مصر",
+      "es-ES": "Egipto",
+      "pt-BR": "Egito"
     },
     "EH": {
       "zh-CN": "西撒哈拉",
@@ -718,7 +860,9 @@
       "ko-KR": "서사하라",
       "vi-VN": "Tây Sahara",
       "ru-RU": "Западная Сахара",
-      "fa-IR": "صحرای غربی"
+      "fa-IR": "صحرای غربی",
+      "es-ES": "Sáhara Occidental",
+      "pt-BR": "Saara Ocidental"
     },
     "ER": {
       "zh-CN": "厄立特里亚",
@@ -728,7 +872,9 @@
       "ko-KR": "에리트리아",
       "vi-VN": "Eritrea",
       "ru-RU": "Эритрея",
-      "fa-IR": "اریتره"
+      "fa-IR": "اریتره",
+      "es-ES": "Eritrea",
+      "pt-BR": "Eritreia"
     },
     "ES": {
       "zh-CN": "西班牙",
@@ -738,7 +884,9 @@
       "ko-KR": "스페인",
       "vi-VN": "Tây Ban Nha",
       "ru-RU": "Испания",
-      "fa-IR": "اسپانیا"
+      "fa-IR": "اسپانیا",
+      "es-ES": "España",
+      "pt-BR": "Espanha"
     },
     "ET": {
       "zh-CN": "埃塞俄比亚",
@@ -748,7 +896,9 @@
       "ko-KR": "에티오피아",
       "vi-VN": "Ethiopia",
       "ru-RU": "Эфиопия",
-      "fa-IR": "اتیوپی"
+      "fa-IR": "اتیوپی",
+      "es-ES": "Etiopía",
+      "pt-BR": "Etiópia"
     },
     "EU": {
       "zh-CN": "欧盟",
@@ -758,7 +908,9 @@
       "ko-KR": "유럽 연합",
       "vi-VN": "Liên Minh Châu Âu",
       "ru-RU": "Европейский союз",
-      "fa-IR": "اتحادیهٔ اروپا"
+      "fa-IR": "اتحادیهٔ اروپا",
+      "es-ES": "Unión Europea",
+      "pt-BR": "União Europeia"
     },
     "FI": {
       "zh-CN": "芬兰",
@@ -768,7 +920,9 @@
       "ko-KR": "핀란드",
       "vi-VN": "Phần Lan",
       "ru-RU": "Финляндия",
-      "fa-IR": "فنلاند"
+      "fa-IR": "فنلاند",
+      "es-ES": "Finlandia",
+      "pt-BR": "Finlândia"
     },
     "FJ": {
       "zh-CN": "斐济",
@@ -778,7 +932,9 @@
       "ko-KR": "피지",
       "vi-VN": "Fiji",
       "ru-RU": "Фиджи",
-      "fa-IR": "فیجی"
+      "fa-IR": "فیجی",
+      "es-ES": "Fiyi",
+      "pt-BR": "Fiji"
     },
     "FK": {
       "zh-CN": "福克兰群岛",
@@ -788,7 +944,9 @@
       "ko-KR": "포클랜드 제도",
       "vi-VN": "Quần đảo Falkland",
       "ru-RU": "Фолклендские о-ва",
-      "fa-IR": "جزایر فالکلند"
+      "fa-IR": "جزایر فالکلند",
+      "es-ES": "Islas Malvinas",
+      "pt-BR": "Ilhas Malvinas"
     },
     "FM": {
       "zh-CN": "密克罗尼西亚",
@@ -798,7 +956,9 @@
       "ko-KR": "미크로네시아",
       "vi-VN": "Micronesia",
       "ru-RU": "Федеративные Штаты Микронезии",
-      "fa-IR": "میکرونزی"
+      "fa-IR": "میکرونزی",
+      "es-ES": "Micronesia",
+      "pt-BR": "Micronésia"
     },
     "FO": {
       "zh-CN": "法罗群岛",
@@ -808,7 +968,9 @@
       "ko-KR": "페로 제도",
       "vi-VN": "Quần đảo Faroe",
       "ru-RU": "Фарерские о-ва",
-      "fa-IR": "جزایر فارو"
+      "fa-IR": "جزایر فارو",
+      "es-ES": "Islas Feroe",
+      "pt-BR": "Ilhas Faroé"
     },
     "FR": {
       "zh-CN": "法国",
@@ -818,7 +980,9 @@
       "ko-KR": "프랑스",
       "vi-VN": "Pháp",
       "ru-RU": "Франция",
-      "fa-IR": "فرانسه"
+      "fa-IR": "فرانسه",
+      "es-ES": "Francia",
+      "pt-BR": "França"
     },
     "FX": {
       "zh-CN": "法国",
@@ -828,7 +992,9 @@
       "ko-KR": "프랑스",
       "vi-VN": "Pháp",
       "ru-RU": "Франция",
-      "fa-IR": "فرانسه"
+      "fa-IR": "فرانسه",
+      "es-ES": "Francia",
+      "pt-BR": "França"
     },
     "GA": {
       "zh-CN": "加蓬",
@@ -838,7 +1004,9 @@
       "ko-KR": "가봉",
       "vi-VN": "Gabon",
       "ru-RU": "Габон",
-      "fa-IR": "گابن"
+      "fa-IR": "گابن",
+      "es-ES": "Gabón",
+      "pt-BR": "Gabão"
     },
     "GB": {
       "zh-CN": "英国",
@@ -848,7 +1016,9 @@
       "ko-KR": "영국",
       "vi-VN": "Vương quốc Anh",
       "ru-RU": "Великобритания",
-      "fa-IR": "بریتانیا"
+      "fa-IR": "بریتانیا",
+      "es-ES": "Reino Unido",
+      "pt-BR": "Reino Unido"
     },
     "GD": {
       "zh-CN": "格林纳达",
@@ -858,7 +1028,9 @@
       "ko-KR": "그레나다",
       "vi-VN": "Grenada",
       "ru-RU": "Гренада",
-      "fa-IR": "گرنادا"
+      "fa-IR": "گرنادا",
+      "es-ES": "Granada",
+      "pt-BR": "Granada"
     },
     "GE": {
       "zh-CN": "格鲁吉亚",
@@ -868,7 +1040,9 @@
       "ko-KR": "조지아",
       "vi-VN": "Georgia",
       "ru-RU": "Грузия",
-      "fa-IR": "گرجستان"
+      "fa-IR": "گرجستان",
+      "es-ES": "Georgia",
+      "pt-BR": "Geórgia"
     },
     "GF": {
       "zh-CN": "法属圭亚那",
@@ -878,7 +1052,9 @@
       "ko-KR": "프랑스령 기아나",
       "vi-VN": "Guiana thuộc Pháp",
       "ru-RU": "Французская Гвиана",
-      "fa-IR": "گویان فرانسه"
+      "fa-IR": "گویان فرانسه",
+      "es-ES": "Guayana Francesa",
+      "pt-BR": "Guiana Francesa"
     },
     "GG": {
       "zh-CN": "根西岛",
@@ -888,7 +1064,9 @@
       "ko-KR": "건지",
       "vi-VN": "Guernsey",
       "ru-RU": "Гернси",
-      "fa-IR": "گرنزی"
+      "fa-IR": "گرنزی",
+      "es-ES": "Guernesey",
+      "pt-BR": "Guernsey"
     },
     "GH": {
       "zh-CN": "加纳",
@@ -898,7 +1076,9 @@
       "ko-KR": "가나",
       "vi-VN": "Ghana",
       "ru-RU": "Гана",
-      "fa-IR": "غنا"
+      "fa-IR": "غنا",
+      "es-ES": "Ghana",
+      "pt-BR": "Gana"
     },
     "GI": {
       "zh-CN": "直布罗陀",
@@ -908,7 +1088,9 @@
       "ko-KR": "지브롤터",
       "vi-VN": "Gibraltar",
       "ru-RU": "Гибралтар",
-      "fa-IR": "جبل‌الطارق"
+      "fa-IR": "جبل‌الطارق",
+      "es-ES": "Gibraltar",
+      "pt-BR": "Gibraltar"
     },
     "GL": {
       "zh-CN": "格陵兰",
@@ -918,7 +1100,9 @@
       "ko-KR": "그린란드",
       "vi-VN": "Greenland",
       "ru-RU": "Гренландия",
-      "fa-IR": "گرینلند"
+      "fa-IR": "گرینلند",
+      "es-ES": "Groenlandia",
+      "pt-BR": "Groenlândia"
     },
     "GM": {
       "zh-CN": "冈比亚",
@@ -928,7 +1112,9 @@
       "ko-KR": "감비아",
       "vi-VN": "Gambia",
       "ru-RU": "Гамбия",
-      "fa-IR": "گامبیا"
+      "fa-IR": "گامبیا",
+      "es-ES": "Gambia",
+      "pt-BR": "Gâmbia"
     },
     "GN": {
       "zh-CN": "几内亚",
@@ -938,7 +1124,9 @@
       "ko-KR": "기니",
       "vi-VN": "Guinea",
       "ru-RU": "Гвинея",
-      "fa-IR": "گینه"
+      "fa-IR": "گینه",
+      "es-ES": "Guinea",
+      "pt-BR": "Guiné"
     },
     "GP": {
       "zh-CN": "瓜德罗普",
@@ -948,7 +1136,9 @@
       "ko-KR": "과들루프",
       "vi-VN": "Guadeloupe",
       "ru-RU": "Гваделупа",
-      "fa-IR": "گوادلوپ"
+      "fa-IR": "گوادلوپ",
+      "es-ES": "Guadalupe",
+      "pt-BR": "Guadalupe"
     },
     "GQ": {
       "zh-CN": "赤道几内亚",
@@ -958,7 +1148,9 @@
       "ko-KR": "적도 기니",
       "vi-VN": "Guinea Xích Đạo",
       "ru-RU": "Экваториальная Гвинея",
-      "fa-IR": "گینهٔ استوایی"
+      "fa-IR": "گینهٔ استوایی",
+      "es-ES": "Guinea Ecuatorial",
+      "pt-BR": "Guiné Equatorial"
     },
     "GR": {
       "zh-CN": "希腊",
@@ -968,7 +1160,9 @@
       "ko-KR": "그리스",
       "vi-VN": "Hy Lạp",
       "ru-RU": "Греция",
-      "fa-IR": "یونان"
+      "fa-IR": "یونان",
+      "es-ES": "Grecia",
+      "pt-BR": "Grécia"
     },
     "GS": {
       "zh-CN": "南乔治亚和南桑威奇群岛",
@@ -978,7 +1172,9 @@
       "ko-KR": "사우스조지아 사우스샌드위치 제도",
       "vi-VN": "Nam Georgia & Quần đảo Nam Sandwich",
       "ru-RU": "Южная Георгия и Южные Сандвичевы о-ва",
-      "fa-IR": "جورجیای جنوبی و جزایر ساندویچ جنوبی"
+      "fa-IR": "جورجیای جنوبی و جزایر ساندویچ جنوبی",
+      "es-ES": "Islas Georgia del Sur y Sandwich del Sur",
+      "pt-BR": "Ilhas Geórgia do Sul e Sandwich do Sul"
     },
     "GT": {
       "zh-CN": "危地马拉",
@@ -988,7 +1184,9 @@
       "ko-KR": "과테말라",
       "vi-VN": "Guatemala",
       "ru-RU": "Гватемала",
-      "fa-IR": "گواتمالا"
+      "fa-IR": "گواتمالا",
+      "es-ES": "Guatemala",
+      "pt-BR": "Guatemala"
     },
     "GU": {
       "zh-CN": "关岛",
@@ -998,7 +1196,9 @@
       "ko-KR": "괌",
       "vi-VN": "Guam",
       "ru-RU": "Гуам",
-      "fa-IR": "گوام"
+      "fa-IR": "گوام",
+      "es-ES": "Guam",
+      "pt-BR": "Guam"
     },
     "GW": {
       "zh-CN": "几内亚比绍",
@@ -1008,7 +1208,9 @@
       "ko-KR": "기니비사우",
       "vi-VN": "Guinea-Bissau",
       "ru-RU": "Гвинея-Бисау",
-      "fa-IR": "گینهٔ بیسائو"
+      "fa-IR": "گینهٔ بیسائو",
+      "es-ES": "Guinea-Bisáu",
+      "pt-BR": "Guiné-Bissau"
     },
     "GY": {
       "zh-CN": "圭亚那",
@@ -1018,7 +1220,9 @@
       "ko-KR": "가이아나",
       "vi-VN": "Guyana",
       "ru-RU": "Гайана",
-      "fa-IR": "گویان"
+      "fa-IR": "گویان",
+      "es-ES": "Guyana",
+      "pt-BR": "Guiana"
     },
     "HK": {
       "zh-CN": "中国香港特别行政区",
@@ -1028,7 +1232,9 @@
       "ko-KR": "홍콩(중국 특별행정구)",
       "vi-VN": "Đặc khu Hành chính Hồng Kông, Trung Quốc",
       "ru-RU": "Гонконг (САР)",
-      "fa-IR": "هنگ‌کنگ، منطقهٔ ویژهٔ اداری چین"
+      "fa-IR": "هنگ‌کنگ، منطقهٔ ویژهٔ اداری چین",
+      "es-ES": "RAE de Hong Kong (China)",
+      "pt-BR": "Hong Kong, RAE da China"
     },
     "HM": {
       "zh-CN": "赫德岛和麦克唐纳群岛",
@@ -1038,7 +1244,9 @@
       "ko-KR": "허드 맥도널드 제도",
       "vi-VN": "Quần đảo Heard và McDonald",
       "ru-RU": "о-ва Херд и Макдональд",
-      "fa-IR": "هرد و جزایر مک‌دونالد"
+      "fa-IR": "هرد و جزایر مک‌دونالد",
+      "es-ES": "Islas Heard y McDonald",
+      "pt-BR": "Ilhas Heard e McDonald"
     },
     "HN": {
       "zh-CN": "洪都拉斯",
@@ -1048,7 +1256,9 @@
       "ko-KR": "온두라스",
       "vi-VN": "Honduras",
       "ru-RU": "Гондурас",
-      "fa-IR": "هندوراس"
+      "fa-IR": "هندوراس",
+      "es-ES": "Honduras",
+      "pt-BR": "Honduras"
     },
     "HR": {
       "zh-CN": "克罗地亚",
@@ -1058,7 +1268,9 @@
       "ko-KR": "크로아티아",
       "vi-VN": "Croatia",
       "ru-RU": "Хорватия",
-      "fa-IR": "کرواسی"
+      "fa-IR": "کرواسی",
+      "es-ES": "Croacia",
+      "pt-BR": "Croácia"
     },
     "HT": {
       "zh-CN": "海地",
@@ -1068,7 +1280,9 @@
       "ko-KR": "아이티",
       "vi-VN": "Haiti",
       "ru-RU": "Гаити",
-      "fa-IR": "هائیتی"
+      "fa-IR": "هائیتی",
+      "es-ES": "Haití",
+      "pt-BR": "Haiti"
     },
     "HU": {
       "zh-CN": "匈牙利",
@@ -1078,7 +1292,9 @@
       "ko-KR": "헝가리",
       "vi-VN": "Hungary",
       "ru-RU": "Венгрия",
-      "fa-IR": "مجارستان"
+      "fa-IR": "مجارستان",
+      "es-ES": "Hungría",
+      "pt-BR": "Hungria"
     },
     "IC": {
       "zh-CN": "加纳利群岛",
@@ -1088,7 +1304,9 @@
       "ko-KR": "카나리아 제도",
       "vi-VN": "Quần đảo Canary",
       "ru-RU": "Канарские о-ва",
-      "fa-IR": "جزایر قناری"
+      "fa-IR": "جزایر قناری",
+      "es-ES": "Canarias",
+      "pt-BR": "Ilhas Canárias"
     },
     "ID": {
       "zh-CN": "印度尼西亚",
@@ -1098,7 +1316,9 @@
       "ko-KR": "인도네시아",
       "vi-VN": "Indonesia",
       "ru-RU": "Индонезия",
-      "fa-IR": "اندونزی"
+      "fa-IR": "اندونزی",
+      "es-ES": "Indonesia",
+      "pt-BR": "Indonésia"
     },
     "IE": {
       "zh-CN": "爱尔兰",
@@ -1108,7 +1328,9 @@
       "ko-KR": "아일랜드",
       "vi-VN": "Ireland",
       "ru-RU": "Ирландия",
-      "fa-IR": "ایرلند"
+      "fa-IR": "ایرلند",
+      "es-ES": "Irlanda",
+      "pt-BR": "Irlanda"
     },
     "IL": {
       "zh-CN": "以色列",
@@ -1118,7 +1340,9 @@
       "ko-KR": "이스라엘",
       "vi-VN": "Israel",
       "ru-RU": "Израиль",
-      "fa-IR": "اسرائیل"
+      "fa-IR": "اسرائیل",
+      "es-ES": "Israel",
+      "pt-BR": "Israel"
     },
     "IM": {
       "zh-CN": "马恩岛",
@@ -1128,7 +1352,9 @@
       "ko-KR": "맨섬",
       "vi-VN": "Đảo Man",
       "ru-RU": "о-в Мэн",
-      "fa-IR": "جزیرهٔ من"
+      "fa-IR": "جزیرهٔ من",
+      "es-ES": "Isla de Man",
+      "pt-BR": "Ilha de Man"
     },
     "IN": {
       "zh-CN": "印度",
@@ -1138,7 +1364,9 @@
       "ko-KR": "인도",
       "vi-VN": "Ấn Độ",
       "ru-RU": "Индия",
-      "fa-IR": "هند"
+      "fa-IR": "هند",
+      "es-ES": "India",
+      "pt-BR": "Índia"
     },
     "IO": {
       "zh-CN": "英属印度洋领地",
@@ -1148,7 +1376,9 @@
       "ko-KR": "영국령 인도양 지역",
       "vi-VN": "Lãnh thổ Ấn Độ Dương thuộc Anh",
       "ru-RU": "Британская территория в Индийском океане",
-      "fa-IR": "قلمرو بریتانیا در اقیانوس هند"
+      "fa-IR": "قلمرو بریتانیا در اقیانوس هند",
+      "es-ES": "Territorio Británico del Océano Índico",
+      "pt-BR": "Território Britânico do Oceano Índico"
     },
     "IQ": {
       "zh-CN": "伊拉克",
@@ -1158,7 +1388,9 @@
       "ko-KR": "이라크",
       "vi-VN": "Iraq",
       "ru-RU": "Ирак",
-      "fa-IR": "عراق"
+      "fa-IR": "عراق",
+      "es-ES": "Irak",
+      "pt-BR": "Iraque"
     },
     "IR": {
       "zh-CN": "伊朗",
@@ -1168,7 +1400,9 @@
       "ko-KR": "이란",
       "vi-VN": "Iran",
       "ru-RU": "Иран",
-      "fa-IR": "ایران"
+      "fa-IR": "ایران",
+      "es-ES": "Irán",
+      "pt-BR": "Irã"
     },
     "IS": {
       "zh-CN": "冰岛",
@@ -1178,7 +1412,9 @@
       "ko-KR": "아이슬란드",
       "vi-VN": "Iceland",
       "ru-RU": "Исландия",
-      "fa-IR": "ایسلند"
+      "fa-IR": "ایسلند",
+      "es-ES": "Islandia",
+      "pt-BR": "Islândia"
     },
     "IT": {
       "zh-CN": "意大利",
@@ -1188,7 +1424,9 @@
       "ko-KR": "이탈리아",
       "vi-VN": "Italy",
       "ru-RU": "Италия",
-      "fa-IR": "ایتالیا"
+      "fa-IR": "ایتالیا",
+      "es-ES": "Italia",
+      "pt-BR": "Itália"
     },
     "JE": {
       "zh-CN": "泽西岛",
@@ -1198,7 +1436,9 @@
       "ko-KR": "저지",
       "vi-VN": "Jersey",
       "ru-RU": "Джерси",
-      "fa-IR": "جرزی"
+      "fa-IR": "جرزی",
+      "es-ES": "Jersey",
+      "pt-BR": "Jersey"
     },
     "JM": {
       "zh-CN": "牙买加",
@@ -1208,7 +1448,9 @@
       "ko-KR": "자메이카",
       "vi-VN": "Jamaica",
       "ru-RU": "Ямайка",
-      "fa-IR": "جامائیکا"
+      "fa-IR": "جامائیکا",
+      "es-ES": "Jamaica",
+      "pt-BR": "Jamaica"
     },
     "JO": {
       "zh-CN": "约旦",
@@ -1218,7 +1460,9 @@
       "ko-KR": "요르단",
       "vi-VN": "Jordan",
       "ru-RU": "Иордания",
-      "fa-IR": "اردن"
+      "fa-IR": "اردن",
+      "es-ES": "Jordania",
+      "pt-BR": "Jordânia"
     },
     "JP": {
       "zh-CN": "日本",
@@ -1228,7 +1472,9 @@
       "ko-KR": "일본",
       "vi-VN": "Nhật Bản",
       "ru-RU": "Япония",
-      "fa-IR": "ژاپن"
+      "fa-IR": "ژاپن",
+      "es-ES": "Japón",
+      "pt-BR": "Japão"
     },
     "KE": {
       "zh-CN": "肯尼亚",
@@ -1238,7 +1484,9 @@
       "ko-KR": "케냐",
       "vi-VN": "Kenya",
       "ru-RU": "Кения",
-      "fa-IR": "کنیا"
+      "fa-IR": "کنیا",
+      "es-ES": "Kenia",
+      "pt-BR": "Quênia"
     },
     "KG": {
       "zh-CN": "吉尔吉斯斯坦",
@@ -1248,7 +1496,9 @@
       "ko-KR": "키르기스스탄",
       "vi-VN": "Kyrgyzstan",
       "ru-RU": "Киргизия",
-      "fa-IR": "قرقیزستان"
+      "fa-IR": "قرقیزستان",
+      "es-ES": "Kirguistán",
+      "pt-BR": "Quirguistão"
     },
     "KH": {
       "zh-CN": "柬埔寨",
@@ -1258,7 +1508,9 @@
       "ko-KR": "캄보디아",
       "vi-VN": "Campuchia",
       "ru-RU": "Камбоджа",
-      "fa-IR": "کامبوج"
+      "fa-IR": "کامبوج",
+      "es-ES": "Camboya",
+      "pt-BR": "Camboja"
     },
     "KI": {
       "zh-CN": "基里巴斯",
@@ -1268,7 +1520,9 @@
       "ko-KR": "키리바시",
       "vi-VN": "Kiribati",
       "ru-RU": "Кирибати",
-      "fa-IR": "کیریباتی"
+      "fa-IR": "کیریباتی",
+      "es-ES": "Kiribati",
+      "pt-BR": "Quiribati"
     },
     "KM": {
       "zh-CN": "科摩罗",
@@ -1278,7 +1532,9 @@
       "ko-KR": "코모로",
       "vi-VN": "Comoros",
       "ru-RU": "Коморы",
-      "fa-IR": "کومور"
+      "fa-IR": "کومور",
+      "es-ES": "Comoras",
+      "pt-BR": "Comores"
     },
     "KN": {
       "zh-CN": "圣基茨和尼维斯",
@@ -1288,7 +1544,9 @@
       "ko-KR": "세인트키츠 네비스",
       "vi-VN": "St. Kitts và Nevis",
       "ru-RU": "Сент-Китс и Невис",
-      "fa-IR": "سنت کیتس و نویس"
+      "fa-IR": "سنت کیتس و نویس",
+      "es-ES": "San Cristóbal y Nieves",
+      "pt-BR": "São Cristóvão e Névis"
     },
     "KP": {
       "zh-CN": "朝鲜",
@@ -1298,7 +1556,9 @@
       "ko-KR": "북한",
       "vi-VN": "Triều Tiên",
       "ru-RU": "КНДР",
-      "fa-IR": "کرهٔ شمالی"
+      "fa-IR": "کرهٔ شمالی",
+      "es-ES": "Corea del Norte",
+      "pt-BR": "Coreia do Norte"
     },
     "KR": {
       "zh-CN": "韩国",
@@ -1308,7 +1568,9 @@
       "ko-KR": "대한민국",
       "vi-VN": "Hàn Quốc",
       "ru-RU": "Республика Корея",
-      "fa-IR": "کرهٔ جنوبی"
+      "fa-IR": "کرهٔ جنوبی",
+      "es-ES": "Corea del Sur",
+      "pt-BR": "Coreia do Sul"
     },
     "KW": {
       "zh-CN": "科威特",
@@ -1318,7 +1580,9 @@
       "ko-KR": "쿠웨이트",
       "vi-VN": "Kuwait",
       "ru-RU": "Кувейт",
-      "fa-IR": "کویت"
+      "fa-IR": "کویت",
+      "es-ES": "Kuwait",
+      "pt-BR": "Kuwait"
     },
     "KY": {
       "zh-CN": "开曼群岛",
@@ -1328,7 +1592,9 @@
       "ko-KR": "케이맨 제도",
       "vi-VN": "Quần đảo Cayman",
       "ru-RU": "о-ва Кайман",
-      "fa-IR": "جزایر کِیمن"
+      "fa-IR": "جزایر کِیمن",
+      "es-ES": "Islas Caimán",
+      "pt-BR": "Ilhas Cayman"
     },
     "KZ": {
       "zh-CN": "哈萨克斯坦",
@@ -1338,7 +1604,9 @@
       "ko-KR": "카자흐스탄",
       "vi-VN": "Kazakhstan",
       "ru-RU": "Казахстан",
-      "fa-IR": "قزاقستان"
+      "fa-IR": "قزاقستان",
+      "es-ES": "Kazajistán",
+      "pt-BR": "Cazaquistão"
     },
     "LA": {
       "zh-CN": "老挝",
@@ -1348,7 +1616,9 @@
       "ko-KR": "라오스",
       "vi-VN": "Lào",
       "ru-RU": "Лаос",
-      "fa-IR": "لائوس"
+      "fa-IR": "لائوس",
+      "es-ES": "Laos",
+      "pt-BR": "Laos"
     },
     "LB": {
       "zh-CN": "黎巴嫩",
@@ -1358,7 +1628,9 @@
       "ko-KR": "레바논",
       "vi-VN": "Li-băng",
       "ru-RU": "Ливан",
-      "fa-IR": "لبنان"
+      "fa-IR": "لبنان",
+      "es-ES": "Líbano",
+      "pt-BR": "Líbano"
     },
     "LC": {
       "zh-CN": "圣卢西亚",
@@ -1368,7 +1640,9 @@
       "ko-KR": "세인트루시아",
       "vi-VN": "St. Lucia",
       "ru-RU": "Сент-Люсия",
-      "fa-IR": "سنت لوسیا"
+      "fa-IR": "سنت لوسیا",
+      "es-ES": "Santa Lucía",
+      "pt-BR": "Santa Lúcia"
     },
     "LI": {
       "zh-CN": "列支敦士登",
@@ -1378,7 +1652,9 @@
       "ko-KR": "리히텐슈타인",
       "vi-VN": "Liechtenstein",
       "ru-RU": "Лихтенштейн",
-      "fa-IR": "لیختن‌اشتاین"
+      "fa-IR": "لیختن‌اشتاین",
+      "es-ES": "Liechtenstein",
+      "pt-BR": "Liechtenstein"
     },
     "LK": {
       "zh-CN": "斯里兰卡",
@@ -1388,7 +1664,9 @@
       "ko-KR": "스리랑카",
       "vi-VN": "Sri Lanka",
       "ru-RU": "Шри-Ланка",
-      "fa-IR": "سری‌لانکا"
+      "fa-IR": "سری‌لانکا",
+      "es-ES": "Sri Lanka",
+      "pt-BR": "Sri Lanka"
     },
     "LR": {
       "zh-CN": "利比里亚",
@@ -1398,7 +1676,9 @@
       "ko-KR": "라이베리아",
       "vi-VN": "Liberia",
       "ru-RU": "Либерия",
-      "fa-IR": "لیبریا"
+      "fa-IR": "لیبریا",
+      "es-ES": "Liberia",
+      "pt-BR": "Libéria"
     },
     "LS": {
       "zh-CN": "莱索托",
@@ -1408,7 +1688,9 @@
       "ko-KR": "레소토",
       "vi-VN": "Lesotho",
       "ru-RU": "Лесото",
-      "fa-IR": "لسوتو"
+      "fa-IR": "لسوتو",
+      "es-ES": "Lesoto",
+      "pt-BR": "Lesoto"
     },
     "LT": {
       "zh-CN": "立陶宛",
@@ -1418,7 +1700,9 @@
       "ko-KR": "리투아니아",
       "vi-VN": "Litva",
       "ru-RU": "Литва",
-      "fa-IR": "لیتوانی"
+      "fa-IR": "لیتوانی",
+      "es-ES": "Lituania",
+      "pt-BR": "Lituânia"
     },
     "LU": {
       "zh-CN": "卢森堡",
@@ -1428,7 +1712,9 @@
       "ko-KR": "룩셈부르크",
       "vi-VN": "Luxembourg",
       "ru-RU": "Люксембург",
-      "fa-IR": "لوکزامبورگ"
+      "fa-IR": "لوکزامبورگ",
+      "es-ES": "Luxemburgo",
+      "pt-BR": "Luxemburgo"
     },
     "LV": {
       "zh-CN": "拉脱维亚",
@@ -1438,7 +1724,9 @@
       "ko-KR": "라트비아",
       "vi-VN": "Latvia",
       "ru-RU": "Латвия",
-      "fa-IR": "لتونی"
+      "fa-IR": "لتونی",
+      "es-ES": "Letonia",
+      "pt-BR": "Letônia"
     },
     "LY": {
       "zh-CN": "利比亚",
@@ -1448,7 +1736,9 @@
       "ko-KR": "리비아",
       "vi-VN": "Libya",
       "ru-RU": "Ливия",
-      "fa-IR": "لیبی"
+      "fa-IR": "لیبی",
+      "es-ES": "Libia",
+      "pt-BR": "Líbia"
     },
     "MA": {
       "zh-CN": "摩洛哥",
@@ -1458,7 +1748,9 @@
       "ko-KR": "모로코",
       "vi-VN": "Ma-rốc",
       "ru-RU": "Марокко",
-      "fa-IR": "مراکش"
+      "fa-IR": "مراکش",
+      "es-ES": "Marruecos",
+      "pt-BR": "Marrocos"
     },
     "MC": {
       "zh-CN": "摩纳哥",
@@ -1468,7 +1760,9 @@
       "ko-KR": "모나코",
       "vi-VN": "Monaco",
       "ru-RU": "Монако",
-      "fa-IR": "موناکو"
+      "fa-IR": "موناکو",
+      "es-ES": "Mónaco",
+      "pt-BR": "Mônaco"
     },
     "MD": {
       "zh-CN": "摩尔多瓦",
@@ -1478,7 +1772,9 @@
       "ko-KR": "몰도바",
       "vi-VN": "Moldova",
       "ru-RU": "Молдова",
-      "fa-IR": "مولداوی"
+      "fa-IR": "مولداوی",
+      "es-ES": "Moldavia",
+      "pt-BR": "Moldávia"
     },
     "ME": {
       "zh-CN": "黑山",
@@ -1488,7 +1784,9 @@
       "ko-KR": "몬테네그로",
       "vi-VN": "Montenegro",
       "ru-RU": "Черногория",
-      "fa-IR": "مونته‌نگرو"
+      "fa-IR": "مونته‌نگرو",
+      "es-ES": "Montenegro",
+      "pt-BR": "Montenegro"
     },
     "MF": {
       "zh-CN": "法属圣马丁",
@@ -1498,7 +1796,9 @@
       "ko-KR": "생마르탱",
       "vi-VN": "St. Martin",
       "ru-RU": "Сен-Мартен",
-      "fa-IR": "سنت مارتین"
+      "fa-IR": "سنت مارتین",
+      "es-ES": "San Martín",
+      "pt-BR": "São Martinho"
     },
     "MG": {
       "zh-CN": "马达加斯加",
@@ -1508,7 +1808,9 @@
       "ko-KR": "마다가스카르",
       "vi-VN": "Madagascar",
       "ru-RU": "Мадагаскар",
-      "fa-IR": "ماداگاسکار"
+      "fa-IR": "ماداگاسکار",
+      "es-ES": "Madagascar",
+      "pt-BR": "Madagascar"
     },
     "MH": {
       "zh-CN": "马绍尔群岛",
@@ -1518,7 +1820,9 @@
       "ko-KR": "마셜 제도",
       "vi-VN": "Quần đảo Marshall",
       "ru-RU": "Маршалловы о-ва",
-      "fa-IR": "جزایر مارشال"
+      "fa-IR": "جزایر مارشال",
+      "es-ES": "Islas Marshall",
+      "pt-BR": "Ilhas Marshall"
     },
     "MK": {
       "zh-CN": "北马其顿",
@@ -1528,7 +1832,9 @@
       "ko-KR": "북마케도니아",
       "vi-VN": "Bắc Macedonia",
       "ru-RU": "Северная Македония",
-      "fa-IR": "مقدونیهٔ شمالی"
+      "fa-IR": "مقدونیهٔ شمالی",
+      "es-ES": "Macedonia del Norte",
+      "pt-BR": "Macedônia do Norte"
     },
     "ML": {
       "zh-CN": "马里",
@@ -1538,7 +1844,9 @@
       "ko-KR": "말리",
       "vi-VN": "Mali",
       "ru-RU": "Мали",
-      "fa-IR": "مالی"
+      "fa-IR": "مالی",
+      "es-ES": "Mali",
+      "pt-BR": "Mali"
     },
     "MM": {
       "zh-CN": "缅甸",
@@ -1548,7 +1856,9 @@
       "ko-KR": "미얀마",
       "vi-VN": "Myanmar (Miến Điện)",
       "ru-RU": "Мьянма (Бирма)",
-      "fa-IR": "میانمار (برمه)"
+      "fa-IR": "میانمار (برمه)",
+      "es-ES": "Myanmar (Birmania)",
+      "pt-BR": "Mianmar (Birmânia)"
     },
     "MN": {
       "zh-CN": "蒙古",
@@ -1558,7 +1868,9 @@
       "ko-KR": "몽골",
       "vi-VN": "Mông Cổ",
       "ru-RU": "Монголия",
-      "fa-IR": "مغولستان"
+      "fa-IR": "مغولستان",
+      "es-ES": "Mongolia",
+      "pt-BR": "Mongólia"
     },
     "MO": {
       "zh-CN": "中国澳门特别行政区",
@@ -1568,7 +1880,9 @@
       "ko-KR": "마카오(중국 특별행정구)",
       "vi-VN": "Đặc khu Hành chính Macao, Trung Quốc",
       "ru-RU": "Макао (САР)",
-      "fa-IR": "ماکائو، منطقهٔ ویژهٔ اداری چین"
+      "fa-IR": "ماکائو، منطقهٔ ویژهٔ اداری چین",
+      "es-ES": "RAE de Macao (China)",
+      "pt-BR": "Macau, RAE da China"
     },
     "MP": {
       "zh-CN": "北马里亚纳群岛",
@@ -1578,7 +1892,9 @@
       "ko-KR": "북마리아나제도",
       "vi-VN": "Quần đảo Bắc Mariana",
       "ru-RU": "Северные Марианские о-ва",
-      "fa-IR": "جزایر ماریانای شمالی"
+      "fa-IR": "جزایر ماریانای شمالی",
+      "es-ES": "Islas Marianas del Norte",
+      "pt-BR": "Ilhas Marianas do Norte"
     },
     "MQ": {
       "zh-CN": "马提尼克",
@@ -1588,7 +1904,9 @@
       "ko-KR": "마르티니크",
       "vi-VN": "Martinique",
       "ru-RU": "Мартиника",
-      "fa-IR": "مارتینیک"
+      "fa-IR": "مارتینیک",
+      "es-ES": "Martinica",
+      "pt-BR": "Martinica"
     },
     "MR": {
       "zh-CN": "毛里塔尼亚",
@@ -1598,7 +1916,9 @@
       "ko-KR": "모리타니",
       "vi-VN": "Mauritania",
       "ru-RU": "Мавритания",
-      "fa-IR": "موریتانی"
+      "fa-IR": "موریتانی",
+      "es-ES": "Mauritania",
+      "pt-BR": "Mauritânia"
     },
     "MS": {
       "zh-CN": "蒙特塞拉特",
@@ -1608,7 +1928,9 @@
       "ko-KR": "몬트세라트",
       "vi-VN": "Montserrat",
       "ru-RU": "Монтсеррат",
-      "fa-IR": "مونت‌سرات"
+      "fa-IR": "مونت‌سرات",
+      "es-ES": "Montserrat",
+      "pt-BR": "Montserrat"
     },
     "MT": {
       "zh-CN": "马耳他",
@@ -1618,7 +1940,9 @@
       "ko-KR": "몰타",
       "vi-VN": "Malta",
       "ru-RU": "Мальта",
-      "fa-IR": "مالت"
+      "fa-IR": "مالت",
+      "es-ES": "Malta",
+      "pt-BR": "Malta"
     },
     "MU": {
       "zh-CN": "毛里求斯",
@@ -1628,7 +1952,9 @@
       "ko-KR": "모리셔스",
       "vi-VN": "Mauritius",
       "ru-RU": "Маврикий",
-      "fa-IR": "موریس"
+      "fa-IR": "موریس",
+      "es-ES": "Mauricio",
+      "pt-BR": "Maurício"
     },
     "MV": {
       "zh-CN": "马尔代夫",
@@ -1638,7 +1964,9 @@
       "ko-KR": "몰디브",
       "vi-VN": "Maldives",
       "ru-RU": "Мальдивы",
-      "fa-IR": "مالدیو"
+      "fa-IR": "مالدیو",
+      "es-ES": "Maldivas",
+      "pt-BR": "Maldivas"
     },
     "MW": {
       "zh-CN": "马拉维",
@@ -1648,7 +1976,9 @@
       "ko-KR": "말라위",
       "vi-VN": "Malawi",
       "ru-RU": "Малави",
-      "fa-IR": "مالاوی"
+      "fa-IR": "مالاوی",
+      "es-ES": "Malaui",
+      "pt-BR": "Malaui"
     },
     "MX": {
       "zh-CN": "墨西哥",
@@ -1658,7 +1988,9 @@
       "ko-KR": "멕시코",
       "vi-VN": "Mexico",
       "ru-RU": "Мексика",
-      "fa-IR": "مکزیک"
+      "fa-IR": "مکزیک",
+      "es-ES": "México",
+      "pt-BR": "México"
     },
     "MY": {
       "zh-CN": "马来西亚",
@@ -1668,7 +2000,9 @@
       "ko-KR": "말레이시아",
       "vi-VN": "Malaysia",
       "ru-RU": "Малайзия",
-      "fa-IR": "مالزی"
+      "fa-IR": "مالزی",
+      "es-ES": "Malasia",
+      "pt-BR": "Malásia"
     },
     "MZ": {
       "zh-CN": "莫桑比克",
@@ -1678,7 +2012,9 @@
       "ko-KR": "모잠비크",
       "vi-VN": "Mozambique",
       "ru-RU": "Мозамбик",
-      "fa-IR": "موزامبیک"
+      "fa-IR": "موزامبیک",
+      "es-ES": "Mozambique",
+      "pt-BR": "Moçambique"
     },
     "NA": {
       "zh-CN": "纳米比亚",
@@ -1688,7 +2024,9 @@
       "ko-KR": "나미비아",
       "vi-VN": "Namibia",
       "ru-RU": "Намибия",
-      "fa-IR": "نامیبیا"
+      "fa-IR": "نامیبیا",
+      "es-ES": "Namibia",
+      "pt-BR": "Namíbia"
     },
     "NC": {
       "zh-CN": "新喀里多尼亚",
@@ -1698,7 +2036,9 @@
       "ko-KR": "뉴칼레도니아",
       "vi-VN": "New Caledonia",
       "ru-RU": "Новая Каледония",
-      "fa-IR": "کالدونیای جدید"
+      "fa-IR": "کالدونیای جدید",
+      "es-ES": "Nueva Caledonia",
+      "pt-BR": "Nova Caledônia"
     },
     "NE": {
       "zh-CN": "尼日尔",
@@ -1708,7 +2048,9 @@
       "ko-KR": "니제르",
       "vi-VN": "Niger",
       "ru-RU": "Нигер",
-      "fa-IR": "نیجر"
+      "fa-IR": "نیجر",
+      "es-ES": "Níger",
+      "pt-BR": "Níger"
     },
     "NF": {
       "zh-CN": "诺福克岛",
@@ -1718,7 +2060,9 @@
       "ko-KR": "노퍽섬",
       "vi-VN": "Đảo Norfolk",
       "ru-RU": "о-в Норфолк",
-      "fa-IR": "جزیرهٔ نورفولک"
+      "fa-IR": "جزیرهٔ نورفولک",
+      "es-ES": "Isla Norfolk",
+      "pt-BR": "Ilha Norfolk"
     },
     "NG": {
       "zh-CN": "尼日利亚",
@@ -1728,7 +2072,9 @@
       "ko-KR": "나이지리아",
       "vi-VN": "Nigeria",
       "ru-RU": "Нигерия",
-      "fa-IR": "نیجریه"
+      "fa-IR": "نیجریه",
+      "es-ES": "Nigeria",
+      "pt-BR": "Nigéria"
     },
     "NI": {
       "zh-CN": "尼加拉瓜",
@@ -1738,7 +2084,9 @@
       "ko-KR": "니카라과",
       "vi-VN": "Nicaragua",
       "ru-RU": "Никарагуа",
-      "fa-IR": "نیکاراگوئه"
+      "fa-IR": "نیکاراگوئه",
+      "es-ES": "Nicaragua",
+      "pt-BR": "Nicarágua"
     },
     "NL": {
       "zh-CN": "荷兰",
@@ -1748,7 +2096,9 @@
       "ko-KR": "네덜란드",
       "vi-VN": "Hà Lan",
       "ru-RU": "Нидерланды",
-      "fa-IR": "هلند"
+      "fa-IR": "هلند",
+      "es-ES": "Países Bajos",
+      "pt-BR": "Países Baixos"
     },
     "NO": {
       "zh-CN": "挪威",
@@ -1758,7 +2108,9 @@
       "ko-KR": "노르웨이",
       "vi-VN": "Na Uy",
       "ru-RU": "Норвегия",
-      "fa-IR": "نروژ"
+      "fa-IR": "نروژ",
+      "es-ES": "Noruega",
+      "pt-BR": "Noruega"
     },
     "NP": {
       "zh-CN": "尼泊尔",
@@ -1768,7 +2120,9 @@
       "ko-KR": "네팔",
       "vi-VN": "Nepal",
       "ru-RU": "Непал",
-      "fa-IR": "نپال"
+      "fa-IR": "نپال",
+      "es-ES": "Nepal",
+      "pt-BR": "Nepal"
     },
     "NR": {
       "zh-CN": "瑙鲁",
@@ -1778,7 +2132,9 @@
       "ko-KR": "나우루",
       "vi-VN": "Nauru",
       "ru-RU": "Науру",
-      "fa-IR": "نائورو"
+      "fa-IR": "نائورو",
+      "es-ES": "Nauru",
+      "pt-BR": "Nauru"
     },
     "NU": {
       "zh-CN": "纽埃",
@@ -1788,7 +2144,9 @@
       "ko-KR": "니우에",
       "vi-VN": "Niue",
       "ru-RU": "Ниуэ",
-      "fa-IR": "نیوئه"
+      "fa-IR": "نیوئه",
+      "es-ES": "Niue",
+      "pt-BR": "Niue"
     },
     "NZ": {
       "zh-CN": "新西兰",
@@ -1798,7 +2156,9 @@
       "ko-KR": "뉴질랜드",
       "vi-VN": "New Zealand",
       "ru-RU": "Новая Зеландия",
-      "fa-IR": "نیوزیلند"
+      "fa-IR": "نیوزیلند",
+      "es-ES": "Nueva Zelanda",
+      "pt-BR": "Nova Zelândia"
     },
     "OM": {
       "zh-CN": "阿曼",
@@ -1808,7 +2168,9 @@
       "ko-KR": "오만",
       "vi-VN": "Oman",
       "ru-RU": "Оман",
-      "fa-IR": "عمان"
+      "fa-IR": "عمان",
+      "es-ES": "Omán",
+      "pt-BR": "Omã"
     },
     "PA": {
       "zh-CN": "巴拿马",
@@ -1818,7 +2180,9 @@
       "ko-KR": "파나마",
       "vi-VN": "Panama",
       "ru-RU": "Панама",
-      "fa-IR": "پاناما"
+      "fa-IR": "پاناما",
+      "es-ES": "Panamá",
+      "pt-BR": "Panamá"
     },
     "PE": {
       "zh-CN": "秘鲁",
@@ -1828,7 +2192,9 @@
       "ko-KR": "페루",
       "vi-VN": "Peru",
       "ru-RU": "Перу",
-      "fa-IR": "پرو"
+      "fa-IR": "پرو",
+      "es-ES": "Perú",
+      "pt-BR": "Peru"
     },
     "PF": {
       "zh-CN": "法属波利尼西亚",
@@ -1838,7 +2204,9 @@
       "ko-KR": "프랑스령 폴리네시아",
       "vi-VN": "Polynesia thuộc Pháp",
       "ru-RU": "Французская Полинезия",
-      "fa-IR": "پلی‌نزی فرانسه"
+      "fa-IR": "پلی‌نزی فرانسه",
+      "es-ES": "Polinesia Francesa",
+      "pt-BR": "Polinésia Francesa"
     },
     "PG": {
       "zh-CN": "巴布亚新几内亚",
@@ -1848,7 +2216,9 @@
       "ko-KR": "파푸아뉴기니",
       "vi-VN": "Papua New Guinea",
       "ru-RU": "Папуа — Новая Гвинея",
-      "fa-IR": "پاپوا گینهٔ نو"
+      "fa-IR": "پاپوا گینهٔ نو",
+      "es-ES": "Papúa Nueva Guinea",
+      "pt-BR": "Papua-Nova Guiné"
     },
     "PH": {
       "zh-CN": "菲律宾",
@@ -1858,7 +2228,9 @@
       "ko-KR": "필리핀",
       "vi-VN": "Philippines",
       "ru-RU": "Филиппины",
-      "fa-IR": "فیلیپین"
+      "fa-IR": "فیلیپین",
+      "es-ES": "Filipinas",
+      "pt-BR": "Filipinas"
     },
     "PK": {
       "zh-CN": "巴基斯坦",
@@ -1868,7 +2240,9 @@
       "ko-KR": "파키스탄",
       "vi-VN": "Pakistan",
       "ru-RU": "Пакистан",
-      "fa-IR": "پاکستان"
+      "fa-IR": "پاکستان",
+      "es-ES": "Pakistán",
+      "pt-BR": "Paquistão"
     },
     "PL": {
       "zh-CN": "波兰",
@@ -1878,7 +2252,9 @@
       "ko-KR": "폴란드",
       "vi-VN": "Ba Lan",
       "ru-RU": "Польша",
-      "fa-IR": "لهستان"
+      "fa-IR": "لهستان",
+      "es-ES": "Polonia",
+      "pt-BR": "Polônia"
     },
     "PM": {
       "zh-CN": "圣皮埃尔和密克隆群岛",
@@ -1888,7 +2264,9 @@
       "ko-KR": "생피에르 미클롱",
       "vi-VN": "Saint Pierre và Miquelon",
       "ru-RU": "Сен-Пьер и Микелон",
-      "fa-IR": "سن پیر و میکلن"
+      "fa-IR": "سن پیر و میکلن",
+      "es-ES": "San Pedro y Miquelón",
+      "pt-BR": "São Pedro e Miquelão"
     },
     "PN": {
       "zh-CN": "皮特凯恩群岛",
@@ -1898,7 +2276,9 @@
       "ko-KR": "핏케언 제도",
       "vi-VN": "Quần đảo Pitcairn",
       "ru-RU": "о-ва Питкэрн",
-      "fa-IR": "جزایر پیت‌کرن"
+      "fa-IR": "جزایر پیت‌کرن",
+      "es-ES": "Islas Pitcairn",
+      "pt-BR": "Ilhas Pitcairn"
     },
     "PR": {
       "zh-CN": "波多黎各",
@@ -1908,7 +2288,9 @@
       "ko-KR": "푸에르토리코",
       "vi-VN": "Puerto Rico",
       "ru-RU": "Пуэрто-Рико",
-      "fa-IR": "پورتوریکو"
+      "fa-IR": "پورتوریکو",
+      "es-ES": "Puerto Rico",
+      "pt-BR": "Porto Rico"
     },
     "PS": {
       "zh-CN": "巴勒斯坦领土",
@@ -1918,7 +2300,9 @@
       "ko-KR": "팔레스타인 지구",
       "vi-VN": "Lãnh thổ Palestine",
       "ru-RU": "Палестинские территории",
-      "fa-IR": "سرزمین‌های فلسطینی"
+      "fa-IR": "سرزمین‌های فلسطینی",
+      "es-ES": "Territorios Palestinos",
+      "pt-BR": "Territórios palestinos"
     },
     "PT": {
       "zh-CN": "葡萄牙",
@@ -1928,7 +2312,9 @@
       "ko-KR": "포르투갈",
       "vi-VN": "Bồ Đào Nha",
       "ru-RU": "Португалия",
-      "fa-IR": "پرتغال"
+      "fa-IR": "پرتغال",
+      "es-ES": "Portugal",
+      "pt-BR": "Portugal"
     },
     "PW": {
       "zh-CN": "帕劳",
@@ -1938,7 +2324,9 @@
       "ko-KR": "팔라우",
       "vi-VN": "Palau",
       "ru-RU": "Палау",
-      "fa-IR": "پالائو"
+      "fa-IR": "پالائو",
+      "es-ES": "Palaos",
+      "pt-BR": "Palau"
     },
     "PY": {
       "zh-CN": "巴拉圭",
@@ -1948,7 +2336,9 @@
       "ko-KR": "파라과이",
       "vi-VN": "Paraguay",
       "ru-RU": "Парагвай",
-      "fa-IR": "پاراگوئه"
+      "fa-IR": "پاراگوئه",
+      "es-ES": "Paraguay",
+      "pt-BR": "Paraguai"
     },
     "QA": {
       "zh-CN": "卡塔尔",
@@ -1958,7 +2348,9 @@
       "ko-KR": "카타르",
       "vi-VN": "Qatar",
       "ru-RU": "Катар",
-      "fa-IR": "قطر"
+      "fa-IR": "قطر",
+      "es-ES": "Catar",
+      "pt-BR": "Catar"
     },
     "RE": {
       "zh-CN": "留尼汪",
@@ -1968,7 +2360,9 @@
       "ko-KR": "레위니옹",
       "vi-VN": "Réunion",
       "ru-RU": "Реюньон",
-      "fa-IR": "رئونیون"
+      "fa-IR": "رئونیون",
+      "es-ES": "Reunión",
+      "pt-BR": "Reunião"
     },
     "RO": {
       "zh-CN": "罗马尼亚",
@@ -1978,7 +2372,9 @@
       "ko-KR": "루마니아",
       "vi-VN": "Romania",
       "ru-RU": "Румыния",
-      "fa-IR": "رومانی"
+      "fa-IR": "رومانی",
+      "es-ES": "Rumanía",
+      "pt-BR": "Romênia"
     },
     "RS": {
       "zh-CN": "塞尔维亚",
@@ -1988,7 +2384,9 @@
       "ko-KR": "세르비아",
       "vi-VN": "Serbia",
       "ru-RU": "Сербия",
-      "fa-IR": "صربستان"
+      "fa-IR": "صربستان",
+      "es-ES": "Serbia",
+      "pt-BR": "Sérvia"
     },
     "RU": {
       "zh-CN": "俄罗斯",
@@ -1998,7 +2396,9 @@
       "ko-KR": "러시아",
       "vi-VN": "Nga",
       "ru-RU": "Россия",
-      "fa-IR": "روسیه"
+      "fa-IR": "روسیه",
+      "es-ES": "Rusia",
+      "pt-BR": "Rússia"
     },
     "RW": {
       "zh-CN": "卢旺达",
@@ -2008,7 +2408,9 @@
       "ko-KR": "르완다",
       "vi-VN": "Rwanda",
       "ru-RU": "Руанда",
-      "fa-IR": "رواندا"
+      "fa-IR": "رواندا",
+      "es-ES": "Ruanda",
+      "pt-BR": "Ruanda"
     },
     "SA": {
       "zh-CN": "沙特阿拉伯",
@@ -2018,7 +2420,9 @@
       "ko-KR": "사우디아라비아",
       "vi-VN": "Ả Rập Xê-út",
       "ru-RU": "Саудовская Аравия",
-      "fa-IR": "عربستان سعودی"
+      "fa-IR": "عربستان سعودی",
+      "es-ES": "Arabia Saudí",
+      "pt-BR": "Arábia Saudita"
     },
     "SB": {
       "zh-CN": "所罗门群岛",
@@ -2028,7 +2432,9 @@
       "ko-KR": "솔로몬 제도",
       "vi-VN": "Quần đảo Solomon",
       "ru-RU": "Соломоновы о-ва",
-      "fa-IR": "جزایر سلیمان"
+      "fa-IR": "جزایر سلیمان",
+      "es-ES": "Islas Salomón",
+      "pt-BR": "Ilhas Salomão"
     },
     "SC": {
       "zh-CN": "塞舌尔",
@@ -2038,7 +2444,9 @@
       "ko-KR": "세이셸",
       "vi-VN": "Seychelles",
       "ru-RU": "Сейшельские о-ва",
-      "fa-IR": "سیشل"
+      "fa-IR": "سیشل",
+      "es-ES": "Seychelles",
+      "pt-BR": "Seicheles"
     },
     "SD": {
       "zh-CN": "苏丹",
@@ -2048,7 +2456,9 @@
       "ko-KR": "수단",
       "vi-VN": "Sudan",
       "ru-RU": "Судан",
-      "fa-IR": "سودان"
+      "fa-IR": "سودان",
+      "es-ES": "Sudán",
+      "pt-BR": "Sudão"
     },
     "SE": {
       "zh-CN": "瑞典",
@@ -2058,7 +2468,9 @@
       "ko-KR": "스웨덴",
       "vi-VN": "Thụy Điển",
       "ru-RU": "Швеция",
-      "fa-IR": "سوئد"
+      "fa-IR": "سوئد",
+      "es-ES": "Suecia",
+      "pt-BR": "Suécia"
     },
     "SG": {
       "zh-CN": "新加坡",
@@ -2068,7 +2480,9 @@
       "ko-KR": "싱가포르",
       "vi-VN": "Singapore",
       "ru-RU": "Сингапур",
-      "fa-IR": "سنگاپور"
+      "fa-IR": "سنگاپور",
+      "es-ES": "Singapur",
+      "pt-BR": "Singapura"
     },
     "SH": {
       "zh-CN": "圣赫勒拿",
@@ -2078,7 +2492,9 @@
       "ko-KR": "세인트헬레나",
       "vi-VN": "St. Helena",
       "ru-RU": "о-в Св. Елены",
-      "fa-IR": "سنت هلن"
+      "fa-IR": "سنت هلن",
+      "es-ES": "Santa Elena",
+      "pt-BR": "Santa Helena"
     },
     "SI": {
       "zh-CN": "斯洛文尼亚",
@@ -2088,7 +2504,9 @@
       "ko-KR": "슬로베니아",
       "vi-VN": "Slovenia",
       "ru-RU": "Словения",
-      "fa-IR": "اسلوونی"
+      "fa-IR": "اسلوونی",
+      "es-ES": "Eslovenia",
+      "pt-BR": "Eslovênia"
     },
     "SJ": {
       "zh-CN": "斯瓦尔巴和扬马延",
@@ -2098,7 +2516,9 @@
       "ko-KR": "스발바르제도-얀마웬섬",
       "vi-VN": "Svalbard và Jan Mayen",
       "ru-RU": "Шпицберген и Ян-Майен",
-      "fa-IR": "سوالبارد و یان ماین"
+      "fa-IR": "سوالبارد و یان ماین",
+      "es-ES": "Svalbard y Jan Mayen",
+      "pt-BR": "Svalbard e Jan Mayen"
     },
     "SK": {
       "zh-CN": "斯洛伐克",
@@ -2108,7 +2528,9 @@
       "ko-KR": "슬로바키아",
       "vi-VN": "Slovakia",
       "ru-RU": "Словакия",
-      "fa-IR": "اسلواکی"
+      "fa-IR": "اسلواکی",
+      "es-ES": "Eslovaquia",
+      "pt-BR": "Eslováquia"
     },
     "SL": {
       "zh-CN": "塞拉利昂",
@@ -2118,7 +2540,9 @@
       "ko-KR": "시에라리온",
       "vi-VN": "Sierra Leone",
       "ru-RU": "Сьерра-Леоне",
-      "fa-IR": "سیرالئون"
+      "fa-IR": "سیرالئون",
+      "es-ES": "Sierra Leona",
+      "pt-BR": "Serra Leoa"
     },
     "SM": {
       "zh-CN": "圣马力诺",
@@ -2128,7 +2552,9 @@
       "ko-KR": "산마리노",
       "vi-VN": "San Marino",
       "ru-RU": "Сан-Марино",
-      "fa-IR": "سان‌مارینو"
+      "fa-IR": "سان‌مارینو",
+      "es-ES": "San Marino",
+      "pt-BR": "San Marino"
     },
     "SN": {
       "zh-CN": "塞内加尔",
@@ -2138,7 +2564,9 @@
       "ko-KR": "세네갈",
       "vi-VN": "Senegal",
       "ru-RU": "Сенегал",
-      "fa-IR": "سنگال"
+      "fa-IR": "سنگال",
+      "es-ES": "Senegal",
+      "pt-BR": "Senegal"
     },
     "SO": {
       "zh-CN": "索马里",
@@ -2148,7 +2576,9 @@
       "ko-KR": "소말리아",
       "vi-VN": "Somalia",
       "ru-RU": "Сомали",
-      "fa-IR": "سومالی"
+      "fa-IR": "سومالی",
+      "es-ES": "Somalia",
+      "pt-BR": "Somália"
     },
     "SR": {
       "zh-CN": "苏里南",
@@ -2158,7 +2588,9 @@
       "ko-KR": "수리남",
       "vi-VN": "Suriname",
       "ru-RU": "Суринам",
-      "fa-IR": "سورینام"
+      "fa-IR": "سورینام",
+      "es-ES": "Surinam",
+      "pt-BR": "Suriname"
     },
     "SS": {
       "zh-CN": "南苏丹",
@@ -2168,7 +2600,9 @@
       "ko-KR": "남수단",
       "vi-VN": "Nam Sudan",
       "ru-RU": "Южный Судан",
-      "fa-IR": "سودان جنوبی"
+      "fa-IR": "سودان جنوبی",
+      "es-ES": "Sudán del Sur",
+      "pt-BR": "Sudão do Sul"
     },
     "ST": {
       "zh-CN": "圣多美和普林西比",
@@ -2178,7 +2612,9 @@
       "ko-KR": "상투메 프린시페",
       "vi-VN": "São Tomé và Príncipe",
       "ru-RU": "Сан-Томе и Принсипи",
-      "fa-IR": "سائوتومه و پرینسیپ"
+      "fa-IR": "سائوتومه و پرینسیپ",
+      "es-ES": "Santo Tomé y Príncipe",
+      "pt-BR": "São Tomé e Príncipe"
     },
     "SU": {
       "zh-CN": "俄罗斯",
@@ -2188,7 +2624,9 @@
       "ko-KR": "러시아",
       "vi-VN": "Nga",
       "ru-RU": "Россия",
-      "fa-IR": "روسیه"
+      "fa-IR": "روسیه",
+      "es-ES": "Rusia",
+      "pt-BR": "Rússia"
     },
     "SV": {
       "zh-CN": "萨尔瓦多",
@@ -2198,7 +2636,9 @@
       "ko-KR": "엘살바도르",
       "vi-VN": "El Salvador",
       "ru-RU": "Сальвадор",
-      "fa-IR": "السالوادور"
+      "fa-IR": "السالوادور",
+      "es-ES": "El Salvador",
+      "pt-BR": "El Salvador"
     },
     "SX": {
       "zh-CN": "荷属圣马丁",
@@ -2208,7 +2648,9 @@
       "ko-KR": "신트마르턴",
       "vi-VN": "Sint Maarten",
       "ru-RU": "Синт-Мартен",
-      "fa-IR": "سنت مارتن"
+      "fa-IR": "سنت مارتن",
+      "es-ES": "Sint Maarten",
+      "pt-BR": "Sint Maarten"
     },
     "SY": {
       "zh-CN": "叙利亚",
@@ -2218,7 +2660,9 @@
       "ko-KR": "시리아",
       "vi-VN": "Syria",
       "ru-RU": "Сирия",
-      "fa-IR": "سوریه"
+      "fa-IR": "سوریه",
+      "es-ES": "Siria",
+      "pt-BR": "Síria"
     },
     "SZ": {
       "zh-CN": "斯威士兰",
@@ -2228,7 +2672,9 @@
       "ko-KR": "에스와티니",
       "vi-VN": "Eswatini",
       "ru-RU": "Эсватини",
-      "fa-IR": "اسواتینی"
+      "fa-IR": "اسواتینی",
+      "es-ES": "Esuatini",
+      "pt-BR": "Essuatíni"
     },
     "TA": {
       "zh-CN": "特里斯坦-达库尼亚群岛",
@@ -2238,7 +2684,9 @@
       "ko-KR": "트리스탄다쿠나",
       "vi-VN": "Tristan da Cunha",
       "ru-RU": "Тристан-да-Кунья",
-      "fa-IR": "تریستان دا کونا"
+      "fa-IR": "تریستان دا کونا",
+      "es-ES": "Tristán de Acuña",
+      "pt-BR": "Tristão da Cunha"
     },
     "TC": {
       "zh-CN": "特克斯和凯科斯群岛",
@@ -2248,7 +2696,9 @@
       "ko-KR": "터크스 케이커스 제도",
       "vi-VN": "Quần đảo Turks và Caicos",
       "ru-RU": "Тёркс и Кайкос",
-      "fa-IR": "جزایر تورکس و کایکوس"
+      "fa-IR": "جزایر تورکس و کایکوس",
+      "es-ES": "Islas Turcas y Caicos",
+      "pt-BR": "Ilhas Turcas e Caicos"
     },
     "TD": {
       "zh-CN": "乍得",
@@ -2258,7 +2708,9 @@
       "ko-KR": "차드",
       "vi-VN": "Chad",
       "ru-RU": "Чад",
-      "fa-IR": "چاد"
+      "fa-IR": "چاد",
+      "es-ES": "Chad",
+      "pt-BR": "Chade"
     },
     "TF": {
       "zh-CN": "法属南部领地",
@@ -2268,7 +2720,9 @@
       "ko-KR": "프랑스령 남방 지역",
       "vi-VN": "Lãnh thổ phía Nam Thuộc Pháp",
       "ru-RU": "Французские Южные территории",
-      "fa-IR": "سرزمین‌های جنوبی فرانسه"
+      "fa-IR": "سرزمین‌های جنوبی فرانسه",
+      "es-ES": "Territorios Australes Franceses",
+      "pt-BR": "Territórios Franceses do Sul"
     },
     "TG": {
       "zh-CN": "多哥",
@@ -2278,7 +2732,9 @@
       "ko-KR": "토고",
       "vi-VN": "Togo",
       "ru-RU": "Того",
-      "fa-IR": "توگو"
+      "fa-IR": "توگو",
+      "es-ES": "Togo",
+      "pt-BR": "Togo"
     },
     "TH": {
       "zh-CN": "泰国",
@@ -2288,7 +2744,9 @@
       "ko-KR": "태국",
       "vi-VN": "Thái Lan",
       "ru-RU": "Таиланд",
-      "fa-IR": "تایلند"
+      "fa-IR": "تایلند",
+      "es-ES": "Tailandia",
+      "pt-BR": "Tailândia"
     },
     "TJ": {
       "zh-CN": "塔吉克斯坦",
@@ -2298,7 +2756,9 @@
       "ko-KR": "타지키스탄",
       "vi-VN": "Tajikistan",
       "ru-RU": "Таджикистан",
-      "fa-IR": "تاجیکستان"
+      "fa-IR": "تاجیکستان",
+      "es-ES": "Tayikistán",
+      "pt-BR": "Tadjiquistão"
     },
     "TK": {
       "zh-CN": "托克劳",
@@ -2308,7 +2768,9 @@
       "ko-KR": "토켈라우",
       "vi-VN": "Tokelau",
       "ru-RU": "Токелау",
-      "fa-IR": "توکلائو"
+      "fa-IR": "توکلائو",
+      "es-ES": "Tokelau",
+      "pt-BR": "Tokelau"
     },
     "TL": {
       "zh-CN": "东帝汶",
@@ -2318,7 +2780,9 @@
       "ko-KR": "동티모르",
       "vi-VN": "Timor-Leste",
       "ru-RU": "Восточный Тимор",
-      "fa-IR": "تیمور-لسته"
+      "fa-IR": "تیمور-لسته",
+      "es-ES": "Timor-Leste",
+      "pt-BR": "Timor-Leste"
     },
     "TM": {
       "zh-CN": "土库曼斯坦",
@@ -2328,7 +2792,9 @@
       "ko-KR": "투르크메니스탄",
       "vi-VN": "Turkmenistan",
       "ru-RU": "Туркменистан",
-      "fa-IR": "ترکمنستان"
+      "fa-IR": "ترکمنستان",
+      "es-ES": "Turkmenistán",
+      "pt-BR": "Turcomenistão"
     },
     "TN": {
       "zh-CN": "突尼斯",
@@ -2338,7 +2804,9 @@
       "ko-KR": "튀니지",
       "vi-VN": "Tunisia",
       "ru-RU": "Тунис",
-      "fa-IR": "تونس"
+      "fa-IR": "تونس",
+      "es-ES": "Túnez",
+      "pt-BR": "Tunísia"
     },
     "TO": {
       "zh-CN": "汤加",
@@ -2348,7 +2816,9 @@
       "ko-KR": "통가",
       "vi-VN": "Tonga",
       "ru-RU": "Тонга",
-      "fa-IR": "تونگا"
+      "fa-IR": "تونگا",
+      "es-ES": "Tonga",
+      "pt-BR": "Tonga"
     },
     "TR": {
       "zh-CN": "土耳其",
@@ -2358,7 +2828,9 @@
       "ko-KR": "튀르키예",
       "vi-VN": "Thổ Nhĩ Kỳ",
       "ru-RU": "Турция",
-      "fa-IR": "ترکیه"
+      "fa-IR": "ترکیه",
+      "es-ES": "Turquía",
+      "pt-BR": "Turquia"
     },
     "TT": {
       "zh-CN": "特立尼达和多巴哥",
@@ -2368,7 +2840,9 @@
       "ko-KR": "트리니다드 토바고",
       "vi-VN": "Trinidad và Tobago",
       "ru-RU": "Тринидад и Тобаго",
-      "fa-IR": "ترینیداد و توباگو"
+      "fa-IR": "ترینیداد و توباگو",
+      "es-ES": "Trinidad y Tobago",
+      "pt-BR": "Trinidad e Tobago"
     },
     "TV": {
       "zh-CN": "图瓦卢",
@@ -2378,7 +2852,9 @@
       "ko-KR": "투발루",
       "vi-VN": "Tuvalu",
       "ru-RU": "Тувалу",
-      "fa-IR": "تووالو"
+      "fa-IR": "تووالو",
+      "es-ES": "Tuvalu",
+      "pt-BR": "Tuvalu"
     },
     "TW": {
       "zh-CN": "中国台湾",
@@ -2388,7 +2864,9 @@
       "ko-KR": "중국 대만",
       "vi-VN": "Đài Loan, Trung Quốc",
       "ru-RU": "Тайвань, Китай",
-      "fa-IR": "تایوان، چین"
+      "fa-IR": "تایوان، چین",
+      "es-ES": "Taiwán, China",
+      "pt-BR": "Taiwan, China"
     },
     "TZ": {
       "zh-CN": "坦桑尼亚",
@@ -2398,7 +2876,9 @@
       "ko-KR": "탄자니아",
       "vi-VN": "Tanzania",
       "ru-RU": "Танзания",
-      "fa-IR": "تانزانیا"
+      "fa-IR": "تانزانیا",
+      "es-ES": "Tanzania",
+      "pt-BR": "Tanzânia"
     },
     "UA": {
       "zh-CN": "乌克兰",
@@ -2408,7 +2888,9 @@
       "ko-KR": "우크라이나",
       "vi-VN": "Ukraina",
       "ru-RU": "Украина",
-      "fa-IR": "اوکراین"
+      "fa-IR": "اوکراین",
+      "es-ES": "Ucrania",
+      "pt-BR": "Ucrânia"
     },
     "UG": {
       "zh-CN": "乌干达",
@@ -2418,7 +2900,9 @@
       "ko-KR": "우간다",
       "vi-VN": "Uganda",
       "ru-RU": "Уганда",
-      "fa-IR": "اوگاندا"
+      "fa-IR": "اوگاندا",
+      "es-ES": "Uganda",
+      "pt-BR": "Uganda"
     },
     "UK": {
       "zh-CN": "英国",
@@ -2428,7 +2912,9 @@
       "ko-KR": "영국",
       "vi-VN": "Vương quốc Anh",
       "ru-RU": "Великобритания",
-      "fa-IR": "بریتانیا"
+      "fa-IR": "بریتانیا",
+      "es-ES": "Reino Unido",
+      "pt-BR": "Reino Unido"
     },
     "UM": {
       "zh-CN": "美国本土外小岛屿",
@@ -2438,7 +2924,9 @@
       "ko-KR": "미국령 해외 제도",
       "vi-VN": "Các tiểu đảo xa của Hoa Kỳ",
       "ru-RU": "Внешние малые о-ва (США)",
-      "fa-IR": "جزایر دورافتادهٔ ایالات متحده"
+      "fa-IR": "جزایر دورافتادهٔ ایالات متحده",
+      "es-ES": "Islas menores alejadas de EE. UU.",
+      "pt-BR": "Ilhas Menores Distantes dos EUA"
     },
     "UN": {
       "zh-CN": "联合国",
@@ -2448,7 +2936,9 @@
       "ko-KR": "국제연합",
       "vi-VN": "Liên hợp quốc",
       "ru-RU": "Организация Объединенных Наций",
-      "fa-IR": "سازمان ملل متحد"
+      "fa-IR": "سازمان ملل متحد",
+      "es-ES": "Naciones Unidas",
+      "pt-BR": "Nações Unidas"
     },
     "US": {
       "zh-CN": "美国",
@@ -2458,7 +2948,9 @@
       "ko-KR": "미국",
       "vi-VN": "Hoa Kỳ",
       "ru-RU": "Соединенные Штаты",
-      "fa-IR": "ایالات متحده"
+      "fa-IR": "ایالات متحده",
+      "es-ES": "Estados Unidos",
+      "pt-BR": "Estados Unidos"
     },
     "UY": {
       "zh-CN": "乌拉圭",
@@ -2468,7 +2960,9 @@
       "ko-KR": "우루과이",
       "vi-VN": "Uruguay",
       "ru-RU": "Уругвай",
-      "fa-IR": "اروگوئه"
+      "fa-IR": "اروگوئه",
+      "es-ES": "Uruguay",
+      "pt-BR": "Uruguai"
     },
     "UZ": {
       "zh-CN": "乌兹别克斯坦",
@@ -2478,7 +2972,9 @@
       "ko-KR": "우즈베키스탄",
       "vi-VN": "Uzbekistan",
       "ru-RU": "Узбекистан",
-      "fa-IR": "ازبکستان"
+      "fa-IR": "ازبکستان",
+      "es-ES": "Uzbekistán",
+      "pt-BR": "Uzbequistão"
     },
     "VA": {
       "zh-CN": "梵蒂冈",
@@ -2488,7 +2984,9 @@
       "ko-KR": "바티칸 시국",
       "vi-VN": "Thành Vatican",
       "ru-RU": "Ватикан",
-      "fa-IR": "واتیکان"
+      "fa-IR": "واتیکان",
+      "es-ES": "Ciudad del Vaticano",
+      "pt-BR": "Cidade do Vaticano"
     },
     "VC": {
       "zh-CN": "圣文森特和格林纳丁斯",
@@ -2498,7 +2996,9 @@
       "ko-KR": "세인트빈센트그레나딘",
       "vi-VN": "St. Vincent và Grenadines",
       "ru-RU": "Сент-Винсент и Гренадины",
-      "fa-IR": "سنت وینسنت و گرنادین"
+      "fa-IR": "سنت وینسنت و گرنادین",
+      "es-ES": "San Vicente y las Granadinas",
+      "pt-BR": "São Vicente e Granadinas"
     },
     "VE": {
       "zh-CN": "委内瑞拉",
@@ -2508,7 +3008,9 @@
       "ko-KR": "베네수엘라",
       "vi-VN": "Venezuela",
       "ru-RU": "Венесуэла",
-      "fa-IR": "ونزوئلا"
+      "fa-IR": "ونزوئلا",
+      "es-ES": "Venezuela",
+      "pt-BR": "Venezuela"
     },
     "VG": {
       "zh-CN": "英属维尔京群岛",
@@ -2518,7 +3020,9 @@
       "ko-KR": "영국령 버진아일랜드",
       "vi-VN": "Quần đảo Virgin thuộc Anh",
       "ru-RU": "Виргинские о-ва (Великобритания)",
-      "fa-IR": "جزایر ویرجین بریتانیا"
+      "fa-IR": "جزایر ویرجین بریتانیا",
+      "es-ES": "Islas Vírgenes Británicas",
+      "pt-BR": "Ilhas Virgens Britânicas"
     },
     "VI": {
       "zh-CN": "美属维尔京群岛",
@@ -2528,7 +3032,9 @@
       "ko-KR": "미국령 버진아일랜드",
       "vi-VN": "Quần đảo Virgin thuộc Hoa Kỳ",
       "ru-RU": "Виргинские о-ва (США)",
-      "fa-IR": "جزایر ویرجین ایالات متحده"
+      "fa-IR": "جزایر ویرجین ایالات متحده",
+      "es-ES": "Islas Vírgenes de EE. UU.",
+      "pt-BR": "Ilhas Virgens Americanas"
     },
     "VN": {
       "zh-CN": "越南",
@@ -2538,7 +3044,9 @@
       "ko-KR": "베트남",
       "vi-VN": "Việt Nam",
       "ru-RU": "Вьетнам",
-      "fa-IR": "ویتنام"
+      "fa-IR": "ویتنام",
+      "es-ES": "Vietnam",
+      "pt-BR": "Vietnã"
     },
     "VU": {
       "zh-CN": "瓦努阿图",
@@ -2548,7 +3056,9 @@
       "ko-KR": "바누아투",
       "vi-VN": "Vanuatu",
       "ru-RU": "Вануату",
-      "fa-IR": "وانواتو"
+      "fa-IR": "وانواتو",
+      "es-ES": "Vanuatu",
+      "pt-BR": "Vanuatu"
     },
     "WF": {
       "zh-CN": "瓦利斯和富图纳",
@@ -2558,7 +3068,9 @@
       "ko-KR": "왈리스-푸투나 제도",
       "vi-VN": "Wallis và Futuna",
       "ru-RU": "Уоллис и Футуна",
-      "fa-IR": "والیس و فوتونا"
+      "fa-IR": "والیس و فوتونا",
+      "es-ES": "Wallis y Futuna",
+      "pt-BR": "Wallis e Futuna"
     },
     "WS": {
       "zh-CN": "萨摩亚",
@@ -2568,7 +3080,9 @@
       "ko-KR": "사모아",
       "vi-VN": "Samoa",
       "ru-RU": "Самоа",
-      "fa-IR": "ساموآ"
+      "fa-IR": "ساموآ",
+      "es-ES": "Samoa",
+      "pt-BR": "Samoa"
     },
     "XK": {
       "zh-CN": "科索沃",
@@ -2578,7 +3092,9 @@
       "ko-KR": "코소보",
       "vi-VN": "Kosovo",
       "ru-RU": "Косово",
-      "fa-IR": "کوزوو"
+      "fa-IR": "کوزوو",
+      "es-ES": "Kosovo",
+      "pt-BR": "Kosovo"
     },
     "YE": {
       "zh-CN": "也门",
@@ -2588,7 +3104,9 @@
       "ko-KR": "예멘",
       "vi-VN": "Yemen",
       "ru-RU": "Йемен",
-      "fa-IR": "یمن"
+      "fa-IR": "یمن",
+      "es-ES": "Yemen",
+      "pt-BR": "Iêmen"
     },
     "YT": {
       "zh-CN": "马约特",
@@ -2598,7 +3116,9 @@
       "ko-KR": "마요트",
       "vi-VN": "Mayotte",
       "ru-RU": "Майотта",
-      "fa-IR": "مایوت"
+      "fa-IR": "مایوت",
+      "es-ES": "Mayotte",
+      "pt-BR": "Mayotte"
     },
     "YU": {
       "zh-CN": "塞尔维亚",
@@ -2608,7 +3128,9 @@
       "ko-KR": "세르비아",
       "vi-VN": "Serbia",
       "ru-RU": "Сербия",
-      "fa-IR": "صربستان"
+      "fa-IR": "صربستان",
+      "es-ES": "Serbia",
+      "pt-BR": "Sérvia"
     },
     "ZA": {
       "zh-CN": "南非",
@@ -2618,7 +3140,9 @@
       "ko-KR": "남아프리카",
       "vi-VN": "Nam Phi",
       "ru-RU": "Южно-Африканская Республика",
-      "fa-IR": "افریقای جنوبی"
+      "fa-IR": "افریقای جنوبی",
+      "es-ES": "Sudáfrica",
+      "pt-BR": "África do Sul"
     },
     "ZM": {
       "zh-CN": "赞比亚",
@@ -2628,7 +3152,9 @@
       "ko-KR": "잠비아",
       "vi-VN": "Zambia",
       "ru-RU": "Замбия",
-      "fa-IR": "زامبیا"
+      "fa-IR": "زامبیا",
+      "es-ES": "Zambia",
+      "pt-BR": "Zâmbia"
     },
     "ZW": {
       "zh-CN": "津巴布韦",
@@ -2638,7 +3164,9 @@
       "ko-KR": "짐바브웨",
       "vi-VN": "Zimbabwe",
       "ru-RU": "Зимбабве",
-      "fa-IR": "زیمبابوه"
+      "fa-IR": "زیمبابوه",
+      "es-ES": "Zimbabue",
+      "pt-BR": "Zimbábue"
     }
   },
   "cities": {
@@ -2647,640 +3175,894 @@
       "zh-TW": "東京",
       "en-US": "Tokyo",
       "ja-JP": "東京",
-      "ru-RU": "Токио"
+      "ru-RU": "Токио",
+      "es-ES": "Tokio",
+      "pt-BR": "Tóquio"
     },
     "osaka": {
       "zh-CN": "大阪",
       "en-US": "Osaka",
       "ja-JP": "大阪",
-      "zh-TW": "大阪"
+      "zh-TW": "大阪",
+      "es-ES": "Osaka",
+      "pt-BR": "Osaka"
     },
     "seoul": {
       "zh-CN": "首尔",
       "zh-TW": "首爾",
       "en-US": "Seoul",
       "ja-JP": "ソウル",
-      "ru-RU": "Сеул"
+      "ru-RU": "Сеул",
+      "es-ES": "Seúl",
+      "pt-BR": "Seul"
     },
     "singapore": {
       "zh-CN": "新加坡",
       "en-US": "Singapore",
-      "zh-TW": "新加坡"
+      "zh-TW": "新加坡",
+      "es-ES": "Singapur",
+      "pt-BR": "Singapura"
     },
     "hong-kong": {
       "zh-CN": "香港",
       "en-US": "Hong Kong",
-      "zh-TW": "香港"
+      "zh-TW": "香港",
+      "es-ES": "Hong Kong",
+      "pt-BR": "Hong Kong"
     },
     "taipei": {
       "zh-CN": "台北",
       "en-US": "Taipei",
-      "zh-TW": "臺北"
+      "zh-TW": "臺北",
+      "es-ES": "Taipéi",
+      "pt-BR": "Taipé"
     },
     "los-angeles": {
       "zh-CN": "洛杉矶",
       "zh-TW": "洛杉磯",
-      "en-US": "Los Angeles"
+      "en-US": "Los Angeles",
+      "es-ES": "Los Angeles",
+      "pt-BR": "Los Angeles"
     },
     "san-jose": {
       "zh-CN": "圣何塞",
       "en-US": "San Jose",
-      "zh-TW": "聖何塞"
+      "zh-TW": "聖何塞",
+      "es-ES": "San Jose",
+      "pt-BR": "San Jose"
     },
     "new-york": {
       "zh-CN": "纽约",
       "zh-TW": "紐約",
-      "en-US": "New York"
+      "en-US": "New York",
+      "es-ES": "Nueva York",
+      "pt-BR": "Nova York"
     },
     "london": {
       "zh-CN": "伦敦",
       "zh-TW": "倫敦",
-      "en-US": "London"
+      "en-US": "London",
+      "es-ES": "Londres",
+      "pt-BR": "Londres"
     },
     "frankfurt": {
       "zh-CN": "法兰克福",
       "zh-TW": "法蘭克福",
-      "en-US": "Frankfurt"
+      "en-US": "Frankfurt",
+      "es-ES": "Fráncfort",
+      "pt-BR": "Frankfurt"
     },
     "paris": {
       "zh-CN": "巴黎",
       "en-US": "Paris",
-      "zh-TW": "巴黎"
+      "zh-TW": "巴黎",
+      "es-ES": "París",
+      "pt-BR": "Paris"
     },
     "sydney": {
       "zh-CN": "悉尼",
       "en-US": "Sydney",
-      "zh-TW": "悉尼"
+      "zh-TW": "悉尼",
+      "es-ES": "Sídney",
+      "pt-BR": "Sydney"
     },
     "toronto": {
       "zh-CN": "多伦多",
       "zh-TW": "多倫多",
-      "en-US": "Toronto"
+      "en-US": "Toronto",
+      "es-ES": "Toronto",
+      "pt-BR": "Toronto"
     },
     "amsterdam": {
       "zh-CN": "阿姆斯特丹",
       "en-US": "Amsterdam",
-      "zh-TW": "阿姆斯特丹"
+      "zh-TW": "阿姆斯特丹",
+      "es-ES": "Ámsterdam",
+      "pt-BR": "Amsterdã"
     },
     "ohio": {
       "zh-CN": "俄亥俄州",
       "en-US": "Ohio",
-      "zh-TW": "俄亥俄州"
+      "zh-TW": "俄亥俄州",
+      "es-ES": "Ohio",
+      "pt-BR": "Ohio"
     },
     "oregon": {
       "zh-CN": "俄勒冈州",
       "en-US": "Oregon",
-      "zh-TW": "俄勒岡州"
+      "zh-TW": "俄勒岡州",
+      "es-ES": "Oregon",
+      "pt-BR": "Oregon"
     },
     "virginia": {
       "zh-CN": "弗吉尼亚州",
       "en-US": "Virginia",
-      "zh-TW": "弗吉尼亞州"
+      "zh-TW": "弗吉尼亞州",
+      "es-ES": "Virginia",
+      "pt-BR": "Virginia"
     },
     "iowa": {
       "zh-CN": "艾奥瓦州",
       "en-US": "Iowa",
-      "zh-TW": "艾奧瓦州"
+      "zh-TW": "艾奧瓦州",
+      "es-ES": "Iowa",
+      "pt-BR": "Iowa"
     },
     "illinois": {
       "zh-CN": "伊利诺伊州",
       "en-US": "Illinois",
-      "zh-TW": "伊利諾伊州"
+      "zh-TW": "伊利諾伊州",
+      "es-ES": "Illinois",
+      "pt-BR": "Illinois"
     },
     "texas": {
       "zh-CN": "得克萨斯州",
       "en-US": "Texas",
-      "zh-TW": "得克薩斯州"
+      "zh-TW": "得克薩斯州",
+      "es-ES": "Texas",
+      "pt-BR": "Texas"
     },
     "wyoming": {
       "zh-CN": "怀俄明州",
       "en-US": "Wyoming",
-      "zh-TW": "懷俄明州"
+      "zh-TW": "懷俄明州",
+      "es-ES": "Wyoming",
+      "pt-BR": "Wyoming"
     },
     "california": {
       "zh-CN": "加利福尼亚州",
       "en-US": "California",
-      "zh-TW": "加利福尼亞州"
+      "zh-TW": "加利福尼亞州",
+      "es-ES": "California",
+      "pt-BR": "California"
     },
     "washington": {
       "zh-CN": "华盛顿州",
       "en-US": "Washington State",
-      "zh-TW": "華盛頓州"
+      "zh-TW": "華盛頓州",
+      "es-ES": "Estado de Washington",
+      "pt-BR": "Estado de Washington"
     },
     "phoenix": {
       "zh-CN": "凤凰城",
       "en-US": "Phoenix",
-      "zh-TW": "鳳凰城"
+      "zh-TW": "鳳凰城",
+      "es-ES": "Phoenix",
+      "pt-BR": "Phoenix"
     },
     "ashburn": {
       "zh-CN": "阿什本",
       "en-US": "Ashburn",
-      "zh-TW": "阿什本"
+      "zh-TW": "阿什本",
+      "es-ES": "Ashburn",
+      "pt-BR": "Ashburn"
     },
     "chicago": {
       "zh-CN": "芝加哥",
       "en-US": "Chicago",
-      "zh-TW": "芝加哥"
+      "zh-TW": "芝加哥",
+      "es-ES": "Chicago",
+      "pt-BR": "Chicago"
     },
     "dallas": {
       "zh-CN": "达拉斯",
       "en-US": "Dallas",
-      "zh-TW": "達拉斯"
+      "zh-TW": "達拉斯",
+      "es-ES": "Dallas",
+      "pt-BR": "Dallas"
     },
     "council-bluffs": {
       "zh-CN": "康瑟尔布拉夫斯",
       "en-US": "Council Bluffs",
-      "zh-TW": "康瑟爾布拉夫斯"
+      "zh-TW": "康瑟爾布拉夫斯",
+      "es-ES": "Council Bluffs",
+      "pt-BR": "Council Bluffs"
     },
     "moncks-corner": {
       "zh-CN": "蒙克斯科纳",
       "en-US": "Moncks Corner",
-      "zh-TW": "蒙克斯科納"
+      "zh-TW": "蒙克斯科納",
+      "es-ES": "Moncks Corner",
+      "pt-BR": "Moncks Corner"
     },
     "columbus": {
       "zh-CN": "哥伦布",
       "en-US": "Columbus",
-      "zh-TW": "哥倫布"
+      "zh-TW": "哥倫布",
+      "es-ES": "Columbus",
+      "pt-BR": "Columbus"
     },
     "the-dalles": {
       "zh-CN": "达尔斯",
       "en-US": "The Dalles",
-      "zh-TW": "達爾斯"
+      "zh-TW": "達爾斯",
+      "es-ES": "The Dalles",
+      "pt-BR": "The Dalles"
     },
     "salt-lake-city": {
       "zh-CN": "盐湖城",
       "en-US": "Salt Lake City",
-      "zh-TW": "鹽湖城"
+      "zh-TW": "鹽湖城",
+      "es-ES": "Salt Lake City",
+      "pt-BR": "Salt Lake City"
     },
     "las-vegas": {
       "zh-CN": "拉斯维加斯",
       "en-US": "Las Vegas",
-      "zh-TW": "拉斯維加斯"
+      "zh-TW": "拉斯維加斯",
+      "es-ES": "Las Vegas",
+      "pt-BR": "Las Vegas"
     },
     "san-francisco": {
       "zh-CN": "旧金山",
       "en-US": "San Francisco",
-      "zh-TW": "舊金山"
+      "zh-TW": "舊金山",
+      "es-ES": "San Francisco",
+      "pt-BR": "San Francisco"
     },
     "atlanta": {
       "zh-CN": "亚特兰大",
       "en-US": "Atlanta",
-      "zh-TW": "亞特蘭大"
+      "zh-TW": "亞特蘭大",
+      "es-ES": "Atlanta",
+      "pt-BR": "Atlanta"
     },
     "richmond": {
       "zh-CN": "里士满",
       "en-US": "Richmond",
-      "zh-TW": "里士滿"
+      "zh-TW": "里士滿",
+      "es-ES": "Richmond",
+      "pt-BR": "Richmond"
     },
     "kansas-city": {
       "zh-CN": "堪萨斯城",
       "en-US": "Kansas City",
-      "zh-TW": "堪薩斯城"
+      "zh-TW": "堪薩斯城",
+      "es-ES": "Kansas City",
+      "pt-BR": "Kansas City"
     },
     "memphis": {
       "zh-CN": "孟菲斯",
       "en-US": "Memphis",
-      "zh-TW": "孟菲斯"
+      "zh-TW": "孟菲斯",
+      "es-ES": "Memphis",
+      "pt-BR": "Memphis"
     },
     "hillsboro": {
       "zh-CN": "希尔斯伯勒",
       "en-US": "Hillsboro",
-      "zh-TW": "希爾斯伯勒"
+      "zh-TW": "希爾斯伯勒",
+      "es-ES": "Hillsboro",
+      "pt-BR": "Hillsboro"
     },
     "new-jersey": {
       "zh-CN": "新泽西州",
       "en-US": "New Jersey",
-      "zh-TW": "新澤西州"
+      "zh-TW": "新澤西州",
+      "es-ES": "Nueva Jersey",
+      "pt-BR": "Nova Jersey"
     },
     "honolulu": {
       "zh-CN": "檀香山",
       "en-US": "Honolulu",
-      "zh-TW": "檀香山"
+      "zh-TW": "檀香山",
+      "es-ES": "Honolulu",
+      "pt-BR": "Honolulu"
     },
     "miami": {
       "zh-CN": "迈阿密",
       "en-US": "Miami",
-      "zh-TW": "邁阿密"
+      "zh-TW": "邁阿密",
+      "es-ES": "Miami",
+      "pt-BR": "Miami"
     },
     "seattle": {
       "zh-CN": "西雅图",
       "en-US": "Seattle",
-      "zh-TW": "西雅圖"
+      "zh-TW": "西雅圖",
+      "es-ES": "Seattle",
+      "pt-BR": "Seattle"
     },
     "washington-dc": {
       "zh-CN": "华盛顿特区",
       "en-US": "Washington DC",
-      "zh-TW": "華盛頓特區"
+      "zh-TW": "華盛頓特區",
+      "es-ES": "Washington DC",
+      "pt-BR": "Washington DC"
     },
     "newark": {
       "zh-CN": "纽瓦克",
       "en-US": "Newark",
-      "zh-TW": "紐瓦克"
+      "zh-TW": "紐瓦克",
+      "es-ES": "Newark",
+      "pt-BR": "Newark"
     },
     "fremont": {
       "zh-CN": "弗里蒙特",
       "en-US": "Fremont",
-      "zh-TW": "弗裡蒙特"
+      "zh-TW": "弗裡蒙特",
+      "es-ES": "Fremont",
+      "pt-BR": "Fremont"
     },
     "vint-hill": {
       "zh-CN": "文特希尔",
       "en-US": "Vint Hill",
-      "zh-TW": "文特希爾"
+      "zh-TW": "文特希爾",
+      "es-ES": "Vint Hill",
+      "pt-BR": "Vint Hill"
     },
     "melbourne": {
       "zh-CN": "墨尔本",
       "en-US": "Melbourne",
-      "zh-TW": "墨爾本"
+      "zh-TW": "墨爾本",
+      "es-ES": "Melbourne",
+      "pt-BR": "Melbourne"
     },
     "canberra": {
       "zh-CN": "堪培拉",
       "en-US": "Canberra",
-      "zh-TW": "堪培拉"
+      "zh-TW": "堪培拉",
+      "es-ES": "Canberra",
+      "pt-BR": "Canberra"
     },
     "new-south-wales": {
       "zh-CN": "新南威尔士州",
       "en-US": "New South Wales",
-      "zh-TW": "新南威爾士州"
+      "zh-TW": "新南威爾士州",
+      "es-ES": "Nueva Gales del Sur",
+      "pt-BR": "Nova Gales do Sul"
     },
     "victoria": {
       "zh-CN": "维多利亚州",
       "en-US": "Victoria",
-      "zh-TW": "維多利亞州"
+      "zh-TW": "維多利亞州",
+      "es-ES": "Victoria",
+      "pt-BR": "Victoria"
     },
     "calgary": {
       "zh-CN": "卡尔加里",
       "en-US": "Calgary",
-      "zh-TW": "卡爾加里"
+      "zh-TW": "卡爾加里",
+      "es-ES": "Calgary",
+      "pt-BR": "Calgary"
     },
     "quebec": {
       "zh-CN": "魁北克省",
       "en-US": "Quebec",
-      "zh-TW": "魁北克省"
+      "zh-TW": "魁北克省",
+      "es-ES": "Quebec",
+      "pt-BR": "Quebec"
     },
     "montreal": {
       "zh-CN": "蒙特利尔",
       "en-US": "Montreal",
-      "zh-TW": "蒙特利爾"
+      "zh-TW": "蒙特利爾",
+      "es-ES": "Montreal",
+      "pt-BR": "Montreal"
     },
     "beauharnois": {
       "zh-CN": "博阿尔努瓦",
       "en-US": "Beauharnois",
-      "zh-TW": "博阿爾努瓦"
+      "zh-TW": "博阿爾努瓦",
+      "es-ES": "Beauharnois",
+      "pt-BR": "Beauharnois"
     },
     "madrid": {
       "zh-CN": "马德里",
       "en-US": "Madrid",
-      "zh-TW": "馬德里"
+      "zh-TW": "馬德里",
+      "es-ES": "Madrid",
+      "pt-BR": "Madrid"
     },
     "stockholm": {
       "zh-CN": "斯德哥尔摩",
       "en-US": "Stockholm",
-      "zh-TW": "斯德哥爾摩"
+      "zh-TW": "斯德哥爾摩",
+      "es-ES": "Estocolmo",
+      "pt-BR": "Estocolmo"
     },
     "gavle": {
       "zh-CN": "耶夫勒",
       "en-US": "Gävle",
-      "zh-TW": "耶夫勒"
+      "zh-TW": "耶夫勒",
+      "es-ES": "Gävle",
+      "pt-BR": "Gävle"
     },
     "zurich": {
       "zh-CN": "苏黎世",
       "en-US": "Zurich",
-      "zh-TW": "蘇黎世"
+      "zh-TW": "蘇黎世",
+      "es-ES": "Zúrich",
+      "pt-BR": "Zurique"
     },
     "geneva": {
       "zh-CN": "日内瓦",
       "en-US": "Geneva",
-      "zh-TW": "日內瓦"
+      "zh-TW": "日內瓦",
+      "es-ES": "Ginebra",
+      "pt-BR": "Genebra"
     },
     "milan": {
       "zh-CN": "米兰",
       "en-US": "Milan",
-      "zh-TW": "米蘭"
+      "zh-TW": "米蘭",
+      "es-ES": "Milán",
+      "pt-BR": "Milão"
     },
     "turin": {
       "zh-CN": "都灵",
       "en-US": "Turin",
-      "zh-TW": "都靈"
+      "zh-TW": "都靈",
+      "es-ES": "Turín",
+      "pt-BR": "Turim"
     },
     "marseille": {
       "zh-CN": "马赛",
       "en-US": "Marseille",
-      "zh-TW": "馬賽"
+      "zh-TW": "馬賽",
+      "es-ES": "Marsella",
+      "pt-BR": "Marselha"
     },
     "gravelines": {
       "zh-CN": "格拉夫林",
       "en-US": "Gravelines",
-      "zh-TW": "格拉夫林"
+      "zh-TW": "格拉夫林",
+      "es-ES": "Gravelines",
+      "pt-BR": "Gravelines"
     },
     "roubaix": {
       "zh-CN": "鲁贝",
       "en-US": "Roubaix",
-      "zh-TW": "魯貝"
+      "zh-TW": "魯貝",
+      "es-ES": "Roubaix",
+      "pt-BR": "Roubaix"
     },
     "strasbourg": {
       "zh-CN": "斯特拉斯堡",
       "en-US": "Strasbourg",
-      "zh-TW": "斯特拉斯堡"
+      "zh-TW": "斯特拉斯堡",
+      "es-ES": "Estrasburgo",
+      "pt-BR": "Estrasburgo"
     },
     "berlin": {
       "zh-CN": "柏林",
       "en-US": "Berlin",
-      "zh-TW": "柏林"
+      "zh-TW": "柏林",
+      "es-ES": "Berlín",
+      "pt-BR": "Berlim"
     },
     "falkenstein": {
       "zh-CN": "法尔肯施泰因",
       "en-US": "Falkenstein",
-      "zh-TW": "法爾肯施泰因"
+      "zh-TW": "法爾肯施泰因",
+      "es-ES": "Falkenstein",
+      "pt-BR": "Falkenstein"
     },
     "nuremberg": {
       "zh-CN": "纽伦堡",
       "en-US": "Nuremberg",
-      "zh-TW": "紐倫堡"
+      "zh-TW": "紐倫堡",
+      "es-ES": "Núremberg",
+      "pt-BR": "Nuremberg"
     },
     "limburg": {
       "zh-CN": "林堡",
       "en-US": "Limburg",
-      "zh-TW": "林堡"
+      "zh-TW": "林堡",
+      "es-ES": "Limburg",
+      "pt-BR": "Limburg"
     },
     "manchester": {
       "zh-CN": "曼彻斯特",
       "en-US": "Manchester",
-      "zh-TW": "曼徹斯特"
+      "zh-TW": "曼徹斯特",
+      "es-ES": "Manchester",
+      "pt-BR": "Manchester"
     },
     "cardiff": {
       "zh-CN": "卡迪夫",
       "en-US": "Cardiff",
-      "zh-TW": "卡迪夫"
+      "zh-TW": "卡迪夫",
+      "es-ES": "Cardiff",
+      "pt-BR": "Cardiff"
     },
     "newport": {
       "zh-CN": "纽波特",
       "en-US": "Newport",
-      "zh-TW": "紐波特"
+      "zh-TW": "紐波特",
+      "es-ES": "Newport",
+      "pt-BR": "Newport"
     },
     "erith": {
       "zh-CN": "埃里思",
       "en-US": "Erith",
-      "zh-TW": "埃裡思"
+      "zh-TW": "埃裡思",
+      "es-ES": "Erith",
+      "pt-BR": "Erith"
     },
     "eemshaven": {
       "zh-CN": "埃姆斯港",
       "en-US": "Eemshaven",
-      "zh-TW": "埃姆斯港"
+      "zh-TW": "埃姆斯港",
+      "es-ES": "Eemshaven",
+      "pt-BR": "Eemshaven"
     },
     "hamina": {
       "zh-CN": "哈米纳",
       "en-US": "Hamina",
-      "zh-TW": "哈米納"
+      "zh-TW": "哈米納",
+      "es-ES": "Hamina",
+      "pt-BR": "Hamina"
     },
     "helsinki": {
       "zh-CN": "赫尔辛基",
       "en-US": "Helsinki",
-      "zh-TW": "赫爾辛基"
+      "zh-TW": "赫爾辛基",
+      "es-ES": "Helsinki",
+      "pt-BR": "Helsinki"
     },
     "st-ghislain": {
       "zh-CN": "圣吉斯兰",
       "en-US": "St. Ghislain",
-      "zh-TW": "聖吉斯蘭"
+      "zh-TW": "聖吉斯蘭",
+      "es-ES": "St. Ghislain",
+      "pt-BR": "St. Ghislain"
     },
     "brussels": {
       "zh-CN": "布鲁塞尔",
       "en-US": "Brussels",
-      "zh-TW": "布魯塞爾"
+      "zh-TW": "布魯塞爾",
+      "es-ES": "Bruselas",
+      "pt-BR": "Bruxelas"
     },
     "vienna": {
       "zh-CN": "维也纳",
       "en-US": "Vienna",
-      "zh-TW": "維也納"
+      "zh-TW": "維也納",
+      "es-ES": "Viena",
+      "pt-BR": "Viena"
     },
     "copenhagen": {
       "zh-CN": "哥本哈根",
       "en-US": "Copenhagen",
-      "zh-TW": "哥本哈根"
+      "zh-TW": "哥本哈根",
+      "es-ES": "Copenhague",
+      "pt-BR": "Copenhague"
     },
     "warsaw": {
       "zh-CN": "华沙",
       "en-US": "Warsaw",
-      "zh-TW": "華沙"
+      "zh-TW": "華沙",
+      "es-ES": "Varsovia",
+      "pt-BR": "Varsóvia"
     },
     "busan": {
       "zh-CN": "釜山",
       "en-US": "Busan",
-      "zh-TW": "釜山"
+      "zh-TW": "釜山",
+      "es-ES": "Busan",
+      "pt-BR": "Busan"
     },
     "chuncheon": {
       "zh-CN": "春川",
       "en-US": "Chuncheon",
-      "zh-TW": "春川"
+      "zh-TW": "春川",
+      "es-ES": "Chuncheon",
+      "pt-BR": "Chuncheon"
     },
     "changhua": {
       "zh-CN": "彰化县",
       "en-US": "Changhua",
-      "zh-TW": "彰化縣"
+      "zh-TW": "彰化縣",
+      "es-ES": "Changhua",
+      "pt-BR": "Changhua"
     },
     "mumbai": {
       "zh-CN": "孟买",
       "en-US": "Mumbai",
-      "zh-TW": "孟買"
+      "zh-TW": "孟買",
+      "es-ES": "Bombay",
+      "pt-BR": "Mumbai"
     },
     "hyderabad": {
       "zh-CN": "海得拉巴",
       "en-US": "Hyderabad",
-      "zh-TW": "海得拉巴"
+      "zh-TW": "海得拉巴",
+      "es-ES": "Hyderabad",
+      "pt-BR": "Hyderabad"
     },
     "delhi": {
       "zh-CN": "德里",
       "en-US": "Delhi",
-      "zh-TW": "德里"
+      "zh-TW": "德里",
+      "es-ES": "Delhi",
+      "pt-BR": "Délhi"
     },
     "delhi-ncr": {
       "zh-CN": "德里首都区",
       "en-US": "Delhi NCR",
-      "zh-TW": "德里首都區"
+      "zh-TW": "德里首都區",
+      "es-ES": "Región de Delhi",
+      "pt-BR": "Região de Délhi"
     },
     "chennai": {
       "zh-CN": "金奈",
       "en-US": "Chennai",
-      "zh-TW": "金奈"
+      "zh-TW": "金奈",
+      "es-ES": "Chennai",
+      "pt-BR": "Chennai"
     },
     "pune": {
       "zh-CN": "浦那",
       "en-US": "Pune",
-      "zh-TW": "浦那"
+      "zh-TW": "浦那",
+      "es-ES": "Pune",
+      "pt-BR": "Pune"
     },
     "bangalore": {
       "zh-CN": "班加罗尔",
       "en-US": "Bangalore",
-      "zh-TW": "班加羅爾"
+      "zh-TW": "班加羅爾",
+      "es-ES": "Bangalore",
+      "pt-BR": "Bangalore"
     },
     "jakarta": {
       "zh-CN": "雅加达",
       "en-US": "Jakarta",
-      "zh-TW": "雅加達"
+      "zh-TW": "雅加達",
+      "es-ES": "Yakarta",
+      "pt-BR": "Jacarta"
     },
     "batam": {
       "zh-CN": "巴淡岛",
       "en-US": "Batam",
-      "zh-TW": "巴淡島"
+      "zh-TW": "巴淡島",
+      "es-ES": "Batam",
+      "pt-BR": "Batam"
     },
     "kuala-lumpur": {
       "zh-CN": "吉隆坡",
       "en-US": "Kuala Lumpur",
-      "zh-TW": "吉隆坡"
+      "zh-TW": "吉隆坡",
+      "es-ES": "Kuala Lumpur",
+      "pt-BR": "Kuala Lumpur"
     },
     "kulai": {
       "zh-CN": "古来",
       "en-US": "Kulai",
-      "zh-TW": "古來"
+      "zh-TW": "古來",
+      "es-ES": "Kulai",
+      "pt-BR": "Kulai"
     },
     "johor": {
       "zh-CN": "柔佛州",
       "en-US": "Johor",
-      "zh-TW": "柔佛州"
+      "zh-TW": "柔佛州",
+      "es-ES": "Johor",
+      "pt-BR": "Johor"
     },
     "bangkok": {
       "zh-CN": "曼谷",
       "en-US": "Bangkok",
-      "zh-TW": "曼谷"
+      "zh-TW": "曼谷",
+      "es-ES": "Bangkok",
+      "pt-BR": "Bangkok"
     },
     "auckland": {
       "zh-CN": "奥克兰",
       "en-US": "Auckland",
-      "zh-TW": "奧克蘭"
+      "zh-TW": "奧克蘭",
+      "es-ES": "Auckland",
+      "pt-BR": "Auckland"
     },
     "manila": {
       "zh-CN": "马尼拉",
       "en-US": "Manila",
-      "zh-TW": "馬尼拉"
+      "zh-TW": "馬尼拉",
+      "es-ES": "Manila",
+      "pt-BR": "Manila"
     },
     "cape-town": {
       "zh-CN": "开普敦",
       "en-US": "Cape Town",
-      "zh-TW": "開普敦"
+      "zh-TW": "開普敦",
+      "es-ES": "Ciudad del Cabo",
+      "pt-BR": "Cidade do Cabo"
     },
     "johannesburg": {
       "zh-CN": "约翰内斯堡",
       "en-US": "Johannesburg",
-      "zh-TW": "約翰內斯堡"
+      "zh-TW": "約翰內斯堡",
+      "es-ES": "Johannesburgo",
+      "pt-BR": "Joanesburgo"
     },
     "tel-aviv": {
       "zh-CN": "特拉维夫",
       "en-US": "Tel Aviv",
-      "zh-TW": "特拉維夫"
+      "zh-TW": "特拉維夫",
+      "es-ES": "Tel Aviv",
+      "pt-BR": "Tel Aviv"
     },
     "jerusalem": {
       "zh-CN": "耶路撒冷",
       "en-US": "Jerusalem",
-      "zh-TW": "耶路撒冷"
+      "zh-TW": "耶路撒冷",
+      "es-ES": "Jerusalén",
+      "pt-BR": "Jerusalém"
     },
     "mexico-city": {
       "zh-CN": "墨西哥城",
       "en-US": "Mexico City",
-      "zh-TW": "墨西哥城"
+      "zh-TW": "墨西哥城",
+      "es-ES": "Ciudad de México",
+      "pt-BR": "Cidade do México"
     },
     "queretaro": {
       "zh-CN": "克雷塔罗",
       "en-US": "Querétaro",
-      "zh-TW": "克雷塔羅"
+      "zh-TW": "克雷塔羅",
+      "es-ES": "Querétaro",
+      "pt-BR": "Querétaro"
     },
     "queretaro-state": {
       "zh-CN": "克雷塔罗州",
       "en-US": "Querétaro State",
-      "zh-TW": "克雷塔羅州"
+      "zh-TW": "克雷塔羅州",
+      "es-ES": "Estado de Querétaro",
+      "pt-BR": "Estado de Querétaro"
     },
     "monterrey": {
       "zh-CN": "蒙特雷",
       "en-US": "Monterrey",
-      "zh-TW": "蒙特雷"
+      "zh-TW": "蒙特雷",
+      "es-ES": "Monterrey",
+      "pt-BR": "Monterrey"
     },
     "abu-dhabi": {
       "zh-CN": "阿布扎比",
       "en-US": "Abu Dhabi",
-      "zh-TW": "阿布扎比"
+      "zh-TW": "阿布扎比",
+      "es-ES": "Abu Dhabi",
+      "pt-BR": "Abu Dhabi"
     },
     "dubai": {
       "zh-CN": "迪拜",
       "en-US": "Dubai",
-      "zh-TW": "迪拜"
+      "zh-TW": "迪拜",
+      "es-ES": "Dubai",
+      "pt-BR": "Dubai"
     },
     "doha": {
       "zh-CN": "多哈",
       "en-US": "Doha",
-      "zh-TW": "多哈"
+      "zh-TW": "多哈",
+      "es-ES": "Doha",
+      "pt-BR": "Doha"
     },
     "riyadh": {
       "zh-CN": "利雅得",
       "en-US": "Riyadh",
-      "zh-TW": "利雅得"
+      "zh-TW": "利雅得",
+      "es-ES": "Riad",
+      "pt-BR": "Riade"
     },
     "jeddah": {
       "zh-CN": "吉达",
       "en-US": "Jeddah",
-      "zh-TW": "吉達"
+      "zh-TW": "吉達",
+      "es-ES": "Yeda",
+      "pt-BR": "Jidá"
     },
     "dammam": {
       "zh-CN": "达曼",
       "en-US": "Dammam",
-      "zh-TW": "達曼"
+      "zh-TW": "達曼",
+      "es-ES": "Dammam",
+      "pt-BR": "Dammam"
     },
     "casablanca": {
       "zh-CN": "卡萨布兰卡",
       "en-US": "Casablanca",
-      "zh-TW": "卡薩布蘭卡"
+      "zh-TW": "卡薩布蘭卡",
+      "es-ES": "Casablanca",
+      "pt-BR": "Casablanca"
     },
     "sao-paulo": {
       "zh-CN": "圣保罗",
       "en-US": "São Paulo",
-      "zh-TW": "聖保羅"
+      "zh-TW": "聖保羅",
+      "es-ES": "São Paulo",
+      "pt-BR": "São Paulo"
     },
     "sao-paulo-state": {
       "zh-CN": "圣保罗州",
       "en-US": "São Paulo State",
-      "zh-TW": "聖保羅州"
+      "zh-TW": "聖保羅州",
+      "es-ES": "Estado de São Paulo",
+      "pt-BR": "Estado de São Paulo"
     },
     "rio": {
       "zh-CN": "里约",
       "en-US": "Rio",
-      "zh-TW": "里約"
+      "zh-TW": "里約",
+      "es-ES": "Río de Janeiro",
+      "pt-BR": "Rio de Janeiro"
     },
     "osasco": {
       "zh-CN": "奥萨斯库",
       "en-US": "Osasco",
-      "zh-TW": "奧薩斯庫"
+      "zh-TW": "奧薩斯庫",
+      "es-ES": "Osasco",
+      "pt-BR": "Osasco"
     },
     "vinhedo": {
       "zh-CN": "维涅杜",
       "en-US": "Vinhedo",
-      "zh-TW": "維涅杜"
+      "zh-TW": "維涅杜",
+      "es-ES": "Vinhedo",
+      "pt-BR": "Vinhedo"
     },
     "santiago": {
       "zh-CN": "圣地亚哥",
       "en-US": "Santiago",
-      "zh-TW": "聖地亞哥"
+      "zh-TW": "聖地亞哥",
+      "es-ES": "Santiago",
+      "pt-BR": "Santiago"
     },
     "valparaiso": {
       "zh-CN": "瓦尔帕莱索",
       "en-US": "Valparaiso",
-      "zh-TW": "瓦爾帕萊索"
+      "zh-TW": "瓦爾帕萊索",
+      "es-ES": "Valparaíso",
+      "pt-BR": "Valparaíso"
     },
     "bogota": {
       "zh-CN": "波哥大",
       "en-US": "Bogota",
-      "zh-TW": "波哥大"
+      "zh-TW": "波哥大",
+      "es-ES": "Bogotá",
+      "pt-BR": "Bogotá"
     },
     "dublin": {
       "zh-CN": "都柏林",
       "en-US": "Dublin",
-      "zh-TW": "都柏林"
+      "zh-TW": "都柏林",
+      "es-ES": "Dublín",
+      "pt-BR": "Dublin"
     },
     "aragon": {
       "zh-CN": "阿拉贡",
       "en-US": "Aragon",
-      "zh-TW": "阿拉貢"
+      "zh-TW": "阿拉貢",
+      "es-ES": "Aragón",
+      "pt-BR": "Aragão"
     },
     "saitama": {
       "zh-CN": "埼玉县",
       "en-US": "Saitama",
-      "zh-TW": "埼玉縣"
+      "zh-TW": "埼玉縣",
+      "es-ES": "Saitama",
+      "pt-BR": "Saitama"
     }
   },
   "cityRegions": {

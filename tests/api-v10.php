@@ -65,6 +65,10 @@ try {
     [$r,$j]=$call('GET','/api/v10/me',[],$bearer);
     $assert($r->getStatusCode()===200 && $j['data']['email']===$user->email && !isset($j['data']['password']),'Account resource');
     $assert($r->headers->get('Content-Language')==='en-US','Language negotiation');
+    foreach (['es-MX'=>'es-ES', 'pt-PT'=>'pt-BR'] as $header=>$expectedLanguage) {
+        [$r,$j]=$call('GET','/api/v10/me',[],$bearer,$header);
+        $assert($r->getStatusCode()===200 && $r->headers->get('Content-Language')===$expectedLanguage,'Additional language negotiation: '.$header);
+    }
     [$r,$j]=$call('GET','/api/v1/user/info',[],$credentials['auth_data']);
     $assert($r->getStatusCode()===200 && $j['data']['email']===$user->email,'Legacy account interoperability');
     [$r,$j]=$call('GET','/api/v10/plans',[],$bearer);

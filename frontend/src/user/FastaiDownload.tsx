@@ -1,6 +1,5 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import "./fastai-download-copy";
 import { boot } from "../shared/api";
 import { currentDevice } from "../shared/user-experience";
 import { safeDownloadUrl } from "./ClientDownload";

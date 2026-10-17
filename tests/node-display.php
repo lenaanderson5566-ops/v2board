@@ -4,6 +4,13 @@ if (!app()->environment('local')) throw new RuntimeException('Local test only');
 $checks=0;
 $assert = \Tests\Support\Assertions::counter($checks);
 $catalog = App\Services\NodeDisplayService::catalog();
+foreach (['regions', 'cities'] as $kind) {
+    foreach ($catalog[$kind] as $code => $names) {
+        foreach (App\Services\LanguagePreferenceService::SUPPORTED as $language) {
+            $assert(!empty($names[$language]), 'Missing '.$language.' '.$kind.' '.$code);
+        }
+    }
+}
 foreach ($catalog['cityRegions'] as $city => $region) {
     $assert(isset($catalog['cities'][$city], $catalog['regions'][$region]), 'City reference has valid translations and country: '.$city);
 }

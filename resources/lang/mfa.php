@@ -8,4 +8,12 @@ return [
     'vi-VN' => ['title' => 'Đã cập nhật xác minh bảo mật', 'body' => 'Cài đặt xác minh đã thay đổi và mọi phiên đã đăng xuất. Nếu không phải bạn, hãy liên hệ hỗ trợ ngay và bảo vệ tài khoản email.'],
     'ru-RU' => ['title' => 'Настройки подтверждения обновлены', 'body' => 'Настройки безопасности изменены, все сеансы завершены. Если это сделали не вы, немедленно свяжитесь с поддержкой и защитите свою почту.'],
     'fa-IR' => ['title' => 'تأیید امنیتی به‌روزرسانی شد', 'body' => 'تنظیمات تأیید امنیتی تغییر کرد و همه نشست‌ها خارج شدند. اگر شما این کار را نکردید، فوراً با پشتیبانی تماس بگیرید و حساب ایمیل را امن کنید.'],
+    'es-ES' => [
+        'title' => 'Verificación de seguridad actualizada',
+        'body' => 'La verificación de seguridad cambió y se cerraron todas las sesiones. Si no fuiste tú, contacta con soporte de inmediato y protege tu correo.',
+    ],
+    'pt-BR' => [
+        'title' => 'Verificação de segurança atualizada',
+        'body' => 'As configurações de segurança mudaram e todas as sessões foram encerradas. Se não foi você, contate o suporte imediatamente e proteja seu e-mail.',
+    ],
 ];

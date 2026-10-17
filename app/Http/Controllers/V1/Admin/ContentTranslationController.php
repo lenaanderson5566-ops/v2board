@@ -8,7 +8,7 @@ class ContentTranslationController extends Controller
 {
     public function generate(Request $request)
     {
-        $languages = 'in:zh-CN,zh-TW,en-US,ja-JP,ko-KR,vi-VN,ru-RU,fa-IR';
+        $languages = 'in:zh-CN,zh-TW,en-US,ja-JP,ko-KR,vi-VN,ru-RU,fa-IR,es-ES,pt-BR';
         $data = $request->validate([
             'source'=>'required|'.$languages, 'locale'=>'required|'.$languages,
             'subject'=>'required|string|max:200', 'content'=>'required|string|max:20000',

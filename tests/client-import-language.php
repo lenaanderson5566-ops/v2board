@@ -4,6 +4,21 @@ $controller=new App\Services\Actions\Client\ClientActions;
 $method=new ReflectionMethod($controller,'buildUnavailableServers'); $method->setAccessible(true);
 $copy=require resource_path('client/copy.php');
 $checks=0;
+foreach (['client/copy.php', 'lang/telegram.php', 'lang/mfa.php'] as $resource) {
+    $catalog = require resource_path($resource);
+    foreach (App\Services\LanguagePreferenceService::SUPPORTED as $language) {
+        if (!isset($catalog[$language])) throw new RuntimeException('Missing language '.$language.' '.$resource);
+        foreach ($catalog['en-US'] as $key => $english) {
+            $translated = $catalog[$language][$key] ?? null;
+            if (!$translated) throw new RuntimeException('Missing translation '.$language.' '.$resource.' '.$key);
+            preg_match_all('/:\w+|%d/', json_encode($english), $expected);
+            preg_match_all('/:\w+|%d/', json_encode($translated), $actual);
+            sort($expected[0]); sort($actual[0]);
+            if ($expected[0] !== $actual[0]) throw new RuntimeException('Invalid placeholders '.$language.' '.$resource.' '.$key);
+            $checks++;
+        }
+    }
+}
 foreach ($copy as $locale=>$words) {
     app()->setLocale($locale);
     foreach (['no_plan','expired','user_unavailable','banned','client_disabled','client_version_too_low'] as $reason) {

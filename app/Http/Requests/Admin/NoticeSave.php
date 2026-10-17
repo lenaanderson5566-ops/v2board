@@ -18,8 +18,8 @@ class NoticeSave extends FormRequest
             'content' => 'required|string|max:100000',
             'img_url' => 'nullable|url',
             'tags' => 'nullable|array',
-            'source_language' => 'sometimes|in:zh-CN,zh-TW,en-US,ja-JP,ko-KR,vi-VN,ru-RU,fa-IR',
-            'translations' => 'sometimes|array:zh-CN,zh-TW,en-US,ja-JP,ko-KR,vi-VN,ru-RU,fa-IR',
+            'source_language' => 'sometimes|in:zh-CN,zh-TW,en-US,ja-JP,ko-KR,vi-VN,ru-RU,fa-IR,es-ES,pt-BR',
+            'translations' => 'sometimes|array:zh-CN,zh-TW,en-US,ja-JP,ko-KR,vi-VN,ru-RU,fa-IR,es-ES,pt-BR',
             'translations.*' => 'array:subject,content',
             'translations.*.subject' => 'required|string|max:200',
             'translations.*.content' => 'required|string|max:100000'

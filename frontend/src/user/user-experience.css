@@ -677,9 +677,6 @@ body[data-console="user"] .auth-language {
         max-width: 100%;
         width: 100%;
     }
-    .app.user .language-picker select {
-        max-width: 100px;
-    }
 }
 body:has(.browser-notice) #custom-footer {
     display: none;

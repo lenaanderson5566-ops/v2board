@@ -1,16 +1,10 @@
+import { languages as languageOptions } from "../shared/language-options";
 import { useEffect, useState } from "react";
 import "./admin-mail.css";
 import { admin, request } from "../shared/api";
-export const mailLanguages = {
-    "zh-CN": "简体中文",
-    "zh-TW": "繁體中文",
-    "en-US": "English",
-    "ja-JP": "日本語",
-    "ko-KR": "한국어",
-    "vi-VN": "Tiếng Việt",
-    "ru-RU": "Русский",
-    "fa-IR": "فارسی",
-};
+export const mailLanguages = Object.fromEntries(
+    languageOptions.map(({ code, name }) => [code, name]),
+);
 const templates = {
     verify: "验证码",
     mailLogin: "登录链接",
@@ -43,7 +37,9 @@ export function AdminMailPreview({
     const [error, setError] = useState("");
     const [plain, setPlain] = useState(false);
     const custom = subject !== undefined;
-    useEffect(() => { setPreview(undefined); }, [subject, content, fixedLanguage]);
+    useEffect(() => {
+        setPreview(undefined);
+    }, [subject, content, fixedLanguage]);
     return (
         <section className="mail-preview">
             <h3>邮件预览</h3>

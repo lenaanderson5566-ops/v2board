@@ -1,9 +1,6 @@
-import "./fastai-download-copy";
 import { iosDownloads, ClientDownload } from "./ClientDownload";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import "./import-copy";
-import "./client-choice-copy";
 import {
     ArrowUpRight,
     ArrowRightLeft,

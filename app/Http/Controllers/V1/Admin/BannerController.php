@@ -29,7 +29,7 @@ class BannerController extends Controller
             'image_url'=>array_merge(['required'], array_slice($url, 1)),
             'mobile_image_url'=>$url, 'target_url'=>$url,
             'placements'=>'required|array|min:1|max:2', 'placements.*'=>'required|distinct|in:landing,dashboard',
-            'languages'=>'nullable|array|max:8', 'languages.*'=>'required|distinct|in:zh-CN,zh-TW,en-US,ja-JP,ko-KR,vi-VN,ru-RU,fa-IR',
+            'languages'=>'nullable|array|max:10', 'languages.*'=>'required|distinct|in:zh-CN,zh-TW,en-US,ja-JP,ko-KR,vi-VN,ru-RU,fa-IR,es-ES,pt-BR',
             'show'=>'required|boolean', 'sort'=>'required|integer|min:0|max:100000',
             'starts_at'=>'nullable|integer|min:0|max:4294967295', 'ends_at'=>'nullable|integer|min:0|max:4294967295',
         ]);

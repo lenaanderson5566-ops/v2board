@@ -67,7 +67,7 @@ final class NodeDisplayService
         $server['node_id'] = $id;
         $server['proxy_name'] = $id ? 'node_'.$id : $server['name'];
         $server['display_names'] = [];
-        foreach (['zh-CN', 'zh-TW', 'en-US', 'ja-JP', 'ko-KR', 'vi-VN', 'ru-RU', 'fa-IR'] as $language) {
+        foreach (LanguagePreferenceService::SUPPORTED as $language) {
             $server['display_names'][$language] = self::name($server, $language);
         }
         return $server;

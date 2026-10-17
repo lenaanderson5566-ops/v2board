@@ -575,10 +575,6 @@ html[dir="rtl"] .metric > strong {
     .breadcrumb strong {
         font-size: 14px;
     }
-    .language-picker select {
-        max-width: 110px;
-        font-size: 12px;
-    }
     main {
         padding: 24px 16px calc(88px + env(safe-area-inset-bottom));
     }

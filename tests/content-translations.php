@@ -15,6 +15,13 @@ $result=(new ContentTranslationController)->generate($request)->getOriginalConte
 $assert($result['subject']==='維護通知','Traditional subject missing');
 $assert(strpos($result['content'],'詳情')!==false,'Traditional body missing');
 $assert(Http::recorded(function($r) { return strpos($r->url(),'to=zh-Hant')!==false && count($r->data())===2; })->count()===1,'Title/body must share one bounded request');
+foreach (['es-ES'=>'es', 'pt-BR'=>'pt'] as $locale=>$providerCode) {
+    Http::swap(new Illuminate\Http\Client\Factory);
+    Http::fake(['*'=>Http::response([['translations'=>[['text'=>'Notice']]],['translations'=>[['text'=>'Body']]]],200)]);
+    $additional=Illuminate\Http\Request::create('/', 'POST', ['source'=>'en-US','locale'=>$locale,'subject'=>'Update','content'=>'Details','format'=>'html']);
+    (new ContentTranslationController)->generate($additional);
+    $assert(Http::recorded(fn($r) => strpos($r->url(),'to='.$providerCode)!==false)->count()===1, 'Additional translation locale rejected: '.$locale);
+}
 Http::swap(new Illuminate\Http\Client\Factory);
 Http::fake(['*'=>Http::response([['translations'=>[['text'=>'Maintenance']]],['translations'=>[['text'=>'<p>10 min https://evil.test</p>']]]],200)]);
 try { (new ContentTranslationController)->generate($request); throw new RuntimeException('Altered link accepted'); } catch (Illuminate\Validation\ValidationException $e) { $checks++; }

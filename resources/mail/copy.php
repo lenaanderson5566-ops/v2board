@@ -416,6 +416,110 @@ return json_decode(<<<'JSON'
       "تمدید انجام شد",
       "سرویس با موفقیت تمدید و تاریخ انقضا به‌روز شد. اطلاعات جدید اشتراک را در صورتحساب ببینید."
     ]
+  },
+  "es-ES": {
+    "verify": [
+      "Verifica tu dirección de correo",
+      "Introduce el código de abajo para verificar tu correo. Caduca 5 minutos después de la solicitud. No lo compartas con nadie."
+    ],
+    "mailLogin": [
+      "Inicia sesión en tu cuenta",
+      "Usa el botón de abajo para iniciar sesión. Este enlace solo puede usarse una vez y caduca 5 minutos después de la solicitud. No lo reenvíes."
+    ],
+    "remindTraffic": [
+      "Los datos disponibles de tu plan se están agotando",
+      "Has usado más del 95 % de los datos de tu plan. Consulta lo que te queda y la fecha de reinicio. Hay créditos adicionales si los necesitas."
+    ],
+    "remindExpire": [
+      "Tu suscripción termina en menos de 24 horas",
+      "Revisa el vencimiento y renueva si lo necesitas. Los créditos independientes comprados conservan su propia vigencia al vencer la suscripción."
+    ],
+    "notify": [
+      "Actualización de la cuenta",
+      "Tienes una nueva notificación de cuenta."
+    ],
+    "emailInvitation": [
+      "Has recibido una invitación",
+      "Te han invitado a usar este servicio. Usa el botón de abajo para crear una cuenta. La página de registro confirma si la invitación sigue vigente."
+    ],
+    "ticketReply": [
+      "Nueva respuesta a tu solicitud de soporte",
+      "Nuestro equipo respondió a tu ticket. Inicia sesión para ver la respuesta completa y continuar la conversación en el centro de ayuda."
+    ],
+    "test": [
+      "Prueba de entrega de correo",
+      "Este correo de prueba permite comprobar la configuración de envío y la apariencia del mensaje."
+    ],
+    "action": "Abrir espacio de trabajo",
+    "footer": "Este correo es automático. Si necesitas ayuda, visita el centro de ayuda. Responder a este mensaje no crea una solicitud de soporte.",
+    "ignore": "Si no hiciste esta solicitud ni esperabas esta invitación, puedes ignorar este correo.",
+    "inviteAction": "Aceptar invitación",
+    "loginAction": "Iniciar sesión",
+    "securityIgnore": "Si no hiciste esta solicitud, puedes ignorar este correo.",
+    "usageAction": "Ver uso",
+    "billingAction": "Gestionar suscripción",
+    "supportAction": "Ver respuesta",
+    "ticketReference": "Ticket",
+    "serviceActivated": [
+      "Tu servicio está listo",
+      "Tu servicio se ha activado correctamente. Inicia sesión para ver los detalles y empezar."
+    ],
+    "serviceRenewed": [
+      "Renovación completada",
+      "Tu servicio se ha renovado y se ha actualizado el vencimiento. Consulta los detalles de tu suscripción en Facturación."
+    ]
+  },
+  "pt-BR": {
+    "verify": [
+      "Verifique seu endereço de e-mail",
+      "Digite o código abaixo para verificar seu e-mail. Ele expira 5 minutos após a solicitação. Não o compartilhe com ninguém."
+    ],
+    "mailLogin": [
+      "Entre na sua conta",
+      "Use o botão abaixo para entrar. Este link só pode ser usado uma vez e expira 5 minutos após a solicitação. Não o encaminhe."
+    ],
+    "remindTraffic": [
+      "A franquia do seu plano está acabando",
+      "Você usou mais de 95% da franquia do plano. Confira o restante e a data de renovação. Há créditos adicionais disponíveis se precisar."
+    ],
+    "remindExpire": [
+      "Sua assinatura termina em menos de 24 horas",
+      "Confira o vencimento e renove se necessário. Os créditos independentes comprados mantêm a própria validade após o vencimento da assinatura."
+    ],
+    "notify": [
+      "Atualização da conta",
+      "Você tem uma nova notificação da conta."
+    ],
+    "emailInvitation": [
+      "Você recebeu um convite",
+      "Você foi convidado a usar este serviço. Use o botão abaixo para criar uma conta. A página de cadastro confirma se o convite ainda está válido."
+    ],
+    "ticketReply": [
+      "Nova resposta à sua solicitação de suporte",
+      "Nossa equipe respondeu ao seu chamado. Entre para ver a resposta completa e continuar a conversa na central de ajuda."
+    ],
+    "test": [
+      "Teste de entrega de e-mail",
+      "Este e-mail de teste permite conferir as configurações de envio e a aparência da mensagem."
+    ],
+    "action": "Abrir espaço de trabalho",
+    "footer": "Este e-mail é automático. Para obter ajuda, visite a central de ajuda. Responder a este e-mail não cria uma solicitação de suporte.",
+    "ignore": "Se você não fez esta solicitação nem esperava este convite, ignore este e-mail.",
+    "inviteAction": "Aceitar convite",
+    "loginAction": "Entrar",
+    "securityIgnore": "Se você não fez esta solicitação, ignore este e-mail.",
+    "usageAction": "Ver uso",
+    "billingAction": "Gerenciar assinatura",
+    "supportAction": "Ver resposta",
+    "ticketReference": "Chamado",
+    "serviceActivated": [
+      "Seu serviço está pronto",
+      "Seu serviço foi ativado com sucesso. Entre para ver os detalhes e começar."
+    ],
+    "serviceRenewed": [
+      "Renovação concluída",
+      "Seu serviço foi renovado e o vencimento atualizado. Confira os detalhes da assinatura em Cobrança."
+    ]
   }
 }
 JSON, true);

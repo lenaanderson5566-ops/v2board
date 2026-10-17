@@ -1,14 +1,11 @@
-import "./fastai-download-copy";
 import { useState } from "react";
 import { AccountList } from "./AppleAccounts";
-import "./ios-download-copy";
 import { useTranslation } from "react-i18next";
 import { ArrowUpRight, Download, Globe } from "lucide-react";
 import { boot } from "../shared/api";
 import { Modal } from "../shared/ui";
 import { clients, type ClientId } from "../shared/import-links";
 import type { Device } from "../shared/user-experience";
-import "./download-copy";
 export const iosDownloads: Partial<Record<ClientId, string>> = {
     shadowrocket: "https://apps.apple.com/app/id932747118",
     hiddify: "https://apps.apple.com/app/id6596777532",

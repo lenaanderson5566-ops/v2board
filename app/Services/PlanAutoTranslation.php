@@ -10,7 +10,7 @@ class PlanAutoTranslation
     {
         $url = rtrim((string) config('plan-translation.url'), '/');
         if (!$url || !config('plan-translation.key')) throw ValidationException::withMessages(['translation' => '请先配置 Azure Translator 密钥和区域']);
-        $languages = ['zh-CN'=>'zh-Hans', 'zh-TW'=>'zh-Hant', 'en-US'=>'en', 'ja-JP'=>'ja', 'ko-KR'=>'ko', 'vi-VN'=>'vi', 'ru-RU'=>'ru', 'fa-IR'=>'fa'];
+        $languages = ['zh-CN'=>'zh-Hans', 'zh-TW'=>'zh-Hant', 'en-US'=>'en', 'ja-JP'=>'ja', 'ko-KR'=>'ko', 'vi-VN'=>'vi', 'ru-RU'=>'ru', 'fa-IR'=>'fa','es-ES'=>'es','pt-BR'=>'pt'];
         if (!isset($languages[$source], $languages[$target])) throw ValidationException::withMessages(['locale'=>'语言不受支持']);
         $features = json_decode($content, true);
         if (trim($content) === '') return $content;
@@ -33,7 +33,7 @@ class PlanAutoTranslation
     {
         $url = rtrim((string) config('plan-translation.url'), '/');
         if (!$url || !config('plan-translation.key')) throw ValidationException::withMessages(['translation'=>'请先配置 Azure Translator 密钥和区域']);
-        $languages = ['zh-CN'=>'zh-Hans', 'zh-TW'=>'zh-Hant', 'en-US'=>'en', 'ja-JP'=>'ja', 'ko-KR'=>'ko', 'vi-VN'=>'vi', 'ru-RU'=>'ru', 'fa-IR'=>'fa'];
+        $languages = ['zh-CN'=>'zh-Hans', 'zh-TW'=>'zh-Hant', 'en-US'=>'en', 'ja-JP'=>'ja', 'ko-KR'=>'ko', 'vi-VN'=>'vi', 'ru-RU'=>'ru', 'fa-IR'=>'fa','es-ES'=>'es','pt-BR'=>'pt'];
         if (!isset($languages[$source], $languages[$target])) throw ValidationException::withMessages(['locale'=>'语言不受支持']);
         if ($source === $target) return $texts;
         $headers = ['Ocp-Apim-Subscription-Key'=>config('plan-translation.key')];

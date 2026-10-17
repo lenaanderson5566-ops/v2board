@@ -3,15 +3,15 @@ import { Search, ChevronDown, ArrowUpRight } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { tx } from "../shared/i18n";
 import { Panel } from "../shared/ui";
-import { h, type helpCopy } from "./help-copy";
+import { h, type HelpCopy } from "./help-copy";
 
 type Category = "setup" | "usage" | "account";
 const topics: {
     id: string;
     category: Category;
-    question: keyof typeof helpCopy;
-    answer: keyof typeof helpCopy;
-    action: keyof typeof helpCopy;
+    question: keyof HelpCopy;
+    answer: keyof HelpCopy;
+    action: keyof HelpCopy;
     href: string;
 }[] = [
     {

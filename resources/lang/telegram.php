@@ -88,4 +88,26 @@ Order: :order',
         'payment' => 'پرداخت دریافت شد: :amount
 سفارش: :order',
     ],
+    'es-ES' => [
+        'confirmed' => 'Telegram confirmado. Vuelve a los ajustes de cuenta del sitio, revisa la cuenta de Telegram y confirma la vinculación.',
+        'intro' => 'Este bot gestiona la vinculación de cuentas y el acceso al grupo. Usa los ajustes de cuenta del sitio para vincular, desvincular o solicitar acceso. Usa /group para comprobar los requisitos. Nunca envíes contraseñas, códigos ni enlaces de suscripción.',
+        'bind' => 'Inicia sesión en el sitio y obtén un enlace de un solo uso en los ajustes de cuenta. Nunca envíes contraseñas, códigos ni enlaces de suscripción.',
+        'unbind' => 'Inicia sesión en el sitio y desvincula Telegram en los ajustes de cuenta.',
+        'eligible' => 'Cumples los requisitos. Solicita una invitación al grupo en los ajustes de cuenta del sitio. El enlace dura 10 minutos.',
+        'ineligible' => 'Por ahora no cumples los requisitos. Comprueba la vinculación y la vigencia del plan en el sitio. El período de gracia es de :days días.',
+        'error' => 'No se pudo completar la acción. Actualiza los ajustes de cuenta del sitio o solicita un nuevo enlace de vinculación.',
+        'payment' => 'Pago recibido: :amount
+Pedido: :order',
+    ],
+    'pt-BR' => [
+        'confirmed' => 'Telegram confirmado. Volte às configurações da conta no site, confira a conta do Telegram e confirme a vinculação.',
+        'intro' => 'Este bot gerencia a vinculação de contas e o acesso ao grupo. Use as configurações da conta no site para vincular, desvincular ou solicitar acesso. Use /group para verificar a elegibilidade. Nunca envie senhas, códigos ou links de assinatura.',
+        'bind' => 'Entre no site e obtenha um link de uso único nas configurações da conta. Nunca envie senhas, códigos ou links de assinatura.',
+        'unbind' => 'Entre no site e desvincule o Telegram nas configurações da conta.',
+        'eligible' => 'Você está elegível. Solicite um convite para o grupo nas configurações da conta no site. O link dura 10 minutos.',
+        'ineligible' => 'Você não está elegível no momento. Confira a vinculação da conta e a validade do plano no site. O período de tolerância é de :days dias.',
+        'error' => 'Não foi possível concluir a ação. Atualize as configurações da conta no site ou solicite um novo link de vinculação.',
+        'payment' => 'Pagamento recebido: :amount
+Pedido: :order',
+    ],
 ];

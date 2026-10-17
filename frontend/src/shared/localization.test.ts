@@ -28,7 +28,7 @@ const {
     applyAccountLanguage,
 } = await import("./i18n");
 await languageReady;
-const catalogs = Object.fromEntries(
+const resources = Object.fromEntries(
     languages.map((l) => [
         l.code,
         JSON.parse(
@@ -36,18 +36,18 @@ const catalogs = Object.fromEntries(
                 new URL(`../locales/${l.code}.json`, import.meta.url),
                 "utf8",
             ),
-        ) as Record<string, string>,
+        ) as Record<string, Record<string, string>>,
+    ]),
+);
+const catalogs = Object.fromEntries(
+    Object.entries(resources).map(([code, resource]) => [
+        code,
+        resource.translation,
     ]),
 );
 const placeholders = (v: string) =>
     [...v.matchAll(/{{\s*(\w+)\s*}}/g)].map((m) => m[1]).sort();
-const { landingCopy } = await import("../user/landing-copy");
-await import("./ux");
-await import("./experience-copy");
-await import("./billing-copy");
-await import("../user/announcement-copy");
-await import("./credit-copy");
-await import("../user/help-copy");
+await i18n.loadLanguages(["es-ES", "pt-BR"]);
 describe("landing and interactive control translations", () => {
     for (const { code } of languages)
         it(`${code} provides landing and control namespaces`, () => {
@@ -60,8 +60,8 @@ describe("landing and interactive control translations", () => {
                 "credits",
                 "help",
             ]) {
-                const base = i18n.getResourceBundle("zh-CN", namespace);
-                const translated = i18n.getResourceBundle(code, namespace);
+                const base = resources["zh-CN"][namespace];
+                const translated = resources[code][namespace];
                 for (const [key, value] of Object.entries(base)) {
                     expect(
                         translated[key],
@@ -74,11 +74,39 @@ describe("landing and interactive control translations", () => {
             }
         });
     it("keeps public copy focused on assistant demonstrations", () => {
-        for (const values of Object.values(landingCopy))
-            for (const value of values)
+        for (const catalog of Object.values(resources))
+            for (const value of Object.values(catalog.landing))
                 expect(value).not.toMatch(/vpn|翻墙|代理|节点|订阅|流量/i);
     });
 });
+describe("additional language namespaces", () => {
+    for (const code of ["es-ES", "pt-BR"])
+        it(`${code} covers all user namespaces without fallback`, () => {
+            const bundle = resources[code];
+            for (const namespace of Object.keys(bundle).filter(
+                (namespace) => namespace !== "translation",
+            )) {
+                const english = i18n.getResourceBundle("en-US", namespace);
+                expect(english, namespace).toBeTruthy();
+                expect(Object.keys(bundle[namespace]).sort()).toEqual(
+                    Object.keys(english).sort(),
+                );
+                for (const [key, value] of Object.entries(english)) {
+                    expect(
+                        bundle[namespace][key],
+                        `${code}/${namespace}/${key}`,
+                    ).toBeTruthy();
+                    expect(placeholders(bundle[namespace][key])).toEqual(
+                        placeholders(String(value)),
+                    );
+                    expect(i18n.getResource(code, namespace, key)).toBe(
+                        bundle[namespace][key],
+                    );
+                }
+            }
+        });
+});
+
 describe("localization resources", () => {
     it("loads only the requested extra catalog and keeps language switching translated", async () => {
         expect(i18n.hasResourceBundle("zh-TW", "translation")).toBe(true);
@@ -97,6 +125,23 @@ describe("localization resources", () => {
                 );
             }
         });
+    it("loads the matching namespaces for every language without index-based registration", async () => {
+        for (const { code } of languages) {
+            await changeLanguage(code);
+            for (const [namespace, values] of Object.entries(resources[code])) {
+                expect(
+                    i18n.getResourceBundle(code, namespace),
+                    `${code}/${namespace}`,
+                ).toEqual(values);
+            }
+        }
+    });
+    it("does not retain the retired coupon-code entry messages", () => {
+        for (const catalog of Object.values(catalogs)) {
+            expect(catalog["使用优惠码"]).toBeUndefined();
+            expect(catalog["优惠码（可选）"]).toBeUndefined();
+        }
+    });
     it("all static user interface messages exist in the catalog", () => {
         for (const name of [
             "../user/app.tsx",
@@ -154,9 +199,18 @@ describe("localization resources", () => {
             visit(source);
         }
     });
+    it("keeps all selectors in stable language-code order", () => {
+        const codes = languages.map(({ code }) => code);
+        expect(codes).toEqual([...codes].sort());
+        expect(new Set(codes).size).toBe(10);
+        expect(codes[0]).toBe("en-US");
+        expect(codes.slice(-2)).toEqual(["zh-CN", "zh-TW"]);
+    });
     it("matches browser locales and provides a safe fallback", () => {
         expect(resolvePreferredLanguage(["zh-Hant-HK"])).toBe("zh-TW");
         expect(resolvePreferredLanguage(["ja"])).toBe("ja-JP");
+        expect(resolvePreferredLanguage(["es-MX"])).toBe("es-ES");
+        expect(resolvePreferredLanguage(["pt-PT"])).toBe("pt-BR");
         expect(resolvePreferredLanguage(["fa-AF"])).toBe("fa-IR");
         expect(resolvePreferredLanguage(["de-DE"])).toBe("en-US");
     });
@@ -171,6 +225,14 @@ describe("localization resources", () => {
         expect(tx("{{count}} 台设备", { count: 2 })).toBe("2 devices");
         await changeLanguage("ru-RU");
         expect(tx("{{count}} 台设备", { count: 5 })).toBe("5 устройств");
+        for (const code of ["es-ES", "pt-BR"]) {
+            await changeLanguage(code);
+            expect(document.documentElement.lang).toBe(code);
+            expect(document.documentElement.dir).toBe("ltr");
+            expect(tx("{{count}} 台设备", { count: 1 })).toBe("1 dispositivo");
+            expect(tx("{{count}} 台设备", { count: 2 })).toBe("2 dispositivos");
+        }
+        await changeLanguage("ru-RU");
         await changeLanguage("unsupported");
         expect(i18n.language).toBe("ru-RU");
     });
@@ -248,7 +310,6 @@ function localeForTest() {
 
 it("formats scheduled reset timestamps to the minute with an explicit timezone", async () => {
     const { minuteDate } = await import("./credit-copy");
-    await import("../user/help-copy");
     await i18n.changeLanguage("zh-CN");
     const output = minuteDate(
         Date.parse("2026-10-07T13:51:37Z") / 1000,

@@ -10,7 +10,7 @@ class ProductMail
     public static function language($value)
     {
         $value = strtolower(str_replace('_', '-', (string)$value));
-        $aliases = ['zh'=>'zh-CN','zh-cn'=>'zh-CN','zh-hans'=>'zh-CN','zh-tw'=>'zh-TW','zh-hk'=>'zh-TW','zh-hant'=>'zh-TW','zh-hant-tw'=>'zh-TW','zh-hant-hk'=>'zh-TW','zh-hans-cn'=>'zh-CN', 'en'=>'en-US','ja'=>'ja-JP','ko'=>'ko-KR','vi'=>'vi-VN','ru'=>'ru-RU','fa'=>'fa-IR'];
+        $aliases = ['zh'=>'zh-CN','zh-cn'=>'zh-CN','zh-hans'=>'zh-CN','zh-tw'=>'zh-TW','zh-hk'=>'zh-TW','zh-hant'=>'zh-TW','zh-hant-tw'=>'zh-TW','zh-hant-hk'=>'zh-TW','zh-hans-cn'=>'zh-CN', 'en'=>'en-US','ja'=>'ja-JP','ko'=>'ko-KR','vi'=>'vi-VN','ru'=>'ru-RU','fa'=>'fa-IR','es'=>'es-ES','pt'=>'pt-BR'];
         foreach (LanguagePreferenceService::SUPPORTED as $language) if (strtolower($language) === $value) return $language;
         return $aliases[$value] ?? ($aliases[explode('-', $value)[0]] ?? null);
     }

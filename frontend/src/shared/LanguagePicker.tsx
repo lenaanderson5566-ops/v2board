@@ -12,10 +12,11 @@ export function LanguagePicker() {
         useHeaderPopover();
     const selected =
         languages.find((language) => language.code === locale()) ||
-        languages[0];
+        languages.find((language) => language.code === "en-US")!;
     return (
         <div className="language-picker" ref={root} onBlur={onBlur}>
             <button
+                type="button"
                 ref={trigger}
                 className="language-trigger"
                 aria-label={`${tx("界面语言")}: ${selected.name}`}
@@ -51,6 +52,7 @@ export function LanguagePicker() {
                     {languages.map((language) => (
                         <button
                             key={language.code}
+                            type="button"
                             role="menuitemradio"
                             aria-checked={language.code === selected.code}
                             data-popover-item
@@ -58,6 +60,12 @@ export function LanguagePicker() {
                             disabled={busy}
                             onClick={async () => {
                                 if (saving.current) return;
+                                if (language.code === selected.code) {
+                                    setError("");
+                                    setOpen(false);
+                                    trigger.current?.focus();
+                                    return;
+                                }
                                 saving.current = true;
                                 setBusy(true);
                                 setError("");

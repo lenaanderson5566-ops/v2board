@@ -64,6 +64,9 @@ it("pins the selected language without changing subscription credentials",()=>{
     const nested=new URL(new URL(importLink("clash",localized,"Test")).searchParams.get("url")!);
     expect(nested.searchParams.get("language")).toBe("zh-TW");
     expect(nested.searchParams.get("token")).toBe("a+b&c");
+    for (const language of ["es-ES", "pt-BR"]) {
+        expect(new URL(localizedSubscriptionUrl(url, language)).searchParams.get("language")).toBe(language);
+    }
     expect(()=>localizedSubscriptionUrl(url,"invalid")).toThrow();
 });
 

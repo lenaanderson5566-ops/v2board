@@ -33,7 +33,12 @@ vi.mock("../shared/i18n", () => ({
 }));
 vi.mock("../shared/experience-copy", () => ({ e: (key: string) => key }));
 vi.mock("../shared/ui", () => ({
-    useData: (path: string) => ({ data: path === "user/coupon/offers" ? mocks.offers : { plan: { name: "PRO" }, expired_at: null } }),
+    useData: (path: string) => ({
+        data:
+            path === "user/coupon/offers"
+                ? mocks.offers
+                : { plan: { name: "PRO" }, expired_at: null },
+    }),
     Modal: ({ title, children, close }: any) => (
         <div role="dialog" aria-label={title}>
             <button onClick={close}>关闭</button>
@@ -43,7 +48,9 @@ vi.mock("../shared/ui", () => ({
 }));
 import { LanguagePicker } from "../shared/LanguagePicker";
 import { AccountMenu } from "./AccountMenu";
-vi.mock("./AccountSessions", () => ({ AccountSessions: () => <div>Sessions</div> }));
+vi.mock("./AccountSessions", () => ({
+    AccountSessions: () => <div>Sessions</div>,
+}));
 import { AccountSecurity } from "./AccountSecurity";
 afterEach(cleanup);
 beforeEach(() => {
@@ -68,7 +75,9 @@ function fill(password = "new-password", confirmation = password) {
 describe("header controls", () => {
     it("selects a language and closes the menu with focus returned", async () => {
         render(<LanguagePicker />);
-        const trigger = screen.getByRole("button", { name: "界面语言: English" });
+        const trigger = screen.getByRole("button", {
+            name: "界面语言: English",
+        });
         fireEvent.click(trigger);
         expect(document.activeElement).toBe(
             screen.getByRole("menuitemradio", { name: "English" }),
@@ -82,21 +91,45 @@ describe("header controls", () => {
     });
     it("keeps touch selection mounted when mobile blur has no related target", async () => {
         render(<LanguagePicker />);
-        fireEvent.click(screen.getByRole("button", { name: "界面语言: English" }));
+        fireEvent.click(
+            screen.getByRole("button", { name: "界面语言: English" }),
+        );
         const selected = screen.getByRole("menuitemradio", { name: "English" });
         const option = screen.getByRole("menuitemradio", { name: "简体中文" });
         // Touch browsers can blur the focused item without focusing the tapped button.
         fireEvent.pointerDown(option, { pointerType: "touch" });
         fireEvent.blur(selected, { relatedTarget: null });
-        expect(screen.getByRole("menuitemradio", { name: "简体中文" })).toBe(option);
+        expect(screen.getByRole("menuitemradio", { name: "简体中文" })).toBe(
+            option,
+        );
         fireEvent.pointerUp(option, { pointerType: "touch" });
         fireEvent.click(option);
-        await waitFor(() => expect(mocks.changeLanguage).toHaveBeenCalledWith("zh-CN"));
+        await waitFor(() =>
+            expect(mocks.changeLanguage).toHaveBeenCalledWith("zh-CN"),
+        );
         await waitFor(() => expect(screen.queryByRole("menu")).toBeNull());
     });
+    it("closes without saving when choosing the current language", () => {
+        render(<LanguagePicker />);
+        const trigger = screen.getByRole("button", {
+            name: "界面语言: English",
+        });
+        fireEvent.click(trigger);
+        fireEvent.click(screen.getByRole("menuitemradio", { name: "English" }));
+        expect(mocks.changeLanguage).not.toHaveBeenCalled();
+        expect(screen.queryByRole("menu")).toBeNull();
+        expect(document.activeElement).toBe(trigger);
+    });
     it("still closes when keyboard focus leaves the menu", () => {
-        render(<><LanguagePicker /><button>Outside</button></>);
-        fireEvent.click(screen.getByRole("button", { name: "界面语言: English" }));
+        render(
+            <>
+                <LanguagePicker />
+                <button>Outside</button>
+            </>,
+        );
+        fireEvent.click(
+            screen.getByRole("button", { name: "界面语言: English" }),
+        );
         fireEvent.blur(screen.getByRole("menuitemradio", { name: "English" }), {
             relatedTarget: screen.getByRole("button", { name: "Outside" }),
         });
@@ -105,17 +138,28 @@ describe("header controls", () => {
     it("shows a failed save and allows retry without closing the menu", async () => {
         mocks.changeLanguage.mockRejectedValueOnce(Error("save failed"));
         render(<LanguagePicker />);
-        fireEvent.click(screen.getByRole("button", { name: "界面语言: English" }));
-        fireEvent.click(screen.getByRole("menuitemradio", { name: "简体中文" }));
-        expect(await screen.findByRole("alert")).toHaveProperty("textContent", "save failed");
+        fireEvent.click(
+            screen.getByRole("button", { name: "界面语言: English" }),
+        );
+        fireEvent.click(
+            screen.getByRole("menuitemradio", { name: "简体中文" }),
+        );
+        expect(await screen.findByRole("alert")).toHaveProperty(
+            "textContent",
+            "save failed",
+        );
         expect(screen.getByRole("menu")).toBeTruthy();
-        fireEvent.click(screen.getByRole("menuitemradio", { name: "简体中文" }));
+        fireEvent.click(
+            screen.getByRole("menuitemradio", { name: "简体中文" }),
+        );
         await waitFor(() => expect(screen.queryByRole("menu")).toBeNull());
         expect(mocks.changeLanguage).toHaveBeenCalledTimes(2);
     });
     it("supports keyboard navigation and Escape", () => {
         render(<LanguagePicker />);
-        const trigger = screen.getByRole("button", { name: "界面语言: English" });
+        const trigger = screen.getByRole("button", {
+            name: "界面语言: English",
+        });
         fireEvent.click(trigger);
         fireEvent.keyDown(document, { key: "ArrowDown" });
         expect(document.activeElement).toBe(
@@ -135,7 +179,9 @@ describe("header controls", () => {
                 />
             </>,
         );
-        fireEvent.click(screen.getByRole("button", { name: "界面语言: English" }));
+        fireEvent.click(
+            screen.getByRole("button", { name: "界面语言: English" }),
+        );
         fireEvent.click(screen.getByRole("button", { name: "account" }));
         expect(screen.queryByRole("menu")).toBeNull();
         expect(
@@ -147,7 +193,9 @@ describe("header controls", () => {
         expect(screen.queryByRole("link", { name: "订单记录" })).toBeNull();
         expect(screen.queryByRole("link", { name: "帮助中心" })).toBeNull();
         expect(screen.queryByRole("link", { name: "流量记录" })).toBeNull();
-        expect(screen.getByRole("button", { name: "account" }).textContent).toContain("A");
+        expect(
+            screen.getByRole("button", { name: "account" }).textContent,
+        ).toContain("A");
         expect(screen.getByText("PRO")).toBeTruthy();
         fireEvent.pointerDown(document.body);
         expect(screen.queryByRole("link", { name: "账户安全" })).toBeNull();
@@ -197,7 +245,10 @@ describe("account password changes", () => {
                 old_password: "old-password",
                 new_password: "new-password",
             });
-            expect((await import("../shared/browser-session")).forgetBrowserSession).toHaveBeenCalled();
+            expect(
+                (await import("../shared/browser-session"))
+                    .forgetBrowserSession,
+            ).toHaveBeenCalled();
             expect(
                 sessionStorage.getItem("controls-test.passwordUpdated"),
             ).toBe("1");
@@ -220,12 +271,18 @@ describe("account password changes", () => {
 });
 
 it("keeps the wallet entry and only adds activities when offers are available", () => {
-    const view = render(<AccountMenu user={{ email: "test@example.com" }} logout={vi.fn()} />);
+    const view = render(
+        <AccountMenu user={{ email: "test@example.com" }} logout={vi.fn()} />,
+    );
     fireEvent.click(screen.getByRole("button", { name: "account" }));
-    expect(screen.getByRole("link", { name: "我的优惠券" }).getAttribute("href")).toBe("#/coupons");
+    expect(
+        screen.getByRole("link", { name: "我的优惠券" }).getAttribute("href"),
+    ).toBe("#/coupons");
     expect(screen.queryByRole("link", { name: "活动中心" })).toBeNull();
     mocks.offers = [{ id: 1 }];
-    view.rerender(<AccountMenu user={{ email: "test@example.com" }} logout={vi.fn()} />);
+    view.rerender(
+        <AccountMenu user={{ email: "test@example.com" }} logout={vi.fn()} />,
+    );
     fireEvent.click(screen.getByRole("link", { name: "活动中心" }));
     expect(screen.queryByRole("link", { name: "活动中心" })).toBeNull();
 });

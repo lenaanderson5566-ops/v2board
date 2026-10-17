@@ -1,3 +1,4 @@
+import { languageCodes } from "../shared/language-options";
 import { Plus, Search } from "lucide-react";
 import { useEffect, useState, type ReactNode } from "react";
 import { PlanDescription } from "../shared/PlanDescription";
@@ -967,16 +968,7 @@ export function ResourcePage({
             : field.key === "language"
               ? {
                     ...field,
-                    suggestions: [
-                        "zh-CN",
-                        "zh-TW",
-                        "en-US",
-                        "ja-JP",
-                        "ko-KR",
-                        "vi-VN",
-                        "ru-RU",
-                        "fa-IR",
-                    ],
+                    suggestions: languageCodes,
                 }
               : field.key === "group_id"
                 ? {

@@ -1,3 +1,4 @@
+import { useTranslation } from "react-i18next";
 import { StatusBadge } from "../shared/StatusBadge";
 import { Globe } from "lucide-react";
 import { type Row } from "../shared/api";
@@ -10,16 +11,6 @@ const flags = import.meta.glob<string>("./assets/flags/*.svg", {
     query: "?url&no-inline",
     import: "default",
 });
-const labels: Record<string, string> = {
-    "zh-CN": "标签 / 备注",
-    "zh-TW": "標籤 / 備註",
-    "en-US": "Tags / notes",
-    "ja-JP": "タグ / 備考",
-    "ko-KR": "태그 / 비고",
-    "vi-VN": "Nhãn / ghi chú",
-    "ru-RU": "Метки / примечания",
-    "fa-IR": "برچسب‌ها / توضیحات",
-};
 export function nodeName(node: Row, language: string): string {
     const names = node.display_names;
     for (const value of [names?.[language], names?.["en-US"], node.name]) {
@@ -28,6 +19,7 @@ export function nodeName(node: Row, language: string): string {
     return "—";
 }
 export function NodeList({ nodes }: { nodes: Row[] }) {
+    const { t } = useTranslation("nodes");
     const language = locale();
     return (
         <Table
@@ -65,7 +57,7 @@ export function NodeList({ nodes }: { nodes: Row[] }) {
                 ],
                 [
                     "tags",
-                    labels[language] || labels["en-US"],
+                    t("tags"),
                     (node) => {
                         const tags = Array.isArray(node.tags)
                             ? [

@@ -1,17 +1,11 @@
+import { languages as languageOptions } from "../shared/language-options";
 import { useState } from "react";
 import { admin, query, request, type Row } from "../shared/api";
 import { PlanDescription } from "../shared/PlanDescription";
 
-const languages: Record<string, string> = {
-    "zh-CN": "简体中文",
-    "zh-TW": "繁體中文",
-    "en-US": "English",
-    "ja-JP": "日本語",
-    "ko-KR": "한국어",
-    "vi-VN": "Tiếng Việt",
-    "ru-RU": "Русский",
-    "fa-IR": "فارسی",
-};
+const languages: Record<string, string> = Object.fromEntries(
+    languageOptions.map((language) => [language.code, language.name]),
+);
 async function translationRequest<T = Row>(path: string, body?: Row) {
     const controller = new AbortController();
     const timer = window.setTimeout(() => controller.abort(), 45000);
@@ -125,7 +119,11 @@ export function AdminPlanAutoTranslation({
                     failed[locale] = (e as Error).message;
                 }
             }
-            setFailures((previous) => { const next={...previous,...failed}; savedLocales.forEach(locale=>delete next[locale]); return next; });
+            setFailures((previous) => {
+                const next = { ...previous, ...failed };
+                savedLocales.forEach((locale) => delete next[locale]);
+                return next;
+            });
             setMessage(
                 `保存结束：已保存 ${count}，失败 ${Object.keys(failed).length}。未保存译文保留，可重试。`,
             );

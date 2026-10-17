@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useData } from "./ui";
 import { Row, query } from "./api";
-import { locale } from "./i18n";
+import { useTranslation } from "react-i18next";
 import "./banners.css";
 export function bannerUrl(value: unknown): string | undefined {
     if (typeof value !== "string" || /[\x00-\x20\x7f\\]/.test(value)) return;
@@ -42,21 +42,12 @@ export function bannerImages(banner: Row) {
             (preset ? presetMobileBanner : undefined),
     };
 }
-const labels: Record<string, string[]> = {
-    "zh-CN": ["上一张", "下一张", "选择 Banner"],
-    "zh-TW": ["上一張", "下一張", "選擇 Banner"],
-    "en-US": ["Previous banner", "Next banner", "Select banner"],
-    "ja-JP": ["前へ", "次へ", "バナーを選択"],
-    "ko-KR": ["이전", "다음", "배너 선택"],
-    "vi-VN": ["Trước", "Tiếp", "Chọn banner"],
-    "ru-RU": ["Назад", "Далее", "Выбрать баннер"],
-    "fa-IR": ["قبلی", "بعدی", "انتخاب بنر"],
-};
 export function BannerStrip({
     placement,
 }: {
     placement: "landing" | "dashboard";
 }) {
+    const { t } = useTranslation("banners");
     const data = useData<Row[]>(query("guest/banner/fetch", { placement }));
     const [index, setIndex] = useState(0),
         [failed, setFailed] = useState<string[]>([]);
@@ -67,7 +58,6 @@ export function BannerStrip({
     const active = index % items.length,
         banner = items[active],
         target = bannerUrl(banner.target_url);
-    const copy = labels[locale()] || labels["en-US"];
     const images = bannerImages(banner);
     const image = (
         <picture key={images.desktop}>
@@ -91,7 +81,7 @@ export function BannerStrip({
                 <div className="banner-controls">
                     <button
                         type="button"
-                        aria-label={copy[0]}
+                        aria-label={t("previous")}
                         onClick={() =>
                             setIndex((active + items.length - 1) % items.length)
                         }
@@ -103,7 +93,7 @@ export function BannerStrip({
                             <button
                                 key={b.id}
                                 type="button"
-                                aria-label={`${copy[2]} ${i + 1}`}
+                                aria-label={`${t("select")} ${i + 1}`}
                                 aria-pressed={active === i}
                                 onClick={() => setIndex(i)}
                                 className="banner-dot"
@@ -112,7 +102,7 @@ export function BannerStrip({
                     </div>
                     <button
                         type="button"
-                        aria-label={copy[1]}
+                        aria-label={t("next")}
                         onClick={() => setIndex((active + 1) % items.length)}
                     >
                         ›

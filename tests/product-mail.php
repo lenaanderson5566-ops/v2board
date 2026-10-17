@@ -22,6 +22,11 @@ DB::beginTransaction();
 try {
     config(['v2board.app_name'=>'V2Board','v2board.app_url'=>'https://product.example', 'v2board.email_provider'=>'smtp', 'v2board.email_host'=>null,'v2board.email_public_url'=>'https://api.example.test','v2board.email_announcement_separate'=>0,'v2board.email_announcements_enabled'=>1,'v2board.email_password_encrypted'=>false]);
     $renderer = new ProductMail;
+    $catalog = require resource_path('mail/copy.php');
+    foreach (App\Services\LanguagePreferenceService::SUPPORTED as $language) {
+        $assert(isset($catalog[$language]) && array_keys($catalog[$language])===array_keys($catalog['en-US']), 'Missing email language keys: '.$language);
+    }
+    $assert(ProductMail::language('es-MX')==='es-ES' && ProductMail::language('pt-PT')==='pt-BR', 'Regional language aliases lost');
     foreach (App\Services\LanguagePreferenceService::SUPPORTED as $language) {
         $data = $renderer->data(['template_name'=>'ticketReply', 'language'=>$language,
             'template_value'=>['ticket_id'=>12345, 'ticket_subject'=>'PRIVATE_SUBJECT_SENTINEL', 'message'=>'PRIVATE_REPLY_SENTINEL']]);

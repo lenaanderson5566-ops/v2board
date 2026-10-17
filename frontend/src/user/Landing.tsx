@@ -17,7 +17,6 @@ import {
     ChevronRight,
 } from "lucide-react";
 import { boot } from "../shared/api";
-import "./landing-copy";
 import "./landing.css";
 import openaiIcon from "../assets/openai.svg";
 import claudeIcon from "../assets/claude.svg";

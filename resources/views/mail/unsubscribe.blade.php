@@ -7,6 +7,8 @@ $copy = [
 'ko-KR'=>['홍보 이메일','수신 거부','인증 코드, 결제 및 필수 서비스 알림은 계속 발송됩니다.','홍보 이메일 수신을 거부했습니다.'],
 'vi-VN'=>['Email tiếp thị','Hủy đăng ký','Mã xác minh, hóa đơn và thông báo thiết yếu không bị ảnh hưởng.','Đã hủy nhận email tiếp thị.'],
 'ru-RU'=>['Рекламная рассылка','Отписаться','Коды подтверждения, счета и важные уведомления не затронуты.','Вы отписались от рассылки.'],
+'es-ES'=>['Correos promocionales','Cancelar suscripción','Los códigos de verificación, la facturación y los avisos esenciales no se ven afectados.','Has cancelado los correos promocionales.'],
+'pt-BR'=>['E-mails promocionais','Cancelar assinatura','Códigos de verificação, cobrança e avisos essenciais não são afetados.','Você cancelou os e-mails promocionais.'],
 'fa-IR'=>['ایمیل‌های تبلیغاتی','لغو اشتراک','کدهای تأیید، صورتحساب و پیام‌های ضروری تغییری نمی‌کنند.','اشتراک تبلیغات لغو شد.']
 ][$language] ?? ['Marketing emails','Unsubscribe','Essential account emails are unaffected.','You have unsubscribed.'];
 @endphp

@@ -1,3 +1,4 @@
+import { languages } from "../shared/language-options";
 import { boot } from "../shared/api";
 import { validZone } from "../shared/timezone";
 import type { Field } from "../shared/ui";
@@ -12,16 +13,7 @@ const choices: Record<string, [string, string][]> = {
     email_provider: [["smtp", "SMTP（现有通道）"], ["mailgun", "Mailgun HTTP API"], ["ses", "Amazon SES API"], ["resend", "Resend API"]],
     email_ses_auth: [["role", "IAM 角色 / 服务器凭据（推荐）"], ["key", "独立访问密钥"]],
     email_mailgun_region: [["us", "美国（US）"], ["eu", "欧盟（EU）"]],
-    email_default_language: [
-        ["zh-CN", "简体中文"],
-        ["zh-TW", "繁體中文"],
-        ["en-US", "English"],
-        ["ja-JP", "日本語"],
-        ["ko-KR", "한국어"],
-        ["vi-VN", "Tiếng Việt"],
-        ["ru-RU", "Русский"],
-        ["fa-IR", "فارسی"],
-    ],
+    email_default_language: languages.map(({ code, name }): [string, string] => [code, name]),
     reset_traffic_method: resetOptions,
     ticket_status: [
         ["0", "所有用户可提交"],

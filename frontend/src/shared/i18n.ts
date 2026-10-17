@@ -3,16 +3,8 @@ import { initReactI18next } from "react-i18next";
 import zhCN from "../locales/zh-CN.json";
 import enUS from "../locales/en-US.json";
 
-export const languages = [
-    { code: "zh-CN", name: "简体中文" },
-    { code: "zh-TW", name: "繁體中文" },
-    { code: "en-US", name: "English" },
-    { code: "ja-JP", name: "日本語" },
-    { code: "ko-KR", name: "한국어" },
-    { code: "vi-VN", name: "Tiếng Việt" },
-    { code: "ru-RU", name: "Русский" },
-    { code: "fa-IR", name: "فارسی" },
-] as const;
+import { languages } from "./language-options";
+export { languages } from "./language-options";
 export const languageKey = "v2board.language";
 function matchLanguage(value: string): string | undefined {
     if (/^zh(-|$)/i.test(value))
@@ -31,18 +23,27 @@ export function resolvePreferredLanguage(values: readonly string[]): string {
     }
     return "en-US";
 }
-const localeLoaders: Record<
-    string,
-    () => Promise<{ default: Record<string, string> }>
-> = {
+export type TranslationNamespace = keyof typeof enUS;
+export type TranslationKey<N extends TranslationNamespace> =
+    keyof (typeof enUS)[N];
+type Catalog = Record<string, Record<string, string>>;
+const localeLoaders: Record<string, () => Promise<{ default: Catalog }>> = {
     "zh-TW": () => import("../locales/zh-TW.json"),
     "ja-JP": () => import("../locales/ja-JP.json"),
     "ko-KR": () => import("../locales/ko-KR.json"),
     "vi-VN": () => import("../locales/vi-VN.json"),
     "ru-RU": () => import("../locales/ru-RU.json"),
     "fa-IR": () => import("../locales/fa-IR.json"),
+    "es-ES": () => import("../locales/es-ES.json"),
+    "pt-BR": () => import("../locales/pt-BR.json"),
 };
-// Keep common/fallback languages available synchronously; fetch other catalogs only when needed.
+async function loadCatalog(language: string): Promise<Catalog> {
+    const { default: catalog } = await localeLoaders[language]();
+    for (const [namespace, values] of Object.entries(catalog))
+        i18next.addResourceBundle(language, namespace, values, true, true);
+    return catalog;
+}
+// One resource per language: common languages are bundled, others load on demand.
 i18next.use({
     type: "backend",
     init() {},
@@ -54,14 +55,12 @@ i18next.use({
             data: Record<string, string> | null,
         ) => void,
     ) {
-        const loader =
-            namespace === "translation" ? localeLoaders[language] : undefined;
-        if (!loader) {
+        if (!localeLoaders[language]) {
             callback(null, {});
             return;
         }
-        loader().then(
-            ({ default: catalog }) => callback(null, catalog),
+        loadCatalog(language).then(
+            (catalog) => callback(null, catalog[namespace] || {}),
             (error: Error) => callback(error, null),
         );
     },
@@ -70,8 +69,8 @@ const saved = localStorage.getItem(languageKey);
 export const languageReady = i18next.use(initReactI18next).init({
     partialBundledLanguages: true,
     resources: {
-        "zh-CN": { translation: zhCN },
-        "en-US": { translation: enUS },
+        "zh-CN": zhCN,
+        "en-US": enUS,
     },
     lng:
         window.V2BOARD?.mode === "admin"
@@ -120,8 +119,7 @@ async function ensureCatalog(value: string) {
         !i18next.hasResourceBundle(value, "translation") &&
         localeLoaders[value]
     ) {
-        const { default: catalog } = await localeLoaders[value]();
-        i18next.addResourceBundle(value, "translation", catalog, true, true);
+        await loadCatalog(value);
     }
 }
 export async function applyAccountLanguage(value: unknown) {

@@ -40,7 +40,6 @@ vi.mock("../shared/i18n", () => ({
 vi.mock("./pricing-copy", () => ({
     pricingCopy: (key: string, args: any = {}) => key + JSON.stringify(args),
 }));
-vi.mock("./import-copy", () => ({}));
 vi.mock("./profile-copy", () => ({ p: (key: string) => key }));
 vi.mock("./help-copy", () => ({ h: (key: string) => key }));
 vi.mock("../shared/credit-copy", () => ({

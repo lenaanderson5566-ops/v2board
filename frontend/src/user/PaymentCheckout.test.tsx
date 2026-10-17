@@ -10,7 +10,7 @@ const mock = vi.hoisted(() => ({ request: vi.fn(), methods: [
 vi.mock("../shared/api", () => ({ request: mock.request, bytes: String, money: (amount: number, currency="CNY") => `${currency} ${(Number(amount) / 100).toFixed(2)}`, query: (path: string) => path }));
 vi.mock("../shared/i18n", () => ({ tx: (value: string) => value, locale: () => "zh-CN" }));
 vi.mock("../shared/ui", () => ({ useData: () => ({ data: mock.methods, loading: false, reload: vi.fn() }), State: ({ children }: any) => children, Modal: ({ children }: any) => children }));
-vi.mock("./SubscriptionPurchase", () => ({ PurchaseSteps: () => null }));
+vi.mock("./PurchaseSteps", () => ({ PurchaseSteps: () => null }));
 vi.mock("./OrderHelp", () => ({ OrderHelp: () => null }));
 vi.mock("./OrderReceipt", () => ({ OrderReceipt: () => null }));
 vi.mock("../shared/credit-copy", () => ({ c: (value: string) => value, minuteDate: () => "" }));

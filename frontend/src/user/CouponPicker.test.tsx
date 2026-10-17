@@ -1,12 +1,7 @@
 // @vitest-environment jsdom
+// @vitest-environment jsdom
 import { afterEach, expect, it, vi } from "vitest";
-import {
-    cleanup,
-    fireEvent,
-    render,
-    screen,
-    waitFor,
-} from "@testing-library/react";
+import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 const mocks = vi.hoisted(() => ({
     request: vi.fn(),
     reload: vi.fn(),

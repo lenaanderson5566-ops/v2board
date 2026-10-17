@@ -181,6 +181,7 @@ export function AnalyticsPrivacy() {
                         className="analytics-privacy-details"
                     >
                         <p>{e("analyticsSummary")}</p>
+                        <p>{e("analyticsSources")}</p>
                         <details>
                             <summary>{e("analyticsDetails")}</summary>
                             <p>{e("analyticsExplanation")}</p>

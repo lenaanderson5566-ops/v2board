@@ -16,6 +16,7 @@ final class ProductAnalytics {
         });
     }
     public function ready(): bool { return Schema::hasTable('v2_analytics_session') && Schema::hasTable('v2_analytics_page'); }
+    public function sourcesReady(): bool { return Schema::hasColumn('v2_analytics_session', 'attribution_version'); }
     public function save(array $values): array {
         abort_unless($this->ready(),409,'请先执行数据库迁移，再开启访问统计。');
         DB::transaction(function () use ($values) {
@@ -29,10 +30,15 @@ final class ProductAnalytics {
     public function record(array $event): void {
         if (!$this->settings()['enabled']) return;
         $now = time();
-        // No IP, user ID, raw UA, referrer or URL is persisted. Hash is scoped to this deployment.
+        // No IP, user ID, raw UA, full referrer or URL is persisted. Hash is scoped to this deployment.
         $hash = hash_hmac('sha256', $event['sessionId'], (string)config('app.key'));
         DB::transaction(function () use ($event, $now, $hash) {
-            DB::table('v2_analytics_session')->insertOrIgnore(['session_hash'=>$hash,'created_at'=>$now,'last_at'=>$now,'device'=>$event['device'],'language'=>$event['language'],'stage'=>0]);
+            $attribution = [];
+            if ($this->sourcesReady() && (int)($event['attributionVersion'] ?? 0) === 1) {
+                $attribution = ['attribution_version'=>1,'source_domain'=>$event['sourceDomain'] ?? null];
+            }
+            // Attribution is fixed on first insert; later events cannot overwrite it.
+            DB::table('v2_analytics_session')->insertOrIgnore(array_merge(['session_hash'=>$hash,'created_at'=>$now,'last_at'=>$now,'device'=>$event['device'],'language'=>$event['language'],'stage'=>0], $attribution));
             $session = DB::table('v2_analytics_session')->where('session_hash',$hash)->lockForUpdate()->first();
             // A browser identifier cannot extend a session indefinitely.
             if ($now-(int)$session->last_at > 1800 || $now-(int)$session->created_at >= 86400) return;
@@ -70,9 +76,19 @@ final class ProductAnalytics {
         if ($device!=='all') $sessions->where('device',$device);
         $effectiveStart=max($start,$now-$settings['retentionDays']*86400);
         $started=(int)RiskSetting::where('key','analytics_started_at')->value('value');
-        $daily=[]; $previous=null;
+        $daily=[]; $previous=null; $sources=[]; $sourceGroups=0; $sourcesReady=$ready && $this->sourcesReady();
         $pages=[]; $funnel=[0,0,0]; $visits=0; $views=0; $devices=[]; $latest=null;
         if ($ready) {
+            if ($sourcesReady) {
+                $grouped=(clone $sessions)->select('attribution_version','source_domain')
+                    ->selectRaw('COUNT(*) AS sessions, SUM(CASE WHEN stage>=1 THEN 1 ELSE 0 END) AS plans, SUM(CASE WHEN stage>=2 THEN 1 ELSE 0 END) AS confirmations, SUM(CASE WHEN stage>=3 THEN 1 ELSE 0 END) AS payments')
+                    ->groupBy('attribution_version','source_domain');
+                $sourceGroups=DB::query()->fromSub(clone $grouped,'groups')->count();
+                $sources=(clone $grouped)->orderByDesc('sessions')->orderBy('source_domain')->limit(50)->get()->map(fn($r)=>[
+                    'kind'=>(int)$r->attribution_version===0 ? 'historical' : ($r->source_domain ? 'referral' : 'unknown'),
+                    'domain'=>$r->source_domain,
+                    'sessions'=>(int)$r->sessions,'plans'=>(int)$r->plans,'confirmations'=>(int)$r->confirmations,'payments'=>(int)$r->payments])->all();
+            }
             $visits=(clone $sessions)->count();
             $latest=(clone $sessions)->max('last_at');
             $devices=(clone $sessions)->select('device')->selectRaw('COUNT(*) AS sessions')->groupBy('device')->get()->map(fn($r)=>['device'=>$r->device,'sessions'=>(int)$r->sessions])->all();
@@ -125,7 +141,7 @@ final class ProductAnalytics {
             })->count();
         };
         return ['settings'=>$settings,'ready'=>$ready,'timeZone'=>TimeZones::system(),'from'=>gmdate('c',$start),'to'=>gmdate('c',$now),
-            'daily'=>array_values($daily),'previous'=>$previous,'effectiveFrom'=>gmdate('c',max($effectiveStart,$started)),'collectionStartedAt'=>$started ? gmdate('c',$started) : null,
+            'sourcesReady'=>$sourcesReady,'sources'=>$sources,'sourceGroups'=>$sourceGroups,'daily'=>array_values($daily),'previous'=>$previous,'effectiveFrom'=>gmdate('c',max($effectiveStart,$started)),'collectionStartedAt'=>$started ? gmdate('c',$started) : null,
             'latestEventAt'=>$latest ? gmdate('c',$latest) : null,'sessions'=>$visits,'views'=>$views,'pages'=>$pages,'devices'=>$devices,
             'funnel'=>array_map(fn($id,$count)=>['step'=>$id,'sessions'=>$count],['plan','confirmation','payment'],$funnel),
             'cohort'=>['from'=>gmdate('c',$cohortStart),'to'=>gmdate('c',$cohortEnd),'windowDays'=>7,'registered'=>$registered,

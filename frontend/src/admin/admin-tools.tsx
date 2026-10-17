@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { admin, request, query, rows, bytes, type Row } from "../shared/api";
+import { admin, request, rows, type Row } from "../shared/api";
 import { Modal, State, Panel, Table, Reload, useData } from "../shared/ui";
 import { moveItem, sortPayload, type SortKind } from "./admin-actions";
 export function SortButton({

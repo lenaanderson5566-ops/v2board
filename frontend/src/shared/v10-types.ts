@@ -186,6 +186,8 @@ export interface V10AnalyticsConfiguration {
     retentionDays: 7 | 30 | 90;
 }
 export interface V10AnalyticsEvent {
+    attributionVersion?: 1;
+    sourceDomain?: string;
     sessionId: string;
     page:
         | "landing"

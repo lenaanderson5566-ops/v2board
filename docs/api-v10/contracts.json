@@ -1196,6 +1196,12 @@
       "consent": [
         "consent",
         "boolean"
+      ],
+      "attributionVersion": [
+        "attributionVersion"
+      ],
+      "sourceDomain": [
+        "sourceDomain"
       ]
     }
   },
@@ -2506,7 +2512,9 @@
         "page": "page",
         "device": "device",
         "language": "language",
-        "consent": "consent"
+        "consent": "consent",
+        "attributionVersion": "attributionVersion",
+        "sourceDomain": "sourceDomain"
       },
       "output": "scalar",
       "role": "public",

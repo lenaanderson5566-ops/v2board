@@ -14,7 +14,7 @@ import {
     setLanguagePersistence,
     applyAccountLanguage,
 } from "../shared/i18n";
-import React, { useEffect, useRef, useState, type ReactNode } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import {
     Sparkles,
     LayoutDashboard,
@@ -22,25 +22,11 @@ import {
     ShoppingBag,
     ReceiptText,
     BookOpen,
-    Users,
-    Settings,
-    Shield,
-    Network,
-    ScrollText,
-    Languages,
-    CreditCard,
     Gift,
-    Ticket,
     LogOut,
     Menu,
-    ArrowUpRight,
     ChevronRight,
-    Activity,
     MonitorSmartphone,
-    Bell,
-    Route,
-    Layers,
-    Server,
     X,
 } from "lucide-react";
 import {
@@ -52,7 +38,7 @@ import {
     logoutSession,
     type Row,
 } from "../shared/api";
-import { Editor, Panel, type Field } from "../shared/ui";
+
 import { UserAuth } from "./UserAuth";
 import { UserStatusGate } from "./AccountEntry";
 import { AnnouncementCenter } from "./AnnouncementCenter";

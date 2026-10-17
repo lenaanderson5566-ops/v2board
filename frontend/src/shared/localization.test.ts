@@ -19,7 +19,7 @@ const {
     default: i18n,
     languageReady,
     languages,
-    resolveLanguage,
+    resolvePreferredLanguage,
     changeLanguage,
     tx,
     languageKey,
@@ -155,10 +155,10 @@ describe("localization resources", () => {
         }
     });
     it("matches browser locales and provides a safe fallback", () => {
-        expect(resolveLanguage("zh-Hant-HK")).toBe("zh-TW");
-        expect(resolveLanguage("ja")).toBe("ja-JP");
-        expect(resolveLanguage("fa-AF")).toBe("fa-IR");
-        expect(resolveLanguage("de-DE")).toBe("en-US");
+        expect(resolvePreferredLanguage(["zh-Hant-HK"])).toBe("zh-TW");
+        expect(resolvePreferredLanguage(["ja"])).toBe("ja-JP");
+        expect(resolvePreferredLanguage(["fa-AF"])).toBe("fa-IR");
+        expect(resolvePreferredLanguage(["de-DE"])).toBe("en-US");
     });
     it("persists language, updates document direction, and resolves plural forms", async () => {
         await changeLanguage("fa-IR");

@@ -36,7 +36,7 @@ import {
     EyeOff,
     Check,
 } from "lucide-react";
-import { boot, request, readRequest, type Row } from "./api";
+import { boot, readRequest, type Row } from "./api";
 export function Html({
     value,
     markdown = false,

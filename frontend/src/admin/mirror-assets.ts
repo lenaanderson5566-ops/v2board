@@ -97,6 +97,3 @@ export function inspectMirrorUpdates(clients: Row[], items: Row[]): MirrorUpdate
  }
  return result;
 }
-export function mirrorUpdates(clients: Row[], items: Row[]) {
- return inspectMirrorUpdates(clients,items).filter(r=>r.status==="pending").map(r=>({client:r.client,target:r.target,asset_id:r.asset_id!,name:r.name}));
-}

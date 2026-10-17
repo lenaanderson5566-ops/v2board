@@ -18,6 +18,8 @@ import { e } from "../shared/experience-copy";
 import { passwordScore } from "../shared/user-experience";
 import { AccountEntry } from "./AccountEntry";
 
+import { useCooldown } from "../shared/useCooldown";
+
 export function UserAuth({
     mode,
     onLogin,
@@ -66,7 +68,6 @@ export function UserAuth({
         [reveal, setReveal] = useState(false),
         [busy, setBusy] = useState(false),
         [error, setError] = useState(""),
-        [cooldown, setCooldown] = useState(0),
         [sent, setSent] = useState(false),
         [done, setDone] = useState(false);
     const [invitation] = useState(
@@ -85,11 +86,7 @@ export function UserAuth({
     const heading = useRef<HTMLHeadingElement>(null);
     const submitting = useRef(false);
     const [suspended, setSuspended] = useState(false);
-    useEffect(() => {
-        if (!cooldown) return;
-        const timer = setTimeout(() => setCooldown((value) => value - 1), 1000);
-        return () => clearTimeout(timer);
-    }, [cooldown]);
+    const { remaining: cooldown, start: startCooldown } = useCooldown();
     useEffect(() => {
         heading.current?.focus();
     }, [step]);
@@ -123,7 +120,7 @@ export function UserAuth({
             recaptcha_data: captcha,
         });
         setSent(true);
-        setCooldown(60);
+        startCooldown();
         if (boot.recaptchaSiteKey) {
             setCaptcha("");
             setChallenge((value) => value + 1);

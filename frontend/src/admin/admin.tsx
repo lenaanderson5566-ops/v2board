@@ -1,102 +1,50 @@
-import { dateTimeInput } from "../shared/timezone";
-import { AdminTelegramCommunity } from "./AdminTelegramCommunity";
-import { readListView, saveListView } from "./list-view-state";
-import { ClientUaStats } from "./ClientUaStats";
-import { AdminLogFilters } from "./AdminLogFilters";
-import {
-    NodeDiagnostics,
-    SystemHealth,
-    nodeRuntimeLabels,
-} from "./AdminDiagnostics";
-import { AdminDDNS } from "./AdminDDNS";
-import { adminUserLabel } from "./admin-user-label";
-import { AdminLightsail } from "./AdminLightsail";
-import { ServerTrafficBudgets } from "./ServerTrafficBudgets";
-import { nodeDeploymentCommand, nodeIPCommand } from "./node-deployment";
-import nodeLocations from "../../../resources/client/node-locations.json";
-import {
-    PaymentCategoryEditor,
-    paymentCategoryInitial,
-} from "./PaymentCategoryEditor";
-import {
-    paymentIcons,
-    paymentIconInitial,
-    resolvePaymentIcon,
-} from "./payment-icons";
-import { AdminEntrypoints } from "./AdminEntrypoints";
-import { AdminFastaiDownloads } from "./AdminFastaiDownloads";
-import { AdminRiskReview } from "./AdminRiskReview";
-import { supportedClients as recommendationClients } from "../shared/import-links";
-import type { Device as RecommendationDevice } from "../shared/user-experience";
-import { AdminUserActivityLink } from "./AdminUserActivity";
-import { ContentComposer } from "./ContentComposer";
-import { PlanDescription } from "../shared/PlanDescription";
-import { AdminPlanAutoTranslation } from "./AdminPlanAutoTranslation";
-import { AdminMailPreview } from "./AdminMailPreview";
-import { formPresentation, settingsPresentation } from "./admin-presentation";
-import { useState, useEffect, useRef, type ReactNode } from "react";
 import { Plus, Search } from "lucide-react";
+import { useEffect, useState, type ReactNode } from "react";
+import { PlanDescription } from "../shared/PlanDescription";
 import {
     admin,
-    ops,
-    request,
-    download,
-    query,
-    rows,
     bytes,
-    money,
     date,
-    type NodeBackendType,
+    download,
+    money,
+    ops,
+    query,
+    request,
+    rows,
     type Row,
 } from "../shared/api";
+import { dateTimeInput } from "../shared/timezone";
 import {
-    useData,
-    State,
-    Panel,
-    Metric,
-    Table,
     Editor,
+    Empty,
     Modal,
     Pager,
+    Panel,
     Reload,
-    Empty,
-    Html,
+    State,
+    Table,
+    useData,
     type Field,
 } from "../shared/ui";
-import { SortButton, QueueDetails } from "./admin-tools";
-import { AdminSwitch } from "./admin-switch";
+import { SystemHealth } from "./AdminDiagnostics";
+import { AdminLogFilters } from "./AdminLogFilters";
+import { AdminPlanAutoTranslation } from "./AdminPlanAutoTranslation";
+import { AdminRiskReview } from "./AdminRiskReview";
+import { AdminUserActivityLink } from "./AdminUserActivity";
+import { ClientUaStats } from "./ClientUaStats";
+import { ContentComposer } from "./ContentComposer";
 import { sortPayload } from "./admin-actions";
-import { mailCredentialField, mailProviders } from "./mail-settings";
-import { configField, resetOptions } from "./admin-fields";
+import { field, nameColumn, resetOptions } from "./admin-fields";
 import {
-    paymentFields,
-    paymentInitial,
-    paymentPayload,
-} from "./payment-fields";
-import {
-    settingsFields,
-    linkSettings,
-    validateSettings,
-    changedSettings,
-    resourceFields,
     linkResource,
+    resourceFields,
     validateResource,
-    nodeFields,
-    linkNode,
 } from "./admin-linkage";
-import {
-    nodeEditorPresentation,
-    nodeSettingsFields,
-    nodeSettingsInitial,
-    nodeBackendInitial,
-    nodeSettingsPayload,
-} from "./node-settings";
-const f = (
-    key: string,
-    label: string,
-    type: Field["type"] = "text",
-    required = false,
-): Field => ({ key, label, type, required });
+import { formPresentation, adminLabels as labels } from "./admin-presentation";
+import { AdminSwitch } from "./admin-switch";
+import { QueueDetails, SortButton } from "./admin-tools";
+import { adminUserLabel } from "./admin-user-label";
+import { readListView, saveListView } from "./list-view-state";
 const toggle = (key: string, label: string): Field => ({
     key,
     label,
@@ -126,9 +74,8 @@ const created: [string, string, ((r: Row) => React.ReactNode)?] = [
     "创建时间",
     (r) => date(r.created_at),
 ];
-const name: [string, string] = ["name", "名称"];
 const price = (key: string, label: string): Field => ({
-    ...f(key, label + "（CNY）", "number"),
+    ...field(key, label + "（CNY）", "number"),
     scale: 100,
     step: 0.01,
     hint:
@@ -146,7 +93,7 @@ export const resources: Record<string, Resource> = {
         drop: admin("plan/drop"),
         columns: [
             ["show", "销售状态"],
-            name,
+            nameColumn,
             ["count", "统计"],
             ["transfer_enable", "流量 (GB)"],
             ["device_limit", "设备数限制"],
@@ -180,12 +127,12 @@ export const resources: Record<string, Resource> = {
             ["renew", "允许续费"],
         ],
         fields: [
-            f("name", "套餐名称", "text", true),
-            f("group_id", "权限组 ID", "number", true),
-            f("transfer_enable", "流量 (GB)", "number", true),
-            f("device_limit", "设备数限制", "number"),
-            f("speed_limit", "速率 (Mbps)", "number"),
-            f("capacity_limit", "用户容量", "number"),
+            field("name", "套餐名称", "text", true),
+            field("group_id", "权限组 ID", "number", true),
+            field("transfer_enable", "流量 (GB)", "number", true),
+            field("device_limit", "设备数限制", "number"),
+            field("speed_limit", "速率 (Mbps)", "number"),
+            field("capacity_limit", "用户容量", "number"),
             ...[
                 "month_price",
                 "quarter_price",
@@ -217,7 +164,7 @@ export const resources: Record<string, Resource> = {
                 nullable: true,
                 options: [["", "跟随系统设置"], ...resetOptions],
             },
-            f("content", "套餐说明 HTML", "textarea"),
+            field("content", "套餐说明 HTML", "textarea"),
             {
                 ...toggle("force_update", "更新到现有用户"),
                 hint: "同步设备、速率和权限组；流量配额仅更新未转换为额度的套餐用户，已购额度保持不变。",
@@ -242,7 +189,7 @@ export const resources: Record<string, Resource> = {
             ["user_count", "用户数量"],
             ["server_count", "节点数量"],
         ],
-        fields: [f("name", "权限组名称", "text", true)],
+        fields: [field("name", "权限组名称", "text", true)],
     },
     routes: {
         title: "路由管理",
@@ -281,7 +228,7 @@ export const resources: Record<string, Resource> = {
             ],
         ],
         fields: [
-            f("remarks", "备注", "text", true),
+            field("remarks", "备注", "text", true),
             {
                 key: "backend",
                 label: "适用内核",
@@ -291,7 +238,7 @@ export const resources: Record<string, Resource> = {
                     ["v2box", "V2Box / sing-box"],
                 ],
             },
-            f("match", "匹配条件", "json", true),
+            field("match", "匹配条件", "json", true),
             {
                 key: "action",
                 label: "动作",
@@ -308,7 +255,7 @@ export const resources: Record<string, Resource> = {
                     ["default_out", "默认出口"],
                 ],
             },
-            f("action_value", "动作参数"),
+            field("action_value", "动作参数"),
             {
                 key: "sing_box",
                 label: "sing-box 规则配置",
@@ -369,8 +316,12 @@ export const resources: Record<string, Resource> = {
             ],
             ["expired_at", "到期时间", (r) => date(r.expired_at)],
             ["currency", "账号币种", (r) => r.currency || "CNY"],
-            ["balance", "余额", (r) => money(r.balance,r.currency)],
-            ["commission_balance", "佣金", (r) => money(r.commission_balance,r.currency)],
+            ["balance", "余额", (r) => money(r.balance, r.currency)],
+            [
+                "commission_balance",
+                "佣金",
+                (r) => money(r.commission_balance, r.currency),
+            ],
             ["last_connected_at", "上次连接", (r) => date(r.last_connected_at)],
             [
                 "last_subscribe_at",
@@ -381,25 +332,25 @@ export const resources: Record<string, Resource> = {
             ["created_at", "加入时间", (r) => date(r.created_at)],
         ],
         fields: [
-            f("email", "邮箱", "text", true),
-            f("password", "新密码（留空不修改）", "password"),
-            f("plan_id", "套餐 ID", "number"),
-            f("transfer_enable", "流量 (GB)", "number"),
-            f("u", "已用上传（GB）", "number"),
-            f("d", "已用下载（GB）", "number"),
+            field("email", "邮箱", "text", true),
+            field("password", "新密码（留空不修改）", "password"),
+            field("plan_id", "套餐 ID", "number"),
+            field("transfer_enable", "流量 (GB)", "number"),
+            field("u", "已用上传（GB）", "number"),
+            field("d", "已用下载（GB）", "number"),
             {
-                ...f("balance", "余额（账号币种）", "number"),
+                ...field("balance", "余额（账号币种）", "number"),
                 scale: 100,
                 step: 0.01,
             },
-            f("expired_at", "到期时间", "datetime-local"),
-            f("device_limit", "设备限制", "number"),
-            f("speed_limit", "速率限制", "number"),
+            field("expired_at", "到期时间", "datetime-local"),
+            field("device_limit", "设备限制", "number"),
+            field("speed_limit", "速率限制", "number"),
             toggle("banned", "禁用账户"),
             toggle("is_admin", "管理员"),
             toggle("is_staff", "员工"),
-            f("discount", "专属折扣 (%)", "number"),
-            f("commission_rate", "佣金比例 (%)", "number"),
+            field("discount", "专属折扣 (%)", "number"),
+            field("commission_rate", "佣金比例 (%)", "number"),
             {
                 key: "commission_type",
                 label: "返利类型",
@@ -411,12 +362,12 @@ export const resources: Record<string, Resource> = {
                 ],
             },
             {
-                ...f("commission_balance", "佣金余额（账号币种）", "number"),
+                ...field("commission_balance", "佣金余额（账号币种）", "number"),
                 scale: 100,
                 step: 0.01,
             },
-            f("invite_user_email", "邀请人邮箱（留空解除）", "email"),
-            f("remarks", "备注", "textarea"),
+            field("invite_user_email", "邀请人邮箱（留空解除）", "email"),
+            field("remarks", "备注", "textarea"),
         ],
         create: false,
         actions: [
@@ -467,7 +418,7 @@ export const resources: Record<string, Resource> = {
             [
                 "commission_balance",
                 "佣金金额",
-                (r) => money(r.commission_balance,r.currency),
+                (r) => money(r.commission_balance, r.currency),
             ],
             [
                 "commission_status",
@@ -500,10 +451,10 @@ export const resources: Record<string, Resource> = {
         drop: admin("notice/drop"),
         columns: [["id", "#"], ["show", "显示"], ["title", "标题"], created],
         fields: [
-            f("title", "公告标题", "text", true),
-            f("img_url", "封面 URL"),
-            f("tags", "适用标签数组（留空表示全部）", "json"),
-            { ...f("content", "内容", "textarea", true), markdown: true },
+            field("title", "公告标题", "text", true),
+            field("img_url", "封面 URL"),
+            field("tags", "适用标签数组（留空表示全部）", "json"),
+            { ...field("content", "内容", "textarea", true), markdown: true },
         ],
         actions: [["切换展示", admin("notice/show")]],
     },
@@ -523,11 +474,11 @@ export const resources: Record<string, Resource> = {
             ["updated_at", "更新时间", (r) => date(r.updated_at)],
         ],
         fields: [
-            f("title", "标题", "text", true),
-            f("category", "分类", "text", true),
-            f("language", "语言代码", "text", true),
-            { ...f("body", "内容", "textarea", true), markdown: true },
-            f("sort", "排序", "number"),
+            field("title", "标题", "text", true),
+            field("category", "分类", "text", true),
+            field("language", "语言代码", "text", true),
+            { ...field("body", "内容", "textarea", true), markdown: true },
+            field("sort", "排序", "number"),
         ],
         defaults: { language: "zh-CN", sort: 0 },
         actions: [["切换展示", admin("knowledge/show")]],
@@ -563,9 +514,13 @@ export const resources: Record<string, Resource> = {
             ],
         ],
         fields: [
-            f("name", "名称", "text", true),
-            f("code", "历史兼容券码（可选）"),
-            { key: "public_claim", label: "在活动中心开放领取", type: "switch" },
+            field("name", "名称", "text", true),
+            field("code", "历史兼容券码（可选）"),
+            {
+                key: "public_claim",
+                label: "在活动中心开放领取",
+                type: "switch",
+            },
             {
                 key: "type",
                 label: "优惠类型",
@@ -575,14 +530,18 @@ export const resources: Record<string, Resource> = {
                     ["2", "百分比"],
                 ],
             },
-            f("value", "减免百分比（10 表示减 10%，即九折）", "number", true),
-            f("generate_count", "生成数量", "number"),
-            f("limit_use", "剩余可领取库存（留空不限）", "number"),
-            f("limit_use_with_user", "历史券码每人使用次数（券包固定一次）", "number"),
-            f("started_at", "开始时间", "datetime-local", true),
-            f("ended_at", "截止时间", "datetime-local", true),
-            f("limit_plan_ids", "限制套餐 ID 数组", "json"),
-            f("limit_period", "限制周期数组", "json"),
+            field("value", "减免百分比（10 表示减 10%，即九折）", "number", true),
+            field("generate_count", "生成数量", "number"),
+            field("limit_use", "剩余可领取库存（留空不限）", "number"),
+            field(
+                "limit_use_with_user",
+                "历史券码每人使用次数（券包固定一次）",
+                "number",
+            ),
+            field("started_at", "开始时间", "datetime-local", true),
+            field("ended_at", "截止时间", "datetime-local", true),
+            field("limit_plan_ids", "限制套餐 ID 数组", "json"),
+            field("limit_period", "限制周期数组", "json"),
         ],
         defaults: { type: 2, public_claim: 0 },
         actions: [["切换启用", admin("coupon/show")]],
@@ -594,7 +553,7 @@ export const resources: Record<string, Resource> = {
         drop: admin("giftcard/drop"),
         columns: [
             ["id", "ID"],
-            name,
+            nameColumn,
             [
                 "type",
                 "类型",
@@ -624,9 +583,9 @@ export const resources: Record<string, Resource> = {
             ["status", "状态"],
         ],
         fields: [
-            f("name", "名称", "text", true),
-            f("generate_count", "数量", "number"),
-            f("value", "金额（分）", "number", true),
+            field("name", "名称", "text", true),
+            field("generate_count", "数量", "number"),
+            field("value", "金额（分）", "number", true),
             {
                 key: "type",
                 label: "礼品卡类型",
@@ -639,10 +598,10 @@ export const resources: Record<string, Resource> = {
                     ["5", "开通套餐"],
                 ],
             },
-            f("plan_id", "套餐 ID", "number"),
-            f("started_at", "开始时间", "datetime-local", true),
-            f("ended_at", "到期时间", "datetime-local", true),
-            f("limit_use", "可用次数", "number"),
+            field("plan_id", "套餐 ID", "number"),
+            field("started_at", "开始时间", "datetime-local", true),
+            field("ended_at", "到期时间", "datetime-local", true),
+            field("limit_use", "可用次数", "number"),
         ],
         defaults: { generate_count: 1, type: 1 },
     },
@@ -654,15 +613,15 @@ export const resources: Record<string, Resource> = {
         key: "rule_key",
         columns: [
             ["rule_key", "规则标识"],
-            name,
+            nameColumn,
             ["scene", "场景"],
             ["risk_level", "风险级别"],
             ["enabled", "启用"],
         ],
         fields: [
-            f("rule_key", "规则标识", "text", true),
-            f("name", "名称"),
-            f("description", "说明", "textarea"),
+            field("rule_key", "规则标识", "text", true),
+            field("name", "名称"),
+            field("description", "说明", "textarea"),
             {
                 key: "risk_level",
                 label: "风险级别",
@@ -674,8 +633,8 @@ export const resources: Record<string, Resource> = {
                 ],
             },
             toggle("enabled", "启用"),
-            f("sort", "排序", "number"),
-            f("thresholds", "规则阈值", "json"),
+            field("sort", "排序", "number"),
+            field("thresholds", "规则阈值", "json"),
         ],
         actions: [["恢复默认", ops("risk/rule/reset")]],
     },
@@ -749,13 +708,13 @@ export const resources: Record<string, Resource> = {
             ],
         ],
         fields: [
-            f("client_name", "名称"),
+            field("client_name", "名称"),
             {
-                ...f("min_version", "最低版本（可选）"),
+                ...field("min_version", "最低版本（可选）"),
                 hint: "只需检查 UA 时留空。填写后还会检查对应版本，未提供版本也会拒绝。Mihomo / sing-box 填内核版本，FastAI / FlClash / Clash Verge 填应用版本。FastAI 还需满足安装包发布设置中的平台最低版本；两处限制同时生效。",
             },
             toggle("is_enabled", "允许订阅访问"),
-            f("sort", "排序", "number"),
+            field("sort", "排序", "number"),
         ],
         defaults: { is_enabled: 1, sort: 0 },
     },
@@ -771,10 +730,10 @@ export const resources: Record<string, Resource> = {
             ["is_enabled", "启用"],
         ],
         fields: [
-            f("value", "IP 地址或 CIDR", "text", true),
-            f("reason", "原因"),
+            field("value", "IP 地址或 CIDR", "text", true),
+            field("reason", "原因"),
             toggle("is_enabled", "启用"),
-            f("expired_at", "到期时间", "datetime-local"),
+            field("expired_at", "到期时间", "datetime-local"),
         ],
         defaults: { type: "ip", is_enabled: 1 },
     },
@@ -790,9 +749,9 @@ export const resources: Record<string, Resource> = {
             ["is_enabled", "启用"],
         ],
         fields: [
-            f("ua_raw", "原始 UA", "textarea"),
-            f("value", "UA 哈希（可选）"),
-            f("reason", "原因"),
+            field("ua_raw", "原始 UA", "textarea"),
+            field("value", "UA 哈希（可选）"),
+            field("reason", "原因"),
             toggle("is_enabled", "启用"),
         ],
         defaults: { type: "ua_hash", is_enabled: 1 },
@@ -956,13 +915,13 @@ export function ResourcePage({
     extraActions?: (row: Row, context?: boolean) => ReactNode;
     searchable?: boolean;
     pageSize?: number;
-    onPageSizeChange?: (size:number)=>void;
+    onPageSizeChange?: (size: number) => void;
     onTotal?: (total: number) => void;
     tableSort?: { key: string; direction: string; fields: string[] };
     onTableSort?: (key: string, direction: string) => void;
 }) {
-    const [localPageSize,setLocalPageSize]=useState(initialPageSize);
-    const pageSize=onPageSizeChange ? initialPageSize : localPageSize;
+    const [localPageSize, setLocalPageSize] = useState(initialPageSize);
+    const pageSize = onPageSizeChange ? initialPageSize : localPageSize;
     const logKind = Object.entries(resources)
         .find(
             ([key, value]) => key.startsWith("log-") && value === resource,
@@ -985,7 +944,8 @@ export function ResourcePage({
         savedView.routeBackend === "v2box" ? "v2box" : "v2node",
     );
     const groups = useData<Row[]>(
-        (resource.fields.some((f) => f.key === "group_id") || resource.columns.some(([key]) => key === "group_id"))
+        resource.fields.some((f) => f.key === "group_id") ||
+            resource.columns.some(([key]) => key === "group_id")
             ? admin("server/group/fetch")
             : "",
     );
@@ -1110,7 +1070,10 @@ export function ResourcePage({
                 resource.title.includes("日志") || resource === resources.online
                     ? search
                     : undefined,
-            keyword: resource.serverSearch || resource.title.includes("黑名单") ? search : undefined,
+            keyword:
+                resource.serverSearch || resource.title.includes("黑名单")
+                    ? search
+                    : undefined,
             ...logFilters,
             ...queryParams,
             ...(resource === resources.routes ? { backend: routeBackend } : {}),
@@ -1157,7 +1120,8 @@ export function ResourcePage({
     }
     const list = (d.data || []).filter(
         (r) =>
-            Boolean(logKind) || resource.serverSearch ||
+            Boolean(logKind) ||
+            resource.serverSearch ||
             !search ||
             Object.values(r).some((v) =>
                 String(v ?? "")
@@ -1190,9 +1154,15 @@ export function ResourcePage({
                                 />
                             </div>
                         )}
-                        {resource !== resources.plans && resource !== resources.groups && resource !== resources.notices && resource !== resources.knowledge && (
-                            <Reload onClick={d.reload} loading={d.loading} />
-                        )}
+                        {resource !== resources.plans &&
+                            resource !== resources.groups &&
+                            resource !== resources.notices &&
+                            resource !== resources.knowledge && (
+                                <Reload
+                                    onClick={d.reload}
+                                    loading={d.loading}
+                                />
+                            )}
                         {resource.save && resource.create !== false && (
                             <button
                                 className="primary"
@@ -1283,11 +1253,28 @@ export function ResourcePage({
                             .filter(([key]) => !hiddenColumns.includes(key))
                             .map(([key, label, render]) => {
                                 if (key === "group_id" && !render)
-                                    return [key, label, (r: Row) => {
-                                        if (r.group_id == null) return "—";
-                                        const group = rows(groups.data).find((g) => String(g.id) === String(r.group_id));
-                                        return group?.name || `未知权限组 (#${r.group_id})`;
-                                    }] as [string, string, (r: Row) => ReactNode];
+                                    return [
+                                        key,
+                                        label,
+                                        (r: Row) => {
+                                            if (r.group_id == null) return "—";
+                                            const group = rows(
+                                                groups.data,
+                                            ).find(
+                                                (g) =>
+                                                    String(g.id) ===
+                                                    String(r.group_id),
+                                            );
+                                            return (
+                                                group?.name ||
+                                                `未知权限组 (#${r.group_id})`
+                                            );
+                                        },
+                                    ] as [
+                                        string,
+                                        string,
+                                        (r: Row) => ReactNode,
+                                    ];
                                 if (
                                     (key === "show" || key === "renew") &&
                                     [
@@ -1371,7 +1358,9 @@ export function ResourcePage({
                                 ? (r, context) => (
                                       <>
                                           {resource.save &&
-                                              (resource.create !== true || resource === resources.coupons) && (
+                                              (resource.create !== true ||
+                                                  resource ===
+                                                      resources.coupons) && (
                                                   <button
                                                       onClick={async () => {
                                                           const item = { ...r };
@@ -1446,7 +1435,15 @@ export function ResourcePage({
                                                               )
                                                                   item[
                                                                       field.key
-                                                                  ] = dateTimeInput(Number(item[field.key]));
+                                                                  ] =
+                                                                      dateTimeInput(
+                                                                          Number(
+                                                                              item[
+                                                                                  field
+                                                                                      .key
+                                                                              ],
+                                                                          ),
+                                                                      );
                                                           }
                                                           if (
                                                               resource.title ===
@@ -1516,7 +1513,11 @@ export function ResourcePage({
                             total={d.total}
                             size={pageSize}
                             loading={d.loading}
-                            onSizeChange={size=>{setPage(1); if(onPageSizeChange) onPageSizeChange(size); else setLocalPageSize(size);}}
+                            onSizeChange={(size) => {
+                                setPage(1);
+                                if (onPageSizeChange) onPageSizeChange(size);
+                                else setLocalPageSize(size);
+                            }}
                             onChange={setPage}
                         />
                     )}
@@ -1546,7 +1547,9 @@ export function ResourcePage({
                     close={() => setEditing(null)}
                 >
                     {resource === resources.coupons && editing.id && (
-                        <p className="alert" role="note">修改仅影响今后领取及使用券码的新订单。已领取的券保留原优惠和有效期，历史订单不变。剩余库存是当前可继续发放的数量；停用入口不会撤销已领取的券。</p>
+                        <p className="alert" role="note">
+                            修改仅影响今后领取及使用券码的新订单。已领取的券保留原优惠和有效期，历史订单不变。剩余库存是当前可继续发放的数量；停用入口不会撤销已领取的券。
+                        </p>
                     )}
                     <State
                         loading={groups.loading || plans.loading}
@@ -1669,423 +1672,6 @@ export function ResourcePage({
         </>
     );
 }
-const labels: Record<string, string> = {
-    schedule: "定时任务",
-    horizon: "队列消费者",
-    schedule_last_runtime: "最近任务运行",
-    failedJobs: "近期失败任务",
-    jobsPerMinute: "每分钟任务数",
-    pausedMasters: "暂停的主进程",
-    processes: "进程数",
-    recentJobs: "近期任务",
-    status: "运行状态",
-    queueWithMaxRuntime: "最长耗时队列",
-    queueWithMaxThroughput: "最高吞吐队列",
-    wait: "等待时间",
-    periods: "统计时间范围",
-    online_user: "在线用户",
-    month_income: "本月收入",
-    last_month_income: "上月收入",
-    day_income: "今日收入",
-    month_register_total: "本月注册用户",
-    day_register_total: "今日注册用户",
-    ticket_pending_total: "待处理工单",
-    commission_pending_total: "待结算佣金订单",
-    commission_month_payout: "本月佣金支出",
-    commission_last_month_payout: "上月佣金支出",
-    app_name: "站点名称",
-    app_description: "站点介绍",
-    app_url: "站点 URL",
-    logo: "Logo URL",
-    custom_footer_html: "自定义页脚 HTML",
-    currency: "货币代码",
-    currency_symbol: "货币符号",
-    stop_register: "关闭注册",
-    force_https: "强制 HTTPS",
-    subscribe_url: "订阅域名",
-    subscribe_path: "自定义订阅路径",
-    try_out_plan_id: "试用套餐 ID",
-    try_out_enable: "启用试用",
-    invite_never_expire: "邀请码永不过期",
-    commission_first_time_enable: "仅首单计算佣金",
-    commission_auto_check_enable: "自动审核佣金",
-    commission_distribution_enable: "启用多级佣金",
-    commission_distribution_l1: "一级佣金比例（%）",
-    commission_distribution_l2: "二级佣金比例（%）",
-    commission_distribution_l3: "三级佣金比例（%）",
-    withdraw_close_enable: "关闭提现",
-    email_whitelist_enable: "启用邮箱白名单",
-    email_whitelist_suffix: "允许注册的邮箱域名",
-    email_gmail_limit_enable: "限制 Gmail 别名注册",
-    register_limit_by_ip_enable: "限制单个 IP 注册",
-    register_limit_count: "注册次数上限",
-    register_limit_expire: "注册限制有效期（分钟）",
-    password_limit_enable: "限制密码错误次数",
-    password_limit_count: "密码错误次数上限",
-    password_limit_expire: "密码限制有效期（分钟）",
-    new_order_event_id: "新购套餐后的流量处理",
-    renew_order_event_id: "续费后的流量处理",
-    change_order_event_id: "切换套餐后的流量处理",
-    try_out_hour: "试用时长（小时）",
-    tos_url: "服务条款 URL",
-    fastai_enabled: "启用 FastAI 客户端",
-    fastai_releases: "FastAI 客户端版本与下载",
-    server_token: "节点通讯密钥",
-    server_api_url: "节点 API URL",
-    server_pull_interval: "节点拉取间隔",
-    server_push_interval: "节点推送间隔",
-    device_limit_mode: "设备限制模式",
-    server_node_report_min_traffic: "节点上报最低流量",
-    server_device_online_min_traffic: "设备在线最低流量",
-    email_verify: "注册邮箱验证",
-    safe_mode_enable: "安全模式",
-    secure_path: "后台入口路径",
-    recaptcha_enable: "启用 reCAPTCHA",
-    recaptcha_key: "reCAPTCHA 密钥",
-    recaptcha_site_key: "reCAPTCHA 站点密钥",
-    invite_force: "注册必须通过邮件邀请",
-    invite_commission: "邀请佣金比例",
-    invite_registration_gb: "受邀注册奖励（GB，0 为关闭）",
-    invite_credit_months: "邀请赠送额度有效期（月，默认 1）",
-    invite_first_use_gb: "受邀首次使用奖励（GB，0 为关闭）",
-    invite_gen_limit: "待接受邮件邀请数量限制",
-    commission_withdraw_limit: "最低提现金额",
-    commission_withdraw_method: "提现方式",
-    email_host: "SMTP 主机",
-    email_port: "SMTP 端口",
-    email_username: "SMTP 用户名",
-    apple_account_url: "AppleAuto 接口地址（HTTPS 域名）",
-    apple_account_enable: "启用 iOS 下载账号",
-    apple_account_token: "AppleAuto API Key（留空保留，仅服务端保存）",
-    client_primary_android: "android · 主推荐客户端",
-    client_secondary_android: "android · 备选客户端",
-    client_primary_windows: "windows · 主推荐客户端",
-    client_secondary_windows: "windows · 备选客户端",
-    client_primary_macos: "macos · 主推荐客户端",
-    client_secondary_macos: "macos · 备选客户端",
-    client_primary_linux: "linux · 主推荐客户端",
-    client_secondary_linux: "linux · 备选客户端",
-    client_primary_ios: "ios · 主推荐客户端",
-    client_secondary_ios: "ios · 备选客户端",
-    apple_account_share: "AppleAuto 分享代码",
-    email_password: "SMTP 密码",
-    email_encryption: "SMTP 加密方式",
-    email_from_address: "发件人地址",
-    telegram_bot_enable: "启用 Telegram 机器人",
-    telegram_bot_token: "机器人 Token",
-    telegram_discuss_id: "用户群 ID（负数）",
-    telegram_group_policy_enable: "启用群成员资格管理",
-    telegram_group_grace_days: "套餐到期宽限天数（0–30，默认 3）",
-    ticket_status: "工单开放模式",
-    deposit_bounus: "充值奖励阶梯",
-    plan_change_enable: "允许切换套餐",
-    surplus_enable: "折抵剩余价值",
-    reset_traffic_method: "流量重置模式",
-    allow_new_period: "允许新周期",
-    show_subscribe_method: "订阅链接生效模式",
-    show_subscribe_expire: "限时链接有效时间（分钟）",
-    show_info_to_server_enable: "在订阅中展示订阅信息",
-    paid_total: "总收入",
-    order_count: "订单数",
-    user_count: "用户数",
-    paid_count: "已付订单数",
-};
-const groupNames: Record<string, string> = {
-    site: "站点设置",
-    footer: "页脚 HTML",
-    safe: "安全与注册",
-    subscribe: "订阅设置",
-    server: "节点通讯",
-    invite: "邀请与佣金",
-    email: "邮件发送",
-    telegram: "Telegram",
-    ticket: "工单设置",
-    deposit: "充值奖励",
-    app: "专用客户端下载",
-    entrypoints: "服务入口",
-};
-export function Settings({ section }: { section?: "app" | "invite" } = {}) {
-    const d = useData(admin("config/fetch"));
-    const schema = useData(admin("console/configSchema"));
-    const plans = useData<Row[]>(admin("plan/fetch"));
-    const creditGroups = useData<Row[]>(admin("server/group/fetch"));
-    const [group, setGroup] = useState(section || "site"),
-        [saved, setSaved] = useState("");
-    const [dirty, setDirty] = useState(false),
-        [actionBusy, setActionBusy] = useState(false),
-        [actionResult, setActionResult] = useState("");
-    const actionPending = useRef(false);
-    async function runAction(endpoint: string, body: Record<string, unknown> = {}) {
-        if (actionPending.current) return;
-        actionPending.current = true;
-        setActionBusy(true);
-        setActionResult("");
-        try {
-            const response = await request(admin(endpoint), body);
-            const log = (
-                response as typeof response & { log?: { error?: string; transport_code?: number; enhanced_code?: string; advice?: string } }
-            ).log;
-            if (log?.error) throw new Error([log.error, log.transport_code ? `状态码 ${log.transport_code}` : "", log.enhanced_code, log.advice].filter(Boolean).join(" · "));
-            setActionResult(endpoint === "config/testSendMail" ? "邮件已被发送服务接受，请检查收件箱；最终投递结果需核查服务商记录。" : "操作成功");
-        } catch (e) {
-            setActionResult((e as Error).message);
-        } finally {
-            actionPending.current = false;
-            setActionBusy(false);
-        }
-    }
-    const raw = d.data?.[group] || {};
-    const fields = settingsPresentation(
-        group,
-        Object.entries(raw)
-            .filter(
-                ([k]) =>
-                    !k.startsWith("frontend_") &&
-                    !k.startsWith("client_primary_") &&
-                    !k.startsWith("client_secondary_") &&
-                    !k.startsWith("subscription_") &&
-                    k !== "email_template" &&
-                    !/^email_.*_key_configured$/.test(k) &&
-                    k !== "invite_never_expire" &&
-                    k !== "fastai_releases" &&
-                    k !== "fastai_enabled" &&
-                    !k.startsWith("fastai_entrypoint"),
-            )
-            .map(([k, v]) =>
-                k === "landing_style"
-                    ? {
-                          key: k,
-                          label: "落地页样式",
-                          hint: "极简落地页向下滚动后进入登录界面。",
-                          type: "select" as const,
-                          options: [
-                              ["original", "原版落地页"],
-                              ["minimal", "极简落地页"],
-                          ] as [string, string][],
-                      }
-                    : k === "credit_base_group_id"
-                      ? {
-                            key: k,
-                            label: "额度基础权限组",
-                            type: "select" as const,
-                            options: [
-                                ["", "未配置（沿用原权限）"] as [
-                                    string,
-                                    string,
-                                ],
-                                ...rows(creditGroups.data).map(
-                                    (r) =>
-                                        [String(r.id), r.name] as [
-                                            string,
-                                            string,
-                                        ],
-                                ),
-                            ],
-                        }
-                      : k === "try_out_plan_id"
-                        ? {
-                              key: k,
-                              label: "试用套餐",
-                              type: "select" as const,
-                              options: [
-                                  ["0", "不指定套餐"] as [string, string],
-                                  ...rows(plans.data).map(
-                                      (r) =>
-                                          [String(r.id), r.name] as [
-                                              string,
-                                              string,
-                                          ],
-                                  ),
-                              ],
-                          }
-                        : /^client_(primary|secondary)_/.test(k)
-                          ? {
-                                key: k,
-                                label: labels[k],
-                                type: "select" as const,
-                                options: [
-                                    ["", "使用默认推荐"] as [string, string],
-                                    ...recommendationClients(
-                                        k
-                                            .split("_")
-                                            .pop() as RecommendationDevice,
-                                    ).map(
-                                        (c) =>
-                                            [c.id, c.name] as [string, string],
-                                    ),
-                                ],
-                            }
-                          : configField(k, v, schema.data?.[k], labels[k] || k),
-            ),
-    ).map(field => mailCredentialField(field, raw));
-    return (
-        <Panel title={section ? groupNames[section] : "系统配置"} className="settings-panel">
-            <div className="section-tabs">
-                {!section && Object.keys(groupNames).filter(k => k !== "app").map((k) => (
-                    <button
-                        key={k}
-                        className={group === k ? "selected" : ""}
-                        onClick={() => {
-                            if (k === group) return;
-                            if (dirty && !window.confirm("当前分类有未保存的修改，确认放弃并切换？")) return;
-                            setGroup(k);
-                            setSaved("");
-                            setDirty(false);
-                            setActionResult("");
-                        }}
-                    >
-                        {groupNames[k]}
-                    </button>
-                ))}
-            </div>
-            <State
-                loading={
-                    d.loading ||
-                    schema.loading ||
-                    plans.loading ||
-                    creditGroups.loading
-                }
-                error={
-                    d.error || schema.error || plans.error || creditGroups.error
-                }
-                retry={() => {
-                    d.reload();
-                    schema.reload();
-                    plans.reload();
-                    creditGroups.reload();
-                }}
-            >
-                {group === "entrypoints" && (
-                    <AdminEntrypoints
-                        key={JSON.stringify(raw.fastai_entrypoints)}
-                        initial={raw.fastai_entrypoints || []}
-                        publicKey={raw.fastai_entrypoint_public_key}
-                        version={raw.fastai_entrypoints_version || 1}
-                        save={async (entries) => {
-                            await request(admin("config/save"), {
-                                fastai_entrypoints: entries,
-                            });
-                            d.reload();
-                        }}
-                    />
-                )}
-                {group === "app" && (
-                    <AdminFastaiDownloads
-                        key={JSON.stringify(raw.fastai_releases)}
-                        initial={raw.fastai_releases || []}
-                        save={async (releases) => {
-                            await request(admin("config/save"), {
-                                fastai_releases: releases,
-                            });
-                        }}
-                    />
-                )}
-                {group === "email" && <div className="pad" role="note"><strong>当前已保存的事务通道：{mailProviders[raw.email_provider || "smtp"] || "未知"}</strong><p className="muted">验证码、账单和服务提醒使用事务通道；必要服务群发使用事务通道。活动与推广可独立配置服务商与发件子域名，只发给主动订阅的用户。修改后保存并重启队列。星号表示凭据已设置，不代表已验证可用。</p></div>}
-                {group !== "entrypoints" && (
-                    <Editor
-                        key={group + JSON.stringify(raw)}
-                        fields={fields}
-                        initial={raw}
-                        resolveFields={settingsFields}
-                        linkValues={linkSettings}
-                        onDirty={() => {
-                            setSaved("");
-                            setDirty(true);
-                            setActionResult("");
-                        }}
-                        validate={validateSettings}
-                        onSave={async (body) => {
-                            const changes = changedSettings(body, raw);
-                            if (Object.keys(changes).length)
-                                await request(admin("config/save"), changes);
-                            if (Object.prototype.hasOwnProperty.call(changes, "system_timezone")) { setTimeout(() => window.location.reload(), 0); return; }
-                            setSaved("设置已保存");
-                            setDirty(false);
-                            d.reload();
-                        }}
-                    />
-                )}
-                {group === "subscribe" && (
-                    <p className="pad muted">
-                        设置额度基础权限组后：订阅有效时，额度沿用订阅权限；订阅到期或无订阅时，额度仅可使用基础组节点。适用于所有额度用户（含已迁移的一次性套餐）。额度余额、套餐记录及限速、设备限制不变。节点在下次拉取用户时更新权限，客户端需更新订阅以刷新节点列表。
-                    </p>
-                )}
-                {group === "app" && (
-                    <div className="pad">
-                        <p className="muted">
-                            填写 AppleAuto 的 HTTPS
-                            接口域名及分享链接最后一段代码。接口地址不包含
-                            /share 或 /client
-                            路径。仅有效订阅或有剩余额度的用户可查看。请先保存，再测试连接；启用后刷新用户页面。
-                        </p>
-                        <button
-                            disabled={dirty || actionBusy}
-                            onClick={() => runAction("config/testAppleAccount")}
-                        >
-                            测试下载账号连接
-                        </button>
-                    </div>
-                )}
-                {group === "email" && (
-                    <div className="pad">
-                        <p className="muted">
-                            测试邮件发往当前管理员邮箱，使用已保存的发送通道。修改邮件配置后需重启队列服务。发送成功仅代表服务商接受。
-                        </p>
-                        <button
-                            disabled={
-                                dirty ||
-                                actionBusy ||
-                                (raw.email_provider === "mailgun" ? (!raw.email_mailgun_domain || !raw.email_mailgun_key_configured) : raw.email_provider === "resend" ? !raw.email_resend_key_configured : raw.email_provider === "ses" ? (!raw.email_ses_region || (raw.email_ses_auth === "key" && !raw.email_ses_key_configured)) : !raw.email_host) ||
-                                !raw.email_from_address
-                            }
-                            onClick={() => runAction("config/testSendMail")}
-                        >
-                            发送测试邮件
-                        </button>
-                        <p className="muted">{raw.email_provider === "ses" && raw.email_ses_auth !== "key" ? "使用服务器 IAM 凭据，发送测试邮件可检查权限。" : raw.email_provider !== "smtp" && (<>通道密钥：{raw[`email_${raw.email_provider}_key_configured`] ? "已配置（留空保留）" : "未配置"} · </>)}<a href="#/mail-logs">查看邮件日志</a></p>
-                        <button disabled={dirty || actionBusy || !raw.email_announcement_separate} onClick={() => runAction("config/testSendMail", {stream:"announcement"})}>测试推广通道（发往管理员）</button>
-                        <details><summary>投递回调配置</summary><p className="muted">在服务商订阅 delivered / bounce / complaint 事件。SMTP 本身没有通用异步回调。两个通道若使用不同账号，需将回调统一到同一可信账号或主题；目前每个服务商配置一组回调凭据。</p>{["mailgun","resend","ses"].map(provider=><p key={provider}>{mailProviders[provider]}：<code>{String(raw.email_public_url || "https://你的API域名").replace(/\/$/,"")}/api/v10/webhooks/mail/{provider}</code></p>)}</details>
-                        <AdminMailPreview />
-                    </div>
-                )}
-                {group === "telegram" && (
-                    <div className="pad">
-                        <p className="muted">
-                            使用已保存的机器人 Token 在 Telegram 注册本站
-                            Webhook；站点需有可访问的 HTTPS 地址。
-                        </p>
-                        <button
-                            disabled={
-                                dirty || actionBusy || !raw.telegram_bot_token
-                            }
-                            onClick={() =>
-                                runAction("config/setTelegramWebhook")
-                            }
-                        >
-                            设置 Telegram Webhook
-                        </button>
-                        <AdminTelegramCommunity disabled={dirty || actionBusy} />
-                    </div>
-                )}
-                {dirty && ["email", "telegram"].includes(group) && (
-                    <p className="pad muted">
-                        请先保存配置，再执行测试或连接操作。
-                    </p>
-                )}
-                {actionResult && (
-                    <p className="pad" role="status">
-                        {actionResult}
-                    </p>
-                )}
-                {saved && (
-                    <p className="success-message" role="status">
-                        {saved}
-                    </p>
-                )}
-            </State>
-        </Panel>
-    );
-}
 export function Translations() {
     const plans = useData<Row[]>(admin("plan/fetch")),
         locales = useData<string[]>(admin("ops/i18n/plan/locales"));
@@ -2148,8 +1734,8 @@ export function Translations() {
                     <Editor
                         key={plan + locale + JSON.stringify(d.data)}
                         fields={[
-                            f("name", "翻译名称"),
-                            f("content", "翻译说明（JSON / HTML）", "textarea"),
+                            field("name", "翻译名称"),
+                            field("content", "翻译说明（JSON / HTML）", "textarea"),
                         ]}
                         initial={{
                             plan_id: Number(plan),
@@ -2182,10 +1768,10 @@ export function GenerateUsers({ onCreated }: { onCreated?: () => void }) {
             <State {...plans} retry={plans.reload}>
                 <Editor
                     fields={[
-                        f("email_prefix", "邮箱前缀（单个用户）"),
-                        f("email_suffix", "邮箱域名", "text", true),
+                        field("email_prefix", "邮箱前缀（单个用户）"),
+                        field("email_suffix", "邮箱域名", "text", true),
                         {
-                            ...f(
+                            ...field(
                                 "generate_count",
                                 "生成数量（1–500）",
                                 "number",
@@ -2194,16 +1780,16 @@ export function GenerateUsers({ onCreated }: { onCreated?: () => void }) {
                             max: 500,
                             step: 1,
                         },
-                        f("password", "初始密码", "password"),
+                        field("password", "初始密码", "password"),
                         {
-                            ...f("plan_id", "套餐", "select"),
+                            ...field("plan_id", "套餐", "select"),
                             nullable: true,
                             options: (plans.data || []).map((p) => [
                                 String(p.id),
                                 p.name,
                             ]),
                         },
-                        f("expired_at", "到期时间", "datetime-local"),
+                        field("expired_at", "到期时间", "datetime-local"),
                     ]}
                     initial={{ generate_count: 1 }}
                     validate={(b) =>
@@ -2240,1088 +1826,6 @@ export function GenerateUsers({ onCreated }: { onCreated?: () => void }) {
         </Panel>
     );
 }
-export function Payments() {
-    const d = useData<Row[]>(admin("payment/fetch")),
-        methods = useData<string[]>(admin("payment/getPaymentMethods"));
-    const [editing, setEditing] = useState<Row | null>(null);
-    return (
-        <>
-            <Panel
-                title="支付渠道"
-                actions={
-                    <>
-                        {" "}
-                        <SortButton
-                            path={admin("payment/sort")}
-                            kind="payments"
-                            items={d.data || []}
-                            onSaved={d.reload}
-                        />
-                        <button
-                            className="primary"
-                            disabled={
-                                methods.loading ||
-                                Boolean(methods.error) ||
-                                !methods.data?.length
-                            }
-                            onClick={() => setEditing({})}
-                        >
-                            添加支付方式
-                        </button>
-                    </>
-                }
-            >
-                <State
-                    loading={d.loading || methods.loading}
-                    error={d.error || methods.error}
-                    retry={() => {
-                        d.reload();
-                        methods.reload();
-                    }}
-                >
-                    <Table
-                        data={d.data || []}
-                        columns={[
-                            ["id", "ID"],
-                            [
-                                "enable",
-                                "启用",
-                                (r) => (
-                                    <AdminSwitch
-                                        label={`${r.name} 启用`}
-                                        checked={Number(r.enable) === 1}
-                                        onChange={async () => {
-                                            await request(
-                                                admin("payment/show"),
-                                                {
-                                                    id: r.id,
-                                                },
-                                            );
-                                            d.reload();
-                                        }}
-                                    />
-                                ),
-                            ],
-                            ["name", "显示名称"],
-                            ["payment", "支付接口"],
-                            ["notify_url", "通知地址"],
-                        ]}
-                        onReorder={async (items) => {
-                            await request(
-                                admin("payment/sort"),
-                                sortPayload("payments", items),
-                            );
-                            d.reload();
-                        }}
-                        actions={(r) => (
-                            <>
-                                <button onClick={() => setEditing(r)}>
-                                    编辑
-                                </button>
-                                <button
-                                    onClick={async () => {
-                                        try {
-                                            await request(
-                                                admin("payment/show"),
-                                                { id: r.id },
-                                            );
-                                            d.reload();
-                                        } catch (e) {
-                                            alert((e as Error).message);
-                                        }
-                                    }}
-                                >
-                                    切换启用
-                                </button>
-                                <button
-                                    className="danger"
-                                    onClick={async () => {
-                                        if (confirm("确认删除支付方式？")) {
-                                            try {
-                                                await request(
-                                                    admin("payment/drop"),
-                                                    { id: r.id },
-                                                );
-                                                d.reload();
-                                            } catch (e) {
-                                                alert((e as Error).message);
-                                            }
-                                        }
-                                    }}
-                                >
-                                    删除
-                                </button>
-                            </>
-                        )}
-                    />
-                </State>
-            </Panel>
-            {editing && (
-                <Modal
-                    variant="modal"
-                    title="支付方式设置"
-                    close={() => setEditing(null)}
-                >
-                    <PaymentEditor
-                        initial={editing}
-                        methods={methods.data || []}
-                        onSave={async (b) => {
-                            await request(admin("payment/save"), b);
-                            setEditing(null);
-                            d.reload();
-                        }}
-                    />
-                </Modal>
-            )}
-        </>
-    );
-}
-function PaymentEditor({
-    initial,
-    methods,
-    onSave,
-}: {
-    initial: Row;
-    methods: string[];
-    onSave: (b: Row) => Promise<void>;
-}) {
-    const [method, setMethod] = useState(initial.payment || methods[0] || "");
-    const [commonDraft, setCommonDraft] = useState<Row>(() =>
-        paymentIconInitial(initial),
-    );
-    const [iconPreset, setIconPreset] = useState(
-        () => paymentIconInitial(initial).iconPreset,
-    );
-    const [category, setCategory] = useState(() =>
-        paymentCategoryInitial(initial.config),
-    );
-    const d = useData(method ? admin("payment/getPaymentForm") : "", {
-        payment: method,
-        id: method === initial.payment ? initial.id : undefined,
-    });
-    return (
-        <>
-            <div className="pad">
-                <label>
-                    支付网关
-                    <select
-                        value={method}
-                        onChange={(e) => setMethod(e.target.value)}
-                    >
-                        {methods.map((m) => (
-                            <option key={m}>{m}</option>
-                        ))}
-                    </select>
-                </label>
-            </div>
-            <PaymentCategoryEditor value={category} onChange={setCategory} />
-            {category.category === "regular" && (
-                <div className="pad payment-icon-settings">
-                    <span>支付图标</span>
-                    <div
-                        className="payment-icon-options"
-                        role="group"
-                        aria-label="选择支付图标"
-                    >
-                        {paymentIcons.map((item) => (
-                            <button
-                                type="button"
-                                key={item.id}
-                                aria-pressed={iconPreset === item.id}
-                                onClick={() => setIconPreset(item.id)}
-                            >
-                                <img src={item.source} alt="" />
-                                <span>{item.label}</span>
-                            </button>
-                        ))}
-                    </div>
-                    <div className="payment-icon-preview">
-                        <span>当前图标</span>
-                        <img
-                            key={resolvePaymentIcon(
-                                commonDraft.icon,
-                                iconPreset,
-                            )}
-                            src={
-                                commonDraft.icon?.trim() ||
-                                paymentIcons.find(
-                                    (item) => item.id === iconPreset,
-                                )?.source
-                            }
-                            alt="支付图标预览"
-                            onError={(event) => {
-                                event.currentTarget.hidden = true;
-                            }}
-                        />
-                        <span className="muted">
-                            填写图标链接后优先使用链接图片，清空后使用所选图标。
-                        </span>
-                    </div>
-                </div>
-            )}
-            <State {...d} retry={d.reload}>
-                {Object.entries(d.data || {})
-                    .filter(([, v]) => v.type === "alert")
-                    .map(([key, v]) => (
-                        <div className="pad muted" key={key}>
-                            <Html value={v.content} />
-                        </div>
-                    ))}
-                <Editor
-                    key={method}
-                    fields={[
-                        f("name", "显示名称", "text", true),
-                        {
-                            ...f("icon", "支付图标链接", "url"),
-                            hint:
-                                category.category === "crypto"
-                                    ? "可选，填写后覆盖币种图标"
-                                    : "可选，填写后覆盖上方所选图标",
-                        },
-                        {key:"currency",label:"付款币种（美元仅支持 StripeCheckout）",type:"select",options:[["CNY","人民币 CNY"],["USD","美元 USD"]]},
-                          f("notify_domain", "通知域名", "url"),
-                        {
-                            ...f(
-                                "handling_fee_fixed",
-                                "固定手续费（支付币种）",
-                                "number",
-                            ),
-                            min: 0,
-                            step: 0.01,
-                            scale: 100,
-                        },
-                        {
-                            ...f(
-                                "handling_fee_percent",
-                                "手续费比例 (%)",
-                                "number",
-                            ),
-                            min: 0,
-                            max: 100,
-                        },
-                        ...paymentFields(d.data || {}),
-                    ]}
-                    initial={paymentInitial(
-                        { ...initial, ...commonDraft },
-                        d.data || {},
-                        method === initial.payment,
-                    )}
-                    onValuesChange={(values) =>
-                        setCommonDraft(
-                            Object.fromEntries(
-                                [
-                                    "name",
-                                    "icon",
-                                    "notify_domain",
-                                    "currency",
-                                    "handling_fee_fixed",
-                                    "handling_fee_percent",
-                                ].map((key) => [
-                                    key,
-                                    key === "handling_fee_fixed" &&
-                                    values[key] != null
-                                        ? Math.round(Number(values[key]) * 100)
-                                        : values[key],
-                                ]),
-                            ),
-                        )
-                    }
-                    onSave={async (b) => {
-                        await onSave(
-                            paymentPayload(
-                                {
-                                    ...b,
-                                    iconPreset,
-                                    checkoutCategory: category,
-                                },
-                                d.data || {},
-                                method,
-                                initial,
-                            ),
-                        );
-                    }}
-                />
-            </State>
-        </>
-    );
-}
-const nodeTypes = [
-    "v2node",
-    "v2box",
-] as const satisfies readonly NodeBackendType[];
-export function Nodes({
-    initialTab = "nodes",
-}: { initialTab?: "nodes" | "ddns" | "lightsail" | "traffic" } = {}) {
-    const [tab, setTab] = useState(initialTab);
-    const [nodeDirty,setNodeDirty]=useState(false);
-    const [nodeBusy,setNodeBusy]=useState(false);
-    const [conversionOpen,setConversionOpen]=useState(false);
-    const [savedNodeNotice,setSavedNodeNotice]=useState("");
-
-    const [diagnosticNode, setDiagnosticNode] = useState<Row | null>(null);
-    const [statusFilter, setStatusFilter] = useState("");
-    const [nodeSearch, setNodeSearch] = useState("");
-    const [backendFilter, setBackendFilter] = useState("");
-    const [quotaFilter, setQuotaFilter] = useState(false);
-
-    const groups = useData<Row[]>(admin("server/group/fetch"));
-    const routes = useData<Row[]>(admin("server/route/fetch"));
-    const d = useData<Row[]>(admin("server/manage/getNodes"));
-    const [type, setType] = useState("v2node"),
-        [editing, setEditing] = useState<Row | null>(null);
-    const [error, setError] = useState("");
-    const [command, setCommand] = useState<Row | null>(null);
-    const schema = useData<Row>(query(admin("console/nodeSchema"), { type }));
-    useEffect(()=>{setNodeDirty(false);setConversionOpen(false);},[editing]);
-    useEffect(()=>{
-        if (!editing || !nodeDirty) return;
-        const warn=(event:BeforeUnloadEvent)=>{event.preventDefault();event.returnValue="";};
-        window.addEventListener("beforeunload",warn);
-        return ()=>window.removeEventListener("beforeunload",warn);
-    },[editing,nodeDirty]);
-    function closeNode() {
-        if(nodeBusy) return;
-        if(nodeDirty && !window.confirm("节点配置尚未保存，确认放弃修改？")) return;
-        setEditing(null);
-    }
-    const nodeRows = rows(d.data);
-    const filteredNodes = nodeRows.filter(
-        (n) =>
-            (!backendFilter || n.type === backendFilter) &&
-            (!statusFilter ||
-                (n.runtime_status || "unknown") === statusFilter) &&
-            (!quotaFilter || n.traffic_budget?.blocked) &&
-            `${n.id} ${n.name} ${n.host} ${n.current_ip || ""} ${n.protocol || ""}`
-                .toLowerCase()
-                .includes(nodeSearch.trim().toLowerCase()),
-    );
-
-    return (
-        <>
-            {diagnosticNode && (
-                <NodeDiagnostics
-                    node={diagnosticNode}
-                    close={() => setDiagnosticNode(null)}
-                />
-            )}
-            {savedNodeNotice && <p className="pad success-message" role="status">{savedNodeNotice}</p>}
-            <nav className="node-management-tabs" aria-label="节点管理功能">
-                <button
-                    aria-pressed={tab === "nodes"}
-                    onClick={() => {
-                        setTab("nodes");
-                        d.reload();
-                    }}
-                >
-                    节点列表
-                </button>
-                <button
-                    aria-pressed={tab === "ddns"}
-                    onClick={() => setTab("ddns")}
-                >
-                    Cloudflare DDNS
-                </button>
-                <button
-                    aria-pressed={tab === "lightsail"}
-                    onClick={() => setTab("lightsail")}
-                >
-                    Lightsail IP
-                </button>
-                <button
-                    aria-pressed={tab === "traffic"}
-                    onClick={() => setTab("traffic")}
-                >
-                    服务器流量
-                </button>
-            </nav>
-            {tab === "ddns" && <AdminDDNS />}
-            {tab === "lightsail" && <AdminLightsail nodes={rows(d.data)} />}
-            {tab === "traffic" && (
-                <ServerTrafficBudgets nodes={rows(d.data)} onSaved={d.reload} />
-            )}
-            {tab === "nodes" && (
-                <Panel
-                    title="节点管理"
-                    actions={
-                        <>
-                            <Reload onClick={d.reload} loading={d.loading} />
-                            <SortButton
-                                path={admin("server/manage/sort")}
-                                kind="nodes"
-                                items={rows(d.data)}
-                                onSaved={d.reload}
-                            />
-                            <button
-                                className="primary"
-                                onClick={() =>
-                                    setEditing({
-                                        type,
-                                        group_id: [],
-                                        route_id: [],
-                                        rate: 1,
-                                        tls: 0,
-                                        network: "tcp",
-                                        disable_sni: 0,
-                                        zero_rtt_handshake: 0,
-                                    })
-                                }
-                            >
-                                添加节点
-                            </button>
-                        </>
-                    }
-                >
-                    <State {...d}>
-                        {error && <div className="alert">{error}</div>}
-                        <div
-                            className="node-management-summary"
-                            aria-label="节点概况"
-                        >
-                            <div>
-                                <span>全部节点</span>
-                                <strong>{nodeRows.length}</strong>
-                            </div>
-                            <div>
-                                <span>V2Node</span>
-                                <strong>
-                                    {
-                                        nodeRows.filter(
-                                            (n) => n.type === "v2node",
-                                        ).length
-                                    }
-                                </strong>
-                            </div>
-                            <div>
-                                <span>V2Box</span>
-                                <strong>
-                                    {
-                                        nodeRows.filter(
-                                            (n) => n.type === "v2box",
-                                        ).length
-                                    }
-                                </strong>
-                            </div>
-                            <div>
-                                <span>额度受限</span>
-                                <strong>
-                                    {
-                                        nodeRows.filter(
-                                            (n) => n.traffic_budget?.blocked,
-                                        ).length
-                                    }
-                                </strong>
-                            </div>
-                        </div>
-                        <div className="node-management-tools">
-                            <label>
-                                搜索节点
-                                <input
-                                    placeholder="ID、名称、域名、IP 或协议"
-                                    value={nodeSearch}
-                                    onChange={(e) =>
-                                        setNodeSearch(e.target.value)
-                                    }
-                                />
-                            </label>
-                            <label>
-                                筛选节点类型
-                                <select
-                                    value={backendFilter}
-                                    onChange={(e) =>
-                                        setBackendFilter(e.target.value)
-                                    }
-                                >
-                                    <option value="">全部类型</option>
-                                    <option value="v2node">V2Node</option>
-                                    <option value="v2box">V2Box</option>
-                                </select>
-                            </label>
-                            <label>
-                                筛选运行状态
-                                <select
-                                    value={statusFilter}
-                                    onChange={(e) =>
-                                        setStatusFilter(e.target.value)
-                                    }
-                                >
-                                    <option value="">全部状态</option>
-                                    {Object.entries(nodeRuntimeLabels).map(
-                                        ([key, label]) => (
-                                            <option key={key} value={key}>
-                                                {label}
-                                            </option>
-                                        ),
-                                    )}
-                                </select>
-                            </label>
-                            <label className="node-quota-filter">
-                                <input
-                                    type="checkbox"
-                                    checked={quotaFilter}
-                                    onChange={(e) =>
-                                        setQuotaFilter(e.target.checked)
-                                    }
-                                />
-                                仅显示额度受限节点
-                            </label>
-                            <span className="muted">
-                                显示 {filteredNodes.length} / {nodeRows.length}{" "}
-                                个节点
-                            </span>
-                        </div>
-                        <Table
-                            data={filteredNodes}
-                            columns={[
-                                ["id", "ID"],
-                                name,
-                                ["type", "类型"],
-                                ["protocol", "协议"],
-                                [
-                                    "runtime_status",
-                                    "运行状态",
-                                    (r) => (
-                                        <span
-                                            title={`最近通信：${date(Math.max(Number(r.last_check_at || 0), Number(r.last_push_at || 0)))}`}
-                                        >
-                                            {nodeRuntimeLabels[
-                                                r.runtime_status
-                                            ] || nodeRuntimeLabels.unknown}
-                                        </span>
-                                    ),
-                                ],
-                                ["host", "主机"],
-                                [
-                                    "current_ip",
-                                    "当前 IP",
-                                    (r) => (
-                                        <span title="优先显示公网 IP 上报；否则显示节点连接面板的来源 IP">
-                                            {r.current_ip || "未获取"}
-                                        </span>
-                                    ),
-                                ],
-                                [
-                                    "traffic_budget",
-                                    "服务器额度",
-                                    (r) =>
-                                        r.traffic_budget
-                                            ? `${bytes(r.traffic_budget.usedBytes)} / ${r.traffic_budget.limitBytes ? bytes(r.traffic_budget.limitBytes) : "不限"}${r.traffic_budget.blocked ? " · 已限制" : ""}`
-                                            : "未设置",
-                                ],
-                                ["port", "端口"],
-                                ["rate", "倍率"],
-                                [
-                                    "show",
-                                    "显隐",
-                                    (r) => (
-                                        <AdminSwitch
-                                            label={`${r.name} 显示`}
-                                            checked={Number(r.show) === 1}
-                                            onChange={async (checked) => {
-                                                await request(
-                                                    admin(
-                                                        `server/${r.type}/update`,
-                                                    ),
-                                                    {
-                                                        id: r.id,
-                                                        show: checked ? 1 : 0,
-                                                    },
-                                                );
-                                                d.reload();
-                                            }}
-                                        />
-                                    ),
-                                ],
-                                [
-                                    "group_id",
-                                    "权限组",
-                                    (r) =>
-                                        (r.group_id || [])
-                                            .map(
-                                                (id: number) =>
-                                                    rows(groups.data).find(
-                                                        (g) => g.id === id,
-                                                    )?.name || id,
-                                            )
-                                            .join(" / "),
-                                ],
-                                ["online", "在线用户"],
-                                [
-                                    "last_push_at",
-                                    "最近流量上报",
-                                    (r) => date(r.last_push_at),
-                                ],
-                            ]}
-                            onReorder={async (items) => {
-                                try {
-                                    await request(
-                                        admin("server/manage/sort"),
-                                        sortPayload("nodes", items),
-                                    );
-                                    d.reload();
-                                } catch (e) {
-                                    setError((e as Error).message);
-                                }
-                            }}
-                            actions={(r) => (
-                                <>
-                                    <button
-                                        onClick={() => setDiagnosticNode(r)}
-                                    >
-                                        运行状态
-                                    </button>
-                                    {r.install_command && (
-                                        <button onClick={() => setCommand(r)}>
-                                            安装命令
-                                        </button>
-                                    )}
-                                    <button
-                                        onClick={() => {
-                                            setType(r.type);
-                                            setEditing(r);
-                                        }}
-                                    >
-                                        编辑
-                                    </button>
-                                    <button
-                                        onClick={async () => {
-                                            try {
-                                                await request(
-                                                    admin(
-                                                        `server/${r.type}/copy`,
-                                                    ),
-                                                    { id: r.id },
-                                                );
-                                                d.reload();
-                                            } catch (e) {
-                                                setError((e as Error).message);
-                                            }
-                                        }}
-                                    >
-                                        复制
-                                    </button>
-                                    <button
-                                        onClick={async () => {
-                                            try {
-                                                await request(
-                                                    admin(
-                                                        `server/${r.type}/update`,
-                                                    ),
-                                                    {
-                                                        id: r.id,
-                                                        show: r.show ? 0 : 1,
-                                                    },
-                                                );
-                                                d.reload();
-                                            } catch (e) {
-                                                setError((e as Error).message);
-                                            }
-                                        }}
-                                    >
-                                        切换展示
-                                    </button>
-                                    <button
-                                        className="danger"
-                                        onClick={async () => {
-                                            if (confirm("确认删除节点？")) {
-                                                try {
-                                                    await request(
-                                                        admin(
-                                                            `server/${r.type}/drop`,
-                                                        ),
-                                                        { id: r.id },
-                                                    );
-                                                    d.reload();
-                                                } catch (e) {
-                                                    setError(
-                                                        (e as Error).message,
-                                                    );
-                                                }
-                                            }
-                                        }}
-                                    >
-                                        删除
-                                    </button>
-                                </>
-                            )}
-                        />
-                    </State>
-                </Panel>
-            )}
-            {command && (
-                <Modal title="节点安装命令" close={() => setCommand(null)}>
-                    <div className="pad">
-                        <p>
-                            可选：在节点管理的“Cloudflare
-                            DDNS”保存凭据并绑定此节点，然后配置节点 IP 上报。
-                        </p>
-                        <p className="muted">
-                            查询部署服务器公网 IPv4 /
-                            IPv6：在节点服务器执行以下命令。DDNS
-                            默认关闭，Cloudflare Token 加密保存在面板。
-                        </p>
-                        <textarea
-                            aria-label="查询服务器 IP 命令"
-                            readOnly
-                            rows={3}
-                            value={nodeIPCommand}
-                        />
-                        <button
-                            onClick={async () => {
-                                try {
-                                    await navigator.clipboard.writeText(
-                                        nodeIPCommand,
-                                    );
-                                    setCommand({ ...command, ipCopied: true });
-                                } catch {
-                                    setCommand({
-                                        ...command,
-                                        error: "复制失败，请手动复制命令",
-                                    });
-                                }
-                            }}
-                        >
-                            {command.ipCopied
-                                ? "IP 查询命令已复制"
-                                : "复制 IP 查询命令"}
-                        </button>
-                    </div>
-                    <div className="pad">
-                        <p className="muted">
-                            命令包含节点通讯凭据，仅在目标服务器使用。
-                        </p>
-                        <textarea
-                            readOnly
-                            aria-label="节点安装命令"
-                            value={nodeDeploymentCommand(command)}
-                        />
-                        <button
-                            onClick={async () => {
-                                try {
-                                    await navigator.clipboard.writeText(
-                                        nodeDeploymentCommand(command),
-                                    );
-                                    setCommand({ ...command, copied: true });
-                                } catch (e) {
-                                    setCommand({
-                                        ...command,
-                                        error: (e as Error).message,
-                                    });
-                                }
-                            }}
-                        >
-                            复制命令
-                        </button>
-                        {command.copied && <p role="status">已复制</p>}
-                        {command.error && (
-                            <p className="alert">{command.error}</p>
-                        )}
-                    </div>
-                </Modal>
-            )}
-            {editing && (
-                <Modal title={editing.id ? `编辑节点 #${editing.id} · ${editing.name || ""}` : "添加节点"} variant="drawer" wide className="node-editor-dialog" dismissible={!nodeBusy} close={closeNode}>
-                    <div className="pad node-editor-intro"><p>依次核对连接地址、协议及权限组。保存配置成功不代表节点已应用，请结合节点最近通信与运行状态确认。</p><p className="muted">切换协议可能清除不兼容配置；高级 JSON 中未单列的扩展参数仍会保留。</p></div>
-                    <div className="pad node-editor-backend">
-                        <strong>节点服务：{type === "v2box" ? "V2Box / sing-box" : "V2Node / Xray"}</strong>
-                        {editing.id && !conversionOpen ? <button type="button" disabled={nodeBusy} onClick={()=>setConversionOpen(true)}>转换节点类型…</button> : <label>节点类型<select aria-label="节点类型" value={type} disabled={nodeBusy} onChange={event=>{
-                            if(nodeDirty && !window.confirm("切换节点类型将重新载入已保存配置，未保存修改会丢失，是否继续？")) return;
-                            setType(event.target.value);setNodeDirty(true);
-                        }}>{nodeTypes.map(t=><option key={t}>{t}</option>)}</select></label>}
-                        {conversionOpen && <p className="alert">类型转换会分配目标类型节点 ID，并需要重新部署服务；这不是普通协议修改。保存前请重新选择路由与父节点。</p>}
-                    </div>
-                    {editing.id && type !== editing.type && (
-                        <p className="pad muted">
-                            保存后会将此节点转换为 {type}，分配目标类型的节点
-                            ID。请重新选择对应路由和父节点，并核对协议参数；保存后需要更换节点服务及安装配置。切换类型会重新载入已保存配置。
-                        </p>
-                    )}
-                    <State
-                        loading={
-                            schema.loading || groups.loading || routes.loading
-                        }
-                        error={schema.error || groups.error || routes.error}
-                        retry={() => {
-                            schema.reload();
-                            groups.reload();
-                            routes.reload();
-                        }}
-                    >
-                        <Editor
-                            key={`${type}:${editing.id || "new"}`}
-                            onDirty={()=>setNodeDirty(true)}
-                            onBusyChange={setNodeBusy}
-                            submit={editing.id && type !== editing.type ? "确认转换并保存" : "保存节点配置"}
-                            resolveFields={(fields, values) =>
-                                nodeEditorPresentation(formPresentation(
-                                    nodeFields(
-                                        type,
-                                        fields.map((field) =>
-                                            field.key === "parent_id"
-                                                ? {
-                                                      ...field,
-                                                      label: "父节点",
-                                                      type: "select",
-                                                      nullable: true,
-                                                      options: [
-                                                          ["", "不设置父节点"],
-                                                          ...rows(d.data)
-                                                              .filter(
-                                                                  (r) =>
-                                                                      r.type ===
-                                                                          type &&
-                                                                      String(
-                                                                          r.id,
-                                                                      ) !==
-                                                                          String(
-                                                                              editing.id,
-                                                                          ) &&
-                                                                      (![
-                                                                          "v2node",
-                                                                          "v2box",
-                                                                      ].includes(
-                                                                          type,
-                                                                      ) ||
-                                                                          r.protocol ===
-                                                                              values.protocol),
-                                                              )
-                                                              .map(
-                                                                  (r) =>
-                                                                      [
-                                                                          String(
-                                                                              r.id,
-                                                                          ),
-                                                                          r.name,
-                                                                      ] as [
-                                                                          string,
-                                                                          string,
-                                                                      ],
-                                                              ),
-                                                      ] as [string, string][],
-                                                      hint: "可选择同类型、同协议的节点。切换协议时会清除当前选择。",
-                                                  }
-                                                : field,
-                                        ),
-                                        values,
-                                    ),
-                                    "nodes",
-                                ))
-                            }
-                            linkValues={linkNode}
-                            fields={nodeSettingsFields(
-                                Object.entries(schema.data || {})
-                                    .filter(
-                                        ([k]) => !k.includes(".") && k !== "id",
-                                    )
-                                    .map(([k, rule]) => {
-                                        if (
-                                            k === "group_id" ||
-                                            k === "route_id"
-                                        )
-                                            return {
-                                                key: k,
-                                                label:
-                                                    k === "route_id"
-                                                        ? type === "v2box"
-                                                            ? "sing-box 路由规则"
-                                                            : "Xray 路由规则"
-                                                        : nodeLabels[k] || k,
-                                                hint:
-                                                    k === "route_id"
-                                                        ? "在路由管理中维护规则；仅显示当前内核的规则，按选择顺序应用。"
-                                                        : undefined,
-                                                type: "multiselect",
-                                                required: k === "group_id",
-                                                options: rows(
-                                                    k === "group_id"
-                                                        ? groups.data
-                                                        : routes.data,
-                                                )
-                                                    .filter(
-                                                        (r) =>
-                                                            k !== "route_id" ||
-                                                            (r.backend ||
-                                                                "v2node") ===
-                                                                type,
-                                                    )
-                                                    .map((r) => [
-                                                        String(r.id),
-                                                        r.name ||
-                                                            r.remarks ||
-                                                            String(r.id),
-                                                    ]),
-                                            } as Field;
-                                        const str = Array.isArray(rule)
-                                            ? rule.join("|")
-                                            : String(rule);
-                                        if (k === "flow")
-                                            return {
-                                                key: k,
-                                                label: "VLESS Flow",
-                                                type: "select",
-                                                nullable: true,
-                                                options: [
-                                                    ["", "不设置"],
-                                                    [
-                                                        "xtls-rprx-vision",
-                                                        "XTLS Vision",
-                                                    ],
-                                                ],
-                                            } as Field;
-                                        if (k === "region_code")
-                                            return {
-                                                key: k,
-                                                label: nodeLabels[k],
-                                                type: "select",
-                                                nullable: true,
-                                                options: [
-                                                    ["", "保留原节点名称"],
-                                                    ...Object.entries(
-                                                        nodeLocations.regions,
-                                                    ).map(([code, names]) => [
-                                                        code,
-                                                        `${names["zh-CN"]} (${code})`,
-                                                    ]),
-                                                ],
-                                            } as Field;
-                                        const enumRule =
-                                            str.match(/(?:^|\|)in:([^|]+)/);
-                                        if (enumRule)
-                                            return {
-                                                key: k,
-                                                label: nodeLabels[k] || k,
-                                                type:
-                                                    enumRule[1] === "0,1" &&
-                                                    [
-                                                        "show",
-                                                        "tls",
-                                                        "allow_insecure",
-                                                        "tls_allow_insecure",
-                                                        "is_shield",
-                                                        "insecure",
-                                                    ].includes(k)
-                                                        ? "switch"
-                                                        : "select",
-                                                required:
-                                                    str.includes("required"),
-                                                options: enumRule[1]
-                                                    .split(",")
-                                                    .map((v) => [v, v]),
-                                            } as Field;
-                                        return f(
-                                            k,
-                                            nodeLabels[k] || k,
-                                            str.includes("array") ||
-                                                k.endsWith("_settings")
-                                                ? "json"
-                                                : str.includes("integer") ||
-                                                    str.includes("numeric")
-                                                  ? "number"
-                                                  : "text",
-                                            str.includes("required"),
-                                        );
-                                    }),
-                            )}
-                            initial={nodeSettingsInitial(
-                                nodeBackendInitial(editing, type),
-                            )}
-                            onSave={async (b) => {
-                                if(editing.id && type !== editing.type && !window.confirm("确认转换节点类型并保存？此操作会更换节点 ID，之后需要更新节点服务和安装配置。")) throw new Error("已取消转换，配置尚未保存。");
-                                b = nodeSettingsPayload(b);
-                                if (
-                                    b.padding_scheme != null &&
-                                    typeof b.padding_scheme !== "string"
-                                )
-                                    b.padding_scheme = JSON.stringify(
-                                        b.padding_scheme,
-                                    );
-                                const clean: Row = {};
-                                Object.keys(schema.data || {}).forEach((k) => {
-                                    if (!k.includes(".") && b[k] !== undefined)
-                                        clean[k] = b[k];
-                                });
-                                const converting =
-                                    editing.id && type !== editing.type;
-                                if (converting) {
-                                    clean.source_type = editing.type;
-                                    clean.source_id = editing.id;
-                                } else if (editing.id) clean.id = editing.id;
-                                if (["v2node", "v2box"].includes(type))
-                                    clean.zero_rtt_handshake ??=
-                                        editing.zero_rtt_handshake ?? 0;
-                                const saved = await request(
-                                    admin(`server/${type}/save`),
-                                    clean,
-                                );
-                                setNodeDirty(false);
-                                setSavedNodeNotice("节点配置已保存。请检查节点最近通信和运行状态；协议、端口或内核变更可能需要同步部署配置。");
-                                setEditing(null);
-                                d.reload();
-                                if (converting) {
-                                    const updated = await request<Row[]>(
-                                        admin("server/manage/getNodes"),
-                                    );
-                                    const converted = rows(updated.data).find(
-                                        (r) =>
-                                            r.type === type &&
-                                            r.id === saved.data.id,
-                                    );
-                                    if (converted) setCommand(converted);
-                                }
-                            }}
-                        />
-                    </State>
-                </Modal>
-            )}
-        </>
-    );
-}
-const nodeLabels: Record<string, string> = {
-    listen_ip: "监听地址",
-    disable_sni: "禁用 SNI",
-    cipher: "加密算法",
-    encryption: "VLESS 加密方式",
-    encryption_settings: "VLESS 加密设置",
-    zero_rtt_handshake: "启用 0-RTT 握手",
-    congestion_control: "拥塞控制算法",
-    udp_relay_mode: "UDP 中继模式",
-    padding_scheme: "填充策略",
-    version: "协议版本",
-    server_name: "TLS 服务器名称（SNI）",
-    insecure: "跳过证书校验",
-    allow_insecure: "跳过证书校验",
-    obfs_password: "混淆密码",
-    networkSettings: "传输设置",
-    tlsSettings: "TLS 设置",
-    ruleSettings: "路由设置",
-    dnsSettings: "DNS 设置",
-    name: "节点名称",
-    host: "连接主机",
-    port: "连接端口",
-    server_port: "服务端口",
-    group_id: "权限组",
-    route_id: "路由规则",
-    rate: "流量倍率",
-    tags: "标签数组",
-    region_code: "国家 / 地区",
-    city_code: "州 / 省或城市",
-    display_label: "线路编号 / 后缀（例如 A）",
-    parent_id: "父节点 ID",
-    protocol: "协议",
-    network: "传输方式",
-    network_settings: "传输设置",
-    tls: "TLS 模式",
-    tls_settings: "TLS 设置",
-    reality_settings: "Reality 设置",
-    security: "加密方式",
-    obfs: "混淆方式",
-    obfs_settings: "混淆设置",
-    show: "展示",
-    sort: "排序",
-    up_mbps: "上传 Mbps",
-    down_mbps: "下载 Mbps",
-    trusted_x_forwarded_for: "信任的 X-Forwarded-For",
-    udp: "启用 UDP",
-};
 export function System() {
     const status = useData(admin("system/getSystemStatus")),
         queue = useData(admin("system/getQueueStats"));
@@ -3338,7 +1842,12 @@ export function System() {
                         <Panel
                             key={title as string}
                             title={title as string}
-                            actions={<Reload onClick={data.reload} loading={data.loading} />}
+                            actions={
+                                <Reload
+                                    onClick={data.reload}
+                                    loading={data.loading}
+                                />
+                            }
                         >
                             <State {...data}>
                                 <div className="stats-list">
@@ -3372,3 +1881,7 @@ export function System() {
         </>
     );
 }
+
+export { Nodes } from "./admin-nodes";
+export { Payments } from "./admin-payments";
+export { Settings } from "./admin-settings";

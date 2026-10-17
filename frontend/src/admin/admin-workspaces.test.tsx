@@ -174,7 +174,7 @@ it("keeps commission amounts, records and approval out of order management", asy
 it("searches invitation relationships and submits commission approval through the existing contract", async () => {
     render(<AdminInvitations />);
     await screen.findByText(/inviter@example.com/);
-    fireEvent.change(screen.getByRole("textbox", { name: "邀请人邮箱" }), {
+    fireEvent.change(screen.getByRole("textbox", { name: "查询邮箱" }), {
         target: { value: "inviter@example.com" },
     });
     fireEvent.click(screen.getByRole("button", { name: "查询" }));
@@ -187,7 +187,7 @@ it("searches invitation relationships and submits commission approval through th
     );
     fireEvent.click(screen.getByRole("tab", { name: "佣金审核" }));
     fireEvent.click(await screen.findByRole("button", { name: "佣金审核" }));
-    fireEvent.change(within(screen.getByRole("dialog")).getByRole("combobox"), {
+    fireEvent.change(await within(screen.getByRole("dialog")).findByRole("combobox"), {
         target: { value: "1" },
     });
     fireEvent.click(screen.getByRole("button", { name: "保存" }));
@@ -214,7 +214,7 @@ it("removes operations grouping and keeps each new group contiguous", () => {
     expect(legacyAdminMenu.some(([key]) => (key as string) === "usage")).toBe(
         false,
     );
-    expect(legacyAdminMenu.find(([key]) => key === "online")?.[3]).toBe("用户");
+    expect(legacyAdminMenu.find(([key]) => key === "online")?.[3]).toBe("用户与支持");
     const groups = legacyAdminMenu
         .map((item) => item[3])
         .filter((group, index, all) => group !== all[index - 1]);
@@ -235,13 +235,13 @@ it("opens system monitoring only on its dashboard tab", async () => {
 it("loads translations from subscription management and supports old links", async () => {
     const view = render(<AdminSubscriptions />);
     expect(
-        screen.getByRole("tab", { name: "订阅套餐", selected: true }),
+        screen.getByRole("tab", { name: "套餐列表", selected: true }),
     ).toBeTruthy();
     expect(
         api.request.mock.calls.some(([path]) => path.includes("ops/i18n/plan")),
     ).toBe(false);
     // Radix activates pointer tabs on primary-button mousedown.
-    fireEvent.mouseDown(screen.getByRole("tab", { name: "订阅多语言" }), {
+    fireEvent.mouseDown(screen.getByRole("tab", { name: "套餐翻译" }), {
         button: 0,
         ctrlKey: false,
     });
@@ -254,7 +254,7 @@ it("loads translations from subscription management and supports old links", asy
     view.unmount();
     render(<AdminContent current="translations" />);
     expect(
-        await screen.findByRole("tab", { name: "订阅多语言", selected: true }),
+        await screen.findByRole("tab", { name: "套餐翻译", selected: true }),
     ).toBeTruthy();
 });
 it("consolidates settings and monitoring navigation", () => {
@@ -266,7 +266,7 @@ it("consolidates settings and monitoring navigation", () => {
             false,
         );
     expect(legacyAdminMenu.find(([key]) => key === "log-settings")?.[3]).toBe(
-        "日志",
+        "系统设置",
     );
 });
 

@@ -9,6 +9,16 @@ import "./analytics.css";
 type Report = {
     settings: V10AnalyticsConfiguration;
     ready: boolean;
+    sourcesReady?: boolean;
+    sourceGroups?: number;
+    sources?: {
+        kind: "historical" | "unknown" | "referral";
+        domain: string | null;
+        sessions: number;
+        plans: number;
+        confirmations: number;
+        payments: number;
+    }[];
     timeZone: string;
     from: string;
     to: string;
@@ -97,6 +107,16 @@ function CollectionSettings({
 }: {
     settings: V10AnalyticsConfiguration;
     ready: boolean;
+    sourcesReady?: boolean;
+    sourceGroups?: number;
+    sources?: {
+        kind: "historical" | "unknown" | "referral";
+        domain: string | null;
+        sessions: number;
+        plans: number;
+        confirmations: number;
+        payments: number;
+    }[];
     saved: () => void;
 }) {
     const [enabled, setEnabled] = useState(settings.enabled);
@@ -472,6 +492,78 @@ export function AdminAnalytics() {
                         </div>
                         <p className="muted">
                             待转化人数可能包含仍在考虑或处理中的用户；不自动向用户发送推广邮件。
+                        </p>
+                    </Panel>
+                    <Panel padded title="访问来源网站">
+                        <p className="muted">
+                            了解访客从哪个网站进入本站，无需设置推广链接。仅统计同意采集的访问，遵循当前时间与设备筛选，不关联具体账号，也不代表成功登录人数。
+                        </p>
+                        {!data.sourcesReady ? (
+                            <p role="status">
+                                来源统计字段尚未安装，请通过更新流程执行数据库迁移。
+                            </p>
+                        ) : !data.sources?.length ? (
+                            <p className="muted">
+                                暂无来源数据，历史访问不补采。
+                            </p>
+                        ) : (
+                            <>
+                                <div className="table-wrap">
+                                    <table>
+                                        <thead>
+                                            <tr>
+                                                <th>来源网站</th>
+                                                <th>访问会话</th>
+                                                <th>占全部会话</th>
+                                                <th>浏览套餐</th>
+                                                <th>确认订单</th>
+                                                <th>进入付款</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {data.sources.map((row, index) => (
+                                                <tr key={index}>
+                                                    <td>
+                                                        {row.kind ===
+                                                        "historical"
+                                                            ? "历史数据／未采集"
+                                                            : row.domain ||
+                                                              "直接访问／来源未知"}
+                                                    </td>
+                                                    <td>
+                                                        {row.sessions.toLocaleString()}
+                                                    </td>
+                                                    <td>
+                                                        {percent(
+                                                            row.sessions,
+                                                            data.sessions,
+                                                        )}
+                                                    </td>
+                                                    <td>
+                                                        {row.plans.toLocaleString()}
+                                                    </td>
+                                                    <td>
+                                                        {row.confirmations.toLocaleString()}
+                                                    </td>
+                                                    <td>
+                                                        {row.payments.toLocaleString()}
+                                                    </td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
+                                </div>
+                                <p className="muted">
+                                    按会话数展示前 50 项，共{" "}
+                                    {data.sourceGroups || 0}{" "}
+                                    项。购买步骤按浏览套餐 → 确认订单 →
+                                    进入付款顺序统计，进入付款不代表付款成功。
+                                </p>
+                            </>
+                        )}
+                        <p className="muted">
+                            只保存来源域名，每次访问固定首次记录的来源，站内跳转不覆盖。直接打开、复制链接、App
+                            内打开或浏览器隐藏来源时，可能无法识别来源网站；“来源未知”不等同于主动输入网址。
                         </p>
                     </Panel>
                     <Panel padded title="页面表现">

@@ -21,7 +21,7 @@ import {
     paymentFee,
     orderOriginalAmount,
 } from "./billing-flow";
-import { PurchaseSteps } from "./SubscriptionPurchase";
+import { PurchaseSteps } from "./PurchaseSteps";
 
 export function PaymentCheckout({
     order,

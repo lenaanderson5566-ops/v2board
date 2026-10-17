@@ -124,3 +124,15 @@ config file, configuration cache, sessions and database state after execution.
 
 GeoLite2 databases are committed under `storage/geoip`. Their release source and
 attribution are in `storage/geoip/SOURCE.txt`; hashes are in `SHA256SUMS.txt`.
+
+## Module ownership
+
+- `src/admin/admin.tsx` owns the resource registry and shared resource page. Settings, payments and node management live in `admin-settings.tsx`, `admin-payments.tsx` and `admin-nodes.tsx`, loaded by `admin-entry.tsx` when needed. Its historical exports remain compatibility entry points; new page imports should use the owning module. Feature modules must not import the compatibility facade.
+- `src/admin/admin-fields.ts` owns common field/column constructors; `admin-presentation.ts` owns shared labels and presentation metadata. Keep validation and payload conversion in their existing domain helpers (`admin-linkage`, `payment-fields`, `node-settings`) rather than copying them into pages.
+- `src/user/SubscriptionPurchase.tsx` owns the plan catalog. `PlanSelection.tsx` owns period/coupon confirmation and order submission; `PurchaseSteps.tsx` owns the progress indicator. Checkout and usage pages import the widgets directly. Pricing calculations remain in `billing-flow.ts` and `shared/order-price.ts`.
+- Reuse `shared/useCooldown.ts` for verification-code resend deadlines. Authentication pages own their form state and API calls; timers should not be reimplemented per form.
+- `src/shared` may depend on neither application. User/admin code must not import each other. The production build and existing bundle-isolation tests enforce these boundaries. Keep API field projections in sync between `docs/api-v10/contracts.json` and `src/shared/v10-contracts.json`; the V10 request transport is shared, not reimplemented by pages.
+
+Use the existing component and flow tests when moving code. Update obsolete labels and mocks without removing security, amount, navigation or payload assertions. Prefer the module test commands for iteration and the complete suite after changes to shared resource infrastructure. Do not create a second check runner or dated reports for each refactor.
+
+TypeScript also rejects unused imports, local declarations and parameters (`noUnusedLocals` / `noUnusedParameters`) as part of the normal build. Remove abandoned helpers and test their production replacements directly; keep intentional compatibility exports and dynamically referenced resources. Identical country flags and default/custom rule templates can have distinct runtime roles and must not be removed based on content hashes alone.

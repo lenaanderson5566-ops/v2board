@@ -4,7 +4,7 @@ import {render,screen,fireEvent,act,cleanup} from "@testing-library/react";
 const request=vi.hoisted(()=>vi.fn().mockResolvedValue({data:1}));
 vi.mock("../shared/api",()=>({request,money:(v:number)=>String(v),query:(p:string)=>p}));
 vi.mock("../shared/ui",()=>({useData:()=>({data:[],loading:false,error:""}),State:({children}:any)=>children,Modal:({children}:any)=>children}));
-vi.mock("./SubscriptionPurchase",()=>({PurchaseSteps:()=>null}));
+vi.mock("./PurchaseSteps",()=>({PurchaseSteps:()=>null}));
 vi.mock("./OrderReceipt",()=>({OrderReceipt:()=>null}));
 import i18n from "../shared/i18n";
 import {PaymentCheckout} from "./PaymentCheckout";

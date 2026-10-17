@@ -24,9 +24,6 @@ function matchLanguage(value: string): string | undefined {
     if (matched) return matched.code;
     return undefined;
 }
-export function resolveLanguage(value: string): string {
-    return matchLanguage(value) || "en-US";
-}
 export function resolvePreferredLanguage(values: readonly string[]): string {
     for (const value of values) {
         const matched = matchLanguage(value);

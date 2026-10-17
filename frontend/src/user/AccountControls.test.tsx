@@ -68,7 +68,7 @@ function fill(password = "new-password", confirmation = password) {
 describe("header controls", () => {
     it("selects a language and closes the menu with focus returned", async () => {
         render(<LanguagePicker />);
-        const trigger = screen.getByRole("button", { name: "界面语言" });
+        const trigger = screen.getByRole("button", { name: "界面语言: English" });
         fireEvent.click(trigger);
         expect(document.activeElement).toBe(
             screen.getByRole("menuitemradio", { name: "English" }),
@@ -82,7 +82,7 @@ describe("header controls", () => {
     });
     it("keeps touch selection mounted when mobile blur has no related target", async () => {
         render(<LanguagePicker />);
-        fireEvent.click(screen.getByRole("button", { name: "界面语言" }));
+        fireEvent.click(screen.getByRole("button", { name: "界面语言: English" }));
         const selected = screen.getByRole("menuitemradio", { name: "English" });
         const option = screen.getByRole("menuitemradio", { name: "简体中文" });
         // Touch browsers can blur the focused item without focusing the tapped button.
@@ -96,7 +96,7 @@ describe("header controls", () => {
     });
     it("still closes when keyboard focus leaves the menu", () => {
         render(<><LanguagePicker /><button>Outside</button></>);
-        fireEvent.click(screen.getByRole("button", { name: "界面语言" }));
+        fireEvent.click(screen.getByRole("button", { name: "界面语言: English" }));
         fireEvent.blur(screen.getByRole("menuitemradio", { name: "English" }), {
             relatedTarget: screen.getByRole("button", { name: "Outside" }),
         });
@@ -105,7 +105,7 @@ describe("header controls", () => {
     it("shows a failed save and allows retry without closing the menu", async () => {
         mocks.changeLanguage.mockRejectedValueOnce(Error("save failed"));
         render(<LanguagePicker />);
-        fireEvent.click(screen.getByRole("button", { name: "界面语言" }));
+        fireEvent.click(screen.getByRole("button", { name: "界面语言: English" }));
         fireEvent.click(screen.getByRole("menuitemradio", { name: "简体中文" }));
         expect(await screen.findByRole("alert")).toHaveProperty("textContent", "save failed");
         expect(screen.getByRole("menu")).toBeTruthy();
@@ -115,7 +115,7 @@ describe("header controls", () => {
     });
     it("supports keyboard navigation and Escape", () => {
         render(<LanguagePicker />);
-        const trigger = screen.getByRole("button", { name: "界面语言" });
+        const trigger = screen.getByRole("button", { name: "界面语言: English" });
         fireEvent.click(trigger);
         fireEvent.keyDown(document, { key: "ArrowDown" });
         expect(document.activeElement).toBe(
@@ -135,7 +135,7 @@ describe("header controls", () => {
                 />
             </>,
         );
-        fireEvent.click(screen.getByRole("button", { name: "界面语言" }));
+        fireEvent.click(screen.getByRole("button", { name: "界面语言: English" }));
         fireEvent.click(screen.getByRole("button", { name: "account" }));
         expect(screen.queryByRole("menu")).toBeNull();
         expect(

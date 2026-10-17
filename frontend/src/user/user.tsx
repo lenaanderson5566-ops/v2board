@@ -4,7 +4,7 @@ import { Bell, Settings } from "lucide-react";
 import { TelegramIntegration } from "./TelegramIntegration";
 import { NotificationPreferences } from "./NotificationPreferences";
 import { ac } from "../shared/account-copy";
-import { lazy, useState, useEffect, useRef, type ReactNode } from "react";
+import { lazy, useState, useEffect, useRef } from "react";
 import { NodeList } from "./NodeList";
 export { Tickets } from "../shared/Tickets";
 const AccountPreferences = lazy(() => import("./AccountPreferences").then((module) => ({ default: module.AccountPreferences })));
@@ -23,12 +23,10 @@ import { loadStripe } from "@stripe/stripe-js/pure";
 import type { Stripe, StripeCardElement } from "@stripe/stripe-js";
 import { ArrowUpRight } from "lucide-react";
 import {
-    boot,
     request,
     rows,
     query,
     money,
-    bytes,
     date,
     navigate,
     type Row,
@@ -37,15 +35,12 @@ import {
     useData,
     State,
     Panel,
-    Metric,
     Table,
     Empty,
     Html,
     Editor,
     Modal,
-    Reload,
     Pager,
-    type Field,
 } from "../shared/ui";
 export function UserDashboard() {
     const info = useData("user/info"),

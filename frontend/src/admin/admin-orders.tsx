@@ -3,7 +3,7 @@ import { PaymentCallbackHistory } from "./PaymentCallbackHistory";
 import { adminStatusCell } from "../shared/admin-status";
 import { adminUserLabel } from "./admin-user-label";
 import { useEffect, useState } from "react";
-import { admin, request, query, money, date, type Row } from "../shared/api";
+import { admin, request, money, date, type Row } from "../shared/api";
 import { useData, Modal, Editor, State, Table } from "../shared/ui";
 import { ResourcePage, resources } from "./admin";
 import { AssignOrder } from "./admin-users";

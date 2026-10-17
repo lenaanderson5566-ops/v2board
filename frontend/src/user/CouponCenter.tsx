@@ -5,7 +5,7 @@ import { request } from "../shared/api";
 import { State, useData } from "../shared/ui";
 import { tx } from "../shared/i18n";
 import { formatInstant } from "../shared/timezone";
-import type { V10WalletCoupon, V10CouponOffer } from "../shared/v10-types";
+import type { V10WalletCoupon } from "../shared/v10-types";
 import { pricingCopy as pc } from "./pricing-copy";
 import { couponRestrictions, couponStatus } from "./coupon-copy";
 import { JourneyIllustration } from "./JourneyIllustration";

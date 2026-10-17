@@ -3,7 +3,7 @@ import invitationArt from "../assets/invite-friends.jpg";
 import { RegistrationDomains } from "./RegistrationDomains";
 import { registrationEmailError } from "./registration-policy";
 import { useState, type FormEvent } from "react";
-import { Mail, ArrowLeft, History, LoaderCircle } from "lucide-react";
+import { Mail, ArrowLeft, LoaderCircle } from "lucide-react";
 import { boot, request, query, bytes, type Row } from "../shared/api";
 import { Modal, State, useData } from "../shared/ui";
 import { tx } from "../shared/i18n";

@@ -174,3 +174,12 @@ export function configField(
                           : undefined,
     };
 }
+
+/** Shared field/column shapes used by resource, payment and node editors. */
+export const field = (
+    key: string,
+    label: string,
+    type: Field["type"] = "text",
+    required = false,
+): Field => ({ key, label, type, required });
+export const nameColumn: [string, string] = ["name", "名称"];

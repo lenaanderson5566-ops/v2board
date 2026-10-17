@@ -63,7 +63,16 @@ const AdminBanners = lazy(() =>
         default: module.AdminBanners,
     })),
 );
-import { ResourcePage, resources, Settings, Payments, Nodes } from "./admin";
+import { ResourcePage, resources } from "./admin";
+const Settings = lazy(() =>
+    import("./admin-settings").then((module) => ({ default: module.Settings })),
+);
+const Payments = lazy(() =>
+    import("./admin-payments").then((module) => ({ default: module.Payments })),
+);
+const Nodes = lazy(() =>
+    import("./admin-nodes").then((module) => ({ default: module.Nodes })),
+);
 const OrdersPage = lazy(() =>
     import("./admin-orders").then((module) => ({ default: module.OrdersPage })),
 );
@@ -107,8 +116,10 @@ function AdminPageContent({ current }: { current: string }) {
     if (current === "system-log") return <AdminSystemLogs />;
     if (current === "ddns") return <Nodes key="ddns" initialTab="ddns" />;
     if (current === "client-diagnostics") return <AdminClientDiagnostics />;
-    if (current === "client-downloads") return <Settings key="client-downloads" section="app" />;
-    if (current === "invitation-settings") return <Settings key="invitation-settings" section="invite" />;
+    if (current === "client-downloads")
+        return <Settings key="client-downloads" section="app" />;
+    if (current === "invitation-settings")
+        return <Settings key="invitation-settings" section="invite" />;
     if (current === "invitations") return <AdminInvitations />;
     if (current === "users" || current === "usage") return <UsersPage />;
     if (current === "orders") return <OrdersPage />;

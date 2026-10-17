@@ -1,4 +1,4 @@
-import { PlanSelection } from "./SubscriptionPurchase";
+import { PlanSelection } from "./PlanSelection";
 import { activePlan } from "../shared/user-experience";
 import { unfinishedOrder } from "./billing-flow";
 import { TrafficCredits } from "./TrafficCredits";

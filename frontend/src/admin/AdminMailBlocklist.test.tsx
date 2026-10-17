@@ -49,7 +49,7 @@ it("adds a restriction with a note and escapes note markup", async () => {
     fireEvent.change(screen.getByLabelText("禁发邮箱"), {
         target: { value: "test@example.test" },
     });
-    fireEvent.change(screen.getByLabelText("禁发备注"), {
+    fireEvent.change(screen.getByLabelText("禁发备注（选填）"), {
         target: { value: "abuse" },
     });
     fireEvent.click(screen.getByRole("button", { name: "加入禁发名单" }));
@@ -64,7 +64,7 @@ it("sends the revision when changing a note", async () => {
     mocks.request.mockResolvedValue({ data: true });
     render(<AdminMailBlocklist />);
     fireEvent.click(screen.getByRole("button", { name: "编辑备注" }));
-    fireEvent.change(screen.getByLabelText("备注"), {
+    fireEvent.change(screen.getByLabelText("备注（选填）"), {
         target: { value: "reviewed" },
     });
     fireEvent.click(screen.getByRole("button", { name: "保存备注" }));

@@ -16,9 +16,11 @@ final class ProductAnalyticsController extends \App\Http\Controllers\Controller 
         abort_if(strlen($request->getContent())>1024,413,'Event is too large.');
         abort_unless($request->isJson(),415,'JSON is required.');
         abort_if($request->query->count()>0,422,'Query parameters are not accepted.');
-        abort_if(array_diff(array_keys($request->all()),['sessionId','page','device','language','consent']),422,'Unknown event field.');
+        abort_if(array_diff(array_keys($request->all()),['sessionId','page','device','language','consent','attributionVersion','sourceDomain']),422,'Unknown event field.');
         $event=$request->validate(['sessionId'=>'required|uuid','page'=>'required|in:'.implode(',',ProductAnalytics::PAGES),
-            'device'=>'required|in:desktop,mobile,tablet','language'=>'required|in:zh-CN,zh-TW,en-US,ja-JP,ko-KR,vi-VN,ru-RU,fa-IR', 'consent'=>'required|accepted']);
+            'device'=>'required|in:desktop,mobile,tablet','language'=>'required|in:zh-CN,zh-TW,en-US,ja-JP,ko-KR,vi-VN,ru-RU,fa-IR', 'consent'=>'required|accepted',
+            'attributionVersion'=>'sometimes|integer|in:1',
+            'sourceDomain'=>['sometimes','string','max:253','regex:/^(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,63}$/D', function ($attribute, $value, $fail) { if (preg_match('/\.(local|localhost|internal|test|invalid)$/D', $value)) $fail('Public domain required.'); }]]);
         if ($request->header('Sec-GPC')==='1' || $request->header('DNT')==='1' || !$service->settings()['enabled']) return response('',204);
         abort_unless($service->ready(),503,'Analytics migration is required.');
         abort_if(RateLimiter::tooManyAttempts('product-analytics-global',30000),429,'Collection is temporarily limited.');

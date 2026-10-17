@@ -67,7 +67,7 @@ export function AdminMailBlocklist() {
                 <div>
                     <h3>管理邮件发送权限</h3>
                     <p className="muted">
-                        禁发后，该邮箱将收不到任何邮件，包括登录验证码和密码找回邮件。账户与站内通知仍可正常使用。
+                        仅允许添加尚未注册的邮箱。禁发后，该邮箱将收不到任何邮件，包括注册验证码和密码找回邮件。
                     </p>
                     <details>
                         <summary>了解禁发范围与解除规则</summary>
@@ -125,7 +125,7 @@ export function AdminMailBlocklist() {
                         (data) => {
                             setResult(
                                 bulk
-                                    ? `导入完成：新增或重新禁发 ${data.added} 个，已禁发跳过 ${data.skipped} 个，重复行 ${data.duplicates} 个。`
+                                    ? `导入完成：新增或重新禁发 ${data.added} 个，现有用户跳过 ${data.existingUsers ?? 0} 个，已禁发跳过 ${data.skipped} 个，重复行 ${data.duplicates} 个。`
                                     : "已加入禁发名单。",
                             );
                             setEmail("");
@@ -166,7 +166,7 @@ export function AdminMailBlocklist() {
                     )}
                     {bulk && (
                         <small className="muted">
-                            自动忽略空行及重复邮箱；已禁发的邮箱保留原备注。已解除的邮箱将重新禁发，格式错误时整批不导入。
+                            自动忽略空行及重复邮箱；现有用户不可导入，已禁发的邮箱保留原备注。已解除且未注册的邮箱将重新禁发，格式错误时整批不导入。
                         </small>
                     )}
                 </label>

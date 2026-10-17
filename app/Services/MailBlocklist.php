@@ -20,6 +20,9 @@ class MailBlocklist
         $email=strtolower(trim($email));
         $hash=MailDeliveryLog::recipientHash($email);
         return DB::transaction(function() use($email,$note,$administratorId,$hash,$skipExisting){
+            if (DB::table('v2_user')->whereRaw('LOWER(email) = ?',[$email])->exists()) {
+                throw \Illuminate\Validation\ValidationException::withMessages(['email'=>'该邮箱属于现有用户，不能加入邮件禁发名单。']);
+            }
             $inserted=DB::table('v2_mail_blocklist')->insertOrIgnore(['recipient_hash'=>$hash,'email_encrypted'=>Crypt::encryptString($email),'note'=>$note,'administrator_id'=>$administratorId,'created_at'=>time(),'updated_at'=>time()]);
             $query=DB::table('v2_mail_blocklist')->where('recipient_hash',$hash);
             $row=(clone $query)->lockForUpdate()->first();

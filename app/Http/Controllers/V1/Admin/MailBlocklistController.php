@@ -39,14 +39,16 @@ class MailBlocklistController extends \App\Http\Controllers\Controller
         validator(['emails'=>$emails],['emails.*'=>'required|email:rfc|max:254'])->validate();
         $unique=array_values(array_unique($emails));
         sort($unique);
-        $added=DB::transaction(function() use($unique,$p,$request){
+        $result=DB::transaction(function() use($unique,$p,$request){
+            $registered=DB::table('v2_user')->whereIn(DB::raw('LOWER(email)'),$unique)->pluck('email')->map(static function($email){ return strtolower($email); })->all();
+            $eligible=array_diff($unique,$registered);
             $count=0;
-            foreach ($unique as $email) {
+            foreach ($eligible as $email) {
                 if (MailBlocklist::add($email,trim($p['note'] ?? ''),(int)$request->user['id'],true)) $count++;
             }
-            return $count;
+            return ['added'=>$count,'skipped'=>count($eligible)-$count,'existingUsers'=>count($unique)-count($eligible)];
         },3);
-        return response(['data'=>['added'=>$added,'skipped'=>count($unique)-$added,'duplicates'=>count($emails)-count($unique)]],201)->header('Cache-Control','no-store');
+        return response(['data'=>$result+['duplicates'=>count($emails)-count($unique)]],201)->header('Cache-Control','no-store');
     }
 
     public function change(Request $request)

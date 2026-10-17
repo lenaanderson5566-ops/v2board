@@ -162,7 +162,7 @@ export function AnalyticsPrivacy() {
                 style={{ height: height + 32 }}
                 aria-hidden="true"
             />
-            <aside
+            <section
                 ref={region}
                 tabIndex={-1}
                 className="analytics-privacy"
@@ -208,7 +208,7 @@ export function AnalyticsPrivacy() {
                         {e("analyticsAllow")}
                     </button>
                 </div>
-            </aside>
+            </section>
         </>
     );
 }

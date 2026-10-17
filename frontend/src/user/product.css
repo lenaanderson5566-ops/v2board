@@ -2479,6 +2479,9 @@ body[data-console="user"] .client-family-header p {
 
 .analytics-privacy {
     position: fixed;
+    inset: auto;
+    height: auto;
+    min-height: 0;
     inset-inline-start: 24px;
     bottom: max(24px, env(safe-area-inset-bottom));
     z-index: 55;

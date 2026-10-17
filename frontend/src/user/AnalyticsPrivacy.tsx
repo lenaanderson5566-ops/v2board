@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { ShieldCheck } from "lucide-react";
 import { apiUrl } from "../shared/runtime-config";
@@ -32,6 +32,8 @@ export function AnalyticsPrivacy() {
     const [configuration, setConfiguration] =
         useState<V10AnalyticsConfiguration | null>(null);
     const [open, setOpen] = useState(false);
+    const [expanded, setExpanded] = useState(false);
+    const detailsId = useId();
     const [error, setError] = useState(false);
     const [chosenAt, setChosenAt] = useState<number | null>(
         () => privacyChoice()?.chosenAt ?? null,
@@ -168,33 +170,49 @@ export function AnalyticsPrivacy() {
                 className="analytics-privacy"
                 aria-label={e("analyticsPrivacy")}
             >
-                <div className="analytics-privacy-heading">
-                    <span className="analytics-privacy-icon">
-                        <ShieldCheck size={20} aria-hidden />
-                    </span>
-                    <strong>{e("analyticsPrivacy")}</strong>
+                <div className="analytics-privacy-copy">
+                    <div className="analytics-privacy-heading">
+                        <span className="analytics-privacy-icon">
+                            <ShieldCheck size={20} aria-hidden />
+                        </span>
+                        <strong>{e("analyticsPrivacy")}</strong>
+                    </div>
+                    <p>{e("analyticsConsent")}</p>
+                    <div
+                        id={detailsId}
+                        hidden={!expanded}
+                        className="analytics-privacy-details"
+                    >
+                        <p>{e("analyticsExplanation")}</p>
+                        {configuration && (
+                            <p>
+                                {e("analyticsRetention")}{" "}
+                                {configuration.retentionDays}{" "}
+                                {e("analyticsDays")}
+                            </p>
+                        )}
+                        {chosenAt && (
+                            <p>
+                                {e("analyticsChosenAt")}{" "}
+                                {new Date(chosenAt).toLocaleString()}
+                            </p>
+                        )}
+                    </div>
+                    {!configuration?.enabled && (
+                        <p>{e("analyticsUnavailable")}</p>
+                    )}
+                    {privacySignal() && <p>{e("analyticsSignal")}</p>}
+                    {error && <p role="status">{e("analyticsStorageError")}</p>}
                 </div>
-                <p>{e("analyticsConsent")}</p>
-                <details>
-                    <summary>{e("analyticsDetails")}</summary>
-                    <p>{e("analyticsExplanation")}</p>
-                    {configuration && (
-                        <p>
-                            {e("analyticsRetention")}{" "}
-                            {configuration.retentionDays} {e("analyticsDays")}
-                        </p>
-                    )}
-                    {chosenAt && (
-                        <p>
-                            {e("analyticsChosenAt")}{" "}
-                            {new Date(chosenAt).toLocaleString()}
-                        </p>
-                    )}
-                </details>
-                {!configuration?.enabled && <p>{e("analyticsUnavailable")}</p>}
-                {privacySignal() && <p>{e("analyticsSignal")}</p>}
-                {error && <p role="status">{e("analyticsStorageError")}</p>}
                 <div className="actions">
+                    <button
+                        type="button"
+                        aria-expanded={expanded}
+                        aria-controls={detailsId}
+                        onClick={() => setExpanded(!expanded)}
+                    >
+                        {e("analyticsManage")}
+                    </button>
                     <button type="button" onClick={() => choose("deny")}>
                         {e("analyticsDecline")}
                     </button>

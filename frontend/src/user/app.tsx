@@ -109,6 +109,12 @@ export default function UserApp() {
     );
     const sidebar = useRef<HTMLElement>(null);
     const loggingOut = useRef(false);
+    // Resume only known local purchase routes; never accept arbitrary return URLs.
+    const purchaseReturn = useRef<string | undefined>(
+        /^(plan|activities|coupons|order(?:\/[a-zA-Z0-9_-]+)?)$/.test(path)
+            ? path
+            : undefined,
+    );
     const authorizationReturn = useRef<string | undefined>(
         /^#\/client-authorize\?authorizationId=[a-f0-9]{64}$/.test(
             location.hash,
@@ -121,6 +127,7 @@ export default function UserApp() {
         loggingOut.current = true;
         try {
             await logoutSession();
+            purchaseReturn.current = undefined;
             setUser(null);
             navigate("login");
         } finally {
@@ -174,6 +181,13 @@ export default function UserApp() {
     useEffect(() => {
         const fn = () => {
             const current = location.hash.slice(2).split("?")[0];
+            if (!["login", "register", "forget"].includes(current))
+                purchaseReturn.current =
+                    /^(plan|activities|coupons|order(?:\/[a-zA-Z0-9_-]+)?)$/.test(
+                        current,
+                    )
+                        ? current
+                        : undefined;
             if (
                 /^#\/client-authorize\?authorizationId=[a-f0-9]{64}$/.test(
                     location.hash,
@@ -290,7 +304,9 @@ export default function UserApp() {
                         ["register", "forget"].includes(path) ? path : "login"
                     }
                     onLogin={setUser}
-                    redirectPath={authorizationReturn.current}
+                    redirectPath={
+                        authorizationReturn.current ?? purchaseReturn.current
+                    }
                     renderCaptcha={(handler) => <Captcha onChange={handler} />}
                 />
             </>
@@ -301,10 +317,7 @@ export default function UserApp() {
                 <ClientAuthorization user={user} />
             </React.Suspense>
         );
-    const userNav = userNavigation(
-        user.account_status?.state,
-
-    ).map((item) => ({
+    const userNav = userNavigation(user.account_status?.state).map((item) => ({
         ...item,
         icon: (
             {

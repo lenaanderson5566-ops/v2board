@@ -2193,3 +2193,283 @@ body[data-console="user"] .client-family-header p {
         width: 24px;
     }
 }
+.checkout-guidance {
+    color: var(--text-secondary);
+    font-size: 13px;
+    line-height: 1.65;
+    margin: 12px 0 20px;
+}
+.checkout-conversion {
+    background: var(--surface-soft);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 12px;
+    font-size: 13px;
+    line-height: 1.6;
+}
+.checkout-conversion strong {
+    display: block;
+    color: var(--brand);
+    font-variant-numeric: tabular-nums;
+}
+.checkout-conversion p {
+    margin: 6px 0;
+}
+
+/* Visual hierarchy: action blue, entitlement green, attention amber, savings violet. */
+.app.user .page-heading h1 {
+    line-height: 1.25;
+    text-wrap: balance;
+}
+.app.user .settings-section > h2,
+.app.user .settings-section > header h2 {
+    font-weight: 600;
+}
+.app.user .settings-intro {
+    line-height: 1.7;
+}
+.app.user .subscription-ready {
+    padding: 22px 24px;
+    border: 1px solid var(--success-border);
+    border-radius: 18px;
+    background: linear-gradient(110deg, var(--success-soft), var(--surface));
+    gap: 20px;
+}
+.subscription-label {
+    display: block;
+    color: var(--success);
+    font-size: 14px;
+    font-weight: 650;
+    overflow-wrap: anywhere;
+    margin-bottom: 8px;
+}
+.app.user .subscription-ready .settings-intro {
+    margin: 0;
+}
+.app.user .usage-quota.quota-low {
+    border-color: var(--warning-border);
+}
+.app.user .quota-low .quota-progress i {
+    background: var(--warning);
+}
+.app.user .account-entry-new {
+    position: relative;
+    background: linear-gradient(120deg, var(--brand-soft), var(--surface));
+}
+.app.user .account-entry-expired {
+    border-color: var(--warning-border);
+    background: linear-gradient(120deg, var(--warning-soft), var(--surface));
+}
+.app.user .plan-card.is-current {
+    border-color: var(--success-border);
+    box-shadow: inset 0 3px 0 var(--success);
+}
+.app.user .pricing-saving,
+.purchase-body .period-saving {
+    color: var(--offer);
+    background: var(--offer-soft);
+    border: 1px solid var(--offer-border);
+    font-weight: 650;
+    border-radius: 6px;
+    padding: 3px 7px;
+}
+.app.user .coupon-discount {
+    display: inline-flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 2px;
+    color: var(--offer);
+}
+.app.user .coupon-discount small {
+    color: inherit;
+    font-size: 12px;
+    font-weight: 600;
+}
+.app.user .coupon-discount strong {
+    font-size: 36px;
+    line-height: 1.1;
+    letter-spacing: -1px;
+    font-variant-numeric: tabular-nums;
+}
+.app.user .coupon-discount strong span {
+    font-size: 20px;
+    margin-inline-start: 3px;
+}
+.app.user .activity-offer .coupon-discount {
+    background: var(--offer-soft);
+    color: var(--offer);
+}
+.app.user .activity-offer {
+    border-top-color: var(--offer);
+}
+.app.user .wallet-coupon {
+    position: relative;
+    border-top: 3px solid var(--offer-border);
+    gap: 14px;
+}
+.app.user .wallet-coupon.available {
+    background: linear-gradient(145deg, var(--offer-soft), var(--surface) 55%);
+}
+.app.user .wallet-coupon .coupon-state {
+    border-top: 1px dashed var(--border);
+    padding-top: 14px;
+    margin-top: auto;
+    color: var(--offer);
+}
+.app.user .wallet-coupon .button {
+    width: 100%;
+    color: var(--brand);
+}
+.app.user .wallet-coupon.inactive {
+    border-top-color: var(--border);
+}
+.app.user .wallet-coupon.inactive :is(.coupon-discount, .coupon-state) {
+    color: var(--text-secondary);
+}
+.app.user .coupon-wallet-tabs {
+    gap: 8px;
+    margin-block: 22px;
+}
+.app.user .coupon-wallet-tabs button {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+    min-height: 44px;
+}
+.coupon-count {
+    display: inline-grid;
+    place-items: center;
+    min-width: 22px;
+    padding: 2px 6px;
+    border-radius: 6px;
+    background: var(--surface-tint);
+    color: var(--text-secondary);
+    font-size: 11px;
+    font-variant-numeric: tabular-nums;
+}
+.app.user .coupon-wallet-tabs button[aria-pressed="true"] .coupon-count {
+    background: var(--brand);
+    color: var(--on-brand);
+}
+.app.user .wallet-hero {
+    padding: 20px 24px;
+    border: 1px solid var(--offer-border);
+    border-radius: 18px;
+    background: linear-gradient(110deg, var(--offer-soft), var(--surface));
+}
+.app.user .wallet-hero .journey-art {
+    width: 110px;
+    height: 100px;
+    flex: 0 0 110px;
+}
+.app.user .coupon-center-empty {
+    border: 1px dashed var(--border);
+    border-radius: 18px;
+    background: var(--surface-soft);
+}
+.app.user .coupon-center-empty .journey-art {
+    margin: 0 auto 20px;
+}
+.journey-art {
+    position: relative;
+    width: 160px;
+    height: 140px;
+    color: var(--brand);
+    pointer-events: none;
+    flex-shrink: 0;
+}
+.journey-art-coupon {
+    color: var(--offer);
+}
+.journey-art-orbit {
+    position: absolute;
+    inset: 7%;
+    border: 1px dashed currentColor;
+    opacity: 0.2;
+    border-radius: 50%;
+    transform: rotate(-15deg);
+}
+.journey-art-sheet {
+    position: absolute;
+    inset: 14% 22%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 7px;
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    background: var(--surface);
+    transform: rotate(-9deg);
+    box-shadow: 0 8px 20px rgb(var(--shadow-tint-rgb) / 8%);
+}
+.journey-art-sheet > span {
+    height: 4px;
+    width: 45%;
+    border-radius: 4px;
+    background: currentColor;
+    opacity: 0.16;
+}
+.journey-art-sheet > span:last-child {
+    width: 28%;
+}
+.journey-art-seal,
+.journey-art-arrow {
+    position: absolute;
+    display: grid;
+    place-items: center;
+    width: 34px;
+    height: 34px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 11px;
+}
+.journey-art-seal {
+    inset-inline-end: 10%;
+    bottom: 14%;
+}
+.journey-art-arrow {
+    inset-inline-start: 8%;
+    top: 12%;
+}
+.app.user .account-entry-new > .journey-art {
+    position: absolute;
+    inset-inline-end: 36px;
+    top: 36px;
+}
+@media (min-width: 701px) {
+    .app.user .account-entry-new > h2,
+    .app.user .account-entry-new > p {
+        padding-inline-end: 180px;
+    }
+}
+@media (max-width: 700px) {
+    .app.user .subscription-ready {
+        padding: 18px;
+        align-items: flex-start;
+        flex-wrap: wrap;
+    }
+    .app.user .account-entry-new > .journey-art {
+        width: 90px;
+        height: 80px;
+        inset-inline-end: 20px;
+        top: 20px;
+    }
+    .app.user .account-entry-new .entry-symbol {
+        margin-bottom: 32px;
+    }
+    .app.user .wallet-hero {
+        padding: 18px;
+        gap: 12px;
+        flex-wrap: wrap;
+    }
+    .app.user .wallet-hero .journey-art {
+        width: 76px;
+        height: 80px;
+        flex-basis: 76px;
+    }
+    .app.user .coupon-wallet-tabs button {
+        padding-inline: 10px;
+    }
+}

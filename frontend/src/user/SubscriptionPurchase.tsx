@@ -6,6 +6,7 @@ import "./pricing.css";
 import { useData, State, Empty, Modal } from "../shared/ui";
 import { request, money, navigate, type Row } from "../shared/api";
 import { tx } from "../shared/i18n";
+import { e } from "../shared/experience-copy";
 import { PlanDescription } from "../shared/PlanDescription";
 import { activePlan } from "../shared/user-experience";
 import {
@@ -87,6 +88,7 @@ export function SubscriptionPurchase() {
         cyclePlans[0];
     return (
         <section className="subscription-catalog">
+            <PurchaseSteps step={1} />
             <State {...orders} retry={orders.reload}>
                 {pending && (
                     <PendingOrderNotice
@@ -157,13 +159,15 @@ export function SubscriptionPurchase() {
                             return (
                                 <article
                                     id={`pricing-plan-${plan.id}`}
-                                    className={`plan-card ${Number(mobileActive?.id) === Number(plan.id) ? "mobile-active" : ""}`}
+                                    className={`plan-card ${same && currentAvailable ? "is-current" : ""} ${Number(mobileActive?.id) === Number(plan.id) ? "mobile-active" : ""}`}
                                     key={plan.id}
                                 >
                                     <div className="pricing-card-heading">
                                         <h2>{plan.name}</h2>
                                         {same && (
-                                            <span className="badge">
+                                            <span
+                                                className={`badge ${currentAvailable ? "success" : ""}`}
+                                            >
                                                 {activePlan(
                                                     plan,
                                                     sub.data?.expired_at,
@@ -328,7 +332,17 @@ export function PlanSelection({
             navigate("order/" + result.data);
             close();
         } catch (problem) {
-            setError((problem as Error).message);
+            const failure = problem as Error & {
+                code?: string;
+                status?: number;
+            };
+            setError(
+                ["NETWORK_ERROR", "REQUEST_TIMEOUT"].includes(
+                    failure.code || "",
+                ) || (failure.status || 0) >= 500
+                    ? e("orderUncertain")
+                    : failure.message,
+            );
         } finally {
             submitting.current = false;
             setBusy(false);

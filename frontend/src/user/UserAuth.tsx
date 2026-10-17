@@ -75,6 +75,7 @@ export function UserAuth({
             (boot.inviteRequired && !invitation) ||
             (Boolean(invitation) && !invitationComplete));
     const heading = useRef<HTMLHeadingElement>(null);
+    const submitting = useRef(false);
     const [suspended, setSuspended] = useState(false);
     useEffect(() => {
         if (!cooldown) return;
@@ -85,18 +86,19 @@ export function UserAuth({
         heading.current?.focus();
     }, [step]);
     const score = passwordScore(password);
-    const title =
-        step === 2
-            ? verify
-                ? e("verify")
-                : e("review")
-            : forget
-              ? tx("重置密码")
-              : register
-                ? boot.inviteRequired && !invitation
-                    ? tx("受邀加入")
-                    : tx("创建账户")
-                : tx("欢迎回来");
+    const title = registered
+        ? tx("登录")
+        : step === 2
+          ? verify
+              ? e("verify")
+              : e("review")
+          : forget
+            ? tx("重置密码")
+            : register
+              ? boot.inviteRequired && !invitation
+                  ? tx("受邀加入")
+                  : tx("创建账户")
+              : tx("欢迎回来");
     async function sendCode() {
         if (register) {
             if (registrationBlocked)
@@ -121,7 +123,8 @@ export function UserAuth({
     }
     async function submit(event: React.FormEvent) {
         event.preventDefault();
-        if (busy) return;
+        if (submitting.current) return;
+        submitting.current = true;
         setBusy(true);
         setError("");
         try {
@@ -158,6 +161,12 @@ export function UserAuth({
             if (register && !registered) {
                 await request("passport/auth/register", body);
                 setRegistered(true);
+                // Registration consumes the captcha; login needs a fresh challenge.
+                if (boot.recaptchaSiteKey) {
+                    setCaptcha("");
+                    setChallenge((value) => value + 1);
+                    return;
+                }
             }
             const login = await request("passport/auth/login", {
                 ...loginLanguagePreference(),
@@ -177,10 +186,15 @@ export function UserAuth({
             onLogin(info.data);
             navigate(redirectPath ?? "dashboard");
         } catch (reason) {
+            if (boot.recaptchaSiteKey) {
+                setCaptcha("");
+                setChallenge((value) => value + 1);
+            }
             if ((reason as Error & { code?: string }).code === "ACCOUNT_BANNED")
                 setSuspended(true);
             setError((reason as Error).message);
         } finally {
+            submitting.current = false;
             setBusy(false);
         }
     }
@@ -299,6 +313,7 @@ export function UserAuth({
                         </h2>
                         {(register || forget) &&
                             !done &&
+                            !registered &&
                             !registrationBlocked && (
                                 <span className="auth-step-count">
                                     {step} / 2
@@ -315,7 +330,12 @@ export function UserAuth({
                         </div>
                     ) : (
                         <>
-                            {!registrationBlocked && (
+                            {registered && (
+                                <p className="success-message" role="status">
+                                    {e("registeredLogin")}
+                                </p>
+                            )}
+                            {!registrationBlocked && !registered && (
                                 <p className="muted">
                                     {step === 2
                                         ? verify
@@ -380,6 +400,8 @@ export function UserAuth({
                                                             type="email"
                                                             autoComplete="email"
                                                             inputMode="email"
+                                                            autoCapitalize="none"
+                                                            spellCheck={false}
                                                             required
                                                             value={email}
                                                             readOnly={
@@ -426,13 +448,14 @@ export function UserAuth({
                                                             setStep(1);
                                                             setError("");
                                                             setCode("");
+                                                            setSent(false);
                                                         }}
                                                     >
                                                         <ArrowLeft size={15} />
                                                         {e("edit")}
                                                     </button>
                                                 </div>
-                                                {verify && (
+                                                {verify && !registered && (
                                                     <label className="auth-field">
                                                         <span>
                                                             {tx("邮箱验证码")}
@@ -470,6 +493,11 @@ export function UserAuth({
                                                                     busy
                                                                 }
                                                                 onClick={async () => {
+                                                                    if (
+                                                                        submitting.current
+                                                                    )
+                                                                        return;
+                                                                    submitting.current = true;
                                                                     setBusy(
                                                                         true,
                                                                     );
@@ -486,6 +514,7 @@ export function UserAuth({
                                                                                 .message,
                                                                         );
                                                                     } finally {
+                                                                        submitting.current = false;
                                                                         setBusy(
                                                                             false,
                                                                         );
@@ -510,7 +539,7 @@ export function UserAuth({
                                                     </label>
                                                 )}
                                                 {forget && passwordField}
-                                                {sent && (
+                                                {sent && !registered && (
                                                     <p
                                                         className="auth-sent"
                                                         role="status"
@@ -521,6 +550,11 @@ export function UserAuth({
                                                         {e("sent", {
                                                             email,
                                                         })}
+                                                    </p>
+                                                )}
+                                                {verify && !registered && (
+                                                    <p className="muted">
+                                                        {e("missingCode")}
                                                     </p>
                                                 )}
                                             </>
@@ -536,6 +570,7 @@ export function UserAuth({
                                             </div>
                                         )}
                                         {register &&
+                                            !registered &&
                                             boot.tosUrl &&
                                             step === 2 && (
                                                 <label className="auth-terms">
@@ -563,6 +598,8 @@ export function UserAuth({
                                                     <span className="spinner" />
                                                     {tx("正在加载…")}
                                                 </>
+                                            ) : registered ? (
+                                                tx("登录")
                                             ) : step === 1 &&
                                               (register || forget) ? (
                                                 e("next")

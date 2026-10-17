@@ -4,6 +4,7 @@ import { e } from "../shared/experience-copy";
 import { tx } from "../shared/i18n";
 import { date, type Row } from "../shared/api";
 import { useData, State } from "../shared/ui";
+import { JourneyIllustration } from "./JourneyIllustration";
 
 export function AccountEntry({
     state,
@@ -25,6 +26,7 @@ export function AccountEntry({
               : Sparkles;
     return (
         <section className={`account-entry account-entry-${state}`}>
+            {state === "new" && <JourneyIllustration />}
             <div className="entry-symbol">
                 <Icon size={28} />
             </div>
@@ -64,7 +66,11 @@ export function AccountEntry({
                         <a className="button" href="#/knowledge">
                             {tx("使用文档")}
                         </a>
-                        {state === "expired" && <a className="button" href="#/order">{tx("账单")}</a>}
+                        {state === "expired" && (
+                            <a className="button" href="#/order">
+                                {tx("账单")}
+                            </a>
+                        )}
                     </>
                 ) : (
                     <>

@@ -1,12 +1,14 @@
 import { CheckCircle2, CircleX, ArrowLeft, ReceiptText } from "lucide-react";
 import { bytes, money as formatMoney, type Row } from "../shared/api";
 import { tx } from "../shared/i18n";
+import { e } from "../shared/experience-copy";
 import { c, minuteDate } from "../shared/credit-copy";
 import { billingPeriods, orderOriginalAmount } from "./billing-flow";
 import { OrderHelp } from "./OrderHelp";
 
 export function OrderReceipt({ order }: { order: Row }) {
-    const money = (amount: unknown) => formatMoney(amount, order.currency || "CNY");
+    const money = (amount: unknown) =>
+        formatMoney(amount, order.currency || "CNY");
     const cancelled = Number(order.status) === 2,
         applied = Number(order.status) === 4;
     const credit = Number(order.credit_bytes) > 0,
@@ -71,12 +73,20 @@ export function OrderReceipt({ order }: { order: Row }) {
                     )}
                 </div>
                 <dl className="checkout-lines">
-                    {(
+                    {
                         <div>
-                            <dt>{tx(deposit ? "充值金额" : credit ? "额度价格" : "套餐价格")}</dt>
+                            <dt>
+                                {tx(
+                                    deposit
+                                        ? "充值金额"
+                                        : credit
+                                          ? "额度价格"
+                                          : "套餐价格",
+                                )}
+                            </dt>
                             <dd>{money(orderOriginalAmount(order))}</dd>
                         </div>
-                    )}
+                    }
                     {!cancelled && Number(order.discount_amount) > 0 && (
                         <div>
                             <dt>{tx("优惠金额")}</dt>
@@ -124,12 +134,29 @@ export function OrderReceipt({ order }: { order: Row }) {
                             <dd>{money(order.refund_amount)}</dd>
                         </div>
                     )}
-                    {order.payment_currency && order.payment_currency !== order.currency && <div><dt>{tx("实际付款")}</dt><dd>{formatMoney(order.payment_amount,order.payment_currency)}</dd></div>}
+                    {order.payment_currency &&
+                        order.payment_currency !== order.currency && (
+                            <div>
+                                <dt>{tx("实际付款")}</dt>
+                                <dd>
+                                    {formatMoney(
+                                        order.payment_amount,
+                                        order.payment_currency,
+                                    )}
+                                </dd>
+                            </div>
+                        )}
                 </dl>
-                {!cancelled && deposit && Number(order.bounus) > 0 && <div className="checkout-deposit-benefit">
-                    <span>{tx("充值赠送")} +{money(order.bounus)}</span>
-                    <strong>{tx("到账金额")} {money(order.get_amount)}</strong>
-                </div>}
+                {!cancelled && deposit && Number(order.bounus) > 0 && (
+                    <div className="checkout-deposit-benefit">
+                        <span>
+                            {tx("充值赠送")} +{money(order.bounus)}
+                        </span>
+                        <strong>
+                            {tx("到账金额")} {money(order.get_amount)}
+                        </strong>
+                    </div>
+                )}
                 <dl className="receipt-reference">
                     <div>
                         <dt>{tx("订单编号")}</dt>
@@ -147,6 +174,9 @@ export function OrderReceipt({ order }: { order: Row }) {
                     )}
                 </dl>
             </section>
+            {!cancelled && !applied && !credit && !deposit && (
+                <p className="checkout-guidance">{e("startUsing")}</p>
+            )}
             <div className="receipt-actions">
                 <a
                     className="button primary"

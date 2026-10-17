@@ -8,6 +8,7 @@ import { formatInstant } from "../shared/timezone";
 import type { V10WalletCoupon, V10CouponOffer } from "../shared/v10-types";
 import { pricingCopy as pc } from "./pricing-copy";
 import { couponRestrictions, couponStatus } from "./coupon-copy";
+import { JourneyIllustration } from "./JourneyIllustration";
 
 export function ActivityCenter() {
     const offers = useCouponActivities();
@@ -79,7 +80,11 @@ export function ActivityCenter() {
                             key={offer.id}
                         >
                             <span className="coupon-discount">
-                                {tx("减免")} {offer.discountPercent}%
+                                <small>{tx("减免")}</small>
+                                <strong>
+                                    {offer.discountPercent}
+                                    <span>%</span>
+                                </strong>
                             </span>
                             <h3>{offer.activityTitle || offer.name}</h3>
                             {offer.activityDescription && (
@@ -88,13 +93,16 @@ export function ActivityCenter() {
                                 </p>
                             )}
                             <div className="coupon-activity-terms">
-                                <strong>
-                                    <TicketPercent
-                                        size={16}
-                                        aria-hidden="true"
-                                    />
-                                    {offer.name}
-                                </strong>
+                                {offer.activityTitle &&
+                                    offer.activityTitle !== offer.name && (
+                                        <strong>
+                                            <TicketPercent
+                                                size={16}
+                                                aria-hidden="true"
+                                            />
+                                            {offer.name}
+                                        </strong>
+                                    )}
                                 <p>{couponRestrictions(offer)}</p>
                                 <small>
                                     {tx("有效期至")}{" "}
@@ -123,7 +131,7 @@ export function ActivityCenter() {
                 </div>
                 {!rows.length && (
                     <div className="coupon-center-empty">
-                        <Gift size={34} aria-hidden="true" />
+                        <JourneyIllustration kind="coupon" />
                         <h3>{tx("暂无可领取的活动")}</h3>
                         <p>{tx("可以查看已有优惠券，或稍后回来。")}</p>
                         <a href="#/coupons">{tx("我的优惠券")}</a>
@@ -139,17 +147,23 @@ export function MyCoupons() {
     const activities = useCouponActivities();
     const wallet = useData<V10WalletCoupon[]>("user/coupon/wallet");
     const rows = Array.isArray(wallet.data) ? wallet.data : [];
-    const visible = rows.filter((c) =>
-        view === "available"
+    const inView = (c: V10WalletCoupon, category: string) =>
+        category === "available"
             ? c.status === "available"
-            : view === "used"
+            : category === "used"
               ? c.status !== "available" && c.status !== "expired"
-              : c.status === "expired",
-    );
+              : c.status === "expired";
+    const visible = rows
+        .filter((c) => inView(c, view))
+        .sort(
+            (a, b) =>
+                Date.parse(a.expiresAt) - Date.parse(b.expiresAt) ||
+                b.discountPercent - a.discountPercent,
+        );
     return (
-        <section className="coupon-center">
-            <div className="coupon-center-intro">
-                <TicketPercent size={24} aria-hidden="true" />
+        <section className="coupon-center coupon-wallet-page">
+            <div className="coupon-center-intro wallet-hero">
+                <JourneyIllustration kind="coupon" />
                 <div>
                     <p>
                         {tx(
@@ -179,7 +193,12 @@ export function MyCoupons() {
                         aria-pressed={view === key}
                         onClick={() => setView(key)}
                     >
-                        {tx(label)}
+                        {tx(label)}{" "}
+                        <span className="coupon-count">
+                            {wallet.data
+                                ? rows.filter((c) => inView(c, key)).length
+                                : "—"}
+                        </span>
                     </button>
                 ))}
             </div>
@@ -188,10 +207,14 @@ export function MyCoupons() {
                     {visible.map((coupon) => (
                         <article
                             key={coupon.id}
-                            className={`coupon-activity-card ${coupon.status === "available" ? "" : "inactive"}`}
+                            className={`coupon-activity-card wallet-coupon ${coupon.status === "available" ? "available" : "inactive"}`}
                         >
                             <span className="coupon-discount">
-                                {tx("减免")} {coupon.discountPercent}%
+                                <small>{tx("减免")}</small>
+                                <strong>
+                                    {coupon.discountPercent}
+                                    <span>%</span>
+                                </strong>
                             </span>
                             <h3>{coupon.name}</h3>
                             <p>{couponRestrictions(coupon)}</p>
@@ -203,7 +226,7 @@ export function MyCoupons() {
                                 {couponStatus(coupon)}
                             </span>
                             {coupon.status === "available" && (
-                                <a className="button" href="#/plan">
+                                <a className="button soft-button" href="#/plan">
                                     {tx("选择套餐使用")}
                                 </a>
                             )}
@@ -212,7 +235,7 @@ export function MyCoupons() {
                 </div>
                 {!visible.length && (
                     <div className="coupon-center-empty">
-                        <TicketPercent size={34} aria-hidden="true" />
+                        <JourneyIllustration kind="coupon" />
                         <h3>
                             {tx(
                                 rows.length

@@ -37,6 +37,10 @@ export function UsagePage() {
     const percent = total
         ? Math.max(0, Math.min(100, ((total - used) / total) * 100))
         : 0;
+    const usable =
+        info.data?.account_status?.state === "active" &&
+        info.data.account_status.is_available !== false &&
+        !info.data.account_status.quota_exhausted;
     async function consume() {
         if (inFlight.current) return;
         inFlight.current = true;
@@ -61,11 +65,23 @@ export function UsagePage() {
     }
     return (
         <div className="settings-content usage-page">
-            <div className="settings-row usage-heading">
-                <p className="settings-intro">{b("usageIntro")}</p>
+            <div
+                className={`settings-row usage-heading ${usable ? "subscription-ready" : ""}`}
+            >
+                <div>
+                    {usable && sub.data?.plan && (
+                        <span className="subscription-label">
+                            {tx("当前套餐")} · {sub.data.plan.name}
+                        </span>
+                    )}
+                    <p className="settings-intro">{b("usageIntro")}</p>
+                </div>
                 {info.data?.account_status?.state === "active" && (
-                    <a className="button soft-button" href="#/subscribe">
-                        {tx("快速开始")}
+                    <a
+                        className={`button ${usable ? "primary" : "soft-button"}`}
+                        href={usable ? "#/subscribe" : "#/plan"}
+                    >
+                        {tx(usable ? "快速开始" : "管理订阅")}
                         <ArrowUpRight size={15} />
                     </a>
                 )}
@@ -107,7 +123,9 @@ export function UsagePage() {
                                     sub.reload();
                                 }}
                             >
-                                <div className="settings-card usage-quota">
+                                <div
+                                    className={`settings-card usage-quota ${total > 0 && percent <= 10 ? "quota-low" : ""}`}
+                                >
                                     <strong>
                                         {sub.data?.has_subscription === false
                                             ? c("noPlanTitle")
@@ -342,9 +360,15 @@ export function UsagePage() {
                                 </div>
                             </div>
                         </State>
-                        {sub.data?.has_subscription !== false && activePlan(sub.data?.plan, sub.data?.expired_at) && total > 0 && sub.data?.plan?.reset_price != null && (
-                            <PaidTrafficReset plan={sub.data.plan} used={used} />
-                        )}
+                        {sub.data?.has_subscription !== false &&
+                            activePlan(sub.data?.plan, sub.data?.expired_at) &&
+                            total > 0 &&
+                            sub.data?.plan?.reset_price != null && (
+                                <PaidTrafficReset
+                                    plan={sub.data.plan}
+                                    used={used}
+                                />
+                            )}
                     </section>
                 </>
             )}
@@ -408,20 +432,44 @@ export function PaidTrafficReset({ plan, used }: { plan: Row; used: number }) {
     const orders = useData<Row[]>("user/order/fetch");
     const [open, setOpen] = useState(false);
     const pending = unfinishedOrder(orders.data || []);
-    return <div className="settings-card paid-traffic-reset">
-        <div className="settings-row">
-            <strong>{c("paidReset")}</strong>
-            <button className="soft-button" disabled={used <= 0 || orders.loading || Boolean(orders.error) || Boolean(pending)} onClick={() => setOpen(true)}>
-                {c("paidReset")} · {money(plan.reset_price,plan.currency)}
-            </button>
+    return (
+        <div className="settings-card paid-traffic-reset">
+            <div className="settings-row">
+                <strong>{c("paidReset")}</strong>
+                <button
+                    className="soft-button"
+                    disabled={
+                        used <= 0 ||
+                        orders.loading ||
+                        Boolean(orders.error) ||
+                        Boolean(pending)
+                    }
+                    onClick={() => setOpen(true)}
+                >
+                    {c("paidReset")} · {money(plan.reset_price, plan.currency)}
+                </button>
+            </div>
+            <p className="muted">{c("paidResetHelp")}</p>
+            {used <= 0 && <p className="muted">{b("emptyUsage")}</p>}
+            {pending && (
+                <a href={`#/order/${pending.trade_no}`}>
+                    {tx("你有一笔待支付订单")} · {tx("查看")}
+                </a>
+            )}
+            {orders.error && (
+                <State {...orders} retry={orders.reload}>
+                    {null}
+                </State>
+            )}
+            {open && (
+                <Modal title={c("paidReset")} close={() => setOpen(false)}>
+                    <p className="pad muted">{c("paidResetHelp")}</p>
+                    <PlanSelection
+                        plan={{ ...plan, resetOnly: true }}
+                        close={() => setOpen(false)}
+                    />
+                </Modal>
+            )}
         </div>
-        <p className="muted">{c("paidResetHelp")}</p>
-        {used <= 0 && <p className="muted">{b("emptyUsage")}</p>}
-        {pending && <a href={`#/order/${pending.trade_no}`}>{tx("你有一笔待支付订单")} · {tx("查看")}</a>}
-        {orders.error && <State {...orders} retry={orders.reload}>{null}</State>}
-        {open && <Modal title={c("paidReset")} close={() => setOpen(false)}>
-            <p className="pad muted">{c("paidResetHelp")}</p>
-            <PlanSelection plan={{ ...plan, resetOnly: true }} close={() => setOpen(false)} />
-        </Modal>}
-    </div>;
+    );
 }

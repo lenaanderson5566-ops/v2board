@@ -26,5 +26,17 @@ try {
     PlanTranslation::where('plan_id',$plan->id)->where('locale','zh-TW')->update(['name'=>'']);
     $partial=$service->translateSingle(Plan::find($plan->id),'zh-TW');
     $assert($partial->content==='繁體說明' && $partial->name==='简体套餐','field fallback does not replace exact content');
+    PlanTranslation::create(['plan_id'=>$plan->id,'locale'=>'en-US','name'=>'English plan','content'=>'English description']);
+    foreach (['de-DE','de_AT','fr-FR','id-ID','th-TH','xx'] as $locale) {
+        $resolved=$service->translateSingle(Plan::find($plan->id),$locale);
+        $assert($resolved->name==='English plan' && $resolved->content==='English description','English fallback '.$locale);
+    }
+    PlanTranslation::create(['plan_id'=>$plan->id,'locale'=>'de-DE','name'=>'Deutscher Tarif','content'=>'   ']);
+    $resolved=$service->translateSingle(Plan::find($plan->id),'de-DE');
+    $assert($resolved->name==='Deutscher Tarif' && $resolved->content==='English description','Partial translation keeps exact name');
+    $assert(Plan::find($plan->id)->name===$plan->name,'Rendering persisted fallback');
+    $assert(App\Services\ContentTranslation::candidates('zh-Hant')===['zh-TW','zh-CN','en-US'],'Chinese fallback order');
+    PlanTranslation::where('plan_id',$plan->id)->where('locale','zh-CN')->delete();
+    $assert($service->translateSingle(Plan::find($plan->id),'zh-CN')->name===$plan->name,'Chinese source preserved ahead of English');
     echo "PASS: {$checks} plan locale checks\n";
 } finally { DB::rollBack(); }

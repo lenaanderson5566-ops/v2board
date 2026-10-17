@@ -27,6 +27,13 @@ try {
     [$user, $token] = $makeUser(); [$other, $otherToken] = $makeUser();
     $before = $user->refresh()->getAttributes();
     $notice = Notice::create(['title'=>'Read receipt fixture', 'content'=>'## Test', 'show'=>1]);
+    $notice->update(['source_language'=>'zh-CN','translations'=>[
+        'de-DE'=>['subject'=>'Incomplete'], 'en-US'=>['subject'=>'English notice','content'=>'English body']]]);
+    $localizedRequest=Illuminate\Http\Request::create('/', 'GET', ['id'=>$notice->id]);
+    $localizedRequest->attributes->set('notice_locale','de-DE');
+    $localized=json_decode((new App\Services\Actions\User\NoticeActions)->fetch($localizedRequest)->getContent(),true)['data'];
+    $assert($localized['title']==='English notice' && $localized['content']==='English body','Notice English document fallback');
+    $assert(!isset($localized['translations']) && $notice->fresh()->title==='Read receipt fixture','Notice rendering exposed translations or persisted changes');
     $hidden = Notice::create(['title'=>'Hidden fixture', 'content'=>'Private', 'show'=>0]);
     $version = (int) $notice->getRawOriginal('updated_at');
     $read = ['notificationId'=>$notice->id, 'version'=>$version];

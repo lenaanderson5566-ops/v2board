@@ -19,7 +19,8 @@ try {
  $assert($copy['name']==='Welcome' && $copy['activityTitle']==='Welcome offer','English alias copy');
  $assert($copy['activityDescription']==='Plain <script>text</script>','Text unexpectedly transformed');
  $assert(CouponPresentation::localized($terms,'zh-Hant')['name']==='繁體券','Traditional alias');
- $assert(CouponPresentation::localized($terms,'ja-JP')['activityTitle']==='默认活动','Missing language fallback');
+ $assert(CouponPresentation::localized($terms,'ja-JP')['activityTitle']==='Welcome offer','Missing language English fallback');
+ $assert(CouponPresentation::localized($terms,'de-DE')['name']==='Welcome','German English fallback');
  $assert(CouponPresentation::localized($terms,'zh-TW')['activityDescription']==='默认说明','Missing field fallback');
  $assert($coupon->fresh()->value===15 && $coupon->fresh()->limit_use===10,'Presentation changed financial terms');
  foreach([['xx'=>['name'=>'bad']],['en-US'=>['discountPercent'=>99]],['en-US'=>['name'=>str_repeat('x',101)]]] as $invalid){

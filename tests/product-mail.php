@@ -60,6 +60,13 @@ try {
     $data=$renderer->data($base+['translations'=>['ja-JP'=>['subject'=>'日本語','content'=>'翻訳']]]);
     $assert($data['subject']==='日本語' && $data['contentText']==='翻訳','Localized announcement ignored');
     $assert($renderer->data($base)['subject']==='Fallback','Default announcement lost');
+    $fallback=$base+['language'=>'de-DE','source_language'=>'zh-CN','translations'=>[
+        'de-DE'=>['subject'=>'Incomplete'], 'en-US'=>['subject'=>'English notice','content'=>'English body']]];
+    $data=$renderer->data($fallback);
+    $assert($data['language']==='en-US' && $data['subject']==='English notice' && $data['contentText']==='English body','Mail must fall back as a complete document');
+    unset($fallback['translations']['en-US']);
+    $data=$renderer->data($fallback);
+    $assert($data['language']==='zh-CN' && $data['subject']==='Fallback','Mail original fallback');
     $unsafe=$base; $unsafe['template_value']['content']='<script>alert(1)</script><img src="https://track.example"><a href="javascript:alert(1)" onclick="bad()">click</a><strong>safe</strong><a href="https://safe.example">link</a>';
     $html=$renderer->data($unsafe)['contentHtml'];
     $assert(strpos($html,'script')===false && strpos($html,'onclick')===false && strpos($html,'<img')===false && strpos($html,'<strong>safe</strong>')!==false && strpos($html,'https://safe.example')!==false,'Announcement sanitization failed');

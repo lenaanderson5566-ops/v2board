@@ -21,8 +21,13 @@ class ProductMail
         $language = self::language($params['language'] ?? null);
         if (!$language && !empty($params['email'])) $language = self::language(User::where('email', $params['email'])->value('language'));
         $language = $language ?: self::language(config('v2board.email_default_language')) ?: 'zh-CN';
-        if ($type === 'notify' && empty($params['translations'][$language]) && !empty($params['source_language'])) {
-            $language = self::language($params['source_language']) ?: $language;
+        $document = null;
+        if ($type === 'notify') {
+            $document = ContentTranslation::document($params['translations'] ?? [], [
+                'subject' => $params['subject'] ?? '',
+                'content' => $params['template_value']['content'] ?? '',
+            ], $language, $params['source_language'] ?? null);
+            $language = $document['language'];
         }
         $copy = require resource_path('mail/copy.php');
         $copy = $copy[$language];
@@ -34,8 +39,8 @@ class ProductMail
         $subject = $brand . ' · ' . $title;
         $content = '';
         if ($type === 'notify') {
-            $variant = $params['translations'][$language] ?? [];
-            $subject = $variant['subject'] ?? ($params['subject'] ?? $subject);
+            $variant = $document['values'];
+            $subject = $variant['subject'] !== '' ? $variant['subject'] : $subject;
             $title = $subject;
             $content = $variant['content'] ?? ($value['content'] ?? '');
             $body = ''; // Custom messages already provide the introduction; avoid duplicate boilerplate.

@@ -5,13 +5,13 @@ final class CouponPresentation
 {
     public static function localized(array $terms, ?string $locale = null): array
     {
-        $language = ProductMail::language($locale ?? app()->getLocale()) ?: 'zh-CN';
-        $variant = ($terms['translations'] ?? [])[$language] ?? [];
-        $name = trim((string)($variant['name'] ?? '')) ?: (string)$terms['name'];
+        $locale = $locale ?? app()->getLocale();
+        $translations = $terms['translations'] ?? [];
+        $name = ContentTranslation::field($translations, 'name', (string)$terms['name'], $locale, 'zh-CN');
         return [
             'name' => $name,
-            'activityTitle' => trim((string)($variant['activityTitle'] ?? '')) ?: (($terms['activity_title'] ?? null) ?: $name),
-            'activityDescription' => trim((string)($variant['activityDescription'] ?? '')) ?: (string)($terms['activity_description'] ?? ''),
+            'activityTitle' => ContentTranslation::field($translations, 'activityTitle', (string)($terms['activity_title'] ?? ''), $locale, 'zh-CN') ?: $name,
+            'activityDescription' => ContentTranslation::field($translations, 'activityDescription', (string)($terms['activity_description'] ?? ''), $locale, 'zh-CN'),
         ];
     }
 }

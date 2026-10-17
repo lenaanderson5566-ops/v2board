@@ -2214,3 +2214,9 @@ body[data-console="admin"] .invitation-signal-different { background: #eef2f6; c
 body[data-console="admin"] .invitation-signal-missing { background: #f4f4f5; color: #666; border: 1px dashed #cbd5e1; }
 body[data-console="admin"] .invitation-comparison { min-width: 620px; }
 body[data-console="admin"] .invitation-comparison td { white-space: normal; overflow-wrap: anywhere; }
+
+body[data-console="admin"] .commission-filter-summary { flex-basis: 100%; margin: 0; overflow-wrap: anywhere; }
+body[data-console="admin"] .commission-review-context dl { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 16px; margin: 0; }
+body[data-console="admin"] .commission-review-context dt { color: var(--muted); font-size: 12px; margin-bottom: 5px; }
+body[data-console="admin"] .commission-review-context dd { margin: 0; overflow-wrap: anywhere; }
+@media(max-width:600px) { body[data-console="admin"] .commission-review-context dl { grid-template-columns: minmax(0,1fr); } }

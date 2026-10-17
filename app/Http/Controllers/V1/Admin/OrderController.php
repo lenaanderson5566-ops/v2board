@@ -22,10 +22,10 @@ class OrderController extends Controller
     {
         if ($request->input('filter')) {
             foreach ($request->input('filter') as $filter) {
-                if ($filter['key'] === 'email') {
+                if (in_array($filter['key'], ['email','invite_email'], true)) {
                     $condition = $filter['condition'] === '模糊' ? 'like' : $filter['condition'];
                     $value = $filter['condition'] === '模糊' ? "%{$filter['value']}%" : $filter['value'];
-                    $builder->whereIn('user_id', User::where('email', $condition, $value)->select('id'));
+                    $builder->whereIn($filter['key'] === 'invite_email' ? 'invite_user_id' : 'user_id', User::where('email', $condition, $value)->select('id'));
                     continue;
                 }
                 if ($filter['condition'] === '模糊') {
@@ -45,6 +45,9 @@ class OrderController extends Controller
         $order['payment_display'] = \App\Services\OrderPaymentHistory::display($order, \App\Models\Payment::find($order->payment_id));
         $order['payment_provider'] = $order->payment_snapshot['provider'] ?? null;
         $order['callback_history'] = \App\Services\PaymentCallbackHistory::forOrder($order);
+        $review = $order->invite_user_id ? DB::table('v2_invitation_review')->where('user_id',$order->user_id)->where('inviter_id',$order->invite_user_id)->first(['id','state','signals','updated_at']) : null;
+        $order['invitation_review'] = $review ? ['id'=>$review->id,'state'=>$review->state,'signals'=>json_decode($review->signals,true) ?: [],'updated_at'=>$review->updated_at] : null;
+        $order['plan_name'] = Plan::where('id',$order->plan_id)->value('name');
         $order['commission_log'] = CommissionLog::where('trade_no', $order->trade_no)->get();
         \App\Services\AdminUserIdentity::append($order['commission_log']);
         if ($order->surplus_order_ids) {
@@ -52,7 +55,7 @@ class OrderController extends Controller
         }
         return response([
             'data' => $order
-        ]);
+        ])->header('Cache-Control','no-store');
     }
 
     public function fetch(OrderFetch $request)

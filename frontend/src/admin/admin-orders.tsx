@@ -12,11 +12,22 @@ const commissionResource = {
     title: "佣金审核",
     actions: [],
     columns: [
+        [
+            "total_amount",
+            "订单应付",
+            (r: Row) => money(r.total_amount, r.currency),
+        ] as (typeof resources.orders.columns)[number],
+        [
+            "paid_at",
+            "支付时间",
+            (r: Row) => (r.paid_at ? date(r.paid_at) : "无记录"),
+        ] as (typeof resources.orders.columns)[number],
         ...resources.orders.columns.filter(([key]) =>
             [
                 "trade_no",
                 "user_id",
-                "total_amount",
+                "plan_name",
+                "status",
                 "commission_balance",
                 "commission_status",
                 "created_at",
@@ -48,7 +59,9 @@ export function OrdersPage({
         ? "commission-filters"
         : "order-filters";
     const [filter, setFilter] = useState<Row[]>(() =>
-        !explicitFilters && Array.isArray(readListView(orderViewKey).filters)
+        !commissionMode &&
+        !explicitFilters &&
+        Array.isArray(readListView(orderViewKey).filters)
             ? readListView(orderViewKey).filters.filter(
                   (item: Row) =>
                       item &&
@@ -93,6 +106,8 @@ export function OrdersPage({
         [assign, setAssign] = useState(false),
         [revision, setRevision] = useState(0),
         [commission, setCommission] = useState<Row | null>(null);
+    const [searchField, setSearchField] = useState("invite_email");
+    const [searchText, setSearchText] = useState("");
     const plans = useData<Row[]>(admin("plan/fetch"));
     return (
         <>
@@ -151,17 +166,73 @@ export function OrdersPage({
                                 </select>
                             </label>
                         )}
-                        <button
-                            onClick={() => {
-                                setDraft(structuredClone(filter));
-                                setShowFilter(true);
-                            }}
-                        >
-                            高级筛选（{filter.length}）
-                        </button>
+                        {commissionMode && (
+                            <form
+                                className="actions"
+                                onSubmit={(event) => {
+                                    event.preventDefault();
+                                    setFilter([
+                                        ...filter.filter(
+                                            (item) =>
+                                                item.key ===
+                                                "commission_status",
+                                        ),
+                                        ...(searchText.trim()
+                                            ? [
+                                                  {
+                                                      key: searchField,
+                                                      condition: "=",
+                                                      value: searchText.trim(),
+                                                  },
+                                              ]
+                                            : []),
+                                    ]);
+                                }}
+                            >
+                                <select
+                                    aria-label="佣金查询字段"
+                                    value={searchField}
+                                    onChange={(event) =>
+                                        setSearchField(event.target.value)
+                                    }
+                                >
+                                    <option value="invite_email">
+                                        邀请人邮箱
+                                    </option>
+                                    <option value="email">受邀用户邮箱</option>
+                                    <option value="trade_no">订单号</option>
+                                    <option value="invite_user_id">
+                                        邀请人 ID
+                                    </option>
+                                    <option value="user_id">受邀用户 ID</option>
+                                </select>
+                                <input
+                                    aria-label="佣金查询内容"
+                                    placeholder="输入完整邮箱、订单号或 ID"
+                                    value={searchText}
+                                    onChange={(event) =>
+                                        setSearchText(event.target.value)
+                                    }
+                                />
+                                <button type="submit">查询</button>
+                            </form>
+                        )}
+                        {!commissionMode && (
+                            <button
+                                onClick={() => {
+                                    setDraft(structuredClone(filter));
+                                    setShowFilter(true);
+                                }}
+                            >
+                                高级筛选（{filter.length}）
+                            </button>
+                        )}
                         <button
                             disabled={!filter.length}
-                            onClick={() => setFilter([])}
+                            onClick={() => {
+                                setFilter([]);
+                                setSearchText("");
+                            }}
                         >
                             清除筛选
                         </button>
@@ -172,6 +243,21 @@ export function OrdersPage({
                             >
                                 分配订单
                             </button>
+                        )}
+                        {commissionMode && (
+                            <p className="muted commission-filter-summary">
+                                仅展示有佣金的已付款订单。当前查询：
+                                {filter
+                                    .filter(
+                                        (item) =>
+                                            item.key !== "commission_status",
+                                    )
+                                    .map(
+                                        (item) =>
+                                            `${({ invite_email: "邀请人邮箱", email: "受邀用户邮箱", trade_no: "订单号", invite_user_id: "邀请人 ID", user_id: "受邀用户 ID", status: "订单状态", commission_balance: "佣金金额" } as Row)[item.key] || item.key} ${item.condition} ${item.value}`,
+                                    )
+                                    .join(" · ") || "不限用户及订单"}
+                            </p>
                         )}
                     </div>
                 }
@@ -406,31 +492,9 @@ export function OrdersPage({
             )}
             {commission && (
                 <Modal title="佣金审核" close={() => setCommission(null)}>
-                    <p className="pad muted">
-                        标记为有效后系统会处理发放；已发放佣金不可修改。
-                    </p>
-                    <Editor
-                        fields={[
-                            {
-                                key: "commission_status",
-                                label: "佣金状态",
-                                type: "select",
-                                required: true,
-                                options: [
-                                    ["0", "待确认"],
-                                    ["1", "有效"],
-                                    ["3", "无效"],
-                                ],
-                            },
-                        ]}
-                        initial={{
-                            commission_status: commission.commission_status,
-                        }}
-                        onSave={async (b) => {
-                            await request(admin("order/update"), {
-                                ...b,
-                                trade_no: commission.trade_no,
-                            });
+                    <CommissionReview
+                        row={commission}
+                        saved={() => {
                             setCommission(null);
                             setRevision((v) => v + 1);
                         }}
@@ -503,7 +567,7 @@ function OrderDetail({
                                                 ? date(r[key])
                                                 : key.includes("amount") ||
                                                     key.includes("balance")
-                                                  ? money(r[key],r.currency)
+                                                  ? money(r[key], r.currency)
                                                   : key === "user_id"
                                                     ? adminUserLabel(r)
                                                     : adminStatusCell(
@@ -533,7 +597,8 @@ function OrderDetail({
                                         [
                                             "get_amount",
                                             "金额",
-                                            (x) => money(x.get_amount,x.currency),
+                                            (x) =>
+                                                money(x.get_amount, x.currency),
                                         ],
                                         [
                                             "created_at",
@@ -552,7 +617,7 @@ function OrderDetail({
                                 [
                                     "total_amount",
                                     "金额",
-                                    (x) => money(x.total_amount,x.currency),
+                                    (x) => money(x.total_amount, x.currency),
                                 ],
                             ]}
                         />
@@ -567,5 +632,186 @@ function OrderDetail({
                 )}
             </State>
         </div>
+    );
+}
+
+function CommissionReview({ row, saved }: { row: Row; saved: () => void }) {
+    const detail = useData<Row>(admin("order/detail"), { id: row.id });
+    const order = detail.data;
+    const review = order?.invitation_review;
+    const states: Row = {
+        pending: "待人工复核",
+        confirmed: "确认违规",
+        false_positive: "排除疑似",
+        insufficient: "证据不足",
+        no_signal: "未命中审核条件",
+    };
+    const signal = (value: unknown) =>
+        value === true ? "相同" : value === false ? "不同" : "无记录";
+    return (
+        <State {...detail} retry={detail.reload}>
+            {order && (
+                <>
+                    <div className="pad commission-review-context">
+                        <dl>
+                            <div>
+                                <dt>邀请人</dt>
+                                <dd>
+                                    <a
+                                        href={`#/users?user_id=${order.invite_user_id}`}
+                                    >
+                                        {adminUserLabel({
+                                            user_id: order.invite_user_id,
+                                            email: order.invite_email,
+                                        })}
+                                    </a>
+                                </dd>
+                            </div>
+                            <div>
+                                <dt>受邀用户</dt>
+                                <dd>
+                                    <a
+                                        href={`#/users?user_id=${order.user_id}`}
+                                    >
+                                        {adminUserLabel(order)}
+                                    </a>
+                                </dd>
+                            </div>
+                            <div>
+                                <dt>订单号</dt>
+                                <dd>{order.trade_no}</dd>
+                            </div>
+                            <div>
+                                <dt>套餐（当前名称）</dt>
+                                <dd>{order.plan_name || "套餐不可用"}</dd>
+                            </div>
+                            <div>
+                                <dt>订单状态</dt>
+                                <dd>
+                                    {[
+                                        "待支付",
+                                        "开通中",
+                                        "已取消",
+                                        "已完成",
+                                        "已折抵",
+                                    ][Number(order.status)] || "未知"}
+                                </dd>
+                            </div>
+                            <div>
+                                <dt>支付时间</dt>
+                                <dd>
+                                    {order.paid_at
+                                        ? date(order.paid_at)
+                                        : "无记录"}
+                                </dd>
+                            </div>
+                            <div>
+                                <dt>订单应付</dt>
+                                <dd>
+                                    {money(order.total_amount, order.currency)}
+                                </dd>
+                            </div>
+                            <div>
+                                <dt>余额抵扣</dt>
+                                <dd>
+                                    {money(
+                                        order.balance_amount || 0,
+                                        order.currency,
+                                    )}
+                                </dd>
+                            </div>
+                            <div>
+                                <dt>待审核佣金</dt>
+                                <dd>
+                                    <strong>
+                                        {money(
+                                            order.commission_balance,
+                                            order.currency,
+                                        )}
+                                    </strong>
+                                </dd>
+                            </div>
+                            <div>
+                                <dt>当前佣金状态</dt>
+                                <dd>
+                                    {["待确认", "有效", "已发放", "无效"][
+                                        Number(order.commission_status)
+                                    ] || "未知"}
+                                </dd>
+                            </div>
+                            <div>
+                                <dt>邀请人工复核</dt>
+                                <dd>
+                                    {review
+                                        ? states[review.state] || "未知"
+                                        : "无复核记录"}
+                                </dd>
+                            </div>
+                            <div>
+                                <dt>注册来源</dt>
+                                <dd>
+                                    IP：
+                                    {signal(
+                                        review?.signals?.sameRegistrationIp,
+                                    )}{" "}
+                                    · UA：
+                                    {signal(
+                                        review?.signals?.sameRegistrationUa,
+                                    )}
+                                </dd>
+                            </div>
+                        </dl>
+                        <p className="muted">
+                            同 IP、UA
+                            仅为线索，不代表同一人。邀请复核与佣金状态分别处理；标记有效后系统将按规则处理发放。
+                        </p>
+                        <a href={`#/invitations?tab=reviews`}>
+                            查看邀请人工复核
+                        </a>
+                    </div>
+                    {[0, 2].includes(Number(order.status)) ||
+                    !Number(order.commission_balance) ||
+                    Number(order.commission_status) === 2 ? (
+                        <p className="pad muted">
+                            当前佣金不可修改，请刷新列表查看最新状态。
+                        </p>
+                    ) : (
+                        <Editor
+                            fields={[
+                                {
+                                    key: "commission_status",
+                                    label: "审核结果",
+                                    type: "select",
+                                    required: true,
+                                    options: [
+                                        ["0", "待确认"],
+                                        ["1", "有效"],
+                                        ["3", "无效"],
+                                    ],
+                                },
+                            ]}
+                            initial={{
+                                commission_status: order.commission_status,
+                            }}
+                            onSave={async (body) => {
+                                if (
+                                    String(body.commission_status) === "1" &&
+                                    review?.state === "confirmed" &&
+                                    !window.confirm(
+                                        "邀请复核已确认违规，仍要将该佣金标记为有效？",
+                                    )
+                                )
+                                    return;
+                                await request(admin("order/update"), {
+                                    ...body,
+                                    trade_no: order.trade_no,
+                                });
+                                saved();
+                            }}
+                        />
+                    )}
+                </>
+            )}
+        </State>
     );
 }

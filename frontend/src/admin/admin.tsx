@@ -1804,12 +1804,12 @@ const groupNames: Record<string, string> = {
     app: "专用客户端下载",
     entrypoints: "服务入口",
 };
-export function Settings() {
+export function Settings({ section }: { section?: "app" | "invite" } = {}) {
     const d = useData(admin("config/fetch"));
     const schema = useData(admin("console/configSchema"));
     const plans = useData<Row[]>(admin("plan/fetch"));
     const creditGroups = useData<Row[]>(admin("server/group/fetch"));
-    const [group, setGroup] = useState("site"),
+    const [group, setGroup] = useState(section || "site"),
         [saved, setSaved] = useState("");
     const [dirty, setDirty] = useState(false),
         [actionBusy, setActionBusy] = useState(false),
@@ -1919,9 +1919,9 @@ export function Settings() {
             ),
     ).map(field => mailCredentialField(field, raw));
     return (
-        <Panel title="系统配置" className="settings-panel">
+        <Panel title={section ? groupNames[section] : "系统配置"} className="settings-panel">
             <div className="section-tabs">
-                {Object.keys(groupNames).map((k) => (
+                {!section && Object.keys(groupNames).filter(k => k !== "app").map((k) => (
                     <button
                         key={k}
                         className={group === k ? "selected" : ""}

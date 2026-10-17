@@ -23,6 +23,7 @@ export const legacyAdminMenu = [
     ["nodes", "节点管理", "layers", "节点与接入"],
     ["groups", "节点权限组", "wrench", "节点与接入"],
     ["routes", "路由管理", "shuffle", "节点与接入"],
+    ["client-downloads", "专用客户端下载", "screen-smartphone", "客户端"],
     ["clients", "访问与版本策略", "shield", "客户端"],
     ["client-releases", "第三方客户端", "screen-smartphone", "客户端"],
     ["risk", "风控规则", "shield", "安全与风控"],

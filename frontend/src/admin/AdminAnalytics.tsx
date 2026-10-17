@@ -396,6 +396,84 @@ export function AdminAnalytics() {
                             按用户去重，包含网站与客户端注册，排除管理员；不受访问设备筛选影响。订单和支付时间取自后台，含余额支付及零元订单，不含充值、流量重置。“已完成”反映当前状态，可能晚于观察窗。
                         </p>
                     </Panel>
+                    <Panel padded title="转化改进工作台">
+                        <p className="muted">
+                            以同一注册批次的业务数据定位环节，逐次调整并观察完整窗口。差额代表窗口内尚未进入下一步的用户，不直接说明流失原因。
+                        </p>
+                        <div className="table-wrap">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>环节</th>
+                                        <th>窗口内待转化</th>
+                                        <th>建议检查</th>
+                                        <th>配置入口</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <td>注册 → 下单</td>
+                                        <td>
+                                            {Math.max(
+                                                0,
+                                                data.cohort.registered -
+                                                    data.cohort.ordered,
+                                            )}{" "}
+                                            人
+                                        </td>
+                                        <td>
+                                            套餐价值、价格与周期是否清楚；试用或优惠是否适合当前用户。
+                                        </td>
+                                        <td>
+                                            <a href="#/plans">套餐管理</a> ·{" "}
+                                            <a href="#/coupons">优惠券</a>
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <td>下单 → 付款</td>
+                                        <td>
+                                            {Math.max(
+                                                0,
+                                                data.cohort.ordered -
+                                                    data.cohort.paid,
+                                            )}{" "}
+                                            人
+                                        </td>
+                                        <td>
+                                            可用支付方式、币种、金额和失败提示；先排查通道故障再调整促销。
+                                        </td>
+                                        <td>
+                                            <a href="#/payments">支付渠道</a> ·{" "}
+                                            <a href="#/orders">订单管理</a>
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <td>付款 → 完成</td>
+                                        <td>
+                                            {Math.max(
+                                                0,
+                                                data.cohort.paid -
+                                                    data.cohort.completed,
+                                            )}{" "}
+                                            人
+                                        </td>
+                                        <td>
+                                            支付回调、订单处理与开通延迟；引导用户下载适合其平台的客户端。
+                                        </td>
+                                        <td>
+                                            <a href="#/orders">核查订单</a> ·{" "}
+                                            <a href="#/client-downloads">
+                                                专用客户端下载
+                                            </a>
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                        <p className="muted">
+                            待转化人数可能包含仍在考虑或处理中的用户；不自动向用户发送推广邮件。
+                        </p>
+                    </Panel>
                     <Panel padded title="页面表现">
                         {data.pages.length ? (
                             <div className="table-wrap">

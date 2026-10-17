@@ -107,6 +107,8 @@ function AdminPageContent({ current }: { current: string }) {
     if (current === "system-log") return <AdminSystemLogs />;
     if (current === "ddns") return <Nodes key="ddns" initialTab="ddns" />;
     if (current === "client-diagnostics") return <AdminClientDiagnostics />;
+    if (current === "client-downloads") return <Settings key="client-downloads" section="app" />;
+    if (current === "invitation-settings") return <Settings key="invitation-settings" section="invite" />;
     if (current === "invitations") return <AdminInvitations />;
     if (current === "users" || current === "usage") return <UsersPage />;
     if (current === "orders") return <OrdersPage />;
@@ -129,7 +131,7 @@ function AdminPageContent({ current }: { current: string }) {
         case "operations":
             return <Overview key="risk" initialTab="risk" />;
         case "settings":
-            return <Settings />;
+            return <Settings key="settings" />;
         case "tickets":
             return <AdminTickets />;
         case "payments":

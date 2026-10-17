@@ -315,10 +315,7 @@ it("keeps recommendations out of dedicated client settings", async () => {
             },
         },
     });
-    render(<Settings />);
-    fireEvent.click(
-        await screen.findByRole("button", { name: "专用客户端下载" }),
-    );
+    render(<Settings section="app" />);
     expect(screen.queryByText("android · 主推荐客户端")).toBeNull();
     expect(screen.queryByText("android · 备选客户端")).toBeNull();
     expect(await screen.findByText("FastAI 客户端下载与更新")).toBeTruthy();

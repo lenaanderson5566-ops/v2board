@@ -19,15 +19,17 @@ export default function AdminWorkspace({
         <EditorFieldContext.Provider value={adminEditorField}>
             <AdminShell
                 current={
-                    current === "ddns"
-                        ? "nodes"
-                        : current === "system" || current === "operations"
-                          ? "overview"
-                          : current === "translations"
-                            ? "plans"
-                            : current === "risk-settings"
-                              ? "log-settings"
-                              : current
+                    current === "invitation-settings"
+                        ? "invitations"
+                        : current === "ddns"
+                          ? "nodes"
+                          : current === "system" || current === "operations"
+                            ? "overview"
+                            : current === "translations"
+                              ? "plans"
+                              : current === "risk-settings"
+                                ? "log-settings"
+                                : current
                 }
                 user={user}
                 logout={() => {

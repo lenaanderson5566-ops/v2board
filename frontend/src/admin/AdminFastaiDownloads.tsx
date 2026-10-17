@@ -58,6 +58,7 @@ export function AdminFastaiDownloads({
         <>
             <form className="pad" onSubmit={submit}>
                 <h3>FastAI 客户端下载与更新</h3>
+                <p className="muted">发布安装包后，请确认客户端已启用且最低版本与下载版本一致，避免用户下载后无法接入。<a href="#/clients">管理访问与版本策略</a></p>
                 <p className="muted">
                     为每个平台和架构分别发布安装包。可上传本地文件或填写外部
                     HTTPS 链接。上传和选择只修改草稿，确认发布后才更新用户下载及

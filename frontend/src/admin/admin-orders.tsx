@@ -79,7 +79,7 @@ export function OrdersPage({
                       ].includes(item.key),
               )
             : ["user_id", "invite_user_id", "commission_status", "status"]
-                  .filter((key) => params.has(key))
+                  .filter((key) => params.has(key) && params.get(key) !== "")
                   .map((key) => ({
                       key,
                       condition: "=",

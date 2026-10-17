@@ -2220,3 +2220,7 @@ body[data-console="admin"] .commission-review-context dl { display: grid; grid-t
 body[data-console="admin"] .commission-review-context dt { color: var(--muted); font-size: 12px; margin-bottom: 5px; }
 body[data-console="admin"] .commission-review-context dd { margin: 0; overflow-wrap: anywhere; }
 @media(max-width:600px) { body[data-console="admin"] .commission-review-context dl { grid-template-columns: minmax(0,1fr); } }
+
+body[data-console="admin"] .invitation-workflow { display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:16px; }
+body[data-console="admin"] .invitation-workflow h2 { margin:0 0 8px; font-size:18px; }
+body[data-console="admin"] .invitation-workflow p { margin:0; max-width:75ch; }

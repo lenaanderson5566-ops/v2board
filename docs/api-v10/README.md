@@ -26,16 +26,40 @@ Payment callbacks use `/webhooks/payments/{provider}/{endpointId}`, accepting pr
 
 ## Maintenance and validation
 
-The sole editable contract source is `api/v10/openapi.json`. It contains standard OpenAPI schemas plus internal `x-runtime-resource` / `x-runtime-field` projection metadata, operation `x-runtime` mappings, browser aliases and legacy/node inventory metadata. `api/v10/mapping-notes.md` owns only the explanatory mapping prose. Published OpenAPI omits those internal annotations.
+The editable contract source is the `api/v10/` module tree. `openapi.json` is its manifest (global OpenAPI metadata, ordered `x-modules` entries and legacy/node inventory order), not the file to import into OpenAPI tools. Each `modules/*.json` file owns complete path items and named components; the generator merges them into the complete single-file `docs/api-v10/openapi.json`, with only internal `#/components/...` references and no external file dependencies. Modules contain standard OpenAPI schemas plus internal `x-runtime-resource` / `x-runtime-field` projection metadata, operation `x-runtime` mappings, browser aliases and legacy/node inventory metadata. `api/v10/mapping-notes.md` owns only the explanatory mapping prose. Published OpenAPI omits those internal annotations.
 
 From the project root, using Python 3 (no third-party packages):
 
 ```sh
 python scripts/generate-v10.py
 python scripts/generate-v10.py --check
+python -m unittest discover -s scripts -p test_generate_v10.py
 ```
 
-On systems where Python is named `python3`, use that command instead. The generator writes exactly seven publications: `docs/api-v10/{openapi,contracts,endpoints,node-api}.json`, `docs/api-v10/mapping.md`, and `frontend/src/shared/v10-{contracts.json,types.ts}`. Commit source and generated changes together. `--check` is read-only and exits nonzero on drift, including missing files. Duplicate operation IDs/browser aliases, incomplete inventory ordering, and unresolved schema references fail generation. The former competing document generators are removed.
+On systems where Python is named `python3`, use that command instead. The generator writes exactly seven publications: `docs/api-v10/{openapi,contracts,endpoints,node-api}.json`, `docs/api-v10/mapping.md`, and `frontend/src/shared/v10-{contracts.json,types.ts}`. Commit source and generated changes together. `--check` is read-only and exits nonzero on drift, including missing files. Duplicate JSON keys, module entries, paths, component names, operation IDs/browser aliases, unlisted modules, paths outside the module directory, incomplete inventory ordering, and unresolved/external references fail generation before any publication is written. The former competing document generators are removed.
+
+Module ownership:
+
+| Module | Owned contract area |
+|---|---|
+| `common.json` | Security schemes, Problem/Pagination/scalar/task schemas, shared responses, headers and parameters |
+| `authentication.json` | Registration, sign-in, sessions, passwords, MFA |
+| `account.json` | Account profile/settings, banners, usage resets, download accounts and traffic history |
+| `subscriptions.json` | Subscription delivery and lifecycle |
+| `commerce.json` | Plans, orders, payments, credit packages, gift cards and coupons |
+| `referrals.json` | Invitations, referral accounting and commission withdrawals |
+| `support.json` | Tickets, notifications, announcements and knowledge articles |
+| `integrations.json` | Telegram and mail webhooks, binding and unsubscribe |
+| `clients.json` | Client releases/configuration/authorization, node previews and diagnostics |
+| `nodes.json` | Machine-to-machine node communication |
+| `analytics.json` | Public analytics configuration and events |
+
+Edit an existing module for an endpoint change. Put an entire path item (all methods) in one module and reference shared components by their existing names. Component names are global across modules. For a new business domain, create one module with `paths` and `components`, then add it to `x-modules`; every module JSON must be listed once. Preserve `x-legacy-order` and `x-node-order` when adding inventory entries. Never edit the seven publications directly.
+
+Common definitions are reused only where the complete definition is identical: differing native responses, error descriptions, required flags, security and cache policies remain distinct. Schema references and exported TypeScript names remain stable. The historical `node-api.json` export expands shared responses/headers/parameters, so its consumers keep the same shape. The backend and browser still load their generated runtime contracts; Python and module assembly are development-only and are not required by installation, upgrade or request handling.
+
+The Python regression suite uses only the standard library and temporary directories. It covers deterministic publication, read-only drift detection, module omissions/duplicates, duplicate definitions and operations/aliases, unresolved/external references, inventory ordering, no-store headers and node export compatibility. `tests/api-v10-inventory.php` also checks module projections against runtime contracts and the actual Laravel router. Restricted environments can set `TMPDIR` to a writable temporary directory before running the Python suite.
+
 
 PHP routes, controllers, validation and resource behavior remain handwritten; generation never rewrites application code. When behavior changes, edit implementation and canonical contract together, generate, then run `api-v10-inventory`, `api-v10`, `api-route-audit` and relevant business suites through `tests/run.php` **in a disposable workspace and temporary databases** as described in [test organization](../test-organization.md). Frontend validation uses `npm test -- --run` and `npm run build` from `frontend`.
 

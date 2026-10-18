@@ -2,7 +2,7 @@
 
 ## API 契约
 
-`api/v10/openapi.json` 是 V10 契约的唯一维护源；发布文件、PHP 字段投影和前端映射/类型均由 `python scripts/generate-v10.py` 生成。`--check` 只检查漂移，不写文件。具体元数据与七项输出见 [V10 维护说明](api-v10/README.md)。路由、控制器、请求校验和业务逻辑仍显式维护，生成结果不能代替真实路由及行为测试。
+`api/v10/openapi.json` 是 V10 契约的模块清单与全局元数据入口；唯一可编辑定义位于 `api/v10/modules/*.json`，按业务归属维护路径与 schema，公共响应、响应头、参数及基础类型集中在 `common.json`。发布文件、PHP 字段投影和前端映射/类型均由 `python scripts/generate-v10.py` 生成。`--check` 只检查漂移，不写文件。具体元数据与七项输出见 [V10 维护说明](api-v10/README.md)。路由、控制器、请求校验和业务逻辑仍显式维护，生成结果不能代替真实路由及行为测试。
 
 ## 服务与前端组件
 

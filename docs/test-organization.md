@@ -227,3 +227,14 @@ Composer validate、当前 PHP 8.4.26 下生产平台要求和锁文件审计通
 `composer install --dry-run --no-dev` 计划为 0 安装、0 更新、34 个开发包移除；未下载或修改原 vendor。无开发依赖演练最初沿用了开发包的发现缓存，导致 Collision Provider 找不到；将独立目录安装元数据过滤为锁文件生产包并清除其旧缓存后，包发现、配置/路由/视图缓存、route:list 全部通过。这是隔离演练修正，不是应用代码修复，也不等同于在生产执行安装。
 
 本轮修正部署文档中的旧 PHP 8.1/8.2、旧分支地址、忽略 composer.lock 及根 readme 切到上游 master 的过时指导；没有修改启动骨架、数据库迁移或 update.sh。用户确认列出的有历史金额校验限制的旧支付适配器均未启用；保留该限制说明，不把未启用当作协议已修复。未推送或部署生产，真实域名/TLS/CDN、PHP-FPM/Supervisor、实际邮件交付与支付商回调仍需受控上线验收。未发送真实邮件或付款，未操作业务数据库。
+
+
+## V10 公共定义与业务模块
+
+维护源改为 `api/v10/openapi.json` 清单及 11 个业务/公共模块，公共组件包含 12 个响应、3 个响应头和 19 个参数定义。发布 OpenAPI 仍为完整单文件，约 592 KB 降至 397 KB；维护源合计约 717 KB 降至 523 KB。对拆分前后所有 93 个 path item、156 个 schema、安全方案、运行契约、节点导出和 TypeScript 声明逐项比较，展开新增公共引用后语义一致。路径方法、字段 required、鉴权、缓存策略、响应描述均未改变。
+
+新增长期维护的生成器标准库回归模块 `scripts/test_generate_v10.py`，入口 `python -m unittest discover -s scripts -p test_generate_v10.py`，10 项通过；这是开发工具单元测试，不启动 Laravel 或数据库，不属于 PHP 后端运行器清单。覆盖确定性、七项产物漂移、只读检查、重复/遗漏模块、目录越界、重复 JSON key/路径/组件/operationId/别名、引用缺失/外部引用/公共引用循环及清单完整性。首次执行遇到 Windows 沙箱临时目录写权限限制，将 TMPDIR 指向可写的忽略目录后通过，未放宽断言。
+
+复用 `api-v10-inventory.php` 增加模块合并和公共引用解析检查，在一次性项目副本及随机数据库执行 7 组：api-route-audit、api-v10-inventory、api-v10、node-v10、mail-install-schema、retired-node-tables、update-script，全部通过。接口清单 1511 项、路由审计 2465 项；测试登记仍为 112 个入口和 14 个辅助文件。前端现有契约测试 22 项及 TypeScript 检查通过，生成器 --check 通过。结果位于忽略目录 `storage/app/test-organization/contract-modules/backend.json`。
+
+生产仍直接加载已提交的运行契约，不执行模块装配；本次未修改路由控制器、业务服务、启动骨架、安装 SQL、迁移或升级脚本。节点兼容导出内联新增公共引用，保留原形状。

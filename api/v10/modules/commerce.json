@@ -1,0 +1,3039 @@
+{
+  "paths": {
+    "/webhooks/payments/{provider}/{endpointId}": {
+      "get": {
+        "operationId": "getWebhooksPaymentsProviderEndpointId",
+        "tags": [
+          "guest"
+        ],
+        "summary": "GET webhooks/payments/{provider}/{endpointId}",
+        "description": "Provider-native signature verification and response. Payment notifications are idempotent; Telegram requires X-Telegram-Bot-Api-Secret-Token. New payments use V10 callback URLs, including custom callback domains. Old payment callbacks remain compatible for existing orders. Historical callback URLs remain supported. PaytaroQR verifies X-App-Secret and requires positive order_amount (major units, up to two decimal places) and order_currency. Original order amount is converted to integer minor units and compared with the stored order total plus its payment fee snapshot; pay_amount/pay_currency are not settlement inputs. Valid and matching duplicate callbacks retain the native success response; invalid amount or currency returns the native failure response.",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/PathProvider"
+          },
+          {
+            "$ref": "#/components/parameters/PathEndpointId"
+          },
+          {
+            "$ref": "#/components/parameters/HeaderAcceptLanguage"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "headers": {
+              "X-Request-ID": {
+                "$ref": "#/components/headers/XRequestID"
+              },
+              "Content-Language": {
+                "$ref": "#/components/headers/XRequestID"
+              }
+            },
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        },
+        "security": [],
+        "x-permission": "public",
+        "x-legacy-path": "/api/v1/guest/payment/notify/{method}/{uuid}",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object"
+              }
+            },
+            "application/x-www-form-urlencoded": {
+              "schema": {
+                "type": "object"
+              }
+            }
+          }
+        },
+        "x-runtime": {
+          "input": {},
+          "output": "scalar",
+          "role": "public",
+          "status": 200,
+          "raw": true,
+          "bindings": {
+            "provider": "method",
+            "endpointId": "uuid"
+          },
+          "key": "Guest/PaymentController@notify"
+        },
+        "x-legacy-entry": {
+          "legacy": "guest/payment/notify/{method}/{uuid}",
+          "legacyMethod": "GET",
+          "action": "App\\Http\\Controllers\\V1\\Guest\\PaymentController@notify",
+          "parameters": [
+            {
+              "name": "method",
+              "type": null,
+              "optional": false
+            },
+            {
+              "name": "uuid",
+              "type": null,
+              "optional": false
+            },
+            {
+              "name": "request",
+              "type": "Illuminate\\Http\\Request",
+              "optional": false
+            }
+          ],
+          "middleware": [],
+          "scope": "guest",
+          "methods": [
+            "GET",
+            "POST"
+          ]
+        },
+        "x-browser-aliases": {
+          "routes": [
+            "guest/payment/notify/{method}/{uuid}"
+          ],
+          "methodRoutes": [
+            "GET guest/payment/notify/{method}/{uuid}"
+          ]
+        }
+      },
+      "post": {
+        "operationId": "getWebhooksPaymentsProviderEndpointIdPost",
+        "tags": [
+          "guest"
+        ],
+        "summary": "GET webhooks/payments/{provider}/{endpointId}",
+        "description": "Provider-native signature verification and response. Payment notifications are idempotent; Telegram requires X-Telegram-Bot-Api-Secret-Token. New payments use V10 callback URLs, including custom callback domains. Old payment callbacks remain compatible for existing orders. Historical callback URLs remain supported. PaytaroQR verifies X-App-Secret and requires positive order_amount (major units, up to two decimal places) and order_currency. Original order amount is converted to integer minor units and compared with the stored order total plus its payment fee snapshot; pay_amount/pay_currency are not settlement inputs. Valid and matching duplicate callbacks retain the native success response; invalid amount or currency returns the native failure response.",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/PathProvider"
+          },
+          {
+            "$ref": "#/components/parameters/PathEndpointId"
+          },
+          {
+            "$ref": "#/components/parameters/HeaderAcceptLanguage"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "headers": {
+              "X-Request-ID": {
+                "$ref": "#/components/headers/XRequestID"
+              },
+              "Content-Language": {
+                "$ref": "#/components/headers/XRequestID"
+              }
+            },
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        },
+        "security": [],
+        "x-permission": "public",
+        "x-legacy-path": "/api/v1/guest/payment/notify/{method}/{uuid}",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object"
+              }
+            },
+            "application/x-www-form-urlencoded": {
+              "schema": {
+                "type": "object"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/me/gift-card-redemptions": {
+      "post": {
+        "operationId": "postMeGiftCardRedemptions",
+        "tags": [
+          "user"
+        ],
+        "summary": "POST me/gift-card-redemptions",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/HeaderAcceptLanguage"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "headers": {
+              "X-Request-ID": {
+                "$ref": "#/components/headers/XRequestID"
+              },
+              "Content-Language": {
+                "$ref": "#/components/headers/XRequestID"
+              },
+              "Cache-Control": {
+                "$ref": "#/components/headers/PrivateNoStore"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/scalar"
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {
+                        "pagination": {
+                          "$ref": "#/components/schemas/Pagination"
+                        },
+                        "taskId": {
+                          "type": "string"
+                        }
+                      }
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "403": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "404": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "409": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "410": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "422": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "429": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "500": {
+            "$ref": "#/components/responses/ProblemDetails"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          },
+          {
+            "browserUserCookie": []
+          }
+        ],
+        "x-permission": "user",
+        "x-legacy-path": "/api/v1/user/redeemgiftcard",
+        "description": "Requires an active session. Order and ticket identifiers are checked against the authenticated owner. Unauthenticated: 401; banned account: 403.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/postMeGiftCardRedemptionsInput"
+              }
+            }
+          }
+        },
+        "x-runtime": {
+          "input": {
+            "giftCardCode": "giftcard"
+          },
+          "output": "scalar",
+          "role": "user",
+          "status": 200,
+          "raw": false,
+          "bindings": {},
+          "key": "User/UserController@redeemgiftcard"
+        },
+        "x-legacy-entry": {
+          "legacy": "user/redeemgiftcard",
+          "legacyMethod": "POST",
+          "action": "App\\Http\\Controllers\\V1\\User\\UserController@redeemgiftcard",
+          "parameters": [
+            {
+              "name": "request",
+              "type": "App\\Http\\Requests\\User\\UserRedeemGiftCard",
+              "optional": false
+            }
+          ],
+          "middleware": [],
+          "scope": "user"
+        },
+        "x-browser-aliases": {
+          "routes": [
+            "user/redeemgiftcard"
+          ],
+          "methodRoutes": [
+            "POST user/redeemgiftcard"
+          ]
+        }
+      }
+    },
+    "/me/orders": {
+      "post": {
+        "operationId": "postMeOrders",
+        "tags": [
+          "user"
+        ],
+        "summary": "POST me/orders",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/HeaderAcceptLanguage"
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Success",
+            "headers": {
+              "X-Request-ID": {
+                "$ref": "#/components/headers/XRequestID"
+              },
+              "Content-Language": {
+                "$ref": "#/components/headers/XRequestID"
+              },
+              "Cache-Control": {
+                "$ref": "#/components/headers/PrivateNoStore"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/orderCreated"
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {
+                        "pagination": {
+                          "$ref": "#/components/schemas/Pagination"
+                        },
+                        "taskId": {
+                          "type": "string"
+                        }
+                      }
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "403": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "404": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "409": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "410": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "422": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "429": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "500": {
+            "$ref": "#/components/responses/ProblemDetails"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          },
+          {
+            "browserUserCookie": []
+          }
+        ],
+        "x-permission": "user",
+        "x-legacy-path": "/api/v1/user/order/save",
+        "description": "Requires an active session. Order and ticket identifiers are checked against the authenticated owner. Unauthenticated: 401; banned account: 403. Deposit orders require planId 0 and a positive integer depositAmount in minor currency units; other billing periods require a positive planId. Unconfigured or negative period prices are rejected with 409; an explicit zero price remains valid.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/postMeOrdersInput"
+              }
+            }
+          }
+        },
+        "x-runtime": {
+          "input": {
+            "planId": "plan_id",
+            "replacementOrderNumber": "replace_trade_no",
+            "billingPeriod": "period",
+            "depositAmount": "deposit_amount",
+            "walletCouponId": "wallet_coupon_id"
+          },
+          "output": "orderCreated",
+          "role": "user",
+          "status": 201,
+          "raw": false,
+          "bindings": {},
+          "key": "User/OrderController@save"
+        },
+        "x-legacy-entry": {
+          "legacy": "user/order/save",
+          "legacyMethod": "POST",
+          "action": "App\\Http\\Controllers\\V1\\User\\OrderController@save",
+          "parameters": [
+            {
+              "name": "request",
+              "type": "App\\Http\\Requests\\User\\OrderSave",
+              "optional": false
+            }
+          ],
+          "middleware": [],
+          "scope": "user"
+        },
+        "x-browser-aliases": {
+          "routes": [
+            "user/order/save"
+          ],
+          "methodRoutes": [
+            "POST user/order/save"
+          ]
+        }
+      },
+      "get": {
+        "operationId": "getMeOrders",
+        "tags": [
+          "user"
+        ],
+        "summary": "GET me/orders",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/HeaderAcceptLanguage"
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "unpaid",
+                "processing",
+                "cancelled",
+                "completed",
+                "discounted"
+              ]
+            }
+          },
+          {
+            "$ref": "#/components/parameters/QueryPage"
+          },
+          {
+            "$ref": "#/components/parameters/QueryPageSize"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "headers": {
+              "X-Request-ID": {
+                "$ref": "#/components/headers/XRequestID"
+              },
+              "Content-Language": {
+                "$ref": "#/components/headers/XRequestID"
+              },
+              "Cache-Control": {
+                "$ref": "#/components/headers/PrivateNoStore"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/order"
+                      }
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {
+                        "pagination": {
+                          "$ref": "#/components/schemas/Pagination"
+                        },
+                        "taskId": {
+                          "type": "string"
+                        }
+                      }
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "403": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "404": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "409": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "410": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "422": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "429": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "500": {
+            "$ref": "#/components/responses/ProblemDetails"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          },
+          {
+            "browserUserCookie": []
+          }
+        ],
+        "x-permission": "user",
+        "x-legacy-path": "/api/v1/user/order/fetch",
+        "description": "Requires an active session. Order and ticket identifiers are checked against the authenticated owner. Unauthenticated: 401; banned account: 403.",
+        "x-runtime": {
+          "input": {
+            "status": "status",
+            "page": "current",
+            "pageSize": "page_size"
+          },
+          "output": "array:order",
+          "role": "user",
+          "status": 200,
+          "raw": false,
+          "bindings": {},
+          "key": "User/OrderController@fetch"
+        },
+        "x-legacy-entry": {
+          "legacy": "user/order/fetch",
+          "legacyMethod": "GET",
+          "action": "App\\Http\\Controllers\\V1\\User\\OrderController@fetch",
+          "parameters": [
+            {
+              "name": "request",
+              "type": "Illuminate\\Http\\Request",
+              "optional": false
+            }
+          ],
+          "middleware": [],
+          "scope": "user"
+        },
+        "x-browser-aliases": {
+          "routes": [
+            "user/order/fetch"
+          ],
+          "methodRoutes": [
+            "GET user/order/fetch"
+          ]
+        }
+      }
+    },
+    "/me/orders/{orderNumber}/payments": {
+      "post": {
+        "operationId": "postMeOrdersOrderNumberPayments",
+        "tags": [
+          "user"
+        ],
+        "summary": "POST me/orders/{orderNumber}/payments",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/PathOrderNumber"
+          },
+          {
+            "$ref": "#/components/parameters/HeaderAcceptLanguage"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "headers": {
+              "X-Request-ID": {
+                "$ref": "#/components/headers/XRequestID"
+              },
+              "Content-Language": {
+                "$ref": "#/components/headers/XRequestID"
+              },
+              "Cache-Control": {
+                "$ref": "#/components/headers/PrivateNoStore"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/payment"
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {
+                        "pagination": {
+                          "$ref": "#/components/schemas/Pagination"
+                        },
+                        "taskId": {
+                          "type": "string"
+                        }
+                      }
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "403": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "404": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "409": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "410": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "422": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "429": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "500": {
+            "$ref": "#/components/responses/ProblemDetails"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          },
+          {
+            "browserUserCookie": []
+          }
+        ],
+        "x-permission": "user",
+        "x-legacy-path": "/api/v1/user/order/checkout",
+        "description": "Requires an active session. Order and ticket identifiers are checked against the authenticated owner. Unauthenticated: 401; banned account: 403. Historical orders with negative totals are rejected with 409; zero totals use the free checkout flow.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/postMeOrdersOrderNumberPaymentsInput"
+              }
+            }
+          }
+        },
+        "x-runtime": {
+          "input": {
+            "paymentMethodId": "method",
+            "paymentToken": "token",
+            "expectedPaymentAmount": "expected_payment_amount",
+            "expectedPaymentCurrency": "expected_payment_currency"
+          },
+          "output": "payment",
+          "role": "user",
+          "status": 200,
+          "raw": false,
+          "bindings": {
+            "orderNumber": "trade_no"
+          },
+          "key": "User/OrderController@checkout"
+        },
+        "x-legacy-entry": {
+          "legacy": "user/order/checkout",
+          "legacyMethod": "POST",
+          "action": "App\\Http\\Controllers\\V1\\User\\OrderController@checkout",
+          "parameters": [
+            {
+              "name": "request",
+              "type": "Illuminate\\Http\\Request",
+              "optional": false
+            }
+          ],
+          "middleware": [],
+          "scope": "user"
+        },
+        "x-browser-aliases": {
+          "routes": [
+            "user/order/checkout"
+          ],
+          "methodRoutes": [
+            "POST user/order/checkout"
+          ]
+        }
+      }
+    },
+    "/me/orders/{orderNumber}/status": {
+      "get": {
+        "operationId": "getMeOrdersOrderNumberStatus",
+        "tags": [
+          "user"
+        ],
+        "summary": "GET me/orders/{orderNumber}/status",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/PathOrderNumber"
+          },
+          {
+            "$ref": "#/components/parameters/HeaderAcceptLanguage"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "headers": {
+              "X-Request-ID": {
+                "$ref": "#/components/headers/XRequestID"
+              },
+              "Content-Language": {
+                "$ref": "#/components/headers/XRequestID"
+              },
+              "Cache-Control": {
+                "$ref": "#/components/headers/PrivateNoStore"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/orderStatus"
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {
+                        "pagination": {
+                          "$ref": "#/components/schemas/Pagination"
+                        },
+                        "taskId": {
+                          "type": "string"
+                        }
+                      }
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "403": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "404": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "409": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "410": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "422": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "429": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "500": {
+            "$ref": "#/components/responses/ProblemDetails"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          },
+          {
+            "browserUserCookie": []
+          }
+        ],
+        "x-permission": "user",
+        "x-legacy-path": "/api/v1/user/order/check",
+        "description": "Requires an active session. Order and ticket identifiers are checked against the authenticated owner. Unauthenticated: 401; banned account: 403.",
+        "x-runtime": {
+          "input": {},
+          "output": "orderStatus",
+          "role": "user",
+          "status": 200,
+          "raw": false,
+          "bindings": {
+            "orderNumber": "trade_no"
+          },
+          "key": "User/OrderController@check"
+        },
+        "x-legacy-entry": {
+          "legacy": "user/order/check",
+          "legacyMethod": "GET",
+          "action": "App\\Http\\Controllers\\V1\\User\\OrderController@check",
+          "parameters": [
+            {
+              "name": "request",
+              "type": "Illuminate\\Http\\Request",
+              "optional": false
+            }
+          ],
+          "middleware": [],
+          "scope": "user"
+        },
+        "x-browser-aliases": {
+          "routes": [
+            "user/order/check"
+          ],
+          "methodRoutes": [
+            "GET user/order/check"
+          ]
+        }
+      }
+    },
+    "/me/orders/{orderNumber}": {
+      "get": {
+        "operationId": "getMeOrdersOrderNumber",
+        "tags": [
+          "user"
+        ],
+        "summary": "GET me/orders/{orderNumber}",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/PathOrderNumber"
+          },
+          {
+            "$ref": "#/components/parameters/HeaderAcceptLanguage"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "headers": {
+              "X-Request-ID": {
+                "$ref": "#/components/headers/XRequestID"
+              },
+              "Content-Language": {
+                "$ref": "#/components/headers/XRequestID"
+              },
+              "Cache-Control": {
+                "$ref": "#/components/headers/PrivateNoStore"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/order"
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {
+                        "pagination": {
+                          "$ref": "#/components/schemas/Pagination"
+                        },
+                        "taskId": {
+                          "type": "string"
+                        }
+                      }
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "403": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "404": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "409": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "410": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "422": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "429": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "500": {
+            "$ref": "#/components/responses/ProblemDetails"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          },
+          {
+            "browserUserCookie": []
+          }
+        ],
+        "x-permission": "user",
+        "x-legacy-path": "/api/v1/user/order/detail",
+        "description": "Requires an active session. Order and ticket identifiers are checked against the authenticated owner. Unauthenticated: 401; banned account: 403.",
+        "x-runtime": {
+          "input": {},
+          "output": "order",
+          "role": "user",
+          "status": 200,
+          "raw": false,
+          "bindings": {
+            "orderNumber": "trade_no"
+          },
+          "key": "User/OrderController@detail"
+        },
+        "x-legacy-entry": {
+          "legacy": "user/order/detail",
+          "legacyMethod": "GET",
+          "action": "App\\Http\\Controllers\\V1\\User\\OrderController@detail",
+          "parameters": [
+            {
+              "name": "request",
+              "type": "Illuminate\\Http\\Request",
+              "optional": false
+            }
+          ],
+          "middleware": [],
+          "scope": "user"
+        },
+        "x-browser-aliases": {
+          "routes": [
+            "user/order/detail"
+          ],
+          "methodRoutes": [
+            "GET user/order/detail"
+          ]
+        }
+      }
+    },
+    "/payment-methods": {
+      "get": {
+        "operationId": "getPaymentMethods",
+        "tags": [
+          "user"
+        ],
+        "summary": "GET payment-methods",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/HeaderAcceptLanguage"
+          },
+          {
+            "name": "orderNumber",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "maxLength": 64
+            },
+            "description": "Owned order to quote. Cross-currency payments require confirmation of quotedAmount and quotedCurrency."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "headers": {
+              "X-Request-ID": {
+                "$ref": "#/components/headers/XRequestID"
+              },
+              "Content-Language": {
+                "$ref": "#/components/headers/XRequestID"
+              },
+              "Cache-Control": {
+                "$ref": "#/components/headers/PrivateNoStore"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/paymentMethod"
+                      }
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {
+                        "pagination": {
+                          "$ref": "#/components/schemas/Pagination"
+                        },
+                        "taskId": {
+                          "type": "string"
+                        }
+                      }
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "403": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "404": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "409": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "410": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "422": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "429": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "500": {
+            "$ref": "#/components/responses/ProblemDetails"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          },
+          {
+            "browserUserCookie": []
+          }
+        ],
+        "x-permission": "user",
+        "x-legacy-path": "/api/v1/user/order/getPaymentMethod",
+        "description": "Requires an active session. Order and ticket identifiers are checked against the authenticated owner. Unauthenticated: 401; banned account: 403.",
+        "x-runtime": {
+          "input": {
+            "orderNumber": "trade_no"
+          },
+          "output": "array:paymentMethod",
+          "role": "user",
+          "status": 200,
+          "raw": false,
+          "bindings": {},
+          "key": "User/OrderController@getPaymentMethod"
+        },
+        "x-legacy-entry": {
+          "legacy": "user/order/getPaymentMethod",
+          "legacyMethod": "GET",
+          "action": "App\\Http\\Controllers\\V1\\User\\OrderController@getPaymentMethod",
+          "parameters": [],
+          "middleware": [],
+          "scope": "user"
+        },
+        "x-browser-aliases": {
+          "routes": [
+            "user/order/getPaymentMethod"
+          ],
+          "methodRoutes": [
+            "GET user/order/getPaymentMethod"
+          ]
+        }
+      }
+    },
+    "/me/orders/{orderNumber}/cancellation": {
+      "post": {
+        "operationId": "postMeOrdersOrderNumberCancellation",
+        "tags": [
+          "user"
+        ],
+        "summary": "POST me/orders/{orderNumber}/cancellation",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/PathOrderNumber"
+          },
+          {
+            "$ref": "#/components/parameters/HeaderAcceptLanguage"
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Success",
+            "headers": {
+              "X-Request-ID": {
+                "$ref": "#/components/headers/XRequestID"
+              },
+              "Content-Language": {
+                "$ref": "#/components/headers/XRequestID"
+              },
+              "Cache-Control": {
+                "$ref": "#/components/headers/PrivateNoStore"
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "403": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "404": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "409": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "410": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "422": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "429": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "500": {
+            "$ref": "#/components/responses/ProblemDetails"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          },
+          {
+            "browserUserCookie": []
+          }
+        ],
+        "x-permission": "user",
+        "x-legacy-path": "/api/v1/user/order/cancel",
+        "description": "Requires an active session. Order and ticket identifiers are checked against the authenticated owner. Unauthenticated: 401; banned account: 403.",
+        "x-runtime": {
+          "input": {},
+          "output": "scalar",
+          "role": "user",
+          "status": 204,
+          "raw": false,
+          "bindings": {
+            "orderNumber": "trade_no"
+          },
+          "key": "User/OrderController@cancel"
+        },
+        "x-legacy-entry": {
+          "legacy": "user/order/cancel",
+          "legacyMethod": "POST",
+          "action": "App\\Http\\Controllers\\V1\\User\\OrderController@cancel",
+          "parameters": [
+            {
+              "name": "request",
+              "type": "Illuminate\\Http\\Request",
+              "optional": false
+            }
+          ],
+          "middleware": [],
+          "scope": "user"
+        },
+        "x-browser-aliases": {
+          "routes": [
+            "user/order/cancel"
+          ],
+          "methodRoutes": [
+            "POST user/order/cancel"
+          ]
+        }
+      }
+    },
+    "/credit-packages": {
+      "get": {
+        "operationId": "getCreditPackages",
+        "tags": [
+          "user"
+        ],
+        "summary": "GET credit-packages",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/HeaderAcceptLanguage"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "headers": {
+              "X-Request-ID": {
+                "$ref": "#/components/headers/XRequestID"
+              },
+              "Content-Language": {
+                "$ref": "#/components/headers/XRequestID"
+              },
+              "Cache-Control": {
+                "$ref": "#/components/headers/PrivateNoStore"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/credit"
+                      }
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {
+                        "pagination": {
+                          "$ref": "#/components/schemas/Pagination"
+                        },
+                        "taskId": {
+                          "type": "string"
+                        }
+                      }
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "403": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "404": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "409": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "410": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "422": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "429": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "500": {
+            "$ref": "#/components/responses/ProblemDetails"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          },
+          {
+            "browserUserCookie": []
+          }
+        ],
+        "x-permission": "user",
+        "x-legacy-path": "/api/v1/user/credit/fetch",
+        "description": "Requires an active session. Order and ticket identifiers are checked against the authenticated owner. Unauthenticated: 401; banned account: 403.",
+        "x-runtime": {
+          "input": {},
+          "output": "array:credit",
+          "role": "user",
+          "status": 200,
+          "raw": false,
+          "bindings": {},
+          "key": "User/PlanController@credits"
+        },
+        "x-legacy-entry": {
+          "legacy": "user/credit/fetch",
+          "legacyMethod": "GET",
+          "action": "App\\Http\\Controllers\\V1\\User\\PlanController@credits",
+          "parameters": [
+            {
+              "name": "request",
+              "type": "Illuminate\\Http\\Request",
+              "optional": false
+            }
+          ],
+          "middleware": [],
+          "scope": "user"
+        },
+        "x-browser-aliases": {
+          "routes": [
+            "user/credit/fetch"
+          ],
+          "methodRoutes": [
+            "GET user/credit/fetch"
+          ]
+        }
+      }
+    },
+    "/plans": {
+      "get": {
+        "operationId": "getPlans",
+        "tags": [
+          "user"
+        ],
+        "summary": "GET plans",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/HeaderAcceptLanguage"
+          },
+          {
+            "name": "planId",
+            "in": "query",
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "headers": {
+              "X-Request-ID": {
+                "$ref": "#/components/headers/XRequestID"
+              },
+              "Content-Language": {
+                "$ref": "#/components/headers/XRequestID"
+              },
+              "Cache-Control": {
+                "$ref": "#/components/headers/PrivateNoStore"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "oneOf": [
+                        {
+                          "$ref": "#/components/schemas/plan"
+                        },
+                        {
+                          "type": "array",
+                          "items": {
+                            "$ref": "#/components/schemas/plan"
+                          }
+                        }
+                      ]
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {
+                        "pagination": {
+                          "$ref": "#/components/schemas/Pagination"
+                        },
+                        "taskId": {
+                          "type": "string"
+                        }
+                      }
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "403": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "404": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "409": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "410": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "422": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "429": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "500": {
+            "$ref": "#/components/responses/ProblemDetails"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          },
+          {
+            "browserUserCookie": []
+          }
+        ],
+        "x-permission": "user",
+        "x-legacy-path": "/api/v1/user/plan/fetch",
+        "description": "Requires an active session. Order and ticket identifiers are checked against the authenticated owner. Unauthenticated: 401; banned account: 403.",
+        "x-runtime": {
+          "input": {
+            "planId": "id"
+          },
+          "output": "flex:plan",
+          "role": "user",
+          "status": 200,
+          "raw": false,
+          "bindings": {},
+          "key": "User/PlanController@fetch"
+        },
+        "x-legacy-entry": {
+          "legacy": "user/plan/fetch",
+          "legacyMethod": "GET",
+          "action": "App\\Http\\Controllers\\V1\\User\\PlanController@fetch",
+          "parameters": [
+            {
+              "name": "request",
+              "type": "Illuminate\\Http\\Request",
+              "optional": false
+            }
+          ],
+          "middleware": [],
+          "scope": "user"
+        },
+        "x-browser-aliases": {
+          "routes": [
+            "user/plan/fetch"
+          ],
+          "methodRoutes": [
+            "GET user/plan/fetch"
+          ]
+        }
+      }
+    },
+    "/payment-methods/{paymentId}/public-key": {
+      "get": {
+        "operationId": "getPaymentMethodsPaymentIdPublicKey",
+        "tags": [
+          "user"
+        ],
+        "summary": "GET payment-methods/{paymentId}/public-key",
+        "parameters": [
+          {
+            "name": "paymentId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "$ref": "#/components/parameters/HeaderAcceptLanguage"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "headers": {
+              "X-Request-ID": {
+                "$ref": "#/components/headers/XRequestID"
+              },
+              "Content-Language": {
+                "$ref": "#/components/headers/XRequestID"
+              },
+              "Cache-Control": {
+                "$ref": "#/components/headers/PrivateNoStore"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/scalar"
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {
+                        "pagination": {
+                          "$ref": "#/components/schemas/Pagination"
+                        },
+                        "taskId": {
+                          "type": "string"
+                        }
+                      }
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "403": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "404": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "409": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "410": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "422": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "429": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "500": {
+            "$ref": "#/components/responses/ProblemDetails"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          },
+          {
+            "browserUserCookie": []
+          }
+        ],
+        "x-permission": "user",
+        "x-legacy-path": "/api/v1/user/comm/getStripePublicKey",
+        "description": "Requires an active session. Order and ticket identifiers are checked against the authenticated owner. Unauthenticated: 401; banned account: 403.",
+        "x-runtime": {
+          "input": {},
+          "output": "scalar",
+          "role": "user",
+          "status": 200,
+          "raw": false,
+          "bindings": {
+            "paymentId": "id"
+          },
+          "key": "User/CommController@getStripePublicKey"
+        },
+        "x-legacy-entry": {
+          "legacy": "user/comm/getStripePublicKey",
+          "legacyMethod": "POST",
+          "action": "App\\Http\\Controllers\\V1\\User\\CommController@getStripePublicKey",
+          "parameters": [
+            {
+              "name": "request",
+              "type": "Illuminate\\Http\\Request",
+              "optional": false
+            }
+          ],
+          "middleware": [],
+          "scope": "user"
+        },
+        "x-browser-aliases": {
+          "routes": [
+            "user/comm/getStripePublicKey"
+          ],
+          "methodRoutes": [
+            "POST user/comm/getStripePublicKey"
+          ]
+        }
+      }
+    },
+    "/plans/{planId}": {
+      "get": {
+        "operationId": "getPlansPlanId",
+        "tags": [
+          "user"
+        ],
+        "summary": "GET plans/{planId}",
+        "parameters": [
+          {
+            "name": "planId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "$ref": "#/components/parameters/HeaderAcceptLanguage"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "headers": {
+              "X-Request-ID": {
+                "$ref": "#/components/headers/XRequestID"
+              },
+              "Content-Language": {
+                "$ref": "#/components/headers/XRequestID"
+              },
+              "Cache-Control": {
+                "$ref": "#/components/headers/PrivateNoStore"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "oneOf": [
+                        {
+                          "$ref": "#/components/schemas/plan"
+                        },
+                        {
+                          "type": "array",
+                          "items": {
+                            "$ref": "#/components/schemas/plan"
+                          }
+                        }
+                      ]
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {
+                        "pagination": {
+                          "$ref": "#/components/schemas/Pagination"
+                        },
+                        "taskId": {
+                          "type": "string"
+                        }
+                      }
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "403": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "404": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "409": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "410": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "422": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "429": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "500": {
+            "$ref": "#/components/responses/ProblemDetails"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          },
+          {
+            "browserUserCookie": []
+          }
+        ],
+        "x-permission": "user",
+        "x-legacy-path": "/api/v1/user/plan/fetch",
+        "description": "Requires an active session. Order and ticket identifiers are checked against the authenticated owner. Unauthenticated: 401; banned account: 403.",
+        "x-runtime": {
+          "input": {},
+          "output": "flex:plan",
+          "role": "user",
+          "status": 200,
+          "raw": false,
+          "bindings": {
+            "planId": "id"
+          },
+          "key": "User/PlanController@fetch"
+        },
+        "x-legacy-entry": {
+          "legacy": "user/plan/fetch",
+          "legacyMethod": "GET",
+          "action": "App\\Http\\Controllers\\V1\\User\\PlanController@fetch",
+          "parameters": [
+            {
+              "name": "request",
+              "type": "Illuminate\\Http\\Request",
+              "optional": false
+            }
+          ],
+          "middleware": [],
+          "scope": "user",
+          "legacyQuery": {
+            "id": "resourceId"
+          }
+        },
+        "x-browser-aliases": {
+          "details": [
+            "user/plan/fetch"
+          ]
+        }
+      }
+    },
+    "/me/coupons": {
+      "get": {
+        "operationId": "getMeCoupons",
+        "tags": [
+          "user"
+        ],
+        "summary": "GET /me/coupons",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/HeaderAcceptLanguage"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "headers": {
+              "X-Request-ID": {
+                "$ref": "#/components/headers/XRequestID"
+              },
+              "Content-Language": {
+                "$ref": "#/components/headers/XRequestID"
+              },
+              "Cache-Control": {
+                "$ref": "#/components/headers/PrivateNoStore"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "maxItems": 100,
+                      "items": {
+                        "$ref": "#/components/schemas/walletCoupon"
+                      }
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {
+                        "pagination": {
+                          "$ref": "#/components/schemas/Pagination"
+                        },
+                        "taskId": {
+                          "type": "string"
+                        }
+                      }
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "403": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "404": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "409": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "410": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "422": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "429": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "500": {
+            "$ref": "#/components/responses/ProblemDetails"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          },
+          {
+            "browserUserCookie": []
+          }
+        ],
+        "x-permission": "user",
+        "description": "Authenticated coupon wallet. Claims reserve inventory atomically, once per account per template. Issued terms are immutable; order cancellation releases the reservation.",
+        "x-runtime": {
+          "key": "User/CouponController@getMeCoupons",
+          "role": "user",
+          "input": {},
+          "bindings": {},
+          "output": "couponWallet",
+          "raw": false
+        },
+        "x-browser-aliases": {
+          "routes": [
+            "user/coupon/wallet"
+          ]
+        }
+      }
+    },
+    "/me/coupon-offers": {
+      "get": {
+        "operationId": "getMeCouponOffers",
+        "tags": [
+          "user"
+        ],
+        "summary": "GET /me/coupon-offers",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/HeaderAcceptLanguage"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "headers": {
+              "X-Request-ID": {
+                "$ref": "#/components/headers/XRequestID"
+              },
+              "Content-Language": {
+                "$ref": "#/components/headers/XRequestID"
+              },
+              "Cache-Control": {
+                "$ref": "#/components/headers/PrivateNoStore"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "maxItems": 100,
+                      "items": {
+                        "$ref": "#/components/schemas/couponOffer"
+                      }
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {
+                        "pagination": {
+                          "$ref": "#/components/schemas/Pagination"
+                        },
+                        "taskId": {
+                          "type": "string"
+                        }
+                      }
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "403": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "404": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "409": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "410": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "422": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "429": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "500": {
+            "$ref": "#/components/responses/ProblemDetails"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          },
+          {
+            "browserUserCookie": []
+          }
+        ],
+        "x-permission": "user",
+        "description": "Authenticated coupon wallet. Claims reserve inventory atomically, once per account per template. Issued terms are immutable; order cancellation releases the reservation.",
+        "x-runtime": {
+          "key": "User/CouponController@getMeCouponOffers",
+          "role": "user",
+          "input": {},
+          "bindings": {},
+          "output": "couponOffers",
+          "raw": false
+        },
+        "x-browser-aliases": {
+          "routes": [
+            "user/coupon/offers"
+          ]
+        }
+      }
+    },
+    "/me/coupon-claims": {
+      "post": {
+        "operationId": "postMeCouponClaims",
+        "tags": [
+          "user"
+        ],
+        "summary": "POST /me/coupon-claims",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/HeaderAcceptLanguage"
+          }
+        ],
+        "responses": {
+          "401": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "403": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "404": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "409": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "410": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "422": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "429": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "500": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "201": {
+            "description": "Success",
+            "headers": {
+              "X-Request-ID": {
+                "$ref": "#/components/headers/XRequestID"
+              },
+              "Content-Language": {
+                "$ref": "#/components/headers/XRequestID"
+              },
+              "Cache-Control": {
+                "$ref": "#/components/headers/PrivateNoStore"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "integer"
+                        }
+                      },
+                      "required": [
+                        "id"
+                      ]
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {
+                        "pagination": {
+                          "$ref": "#/components/schemas/Pagination"
+                        },
+                        "taskId": {
+                          "type": "string"
+                        }
+                      }
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          },
+          {
+            "browserUserCookie": []
+          }
+        ],
+        "x-permission": "user",
+        "description": "Authenticated coupon wallet. Claims reserve inventory atomically, once per account per template. Issued terms are immutable; order cancellation releases the reservation.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/postMeCouponClaimsInput"
+              }
+            }
+          }
+        },
+        "x-runtime": {
+          "key": "User/CouponController@postMeCouponClaims",
+          "role": "user",
+          "input": {
+            "couponId": "coupon_id"
+          },
+          "bindings": {},
+          "output": "couponClaim",
+          "raw": false
+        },
+        "x-browser-aliases": {
+          "routes": [
+            "user/coupon/claim"
+          ]
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "plan": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int64",
+            "nullable": true,
+            "x-runtime-field": [
+              "id",
+              "integer"
+            ]
+          },
+          "name": {
+            "type": "string",
+            "nullable": true,
+            "x-runtime-field": [
+              "name"
+            ]
+          },
+          "description": {
+            "type": "string",
+            "nullable": true,
+            "x-runtime-field": [
+              "content"
+            ]
+          },
+          "quotaBytes": {
+            "type": "integer",
+            "format": "int64",
+            "nullable": true,
+            "description": "Integer bytes.",
+            "x-runtime-field": [
+              "transfer_enable",
+              "gb"
+            ]
+          },
+          "speedLimitMbps": {
+            "type": "number",
+            "nullable": true,
+            "x-runtime-field": [
+              "speed_limit",
+              "number"
+            ]
+          },
+          "deviceLimit": {
+            "type": "integer",
+            "format": "int64",
+            "nullable": true,
+            "x-runtime-field": [
+              "device_limit",
+              "integer"
+            ]
+          },
+          "remainingCapacity": {
+            "type": "integer",
+            "format": "int64",
+            "nullable": true,
+            "x-runtime-field": [
+              "capacity_limit",
+              "integer"
+            ]
+          },
+          "renewable": {
+            "type": "boolean",
+            "x-runtime-field": [
+              "renew",
+              "boolean"
+            ]
+          },
+          "monthlyPrice": {
+            "type": "integer",
+            "format": "int64",
+            "nullable": true,
+            "description": "Integer minor currency units; currency is declared on the resource. Null prices are unavailable.",
+            "x-runtime-field": [
+              "month_price",
+              "integer"
+            ]
+          },
+          "quarterlyPrice": {
+            "type": "integer",
+            "format": "int64",
+            "nullable": true,
+            "description": "Integer minor currency units; currency is declared on the resource. Null prices are unavailable.",
+            "x-runtime-field": [
+              "quarter_price",
+              "integer"
+            ]
+          },
+          "semiannualPrice": {
+            "type": "integer",
+            "format": "int64",
+            "nullable": true,
+            "description": "Integer minor currency units; currency is declared on the resource. Null prices are unavailable.",
+            "x-runtime-field": [
+              "half_year_price",
+              "integer"
+            ]
+          },
+          "annualPrice": {
+            "type": "integer",
+            "format": "int64",
+            "nullable": true,
+            "description": "Integer minor currency units; currency is declared on the resource. Null prices are unavailable.",
+            "x-runtime-field": [
+              "year_price",
+              "integer"
+            ]
+          },
+          "biennialPrice": {
+            "type": "integer",
+            "format": "int64",
+            "nullable": true,
+            "description": "Integer minor currency units; currency is declared on the resource. Null prices are unavailable.",
+            "x-runtime-field": [
+              "two_year_price",
+              "integer"
+            ]
+          },
+          "triennialPrice": {
+            "type": "integer",
+            "format": "int64",
+            "nullable": true,
+            "description": "Integer minor currency units; currency is declared on the resource. Null prices are unavailable.",
+            "x-runtime-field": [
+              "three_year_price",
+              "integer"
+            ]
+          },
+          "creditPrice": {
+            "type": "integer",
+            "format": "int64",
+            "nullable": true,
+            "description": "Integer minor currency units; currency is declared on the resource. Null prices are unavailable.",
+            "x-runtime-field": [
+              "onetime_price",
+              "integer"
+            ]
+          },
+          "resetPrice": {
+            "type": "integer",
+            "format": "int64",
+            "nullable": true,
+            "description": "Integer minor currency units; currency is declared on the resource. Null prices are unavailable.",
+            "x-runtime-field": [
+              "reset_price",
+              "integer"
+            ]
+          },
+          "resetMethod": {
+            "type": "number",
+            "nullable": true,
+            "x-runtime-field": [
+              "reset_traffic_method",
+              "number"
+            ]
+          },
+          "currency": {
+            "type": "string",
+            "example": "CNY",
+            "enum": [
+              "CNY",
+              "USD"
+            ],
+            "description": "Immutable monetary currency. Amounts use integer minor units. Historical assets remain CNY.",
+            "x-runtime-field": [
+              "currency"
+            ]
+          }
+        },
+        "additionalProperties": false,
+        "x-runtime-resource": true
+      },
+      "creditSnapshot": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "nullable": true,
+            "x-runtime-field": [
+              "name"
+            ]
+          }
+        },
+        "additionalProperties": false,
+        "x-runtime-resource": true
+      },
+      "order": {
+        "type": "object",
+        "properties": {
+          "orderNumber": {
+            "type": "string",
+            "nullable": true,
+            "x-runtime-field": [
+              "trade_no"
+            ]
+          },
+          "planId": {
+            "type": "integer",
+            "format": "int64",
+            "nullable": true,
+            "x-runtime-field": [
+              "plan_id",
+              "integer"
+            ]
+          },
+          "billingPeriod": {
+            "type": "string",
+            "enum": [
+              "monthly",
+              "quarterly",
+              "semiannual",
+              "annual",
+              "biennial",
+              "triennial",
+              "credits",
+              "reset",
+              "deposit",
+              "unknown"
+            ],
+            "x-runtime-field": [
+              "period",
+              "period"
+            ]
+          },
+          "totalAmount": {
+            "type": "integer",
+            "format": "int64",
+            "nullable": true,
+            "description": "Integer minor currency units; currency is declared on the resource. Null prices are unavailable.",
+            "x-runtime-field": [
+              "total_amount",
+              "integer"
+            ]
+          },
+          "discountAmount": {
+            "type": "integer",
+            "format": "int64",
+            "nullable": true,
+            "description": "Integer minor currency units; currency is declared on the resource. Null prices are unavailable.",
+            "x-runtime-field": [
+              "discount_amount",
+              "integer"
+            ]
+          },
+          "creditOffset": {
+            "type": "integer",
+            "format": "int64",
+            "nullable": true,
+            "description": "Integer minor currency units; currency is declared on the resource. Null prices are unavailable.",
+            "x-runtime-field": [
+              "surplus_amount",
+              "integer"
+            ]
+          },
+          "refundAmount": {
+            "type": "integer",
+            "format": "int64",
+            "nullable": true,
+            "description": "Integer minor currency units; currency is declared on the resource. Null prices are unavailable.",
+            "x-runtime-field": [
+              "refund_amount",
+              "integer"
+            ]
+          },
+          "balanceOffset": {
+            "type": "integer",
+            "format": "int64",
+            "nullable": true,
+            "description": "Integer minor currency units; currency is declared on the resource. Null prices are unavailable.",
+            "x-runtime-field": [
+              "balance_amount",
+              "integer"
+            ]
+          },
+          "handlingAmount": {
+            "type": "integer",
+            "format": "int64",
+            "nullable": true,
+            "description": "Integer minor currency units; currency is declared on the resource. Null prices are unavailable.",
+            "x-runtime-field": [
+              "handling_amount",
+              "integer"
+            ]
+          },
+          "paymentId": {
+            "type": "integer",
+            "format": "int64",
+            "nullable": true,
+            "x-runtime-field": [
+              "payment_id",
+              "integer"
+            ]
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "unpaid",
+              "processing",
+              "cancelled",
+              "completed",
+              "discounted",
+              "unknown"
+            ],
+            "x-runtime-field": [
+              "status",
+              "orderStatus"
+            ]
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "new",
+              "renewal",
+              "switch",
+              "reset",
+              "other"
+            ],
+            "x-runtime-field": [
+              "type",
+              "orderKind"
+            ]
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true,
+            "x-runtime-field": [
+              "created_at",
+              "time"
+            ]
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true,
+            "x-runtime-field": [
+              "updated_at",
+              "time"
+            ]
+          },
+          "paidAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true,
+            "x-runtime-field": [
+              "paid_at",
+              "time"
+            ]
+          },
+          "creditBytes": {
+            "type": "integer",
+            "format": "int64",
+            "nullable": true,
+            "description": "Integer bytes.",
+            "x-runtime-field": [
+              "credit_bytes",
+              "integer"
+            ]
+          },
+          "plan": {
+            "$ref": "#/components/schemas/plan",
+            "x-runtime-field": [
+              "plan",
+              "object",
+              "plan"
+            ]
+          },
+          "creditedAmount": {
+            "type": "integer",
+            "format": "int64",
+            "nullable": true,
+            "description": "Integer minor currency units; currency is declared on the resource. Null prices are unavailable.",
+            "x-runtime-field": [
+              "get_amount",
+              "integer"
+            ]
+          },
+          "depositBonus": {
+            "type": "integer",
+            "format": "int64",
+            "nullable": true,
+            "description": "Integer minor currency units; currency is declared on the resource. Null prices are unavailable.",
+            "x-runtime-field": [
+              "bounus",
+              "integer"
+            ]
+          },
+          "creditSnapshot": {
+            "$ref": "#/components/schemas/creditSnapshot",
+            "x-runtime-field": [
+              "credit_snapshot",
+              "object",
+              "creditSnapshot"
+            ]
+          },
+          "currency": {
+            "type": "string",
+            "example": "CNY",
+            "enum": [
+              "CNY",
+              "USD"
+            ],
+            "description": "Immutable monetary currency. Amounts use integer minor units. Historical assets remain CNY.",
+            "x-runtime-field": [
+              "currency"
+            ]
+          },
+          "paymentAmount": {
+            "type": "integer",
+            "nullable": true,
+            "x-runtime-field": [
+              "payment_amount",
+              "integer"
+            ]
+          },
+          "paymentCurrency": {
+            "type": "string",
+            "enum": [
+              "CNY",
+              "USD"
+            ],
+            "nullable": true,
+            "x-runtime-field": [
+              "payment_currency",
+              "string"
+            ]
+          }
+        },
+        "additionalProperties": false,
+        "x-runtime-resource": true
+      },
+      "paymentMethod": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int64",
+            "nullable": true,
+            "x-runtime-field": [
+              "id",
+              "integer"
+            ]
+          },
+          "name": {
+            "type": "string",
+            "nullable": true,
+            "x-runtime-field": [
+              "name"
+            ]
+          },
+          "provider": {
+            "type": "string",
+            "nullable": true,
+            "x-runtime-field": [
+              "payment"
+            ]
+          },
+          "iconUrl": {
+            "type": "string",
+            "nullable": true,
+            "x-runtime-field": [
+              "icon"
+            ]
+          },
+          "fixedFee": {
+            "type": "integer",
+            "format": "int64",
+            "nullable": true,
+            "description": "Integer minor currency units; currency is declared on the resource. Null prices are unavailable.",
+            "x-runtime-field": [
+              "handling_fee_fixed",
+              "integer"
+            ]
+          },
+          "percentageFee": {
+            "type": "number",
+            "nullable": true,
+            "x-runtime-field": [
+              "handling_fee_percent",
+              "number"
+            ]
+          },
+          "currency": {
+            "type": "string",
+            "example": "CNY",
+            "enum": [
+              "CNY",
+              "USD"
+            ],
+            "description": "Immutable monetary currency. Amounts use integer minor units. Historical assets remain CNY.",
+            "x-runtime-field": [
+              "currency"
+            ]
+          },
+          "category": {
+            "type": "string",
+            "nullable": true,
+            "x-runtime-field": [
+              "category"
+            ]
+          },
+          "asset": {
+            "type": "string",
+            "nullable": true,
+            "x-runtime-field": [
+              "asset"
+            ]
+          },
+          "assetIconUrl": {
+            "type": "string",
+            "nullable": true,
+            "x-runtime-field": [
+              "asset_icon"
+            ]
+          },
+          "network": {
+            "type": "string",
+            "nullable": true,
+            "x-runtime-field": [
+              "network"
+            ]
+          },
+          "networkName": {
+            "type": "string",
+            "nullable": true,
+            "x-runtime-field": [
+              "network_name"
+            ]
+          },
+          "networkIconUrl": {
+            "type": "string",
+            "nullable": true,
+            "x-runtime-field": [
+              "network_icon"
+            ]
+          },
+          "quotedAmount": {
+            "type": "integer",
+            "minimum": 1,
+            "x-runtime-field": [
+              "quoted_amount",
+              "integer"
+            ]
+          },
+          "quotedCurrency": {
+            "type": "string",
+            "enum": [
+              "CNY",
+              "USD"
+            ],
+            "x-runtime-field": [
+              "quoted_currency",
+              "string"
+            ]
+          },
+          "quotedFee": {
+            "type": "integer",
+            "minimum": 0,
+            "x-runtime-field": [
+              "quoted_fee",
+              "integer"
+            ]
+          },
+          "rateTime": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true,
+            "x-runtime-field": [
+              "rate_time",
+              "time"
+            ]
+          }
+        },
+        "additionalProperties": false,
+        "x-runtime-resource": true
+      },
+      "credit": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int64",
+            "nullable": true,
+            "x-runtime-field": [
+              "id",
+              "integer"
+            ]
+          },
+          "name": {
+            "type": "string",
+            "nullable": true,
+            "x-runtime-field": [
+              "name"
+            ]
+          },
+          "bytes": {
+            "type": "integer",
+            "format": "int64",
+            "nullable": true,
+            "description": "Integer bytes.",
+            "x-runtime-field": [
+              "bytes",
+              "integer"
+            ]
+          },
+          "price": {
+            "type": "integer",
+            "format": "int64",
+            "nullable": true,
+            "description": "Integer minor currency units; currency is declared on the resource. Null prices are unavailable.",
+            "x-runtime-field": [
+              "price",
+              "integer"
+            ]
+          },
+          "currency": {
+            "type": "string",
+            "example": "CNY",
+            "enum": [
+              "CNY",
+              "USD"
+            ],
+            "description": "Immutable monetary currency. Amounts use integer minor units. Historical assets remain CNY.",
+            "x-runtime-field": [
+              "currency"
+            ]
+          }
+        },
+        "additionalProperties": false,
+        "x-runtime-resource": true
+      },
+      "orderCreated": {
+        "type": "object",
+        "properties": {
+          "orderNumber": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "orderNumber"
+        ]
+      },
+      "orderStatus": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "unpaid",
+              "processing",
+              "cancelled",
+              "completed",
+              "discounted",
+              "unknown"
+            ]
+          }
+        },
+        "required": [
+          "status"
+        ]
+      },
+      "payment": {
+        "type": "object",
+        "properties": {
+          "kind": {
+            "type": "string",
+            "enum": [
+              "confirmed",
+              "qr",
+              "redirect",
+              "pending"
+            ]
+          },
+          "value": {
+            "oneOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "object"
+              }
+            ],
+            "nullable": true
+          }
+        },
+        "required": [
+          "kind",
+          "value"
+        ]
+      },
+      "getWebhooksPaymentsProviderEndpointIdInput": {
+        "type": "object",
+        "properties": {}
+      },
+      "postMeGiftCardRedemptionsInput": {
+        "type": "object",
+        "properties": {
+          "giftCardCode": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "giftCardCode"
+        ]
+      },
+      "postMeOrdersInput": {
+        "type": "object",
+        "properties": {
+          "planId": {
+            "type": "integer"
+          },
+          "replacementOrderNumber": {
+            "type": "string"
+          },
+          "billingPeriod": {
+            "type": "string",
+            "enum": [
+              "monthly",
+              "quarterly",
+              "semiannual",
+              "annual",
+              "biennial",
+              "triennial",
+              "credits",
+              "reset",
+              "deposit"
+            ]
+          },
+          "depositAmount": {
+            "type": "integer"
+          },
+          "walletCouponId": {
+            "type": "integer",
+            "minimum": 1,
+            "description": "Owned coupon wallet entry. Coupons must be selected from the wallet."
+          }
+        },
+        "required": [
+          "planId",
+          "billingPeriod"
+        ]
+      },
+      "postMeOrdersOrderNumberPaymentsInput": {
+        "type": "object",
+        "properties": {
+          "paymentMethodId": {
+            "type": "integer"
+          },
+          "paymentToken": {
+            "type": "string"
+          },
+          "expectedPaymentAmount": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "expectedPaymentCurrency": {
+            "type": "string",
+            "enum": [
+              "CNY",
+              "USD"
+            ]
+          }
+        },
+        "required": [
+          "paymentMethodId"
+        ]
+      },
+      "getMeOrdersOrderNumberStatusInput": {
+        "type": "object",
+        "properties": {}
+      },
+      "getMeOrdersOrderNumberInput": {
+        "type": "object",
+        "properties": {}
+      },
+      "getMeOrdersInput": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "unpaid",
+              "processing",
+              "cancelled",
+              "completed",
+              "discounted"
+            ]
+          },
+          "page": {
+            "type": "integer"
+          },
+          "pageSize": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 100,
+            "default": 20
+          }
+        }
+      },
+      "getPaymentMethodsInput": {
+        "type": "object",
+        "properties": {}
+      },
+      "postMeOrdersOrderNumberCancellationInput": {
+        "type": "object",
+        "properties": {}
+      },
+      "getCreditPackagesInput": {
+        "type": "object",
+        "properties": {}
+      },
+      "getPlansInput": {
+        "type": "object",
+        "properties": {
+          "planId": {
+            "type": "integer"
+          }
+        }
+      },
+      "getPaymentMethodsPaymentIdPublicKeyInput": {
+        "type": "object",
+        "properties": {}
+      },
+      "getPlansPlanIdInput": {
+        "type": "object",
+        "properties": {}
+      },
+      "couponOffer": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer"
+          },
+          "name": {
+            "type": "string"
+          },
+          "discountPercent": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 100
+          },
+          "expiresAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "planIds": {
+            "type": "array",
+            "items": {
+              "type": "integer"
+            }
+          },
+          "billingPeriods": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "activityTitle": {
+            "type": "string",
+            "description": "Localized activity title with default copy fallback."
+          },
+          "activityDescription": {
+            "type": "string",
+            "description": "Localized plain text activity description."
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "discountPercent",
+          "expiresAt",
+          "planIds",
+          "billingPeriods",
+          "activityTitle",
+          "activityDescription"
+        ],
+        "additionalProperties": false
+      },
+      "walletCoupon": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer"
+          },
+          "name": {
+            "type": "string"
+          },
+          "discountPercent": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 100
+          },
+          "expiresAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "planIds": {
+            "type": "array",
+            "items": {
+              "type": "integer"
+            }
+          },
+          "billingPeriods": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "available",
+              "expired",
+              "reservedOrUsed"
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "discountPercent",
+          "expiresAt",
+          "planIds",
+          "billingPeriods",
+          "status"
+        ],
+        "additionalProperties": false
+      },
+      "postMeCouponClaimsInput": {
+        "type": "object",
+        "properties": {
+          "couponId": {
+            "type": "integer",
+            "minimum": 1
+          }
+        },
+        "required": [
+          "couponId"
+        ],
+        "additionalProperties": false
+      }
+    }
+  }
+}

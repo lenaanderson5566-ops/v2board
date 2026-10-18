@@ -36,3 +36,5 @@ workerman.log
 /storage/app/fastai-installers/
 /storage/app/test-organization/
 /storage/app/ui-validation/
+
+/scripts/__pycache__/

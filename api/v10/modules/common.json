@@ -1,0 +1,446 @@
+{
+  "paths": {},
+  "components": {
+    "schemas": {
+      "task": {
+        "type": "object",
+        "properties": {
+          "taskId": {
+            "type": "string",
+            "nullable": true,
+            "x-runtime-field": [
+              "task_id"
+            ]
+          },
+          "status": {
+            "type": "string",
+            "nullable": true,
+            "x-runtime-field": [
+              "status"
+            ]
+          }
+        },
+        "additionalProperties": false,
+        "x-runtime-resource": true
+      },
+      "scalar": {
+        "oneOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "boolean"
+          }
+        ],
+        "nullable": true
+      },
+      "strings": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        }
+      },
+      "Pagination": {
+        "type": "object",
+        "properties": {
+          "page": {
+            "type": "integer"
+          },
+          "pageSize": {
+            "type": "integer"
+          },
+          "total": {
+            "type": "integer"
+          },
+          "totalPages": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "page",
+          "pageSize",
+          "total",
+          "totalPages"
+        ]
+      },
+      "Problem": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string",
+            "description": "Human-readable summary localized using Accept-Language; use code for programmatic handling."
+          },
+          "status": {
+            "type": "integer"
+          },
+          "detail": {
+            "type": "string",
+            "description": "Localized, safe explanation. Does not contain stack traces or internal paths."
+          },
+          "code": {
+            "type": "string"
+          },
+          "requestId": {
+            "type": "string"
+          },
+          "errors": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          }
+        },
+        "required": [
+          "type",
+          "title",
+          "status",
+          "detail",
+          "code",
+          "requestId"
+        ]
+      }
+    },
+    "securitySchemes": {
+      "bearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "JWT"
+      },
+      "browserUserCookie": {
+        "type": "apiKey",
+        "in": "cookie",
+        "name": "__Host-fastdog_user",
+        "description": "Scoped HttpOnly session; browser mutations also require X-Browser-Client, X-CSRF-Token and an allowed Origin."
+      },
+      "nodeBearer": {
+        "type": "http",
+        "scheme": "bearer",
+        "description": "Panel server_token for V2Box machine API. Query tokens are not accepted."
+      },
+      "nodeReportBearer": {
+        "type": "http",
+        "scheme": "bearer",
+        "description": "Per-node DDNS report key. Stored hashed; cannot call other machine endpoints."
+      }
+    },
+    "headers": {
+      "RetryAfter": {
+        "description": "Seconds until retry is permitted.",
+        "schema": {
+          "type": "integer",
+          "minimum": 1
+        }
+      },
+      "XRequestID": {
+        "schema": {
+          "type": "string"
+        }
+      },
+      "PrivateNoStore": {
+        "schema": {
+          "type": "string",
+          "example": "private, no-store"
+        },
+        "description": "Authenticated user and authentication responses must not be stored."
+      }
+    },
+    "parameters": {
+      "PathSubscriptionToken": {
+        "name": "subscriptionToken",
+        "in": "path",
+        "required": true,
+        "schema": {
+          "type": "string"
+        }
+      },
+      "HeaderAcceptLanguage": {
+        "name": "Accept-Language",
+        "in": "header",
+        "schema": {
+          "type": "string"
+        },
+        "description": "Supported language tags with optional quality weights."
+      },
+      "QueryFormat": {
+        "name": "format",
+        "in": "query",
+        "schema": {
+          "type": "string",
+          "enum": [
+            "clash-verge",
+            "flclash",
+            "sing-box",
+            "shadowrocket",
+            "surge",
+            "quantumult-x",
+            "stash",
+            "mihomo",
+            "clash-nyanpasu",
+            "clash-for-android",
+            "clash-for-windows",
+            "clashx",
+            "loon",
+            "surfboard",
+            "sagernet",
+            "passwall",
+            "ssr-plus",
+            "shadowsocks",
+            "v2rayn",
+            "v2rayng",
+            "v2raytun",
+            "clash-party",
+            "throne",
+            "nekobox",
+            "husi"
+          ]
+        }
+      },
+      "QueryLanguage": {
+        "name": "language",
+        "in": "query",
+        "schema": {
+          "type": "string"
+        }
+      },
+      "PathProvider": {
+        "name": "provider",
+        "in": "path",
+        "required": true,
+        "schema": {
+          "type": "string"
+        }
+      },
+      "PathEndpointId": {
+        "name": "endpointId",
+        "in": "path",
+        "required": true,
+        "schema": {
+          "type": "string"
+        }
+      },
+      "QueryPage": {
+        "name": "page",
+        "in": "query",
+        "schema": {
+          "type": "integer"
+        }
+      },
+      "QueryPageSize": {
+        "name": "pageSize",
+        "in": "query",
+        "schema": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 100,
+          "default": 20
+        }
+      },
+      "PathOrderNumber": {
+        "name": "orderNumber",
+        "in": "path",
+        "required": true,
+        "schema": {
+          "type": "string"
+        }
+      },
+      "QueryDays": {
+        "name": "days",
+        "in": "query",
+        "schema": {
+          "type": "integer"
+        }
+      },
+      "PathTicketId": {
+        "name": "ticketId",
+        "in": "path",
+        "required": true,
+        "schema": {
+          "type": "string"
+        }
+      },
+      "HeaderIfNoneMatch": {
+        "name": "If-None-Match",
+        "in": "header",
+        "schema": {
+          "type": "string"
+        }
+      },
+      "QueryKeyword": {
+        "name": "keyword",
+        "in": "query",
+        "schema": {
+          "type": "string"
+        }
+      },
+      "QueryPlatform": {
+        "name": "platform",
+        "in": "query",
+        "schema": {
+          "type": "string",
+          "enum": [
+            "windows",
+            "android",
+            "macos",
+            "linux",
+            "ios"
+          ]
+        },
+        "required": true
+      },
+      "PathAuthorizationId": {
+        "name": "authorizationId",
+        "in": "path",
+        "required": true,
+        "schema": {
+          "type": "string"
+        }
+      },
+      "HeaderXNodeType": {
+        "name": "X-Node-Type",
+        "in": "header",
+        "required": true,
+        "schema": {
+          "type": "string",
+          "enum": [
+            "v2box"
+          ]
+        }
+      },
+      "HeaderXNodeID": {
+        "name": "X-Node-ID",
+        "in": "header",
+        "required": true,
+        "schema": {
+          "type": "integer",
+          "minimum": 1
+        }
+      },
+      "HeaderXNodeCapabilities": {
+        "name": "X-Node-Capabilities",
+        "in": "header",
+        "schema": {
+          "type": "string"
+        },
+        "description": "Comma-separated features. native-routing-v1 is required when singBox is configured."
+      },
+      "PathToken": {
+        "name": "token",
+        "in": "path",
+        "required": true,
+        "schema": {
+          "type": "string"
+        }
+      }
+    },
+    "responses": {
+      "SubscriptionFormatInvalid": {
+        "description": "General, unknown or incompatible subscription format.",
+        "content": {
+          "application/problem+json": {
+            "schema": {
+              "$ref": "#/components/schemas/Problem"
+            }
+          }
+        }
+      },
+      "SubscriptionRateLimited": {
+        "description": "Per-IP or shared per-account subscription rate limit exceeded.",
+        "headers": {
+          "Retry-After": {
+            "$ref": "#/components/headers/RetryAfter"
+          }
+        },
+        "content": {
+          "application/problem+json": {
+            "schema": {
+              "$ref": "#/components/schemas/Problem"
+            }
+          }
+        }
+      },
+      "SubscriptionClientForbidden": {
+        "description": "Subscription UA is unknown or the client is not allowed subscription access.",
+        "content": {
+          "application/problem+json": {
+            "schema": {
+              "$ref": "#/components/schemas/Problem"
+            }
+          }
+        }
+      },
+      "ProblemDetails": {
+        "description": "Problem details",
+        "content": {
+          "application/problem+json": {
+            "schema": {
+              "$ref": "#/components/schemas/Problem"
+            }
+          }
+        }
+      },
+      "NodeAPIProblem": {
+        "description": "Node API problem",
+        "content": {
+          "application/problem+json": {
+            "schema": {
+              "type": "object",
+              "properties": {
+                "type": {
+                  "type": "string"
+                },
+                "title": {
+                  "type": "string"
+                },
+                "status": {
+                  "type": "integer",
+                  "minimum": 0
+                },
+                "code": {
+                  "type": "string"
+                },
+                "requestId": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "type",
+                "title",
+                "status",
+                "code",
+                "requestId"
+              ],
+              "additionalProperties": false
+            }
+          }
+        }
+      },
+      "InvalidSignature": {
+        "description": "Invalid signature"
+      },
+      "InvalidPayload": {
+        "description": "Invalid payload"
+      },
+      "AuthenticationRequired": {
+        "description": "Authentication required"
+      },
+      "VerificationNotAllowed": {
+        "description": "Verification not allowed"
+      },
+      "ExpiredOrStaleChallenge": {
+        "description": "Expired or stale challenge"
+      },
+      "InvalidVerification": {
+        "description": "Invalid verification"
+      },
+      "TooManyAttempts": {
+        "description": "Too many attempts"
+      }
+    }
+  }
+}

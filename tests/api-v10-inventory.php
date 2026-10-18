@@ -6,6 +6,28 @@ $assert = \Tests\Support\Assertions::counter($checks);
 $entries=json_decode(file_get_contents(base_path('docs/api-v10/endpoints.json')),true);
 $openapi=json_decode(file_get_contents(base_path('docs/api-v10/openapi.json')),true);
 $source=json_decode(file_get_contents(base_path('api/v10/openapi.json')),true);
+$source['paths']=[]; $source['components']=[];
+foreach ($source['x-modules'] as $modulePath) {
+    $module=json_decode(file_get_contents(base_path('api/v10/'.$modulePath)),true);
+    foreach ($module['paths'] as $path=>$definition) {
+        $assert(!isset($source['paths'][$path]), 'Duplicate source path: '.$path);
+        $source['paths'][$path]=$definition;
+    }
+    foreach ($module['components'] as $category=>$definitions) foreach ($definitions as $name=>$definition) {
+        $assert(!isset($source['components'][$category][$name]), 'Duplicate source component: '.$category.'/'.$name);
+        $source['components'][$category][$name]=$definition;
+    }
+}
+$resolve=function(array $value) use ($openapi): array {
+    $seen=[];
+    while (isset($value['$ref'])) {
+        $ref=$value['$ref'];
+        if (!str_starts_with($ref, '#/') || isset($seen[$ref])) throw new RuntimeException('Invalid local reference: '.$ref);
+        $seen[$ref]=true; $value=$openapi;
+        foreach (explode('/', substr($ref,2)) as $part) $value=$value[str_replace(['~1','~0'], ['/','~'], $part)];
+    }
+    return $value;
+};
 $runtime=App\Http\Resources\V10\Resource::contracts();
 $browser=json_decode(file_get_contents(base_path('frontend/src/shared/v10-contracts.json')),true);
 $assert($runtime['schemas']===$browser['schemas'], 'Browser and server projections must share one generated source');
@@ -61,7 +83,9 @@ foreach (App\Http\Resources\V10\Resource::contracts()['endpoints'] as $contract)
     $operation=$openapi['paths']['/'.$contract['path']][strtolower($contract['method'])];
     foreach ($operation['responses'] as $status=>$response) {
         if (!str_starts_with((string)$status,'2')) continue;
-        $assert(($response['headers']['Cache-Control']['schema']['example']??'')==='private, no-store','Authenticated response forbids storage: '.$contract['path']);
+        $response=$resolve($response);
+        $header=$resolve($response['headers']['Cache-Control']??[]);
+        $assert(($header['schema']['example']??'')==='private, no-store','Authenticated response forbids storage: '.$contract['path']);
     }
 }
 $assert(!isset($openapi['components']['schemas']['postMeOrdersInput']['properties']['couponCode']), 'Retired code input must not be advertised');

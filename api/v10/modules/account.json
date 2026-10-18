@@ -1,0 +1,2266 @@
+{
+  "paths": {
+    "/public/banners": {
+      "get": {
+        "operationId": "getPublicBanners",
+        "tags": [
+          "guest"
+        ],
+        "summary": "GET public/banners",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/HeaderAcceptLanguage"
+          },
+          {
+            "name": "placement",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "headers": {
+              "X-Request-ID": {
+                "$ref": "#/components/headers/XRequestID"
+              },
+              "Content-Language": {
+                "$ref": "#/components/headers/XRequestID"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/banner"
+                      }
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {
+                        "pagination": {
+                          "$ref": "#/components/schemas/Pagination"
+                        },
+                        "taskId": {
+                          "type": "string"
+                        }
+                      }
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "403": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "404": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "409": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "410": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "422": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "429": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "500": {
+            "$ref": "#/components/responses/ProblemDetails"
+          }
+        },
+        "security": [],
+        "x-permission": "public",
+        "x-legacy-path": "/api/v1/guest/banner/fetch",
+        "x-runtime": {
+          "input": {
+            "placement": "placement"
+          },
+          "output": "array:banner",
+          "role": "public",
+          "status": 200,
+          "raw": false,
+          "bindings": {},
+          "key": "Guest/BannerController@fetch"
+        },
+        "x-legacy-entry": {
+          "legacy": "guest/banner/fetch",
+          "legacyMethod": "GET",
+          "action": "App\\Http\\Controllers\\V1\\Guest\\BannerController@fetch",
+          "parameters": [
+            {
+              "name": "request",
+              "type": "Illuminate\\Http\\Request",
+              "optional": false
+            }
+          ],
+          "middleware": [],
+          "scope": "guest"
+        },
+        "x-browser-aliases": {
+          "routes": [
+            "guest/banner/fetch"
+          ],
+          "methodRoutes": [
+            "GET guest/banner/fetch"
+          ]
+        }
+      }
+    },
+    "/public/banner-images/{name}": {
+      "get": {
+        "operationId": "getPublicBannerImagesName",
+        "tags": [
+          "guest"
+        ],
+        "summary": "GET public/banner-images/{name}",
+        "parameters": [
+          {
+            "name": "name",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "$ref": "#/components/parameters/HeaderAcceptLanguage"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "headers": {
+              "X-Request-ID": {
+                "$ref": "#/components/headers/XRequestID"
+              },
+              "Content-Language": {
+                "$ref": "#/components/headers/XRequestID"
+              }
+            },
+            "content": {
+              "application/octet-stream": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            }
+          }
+        },
+        "security": [],
+        "x-permission": "public",
+        "x-legacy-path": "/api/v1/guest/banner/image/{name}",
+        "x-runtime": {
+          "input": {},
+          "output": "scalar",
+          "role": "public",
+          "status": 200,
+          "raw": true,
+          "bindings": {
+            "name": "name"
+          },
+          "key": "Guest/BannerController@image"
+        },
+        "x-legacy-entry": {
+          "legacy": "guest/banner/image/{name}",
+          "legacyMethod": "GET",
+          "action": "App\\Http\\Controllers\\V1\\Guest\\BannerController@image",
+          "parameters": [
+            {
+              "name": "name",
+              "type": null,
+              "optional": false
+            }
+          ],
+          "middleware": [],
+          "scope": "guest"
+        },
+        "x-browser-aliases": {
+          "routes": [
+            "guest/banner/image/{name}"
+          ],
+          "methodRoutes": [
+            "GET guest/banner/image/{name}"
+          ]
+        }
+      }
+    },
+    "/public/settings": {
+      "get": {
+        "operationId": "getPublicSettings",
+        "tags": [
+          "guest"
+        ],
+        "summary": "GET public/settings",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/HeaderAcceptLanguage"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "headers": {
+              "X-Request-ID": {
+                "$ref": "#/components/headers/XRequestID"
+              },
+              "Content-Language": {
+                "$ref": "#/components/headers/XRequestID"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/publicSettings"
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {
+                        "pagination": {
+                          "$ref": "#/components/schemas/Pagination"
+                        },
+                        "taskId": {
+                          "type": "string"
+                        }
+                      }
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "403": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "404": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "409": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "410": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "422": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "429": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "500": {
+            "$ref": "#/components/responses/ProblemDetails"
+          }
+        },
+        "security": [],
+        "x-permission": "public",
+        "x-legacy-path": "/api/v1/guest/comm/config",
+        "x-runtime": {
+          "input": {},
+          "output": "publicSettings",
+          "role": "public",
+          "status": 200,
+          "raw": false,
+          "bindings": {},
+          "key": "Guest/CommController@config"
+        },
+        "x-legacy-entry": {
+          "legacy": "guest/comm/config",
+          "legacyMethod": "GET",
+          "action": "App\\Http\\Controllers\\V1\\Guest\\CommController@config",
+          "parameters": [],
+          "middleware": [],
+          "scope": "guest"
+        },
+        "x-browser-aliases": {
+          "routes": [
+            "guest/comm/config"
+          ],
+          "methodRoutes": [
+            "GET guest/comm/config"
+          ]
+        }
+      }
+    },
+    "/me/download-accounts": {
+      "get": {
+        "operationId": "getMeDownloadAccounts",
+        "tags": [
+          "user"
+        ],
+        "summary": "GET me/download-accounts",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/HeaderAcceptLanguage"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "headers": {
+              "X-Request-ID": {
+                "$ref": "#/components/headers/XRequestID"
+              },
+              "Content-Language": {
+                "$ref": "#/components/headers/XRequestID"
+              },
+              "Cache-Control": {
+                "$ref": "#/components/headers/PrivateNoStore"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/apple"
+                      }
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {
+                        "pagination": {
+                          "$ref": "#/components/schemas/Pagination"
+                        },
+                        "taskId": {
+                          "type": "string"
+                        }
+                      }
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "403": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "404": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "409": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "410": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "422": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "429": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "500": {
+            "$ref": "#/components/responses/ProblemDetails"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          },
+          {
+            "browserUserCookie": []
+          }
+        ],
+        "x-permission": "user",
+        "x-legacy-path": "/api/v1/user/apple-account",
+        "description": "Requires an active session. Order and ticket identifiers are checked against the authenticated owner. Unauthenticated: 401; banned account: 403.",
+        "x-runtime": {
+          "input": {},
+          "output": "array:apple",
+          "role": "user",
+          "status": 200,
+          "raw": false,
+          "bindings": {},
+          "key": "User/AppleAccountController@fetch"
+        },
+        "x-legacy-entry": {
+          "legacy": "user/apple-account",
+          "legacyMethod": "GET",
+          "action": "App\\Http\\Controllers\\V1\\User\\AppleAccountController@fetch",
+          "parameters": [
+            {
+              "name": "request",
+              "type": "Illuminate\\Http\\Request",
+              "optional": false
+            },
+            {
+              "name": "service",
+              "type": "App\\Services\\AppleAccountService",
+              "optional": false
+            }
+          ],
+          "middleware": [
+            "throttle:10,1"
+          ],
+          "scope": "user"
+        },
+        "x-browser-aliases": {
+          "routes": [
+            "user/apple-account"
+          ],
+          "methodRoutes": [
+            "GET user/apple-account"
+          ]
+        }
+      }
+    },
+    "/me/usage-resets": {
+      "get": {
+        "operationId": "getMeUsageResets",
+        "tags": [
+          "user"
+        ],
+        "summary": "GET me/usage-resets",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/HeaderAcceptLanguage"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "headers": {
+              "X-Request-ID": {
+                "$ref": "#/components/headers/XRequestID"
+              },
+              "Content-Language": {
+                "$ref": "#/components/headers/XRequestID"
+              },
+              "Cache-Control": {
+                "$ref": "#/components/headers/PrivateNoStore"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/reset"
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {
+                        "pagination": {
+                          "$ref": "#/components/schemas/Pagination"
+                        },
+                        "taskId": {
+                          "type": "string"
+                        }
+                      }
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "403": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "404": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "409": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "410": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "422": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "429": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "500": {
+            "$ref": "#/components/responses/ProblemDetails"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          },
+          {
+            "browserUserCookie": []
+          }
+        ],
+        "x-permission": "user",
+        "x-legacy-path": "/api/v1/user/usage/reset",
+        "description": "Requires an active session. Order and ticket identifiers are checked against the authenticated owner. Unauthenticated: 401; banned account: 403.",
+        "x-runtime": {
+          "input": {},
+          "output": "reset",
+          "role": "user",
+          "status": 200,
+          "raw": false,
+          "bindings": {},
+          "key": "User/UsageResetController@fetch"
+        },
+        "x-legacy-entry": {
+          "legacy": "user/usage/reset",
+          "legacyMethod": "GET",
+          "action": "App\\Http\\Controllers\\V1\\User\\UsageResetController@fetch",
+          "parameters": [
+            {
+              "name": "request",
+              "type": "Illuminate\\Http\\Request",
+              "optional": false
+            },
+            {
+              "name": "service",
+              "type": "App\\Services\\UsageResetService",
+              "optional": false
+            }
+          ],
+          "middleware": [],
+          "scope": "user"
+        },
+        "x-browser-aliases": {
+          "methodRoutes": [
+            "GET user/usage/reset"
+          ]
+        }
+      }
+    },
+    "/me/usage-resets/consumptions": {
+      "post": {
+        "operationId": "postMeUsageResetsConsumptions",
+        "tags": [
+          "user"
+        ],
+        "summary": "POST me/usage-resets/consumptions",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/HeaderAcceptLanguage"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "headers": {
+              "X-Request-ID": {
+                "$ref": "#/components/headers/XRequestID"
+              },
+              "Content-Language": {
+                "$ref": "#/components/headers/XRequestID"
+              },
+              "Cache-Control": {
+                "$ref": "#/components/headers/PrivateNoStore"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/resetResult"
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {
+                        "pagination": {
+                          "$ref": "#/components/schemas/Pagination"
+                        },
+                        "taskId": {
+                          "type": "string"
+                        }
+                      }
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "403": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "404": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "409": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "410": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "422": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "429": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "500": {
+            "$ref": "#/components/responses/ProblemDetails"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          },
+          {
+            "browserUserCookie": []
+          }
+        ],
+        "x-permission": "user",
+        "x-legacy-path": "/api/v1/user/usage/reset",
+        "description": "Requires an active session. Order and ticket identifiers are checked against the authenticated owner. Unauthenticated: 401; banned account: 403.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/postMeUsageResetsConsumptionsInput"
+              }
+            }
+          }
+        },
+        "x-runtime": {
+          "input": {
+            "requestKey": "request_key"
+          },
+          "output": "resetResult",
+          "role": "user",
+          "status": 200,
+          "raw": false,
+          "bindings": {},
+          "key": "User/UsageResetController@consume"
+        },
+        "x-legacy-entry": {
+          "legacy": "user/usage/reset",
+          "legacyMethod": "POST",
+          "action": "App\\Http\\Controllers\\V1\\User\\UsageResetController@consume",
+          "parameters": [
+            {
+              "name": "request",
+              "type": "Illuminate\\Http\\Request",
+              "optional": false
+            },
+            {
+              "name": "service",
+              "type": "App\\Services\\UsageResetService",
+              "optional": false
+            }
+          ],
+          "middleware": [
+            "throttle:20,1"
+          ],
+          "scope": "user"
+        },
+        "x-browser-aliases": {
+          "routes": [
+            "user/usage/reset"
+          ],
+          "methodRoutes": [
+            "POST user/usage/reset"
+          ]
+        }
+      }
+    },
+    "/me": {
+      "get": {
+        "operationId": "getMe",
+        "tags": [
+          "user"
+        ],
+        "summary": "GET me",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/HeaderAcceptLanguage"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "headers": {
+              "X-Request-ID": {
+                "$ref": "#/components/headers/XRequestID"
+              },
+              "Content-Language": {
+                "$ref": "#/components/headers/XRequestID"
+              },
+              "Cache-Control": {
+                "$ref": "#/components/headers/PrivateNoStore"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/account"
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {
+                        "pagination": {
+                          "$ref": "#/components/schemas/Pagination"
+                        },
+                        "taskId": {
+                          "type": "string"
+                        }
+                      }
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "403": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "404": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "409": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "410": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "422": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "429": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "500": {
+            "$ref": "#/components/responses/ProblemDetails"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          },
+          {
+            "browserUserCookie": []
+          }
+        ],
+        "x-permission": "user",
+        "x-legacy-path": "/api/v1/user/info",
+        "description": "Requires an active session. Order and ticket identifiers are checked against the authenticated owner. Unauthenticated: 401; banned account: 403.",
+        "x-runtime": {
+          "input": {},
+          "output": "account",
+          "role": "user",
+          "status": 200,
+          "raw": false,
+          "bindings": {},
+          "key": "User/UserController@info"
+        },
+        "x-legacy-entry": {
+          "legacy": "user/info",
+          "legacyMethod": "GET",
+          "action": "App\\Http\\Controllers\\V1\\User\\UserController@info",
+          "parameters": [
+            {
+              "name": "request",
+              "type": "Illuminate\\Http\\Request",
+              "optional": false
+            }
+          ],
+          "middleware": [],
+          "scope": "user"
+        },
+        "x-browser-aliases": {
+          "routes": [
+            "user/info"
+          ],
+          "methodRoutes": [
+            "GET user/info"
+          ]
+        }
+      },
+      "patch": {
+        "operationId": "patchMe",
+        "tags": [
+          "user"
+        ],
+        "summary": "PATCH me",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/HeaderAcceptLanguage"
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Success",
+            "headers": {
+              "X-Request-ID": {
+                "$ref": "#/components/headers/XRequestID"
+              },
+              "Content-Language": {
+                "$ref": "#/components/headers/XRequestID"
+              },
+              "Cache-Control": {
+                "$ref": "#/components/headers/PrivateNoStore"
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "403": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "404": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "409": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "410": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "422": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "429": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "500": {
+            "$ref": "#/components/responses/ProblemDetails"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          },
+          {
+            "browserUserCookie": []
+          }
+        ],
+        "x-permission": "user",
+        "x-legacy-path": "/api/v1/user/update",
+        "description": "Requires an active session. Order and ticket identifiers are checked against the authenticated owner. Unauthenticated: 401; banned account: 403.",
+        "requestBody": {
+          "required": false,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/patchMeInput"
+              }
+            }
+          }
+        },
+        "x-runtime": {
+          "input": {
+            "language": "language",
+            "autoRenewal": "auto_renewal",
+            "expiryReminders": "remind_expire",
+            "trafficReminders": "remind_traffic",
+            "serviceNotifications": "remind_service",
+            "displayTimeZone": "display_timezone",
+            "announcementEmails": "announcement_email"
+          },
+          "output": "scalar",
+          "role": "user",
+          "status": 204,
+          "raw": false,
+          "bindings": {},
+          "key": "User/UserController@update"
+        },
+        "x-legacy-entry": {
+          "legacy": "user/update",
+          "legacyMethod": "POST",
+          "action": "App\\Http\\Controllers\\V1\\User\\UserController@update",
+          "parameters": [
+            {
+              "name": "request",
+              "type": "App\\Http\\Requests\\User\\UserUpdate",
+              "optional": false
+            }
+          ],
+          "middleware": [],
+          "scope": "user"
+        },
+        "x-browser-aliases": {
+          "routes": [
+            "user/update"
+          ],
+          "methodRoutes": [
+            "POST user/update"
+          ]
+        }
+      }
+    },
+    "/me/summary": {
+      "get": {
+        "operationId": "getMeSummary",
+        "tags": [
+          "user"
+        ],
+        "summary": "GET me/summary",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/HeaderAcceptLanguage"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "headers": {
+              "X-Request-ID": {
+                "$ref": "#/components/headers/XRequestID"
+              },
+              "Content-Language": {
+                "$ref": "#/components/headers/XRequestID"
+              },
+              "Cache-Control": {
+                "$ref": "#/components/headers/PrivateNoStore"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/summary"
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {
+                        "pagination": {
+                          "$ref": "#/components/schemas/Pagination"
+                        },
+                        "taskId": {
+                          "type": "string"
+                        }
+                      }
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "403": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "404": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "409": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "410": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "422": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "429": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "500": {
+            "$ref": "#/components/responses/ProblemDetails"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          },
+          {
+            "browserUserCookie": []
+          }
+        ],
+        "x-permission": "user",
+        "x-legacy-path": "/api/v1/user/getStat",
+        "description": "Requires an active session. Order and ticket identifiers are checked against the authenticated owner. Unauthenticated: 401; banned account: 403.",
+        "x-runtime": {
+          "input": {},
+          "output": "summary",
+          "role": "user",
+          "status": 200,
+          "raw": false,
+          "bindings": {},
+          "key": "User/UserController@getStat"
+        },
+        "x-legacy-entry": {
+          "legacy": "user/getStat",
+          "legacyMethod": "GET",
+          "action": "App\\Http\\Controllers\\V1\\User\\UserController@getStat",
+          "parameters": [
+            {
+              "name": "request",
+              "type": "Illuminate\\Http\\Request",
+              "optional": false
+            }
+          ],
+          "middleware": [],
+          "scope": "user"
+        },
+        "x-browser-aliases": {
+          "routes": [
+            "user/getStat"
+          ],
+          "methodRoutes": [
+            "GET user/getStat"
+          ]
+        }
+      }
+    },
+    "/me/preferences/options": {
+      "get": {
+        "operationId": "getMePreferencesOptions",
+        "tags": [
+          "user"
+        ],
+        "summary": "GET me/preferences/options",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/HeaderAcceptLanguage"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "headers": {
+              "X-Request-ID": {
+                "$ref": "#/components/headers/XRequestID"
+              },
+              "Content-Language": {
+                "$ref": "#/components/headers/XRequestID"
+              },
+              "Cache-Control": {
+                "$ref": "#/components/headers/PrivateNoStore"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/preferences"
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {
+                        "pagination": {
+                          "$ref": "#/components/schemas/Pagination"
+                        },
+                        "taskId": {
+                          "type": "string"
+                        }
+                      }
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "403": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "404": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "409": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "410": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "422": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "429": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "500": {
+            "$ref": "#/components/responses/ProblemDetails"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          },
+          {
+            "browserUserCookie": []
+          }
+        ],
+        "x-permission": "user",
+        "x-legacy-path": "/api/v1/user/comm/config",
+        "description": "Requires an active session. Order and ticket identifiers are checked against the authenticated owner. Unauthenticated: 401; banned account: 403.",
+        "x-runtime": {
+          "input": {},
+          "output": "preferences",
+          "role": "user",
+          "status": 200,
+          "raw": false,
+          "bindings": {},
+          "key": "User/CommController@config"
+        },
+        "x-legacy-entry": {
+          "legacy": "user/comm/config",
+          "legacyMethod": "GET",
+          "action": "App\\Http\\Controllers\\V1\\User\\CommController@config",
+          "parameters": [],
+          "middleware": [],
+          "scope": "user"
+        },
+        "x-browser-aliases": {
+          "routes": [
+            "user/comm/config"
+          ],
+          "methodRoutes": [
+            "GET user/comm/config"
+          ]
+        }
+      }
+    },
+    "/me/traffic-records": {
+      "get": {
+        "operationId": "getMeTrafficRecords",
+        "tags": [
+          "user"
+        ],
+        "summary": "GET me/traffic-records",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/HeaderAcceptLanguage"
+          },
+          {
+            "$ref": "#/components/parameters/QueryDays"
+          },
+          {
+            "$ref": "#/components/parameters/QueryPage"
+          },
+          {
+            "$ref": "#/components/parameters/QueryPageSize"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "headers": {
+              "X-Request-ID": {
+                "$ref": "#/components/headers/XRequestID"
+              },
+              "Content-Language": {
+                "$ref": "#/components/headers/XRequestID"
+              },
+              "Cache-Control": {
+                "$ref": "#/components/headers/PrivateNoStore"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/traffic"
+                      }
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {
+                        "pagination": {
+                          "$ref": "#/components/schemas/Pagination"
+                        },
+                        "taskId": {
+                          "type": "string"
+                        }
+                      }
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "403": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "404": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "409": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "410": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "422": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "429": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "500": {
+            "$ref": "#/components/responses/ProblemDetails"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          },
+          {
+            "browserUserCookie": []
+          }
+        ],
+        "x-permission": "user",
+        "x-legacy-path": "/api/v1/user/stat/getTrafficLog",
+        "description": "Requires an active session. Order and ticket identifiers are checked against the authenticated owner. Unauthenticated: 401; banned account: 403.",
+        "x-runtime": {
+          "input": {
+            "days": "days",
+            "page": "current",
+            "pageSize": "page_size"
+          },
+          "output": "array:traffic",
+          "role": "user",
+          "status": 200,
+          "raw": false,
+          "bindings": {},
+          "key": "User/StatController@getTrafficLog"
+        },
+        "x-legacy-entry": {
+          "legacy": "user/stat/getTrafficLog",
+          "legacyMethod": "GET",
+          "action": "App\\Http\\Controllers\\V1\\User\\StatController@getTrafficLog",
+          "parameters": [
+            {
+              "name": "request",
+              "type": "Illuminate\\Http\\Request",
+              "optional": false
+            }
+          ],
+          "middleware": [],
+          "scope": "user"
+        },
+        "x-browser-aliases": {
+          "routes": [
+            "user/stat/getTrafficLog"
+          ],
+          "methodRoutes": [
+            "GET user/stat/getTrafficLog"
+          ]
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "accountStatus": {
+        "type": "object",
+        "properties": {
+          "state": {
+            "type": "string",
+            "nullable": true,
+            "x-runtime-field": [
+              "state"
+            ]
+          },
+          "available": {
+            "type": "boolean",
+            "x-runtime-field": [
+              "is_available",
+              "boolean"
+            ]
+          },
+          "quotaExhausted": {
+            "type": "boolean",
+            "x-runtime-field": [
+              "quota_exhausted",
+              "boolean"
+            ]
+          },
+          "serverTime": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true,
+            "x-runtime-field": [
+              "server_time",
+              "time"
+            ]
+          }
+        },
+        "additionalProperties": false,
+        "x-runtime-resource": true
+      },
+      "account": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int64",
+            "nullable": true,
+            "x-runtime-field": [
+              "id",
+              "integer"
+            ]
+          },
+          "email": {
+            "type": "string",
+            "nullable": true,
+            "x-runtime-field": [
+              "email"
+            ]
+          },
+          "language": {
+            "type": "string",
+            "nullable": true,
+            "x-runtime-field": [
+              "language"
+            ]
+          },
+          "quotaBytes": {
+            "type": "integer",
+            "format": "int64",
+            "nullable": true,
+            "description": "Integer bytes.",
+            "x-runtime-field": [
+              "transfer_enable",
+              "integer"
+            ]
+          },
+          "creditBytes": {
+            "type": "integer",
+            "format": "int64",
+            "nullable": true,
+            "description": "Integer bytes.",
+            "x-runtime-field": [
+              "credit_balance",
+              "integer"
+            ]
+          },
+          "deviceLimit": {
+            "type": "integer",
+            "format": "int64",
+            "nullable": true,
+            "x-runtime-field": [
+              "device_limit",
+              "integer"
+            ]
+          },
+          "lastLoginAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true,
+            "x-runtime-field": [
+              "last_login_at",
+              "time"
+            ]
+          },
+          "uploadedBytes": {
+            "type": "integer",
+            "format": "int64",
+            "nullable": true,
+            "description": "Integer bytes.",
+            "x-runtime-field": [
+              "u",
+              "integer"
+            ]
+          },
+          "downloadedBytes": {
+            "type": "integer",
+            "format": "int64",
+            "nullable": true,
+            "description": "Integer bytes.",
+            "x-runtime-field": [
+              "d",
+              "integer"
+            ]
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true,
+            "x-runtime-field": [
+              "created_at",
+              "time"
+            ]
+          },
+          "banned": {
+            "type": "boolean",
+            "x-runtime-field": [
+              "banned",
+              "boolean"
+            ]
+          },
+          "autoRenewal": {
+            "type": "boolean",
+            "x-runtime-field": [
+              "auto_renewal",
+              "boolean"
+            ]
+          },
+          "expiryReminders": {
+            "type": "boolean",
+            "x-runtime-field": [
+              "remind_expire",
+              "boolean"
+            ]
+          },
+          "trafficReminders": {
+            "type": "boolean",
+            "x-runtime-field": [
+              "remind_traffic",
+              "boolean"
+            ]
+          },
+          "expiresAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true,
+            "x-runtime-field": [
+              "expired_at",
+              "time"
+            ]
+          },
+          "balance": {
+            "type": "integer",
+            "format": "int64",
+            "nullable": true,
+            "description": "Integer minor currency units; currency is declared on the resource. Null prices are unavailable.",
+            "x-runtime-field": [
+              "balance",
+              "integer"
+            ]
+          },
+          "commissionBalance": {
+            "type": "integer",
+            "format": "int64",
+            "nullable": true,
+            "description": "Integer minor currency units; currency is declared on the resource. Null prices are unavailable.",
+            "x-runtime-field": [
+              "commission_balance",
+              "integer"
+            ]
+          },
+          "planId": {
+            "type": "integer",
+            "format": "int64",
+            "nullable": true,
+            "x-runtime-field": [
+              "plan_id",
+              "integer"
+            ]
+          },
+          "discountPercent": {
+            "type": "number",
+            "nullable": true,
+            "x-runtime-field": [
+              "discount",
+              "number"
+            ]
+          },
+          "commissionRate": {
+            "type": "number",
+            "nullable": true,
+            "x-runtime-field": [
+              "commission_rate",
+              "number"
+            ]
+          },
+          "telegramId": {
+            "type": "string",
+            "nullable": true,
+            "x-runtime-field": [
+              "telegram_id"
+            ]
+          },
+          "accountStatus": {
+            "$ref": "#/components/schemas/accountStatus",
+            "x-runtime-field": [
+              "account_status",
+              "object",
+              "accountStatus"
+            ]
+          },
+          "currency": {
+            "type": "string",
+            "example": "CNY",
+            "enum": [
+              "CNY",
+              "USD"
+            ],
+            "description": "Immutable monetary currency. Amounts use integer minor units. Historical assets remain CNY.",
+            "x-runtime-field": [
+              "currency"
+            ]
+          },
+          "ticketCreation": {
+            "type": "string",
+            "enum": [
+              "allowed",
+              "purchase_required",
+              "closed"
+            ],
+            "x-runtime-field": [
+              "ticket_creation"
+            ]
+          },
+          "serviceNotifications": {
+            "type": "boolean",
+            "x-runtime-field": [
+              "remind_service",
+              "boolean"
+            ]
+          },
+          "displayTimeZone": {
+            "type": "string",
+            "nullable": true,
+            "x-runtime-field": [
+              "display_timezone"
+            ]
+          },
+          "systemTimeZone": {
+            "type": "string",
+            "nullable": true,
+            "x-runtime-field": [
+              "system_timezone"
+            ]
+          },
+          "expiresAtDisplay": {
+            "type": "string",
+            "nullable": true,
+            "x-runtime-field": [
+              "expires_at_display"
+            ]
+          },
+          "announcementEmails": {
+            "type": "boolean",
+            "description": "Explicit opt-in to announcement emails; defaults to false.",
+            "x-runtime-field": [
+              "announcement_email",
+              "boolean"
+            ]
+          }
+        },
+        "additionalProperties": false,
+        "x-runtime-resource": true
+      },
+      "traffic": {
+        "type": "object",
+        "properties": {
+          "uploadedBytes": {
+            "type": "integer",
+            "format": "int64",
+            "nullable": true,
+            "description": "Integer bytes.",
+            "x-runtime-field": [
+              "u",
+              "integer"
+            ]
+          },
+          "downloadedBytes": {
+            "type": "integer",
+            "format": "int64",
+            "nullable": true,
+            "description": "Integer bytes.",
+            "x-runtime-field": [
+              "d",
+              "integer"
+            ]
+          },
+          "recordedAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true,
+            "x-runtime-field": [
+              "record_at",
+              "time"
+            ]
+          },
+          "rate": {
+            "type": "number",
+            "nullable": true,
+            "x-runtime-field": [
+              "server_rate",
+              "number"
+            ]
+          },
+          "businessDate": {
+            "type": "string",
+            "nullable": true,
+            "x-runtime-field": [
+              "business_date",
+              "string"
+            ]
+          },
+          "recordTimezone": {
+            "type": "string",
+            "nullable": true,
+            "x-runtime-field": [
+              "record_timezone",
+              "string"
+            ]
+          }
+        },
+        "additionalProperties": false,
+        "x-runtime-resource": true
+      },
+      "banner": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int64",
+            "nullable": true,
+            "x-runtime-field": [
+              "id",
+              "integer"
+            ]
+          },
+          "title": {
+            "type": "string",
+            "nullable": true,
+            "x-runtime-field": [
+              "title"
+            ]
+          },
+          "imageUrl": {
+            "type": "string",
+            "nullable": true,
+            "x-runtime-field": [
+              "image_url"
+            ]
+          },
+          "mobileImageUrl": {
+            "type": "string",
+            "nullable": true,
+            "x-runtime-field": [
+              "mobile_image_url"
+            ]
+          },
+          "targetUrl": {
+            "type": "string",
+            "nullable": true,
+            "x-runtime-field": [
+              "target_url"
+            ]
+          }
+        },
+        "additionalProperties": false,
+        "x-runtime-resource": true
+      },
+      "apple": {
+        "type": "object",
+        "properties": {
+          "username": {
+            "type": "string",
+            "nullable": true,
+            "x-runtime-field": [
+              "username"
+            ]
+          },
+          "password": {
+            "type": "string",
+            "nullable": true,
+            "x-runtime-field": [
+              "password"
+            ]
+          },
+          "region": {
+            "type": "string",
+            "nullable": true,
+            "x-runtime-field": [
+              "region_display"
+            ]
+          },
+          "lastCheckedAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true,
+            "x-runtime-field": [
+              "last_check",
+              "time"
+            ]
+          },
+          "available": {
+            "type": "boolean",
+            "x-runtime-field": [
+              "available",
+              "boolean"
+            ]
+          },
+          "status": {
+            "type": "string",
+            "nullable": true,
+            "x-runtime-field": [
+              "status"
+            ]
+          }
+        },
+        "additionalProperties": false,
+        "x-runtime-resource": true
+      },
+      "resetCredit": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int64",
+            "nullable": true,
+            "x-runtime-field": [
+              "id",
+              "integer"
+            ]
+          },
+          "remaining": {
+            "type": "integer",
+            "format": "int64",
+            "nullable": true,
+            "x-runtime-field": [
+              "remaining",
+              "integer"
+            ]
+          },
+          "expiresAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true,
+            "x-runtime-field": [
+              "expires_at",
+              "time"
+            ]
+          }
+        },
+        "additionalProperties": false,
+        "x-runtime-resource": true
+      },
+      "resetHistory": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int64",
+            "nullable": true,
+            "x-runtime-field": [
+              "id",
+              "integer"
+            ]
+          },
+          "kind": {
+            "type": "string",
+            "nullable": true,
+            "x-runtime-field": [
+              "kind"
+            ]
+          },
+          "quantity": {
+            "type": "integer",
+            "format": "int64",
+            "nullable": true,
+            "x-runtime-field": [
+              "quantity",
+              "integer"
+            ]
+          },
+          "uploadedBefore": {
+            "type": "integer",
+            "format": "int64",
+            "nullable": true,
+            "x-runtime-field": [
+              "u_before",
+              "integer"
+            ]
+          },
+          "downloadedBefore": {
+            "type": "integer",
+            "format": "int64",
+            "nullable": true,
+            "x-runtime-field": [
+              "d_before",
+              "integer"
+            ]
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true,
+            "x-runtime-field": [
+              "created_at",
+              "time"
+            ]
+          }
+        },
+        "additionalProperties": false,
+        "x-runtime-resource": true
+      },
+      "reset": {
+        "type": "object",
+        "properties": {
+          "available": {
+            "type": "integer",
+            "format": "int64",
+            "nullable": true,
+            "x-runtime-field": [
+              "available",
+              "integer"
+            ]
+          },
+          "credits": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/resetCredit"
+            },
+            "x-runtime-field": [
+              "credits",
+              "array",
+              "resetCredit"
+            ]
+          },
+          "canReset": {
+            "type": "boolean",
+            "x-runtime-field": [
+              "can_reset",
+              "boolean"
+            ]
+          },
+          "disabledReason": {
+            "type": "string",
+            "nullable": true,
+            "x-runtime-field": [
+              "disabled_reason"
+            ]
+          },
+          "history": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/resetHistory"
+            },
+            "x-runtime-field": [
+              "history",
+              "array",
+              "resetHistory"
+            ]
+          }
+        },
+        "additionalProperties": false,
+        "x-runtime-resource": true
+      },
+      "resetResult": {
+        "type": "object",
+        "properties": {
+          "outcome": {
+            "type": "string",
+            "nullable": true,
+            "x-runtime-field": [
+              "outcome"
+            ]
+          }
+        },
+        "additionalProperties": false,
+        "x-runtime-resource": true
+      },
+      "publicSettings": {
+        "type": "object",
+        "properties": {
+          "termsUrl": {
+            "type": "string",
+            "nullable": true,
+            "x-runtime-field": [
+              "tos_url"
+            ]
+          },
+          "emailVerificationRequired": {
+            "type": "boolean",
+            "x-runtime-field": [
+              "is_email_verify",
+              "boolean"
+            ]
+          },
+          "invitationRequired": {
+            "type": "boolean",
+            "x-runtime-field": [
+              "is_invite_force",
+              "boolean"
+            ]
+          },
+          "emailSuffixes": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "x-runtime-field": [
+              "email_whitelist_suffix",
+              "strings"
+            ]
+          },
+          "captchaRequired": {
+            "type": "boolean",
+            "x-runtime-field": [
+              "is_recaptcha",
+              "boolean"
+            ]
+          },
+          "captchaSiteKey": {
+            "type": "string",
+            "nullable": true,
+            "x-runtime-field": [
+              "recaptcha_site_key"
+            ]
+          },
+          "description": {
+            "type": "string",
+            "nullable": true,
+            "x-runtime-field": [
+              "app_description"
+            ]
+          },
+          "appUrl": {
+            "type": "string",
+            "nullable": true,
+            "x-runtime-field": [
+              "app_url"
+            ]
+          },
+          "logoUrl": {
+            "type": "string",
+            "nullable": true,
+            "x-runtime-field": [
+              "logo"
+            ]
+          }
+        },
+        "additionalProperties": false,
+        "x-runtime-resource": true
+      },
+      "preferences": {
+        "type": "object",
+        "properties": {
+          "telegramEnabled": {
+            "type": "boolean",
+            "x-runtime-field": [
+              "is_telegram",
+              "boolean"
+            ]
+          },
+          "telegramCommunityUrl": {
+            "type": "string",
+            "nullable": true,
+            "x-runtime-field": [
+              "telegram_discuss_link"
+            ]
+          },
+          "stripePublicKey": {
+            "type": "string",
+            "nullable": true,
+            "x-runtime-field": [
+              "stripe_pk"
+            ]
+          },
+          "withdrawalMethods": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "x-runtime-field": [
+              "withdraw_methods"
+            ]
+          },
+          "withdrawalsClosed": {
+            "type": "boolean",
+            "x-runtime-field": [
+              "withdraw_close",
+              "boolean"
+            ]
+          },
+          "currency": {
+            "type": "string",
+            "enum": [
+              "CNY",
+              "USD"
+            ],
+            "description": "Immutable monetary currency. Amounts use integer minor units. Historical assets remain CNY.",
+            "nullable": true,
+            "x-runtime-field": [
+              "currency"
+            ]
+          },
+          "currencySymbol": {
+            "type": "string",
+            "nullable": true,
+            "x-runtime-field": [
+              "currency_symbol"
+            ]
+          },
+          "commissionDistributionEnabled": {
+            "type": "boolean",
+            "x-runtime-field": [
+              "commission_distribution_enable",
+              "boolean"
+            ]
+          },
+          "commissionLevelOne": {
+            "type": "number",
+            "nullable": true,
+            "x-runtime-field": [
+              "commission_distribution_l1",
+              "number"
+            ]
+          },
+          "commissionLevelTwo": {
+            "type": "number",
+            "nullable": true,
+            "x-runtime-field": [
+              "commission_distribution_l2",
+              "number"
+            ]
+          },
+          "commissionLevelThree": {
+            "type": "number",
+            "nullable": true,
+            "x-runtime-field": [
+              "commission_distribution_l3",
+              "number"
+            ]
+          },
+          "couponsAvailable": {
+            "type": "boolean",
+            "x-runtime-field": [
+              "coupons_available",
+              "boolean"
+            ]
+          },
+          "timeZones": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "x-runtime-field": [
+              "time_zones",
+              "strings"
+            ]
+          },
+          "systemTimeZone": {
+            "type": "string",
+            "nullable": true,
+            "x-runtime-field": [
+              "system_timezone"
+            ]
+          },
+          "timeZoneChoices": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/timeZoneChoice"
+            },
+            "x-runtime-field": [
+              "time_zone_choices",
+              "array",
+              "timeZoneChoice"
+            ]
+          }
+        },
+        "additionalProperties": false,
+        "x-runtime-resource": true
+      },
+      "summary": {
+        "type": "object",
+        "properties": {
+          "pendingOrders": {
+            "type": "integer"
+          },
+          "pendingTickets": {
+            "type": "integer"
+          },
+          "referrals": {
+            "type": "integer"
+          }
+        }
+      },
+      "getPublicBannersInput": {
+        "type": "object",
+        "properties": {
+          "placement": {
+            "type": "string"
+          }
+        }
+      },
+      "getPublicBannerImagesNameInput": {
+        "type": "object",
+        "properties": {}
+      },
+      "getPublicSettingsInput": {
+        "type": "object",
+        "properties": {}
+      },
+      "getMeDownloadAccountsInput": {
+        "type": "object",
+        "properties": {}
+      },
+      "getMeUsageResetsInput": {
+        "type": "object",
+        "properties": {}
+      },
+      "postMeUsageResetsConsumptionsInput": {
+        "type": "object",
+        "properties": {
+          "requestKey": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "requestKey"
+        ]
+      },
+      "getMeInput": {
+        "type": "object",
+        "properties": {}
+      },
+      "patchMeInput": {
+        "type": "object",
+        "properties": {
+          "language": {
+            "type": "string"
+          },
+          "autoRenewal": {
+            "type": "boolean"
+          },
+          "expiryReminders": {
+            "type": "boolean"
+          },
+          "trafficReminders": {
+            "type": "boolean"
+          },
+          "serviceNotifications": {
+            "type": "boolean"
+          },
+          "displayTimeZone": {
+            "type": "string",
+            "nullable": true,
+            "description": "IANA time zone; null follows the device display time zone."
+          },
+          "announcementEmails": {
+            "type": "boolean",
+            "description": "Explicit opt-in to announcement emails; defaults to false."
+          }
+        }
+      },
+      "getMeSummaryInput": {
+        "type": "object",
+        "properties": {}
+      },
+      "getMePreferencesOptionsInput": {
+        "type": "object",
+        "properties": {}
+      },
+      "getMeTrafficRecordsInput": {
+        "type": "object",
+        "properties": {
+          "days": {
+            "type": "integer"
+          },
+          "page": {
+            "type": "integer"
+          },
+          "pageSize": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 100,
+            "default": 20
+          }
+        }
+      },
+      "timeZoneChoice": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "nullable": true,
+            "x-runtime-field": [
+              "id",
+              "string"
+            ]
+          },
+          "offset": {
+            "type": "string",
+            "nullable": true,
+            "x-runtime-field": [
+              "offset",
+              "string"
+            ]
+          },
+          "preview": {
+            "type": "string",
+            "nullable": true,
+            "x-runtime-field": [
+              "preview",
+              "string"
+            ]
+          }
+        },
+        "additionalProperties": false,
+        "x-runtime-resource": true
+      }
+    }
+  }
+}

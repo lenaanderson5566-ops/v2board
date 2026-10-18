@@ -421,3 +421,10 @@ V10 前端契约和类型改由规范源统一生成；复用 v10-api.test.ts �
 ## 上线前全量验证
 
 再次运行全部前端测试：104 个文件、636 项全部通过，类型检查、Vite 构建和前后台打包通过。逐项核对构建 manifest 及 import/dynamicImport 资源，用户包 314 个文件、管理包 75 个文件与 public/console 内容一致；没有生产 source map。生产依赖 npm audit --omit=dev 未命中已知漏洞；现有代码编辑器大包提示仍存在。此轮新增改动仅为部署文档纠错，没有改变界面行为，未进行真实浏览器视觉验收。日志在 storage/app/test-organization/preflight，npm 审计结果为同级 npm-preflight-audit.json。
+
+
+## V10 契约模块化
+
+公共响应、响应头与参数去重，维护源按业务拆分，仍生成完整单文件 OpenAPI 和前端运行契约/类型。逐项比较确认前端契约内容及导出类型声明保持一致，仅生成顺序随模块归属调整。复用 `src/shared/v10-api.test.ts`，22 项通过；TypeScript `--noEmit` 通过。生成器独立标准库回归 10 项通过，覆盖模块合并、引用和只读漂移检测。模块归属、增加模块步骤及生成命令见 `docs/api-v10/README.md`。
+
+没有变更页面组件、样式或运行请求行为，此轮未重新打包静态资源，也未执行真实浏览器视觉验收。

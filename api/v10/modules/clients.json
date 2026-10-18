@@ -1,0 +1,1999 @@
+{
+  "paths": {
+    "/me/nodes": {
+      "get": {
+        "operationId": "getMeNodes",
+        "tags": [
+          "user"
+        ],
+        "summary": "GET me/nodes",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/HeaderAcceptLanguage"
+          },
+          {
+            "$ref": "#/components/parameters/HeaderIfNoneMatch"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "headers": {
+              "X-Request-ID": {
+                "$ref": "#/components/headers/XRequestID"
+              },
+              "Content-Language": {
+                "$ref": "#/components/headers/XRequestID"
+              },
+              "Cache-Control": {
+                "$ref": "#/components/headers/PrivateNoStore"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/node"
+                      }
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {
+                        "pagination": {
+                          "$ref": "#/components/schemas/Pagination"
+                        },
+                        "taskId": {
+                          "type": "string"
+                        }
+                      }
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "403": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "404": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "409": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "410": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "422": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "429": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "500": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "304": {
+            "description": "Unchanged node list; empty body, ETag retained."
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          },
+          {
+            "browserUserCookie": []
+          }
+        ],
+        "x-permission": "user",
+        "x-legacy-path": "/api/v1/user/server/fetch",
+        "description": "Requires an active session. Order and ticket identifiers are checked against the authenticated owner. Unauthenticated: 401; banned account: 403.",
+        "x-runtime": {
+          "input": {},
+          "output": "array:node",
+          "role": "user",
+          "status": 200,
+          "raw": false,
+          "bindings": {},
+          "key": "User/ServerController@fetch"
+        },
+        "x-legacy-entry": {
+          "legacy": "user/server/fetch",
+          "legacyMethod": "GET",
+          "action": "App\\Http\\Controllers\\V1\\User\\ServerController@fetch",
+          "parameters": [
+            {
+              "name": "request",
+              "type": "Illuminate\\Http\\Request",
+              "optional": false
+            }
+          ],
+          "middleware": [],
+          "scope": "user"
+        },
+        "x-browser-aliases": {
+          "routes": [
+            "user/server/fetch"
+          ],
+          "methodRoutes": [
+            "GET user/server/fetch"
+          ]
+        }
+      }
+    },
+    "/public/client-installers/{installerId}/content": {
+      "get": {
+        "operationId": "getPublicClientInstallersInstallerIdContent",
+        "tags": [
+          "public"
+        ],
+        "summary": "GET public/client-installers/{installerId}/content",
+        "parameters": [
+          {
+            "name": "installerId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "$ref": "#/components/parameters/HeaderAcceptLanguage"
+          },
+          {
+            "name": "Range",
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "headers": {
+              "X-Request-ID": {
+                "$ref": "#/components/headers/XRequestID"
+              },
+              "Content-Language": {
+                "$ref": "#/components/headers/XRequestID"
+              }
+            },
+            "content": {
+              "application/octet-stream": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "403": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "404": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "409": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "410": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "422": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "429": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "500": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "206": {
+            "description": "Partial installer content",
+            "headers": {
+              "X-Request-ID": {
+                "$ref": "#/components/headers/XRequestID"
+              },
+              "Content-Language": {
+                "$ref": "#/components/headers/XRequestID"
+              }
+            },
+            "content": {
+              "application/octet-stream": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            }
+          },
+          "416": {
+            "description": "Requested range is not satisfiable"
+          }
+        },
+        "security": [],
+        "x-permission": "public",
+        "description": "Published third-party mirror or uploaded FastAI installer download. FastAI IDs use the fastai- UUID prefix. Uploaded drafts and historical packages not in the current release catalog return 404; current FastAI access/version policy applies. Supports HEAD and byte ranges; binary content is not enveloped. Unknown IDs return 404.",
+        "x-runtime": {
+          "input": {},
+          "output": "scalar",
+          "role": "public",
+          "status": 200,
+          "raw": true,
+          "bindings": {
+            "installerId": "id"
+          },
+          "key": "Public/MirrorController@download"
+        },
+        "x-legacy-entry": {
+          "legacy": "public/client-installers/{installerId}/content",
+          "legacyMethod": "GET",
+          "action": "App\\Http\\Controllers\\V10\\PublicMirrorController@getPublicClientInstallersInstallerIdContent",
+          "key": "Public/MirrorController@download",
+          "parameters": [
+            {
+              "name": "id",
+              "type": null,
+              "optional": false
+            }
+          ],
+          "scope": "public",
+          "middleware": [],
+          "raw": true
+        },
+        "x-browser-aliases": {
+          "routes": [
+            "public/client-installers/{installerId}/content"
+          ],
+          "methodRoutes": [
+            "GET public/client-installers/{installerId}/content"
+          ]
+        }
+      }
+    },
+    "/me/client-config": {
+      "get": {
+        "operationId": "getMeClientConfig",
+        "tags": [
+          "client"
+        ],
+        "summary": "GET me/client-config",
+        "description": "Requires an active session. Order and ticket identifiers are checked against the authenticated owner. Unauthenticated: 401; banned account: 403. FastAI native YAML uses default.fastai.yaml or custom.fastai.yaml, independently of public subscription templates. Only real proxy nodes are emitted; subscription information nodes and subscription-userinfo headers are omitted. Account information is read through the account/subscription JSON APIs. Geo databases are bundled with FastAI; automatic Geo updates and remote HTTP rule providers are prohibited, including custom templates.",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/HeaderAcceptLanguage"
+          },
+          {
+            "name": "clientVersion",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "pattern": "^\\d+(?:\\.\\d+){1,3}$"
+            },
+            "required": true
+          },
+          {
+            "$ref": "#/components/parameters/QueryPlatform"
+          },
+          {
+            "name": "architecture",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "x64",
+                "arm64",
+                "arm",
+                "x86"
+              ]
+            }
+          },
+          {
+            "name": "core",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "mihomo",
+                "sing-box"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "headers": {
+              "X-Request-ID": {
+                "$ref": "#/components/headers/XRequestID"
+              },
+              "Content-Language": {
+                "$ref": "#/components/headers/XRequestID"
+              },
+              "Cache-Control": {
+                "$ref": "#/components/headers/PrivateNoStore"
+              }
+            },
+            "content": {
+              "application/yaml": {
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "required": [
+                        "configVersion",
+                        "nodes"
+                      ],
+                      "properties": {
+                        "configVersion": {
+                          "type": "string"
+                        },
+                        "yaml": {
+                          "type": "string"
+                        },
+                        "nodes": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "nodeId": {
+                                "type": "string"
+                              },
+                              "proxyName": {
+                                "type": "string"
+                              },
+                              "name": {
+                                "type": "string"
+                              },
+                              "regionCode": {
+                                "type": "string",
+                                "nullable": true
+                              },
+                              "cityCode": {
+                                "type": "string",
+                                "nullable": true,
+                                "description": "Canonical location identifier for a state, province or city; legacy cityCode field name is retained for compatibility."
+                              },
+                              "displayLabel": {
+                                "type": "string",
+                                "nullable": true
+                              },
+                              "tags": {
+                                "type": "array",
+                                "items": {
+                                  "type": "string"
+                                }
+                              },
+                              "displayNames": {
+                                "type": "object",
+                                "additionalProperties": {
+                                  "type": "string"
+                                }
+                              }
+                            }
+                          }
+                        },
+                        "core": {
+                          "type": "string",
+                          "enum": [
+                            "sing-box"
+                          ]
+                        },
+                        "coreVersion": {
+                          "type": "string",
+                          "example": "1.14.3"
+                        },
+                        "configuration": {
+                          "type": "object",
+                          "description": "Native sing-box configuration; app supplies local inbounds."
+                        }
+                      },
+                      "oneOf": [
+                        {
+                          "required": [
+                            "yaml"
+                          ]
+                        },
+                        {
+                          "required": [
+                            "core",
+                            "coreVersion",
+                            "configuration"
+                          ]
+                        }
+                      ]
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "403": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "404": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "409": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "410": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "422": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "429": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "500": {
+            "$ref": "#/components/responses/ProblemDetails"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          },
+          {
+            "browserUserCookie": []
+          }
+        ],
+        "x-permission": "user",
+        "x-runtime": {
+          "input": {
+            "clientVersion": "client_version",
+            "platform": "platform",
+            "architecture": "architecture",
+            "core": "core"
+          },
+          "output": "scalar",
+          "role": "user",
+          "status": 200,
+          "raw": true,
+          "bindings": {},
+          "key": "Client/ClientController@authenticatedConfig",
+          "description": "FastAI native YAML uses default.fastai.yaml or custom.fastai.yaml, independently of public subscription templates. Only real proxy nodes are emitted; subscription information nodes and subscription-userinfo headers are omitted. Account information is read through the account/subscription JSON APIs. Geo databases are bundled with FastAI; automatic Geo updates and remote HTTP rule providers are prohibited, including custom templates."
+        },
+        "x-legacy-entry": {
+          "key": "Client/ClientController@authenticatedConfig",
+          "parameters": [
+            {
+              "name": "request",
+              "type": "Illuminate\\Http\\Request",
+              "optional": false
+            }
+          ],
+          "middleware": [
+            "throttle:30,1"
+          ],
+          "scope": "client",
+          "raw": true,
+          "description": "FastAI native YAML uses default.fastai.yaml or custom.fastai.yaml, independently of public subscription templates. Only real proxy nodes are emitted; subscription information nodes and subscription-userinfo headers are omitted. Account information is read through the account/subscription JSON APIs. Geo databases are bundled with FastAI; automatic Geo updates and remote HTTP rule providers are prohibited, including custom templates."
+        }
+      }
+    },
+    "/public/fastai/releases/latest": {
+      "get": {
+        "operationId": "getPublicFastaiReleasesLatest",
+        "tags": [
+          "public"
+        ],
+        "summary": "GET public/fastai/releases/latest",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/HeaderAcceptLanguage"
+          },
+          {
+            "$ref": "#/components/parameters/QueryPlatform"
+          },
+          {
+            "name": "architecture",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "x64",
+                "arm64",
+                "arm",
+                "x86"
+              ]
+            },
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "headers": {
+              "X-Request-ID": {
+                "$ref": "#/components/headers/XRequestID"
+              },
+              "Content-Language": {
+                "$ref": "#/components/headers/XRequestID"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/fastaiRelease"
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {
+                        "pagination": {
+                          "$ref": "#/components/schemas/Pagination"
+                        },
+                        "taskId": {
+                          "type": "string"
+                        }
+                      }
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "403": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "404": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "409": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "410": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "422": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "429": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "500": {
+            "$ref": "#/components/responses/ProblemDetails"
+          }
+        },
+        "security": [],
+        "x-permission": "public",
+        "x-runtime": {
+          "input": {
+            "platform": "platform",
+            "architecture": "architecture"
+          },
+          "output": "fastaiRelease",
+          "role": "public",
+          "status": 200,
+          "raw": false,
+          "bindings": {},
+          "key": "Guest/FastaiController@release"
+        },
+        "x-legacy-entry": {
+          "key": "Guest/FastaiController@release",
+          "parameters": [
+            {
+              "name": "request",
+              "type": "Illuminate\\Http\\Request",
+              "optional": false
+            }
+          ],
+          "middleware": [
+            "throttle:30,1"
+          ],
+          "scope": "public"
+        }
+      }
+    },
+    "/me/client-authorizations/{authorizationId}": {
+      "get": {
+        "operationId": "getMeClientAuthorizationsAuthorizationId",
+        "tags": [
+          "user"
+        ],
+        "summary": "GET me/client-authorizations/{authorizationId}",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/PathAuthorizationId"
+          },
+          {
+            "$ref": "#/components/parameters/HeaderAcceptLanguage"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "headers": {
+              "X-Request-ID": {
+                "$ref": "#/components/headers/XRequestID"
+              },
+              "Content-Language": {
+                "$ref": "#/components/headers/XRequestID"
+              },
+              "Cache-Control": {
+                "$ref": "#/components/headers/PrivateNoStore"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/clientAuthorizationDetails"
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {
+                        "pagination": {
+                          "$ref": "#/components/schemas/Pagination"
+                        },
+                        "taskId": {
+                          "type": "string"
+                        }
+                      }
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "403": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "404": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "409": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "410": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "422": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "429": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "500": {
+            "$ref": "#/components/responses/ProblemDetails"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          },
+          {
+            "browserUserCookie": []
+          }
+        ],
+        "x-permission": "user",
+        "description": "Requires an active session. Order and ticket identifiers are checked against the authenticated owner. Unauthenticated: 401; banned account: 403.",
+        "x-runtime": {
+          "input": {},
+          "output": "clientAuthorizationDetails",
+          "role": "user",
+          "status": 200,
+          "raw": false,
+          "bindings": {
+            "authorizationId": "authorization_id"
+          },
+          "key": "Passport/ClientAuthorizationController@details"
+        },
+        "x-legacy-entry": {
+          "key": "Passport/ClientAuthorizationController@details",
+          "action": "App\\Http\\Controllers\\V10\\PassportClientAuthorizationController@details",
+          "parameters": [
+            {
+              "name": "request",
+              "type": "Illuminate\\Http\\Request",
+              "optional": false
+            }
+          ],
+          "middleware": [
+            "throttle:30,1"
+          ],
+          "scope": "user",
+          "legacy": "user/client-authorization",
+          "legacyMethod": "GET"
+        },
+        "x-browser-aliases": {
+          "routes": [
+            "user/client-authorization"
+          ],
+          "methodRoutes": [
+            "GET user/client-authorization"
+          ]
+        }
+      }
+    },
+    "/me/client-authorizations/{authorizationId}/approval": {
+      "post": {
+        "operationId": "postMeClientAuthorizationsAuthorizationIdApproval",
+        "tags": [
+          "user"
+        ],
+        "summary": "POST me/client-authorizations/{authorizationId}/approval",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/PathAuthorizationId"
+          },
+          {
+            "$ref": "#/components/parameters/HeaderAcceptLanguage"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "headers": {
+              "X-Request-ID": {
+                "$ref": "#/components/headers/XRequestID"
+              },
+              "Content-Language": {
+                "$ref": "#/components/headers/XRequestID"
+              },
+              "Cache-Control": {
+                "$ref": "#/components/headers/PrivateNoStore"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/clientAuthorizationApproval"
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {
+                        "pagination": {
+                          "$ref": "#/components/schemas/Pagination"
+                        },
+                        "taskId": {
+                          "type": "string"
+                        }
+                      }
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "403": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "404": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "409": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "410": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "422": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "429": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "500": {
+            "$ref": "#/components/responses/ProblemDetails"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          },
+          {
+            "browserUserCookie": []
+          }
+        ],
+        "x-permission": "user",
+        "description": "Requires an active session. Order and ticket identifiers are checked against the authenticated owner. Unauthenticated: 401; banned account: 403.",
+        "x-runtime": {
+          "input": {},
+          "output": "clientAuthorizationApproval",
+          "role": "user",
+          "status": 200,
+          "raw": false,
+          "bindings": {
+            "authorizationId": "authorization_id"
+          },
+          "key": "Passport/ClientAuthorizationController@approve"
+        },
+        "x-legacy-entry": {
+          "key": "Passport/ClientAuthorizationController@approve",
+          "action": "App\\Http\\Controllers\\V10\\PassportClientAuthorizationController@approve",
+          "parameters": [
+            {
+              "name": "request",
+              "type": "Illuminate\\Http\\Request",
+              "optional": false
+            }
+          ],
+          "middleware": [
+            "throttle:30,1"
+          ],
+          "scope": "user",
+          "legacy": "user/client-authorization/approve",
+          "legacyMethod": "POST"
+        },
+        "x-browser-aliases": {
+          "routes": [
+            "user/client-authorization/approve"
+          ],
+          "methodRoutes": [
+            "POST user/client-authorization/approve"
+          ]
+        }
+      }
+    },
+    "/public/fastai/entrypoints": {
+      "get": {
+        "operationId": "getPublicFastaiEntrypoints",
+        "tags": [
+          "guest"
+        ],
+        "summary": "GET public/fastai/entrypoints",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/HeaderAcceptLanguage"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "headers": {
+              "X-Request-ID": {
+                "$ref": "#/components/headers/XRequestID"
+              },
+              "Content-Language": {
+                "$ref": "#/components/headers/XRequestID"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/signedEntrypoints"
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {
+                        "pagination": {
+                          "$ref": "#/components/schemas/Pagination"
+                        },
+                        "taskId": {
+                          "type": "string"
+                        }
+                      }
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "403": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "404": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "409": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "410": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "422": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "429": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "500": {
+            "$ref": "#/components/responses/ProblemDetails"
+          }
+        },
+        "security": [],
+        "x-permission": "public",
+        "x-runtime": {
+          "input": {},
+          "output": "signedEntrypoints",
+          "role": "public",
+          "status": 200,
+          "raw": false,
+          "bindings": {},
+          "key": "Guest/FastaiController@entrypoints"
+        },
+        "x-legacy-entry": {
+          "action": "App\\Http\\Controllers\\V1\\Guest\\FastaiController@entrypoints",
+          "parameters": [
+            {
+              "name": "request",
+              "type": "Illuminate\\Http\\Request",
+              "optional": false
+            }
+          ],
+          "middleware": [
+            "throttle:60,1"
+          ],
+          "scope": "guest",
+          "key": "Guest/FastaiController@entrypoints"
+        }
+      }
+    },
+    "/me/node-previews": {
+      "get": {
+        "operationId": "getMeNodePreviews",
+        "tags": [
+          "user"
+        ],
+        "summary": "GET me/node-previews",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/HeaderAcceptLanguage"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "headers": {
+              "X-Request-ID": {
+                "$ref": "#/components/headers/XRequestID"
+              },
+              "Content-Language": {
+                "$ref": "#/components/headers/XRequestID"
+              },
+              "Cache-Control": {
+                "$ref": "#/components/headers/PrivateNoStore"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/nodePreview"
+                      }
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {
+                        "pagination": {
+                          "$ref": "#/components/schemas/Pagination"
+                        },
+                        "taskId": {
+                          "type": "string"
+                        }
+                      }
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "403": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "404": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "409": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "410": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "422": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "429": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "500": {
+            "$ref": "#/components/responses/ProblemDetails"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          },
+          {
+            "browserUserCookie": []
+          }
+        ],
+        "x-permission": "user",
+        "description": "Authenticated display-only preview of visible routes, including for expired or unpaid accounts. No addresses or connection credentials are returned. This resource never authorizes a connection.",
+        "x-runtime": {
+          "input": {},
+          "output": "array:nodePreview",
+          "role": "user",
+          "status": 200,
+          "raw": false,
+          "bindings": {},
+          "key": "User/ServerController@previews"
+        },
+        "x-legacy-entry": {
+          "legacy": null,
+          "legacyMethod": "GET",
+          "action": "App\\Http\\Controllers\\V10\\UserServerController@getMeNodePreviews",
+          "parameters": [
+            {
+              "name": "request",
+              "type": "Illuminate\\Http\\Request",
+              "optional": false
+            }
+          ],
+          "middleware": [],
+          "scope": "user",
+          "key": "User/ServerController@previews"
+        }
+      }
+    },
+    "/me/diagnostic-reports": {
+      "post": {
+        "operationId": "postMeDiagnosticReports",
+        "tags": [
+          "user"
+        ],
+        "summary": "POST me/diagnostic-reports",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/HeaderAcceptLanguage"
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Success",
+            "headers": {
+              "X-Request-ID": {
+                "$ref": "#/components/headers/XRequestID"
+              },
+              "Content-Language": {
+                "$ref": "#/components/headers/XRequestID"
+              },
+              "Cache-Control": {
+                "$ref": "#/components/headers/PrivateNoStore"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/diagnosticReceipt"
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {
+                        "pagination": {
+                          "$ref": "#/components/schemas/Pagination"
+                        },
+                        "taskId": {
+                          "type": "string"
+                        }
+                      }
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "403": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "404": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "409": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "410": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "422": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "429": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "500": {
+            "$ref": "#/components/responses/ProblemDetails"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          },
+          {
+            "browserUserCookie": []
+          }
+        ],
+        "x-permission": "user",
+        "description": "Manual authenticated diagnostic submission; five reports per account per hour. Default retention 30 days, configurable by administrator. No raw parameters, IP addresses, credentials or browsing history.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/postMeDiagnosticReportsInput"
+              }
+            }
+          }
+        },
+        "x-runtime": {
+          "input": {
+            "clientVersion": "clientVersion",
+            "platform": "platform",
+            "checks": "checks"
+          },
+          "output": "diagnosticReceipt",
+          "role": "user",
+          "status": 201,
+          "raw": false,
+          "bindings": {},
+          "key": "User/DiagnosticController@store"
+        },
+        "x-legacy-entry": {
+          "legacy": null,
+          "legacyMethod": null,
+          "action": "App\\Http\\Controllers\\V10\\UserDiagnosticController@postMeDiagnosticReports",
+          "parameters": [
+            {
+              "name": "request",
+              "type": "Illuminate\\Http\\Request",
+              "optional": false
+            }
+          ],
+          "middleware": [
+            "throttle:20,1"
+          ],
+          "scope": "user",
+          "key": "User/DiagnosticController@store"
+        }
+      }
+    },
+    "/me/client-events": {
+      "post": {
+        "operationId": "postMeClientEvents",
+        "tags": [
+          "user"
+        ],
+        "summary": "POST me/client-events",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/HeaderAcceptLanguage"
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Success",
+            "headers": {
+              "X-Request-ID": {
+                "$ref": "#/components/headers/XRequestID"
+              },
+              "Content-Language": {
+                "$ref": "#/components/headers/XRequestID"
+              },
+              "Cache-Control": {
+                "$ref": "#/components/headers/PrivateNoStore"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/diagnosticReceipt"
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {
+                        "pagination": {
+                          "$ref": "#/components/schemas/Pagination"
+                        },
+                        "taskId": {
+                          "type": "string"
+                        }
+                      }
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "403": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "404": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "409": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "410": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "422": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "429": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "500": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "413": {
+            "description": "Request body exceeds 16 KiB"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          },
+          {
+            "browserUserCookie": []
+          }
+        ],
+        "x-permission": "user",
+        "description": "Optional account-linked runtime events, disabled by default in the app. At most 30 events per batch and 12 batches per account per hour; 16 KiB body limit. Default retention 30 days, administrator configurable. No browsing history, addresses, credentials or configuration content. Client-reported results are not proof of connectivity or online status.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/postMeClientEventsInput"
+              }
+            }
+          }
+        },
+        "x-runtime": {
+          "input": {
+            "clientVersion": "clientVersion",
+            "platform": "platform",
+            "events": "events"
+          },
+          "output": "diagnosticReceipt",
+          "role": "user",
+          "status": 201,
+          "raw": false,
+          "bindings": {},
+          "key": "User/ClientEventController@store"
+        },
+        "x-legacy-entry": {
+          "legacy": null,
+          "legacyMethod": null,
+          "action": "App\\Http\\Controllers\\V10\\UserDiagnosticController@postMeClientEvents",
+          "parameters": [
+            {
+              "name": "request",
+              "type": "Illuminate\\Http\\Request",
+              "optional": false
+            }
+          ],
+          "middleware": [
+            "throttle:20,1"
+          ],
+          "scope": "user",
+          "key": "User/ClientEventController@store"
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "node": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int64",
+            "nullable": true,
+            "x-runtime-field": [
+              "id",
+              "integer"
+            ]
+          },
+          "name": {
+            "type": "string",
+            "nullable": true,
+            "x-runtime-field": [
+              "name"
+            ]
+          },
+          "protocol": {
+            "type": "string",
+            "nullable": true,
+            "x-runtime-field": [
+              "type"
+            ]
+          },
+          "host": {
+            "type": "string",
+            "nullable": true,
+            "x-runtime-field": [
+              "host"
+            ]
+          },
+          "port": {
+            "type": "integer",
+            "format": "int64",
+            "nullable": true,
+            "x-runtime-field": [
+              "port",
+              "integer"
+            ]
+          },
+          "online": {
+            "type": "boolean",
+            "x-runtime-field": [
+              "is_online",
+              "boolean"
+            ]
+          },
+          "rate": {
+            "type": "number",
+            "nullable": true,
+            "x-runtime-field": [
+              "rate",
+              "number"
+            ]
+          },
+          "tags": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "x-runtime-field": [
+              "tags"
+            ]
+          },
+          "lastCheckedAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true,
+            "x-runtime-field": [
+              "last_check_at",
+              "time"
+            ]
+          },
+          "nodeId": {
+            "type": "string",
+            "nullable": true,
+            "x-runtime-field": [
+              "node_id"
+            ]
+          },
+          "proxyName": {
+            "type": "string",
+            "nullable": true,
+            "x-runtime-field": [
+              "proxy_name"
+            ]
+          },
+          "regionCode": {
+            "type": "string",
+            "nullable": true,
+            "x-runtime-field": [
+              "region_code"
+            ]
+          },
+          "cityCode": {
+            "type": "string",
+            "nullable": true,
+            "description": "Canonical location identifier for a state, province or city; legacy cityCode field name is retained for compatibility.",
+            "x-runtime-field": [
+              "city_code"
+            ]
+          },
+          "displayLabel": {
+            "type": "string",
+            "nullable": true,
+            "x-runtime-field": [
+              "display_label"
+            ]
+          },
+          "displayNames": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string"
+            },
+            "x-runtime-field": [
+              "display_names"
+            ]
+          }
+        },
+        "additionalProperties": false,
+        "x-runtime-resource": true
+      },
+      "signedEntrypoints": {
+        "type": "object",
+        "properties": {
+          "payload": {
+            "type": "string",
+            "nullable": true,
+            "x-runtime-field": [
+              "payload"
+            ]
+          },
+          "signature": {
+            "type": "string",
+            "nullable": true,
+            "x-runtime-field": [
+              "signature"
+            ]
+          }
+        },
+        "additionalProperties": false,
+        "x-runtime-resource": true
+      },
+      "fastaiRelease": {
+        "type": "object",
+        "properties": {
+          "platform": {
+            "type": "string",
+            "enum": [
+              "windows",
+              "android",
+              "macos",
+              "linux"
+            ],
+            "x-runtime-field": [
+              "platform"
+            ]
+          },
+          "architecture": {
+            "type": "string",
+            "enum": [
+              "x64",
+              "arm64",
+              "arm",
+              "x86"
+            ],
+            "x-runtime-field": [
+              "architecture"
+            ]
+          },
+          "channel": {
+            "type": "string",
+            "enum": [
+              "stable"
+            ],
+            "x-runtime-field": [
+              "channel"
+            ]
+          },
+          "latestVersion": {
+            "type": "string",
+            "pattern": "^(0|[1-9]\\d*)\\.(0|[1-9]\\d*)\\.(0|[1-9]\\d*)$",
+            "x-runtime-field": [
+              "latestVersion"
+            ]
+          },
+          "latestBuild": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 1,
+            "maximum": 2100000000,
+            "x-runtime-field": [
+              "latestBuild",
+              "integer"
+            ]
+          },
+          "minimumVersion": {
+            "type": "string",
+            "pattern": "^(0|[1-9]\\d*)\\.(0|[1-9]\\d*)\\.(0|[1-9]\\d*)$",
+            "x-runtime-field": [
+              "minimumVersion"
+            ]
+          },
+          "downloadUrl": {
+            "type": "string",
+            "format": "uri",
+            "pattern": "^https://",
+            "x-runtime-field": [
+              "downloadUrl"
+            ]
+          },
+          "sha256": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$",
+            "x-runtime-field": [
+              "sha256"
+            ]
+          },
+          "releaseNotes": {
+            "type": "string",
+            "nullable": true,
+            "x-runtime-field": [
+              "releaseNotes"
+            ]
+          },
+          "publishedAt": {
+            "type": "string",
+            "format": "date-time",
+            "x-runtime-field": [
+              "publishedAt"
+            ]
+          }
+        },
+        "additionalProperties": false,
+        "required": [
+          "platform",
+          "architecture",
+          "channel",
+          "latestVersion",
+          "latestBuild",
+          "minimumVersion",
+          "downloadUrl",
+          "sha256",
+          "publishedAt"
+        ],
+        "x-runtime-resource": true
+      },
+      "clientAuthorization": {
+        "type": "object",
+        "properties": {
+          "authorizationId": {
+            "type": "string",
+            "nullable": true,
+            "x-runtime-field": [
+              "authorizationId"
+            ]
+          },
+          "authorizationUrl": {
+            "type": "string",
+            "nullable": true,
+            "x-runtime-field": [
+              "authorizationUrl"
+            ]
+          },
+          "expiresAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true,
+            "x-runtime-field": [
+              "expiresAt",
+              "time"
+            ]
+          }
+        },
+        "additionalProperties": false,
+        "x-runtime-resource": true
+      },
+      "clientAuthorizationDetails": {
+        "type": "object",
+        "properties": {
+          "platform": {
+            "type": "string",
+            "nullable": true,
+            "x-runtime-field": [
+              "platform"
+            ]
+          },
+          "expiresAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true,
+            "x-runtime-field": [
+              "expiresAt",
+              "time"
+            ]
+          }
+        },
+        "additionalProperties": false,
+        "x-runtime-resource": true
+      },
+      "clientAuthorizationApproval": {
+        "type": "object",
+        "properties": {
+          "callbackUrl": {
+            "type": "string",
+            "nullable": true,
+            "x-runtime-field": [
+              "callbackUrl"
+            ]
+          }
+        },
+        "additionalProperties": false,
+        "x-runtime-resource": true
+      },
+      "getMeNodesInput": {
+        "type": "object",
+        "properties": {}
+      },
+      "getPublicClientInstallersInstallerIdContentInput": {
+        "type": "object",
+        "properties": {}
+      },
+      "getMeClientConfigInput": {
+        "type": "object",
+        "properties": {
+          "clientVersion": {
+            "type": "string",
+            "pattern": "^\\d+(?:\\.\\d+){1,3}$"
+          },
+          "platform": {
+            "type": "string",
+            "enum": [
+              "windows",
+              "android",
+              "macos",
+              "linux",
+              "ios"
+            ]
+          },
+          "architecture": {
+            "type": "string",
+            "enum": [
+              "x64",
+              "arm64",
+              "arm",
+              "x86"
+            ]
+          },
+          "core": {
+            "type": "string",
+            "enum": [
+              "mihomo",
+              "sing-box"
+            ]
+          }
+        },
+        "required": [
+          "clientVersion",
+          "platform"
+        ]
+      },
+      "getPublicFastaiReleasesLatestInput": {
+        "type": "object",
+        "properties": {
+          "platform": {
+            "type": "string",
+            "enum": [
+              "windows",
+              "android",
+              "macos",
+              "linux",
+              "ios"
+            ]
+          },
+          "architecture": {
+            "type": "string",
+            "enum": [
+              "x64",
+              "arm64",
+              "arm",
+              "x86"
+            ]
+          }
+        },
+        "required": [
+          "platform",
+          "architecture"
+        ]
+      },
+      "getMeClientAuthorizationsAuthorizationIdInput": {
+        "type": "object",
+        "properties": {}
+      },
+      "postMeClientAuthorizationsAuthorizationIdApprovalInput": {
+        "type": "object",
+        "properties": {}
+      },
+      "getPublicFastaiEntrypointsInput": {
+        "type": "object",
+        "properties": {}
+      },
+      "nodePreview": {
+        "type": "object",
+        "properties": {
+          "nodeId": {
+            "type": "string",
+            "nullable": true,
+            "x-runtime-field": [
+              "node_id"
+            ]
+          },
+          "proxyName": {
+            "type": "string",
+            "nullable": true,
+            "x-runtime-field": [
+              "proxy_name"
+            ]
+          },
+          "name": {
+            "type": "string",
+            "nullable": true,
+            "x-runtime-field": [
+              "name"
+            ]
+          },
+          "regionCode": {
+            "type": "string",
+            "nullable": true,
+            "x-runtime-field": [
+              "region_code"
+            ]
+          },
+          "cityCode": {
+            "type": "string",
+            "nullable": true,
+            "x-runtime-field": [
+              "city_code"
+            ]
+          },
+          "displayLabel": {
+            "type": "string",
+            "nullable": true,
+            "x-runtime-field": [
+              "display_label"
+            ]
+          },
+          "tags": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "x-runtime-field": [
+              "tags"
+            ]
+          },
+          "displayNames": {
+            "type": "string",
+            "nullable": true,
+            "x-runtime-field": [
+              "display_names"
+            ]
+          }
+        },
+        "additionalProperties": false,
+        "x-runtime-resource": true
+      },
+      "getMeNodePreviewsInput": {
+        "type": "object",
+        "properties": {}
+      },
+      "diagnosticReceipt": {
+        "type": "object",
+        "required": [
+          "reportId"
+        ],
+        "properties": {
+          "reportId": {
+            "type": "string",
+            "format": "uuid",
+            "x-runtime-field": [
+              "report_id"
+            ]
+          }
+        },
+        "x-runtime-resource": true
+      },
+      "postMeDiagnosticReportsInput": {
+        "type": "object",
+        "properties": {
+          "clientVersion": {
+            "type": "string",
+            "pattern": "^\\d+(?:\\.\\d+){1,3}$"
+          },
+          "platform": {
+            "type": "string",
+            "enum": [
+              "windows",
+              "android",
+              "macos",
+              "linux",
+              "ios"
+            ]
+          },
+          "checks": {
+            "type": "array",
+            "minItems": 1,
+            "maxItems": 9,
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "id",
+                "status"
+              ],
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "enum": [
+                    "dns",
+                    "website",
+                    "proxy",
+                    "settings",
+                    "systemProxy",
+                    "route",
+                    "tcp",
+                    "tls",
+                    "reference"
+                  ]
+                },
+                "status": {
+                  "type": "string",
+                  "enum": [
+                    "passed",
+                    "failed",
+                    "skipped",
+                    "unverified"
+                  ]
+                },
+                "elapsedMs": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 300000,
+                  "nullable": true
+                }
+              }
+            }
+          }
+        },
+        "required": [
+          "clientVersion",
+          "platform",
+          "checks"
+        ],
+        "additionalProperties": false
+      },
+      "postMeClientEventsInput": {
+        "type": "object",
+        "properties": {
+          "clientVersion": {
+            "type": "string",
+            "pattern": "^\\d+(?:\\.\\d+){1,3}$"
+          },
+          "platform": {
+            "type": "string",
+            "enum": [
+              "windows",
+              "android",
+              "macos",
+              "linux",
+              "ios"
+            ]
+          },
+          "events": {
+            "type": "array",
+            "minItems": 1,
+            "maxItems": 30,
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "name",
+                "outcome",
+                "elapsedMs",
+                "errorClass"
+              ],
+              "properties": {
+                "name": {
+                  "type": "string",
+                  "enum": [
+                    "connection",
+                    "config_sync",
+                    "subscription_sync",
+                    "account_sync"
+                  ]
+                },
+                "outcome": {
+                  "type": "string",
+                  "enum": [
+                    "success",
+                    "failure"
+                  ]
+                },
+                "elapsedMs": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 300000
+                },
+                "errorClass": {
+                  "type": "string",
+                  "enum": [
+                    "none",
+                    "timeout",
+                    "network",
+                    "certificate",
+                    "authentication",
+                    "policy",
+                    "server",
+                    "unknown"
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "required": [
+          "clientVersion",
+          "platform",
+          "events"
+        ],
+        "additionalProperties": false
+      }
+    }
+  }
+}

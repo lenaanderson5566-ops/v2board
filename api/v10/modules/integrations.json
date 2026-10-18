@@ -1,0 +1,935 @@
+{
+  "paths": {
+    "/webhooks/telegram": {
+      "post": {
+        "operationId": "postWebhooksTelegram",
+        "tags": [
+          "guest"
+        ],
+        "summary": "POST webhooks/telegram",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/HeaderAcceptLanguage"
+          },
+          {
+            "name": "X-Telegram-Bot-Api-Secret-Token",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "headers": {
+              "X-Request-ID": {
+                "$ref": "#/components/headers/XRequestID"
+              },
+              "Content-Language": {
+                "$ref": "#/components/headers/XRequestID"
+              }
+            },
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Bot disabled, token unconfigured, or invalid webhook secret"
+          }
+        },
+        "security": [],
+        "x-permission": "public",
+        "x-legacy-path": "/api/v1/guest/telegram/webhook",
+        "description": "Provider-native signature verification and response. Payment notifications are idempotent; Telegram requires X-Telegram-Bot-Api-Secret-Token. New payments use V10 callback URLs, including custom callback domains. Old payment callbacks remain compatible for existing orders. Historical callback URLs remain supported. The bot must be enabled with a nonempty configured token; disabled, unconfigured or invalid credentials return 401.",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object"
+              }
+            },
+            "application/x-www-form-urlencoded": {
+              "schema": {
+                "type": "object"
+              }
+            }
+          }
+        },
+        "x-runtime": {
+          "input": {},
+          "output": "scalar",
+          "role": "public",
+          "status": 200,
+          "raw": true,
+          "bindings": {},
+          "key": "Guest/TelegramController@webhook"
+        },
+        "x-legacy-entry": {
+          "legacy": "guest/telegram/webhook",
+          "legacyMethod": "POST",
+          "action": "App\\Http\\Controllers\\V1\\Guest\\TelegramController@webhook",
+          "parameters": [
+            {
+              "name": "request",
+              "type": "Illuminate\\Http\\Request",
+              "optional": false
+            }
+          ],
+          "middleware": [],
+          "scope": "guest"
+        },
+        "x-browser-aliases": {
+          "routes": [
+            "guest/telegram/webhook"
+          ],
+          "methodRoutes": [
+            "POST guest/telegram/webhook"
+          ]
+        }
+      }
+    },
+    "/me/integrations/telegram": {
+      "delete": {
+        "operationId": "deleteMeIntegrationsTelegram",
+        "tags": [
+          "user"
+        ],
+        "summary": "DELETE me/integrations/telegram",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/HeaderAcceptLanguage"
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Success",
+            "headers": {
+              "X-Request-ID": {
+                "$ref": "#/components/headers/XRequestID"
+              },
+              "Content-Language": {
+                "$ref": "#/components/headers/XRequestID"
+              },
+              "Cache-Control": {
+                "$ref": "#/components/headers/PrivateNoStore"
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "403": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "404": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "409": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "410": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "422": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "429": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "500": {
+            "$ref": "#/components/responses/ProblemDetails"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          },
+          {
+            "browserUserCookie": []
+          }
+        ],
+        "x-permission": "user",
+        "x-legacy-path": "/api/v1/user/unbindTelegram",
+        "description": "Requires an active session. Order and ticket identifiers are checked against the authenticated owner. Unauthenticated: 401; banned account: 403.",
+        "x-runtime": {
+          "input": {},
+          "output": "scalar",
+          "role": "user",
+          "status": 204,
+          "raw": false,
+          "bindings": {},
+          "key": "User/UserController@unbindTelegram"
+        },
+        "x-legacy-entry": {
+          "legacy": "user/unbindTelegram",
+          "legacyMethod": "GET",
+          "action": "App\\Http\\Controllers\\V1\\User\\UserController@unbindTelegram",
+          "parameters": [
+            {
+              "name": "request",
+              "type": "Illuminate\\Http\\Request",
+              "optional": false
+            }
+          ],
+          "middleware": [],
+          "scope": "user"
+        },
+        "x-browser-aliases": {
+          "routes": [
+            "user/unbindTelegram"
+          ],
+          "methodRoutes": [
+            "GET user/unbindTelegram"
+          ]
+        }
+      },
+      "get": {
+        "operationId": "getMeIntegrationsTelegram",
+        "tags": [
+          "user"
+        ],
+        "summary": "GET me/integrations/telegram",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/HeaderAcceptLanguage"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "headers": {
+              "X-Request-ID": {
+                "$ref": "#/components/headers/XRequestID"
+              },
+              "Content-Language": {
+                "$ref": "#/components/headers/XRequestID"
+              },
+              "Cache-Control": {
+                "$ref": "#/components/headers/PrivateNoStore"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/bot"
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {
+                        "pagination": {
+                          "$ref": "#/components/schemas/Pagination"
+                        },
+                        "taskId": {
+                          "type": "string"
+                        }
+                      }
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "403": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "404": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "409": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "410": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "422": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "429": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "500": {
+            "$ref": "#/components/responses/ProblemDetails"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          },
+          {
+            "browserUserCookie": []
+          }
+        ],
+        "x-permission": "user",
+        "x-legacy-path": "/api/v1/user/telegram/getBotInfo",
+        "description": "Returns local binding and membership eligibility without contacting Telegram. Bot username may be null; use the binding-links endpoint to obtain a verified Telegram URL.",
+        "x-runtime": {
+          "input": {},
+          "output": "bot",
+          "role": "user",
+          "status": 200,
+          "raw": false,
+          "bindings": {},
+          "key": "User/TelegramController@getBotInfo"
+        },
+        "x-legacy-entry": {
+          "legacy": "user/telegram/getBotInfo",
+          "legacyMethod": "GET",
+          "action": "App\\Http\\Controllers\\V1\\User\\TelegramController@getBotInfo",
+          "parameters": [],
+          "middleware": [],
+          "scope": "user"
+        },
+        "x-browser-aliases": {
+          "routes": [
+            "user/telegram/getBotInfo"
+          ],
+          "methodRoutes": [
+            "GET user/telegram/getBotInfo"
+          ]
+        }
+      }
+    },
+    "/me/integrations/telegram/binding-links": {
+      "post": {
+        "operationId": "postMeIntegrationsTelegramBindingLinks",
+        "tags": [
+          "user"
+        ],
+        "summary": "POST me/integrations/telegram/binding-links",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/HeaderAcceptLanguage"
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Success",
+            "headers": {
+              "X-Request-ID": {
+                "$ref": "#/components/headers/XRequestID"
+              },
+              "Content-Language": {
+                "$ref": "#/components/headers/XRequestID"
+              },
+              "Cache-Control": {
+                "$ref": "#/components/headers/PrivateNoStore"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/telegramBindingLink"
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {
+                        "pagination": {
+                          "$ref": "#/components/schemas/Pagination"
+                        },
+                        "taskId": {
+                          "type": "string"
+                        }
+                      }
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "403": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "404": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "409": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "410": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "422": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "429": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "500": {
+            "$ref": "#/components/responses/ProblemDetails"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          },
+          {
+            "browserUserCookie": []
+          }
+        ],
+        "x-permission": "user",
+        "description": "Requires an active session. Order and ticket identifiers are checked against the authenticated owner. Unauthenticated: 401; banned account: 403.",
+        "x-runtime": {
+          "input": {},
+          "output": "telegramBindingLink",
+          "role": "user",
+          "status": 201,
+          "raw": false,
+          "bindings": {},
+          "key": "User/TelegramController@bindingLink"
+        },
+        "x-legacy-entry": {
+          "legacy": "user/telegram/binding-link",
+          "legacyMethod": "POST",
+          "action": "App\\Http\\Controllers\\V1\\User\\TelegramController@bindingLink",
+          "parameters": [
+            {
+              "name": "request",
+              "type": "Illuminate\\Http\\Request",
+              "optional": false
+            }
+          ],
+          "middleware": [
+            "throttle:6,1"
+          ],
+          "scope": "user",
+          "id": "postMeIntegrationsTelegramBindingLinks",
+          "key": "User/TelegramController@bindingLink"
+        },
+        "x-browser-aliases": {
+          "routes": [
+            "user/telegram/binding-link"
+          ]
+        }
+      }
+    },
+    "/me/integrations/telegram/confirmation": {
+      "post": {
+        "operationId": "postMeIntegrationsTelegramConfirmation",
+        "tags": [
+          "user"
+        ],
+        "summary": "POST me/integrations/telegram/confirmation",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/HeaderAcceptLanguage"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "headers": {
+              "X-Request-ID": {
+                "$ref": "#/components/headers/XRequestID"
+              },
+              "Content-Language": {
+                "$ref": "#/components/headers/XRequestID"
+              },
+              "Cache-Control": {
+                "$ref": "#/components/headers/PrivateNoStore"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/scalar"
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {
+                        "pagination": {
+                          "$ref": "#/components/schemas/Pagination"
+                        },
+                        "taskId": {
+                          "type": "string"
+                        }
+                      }
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "403": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "404": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "409": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "410": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "422": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "429": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "500": {
+            "$ref": "#/components/responses/ProblemDetails"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          },
+          {
+            "browserUserCookie": []
+          }
+        ],
+        "x-permission": "user",
+        "description": "Requires an active session. Order and ticket identifiers are checked against the authenticated owner. Unauthenticated: 401; banned account: 403.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/postMeIntegrationsTelegramConfirmationInput"
+              }
+            }
+          }
+        },
+        "x-runtime": {
+          "input": {
+            "telegramId": "telegramId"
+          },
+          "output": "scalar",
+          "role": "user",
+          "status": 200,
+          "raw": false,
+          "bindings": {},
+          "key": "User/TelegramController@confirmBinding"
+        },
+        "x-legacy-entry": {
+          "legacy": "user/telegram/confirm-binding",
+          "legacyMethod": "POST",
+          "action": "App\\Http\\Controllers\\V1\\User\\TelegramController@confirmBinding",
+          "parameters": [
+            {
+              "name": "request",
+              "type": "Illuminate\\Http\\Request",
+              "optional": false
+            }
+          ],
+          "middleware": [
+            "throttle:6,1"
+          ],
+          "scope": "user",
+          "id": "postMeIntegrationsTelegramConfirmation",
+          "key": "User/TelegramController@confirmBinding"
+        },
+        "x-browser-aliases": {
+          "routes": [
+            "user/telegram/confirm-binding"
+          ]
+        }
+      }
+    },
+    "/me/integrations/telegram/group-invitations": {
+      "post": {
+        "operationId": "postMeIntegrationsTelegramGroupInvitations",
+        "tags": [
+          "user"
+        ],
+        "summary": "POST me/integrations/telegram/group-invitations",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/HeaderAcceptLanguage"
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Success",
+            "headers": {
+              "X-Request-ID": {
+                "$ref": "#/components/headers/XRequestID"
+              },
+              "Content-Language": {
+                "$ref": "#/components/headers/XRequestID"
+              },
+              "Cache-Control": {
+                "$ref": "#/components/headers/PrivateNoStore"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/telegramJoinLink"
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {
+                        "pagination": {
+                          "$ref": "#/components/schemas/Pagination"
+                        },
+                        "taskId": {
+                          "type": "string"
+                        }
+                      }
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "403": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "404": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "409": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "410": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "422": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "429": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "500": {
+            "$ref": "#/components/responses/ProblemDetails"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          },
+          {
+            "browserUserCookie": []
+          }
+        ],
+        "x-permission": "user",
+        "description": "Requires an active session. Order and ticket identifiers are checked against the authenticated owner. Unauthenticated: 401; banned account: 403.",
+        "x-runtime": {
+          "input": {},
+          "output": "telegramJoinLink",
+          "role": "user",
+          "status": 201,
+          "raw": false,
+          "bindings": {},
+          "key": "User/TelegramController@joinLink"
+        },
+        "x-legacy-entry": {
+          "legacy": "user/telegram/join-link",
+          "legacyMethod": "POST",
+          "action": "App\\Http\\Controllers\\V1\\User\\TelegramController@joinLink",
+          "parameters": [
+            {
+              "name": "request",
+              "type": "Illuminate\\Http\\Request",
+              "optional": false
+            }
+          ],
+          "middleware": [
+            "throttle:6,1"
+          ],
+          "scope": "user",
+          "id": "postMeIntegrationsTelegramGroupInvitations",
+          "key": "User/TelegramController@joinLink"
+        },
+        "x-browser-aliases": {
+          "routes": [
+            "user/telegram/join-link"
+          ]
+        }
+      }
+    },
+    "/webhooks/mail/{provider}": {
+      "post": {
+        "operationId": "postWebhooksMailProvider",
+        "summary": "Verified mail feedback",
+        "security": [],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/PathProvider"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Provider acknowledgement or unsubscribe HTML"
+          },
+          "403": {
+            "$ref": "#/components/responses/InvalidSignature"
+          },
+          "422": {
+            "$ref": "#/components/responses/InvalidPayload"
+          }
+        },
+        "x-runtime": {
+          "input": {},
+          "output": "scalar",
+          "role": "public",
+          "status": 200,
+          "raw": true,
+          "bindings": {
+            "provider": "provider"
+          },
+          "key": "MailController@webhook"
+        }
+      }
+    },
+    "/mail/unsubscribe/{token}": {
+      "get": {
+        "operationId": "getMailUnsubscribeToken",
+        "summary": "Announcement unsubscribe (GET confirms; POST changes preference)",
+        "security": [],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/PathToken"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Provider acknowledgement or unsubscribe HTML"
+          },
+          "403": {
+            "$ref": "#/components/responses/InvalidSignature"
+          },
+          "422": {
+            "$ref": "#/components/responses/InvalidPayload"
+          }
+        },
+        "x-runtime": {
+          "input": {},
+          "output": "scalar",
+          "role": "public",
+          "status": 200,
+          "raw": true,
+          "bindings": {
+            "token": "token"
+          },
+          "key": "MailController@unsubscribe"
+        }
+      },
+      "post": {
+        "operationId": "postMailUnsubscribeToken",
+        "summary": "Announcement unsubscribe (GET confirms; POST changes preference)",
+        "security": [],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/PathToken"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Provider acknowledgement or unsubscribe HTML"
+          },
+          "403": {
+            "$ref": "#/components/responses/InvalidSignature"
+          },
+          "422": {
+            "$ref": "#/components/responses/InvalidPayload"
+          }
+        },
+        "x-runtime": {
+          "input": {},
+          "output": "scalar",
+          "role": "public",
+          "status": 200,
+          "raw": true,
+          "bindings": {
+            "token": "token"
+          },
+          "key": "MailController@unsubscribe"
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "bot": {
+        "type": "object",
+        "properties": {
+          "username": {
+            "type": "string",
+            "nullable": true,
+            "x-runtime-field": [
+              "username"
+            ]
+          },
+          "linked": {
+            "type": "boolean",
+            "x-runtime-field": [
+              "linked",
+              "boolean"
+            ]
+          },
+          "telegramId": {
+            "type": "string",
+            "nullable": true,
+            "x-runtime-field": [
+              "telegramId"
+            ]
+          },
+          "pendingTelegramId": {
+            "type": "string",
+            "nullable": true,
+            "x-runtime-field": [
+              "pendingTelegramId"
+            ]
+          },
+          "pendingName": {
+            "type": "string",
+            "nullable": true,
+            "x-runtime-field": [
+              "pendingName"
+            ]
+          },
+          "groupManaged": {
+            "type": "boolean",
+            "x-runtime-field": [
+              "groupManaged",
+              "boolean"
+            ]
+          },
+          "eligibility": {
+            "type": "string",
+            "nullable": true,
+            "x-runtime-field": [
+              "eligibility"
+            ]
+          },
+          "graceDays": {
+            "type": "integer",
+            "format": "int64",
+            "nullable": true,
+            "x-runtime-field": [
+              "graceDays",
+              "integer"
+            ]
+          },
+          "graceEndsAt": {
+            "type": "string",
+            "nullable": true,
+            "x-runtime-field": [
+              "graceEndsAt"
+            ]
+          }
+        },
+        "additionalProperties": false,
+        "x-runtime-resource": true
+      },
+      "postWebhooksTelegramInput": {
+        "type": "object",
+        "properties": {}
+      },
+      "deleteMeIntegrationsTelegramInput": {
+        "type": "object",
+        "properties": {}
+      },
+      "getMeIntegrationsTelegramInput": {
+        "type": "object",
+        "properties": {}
+      },
+      "telegramBindingLink": {
+        "type": "object",
+        "properties": {
+          "bindingUrl": {
+            "type": "string",
+            "nullable": true,
+            "x-runtime-field": [
+              "bindingUrl"
+            ]
+          },
+          "expiresAt": {
+            "type": "string",
+            "nullable": true,
+            "x-runtime-field": [
+              "expiresAt"
+            ]
+          }
+        },
+        "additionalProperties": false,
+        "x-runtime-resource": true
+      },
+      "telegramJoinLink": {
+        "type": "object",
+        "properties": {
+          "inviteUrl": {
+            "type": "string",
+            "nullable": true,
+            "x-runtime-field": [
+              "inviteUrl"
+            ]
+          },
+          "expiresAt": {
+            "type": "string",
+            "nullable": true,
+            "x-runtime-field": [
+              "expiresAt"
+            ]
+          }
+        },
+        "additionalProperties": false,
+        "x-runtime-resource": true
+      },
+      "postMeIntegrationsTelegramBindingLinksInput": {
+        "type": "object",
+        "properties": {}
+      },
+      "postMeIntegrationsTelegramConfirmationInput": {
+        "type": "object",
+        "properties": {
+          "telegramId": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "telegramId"
+        ]
+      },
+      "postMeIntegrationsTelegramGroupInvitationsInput": {
+        "type": "object",
+        "properties": {}
+      }
+    }
+  }
+}

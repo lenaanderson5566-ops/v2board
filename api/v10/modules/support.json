@@ -1,0 +1,2200 @@
+{
+  "paths": {
+    "/me/notifications": {
+      "get": {
+        "operationId": "getMeNotifications",
+        "tags": [
+          "user"
+        ],
+        "summary": "GET me/notifications",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/HeaderAcceptLanguage"
+          },
+          {
+            "$ref": "#/components/parameters/QueryPage"
+          },
+          {
+            "$ref": "#/components/parameters/QueryPageSize"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "headers": {
+              "X-Request-ID": {
+                "$ref": "#/components/headers/XRequestID"
+              },
+              "Content-Language": {
+                "$ref": "#/components/headers/XRequestID"
+              },
+              "Cache-Control": {
+                "$ref": "#/components/headers/PrivateNoStore"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/inbox"
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {
+                        "pagination": {
+                          "$ref": "#/components/schemas/Pagination"
+                        },
+                        "taskId": {
+                          "type": "string"
+                        }
+                      }
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "403": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "404": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "409": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "410": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "422": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "429": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "500": {
+            "$ref": "#/components/responses/ProblemDetails"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          },
+          {
+            "browserUserCookie": []
+          }
+        ],
+        "x-permission": "user",
+        "x-legacy-path": "/api/v1/user/notice/inbox",
+        "description": "Requires an active session. Order and ticket identifiers are checked against the authenticated owner. Unauthenticated: 401; banned account: 403.",
+        "x-runtime": {
+          "input": {
+            "page": "current",
+            "pageSize": "page_size"
+          },
+          "output": "inbox",
+          "role": "user",
+          "status": 200,
+          "raw": false,
+          "bindings": {},
+          "key": "User/NoticeController@inbox"
+        },
+        "x-legacy-entry": {
+          "legacy": "user/notice/inbox",
+          "legacyMethod": "GET",
+          "action": "App\\Http\\Controllers\\V1\\User\\NoticeController@inbox",
+          "parameters": [
+            {
+              "name": "request",
+              "type": "Illuminate\\Http\\Request",
+              "optional": false
+            }
+          ],
+          "middleware": [],
+          "scope": "user"
+        },
+        "x-browser-aliases": {
+          "routes": [
+            "user/notice/inbox"
+          ],
+          "methodRoutes": [
+            "GET user/notice/inbox"
+          ]
+        }
+      }
+    },
+    "/me/notifications/read-receipts": {
+      "post": {
+        "operationId": "postMeNotificationsReadReceipts",
+        "tags": [
+          "user"
+        ],
+        "summary": "POST me/notifications/read-receipts",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/HeaderAcceptLanguage"
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Success",
+            "headers": {
+              "X-Request-ID": {
+                "$ref": "#/components/headers/XRequestID"
+              },
+              "Content-Language": {
+                "$ref": "#/components/headers/XRequestID"
+              },
+              "Cache-Control": {
+                "$ref": "#/components/headers/PrivateNoStore"
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "403": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "404": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "409": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "410": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "422": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "429": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "500": {
+            "$ref": "#/components/responses/ProblemDetails"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          },
+          {
+            "browserUserCookie": []
+          }
+        ],
+        "x-permission": "user",
+        "x-legacy-path": "/api/v1/user/notice/read",
+        "description": "Requires an active session. Order and ticket identifiers are checked against the authenticated owner. Unauthenticated: 401; banned account: 403.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/postMeNotificationsReadReceiptsInput"
+              }
+            }
+          }
+        },
+        "x-runtime": {
+          "input": {
+            "notificationId": "id",
+            "version": "version"
+          },
+          "output": "scalar",
+          "role": "user",
+          "status": 204,
+          "raw": false,
+          "bindings": {},
+          "key": "User/NoticeController@read"
+        },
+        "x-legacy-entry": {
+          "legacy": "user/notice/read",
+          "legacyMethod": "POST",
+          "action": "App\\Http\\Controllers\\V1\\User\\NoticeController@read",
+          "parameters": [
+            {
+              "name": "request",
+              "type": "Illuminate\\Http\\Request",
+              "optional": false
+            }
+          ],
+          "middleware": [
+            "throttle:120,1"
+          ],
+          "scope": "user"
+        },
+        "x-browser-aliases": {
+          "routes": [
+            "user/notice/read"
+          ],
+          "methodRoutes": [
+            "POST user/notice/read"
+          ]
+        }
+      }
+    },
+    "/announcements": {
+      "get": {
+        "operationId": "getAnnouncements",
+        "tags": [
+          "user"
+        ],
+        "summary": "GET announcements",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/HeaderAcceptLanguage"
+          },
+          {
+            "name": "notificationId",
+            "in": "query",
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "$ref": "#/components/parameters/QueryPage"
+          },
+          {
+            "$ref": "#/components/parameters/QueryPageSize"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "headers": {
+              "X-Request-ID": {
+                "$ref": "#/components/headers/XRequestID"
+              },
+              "Content-Language": {
+                "$ref": "#/components/headers/XRequestID"
+              },
+              "Cache-Control": {
+                "$ref": "#/components/headers/PrivateNoStore"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "oneOf": [
+                        {
+                          "$ref": "#/components/schemas/notification"
+                        },
+                        {
+                          "type": "array",
+                          "items": {
+                            "$ref": "#/components/schemas/notification"
+                          }
+                        }
+                      ]
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {
+                        "pagination": {
+                          "$ref": "#/components/schemas/Pagination"
+                        },
+                        "taskId": {
+                          "type": "string"
+                        }
+                      }
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "403": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "404": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "409": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "410": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "422": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "429": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "500": {
+            "$ref": "#/components/responses/ProblemDetails"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          },
+          {
+            "browserUserCookie": []
+          }
+        ],
+        "x-permission": "user",
+        "x-legacy-path": "/api/v1/user/notice/fetch",
+        "description": "Requires an active session. Order and ticket identifiers are checked against the authenticated owner. Unauthenticated: 401; banned account: 403.",
+        "x-runtime": {
+          "input": {
+            "notificationId": "id",
+            "page": "current",
+            "pageSize": "pageSize"
+          },
+          "output": "flex:notification",
+          "role": "user",
+          "status": 200,
+          "raw": false,
+          "bindings": {},
+          "key": "User/NoticeController@fetch"
+        },
+        "x-legacy-entry": {
+          "legacy": "user/notice/fetch",
+          "legacyMethod": "GET",
+          "action": "App\\Http\\Controllers\\V1\\User\\NoticeController@fetch",
+          "parameters": [
+            {
+              "name": "request",
+              "type": "Illuminate\\Http\\Request",
+              "optional": false
+            }
+          ],
+          "middleware": [],
+          "scope": "user"
+        },
+        "x-browser-aliases": {
+          "routes": [
+            "user/notice/fetch"
+          ],
+          "methodRoutes": [
+            "GET user/notice/fetch"
+          ]
+        }
+      }
+    },
+    "/me/tickets/{ticketId}/messages": {
+      "post": {
+        "operationId": "postMeTicketsTicketIdMessages",
+        "tags": [
+          "user"
+        ],
+        "summary": "POST me/tickets/{ticketId}/messages",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/PathTicketId"
+          },
+          {
+            "$ref": "#/components/parameters/HeaderAcceptLanguage"
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Success",
+            "headers": {
+              "X-Request-ID": {
+                "$ref": "#/components/headers/XRequestID"
+              },
+              "Content-Language": {
+                "$ref": "#/components/headers/XRequestID"
+              },
+              "Cache-Control": {
+                "$ref": "#/components/headers/PrivateNoStore"
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "403": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "404": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "409": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "410": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "422": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "429": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "500": {
+            "$ref": "#/components/responses/ProblemDetails"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          },
+          {
+            "browserUserCookie": []
+          }
+        ],
+        "x-permission": "user",
+        "x-legacy-path": "/api/v1/user/ticket/reply",
+        "description": "Requires an active session. Order and ticket identifiers are checked against the authenticated owner. Unauthenticated: 401; banned account: 403.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/postMeTicketsTicketIdMessagesInput"
+              }
+            }
+          }
+        },
+        "x-runtime": {
+          "input": {
+            "message": "message"
+          },
+          "output": "scalar",
+          "role": "user",
+          "status": 204,
+          "raw": false,
+          "bindings": {
+            "ticketId": "id"
+          },
+          "key": "User/TicketController@reply"
+        },
+        "x-legacy-entry": {
+          "legacy": "user/ticket/reply",
+          "legacyMethod": "POST",
+          "action": "App\\Http\\Controllers\\V1\\User\\TicketController@reply",
+          "parameters": [
+            {
+              "name": "request",
+              "type": "Illuminate\\Http\\Request",
+              "optional": false
+            }
+          ],
+          "middleware": [],
+          "scope": "user"
+        },
+        "x-browser-aliases": {
+          "routes": [
+            "user/ticket/reply"
+          ],
+          "methodRoutes": [
+            "POST user/ticket/reply"
+          ]
+        }
+      }
+    },
+    "/me/tickets/{ticketId}/closure": {
+      "post": {
+        "operationId": "postMeTicketsTicketIdClosure",
+        "tags": [
+          "user"
+        ],
+        "summary": "POST me/tickets/{ticketId}/closure",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/PathTicketId"
+          },
+          {
+            "$ref": "#/components/parameters/HeaderAcceptLanguage"
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Success",
+            "headers": {
+              "X-Request-ID": {
+                "$ref": "#/components/headers/XRequestID"
+              },
+              "Content-Language": {
+                "$ref": "#/components/headers/XRequestID"
+              },
+              "Cache-Control": {
+                "$ref": "#/components/headers/PrivateNoStore"
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "403": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "404": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "409": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "410": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "422": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "429": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "500": {
+            "$ref": "#/components/responses/ProblemDetails"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          },
+          {
+            "browserUserCookie": []
+          }
+        ],
+        "x-permission": "user",
+        "x-legacy-path": "/api/v1/user/ticket/close",
+        "description": "Requires an active session. Order and ticket identifiers are checked against the authenticated owner. Unauthenticated: 401; banned account: 403.",
+        "x-runtime": {
+          "input": {},
+          "output": "scalar",
+          "role": "user",
+          "status": 204,
+          "raw": false,
+          "bindings": {
+            "ticketId": "id"
+          },
+          "key": "User/TicketController@close"
+        },
+        "x-legacy-entry": {
+          "legacy": "user/ticket/close",
+          "legacyMethod": "POST",
+          "action": "App\\Http\\Controllers\\V1\\User\\TicketController@close",
+          "parameters": [
+            {
+              "name": "request",
+              "type": "Illuminate\\Http\\Request",
+              "optional": false
+            }
+          ],
+          "middleware": [],
+          "scope": "user"
+        },
+        "x-browser-aliases": {
+          "routes": [
+            "user/ticket/close"
+          ],
+          "methodRoutes": [
+            "POST user/ticket/close"
+          ]
+        }
+      }
+    },
+    "/me/tickets": {
+      "post": {
+        "operationId": "postMeTickets",
+        "tags": [
+          "user"
+        ],
+        "summary": "POST me/tickets",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/HeaderAcceptLanguage"
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Success",
+            "headers": {
+              "X-Request-ID": {
+                "$ref": "#/components/headers/XRequestID"
+              },
+              "Content-Language": {
+                "$ref": "#/components/headers/XRequestID"
+              },
+              "Cache-Control": {
+                "$ref": "#/components/headers/PrivateNoStore"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/ticket"
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {
+                        "pagination": {
+                          "$ref": "#/components/schemas/Pagination"
+                        },
+                        "taskId": {
+                          "type": "string"
+                        }
+                      }
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "403": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "404": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "409": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "410": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "422": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "429": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "500": {
+            "$ref": "#/components/responses/ProblemDetails"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          },
+          {
+            "browserUserCookie": []
+          }
+        ],
+        "x-permission": "user",
+        "x-legacy-path": "/api/v1/user/ticket/save",
+        "description": "Requires an active session. Order and ticket identifiers are checked against the authenticated owner. Unauthenticated: 401; banned account: 403.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/postMeTicketsInput"
+              }
+            }
+          }
+        },
+        "x-runtime": {
+          "input": {
+            "subject": "subject",
+            "priority": "level",
+            "message": "message"
+          },
+          "output": "ticket",
+          "role": "user",
+          "status": 201,
+          "raw": false,
+          "bindings": {},
+          "key": "User/TicketController@save"
+        },
+        "x-legacy-entry": {
+          "legacy": "user/ticket/save",
+          "legacyMethod": "POST",
+          "action": "App\\Http\\Controllers\\V1\\User\\TicketController@save",
+          "parameters": [
+            {
+              "name": "request",
+              "type": "App\\Http\\Requests\\User\\TicketSave",
+              "optional": false
+            }
+          ],
+          "middleware": [],
+          "scope": "user"
+        },
+        "x-browser-aliases": {
+          "routes": [
+            "user/ticket/save"
+          ],
+          "methodRoutes": [
+            "POST user/ticket/save"
+          ]
+        }
+      },
+      "get": {
+        "operationId": "getMeTickets",
+        "tags": [
+          "user"
+        ],
+        "summary": "GET me/tickets",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/HeaderAcceptLanguage"
+          },
+          {
+            "name": "ticketId",
+            "in": "query",
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "$ref": "#/components/parameters/QueryPage"
+          },
+          {
+            "$ref": "#/components/parameters/QueryPageSize"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "headers": {
+              "X-Request-ID": {
+                "$ref": "#/components/headers/XRequestID"
+              },
+              "Content-Language": {
+                "$ref": "#/components/headers/XRequestID"
+              },
+              "Cache-Control": {
+                "$ref": "#/components/headers/PrivateNoStore"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "oneOf": [
+                        {
+                          "$ref": "#/components/schemas/ticket"
+                        },
+                        {
+                          "type": "array",
+                          "items": {
+                            "$ref": "#/components/schemas/ticket"
+                          }
+                        }
+                      ]
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {
+                        "pagination": {
+                          "$ref": "#/components/schemas/Pagination"
+                        },
+                        "taskId": {
+                          "type": "string"
+                        }
+                      }
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "403": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "404": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "409": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "410": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "422": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "429": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "500": {
+            "$ref": "#/components/responses/ProblemDetails"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          },
+          {
+            "browserUserCookie": []
+          }
+        ],
+        "x-permission": "user",
+        "x-legacy-path": "/api/v1/user/ticket/fetch",
+        "description": "Requires an active session. Order and ticket identifiers are checked against the authenticated owner. Unauthenticated: 401; banned account: 403.",
+        "x-runtime": {
+          "input": {
+            "ticketId": "id",
+            "page": "current",
+            "pageSize": "page_size"
+          },
+          "output": "flex:ticket",
+          "role": "user",
+          "status": 200,
+          "raw": false,
+          "bindings": {},
+          "key": "User/TicketController@fetch"
+        },
+        "x-legacy-entry": {
+          "legacy": "user/ticket/fetch",
+          "legacyMethod": "GET",
+          "action": "App\\Http\\Controllers\\V1\\User\\TicketController@fetch",
+          "parameters": [
+            {
+              "name": "request",
+              "type": "Illuminate\\Http\\Request",
+              "optional": false
+            }
+          ],
+          "middleware": [],
+          "scope": "user"
+        },
+        "x-browser-aliases": {
+          "routes": [
+            "user/ticket/fetch"
+          ],
+          "methodRoutes": [
+            "GET user/ticket/fetch"
+          ]
+        }
+      }
+    },
+    "/knowledge-articles": {
+      "get": {
+        "operationId": "getKnowledgeArticles",
+        "tags": [
+          "user"
+        ],
+        "summary": "GET knowledge-articles",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/HeaderAcceptLanguage"
+          },
+          {
+            "name": "articleId",
+            "in": "query",
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "$ref": "#/components/parameters/QueryKeyword"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "headers": {
+              "X-Request-ID": {
+                "$ref": "#/components/headers/XRequestID"
+              },
+              "Content-Language": {
+                "$ref": "#/components/headers/XRequestID"
+              },
+              "Cache-Control": {
+                "$ref": "#/components/headers/PrivateNoStore"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/articles"
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {
+                        "pagination": {
+                          "$ref": "#/components/schemas/Pagination"
+                        },
+                        "taskId": {
+                          "type": "string"
+                        }
+                      }
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "403": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "404": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "409": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "410": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "422": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "429": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "500": {
+            "$ref": "#/components/responses/ProblemDetails"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          },
+          {
+            "browserUserCookie": []
+          }
+        ],
+        "x-permission": "user",
+        "x-legacy-path": "/api/v1/user/knowledge/fetch",
+        "description": "Requires an active session. Order and ticket identifiers are checked against the authenticated owner. Unauthenticated: 401; banned account: 403.",
+        "x-runtime": {
+          "input": {
+            "articleId": "id",
+            "keyword": "keyword"
+          },
+          "output": "articles",
+          "role": "user",
+          "status": 200,
+          "raw": false,
+          "bindings": {},
+          "key": "User/KnowledgeController@fetch"
+        },
+        "x-legacy-entry": {
+          "legacy": "user/knowledge/fetch",
+          "legacyMethod": "GET",
+          "action": "App\\Http\\Controllers\\V1\\User\\KnowledgeController@fetch",
+          "parameters": [
+            {
+              "name": "request",
+              "type": "Illuminate\\Http\\Request",
+              "optional": false
+            }
+          ],
+          "middleware": [],
+          "scope": "user"
+        },
+        "x-browser-aliases": {
+          "routes": [
+            "user/knowledge/fetch"
+          ],
+          "methodRoutes": [
+            "GET user/knowledge/fetch"
+          ]
+        }
+      }
+    },
+    "/knowledge-categories": {
+      "get": {
+        "operationId": "getKnowledgeCategories",
+        "tags": [
+          "user"
+        ],
+        "summary": "GET knowledge-categories",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/HeaderAcceptLanguage"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "headers": {
+              "X-Request-ID": {
+                "$ref": "#/components/headers/XRequestID"
+              },
+              "Content-Language": {
+                "$ref": "#/components/headers/XRequestID"
+              },
+              "Cache-Control": {
+                "$ref": "#/components/headers/PrivateNoStore"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/strings"
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {
+                        "pagination": {
+                          "$ref": "#/components/schemas/Pagination"
+                        },
+                        "taskId": {
+                          "type": "string"
+                        }
+                      }
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "403": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "404": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "409": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "410": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "422": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "429": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "500": {
+            "$ref": "#/components/responses/ProblemDetails"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          },
+          {
+            "browserUserCookie": []
+          }
+        ],
+        "x-permission": "user",
+        "x-legacy-path": "/api/v1/user/knowledge/getCategory",
+        "description": "Requires an active session. Order and ticket identifiers are checked against the authenticated owner. Unauthenticated: 401; banned account: 403.",
+        "x-runtime": {
+          "input": {},
+          "output": "strings",
+          "role": "user",
+          "status": 200,
+          "raw": false,
+          "bindings": {},
+          "key": "User/KnowledgeController@getCategory"
+        },
+        "x-legacy-entry": {
+          "legacy": "user/knowledge/getCategory",
+          "legacyMethod": "GET",
+          "action": "App\\Http\\Controllers\\V1\\User\\KnowledgeController@getCategory",
+          "parameters": [
+            {
+              "name": "request",
+              "type": "Illuminate\\Http\\Request",
+              "optional": false
+            }
+          ],
+          "middleware": [],
+          "scope": "user"
+        },
+        "x-browser-aliases": {
+          "routes": [
+            "user/knowledge/getCategory"
+          ],
+          "methodRoutes": [
+            "GET user/knowledge/getCategory"
+          ]
+        }
+      }
+    },
+    "/me/tickets/{ticketId}": {
+      "get": {
+        "operationId": "getMeTicketsTicketId",
+        "tags": [
+          "user"
+        ],
+        "summary": "GET me/tickets/{ticketId}",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/PathTicketId"
+          },
+          {
+            "$ref": "#/components/parameters/HeaderAcceptLanguage"
+          },
+          {
+            "$ref": "#/components/parameters/QueryPage"
+          },
+          {
+            "$ref": "#/components/parameters/QueryPageSize"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "headers": {
+              "X-Request-ID": {
+                "$ref": "#/components/headers/XRequestID"
+              },
+              "Content-Language": {
+                "$ref": "#/components/headers/XRequestID"
+              },
+              "Cache-Control": {
+                "$ref": "#/components/headers/PrivateNoStore"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "oneOf": [
+                        {
+                          "$ref": "#/components/schemas/ticket"
+                        },
+                        {
+                          "type": "array",
+                          "items": {
+                            "$ref": "#/components/schemas/ticket"
+                          }
+                        }
+                      ]
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {
+                        "pagination": {
+                          "$ref": "#/components/schemas/Pagination"
+                        },
+                        "taskId": {
+                          "type": "string"
+                        }
+                      }
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "403": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "404": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "409": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "410": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "422": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "429": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "500": {
+            "$ref": "#/components/responses/ProblemDetails"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          },
+          {
+            "browserUserCookie": []
+          }
+        ],
+        "x-permission": "user",
+        "x-legacy-path": "/api/v1/user/ticket/fetch",
+        "description": "Requires an active session. Order and ticket identifiers are checked against the authenticated owner. Unauthenticated: 401; banned account: 403.",
+        "x-runtime": {
+          "input": {
+            "page": "current",
+            "pageSize": "page_size"
+          },
+          "output": "flex:ticket",
+          "role": "user",
+          "status": 200,
+          "raw": false,
+          "bindings": {
+            "ticketId": "id"
+          },
+          "key": "User/TicketController@fetch"
+        },
+        "x-legacy-entry": {
+          "legacy": "user/ticket/fetch",
+          "legacyMethod": "GET",
+          "action": "App\\Http\\Controllers\\V1\\User\\TicketController@fetch",
+          "parameters": [
+            {
+              "name": "request",
+              "type": "Illuminate\\Http\\Request",
+              "optional": false
+            }
+          ],
+          "middleware": [],
+          "scope": "user",
+          "legacyQuery": {
+            "id": "resourceId"
+          }
+        },
+        "x-browser-aliases": {
+          "details": [
+            "user/ticket/fetch"
+          ]
+        }
+      }
+    },
+    "/knowledge-articles/{articleId}": {
+      "get": {
+        "operationId": "getKnowledgeArticlesArticleId",
+        "tags": [
+          "user"
+        ],
+        "summary": "GET knowledge-articles/{articleId}",
+        "parameters": [
+          {
+            "name": "articleId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "$ref": "#/components/parameters/HeaderAcceptLanguage"
+          },
+          {
+            "$ref": "#/components/parameters/QueryKeyword"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "headers": {
+              "X-Request-ID": {
+                "$ref": "#/components/headers/XRequestID"
+              },
+              "Content-Language": {
+                "$ref": "#/components/headers/XRequestID"
+              },
+              "Cache-Control": {
+                "$ref": "#/components/headers/PrivateNoStore"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/articles"
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {
+                        "pagination": {
+                          "$ref": "#/components/schemas/Pagination"
+                        },
+                        "taskId": {
+                          "type": "string"
+                        }
+                      }
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "403": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "404": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "409": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "410": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "422": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "429": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "500": {
+            "$ref": "#/components/responses/ProblemDetails"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          },
+          {
+            "browserUserCookie": []
+          }
+        ],
+        "x-permission": "user",
+        "x-legacy-path": "/api/v1/user/knowledge/fetch",
+        "description": "Requires an active session. Order and ticket identifiers are checked against the authenticated owner. Unauthenticated: 401; banned account: 403.",
+        "x-runtime": {
+          "input": {
+            "keyword": "keyword"
+          },
+          "output": "articles",
+          "role": "user",
+          "status": 200,
+          "raw": false,
+          "bindings": {
+            "articleId": "id"
+          },
+          "key": "User/KnowledgeController@fetch"
+        },
+        "x-legacy-entry": {
+          "legacy": "user/knowledge/fetch",
+          "legacyMethod": "GET",
+          "action": "App\\Http\\Controllers\\V1\\User\\KnowledgeController@fetch",
+          "parameters": [
+            {
+              "name": "request",
+              "type": "Illuminate\\Http\\Request",
+              "optional": false
+            }
+          ],
+          "middleware": [],
+          "scope": "user",
+          "legacyQuery": {
+            "id": "resourceId"
+          }
+        },
+        "x-browser-aliases": {
+          "details": [
+            "user/knowledge/fetch"
+          ]
+        }
+      }
+    },
+    "/announcements/{notificationId}": {
+      "get": {
+        "operationId": "getAnnouncementsNotificationId",
+        "tags": [
+          "user"
+        ],
+        "summary": "GET announcements/{notificationId}",
+        "parameters": [
+          {
+            "name": "notificationId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "$ref": "#/components/parameters/HeaderAcceptLanguage"
+          },
+          {
+            "$ref": "#/components/parameters/QueryPage"
+          },
+          {
+            "$ref": "#/components/parameters/QueryPageSize"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "headers": {
+              "X-Request-ID": {
+                "$ref": "#/components/headers/XRequestID"
+              },
+              "Content-Language": {
+                "$ref": "#/components/headers/XRequestID"
+              },
+              "Cache-Control": {
+                "$ref": "#/components/headers/PrivateNoStore"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "oneOf": [
+                        {
+                          "$ref": "#/components/schemas/notification"
+                        },
+                        {
+                          "type": "array",
+                          "items": {
+                            "$ref": "#/components/schemas/notification"
+                          }
+                        }
+                      ]
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {
+                        "pagination": {
+                          "$ref": "#/components/schemas/Pagination"
+                        },
+                        "taskId": {
+                          "type": "string"
+                        }
+                      }
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "403": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "404": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "409": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "410": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "422": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "429": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "500": {
+            "$ref": "#/components/responses/ProblemDetails"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          },
+          {
+            "browserUserCookie": []
+          }
+        ],
+        "x-permission": "user",
+        "x-legacy-path": "/api/v1/user/notice/fetch",
+        "description": "Requires an active session. Order and ticket identifiers are checked against the authenticated owner. Unauthenticated: 401; banned account: 403.",
+        "x-runtime": {
+          "input": {
+            "page": "current",
+            "pageSize": "pageSize"
+          },
+          "output": "flex:notification",
+          "role": "user",
+          "status": 200,
+          "raw": false,
+          "bindings": {
+            "notificationId": "id"
+          },
+          "key": "User/NoticeController@fetch"
+        },
+        "x-legacy-entry": {
+          "legacy": "user/notice/fetch",
+          "legacyMethod": "GET",
+          "action": "App\\Http\\Controllers\\V1\\User\\NoticeController@fetch",
+          "parameters": [
+            {
+              "name": "request",
+              "type": "Illuminate\\Http\\Request",
+              "optional": false
+            }
+          ],
+          "middleware": [],
+          "scope": "user",
+          "legacyQuery": {
+            "id": "resourceId"
+          }
+        },
+        "x-browser-aliases": {
+          "details": [
+            "user/notice/fetch"
+          ]
+        }
+      }
+    },
+    "/me/notifications/ticket-read-receipts": {
+      "post": {
+        "operationId": "postMeTicketReadReceipts",
+        "tags": [
+          "user"
+        ],
+        "summary": "Mark the displayed ticket reply as read",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/HeaderAcceptLanguage"
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Success",
+            "headers": {
+              "X-Request-ID": {
+                "$ref": "#/components/headers/XRequestID"
+              },
+              "Content-Language": {
+                "$ref": "#/components/headers/XRequestID"
+              },
+              "Cache-Control": {
+                "$ref": "#/components/headers/PrivateNoStore"
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "403": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "404": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "409": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "410": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "422": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "429": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "500": {
+            "$ref": "#/components/responses/ProblemDetails"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          },
+          {
+            "browserUserCookie": []
+          }
+        ],
+        "x-permission": "user",
+        "x-legacy-path": "/api/v1/user/notice/read",
+        "description": "Requires an active session. Order and ticket identifiers are checked against the authenticated owner. Unauthenticated: 401; banned account: 403.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "ticketId",
+                  "version"
+                ],
+                "properties": {
+                  "ticketId": {
+                    "type": "integer",
+                    "minimum": 1
+                  },
+                  "version": {
+                    "type": "integer",
+                    "minimum": 1
+                  }
+                }
+              }
+            }
+          }
+        },
+        "x-runtime": {
+          "input": {
+            "ticketId": "id",
+            "version": "version"
+          },
+          "output": "scalar",
+          "role": "user",
+          "status": 204,
+          "raw": false,
+          "bindings": {},
+          "key": "User/NoticeController@readTicket"
+        },
+        "x-browser-aliases": {
+          "routes": [
+            "user/notice/readTicket"
+          ],
+          "methodRoutes": [
+            "POST user/notice/readTicket"
+          ]
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "notification": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int64",
+            "nullable": true,
+            "x-runtime-field": [
+              "id",
+              "integer"
+            ]
+          },
+          "title": {
+            "type": "string",
+            "nullable": true,
+            "x-runtime-field": [
+              "title"
+            ]
+          },
+          "content": {
+            "type": "string",
+            "nullable": true,
+            "x-runtime-field": [
+              "content"
+            ]
+          },
+          "imageUrl": {
+            "type": "string",
+            "nullable": true,
+            "x-runtime-field": [
+              "img_url"
+            ]
+          },
+          "tags": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "x-runtime-field": [
+              "tags"
+            ]
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true,
+            "x-runtime-field": [
+              "created_at",
+              "time"
+            ]
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true,
+            "x-runtime-field": [
+              "updated_at",
+              "time"
+            ]
+          },
+          "read": {
+            "type": "boolean",
+            "x-runtime-field": [
+              "is_read",
+              "boolean"
+            ]
+          },
+          "version": {
+            "type": "integer",
+            "format": "int64",
+            "nullable": true,
+            "x-runtime-field": [
+              "updated_at",
+              "integer"
+            ]
+          }
+        },
+        "additionalProperties": false,
+        "x-runtime-resource": true
+      },
+      "message": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int64",
+            "nullable": true,
+            "x-runtime-field": [
+              "id",
+              "integer"
+            ]
+          },
+          "ticketId": {
+            "type": "integer",
+            "format": "int64",
+            "nullable": true,
+            "x-runtime-field": [
+              "ticket_id",
+              "integer"
+            ]
+          },
+          "message": {
+            "type": "string",
+            "nullable": true,
+            "x-runtime-field": [
+              "message"
+            ]
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true,
+            "x-runtime-field": [
+              "created_at",
+              "time"
+            ]
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true,
+            "x-runtime-field": [
+              "updated_at",
+              "time"
+            ]
+          },
+          "mine": {
+            "type": "boolean",
+            "x-runtime-field": [
+              "is_me",
+              "boolean"
+            ]
+          }
+        },
+        "additionalProperties": false,
+        "x-runtime-resource": true
+      },
+      "ticket": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int64",
+            "nullable": true,
+            "x-runtime-field": [
+              "id",
+              "integer"
+            ]
+          },
+          "subject": {
+            "type": "string",
+            "nullable": true,
+            "x-runtime-field": [
+              "subject"
+            ]
+          },
+          "priority": {
+            "type": "string",
+            "enum": [
+              "normal",
+              "high",
+              "urgent"
+            ],
+            "x-runtime-field": [
+              "level",
+              "priority"
+            ]
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "open",
+              "closed",
+              "unknown"
+            ],
+            "x-runtime-field": [
+              "status",
+              "ticketStatus"
+            ]
+          },
+          "replyStatus": {
+            "type": "string",
+            "enum": [
+              "awaiting-user",
+              "awaiting-staff"
+            ],
+            "x-runtime-field": [
+              "reply_status",
+              "replyStatus"
+            ]
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true,
+            "x-runtime-field": [
+              "created_at",
+              "time"
+            ]
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true,
+            "x-runtime-field": [
+              "updated_at",
+              "time"
+            ]
+          },
+          "messages": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/message"
+            },
+            "x-runtime-field": [
+              "message",
+              "array",
+              "message"
+            ]
+          }
+        },
+        "additionalProperties": false,
+        "x-runtime-resource": true
+      },
+      "article": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int64",
+            "nullable": true,
+            "x-runtime-field": [
+              "id",
+              "integer"
+            ]
+          },
+          "title": {
+            "type": "string",
+            "nullable": true,
+            "x-runtime-field": [
+              "title"
+            ]
+          },
+          "category": {
+            "type": "string",
+            "nullable": true,
+            "x-runtime-field": [
+              "category"
+            ]
+          },
+          "body": {
+            "type": "string",
+            "nullable": true,
+            "x-runtime-field": [
+              "body"
+            ]
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true,
+            "x-runtime-field": [
+              "updated_at",
+              "time"
+            ]
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true,
+            "x-runtime-field": [
+              "created_at",
+              "time"
+            ]
+          }
+        },
+        "additionalProperties": false,
+        "x-runtime-resource": true
+      },
+      "inbox": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/notification"
+            }
+          },
+          "unread": {
+            "type": "integer"
+          },
+          "ticketReplies": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ticketNotification"
+            }
+          },
+          "ticketUnread": {
+            "type": "integer"
+          }
+        }
+      },
+      "articles": {
+        "oneOf": [
+          {
+            "$ref": "#/components/schemas/article"
+          },
+          {
+            "type": "object",
+            "additionalProperties": {
+              "type": "array",
+              "items": {
+                "$ref": "#/components/schemas/article"
+              }
+            }
+          }
+        ]
+      },
+      "getMeNotificationsInput": {
+        "type": "object",
+        "properties": {
+          "page": {
+            "type": "integer"
+          },
+          "pageSize": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 100,
+            "default": 20
+          }
+        }
+      },
+      "postMeNotificationsReadReceiptsInput": {
+        "type": "object",
+        "properties": {
+          "notificationId": {
+            "type": "integer"
+          },
+          "version": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "notificationId",
+          "version"
+        ]
+      },
+      "getAnnouncementsInput": {
+        "type": "object",
+        "properties": {
+          "notificationId": {
+            "type": "integer"
+          },
+          "page": {
+            "type": "integer"
+          },
+          "pageSize": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 100,
+            "default": 20
+          }
+        }
+      },
+      "postMeTicketsTicketIdMessagesInput": {
+        "type": "object",
+        "properties": {
+          "message": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "message"
+        ]
+      },
+      "postMeTicketsTicketIdClosureInput": {
+        "type": "object",
+        "properties": {}
+      },
+      "postMeTicketsInput": {
+        "type": "object",
+        "properties": {
+          "subject": {
+            "type": "string"
+          },
+          "priority": {
+            "type": "string",
+            "enum": [
+              "normal",
+              "high",
+              "urgent"
+            ]
+          },
+          "message": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "subject",
+          "priority",
+          "message"
+        ]
+      },
+      "getMeTicketsInput": {
+        "type": "object",
+        "properties": {
+          "ticketId": {
+            "type": "integer"
+          },
+          "page": {
+            "type": "integer"
+          },
+          "pageSize": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 100,
+            "default": 20
+          }
+        }
+      },
+      "getKnowledgeArticlesInput": {
+        "type": "object",
+        "properties": {
+          "articleId": {
+            "type": "integer"
+          },
+          "keyword": {
+            "type": "string"
+          }
+        }
+      },
+      "getKnowledgeCategoriesInput": {
+        "type": "object",
+        "properties": {}
+      },
+      "getMeTicketsTicketIdInput": {
+        "type": "object",
+        "properties": {
+          "page": {
+            "type": "integer"
+          },
+          "pageSize": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 100,
+            "default": 20
+          }
+        }
+      },
+      "getKnowledgeArticlesArticleIdInput": {
+        "type": "object",
+        "properties": {
+          "keyword": {
+            "type": "string"
+          }
+        }
+      },
+      "getAnnouncementsNotificationIdInput": {
+        "type": "object",
+        "properties": {
+          "page": {
+            "type": "integer"
+          },
+          "pageSize": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 100,
+            "default": 20
+          }
+        }
+      },
+      "ticketNotification": {
+        "type": "object",
+        "properties": {
+          "ticketId": {
+            "type": "integer",
+            "x-runtime-field": [
+              "ticket_id",
+              "integer"
+            ]
+          },
+          "messageId": {
+            "type": "integer",
+            "x-runtime-field": [
+              "message_id",
+              "integer"
+            ]
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time",
+            "x-runtime-field": [
+              "created_at",
+              "time"
+            ]
+          }
+        },
+        "x-runtime-resource": true,
+        "required": [
+          "ticketId",
+          "messageId",
+          "createdAt"
+        ]
+      }
+    }
+  }
+}

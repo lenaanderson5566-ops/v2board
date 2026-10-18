@@ -1,0 +1,1190 @@
+{
+  "paths": {
+    "/server/configuration": {
+      "get": {
+        "operationId": "nodeConfiguration",
+        "tags": [
+          "V2Box node communication"
+        ],
+        "security": [
+          {
+            "nodeBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/HeaderXNodeType"
+          },
+          {
+            "$ref": "#/components/parameters/HeaderXNodeID"
+          },
+          {
+            "$ref": "#/components/parameters/HeaderIfNoneMatch"
+          },
+          {
+            "$ref": "#/components/parameters/HeaderXNodeCapabilities"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/nodeMachineConfig"
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/NodeAPIProblem"
+          },
+          "404": {
+            "$ref": "#/components/responses/NodeAPIProblem"
+          },
+          "409": {
+            "$ref": "#/components/responses/NodeAPIProblem"
+          },
+          "422": {
+            "$ref": "#/components/responses/NodeAPIProblem"
+          },
+          "500": {
+            "$ref": "#/components/responses/NodeAPIProblem"
+          },
+          "304": {
+            "description": "Unchanged"
+          }
+        },
+        "x-node-legacy": "GET /api/v2/server/config"
+      },
+      "x-node-path": true
+    },
+    "/server/users": {
+      "get": {
+        "operationId": "nodeUsers",
+        "tags": [
+          "V2Box node communication"
+        ],
+        "security": [
+          {
+            "nodeBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/HeaderXNodeType"
+          },
+          {
+            "$ref": "#/components/parameters/HeaderXNodeID"
+          },
+          {
+            "$ref": "#/components/parameters/HeaderIfNoneMatch"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/nodeMachineUser"
+                      }
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/NodeAPIProblem"
+          },
+          "404": {
+            "$ref": "#/components/responses/NodeAPIProblem"
+          },
+          "409": {
+            "$ref": "#/components/responses/NodeAPIProblem"
+          },
+          "422": {
+            "$ref": "#/components/responses/NodeAPIProblem"
+          },
+          "500": {
+            "$ref": "#/components/responses/NodeAPIProblem"
+          },
+          "304": {
+            "description": "Unchanged"
+          }
+        },
+        "x-node-legacy": "GET /api/v1/server/UniProxy/user"
+      },
+      "x-node-path": true
+    },
+    "/server/online-counts": {
+      "get": {
+        "operationId": "nodeOnlineCounts",
+        "tags": [
+          "V2Box node communication"
+        ],
+        "security": [
+          {
+            "nodeBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/HeaderXNodeType"
+          },
+          {
+            "$ref": "#/components/parameters/HeaderXNodeID"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/nodeOnlineCount"
+                      }
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/NodeAPIProblem"
+          },
+          "404": {
+            "$ref": "#/components/responses/NodeAPIProblem"
+          },
+          "409": {
+            "$ref": "#/components/responses/NodeAPIProblem"
+          },
+          "422": {
+            "$ref": "#/components/responses/NodeAPIProblem"
+          },
+          "500": {
+            "$ref": "#/components/responses/NodeAPIProblem"
+          }
+        },
+        "x-node-legacy": "GET /api/v1/server/UniProxy/alivelist"
+      },
+      "x-node-path": true
+    },
+    "/server/traffic": {
+      "post": {
+        "operationId": "nodeTraffic",
+        "tags": [
+          "V2Box node communication"
+        ],
+        "security": [
+          {
+            "nodeBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/HeaderXNodeType"
+          },
+          {
+            "$ref": "#/components/parameters/HeaderXNodeID"
+          }
+        ],
+        "responses": {
+          "202": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/nodeAcknowledgement"
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/NodeAPIProblem"
+          },
+          "404": {
+            "$ref": "#/components/responses/NodeAPIProblem"
+          },
+          "409": {
+            "description": "CONFLICT: batch ID reused with a different payload"
+          },
+          "422": {
+            "$ref": "#/components/responses/NodeAPIProblem"
+          },
+          "500": {
+            "$ref": "#/components/responses/NodeAPIProblem"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "records": {
+                    "type": "array",
+                    "items": {
+                      "$ref": "#/components/schemas/nodeTrafficRecord"
+                    }
+                  },
+                  "batchId": {
+                    "type": "string",
+                    "format": "uuid",
+                    "description": "Optional for legacy clients. Required for durable deduplicated batches; retries reuse the ID and identical records."
+                  }
+                },
+                "required": [
+                  "records"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "description": "With batchId, 202 acknowledges durable receipt. Billing and daily statistics are applied atomically once per node and batch. Different records under the same ID return 409. Without batchId the existing non-deduplicated accounting path remains.",
+        "x-node-legacy": "POST /api/v1/server/UniProxy/push"
+      },
+      "x-node-path": true
+    },
+    "/server/online-users": {
+      "post": {
+        "operationId": "nodeOnlineUsers",
+        "tags": [
+          "V2Box node communication"
+        ],
+        "security": [
+          {
+            "nodeBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/HeaderXNodeType"
+          },
+          {
+            "$ref": "#/components/parameters/HeaderXNodeID"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/nodeAcknowledgement"
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/NodeAPIProblem"
+          },
+          "404": {
+            "$ref": "#/components/responses/NodeAPIProblem"
+          },
+          "409": {
+            "$ref": "#/components/responses/NodeAPIProblem"
+          },
+          "422": {
+            "$ref": "#/components/responses/NodeAPIProblem"
+          },
+          "500": {
+            "$ref": "#/components/responses/NodeAPIProblem"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "records": {
+                    "type": "array",
+                    "items": {
+                      "$ref": "#/components/schemas/nodeOnlineRecord"
+                    }
+                  }
+                },
+                "required": [
+                  "records"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "x-node-legacy": "POST /api/v1/server/UniProxy/alive"
+      },
+      "x-node-path": true
+    },
+    "/server/capabilities": {
+      "post": {
+        "operationId": "nodeCapabilities",
+        "tags": [
+          "V2Box node communication"
+        ],
+        "security": [
+          {
+            "nodeBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/HeaderXNodeType"
+          },
+          {
+            "$ref": "#/components/parameters/HeaderXNodeID"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/nodeAcknowledgement"
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/NodeAPIProblem"
+          },
+          "404": {
+            "$ref": "#/components/responses/NodeAPIProblem"
+          },
+          "409": {
+            "$ref": "#/components/responses/NodeAPIProblem"
+          },
+          "422": {
+            "$ref": "#/components/responses/NodeAPIProblem"
+          },
+          "500": {
+            "$ref": "#/components/responses/NodeAPIProblem"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/nodeCapabilities"
+              }
+            }
+          }
+        },
+        "x-node-legacy": "New resource"
+      },
+      "x-node-path": true
+    },
+    "/server/addresses": {
+      "post": {
+        "operationId": "nodeAddresses",
+        "tags": [
+          "Node address reporting"
+        ],
+        "description": "V2Node and V2Box scoped DDNS reporting. Bearer report key identifies one configured node. Neither the Cloudflare token nor the panel server_token is accepted. Each family must be public and allowed by the binding. Missing families retain their independent freshness timestamp; reports never reset provider backoff.",
+        "security": [
+          {
+            "nodeReportBearer": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/nodeAddressReport"
+              }
+            }
+          }
+        },
+        "responses": {
+          "202": {
+            "description": "Accepted",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/nodeAddressAccepted"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "UNAUTHENTICATED",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "code",
+                    "requestId",
+                    "status"
+                  ],
+                  "properties": {
+                    "code": {
+                      "type": "string"
+                    },
+                    "requestId": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "type": "integer"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "FORBIDDEN",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "code",
+                    "requestId",
+                    "status"
+                  ],
+                  "properties": {
+                    "code": {
+                      "type": "string"
+                    },
+                    "requestId": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "type": "integer"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "VALIDATION_FAILED",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "code",
+                    "requestId",
+                    "status"
+                  ],
+                  "properties": {
+                    "code": {
+                      "type": "string"
+                    },
+                    "requestId": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "type": "integer"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "RATE_LIMITED",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "code",
+                    "requestId",
+                    "status"
+                  ],
+                  "properties": {
+                    "code": {
+                      "type": "string"
+                    },
+                    "requestId": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "type": "integer"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "x-node-legacy": "None (scoped DDNS reporter)"
+      },
+      "x-node-path": true
+    },
+    "/server/traffic-budget": {
+      "get": {
+        "operationId": "nodeTrafficBudget",
+        "tags": [
+          "V2Box node communication"
+        ],
+        "security": [
+          {
+            "nodeBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/HeaderXNodeType"
+          },
+          {
+            "$ref": "#/components/parameters/HeaderXNodeID"
+          },
+          {
+            "$ref": "#/components/parameters/HeaderIfNoneMatch"
+          },
+          {
+            "$ref": "#/components/parameters/HeaderXNodeCapabilities"
+          }
+        ],
+        "description": "Server-wide raw proxy byte quota. Null means unbound. Higher limits recover service after the next poll; zero means unlimited. V2Box retains local limits during panel outages. Shared quotas across processes are eventually synchronized.",
+        "responses": {
+          "200": {
+            "description": "Current server traffic budget",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/nodeTrafficBudget"
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthenticated"
+          },
+          "404": {
+            "description": "Node not found"
+          }
+        },
+        "x-node-legacy": "New server-wide traffic quota"
+      },
+      "x-node-path": true
+    }
+  },
+  "components": {
+    "schemas": {
+      "nodeMachineUser": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "uuid": {
+            "type": "string"
+          },
+          "speedLimit": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "deviceLimit": {
+            "type": "integer",
+            "minimum": 0
+          }
+        },
+        "required": [
+          "id",
+          "uuid",
+          "speedLimit",
+          "deviceLimit"
+        ],
+        "additionalProperties": false,
+        "x-node-schema": true
+      },
+      "nodeOnlineCount": {
+        "type": "object",
+        "properties": {
+          "userId": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "count": {
+            "type": "integer",
+            "minimum": 0
+          }
+        },
+        "required": [
+          "userId",
+          "count"
+        ],
+        "additionalProperties": false,
+        "x-node-schema": true
+      },
+      "nodeTrafficRecord": {
+        "type": "object",
+        "properties": {
+          "userId": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "uploadBytes": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 0
+          },
+          "downloadBytes": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 0
+          }
+        },
+        "required": [
+          "userId",
+          "uploadBytes",
+          "downloadBytes"
+        ],
+        "additionalProperties": false,
+        "x-node-schema": true
+      },
+      "nodeOnlineRecord": {
+        "type": "object",
+        "properties": {
+          "userId": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "ips": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "description": "IPv4 or IPv6 address"
+            }
+          }
+        },
+        "required": [
+          "userId",
+          "ips"
+        ],
+        "additionalProperties": false,
+        "x-node-schema": true
+      },
+      "nodeCapabilities": {
+        "type": "object",
+        "properties": {
+          "coreVersion": {
+            "type": "string"
+          },
+          "features": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "coreVersion",
+          "features"
+        ],
+        "additionalProperties": false,
+        "x-node-schema": true
+      },
+      "nodeAcknowledgement": {
+        "type": "object",
+        "properties": {
+          "accepted": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "accepted"
+        ],
+        "additionalProperties": false,
+        "x-node-schema": true
+      },
+      "nodeNativeConfig": {
+        "type": "object",
+        "properties": {
+          "dns": {
+            "type": "object",
+            "additionalProperties": true,
+            "description": "sing-box 1.14.3 native fields; validated by the node. No filesystem credentials or auth_user overrides."
+          },
+          "route": {
+            "type": "object",
+            "additionalProperties": true,
+            "description": "sing-box 1.14.3 native fields; validated by the node. No filesystem credentials or auth_user overrides."
+          },
+          "outbounds": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": true,
+              "description": "sing-box 1.14.3 native fields; validated by the node. No filesystem credentials or auth_user overrides."
+            }
+          }
+        },
+        "required": [],
+        "additionalProperties": false,
+        "nullable": true,
+        "x-node-schema": true
+      },
+      "nodeMachineConfig": {
+        "type": "object",
+        "properties": {
+          "protocol": {
+            "type": "string"
+          },
+          "listenAddress": {
+            "type": "string",
+            "nullable": true
+          },
+          "listenPort": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 65535
+          },
+          "network": {
+            "type": "string"
+          },
+          "networkSettings": {
+            "type": "object",
+            "additionalProperties": true,
+            "description": "sing-box 1.14.3 native fields; validated by the node. No filesystem credentials or auth_user overrides.",
+            "nullable": true
+          },
+          "trustedXForwardedFor": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "nullable": true
+          },
+          "tls": {
+            "type": "integer",
+            "enum": [
+              0,
+              1,
+              2
+            ]
+          },
+          "tlsSettings": {
+            "type": "object",
+            "properties": {
+              "serverName": {
+                "type": "string",
+                "nullable": true
+              },
+              "dest": {
+                "type": "string",
+                "nullable": true
+              },
+              "serverPort": {
+                "type": "string",
+                "nullable": true
+              },
+              "shortId": {
+                "type": "string",
+                "nullable": true
+              },
+              "privateKey": {
+                "type": "string",
+                "nullable": true
+              },
+              "certMode": {
+                "type": "string",
+                "nullable": true
+              },
+              "certFile": {
+                "type": "string",
+                "nullable": true
+              },
+              "keyFile": {
+                "type": "string",
+                "nullable": true
+              },
+              "tlsCert": {
+                "type": "string",
+                "nullable": true
+              },
+              "tlsKey": {
+                "type": "string",
+                "nullable": true
+              },
+              "provider": {
+                "type": "string",
+                "nullable": true
+              },
+              "dnsEnv": {
+                "type": "string",
+                "nullable": true
+              },
+              "rejectUnknownSni": {
+                "type": "string",
+                "nullable": true
+              },
+              "xver": {
+                "type": "string",
+                "nullable": true
+              },
+              "mldsa65Seed": {
+                "type": "string",
+                "nullable": true
+              },
+              "serverNames": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "shortIds": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              }
+            },
+            "required": [],
+            "additionalProperties": false
+          },
+          "encryption": {
+            "type": "string",
+            "nullable": true
+          },
+          "encryptionSettings": {
+            "type": "object",
+            "additionalProperties": true,
+            "description": "sing-box 1.14.3 native fields; validated by the node. No filesystem credentials or auth_user overrides.",
+            "nullable": true
+          },
+          "flow": {
+            "type": "string",
+            "nullable": true
+          },
+          "cipher": {
+            "type": "string",
+            "nullable": true
+          },
+          "congestionControl": {
+            "type": "string",
+            "nullable": true
+          },
+          "zeroRttHandshake": {
+            "type": "boolean"
+          },
+          "upMbps": {
+            "type": "integer",
+            "minimum": 0,
+            "nullable": true
+          },
+          "downMbps": {
+            "type": "integer",
+            "minimum": 0,
+            "nullable": true
+          },
+          "obfs": {
+            "type": "string",
+            "nullable": true
+          },
+          "obfsPassword": {
+            "type": "string",
+            "nullable": true
+          },
+          "paddingScheme": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "nullable": true
+          },
+          "serverKey": {
+            "type": "string"
+          },
+          "ignoreClientBandwidth": {
+            "type": "boolean"
+          },
+          "intervals": {
+            "type": "object",
+            "properties": {
+              "pushInterval": {
+                "type": "integer",
+                "minimum": 1
+              },
+              "pullInterval": {
+                "type": "integer",
+                "minimum": 1
+              },
+              "nodeReportMinTraffic": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "deviceOnlineMinTraffic": {
+                "type": "integer",
+                "minimum": 0
+              }
+            },
+            "required": [
+              "pushInterval",
+              "pullInterval",
+              "nodeReportMinTraffic",
+              "deviceOnlineMinTraffic"
+            ],
+            "additionalProperties": false
+          },
+          "routes": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "integer",
+                  "minimum": 1
+                },
+                "match": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "action": {
+                  "type": "string"
+                },
+                "actionValue": {
+                  "type": "string",
+                  "nullable": true
+                }
+              },
+              "required": [
+                "id",
+                "match",
+                "action",
+                "actionValue"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "singBox": {
+            "$ref": "#/components/schemas/nodeNativeConfig",
+            "description": "Resolved native sing-box configuration from the V2Box-only routing catalog. Selected native rules are merged in selection order; legacy routes cannot be mixed with native rules."
+          },
+          "trafficBatchDedup": {
+            "type": "boolean",
+            "description": "When true, the panel supports durable deduplicated traffic batches. Missing means unsupported."
+          },
+          "trafficBudgetSupported": {
+            "type": "boolean",
+            "description": "When true, GET /server/traffic-budget is supported."
+          }
+        },
+        "required": [
+          "protocol",
+          "listenPort",
+          "intervals",
+          "singBox"
+        ],
+        "additionalProperties": false,
+        "x-node-schema": true
+      },
+      "nodeAddressReport": {
+        "type": "object",
+        "additionalProperties": false,
+        "minProperties": 1,
+        "properties": {
+          "ipv4": {
+            "type": "string",
+            "format": "ipv4"
+          },
+          "ipv6": {
+            "type": "string",
+            "format": "ipv6"
+          }
+        },
+        "x-node-schema": true
+      },
+      "nodeAddressAccepted": {
+        "type": "object",
+        "required": [
+          "data"
+        ],
+        "properties": {
+          "data": {
+            "type": "object",
+            "required": [
+              "accepted"
+            ],
+            "properties": {
+              "accepted": {
+                "type": "boolean"
+              }
+            }
+          }
+        },
+        "x-node-schema": true
+      },
+      "nodeTrafficBatch": {
+        "type": "object",
+        "properties": {
+          "records": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/nodeTrafficRecord"
+            }
+          },
+          "batchId": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Optional for legacy clients. Required for durable deduplicated batches; retries reuse the ID and identical records."
+          }
+        },
+        "required": [
+          "batchId",
+          "records"
+        ],
+        "additionalProperties": false,
+        "x-node-schema": true
+      },
+      "nodeTrafficBudget": {
+        "type": "object",
+        "nullable": true,
+        "properties": {
+          "id": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "name": {
+            "type": "string"
+          },
+          "limitBytes": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "usedBytes": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "countingMode": {
+            "type": "string",
+            "enum": [
+              "upload",
+              "download",
+              "both"
+            ]
+          },
+          "resetDay": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 28
+          },
+          "blocked": {
+            "type": "boolean"
+          },
+          "periodStart": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "periodEnd": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "periodEndUnix": {
+            "type": "integer"
+          },
+          "traffic": {
+            "type": "object",
+            "properties": {
+              "uploadBytes": {
+                "type": "integer"
+              },
+              "downloadBytes": {
+                "type": "integer"
+              }
+            },
+            "required": [
+              "uploadBytes",
+              "downloadBytes"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "limitBytes",
+          "usedBytes",
+          "countingMode",
+          "resetDay",
+          "blocked",
+          "periodStart",
+          "periodEnd",
+          "periodEndUnix",
+          "traffic"
+        ],
+        "additionalProperties": false,
+        "x-node-schema": true
+      }
+    }
+  }
+}

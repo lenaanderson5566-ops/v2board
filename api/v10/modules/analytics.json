@@ -1,0 +1,392 @@
+{
+  "paths": {
+    "/public/analytics/configuration": {
+      "get": {
+        "operationId": "getPublicAnalyticsConfiguration",
+        "tags": [
+          "public"
+        ],
+        "security": [],
+        "x-permission": "public",
+        "summary": "GET public/analytics/configuration",
+        "description": "Returns only whether optional analytics is enabled and its retention period. No credentials required; no tracking identifier created.",
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "data"
+                  ],
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/analyticsConfiguration"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "413": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "415": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "422": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "429": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "500": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "503": {
+            "$ref": "#/components/responses/ProblemDetails"
+          }
+        },
+        "x-runtime": {
+          "input": {},
+          "output": "analyticsConfiguration",
+          "role": "public",
+          "status": 200,
+          "raw": false,
+          "bindings": {},
+          "key": "ProductAnalyticsController@configuration"
+        },
+        "x-legacy-entry": {
+          "key": "ProductAnalyticsController@configuration",
+          "legacy": "",
+          "legacyMethod": "GET",
+          "action": "App\\Http\\Controllers\\V10\\ProductAnalyticsController@configuration",
+          "parameters": [],
+          "middleware": [
+            "throttle:60,1,product-analytics:"
+          ],
+          "scope": "public"
+        }
+      }
+    },
+    "/public/analytics/events": {
+      "post": {
+        "operationId": "postPublicAnalyticsEvents",
+        "tags": [
+          "public"
+        ],
+        "security": [],
+        "x-permission": "public",
+        "summary": "POST public/analytics/events",
+        "description": "First-party, consent-gated anonymous view statistics. Exact allowed Origin, JSON only, 1024-byte maximum, 60 requests/minute per IP. No query parameters, credentials, user IDs, URLs or additional fields. GPC/DNT and disabled collection return 204 without recording. Client events are estimates, not proof of payment.",
+        "responses": {
+          "204": {
+            "description": "Success"
+          },
+          "403": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "413": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "415": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "422": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "429": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "500": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "503": {
+            "$ref": "#/components/responses/ProblemDetails"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/postPublicAnalyticsEventsInput"
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "Origin",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "x-runtime": {
+          "input": {
+            "sessionId": "sessionId",
+            "page": "page",
+            "device": "device",
+            "language": "language",
+            "consent": "consent",
+            "attributionVersion": "attributionVersion",
+            "sourceDomain": "sourceDomain"
+          },
+          "output": "scalar",
+          "role": "public",
+          "status": 204,
+          "raw": false,
+          "bindings": {},
+          "key": "ProductAnalyticsController@store"
+        },
+        "x-legacy-entry": {
+          "key": "ProductAnalyticsController@store",
+          "legacy": "",
+          "legacyMethod": "POST",
+          "action": "App\\Http\\Controllers\\V10\\ProductAnalyticsController@store",
+          "parameters": [],
+          "middleware": [
+            "throttle:60,1,product-analytics:"
+          ],
+          "scope": "public"
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "analyticsConfiguration": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "enabled",
+          "retentionDays"
+        ],
+        "properties": {
+          "enabled": {
+            "type": "boolean",
+            "x-runtime-field": [
+              "enabled",
+              "boolean"
+            ]
+          },
+          "retentionDays": {
+            "type": "integer",
+            "enum": [
+              7,
+              30,
+              90
+            ],
+            "x-runtime-field": [
+              "retentionDays",
+              "integer"
+            ]
+          }
+        },
+        "x-runtime-resource": true
+      },
+      "analyticsEvent": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "sessionId",
+          "page",
+          "device",
+          "language",
+          "consent"
+        ],
+        "properties": {
+          "sessionId": {
+            "type": "string",
+            "format": "uuid",
+            "x-runtime-field": [
+              "sessionId"
+            ]
+          },
+          "page": {
+            "type": "string",
+            "enum": [
+              "landing",
+              "register",
+              "login",
+              "forget",
+              "dashboard",
+              "plan",
+              "confirmation",
+              "payment",
+              "order",
+              "order_detail",
+              "activities",
+              "coupons",
+              "subscribe",
+              "knowledge",
+              "profile",
+              "security",
+              "invite",
+              "traffic",
+              "notifications",
+              "ticket"
+            ],
+            "x-runtime-field": [
+              "page"
+            ]
+          },
+          "device": {
+            "type": "string",
+            "enum": [
+              "desktop",
+              "mobile",
+              "tablet"
+            ],
+            "x-runtime-field": [
+              "device"
+            ]
+          },
+          "language": {
+            "type": "string",
+            "enum": [
+              "zh-CN",
+              "zh-TW",
+              "en-US",
+              "ja-JP",
+              "ko-KR",
+              "vi-VN",
+              "ru-RU",
+              "fa-IR",
+              "es-ES",
+              "pt-BR",
+              "fr-FR",
+              "de-DE",
+              "id-ID",
+              "th-TH"
+            ],
+            "x-runtime-field": [
+              "language"
+            ]
+          },
+          "consent": {
+            "type": "boolean",
+            "enum": [
+              true
+            ],
+            "x-runtime-field": [
+              "consent",
+              "boolean"
+            ]
+          },
+          "attributionVersion": {
+            "type": "integer",
+            "x-runtime-field": [
+              "attributionVersion"
+            ],
+            "enum": [
+              1
+            ]
+          },
+          "sourceDomain": {
+            "type": "string",
+            "x-runtime-field": [
+              "sourceDomain"
+            ],
+            "maxLength": 253
+          }
+        },
+        "x-runtime-resource": true
+      },
+      "postPublicAnalyticsEventsInput": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "sessionId",
+          "page",
+          "device",
+          "language",
+          "consent"
+        ],
+        "properties": {
+          "sessionId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "page": {
+            "type": "string",
+            "enum": [
+              "landing",
+              "register",
+              "login",
+              "forget",
+              "dashboard",
+              "plan",
+              "confirmation",
+              "payment",
+              "order",
+              "order_detail",
+              "activities",
+              "coupons",
+              "subscribe",
+              "knowledge",
+              "profile",
+              "security",
+              "invite",
+              "traffic",
+              "notifications",
+              "ticket"
+            ]
+          },
+          "device": {
+            "type": "string",
+            "enum": [
+              "desktop",
+              "mobile",
+              "tablet"
+            ]
+          },
+          "language": {
+            "type": "string",
+            "enum": [
+              "zh-CN",
+              "zh-TW",
+              "en-US",
+              "ja-JP",
+              "ko-KR",
+              "vi-VN",
+              "ru-RU",
+              "fa-IR",
+              "es-ES",
+              "pt-BR",
+              "fr-FR",
+              "de-DE",
+              "id-ID",
+              "th-TH"
+            ]
+          },
+          "consent": {
+            "type": "boolean",
+            "enum": [
+              true
+            ]
+          },
+          "attributionVersion": {
+            "type": "integer",
+            "enum": [
+              1
+            ]
+          },
+          "sourceDomain": {
+            "type": "string",
+            "maxLength": 253,
+            "pattern": "^(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\\.)+[a-z]{2,63}$",
+            "description": "External hostname only; no IP literals, URLs, paths, credentials, or local/internal/test/invalid suffixes."
+          }
+        }
+      }
+    }
+  }
+}

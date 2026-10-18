@@ -5,7 +5,7 @@ import json
 from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 METHODS = {'get', 'post', 'put', 'patch', 'delete', 'head', 'options'}
-INTERNAL = {'x-runtime', 'x-runtime-resource', 'x-runtime-field', 'x-legacy-entry', 'x-browser-aliases', 'x-node-path', 'x-node-schema', 'x-node-legacy', 'x-legacy-order', 'x-node-order'}
+INTERNAL = {'x-runtime', 'x-runtime-resource', 'x-runtime-field', 'x-legacy-entry', 'x-browser-aliases', 'x-node-path', 'x-node-schema', 'x-node-legacy', 'x-legacy-order', 'x-node-order', 'x-modules'}
 def public(value):
     if isinstance(value, dict): return {k: public(v) for k, v in value.items() if k not in INTERNAL}
     if isinstance(value, list): return [public(v) for v in value]
@@ -27,8 +27,59 @@ def ts(schema):
             value = '(' + value + ' & ' + record + ')' if fields else record
     else: value = {'integer': 'number', 'number': 'number', 'boolean': 'boolean', 'string': 'string'}.get(schema.get('type'), 'unknown')
     return value + (' | null' if schema.get('nullable') else '')
+def read_json(path):
+    def unique(pairs):
+        result = {}
+        for key, value in pairs:
+            if key in result: raise ValueError(f'Duplicate JSON key in {path.name}: {key}')
+            result[key] = value
+        return result
+    return json.loads(path.read_text(encoding='utf-8'), object_pairs_hook=unique)
+
+def load_source(root):
+    """Merge explicit business modules without allowing silent overrides or omitted files."""
+    base = root / 'api/v10'
+    source = read_json(base / 'openapi.json')
+    modules = source.get('x-modules')
+    if not isinstance(modules, list) or not modules or any(not isinstance(n, str) for n in modules):
+        raise ValueError('x-modules must be a nonempty list of module paths')
+    if len(set(modules)) != len(modules): raise ValueError('Duplicate module entry')
+    if 'paths' in source or 'components' in source: raise ValueError('Paths and components belong in modules')
+    source.update(paths={}, components={})
+    for name in modules:
+        path = base / name
+        if not name.startswith('modules/') or path.suffix != '.json' or path.resolve().parent != (base / 'modules').resolve():
+            raise ValueError('Module must be a direct JSON file in api/v10/modules: ' + name)
+        module = read_json(path)
+        if set(module) != {'paths', 'components'}: raise ValueError('Module must contain only paths and components: ' + name)
+        for key, value in module['paths'].items():
+            if key in source['paths']: raise ValueError('Duplicate path: ' + key)
+            source['paths'][key] = value
+        for category, definitions in module['components'].items():
+            target = source['components'].setdefault(category, {})
+            for key, value in definitions.items():
+                if key in target: raise ValueError('Duplicate component: ' + category + '/' + key)
+                target[key] = value
+    listed = {(base / n).resolve() for n in modules}
+    if listed != {p.resolve() for p in (base / 'modules').rglob('*.json')}:
+        raise ValueError('Every module JSON file must be listed exactly once in x-modules')
+    return source
+
+def expand_shared(value, source, stack=()):
+    """Keep the historical node export self-contained for responses/headers/parameters."""
+    if isinstance(value, dict):
+        ref = value.get('$ref', '')
+        if ref.startswith(('#/components/responses/', '#/components/headers/', '#/components/parameters/')):
+            if ref in stack: raise ValueError('Cyclic shared reference: ' + ref)
+            target = source
+            for part in ref[2:].split('/'): target = target[part.replace('~1', '/').replace('~0', '~')]
+            return expand_shared(target, source, (*stack, ref))
+        return {k: expand_shared(v, source, stack) for k, v in value.items()}
+    if isinstance(value, list): return [expand_shared(v, source, stack) for v in value]
+    return value
+
 def generate(root):
-    source = json.loads((root / 'api/v10/openapi.json').read_text(encoding='utf-8'))
+    source = load_source(root)
     document = public(source)
     schemas = {name: {k: f['x-runtime-field'] for k, f in s['properties'].items() if 'x-runtime-field' in f} for name, s in source['components']['schemas'].items() if s.get('x-runtime-resource')}
     contracts, legacy, nodes, ids = {}, {}, {}, set()
@@ -66,6 +117,8 @@ def generate(root):
         elif isinstance(value, list):
             for child in value: references(child)
     references(source)
+    expand_shared(document, document)  # Validate shared reference cycles across every domain.
+    node = expand_shared(node, document)
     for fields in schemas.values():
         for spec in fields.values():
             if len(spec) > 2 and spec[1] in ['array', 'object'] and spec[2] not in schemas: raise ValueError('Missing projected resource: ' + spec[2])

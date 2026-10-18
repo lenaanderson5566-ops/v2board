@@ -40,6 +40,7 @@ def load_source(root):
     """Merge explicit business modules without allowing silent overrides or omitted files."""
     base = root / 'api/v10'
     source = read_json(base / 'openapi.json')
+    if not isinstance(source, dict): raise ValueError('OpenAPI manifest must be an object')
     modules = source.get('x-modules')
     if not isinstance(modules, list) or not modules or any(not isinstance(n, str) for n in modules):
         raise ValueError('x-modules must be a nonempty list of module paths')
@@ -51,11 +52,14 @@ def load_source(root):
         if not name.startswith('modules/') or path.suffix != '.json' or path.resolve().parent != (base / 'modules').resolve():
             raise ValueError('Module must be a direct JSON file in api/v10/modules: ' + name)
         module = read_json(path)
-        if set(module) != {'paths', 'components'}: raise ValueError('Module must contain only paths and components: ' + name)
+        if not isinstance(module, dict) or set(module) != {'paths', 'components'}: raise ValueError('Module must contain only paths and components: ' + name)
+        if not isinstance(module['paths'], dict) or not isinstance(module['components'], dict):
+            raise ValueError('Module paths and components must be objects: ' + name)
         for key, value in module['paths'].items():
             if key in source['paths']: raise ValueError('Duplicate path: ' + key)
             source['paths'][key] = value
         for category, definitions in module['components'].items():
+            if not isinstance(definitions, dict): raise ValueError('Component group must be an object: ' + category)
             target = source['components'].setdefault(category, {})
             for key, value in definitions.items():
                 if key in target: raise ValueError('Duplicate component: ' + category + '/' + key)
@@ -111,7 +115,7 @@ def generate(root):
         if isinstance(value, dict):
             if '$ref' in value:
                 target, ref = source, value['$ref']
-                if not ref.startswith('#/'): raise ValueError('Only local references supported: ' + ref)
+                if not isinstance(ref, str) or not ref.startswith('#/'): raise ValueError('Only local references supported: ' + repr(ref))
                 for part in ref[2:].split('/'): target = target[part.replace('~1', '/').replace('~0', '~')]
             for child in value.values(): references(child)
         elif isinstance(value, list):

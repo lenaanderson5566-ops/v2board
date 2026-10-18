@@ -116,6 +116,29 @@ describe("API client", () => {
         await expect(request("user/info")).rejects.toThrow("登录已过期");
         expect(session.active).toBe(false);
     });
+    it.each([null, [], 7, "proxy failure", { message: { unsafe: "object" }, errors: { email: [null, {}, "邮箱错误"] } }])("normalizes malformed error responses without exposing objects: %j", async (payload) => {
+        vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response(JSON.stringify(payload), { status: 422 })));
+        const failure = await request("user/info").catch((error: unknown) => error);
+        expect(failure).toBeInstanceOf(Error);
+        expect(failure).toMatchObject({ status: 422 });
+        expect((failure as Error).message).not.toContain("[object Object]");
+        expect(session.active).toBe(true);
+    });
+    it("invalidates an expired session even when its error body is null", async () => {
+        vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response("null", { status: 401 })));
+        await expect(request("user/info")).rejects.toMatchObject({ status: 401 });
+        expect(session.active).toBe(false);
+    });
+    it.each([401, 503])("preserves HTTP status for a non-JSON proxy error: %i", async (status) => {
+        vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response("<html>proxy error</html>", { status })));
+        await expect(request("user/info")).rejects.toMatchObject({ status });
+        expect(session.active).toBe(status !== 401);
+    });
+    it("uses the same safe error handling for CSV failures", async () => {
+        vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response("null", { status: 401 })));
+        await expect(download("admin/user/dumpCSV", {}, "users.csv")).rejects.toMatchObject({ status: 401 });
+        expect(session.active).toBe(false);
+    });
     it("reports server validation details", async () => {
         vi.stubGlobal(
             "fetch",

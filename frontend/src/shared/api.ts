@@ -111,6 +111,23 @@ export async function logoutSession() {
         forgetBrowserSession();
     }
 }
+/** Normalize untrusted JSON errors from both V10 problems and legacy envelopes. */
+function apiFailure(payload: unknown, status: number, authenticated: boolean, problem = false): Error {
+    const fields = payload !== null && typeof payload === "object" && !Array.isArray(payload)
+        ? payload as Record<string, unknown> : {};
+    const text = (value: unknown) => typeof value === "string" ? value : "";
+    const message = (problem ? text(fields.detail) || text(fields.title) : "") || text(fields.message);
+    const errors = fields.errors !== null && typeof fields.errors === "object" && !Array.isArray(fields.errors)
+        ? Object.values(fields.errors).flat().filter((value): value is string => typeof value === "string") : [];
+    if (authenticated && (status === 401 || (status === 403 && ["未登录或登陆已过期", "登录已过期"].includes(message)))) {
+        readCache.clear();
+        forgetBrowserSession();
+        window.dispatchEvent(new Event("auth-expired"));
+    }
+    return Object.assign(new Error(errors.join("；") || message || tx("请求失败 ({{value0}})", { value0: status })), {
+        code: text(fields.code) || undefined, status,
+    });
+}
 export async function request<T = Row>(
     path: string,
     body?: Row | FormData,
@@ -172,39 +189,14 @@ export async function request<T = Row>(
                 res.status === 204
                     ? ({ data: true } as Envelope<T>)
                     : await res.json();
-            if (v10 && !res.ok)
-                Object.assign(json, {
-                    message: (json as any).detail || (json as any).title,
-                });
             if (v10 && res.ok && res.status !== 204) json = v10.decode(json);
         } catch {
+            if (!res.ok) throw apiFailure(undefined, res.status, token, Boolean(v10));
             throw new Error(
                 tx("服务响应异常 ({{value0}})", { value0: res.status }),
             );
         }
-        if (!res.ok) {
-            if (
-                (res.status === 401 ||
-                    (res.status === 403 &&
-                        ["未登录或登陆已过期", "登录已过期"].includes(
-                            json.message || "",
-                        ))) &&
-                token
-            ) {
-                readCache.clear();
-                forgetBrowserSession();
-                window.dispatchEvent(new Event("auth-expired"));
-            }
-            const error = new Error(
-                Object.values(json.errors || {})
-                    .flat()
-                    .join("；") ||
-                    json.message ||
-                    tx("请求失败 ({{value0}})", { value0: res.status }),
-            );
-            Object.assign(error, { code: json.code, status: res.status });
-            throw error;
-        }
+        if (!res.ok) throw apiFailure(json, res.status, token, Boolean(v10));
         if (
             json.data &&
             typeof json.data === "object" &&
@@ -265,25 +257,7 @@ export async function download(path: string, body: Row, filename: string) {
     });
     if (!response.ok) {
         const payload = await response.json().catch(() => ({}));
-        if (
-            (response.status === 401 ||
-                (response.status === 403 &&
-                    ["未登录或登陆已过期", "登录已过期"].includes(
-                        payload.message || "",
-                    ))) &&
-            token
-        ) {
-            readCache.clear();
-            forgetBrowserSession();
-            window.dispatchEvent(new Event("auth-expired"));
-        }
-        throw new Error(
-            Object.values(payload.errors || {})
-                .flat()
-                .join("；") ||
-                payload.message ||
-                tx("请求失败 ({{value0}})", { value0: response.status }),
-        );
+        throw apiFailure(payload, response.status, token);
     }
     if (!response.headers.get("Content-Type")?.includes("text/csv"))
         throw new Error(tx("服务没有返回 CSV 文件"));

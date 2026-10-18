@@ -13,9 +13,9 @@ composer install --no-dev --prefer-dist --optimize-autoloader
 php artisan v2board:install
 ```
 
-命令中的 PHP 必须与后续 PHP-FPM、Horizon 和调度器一致。`V2boardInstall` 要求 `.env` 尚不存在，负责从 `.env.example` 创建环境文件、生成 APP_KEY、询问数据库信息、导入 `database/install.sql` 并创建管理员；不要事先复制 `.env` 或手动重复导入 SQL。只能使用专用空数据库，不能对旧库运行安装器，也不能为绕过安装检查而删除旧站 `.env`。安装器不是事务化的恢复工具，当前逐条 SQL 导入会捕获异常，打印“导入完成”不能单独证明所有表已成功创建；失败后保留现场并核对数据库，不能靠重复安装覆盖数据。
+命令中的 PHP 必须与后续 PHP-FPM、Horizon 和调度器一致。`V2boardInstall` 要求 `.env` 尚不存在，负责从 `.env.example` 创建环境文件、生成 APP_KEY、询问数据库信息、导入 `database/install.sql` 并创建管理员；不要事先复制 `.env` 或手动重复导入 SQL。只能使用专用空数据库，不能对旧库运行安装器，也不能为绕过安装检查而删除旧站 `.env`。安装器不是事务化的恢复工具，当前安装器要求所选数据库没有已有表，整体执行受信任的安装 SQL，导入异常立即停止并返回非零退出码，不再吞掉错误后打印完成；失败后保留现场并核对数据库，不能靠重复安装覆盖数据。
 
-安装器不会替你完成生产配置。开放站点前设置 `.env` 中 `APP_ENV=production`、`APP_DEBUG=false`、正确 APP_URL/数据库/Redis 等参数，以及后台规范 HTTPS 站点地址 `v2board.app_url`；生产 Cookie 保持 Secure，分离前端时配置精确来源并满足同站要求。私下保存并更换初始管理员密码。设置 storage、bootstrap/cache 的运行用户写权限，刷新配置缓存，配置本站 Horizon 和每分钟 `schedule:run`，检查管理员登录、静态资源及 `php artisan console:verify`。管理员创建测试覆盖的是安装 SQL 与真实创建/认证代码，不应描述为所有交互安装及生产配置已经自动验收。
+安装器不会替你完成生产配置。开放站点前设置 `.env` 中 `APP_ENV=production`、`APP_DEBUG=false`、正确 APP_URL/数据库/Redis 等参数，以及后台规范 HTTPS 站点地址 `v2board.app_url`；生产 Cookie 保持 Secure，分离前端时配置精确来源并满足同站要求。私下保存并更换初始管理员密码。设置 storage、bootstrap/cache 的运行用户写权限，刷新配置缓存，配置本站 Horizon 和每分钟 `schedule:run`，检查管理员登录、静态资源及 `php artisan console:verify`。隔离回归覆盖实际安装命令的交互输入、完整 SQL 导入、管理员创建/认证、重复安装拒绝、错误退出及环境值转义；生产配置和公网服务仍需现场验收。
 
 全新安装使用当前 install.sql 的完整结构，不需要回放旧 update.sql 或无路径限制的历史迁移。后续版本更新使用下述 `update.sh`；运行时、安装和升级都不要求 Python 或服务器端 Node 构建。
 

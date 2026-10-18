@@ -245,3 +245,21 @@ Composer validate、当前 PHP 8.4.26 下生产平台要求和锁文件审计通
 全局检索并核对浏览器鉴权、CORS、多币种、支付报价、安装器、Composer 锁与 update.sh 实现，修正旧 Bearer/localStorage、CNY-only、全量 migrate、旧 PHP 路径、成功一律保留维护等说明。Laravel 9–12 记录保留历史版本事实并明确指向当前流程；新安装与旧库升级分开说明，记录安装器逐条 SQL 异常处理及 APP_ENV 模板默认值的实际限制。
 
 本轮只修改 Markdown；映射说明从 `api/v10/mapping-notes.md` 重新生成发布文件。生成器 10 项、前端契约/浏览器会话 2 文件 28 项通过；七项生成结果 --check 通过。Markdown 相对文件链接核对通过，运行契约、OpenAPI JSON、类型、PHP/前端实现、SQL 与 update.sh 无差异。没有运行实际安装、迁移、依赖更新或生产部署，没有将旧的全量回归结果冒充本轮执行结果。
+
+
+## 逐文件扫描后的容错与公共处理优化
+
+复用 mail-install-schema、console-smoke、payment-presentation、framework-upgrade、api-v10-inventory、api-v10、update-script 七组覆盖安装、GeoIP、支付展示、框架、契约和升级。安装测试运行真实交互命令，在独立空数据库导入完整 SQL、创建管理员，并验证非空数据库/已有环境拒绝、SQL 失败、重复环境写入及特殊字符 roundtrip。测试自身要求 TEST_DISPOSABLE_WORKSPACE=1。没有增加后端入口，登记仍为 112 个入口及 14 个辅助文件。
+
+首轮七组中五组通过，非空检查因 Laravel 13 getTables 默认跨库枚举而误拒绝空测试库，改为显式限定目标数据库；GeoIP 新夹具将原先缺省配置恢复成 null，修正为完整恢复原配置。两组重跑通过，最终七组均通过，没有放宽原有断言。623 个 PHP 文件全局语法扫描及最终修改文件复核通过。共享 vendor 的一次性副本直接运行 Artisan 时自动加载指回原目录；仅修正映射后仍使用副本默认数据库配置而连接被拒绝。最终将 console:verify 加入现有 console-smoke，通过测试运行器的副本映射及随机数据库验证，不修改生产自动加载器。结果位于忽略目录 storage/app/test-organization/code-quality/{backend,recheck,console-final}.json。
+
+生成器标准库回归扩展到 12 项，覆盖畸形模块/非字符串引用；--check 仍确认七份产物无漂移。前端全量与生产资源验证见 frontend-validation.md。测试没有执行生产安装、迁移、支付或邮件发送。
+
+
+## 全业务自动化模拟回归
+
+对当前工作区代码创建新的完整一次性项目副本，包含已跟踪 GeoIP 数据和生产前端资源，通过 tests/run.php 执行全部 112 个登记入口，无漏跑、无重复、无失败：API 9、安全 21、集成 48、回归 21、单元 13。运行器使用随机临时数据库和 Redis 14/15 上独立的随机前缀，结束后清理测试数据库，不清空业务缓存。
+
+覆盖注册与邀请、Cookie/CSRF/Origin、原生登录、MFA 与会话并发、订阅授权和配置、套餐/余额/充值/优惠券、多币种报价与支付快照、取消/替换订单、回调幂等、返佣、邮件/工单通知与回复满 24 小时关闭、后台用户/日志/风控、节点/地址/DDNS/流量去重和额度、用量重置、安装及旧库升级、队列排空和恢复。支付、邮件、翻译及云服务使用各领域已有测试替身，不产生真实扣款、邮件或云资源变更。
+
+汇总逐一比较 suites.json 与结果 ID 集合，确认 112/112 全部完成；前端 104 文件 645 项及类型检查通过，生成器 12 项和七份产物 --check 通过。结果保存在忽略目录 storage/app/test-organization/business-simulation/{backend,summary}.json 和 frontend.log。本轮没有发现新的失败，未修改业务实现；模拟覆盖来自现有自动化用例，不能等同于所有设备、生产配置和外部服务真实联调已验收。

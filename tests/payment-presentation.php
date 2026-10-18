@@ -14,4 +14,11 @@ foreach (['asset'=>'','network'=>'','networkName'=>'','networkIcon'=>'javascript
 $config['_console_checkout']['networkIcon']='https://example.test/network.png';
 PaymentPresentation::validate($config);
 if (PaymentPresentation::fields($config)['network_icon']!==$config['_console_checkout']['networkIcon']) throw new RuntimeException('Custom icon');
-echo "Payment presentation validation passed\n";
+$catalog=new ReflectionProperty(PaymentPresentation::class,'catalog');
+$loaded=$catalog->getValue();
+if (!$loaded) throw new RuntimeException('Payment catalog not cached');
+for($i=0;$i<20;$i++) {
+    if (PaymentPresentation::fields($config)['network_icon']!==$config['_console_checkout']['networkIcon']) throw new RuntimeException('Repeated projection changed');
+}
+if ($catalog->getValue()!==$loaded) throw new RuntimeException('Payment catalog cache changed');
+echo "Payment presentation validation and repeated catalog projection passed\n";

@@ -25,21 +25,11 @@ class V2boardInstall extends Command
     protected $description = 'v2board 安装';
 
     /**
-     * Create a new command instance.
-     *
-     * @return void
-     */
-    public function __construct()
-    {
-        parent::__construct();
-    }
-
-    /**
      * Execute the console command.
      *
      * @return mixed
      */
-    public function handle()
+    public function handle(): int
     {
         try {
             $this->info("__     ______  ____                      _  ");
@@ -50,7 +40,7 @@ class V2boardInstall extends Command
             if (\File::exists(base_path() . '/.env')) {
                 $securePath = config('v2board.secure_path', config('v2board.frontend_admin_path', hash('crc32b', config('app.key'))));
                 $this->info("访问 http(s)://你的站点/{$securePath} 进入管理面板，你可以在用户中心修改你的密码。");
-                abort(500, '如需重新安装请删除目录下.env文件');
+                abort(500, '检测到已有 .env，拒绝重复安装；旧站请使用 update.sh 升级。');
             }
 
             if (!copy(base_path() . '/.env.example', base_path() . '/.env')) {
@@ -61,7 +51,7 @@ class V2boardInstall extends Command
                 'DB_HOST' => $this->ask('请输入数据库地址（默认:localhost）', 'localhost'),
                 'DB_DATABASE' => $this->ask('请输入数据库名'),
                 'DB_USERNAME' => $this->ask('请输入数据库用户名'),
-                'DB_PASSWORD' => $this->ask('请输入数据库密码')
+                'DB_PASSWORD' => $this->secret('请输入数据库密码')
             ]);
             \Artisan::call('config:clear');
             \Artisan::call('config:cache');
@@ -74,18 +64,8 @@ class V2boardInstall extends Command
             if (!$file) {
                 abort(500, '数据库文件不存在');
             }
-            $sql = str_replace("\n", "", $file);
-            $sql = preg_split("/;/", $sql);
-            if (!is_array($sql)) {
-                abort(500, '数据库文件格式有误');
-            }
             $this->info('正在导入数据库请稍等...');
-            foreach ($sql as $item) {
-                try {
-                    DB::select(DB::raw($item));
-                } catch (\Exception $e) {
-                }
-            }
+            $this->importDatabase($file);
             $this->info('数据库导入完成');
             $email = '';
             while (!$email) {
@@ -102,8 +82,10 @@ class V2boardInstall extends Command
 
             $defaultSecurePath = hash('crc32b', config('app.key'));
             $this->info("访问 http(s)://你的站点/{$defaultSecurePath} 进入管理面板，你可以在用户中心修改你的密码。");
-        } catch (\Exception $e) {
+            return self::SUCCESS;
+        } catch (\Throwable $e) {
             $this->error($e->getMessage());
+            return self::FAILURE;
         }
     }
 
@@ -121,35 +103,40 @@ class V2boardInstall extends Command
         return $user->save();
     }
 
-    private function saveToEnv($data = [])
+    private function importDatabase(string $sql): void
     {
-        function set_env_var($key, $value)
-        {
-            if (! is_bool(strpos($value, ' '))) {
-                $value = '"' . $value . '"';
-            }
+        if (trim($sql) === '') throw new \RuntimeException('数据库文件为空');
+        $connection = DB::connection();
+        if ($connection->getSchemaBuilder()->getTables($connection->getDatabaseName())) {
+            throw new \RuntimeException('数据库非空，拒绝安装；旧站请使用 update.sh 升级。');
+        }
+        try {
+            // The trusted install dump contains comments and SQL string literals;
+            // splitting it at semicolons can corrupt valid statements.
+            if (!DB::unprepared($sql)) throw new \RuntimeException('SQL execution failed');
+        } catch (\Throwable $e) {
+            // Do not print SQL/bindings or credentials from the underlying exception.
+            throw new \RuntimeException('数据库导入失败，请检查数据库权限和安装文件；保留现场排错，不要在旧库重复安装。', 0, $e);
+        }
+    }
+
+    private function saveToEnv(array $data = []): void
+    {
+        $path = app()->environmentFilePath();
+        $contents = file_get_contents($path);
+        if ($contents === false) throw new \RuntimeException('读取环境文件失败');
+        foreach ($data as $key => $value) {
             $key = strtoupper($key);
-
-            $envPath = app()->environmentFilePath();
-            $contents = file_get_contents($envPath);
-
-            preg_match("/^{$key}=[^\r\n]*/m", $contents, $matches);
-
-            $oldValue = count($matches) ? $matches[0] : '';
-
-            if ($oldValue) {
-                $contents = str_replace("{$oldValue}", "{$key}={$value}", $contents);
-            } else {
-                $contents = $contents . "\n{$key}={$value}\n";
-            }
-
-            $file = fopen($envPath, 'w');
-            fwrite($file, $contents);
-            return fclose($file);
+            if (!preg_match('/^[A-Z_][A-Z0-9_]*$/D', $key)) throw new \InvalidArgumentException('Invalid environment key');
+            $escaped = strtr((string)$value, ["\\" => "\\\\", '"' => '\\"', '$' => '\\$', "\n" => '\\n', "\r" => '\\r']);
+            $line = $key.'="'.$escaped.'"';
+            $pattern = '/^'.preg_quote($key, '/').'=[^\r\n]*/m';
+            $contents = preg_match($pattern, $contents)
+                ? preg_replace_callback($pattern, fn() => $line, $contents)
+                : rtrim($contents, "\r\n")."\n".$line."\n";
         }
-        foreach($data as $key => $value) {
-            set_env_var($key, $value);
+        if (file_put_contents($path, $contents, LOCK_EX) !== strlen($contents)) {
+            throw new \RuntimeException('保存环境文件失败，请检查目录权限');
         }
-        return true;
     }
 }

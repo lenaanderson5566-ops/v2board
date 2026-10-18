@@ -6,6 +6,8 @@ use Illuminate\Support\Facades\Validator;
 
 class PaymentPresentation
 {
+    private static ?array $catalog = null;
+
     public static function validate(array $config): void
     {
         if (!array_key_exists('_console_checkout', $config)) return;
@@ -24,7 +26,7 @@ class PaymentPresentation
         $meta = $config['_console_checkout'] ?? [];
         $crypto = is_array($meta) && ($meta['category'] ?? '') === 'crypto'
             && !empty($meta['asset']) && !empty($meta['network']) && !empty($meta['networkName']);
-        $catalog = json_decode(file_get_contents(resource_path('payment-catalog.json')), true);
+        $catalog = self::$catalog ??= json_decode(file_get_contents(resource_path('payment-catalog.json')), true, 512, JSON_THROW_ON_ERROR);
         $asset = $crypto ? $meta['asset'] : null;
         $network = $crypto ? $meta['network'] : null;
         $assetEntry = collect($catalog['assets'])->firstWhere('id', $asset);

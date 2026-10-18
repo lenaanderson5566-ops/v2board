@@ -433,3 +433,17 @@ V10 前端契约和类型改由规范源统一生成；复用 v10-api.test.ts �
 ## 浏览器与计费文档校准
 
 核对 shared/browser-session.ts、浏览器中间件和支付报价实现，修正文档中的 credentials: omit、浏览器 Bearer、CNY-only 与同渠道重新报价等过时描述。独立前端部署明确 HTTPS、同站 API、精确 Origin、HttpOnly Cookie 与 CSRF 要求。现有 v10-api.test.ts 和 browser-session.test.ts 共 28 项通过；生成器 10 项通过。仅修改说明文字及生成的 mapping.md，前端源码、类型和运行契约未变，未构建静态资源或进行浏览器视觉验收。
+
+
+## 公共请求错误处理优化
+
+普通 API 与 CSV 下载复用同一错误解析器和会话过期处理，V10 问题详情保留优先级；空、数组、标量、非字符串字段和非 JSON 网关响应不会造成二次类型异常，401 仍清除本机认证状态，普通 403/503 不误退出。新增回归归入现有 shared/api.test.ts，无界面或接口结构变更。
+
+全量 Vitest 104 文件、645 项、TypeScript 与生产构建通过，前后台独立包及 public/console 同步生成（用户包 314 文件、管理包 75 文件）。资源清单闭包与生产 source map 排除检查通过；代码编辑器的大分包提示仍存在。验证为自动回归与构建，未做真实浏览器视觉验收。构建日志存储在忽略目录 storage/app/test-organization/code-quality/frontend-build.log。
+
+
+## 全业务模拟复核
+
+对当前工作区重新执行全部 Vitest：104 文件、645 项通过，TypeScript --noEmit 通过。覆盖用户与管理端认证、账单/支付/优惠券、通知工单、节点和后台各工作区等已登记 DOM/请求模拟。后端同轮 112 个入口全部通过，生成器 12 项通过。
+
+核对 public/console 的 manifest 文件、样式、资源及静态/动态导入闭包，确认无生产 source map；用户独立包 314 文件、管理包 75 文件。复核的是前一轮已构建且源码未变的产物，本轮未重复构建，也未进行真实浏览器/真机或支付商生产联调。日志见 storage/app/test-organization/business-simulation/frontend.log，机器可读汇总为同目录 summary.json。

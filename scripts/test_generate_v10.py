@@ -123,6 +123,20 @@ class ContractGenerationTest(unittest.TestCase):
             self.edit('modules/authentication.json', lambda m: mutate(m, key))
             with self.assertRaisesRegex(ValueError, message): generator.generate(self.root)
 
+    def test_malformed_module_shapes_fail_before_publication(self):
+        path = self.root / 'api/v10/modules/common.json'
+        original = path.read_text(encoding='utf-8')
+        for value in [[], None, {'paths': [], 'components': {}}, {'paths': {}, 'components': {'schemas': []}}]:
+            with self.subTest(value=value):
+                path.write_text(json.dumps(value), encoding='utf-8')
+                with self.assertRaises(ValueError): generator.generate(self.root)
+                self.assertFalse((self.root / 'docs/api-v10/openapi.json').exists())
+        path.write_text(original, encoding='utf-8')
+
+    def test_non_string_references_are_rejected(self):
+        self.edit('modules/common.json', lambda m: m['components']['schemas'].update(Invalid={'$ref': None}))
+        with self.assertRaisesRegex(ValueError, 'Only local references'): generator.generate(self.root)
+
     def test_cyclic_shared_references_are_rejected(self):
         self.edit('modules/common.json', lambda m: m['components']['responses'].update(ProblemDetails={'$ref': '#/components/responses/ProblemDetails'}))
         with self.assertRaisesRegex(ValueError, 'Cyclic shared reference'): generator.generate(self.root)

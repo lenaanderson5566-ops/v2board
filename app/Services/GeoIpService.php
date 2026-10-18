@@ -92,7 +92,12 @@ class GeoIpService
             return null;
         }
 
-        self::$readers[$type] = new Reader($path);
+        try {
+            self::$readers[$type] = new Reader($path);
+        } catch (\Throwable $e) {
+            // Optional location enrichment must not break authentication or log queries.
+            self::$readers[$type] = null;
+        }
         return self::$readers[$type];
     }
 

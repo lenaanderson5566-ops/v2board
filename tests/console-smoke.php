@@ -351,6 +351,20 @@ try {
         $assert($reader->metadata()->databaseType === 'GeoLite2-' . $type, 'Wrong GeoIP database: ' . $type);
         $reader->close();
     }
+    $geoConfig=config('v2board');
+    $readers=new ReflectionProperty(App\Services\GeoIpService::class,'readers');
+    $savedReaders=$readers->getValue();
+    $corrupt=storage_path('app/corrupt-geoip-'.bin2hex(random_bytes(6)).'.mmdb');
+    file_put_contents($corrupt,'invalid optional geoip database');
+    try {
+        foreach (['country','city','asn'] as $type) {
+            config(['v2board.geoip_'.$type.'_path'=>$corrupt]);
+        }
+        $readers->setValue(null,[]);
+        $fallback=(new App\Services\GeoIpService())->lookup('8.8.8.8');
+        $assert(count(array_filter($fallback,fn($v)=>$v!==null))===0,'Corrupt optional GeoIP must return empty metadata');
+        $assert((new App\Services\GeoIpService())->sessionCountry('8.8.8.8')===null,'Corrupt GeoIP must not prevent session management');
+    } finally { config(['v2board'=>$geoConfig]); $readers->setValue(null,$savedReaders); unlink($corrupt); }
     $geo = (new App\Services\GeoIpService())->lookup('8.8.8.8');
     $assert($geo['country'] !== null && $geo['asn'] === 'AS15169', 'GeoIP lookup failed');
     $footer = '<div data-console-smoke="footer">Footer smoke test</div>';
@@ -361,6 +375,7 @@ try {
     $assert(strpos($call('/app')->getContent(), $footer) !== false, 'Footer was not rendered in user shell');
     $assert(strpos($call('/')->getContent(), '<title>' . e(config('v2board.app_name', 'V2Board')) . '</title>') !== false && strpos($call('/')->getContent(), $footer) === false, 'Public landing metadata or footer isolation failed');
     $assert(strpos($call('/' . $securePath)->getContent(), $footer) === false, 'User footer leaked into admin shell');
+    $assert(Illuminate\Support\Facades\Artisan::call('console:verify')===0, 'Production console assets or Laravel rendering failed');
     echo "Console smoke tests: {$checks} checks passed\n";
 } catch (Throwable $error) {
     $failure = $error;

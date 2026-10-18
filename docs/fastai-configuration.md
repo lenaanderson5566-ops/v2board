@@ -1,5 +1,7 @@
 # FastAI 配置模板
 
+当前版本升级以 [完整 update.sh 流程](update-script.md) 为准；下文单项迁移仅供维护窗口内的专项排错，不替代全部批准迁移。使用与 PHP-FPM 一致的 PHP 8.4+。
+
 Geo 数据随 App 内置，后端强制关闭 `geo-auto-update` 并移除
 `geox-url` 与更新间隔，自定义模板也不能覆盖此策略。
 默认模板没有远程规则集；自定义模板中的 HTTP 或含 URL 的规则提供者

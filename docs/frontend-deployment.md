@@ -63,7 +63,9 @@ FRONTEND_ALLOWED_ORIGINS=https://www.example.com,https://admin.example.com
 php artisan config:cache
 ```
 
-现有 CORS 默认行为保留以兼容已部署客户端；独立部署时应填写实际来源。API 使用 Authorization，不发送浏览器 cookies；V10 用户 API、原管理 API 和权限校验保持原契约。浏览器会话按应用和后端来源隔离，避免不同后端复用登录令牌。
+浏览器使用 `credentials: include`，携带 API 域的 host-only HttpOnly Cookie 和 `X-Browser-Client: user|admin`；写操作还需内存中的 `X-CSRF-Token` 与精确匹配的 Origin。当前 CORS 由 `BrowserOrigins` 和 `CORS` 中间件执行，只接受站点来源及明确允许的前端来源，`*` 不允许浏览器携带凭据。用户与后台 Cookie 分离；原生客户端继续使用 Bearer。
+
+前端与 API 必须使用 HTTPS 且属于同一站点（例如同一主域的子域名），以符合 SameSite=Lax；任意跨站域名即使加入 CORS 也不能完成此 Cookie 登录。不同站点需通过同站 API 网关接入，不能沿用旧的 localStorage/Bearer 部署方式。设置生产 `APP_ENV`，保持 Secure Cookie，部署细节见 [浏览器会话](browser-sessions.md)。
 
 后端 V2Board 的站点 URL 应指向用户网站，以便续费和一次性网页登录链接进入正确网站；后端自身 `APP_URL` 使用后端地址。反向代理、TLS、支付回调、订阅路径仍由后端处理，需要按实际部署验证。
 

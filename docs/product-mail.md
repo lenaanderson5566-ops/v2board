@@ -41,7 +41,7 @@ Redis 对同一应用的同一 SMTP 账号统一限速，多个进程共享配�
 如果运行 `artisan horizon`，更新后重启 Horizon 即加载仓库中的专用队列配置。若自行维护 `queue:work` 进程，请增加一个独立 Supervisor 程序，使用本站原有工作目录、运行用户及日志目录，命令示例：
 
 ```ini
-command=/www/server/php/81/bin/php /www/wwwroot/api.adanalytics-service.com/artisan queue:work redis --queue=send_email_priority --sleep=1 --timeout=30
+command=/www/server/php/84/bin/php /www/wwwroot/api.adanalytics-service.com/artisan queue:work redis --queue=send_email_priority --sleep=1 --timeout=30
 numprocs=2
 process_name=%(program_name)s_%(process_num)02d
 autostart=true

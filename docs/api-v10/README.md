@@ -1,13 +1,13 @@
 # FastDog V10 user API
 
-The new user API is `/api/v10`. Administration, operations/risk and node communication retain their existing APIs. The unfinished `/api/v1/staff/*` API has been retired and is not migrated to V10. Staff retirement removes the legacy `is_staff` column through the approved upgrade migration; fresh installations omit it. Follow [the upgrade procedure](../update-script.md) for schema changes; no framework version change is required.
+The new user API is `/api/v10`. Administration, operations/risk and node communication retain their existing APIs. The unfinished `/api/v1/staff/*` API has been retired and is not migrated to V10. Staff retirement removes the legacy `is_staff` column through the approved upgrade migration; fresh installations omit it. Follow [the upgrade procedure](../update-script.md) for schema changes; staff retirement itself does not change the framework requirement. Current installations require PHP 8.4+ and the committed Laravel 13 dependencies.
 
 ## Contracts and compatibility
 
 - [OpenAPI](openapi.json) describes all explicitly registered resources, inputs, outputs, permissions and native responses. [Mapping](mapping.md) lists every migrated legacy function. `endpoints.json` is the routing inventory; `contracts.json` declares field projections.
 - [Retained endpoints](retained-endpoints.md) lists legacy non-management routes and their V10 equivalents; [route audit](audit.md) records checks, findings and verification limits.
 - Legacy user business and public-content routes have been retired with explicit authorization. Only the routes in `retained-legacy.json`, administrative/risk APIs, node communication, configured subscription paths and historical webhook URLs remain available. Staff routes are retired. Both controller sets invoke shared business actions in `app/Services/Actions`; no HTTP forwarding or dynamic controller dispatch is used.
-- User browser requests require `Authorization: Bearer <existing session token>`. Existing local login storage, expiry and revocation are preserved. Query credentials cannot authenticate browser requests. Subscription credentials remain in their dedicated subscription path.
+- User browsers and the administrative console use separate scoped HttpOnly cookies, `X-Browser-Client`, and in-memory CSRF tokens. Mutations require an exact allowed Origin and `X-CSRF-Token`; the frontend sends `credentials: include`. Native clients retain `Authorization: Bearer <session token>`. Old localStorage tokens are read only for the bounded migration exchange, not for normal requests. Query credentials cannot authenticate browser requests. Subscription credentials remain in their dedicated subscription path.
 - JSON successes use `{data, meta?}`. Amounts are integer minor currency units with `currency`, traffic uses bytes and dates use UTC ISO 8601. `null` prices mean unavailable; zero prices remain zero. Order, billing-period, ticket-priority and ticket-status enums are stable strings.
 - Pagination uses `page` and `pageSize` (default 20, maximum 100), returned in `meta.pagination`. Creation uses 201, queued mail uses 202 and a task identifier, and no-content actions use 204.
 - Errors use `application/problem+json`: `type`, `title`, `status`, `detail`, `code`, `requestId`, and field `errors`. Statuses distinguish unauthenticated (401), forbidden (403), conflict (409), validation (422) and throttling (429). Internal traces and paths are never sent.
@@ -16,7 +16,7 @@ The new user API is `/api/v10`. Administration, operations/risk and node communi
 
 ## Native protocol exceptions
 
-`GET /subscriptions/{subscriptionToken}` returns native client configuration, without an API envelope. Supported `format` values are `clash`, `clash-meta`, `clash-verge`, `flclash`, `sing-box`, `shadowrocket`, `surge`, `quantumult-x`, `stash` and `general`. An omitted format retains client detection. Default user links use V10; administrator-defined subscription paths retain their original form. Existing custom links return configuration directly; the old default `/api/v1/client/subscribe` is retired. Default links generated from any context (including administration) use V10.
+`GET /subscriptions/{subscriptionToken}` returns native client configuration, without an API envelope. Supported canonical `format` values are defined by `getSubscriptionsSubscriptionTokenInput` in the published OpenAPI (including `mihomo`, `clash-verge`, `flclash` and `sing-box`). An omitted format uses recognized client detection. `general`/`uri`, retired aliases and `flag` are not public fallbacks; unknown or disabled clients are rejected, and explicit formats must match the client family. Default user links use V10; administrator-defined subscription paths retain their original form. Existing custom links return configuration directly; the old default `/api/v1/client/subscribe` is retired. Default links generated from any context (including administration) use V10.
 
 Subscription language precedence is an explicit `language` parameter, a supported `Accept-Language` preference, the account's saved language, then the application default. Missing or unsupported language headers must not override the saved preference. Permanent, one-use and time-based subscription credentials retain their existing validation behavior.
 
@@ -71,14 +71,16 @@ Deploy backend changes and the tracked `public/console` frontend build together.
 
 If rollback is needed, restore the matching previous backend commit and frontend assets from the site backup, clear caches and restart workers. Do not mix an old backend with the V10 frontend build. This release removes legacy user business/public endpoints; deploy the matching frontend build at the same time. The declared compatibility allowlist remains available.
 
-## Currency contract (CNY phase 1)
-All monetary values retain their existing integer minor units (fen); currency is CNY. Orders persist currency independently of global display settings, including existing rows backfilled by the column default. Account balance and commissions remain CNY. User language affects number formatting, not monetary denomination. Monetary resource `currency` fields are retained by the frontend decoder. No currency selection or conversion is introduced; USD pricing and wallets are future phases.
+## Currency contract (CNY and USD)
+Amounts are integer minor units in the accompanying currency (fen for CNY, cents for USD). Existing accounts, prices and historical assets remain CNY; upgrades do not exchange balances or rewrite historical order amounts. New accounts inherit `new_user_currency` once (default CNY, configurable as USD); account currency is immutable and denominates balances, commissions and new orders. USD plan prices are independently configured; null means unavailable and zero remains a valid price. Language changes formatting, not currency.
 
-Deploy the order-currency migration through update.sh before reopening workers. Existing gateways, signed callback protocols and charge amounts remain unchanged. Server-generated receipts/notifications and exports label CNY; administrator-authored email/announcement content is not rewritten. Current mail templates contain no generated monetary amounts. Config saves reject non-CNY currency labels. Frontend currencySymbol is retained only as a compatibility field with value CNY.
+Payment quotes distinguish order currency from channel payment currency. Verified cross-currency settlement is enabled for EPay, Paytaro, PaytaroQR and StripeCheckout; USD collection is limited to StripeCheckout. Cross-currency initiation requires confirmation of `expectedPaymentAmount` and `expectedPaymentCurrency`; changed quotes return 409. Per-order/channel snapshots preserve amounts, fees and rates for callback verification. Payment asset/network labels are presentation metadata, not account currency. See [billing and currencies](../billing-currencies-coupons.md) for configuration and historical limitations.
+
+Use the full approved `update.sh` flow for billing migrations before reopening the site. Legacy global `currency`/`currency_symbol` settings remain CNY-only compatibility fields; this does not restrict `new_user_currency` or per-account/order currency to CNY. Do not use the global display symbol to label USD amounts. Historical CNY deposit bonuses and amount gift cards do not automatically apply to USD accounts.
 
 ## fastai session configuration
 
-`GET /api/v10/me/client-config?clientVersion=0.8.99&platform=windows` (also HEAD) requires the normal Bearer session. Supported platforms are windows, android, macos, linux and ios. It returns native `application/yaml`, with `Cache-Control: private, no-store`, directly from the shared FlClash/Mihomo configuration generator. It does not use subscription tokens, custom subscription domains or redirects.
+`GET /api/v10/me/client-config?clientVersion=0.8.99&platform=windows` (also HEAD) requires an authenticated user session (native clients send Bearer; browser-mode requests use the scoped Cookie session). Supported platforms are windows, android, macos, linux and ios. It returns native `application/yaml`, with `Cache-Control: private, no-store`, directly from the shared FlClash/Mihomo configuration generator. It does not use subscription tokens, custom subscription domains or redirects.
 
 Missing/revoked sessions return 401; banned users return 403; no usable subscription returns 403 `SUBSCRIPTION_UNAVAILABLE`; disabled FlClash strategy returns 403 `CLIENT_DISABLED`; the current minimum-version policy returns 409 `CLIENT_VERSION_TOO_LOW`. Version checks use the validated clientVersion field, not a fabricated FlClash User-Agent. Configuration errors use application/problem+json and requestId. Entitlement errors do not revoke sessions. Existing token/custom subscriptions keep their native behavior.
 
@@ -98,7 +100,7 @@ PHP workers. Do not log authorization request IDs, codes, verifiers or callback 
 - `POST /auth/client-authorizations`: create a five-minute request with S256 PKCE,
   random state, platform and a strictly validated redirect URI.
 - `GET /me/client-authorizations/{authorizationId}`: view the request using the
-  browser's Bearer session; this does not grant access.
+  browser's scoped Cookie session; this does not grant access.
 - `POST /me/client-authorizations/{authorizationId}/approval`: explicit user consent,
   returning a one-minute, single-use code through the dedicated callback.
 - `POST /auth/client-session-exchanges`: exchange the code with its original verifier

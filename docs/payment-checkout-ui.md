@@ -7,15 +7,14 @@ No endpoints, provider signing, monetary rules or wire schemas are changed.
 | --- | --- | --- |
 | Create order | POST `/api/v10/me/orders` | Keep server discounts, balance offsets and replacement transactions authoritative. |
 | Order detail | GET `/api/v10/me/orders/{orderNumber}` | Render persisted amounts, currency, order kind and timestamps. Retain checkout state during refresh; reset on a different order. |
-| Payment methods | GET `/api/v10/payment-methods` | Use enabled methods in backend sort order; display configured names without guessing provider capabilities. |
+| Payment methods | GET `/api/v10/payment-methods?orderNumber=…` | Use enabled methods in backend sort order; display configured names without guessing provider capabilities. |
 | Start payment | POST `/api/v10/me/orders/{orderNumber}/payments` | Prevent duplicate requests. Handle confirmed, pending, redirect and QR responses independently. Only order status proves completion. |
 | Check status | GET `/api/v10/me/orders/{orderNumber}/status` | Poll while waiting or processing; pause in hidden tabs and stop after 60 attempts. Provide manual retry. |
 | Cancel | POST `/api/v10/me/orders/{orderNumber}/cancellation` | Require confirmation; backend allows unpaid orders only and returns deducted account balance atomically. Never promise external refunds. |
 
-Fee preview matches `OrderActions::checkout`: round(base amount × percentage / 100
-+ fixed fee), with all amounts in CNY minor units. Once a payment is issued, retain
-the persisted fee even if the provider is removed or its fees change. Explicitly
-restarting payment returns to current method prices without charging immediately.
+Fee preview uses the server quote from `PaymentQuote::make`: convert the order base into the channel payment currency, then add round(converted base × percentage / 100) plus the fixed fee in that payment currency. The fee is also converted back to order currency for accounting. CNY and USD amounts are integer minor units; never infer currency from the UI language or a global symbol.
+
+Once issued, the same order/channel reuses its saved quote even after fee or exchange-rate changes. Choosing a different channel can create a separate snapshot. Cross-currency initiation echoes `expectedPaymentAmount` and `expectedPaymentCurrency`; 409 requires refreshing the quote and obtaining confirmation again, not automatically retrying payment.
 
 The product summary reconstructs the original order price from persisted amounts,
 not current catalog prices. Subscription, credit, reset and deposit orders keep

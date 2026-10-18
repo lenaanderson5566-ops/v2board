@@ -238,3 +238,10 @@ Composer validate、当前 PHP 8.4.26 下生产平台要求和锁文件审计通
 复用 `api-v10-inventory.php` 增加模块合并和公共引用解析检查，在一次性项目副本及随机数据库执行 7 组：api-route-audit、api-v10-inventory、api-v10、node-v10、mail-install-schema、retired-node-tables、update-script，全部通过。接口清单 1511 项、路由审计 2465 项；测试登记仍为 112 个入口和 14 个辅助文件。前端现有契约测试 22 项及 TypeScript 检查通过，生成器 --check 通过。结果位于忽略目录 `storage/app/test-organization/contract-modules/backend.json`。
 
 生产仍直接加载已提交的运行契约，不执行模块装配；本次未修改路由控制器、业务服务、启动骨架、安装 SQL、迁移或升级脚本。节点兼容导出内联新增公共引用，保留原形状。
+
+
+## 当前文档与实现核对
+
+全局检索并核对浏览器鉴权、CORS、多币种、支付报价、安装器、Composer 锁与 update.sh 实现，修正旧 Bearer/localStorage、CNY-only、全量 migrate、旧 PHP 路径、成功一律保留维护等说明。Laravel 9–12 记录保留历史版本事实并明确指向当前流程；新安装与旧库升级分开说明，记录安装器逐条 SQL 异常处理及 APP_ENV 模板默认值的实际限制。
+
+本轮只修改 Markdown；映射说明从 `api/v10/mapping-notes.md` 重新生成发布文件。生成器 10 项、前端契约/浏览器会话 2 文件 28 项通过；七项生成结果 --check 通过。Markdown 相对文件链接核对通过，运行契约、OpenAPI JSON、类型、PHP/前端实现、SQL 与 update.sh 无差异。没有运行实际安装、迁移、依赖更新或生产部署，没有将旧的全量回归结果冒充本轮执行结果。

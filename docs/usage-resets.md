@@ -1,5 +1,7 @@
 # 账单、使用情况和重置
 
+当前版本升级以 [完整 update.sh 流程](update-script.md) 为准；下文单项迁移仅供维护窗口内的专项排错，不替代全部批准迁移。使用与 PHP-FPM 一致的 PHP 8.4+。
+
 - 账单集中显示当前订阅、账户余额、礼品卡兑换、充值以及订阅/充值订单交易记录。沿用现有订单与支付接口；不会自动创建订单或扣费。
 - 使用情况提供「概览 / 分析」，使用套餐真实流量额度，分析使用近 7 / 30 天数据。旧 `#/traffic` 链接继续可用。
 - 账户设置不再重复展示余额、兑换及充值入口。
@@ -22,7 +24,7 @@
 按原升级流程备份数据库并停止队列/计划任务，运行 `update.sh --jobs-stopped` 等既有参数。已经拉取代码且只需补表时，先备份，然后执行：
 
 ```bash
-/www/server/php/81/bin/php artisan migrate --path=database/migrations/2026_10_02_000003_create_usage_resets.php --force
+/www/server/php/84/bin/php artisan migrate --path=database/migrations/2026_10_02_000003_create_usage_resets.php --force
 ```
 
 不要对历史 SQL 安装环境直接执行全量 `artisan migrate`，也不要使用 `migrate:fresh`。前端静态资源随仓库提交，生产无需 Node 构建。

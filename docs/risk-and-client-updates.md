@@ -24,7 +24,7 @@
 部署无需新增数据库迁移。确保宝塔中现有 `schedule:run` 每分钟执行；可手动验证：
 
 ```sh
-/www/server/php/81/bin/php artisan clients:check-releases
+/www/server/php/84/bin/php artisan clients:check-releases
 ```
 
 ## 导入模板

@@ -8,12 +8,14 @@
 
 ## 部署
 
+当前版本统一按 [完整升级流程](update-script.md) 执行。以下单项迁移仅供隔离排错或经核对的专项补迁移参考，不能替代完整升级；运行前仍须维护、备份并确认任务暂停，PHP 使用 8.4+。
+
 本次新增 `v2_email_invitation` 表，不增加用户表字段。请先备份数据库，再按已有发布流程更新代码。新版 `update.sh` 已包含这项迁移；使用脚本完成升级后无需再执行。若使用手动发布，在开放站点前执行：
 
 ```bash
-/www/server/php/81/bin/php artisan migrate --path=database/migrations/2026_10_02_000001_create_email_invitations.php --force
-/www/server/php/81/bin/php artisan route:clear
-/www/server/php/81/bin/php artisan view:clear
+/www/server/php/84/bin/php artisan migrate --path=database/migrations/2026_10_02_000001_create_email_invitations.php --force
+/www/server/php/84/bin/php artisan route:clear
+/www/server/php/84/bin/php artisan view:clear
 ```
 
 迁移支持重复执行。静态资源已打包在 `public/console`，生产无需 Node.js。重启 PHP-FPM 和原队列进程以加载新任务代码，并确认 SMTP 配置、站点 `app_url` 正确，队列消费 `send_email`。注册关闭时禁止发送邀请；邮件验证、验证码和邮箱白名单规则仍然适用。

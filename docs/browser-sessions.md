@@ -12,7 +12,7 @@ Authenticated cookies expire on seven days of user inactivity or twelve hours of
 
 ## Deployment
 
-Deploy backend and rebuilt frontend together. Set canonical HTTPS `v2board.app_url`. Production cookies are Secure by default. Only local HTTP development may set `BROWSER_COOKIE_SECURE=false`; never use this in production. No database migration is needed for the cookie change, but retain the existing payment-removal migration.
+Deploy backend and rebuilt frontend together. Set canonical HTTPS `v2board.app_url`. Set `APP_ENV=production` explicitly: the installation template starts as local, and the Secure default depends on APP_ENV. Production cookies must be Secure. Only local HTTP development may set `BROWSER_COOKIE_SECURE=false`; never use this in production. The Cookie change itself needs no database migration; a full version upgrade must still execute every approved migration through update.sh.
 
 CORS no longer reflects arbitrary origins: canonical website origin and exact `FRONTEND_ALLOWED_ORIGINS` entries are accepted; `*` does not authorize credentialed browser access. Same-origin hosting is preferred. Frontend/API subdomains must be on the same site and use HTTPS; API cookies stay host-only. Unrelated-site deployments are not supported by this SameSite=Lax design; use a same-site API gateway rather than weakening cookies to None. Configure trusted reverse proxies and restart workers using the normal deployment procedure. Do not clear shared Redis/application caches or change APP_KEY during deployment; either will invalidate sessions.
 
@@ -24,7 +24,7 @@ The user account security page lists browser and native login sessions together.
 
 All registry mutations (registration, individual revocation and account-wide revocation) acquire the same per-user cache lock before reading or writing. Keep the shared Redis cache and its locking support across every backend instance. Lock failures fail the operation rather than issuing an unregistered credential. Concurrent operations are serialized: a new sign-in that completes after an account-wide revocation can establish a new session. Requests already authenticated before revocation are not retroactively cancelled. Deploy/restart all backend workers together: an old worker that does not acquire this lock can still overwrite newer registry values. No database migration or forced sign-out is required for this change.
 
-`tests/session-concurrency.php` starts independent PHP processes against the local shared cache to check registration and revocation interleavings; it must only run in a local environment.
+`tests/session-concurrency.php` starts independent PHP processes against the local shared cache to check registration and revocation interleavings; run it through the test runner in a disposable project and isolated test database/cache, never against a shared business environment.
 
 Validation: `tests/browser-session.php`, `tests/auth-security.php`, `tests/fastai-browser-login.php`, `tests/fastai-release-login.php`, V10 inventory/contracts, frontend browser-session and authentication tests. This is a scoped migration, not a full production penetration test.
 

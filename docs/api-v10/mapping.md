@@ -2,7 +2,7 @@
 
 Browser `POST /auth/registrations` grants a scoped HttpOnly cookie and returns only `browserSession` metadata; native registration retains `authentication` Bearer output. Browser registration requires the same CSRF and exact Origin checks as login. All authenticated user resources, including `/me`, plans and knowledge articles, return `Cache-Control: private, no-store`. Resource ownership always comes from the verified session and path binding, never from caller-supplied user/role fields.
 
-Payment methods expose category (regular/crypto), asset, assetIconUrl, network, networkName and networkIconUrl. Existing channels default to regular. No provider config or credentials are exposed; paymentMethodId and CNY fee semantics remain unchanged.
+Payment methods expose category (regular/crypto), asset, assetIconUrl, network, networkName and networkIconUrl. Existing channels default to regular. No provider config or credentials are exposed; paymentMethodId remains the channel identifier. Order-currency fees and channel payment amount/currency come from server quotes and saved snapshots; CNY and USD are supported as described below.
 
 Account notification preference: `GET/PATCH /me` exposes boolean `serviceNotifications`, mapped to shared `remind_service` (default true).
 
@@ -146,7 +146,7 @@ Client identity migration now consolidates old strategy keys and log identities.
 
 ### PaytaroQR settlement verification
 
-Both current V10 and retained legacy callbacks use the shared payment action. After X-App-Secret verification, PaytaroQR requires `order_amount` (yuan, positive, maximum two decimal places) and `order_currency`; `Money::parseMinor` converts the original order amount into integer fen. `pay_amount` and `pay_currency` describe the customer's actual payment asset and are not compared against the CNY order. The shared action checks total plus the stored channel fee, including QR retries, before acknowledging a match. Matching retries preserve `success` without another settlement job. Missing/malformed amounts or currency and mismatches return HTTP 500 with native `fail`, with no new settlement. There are no browser transport changes; callback fields remain provider-native.
+Both current V10 and retained legacy callbacks use the shared payment action. After X-App-Secret verification, PaytaroQR requires `order_amount` (positive decimal, maximum two decimal places) and `order_currency`; `Money::parseMinor` converts the provider amount into integer minor units. `pay_amount` and `pay_currency` describe the customer's payment asset and are not used as the settlement amount. The shared action compares against the selected channel snapshot's payment amount/currency (PaytaroQR collection is currently CNY), including converted USD orders and QR retries. Legacy orders without conversion snapshots fall back to order total plus the stored fee and order currency. Matching retries preserve `success` without another settlement job. Missing/malformed amounts or currency and mismatches return HTTP 500 with native `fail`, with no new settlement. There are no browser transport changes; callback fields remain provider-native.
 
 Provider reference: https://v3.paytaro.com/#/docs/api-notify and https://v3.paytaro.com/#/docs/api-pay (checked 2026-10-13).
 
@@ -186,7 +186,7 @@ Binding uses a 10-minute one-time deep link, bot acknowledgement and an authenti
 - Order creation accepts `walletCouponId` only. Legacy coupon-code parameters are rejected with 422, and the former coupon-validation endpoint has been removed.
 - `GET /api/v10/payment-methods?orderNumber=…` returns payment currency, quoted amount, order-currency fee and rate time. Cross-currency checkout must echo `expectedPaymentAmount` and `expectedPaymentCurrency`; a changed quote returns 409.
 - Existing CNY prices/assets are unchanged. New accounts inherit `new_user_currency` once; account and order currencies cannot be edited. USD plan prices are independent. Balances never exchange automatically.
-- Every payment channel has immutable per-order payment amount/currency snapshots. Old callbacks without conversion snapshots continue using order amount, original handling fee and CNY currency.
+- Every payment channel has immutable per-order payment amount/currency snapshots. Old callbacks without conversion snapshots use order amount, original handling fee and stored order currency, defaulting to CNY only when currency is absent.
 
 ## Coupon activities and localization
 

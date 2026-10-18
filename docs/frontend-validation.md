@@ -428,3 +428,8 @@ V10 前端契约和类型改由规范源统一生成；复用 v10-api.test.ts �
 公共响应、响应头与参数去重，维护源按业务拆分，仍生成完整单文件 OpenAPI 和前端运行契约/类型。逐项比较确认前端契约内容及导出类型声明保持一致，仅生成顺序随模块归属调整。复用 `src/shared/v10-api.test.ts`，22 项通过；TypeScript `--noEmit` 通过。生成器独立标准库回归 10 项通过，覆盖模块合并、引用和只读漂移检测。模块归属、增加模块步骤及生成命令见 `docs/api-v10/README.md`。
 
 没有变更页面组件、样式或运行请求行为，此轮未重新打包静态资源，也未执行真实浏览器视觉验收。
+
+
+## 浏览器与计费文档校准
+
+核对 shared/browser-session.ts、浏览器中间件和支付报价实现，修正文档中的 credentials: omit、浏览器 Bearer、CNY-only 与同渠道重新报价等过时描述。独立前端部署明确 HTTPS、同站 API、精确 Origin、HttpOnly Cookie 与 CSRF 要求。现有 v10-api.test.ts 和 browser-session.test.ts 共 28 项通过；生成器 10 项通过。仅修改说明文字及生成的 mapping.md，前端源码、类型和运行契约未变，未构建静态资源或进行浏览器视觉验收。

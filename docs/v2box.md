@@ -32,7 +32,7 @@ V2Box 支持 Shadowsocks、VMess、VLESS、Trojan、TUIC、Hysteria2、AnyTLS、
 
 ## V10 节点通信与 sing-box 原生配置
 
-升级面板后先运行 `php artisan migrate --force`，依次完成原生配置及独立路由迁移；V2Node 表不变。新版 V2Box 配置 `NodeType=v2box` 默认走 V10，`ApiVersion=legacy` 可显式保留旧接口。V10 不接受查询参数 token，使用 Authorization Bearer；用户表为空时返回 `data: []`，304 才代表无变化。
+升级面板时执行完整 [update.sh 升级流程](update-script.md)（按批准清单定向迁移，勿执行全量 migrate），依次完成原生配置及独立路由迁移；V2Node 表不变。新版 V2Box 配置 `NodeType=v2box` 默认走 V10，`ApiVersion=legacy` 可显式保留旧接口。V10 不接受查询参数 token，使用 Authorization Bearer；用户表为空时返回 `data: []`，304 才代表无变化。
 
 管理端“路由管理”按 V2Node / Xray、V2Box / sing-box 分开维护。V2Box 原生规则在这里编辑 JSON，节点编辑页只选择当前内核可用的规则。开放 dns、route、outbounds，支持 HTTPS DNS、DNS 分流、inline/HTTPS remote 规则集及代理出口。保留直连出口 direct。不能覆盖入站用户、计费、服务、本机证书路径，也不能配置 auth_user 或本机 rule-set 文件。原生配置字段随节点固定的 sing-box 1.14.3 校验，错误配置先预检再重载。
 
@@ -51,7 +51,7 @@ V2Box 可选择多条原生规则：`route.rules`、`dns.rules` 按选择顺序�
 
 节点通信格式不变：V10 的 `singBox` 返回所选原生规则的合并结果，`routes` 仅用于旧格式兼容规则；V2Node 继续获得自己的 Xray 规则。升级后配置 ETag 随规则内容变化。路由修改会同步影响选择该规则的节点，但不跨内核传播。
 
-部署前备份数据库，运行 `php artisan migrate --force` 并发布新的后台资源。独立规则和引用不支持自动折叠回旧共享结构；需要回退时恢复数据库备份。验证：`php tests/node-routes.php`、`php tests/node-v10.php` 及前端 `Nodes.test.tsx`。
+部署前备份数据库，执行完整 [update.sh 升级流程](update-script.md)（按批准清单定向迁移，勿执行全量 migrate），并发布新的后台资源。独立规则和引用不支持自动折叠回旧共享结构；需要回退时恢复数据库备份。验证：`php tests/node-routes.php`、`php tests/node-v10.php` 及前端 `Nodes.test.tsx`。
 
 
 ## 已保存节点切换内核
@@ -71,7 +71,7 @@ AnyTLS 节点编辑可选“上游默认（推荐）”“低开销”“随机�
 
 节点安装窗口提供公网 IPv4/IPv6 查询命令。查询在节点服务器执行，不会使用面板服务器或浏览器的 IP。后台侧栏“Cloudflare DDNS”统一管理凭据与节点绑定，支持 V2Node 和 V2Box，默认不启用。
 
-1. 执行面板数据库迁移 `php artisan migrate --force`，确保原有 Laravel scheduler 正常运行。
+1. 执行完整 [update.sh 升级流程](update-script.md)（按批准清单定向迁移，勿执行全量 migrate），确保原有 Laravel scheduler 正常运行。
 2. 后台新增凭据：名称、Cloudflare Zone ID、仅限该区域 DNS 编辑权限的 API Token。Token 使用 APP_KEY 加密保存，读取接口不返回原值，编辑留空保留旧值。备份/迁移面板时须保留 APP_KEY；不可随意重生成。
 3. 新建节点绑定：节点、凭据、专用域名、IPv4 / IPv6 / 双栈。面板节点地址填写同一域名，不自动修改协议或证书配置。
 4. 点击“配置节点上报”，生成只允许该节点上报 IP 的独立密钥。密钥只显示这一次，数据库只保存 SHA-256；重新生成立即撤销旧密钥。

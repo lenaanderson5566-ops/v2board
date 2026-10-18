@@ -2,6 +2,23 @@
 
 `update.sh` 默认目标为 `codex/payment-icon-picker`，适用于已运行的 Git 安装。保留 `.env`、APP_KEY、`config/v2board.php`、用户数据及既有会话，不删除原锁文件备份，不切回 master。使用现有 Composer 和与网站一致的 PHP。
 
+## 全新安装（空数据库）
+
+全新安装与旧站升级是不同入口。先准备 PHP 8.4+、Composer 2.2+、MySQL 和 Redis，使用本分支代码及提交的 composer.lock，Web 根目录指向 `public`，保留配套 `public/console` 静态资源。部署环境的 PHP 扩展以 `composer check-platform-reqs --lock --no-dev` 为准。
+
+在尚未对公网开放的新目录中安装锁定依赖，然后运行安装器：
+
+```sh
+composer install --no-dev --prefer-dist --optimize-autoloader
+php artisan v2board:install
+```
+
+命令中的 PHP 必须与后续 PHP-FPM、Horizon 和调度器一致。`V2boardInstall` 要求 `.env` 尚不存在，负责从 `.env.example` 创建环境文件、生成 APP_KEY、询问数据库信息、导入 `database/install.sql` 并创建管理员；不要事先复制 `.env` 或手动重复导入 SQL。只能使用专用空数据库，不能对旧库运行安装器，也不能为绕过安装检查而删除旧站 `.env`。安装器不是事务化的恢复工具，当前逐条 SQL 导入会捕获异常，打印“导入完成”不能单独证明所有表已成功创建；失败后保留现场并核对数据库，不能靠重复安装覆盖数据。
+
+安装器不会替你完成生产配置。开放站点前设置 `.env` 中 `APP_ENV=production`、`APP_DEBUG=false`、正确 APP_URL/数据库/Redis 等参数，以及后台规范 HTTPS 站点地址 `v2board.app_url`；生产 Cookie 保持 Secure，分离前端时配置精确来源并满足同站要求。私下保存并更换初始管理员密码。设置 storage、bootstrap/cache 的运行用户写权限，刷新配置缓存，配置本站 Horizon 和每分钟 `schedule:run`，检查管理员登录、静态资源及 `php artisan console:verify`。管理员创建测试覆盖的是安装 SQL 与真实创建/认证代码，不应描述为所有交互安装及生产配置已经自动验收。
+
+全新安装使用当前 install.sql 的完整结构，不需要回放旧 update.sql 或无路径限制的历史迁移。后续版本更新使用下述 `update.sh`；运行时、安装和升级都不要求 Python 或服务器端 Node 构建。
+
 ## 自动迁移与重复执行
 
 正式升级会自动依次运行脚本白名单中列出的定向迁移。不需要再手动逐条执行迁移；Laravel 会跳过已经记录成功的迁移。不要运行不带 `--path` 的历史全量 `artisan migrate`，旧安装可能已有 failed_jobs 表而没有对应迁移记录。
@@ -88,8 +105,8 @@ bash /tmp/v2board-update.sh \
 
 - 在私有目录保存原提交编号、原分支、配置校验和、数据库备份副本及站点归档（包含原 vendor、lock、配置、storage；排除 .git 和 node_modules）。归档校验失败即停止。
 - 仅允许目标分支快进；本地目标分支若有额外提交会停止，不执行 reset --hard。
-- 从经过预检的锁文件 install 依赖，检查运行平台；不下载 Composer、不执行 composer update 或 require。
-- 仅运行当前 update.sh 明确列入白名单的定向迁移，涵盖账户、账务、节点、邮件、浏览器会话、MFA 及已批准的旧结构清理。完整路径和顺序以该次目标提交的脚本为准；发现未列入白名单的迁移差异会停止并要求单独审查。下面的单项说明用于解释业务变化，不代替完整白名单。
+- 正式安装从经过预检的锁文件执行 `composer install --no-dev --prefer-dist --optimize-autoloader`，检查运行平台；不下载 Composer、不在线上 vendor 执行 update/require。显式 `--resolve-dependencies` 会在停机前的临时目录执行 `update --no-install` 生成候选锁文件，详见上文。
+- 仅运行当前 update.sh 明确列入白名单的定向迁移，涵盖账户、账务、节点、邮件、MFA 及已批准的旧结构清理。完整路径和顺序以该次目标提交的脚本为准；发现未列入白名单的迁移差异会停止并要求单独审查。下面的单项说明用于解释业务变化，不代替完整白名单。
 - 不运行历史 update.sql、v2board:update、migrate:fresh、cache:clear、optimize:clear 或 Redis 清空。配置、路由、视图缓存单独处理。
 - 校验生产 `.env` 和业务配置内容没有变化。使用私有备份权限，同时确保新发布的 PHP／静态文件对网站进程可读。
 
@@ -99,17 +116,17 @@ bash /tmp/v2board-update.sh \
 
 如首页返回 403，可执行 `php artisan console:verify --host=实际访问域名` 检查安全模式的域名匹配。若域名不是后台配置的 app_url 域名，应核对实际站点用途及域名设置，不直接关闭安全模式。公网仍加载 umi.js 时，检查宝塔实际运行目录、PHP-FPM 缓存及线上代码分支。
 
-成功也保留维护模式。按输出提示在宝塔重启该站点 PHP-FPM，再执行指定 PHP 的 `artisan up`，验收登录、四类账户、订阅、节点、支付回调、后台及静态资源。验收通过再启动原队列和调度。
+默认自动模式在后台进程稳定且升级前站点开放时执行 `artisan up` 恢复访问；`--jobs-stopped` 手动模式、升级前已维护或执行失败时保留维护。自动模式仍需检查本站 PHP-FPM/OPcache 是否加载新代码；手动模式按输出提示重启 PHP-FPM、验收后解除维护并恢复原队列和调度。核对登录、账户状态、订阅、节点、支付回调、后台及静态资源。
 
 失败即停止；已进入维护时不自动开放站点、不自动恢复数据库或强制回滚代码。备份的 `DEPLOYMENT.txt` 和 `old-commit.txt` 提供回滚信息。原依赖、配置和源文件在 `site.tar.gz` 中，可有选择地恢复；不要覆盖上线后新增的上传或订单。只新增可空字段时通常可以保留字段；独立额度涉及余额转换，须按 traffic-credits.md 协调回滚数据与代码。
 
 ## 测试
 
-`bash tests/update-script.sh /绝对路径/update.sh` 创建隔离 Git 仓库并使用 PHP／Composer／Artisan 替身，覆盖 22 个场景，包括只预检、脏工作区、锁校验失败、手动额度兼容阻断、未暂停任务、备份缺失、正常升级、依赖安装失败、迁移失败后重试、已有维护模式，以及目标脚本自动切换和相对项目路径。验证备份包含原依赖、配置不变、迁移范围、新资源读取权限、失败保持维护和无缓存清空。此测试不代表真实生产依赖或数据库备份已通过验收。
+`bash tests/update-script.sh /绝对路径/update.sh` 创建隔离 Git 仓库并使用 PHP／Composer／Artisan 替身，覆盖 26 个场景，包括只预检、脏工作区、锁校验失败、手动额度兼容阻断、未暂停任务、备份缺失、正常升级、依赖安装失败、迁移失败后重试、已有维护模式，以及目标脚本自动切换和相对项目路径。验证备份包含原依赖、配置不变、迁移范围、新资源读取权限、失败保持维护和无缓存清空。此测试不代表真实生产依赖或数据库备份已通过验收。
 
 ## 用量重置升级
 
-本次新增 `2026_10_02_000003_create_usage_resets.php`，升级脚本在语言迁移后定向执行，建立全局重置批次、Banked 次数与审计记录三张表。已有用户不自动获得次数，不改变登录状态和订阅信息。完整操作说明见 [usage-resets.md](usage-resets.md)。仍须备份数据库、停止队列和计划任务，再使用 `--jobs-stopped` 执行升级。
+本次新增 `2026_10_02_000003_create_usage_resets.php`，升级脚本在语言迁移后定向执行，建立全局重置批次、Banked 次数与审计记录三张表。已有用户不自动获得次数，不改变登录状态和订阅信息。完整操作说明见 [usage-resets.md](usage-resets.md)。按上文准备数据库备份，并选择符合部署环境的自动排空模式或 `--jobs-stopped` 手动维护模式。
 
 ## 公告阅读状态升级
 

@@ -6,7 +6,7 @@
 
 1. 在测试环境复制数据库和配置，备份生产数据库、代码、vendor、配置及上传文件。先确认 CLI 与 FPM 均满足 `composer check-platform-reqs --lock --no-dev`，PHP 扩展满足锁文件要求。
 2. 使用本分支的 update.sh，从网站目录外执行。先 `bash /private/update.sh --project /path/to/site --branch codex/payment-icon-picker --php /path/to/php --composer /path/to/composer.phar --check`。脚本默认读取目标提交的 composer.lock；有额外本地 Composer 包时，应在隔离环境生成并测试合并锁，再用 `--lock-file /private/tested-composer.lock`。不要关闭安全检查来在线解析依赖。
-3. 预检通过后执行相同命令去掉 `--check`。脚本备份文件、维护停机、排空本网站队列、安装锁定依赖、执行批准的迁移、验证前端、重启后台进程并恢复访问。数据库备份可通过 `--database-backup` 一并归档。外部进程管理器应使用自己的停止/启动流程，避免自动拉起旧队列。
+3. 预检通过后执行相同命令去掉 `--check`。默认自动模式备份文件、维护停机、排空本网站队列、安装锁定依赖、执行批准的迁移、验证前端，确认后台进程稳定后恢复原本开放的站点；`--jobs-stopped` 或升级前已维护时成功后也保留维护。数据库备份可通过 `--database-backup` 一并归档。外部进程管理器应使用自己的停止/启动流程，避免自动拉起旧队列。
 4. 验证 `php artisan --version` 显示 13.35.0，检查登录、注册验证码、后台编辑、支付回调、节点配置与流量上报、DDNS和日志清理；用受控邮箱确认真实 SMTP 发送。
 5. 失败时保持维护模式。框架依赖回退应同时恢复旧代码与对应 vendor/lock；已经执行的数据库迁移（尤其旧节点表删除）不可盲目回滚，应根据备份和迁移内容人工恢复。
 
@@ -37,7 +37,7 @@
 
 官方升级指南：https://laravel.com/framework/docs/13.x/upgrade
 
-当前锁文件 Composer audit：无安全公告、无废弃包，未新增忽略项。
+此前该锁文件的 Composer audit 验证未报告有效安全公告或废弃包；这是当次工具输出，不是持续安全保证。composer.json 仍有既存 `audit.ignore` 项 `PKSA-y2cr-5h3j-g3ys`，不能将结果表述为“未配置忽略项”。发布前需结合当时锁文件和审计配置重新检查。
 
 
 本地验证：PHP 8.4.26、MySQL 8、Redis 7。框架 19 项、缓存前缀/锁/反序列化限制 5 项、日志 43 项，以及 V10、登录会话、权限、节点、独立路由、DDNS、邮件、支付、后台、Banner、注册策略、额度到期与流量重置全部通过。PHPUnit 12 严格检查通过（2 tests、2 assertions，无 risky 或 warning）。升级脚本 25 个隔离场景和本站队列排空检查通过，平台要求及生产 install dry-run 通过。测试未发送真实邮件或支付请求。

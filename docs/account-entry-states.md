@@ -1,6 +1,6 @@
 # 账户进入界面与 Laravel 状态规则
 
-状态在 `AccountStatusService::forUser()` 中由 Laravel 计算，通过 `user/info.data.account_status` 返回。前端不按注册时间或浏览器时间猜测状态。
+状态在 `AccountStatusService::forUser()` 中由 Laravel 计算，通过 `GET /api/v10/me` 的 `data.accountStatus` 返回，前端解码为内部 `account_status`；`user/info` 是内部兼容映射名称，不是仍开放的旧用户 URL。前端不按注册时间或浏览器时间猜测状态。
 
 | 优先级 | 状态 | 后端判定 | 默认进入后的内容 |
 | --- | --- | --- | --- |
@@ -9,7 +9,7 @@
 | 3 | expired | 有 `plan_id`，且 `expired_at` 非 null、`<= time()` | 到期说明、原套餐及到期时间、续订／选择套餐、订单记录及文档，不显示导入按钮。 |
 | 4 | active | 有 `plan_id`，且 `expired_at` 为 null 或在未来 | 有效订阅总览：套餐、真实剩余额度、导入和使用分析。 |
 
-注册开启赠送试用时，`AuthController::register()` 会直接赋予套餐和未来到期时间，因此进入 active。长期套餐的 null 到期时间同样进入 active。新注册未获套餐时进入 new，不因接口仍返回订阅 URL 而显示可用配置。
+注册开启赠送试用时，`AuthActions::register()` 会直接赋予套餐和未来到期时间，因此进入 active。长期套餐的 null 到期时间同样进入 active。新注册未获套餐时进入 new，不因接口仍返回订阅 URL 而显示可用配置。
 
 `is_available` 复用现有 `UserService::isAvailable()`，要求未封禁、有额度且有效期在未来或为 null；不改动现有授权策略。`quota_exhausted` 单独表示有效期内 `u + d >= transfer_enable` 且总额大于零，与节点下发查询的剩余额度要求一致。这类用户仍显示“订阅有效”，但提示额度已用尽并隐藏导入；零额度配置也提示核查套餐。不会将额度耗尽误写为到期。
 
@@ -17,9 +17,9 @@
 
 依据文件：
 
-- [注册、登录和快捷登录](../app/Http/Controllers/V1/Passport/AuthController.php)：试用赋额、密码验证后封禁拒绝。
+- [注册、登录和快捷登录](../app/Services/Actions/Passport/AuthActions.php)：试用赋额、密码验证后封禁拒绝。
 - [可用性与设备下发查询](../app/Services/UserService.php)：有效期、封禁、总额及已用量规则。
-- [账户与订阅信息](../app/Http/Controllers/V1/User/UserController.php)：套餐字段、订阅 URL 和重置天数。
+- [账户与订阅信息](../app/Services/Actions/User/UserActions.php)：套餐字段、订阅 URL 和重置天数。
 - [会话解密](../app/Services/AuthService.php)与[用户中间件](../app/Http/Middleware/User.php)：现有会话验证并不重新拒绝 banned，因此前端增加限制界面，同时保留现有工单访问能力。
 
 登录／注册后原有跳转总览行为保留，由账户状态选择入口；未封禁用户仍可直接访问账户、订单、文档等已有路由。已有会话每 60 秒在可见页面复查状态，窗口重新聚焦、数据提交及到期计时触发刷新。此展示限制不能替代 Laravel 接口授权，也没有放宽封禁登录或服务可用性规则。

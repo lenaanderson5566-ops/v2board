@@ -8,7 +8,7 @@
 
 分类保存在已有 `config._console_checkout`，无需数据库迁移。未配置的旧渠道默认常规支付，请手动为现有加密货币渠道补充分类。后台对配置进行服务端校验。
 
-V10 支付方式资源新增 category、asset、assetIconUrl、network、networkName、networkIconUrl，始终只返回已启用渠道，绝不返回完整 config 或接口密钥。订单结算仍为 CNY 整数分，asset 仅表示付款币种；不改变服务商报价、签名、回调、订单 ID 或手续费计算。
+V10 支付方式资源新增 category、asset、assetIconUrl、network、networkName、networkIconUrl，始终只返回已启用渠道，绝不返回完整 config 或接口密钥。订单按账户的 CNY 或 USD 币种以整数最小单位计价；`asset` 仅表示展示的支付资产，渠道收款币种另由 `currency` 和支付报价确定。展示类别不改变服务商签名或订单 ID，金额、手续费及汇率以服务端报价和已保存快照为准，见 [多币种计费](billing-currencies-coupons.md)。
 
 前台选择多个网络的币种时先清空旧渠道选择，必须选择具体网络才可支付；仅一个可用渠道则自动选择。手续费和支付请求始终绑定渠道 ID，等待支付确认期间禁止切换。
 

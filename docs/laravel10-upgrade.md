@@ -1,6 +1,6 @@
 # Laravel 10 过渡升级
 
-历史升级记录；当前版本请参见 [Laravel 11 升级](laravel11-upgrade.md)。
+历史升级记录，仅描述当时版本、依赖及验证结果，不是当前部署步骤。当前 PHP 8.4+ / Laravel 13 要求见 [Laravel 13](laravel13-upgrade.md)，实际安装升级以 [update.sh 流程](update-script.md) 为准；不需要逐版执行这些旧步骤。
 
 本分支从 Laravel 9 升级至 10.50.3。项目要求 PHP 8.1+、Composer 2.2+、MySQL 5.7+（本地验证使用 MySQL 8）；依赖锁定在提交的 composer.lock，生产部署使用 install，不在服务器直接 update。CLI、PHP-FPM、Horizon、调度器应使用同一 PHP 版本。保留现有 .env、APP_KEY、config/v2board.php、数据库、上传目录与 GeoIP 数据，不重新安装面板。
 

@@ -1,5 +1,7 @@
 # 独立流量额度与老用户迁移
 
+当前版本升级以 [完整 update.sh 流程](update-script.md) 为准；下文单项迁移仅供维护窗口内的专项排错，不替代全部批准迁移。使用与 PHP-FPM 一致的 PHP 8.4+。
+
 ## 使用规则
 
 - 额度以 GB 展示，数据库按字节保存（1 GB = 1,073,741,824 字节），与账户现金余额及 Banked 重置次数相互独立。
@@ -32,7 +34,7 @@
 手动执行该单项迁移的命令（仅在上述维护与备份条件满足后）：
 
 ```bash
-/www/server/php/81/bin/php artisan migrate --path=database/migrations/2026_10_02_000005_create_traffic_credits.php --force
+/www/server/php/84/bin/php artisan migrate --path=database/migrations/2026_10_02_000005_create_traffic_credits.php --force
 ```
 
 核对迁移来源总额（不是消耗后的当前余额）：

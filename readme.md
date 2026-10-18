@@ -16,7 +16,7 @@
 
 升级前统一 CLI、PHP-FPM、队列和调度使用的 PHP 8.4+，完成数据库备份，并先运行新版 `update.sh --check`。正式升级按脚本白名单执行迁移、更新依赖、验证前端产物和处理工作进程。自动维护与 `--jobs-stopped` 手动维护的差别、外部脚本下载方式及回滚要求见上述文档。
 
-新安装使用本分支安装流程与 SQL，部署站点的 Web 根目录必须指向 `public`。前后台使用配套的 `public/console` 构建资源，不再使用旧版主题切换步骤。目录边界和 API 契约生成见 [项目结构说明](docs/project-structure.md)。
+新安装使用 [全新安装流程](docs/update-script.md#全新安装空数据库) 和本分支 SQL，由 `php artisan v2board:install` 创建环境与管理员；不要对旧站重跑安装器。部署站点的 Web 根目录必须指向 `public`。前后台使用配套的 `public/console` 构建资源，不再使用旧版主题切换步骤。目录边界和 API 契约生成见 [项目结构说明](docs/project-structure.md)。
 
 # **V2Board**
 
@@ -33,7 +33,7 @@
 邮箱和密码可随意输入
 
 ## Document
-[Click](https://v2board.com)
+本分支操作以 [项目文档](docs/README.md) 为准；[上游文档](https://v2board.com) 仅供历史背景参考，不能直接套用其分支、PHP 或升级命令。
 
 ## Sponsors
 Thanks to the open source project license provided by [Jetbrains](https://www.jetbrains.com/)

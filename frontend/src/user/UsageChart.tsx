@@ -1,3 +1,5 @@
+import { UserChoiceGroup } from "./UserChoiceGroup";
+import { UserEmptyState } from "./UserEmptyState";
 import { businessTimeZone, calendarDay } from "../shared/timezone";
 import { useEffect, useRef, useState } from "react";
 import { e } from "../shared/experience-copy";
@@ -45,21 +47,16 @@ export function UsageChart({
             <header>
                 <h2>{e("usageAnalysis")}</h2>
                 <small>{businessTimeZone()}</small>
-                <div
-                    className="usage-period"
-                    role="group"
-                    aria-label={tx("日期")}
-                >
-                    {(["week", "30days"] as const).map((value) => (
-                        <button
-                            key={value}
-                            aria-pressed={period === value}
-                            onClick={() => setPeriod(value)}
-                        >
-                            {value === "week" ? e("week") : tx("近30天")}
-                        </button>
-                    ))}
-                </div>
+                <UserChoiceGroup
+                    label={tx("日期")}
+                    value={period}
+                    onChange={setPeriod}
+                    compact
+                    options={[
+                        { value: "week", label: e("week") },
+                        { value: "30days", label: tx("近30天") },
+                    ]}
+                />
             </header>
             <div className="usage-section-title">
                 <h3>{e("dailyUsage")}</h3>
@@ -74,10 +71,27 @@ export function UsageChart({
                 {data.data?.length ? (
                     <>
                         <dl className="usage-summary">
-                            <div><dt>{tx("上传")}</dt><dd>{bytes(totalUpload)}</dd></div>
-                            <div><dt>{tx("下载")}</dt><dd>{bytes(totalDownload)}</dd></div>
-                            <div><dt>{tx("周期总用量")}</dt><dd>{bytes(totalUpload + totalDownload)}</dd></div>
-                            <div><dt>{tx("日均用量（含今天）")}</dt><dd>{bytes((totalUpload + totalDownload) / Math.max(1, days.length))}</dd></div>
+                            <div>
+                                <dt>{tx("上传")}</dt>
+                                <dd>{bytes(totalUpload)}</dd>
+                            </div>
+                            <div>
+                                <dt>{tx("下载")}</dt>
+                                <dd>{bytes(totalDownload)}</dd>
+                            </div>
+                            <div>
+                                <dt>{tx("周期总用量")}</dt>
+                                <dd>{bytes(totalUpload + totalDownload)}</dd>
+                            </div>
+                            <div>
+                                <dt>{tx("日均用量（含今天）")}</dt>
+                                <dd>
+                                    {bytes(
+                                        (totalUpload + totalDownload) /
+                                            Math.max(1, days.length),
+                                    )}
+                                </dd>
+                            </div>
                         </dl>
                         <div className="usage-legend">
                             <span>
@@ -151,7 +165,7 @@ export function UsageChart({
                         </div>
                     </>
                 ) : (
-                    <div className="usage-empty">{tx("暂无数据")}</div>
+                    <UserEmptyState compact title={tx("暂无数据")} />
                 )}
             </State>
             {showRecords && !!data.data?.length && (

@@ -1,3 +1,4 @@
+import { UserChoiceGroup } from "./UserChoiceGroup";
 import { useState } from "react";
 import { money, type Row } from "../shared/api";
 import { tx } from "../shared/i18n";
@@ -76,41 +77,27 @@ export function SubscriptionPurchase() {
             </State>
             <State {...plans} retry={plans.reload}>
                 <div className="pricing-toolbar">
-                    <div
-                        className="pricing-cycle"
-                        role="group"
-                        aria-label={tx("选择订阅周期")}
-                    >
-                        {cycles.map((key) => (
-                            <button
-                                key={key}
-                                aria-pressed={activePeriod === key}
-                                onClick={() => setBillingPeriod(key)}
-                            >
-                                {tx(billingPeriods[key])}
-                            </button>
-                        ))}
-                    </div>
+                    <UserChoiceGroup
+                        label={tx("选择订阅周期")}
+                        value={activePeriod}
+                        onChange={setBillingPeriod}
+                        options={cycles.map((value) => ({
+                            value,
+                            label: tx(billingPeriods[value]),
+                        }))}
+                    />
                 </div>
-                <div
+                <UserChoiceGroup
                     className="mobile-plan-picker"
-                    role="group"
-                    aria-label={tx("选择套餐")}
-                >
-                    {cyclePlans.map((plan) => (
-                        <button
-                            key={plan.id}
-                            type="button"
-                            aria-pressed={
-                                Number(mobileActive?.id) === Number(plan.id)
-                            }
-                            aria-controls={`pricing-plan-${plan.id}`}
-                            onClick={() => setMobilePlanId(Number(plan.id))}
-                        >
-                            {plan.name}
-                        </button>
-                    ))}
-                </div>
+                    label={tx("选择套餐")}
+                    value={Number(mobileActive?.id)}
+                    onChange={setMobilePlanId}
+                    options={cyclePlans.map((plan) => ({
+                        value: Number(plan.id),
+                        label: plan.name,
+                        controls: `pricing-plan-${plan.id}`,
+                    }))}
+                />
                 <div className="plans pricing-plans">
                     {cyclePlans.length ? (
                         cyclePlans.map((plan) => {

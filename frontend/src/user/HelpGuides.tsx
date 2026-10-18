@@ -1,3 +1,5 @@
+import { UserChoiceGroup } from "./UserChoiceGroup";
+import { UserEmptyState } from "./UserEmptyState";
 import { useState } from "react";
 import { Search, ChevronDown, ArrowUpRight } from "lucide-react";
 import { useTranslation } from "react-i18next";
@@ -112,24 +114,15 @@ export function HelpGuides() {
                         onChange={(event) => setSearch(event.target.value)}
                     />
                 </div>
-                <div
+                <UserChoiceGroup
                     className="help-categories"
-                    role="group"
-                    aria-label={tx("常见问题与问题排查")}
-                >
-                    {(["all", "setup", "usage", "account"] as const).map(
-                        (key) => (
-                            <button
-                                key={key}
-                                type="button"
-                                aria-pressed={category === key}
-                                onClick={() => setCategory(key)}
-                            >
-                                {h(key)}
-                            </button>
-                        ),
-                    )}
-                </div>
+                    label={tx("常见问题与问题排查")}
+                    value={category}
+                    onChange={setCategory}
+                    options={(
+                        ["all", "setup", "usage", "account"] as const
+                    ).map((value) => ({ value, label: h(value) }))}
+                />
                 <p className="help-count muted" role="status">
                     {h("count", { count: visible.length })}
                 </p>
@@ -154,18 +147,20 @@ export function HelpGuides() {
                     ))}
                 </div>
                 {!visible.length && (
-                    <div className="help-empty">
-                        <p>{h("empty")}</p>
-                        <button
-                            type="button"
-                            onClick={() => {
-                                setSearch("");
-                                setCategory("all");
-                            }}
-                        >
-                            {h("clear")}
-                        </button>
-                    </div>
+                    <UserEmptyState
+                        title={h("empty")}
+                        actions={
+                            <button
+                                type="button"
+                                onClick={() => {
+                                    setSearch("");
+                                    setCategory("all");
+                                }}
+                            >
+                                {h("clear")}
+                            </button>
+                        }
+                    />
                 )}
             </div>
         </Panel>

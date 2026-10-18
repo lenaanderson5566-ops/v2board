@@ -46,3 +46,8 @@ export function adminStatusCell(key: string, label: string, value: unknown, rend
     if (key === "status" || key === "commission_status" || (key === "level" && label === "级别")) return <AdminStatus value={rendered ?? value} />;
     return rendered ?? (value != null && typeof value === "object" ? JSON.stringify(value) : String(value ?? "—"));
 }
+
+// Administrator-only guidance belongs with the other administrator status copy.
+export function AdminTicketReplyStatus({ status, replyStatus }: { status: unknown; replyStatus: unknown }) {
+    return <p role="status">{Number(status) === 1 ? "已关闭" : Number(replyStatus) === 1 ? "已回复，等待用户反馈" : "待管理员回复"}。管理员回复后 24 小时内无用户回复，工单将自动关闭。</p>;
+}

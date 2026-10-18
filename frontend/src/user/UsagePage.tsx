@@ -1,3 +1,5 @@
+import { UserChoiceGroup } from "./UserChoiceGroup";
+import { UserEmptyState } from "./UserEmptyState";
 import { PlanSelection } from "./PlanSelection";
 import { activePlan } from "../shared/user-experience";
 import { unfinishedOrder } from "./billing-flow";
@@ -86,24 +88,16 @@ export function UsagePage() {
                     </a>
                 )}
             </div>
-            <div
+            <UserChoiceGroup
                 className="settings-tabs"
-                role="group"
-                aria-label={tx("使用情况")}
-            >
-                <button
-                    aria-pressed={tab === "overview"}
-                    onClick={() => setTab("overview")}
-                >
-                    {b("overview")}
-                </button>
-                <button
-                    aria-pressed={tab === "analysis"}
-                    onClick={() => setTab("analysis")}
-                >
-                    {b("analysis")}
-                </button>
-            </div>
+                label={tx("使用情况")}
+                value={tab}
+                onChange={setTab}
+                options={[
+                    { value: "overview", label: b("overview") },
+                    { value: "analysis", label: b("analysis") },
+                ]}
+            />
             {tab === "analysis" ? (
                 <UsageChart showDetails={false} showRecords />
             ) : (
@@ -194,26 +188,25 @@ export function UsagePage() {
                         </div>
                         <State {...resets} retry={resets.reload}>
                             <div className="settings-card reset-card">
-                                <div
+                                <UserChoiceGroup
                                     className="reset-switcher"
-                                    role="group"
-                                    aria-label={b("usageReset")}
-                                >
-                                    <button
-                                        aria-pressed={resetTab === "available"}
-                                        onClick={() => setResetTab("available")}
-                                    >
-                                        {b("resetAvailable", {
-                                            count: resets.data?.available || 0,
-                                        })}
-                                    </button>
-                                    <button
-                                        aria-pressed={resetTab === "history"}
-                                        onClick={() => setResetTab("history")}
-                                    >
-                                        {b("historyLabel")}
-                                    </button>
-                                </div>
+                                    label={b("usageReset")}
+                                    value={resetTab}
+                                    onChange={setResetTab}
+                                    options={[
+                                        {
+                                            value: "available",
+                                            label: b("resetAvailable", {
+                                                count:
+                                                    resets.data?.available || 0,
+                                            }),
+                                        },
+                                        {
+                                            value: "history",
+                                            label: b("historyLabel"),
+                                        },
+                                    ]}
+                                />
                                 <div className="reset-content">
                                     {resetTab === "available" ? (
                                         Number(resets.data?.available || 0) >
@@ -290,9 +283,10 @@ export function UsagePage() {
                                                 )}
                                             </>
                                         ) : (
-                                            <p className="reset-empty muted">
-                                                {b("resetEmpty")}
-                                            </p>
+                                            <UserEmptyState
+                                                compact
+                                                title={b("resetEmpty")}
+                                            />
                                         )
                                     ) : (
                                         <div className="reset-history">

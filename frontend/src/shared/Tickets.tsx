@@ -1,4 +1,3 @@
-import { AdminTicketReplyStatus } from "./admin-status";
 import { StatusBadge } from "./StatusBadge";
 import { useEffect, useState, useRef, type ReactNode } from "react";
 import { boot, request, rows, query, date, type Row } from "./api";
@@ -280,7 +279,7 @@ export function Tickets({
                     }}
                 >
                     <State {...detail}>
-                        {isAdmin && detail.data && <div className="pad">{renderAccount?.(detail.data) || <>ID: {detail.data.user_id || "—"} · {detail.data.email || tx("邮箱不可用")}</>}<AdminTicketReplyStatus status={detail.data.status} replyStatus={detail.data.reply_status} /></div>}
+                        {isAdmin && detail.data && <div className="pad">{renderAccount?.(detail.data) || <>ID: {detail.data.user_id || "—"} · {detail.data.email || tx("邮箱不可用")}</>}<p role="status">{Number(detail.data.status) === 1 ? "已关闭" : Number(detail.data.reply_status) === 1 ? "已回复，等待用户反馈" : "待管理员回复"}。管理员回复后 24 小时内无用户回复，工单将自动关闭。</p></div>}
                         <div className="messages">
                             {rows(detail.data?.message).map((m) => (
                                 <div

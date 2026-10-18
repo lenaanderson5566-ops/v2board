@@ -1,4 +1,3 @@
-import { UserChoiceGroup } from "./UserChoiceGroup";
 import { iosDownloads, ClientDownload } from "./ClientDownload";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -123,12 +122,7 @@ export function SubscriptionImport({
               : downloads[selected];
     const content = (
         <div className="pad import-content">
-            <header className="client-family-header third-party">
-                <span className="client-family-badge">
-                    {downloadKind("thirdParty")}
-                </span>
-                <p>{downloadKind("thirdPartyGuide")}</p>
-            </header>
+            <header className="client-family-header third-party"><span className="client-family-badge">{downloadKind("thirdParty")}</span><p>{downloadKind("thirdPartyGuide")}</p></header>
             <section className="quick-step">
                 <h3>
                     <span>1</span>
@@ -137,10 +131,12 @@ export function SubscriptionImport({
                 <p className="muted">
                     {tx("已根据当前设备推荐，可手动选择其他系统。")}
                 </p>
-                <UserChoiceGroup
-                    label={tx("选择系统")}
-                    value={device}
-                    options={(
+                <div
+                    className="device-options"
+                    role="group"
+                    aria-label={tx("选择系统")}
+                >
+                    {(
                         [
                             "windows",
                             "macos",
@@ -148,35 +144,33 @@ export function SubscriptionImport({
                             "ios",
                             "linux",
                         ] as Device[]
-                    ).map((value) => ({
-                        value,
-                        label: (
-                            <>
+                    ).map((value) => (
+                        <button
+                            key={value}
+                            aria-pressed={device === value}
+                            onClick={() => {
+                                setDevice(value);
+                                setAll(false);
+                                setSelected(preferredClient(value));
+                                setCopied(false);
+                                setAttempted(false);
+                                setError("");
+                            }}
+                        >
+                            {
                                 {
-                                    {
-                                        windows: "Windows",
-                                        macos: "macOS",
-                                        android: "Android",
-                                        ios: "iOS",
-                                        linux: "Linux",
-                                        unknown: "",
-                                    }[value]
-                                }
-                                {device === value && (
-                                    <Check size={16} aria-hidden="true" />
-                                )}
-                            </>
-                        ),
-                    }))}
-                    onChange={(value) => {
-                        setDevice(value);
-                        setAll(false);
-                        setSelected(preferredClient(value));
-                        setCopied(false);
-                        setAttempted(false);
-                        setError("");
-                    }}
-                />
+                                    windows: "Windows",
+                                    macos: "macOS",
+                                    android: "Android",
+                                    ios: "iOS",
+                                    linux: "Linux",
+                                    unknown: "",
+                                }[value]
+                            }
+                            {device === value && <Check size={16} />}
+                        </button>
+                    ))}
+                </div>
             </section>
             <section className="quick-step">
                 <h3>

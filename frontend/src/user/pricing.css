@@ -1,3 +1,27 @@
+.app.user .pricing-cycle {
+    display: flex;
+    justify-content: center;
+    gap: 4px;
+    padding: 4px;
+    border-radius: 999px;
+    background: var(--surface-tint);
+    width: fit-content;
+    max-width: 100%;
+    flex-wrap: wrap;
+    margin: 0;
+    flex-shrink: 0;
+}
+.app.user .pricing-cycle button {
+    border: 0;
+    border-radius: 999px;
+    background: transparent;
+    min-width: 96px;
+    min-height: 44px;
+}
+.app.user .pricing-cycle button[aria-pressed="true"] {
+    background: var(--surface);
+    box-shadow: 0 1px 4px #00000014;
+}
 .app.user .pricing-card-heading {
     display: flex;
     align-items: center;
@@ -85,8 +109,20 @@
         padding: 2px 0 10px;
         margin-bottom: 4px;
     }
-
-
+    .app.user .mobile-plan-picker button {
+        flex: 1 0 auto;
+        min-height: 44px;
+        max-width: 220px;
+        white-space: normal;
+        overflow-wrap: anywhere;
+        padding: 10px 16px;
+        border-radius: 12px;
+    }
+    .app.user .mobile-plan-picker button[aria-pressed="true"] {
+        background: var(--brand);
+        border-color: var(--brand);
+        color: var(--on-brand);
+    }
     .app.user .pricing-plans {
         display: block;
     }
@@ -215,7 +251,10 @@
     .app.user .mobile-plan-picker {
         padding-bottom: 6px;
     }
-
+    .app.user .mobile-plan-picker button {
+        white-space: nowrap;
+        max-width: none;
+    }
 }
 
 /* Keep confirmation separate from the only scrollable area, including short viewports. */

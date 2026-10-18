@@ -1,5 +1,3 @@
-import { UserChoiceGroup } from "./UserChoiceGroup";
-import { UserEmptyState } from "./UserEmptyState";
 import { useCouponActivities } from "./useCouponActivities";
 import { useRef, useState } from "react";
 import { Gift, TicketPercent, CheckCircle2, ArrowUpRight } from "lucide-react";
@@ -132,12 +130,12 @@ export function ActivityCenter() {
                     ))}
                 </div>
                 {!rows.length && (
-                    <UserEmptyState
-                        illustration={<JourneyIllustration kind="coupon" />}
-                        title={tx("暂无可领取的活动")}
-                        description={tx("可以查看已有优惠券，或稍后回来。")}
-                        actions={<a href="#/coupons">{tx("我的优惠券")}</a>}
-                    />
+                    <div className="coupon-center-empty">
+                        <JourneyIllustration kind="coupon" />
+                        <h3>{tx("暂无可领取的活动")}</h3>
+                        <p>{tx("可以查看已有优惠券，或稍后回来。")}</p>
+                        <a href="#/coupons">{tx("我的优惠券")}</a>
+                    </div>
                 )}
             </State>
         </section>
@@ -180,30 +178,30 @@ export function MyCoupons() {
                     </a>
                 )}
             </div>
-            <UserChoiceGroup
+            <div
                 className="coupon-wallet-tabs"
-                label={tx("我的优惠券")}
-                value={view}
-                onChange={setView}
-                options={[
+                role="group"
+                aria-label={tx("我的优惠券")}
+            >
+                {[
                     ["available", "可使用"],
                     ["used", "已占用或使用"],
                     ["expired", "已过期"],
-                ].map(([value, label]) => ({
-                    value,
-                    label: (
-                        <>
-                            {tx(label)}{" "}
-                            <span className="coupon-count">
-                                {wallet.data
-                                    ? rows.filter((c) => inView(c, value))
-                                          .length
-                                    : "—"}
-                            </span>
-                        </>
-                    ),
-                }))}
-            />
+                ].map(([key, label]) => (
+                    <button
+                        key={key}
+                        aria-pressed={view === key}
+                        onClick={() => setView(key)}
+                    >
+                        {tx(label)}{" "}
+                        <span className="coupon-count">
+                            {wallet.data
+                                ? rows.filter((c) => inView(c, key)).length
+                                : "—"}
+                        </span>
+                    </button>
+                ))}
+            </div>
             <State {...wallet} retry={wallet.reload}>
                 <div className="coupon-center-grid">
                     {visible.map((coupon) => (
@@ -236,19 +234,21 @@ export function MyCoupons() {
                     ))}
                 </div>
                 {!visible.length && (
-                    <UserEmptyState
-                        illustration={<JourneyIllustration kind="coupon" />}
-                        title={tx(
-                            rows.length ? "当前分类暂无优惠券" : "暂无优惠券",
+                    <div className="coupon-center-empty">
+                        <JourneyIllustration kind="coupon" />
+                        <h3>
+                            {tx(
+                                rows.length
+                                    ? "当前分类暂无优惠券"
+                                    : "暂无优惠券",
+                            )}
+                        </h3>
+                        {activities.hasActivities ? (
+                            <a href="#/activities">{tx("前往活动中心")}</a>
+                        ) : (
+                            <a href="#/plan">{tx("购买订阅")}</a>
                         )}
-                        actions={
-                            activities.hasActivities ? (
-                                <a href="#/activities">{tx("前往活动中心")}</a>
-                            ) : (
-                                <a href="#/plan">{tx("购买订阅")}</a>
-                            )
-                        }
-                    />
+                    </div>
                 )}
             </State>
         </section>

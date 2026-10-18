@@ -1,4 +1,3 @@
-import { UserEmptyState } from "./UserEmptyState";
 import { useEffect, useRef, useState } from "react";
 import { Bell, ArrowLeft, ChevronLeft, ChevronRight } from "lucide-react";
 import DOMPurify from "dompurify";
@@ -8,13 +7,7 @@ import { renderMarkdown } from "../shared/markdown";
 import { tx } from "../shared/i18n";
 import { a } from "./announcement-copy";
 
-type Inbox = {
-    items: Row[];
-    total: number;
-    unread: number;
-    ticketReplies?: Row[];
-    ticketUnread?: number;
-};
+type Inbox = { items: Row[]; total: number; unread: number; ticketReplies?: Row[]; ticketUnread?: number };
 
 export function announcementSummary(content: unknown) {
     const html = DOMPurify.sanitize(renderMarkdown(content));
@@ -31,10 +24,8 @@ export function AnnouncementCenter() {
     const [open, setOpen] = useState(false);
     const [page, setPage] = useState(1);
     const [selected, setSelected] = useState<number | null>(null);
-    const inbox = useData<Inbox>(
-        `user/notice/inbox?current=${page}&page_size=10`,
-    );
-    const unread = (inbox.data?.unread || 0) + (inbox.data?.ticketUnread || 0);
+    const inbox = useData<Inbox>(`user/notice/inbox?current=${page}&page_size=10`);
+    const unread = (inbox.data?.unread || 0)+(inbox.data?.ticketUnread || 0);
     const trigger = useRef<HTMLButtonElement>(null);
     const close = () => {
         setOpen(false);
@@ -87,30 +78,7 @@ export function AnnouncementCenter() {
                                     </span>
                                 )}
                             </div>
-                            {Boolean(inbox.data?.ticketReplies?.length) && (
-                                <section className="pad">
-                                    <h3>{a("ticketReplies")}</h3>
-                                    {inbox.data?.ticketReplies?.map((item) => (
-                                        <a
-                                            className="announcement-item"
-                                            key={item.ticket_id}
-                                            href={`#/ticket?ticketId=${item.ticket_id}`}
-                                            onClick={close}
-                                        >
-                                            <strong>
-                                                {a("ticketReply")} #
-                                                {item.ticket_id}
-                                            </strong>
-                                            <time>{date(item.created_at)}</time>
-                                        </a>
-                                    ))}
-                                    {(inbox.data?.ticketUnread || 0) > 20 && (
-                                        <a href="#/ticket" onClick={close}>
-                                            {a("allTickets")}
-                                        </a>
-                                    )}
-                                </section>
-                            )}
+                            {Boolean(inbox.data?.ticketReplies?.length) && <section className="pad"><h3>{a("ticketReplies")}</h3>{inbox.data?.ticketReplies?.map(item=><a className="announcement-item" key={item.ticket_id} href={`#/ticket?ticketId=${item.ticket_id}`} onClick={close}><strong>{a("ticketReply")} #{item.ticket_id}</strong><time>{date(item.created_at)}</time></a>)}{(inbox.data?.ticketUnread || 0)>20 && <a href="#/ticket" onClick={close}>{a("allTickets")}</a>}</section>}
                             <div
                                 className="announcement-list"
                                 aria-busy={inbox.loading}
@@ -133,12 +101,11 @@ export function AnnouncementCenter() {
                                         {tx("正在加载…")}
                                     </div>
                                 ) : !inbox.data?.items.length ? (
-                                    <UserEmptyState
-                                        compact
-                                        illustration={<Bell size={28} />}
-                                        title={a("empty")}
-                                        description={a("emptyHint")}
-                                    />
+                                    <div className="announcement-empty">
+                                        <Bell size={28} />
+                                        <p>{a("empty")}</p>
+                                        <small>{a("emptyHint")}</small>
+                                    </div>
                                 ) : (
                                     inbox.data.items.map((notice) => (
                                         <button

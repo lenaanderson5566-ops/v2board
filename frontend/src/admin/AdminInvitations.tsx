@@ -1,3 +1,5 @@
+import { AdminFilterBar } from "./AdminFilterBar";
+import { AdminTabs } from "./AdminChoices";
 import { InvitationEmails } from "./InvitationEmails";
 import { InvitationReviews } from "./InvitationReviews";
 import { useEffect, useState } from "react";
@@ -43,7 +45,7 @@ const invitationResource = {
     ] as Parameters<typeof ResourcePage>[0]["resource"]["columns"],
 };
 export function AdminInvitations() {
-    const readTab = () => {
+    const readTab = (): "relations" | "commissions" | "reviews" | "emails" => {
         const value = new URLSearchParams(
             window.location.hash.split("?")[1] || "",
         ).get("tab");
@@ -96,40 +98,9 @@ export function AdminInvitations() {
                     </a>
                 </div>
             </section>
-            <div
-                className="section-tabs"
-                role="tablist"
-                aria-label="邀请管理视图"
-            >
-                <button
-                    role="tab"
-                    aria-selected={tab === "relations"}
-                    onClick={() => selectTab("relations")}
-                >
-                    邀请关系
-                </button>
-                <button
-                    role="tab"
-                    aria-selected={tab === "commissions"}
-                    onClick={() => selectTab("commissions")}
-                >
-                    佣金审核
-                </button>
-                <button
-                    role="tab"
-                    aria-selected={tab === "reviews"}
-                    onClick={() => selectTab("reviews")}
-                >
-                    异常复核
-                </button>
-                <button
-                    role="tab"
-                    aria-selected={tab === "emails"}
-                    onClick={() => selectTab("emails")}
-                >
-                    邀请邮件
-                </button>
-            </div>
+            <AdminTabs label="邀请管理视图" value={tab} onChange={selectTab} options={[
+                {value:"relations",label:"邀请关系"},{value:"commissions",label:"佣金审核"},{value:"reviews",label:"异常复核"},{value:"emails",label:"邀请邮件"}
+            ]}>
             {tab === "emails" ? (
                 <InvitationEmails />
             ) : tab === "reviews" ? (
@@ -143,8 +114,8 @@ export function AdminInvitations() {
                     searchable={false}
                     queryParams={{ filter }}
                     toolbar={
-                        <form
-                            className="pad actions"
+                        <AdminFilterBar
+
                             onSubmit={(e) => {
                                 e.preventDefault();
                                 setSearch(email.trim());
@@ -177,7 +148,7 @@ export function AdminInvitations() {
                             >
                                 清除
                             </button>
-                        </form>
+                        </AdminFilterBar>
                     }
                     extraActions={(r) => (
                         <>
@@ -209,6 +180,7 @@ export function AdminInvitations() {
                     )}
                 />
             )}
+            </AdminTabs>
         </>
     );
 }

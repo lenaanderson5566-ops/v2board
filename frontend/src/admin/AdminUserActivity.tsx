@@ -1,3 +1,4 @@
+import { AdminChoiceGroup } from "./AdminChoices";
 import { RiskEvidence } from "./RiskEvidence";
 import { IpLocation } from "../shared/IpLocation";
 import { AdminStatus } from "../shared/admin-status";
@@ -36,11 +37,8 @@ function Activity({ row, close }: { row: Row; close: () => void }) {
                     </dl>
                 </section>}
                 {d.data && !user && <p className="user-activity-notice">用户已不存在，以下为保留的历史记录。</p>}
-                <nav className="user-activity-filters" aria-label="活动类型">
-                    {activityKinds.map(value => <button key={value} aria-pressed={kind === value} onClick={() => setKind(value)}>
-                        {value}{" "}<span>{value === "全部" ? events.length : events.filter(event => event.kind === value).length}</span>
-                    </button>)}
-                </nav>
+                <AdminChoiceGroup label="活动类型" className="user-activity-filters" value={kind} onChange={setKind}
+                    options={activityKinds.map(value => ({value,label:<>{value}{" "}<span>{value === "全部" ? events.length : events.filter(event => event.kind === value).length}</span></>}))} />
                 <p className="user-activity-caption">每类最近 50 条，按时间倒序 · 连接记录不代表当前在线</p>
                 {!visible.length && <div className="user-activity-empty" role="status">{kind === "全部" ? "暂无活动记录" : `暂无${kind}记录`}</div>}
                 <div className="user-activity-list">

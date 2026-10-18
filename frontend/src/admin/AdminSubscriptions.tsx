@@ -1,3 +1,4 @@
+import { AdminTabList } from "./AdminChoices";
 import { AdminBillingCurrency } from "./AdminBillingCurrency";
 import { useState } from "react";
 import * as Tabs from "@radix-ui/react-tabs";
@@ -10,11 +11,7 @@ export function AdminSubscriptions({
     const [tab, setTab] = useState<string>(initialTab);
     return (
         <Tabs.Root value={tab} onValueChange={setTab} activationMode="manual">
-            <Tabs.List className="section-tabs" aria-label="套餐管理视图">
-                <Tabs.Trigger value="plans">套餐列表</Tabs.Trigger>
-                <Tabs.Trigger value="translations">套餐翻译</Tabs.Trigger>
-                <Tabs.Trigger value="currencies">价格与币种</Tabs.Trigger>
-            </Tabs.List>
+            <AdminTabList label="套餐管理视图" options={[{value:"plans",label:"套餐列表"},{value:"translations",label:"套餐翻译"},{value:"currencies",label:"价格与币种"}]} />
             <Tabs.Content value="plans">
                 <ResourcePage resource={resources.plans} />
             </Tabs.Content>

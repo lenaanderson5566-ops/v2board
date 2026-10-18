@@ -1,3 +1,4 @@
+import { AdminChoiceGroup } from "./AdminChoices";
 import { MailX, Plus, Search } from "lucide-react";
 import { Pager, Empty } from "../shared/ui";
 import { useRef, useState } from "react";
@@ -86,36 +87,9 @@ export function AdminMailBlocklist() {
                     </details>
                 </div>
             </div>
-            <div className="mail-blocklist-mode">
-                <button
-                    type="button"
-                    aria-pressed={!bulk}
-                    disabled={busy}
-                    onClick={() => {
-                        setBulk(false);
-                        setEmail("");
-                        setError("");
-                        setResult("");
-                        setImportDetails(null);
-                    }}
-                >
-                    单个添加
-                </button>
-                <button
-                    type="button"
-                    aria-pressed={bulk}
-                    disabled={busy}
-                    onClick={() => {
-                        setBulk(true);
-                        setEmail("");
-                        setError("");
-                        setResult("");
-                        setImportDetails(null);
-                    }}
-                >
-                    多行导入
-                </button>
-            </div>
+            <AdminChoiceGroup label="禁发名单添加方式" className="mail-blocklist-mode" value={bulk ? "bulk" : "single"} disabled={busy}
+                options={[{value:"single",label:"单个添加"},{value:"bulk",label:"多行导入"}]}
+                onChange={value => { setBulk(value === "bulk"); setEmail(""); setError(""); setResult(""); setImportDetails(null); }} />
             <form
                 className="mail-blocklist-create"
                 onSubmit={(e) => {

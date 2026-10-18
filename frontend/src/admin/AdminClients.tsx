@@ -1,3 +1,4 @@
+import { AdminChoiceGroup } from "./AdminChoices";
 import { useState } from "react";
 import { admin, request, type Row } from "../shared/api";
 import { State, useData } from "../shared/ui";
@@ -107,20 +108,8 @@ export function AdminClients({
     return (
         <div className="release-monitor">
             <h2>第三方客户端</h2>
-            <div className="section-tabs">
-                <button
-                    className={tab === "updates" ? "selected" : ""}
-                    onClick={() => setTab("updates")}
-                >
-                    推荐与智能更新
-                </button>
-                <button
-                    className={tab === "policy" ? "selected" : ""}
-                    onClick={() => setTab("policy")}
-                >
-                    访问与版本策略
-                </button>
-            </div>
+            <AdminChoiceGroup variant="navigation" label="客户端管理视图" value={tab} onChange={setTab}
+                options={[{value:"updates",label:"推荐与智能更新"},{value:"policy",label:"访问与版本策略"}]} />
             {tab === "policy" ? (
                 <>
                     <p className="muted">

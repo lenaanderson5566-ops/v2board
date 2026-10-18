@@ -1,3 +1,4 @@
+import { AdminChoiceGroup } from "./AdminChoices";
 import { AdminDisplaySettings } from "./AdminDisplaySettings";
 import { field, nameColumn } from "./admin-fields";
 import { useEffect, useState, type ComponentProps } from "react";
@@ -212,35 +213,11 @@ export function Nodes({
                     {savedNodeNotice}
                 </p>
             )}
-            <nav className="section-tabs node-management-tabs" aria-label="节点管理功能">
-                <button
-                    aria-pressed={tab === "nodes"}
-                    onClick={() => {
-                        setTab("nodes");
-                        d.reload();
-                    }}
-                >
-                    节点列表
-                </button>
-                <button
-                    aria-pressed={tab === "ddns"}
-                    onClick={() => setTab("ddns")}
-                >
-                    Cloudflare DDNS
-                </button>
-                <button
-                    aria-pressed={tab === "lightsail"}
-                    onClick={() => setTab("lightsail")}
-                >
-                    Lightsail IP
-                </button>
-                <button
-                    aria-pressed={tab === "traffic"}
-                    onClick={() => setTab("traffic")}
-                >
-                    服务器流量
-                </button>
-            </nav>
+            <AdminChoiceGroup variant="navigation" label="节点管理功能" value={tab}
+                onChange={value => { setTab(value); if (value === "nodes") d.reload(); }} options={[
+                    {value:"nodes",label:"节点列表"},{value:"ddns",label:"Cloudflare DDNS"},
+                    {value:"lightsail",label:"Lightsail IP"},{value:"traffic",label:"服务器流量"}
+                ]} />
             {tab === "ddns" && <AdminDDNS />}
             {tab === "lightsail" && <AdminLightsail nodes={rows(d.data)} />}
             {tab === "traffic" && (

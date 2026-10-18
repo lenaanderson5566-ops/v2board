@@ -1,3 +1,4 @@
+import { AdminFilterBar } from "./AdminFilterBar";
 import { Pager } from "../shared/ui";
 import {
     formatInstant,
@@ -74,7 +75,7 @@ export function AdminSystemLogs() {
                     <Reload onClick={logs.reload} loading={logs.loading} />
                 }
             >
-                <form
+                <AdminFilterBar
                     className="admin-log-filters"
                     onSubmit={(e) => {
                         e.preventDefault();
@@ -173,7 +174,7 @@ export function AdminSystemLogs() {
                     >
                         清除筛选
                     </button>
-                </form>
+                </AdminFilterBar>
                 {error && (
                     <p className="alert" role="alert">
                         {error}

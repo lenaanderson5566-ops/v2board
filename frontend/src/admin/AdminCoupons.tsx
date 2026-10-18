@@ -1,3 +1,4 @@
+import { AdminTabList } from "./AdminChoices";
 import { AdminCouponPresentation } from "./AdminCouponPresentation";
 import { useState } from "react";
 import * as Tabs from "@radix-ui/react-tabs";
@@ -21,24 +22,12 @@ export function AdminCoupons() {
                 activationMode="manual"
                 onValueChange={setTab}
             >
-                <Tabs.List className="section-tabs" aria-label="优惠券管理视图">
-                    <Tabs.Trigger value="templates">
-                        <TicketPercent size={16} aria-hidden="true" />
-                        券模板与活动领取
-                    </Tabs.Trigger>
-                    <Tabs.Trigger value="presentation">
-                        <Languages size={16} aria-hidden="true" />
-                        活动与多语言
-                    </Tabs.Trigger>
-                    <Tabs.Trigger value="issue">
-                        <Gift size={16} aria-hidden="true" />
-                        发放到用户券包
-                    </Tabs.Trigger>
-                    <Tabs.Trigger value="records">
-                        <History size={16} aria-hidden="true" />
-                        发放记录
-                    </Tabs.Trigger>
-                </Tabs.List>
+                <AdminTabList label="优惠券管理视图" options={[
+                    {value:"templates",label:<><TicketPercent size={16} aria-hidden="true" />券模板与活动领取</>},
+                    {value:"presentation",label:<><Languages size={16} aria-hidden="true" />活动与多语言</>},
+                    {value:"issue",label:<><Gift size={16} aria-hidden="true" />发放到用户券包</>},
+                    {value:"records",label:<><History size={16} aria-hidden="true" />发放记录</>}
+                ]} />
                 <Tabs.Content value="templates">
                     <ResourcePage resource={resources.coupons} />
                 </Tabs.Content>

@@ -1,3 +1,4 @@
+import { AdminChoiceGroup } from "./AdminChoices";
 import { useRef, useState } from "react";
 import { admin, request, rows, type Row } from "../shared/api";
 import { supportedClients as recommendationClients } from "../shared/import-links";
@@ -178,33 +179,13 @@ export function Settings({ section }: { section?: "app" | "invite" } = {}) {
             title={section ? groupNames[section] : "系统配置"}
             className="settings-panel"
         >
-            <div className="section-tabs">
-                {!section &&
-                    Object.keys(groupNames)
-                        .filter((k) => k !== "app")
-                        .map((k) => (
-                            <button
-                                key={k}
-                                className={group === k ? "selected" : ""}
-                                onClick={() => {
-                                    if (k === group) return;
-                                    if (
-                                        dirty &&
-                                        !window.confirm(
-                                            "当前分类有未保存的修改，确认放弃并切换？",
-                                        )
-                                    )
-                                        return;
-                                    setGroup(k);
-                                    setSaved("");
-                                    setDirty(false);
-                                    setActionResult("");
-                                }}
-                            >
-                                {groupNames[k]}
-                            </button>
-                        ))}
-            </div>
+            {!section && <AdminChoiceGroup variant="navigation" label="系统设置分类" value={group}
+                options={Object.keys(groupNames).filter(key => key !== "app").map(value => ({value,label:groupNames[value]}))}
+                onChange={value => {
+                    if (value === group) return;
+                    if (dirty && !window.confirm("当前分类有未保存的修改，确认放弃并切换？")) return;
+                    setGroup(value); setSaved(""); setDirty(false); setActionResult("");
+                }} /> }
             <State
                 loading={
                     d.loading ||

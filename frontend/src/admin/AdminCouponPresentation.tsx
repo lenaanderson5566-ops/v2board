@@ -1,3 +1,4 @@
+import { AdminFilterBar } from "./AdminFilterBar";
 import { useState } from "react";
 import { admin, request } from "../shared/api";
 import { languages } from "../shared/i18n";
@@ -43,8 +44,8 @@ export function AdminCouponPresentation() {
             <p className="pad muted">
                 默认券名称在券模板中维护。启用公开领取后显示在用户活动中心；未填写的译文回退到默认文案。说明使用纯文本，优惠、库存和使用范围始终由券模板统一控制。
             </p>
-            <form
-                className="actions pad"
+            <AdminFilterBar
+
                 onSubmit={(event) => {
                     event.preventDefault();
                     setQuery(search.trim());
@@ -59,7 +60,7 @@ export function AdminCouponPresentation() {
                     />
                 </label>
                 <button disabled={operation.busy}>搜索</button>
-            </form>
+            </AdminFilterBar>
             <State {...data} retry={data.reload}>
                 <div className="pad admin-commerce-form">
                     <label>

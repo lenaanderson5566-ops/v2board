@@ -1,3 +1,4 @@
+import "./admin-controls.css";
 import type { ReactNode } from "react";
 import { Check } from "lucide-react";
 import { Modal } from "../shared/ui";

@@ -1,3 +1,5 @@
+import { AdminFilterBar } from "./AdminFilterBar";
+import { AdminChoiceGroup } from "./AdminChoices";
 import { StatusBadge } from "../shared/StatusBadge";
 import { AdminUserActivityLink } from "./AdminUserActivity";
 import { useState } from "react";
@@ -56,8 +58,8 @@ export function AdminTickets() {
                 ["updated_at", "最后回复", (r) => date(r.updated_at)],
             ]}
             toolbar={
-                <form
-                    className="pad actions"
+                <AdminFilterBar
+
                     onSubmit={(e) => {
                         e.preventDefault();
                         setEmail(draftEmail.trim());
@@ -70,21 +72,8 @@ export function AdminTickets() {
                         onChange={(e) => setDraftEmail(e.target.value)}
                     />
                     <button>搜索</button>
-                    <div className="admin-radio-group">
-                        {[
-                            ["0", "已开启"],
-                            ["1", "已关闭"],
-                        ].map(([value, label]) => (
-                            <button
-                                type="button"
-                                key={value}
-                                aria-pressed={status === value}
-                                onClick={() => setStatus(value)}
-                            >
-                                {label}
-                            </button>
-                        ))}
-                    </div>
+                    <AdminChoiceGroup label="工单状态快捷筛选" value={status} onChange={setStatus}
+                        options={[{value:"0",label:"已开启"},{value:"1",label:"已关闭"}]} />
                     <select
                         aria-label="工单状态"
                         value={status}
@@ -115,7 +104,7 @@ export function AdminTickets() {
                     >
                         重置筛选
                     </button>
-                </form>
+                </AdminFilterBar>
             }
         />
     );

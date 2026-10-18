@@ -1,3 +1,4 @@
+import { AdminTabs } from "./AdminChoices";
 import { adminUserLabel } from "./admin-user-label";
 import { System } from "./admin";
 import { RiskOverview } from "./AdminRisk";
@@ -21,33 +22,9 @@ export function Overview({
     const [tab, setTab] = useState(initialTab);
     return (
         <>
-            <div
-                className="section-tabs"
-                role="tablist"
-                aria-label="仪表盘视图"
-            >
-                <button
-                    role="tab"
-                    aria-selected={tab === "income"}
-                    onClick={() => setTab("income")}
-                >
-                    经营概览
-                </button>
-                <button
-                    role="tab"
-                    aria-selected={tab === "risk"}
-                    onClick={() => setTab("risk")}
-                >
-                    风控概览
-                </button>
-                <button
-                    role="tab"
-                    aria-selected={tab === "system"}
-                    onClick={() => setTab("system")}
-                >
-                    系统监控
-                </button>
-            </div>
+            <AdminTabs label="仪表盘视图" value={tab} onChange={setTab} options={[
+                {value:"income",label:"经营概览"}, {value:"risk",label:"风控概览"}, {value:"system",label:"系统监控"}
+            ]}>
             {tab === "risk" ? (
                 <RiskOverview />
             ) : tab === "system" ? (
@@ -55,6 +32,7 @@ export function Overview({
             ) : (
                 <IncomeOverview />
             )}
+            </AdminTabs>
         </>
     );
 }

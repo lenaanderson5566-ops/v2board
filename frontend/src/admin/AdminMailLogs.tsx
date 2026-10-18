@@ -1,3 +1,5 @@
+import { AdminFilterBar } from "./AdminFilterBar";
+import { AdminChoiceGroup } from "./AdminChoices";
 import { Pager, FilterActions } from "../shared/ui";
 import { AdminMailCampaigns } from "./AdminMailCampaigns";
 import { MailHealth } from "./MailHealth";
@@ -107,23 +109,10 @@ export function AdminMailLogs() {
                 ) : undefined
             }
         >
-            <nav className="section-tabs" aria-label="邮件管理">
-                <button
-                    aria-pressed={view === "logs"}
-                    onClick={() => setView("logs")}
-                >
-                    投递日志
-                </button>
-                <button
-                    aria-pressed={view === "campaigns"}
-                    onClick={() => setView("campaigns")}
-                >
-                    群发记录
-                </button>
-                <a className="button" href="#/mail-blocklist">
-                    邮件禁发名单 ↗
-                </a>
-            </nav>
+            <AdminChoiceGroup variant="navigation" label="邮件管理" value={view} onChange={setView}
+                options={[{value:"logs",label:"投递日志"},{value:"campaigns",label:"群发记录"}]}>
+                <a className="button" href="#/mail-blocklist">邮件禁发名单 ↗</a>
+            </AdminChoiceGroup>
             {view === "campaigns" && <AdminMailCampaigns />}
             {view === "logs" && (
                 <>
@@ -133,7 +122,7 @@ export function AdminMailLogs() {
                         200 仅表示 API 受理，SMTP 550
                         也不等于用户拉黑。配置签名回调后可查看最终退信和投诉；核实无效邮箱后暂停非必要邮件，不建议删除网站账号。
                     </p>
-                    <form
+                    <AdminFilterBar
                         className="admin-log-filters"
                         onSubmit={(e) => {
                             e.preventDefault();
@@ -331,7 +320,7 @@ export function AdminMailLogs() {
                                 setError("");
                             }}
                         />
-                    </form>
+                    </AdminFilterBar>
                     {error && (
                         <p className="error" role="alert">
                             {error}

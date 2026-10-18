@@ -1,3 +1,4 @@
+import { AdminFilterBar } from "./AdminFilterBar";
 import { readListView, saveListView } from "./list-view-state";
 import { PaymentCallbackHistory } from "./PaymentCallbackHistory";
 import { adminStatusCell } from "../shared/admin-status";
@@ -167,8 +168,8 @@ export function OrdersPage({
                             </label>
                         )}
                         {commissionMode && (
-                            <form
-                                className="actions"
+                            <AdminFilterBar
+
                                 onSubmit={(event) => {
                                     event.preventDefault();
                                     setFilter([
@@ -215,7 +216,7 @@ export function OrdersPage({
                                     }
                                 />
                                 <button type="submit">查询</button>
-                            </form>
+                            </AdminFilterBar>
                         )}
                         {!commissionMode && (
                             <button

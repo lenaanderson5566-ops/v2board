@@ -181,3 +181,7 @@ php tests/run.php --only=mfa,mfa-api,mfa-concurrency
 用户活动详情改版复用 AdminUserActivity.test.tsx，补充类型筛选计数、分类空状态、明细字段、UA 默认折叠及不解析 HTML 的回归；与 admin-workspaces.test.tsx 合计 22 项通过。此次仅改变展示，未修改后端查询或接口权限。
 
 后台显示设置统一复用 admin-workspaces.test.tsx 和 Nodes.test.tsx，保留用户列选择、排序恢复及节点偏好持久化断言，新增通用资源列表列偏好保存、重新打开恢复与重置验证。节点选择控件统一为 aria-pressed 按钮，测试同步更新，不新增独立测试模块。
+
+## 后台共享导航与筛选回归
+
+复用 admin-workspaces.test.tsx，新增标签与面板 ARIA 关联、键盘方向键跳过禁用项、手动激活不提前请求，以及筛选选项不提交表单/忙碌时禁止切换的回归。仪表盘和邀请标签切换改用 Radix 实际 mousedown 交互；保留原业务请求断言。后台 47 个测试文件、210 项全部通过。

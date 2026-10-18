@@ -125,7 +125,7 @@ it("shows yearly income and lazily switches to risk without removed dashboard bl
     expect(
         api.request.mock.calls.some(([path]) => path.includes("risk/summary")),
     ).toBe(false);
-    fireEvent.click(screen.getByRole("tab", { name: "风控概览" }));
+    fireEvent.mouseDown(screen.getByRole("tab", { name: "风控概览" }), { button: 0, ctrlKey: false });
     await waitFor(() =>
         expect(
             api.request.mock.calls.some(([path]) =>
@@ -189,7 +189,7 @@ it("searches invitation relationships and submits commission approval through th
             ),
         ).toBe(true),
     );
-    fireEvent.click(screen.getByRole("tab", { name: "佣金审核" }));
+    fireEvent.mouseDown(screen.getByRole("tab", { name: "佣金审核" }), { button: 0, ctrlKey: false });
     fireEvent.click(await screen.findByRole("button", { name: "佣金审核" }));
     fireEvent.change(await within(screen.getByRole("dialog")).findByRole("combobox"), {
         target: { value: "1" },
@@ -230,7 +230,7 @@ it("opens system monitoring only on its dashboard tab", async () => {
     expect(
         api.request.mock.calls.some(([path]) => path.includes("getQueueStats")),
     ).toBe(false);
-    fireEvent.click(screen.getByRole("tab", { name: "系统监控" }));
+    fireEvent.mouseDown(screen.getByRole("tab", { name: "系统监控" }), { button: 0, ctrlKey: false });
     await screen.findByText("队列状态");
     expect(
         api.request.mock.calls.some(([path]) => path.includes("getQueueStats")),
@@ -454,4 +454,33 @@ it("shares display preferences across resource lists without leaking selected co
     fireEvent.click(screen.getByRole("button", { name: "恢复默认展示" }));
     expect(within(screen.getByLabelText("可选显示列")).getByRole("button", { name: label }).getAttribute("aria-pressed")).toBe("true");
     localStorage.removeItem(`admin.columns.${resources.orders.fetch}`);
+});
+
+it("supports manual keyboard tabs with linked panels and skips disabled views", async () => {
+    const { AdminTabs } = await import("./AdminChoices");
+    const change = vi.fn();
+    render(<AdminTabs label="测试视图" value="one" onChange={change} options={[
+        {value:"one",label:"第一视图"},{value:"blocked",label:"不可用",disabled:true},{value:"two",label:"第二视图"}
+    ]}><p>当前内容</p></AdminTabs>);
+    const first = screen.getByRole("tab",{name:"第一视图"});
+    expect(first.getAttribute("aria-controls")).toBe(screen.getByRole("tabpanel").id);
+    first.focus();
+    fireEvent.keyDown(first,{key:"ArrowRight"});
+    await waitFor(() => expect(document.activeElement).toBe(screen.getByRole("tab",{name:"第二视图"})));
+    expect(change).not.toHaveBeenCalled();
+    fireEvent.keyDown(document.activeElement!,{key:"Enter"});
+    expect(change).toHaveBeenCalledWith("two");
+});
+it("keeps shared filter choices from submitting forms and respects busy state", async () => {
+    const { AdminChoiceGroup } = await import("./AdminChoices");
+    const { AdminFilterBar } = await import("./AdminFilterBar");
+    const change = vi.fn(), submit = vi.fn((event: React.FormEvent) => event.preventDefault());
+    const options = [{value:"one",label:"一"},{value:"two",label:"二"}];
+    const view = render(<AdminFilterBar onSubmit={submit}><AdminChoiceGroup label="筛选" value="one" options={options} onChange={change}/></AdminFilterBar>);
+    fireEvent.click(screen.getByRole("button",{name:"二"}));
+    expect(change).toHaveBeenCalledWith("two");
+    expect(submit).not.toHaveBeenCalled();
+    view.rerender(<AdminFilterBar onSubmit={submit}><AdminChoiceGroup label="筛选" value="one" options={options} onChange={change} disabled/></AdminFilterBar>);
+    fireEvent.click(screen.getByRole("button",{name:"二"}));
+    expect(change).toHaveBeenCalledTimes(1);
 });

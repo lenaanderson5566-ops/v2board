@@ -25,6 +25,7 @@ export function Tickets({
     onPageSizeChange,
     heading,
     adminColumns,
+    renderAccount,
     orderTradeNo,
 }: {
     isAdmin?: boolean;
@@ -34,6 +35,7 @@ export function Tickets({
     onPageSizeChange?: (size:number)=>void;
     heading?: string;
     adminColumns?: [string, string, ((row: Row) => ReactNode)?][];
+    renderAccount?: (row: Row) => ReactNode;
     orderTradeNo?: string;
 }) {
     const [page, setPage] = useState(1);
@@ -173,7 +175,7 @@ export function Tickets({
                                 </button>
                                 {isAdmin && (
                                     <button
-                                        disabled={r.status !== 0}
+                                        disabled={Number(r.status) !== 0}
                                         onClick={() => {
                                             setCloseError("");
                                             setCloseTarget(r.id);
@@ -277,7 +279,7 @@ export function Tickets({
                     }}
                 >
                     <State {...detail}>
-                        {isAdmin && detail.data && <p className="pad">ID: {detail.data.user_id || "—"} · {detail.data.email || tx("邮箱不可用")}</p>}
+                        {isAdmin && detail.data && <div className="pad">{renderAccount?.(detail.data) || <>ID: {detail.data.user_id || "—"} · {detail.data.email || tx("邮箱不可用")}</>}<p role="status">{Number(detail.data.status) === 1 ? "已关闭" : Number(detail.data.reply_status) === 1 ? "已回复，等待用户反馈" : "待管理员回复"}。管理员回复后 24 小时内无用户回复，工单将自动关闭。</p></div>}
                         <div className="messages">
                             {rows(detail.data?.message).map((m) => (
                                 <div
@@ -294,7 +296,7 @@ export function Tickets({
                                 </div>
                             ))}
                         </div>
-                        {detail.data?.status === 0 && (
+                        {detail.data && Number(detail.data.status) === 0 && (
                             <>
                                 <Editor
                                     fields={[

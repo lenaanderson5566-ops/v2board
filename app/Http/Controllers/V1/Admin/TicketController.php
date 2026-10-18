@@ -57,6 +57,7 @@ class TicketController extends Controller
 
     public function reply(Request $request)
     {
+        $request->validate(['id' => 'required|integer|min:1', 'message' => 'required|string|max:10000']);
         if (empty($request->input('id'))) {
             abort(500, '参数错误');
         }

@@ -305,6 +305,38 @@ try {
     $assert(json_decode($response->getContent(), true)['total'] === 0, 'Unknown ticket email leaked other tickets');
     $response = $call('/api/v1/' . $securePath . '/ticket/reply', ['id' => $ticket->id, 'message' => 'fixture reply'], $token);
     $assert($response->getStatusCode() === 200 && $ticket->refresh()->reply_status === 1, 'Ticket reply failed');
+    $assert((int) $ticket->status === 0, 'Admin reply immediately closed ticket');
+    // A stale parent timestamp must not close a newly created admin message.
+    App\Models\Ticket::whereKey($ticket->id)->update(['updated_at' => time() - 90000]);
+    Illuminate\Support\Facades\Artisan::call('check:ticket');
+    $assert((int) $ticket->refresh()->status === 0, 'Fresh admin message closed using stale ticket timestamp');
+    App\Models\TicketMessage::where('ticket_id', $ticket->id)->update(['created_at' => time() - 86300]);
+    Illuminate\Support\Facades\Artisan::call('check:ticket');
+    $assert((int) $ticket->refresh()->status === 0, 'Ticket closed before 24 hours');
+    App\Models\TicketMessage::where('ticket_id', $ticket->id)->update(['created_at' => time() - 86401]);
+    Illuminate\Support\Facades\Artisan::call('check:ticket');
+    $assert((int) $ticket->refresh()->status === 1, 'Unanswered admin reply not closed after 24 hours');
+    $messageCount = App\Models\TicketMessage::where('ticket_id', $ticket->id)->count();
+    $assert($call('/api/v1/' . $securePath . '/ticket/reply', ['id'=>$ticket->id, 'message'=>'stale form'], $token)->getStatusCode() === 409, 'Stale reply reopened a closed ticket');
+    $assert(App\Models\TicketMessage::where('ticket_id', $ticket->id)->count() === $messageCount, 'Rejected reply stored a message');
+    $ticket->status = 0; $ticket->save();
+    App\Models\TicketMessage::create(['ticket_id'=>$ticket->id, 'user_id'=>$subscriber->id, 'message'=>'user follow-up', 'created_at'=>time()-90000]);
+    App\Models\Ticket::whereKey($ticket->id)->update(['updated_at'=>time()-90000, 'reply_status'=>1]);
+    Illuminate\Support\Facades\Artisan::call('check:ticket');
+    $assert((int) $ticket->refresh()->status === 0, 'Latest user reply ignored due to stale reply flag');
+    $assert($call('/api/v1/' . $securePath . '/ticket/reply', ['id'=>$ticket->id, 'message'=>['html'=>'invalid']], $token)->getStatusCode() === 422, 'Non-text reply accepted');
+    // Simulate a reply arriving after the scheduler reads a candidate, before it saves.
+    App\Models\TicketMessage::create(['ticket_id'=>$ticket->id, 'user_id'=>$user->id, 'message'=>'old admin reply', 'created_at'=>time()-90000]);
+    App\Models\Ticket::whereKey($ticket->id)->update(['updated_at'=>time()-90000, 'reply_status'=>1]);
+    $racePending = true;
+    App\Models\Ticket::retrieved(function ($candidate) use (&$racePending, $ticket, $user) {
+        if (!$racePending || (int)$candidate->id !== (int)$ticket->id) return;
+        $racePending = false;
+        App\Models\TicketMessage::create(['ticket_id'=>$ticket->id, 'user_id'=>$user->id, 'message'=>'new reply during scheduler scan']);
+        App\Models\Ticket::whereKey($ticket->id)->update(['updated_at'=>time(), 'reply_status'=>1]);
+    });
+    Illuminate\Support\Facades\Artisan::call('check:ticket');
+    $assert(!$racePending && (int)$ticket->refresh()->status === 0, 'Scheduler overwrote a reply received after its initial scan');
     $response = $call('/api/v1/' . $securePath . '/ticket/close', ['id' => $ticket->id], $token);
     $assert($response->getStatusCode() === 200 && $ticket->refresh()->status === 1, 'Ticket close failed');
     foreach (['stat/getServerTodayRank', 'stat/getServerLastRank', 'stat/getUserTodayRank', 'stat/getUserLastRank', 'stat/getOrder', 'system/getQueueWorkload', 'system/getQueueMasters'] as $endpoint) {

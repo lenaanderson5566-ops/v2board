@@ -1,5 +1,5 @@
 import { StatusBadge } from "../shared/StatusBadge";
-import { adminUserLabel } from "./admin-user-label";
+import { AdminUserActivityLink } from "./AdminUserActivity";
 import { useState } from "react";
 import { admin, query, date, type Row } from "../shared/api";
 import { Modal, State, Html, useData } from "../shared/ui";
@@ -23,6 +23,7 @@ export function AdminTickets() {
         <Tickets
             key={JSON.stringify({ params, pageSize })}
             isAdmin
+            renderAccount={(row) => <AdminUserActivityLink row={row} />}
             queryParams={params}
             pageSize={pageSize}
                 onPageSizeChange={setPageSize}
@@ -30,7 +31,7 @@ export function AdminTickets() {
             adminColumns={[
                 ["id", "#"],
                 ["subject", "主题"],
-                ["user_id", "用户（ID / 邮箱）", (r) => adminUserLabel(r)],
+                ["user_id", "用户（ID / 邮箱）", (r) => <AdminUserActivityLink row={r} />],
                 [
                     "level",
                     "工单级别",

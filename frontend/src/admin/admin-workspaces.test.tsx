@@ -405,3 +405,31 @@ it("exposes wallet coupon templates without legacy code controls", async () => {
     }
     expect(resources.coupons.fields.some(field => field.key === "public_claim")).toBe(true);
 });
+
+it("keeps ticket replies open and opens the selected user drawer without rendering HTML", async () => {
+    const { AdminTickets } = await import("./admin-content");
+    const attack = '<img src=x onerror=alert(1)><svg onload=alert(2)></svg>';
+    const ticket = { id: 42, user_id: 7, email: "guest@example.com", subject: "Support fixture", status: 0, reply_status: 0, message: [{ id: 1, is_me: false, message: attack }] };
+    api.request.mockImplementation(async (path: string, body?: any) => {
+        if (path.includes("risk/user-activity/fetch")) return { data: { user: { email: ticket.email }, events: [] } };
+        if (path.includes("ticket/reply")) { ticket.reply_status = 1; ticket.message.push({ id: 2, is_me: true, message: body.message }); return { data: true }; }
+        if (path.includes("ticket/fetch")) return { data: new URLSearchParams(path.split("?")[1]).has("id") ? { ...ticket } : [{ ...ticket }], total: 1 };
+        return { data: [] };
+    });
+    render(<AdminTickets />);
+    fireEvent.click(await screen.findByRole("button", { name: "查看对话" }));
+    const dialog = await screen.findByRole("dialog", { name: "Support fixture" });
+    expect(await within(dialog).findByText(attack)).toBeTruthy();
+    expect(dialog.querySelector(".messages img, .messages svg, .messages script")).toBeNull();
+    fireEvent.click(within(dialog).getByRole("button", { name: /guest@example.com/ }));
+    const drawer = await screen.findByRole("dialog", { name: "用户活动详情" });
+    await waitFor(() => expect(api.request.mock.calls.some(([path]) => path.includes("user-activity/fetch?user_id=7"))).toBe(true));
+    fireEvent.click(within(drawer).getByRole("button", { name: "关闭" }));
+    expect(screen.getByRole("dialog", { name: "Support fixture" })).toBeTruthy();
+    fireEvent.change(within(dialog).getByLabelText(/回复内容/), { target: { value: "Please try again" } });
+    fireEvent.click(within(dialog).getByRole("button", { name: "发送回复" }));
+    await waitFor(() => expect(screen.getByText(/已回复，等待用户反馈/)).toBeTruthy());
+    expect(screen.getByRole("dialog", { name: "Support fixture" })).toBeTruthy();
+    expect(api.request.mock.calls.some(([path]) => path.includes("ticket/close"))).toBe(false);
+    await waitFor(() => expect((screen.getByLabelText(/回复内容/) as HTMLTextAreaElement).value).toBe(""));
+});

@@ -171,3 +171,9 @@ php tests/run.php --only=mfa,mfa-api,mfa-concurrency
 - 删除空 Test 命令及 6 处无用导入；保留有现行业务或升级兼容用途的 Job、队列、调度、脚本和命令。
 - 在隔离副本与测试库中验证 framework-upgrade、timezone-scheduler、horizon-config、node-traffic-batches、node-backends、notification-delivery、mail-install-schema、retired-node-tables、update-script、update-drain、update-restart；结果见忽略目录 `storage/app/test-organization/legacy-queue-cleanup/backend.json`。
 - 本轮 11 组全部通过；framework-upgrade 85 项、节点 730 项、流量批次 25 项、通知 372 项、退役迁移 37 项；未发送真实外部消息，未迁移生产库。
+
+## 工单回复与自动关闭回归
+
+复用 console-smoke 验证管理员回复保持开启、最后回复不足 24 小时不关闭、超过 24 小时且最后消息来自管理员时关闭、用户追问不关闭、旧表单不能重新打开已关闭工单、非文本回复被拒绝。通过 retrieved 事件模拟调度扫描后收到新回复，验证关闭前会在行锁内重新读取状态。保留每分钟 check:ticket 调度。api-v10、notice-reads、notification-delivery 覆盖现行用户接口和通知兼容。结果位于 storage/app/test-organization/ticket-review。
+
+前端 admin-workspaces、AdminUserActivity、HelpSupport 共 29 项通过，覆盖对话中的邮箱抽屉、关闭抽屉后回到对话、发送回复不调用关闭接口、清空已发送草稿，以及恶意 img/svg 标签仅显示为文本。

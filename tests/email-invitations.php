@@ -63,7 +63,11 @@ try {
     $assert(json_decode($call('me/invitations',null,$otherToken)->getContent(),true)['data']===[],'Other user can see invitations');
     $assert($call('me/invitations?days=999',null,$token)->getStatusCode()===422,'Unbounded history accepted');
     $assert(!isset(json_decode($call('me/referrals',null,$token)->getContent(),true)['data']['codes']),'Public codes still exposed');
-    $assert($call('me/invitations/retired-codes',[],$token)->getStatusCode()===410,'Public generation still enabled');
+    $oldCodeCount=App\Models\InviteCode::count();
+    foreach ([null,$token] as $identity) {
+        $assert($call('me/invitations/retired-codes',[],$identity)->getStatusCode()===404,'Retired generation route must be absent');
+    }
+    $assert(App\Models\InviteCode::count()===$oldCodeCount,'Retired generation does not create legacy records');
     $reject(fn()=>$service->send($sender->id,$sender->email),422);
     $reject(fn()=>$service->send($sender->id,$other->email),422);
     $reject(fn()=>$service->send($sender->id,$recipient),429);

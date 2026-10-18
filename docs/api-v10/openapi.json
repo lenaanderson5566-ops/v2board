@@ -2036,135 +2036,6 @@
         }
       }
     },
-    "/public/page-views": {
-      "post": {
-        "operationId": "postPublicPageViews",
-        "tags": [
-          "passport"
-        ],
-        "summary": "POST public/page-views",
-        "parameters": [
-          {
-            "name": "Accept-Language",
-            "in": "header",
-            "schema": {
-              "type": "string"
-            },
-            "description": "Supported language tags with optional quality weights."
-          }
-        ],
-        "responses": {
-          "204": {
-            "description": "Success",
-            "headers": {
-              "X-Request-ID": {
-                "schema": {
-                  "type": "string"
-                }
-              },
-              "Content-Language": {
-                "schema": {
-                  "type": "string"
-                }
-              }
-            }
-          },
-          "401": {
-            "description": "Problem details",
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Problem"
-                }
-              }
-            }
-          },
-          "403": {
-            "description": "Problem details",
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Problem"
-                }
-              }
-            }
-          },
-          "404": {
-            "description": "Problem details",
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Problem"
-                }
-              }
-            }
-          },
-          "409": {
-            "description": "Problem details",
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Problem"
-                }
-              }
-            }
-          },
-          "410": {
-            "description": "Problem details",
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Problem"
-                }
-              }
-            }
-          },
-          "422": {
-            "description": "Problem details",
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Problem"
-                }
-              }
-            }
-          },
-          "429": {
-            "description": "Problem details",
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Problem"
-                }
-              }
-            }
-          },
-          "500": {
-            "description": "Problem details",
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Problem"
-                }
-              }
-            }
-          }
-        },
-        "security": [],
-        "x-permission": "public",
-        "x-legacy-path": "/api/v1/passport/comm/pv",
-        "requestBody": {
-          "required": false,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/postPublicPageViewsInput"
-              }
-            }
-          }
-        }
-      }
-    },
     "/me/download-accounts": {
       "get": {
         "operationId": "getMeDownloadAccounts",
@@ -6750,166 +6621,6 @@
         ],
         "x-permission": "user",
         "x-legacy-path": "/api/v1/user/plan/fetch",
-        "description": "Requires an active session. Order and ticket identifiers are checked against the authenticated owner. Unauthenticated: 401; banned account: 403."
-      }
-    },
-    "/me/invitations/retired-codes": {
-      "post": {
-        "operationId": "postMeInvitationsRetiredCodes",
-        "tags": [
-          "user"
-        ],
-        "summary": "POST me/invitations/retired-codes",
-        "parameters": [
-          {
-            "name": "Accept-Language",
-            "in": "header",
-            "schema": {
-              "type": "string"
-            },
-            "description": "Supported language tags with optional quality weights."
-          }
-        ],
-        "responses": {
-          "201": {
-            "description": "Success",
-            "headers": {
-              "X-Request-ID": {
-                "schema": {
-                  "type": "string"
-                }
-              },
-              "Content-Language": {
-                "schema": {
-                  "type": "string"
-                }
-              },
-              "Cache-Control": {
-                "schema": {
-                  "type": "string",
-                  "example": "private, no-store"
-                },
-                "description": "Authenticated user and authentication responses must not be stored."
-              }
-            },
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "data": {
-                      "$ref": "#/components/schemas/scalar"
-                    },
-                    "meta": {
-                      "type": "object",
-                      "properties": {
-                        "pagination": {
-                          "$ref": "#/components/schemas/Pagination"
-                        },
-                        "taskId": {
-                          "type": "string"
-                        }
-                      }
-                    }
-                  },
-                  "required": [
-                    "data"
-                  ]
-                }
-              }
-            }
-          },
-          "401": {
-            "description": "Problem details",
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Problem"
-                }
-              }
-            }
-          },
-          "403": {
-            "description": "Problem details",
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Problem"
-                }
-              }
-            }
-          },
-          "404": {
-            "description": "Problem details",
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Problem"
-                }
-              }
-            }
-          },
-          "409": {
-            "description": "Problem details",
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Problem"
-                }
-              }
-            }
-          },
-          "410": {
-            "description": "Problem details",
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Problem"
-                }
-              }
-            }
-          },
-          "422": {
-            "description": "Problem details",
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Problem"
-                }
-              }
-            }
-          },
-          "429": {
-            "description": "Problem details",
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Problem"
-                }
-              }
-            }
-          },
-          "500": {
-            "description": "Problem details",
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Problem"
-                }
-              }
-            }
-          }
-        },
-        "security": [
-          {
-            "bearerAuth": []
-          },
-          {
-            "browserUserCookie": []
-          }
-        ],
-        "x-permission": "user",
-        "x-legacy-path": "/api/v1/user/invite/save",
         "description": "Requires an active session. Order and ticket identifiers are checked against the authenticated owner. Unauthenticated: 401; banned account: 403."
       }
     },
@@ -16789,10 +16500,6 @@
             "type": "string",
             "nullable": true
           },
-          "avatarUrl": {
-            "type": "string",
-            "nullable": true
-          },
           "accountStatus": {
             "$ref": "#/components/schemas/accountStatus"
           },
@@ -18677,14 +18384,6 @@
           "email"
         ]
       },
-      "postPublicPageViewsInput": {
-        "type": "object",
-        "properties": {
-          "inviteCode": {
-            "type": "string"
-          }
-        }
-      },
       "getMeDownloadAccountsInput": {
         "type": "object",
         "properties": {}
@@ -18931,10 +18630,6 @@
             "type": "integer"
           }
         }
-      },
-      "postMeInvitationsRetiredCodesInput": {
-        "type": "object",
-        "properties": {}
       },
       "getMeReferralsInput": {
         "type": "object",

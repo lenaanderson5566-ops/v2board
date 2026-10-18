@@ -289,25 +289,6 @@
     "status": 202
   },
   {
-    "legacy": "passport/comm/pv",
-    "legacyMethod": "POST",
-    "method": "POST",
-    "path": "public/page-views",
-    "action": "App\\Http\\Controllers\\V1\\Passport\\CommController@pv",
-    "parameters": [
-      {
-        "name": "request",
-        "type": "Illuminate\\Http\\Request",
-        "optional": false
-      }
-    ],
-    "bindings": {},
-    "middleware": [],
-    "role": "public",
-    "scope": "passport",
-    "status": 204
-  },
-  {
     "legacy": "user/apple-account",
     "legacyMethod": "GET",
     "method": "GET",
@@ -843,25 +824,6 @@
     "role": "user",
     "scope": "user",
     "status": 200
-  },
-  {
-    "legacy": "user/invite/save",
-    "legacyMethod": "GET",
-    "method": "POST",
-    "path": "me/invitations/retired-codes",
-    "action": "App\\Http\\Controllers\\V1\\User\\InviteController@save",
-    "parameters": [
-      {
-        "name": "request",
-        "type": "Illuminate\\Http\\Request",
-        "optional": false
-      }
-    ],
-    "bindings": {},
-    "middleware": [],
-    "role": "user",
-    "scope": "user",
-    "status": 201
   },
   {
     "legacy": "user/invite/fetch",

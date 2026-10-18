@@ -3,6 +3,14 @@ import { v10Request } from './v10-api';
 import { subscriptionUrl } from './import-links';
 
 describe('V10 wire contracts', () => {
+  it('retires invitation page counts and excludes unused avatar fingerprints', () => {
+    expect(() => v10Request('passport/comm/pv', {invite_code:'old'})).toThrow('no V10 contract');
+    expect(() => v10Request('user/invite/save')).toThrow('no V10 contract');
+    const account = v10Request('user/info').decode({data:{id:1,email:'self@example.com',avatarUrl:'https://cravatar.cn/avatar/fingerprint'}}).data;
+    expect(account.email).toBe('self@example.com');
+    expect(account).not.toHaveProperty('avatar_url');
+    expect(account).not.toHaveProperty('avatarUrl');
+  });
   it('keeps browser registration session metadata without synthesizing a native token', () => {
     const registration = v10Request('passport/auth/register', {email:'new@example.com',password:'Testing!2026',is_admin:1});
     expect(registration.url).toBe('/api/v10/auth/registrations');

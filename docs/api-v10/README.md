@@ -22,7 +22,7 @@ Subscription language precedence is an explicit `language` parameter, a supporte
 
 Payment callbacks use `/webhooks/payments/{provider}/{endpointId}`, accepting provider-required GET/POST and their native payload/signature/response. New payment requests and administrative callback displays use V10 addresses, including custom callback domains. Old callbacks remain compatible for previously created payments; both paths use the same business handler and idempotent order provisioning. Telegram uses `/webhooks/telegram` and validates `X-Telegram-Bot-Api-Secret-Token`; the old signed query entry remains compatible. Banner images and other binary/provider responses are not wrapped. Administrative CSV retains its existing API. Published installer downloads use `GET /api/v10/public/client-installers/{installerId}/content`, including HEAD and byte-range support. The old `/client-mirrors/{id}` route returns 404. Existing Banner image URLs are normalized to V10 when read.
 
-`POST /me/invitations/retired-codes` preserves the existing 410 response for the previously retired public-code feature. Email invitations are the supported replacement. `/public/page-views` is POST because referral attribution may write state.
+`POST /me/invitations/retired-codes` is removed (404); the former 410-only compatibility handler is no longer registered. Email invitations are the supported replacement. The obsolete `/public/page-views` invitation counter is retired (404); historical invitation records remain available for upgrade compatibility and account deletion cleanup. Account responses no longer include the unused third-party `avatarUrl` email fingerprint.
 
 ## Maintenance and validation
 
@@ -100,3 +100,9 @@ This backend-only hardening needs no database migration or new App build. Existi
 ## Browser HttpOnly authentication
 
 The native Bearer contracts remain supported. Browser mode (`X-Browser-Client: user|admin`) instead uses scoped HttpOnly cookies, synchronizer CSRF and exact allowed Origin validation. Browser authentication responses contain only browser-session metadata, not accessToken. GET/POST/DELETE `/auth/browser-session` bootstrap, migrate legacy localStorage credentials during a bounded window, and revoke the current scoped browser session. See [browser-sessions.md](../browser-sessions.md) for deployment, expiry, CORS and compatibility details.
+
+### Remaining compatibility boundaries
+
+The no-op `me/invitations/retired-codes` endpoint and its shared Action have been removed; anonymous and authenticated calls return 404 and cannot create invitation codes. Registration still explicitly rejects old invite-code inputs, rather than silently ignoring them.
+
+Keep the following until their consumers or historical data have been migrated: browser token exchange (default deadline 2026-10-21 UTC, configurable), V1 administrator authentication/profile dependencies, legacy payment callbacks and installed node/client contracts, old download URL and theme-footer fallbacks, historical invitation cleanup, financial/traffic entitlement conversion and upgrade migrations. The no-op SendTelegramJob consumes previously serialized messages; telegram:notify supports external cron; v2board:update safely redirects operators to update.sh. A source-only audit cannot prove that deployed queues, external cron or older clients no longer need these boundaries.

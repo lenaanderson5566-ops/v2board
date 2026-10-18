@@ -2,12 +2,6 @@
 namespace App\Http\Controllers\V10;
 class UserInviteController extends ResourceController
 {
-    public function postMeInvitationsRetiredCodes(\Illuminate\Http\Request $request)
-    {
-        $this->prepare($request, 'postMeInvitationsRetiredCodes');
-        $result = app(\App\Services\Actions\User\InviteActions::class)->save($this->businessRequest($request, \Illuminate\Http\Request::class));
-        return $this->respond($request, $result, 'postMeInvitationsRetiredCodes');
-    }
     public function getMeReferrals(\Illuminate\Http\Request $request)
     {
         $this->prepare($request, 'getMeReferrals');

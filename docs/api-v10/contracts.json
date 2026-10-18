@@ -170,9 +170,6 @@
       "telegramId": [
         "telegram_id"
       ],
-      "avatarUrl": [
-        "avatar_url"
-      ],
       "accountStatus": [
         "account_status",
         "object",
@@ -1384,19 +1381,6 @@
       "method": "POST",
       "key": "Passport/CommController@sendEmailVerify"
     },
-    "postPublicPageViews": {
-      "input": {
-        "inviteCode": "invite_code"
-      },
-      "output": "scalar",
-      "role": "public",
-      "status": 204,
-      "raw": false,
-      "bindings": {},
-      "path": "public/page-views",
-      "method": "POST",
-      "key": "Passport/CommController@pv"
-    },
     "getMeDownloadAccounts": {
       "input": {},
       "output": "array:apple",
@@ -1742,17 +1726,6 @@
       "path": "plans",
       "method": "GET",
       "key": "User/PlanController@fetch"
-    },
-    "postMeInvitationsRetiredCodes": {
-      "input": {},
-      "output": "scalar",
-      "role": "user",
-      "status": 201,
-      "raw": false,
-      "bindings": {},
-      "path": "me/invitations/retired-codes",
-      "method": "POST",
-      "key": "User/InviteController@save"
     },
     "getMeReferrals": {
       "input": {},

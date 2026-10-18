@@ -16,7 +16,6 @@
 \Illuminate\Support\Facades\Route::match(['POST'], 'auth/password-resets', [\App\Http\Controllers\V10\PassportAuthController::class, 'postAuthPasswordResets'])->name('v10.postAuthPasswordResets');
 \Illuminate\Support\Facades\Route::match(['POST'], 'auth/login-links', [\App\Http\Controllers\V10\PassportAuthController::class, 'postAuthLoginLinks'])->name('v10.postAuthLoginLinks');
 \Illuminate\Support\Facades\Route::match(['POST'], 'auth/email-verifications', [\App\Http\Controllers\V10\PassportCommController::class, 'postAuthEmailVerifications'])->name('v10.postAuthEmailVerifications');
-\Illuminate\Support\Facades\Route::match(['POST'], 'public/page-views', [\App\Http\Controllers\V10\PassportCommController::class, 'postPublicPageViews'])->name('v10.postPublicPageViews');
 \Illuminate\Support\Facades\Route::match(['GET', 'HEAD'], 'me/download-accounts', [\App\Http\Controllers\V10\UserAppleAccountController::class, 'getMeDownloadAccounts'])->middleware(['throttle:10,1'])->name('v10.getMeDownloadAccounts');
 \Illuminate\Support\Facades\Route::match(['GET', 'HEAD'], 'me/usage-resets', [\App\Http\Controllers\V10\UserUsageResetController::class, 'getMeUsageResets'])->name('v10.getMeUsageResets');
 \Illuminate\Support\Facades\Route::match(['POST'], 'me/usage-resets/consumptions', [\App\Http\Controllers\V10\UserUsageResetController::class, 'postMeUsageResetsConsumptions'])->middleware(['throttle:20,1'])->name('v10.postMeUsageResetsConsumptions');
@@ -45,7 +44,6 @@
 \Illuminate\Support\Facades\Route::match(['POST'], 'me/orders/{orderNumber}/cancellation', [\App\Http\Controllers\V10\UserOrderController::class, 'postMeOrdersOrderNumberCancellation'])->name('v10.postMeOrdersOrderNumberCancellation');
 \Illuminate\Support\Facades\Route::match(['GET', 'HEAD'], 'credit-packages', [\App\Http\Controllers\V10\UserPlanController::class, 'getCreditPackages'])->name('v10.getCreditPackages');
 \Illuminate\Support\Facades\Route::match(['GET', 'HEAD'], 'plans', [\App\Http\Controllers\V10\UserPlanController::class, 'getPlans'])->name('v10.getPlans');
-\Illuminate\Support\Facades\Route::match(['POST'], 'me/invitations/retired-codes', [\App\Http\Controllers\V10\UserInviteController::class, 'postMeInvitationsRetiredCodes'])->name('v10.postMeInvitationsRetiredCodes');
 \Illuminate\Support\Facades\Route::match(['GET', 'HEAD'], 'me/referrals', [\App\Http\Controllers\V10\UserInviteController::class, 'getMeReferrals'])->name('v10.getMeReferrals');
 \Illuminate\Support\Facades\Route::match(['GET', 'HEAD'], 'me/commissions', [\App\Http\Controllers\V10\UserInviteController::class, 'getMeCommissions'])->name('v10.getMeCommissions');
 \Illuminate\Support\Facades\Route::match(['POST'], 'me/invitations', [\App\Http\Controllers\V10\UserInviteController::class, 'postMeInvitations'])->middleware(['throttle:10,1'])->name('v10.postMeInvitations');

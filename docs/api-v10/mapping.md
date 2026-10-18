@@ -24,7 +24,6 @@ Admin, operations/risk and supported node APIs retain their API versions. The un
 | `POST passport/auth/forget` | `POST /api/v10/auth/password-resets` | public | scalar |
 | `POST passport/auth/getQuickLoginUrl` | `POST /api/v10/auth/login-links` | user | scalar |
 | `POST passport/comm/sendEmailVerify` | `POST /api/v10/auth/email-verifications` | public | task |
-| `POST passport/comm/pv` | `POST /api/v10/public/page-views` | public | scalar |
 | `GET user/apple-account` | `GET /api/v10/me/download-accounts` | user | array:apple |
 | `GET user/usage/reset` | `GET /api/v10/me/usage-resets` | user | reset |
 | `POST user/usage/reset` | `POST /api/v10/me/usage-resets/consumptions` | user | resetResult |
@@ -52,7 +51,6 @@ Admin, operations/risk and supported node APIs retain their API versions. The un
 | `POST user/order/cancel` | `POST /api/v10/me/orders/{orderNumber}/cancellation` | user | scalar |
 | `GET user/credit/fetch` | `GET /api/v10/credit-packages` | user | array:credit |
 | `GET user/plan/fetch` | `GET /api/v10/plans` | user | flex:plan |
-| `GET user/invite/save` | `POST /api/v10/me/invitations/retired-codes` | user | scalar |
 | `GET user/invite/fetch` | `GET /api/v10/me/referrals` | user | referrals |
 | `GET user/invite/details` | `GET /api/v10/me/commissions` | user | array:commission |
 | `POST user/invite/email/send` | `POST /api/v10/me/invitations` | user | invitation |
@@ -192,6 +190,6 @@ GET /me/security/mfa reads default-off email/TOTP state. POST /me/security/mfa/c
 
 ## Website analytics
 
-New first-party resources (no legacy V1 alias): `GET /api/v10/public/analytics/configuration` and `POST /api/v10/public/analytics/events`. Explicit anonymous event schema; credentials omitted. The historical `/public/page-views` invitation counter remains unchanged. Admin report/settings remain under the existing protected V1 admin prefix at `/analytics/report` (GET) and `/analytics/settings` (POST).
+New first-party resources (no legacy V1 alias): `GET /api/v10/public/analytics/configuration` and `POST /api/v10/public/analytics/events`. Explicit anonymous event schema; credentials omitted. The historical `/public/page-views` invitation counter is retired (404); current analytics events are unaffected. Admin report/settings remain under the existing protected V1 admin prefix at `/analytics/report` (GET) and `/analytics/settings` (POST).
 
 Analytics source extension: optional attributionVersion=1 and sourceDomain on the existing public event contract. Hostname-only allowlist; no URLs, campaign parameters, account IDs or payment attribution. First accepted event fixes the session source. Existing clients may omit both fields. Migration 2026_10_17_000002 adds source fields; without it ordinary analytics continues and the admin report exposes sourcesReady=false. Report sources are the top 50 domains within the same time/device scope, with ordered browser funnel counts and sourceGroups. Historical sessions remain distinct from direct/unknown traffic. Sources follow session retention. Consent revision 3 re-prompts prior allows while preserving valid prior denials; eight-language disclosure updated.

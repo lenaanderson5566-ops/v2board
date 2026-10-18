@@ -10,11 +10,6 @@ use Illuminate\Http\Request;
 
 class InviteActions
 {
-    public function save(Request $request)
-    {
-        abort(410, __('Public invite codes are no longer supported. Use an email invitation.'));
-    }
-
     public function sendEmail(Request $request)
     {
         $params=$request->validate(['email'=>'required|string|email:strict|max:254']);

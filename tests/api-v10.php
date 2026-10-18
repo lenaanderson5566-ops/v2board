@@ -32,6 +32,12 @@ try {
     $cleanupUsers[]=$user;
     $credentials=(new App\Services\AuthService($user))->generateAuthData(Illuminate\Http\Request::create('/'));
     $bearer='Bearer '.$credentials['auth_data'];
+    $oldInvite=App\Models\InviteCode::forceCreate(['user_id'=>$user->id,'code'=>'retired'.bin2hex(random_bytes(4)),'pv'=>7]);
+    foreach ([null,$bearer] as $identity) {
+        [$retired,$problem]=$call('POST','/api/v10/public/page-views',['inviteCode'=>$oldInvite->code],$identity);
+        $assert($retired->getStatusCode()===404,'Retired invitation page counter is unavailable');
+        $assert((int)$oldInvite->fresh()->pv===7,'Retired counter cannot update legacy invitation records');
+    }
     $ordersBefore=Order::where('user_id',$user->id)->count();
     $balanceBefore=$user->fresh()->balance;
     [$r,$j]=$call('POST','/api/v10/me/orders',['planId'=>$plan->id,'billingPeriod'=>'semiannual','totalAmount'=>0],$bearer);
@@ -71,6 +77,7 @@ try {
     $assert($r->getStatusCode()===401,'Query credential rejected');
     [$r,$j]=$call('GET','/api/v10/me',[],$bearer);
     $assert($r->getStatusCode()===200 && $j['data']['email']===$user->email && !isset($j['data']['password']),'Account resource');
+    $assert(!array_key_exists('avatarUrl',$j['data']) && !str_contains($r->getContent(),'cravatar.cn') && !str_contains($r->getContent(),md5($user->email)),'Account response omits third-party avatar email fingerprint');
     $assert($r->headers->get('Content-Language')==='en-US','Language negotiation');
     foreach (['es-MX'=>'es-ES', 'pt-PT'=>'pt-BR', 'fr-CA'=>'fr-FR', 'de-AT'=>'de-DE', 'id'=>'id-ID', 'th'=>'th-TH'] as $header=>$expectedLanguage) {
         [$r,$j]=$call('GET','/api/v10/me',[],$bearer,$header);

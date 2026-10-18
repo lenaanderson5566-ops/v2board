@@ -334,7 +334,6 @@ class UserActions
         }
         $user['system_timezone'] = \App\Services\TimeZones::system();
         $user['expires_at_display'] = \App\Services\TimeZones::format($user->expired_at,$user);
-        $user['avatar_url'] = 'https://cravatar.cn/avatar/' . md5($user->email) . '?s=64&d=identicon';
         $user['ticket_creation'] = \App\Services\TicketPolicy::creation((int)$user->id);
         $user['account_status'] = (new \App\Services\AccountStatusService())->forUser($user);
         return response([

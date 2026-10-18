@@ -185,3 +185,19 @@ php tests/run.php --only=mfa,mfa-api,mfa-concurrency
 ## 后台共享导航与筛选回归
 
 复用 admin-workspaces.test.tsx，新增标签与面板 ARIA 关联、键盘方向键跳过禁用项、手动激活不提前请求，以及筛选选项不提交表单/忙碌时禁止切换的回归。仪表盘和邀请标签切换改用 Radix 实际 mousedown 交互；保留原业务请求断言。后台 47 个测试文件、210 项全部通过。
+
+## 旧邀请码统计与未使用头像字段清理
+
+退役 POST /api/v10/public/page-views，移除路由、适配器、统计 Action、前端映射及 OpenAPI；账户接口不再计算或返回第三方 avatarUrl 邮箱指纹，同时清理验证码 Action 未使用的私有方法和导入。保留 InviteCode 模型、历史表、管理员删除账户时的记录清理，以及 retired-codes 的 410 兼容响应。现行匿名 analytics 统计和邮件邀请不变。
+
+复用 api-v10.php，新增匿名/登录请求旧统计入口均为 404、旧记录 pv 不变和账户响应不含头像地址/邮箱 MD5 的回归；复用 v10-api.test.ts 验证退役映射拒绝及头像字段不会被解析。Docker 一次性副本与随机测试库验证路由审计 2475 项、V10 合同 203 项、接口清单 830 项、邮件邀请 40 项通过。首次清单测试因副本遗漏 AGENTS.md 与类型声明失败，补齐后复测通过，日志保存在 storage/app/test-organization/unused-features。前端 19 项通过，类型检查和生产构建通过。未修改安装 SQL、迁移或业务数据，未发送真实邮件。
+
+## 历史兼容入口复核与清理
+
+进一步移除仅返回 410 的 `/api/v10/me/invitations/retired-codes`、V10 控制器方法、InviteActions::save 及两侧契约/前端映射/OpenAPI，当前返回 404。复用 email-invitations.php 验证匿名与已登录调用均为 404、旧邀请码数量不变，保留现行邮件邀请与跨用户隔离断言；v10-api.test.ts 增加前端旧生成调用拒绝。旧注册 inviteCode 输入仍明确拒绝，避免忽略旧参数导致错误注册归属。
+
+本轮保留：仍在迁移窗口内的浏览器 JWT 兑换、V1 后台依赖、旧支付及节点/客户端入口、下载和页脚配置回退、历史邀请码数据清理、账务/权益转换与数据库迁移，以及消费旧队列的 Telegram 空任务、外部 cron 兼容命令和升级提示命令。代码中仍有调用或明确升级职责；未将本地环境的未使用状态当作所有安装均可删除的依据。
+
+一次性副本和随机测试库验证六组全部通过：路由审计 2465 项、接口清单 824 项、浏览器会话 490 项、邮件邀请 42 项、框架 85 项及全新安装管理员创建/认证和重复迁移回归。前端 v10-api、browser-session、ClientDownload 共 32 项通过，类型检查及生产构建通过。结果位于忽略目录 storage/app/test-organization/compatibility-cleanup。没有改动安装 SQL 或数据库迁移，没有操作业务数据库或发送真实邮件。
+
+补充旧库 retired-node-tables 与 update-script 两组隔离回归全部通过，结果见同目录 upgrade.json；连同上述六组，本轮八组后端检查均通过。

@@ -1,6 +1,8 @@
 <?php
 namespace App\Services;
 
+use App\Services\Mail\ProductMail;
+
 /** Shared fallback policy for administrator-authored content. Never persists translations. */
 final class ContentTranslation
 {

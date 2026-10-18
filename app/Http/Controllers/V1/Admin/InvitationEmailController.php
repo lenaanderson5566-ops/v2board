@@ -1,7 +1,7 @@
 <?php
 namespace App\Http\Controllers\V1\Admin;
 use App\Http\Controllers\Controller;
-use App\Services\MailDeliveryLog;
+use App\Services\Mail\MailDeliveryLog;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 class InvitationEmailController extends Controller

@@ -16,7 +16,7 @@ class ProcessMailFeedback extends \Illuminate\Console\Command
             })->orderBy('id')->limit(200)->get();
         foreach($events as $event) {
             $logs=\App\Models\MailLog::where('provider',$event->provider)->where('recipient_hash',$event->recipient_hash)->whereIn('message_id',[$event->message_id,'<'.$event->message_id.'>'])->get();
-            foreach($logs as $log) app(\App\Services\MailFeedback::class)->reconcile($log);
+            foreach($logs as $log) app(\App\Services\Mail\MailFeedback::class)->reconcile($log);
         }
         $ids=\Illuminate\Support\Facades\DB::table('v2_mail_event')->where('created_at','<',time()-90*86400)->limit(1000)->pluck('id');
         if ($ids->isNotEmpty()) \Illuminate\Support\Facades\DB::table('v2_mail_event')->whereIn('id',$ids)->delete();

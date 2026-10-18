@@ -8,11 +8,11 @@ use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Cache;
-use App\Services\MailDeliveryLog;
-use App\Services\MailgunSender;
+use App\Services\Mail\MailDeliveryLog;
+use App\Services\Mail\MailgunSender;
 use App\Exceptions\MailSendException;
-use App\Services\ProductMail;
-use App\Services\MailRateLimiter;
+use App\Services\Mail\ProductMail;
+use App\Services\Mail\MailRateLimiter;
 use App\Utils\CacheKey;
 
 class SendEmailJob implements ShouldQueue
@@ -37,13 +37,13 @@ class SendEmailJob implements ShouldQueue
     public function handle()
     {
         $announcement=(($this->params['template_name'] ?? '')==='notify' && ($this->params['mail_purpose'] ?? 'marketing')==='marketing') || (($this->params['template_name'] ?? '')==='test' && ($this->params['test_stream'] ?? '')==='announcement');
-        return \App\Services\MailChannel::run($announcement, fn()=>$this->deliver($announcement));
+        return \App\Services\Mail\MailChannel::run($announcement, fn()=>$this->deliver($announcement));
     }
     private function deliver(bool $announcement)
     {
         $params = $this->params;
         if ($this->deadline && time() >= $this->deadline) return ['skipped'=>true];
-        if (\App\Services\MailBlocklist::contains($params['email'])) return $this->skipBlocked($announcement);
+        if (\App\Services\Mail\MailBlocklist::contains($params['email'])) return $this->skipBlocked($announcement);
         if (($params['template_name'] ?? '') === 'verify') {
             if (isset($params['mfa_challenge_key'])) {
                 $challenge = Cache::get($params['mfa_challenge_key']);
@@ -64,7 +64,7 @@ class SendEmailJob implements ShouldQueue
             if ($type === 'remindTraffic' && (!$user->remind_traffic || !$user->transfer_enable || $user->u + $user->d < $user->transfer_enable * 0.95 || $user->u + $user->d >= $user->transfer_enable)) return ['skipped'=>true];
         }
         if ($type==='notify' && $announcement && !config('v2board.email_announcements_enabled',1)) return ['skipped'=>true,'reason'=>'announcements_paused'];
-        if (\App\Services\MailAudience::blocked($params['email'],$type==='notify' && !$announcement ? 'service' : $type)) return $this->skipBlocked($announcement, 'MAIL_RECIPIENT_SUPPRESSED');
+        if (\App\Services\Mail\MailAudience::blocked($params['email'],$type==='notify' && !$announcement ? 'service' : $type)) return $this->skipBlocked($announcement, 'MAIL_RECIPIENT_SUPPRESSED');
         $provider = config('v2board.email_provider', 'smtp');
         if ($provider === 'smtp' && config('v2board.email_host')) {
             foreach (['host','port','encryption','username'] as $field) Config::set('mail.'.$field, config('v2board.email_'.$field));
@@ -74,7 +74,7 @@ class SendEmailJob implements ShouldQueue
         Config::set('mail.scheme', config('mail.encryption') === 'ssl' || (int) config('mail.port') === 465 ? 'smtps' : 'smtp');
         Config::set('mail.timeout', 15);
         $data = app(ProductMail::class)->data($params);
-        if ($type==='notify' && $announcement) $data=\App\Services\MailAudience::withUnsubscribe($params['email'],$data);
+        if ($type==='notify' && $announcement) $data=\App\Services\Mail\MailAudience::withUnsubscribe($params['email'],$data);
         Config::set('mail.from.name', $data['brand']);
         $limiter = app(MailRateLimiter::class);
         $priority = in_array($type,['verify','mailLogin'],true);
@@ -89,7 +89,7 @@ class SendEmailJob implements ShouldQueue
         $started = microtime(true);
         $messageId = null; $transportCode = null; $enhancedCode = null;
         try {
-            \App\Services\MailBlocklist::enforce($params['email']);
+            \App\Services\Mail\MailBlocklist::enforce($params['email']);
             if (validator(['email'=>$params['email']], ['email'=>'required|string|email:rfc'])->fails()) {
                 throw new \InvalidArgumentException('MAIL_RECIPIENT_INVALID', 550);
             }
@@ -97,11 +97,11 @@ class SendEmailJob implements ShouldQueue
                 $sender = app(MailgunSender::class);
                 $messageId = $sender->send($params['email'], $data);
             } elseif ($provider === 'ses') {
-                $sender = app(\App\Services\SesSender::class);
+                $sender = app(\App\Services\Mail\SesSender::class);
                 $messageId = $sender->send($params['email'], $data);
             } elseif ($provider === 'resend') {
                 $this->deliveryId ??= (string) ($this->job?->getJobId() ?: \Illuminate\Support\Str::uuid());
-                $sender = app(\App\Services\ResendSender::class);
+                $sender = app(\App\Services\Mail\ResendSender::class);
                 $messageId = $sender->send($params['email'], $data, $this->deliveryId);
             } elseif ($provider !== 'smtp') {
                 throw new MailSendException('MAIL_PROVIDER_INVALID');
@@ -115,7 +115,7 @@ class SendEmailJob implements ShouldQueue
                 if (config('v2board.email_host')) Config::set('mail.password', $password);
                 // Rebuild cached transport after applying persisted SMTP settings.
                 Mail::forgetMailers();
-                \App\Services\MailBlocklist::enforce($params['email']);
+                \App\Services\Mail\MailBlocklist::enforce($params['email']);
                 Mail::send(['html'=>'mail.product.message', 'text'=>'mail.product.text'], $data, function ($message) use ($params, $data) {
                     if (!empty($data['unsubscribeUrl'])) {
                         $headers=$message->getSymfonyMessage()->getHeaders();
@@ -132,7 +132,7 @@ class SendEmailJob implements ShouldQueue
                 return ['skipped'=>true,'reason'=>'manual_blocklist','log_id'=>$log->id];
             }
             if ($exception instanceof MailSendException) $transportCode = $exception->transportCode;
-            elseif ($provider === 'smtp' && !($exception instanceof \InvalidArgumentException)) [$transportCode, $enhancedCode] = \App\Services\MailDiagnosis::smtp($exception);
+            elseif ($provider === 'smtp' && !($exception instanceof \InvalidArgumentException)) [$transportCode, $enhancedCode] = \App\Services\Mail\MailDiagnosis::smtp($exception);
             $uncertain = $exception instanceof MailSendException && $exception->uncertain;
             $permanent = $exception instanceof MailSendException ? !$exception->retryable : $limiter->permanent($exception);
             $code = $exception instanceof MailSendException ? $exception->safeCode
@@ -145,7 +145,7 @@ class SendEmailJob implements ShouldQueue
                 if ($permanent) { $this->fail($safeException); return ['error'=>$code, 'log_id'=>$log->id]; }
                 throw $safeException;
             }
-            return ['error'=>$code, 'log_id'=>$log->id, 'permanent'=>$permanent, 'transport_code'=>$transportCode, 'enhanced_code'=>$enhancedCode, 'advice'=>\App\Services\MailDiagnosis::advice($uncertain ? 'uncertain' : 'failed', $code, $transportCode, $enhancedCode)[1]];
+            return ['error'=>$code, 'log_id'=>$log->id, 'permanent'=>$permanent, 'transport_code'=>$transportCode, 'enhanced_code'=>$enhancedCode, 'advice'=>\App\Services\Mail\MailDiagnosis::advice($uncertain ? 'uncertain' : 'failed', $code, $transportCode, $enhancedCode)[1]];
         }
         MailDeliveryLog::finish($log, 'accepted', null, $messageId, (int)((microtime(true)-$started)*1000), $transportCode, $enhancedCode);
         return ['error'=>null, 'log_id'=>$log->id, 'status'=>'accepted', 'transport_code'=>$transportCode];

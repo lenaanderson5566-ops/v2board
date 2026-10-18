@@ -4,6 +4,8 @@
 
 - [安全检查与待修复风险](security-review.md)
 
+- [目录边界与契约生成](project-structure.md)
+
 ## 功能与运维
 
 - [账户进入界面与 Laravel 状态规则](account-entry-states.md)

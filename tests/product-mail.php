@@ -10,8 +10,8 @@ if ($testDatabase=getenv('PRODUCT_MAIL_DATABASE')) {
     Illuminate\Support\Facades\DB::purge('product_mail_test');
 }
 
-use App\Services\ProductMail;
-use App\Services\MailRateLimiter;
+use App\Services\Mail\ProductMail;
+use App\Services\Mail\MailRateLimiter;
 use App\Jobs\SendEmailJob;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
@@ -123,7 +123,15 @@ try {
     $transport->error=new Symfony\Component\Mailer\Exception\TransportException('Expected response code 250 but got code "550"');
     $result=(new SendEmailJob($base))->handle(); $assert(!empty($result['error']), 'Rejected recipient marked delivered');
     $transport->error=null;
-    $result=(new SendEmailJob($base))->handle();
+    // Redis/Horizon retains serialized Job names across service namespace changes.
+    $pending=new SendEmailJob($base, 'send_email_mass');
+    $payload=serialize($pending);
+    $restored=unserialize($payload, ['allowed_classes'=>[SendEmailJob::class]]);
+    $assert($restored instanceof SendEmailJob && $restored->queue==='send_email_mass' && $restored->connection==='redis', 'Queued mail identity changed');
+    $assert(!str_contains($payload, 'App\\Services\\'), 'Queued payload must not serialize service instances');
+    $before=$transport->sent;
+    $result=$restored->handle();
+    $assert($transport->sent===$before+1, 'Restored queued mail did not reach the mocked transport');
     $assert(empty($result['error']) && !isset($result['config']),'Success or SMTP secrecy incorrect');
     $unsafe=$base; $unsafe['template_name']='test'; $unsafe['email']="valid@example.com\r\nBcc:other@example.com";
     $before=$transport->sent;

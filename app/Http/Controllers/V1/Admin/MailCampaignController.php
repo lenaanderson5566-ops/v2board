@@ -2,7 +2,7 @@
 namespace App\Http\Controllers\V1\Admin;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
-use App\Services\MailCampaign;
+use App\Services\Mail\MailCampaign;
 class MailCampaignController extends \App\Http\Controllers\Controller {
     public function fetch(Request $request) {
         $request->validate(['page_size'=>'sometimes|integer|min:1|max:100','current'=>'sometimes|integer|min:1|max:100000','id'=>'sometimes|integer|min:1']);

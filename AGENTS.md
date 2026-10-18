@@ -19,7 +19,7 @@
 - Errors use application/problem+json with stable code and requestId. Never return stack traces or internal paths, even in debug mode.
 - Language negotiation uses Accept-Language; return Content-Language. Binary downloads, CSV, client configuration and provider webhooks retain their native protocols.
 - Log route names, request IDs, statuses and duration only. Redact credentials, subscription tokens, passwords, verification codes, account credentials and callback secrets.
-- Changes must update docs/api-v10/openapi.json, endpoint mappings, frontend transport types and contract tests. Keep old/new interoperability tests.
+- Maintain V10 contracts only in api/v10/openapi.json; api/v10/mapping-notes.md owns mapping prose. Run python scripts/generate-v10.py then python scripts/generate-v10.py --check. Commit all seven generated publications together; never edit generated contracts/types/OpenAPI independently. Routes and controllers remain explicitly handwritten and require inventory/interoperability tests.
 - Never commit Dockerfile.local, LOCAL-RUN.txt, local-seed.php, environment secrets or runtime installer files.
 
 - Default subscriptions always use /api/v10/subscriptions/{subscriptionToken}, including links generated outside V10 requests. /api/v1/client/subscribe is retired; preserve administrator-defined custom links via CustomSubscriptionController and the shared subscription action.
@@ -27,3 +27,8 @@
 - Payment initiation and administrative callback displays use /api/v10/webhooks/payments/{provider}/{endpointId}, including custom notify domains. Retain old payment callbacks for in-flight orders. User payment APIs stay on V10; do not modify provider SDK signing or native responses for API versioning.
 
 - Currency phase 2 supports CNY and USD (explicitly authorized). Historical assets and prices remain CNY. Account currency is immutable and denominates its balance/commission wallet; new accounts inherit the configured default once. USD plan prices are independent. Never relabel or automatically exchange existing balances. Payment conversion uses immutable per-channel order snapshots, explicit amount/currency verification, and preserves old callback SDK signing/contracts.
+
+## Directory boundaries
+- Keep mail delivery, feedback and rendering services under App/Services/Mail. Preserve queued Job class names and serialized payloads when reorganizing services.
+- Shared UI implementations live in frontend/src/shared/ui; preserve the shared/ui.tsx public exports and one Modal stack/context. Keep administrator-only presentation in administrator components.
+- Directory cleanup must not change bootstrap/app.php, HTTP/console kernels, install SQL or upgrade migrations without a separate functional requirement.

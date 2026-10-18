@@ -2,7 +2,7 @@
 
 namespace App\Console\Commands;
 
-use App\Services\MailService;
+use App\Services\Mail\MailService;
 use App\Services\PlanService;
 use App\Services\OrderService;
 use Illuminate\Console\Command;

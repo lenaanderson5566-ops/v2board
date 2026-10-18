@@ -2,10 +2,11 @@
 namespace {
 // Included by notification-delivery.php after its isolated database and transport setup.
 use App\Exceptions\MailSendException;
-use App\Services\{SesSender, ResendSender};
+use App\Services\Mail\SesSender;
+use App\Services\Mail\ResendSender;
 use Illuminate\Support\Facades\{Http, Crypt};
 
-$data=app(App\Services\ProductMail::class)->data(['template_name'=>'test','language'=>'en-US']);
+$data=app(App\Services\Mail\ProductMail::class)->data(['template_name'=>'test','language'=>'en-US']);
 config(['v2board.email_from_address'=>'sender@example.test', 'v2board.email_resend_api_key'=>Crypt::encryptString('re_TEST_SENTINEL')]);
 $sender=new ResendSender;
 $fakeHttp(['*'=>Http::response(['id'=>'receipt-123'],200)]);
@@ -119,12 +120,12 @@ catch (Illuminate\Validation\ValidationException $e) { $checks++; }
 echo "PASS SES/Resend transports, queue routing, stable idempotency and safe failure handling\n";
 
 foreach ([['Expected response code "250" but got code "550", with message "550 5.1.1 PRIVATE@example.test"',550,'5.1.1'], ['451 4.7.0 temporary',451,'4.7.0'], ['connection timed out',null,null]] as [$text,$expected,$enhanced]) {
-    $assert(App\Services\MailDiagnosis::smtp(new RuntimeException($text))===[$expected,$enhanced],'SMTP response extraction failed');
+    $assert(App\Services\Mail\MailDiagnosis::smtp(new RuntimeException($text))===[$expected,$enhanced],'SMTP response extraction failed');
 }
 foreach ([['5.1.1','address_review'],['5.7.1','policy'],['5.2.2','mailbox_full']] as [$enhanced,$category]) {
-    $assert(App\Services\MailDiagnosis::advice('failed','SMTP_REJECTED',550,$enhanced)[0]===$category,'Unsafe recipient advice');
+    $assert(App\Services\Mail\MailDiagnosis::advice('failed','SMTP_REJECTED',550,$enhanced)[0]===$category,'Unsafe recipient advice');
 }
-$assert(App\Services\MailDiagnosis::advice('failed','RESEND_AUTH_REJECTED',403,null)[0]==='configuration','API auth blamed recipient');
+$assert(App\Services\Mail\MailDiagnosis::advice('failed','RESEND_AUTH_REJECTED',403,null)[0]==='configuration','API auth blamed recipient');
 config(['v2board.email_provider'=>'resend','v2board.email_resend_api_key'=>Crypt::encryptString('re_TEST_ONLY')]);
 $fakeHttp(['*'=>Http::response([],429)]);
 $result=(new App\Jobs\SendEmailJob(['email'=>'one@example.test','template_name'=>'test']))->handle();
@@ -147,7 +148,11 @@ $assert($result['error']==='SMTP_KEY_INVALID' && $result['permanent'],'Invalid e
 echo "PASS encrypted SMTP credentials and fail-closed decryption\n";
 }
 namespace {
-use App\Services\{MailAudience,MailChannel,MailFeedback,MailWebhook,MailDeliveryLog};
+use App\Services\Mail\MailAudience;
+use App\Services\Mail\MailChannel;
+use App\Services\Mail\MailFeedback;
+use App\Services\Mail\MailWebhook;
+use App\Services\Mail\MailDeliveryLog;
 use Illuminate\Support\Facades\{DB,Crypt,Http};
 
 config(['v2board.email_password_encrypted'=>false,'v2board.email_password'=>null,'v2board.email_announcement_separate'=>0,'v2board.email_announcements_enabled'=>1,'v2board.email_provider'=>'resend','v2board.email_resend_api_key'=>Crypt::encryptString('re_TEST'),'v2board.email_public_url'=>'https://api.example.test']);
@@ -165,11 +170,11 @@ $controller->unsubscribe(Illuminate\Http\Request::create('/','POST',['List-Unsub
 $assert(!$one->fresh()->announcement_email,'One-click unsubscribe failed');
 $controller->unsubscribe(Illuminate\Http\Request::create('/','POST',['List-Unsubscribe'=>'One-Click']),$token); $checks++;
 $one->update(['announcement_email'=>1]);
-$data=app(App\Services\ProductMail::class)->data(['email'=>$one->email,'template_name'=>'notify','subject'=>'Announcement','template_value'=>['content'=>'Hello']]);
+$data=app(App\Services\Mail\ProductMail::class)->data(['email'=>$one->email,'template_name'=>'notify','subject'=>'Announcement','template_value'=>['content'=>'Hello']]);
 $data=MailAudience::withUnsubscribe($one->email,$data);
 $assert(str_starts_with($data['unsubscribeUrl'],'https://api.example.test/api/v10/mail/unsubscribe/'),'Wrong unsubscribe origin');
 $fakeHttp(['*'=>Http::response(['id'=>'announcement-1'],200)]);
-(new App\Services\ResendSender)->send($one->email,$data,'announcement-test');
+(new App\Services\Mail\ResendSender)->send($one->email,$data,'announcement-test');
 Http::assertSent(fn($r)=>$r['headers']['List-Unsubscribe-Post']==='List-Unsubscribe=One-Click' && str_contains($r['text'],$data['unsubscribeUrl'])); $checks++;
 config(['v2board.email_announcement_separate'=>1,'v2board.email_announcement_provider'=>'mailgun','v2board.email_announcement_from_address'=>'news@news.example.test']);
 $before=config('v2board');
@@ -295,7 +300,7 @@ app(App\Console\Commands\ProcessMailFeedback::class)->handle();
 $assert($pendingReceipt->fresh()->delivery_status==='delivered','Scheduled feedback recovery failed');
 }
 namespace {
-use App\Services\MailCampaign;
+use App\Services\Mail\MailCampaign;
 use App\Jobs\SendCampaignMailJob;
 use Illuminate\Support\Facades\{DB,Http,Crypt,Schema};
 $serviceUser=App\Models\User::create(['email'=>'campaign@example.test','banned'=>0,'announcement_email'=>0]);
@@ -312,7 +317,7 @@ $assert($sent->status==='accepted','Necessary service notice blocked by marketin
 Http::assertSent(fn($r)=>!isset($r['headers']['List-Unsubscribe']) && str_contains($r['from'],'service@example.test'));$checks++;
 (new SendCampaignMailJob($recipient->id))->handle();Http::assertSentCount(1);$checks++;
 $assert(MailCampaign::stats($campaign)['delivery_rate']===0.0,'Campaign acceptance denominator incorrect');
-(new App\Services\MailFeedback)->record('resend','campaign-delivered','campaign-message',$serviceUser->email,'delivered',time());
+(new App\Services\Mail\MailFeedback)->record('resend','campaign-delivered','campaign-message',$serviceUser->email,'delivered',time());
 $assert(MailCampaign::stats($campaign)['delivered']===1 && MailCampaign::stats($campaign)['delivery_rate']===100.0,'Campaign callback statistics missing');
 $assert(MailCampaign::create($q,$data,1)===$campaign,'Repeated submission created duplicate campaign');
 $data['request_key']=(string)Illuminate\Support\Str::uuid();$data['purpose']='marketing';$marketing=MailCampaign::create($q,$data,1);
@@ -355,7 +360,10 @@ if($mysql && function_exists('pcntl_fork')) {
 }
 }
 namespace {
-use App\Services\{MailBlocklist,MailAudience,MailCampaign,MailDeliveryLog};
+use App\Services\Mail\MailBlocklist;
+use App\Services\Mail\MailAudience;
+use App\Services\Mail\MailCampaign;
+use App\Services\Mail\MailDeliveryLog;
 use Illuminate\Support\Facades\{DB,Http,Crypt,Mail};
 $address='manual-block@example.test';$note='<script>private note</script>';
 MailBlocklist::add(' Manual-Block@Example.Test ',$note,1);
@@ -372,7 +380,7 @@ $assert($list->headers->get('Cache-Control')==='no-store, private','Sensitive li
 $fakeHttp();$blockedMail=new class {public int $calls=0;public function forgetMailers(){} public function send(...$args){$this->calls++;throw new RuntimeException('Unexpected SMTP send');}};Mail::swap($blockedMail);
 foreach(['smtp','mailgun','ses','resend'] as $provider){
  config(['v2board.email_provider'=>$provider,'v2board.email_announcement_separate'=>0]);
- foreach(App\Services\ProductMail::TYPES as $type){
+ foreach(App\Services\Mail\ProductMail::TYPES as $type){
   $result=(new App\Jobs\SendEmailJob(['email'=>$address,'template_name'=>$type]))->handle();
   $assert(!empty($result['skipped']) && $result['reason']==='manual_blocklist','Mail type bypassed block: '.$provider.'/'.$type);
   $log=App\Models\MailLog::find($result['log_id']);
@@ -380,7 +388,7 @@ foreach(['smtp','mailgun','ses','resend'] as $provider){
  }
 }
 Http::assertNothingSent();$checks++;$assert($blockedMail->calls===0,'Blocked SMTP reached transport');
-foreach([new App\Services\MailgunSender,new App\Services\SesSender,new App\Services\ResendSender] as $sender){
+foreach([new App\Services\Mail\MailgunSender,new App\Services\Mail\SesSender,new App\Services\Mail\ResendSender] as $sender){
  try{$sender->send($address,[],'test');throw new RuntimeException('Direct sender bypassed block');}
  catch(App\Exceptions\MailSendException $e){$assert($e->safeCode==='MAIL_MANUALLY_BLOCKED','Wrong direct sender rejection');}
 }
@@ -406,7 +414,7 @@ $assert(DB::table('v2_mail_blocklist_audit')->where('recipient_hash',$hash)->cou
 $assert(!str_contains(json_encode(DB::table('v2_mail_blocklist_audit')->get()),$note),'Private note in audit metadata');
 $logController=new App\Http\Controllers\V1\Admin\MailLogController;
 $logs=json_decode($logController->fetch(Illuminate\Http\Request::create('/','GET',['status'=>'skipped','email'=>$address]))->getContent(),true);
-$assert($logs['total']===count(App\Services\ProductMail::TYPES)*4,'Blocked log filtering failed');
+$assert($logs['total']===count(App\Services\Mail\ProductMail::TYPES)*4,'Blocked log filtering failed');
 echo "PASS manual mail blocklist, all mail types/providers, encrypted address, audit, concurrency revisions and independent release\n";
 
 $lateAddress='queued-before-block@example.test';

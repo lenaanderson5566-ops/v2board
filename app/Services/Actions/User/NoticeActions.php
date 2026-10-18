@@ -13,7 +13,7 @@ class NoticeActions
     private function localized($notice, Request $request)
     {
         if (!$notice) return $notice;
-        $locale = $request->attributes->get('notice_locale') ?: \App\Services\ProductMail::language($request->header('Content-Language') ?: $request->input('language') ?: (isset($request->user['id']) ? \App\Models\User::where('id', $request->user['id'])->value('language') : null) ?: app()->getLocale());
+        $locale = $request->attributes->get('notice_locale') ?: \App\Services\Mail\ProductMail::language($request->header('Content-Language') ?: $request->input('language') ?: (isset($request->user['id']) ? \App\Models\User::where('id', $request->user['id'])->value('language') : null) ?: app()->getLocale());
         $request->attributes->set('notice_locale', $locale);
         $document = \App\Services\ContentTranslation::document(
             $notice->translations ?? [], ['subject' => $notice->title, 'content' => $notice->content],

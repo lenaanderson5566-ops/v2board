@@ -2,7 +2,7 @@
 
 namespace App\Console\Commands;
 
-use App\Services\MailService;
+use App\Services\Mail\MailService;
 use Illuminate\Console\Command;
 use App\Models\User;
 

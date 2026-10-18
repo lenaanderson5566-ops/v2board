@@ -169,7 +169,7 @@ class ConfigSave extends FormRequest
     public static function allRules(): array
     {
         $rules=self::RULES;
-        foreach (\App\Services\MailChannel::FIELDS as $field) if (isset($rules['email_'.$field])) $rules['email_announcement_'.$field]=$rules['email_'.$field];
+        foreach (\App\Services\Mail\MailChannel::FIELDS as $field) if (isset($rules['email_'.$field])) $rules['email_announcement_'.$field]=$rules['email_'.$field];
         $rules['email_public_url']='nullable|string|max:2048|url|regex:~^https://[^/?#@]+/?$~iD';
         $rules['email_announcement_separate']='in:0,1';
         $rules['email_announcements_enabled']='in:0,1';

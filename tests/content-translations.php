@@ -3,7 +3,7 @@ $app = require __DIR__.'/support/bootstrap.php';
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\DB;
 use App\Http\Controllers\V1\Admin\ContentTranslationController;
-use App\Services\ProductMail;
+use App\Services\Mail\ProductMail;
 if (!app()->environment('local')) throw new RuntimeException('Local tests only');
 $checks=0;
 $assert = \Tests\Support\Assertions::counter($checks);

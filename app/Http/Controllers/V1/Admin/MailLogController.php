@@ -3,7 +3,7 @@ namespace App\Http\Controllers\V1\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\MailLog;
-use App\Services\MailDeliveryLog;
+use App\Services\Mail\MailDeliveryLog;
 use Illuminate\Http\Request;
 
 class MailLogController extends Controller
@@ -44,7 +44,7 @@ class MailLogController extends Controller
         return response(['total'=>$total, 'data'=>$rows->map(function ($row) {
             $status = $row->status ?: 'legacy';
             if ($status === 'sending' && $row->created_at < time()-120) $status = 'uncertain';
-            [$category,$advice] = \App\Services\MailDiagnosis::advice($status,$row->error_code,$row->transport_code,$row->enhanced_code);
+            [$category,$advice] = \App\Services\Mail\MailDiagnosis::advice($status,$row->error_code,$row->transport_code,$row->enhanced_code);
             return ['stream'=>$row->stream, 'delivery_status'=>$row->delivery_status, 'delivery_at'=>$row->delivery_at, 'transport_code'=>$row->transport_code, 'enhanced_code'=>$row->enhanced_code, 'user_id'=>$row->user_id, 'diagnosis'=>$category, 'advice'=>$advice, 'id'=>$row->id, 'email'=>MailDeliveryLog::mask($row->email),
                 'template'=>str_replace('mail.product.', '', $row->template_name), 'provider'=>$row->provider ?: 'legacy',
                 'status'=>$status, 'error_code'=>$row->error_code, 'message_id'=>$row->message_id,

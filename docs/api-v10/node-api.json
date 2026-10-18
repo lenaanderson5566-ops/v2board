@@ -2266,14 +2266,14 @@
       "legacy": "New resource"
     },
     {
-      "legacy": "None (scoped DDNS reporter)",
       "method": "POST",
-      "path": "/server/addresses"
+      "path": "/server/addresses",
+      "legacy": "None (scoped DDNS reporter)"
     },
     {
-      "legacy": "New server-wide traffic quota",
       "method": "GET",
-      "path": "/server/traffic-budget"
+      "path": "/server/traffic-budget",
+      "legacy": "New server-wide traffic quota"
     }
   ]
 }

@@ -1,8 +1,32 @@
+import { readFileSync } from 'node:fs';
+import openapi from '../../../docs/api-v10/openapi.json';
+import backendContracts from '../../../docs/api-v10/contracts.json';
+import browserContracts from './v10-contracts.json';
 import { describe, expect, it } from 'vitest';
 import { v10Request } from './v10-api';
 import { subscriptionUrl } from './import-links';
 
 describe('V10 wire contracts', () => {
+  it('preserves all mapping notes around both generated tables', () => {
+    const notes = readFileSync(new URL('../../../api/v10/mapping-notes.md', import.meta.url), 'utf8');
+    const published = readFileSync(new URL('../../../docs/api-v10/mapping.md', import.meta.url), 'utf8');
+    expect(notes.match(/<!-- (?:operation|node)-table -->/g)).toHaveLength(2);
+    for (const section of notes.split(/<!-- (?:operation|node)-table -->/)) {
+      expect(published).toContain(section.trim());
+    }
+    for (const heading of ['Subscription client policy', 'Client diagnostics', 'Mail streams and feedback', 'Optional MFA']) {
+      expect(published).toContain(heading);
+    }
+    expect(published).not.toContain('<!-- node-table -->');
+  });
+  it('keeps ticket reply identifiers and timestamps required in one named schema', () => {
+    expect(openapi.components.schemas.ticketNotification.required).toEqual(['ticketId', 'messageId', 'createdAt']);
+    expect(openapi.components.schemas.inbox.properties.ticketReplies.items).toEqual({$ref:'#/components/schemas/ticketNotification'});
+  });
+  it('shares every endpoint and projection with the backend publication', () => {
+    expect(browserContracts.endpoints).toEqual(backendContracts.endpoints);
+    expect(browserContracts.schemas).toEqual(backendContracts.schemas);
+  });
   it('retires invitation page counts and excludes unused avatar fingerprints', () => {
     expect(() => v10Request('passport/comm/pv', {invite_code:'old'})).toThrow('no V10 contract');
     expect(() => v10Request('user/invite/save')).toThrow('no V10 contract');

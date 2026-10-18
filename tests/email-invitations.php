@@ -28,7 +28,7 @@ $call = function ($path, $body=null, $token=null) use ($kernel) {
 $config = config('v2board');
 $queue = Queue::getFacadeRoot(); $mail = Mail::getFacadeRoot();
 Queue::fake(); Mail::fake();
-$app->instance(App\Services\MailRateLimiter::class, new class extends App\Services\MailRateLimiter {
+$app->instance(App\Services\Mail\MailRateLimiter::class, new class extends App\Services\Mail\MailRateLimiter {
     public function acquire($email, $bulk, $priority = false) { return 0; }
     public function cooldown($email, $priority=false) {}
 });

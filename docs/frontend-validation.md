@@ -409,3 +409,15 @@ Panel、State、Table、Pager、Modal、Editor 已有共享实现，继续复用
 ## 历史邀请码生成兼容入口移除
 
 移除仅返回 410 的 retired-codes 路由及前端 user/invite/save 映射，旧调用现在返回 404；现行邮件邀请、浏览器旧会话迁移和客户端下载回退保持不变。复用 v10-api、browser-session 和 ClientDownload 三个测试文件，32 项通过；类型检查和生产打包通过，已更新静态产物，仍有既有代码编辑器大 chunk 提示。没有用户页面样式调整，未做真实浏览器视觉验收或生产部署。
+
+## 共享 UI 拆分与统一契约生成
+
+`shared/ui.tsx` 保持公共导出，将布局、数据加载、弹窗、表单、列表控制和表格拆为六个实现模块。Modal 堆栈与关闭 Context 继续保持单实例，原组件函数体及调用入口保持不变。管理员工单状态文案归入既有 `admin-status.tsx`，展示文字与自动关闭规则不变；修复其原先触发用户翻译完整性检查的问题。
+
+V10 前端契约和类型改由规范源统一生成；复用 v10-api.test.ts 增加前后端所有端点和投影的一致性断言，保留原权限、字段过滤和退役接口断言。全量 Vitest 104 个文件、634 项通过；TypeScript 与生产构建通过，public/console 和前后台分发资源已重建。构建仍有原代码编辑器分块超过 500 kB 的提示。本轮未改变 CSS 或交互设计，未额外进行真实浏览器视觉验收；验证基于现有组件交互测试和构建。
+
+目录整理复查修正了生成类型中工单通知字段被意外弱化为可选的问题，三个字段恢复必填，并在 inbox 中引用同一 schema。新增映射说明完整性及通知 schema 回归；v10-api、editor-field-context、localization 三组共 77 项与 TypeScript 检查通过。18 个共享 UI 声明经语法树规范化逐项比对，拆分前后完全一致。此次补正只涉及契约类型、文档与测试，没有新的浏览器运行时代码或样式变更。
+
+## 上线前全量验证
+
+再次运行全部前端测试：104 个文件、636 项全部通过，类型检查、Vite 构建和前后台打包通过。逐项核对构建 manifest 及 import/dynamicImport 资源，用户包 314 个文件、管理包 75 个文件与 public/console 内容一致；没有生产 source map。生产依赖 npm audit --omit=dev 未命中已知漏洞；现有代码编辑器大包提示仍存在。此轮新增改动仅为部署文档纠错，没有改变界面行为，未进行真实浏览器视觉验收。日志在 storage/app/test-organization/preflight，npm 审计结果为同级 npm-preflight-audit.json。

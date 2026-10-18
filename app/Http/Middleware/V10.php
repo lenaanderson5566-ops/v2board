@@ -17,7 +17,7 @@ class V10
         foreach (explode(',',(string)$request->header('Accept-Language')) as $index=>$candidate) {
             $parts=explode(';',$candidate); $quality=1.0;
             foreach (array_slice($parts,1) as $parameter) if (preg_match('/^\s*q=([0-9.]+)\s*$/',$parameter,$matches)) $quality=(float)$matches[1];
-            $normalized=\App\Services\ProductMail::language(trim($parts[0]));
+            $normalized=\App\Services\Mail\ProductMail::language(trim($parts[0]));
             if ($normalized && $quality>0 && $quality<=1) $candidates[]=['language'=>$normalized,'quality'=>$quality,'index'=>$index];
         }
         usort($candidates,function($a,$b) { return ($b['quality'] <=> $a['quality']) ?: ($a['index'] <=> $b['index']); });

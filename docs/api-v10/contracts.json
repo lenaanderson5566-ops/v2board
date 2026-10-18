@@ -740,6 +740,9 @@
       "ip": [
         "ip"
       ],
+      "countryCode": [
+        "country_code"
+      ],
       "loginAt": [
         "login_at",
         "time"
@@ -757,9 +760,6 @@
       ],
       "clientKind": [
         "client_kind"
-      ],
-      "countryCode": [
-        "country_code"
       ]
     },
     "resetCredit": {
@@ -1123,20 +1123,6 @@
         "string"
       ]
     },
-    "ticketNotification": {
-      "ticketId": [
-        "ticket_id",
-        "integer"
-      ],
-      "messageId": [
-        "message_id",
-        "integer"
-      ],
-      "createdAt": [
-        "created_at",
-        "time"
-      ]
-    },
     "analyticsConfiguration": {
       "enabled": [
         "enabled",
@@ -1170,6 +1156,20 @@
       "sourceDomain": [
         "sourceDomain"
       ]
+    },
+    "ticketNotification": {
+      "ticketId": [
+        "ticket_id",
+        "integer"
+      ],
+      "messageId": [
+        "message_id",
+        "integer"
+      ],
+      "createdAt": [
+        "created_at",
+        "time"
+      ]
     }
   },
   "endpoints": {
@@ -1185,9 +1185,9 @@
       "bindings": {
         "subscriptionToken": "token"
       },
+      "key": "Client/ClientController@subscribe",
       "path": "subscriptions/{subscriptionToken}",
-      "method": "GET",
-      "key": "Client/ClientController@subscribe"
+      "method": "GET"
     },
     "getSubscriptionsSubscriptionTokenApplicationConfig": {
       "input": {
@@ -1201,9 +1201,9 @@
       "bindings": {
         "subscriptionToken": "token"
       },
+      "key": "Client/AppController@getConfig",
       "path": "subscriptions/{subscriptionToken}/application-config",
-      "method": "GET",
-      "key": "Client/AppController@getConfig"
+      "method": "GET"
     },
     "getSubscriptionsSubscriptionTokenApplicationVersion": {
       "input": {
@@ -1217,9 +1217,9 @@
       "bindings": {
         "subscriptionToken": "token"
       },
+      "key": "Client/AppController@getVersion",
       "path": "subscriptions/{subscriptionToken}/application-version",
-      "method": "GET",
-      "key": "Client/AppController@getVersion"
+      "method": "GET"
     },
     "postWebhooksTelegram": {
       "input": {},
@@ -1228,9 +1228,9 @@
       "status": 200,
       "raw": true,
       "bindings": {},
+      "key": "Guest/TelegramController@webhook",
       "path": "webhooks/telegram",
-      "method": "POST",
-      "key": "Guest/TelegramController@webhook"
+      "method": "POST"
     },
     "getWebhooksPaymentsProviderEndpointId": {
       "input": {},
@@ -1242,9 +1242,9 @@
         "provider": "method",
         "endpointId": "uuid"
       },
+      "key": "Guest/PaymentController@notify",
       "path": "webhooks/payments/{provider}/{endpointId}",
-      "method": "GET",
-      "key": "Guest/PaymentController@notify"
+      "method": "GET"
     },
     "getPublicBanners": {
       "input": {
@@ -1255,9 +1255,9 @@
       "status": 200,
       "raw": false,
       "bindings": {},
+      "key": "Guest/BannerController@fetch",
       "path": "public/banners",
-      "method": "GET",
-      "key": "Guest/BannerController@fetch"
+      "method": "GET"
     },
     "getPublicBannerImagesName": {
       "input": {},
@@ -1268,9 +1268,9 @@
       "bindings": {
         "name": "name"
       },
+      "key": "Guest/BannerController@image",
       "path": "public/banner-images/{name}",
-      "method": "GET",
-      "key": "Guest/BannerController@image"
+      "method": "GET"
     },
     "getPublicSettings": {
       "input": {},
@@ -1279,9 +1279,9 @@
       "status": 200,
       "raw": false,
       "bindings": {},
+      "key": "Guest/CommController@config",
       "path": "public/settings",
-      "method": "GET",
-      "key": "Guest/CommController@config"
+      "method": "GET"
     },
     "postAuthRegistrations": {
       "input": {
@@ -1299,9 +1299,9 @@
       "status": 201,
       "raw": false,
       "bindings": {},
+      "key": "Passport/AuthController@register",
       "path": "auth/registrations",
-      "method": "POST",
-      "key": "Passport/AuthController@register"
+      "method": "POST"
     },
     "postAuthSessions": {
       "input": {
@@ -1316,9 +1316,9 @@
       "status": 200,
       "raw": false,
       "bindings": {},
+      "key": "Passport/AuthController@login",
       "path": "auth/sessions",
-      "method": "POST",
-      "key": "Passport/AuthController@login"
+      "method": "POST"
     },
     "postAuthSessionExchanges": {
       "input": {
@@ -1329,10 +1329,10 @@
       "status": 200,
       "raw": false,
       "bindings": {},
-      "path": "auth/session-exchanges",
-      "method": "POST",
       "key": "Passport/AuthController@token2Login",
-      "description": "Atomically exchange a browser-purpose code for an independent browser session. The source session must still be active; expired or replayed codes are rejected."
+      "description": "Atomically exchange a browser-purpose code for an independent browser session. The source session must still be active; expired or replayed codes are rejected.",
+      "path": "auth/session-exchanges",
+      "method": "POST"
     },
     "postAuthPasswordResets": {
       "input": {
@@ -1346,9 +1346,9 @@
       "status": 204,
       "raw": false,
       "bindings": {},
+      "key": "Passport/AuthController@forget",
       "path": "auth/password-resets",
-      "method": "POST",
-      "key": "Passport/AuthController@forget"
+      "method": "POST"
     },
     "postAuthLoginLinks": {
       "input": {
@@ -1359,10 +1359,10 @@
       "status": 200,
       "raw": false,
       "bindings": {},
-      "path": "auth/login-links",
-      "method": "POST",
       "key": "Passport/AuthController@getQuickLoginUrl",
-      "description": "Create a HTTPS browser login link with a 60-second single-use code bound to the active source session. Long-lived credentials never appear in the URL."
+      "description": "Create a HTTPS browser login link with a 60-second single-use code bound to the active source session. Long-lived credentials never appear in the URL.",
+      "path": "auth/login-links",
+      "method": "POST"
     },
     "postAuthEmailVerifications": {
       "input": {
@@ -1377,9 +1377,9 @@
       "status": 202,
       "raw": false,
       "bindings": {},
+      "key": "Passport/CommController@sendEmailVerify",
       "path": "auth/email-verifications",
-      "method": "POST",
-      "key": "Passport/CommController@sendEmailVerify"
+      "method": "POST"
     },
     "getMeDownloadAccounts": {
       "input": {},
@@ -1388,9 +1388,9 @@
       "status": 200,
       "raw": false,
       "bindings": {},
+      "key": "User/AppleAccountController@fetch",
       "path": "me/download-accounts",
-      "method": "GET",
-      "key": "User/AppleAccountController@fetch"
+      "method": "GET"
     },
     "getMeUsageResets": {
       "input": {},
@@ -1399,9 +1399,9 @@
       "status": 200,
       "raw": false,
       "bindings": {},
+      "key": "User/UsageResetController@fetch",
       "path": "me/usage-resets",
-      "method": "GET",
-      "key": "User/UsageResetController@fetch"
+      "method": "GET"
     },
     "postMeUsageResetsConsumptions": {
       "input": {
@@ -1412,9 +1412,9 @@
       "status": 200,
       "raw": false,
       "bindings": {},
+      "key": "User/UsageResetController@consume",
       "path": "me/usage-resets/consumptions",
-      "method": "POST",
-      "key": "User/UsageResetController@consume"
+      "method": "POST"
     },
     "deleteMeSession": {
       "input": {},
@@ -1423,9 +1423,20 @@
       "status": 204,
       "raw": false,
       "bindings": {},
+      "key": "User/UserController@logout",
       "path": "me/session",
-      "method": "DELETE",
-      "key": "User/UserController@logout"
+      "method": "DELETE"
+    },
+    "getMeSession": {
+      "input": {},
+      "output": "loginState",
+      "role": "user",
+      "status": 200,
+      "raw": false,
+      "bindings": {},
+      "key": "User/UserController@checkLogin",
+      "path": "me/session",
+      "method": "GET"
     },
     "deleteMeIntegrationsTelegram": {
       "input": {},
@@ -1434,9 +1445,20 @@
       "status": 204,
       "raw": false,
       "bindings": {},
+      "key": "User/UserController@unbindTelegram",
       "path": "me/integrations/telegram",
-      "method": "DELETE",
-      "key": "User/UserController@unbindTelegram"
+      "method": "DELETE"
+    },
+    "getMeIntegrationsTelegram": {
+      "input": {},
+      "output": "bot",
+      "role": "user",
+      "status": 200,
+      "raw": false,
+      "bindings": {},
+      "key": "User/TelegramController@getBotInfo",
+      "path": "me/integrations/telegram",
+      "method": "GET"
     },
     "postMeSubscriptionCredentialRotations": {
       "input": {},
@@ -1445,9 +1467,9 @@
       "status": 200,
       "raw": false,
       "bindings": {},
+      "key": "User/UserController@resetSecurity",
       "path": "me/subscription/credential-rotations",
-      "method": "POST",
-      "key": "User/UserController@resetSecurity"
+      "method": "POST"
     },
     "getMe": {
       "input": {},
@@ -1456,47 +1478,9 @@
       "status": 200,
       "raw": false,
       "bindings": {},
+      "key": "User/UserController@info",
       "path": "me",
-      "method": "GET",
-      "key": "User/UserController@info"
-    },
-    "postMeSubscriptionPeriodAdvances": {
-      "input": {},
-      "output": "scalar",
-      "role": "user",
-      "status": 204,
-      "raw": false,
-      "bindings": {},
-      "path": "me/subscription/period-advances",
-      "method": "POST",
-      "key": "User/UserController@newPeriod"
-    },
-    "postMeGiftCardRedemptions": {
-      "input": {
-        "giftCardCode": "giftcard"
-      },
-      "output": "scalar",
-      "role": "user",
-      "status": 200,
-      "raw": false,
-      "bindings": {},
-      "path": "me/gift-card-redemptions",
-      "method": "POST",
-      "key": "User/UserController@redeemgiftcard"
-    },
-    "patchMePassword": {
-      "input": {
-        "oldPassword": "old_password",
-        "newPassword": "new_password"
-      },
-      "output": "scalar",
-      "role": "user",
-      "status": 204,
-      "raw": false,
-      "bindings": {},
-      "path": "me/password",
-      "method": "PATCH",
-      "key": "User/UserController@changePassword"
+      "method": "GET"
     },
     "patchMe": {
       "input": {
@@ -1513,9 +1497,47 @@
       "status": 204,
       "raw": false,
       "bindings": {},
+      "key": "User/UserController@update",
       "path": "me",
-      "method": "PATCH",
-      "key": "User/UserController@update"
+      "method": "PATCH"
+    },
+    "postMeSubscriptionPeriodAdvances": {
+      "input": {},
+      "output": "scalar",
+      "role": "user",
+      "status": 204,
+      "raw": false,
+      "bindings": {},
+      "key": "User/UserController@newPeriod",
+      "path": "me/subscription/period-advances",
+      "method": "POST"
+    },
+    "postMeGiftCardRedemptions": {
+      "input": {
+        "giftCardCode": "giftcard"
+      },
+      "output": "scalar",
+      "role": "user",
+      "status": 200,
+      "raw": false,
+      "bindings": {},
+      "key": "User/UserController@redeemgiftcard",
+      "path": "me/gift-card-redemptions",
+      "method": "POST"
+    },
+    "patchMePassword": {
+      "input": {
+        "oldPassword": "old_password",
+        "newPassword": "new_password"
+      },
+      "output": "scalar",
+      "role": "user",
+      "status": 204,
+      "raw": false,
+      "bindings": {},
+      "key": "User/UserController@changePassword",
+      "path": "me/password",
+      "method": "PATCH"
     },
     "getMeSubscription": {
       "input": {},
@@ -1524,9 +1546,9 @@
       "status": 200,
       "raw": false,
       "bindings": {},
+      "key": "User/UserController@getSubscribe",
       "path": "me/subscription",
-      "method": "GET",
-      "key": "User/UserController@getSubscribe"
+      "method": "GET"
     },
     "getMeSummary": {
       "input": {},
@@ -1535,20 +1557,9 @@
       "status": 200,
       "raw": false,
       "bindings": {},
+      "key": "User/UserController@getStat",
       "path": "me/summary",
-      "method": "GET",
-      "key": "User/UserController@getStat"
-    },
-    "getMeSession": {
-      "input": {},
-      "output": "loginState",
-      "role": "user",
-      "status": 200,
-      "raw": false,
-      "bindings": {},
-      "path": "me/session",
-      "method": "GET",
-      "key": "User/UserController@checkLogin"
+      "method": "GET"
     },
     "postMeCommissionTransfers": {
       "input": {
@@ -1559,9 +1570,9 @@
       "status": 204,
       "raw": false,
       "bindings": {},
+      "key": "User/UserController@transfer",
       "path": "me/commission-transfers",
-      "method": "POST",
-      "key": "User/UserController@transfer"
+      "method": "POST"
     },
     "postMeLoginLinks": {
       "input": {
@@ -1572,10 +1583,10 @@
       "status": 200,
       "raw": false,
       "bindings": {},
-      "path": "me/login-links",
-      "method": "POST",
       "key": "User/UserController@getQuickLoginUrl",
-      "description": "Create a HTTPS browser login link with a 60-second single-use code bound to the active source session. Logout, source expiry or account suspension invalidates unredeemed codes."
+      "description": "Create a HTTPS browser login link with a 60-second single-use code bound to the active source session. Logout, source expiry or account suspension invalidates unredeemed codes.",
+      "path": "me/login-links",
+      "method": "POST"
     },
     "getMeSessions": {
       "input": {},
@@ -1584,9 +1595,20 @@
       "status": 200,
       "raw": false,
       "bindings": {},
+      "key": "User/UserController@getActiveSession",
       "path": "me/sessions",
-      "method": "GET",
-      "key": "User/UserController@getActiveSession"
+      "method": "GET"
+    },
+    "deleteMeSessions": {
+      "input": {},
+      "output": "scalar",
+      "role": "user",
+      "status": 204,
+      "raw": false,
+      "bindings": {},
+      "key": "User/UserController@logoutAll",
+      "path": "me/sessions",
+      "method": "DELETE"
     },
     "deleteMeSessionsSessionId": {
       "input": {},
@@ -1597,9 +1619,9 @@
       "bindings": {
         "sessionId": "session_id"
       },
+      "key": "User/UserController@removeActiveSession",
       "path": "me/sessions/{sessionId}",
-      "method": "DELETE",
-      "key": "User/UserController@removeActiveSession"
+      "method": "DELETE"
     },
     "postMeOrders": {
       "input": {
@@ -1614,9 +1636,24 @@
       "status": 201,
       "raw": false,
       "bindings": {},
+      "key": "User/OrderController@save",
       "path": "me/orders",
-      "method": "POST",
-      "key": "User/OrderController@save"
+      "method": "POST"
+    },
+    "getMeOrders": {
+      "input": {
+        "status": "status",
+        "page": "current",
+        "pageSize": "page_size"
+      },
+      "output": "array:order",
+      "role": "user",
+      "status": 200,
+      "raw": false,
+      "bindings": {},
+      "key": "User/OrderController@fetch",
+      "path": "me/orders",
+      "method": "GET"
     },
     "postMeOrdersOrderNumberPayments": {
       "input": {
@@ -1632,9 +1669,9 @@
       "bindings": {
         "orderNumber": "trade_no"
       },
+      "key": "User/OrderController@checkout",
       "path": "me/orders/{orderNumber}/payments",
-      "method": "POST",
-      "key": "User/OrderController@checkout"
+      "method": "POST"
     },
     "getMeOrdersOrderNumberStatus": {
       "input": {},
@@ -1645,9 +1682,9 @@
       "bindings": {
         "orderNumber": "trade_no"
       },
+      "key": "User/OrderController@check",
       "path": "me/orders/{orderNumber}/status",
-      "method": "GET",
-      "key": "User/OrderController@check"
+      "method": "GET"
     },
     "getMeOrdersOrderNumber": {
       "input": {},
@@ -1658,24 +1695,9 @@
       "bindings": {
         "orderNumber": "trade_no"
       },
+      "key": "User/OrderController@detail",
       "path": "me/orders/{orderNumber}",
-      "method": "GET",
-      "key": "User/OrderController@detail"
-    },
-    "getMeOrders": {
-      "input": {
-        "status": "status",
-        "page": "current",
-        "pageSize": "page_size"
-      },
-      "output": "array:order",
-      "role": "user",
-      "status": 200,
-      "raw": false,
-      "bindings": {},
-      "path": "me/orders",
-      "method": "GET",
-      "key": "User/OrderController@fetch"
+      "method": "GET"
     },
     "getPaymentMethods": {
       "input": {
@@ -1686,9 +1708,9 @@
       "status": 200,
       "raw": false,
       "bindings": {},
+      "key": "User/OrderController@getPaymentMethod",
       "path": "payment-methods",
-      "method": "GET",
-      "key": "User/OrderController@getPaymentMethod"
+      "method": "GET"
     },
     "postMeOrdersOrderNumberCancellation": {
       "input": {},
@@ -1699,9 +1721,9 @@
       "bindings": {
         "orderNumber": "trade_no"
       },
+      "key": "User/OrderController@cancel",
       "path": "me/orders/{orderNumber}/cancellation",
-      "method": "POST",
-      "key": "User/OrderController@cancel"
+      "method": "POST"
     },
     "getCreditPackages": {
       "input": {},
@@ -1710,9 +1732,9 @@
       "status": 200,
       "raw": false,
       "bindings": {},
+      "key": "User/PlanController@credits",
       "path": "credit-packages",
-      "method": "GET",
-      "key": "User/PlanController@credits"
+      "method": "GET"
     },
     "getPlans": {
       "input": {
@@ -1723,9 +1745,9 @@
       "status": 200,
       "raw": false,
       "bindings": {},
+      "key": "User/PlanController@fetch",
       "path": "plans",
-      "method": "GET",
-      "key": "User/PlanController@fetch"
+      "method": "GET"
     },
     "getMeReferrals": {
       "input": {},
@@ -1734,9 +1756,9 @@
       "status": 200,
       "raw": false,
       "bindings": {},
+      "key": "User/InviteController@fetch",
       "path": "me/referrals",
-      "method": "GET",
-      "key": "User/InviteController@fetch"
+      "method": "GET"
     },
     "getMeCommissions": {
       "input": {
@@ -1748,9 +1770,9 @@
       "status": 200,
       "raw": false,
       "bindings": {},
+      "key": "User/InviteController@details",
       "path": "me/commissions",
-      "method": "GET",
-      "key": "User/InviteController@details"
+      "method": "GET"
     },
     "postMeInvitations": {
       "input": {
@@ -1762,9 +1784,9 @@
       "status": 202,
       "raw": false,
       "bindings": {},
+      "key": "User/InviteController@sendEmail",
       "path": "me/invitations",
-      "method": "POST",
-      "key": "User/InviteController@sendEmail"
+      "method": "POST"
     },
     "getMeInvitations": {
       "input": {
@@ -1777,9 +1799,9 @@
       "status": 200,
       "raw": false,
       "bindings": {},
+      "key": "User/InviteController@emailHistory",
       "path": "me/invitations",
-      "method": "GET",
-      "key": "User/InviteController@emailHistory"
+      "method": "GET"
     },
     "getMeNotifications": {
       "input": {
@@ -1791,9 +1813,9 @@
       "status": 200,
       "raw": false,
       "bindings": {},
+      "key": "User/NoticeController@inbox",
       "path": "me/notifications",
-      "method": "GET",
-      "key": "User/NoticeController@inbox"
+      "method": "GET"
     },
     "postMeNotificationsReadReceipts": {
       "input": {
@@ -1805,9 +1827,9 @@
       "status": 204,
       "raw": false,
       "bindings": {},
+      "key": "User/NoticeController@read",
       "path": "me/notifications/read-receipts",
-      "method": "POST",
-      "key": "User/NoticeController@read"
+      "method": "POST"
     },
     "getAnnouncements": {
       "input": {
@@ -1820,9 +1842,9 @@
       "status": 200,
       "raw": false,
       "bindings": {},
+      "key": "User/NoticeController@fetch",
       "path": "announcements",
-      "method": "GET",
-      "key": "User/NoticeController@fetch"
+      "method": "GET"
     },
     "postMeTicketsTicketIdMessages": {
       "input": {
@@ -1835,9 +1857,9 @@
       "bindings": {
         "ticketId": "id"
       },
+      "key": "User/TicketController@reply",
       "path": "me/tickets/{ticketId}/messages",
-      "method": "POST",
-      "key": "User/TicketController@reply"
+      "method": "POST"
     },
     "postMeTicketsTicketIdClosure": {
       "input": {},
@@ -1848,9 +1870,9 @@
       "bindings": {
         "ticketId": "id"
       },
+      "key": "User/TicketController@close",
       "path": "me/tickets/{ticketId}/closure",
-      "method": "POST",
-      "key": "User/TicketController@close"
+      "method": "POST"
     },
     "postMeTickets": {
       "input": {
@@ -1863,9 +1885,9 @@
       "status": 201,
       "raw": false,
       "bindings": {},
+      "key": "User/TicketController@save",
       "path": "me/tickets",
-      "method": "POST",
-      "key": "User/TicketController@save"
+      "method": "POST"
     },
     "getMeTickets": {
       "input": {
@@ -1878,9 +1900,9 @@
       "status": 200,
       "raw": false,
       "bindings": {},
+      "key": "User/TicketController@fetch",
       "path": "me/tickets",
-      "method": "GET",
-      "key": "User/TicketController@fetch"
+      "method": "GET"
     },
     "postMeCommissionWithdrawals": {
       "input": {
@@ -1892,9 +1914,9 @@
       "status": 200,
       "raw": false,
       "bindings": {},
+      "key": "User/TicketController@withdraw",
       "path": "me/commission-withdrawals",
-      "method": "POST",
-      "key": "User/TicketController@withdraw"
+      "method": "POST"
     },
     "getMeNodes": {
       "input": {},
@@ -1903,20 +1925,9 @@
       "status": 200,
       "raw": false,
       "bindings": {},
+      "key": "User/ServerController@fetch",
       "path": "me/nodes",
-      "method": "GET",
-      "key": "User/ServerController@fetch"
-    },
-    "getMeIntegrationsTelegram": {
-      "input": {},
-      "output": "bot",
-      "role": "user",
-      "status": 200,
-      "raw": false,
-      "bindings": {},
-      "path": "me/integrations/telegram",
-      "method": "GET",
-      "key": "User/TelegramController@getBotInfo"
+      "method": "GET"
     },
     "getMePreferencesOptions": {
       "input": {},
@@ -1925,9 +1936,9 @@
       "status": 200,
       "raw": false,
       "bindings": {},
+      "key": "User/CommController@config",
       "path": "me/preferences/options",
-      "method": "GET",
-      "key": "User/CommController@config"
+      "method": "GET"
     },
     "getPaymentMethodsPaymentIdPublicKey": {
       "input": {},
@@ -1938,9 +1949,9 @@
       "bindings": {
         "paymentId": "id"
       },
+      "key": "User/CommController@getStripePublicKey",
       "path": "payment-methods/{paymentId}/public-key",
-      "method": "GET",
-      "key": "User/CommController@getStripePublicKey"
+      "method": "GET"
     },
     "getKnowledgeArticles": {
       "input": {
@@ -1952,9 +1963,9 @@
       "status": 200,
       "raw": false,
       "bindings": {},
+      "key": "User/KnowledgeController@fetch",
       "path": "knowledge-articles",
-      "method": "GET",
-      "key": "User/KnowledgeController@fetch"
+      "method": "GET"
     },
     "getKnowledgeCategories": {
       "input": {},
@@ -1963,9 +1974,9 @@
       "status": 200,
       "raw": false,
       "bindings": {},
+      "key": "User/KnowledgeController@getCategory",
       "path": "knowledge-categories",
-      "method": "GET",
-      "key": "User/KnowledgeController@getCategory"
+      "method": "GET"
     },
     "getMeTrafficRecords": {
       "input": {
@@ -1978,9 +1989,9 @@
       "status": 200,
       "raw": false,
       "bindings": {},
+      "key": "User/StatController@getTrafficLog",
       "path": "me/traffic-records",
-      "method": "GET",
-      "key": "User/StatController@getTrafficLog"
+      "method": "GET"
     },
     "getMeTicketsTicketId": {
       "input": {
@@ -1994,9 +2005,9 @@
       "bindings": {
         "ticketId": "id"
       },
+      "key": "User/TicketController@fetch",
       "path": "me/tickets/{ticketId}",
-      "method": "GET",
-      "key": "User/TicketController@fetch"
+      "method": "GET"
     },
     "getKnowledgeArticlesArticleId": {
       "input": {
@@ -2009,9 +2020,9 @@
       "bindings": {
         "articleId": "id"
       },
+      "key": "User/KnowledgeController@fetch",
       "path": "knowledge-articles/{articleId}",
-      "method": "GET",
-      "key": "User/KnowledgeController@fetch"
+      "method": "GET"
     },
     "getPlansPlanId": {
       "input": {},
@@ -2022,9 +2033,9 @@
       "bindings": {
         "planId": "id"
       },
+      "key": "User/PlanController@fetch",
       "path": "plans/{planId}",
-      "method": "GET",
-      "key": "User/PlanController@fetch"
+      "method": "GET"
     },
     "getAnnouncementsNotificationId": {
       "input": {
@@ -2038,9 +2049,9 @@
       "bindings": {
         "notificationId": "id"
       },
+      "key": "User/NoticeController@fetch",
       "path": "announcements/{notificationId}",
-      "method": "GET",
-      "key": "User/NoticeController@fetch"
+      "method": "GET"
     },
     "getPublicClientInstallersInstallerIdContent": {
       "input": {},
@@ -2051,9 +2062,9 @@
       "bindings": {
         "installerId": "id"
       },
+      "key": "Public/MirrorController@download",
       "path": "public/client-installers/{installerId}/content",
-      "method": "GET",
-      "key": "Public/MirrorController@download"
+      "method": "GET"
     },
     "getMeClientConfig": {
       "input": {
@@ -2067,10 +2078,10 @@
       "status": 200,
       "raw": true,
       "bindings": {},
-      "path": "me/client-config",
-      "method": "GET",
       "key": "Client/ClientController@authenticatedConfig",
-      "description": "FastAI native YAML uses default.fastai.yaml or custom.fastai.yaml, independently of public subscription templates. Only real proxy nodes are emitted; subscription information nodes and subscription-userinfo headers are omitted. Account information is read through the account/subscription JSON APIs. Geo databases are bundled with FastAI; automatic Geo updates and remote HTTP rule providers are prohibited, including custom templates."
+      "description": "FastAI native YAML uses default.fastai.yaml or custom.fastai.yaml, independently of public subscription templates. Only real proxy nodes are emitted; subscription information nodes and subscription-userinfo headers are omitted. Account information is read through the account/subscription JSON APIs. Geo databases are bundled with FastAI; automatic Geo updates and remote HTTP rule providers are prohibited, including custom templates.",
+      "path": "me/client-config",
+      "method": "GET"
     },
     "getPublicFastaiReleasesLatest": {
       "input": {
@@ -2082,9 +2093,9 @@
       "status": 200,
       "raw": false,
       "bindings": {},
+      "key": "Guest/FastaiController@release",
       "path": "public/fastai/releases/latest",
-      "method": "GET",
-      "key": "Guest/FastaiController@release"
+      "method": "GET"
     },
     "postAuthClientAuthorizations": {
       "input": {
@@ -2098,9 +2109,9 @@
       "status": 201,
       "raw": false,
       "bindings": {},
+      "key": "Passport/ClientAuthorizationController@create",
       "path": "auth/client-authorizations",
-      "method": "POST",
-      "key": "Passport/ClientAuthorizationController@create"
+      "method": "POST"
     },
     "getMeClientAuthorizationsAuthorizationId": {
       "input": {},
@@ -2111,9 +2122,9 @@
       "bindings": {
         "authorizationId": "authorization_id"
       },
+      "key": "Passport/ClientAuthorizationController@details",
       "path": "me/client-authorizations/{authorizationId}",
-      "method": "GET",
-      "key": "Passport/ClientAuthorizationController@details"
+      "method": "GET"
     },
     "postMeClientAuthorizationsAuthorizationIdApproval": {
       "input": {},
@@ -2124,9 +2135,9 @@
       "bindings": {
         "authorizationId": "authorization_id"
       },
+      "key": "Passport/ClientAuthorizationController@approve",
       "path": "me/client-authorizations/{authorizationId}/approval",
-      "method": "POST",
-      "key": "Passport/ClientAuthorizationController@approve"
+      "method": "POST"
     },
     "postAuthClientSessionExchanges": {
       "input": {
@@ -2139,10 +2150,10 @@
       "status": 200,
       "raw": false,
       "bindings": {},
-      "path": "auth/client-session-exchanges",
-      "method": "POST",
       "key": "Passport/ClientAuthorizationController@exchange",
-      "description": "Atomically exchange an app-purpose code using S256 PKCE and the original redirect URI. Codes expire after 60 seconds and require an active source session; the resulting App session is independently revocable."
+      "description": "Atomically exchange an app-purpose code using S256 PKCE and the original redirect URI. Codes expire after 60 seconds and require an active source session; the resulting App session is independently revocable.",
+      "path": "auth/client-session-exchanges",
+      "method": "POST"
     },
     "getAuthBrowserSession": {
       "input": {},
@@ -2151,10 +2162,10 @@
       "status": 200,
       "raw": false,
       "bindings": {},
-      "path": "auth/browser-session",
-      "method": "GET",
       "key": "Passport/BrowserSessionController@show",
-      "description": "Browser-only scoped HttpOnly session. X-Browser-Client selects user/admin; mutations require an exact allowed Origin and synchronizer X-CSRF-Token. POST migrates a valid legacy token during the configured transition window."
+      "description": "Browser-only scoped HttpOnly session. X-Browser-Client selects user/admin; mutations require an exact allowed Origin and synchronizer X-CSRF-Token. POST migrates a valid legacy token during the configured transition window.",
+      "path": "auth/browser-session",
+      "method": "GET"
     },
     "postAuthBrowserSession": {
       "input": {
@@ -2165,10 +2176,10 @@
       "status": 200,
       "raw": false,
       "bindings": {},
-      "path": "auth/browser-session",
-      "method": "POST",
       "key": "Passport/BrowserSessionController@migrate",
-      "description": "Browser-only scoped HttpOnly session. X-Browser-Client selects user/admin; mutations require an exact allowed Origin and synchronizer X-CSRF-Token. POST migrates a valid legacy token during the configured transition window."
+      "description": "Browser-only scoped HttpOnly session. X-Browser-Client selects user/admin; mutations require an exact allowed Origin and synchronizer X-CSRF-Token. POST migrates a valid legacy token during the configured transition window.",
+      "path": "auth/browser-session",
+      "method": "POST"
     },
     "deleteAuthBrowserSession": {
       "input": {},
@@ -2177,10 +2188,10 @@
       "status": 204,
       "raw": false,
       "bindings": {},
-      "path": "auth/browser-session",
-      "method": "DELETE",
       "key": "Passport/BrowserSessionController@destroy",
-      "description": "Browser-only scoped HttpOnly session. X-Browser-Client selects user/admin; mutations require an exact allowed Origin and synchronizer X-CSRF-Token. POST migrates a valid legacy token during the configured transition window."
+      "description": "Browser-only scoped HttpOnly session. X-Browser-Client selects user/admin; mutations require an exact allowed Origin and synchronizer X-CSRF-Token. POST migrates a valid legacy token during the configured transition window.",
+      "path": "auth/browser-session",
+      "method": "DELETE"
     },
     "getPublicFastaiEntrypoints": {
       "input": {},
@@ -2189,9 +2200,9 @@
       "status": 200,
       "raw": false,
       "bindings": {},
+      "key": "Guest/FastaiController@entrypoints",
       "path": "public/fastai/entrypoints",
-      "method": "GET",
-      "key": "Guest/FastaiController@entrypoints"
+      "method": "GET"
     },
     "getMeNodePreviews": {
       "input": {},
@@ -2200,9 +2211,9 @@
       "status": 200,
       "raw": false,
       "bindings": {},
+      "key": "User/ServerController@previews",
       "path": "me/node-previews",
-      "method": "GET",
-      "key": "User/ServerController@previews"
+      "method": "GET"
     },
     "postMeDiagnosticReports": {
       "input": {
@@ -2215,9 +2226,9 @@
       "status": 201,
       "raw": false,
       "bindings": {},
+      "key": "User/DiagnosticController@store",
       "path": "me/diagnostic-reports",
-      "method": "POST",
-      "key": "User/DiagnosticController@store"
+      "method": "POST"
     },
     "postMeClientEvents": {
       "input": {
@@ -2230,9 +2241,9 @@
       "status": 201,
       "raw": false,
       "bindings": {},
+      "key": "User/ClientEventController@store",
       "path": "me/client-events",
-      "method": "POST",
-      "key": "User/ClientEventController@store"
+      "method": "POST"
     },
     "postMeIntegrationsTelegramBindingLinks": {
       "input": {},
@@ -2241,9 +2252,9 @@
       "status": 201,
       "raw": false,
       "bindings": {},
+      "key": "User/TelegramController@bindingLink",
       "path": "me/integrations/telegram/binding-links",
-      "method": "POST",
-      "key": "User/TelegramController@bindingLink"
+      "method": "POST"
     },
     "postMeIntegrationsTelegramConfirmation": {
       "input": {
@@ -2254,9 +2265,9 @@
       "status": 200,
       "raw": false,
       "bindings": {},
+      "key": "User/TelegramController@confirmBinding",
       "path": "me/integrations/telegram/confirmation",
-      "method": "POST",
-      "key": "User/TelegramController@confirmBinding"
+      "method": "POST"
     },
     "postMeIntegrationsTelegramGroupInvitations": {
       "input": {},
@@ -2265,9 +2276,9 @@
       "status": 201,
       "raw": false,
       "bindings": {},
+      "key": "User/TelegramController@joinLink",
       "path": "me/integrations/telegram/group-invitations",
-      "method": "POST",
-      "key": "User/TelegramController@joinLink"
+      "method": "POST"
     },
     "postWebhooksMailProvider": {
       "input": {},
@@ -2278,9 +2289,9 @@
       "bindings": {
         "provider": "provider"
       },
+      "key": "MailController@webhook",
       "path": "webhooks/mail/{provider}",
-      "method": "POST",
-      "key": "MailController@webhook"
+      "method": "POST"
     },
     "getMailUnsubscribeToken": {
       "input": {},
@@ -2291,9 +2302,9 @@
       "bindings": {
         "token": "token"
       },
+      "key": "MailController@unsubscribe",
       "path": "mail/unsubscribe/{token}",
-      "method": "GET",
-      "key": "MailController@unsubscribe"
+      "method": "GET"
     },
     "postMailUnsubscribeToken": {
       "input": {},
@@ -2304,9 +2315,9 @@
       "bindings": {
         "token": "token"
       },
+      "key": "MailController@unsubscribe",
       "path": "mail/unsubscribe/{token}",
-      "method": "POST",
-      "key": "MailController@unsubscribe"
+      "method": "POST"
     },
     "postMeTicketReadReceipts": {
       "input": {
@@ -2318,57 +2329,55 @@
       "status": 204,
       "raw": false,
       "bindings": {},
+      "key": "User/NoticeController@readTicket",
       "path": "me/notifications/ticket-read-receipts",
-      "method": "POST",
-      "key": "User/NoticeController@readTicket"
+      "method": "POST"
     },
     "getMeCoupons": {
       "key": "User/CouponController@getMeCoupons",
       "role": "user",
-      "path": "me/coupons",
-      "method": "GET",
       "input": {},
       "bindings": {},
       "output": "couponWallet",
-      "raw": false
+      "raw": false,
+      "path": "me/coupons",
+      "method": "GET"
     },
     "getMeCouponOffers": {
       "key": "User/CouponController@getMeCouponOffers",
       "role": "user",
-      "path": "me/coupon-offers",
-      "method": "GET",
       "input": {},
       "bindings": {},
       "output": "couponOffers",
-      "raw": false
+      "raw": false,
+      "path": "me/coupon-offers",
+      "method": "GET"
     },
     "postMeCouponClaims": {
       "key": "User/CouponController@postMeCouponClaims",
       "role": "user",
-      "path": "me/coupon-claims",
-      "method": "POST",
       "input": {
         "couponId": "coupon_id"
       },
       "bindings": {},
       "output": "couponClaim",
-      "raw": false
+      "raw": false,
+      "path": "me/coupon-claims",
+      "method": "POST"
     },
     "getMeMfa": {
       "key": "User/MfaController@state",
-      "path": "me/security/mfa",
-      "method": "GET",
       "input": {},
       "bindings": {},
       "role": "user",
       "output": "mfaState",
       "status": 200,
-      "raw": false
+      "raw": false,
+      "path": "me/security/mfa",
+      "method": "GET"
     },
     "postMeMfaChallenges": {
       "key": "User/MfaController@start",
-      "path": "me/security/mfa/challenges",
-      "method": "POST",
       "input": {
         "purpose": "purpose",
         "password": "password",
@@ -2379,12 +2388,12 @@
       "role": "user",
       "output": "mfaSetup",
       "status": 201,
-      "raw": false
+      "raw": false,
+      "path": "me/security/mfa/challenges",
+      "method": "POST"
     },
     "postMfaEmails": {
       "key": "Passport/MfaController@sendEmail",
-      "path": "auth/mfa/emails",
-      "method": "POST",
       "input": {
         "challengeId": "challengeId"
       },
@@ -2392,12 +2401,12 @@
       "role": "public",
       "output": "scalar",
       "status": 204,
-      "raw": false
+      "raw": false,
+      "path": "auth/mfa/emails",
+      "method": "POST"
     },
     "postMfaVerifications": {
       "key": "Passport/MfaController@finish",
-      "path": "auth/mfa/verifications",
-      "method": "POST",
       "input": {
         "challengeId": "challengeId",
         "verificationCode": "verificationCode",
@@ -2409,18 +2418,9 @@
       "role": "public",
       "output": "mfaVerification",
       "status": 200,
-      "raw": false
-    },
-    "deleteMeSessions": {
-      "input": {},
-      "output": "scalar",
-      "role": "user",
-      "status": 204,
       "raw": false,
-      "bindings": {},
-      "path": "me/sessions",
-      "method": "DELETE",
-      "key": "User/UserController@logoutAll"
+      "path": "auth/mfa/verifications",
+      "method": "POST"
     },
     "getPublicAnalyticsConfiguration": {
       "input": {},
@@ -2429,9 +2429,9 @@
       "status": 200,
       "raw": false,
       "bindings": {},
+      "key": "ProductAnalyticsController@configuration",
       "path": "public/analytics/configuration",
-      "method": "GET",
-      "key": "ProductAnalyticsController@configuration"
+      "method": "GET"
     },
     "postPublicAnalyticsEvents": {
       "input": {
@@ -2448,9 +2448,9 @@
       "status": 204,
       "raw": false,
       "bindings": {},
+      "key": "ProductAnalyticsController@store",
       "path": "public/analytics/events",
-      "method": "POST",
-      "key": "ProductAnalyticsController@store"
+      "method": "POST"
     }
   }
 }

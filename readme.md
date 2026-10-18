@@ -10,23 +10,13 @@
 
 后台仅保留这两类节点；底层协议在节点内选择。旧独立节点类型已退役，旧配置表将在升级时删除，升级前请迁移仍在使用的线路。参见 [节点接入与类型说明](docs/v2box.md)。
 
-## 原版迁移步骤
+## 本分支安装与升级
 
-按以下步骤进行面板代码文件迁移：
+以 [当前分支升级流程](docs/update-script.md) 为准。目标分支为 `codex/payment-icon-picker`；不要切换到上游 master 或更改远程地址来升级此分支。
 
-    git remote set-url origin https://github.com/wyx2685/v2board  
-    git checkout master  
-    ./update.sh  
+升级前统一 CLI、PHP-FPM、队列和调度使用的 PHP 8.4+，完成数据库备份，并先运行新版 `update.sh --check`。正式升级按脚本白名单执行迁移、更新依赖、验证前端产物和处理工作进程。自动维护与 `--jobs-stopped` 手动维护的差别、外部脚本下载方式及回滚要求见上述文档。
 
-
-按以下步骤配置缓存驱动为redis，然后刷新设置缓存，重启队列:
-
-    sed -i 's/^CACHE_DRIVER=.*/CACHE_DRIVER=redis/' .env
-    php artisan config:clear
-    php artisan config:cache
-    php artisan horizon:terminate
-
-最后进入后台重新保存主题： 主题配置-选择default主题-主题设置-确定保存
+新安装使用本分支安装流程与 SQL，部署站点的 Web 根目录必须指向 `public`。前后台使用配套的 `public/console` 构建资源，不再使用旧版主题切换步骤。目录边界和 API 契约生成见 [项目结构说明](docs/project-structure.md)。
 
 # **V2Board**
 

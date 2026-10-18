@@ -6,7 +6,8 @@ use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Facades\DB;
-use App\Services\{MailCampaign,MailDeliveryLog};
+use App\Services\Mail\MailCampaign;
+use App\Services\Mail\MailDeliveryLog;
 class SendCampaignMailJob implements ShouldQueue {
     use Dispatchable,InteractsWithQueue,Queueable,SerializesModels;
     public $tries=1; public $timeout=60;

@@ -2,6 +2,8 @@
 
 namespace App\Services;
 
+use App\Services\Mail\ProductMail;
+
 use App\Jobs\SendEmailJob;
 use App\Models\User;
 use App\Utils\Helper;

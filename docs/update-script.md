@@ -32,21 +32,21 @@
 
 ```bash
 cd /www/wwwroot/api.adanalytics-service.com
-curl -fL https://raw.githubusercontent.com/lenaanderson5566-ops/v2board/codex/react-typescript-console/update.sh -o /tmp/v2board-update.sh
-bash /tmp/v2board-update.sh --php /www/server/php/81/bin/php --composer "$PWD/composer.phar" --resolve-dependencies --check
+curl -fL https://raw.githubusercontent.com/lenaanderson5566-ops/v2board/codex/payment-icon-picker/update.sh -o /tmp/v2board-update.sh
+bash /tmp/v2board-update.sh --php /www/server/php/84/bin/php --composer "$PWD/composer.phar" --resolve-dependencies --check
 ```
 
 预检通过后，暂停写入、队列和调度，完成数据库备份，运行以下命令（数据库备份路径须替换为实际文件）：
 
 ```bash
-bash /tmp/v2board-update.sh --php /www/server/php/81/bin/php --composer "$PWD/composer.phar" --resolve-dependencies --database-backup /www/backup/本次数据库备份.sql.gz --backup-dir /www/backup/v2board-upgrades --jobs-stopped
+bash /tmp/v2board-update.sh --php /www/server/php/84/bin/php --composer "$PWD/composer.phar" --resolve-dependencies --database-backup /www/backup/本次数据库备份.sql.gz --backup-dir /www/backup/v2board-upgrades --jobs-stopped
 ```
 
 成功保持维护模式。宝塔重启对应 PHP-FPM 后执行指定 PHP 的 `artisan up` 并验收，再恢复原队列和调度。回滚时需结合原 Composer 文件和完整归档恢复，本地新增依赖会让升级后的 `composer.json` 显示本地修改，这是预期结果。
 
-## 先准备
+## 手动维护模式示例
 
-1. 不启用 `--resolve-dependencies` 时，在与生产一致的 PHP 环境验证目标分支并准备对应的 `composer.lock`。本仓库忽略锁文件；锁文件与合并后 composer.json 不一致会停止。
+1. 默认使用目标提交中已跟踪的 `composer.lock`，先在与生产一致的 PHP 8.4+ 环境验证。只有需要覆盖锁文件时才传 `--lock-file`；本地新增依赖需要 `--resolve-dependencies` 时在临时目录解析。锁文件与合并后 composer.json 不一致会停止。
 2. 暂停站点写入、原队列和定时任务，完成数据库备份，放在站点目录之外。可先用原代码执行 `php artisan down`；脚本接受并保留已有维护模式。
 3. 使用网站服务账户执行；如用 root，默认仅将 `storage` 和 `bootstrap/cache` 属主设为 www，可用 `--web-user` 调整。不递归修改整个站点属主。
 4. 把新版脚本下载至 checkout 之外；旧分支里的旧 update.sh 不能用于这次升级。仅接受上述可合并的 Composer 新增依赖，其他未提交 tracked-file 修改会停止。
@@ -54,12 +54,12 @@ bash /tmp/v2board-update.sh --php /www/server/php/81/bin/php --composer "$PWD/co
 示例路径均需替换为实际值，PHP 版本应与网站 PHP-FPM 一致：
 
 ```bash
-curl -fL https://raw.githubusercontent.com/lenaanderson5566-ops/v2board/codex/react-typescript-console/update.sh \
+curl -fL https://raw.githubusercontent.com/lenaanderson5566-ops/v2board/codex/payment-icon-picker/update.sh \
   -o /tmp/v2board-update.sh
 
 bash /tmp/v2board-update.sh \
   --project /www/wwwroot/你的站点 \
-  --php /www/server/php/82/bin/php \
+  --php /www/server/php/84/bin/php \
   --composer /实际路径/composer.phar \
   --lock-file /www/backup/目标分支已验证的composer.lock \
   --check
@@ -74,7 +74,7 @@ bash /tmp/v2board-update.sh \
 ```bash
 bash /tmp/v2board-update.sh \
   --project /www/wwwroot/你的站点 \
-  --php /www/server/php/82/bin/php \
+  --php /www/server/php/84/bin/php \
   --composer /实际路径/composer.phar \
   --lock-file /www/backup/目标分支已验证的composer.lock \
   --database-backup /www/backup/本次维护窗口数据库备份.sql.gz \
@@ -82,14 +82,14 @@ bash /tmp/v2board-update.sh \
   --jobs-stopped
 ```
 
-`--jobs-stopped` 是操作者对实际暂停状态的声明，脚本不猜测或停止其他站点的 Supervisor 进程，也不改 cron。数据库备份必须存在且非空；脚本不能证明该备份可恢复，应事先演练恢复。数据库备份与锁文件不上传到 Git。
+`--jobs-stopped` 是操作者对实际暂停状态的声明，脚本不猜测或停止其他站点的 Supervisor 进程，也不改 cron。提供 `--database-backup` 时，文件必须存在且非空；脚本不能证明该备份可恢复，应事先演练恢复。数据库备份不能上传到 Git；项目的 composer.lock 随代码提交，本地合并依赖的候选锁文件留在私有备份。
 
 ## 执行范围
 
 - 在私有目录保存原提交编号、原分支、配置校验和、数据库备份副本及站点归档（包含原 vendor、lock、配置、storage；排除 .git 和 node_modules）。归档校验失败即停止。
 - 仅允许目标分支快进；本地目标分支若有额外提交会停止，不执行 reset --hard。
 - 从经过预检的锁文件 install 依赖，检查运行平台；不下载 Composer、不执行 composer update 或 require。
-- 仅运行 `2026_10_01_000001_add_trusted_x_forwarded_for_to_v2node.php` 、`2026_10_02_000001_create_email_invitations.php` 与 `2026_10_02_000002_add_language_to_users.php`。前者按字段存在情况补充节点字段，后者新增 `v2_email_invitation` 邮件邀请记录表；语言迁移新增可空的 `v2_user.language` 字段，不回填已有账户。另定向执行用量重置（000003）、公告已读（000004）和独立额度（000005）迁移，详见下文。发现未列入白名单的迁移差异会停止并要求单独审查。
+- 仅运行当前 update.sh 明确列入白名单的定向迁移，涵盖账户、账务、节点、邮件、浏览器会话、MFA 及已批准的旧结构清理。完整路径和顺序以该次目标提交的脚本为准；发现未列入白名单的迁移差异会停止并要求单独审查。下面的单项说明用于解释业务变化，不代替完整白名单。
 - 不运行历史 update.sql、v2board:update、migrate:fresh、cache:clear、optimize:clear 或 Redis 清空。配置、路由、视图缓存单独处理。
 - 校验生产 `.env` 和业务配置内容没有变化。使用私有备份权限，同时确保新发布的 PHP／静态文件对网站进程可读。
 

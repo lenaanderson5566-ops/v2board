@@ -18020,19 +18020,7 @@
           "ticketReplies": {
             "type": "array",
             "items": {
-              "type": "object",
-              "properties": {
-                "ticketId": {
-                  "type": "integer"
-                },
-                "messageId": {
-                  "type": "integer"
-                },
-                "createdAt": {
-                  "type": "string",
-                  "format": "date-time"
-                }
-              }
+              "$ref": "#/components/schemas/ticketNotification"
             }
           },
           "ticketUnread": {
@@ -20162,6 +20150,16 @@
             "enum": [
               true
             ]
+          },
+          "attributionVersion": {
+            "type": "integer",
+            "enum": [
+              1
+            ]
+          },
+          "sourceDomain": {
+            "type": "string",
+            "maxLength": 253
           }
         }
       },
@@ -20251,6 +20249,26 @@
             "description": "External hostname only; no IP literals, URLs, paths, credentials, or local/internal/test/invalid suffixes."
           }
         }
+      },
+      "ticketNotification": {
+        "type": "object",
+        "properties": {
+          "ticketId": {
+            "type": "integer"
+          },
+          "messageId": {
+            "type": "integer"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "ticketId",
+          "messageId",
+          "createdAt"
+        ]
       }
     }
   }

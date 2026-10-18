@@ -1,7 +1,8 @@
 <?php
 namespace App\Http\Controllers\V10;
 use Illuminate\Http\Request;
-use App\Services\{MailAudience,MailWebhook};
+use App\Services\Mail\MailAudience;
+use App\Services\Mail\MailWebhook;
 class MailController extends \App\Http\Controllers\Controller
 {
     public function webhook(Request $request,string $provider) { app(MailWebhook::class)->receive($provider,$request); return response('ok',200); }

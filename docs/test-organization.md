@@ -201,3 +201,29 @@ php tests/run.php --only=mfa,mfa-api,mfa-concurrency
 一次性副本和随机测试库验证六组全部通过：路由审计 2465 项、接口清单 824 项、浏览器会话 490 项、邮件邀请 42 项、框架 85 项及全新安装管理员创建/认证和重复迁移回归。前端 v10-api、browser-session、ClientDownload 共 32 项通过，类型检查及生产构建通过。结果位于忽略目录 storage/app/test-organization/compatibility-cleanup。没有改动安装 SQL 或数据库迁移，没有操作业务数据库或发送真实邮件。
 
 补充旧库 retired-node-tables 与 update-script 两组隔离回归全部通过，结果见同目录 upgrade.json；连同上述六组，本轮八组后端检查均通过。
+
+## 契约单一维护源与目录整理
+
+V10 统一由 `api/v10/openapi.json` 生成七项发布文件，删除两套竞争文档生成器。复用 `api-v10-inventory.php` 验证规范源与运行字段投影/端点、前后端完整契约的一致性；前端 `v10-api.test.ts` 验证两侧定义不再遗漏原生端点。生成器另在临时目录验证确定性、只读漂移失败、重复 operationId/别名、缺失引用及清单顺序的拒绝行为，`--check` 通过。
+
+14 个邮件服务迁入 `App/Services/Mail`，同步所有直接及分组导入。邮件服务实现内容不变，Job 类与载荷不变。复用 `product-mail.php` 增加序列化任务恢复后的连接/队列保留、载荷不持有服务实例及模拟投递断言。
+
+一次性项目副本与随机数据库覆盖 12 组：api-route-audit、api-v10-inventory、api-v10、browser-session、content-translations、email-invitations、framework-upgrade、mail-install-schema、notification-delivery、product-mail、retired-node-tables、update-script。首次 notification-delivery 发现分组导入遗漏，修正并复测邮件两组、路由审计及接口清单全部通过；最终十二组均通过，接口清单 1224 项、路由审计 2465 项。测试登记校验为 112 个入口及 14 个辅助文件。结果位于忽略目录 `storage/app/test-organization/structure-refactor/{backend,mail-recheck}.json`。
+
+全新安装验证完整 install.sql、管理员创建和认证以及重复迁移；旧库验证退役表迁移及升级脚本。未修改启动骨架、安装 SQL、迁移、update.sh，也未操作业务数据库或发送真实邮件。生产部署仍需刷新 Composer 自动加载并重启长驻工作进程，生成器仅为开发工具。
+
+目录整理复查补充：修复 mapping 迁移遗漏节点表格后说明的问题，规范说明现在用 operation-table/node-table 两个标记保留所有原有段落；工单通知 ticketId/messageId/createdAt 恢复必填，inbox 复用同一具名 schema。复用 v10-api.test.ts 增加说明段落完整性及必填字段回归，相关三个前端测试模块共 77 项及类型检查通过。逐项比对确认拆分的 18 个 UI 声明与原实现一致，14 个邮件服务实现内容、PHP 运行契约和安装升级边界不变。
+
+复查补正后的 api-v10-inventory 在一次性副本和随机数据库再次通过（1224 项），结果见同目录 review.json。统一生成只读检查及 git diff --check 均通过。
+
+## 上线前全面回归
+
+在新的完整一次性副本及运行器生成的随机数据库、独立 Redis 前缀执行全部 112 个登记入口：API 9、集成 48、回归 21、安全 21、单元 13。首次 111 项通过，console-smoke 因副本排除 storage 时漏带仓库跟踪的 GeoIP 文件而失败；补齐三份数据库资源后单独复跑通过。最终所有 112 项均通过，未放宽测试断言。日志与汇总位于忽略目录 `storage/app/test-organization/preflight/{backend,smoke-recheck,summary}.json`。
+
+覆盖后台操作与字段边界、V10/保留路由鉴权、MFA/会话并发、支付结算、邮件/工单/队列、节点和订阅、完整 install.sql、旧库迁移、用量并发、升级排空/重启/失败保护。623 个 PHP 文件语法检查通过，契约 --check 及 diff 空白检查通过。前端 104 个文件、636 项通过，生产构建和资源闭包核对通过。
+
+Composer validate、当前 PHP 8.4.26 下生产平台要求和锁文件审计通过，审计无 advisories/abandoned；npm 生产依赖审计为零。独立部署目录生成优化自动加载（14 个迁移后的邮件服务均从该目录解析），生产配置/路由/视图缓存可重建，337 条缓存路由保留鉴权边界。公开管理员 MFA 登录入口按既有精确例外校验，另有有效绑定挑战/角色/限流回归，未误加登录前无法满足的 admin 中间件。
+
+`composer install --dry-run --no-dev` 计划为 0 安装、0 更新、34 个开发包移除；未下载或修改原 vendor。无开发依赖演练最初沿用了开发包的发现缓存，导致 Collision Provider 找不到；将独立目录安装元数据过滤为锁文件生产包并清除其旧缓存后，包发现、配置/路由/视图缓存、route:list 全部通过。这是隔离演练修正，不是应用代码修复，也不等同于在生产执行安装。
+
+本轮修正部署文档中的旧 PHP 8.1/8.2、旧分支地址、忽略 composer.lock 及根 readme 切到上游 master 的过时指导；没有修改启动骨架、数据库迁移或 update.sh。用户确认列出的有历史金额校验限制的旧支付适配器均未启用；保留该限制说明，不把未启用当作协议已修复。未推送或部署生产，真实域名/TLS/CDN、PHP-FPM/Supervisor、实际邮件交付与支付商回调仍需受控上线验收。未发送真实邮件或付款，未操作业务数据库。

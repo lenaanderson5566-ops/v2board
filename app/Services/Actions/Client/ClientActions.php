@@ -90,9 +90,9 @@ class ClientActions
         $uaType = \App\Services\ClientIdentity::identify((string) $request->userAgent());
         $user = $request->user;
         // Imported URLs pin the selected language; old client URLs use the saved preference.
-        $language = \App\Services\ProductMail::language($request->input('language'))
-            ?: \App\Services\ProductMail::language($user->language)
-            ?: \App\Services\ProductMail::language(app()->getLocale()) ?: 'zh-CN';
+        $language = \App\Services\Mail\ProductMail::language($request->input('language'))
+            ?: \App\Services\Mail\ProductMail::language($user->language)
+            ?: \App\Services\Mail\ProductMail::language(app()->getLocale()) ?: 'zh-CN';
         app()->setLocale($language);
         $clientUser = \App\Services\TrafficCreditService::forClient($user);
         // account not expired and is not banned.

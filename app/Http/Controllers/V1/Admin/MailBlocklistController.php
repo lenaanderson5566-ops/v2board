@@ -3,7 +3,8 @@ namespace App\Http\Controllers\V1\Admin;
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\{Crypt,DB};
-use App\Services\{MailBlocklist,MailDeliveryLog};
+use App\Services\Mail\MailBlocklist;
+use App\Services\Mail\MailDeliveryLog;
 
 class MailBlocklistController extends \App\Http\Controllers\Controller
 {

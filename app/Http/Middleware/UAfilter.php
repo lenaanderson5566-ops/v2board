@@ -20,7 +20,7 @@ class UAfilter
         if (strpos($request->header('User-Agent'), 'MicroMessenger') !== false || strpos($request->header('User-Agent'), 'QQ/') !== false) {
             $language = 'zh-CN';
             foreach ($request->getLanguages() as $candidate) {
-                $matched = \App\Services\ProductMail::language($candidate);
+                $matched = \App\Services\Mail\ProductMail::language($candidate);
                 if ($matched) { $language = $matched; break; }
             }
             $heading = e(__('Unsupported browser', [], $language));

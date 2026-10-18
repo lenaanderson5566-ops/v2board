@@ -27,11 +27,11 @@ class ConfigController extends Controller
     public function previewMail(Request $request)
     {
         $request->validate([
-            'template' => 'required|in:' . implode(',', \App\Services\ProductMail::TYPES),
+            'template' => 'required|in:' . implode(',', \App\Services\Mail\ProductMail::TYPES),
             'language' => 'required|in:' . implode(',', \App\Services\LanguagePreferenceService::SUPPORTED),
             'subject' => 'nullable|string|max:200', 'content' => 'nullable|string|max:100000',
         ]);
-        $data = app(\App\Services\ProductMail::class)->data([
+        $data = app(\App\Services\Mail\ProductMail::class)->data([
             'template_name'=>$request->input('template'), 'language'=>$request->input('language'),
             'subject'=>$request->input('subject') ?: 'Preview',
             'template_value'=>['code'=>'123456', 'url'=>config('v2board.app_url'),
@@ -216,7 +216,7 @@ class ConfigController extends Controller
                 'password_limit_expire' => config('v2board.password_limit_expire', 60)
             ]
         ];
-        $data['email']=array_merge($data['email'], \App\Services\MailChannel::settings());
+        $data['email']=array_merge($data['email'], \App\Services\Mail\MailChannel::settings());
         if ($key && isset($data[$key])) {
             return response([
                 'data' => [

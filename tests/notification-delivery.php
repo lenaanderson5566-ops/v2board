@@ -23,7 +23,13 @@ if (!app()->environment(['local', 'testing'])) throw new RuntimeException('Local
 use Illuminate\Support\Facades\{DB, Schema, Cache, Http, Crypt, Mail, Queue};
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Http\Request;
-use App\Services\{MailgunSender, MailDeliveryLog, MailRateLimiter, TelegramCommunityService, TelegramDeliveryService, TelegramService, TelegramText};
+use App\Services\Mail\MailgunSender;
+use App\Services\Mail\MailDeliveryLog;
+use App\Services\Mail\MailRateLimiter;
+use App\Services\TelegramCommunityService;
+use App\Services\TelegramDeliveryService;
+use App\Services\TelegramService;
+use App\Services\TelegramText;
 use App\Jobs\{SendEmailJob, SendTelegramPaymentJob};
 use App\Models\{User, Order, MailLog};
 use App\Exceptions\MailgunSendException;
@@ -87,7 +93,7 @@ echo "PASS migrations and duplicate identity backfill\n";
 // Transport boundaries and classifications, US/EU and secrets.
 config(['v2board.email_mailgun_domain'=>'mg.example.test','v2board.email_mailgun_region'=>'us',
     'v2board.email_mailgun_api_key'=>Crypt::encryptString('TEST_KEY_SENTINEL'), 'v2board.email_from_address'=>'sender@example.test']);
-$data=app(App\Services\ProductMail::class)->data(['template_name'=>'test','language'=>'en-US']);
+$data=app(App\Services\Mail\ProductMail::class)->data(['template_name'=>'test','language'=>'en-US']);
 $sender=new MailgunSender;
 foreach (['us'=>'api.mailgun.net','eu'=>'api.eu.mailgun.net'] as $region=>$host) {
     config(['v2board.email_mailgun_region'=>$region]);

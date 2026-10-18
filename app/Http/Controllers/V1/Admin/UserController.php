@@ -329,11 +329,11 @@ class UserController extends Controller
         $purpose=$request->input('purpose');
         if($purpose==='marketing') {
             abort_unless(config('v2board.email_announcements_enabled',1),422,'推广邮件已暂停。');
-            try { \App\Services\MailAudience::origin(); } catch (\Throwable $e) { abort(422,'请先配置 HTTPS 邮件回调与退订 API 地址。'); }
+            try { \App\Services\Mail\MailAudience::origin(); } catch (\Throwable $e) { abort(422,'请先配置 HTTPS 邮件回调与退订 API 地址。'); }
         }
         $builder=User::orderBy('id');
         $this->filter($request,$builder); $this->checkScope($request,$builder);
-        $id=\App\Services\MailCampaign::create($builder,$request->validated(),(int)$request->user['id']);
+        $id=\App\Services\Mail\MailCampaign::create($builder,$request->validated(),(int)$request->user['id']);
         return response(['data'=>['campaign_id'=>$id]],202);
     }
 
@@ -341,7 +341,7 @@ class UserController extends Controller
     {
         $request->validate(['purpose'=>'required|in:service,marketing']);
         $builder=User::orderBy('id'); $this->filter($request,$builder); $this->checkScope($request,$builder);
-        return response(['data'=>\App\Services\MailCampaign::preview($builder,$request->input('purpose'))]);
+        return response(['data'=>\App\Services\Mail\MailCampaign::preview($builder,$request->input('purpose'))]);
     }
 
     public function ban(Request $request)

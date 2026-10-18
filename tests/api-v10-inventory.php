@@ -5,6 +5,21 @@ set_exception_handler(function($e) { fwrite(STDERR,$e->getMessage()."\n"); exit(
 $assert = \Tests\Support\Assertions::counter($checks);
 $entries=json_decode(file_get_contents(base_path('docs/api-v10/endpoints.json')),true);
 $openapi=json_decode(file_get_contents(base_path('docs/api-v10/openapi.json')),true);
+$source=json_decode(file_get_contents(base_path('api/v10/openapi.json')),true);
+$runtime=App\Http\Resources\V10\Resource::contracts();
+$browser=json_decode(file_get_contents(base_path('frontend/src/shared/v10-contracts.json')),true);
+$assert($runtime['schemas']===$browser['schemas'], 'Browser and server projections must share one generated source');
+$assert($runtime['endpoints']===$browser['endpoints'], 'Browser and server endpoint inventories must agree');
+foreach ($runtime['endpoints'] as $id=>$contract) {
+    $operation=$source['paths']['/'.$contract['path']][strtolower($contract['method'])];
+    $expected=$operation['x-runtime'];
+    $expected['path']=$contract['path']; $expected['method']=$contract['method'];
+    $assert($operation['operationId']===$id && $expected==$contract, 'Canonical operation differs: '.$id);
+}
+foreach ($runtime['schemas'] as $name=>$fields) foreach ($fields as $field=>$spec) {
+    $assert(($source['components']['schemas'][$name]['properties'][$field]['x-runtime-field']??null)===$spec, 'Canonical projection differs: '.$name.'.'.$field);
+}
+$assert(!str_contains(json_encode($openapi), '"x-runtime'), 'Published OpenAPI excludes internal projections');
 $mapped=array_column($entries,'action');
 $routes=app('router')->getRoutes();
 foreach ($routes as $route) {

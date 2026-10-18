@@ -2,7 +2,7 @@
 namespace App\Services\Actions\Guest;
 
 use App\Models\Banner;
-use App\Services\ProductMail;
+use App\Services\Mail\ProductMail;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Storage;

@@ -388,6 +388,10 @@ $account=App\Models\User::create(['email'=>$address,'banned'=>0,'announcement_em
 $q=App\Models\User::where('id',$account->id);
 $assert(MailCampaign::preview($q,'service')['manual_blocklist']===1 && MailCampaign::preview($q,'marketing')['eligible']===0,'Campaign preview ignored block');
 $assert(!$account->fresh()->banned,'Mail restriction banned account');
+try { MailBlocklist::add($address,'existing account',1); throw new RuntimeException('Existing account accepted into blocklist'); }
+catch (Illuminate\Validation\ValidationException $e) { $checks++; }
+// Reactivation below exercises an unregistered address; the historical account fixture is no longer needed.
+$account->delete();
 MailBlocklist::change($hash,1,'note','reviewed note',2);
 $reject(fn()=>MailBlocklist::change($hash,1,'release',null,1),409);
 DB::table('v2_mail_suppression')->insert(['recipient_hash'=>$hash,'email'=>MailDeliveryLog::mask($address),'reason'=>'bounced','created_at'=>time(),'updated_at'=>time()]);

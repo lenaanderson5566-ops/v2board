@@ -8,8 +8,6 @@ use App\Models\TicketMessage;
 use App\Models\User;
 use App\Services\TicketService;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Cache;
-use Illuminate\Support\Facades\DB;
 
 class TicketController extends Controller
 {

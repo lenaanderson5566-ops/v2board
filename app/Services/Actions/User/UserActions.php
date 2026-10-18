@@ -27,7 +27,8 @@ class UserActions
     {
         $user = User::findOrFail($request->user['id']);
         return response(['data' => (new AuthService($user))->removeCurrentSession(
-            $request->input('auth_data') ?? $request->header('authorization')
+            $request->header('authorization') ?? ($request->isJson()
+                ? $request->json('auth_data') : ($request->request->all()['auth_data'] ?? null))
         )]);
     }
 

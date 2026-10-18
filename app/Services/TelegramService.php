@@ -82,52 +82,6 @@ class TelegramService {
         ]);
     }
 
-    public function discoverCommands(string $directory): array
-    {
-        $commands = [];
-
-        foreach (glob($directory . '/*.php') as $file) {
-            if (!in_array(basename($file, '.php'), ['Start', 'Bind', 'UnBind', 'Group'], true)) continue;
-            $className = 'App\\Plugins\\Telegram\\Commands\\' . basename($file, '.php');
-
-            if (!class_exists($className)) {
-                require_once $file;
-            }
-
-            if (!class_exists($className)) {
-                continue;
-            }
-
-            try {
-                $ref = new \ReflectionClass($className);
-
-                if (
-                    $ref->hasProperty('command') &&
-                    $ref->hasProperty('description')
-                ) {
-                    $commandProp = $ref->getProperty('command');
-                    $descProp = $ref->getProperty('description');
-
-                    $command = $commandProp->isStatic()
-                        ? $commandProp->getValue()
-                        : $ref->newInstanceWithoutConstructor()->command;
-
-                    $description = $descProp->isStatic()
-                        ? $descProp->getValue()
-                        : $ref->newInstanceWithoutConstructor()->description;
-
-                    $commands[] = [
-                        'command' => ltrim($command, '/'),
-                        'description' => $description,
-                    ];
-                }
-            } catch (\ReflectionException $e) {
-                continue;
-            }
-        }
-        return $commands;
-    }
-    
     public function setMyCommands(array $commands)
     {
         $this->request('setMyCommands', [

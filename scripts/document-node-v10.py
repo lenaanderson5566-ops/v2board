@@ -6,7 +6,7 @@ root = Path(__file__).resolve().parent.parent
 node = json.loads((root / 'docs/api-v10/node-api.json').read_text(encoding='utf-8'))
 target = root / 'docs/api-v10/openapi.json'
 document = json.loads(target.read_text(encoding='utf-8'))
-document['info']['description'] = 'User API and V2Box machine API. Administrative, staff, operations and legacy node contracts remain available separately.'
+document['info']['description'] = 'User API and V2Box machine API. Administrative, operations and legacy node contracts remain available separately. The unfinished staff API is retired.'
 document['paths'] = {path: value for path, value in document['paths'].items() if not path.startswith('/nodes/v2box/')}
 document['paths'].update(node['paths'])
 document['components']['schemas'].update(node['schemas'])

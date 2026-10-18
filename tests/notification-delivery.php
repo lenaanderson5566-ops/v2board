@@ -59,7 +59,7 @@ $reject = function (callable $fn, int $status) use ($assert) {
 };
 Schema::create('v2_user', function (Blueprint $t) {
     $t->bigIncrements('id'); $t->string('email')->unique(); $t->bigInteger('telegram_id')->nullable(); $t->string('language')->nullable();
-    $t->integer('is_staff')->default(0); $t->integer('is_admin')->default(0); $t->integer('banned')->default(0); $t->integer('plan_id')->nullable(); $t->bigInteger('expired_at')->nullable();
+    $t->integer('is_admin')->default(0); $t->integer('banned')->default(0); $t->integer('plan_id')->nullable(); $t->bigInteger('expired_at')->nullable();
     $t->bigInteger('created_at')->nullable(); $t->bigInteger('updated_at')->nullable();
 });
 Schema::create('v2_order', function (Blueprint $t) {

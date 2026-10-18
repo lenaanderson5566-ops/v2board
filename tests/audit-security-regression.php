@@ -5,35 +5,71 @@ set_exception_handler(function(Throwable $e){fwrite(STDERR,get_class($e).': '.$e
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Http\Request;
-DB::beginTransaction(); $auth=null; $userAuth=null; \Illuminate\Support\Facades\Queue::fake();
+DB::beginTransaction(); $auth=null; $userAuth=null; $adminAuth=null; \Illuminate\Support\Facades\Queue::fake();
 $checks=0; $assert = \Tests\Support\Assertions::counter($checks);
 try {
- $make=function($role){return User::create(['email'=>'audit-'.bin2hex(random_bytes(5)).'@example.com','password'=>password_hash('Original-test-123',PASSWORD_DEFAULT),'uuid'=>App\Utils\Helper::guid(true),'token'=>App\Utils\Helper::guid(),'is_admin'=>$role==='admin'?1:0,'is_staff'=>$role==='staff'?1:0]);};
- $staff=$make('staff');$admin=$make('admin');$user=$make('user');
- $auth=new App\Services\AuthService($staff);$token=$auth->generateAuthData(Request::create('/'))['auth_data'];
+ $make=function($role){return User::create(['email'=>'audit-'.bin2hex(random_bytes(5)).'@example.com','password'=>password_hash('Original-test-123',PASSWORD_DEFAULT),'uuid'=>App\Utils\Helper::guid(true),'token'=>App\Utils\Helper::guid(),'is_admin'=>$role==='admin'?1:0]);};
+ $restricted=$make('user');$admin=$make('admin');$user=$make('user');
+ $auth=new App\Services\AuthService($restricted);$token=$auth->generateAuthData(Request::create('/'))['auth_data'];
  $kernel=app(Illuminate\Contracts\Http\Kernel::class);
  $call=function($path,$method,$data)use($kernel,$token){$r=Request::create($path,$method,$data,[],[],['HTTP_AUTHORIZATION'=>$token,'HTTP_ACCEPT'=>'application/json']);return $kernel->handle($r);};
  $r=$call('/api/v1/staff/user/update','POST',['id'=>$admin->id,'email'=>$admin->email,'password'=>'Changed-test-123','banned'=>0]);
  $assert($r->getStatusCode()===404 && password_verify('Original-test-123',$admin->fresh()->password),'Staff cannot reset admin password');
  $r=$call('/api/v1/staff/user/getUserInfoById','GET',['id'=>$user->id]);$data=json_decode($r->getContent(),true)['data']??[];
- $assert($r->getStatusCode()===200 && !array_intersect(['password','token','uuid','password_salt'],array_keys($data)),'No credentials in staff response');
+ $assert($r->getStatusCode()===404 && !$data,'Retired staff details expose no user data');
+ // Administrative account responses must not serialize password material or inviter credentials.
+ $user->update(['invite_user_id'=>$admin->id]);
+ $adminAuth=new App\Services\AuthService($admin);
+ $adminToken=$adminAuth->generateAuthData(Request::create('/'))['auth_data'];
+ $adminPath='/api/v1/'.config('v2board.secure_path', config('v2board.frontend_admin_path', hash('crc32b', config('app.key'))));
+ $as=function($path,$credential,$params=[])use($kernel){return $kernel->handle(Request::create($path,'GET',$params,[],[],['HTTP_AUTHORIZATION'=>$credential,'HTTP_ACCEPT'=>'application/json']));};
+ $secrets=['password','password_algo','password_salt','token','uuid','auth_data','is_staff'];
+ $assert(!array_intersect(['password','password_algo','password_salt'],array_keys($user->toArray())) && password_verify('Original-test-123',$user->password),'Model serialization hides password material without breaking verification');
+ $r=$as($adminPath.'/user/fetch',$adminToken,['filter'=>[['key'=>'id','condition'=>'=','value'=>$user->id]]]);
+ $listed=json_decode($r->getContent(),true)['data'][0]??[];
+ $assert($r->getStatusCode()===200 && ($listed['id']??null)===$user->id,'Administrator user list works');
+ $assert(!array_intersect($secrets,array_keys($listed)),'Administrator list omits raw credentials');
+ $assert(($listed['subscribe_url']??null)===App\Utils\Helper::getSubscribeUrl($user->token),'Authorized administrator subscription-link operation remains available');
+ $r=$as($adminPath.'/user/getUserInfoById',$adminToken,['id'=>$user->id]);
+ $detail=json_decode($r->getContent(),true)['data']??[];
+ $assert($r->getStatusCode()===200 && ($detail['id']??null)===$user->id && !array_intersect($secrets,array_keys($detail)),'Administrator details omit raw credentials');
+ $inviter=$detail['invite_user']??[];
+ $assert(($inviter['id']??null)===$admin->id && ($inviter['email']??null)===$admin->email && !array_diff(array_keys($inviter),['id','email']),'Inviter is projected to identity fields only');
+ $ordinaryAuth=new App\Services\AuthService($user);
+ $ordinaryToken=$ordinaryAuth->generateAuthData(Request::create('/'))['auth_data'];
+ $userAuth=$ordinaryAuth;
+ foreach ([$token,$ordinaryToken] as $credential) {
+     foreach (['user/fetch','user/getUserInfoById'] as $endpoint) {
+         $assert($as($adminPath.'/'.$endpoint,$credential,['id'=>$admin->id])->getStatusCode()===403,'Non-administrator sessions cannot read administrator account resources');
+     }
+ }
+ $r=$as('/api/v1/user/info',$ordinaryToken,['id'=>$admin->id,'user'=>['id'=>$admin->id,'is_admin'=>1]]);
+ $me=json_decode($r->getContent(),true)['data']??[];
+ $assert($r->getStatusCode()===200 && ($me['id']??null)===$user->id && !array_intersect(['password','password_algo','password_salt','token'],array_keys($me)),'Legacy account info ignores forged user context and exposes no password or subscription token');
  $filter=[['key'=>'id','condition'=>'=','value'=>$user->id]];
  $r=$call('/api/v1/staff/user/ban','POST',['filter'=>$filter]);
- $assert($r->getStatusCode()===200 && $user->fresh()->banned===1,'Filtered ban works');
+ $assert($r->getStatusCode()===404 && $user->fresh()->banned===0,'Retired staff ban cannot mutate an ordinary user');
  $r=$call('/api/v1/staff/user/ban','POST',['filter'=>[['key'=>'id','condition'=>'=','value'=>$admin->id]]]);
- $assert($r->getStatusCode()===200 && !$admin->fresh()->banned,'Batch ban excludes administrators');
+ $assert($r->getStatusCode()===404 && !$admin->fresh()->banned,'Retired staff batch ban cannot mutate administrators');
  $r=$call('/api/v1/staff/user/ban','POST',['filter'=>[['key'=>'password','condition'=>'=','value'=>'x']]]);
- $assert($r->getStatusCode()===422,'Sensitive filter rejected');
+ $assert($r->getStatusCode()===404,'Retired staff filtering is inaccessible');
  $r=$call('/api/v1/staff/user/sendMail','POST',['filter'=>$filter,'subject'=>'Audit fixture','content'=>'Fixture','purpose'=>'service','request_key'=>(string)Illuminate\Support\Str::uuid()]);
- $assert($r->getStatusCode()===200,'Mail filter works');
- \Illuminate\Support\Facades\Queue::assertPushed(\App\Jobs\SendEmailJob::class,1);
+ $assert($r->getStatusCode()===404,'Retired staff mail cannot be dispatched');
+ \Illuminate\Support\Facades\Queue::assertNotPushed(\App\Jobs\SendEmailJob::class);
  $r=$call('/api/v1/staff/user/sendMail','POST',['filter'=>[['key'=>'id','condition'=>'=','value'=>$admin->id]],'subject'=>'Audit fixture','content'=>'Fixture']);
- \Illuminate\Support\Facades\Queue::assertPushed(\App\Jobs\SendEmailJob::class,1);
+ \Illuminate\Support\Facades\Queue::assertNotPushed(\App\Jobs\SendEmailJob::class);
  $userAuth=new App\Services\AuthService($user);$userToken=$userAuth->generateAuthData(Request::create('/'))['auth_data'];
  $r=$call('/api/v1/staff/user/update','POST',['id'=>$user->id,'email'=>$user->email,'password'=>'Changed-test-123','banned'=>0]);
- $assert($r->getStatusCode()===200 && password_verify('Changed-test-123',$user->fresh()->password),'Normal user update remains available');
- $assert(!App\Services\AuthService::decryptAuthData($userToken),'Password change revokes previous sessions');
- $r=$call('/api/v1/staff/user/update','POST',['id'=>$staff->id,'email'=>$staff->email,'password'=>'Changed-test-123','banned'=>0]);
+ $assert($r->getStatusCode()===404 && password_verify('Original-test-123',$user->fresh()->password),'Retired staff update cannot change ordinary user password');
+ $assert(App\Services\AuthService::decryptAuthData($userToken)!==false,'Rejected staff password reset cannot revoke target sessions');
+ foreach (['password','email'] as $changed) {
+     $beforeChange=$userAuth->generateAuthData(Request::create('/'))['auth_data'];
+     $params=['id'=>$user->id,'email'=>$user->fresh()->email,'banned'=>0,'is_admin'=>0];
+     $params[$changed]=$changed==='password'?'Admin-reset-test-123':'admin-updated-'.bin2hex(random_bytes(5)).'@example.com';
+     $r=$kernel->handle(Request::create($adminPath.'/user/update','POST',$params,[],[],['HTTP_AUTHORIZATION'=>$adminToken,'HTTP_ACCEPT'=>'application/json']));
+     $assert($r->getStatusCode()===200 && !App\Services\AuthService::decryptAuthData($beforeChange),'Administrative '.$changed.' change revokes previous user sessions');
+ }
+ $r=$call('/api/v1/staff/user/update','POST',['id'=>$restricted->id,'email'=>$restricted->email,'password'=>'Changed-test-123','banned'=>0]);
  $assert($r->getStatusCode()===404,'Staff cannot edit staff accounts');
  $epay=new App\Payments\EPay(['key'=>'local-fixture-key']);
  $p=['money'=>'0.01','out_trade_no'=>'test-order','trade_no'=>'fixture','trade_status'=>'TRADE_SUCCESS'];ksort($p);$p['sign']=md5(stripslashes(urldecode(http_build_query($p))).'local-fixture-key');$p['sign_type']='MD5';
@@ -130,4 +166,4 @@ try {
  $params['money']='0.01';
  $assert($qr->notify($params)===false,'EPay QR rejects altered signed amount');
  echo "Audit security regression: $checks checks passed\n";
-} finally {if($userAuth)$userAuth->removeAllSession();if($auth)$auth->removeAllSession();DB::rollBack();}
+} finally {if($adminAuth)$adminAuth->removeAllSession();if($userAuth)$userAuth->removeAllSession();if($auth)$auth->removeAllSession();DB::rollBack();}

@@ -2,7 +2,6 @@
 
 namespace App\Jobs;
 
-use App\Models\StatServer;
 use App\Models\StatUser;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;

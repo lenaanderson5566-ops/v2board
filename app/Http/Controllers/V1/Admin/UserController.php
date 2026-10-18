@@ -7,7 +7,6 @@ use App\Http\Requests\Admin\UserFetch;
 use App\Http\Requests\Admin\UserGenerate;
 use App\Http\Requests\Admin\UserSendMail;
 use App\Http\Requests\Admin\UserUpdate;
-use App\Jobs\SendEmailJob;
 use App\Models\InviteCode;
 use App\Models\EmailInvitation;
 use App\Models\Ticket;
@@ -23,6 +22,16 @@ use Illuminate\Support\Facades\Cache;
 
 class UserController extends Controller
 {
+    private const USER_FIELDS = [
+        'id', 'invite_user_id', 'telegram_id', 'email', 'language', 'display_timezone',
+        'currency', 'balance', 'discount', 'commission_type', 'commission_rate',
+        'commission_balance', 't', 'u', 'd', 'transfer_enable', 'credit_balance',
+        'device_limit', 'banned', 'is_admin', 'last_login_at', 'last_login_ip',
+        'group_id', 'plan_id', 'speed_limit', 'auto_renewal', 'remind_expire',
+        'remind_traffic', 'announcement_email', 'remind_service', 'expired_at',
+        'remarks', 'created_at', 'updated_at',
+    ];
+
     public function usageResetPreview(Request $request)
     {
         return response(['data' => ['count' => User::count()]]);
@@ -66,10 +75,8 @@ class UserController extends Controller
         $pageSize = min(100, max(10, (int) $request->input('pageSize', 10)));
         $sortType = in_array($request->input('sort_type'), ['ASC', 'DESC']) ? $request->input('sort_type') : 'DESC';
         $sort = $request->input('sort') ? $request->input('sort') : 'created_at';
-        $userModel = User::select(
-            DB::raw('*'),
-            DB::raw('(u+d) as total_used')
-        )
+        // Token is needed only to build the administrator's subscription link.
+        $userModel = User::select(array_merge(self::USER_FIELDS, ['token', DB::raw('(u+d) as total_used')]))
             ->orderBy($sort, $sortType);
         $this->filter($request, $userModel);
         $total = $userModel->count();
@@ -113,6 +120,7 @@ class UserController extends Controller
             $res[$i]['alive_ip'] = $countalive;
             $res[$i]['ips'] = implode(', ', $ips);
             $res[$i]['subscribe_url'] = Helper::getSubscribeUrl($res[$i]['token']);
+            $res[$i]->makeHidden('token');
         }
         return response([
             'data' => $res,
@@ -125,10 +133,10 @@ class UserController extends Controller
         if (empty($request->input('id'))) {
             abort(500, '参数错误');
         }
-        $user = User::find($request->input('id'));
+        $user = User::select(self::USER_FIELDS)->find($request->input('id'));
         if (!$user) abort(404, '用户不存在');
         if ($user->invite_user_id) {
-            $user['invite_user'] = User::find($user->invite_user_id);
+            $user['invite_user'] = User::select(['id', 'email'])->find($user->invite_user_id);
         }
         return response([
             'data' => $user
@@ -169,13 +177,12 @@ class UserController extends Controller
             $params['invite_user_id'] = null;
         }
 
-        if (isset($params['banned']) && (int)$params['banned'] === 1) {
-            $authService = new AuthService($user);
-            $authService->removeAllSession();
-        }
+        $revoke = isset($params['password']) || $user->email !== $params['email']
+            || (int)($params['banned'] ?? 0) === 1;
 
         try {
             $user->update($params);
+            if ($revoke) (new AuthService($user))->removeAllSession();
         } catch (\Exception $e) {
             abort(500, '保存失败');
         }

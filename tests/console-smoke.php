@@ -18,6 +18,7 @@ $call = function (string $path, ?array $body = null, ?string $token = null, ?str
 };
 Illuminate\Support\Facades\DB::beginTransaction();
 $auth = null;
+$failure = null;
 try {
     $user = App\Models\User::create([
         'email' => 'console-smoke-' . bin2hex(random_bytes(5)) . '@example.com',
@@ -32,8 +33,8 @@ try {
         'uuid' => App\Utils\Helper::guid(true), 'token' => App\Utils\Helper::guid(),
         'invite_user_id' => $user->id,
     ]);
-    $editUser = ['id' => $subject->id, 'email' => $subject->email, 'banned' => 0, 'is_admin' => 0, 'is_staff' => 0, 'transfer_enable' => 10737418240, 'u' => 536870912, 'd' => 1073741824, 'commission_type' => 2];
-    $response = $call('/api/v1/' . $securePath . '/user/update', $editUser, $token);
+    $editUser = ['id' => $subject->id, 'email' => $subject->email, 'banned' => 0, 'is_admin' => 0, 'transfer_enable' => 10737418240, 'u' => 536870912, 'd' => 1073741824, 'commission_type' => 2];
+    $response = $call('/api/v1/' . $securePath . '/user/update', $editUser + ['is_staff'=>1], $token);
     $subject->refresh();
     $assert($response->getStatusCode() === 200 && $subject->u == 536870912 && $subject->d == 1073741824 && $subject->commission_type == 2, 'User traffic and commission fields did not persist');
     $assert($subject->invite_user_id == $user->id, 'Unrelated user update cleared the inviter');
@@ -50,16 +51,18 @@ try {
     $assert($response->getStatusCode() === 200 && $payload['total'] === 1 && $payload['data'][0]['id'] === $subject->id, 'Nested user filtering/sorting failed');
     $response = $call('/api/v1/' . $securePath . '/user/dumpCSV', ['filter' => $scope], $token);
     $csv = array_map('str_getcsv', explode("\n", trim(substr($response->getContent(), 3))));
-    $assert($response->getStatusCode() === 200 && strpos($response->headers->get('Content-Type'), 'text/csv') === 0 && count($csv) === 2 && $csv[1][4] === '7', 'Scoped CSV or device count failed');
+    $deviceColumn = array_search('设备数限制', $csv[0], true);
+    $assert($response->getStatusCode() === 200 && strpos($response->headers->get('Content-Type'), 'text/csv') === 0 && count($csv) === 2 && $deviceColumn !== false && $csv[1][$deviceColumn] === '7', 'Scoped CSV or device count failed');
     foreach (['ban', 'allDel'] as $method) {
         $assert($call('/api/v1/' . $securePath . '/user/' . $method, [], $token)->getStatusCode() === 422, 'Unfiltered destructive operation accepted: ' . $method);
         $assert($call('/api/v1/' . $securePath . '/user/' . $method, ['filter' => $scope, 'expected_count' => 2], $token)->getStatusCode() === 409, 'Changed operation scope accepted: ' . $method);
     }
     $assert($subject->refresh()->banned === 0 && App\Models\User::find($subject->id), 'Rejected operation changed the user');
     Illuminate\Support\Facades\Bus::fake();
-    $response = $call('/api/v1/' . $securePath . '/user/sendMail', ['filter' => $scope, 'expected_count' => 1, 'subject' => 'test', 'content' => '<p>test</p>'], $token);
-    $jobs = Illuminate\Support\Facades\Bus::dispatched(App\Jobs\SendEmailJob::class);
-    $assert($response->getStatusCode() === 200 && $jobs->count() === 1 && $jobs->first()->queue === 'send_email_mass', 'Scoped mail did not reach the mass-mail queue');
+    $response = $call('/api/v1/' . $securePath . '/user/sendMail', ['filter' => $scope, 'expected_count' => 1, 'request_key' => (string) Illuminate\Support\Str::uuid(), 'purpose' => 'service', 'subject' => 'test', 'content' => '<p>test</p>'], $token);
+    $campaignId = json_decode($response->getContent(), true)['data']['campaign_id'] ?? null;
+    $recipients = Illuminate\Support\Facades\DB::table('v2_mail_campaign_recipient')->where('campaign_id', $campaignId)->get();
+    $assert($response->getStatusCode() === 202 && $recipients->count() === 1 && (int) $recipients->first()->user_id === $subject->id && $recipients->first()->status === 'queued', 'Scoped mail did not reach the campaign queue');
     $suffix = 'console-batch-' . bin2hex(random_bytes(5)) . '.invalid';
     $response = $call('/api/v1/' . $securePath . '/user/generate', ['email_suffix' => $suffix, 'generate_count' => 2, 'password' => '=test,quoted'], $token);
     $csv = array_map('str_getcsv', explode("\n", trim(substr($response->getContent(), 3))));
@@ -327,6 +330,8 @@ try {
     $assert(strpos($call('/')->getContent(), '<title>' . e(config('v2board.app_name', 'V2Board')) . '</title>') !== false && strpos($call('/')->getContent(), $footer) === false, 'Public landing metadata or footer isolation failed');
     $assert(strpos($call('/' . $securePath)->getContent(), $footer) === false, 'User footer leaked into admin shell');
     echo "Console smoke tests: {$checks} checks passed\n";
+} catch (Throwable $error) {
+    $failure = $error;
 } finally {
     if ($auth) $auth->removeAllSession();
     Illuminate\Support\Facades\DB::rollBack();
@@ -334,3 +339,4 @@ try {
     config(['v2board' => $originalConfig]);
     Illuminate\Support\Facades\Artisan::call('config:cache');
 }
+if ($failure) { fwrite(STDERR, $failure->getMessage() . "\n"); exit(1); }

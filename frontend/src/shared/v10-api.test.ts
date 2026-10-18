@@ -3,6 +3,14 @@ import { v10Request } from './v10-api';
 import { subscriptionUrl } from './import-links';
 
 describe('V10 wire contracts', () => {
+  it('keeps browser registration session metadata without synthesizing a native token', () => {
+    const registration = v10Request('passport/auth/register', {email:'new@example.com',password:'Testing!2026',is_admin:1});
+    expect(registration.url).toBe('/api/v10/auth/registrations');
+    expect(JSON.parse(registration.body!)).toEqual({email:'new@example.com',password:'Testing!2026'});
+    const session = {accountId:12,authenticated:true,csrfToken:'csrf-fixture',expiresAt:'2026-11-01T00:00:00Z'};
+    expect(registration.decode({data:session}).data).toEqual(session);
+    expect(registration.decode({data:session}).data).not.toHaveProperty('auth_data');
+  });
   it('decodes payment classification without confusing assets with settlement currency', () => {
     const result = v10Request('user/order/getPaymentMethod').decode({data:[{id:3,category:'crypto',asset:'USDT',network:'tron',networkName:'TRON (TRC20)',networkIconUrl:'/payment-icons/crypto-trx.svg',assetIconUrl:'/payment-icons/crypto-usdt.svg',currency:'CNY',fixedFee:100}]});
     expect(result.data[0]).toMatchObject({id:3,category:'crypto',asset:'USDT',network:'tron',network_name:'TRON (TRC20)',network_icon:'/payment-icons/crypto-trx.svg',currency:'CNY',handling_fee_fixed:100});

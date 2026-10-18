@@ -3,7 +3,7 @@
   "info": {
     "title": "FastDog user API",
     "version": "10.0.0",
-    "description": "User API and V2Box machine API. Administrative, staff, operations and legacy node contracts remain available separately."
+    "description": "User API and V2Box machine API. Administrative, operations and legacy node contracts remain available separately. The unfinished staff API is retired."
   },
   "servers": [
     {
@@ -1103,6 +1103,13 @@
                 "schema": {
                   "type": "string"
                 }
+              },
+              "Cache-Control": {
+                "schema": {
+                  "type": "string",
+                  "example": "private, no-store"
+                },
+                "description": "Authenticated user and authentication responses must not be stored."
               }
             },
             "content": {
@@ -1225,7 +1232,8 @@
               }
             }
           }
-        }
+        },
+        "description": "Browser registration requires X-Browser-Client, CSRF and an exact allowed Origin; grants a scoped HttpOnly cookie and returns only browserSession metadata. Native clients retain Bearer authentication output."
       }
     },
     "/auth/sessions": {
@@ -1258,6 +1266,13 @@
                 "schema": {
                   "type": "string"
                 }
+              },
+              "Cache-Control": {
+                "schema": {
+                  "type": "string",
+                  "example": "private, no-store"
+                },
+                "description": "Authenticated user and authentication responses must not be stored."
               }
             },
             "content": {
@@ -1420,6 +1435,13 @@
                 "schema": {
                   "type": "string"
                 }
+              },
+              "Cache-Control": {
+                "schema": {
+                  "type": "string",
+                  "example": "private, no-store"
+                },
+                "description": "Authenticated user and authentication responses must not be stored."
               }
             },
             "content": {
@@ -1576,6 +1598,13 @@
                 "schema": {
                   "type": "string"
                 }
+              },
+              "Cache-Control": {
+                "schema": {
+                  "type": "string",
+                  "example": "private, no-store"
+                },
+                "description": "Authenticated user and authentication responses must not be stored."
               }
             }
           },
@@ -1705,6 +1734,13 @@
                 "schema": {
                   "type": "string"
                 }
+              },
+              "Cache-Control": {
+                "schema": {
+                  "type": "string",
+                  "example": "private, no-store"
+                },
+                "description": "Authenticated user and authentication responses must not be stored."
               }
             },
             "content": {
@@ -1868,6 +1904,13 @@
                 "schema": {
                   "type": "string"
                 }
+              },
+              "Cache-Control": {
+                "schema": {
+                  "type": "string",
+                  "example": "private, no-store"
+                },
+                "description": "Authenticated user and authentication responses must not be stored."
               }
             },
             "content": {
@@ -2152,6 +2195,13 @@
                 "schema": {
                   "type": "string"
                 }
+              },
+              "Cache-Control": {
+                "schema": {
+                  "type": "string",
+                  "example": "private, no-store"
+                },
+                "description": "Authenticated user and authentication responses must not be stored."
               }
             },
             "content": {
@@ -2308,6 +2358,13 @@
                 "schema": {
                   "type": "string"
                 }
+              },
+              "Cache-Control": {
+                "schema": {
+                  "type": "string",
+                  "example": "private, no-store"
+                },
+                "description": "Authenticated user and authentication responses must not be stored."
               }
             },
             "content": {
@@ -2461,6 +2518,13 @@
                 "schema": {
                   "type": "string"
                 }
+              },
+              "Cache-Control": {
+                "schema": {
+                  "type": "string",
+                  "example": "private, no-store"
+                },
+                "description": "Authenticated user and authentication responses must not be stored."
               }
             },
             "content": {
@@ -2624,6 +2688,13 @@
                 "schema": {
                   "type": "string"
                 }
+              },
+              "Cache-Control": {
+                "schema": {
+                  "type": "string",
+                  "example": "private, no-store"
+                },
+                "description": "Authenticated user and authentication responses must not be stored."
               }
             }
           },
@@ -2749,6 +2820,13 @@
                 "schema": {
                   "type": "string"
                 }
+              },
+              "Cache-Control": {
+                "schema": {
+                  "type": "string",
+                  "example": "private, no-store"
+                },
+                "description": "Authenticated user and authentication responses must not be stored."
               }
             },
             "content": {
@@ -2902,6 +2980,13 @@
                 "schema": {
                   "type": "string"
                 }
+              },
+              "Cache-Control": {
+                "schema": {
+                  "type": "string",
+                  "example": "private, no-store"
+                },
+                "description": "Authenticated user and authentication responses must not be stored."
               }
             }
           },
@@ -3027,6 +3112,13 @@
                 "schema": {
                   "type": "string"
                 }
+              },
+              "Cache-Control": {
+                "schema": {
+                  "type": "string",
+                  "example": "private, no-store"
+                },
+                "description": "Authenticated user and authentication responses must not be stored."
               }
             },
             "content": {
@@ -3180,6 +3272,13 @@
                 "schema": {
                   "type": "string"
                 }
+              },
+              "Cache-Control": {
+                "schema": {
+                  "type": "string",
+                  "example": "private, no-store"
+                },
+                "description": "Authenticated user and authentication responses must not be stored."
               }
             },
             "content": {
@@ -3333,6 +3432,13 @@
                 "schema": {
                   "type": "string"
                 }
+              },
+              "Cache-Control": {
+                "schema": {
+                  "type": "string",
+                  "example": "private, no-store"
+                },
+                "description": "Authenticated user and authentication responses must not be stored."
               }
             },
             "content": {
@@ -3484,6 +3590,13 @@
                 "schema": {
                   "type": "string"
                 }
+              },
+              "Cache-Control": {
+                "schema": {
+                  "type": "string",
+                  "example": "private, no-store"
+                },
+                "description": "Authenticated user and authentication responses must not be stored."
               }
             }
           },
@@ -3621,6 +3734,13 @@
                 "schema": {
                   "type": "string"
                 }
+              },
+              "Cache-Control": {
+                "schema": {
+                  "type": "string",
+                  "example": "private, no-store"
+                },
+                "description": "Authenticated user and authentication responses must not be stored."
               }
             }
           },
@@ -3748,6 +3868,13 @@
                 "schema": {
                   "type": "string"
                 }
+              },
+              "Cache-Control": {
+                "schema": {
+                  "type": "string",
+                  "example": "private, no-store"
+                },
+                "description": "Authenticated user and authentication responses must not be stored."
               }
             },
             "content": {
@@ -3911,6 +4038,13 @@
                 "schema": {
                   "type": "string"
                 }
+              },
+              "Cache-Control": {
+                "schema": {
+                  "type": "string",
+                  "example": "private, no-store"
+                },
+                "description": "Authenticated user and authentication responses must not be stored."
               }
             }
           },
@@ -4048,6 +4182,13 @@
                 "schema": {
                   "type": "string"
                 }
+              },
+              "Cache-Control": {
+                "schema": {
+                  "type": "string",
+                  "example": "private, no-store"
+                },
+                "description": "Authenticated user and authentication responses must not be stored."
               }
             },
             "content": {
@@ -4201,6 +4342,13 @@
                 "schema": {
                   "type": "string"
                 }
+              },
+              "Cache-Control": {
+                "schema": {
+                  "type": "string",
+                  "example": "private, no-store"
+                },
+                "description": "Authenticated user and authentication responses must not be stored."
               }
             },
             "content": {
@@ -4354,6 +4502,13 @@
                 "schema": {
                   "type": "string"
                 }
+              },
+              "Cache-Control": {
+                "schema": {
+                  "type": "string",
+                  "example": "private, no-store"
+                },
+                "description": "Authenticated user and authentication responses must not be stored."
               }
             }
           },
@@ -4491,6 +4646,13 @@
                 "schema": {
                   "type": "string"
                 }
+              },
+              "Cache-Control": {
+                "schema": {
+                  "type": "string",
+                  "example": "private, no-store"
+                },
+                "description": "Authenticated user and authentication responses must not be stored."
               }
             },
             "content": {
@@ -4654,6 +4816,13 @@
                 "schema": {
                   "type": "string"
                 }
+              },
+              "Cache-Control": {
+                "schema": {
+                  "type": "string",
+                  "example": "private, no-store"
+                },
+                "description": "Authenticated user and authentication responses must not be stored."
               }
             },
             "content": {
@@ -4808,6 +4977,13 @@
                 "schema": {
                   "type": "string"
                 }
+              },
+              "Cache-Control": {
+                "schema": {
+                  "type": "string",
+                  "example": "private, no-store"
+                },
+                "description": "Authenticated user and authentication responses must not be stored."
               }
             }
           },
@@ -4942,6 +5118,13 @@
                 "schema": {
                   "type": "string"
                 }
+              },
+              "Cache-Control": {
+                "schema": {
+                  "type": "string",
+                  "example": "private, no-store"
+                },
+                "description": "Authenticated user and authentication responses must not be stored."
               }
             }
           },
@@ -5069,6 +5252,13 @@
                 "schema": {
                   "type": "string"
                 }
+              },
+              "Cache-Control": {
+                "schema": {
+                  "type": "string",
+                  "example": "private, no-store"
+                },
+                "description": "Authenticated user and authentication responses must not be stored."
               }
             },
             "content": {
@@ -5261,6 +5451,13 @@
                 "schema": {
                   "type": "string"
                 }
+              },
+              "Cache-Control": {
+                "schema": {
+                  "type": "string",
+                  "example": "private, no-store"
+                },
+                "description": "Authenticated user and authentication responses must not be stored."
               }
             },
             "content": {
@@ -5425,6 +5622,13 @@
                 "schema": {
                   "type": "string"
                 }
+              },
+              "Cache-Control": {
+                "schema": {
+                  "type": "string",
+                  "example": "private, no-store"
+                },
+                "description": "Authenticated user and authentication responses must not be stored."
               }
             },
             "content": {
@@ -5596,6 +5800,13 @@
                 "schema": {
                   "type": "string"
                 }
+              },
+              "Cache-Control": {
+                "schema": {
+                  "type": "string",
+                  "example": "private, no-store"
+                },
+                "description": "Authenticated user and authentication responses must not be stored."
               }
             },
             "content": {
@@ -5757,6 +5968,13 @@
                 "schema": {
                   "type": "string"
                 }
+              },
+              "Cache-Control": {
+                "schema": {
+                  "type": "string",
+                  "example": "private, no-store"
+                },
+                "description": "Authenticated user and authentication responses must not be stored."
               }
             },
             "content": {
@@ -5920,6 +6138,13 @@
                 "schema": {
                   "type": "string"
                 }
+              },
+              "Cache-Control": {
+                "schema": {
+                  "type": "string",
+                  "example": "private, no-store"
+                },
+                "description": "Authenticated user and authentication responses must not be stored."
               }
             },
             "content": {
@@ -6084,6 +6309,13 @@
                 "schema": {
                   "type": "string"
                 }
+              },
+              "Cache-Control": {
+                "schema": {
+                  "type": "string",
+                  "example": "private, no-store"
+                },
+                "description": "Authenticated user and authentication responses must not be stored."
               }
             }
           },
@@ -6211,6 +6443,13 @@
                 "schema": {
                   "type": "string"
                 }
+              },
+              "Cache-Control": {
+                "schema": {
+                  "type": "string",
+                  "example": "private, no-store"
+                },
+                "description": "Authenticated user and authentication responses must not be stored."
               }
             },
             "content": {
@@ -6374,6 +6613,13 @@
                 "schema": {
                   "type": "string"
                 }
+              },
+              "Cache-Control": {
+                "schema": {
+                  "type": "string",
+                  "example": "private, no-store"
+                },
+                "description": "Authenticated user and authentication responses must not be stored."
               }
             },
             "content": {
@@ -6537,6 +6783,13 @@
                 "schema": {
                   "type": "string"
                 }
+              },
+              "Cache-Control": {
+                "schema": {
+                  "type": "string",
+                  "example": "private, no-store"
+                },
+                "description": "Authenticated user and authentication responses must not be stored."
               }
             },
             "content": {
@@ -6690,6 +6943,13 @@
                 "schema": {
                   "type": "string"
                 }
+              },
+              "Cache-Control": {
+                "schema": {
+                  "type": "string",
+                  "example": "private, no-store"
+                },
+                "description": "Authenticated user and authentication responses must not be stored."
               }
             },
             "content": {
@@ -6860,6 +7120,13 @@
                 "schema": {
                   "type": "string"
                 }
+              },
+              "Cache-Control": {
+                "schema": {
+                  "type": "string",
+                  "example": "private, no-store"
+                },
+                "description": "Authenticated user and authentication responses must not be stored."
               }
             },
             "content": {
@@ -7016,6 +7283,13 @@
                 "schema": {
                   "type": "string"
                 }
+              },
+              "Cache-Control": {
+                "schema": {
+                  "type": "string",
+                  "example": "private, no-store"
+                },
+                "description": "Authenticated user and authentication responses must not be stored."
               }
             },
             "content": {
@@ -7201,6 +7475,13 @@
                 "schema": {
                   "type": "string"
                 }
+              },
+              "Cache-Control": {
+                "schema": {
+                  "type": "string",
+                  "example": "private, no-store"
+                },
+                "description": "Authenticated user and authentication responses must not be stored."
               }
             },
             "content": {
@@ -7374,6 +7655,13 @@
                 "schema": {
                   "type": "string"
                 }
+              },
+              "Cache-Control": {
+                "schema": {
+                  "type": "string",
+                  "example": "private, no-store"
+                },
+                "description": "Authenticated user and authentication responses must not be stored."
               }
             },
             "content": {
@@ -7527,6 +7815,13 @@
                 "schema": {
                   "type": "string"
                 }
+              },
+              "Cache-Control": {
+                "schema": {
+                  "type": "string",
+                  "example": "private, no-store"
+                },
+                "description": "Authenticated user and authentication responses must not be stored."
               }
             }
           },
@@ -7688,6 +7983,13 @@
                 "schema": {
                   "type": "string"
                 }
+              },
+              "Cache-Control": {
+                "schema": {
+                  "type": "string",
+                  "example": "private, no-store"
+                },
+                "description": "Authenticated user and authentication responses must not be stored."
               }
             },
             "content": {
@@ -7859,6 +8161,13 @@
                 "schema": {
                   "type": "string"
                 }
+              },
+              "Cache-Control": {
+                "schema": {
+                  "type": "string",
+                  "example": "private, no-store"
+                },
+                "description": "Authenticated user and authentication responses must not be stored."
               }
             }
           },
@@ -8004,6 +8313,13 @@
                 "schema": {
                   "type": "string"
                 }
+              },
+              "Cache-Control": {
+                "schema": {
+                  "type": "string",
+                  "example": "private, no-store"
+                },
+                "description": "Authenticated user and authentication responses must not be stored."
               }
             }
           },
@@ -8131,6 +8447,13 @@
                 "schema": {
                   "type": "string"
                 }
+              },
+              "Cache-Control": {
+                "schema": {
+                  "type": "string",
+                  "example": "private, no-store"
+                },
+                "description": "Authenticated user and authentication responses must not be stored."
               }
             },
             "content": {
@@ -8316,6 +8639,13 @@
                 "schema": {
                   "type": "string"
                 }
+              },
+              "Cache-Control": {
+                "schema": {
+                  "type": "string",
+                  "example": "private, no-store"
+                },
+                "description": "Authenticated user and authentication responses must not be stored."
               }
             },
             "content": {
@@ -8479,6 +8809,13 @@
                 "schema": {
                   "type": "string"
                 }
+              },
+              "Cache-Control": {
+                "schema": {
+                  "type": "string",
+                  "example": "private, no-store"
+                },
+                "description": "Authenticated user and authentication responses must not be stored."
               }
             },
             "content": {
@@ -8649,6 +8986,13 @@
                 "schema": {
                   "type": "string"
                 }
+              },
+              "Cache-Control": {
+                "schema": {
+                  "type": "string",
+                  "example": "private, no-store"
+                },
+                "description": "Authenticated user and authentication responses must not be stored."
               }
             },
             "content": {
@@ -8808,6 +9152,13 @@
                 "schema": {
                   "type": "string"
                 }
+              },
+              "Cache-Control": {
+                "schema": {
+                  "type": "string",
+                  "example": "private, no-store"
+                },
+                "description": "Authenticated user and authentication responses must not be stored."
               }
             },
             "content": {
@@ -8969,6 +9320,13 @@
                 "schema": {
                   "type": "string"
                 }
+              },
+              "Cache-Control": {
+                "schema": {
+                  "type": "string",
+                  "example": "private, no-store"
+                },
+                "description": "Authenticated user and authentication responses must not be stored."
               }
             },
             "content": {
@@ -9136,6 +9494,13 @@
                 "schema": {
                   "type": "string"
                 }
+              },
+              "Cache-Control": {
+                "schema": {
+                  "type": "string",
+                  "example": "private, no-store"
+                },
+                "description": "Authenticated user and authentication responses must not be stored."
               }
             },
             "content": {
@@ -9289,6 +9654,13 @@
                 "schema": {
                   "type": "string"
                 }
+              },
+              "Cache-Control": {
+                "schema": {
+                  "type": "string",
+                  "example": "private, no-store"
+                },
+                "description": "Authenticated user and authentication responses must not be stored."
               }
             },
             "content": {
@@ -9466,6 +9838,13 @@
                 "schema": {
                   "type": "string"
                 }
+              },
+              "Cache-Control": {
+                "schema": {
+                  "type": "string",
+                  "example": "private, no-store"
+                },
+                "description": "Authenticated user and authentication responses must not be stored."
               }
             },
             "content": {
@@ -9647,6 +10026,13 @@
                 "schema": {
                   "type": "string"
                 }
+              },
+              "Cache-Control": {
+                "schema": {
+                  "type": "string",
+                  "example": "private, no-store"
+                },
+                "description": "Authenticated user and authentication responses must not be stored."
               }
             },
             "content": {
@@ -9825,6 +10211,13 @@
                 "schema": {
                   "type": "string"
                 }
+              },
+              "Cache-Control": {
+                "schema": {
+                  "type": "string",
+                  "example": "private, no-store"
+                },
+                "description": "Authenticated user and authentication responses must not be stored."
               }
             },
             "content": {
@@ -9986,6 +10379,13 @@
                 "schema": {
                   "type": "string"
                 }
+              },
+              "Cache-Control": {
+                "schema": {
+                  "type": "string",
+                  "example": "private, no-store"
+                },
+                "description": "Authenticated user and authentication responses must not be stored."
               }
             },
             "content": {
@@ -10174,6 +10574,13 @@
                 "schema": {
                   "type": "string"
                 }
+              },
+              "Cache-Control": {
+                "schema": {
+                  "type": "string",
+                  "example": "private, no-store"
+                },
+                "description": "Authenticated user and authentication responses must not be stored."
               }
             },
             "content": {
@@ -10554,6 +10961,13 @@
                 "schema": {
                   "type": "string"
                 }
+              },
+              "Cache-Control": {
+                "schema": {
+                  "type": "string",
+                  "example": "private, no-store"
+                },
+                "description": "Authenticated user and authentication responses must not be stored."
               }
             },
             "content": {
@@ -10951,6 +11365,13 @@
                 "schema": {
                   "type": "string"
                 }
+              },
+              "Cache-Control": {
+                "schema": {
+                  "type": "string",
+                  "example": "private, no-store"
+                },
+                "description": "Authenticated user and authentication responses must not be stored."
               }
             },
             "content": {
@@ -11113,6 +11534,13 @@
                 "schema": {
                   "type": "string"
                 }
+              },
+              "Cache-Control": {
+                "schema": {
+                  "type": "string",
+                  "example": "private, no-store"
+                },
+                "description": "Authenticated user and authentication responses must not be stored."
               }
             },
             "content": {
@@ -11273,6 +11701,13 @@
                 "schema": {
                   "type": "string"
                 }
+              },
+              "Cache-Control": {
+                "schema": {
+                  "type": "string",
+                  "example": "private, no-store"
+                },
+                "description": "Authenticated user and authentication responses must not be stored."
               }
             },
             "content": {
@@ -11425,6 +11860,13 @@
                 "schema": {
                   "type": "string"
                 }
+              },
+              "Cache-Control": {
+                "schema": {
+                  "type": "string",
+                  "example": "private, no-store"
+                },
+                "description": "Authenticated user and authentication responses must not be stored."
               }
             },
             "content": {
@@ -11580,6 +12022,13 @@
                 "schema": {
                   "type": "string"
                 }
+              },
+              "Cache-Control": {
+                "schema": {
+                  "type": "string",
+                  "example": "private, no-store"
+                },
+                "description": "Authenticated user and authentication responses must not be stored."
               }
             },
             "content": {
@@ -11723,6 +12172,13 @@
                 "schema": {
                   "type": "string"
                 }
+              },
+              "Cache-Control": {
+                "schema": {
+                  "type": "string",
+                  "example": "private, no-store"
+                },
+                "description": "Authenticated user and authentication responses must not be stored."
               }
             },
             "content": {
@@ -11876,6 +12332,13 @@
                 "schema": {
                   "type": "string"
                 }
+              },
+              "Cache-Control": {
+                "schema": {
+                  "type": "string",
+                  "example": "private, no-store"
+                },
+                "description": "Authenticated user and authentication responses must not be stored."
               }
             }
           },
@@ -13834,6 +14297,13 @@
                 "schema": {
                   "type": "string"
                 }
+              },
+              "Cache-Control": {
+                "schema": {
+                  "type": "string",
+                  "example": "private, no-store"
+                },
+                "description": "Authenticated user and authentication responses must not be stored."
               }
             },
             "content": {
@@ -13989,6 +14459,13 @@
                 "schema": {
                   "type": "string"
                 }
+              },
+              "Cache-Control": {
+                "schema": {
+                  "type": "string",
+                  "example": "private, no-store"
+                },
+                "description": "Authenticated user and authentication responses must not be stored."
               }
             },
             "content": {
@@ -14151,6 +14628,13 @@
                 "schema": {
                   "type": "string"
                 }
+              },
+              "Cache-Control": {
+                "schema": {
+                  "type": "string",
+                  "example": "private, no-store"
+                },
+                "description": "Authenticated user and authentication responses must not be stored."
               }
             },
             "content": {
@@ -14316,6 +14800,13 @@
                 "schema": {
                   "type": "string"
                 }
+              },
+              "Cache-Control": {
+                "schema": {
+                  "type": "string",
+                  "example": "private, no-store"
+                },
+                "description": "Authenticated user and authentication responses must not be stored."
               }
             },
             "content": {
@@ -14468,6 +14959,13 @@
                 "schema": {
                   "type": "string"
                 }
+              },
+              "Cache-Control": {
+                "schema": {
+                  "type": "string",
+                  "example": "private, no-store"
+                },
+                "description": "Authenticated user and authentication responses must not be stored."
               }
             },
             "content": {
@@ -14630,6 +15128,13 @@
                 "schema": {
                   "type": "string"
                 }
+              },
+              "Cache-Control": {
+                "schema": {
+                  "type": "string",
+                  "example": "private, no-store"
+                },
+                "description": "Authenticated user and authentication responses must not be stored."
               }
             },
             "content": {
@@ -14864,6 +15369,13 @@
                 "schema": {
                   "type": "string"
                 }
+              },
+              "Cache-Control": {
+                "schema": {
+                  "type": "string",
+                  "example": "private, no-store"
+                },
+                "description": "Authenticated user and authentication responses must not be stored."
               }
             }
           },
@@ -15015,6 +15527,13 @@
                 "schema": {
                   "type": "string"
                 }
+              },
+              "Cache-Control": {
+                "schema": {
+                  "type": "string",
+                  "example": "private, no-store"
+                },
+                "description": "Authenticated user and authentication responses must not be stored."
               }
             },
             "content": {
@@ -15171,6 +15690,13 @@
                 "schema": {
                   "type": "string"
                 }
+              },
+              "Cache-Control": {
+                "schema": {
+                  "type": "string",
+                  "example": "private, no-store"
+                },
+                "description": "Authenticated user and authentication responses must not be stored."
               }
             },
             "content": {
@@ -15407,6 +15933,13 @@
                 "schema": {
                   "type": "string"
                 }
+              },
+              "Cache-Control": {
+                "schema": {
+                  "type": "string",
+                  "example": "private, no-store"
+                },
+                "description": "Authenticated user and authentication responses must not be stored."
               }
             },
             "content": {
@@ -15500,6 +16033,15 @@
                   }
                 }
               }
+            },
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "type": "string",
+                  "example": "private, no-store"
+                },
+                "description": "Authenticated user and authentication responses must not be stored."
+              }
             }
           },
           "401": {
@@ -15552,6 +16094,15 @@
                     }
                   }
                 }
+              }
+            },
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "type": "string",
+                  "example": "private, no-store"
+                },
+                "description": "Authenticated user and authentication responses must not be stored."
               }
             }
           },
@@ -15627,7 +16178,16 @@
         "security": [],
         "responses": {
           "204": {
-            "description": "Verification email queued."
+            "description": "Verification email queued.",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "type": "string",
+                  "example": "private, no-store"
+                },
+                "description": "Authenticated user and authentication responses must not be stored."
+              }
+            }
           },
           "401": {
             "description": "Authentication required"
@@ -15699,6 +16259,15 @@
                     }
                   }
                 }
+              }
+            },
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "type": "string",
+                  "example": "private, no-store"
+                },
+                "description": "Authenticated user and authentication responses must not be stored."
               }
             }
           },

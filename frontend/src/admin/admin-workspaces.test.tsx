@@ -37,6 +37,10 @@ import { AdminInvitations } from "./AdminInvitations";
 import { AdminSubscriptions } from "./AdminSubscriptions";
 import AdminContent from "./admin-entry";
 import { legacyAdminMenu } from "./admin-shell";
+import { resources } from "./admin";
+it("does not expose the retired staff role in user editing", () => {
+    expect(resources.users.fields.some((field) => field.key === "is_staff")).toBe(false);
+});
 const order = {
     id: 1,
     trade_no: "order-1",

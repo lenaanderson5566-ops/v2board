@@ -56,7 +56,7 @@ V2 配置接口未填写 node_type 时默认 v2node。旧 Deepbwork、Tidalab、
 | GET/HEAD | 管理员配置的 `subscribe_path` | 自定义订阅路径，使用原 token 规则；与 V10 同时可用；旧默认路径已移除 |
 | GET/HEAD | `/api/v10/public/client-installers/{installerId}/content` | 镜像下载新版入口；原 `/client-mirrors/{id}` 已移除 |
 
-`/` 与 `/app` 是网页入口而非 API，也继续保留。后台安全路径、运营路径和客服 `/api/v1/staff/*` 不在本清单范围内。
+`/` 与 `/app` 是网页入口而非 API，也继续保留。后台安全路径和运营路径不在本清单范围内；未完成的 `/api/v1/staff/*` 接口已全部退役，返回 404。
 
 ## 兼容说明
 

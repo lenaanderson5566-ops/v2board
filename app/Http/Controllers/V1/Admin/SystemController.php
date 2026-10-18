@@ -7,7 +7,6 @@ use App\Models\Log as LogModel;
 use App\Utils\CacheKey;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 use Laravel\Horizon\Contracts\JobRepository;
 use Laravel\Horizon\Contracts\MasterSupervisorRepository;

@@ -5,6 +5,7 @@ import {
     fireEvent,
     render,
     screen,
+    within,
     waitFor,
 } from "@testing-library/react";
 vi.mock("./payment-icons", () => ({
@@ -31,6 +32,65 @@ afterEach(() => {
     vi.restoreAllMocks();
     vi.clearAllMocks();
     vi.unstubAllGlobals();
+    localStorage.clear();
+});
+it("shows group names across numeric/string IDs and remembers selected node columns", async () => {
+    api.request.mockImplementation(async (path: string) => {
+        if (path.endsWith("server/group/fetch"))
+            return {
+                data: [
+                    { id: 1, name: "普通权限组" },
+                    { id: "2", name: "高级权限组" },
+                ],
+            };
+        if (path.endsWith("server/manage/getNodes"))
+            return {
+                data: [
+                    {
+                        id: 1,
+                        name: "Node A",
+                        type: "v2node",
+                        group_id: ["1", 2, 99],
+                    },
+                    {
+                        id: 2,
+                        name: "Node B",
+                        type: "v2box",
+                        group_id: [1, "2"],
+                    },
+                ],
+            };
+        return { data: {} };
+    });
+    const view = render(<Nodes />);
+    expect(
+        await screen.findByText("普通权限组 / 高级权限组 / 未知权限组（99）"),
+    ).toBeTruthy();
+    expect(screen.getByText("普通权限组 / 高级权限组")).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "显示设置" }));
+    fireEvent.click(
+        within(screen.getByLabelText("可选显示列")).getByRole("checkbox", {
+            name: "权限组",
+        }),
+    );
+    expect(screen.queryByRole("columnheader", { name: "权限组" })).toBeNull();
+    expect(screen.queryByText("普通权限组 / 高级权限组")).toBeNull();
+    expect(screen.getAllByRole("button", { name: "编辑" })).toHaveLength(2);
+    view.unmount();
+    render(<Nodes />);
+    await screen.findByText("Node A");
+    expect(screen.queryByRole("columnheader", { name: "权限组" })).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "显示设置" }));
+    expect(
+        (
+            within(screen.getByLabelText("可选显示列")).getByRole("checkbox", {
+                name: "权限组",
+            }) as HTMLInputElement
+        ).checked,
+    ).toBe(false);
+    fireEvent.click(screen.getByRole("button", { name: "恢复默认展示" }));
+    expect(screen.getByRole("columnheader", { name: "权限组" })).toBeTruthy();
+    expect(screen.getByText("普通权限组 / 高级权限组")).toBeTruthy();
 });
 it.each(["v2node", "v2box"])(
     "opens, edits and saves a persisted %s node on HTTP",

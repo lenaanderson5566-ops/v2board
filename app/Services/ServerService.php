@@ -2,7 +2,6 @@
 
 namespace App\Services;
 
-use App\Models\ServerLog;
 use App\Models\ServerRoute;
 use App\Models\ServerV2node;
 use App\Models\ServerV2box;
@@ -82,38 +81,6 @@ class ServerService
                 'device_limit'
             ])
             ->get();
-    }
-
-    public function log(int $userId, int $serverId, int $u, int $d, float $rate, string $method)
-    {
-        if (($u + $d) < 10240) return true;
-        $timestamp = strtotime(date('Y-m-d'));
-        $serverLog = ServerLog::where('log_at', '>=', $timestamp)
-            ->where('log_at', '<', $timestamp + 3600)
-            ->where('server_id', $serverId)
-            ->where('user_id', $userId)
-            ->where('rate', $rate)
-            ->where('method', $method)
-            ->first();
-        if ($serverLog) {
-            try {
-                $serverLog->increment('u', $u);
-                $serverLog->increment('d', $d);
-                return true;
-            } catch (\Exception $e) {
-                return false;
-            }
-        } else {
-            $serverLog = new ServerLog();
-            $serverLog->user_id = $userId;
-            $serverLog->server_id = $serverId;
-            $serverLog->u = $u;
-            $serverLog->d = $d;
-            $serverLog->rate = $rate;
-            $serverLog->log_at = $timestamp;
-            $serverLog->method = $method;
-            return $serverLog->save();
-        }
     }
 
     public function getAllV2node(string $type = 'v2node')

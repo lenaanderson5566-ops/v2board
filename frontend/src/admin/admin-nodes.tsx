@@ -1,5 +1,5 @@
 import { field, nameColumn } from "./admin-fields";
-import { useEffect, useState } from "react";
+import { useEffect, useState, type ComponentProps } from "react";
 import nodeLocations from "../../../resources/client/node-locations.json";
 import {
     admin,
@@ -96,8 +96,146 @@ export function Nodes({
                 .includes(nodeSearch.trim().toLowerCase()),
     );
 
+    const columns: ComponentProps<typeof Table>["columns"] = [
+        ["id", "ID"],
+        nameColumn,
+        ["type", "类型"],
+        ["protocol", "协议"],
+        [
+            "runtime_status",
+            "运行状态",
+            (r) => (
+                <span
+                    title={`最近通信：${date(Math.max(Number(r.last_check_at || 0), Number(r.last_push_at || 0)))}`}
+                >
+                    {nodeRuntimeLabels[r.runtime_status] ||
+                        nodeRuntimeLabels.unknown}
+                </span>
+            ),
+        ],
+        ["host", "主机"],
+        [
+            "current_ip",
+            "当前 IP",
+            (r) => (
+                <span title="优先显示公网 IP 上报；否则显示节点连接面板的来源 IP">
+                    {r.current_ip || "未获取"}
+                </span>
+            ),
+        ],
+        [
+            "traffic_budget",
+            "服务器额度",
+            (r) =>
+                r.traffic_budget
+                    ? `${bytes(r.traffic_budget.usedBytes)} / ${r.traffic_budget.limitBytes ? bytes(r.traffic_budget.limitBytes) : "不限"}${r.traffic_budget.blocked ? " · 已限制" : ""}`
+                    : "未设置",
+        ],
+        ["port", "端口"],
+        ["rate", "倍率"],
+        [
+            "show",
+            "显隐",
+            (r) => (
+                <AdminSwitch
+                    label={`${r.name} 显示`}
+                    checked={Number(r.show) === 1}
+                    onChange={async (checked) => {
+                        await request(admin(`server/${r.type}/update`), {
+                            id: r.id,
+                            show: checked ? 1 : 0,
+                        });
+                        d.reload();
+                    }}
+                />
+            ),
+        ],
+        [
+            "group_id",
+            "权限组",
+            (r) =>
+                (r.group_id || [])
+                    .map(
+                        (id: number) =>
+                            rows(groups.data).find(
+                                (g) => String(g.id) === String(id),
+                            )?.name || `未知权限组（${id}）`,
+                    )
+                    .join(" / "),
+        ],
+        ["online", "在线用户"],
+        ["last_push_at", "最近流量上报", (r) => date(r.last_push_at)],
+    ];
+    const [visibleColumns, setVisibleColumns] = useState<string[] | null>(
+        () => {
+            try {
+                const saved = JSON.parse(
+                    localStorage.getItem("admin.nodes.columns.v1") || "null",
+                );
+                return Array.isArray(saved) &&
+                    saved.every((key) => typeof key === "string")
+                    ? saved
+                    : null;
+            } catch {
+                return null;
+            }
+        },
+    );
+    useEffect(() => {
+        try {
+            localStorage.setItem(
+                "admin.nodes.columns.v1",
+                JSON.stringify(visibleColumns),
+            );
+        } catch {
+            /* Storage may be disabled. */
+        }
+    }, [visibleColumns]);
+    const selectedColumns = visibleColumns ?? columns.map(([key]) => key);
+    const [showDisplay, setShowDisplay] = useState(false);
+
     return (
         <>
+            {showDisplay && (
+                <Modal
+                    title="节点显示设置"
+                    variant="modal"
+                    close={() => setShowDisplay(false)}
+                >
+                    <div className="pad user-display-panel node-display-panel">
+                        <p className="muted">
+                            选择需要查看的信息。设置自动保存，仅影响当前浏览器。
+                        </p>
+                        <div className="actions" aria-label="可选显示列">
+                            <button
+                                type="button"
+                                onClick={() => setVisibleColumns(null)}
+                            >
+                                恢复默认展示
+                            </button>
+                            {columns.map(([key, label]) => (
+                                <label key={key}>
+                                    <input
+                                        type="checkbox"
+                                        checked={selectedColumns.includes(key)}
+                                        onChange={() =>
+                                            setVisibleColumns(
+                                                selectedColumns.includes(key)
+                                                    ? selectedColumns.filter(
+                                                          (value) =>
+                                                              value !== key,
+                                                      )
+                                                    : [...selectedColumns, key],
+                                            )
+                                        }
+                                    />
+                                    {label}
+                                </label>
+                            ))}
+                        </div>
+                    </div>
+                </Modal>
+            )}
             {diagnosticNode && (
                 <NodeDiagnostics
                     node={diagnosticNode}
@@ -149,6 +287,12 @@ export function Nodes({
                     actions={
                         <>
                             <Reload onClick={d.reload} loading={d.loading} />
+                            <button
+                                type="button"
+                                onClick={() => setShowDisplay(true)}
+                            >
+                                显示设置
+                            </button>
                             <SortButton
                                 path={admin("server/manage/sort")}
                                 kind="nodes"
@@ -275,86 +419,9 @@ export function Nodes({
                         </div>
                         <Table
                             data={filteredNodes}
-                            columns={[
-                                ["id", "ID"],
-                                nameColumn,
-                                ["type", "类型"],
-                                ["protocol", "协议"],
-                                [
-                                    "runtime_status",
-                                    "运行状态",
-                                    (r) => (
-                                        <span
-                                            title={`最近通信：${date(Math.max(Number(r.last_check_at || 0), Number(r.last_push_at || 0)))}`}
-                                        >
-                                            {nodeRuntimeLabels[
-                                                r.runtime_status
-                                            ] || nodeRuntimeLabels.unknown}
-                                        </span>
-                                    ),
-                                ],
-                                ["host", "主机"],
-                                [
-                                    "current_ip",
-                                    "当前 IP",
-                                    (r) => (
-                                        <span title="优先显示公网 IP 上报；否则显示节点连接面板的来源 IP">
-                                            {r.current_ip || "未获取"}
-                                        </span>
-                                    ),
-                                ],
-                                [
-                                    "traffic_budget",
-                                    "服务器额度",
-                                    (r) =>
-                                        r.traffic_budget
-                                            ? `${bytes(r.traffic_budget.usedBytes)} / ${r.traffic_budget.limitBytes ? bytes(r.traffic_budget.limitBytes) : "不限"}${r.traffic_budget.blocked ? " · 已限制" : ""}`
-                                            : "未设置",
-                                ],
-                                ["port", "端口"],
-                                ["rate", "倍率"],
-                                [
-                                    "show",
-                                    "显隐",
-                                    (r) => (
-                                        <AdminSwitch
-                                            label={`${r.name} 显示`}
-                                            checked={Number(r.show) === 1}
-                                            onChange={async (checked) => {
-                                                await request(
-                                                    admin(
-                                                        `server/${r.type}/update`,
-                                                    ),
-                                                    {
-                                                        id: r.id,
-                                                        show: checked ? 1 : 0,
-                                                    },
-                                                );
-                                                d.reload();
-                                            }}
-                                        />
-                                    ),
-                                ],
-                                [
-                                    "group_id",
-                                    "权限组",
-                                    (r) =>
-                                        (r.group_id || [])
-                                            .map(
-                                                (id: number) =>
-                                                    rows(groups.data).find(
-                                                        (g) => g.id === id,
-                                                    )?.name || id,
-                                            )
-                                            .join(" / "),
-                                ],
-                                ["online", "在线用户"],
-                                [
-                                    "last_push_at",
-                                    "最近流量上报",
-                                    (r) => date(r.last_push_at),
-                                ],
-                            ]}
+                            columns={columns.filter(([key]) =>
+                                selectedColumns.includes(key),
+                            )}
                             onReorder={async (items) => {
                                 try {
                                     await request(

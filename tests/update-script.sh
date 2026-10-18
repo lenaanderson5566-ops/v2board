@@ -267,4 +267,5 @@ bash update.sh "${ARGS[@]}" --jobs-stopped > "$TMP/output" 2>&1
 [[ $(grep -c 'Using target updater' "$TMP/output") == 1 ]]
 [[ $(git rev-parse HEAD) == $(git rev-parse origin/codex/payment-icon-picker) && -e storage/framework/down ]]
 grep -q 'All approved migrations completed' "$TMP/output"
+grep -q 'migrate --path=database/migrations/2026_10_18_000001_drop_retired_staff_role.php --force --no-interaction' calls.log
 echo 'Updater: 26 isolated scenarios passed'

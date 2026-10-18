@@ -47,5 +47,22 @@ try{
     foreach(['shadowsocks','v2node','v2box'] as $type) App\Models\StatServer::create(['server_id'=>($type==='v2box'?$box->id:$node->id),'server_type'=>$type,'u'=>1024,'d'=>2048,'record_type'=>'d','record_at'=>strtotime(date('Y-m-d'))]);
     $rank=(new App\Http\Controllers\V1\Admin\StatController())->getServerTodayRank()['data'];
     $assert(!array_diff(array_column($rank,'server_type'),['v2node','v2box']),'Ranking excludes retired types');
+    // Current traffic aggregation must keep working after removal of the old log/stat query paths.
+    $statistics=new App\Services\StatisticalService();
+    $statistics->setStartAt(time()+random_int(1000000,9000000));
+    try {
+        $statistics->setServerStats(); $statistics->setUserStats();
+        $statistics->statServer($node->id,'v2node',100,200);
+        $statistics->statServer($box->id,'v2box',300,400);
+        $statistics->statUser(1,42,100,200);
+        $statistics->statUser(1,42,20,30);
+        $statistics->setServerStats(); $statistics->setUserStats();
+        $serverStats=collect($statistics->getStatServer())->keyBy('server_type');
+        $assert(count($serverStats)===2 && $serverStats['v2node']['u']===100 && $serverStats['v2box']['d']===400,'Both current node backends retain cached daily aggregation');
+        $userStats=$statistics->getStatUser();
+        $assert(count($userStats)===1 && (int)$userStats[0]['user_id']===42 && $userStats[0]['u']===120 && $userStats[0]['d']===230,'User daily aggregation persists accumulated traffic');
+    } finally {
+        $statistics->clearStatServer(); $statistics->clearStatUser();
+    }
 }finally{DB::rollBack();}
 echo "Node backend retirement: $checks checks passed\n";

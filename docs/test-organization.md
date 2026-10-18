@@ -1,5 +1,68 @@
 # 测试整理记录
 
+## 退役接口相关服务、模型与缓存定义清理
+
+- 沿服务调用、命令/队列、V10 适配器、保留路由、测试和配置检查引用。删除无调用的 ServerLog、ServerStat 两个旧模型；删除 ServerService::log、StatisticalService 的三个旧查询入口及三个排行辅助方法、UserService 的三个用户查询辅助方法、TelegramService::discoverCommands，共 11 个方法，并清理随之失效的导入。现行日统计、后台排行榜、节点授权、邀请历史和固定 Telegram 命令菜单继续使用原实现。
+- 缓存键清单移除七种退役节点类型的 21 个定义，以及旧临时令牌和邮件登录链接时间戳两个定义；当前两种节点后端、会话和一次性授权码流程保留。框架 auth/session/mail 等配置因有框架级依赖继续保留；没有修改用户实际配置、历史 SQL、数据库表或缓存数据。
+- 在既有 node-backends.php 增加现行日流量聚合的写入、重载与累计验证，覆盖 V2Node/V2Box 和用户流量；仅清理本次隔离缓存键。复用既有测试入口与清单，没有新增独立脚本或前端改动。
+- Docker 隔离副本与临时数据库的 12 组主回归全部通过：路由审计 2,481 项、V10 198 项、浏览器会话 499 项、控制台 163 项、完整安装回归、节点退役/聚合 730 项、V10 节点 45 项、通知投递 372 项、退役迁移 37 项、流量额度 47 项、升级脚本 26 个隔离场景、V2Box 28 项。结果位于 storage/app/test-organization/legacy-service-cleanup/backend.json，未进行生产环境操作。
+- 最后两个旧登录缓存定义移除后，使用最终源码补跑登录安全 137 项、浏览器会话 499 项及一次性授权码 18 项，全部通过，结果为同目录 auth-final.json。Composer 自动加载映射同步重建，保留当前认证/统计服务；没有清空共享缓存或执行生产迁移。
+
+## 其他退役接口的死代码清理
+
+- 核对 V1/V2 控制器、真实路由、V10 适配器和共享 Actions/请求类；现存 197 个公开处理方法都有路由引用，未确认其他可删除的整份旧控制器。保留后台、风控、节点、历史支付回调、自定义订阅及白名单兼容入口；迁移映射中的旧符号继续作为历史来源元数据。
+- 删除三个无调用的旧请求类 KnowledgeCategorySave、KnowledgeCategorySort、MailSend，以及四个未启用的默认应用中间件 Authenticate、RedirectIfAuthenticated、EncryptCookies、VerifyCsrfToken。移除 Kernel 的 auth/guest 应用别名、旧优先级及停用栈注释，清理七个控制器中的 14 个未使用导入（含指向不存在的 PaymentSave 的导入）。当前 User/Admin、BrowserSession、V10、CSRF/Origin、安全 Cookie 与原生认证流程保留。
+- 复用 api-route-audit.php 核对全局中间件、优先级、别名和逐路由解析后的中间件类均可加载并有 handle 方法；原有退役入口、安全拒绝和实际路由处理器断言保留。测试清单、API 合同与数据库结构没有变化；没有增加独立检查脚本或重新生成前端包。
+- 新建 Docker 隔离副本与随机测试库执行 11 组全部通过：路由审计 2,481 项、V10 清单 835 项、V10 合同 198 项、登录安全 137 项、后端安全 92 项、浏览器会话 499 项、控制台 163 项、框架 25 项、完整安装回归、节点退役 728 项、退役迁移 37 项。最终日志均含完整通过标记，结果保存在 storage/app/test-organization/legacy-code-cleanup/backend.json；本地生成类映射重新构建，未执行生产升级或生产数据库操作。
+
+## staff 全局引用与安装升级复核
+
+- 复核服务端源码、路由/中间件、安装与升级 SQL、迁移、前端源码及静态包、生成器、配置和缓存，并检查工作区客户端与节点源码；没有发现仍在调用的员工角色代码。剩余引用为删除列迁移及升级检查、攻击拒绝/删除防回归、退役文档，以及有实际工单含义的 awaiting-staff 协议枚举。
+- 本地 vendor/composer 的生成类映射残留 7 个已删除类，重新生成优化自动加载映射；不手改依赖源码。正常升级脚本已有优化自动加载生成和配置/路由/视图清理步骤。修正文档中无需数据库变更的过期表述，指向定向升级流程。
+- 扩展既有 mail-install-schema.php：空测试库导入完整安装 SQL，通过安装器实际 registerAdmin 方法创建管理员，验证密码、订阅凭据、管理员权限、认证和重复执行删除列迁移。没有运行交互安装器或改写真实 .env。
+- 扩展既有 retired-node-tables.php：旧库存在角色列时签发会话，删列后验证 JWT 与浏览器 sessionUser 继续读取正确账户/权限，并验证账户表尚未创建时清理迁移不建表。原有账户、凭据、重复执行与不可恢复历史标记的断言均保留，同组 37 项通过。
+- 新隔离副本与随机测试库运行 7 组全部通过：路由审计 2,452 项、登录安全 137 项、控制台 163 项、完整安装回归、迁移健康 7 项、退役迁移 37 项及升级脚本 26 个隔离场景。结果位于 storage/app/test-organization/staff-global-check/backend.json；测试清单未变，无新独立脚本。本轮没有前端业务修改、生产构建或生产数据库操作。
+
+## 旧员工角色字段清理
+
+- 移除管理员编辑开关、请求校验、返回投影、登录鉴权投影以及安装 SQL 中的 is_staff；升级脚本接入删除列迁移，历史攻击输入和退役 URL 的拒绝回归保留。工单 replyStatus 的 awaiting-staff 表示等待客服回复，继续保留已有协议枚举。
+- 复用 retired-node-tables.php 验证旧表删除角色列、重复执行、账户及凭据保持不变、原员工不提升管理员权限，以及不可伪装恢复历史标记的回滚行为；同组共 30 项通过。升级脚本 26 个隔离场景通过。
+- 路由审计 2,452 项、V10 198 项、专项安全 60 项、登录安全 137 项、后端安全 92 项、迁移健康 7 项及通知投递 372 项通过；均在 Docker 隔离项目与临时数据库运行，通知使用模拟传输，没有发送外部邮件。后台工作区 18 项、TypeScript 与生产构建通过，静态产物已更新。
+- 控制台测试修正 CSV 设备列定位与现有群发任务契约；增加显式异常捕获和失败退出，避免 Laravel 错误渲染导致假成功。补齐隔离副本的只读 GeoIP 数据后最终完整执行 163 项通过，最终十组后端脚本全部通过。通知夹具先验证现有用户不可加入禁发名单，再删除临时账户以测试未注册地址的重新禁发；没有修改业务禁发策略或删除安全断言。初次及中间失败日志保留，最终控制台结果以 console-final.json 为准，通知以 recheck.json 为准。
+- 测试清单未变，无新增独立测试脚本。日志位于忽略的 storage/app/test-organization/staff-role-removal；未执行生产升级或生产数据库操作。
+
+## staff 死代码与引用清理（角色字段移除前的历史阶段）
+
+- 确认生产路由移除后，专用实现只有测试夹具及 Kernel 别名仍引用。删除四个员工控制器、专用 UserUpdate 请求、中间件与空路由提供器，共七个文件，并移除 staff 中间件别名。此阶段暂时保留 is_staff；后续角色字段清理已移除其运行时用途并加入删除列迁移。
+- 删除测试进程中的员工夹具路由。原功能约束改为在真实退役 URL 上验证：匿名/有效历史员工会话均为 404，响应不泄露目标凭据，改密/批量封禁不改变账户或会话，邮件请求不派发任务。共享 JWT 数组拒绝、管理员角色降级、敏感字段投影及管理员改密/改邮箱撤销会话继续保留。
+- 路由审计同时检查专用文件不存在、staff 别名不存在、已注册路由不能引用 staff 中间件或使用任意版本 staff 前缀；未重新引入死代码只为满足测试。app、routes、tests 的主动类调用及夹具引用扫描无残留，记录中的历史类名和删除防回归断言保留。
+- Docker 隔离项目与临时库执行 api-route-audit、api-v10-inventory、audit-security-regression、auth-security、backend-security、console-smoke 六组，全部通过。测试清单未变，结果位于忽略的 `storage/app/test-organization/staff-cleanup/`；无前端修改、生产部署或历史数据删除。
+
+## 未完成的 staff API 初次退役回归（历史阶段）
+
+- 复用 `auth-security.php`，针对 11 个退役 URL 分别测试匿名/有效员工会话（含数组查询凭据）都返回 404；原鉴权、字段与角色断言移至测试进程中的显式夹具路由，未删除安全场景。`audit-security-regression.php` 同样仅通过测试夹具执行员工控制器安全约束，未恢复生产入口。
+- `api-route-audit.php` 新增禁止任意 API 版本注册 staff 前缀的断言。当前 339 条注册路由、187 条旧保护路由、669 次旧入口拒绝探测，合计 2,108 项通过；V10 认证拒绝场景保留。
+- Docker 隔离项目与临时测试库执行路由审计、V10 清单、登录安全和专项安全四组，全部通过。复用现有测试文件，清单未变；兼容文档、生成器及 AGENTS 的保留范围同步更新，避免未来重新暴露已退役接口。结果位于忽略的 `storage/app/test-organization/staff-retirement/`，没有前端改动或生产部署。
+
+## V10 认证与跨用户安全回归
+
+- 复用 `api-route-audit.php` 为 64 个用户入口补充数组查询、JSON 数组和伪造 Bearer 拒绝；连同缺失认证共 256 次 V10 认证拒绝，路由断言总数 1,831。保留前一轮旧接口全部断言。
+- `api-v10.php` 增加两个账户间订单、工单、回执和会话归属、角色/凭据字段注入、响应字段排除、账户与机器凭据隔离及认证资源禁止存储，共 198 项通过。`browser-session.php` 增加浏览器注册 Cookie/CSRF/Origin/无 JWT 响应及原生注册兼容，共 499 项通过。
+- OpenAPI、映射、类型注释与生成器同步浏览器注册和 Cache-Control 合同，`api-v10-inventory.php` 共 846 项通过。首次新增断言错误假设每个自定义合同均带 status，修正为遍历已发布成功响应后通过；没有修改业务断言或跳过失败项。
+- Docker 隔离项目与测试库执行路由、合同、inventory、浏览器会话、MFA、节点、一次性授权及优惠券共 8 组，均取得通过结果。前端 `v10-api.test.ts`、`UserAuth.test.tsx` 37 项及 TypeScript 通过；没有前端运行时代码变动，不重复生产打包。日志位于忽略的 `storage/app/test-organization/v10-security-review/`，未进行真实浏览器视觉检查或生产部署。
+
+## 保留旧接口安全复核
+
+- 扩展 `api-route-audit.php`，从实际路由集合测试所有旧管理/运营/员工/用户/客户端保护入口，覆盖缺失凭据、数组查询、JSON 数组和伪造请求头，并单独测试 V1/V2 节点密钥拒绝。350 条注册路由、198 条旧保护路由、709 次旧入口拒绝探测及 64 个 V10 用户认证入口，共 1,639 项检查通过。
+- 复用 `audit-security-regression.php` 测试管理员列表/详情、邀请人投影、原始凭据字段排除、合法管理员订阅链接及普通/员工角色隔离；`backend-security.php` 测试旧用户 URL JWT 拒绝、请求头优先和三种订阅模式下的凭据类型检查；`auth-security.php` 补测退出时查询参数不可覆盖已认证请求头。
+- Docker 隔离项目与临时数据库执行 api-route-audit、api-v10、audit-security-regression、auth-security、backend-security、browser-session、console-smoke、node-backends，8 组全部通过。新增退出断言另行定向复测（登录安全 59 项），管理员密码/邮箱撤销会话与正常编辑另行复测专项安全（60 项）及 console-smoke，结果位于忽略的 `storage/app/test-organization/legacy-auth-review/`。没有新增脚本、调整测试清单或执行前端构建；本轮没有前端源码改动。
+
+## 节点显示项与员工数组凭据回归
+
+- 复用 `frontend/src/admin/Nodes.test.tsx`，覆盖两种节点内核、数字/字符串权限组 ID 对应名称、失效权限组提示、显示列切换、重新挂载后的浏览器保存及恢复默认；保留原编辑/保存/转换等场景。节点模块共 11 项通过，TypeScript 与生产构建通过。
+- 复用 `tests/auth-security.php`，完整登录安全检查共 58 项通过，新增员工数组凭据攻击、合法/非法权限与敏感字段白名单场景；没有新增测试脚本或调整清单。执行使用 Docker 隔离项目和随机测试数据库，结果位于忽略的 `storage/app/test-organization/node-columns-auth/backend.json`。
+- 初次前端运行因沙箱临时文件重命名权限失败，正常本机权限运行通过。后端初次运行暴露 Symfony 提前拒绝非标量表单输入，调整断言兼容该安全行为；隔离副本补齐 V10 必需的 `docs/api-v10/contracts.json` 后完整脚本通过。未修改鉴权业务逻辑、生产数据或降低安全断言。
+
 2026-10-14；范围为 V2Board、专用客户端 FlClash、节点 v2box 的测试、检查脚本、报告及 CI 引用。参考源码、SDK、安装包和回滚快照保留。实际业务代码及数据库迁移未改动。
 
 ## 合并与清理
@@ -100,3 +163,11 @@ php tests/run.php --only=mfa,mfa-api,mfa-concurrency
 - 复用 client-import-language.php 核对后端实际 __() 字面量调用与语言资源、占位符、内置浏览器提示及波斯语方向；api-v10.php 覆盖 14 种语言的未授权问题响应与稳定状态码、code、Content-Language。
 - 完整前端回归 104 文件、624 项通过；TypeScript 检查与生产构建通过。隔离副本及临时数据库执行 api-v10、client-import-language、product-mail、apple-accounts，4 个脚本全部通过。第一次后端执行因本地账号建库权限不足而未能运行，改用本地测试环境的数据库管理员权限后通过；第一次前端全量的一个旧按钮文字定位已更新并全量复测通过。
 - 本轮没有新增测试脚本或 Markdown 报告。运行日志位于忽略的 storage/app/test-organization/localization-repair；未进行浏览器验证或生产环境操作。
+
+## 旧接口退役后的队列与命令检查
+
+- 复用 `tests/framework-upgrade.php`，检查所有实际调度命令、每日任务和安装/升级/人工运维命令均可注册解析，不执行真实业务调度。
+- 回归旧 `SendTelegramJob` 的序列化往返与空操作消费、`telegram:notify` 外部 cron 兼容，并以 HTTP 替身禁止实际发送。
+- 删除空 Test 命令及 6 处无用导入；保留有现行业务或升级兼容用途的 Job、队列、调度、脚本和命令。
+- 在隔离副本与测试库中验证 framework-upgrade、timezone-scheduler、horizon-config、node-traffic-batches、node-backends、notification-delivery、mail-install-schema、retired-node-tables、update-script、update-drain、update-restart；结果见忽略目录 `storage/app/test-organization/legacy-queue-cleanup/backend.json`。
+- 本轮 11 组全部通过；framework-upgrade 85 项、节点 730 项、流量批次 25 项、通知 372 项、退役迁移 37 项；未发送真实外部消息，未迁移生产库。

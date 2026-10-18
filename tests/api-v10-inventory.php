@@ -40,6 +40,15 @@ foreach ($routes as $route) {
     }
 }
 $assert(!isset($openapi['paths']['/me/coupon-validations']), 'Retired code validation must not be advertised');
+$assert(str_contains($openapi['paths']['/auth/registrations']['post']['description']??'', 'HttpOnly'), 'Registration documents its browser session boundary');
+foreach (App\Http\Resources\V10\Resource::contracts()['endpoints'] as $contract) {
+    if ($contract['role']!=='user') continue;
+    $operation=$openapi['paths']['/'.$contract['path']][strtolower($contract['method'])];
+    foreach ($operation['responses'] as $status=>$response) {
+        if (!str_starts_with((string)$status,'2')) continue;
+        $assert(($response['headers']['Cache-Control']['schema']['example']??'')==='private, no-store','Authenticated response forbids storage: '.$contract['path']);
+    }
+}
 $assert(!isset($openapi['components']['schemas']['postMeOrdersInput']['properties']['couponCode']), 'Retired code input must not be advertised');
 foreach ($routes as $route) $assert($route->uri() !== 'api/v10/me/coupon-validations','Retired coupon validation route remains active');
 echo "V10 inventory: $checks checks passed\n";

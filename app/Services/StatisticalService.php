@@ -3,9 +3,7 @@ namespace App\Services;
 
 use App\Models\CommissionLog;
 use App\Models\Order;
-use App\Models\Stat;
 use App\Models\StatServer;
-use App\Models\StatUser;
 use App\Models\User;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
@@ -110,22 +108,6 @@ class StatisticalService {
         Cache::put("stat_user_{$this->startAt}", json_encode($this->userStats), 6000);
     }
 
-    public function getStatUserByUserID($userId): array
-    {
-        $stats = [];
-        foreach (array_keys($this->userStats) as $rate) {
-            if (!isset($this->userStats[$rate][$userId])) continue;
-            $stats[] = [
-                'record_at' => $this->startAt,
-                'server_rate' => $rate,
-                'u' => $this->userStats[$rate][$userId][0],
-                'd' => $this->userStats[$rate][$userId][1],
-                'user_id' => $userId
-            ];
-        }
-        return $stats;
-    }
-
     public function getStatUser()
     {
         $stats = [];
@@ -173,111 +155,4 @@ class StatisticalService {
         Cache::forget("stat_server_{$this->startAt}");
     }
 
-    public function getStatRecord($type)
-    {
-        switch ($type) {
-            case "paid_total": {
-                return Stat::select([
-                    '*',
-                    DB::raw('paid_total / 100 as paid_total')
-                ])
-                    ->where('record_at', '>=', $this->startAt)
-                    ->where('record_at', '<', $this->endAt)
-                    ->orderBy('record_at', 'ASC')
-                    ->get();
-            }
-            case "commission_total": {
-                return Stat::select([
-                    '*',
-                    DB::raw('commission_total / 100 as commission_total')
-                ])
-                    ->where('record_at', '>=', $this->startAt)
-                    ->where('record_at', '<', $this->endAt)
-                    ->orderBy('record_at', 'ASC')
-                    ->get();
-            }
-            case "register_count": {
-                return Stat::where('record_at', '>=', $this->startAt)
-                    ->where('record_at', '<', $this->endAt)
-                    ->orderBy('record_at', 'ASC')
-                    ->get();
-            }
-        }
-    }
-
-    public function getRanking($type, $limit = 20)
-    {
-        switch ($type) {
-            case 'server_traffic_rank': {
-                return $this->buildServerTrafficRank($limit);
-            }
-            case 'user_consumption_rank': {
-                return $this->buildUserConsumptionRank($limit);
-            }
-            case 'invite_rank': {
-                return $this->buildInviteRank($limit);
-            }
-        }
-    }
-
-    private function buildInviteRank($limit)
-    {
-        $stats = User::select([
-            'invite_user_id',
-            DB::raw('count(*) as count')
-        ])
-            ->where('created_at', '>=', $this->startAt)
-            ->where('created_at', '<', $this->endAt)
-            ->whereNotNull('invite_user_id')
-            ->groupBy('invite_user_id')
-            ->orderBy('count', 'DESC')
-            ->limit($limit)
-            ->get();
-
-        $users = User::whereIn('id', $stats->pluck('invite_user_id')->toArray())->get()->keyBy('id');
-        foreach ($stats as $k => $v) {
-            if (!isset($users[$v['invite_user_id']])) continue;
-            $stats[$k]['email'] = $users[$v['invite_user_id']]['email'];
-        }
-        return $stats;
-    }
-
-    private function buildUserConsumptionRank($limit)
-    {
-        $stats = StatUser::select([
-            'user_id',
-            DB::raw('sum(u) as u'),
-            DB::raw('sum(d) as d'),
-            DB::raw('sum(u) + sum(d) as total')
-        ])
-            ->where('record_at', '>=', $this->startAt)
-            ->where('record_at', '<', $this->endAt)
-            ->groupBy('user_id')
-            ->orderBy('total', 'DESC')
-            ->limit($limit)
-            ->get();
-        $users = User::whereIn('id', $stats->pluck('user_id')->toArray())->get()->keyBy('id');
-        foreach ($stats as $k => $v) {
-            if (!isset($users[$v['user_id']])) continue;
-            $stats[$k]['email'] = $users[$v['user_id']]['email'];
-        }
-        return $stats;
-    }
-
-    private function buildServerTrafficRank($limit)
-    {
-        return StatServer::select([
-            'server_id',
-            'server_type',
-            DB::raw('sum(u) as u'),
-            DB::raw('sum(d) as d'),
-            DB::raw('sum(u) + sum(d) as total')
-        ])
-            ->where('record_at', '>=', $this->startAt)
-            ->where('record_at', '<', $this->endAt)
-            ->groupBy('server_id', 'server_type')
-            ->orderBy('total', 'DESC')
-            ->limit($limit)
-            ->get();
-    }
 }

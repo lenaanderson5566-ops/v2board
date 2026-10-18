@@ -21,7 +21,7 @@ class Client
         $guard = new \App\Services\SubscriptionAccessGuard();
         $guard->checkIp($request);
         $token = $request->input('token');
-        if (empty($token)) {
+        if (!is_string($token) || $token === '') {
             abort(403, 'token is null');
         }
         $submethod = (int)config('v2board.show_subscribe_method', 0);

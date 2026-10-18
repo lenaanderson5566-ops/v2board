@@ -179,16 +179,6 @@ class UserService
             ->get();
     }
 
-    public function getUsersByIds($ids)
-    {
-        return User::whereIn('id', $ids)->get();
-    }
-
-    public function getAllUsers()
-    {
-        return User::all();
-    }
-
     public function addBalance(int $userId, int $balance):bool
     {
         $user = User::lockForUpdate()->find($userId);
@@ -219,8 +209,4 @@ class UserService
         StatServerJob::dispatch($data, $server, $protocol, 'd');
     }
 
-    public static function getMaxId()
-    {
-        return User::max('id');
-    }
 }

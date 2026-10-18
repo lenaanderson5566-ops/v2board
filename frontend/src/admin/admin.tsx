@@ -349,7 +349,6 @@ export const resources: Record<string, Resource> = {
             field("speed_limit", "速率限制", "number"),
             toggle("banned", "禁用账户"),
             toggle("is_admin", "管理员"),
-            toggle("is_staff", "员工"),
             field("discount", "专属折扣 (%)", "number"),
             field("commission_rate", "佣金比例 (%)", "number"),
             {

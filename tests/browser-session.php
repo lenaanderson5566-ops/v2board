@@ -3,7 +3,7 @@ $app = require __DIR__.'/support/bootstrap.php';
 if (!app()->environment('local')) throw new RuntimeException('Local test only');
 $checks=0;
 $assert = \Tests\Support\Assertions::counter($checks);
-$jar=['user'=>[],'admin'=>[]];$csrf=[];$keys=[];$auth=null;
+$jar=['user'=>[],'admin'=>[]];$csrf=[];$keys=[];$auth=null;$registrationUsers=[];
 $testIp='192.0.2.'.random_int(2,254);
 $original=config('v2board.app_url');$deadline=config('browser.legacy_exchange_until');
 $call=function($path,$body=[],$scope='user',$method='GET',$csrfOverride=null,$origin='https://fastdog.ws',$bearer=null) use ($app,&$jar,&$csrf,&$keys,$testIp) {
@@ -147,9 +147,29 @@ try {
         $secureCookie=$secureResponse->headers->getCookies()[0];
         $assert($secureCookie->isSecure() && str_starts_with($secureCookie->getName(),'__Host-') && $secureCookie->getPath()==='/' && $secureCookie->isHttpOnly(),'Production cookie attributes');
     } finally { config(['browser.secure'=>$secure]); }
+    // Registration must follow the same HttpOnly grant boundary as password login.
+    Illuminate\Support\Facades\Queue::fake();
+    config(['v2board.stop_register'=>0,'v2board.invite_force'=>0,'v2board.email_verify'=>0,'v2board.recaptcha_enable'=>0,'v2board.email_whitelist_enable'=>0,'v2board.email_gmail_limit_enable'=>0,'v2board.register_limit_by_ip_enable'=>0,'v2board.try_out_plan_id'=>0]);
+    $call('v10/auth/browser-session');
+    $beforeSignup=$jar['user'];
+    $signupEmail='browser-signup-'.bin2hex(random_bytes(6)).'@example.com';
+    $signupBody=['email'=>$signupEmail,'password'=>'Browser-signup-123'];
+    $assert($call('v10/auth/registrations',$signupBody,'user','POST',false)->getStatusCode()===419,'Browser registration requires CSRF');
+    $assert($call('v10/auth/registrations',$signupBody,'user','POST',null,'https://evil.example')->getStatusCode()===419,'Browser registration requires trusted Origin');
+    $signup=$call('v10/auth/registrations',$signupBody,'user','POST');
+    $registered=App\Models\User::where('email',$signupEmail)->firstOrFail();$registrationUsers[]=$registered;
+    $assert($signup->getStatusCode()===201 && ($data($signup)['authenticated']??false) && ($data($signup)['accountId']??null)===$registered->id,'Browser registration issues a scoped session');
+    $assert(!array_intersect(['accessToken','auth_data','token','password'],array_keys($data($signup))) && !str_contains($signup->getContent(),$registered->token),'Browser registration body contains no native credentials');
+    $assert($jar['user']!==$beforeSignup && $signup->headers->getCookies()[0]->isHttpOnly(),'Registration rotates an HttpOnly cookie');
+    $assert(($data($call('v10/me'))['id']??null)===$registered->id,'Registration cookie authenticates the new account');
+    $nativeEmail='native-signup-'.bin2hex(random_bytes(6)).'@example.com';
+    $nativeSignup=$call('v10/auth/registrations',['email'=>$nativeEmail,'password'=>'Native-signup-123'],null,'POST');
+    $registrationUsers[]=App\Models\User::where('email',$nativeEmail)->firstOrFail();
+    $assert($nativeSignup->getStatusCode()===201 && isset($data($nativeSignup)['accessToken']) && App\Services\AuthService::decryptAuthData($data($nativeSignup)['accessToken']),'Native registration retains valid Bearer credentials');
     echo "Browser sessions: $checks checks passed\n";
 } finally {
     if ($auth) $auth->removeAllSession();
+    foreach ($registrationUsers as $registered) (new App\Services\AuthService($registered))->removeAllSession();
     foreach ($keys as $key) Illuminate\Support\Facades\Cache::forget($key);
     Illuminate\Support\Facades\DB::rollBack(); config(['v2board.app_url'=>$original,'browser.legacy_exchange_until'=>$deadline]);
 }

@@ -16,7 +16,8 @@ class User
      */
     public function handle($request, Closure $next)
     {
-        $authorization = $request->input('auth_data') ?? $request->header('authorization');
+        $authorization = $request->header('authorization') ?? ($request->isMethod('POST')
+            ? ($request->isJson() ? $request->json('auth_data') : ($request->request->all()['auth_data'] ?? null)) : null);
         if (!$authorization) abort(403, '未登录或登陆已过期');
 
         $user = AuthService::decryptAuthData($authorization);

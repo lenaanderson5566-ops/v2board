@@ -294,9 +294,6 @@ ALTER TABLE `v2_plan`
 ADD `two_year_price` int(11) NULL AFTER `year_price`,
 ADD `three_year_price` int(11) NULL AFTER `two_year_price`;
 
-ALTER TABLE `v2_user`
-ADD `is_staff` tinyint(1) NOT NULL DEFAULT '0' AFTER `is_admin`;
-
 CREATE TABLE `v2_server_shadowsocks` (
   `id` int NOT NULL AUTO_INCREMENT PRIMARY KEY,
   `group_id` varchar(255) NOT NULL,

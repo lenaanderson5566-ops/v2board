@@ -38,6 +38,7 @@ export type V10Strings = Array<string>;
 export type V10OrderCreated = { "orderNumber": string };
 export type V10OrderStatus = { "status": "unpaid" | "processing" | "cancelled" | "completed" | "discounted" | "unknown" };
 export type V10Payment = { "kind": "confirmed" | "qr" | "redirect" | "pending"; "value": string | boolean | {  } | null };
+/** Browser login and registration return HttpOnly session metadata; native clients receive Bearer credentials. */
 export type V10Authentication = { "accessToken": string; "tokenType": "Bearer"; "expiresAt": string | null; "account": { "id"?: number; "administrator"?: boolean } } | V10BrowserSession;
 export type V10Summary = { "pendingOrders"?: number; "pendingTickets"?: number; "referrals"?: number };
 export type V10Referrals = { "registeredUsers"?: number; "earnedCommission"?: number; "pendingCommission"?: number; "availableCommission"?: number; "commissionRate"?: number; "currency"?: SettlementCurrency; "rewards"?: { "registrationBytes"?: number; "firstUseBytes"?: number; "validityMonths"?: number } };

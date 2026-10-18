@@ -158,7 +158,7 @@ def input_schema(field):
 
 required['User/TelegramController@confirmBinding'] = ['telegramId']
 paths = {}
-mapping = ['# Legacy → V10 mapping', '', 'Payment methods expose category (regular/crypto), asset, assetIconUrl, network, networkName and networkIconUrl. Existing channels default to regular. No provider config or credentials are exposed; paymentMethodId and CNY fee semantics remain unchanged.', '', 'Account notification preference: `GET/PATCH /me` exposes boolean `serviceNotifications`, mapped to shared `remind_service` (default true).', '', 'Admin, operations/risk, staff and node APIs retain all existing paths and schemas. Legacy symbols are historical mappings, not a list of callable routes. Only the explicit retained-endpoints allowlist remains callable. See contracts.json for exact field projections.', '', '| Existing symbol | V10 method and path | Permission | Resource |', '|---|---|---|---|']
+mapping = ['# Legacy → V10 mapping', '', 'Payment methods expose category (regular/crypto), asset, assetIconUrl, network, networkName and networkIconUrl. Existing channels default to regular. No provider config or credentials are exposed; paymentMethodId and CNY fee semantics remain unchanged.', '', 'Account notification preference: `GET/PATCH /me` exposes boolean `serviceNotifications`, mapped to shared `remind_service` (default true).', '', 'Admin, operations/risk and supported node APIs retain their API versions. The unfinished staff API is retired. Legacy symbols are historical mappings, not a list of callable routes. Only the explicit retained-endpoints allowlist remains callable. See contracts.json for exact field projections.', '', '| Existing symbol | V10 method and path | Permission | Resource |', '|---|---|---|---|']
 for entry in entries:
     operation_id = entry['method'].lower() + ''.join(w[0].upper() + w[1:] for w in re.findall(r'[A-Za-z0-9]+', entry['path']))
     contract = contracts['endpoints'][operation_id]
@@ -227,7 +227,13 @@ for path, operations in paths.items():
     for operation in operations.values():
         if isinstance(operation, dict) and operation.get('security'):
             operation['security'].append({'browserUserCookie':[]})
-document = {'openapi': '3.0.3', 'info': {'title': 'FastDog user API', 'version': '10.0.0', 'description': 'Parallel user API. Administrative, staff, operations and node communication contracts are unchanged.'}, 'servers': [{'url': '/api/v10'}], 'paths': paths, 'components': {'securitySchemes': {'bearerAuth': {'type': 'http', 'scheme': 'bearer', 'bearerFormat': 'JWT'}, 'browserUserCookie': {'type':'apiKey','in':'cookie','name':'__Host-fastdog_user','description':'Scoped HttpOnly session; browser mutations also require X-Browser-Client, X-CSRF-Token and an allowed Origin.'}}, 'schemas': schemas}}
+        if isinstance(operation, dict) and (path.startswith('/auth/') or any('bearerAuth' in scheme for scheme in operation.get('security', []))):
+            for status, response in operation.get('responses', {}).items():
+                if not str(status).startswith('2'):
+                    continue
+                response.setdefault('headers', {})['Cache-Control'] = {'schema': {'type': 'string', 'example': 'private, no-store'}, 'description': 'Authenticated user and authentication responses must not be stored.'}
+paths['/auth/registrations']['post']['description'] = 'Browser registration requires X-Browser-Client, CSRF and an exact allowed Origin; grants a scoped HttpOnly cookie and returns only browserSession metadata. Native clients retain Bearer authentication output.'
+document = {'openapi': '3.0.3', 'info': {'title': 'FastDog user API', 'version': '10.0.0', 'description': 'Parallel user API. Administrative, operations and node communication contracts are unchanged. The unfinished staff API is retired.'}, 'servers': [{'url': '/api/v10'}], 'paths': paths, 'components': {'securitySchemes': {'bearerAuth': {'type': 'http', 'scheme': 'bearer', 'bearerFormat': 'JWT'}, 'browserUserCookie': {'type':'apiKey','in':'cookie','name':'__Host-fastdog_user','description':'Scoped HttpOnly session; browser mutations also require X-Browser-Client, X-CSRF-Token and an allowed Origin.'}}, 'schemas': schemas}}
 if '/me/client-config' in document['paths']:
     document['paths']['/me/client-config']['get']['responses']['200']['content']['application/json'] = {'schema': {'type': 'object', 'properties': {'data': {'type': 'object', 'required': ['configVersion', 'yaml', 'nodes'], 'properties': {'configVersion': {'type': 'string'}, 'yaml': {'type': 'string'}, 'nodes': {'type': 'array', 'items': {'type': 'object', 'properties': {'nodeId': {'type': 'string'}, 'proxyName': {'type': 'string'}, 'name': {'type': 'string'}, 'regionCode': {'type': 'string', 'nullable': True}, 'cityCode': {'type': 'string', 'nullable': True}, 'displayLabel': {'type': 'string', 'nullable': True}, 'tags': {'type': 'array', 'items': {'type': 'string'}}, 'displayNames': {'type': 'object', 'additionalProperties': {'type': 'string'}}}}}}}}}}
 
@@ -284,6 +290,7 @@ def ts_type(schema):
 
 types = ['// Monetary amounts use integer minor units in an explicit currency.', 'export type SettlementCurrency = "CNY" | "USD";', '// Generated by scripts/document-v10.py from explicit resource schemas. Do not edit.', 'export interface V10Envelope<T> { data: T; meta?: { pagination?: V10Pagination; taskId?: string } }']
 for name, schema in schemas.items(): types.append('export type V10' + name[0].upper() + name[1:] + ' = ' + ts_type(schema) + ';')
+types = [('/** Browser login and registration return HttpOnly session metadata; native clients receive Bearer credentials. */\n' + line) if line.startswith('export type V10Authentication =') else line for line in types]
 if telegram_only:
     updates = [line for line in types if line.startswith('export type V10Bot =') or ('telegram' in line.split('=')[0].lower() and line.startswith('export type'))]
     if timezone_only: updates = [line for line in types if any(line.startswith('export type V10'+name+' =') for name in ['Account','Subscription','Preferences','Traffic','TimeZoneChoice','PatchMeInput'])]

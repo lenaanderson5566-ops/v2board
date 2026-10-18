@@ -1,10 +1,12 @@
 # Legacy → V10 mapping
 
+Browser `POST /auth/registrations` grants a scoped HttpOnly cookie and returns only `browserSession` metadata; native registration retains `authentication` Bearer output. Browser registration requires the same CSRF and exact Origin checks as login. All authenticated user resources, including `/me`, plans and knowledge articles, return `Cache-Control: private, no-store`. Resource ownership always comes from the verified session and path binding, never from caller-supplied user/role fields.
+
 Payment methods expose category (regular/crypto), asset, assetIconUrl, network, networkName and networkIconUrl. Existing channels default to regular. No provider config or credentials are exposed; paymentMethodId and CNY fee semantics remain unchanged.
 
 Account notification preference: `GET/PATCH /me` exposes boolean `serviceNotifications`, mapped to shared `remind_service` (default true).
 
-Admin, operations/risk, staff and supported node APIs retain their API versions. Retired standalone node management and communication routes are removed as described below. Legacy symbols are historical mappings, not a list of callable routes. Only the explicit retained-endpoints allowlist remains callable. See contracts.json for exact field projections.
+Admin, operations/risk and supported node APIs retain their API versions. The unfinished staff API is retired. Retired standalone node management and communication routes are removed as described below. Legacy symbols are historical mappings, not a list of callable routes. Only the explicit retained-endpoints allowlist remains callable. See contracts.json for exact field projections.
 
 | Existing symbol | V10 method and path | Permission | Resource |
 |---|---|---|---|

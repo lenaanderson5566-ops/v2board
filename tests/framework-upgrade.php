@@ -49,4 +49,28 @@ $configController = app(App\Http\Controllers\V2\Server\ServerController::class);
 $assert($legacy instanceof App\Http\Controllers\Controller && $configController instanceof App\Http\Controllers\Controller, 'Route tooling can resolve controllers without node credentials');
 foreach(['user','push','alive','alivelist'] as $method){try{$legacy->$method(Request::create('/'));throw new RuntimeException('Legacy authentication bypass');}catch(Symfony\Component\HttpKernel\Exception\HttpException $e){$assert($e->getStatusCode()===500 && $e->getMessage()==='token is null','Legacy authentication still runs before each action');}}
 $invalid=$configController->config(Request::create('/'));$assert($invalid->getStatusCode()===200 && $invalid->getData(true)['message']==='token is null','V2 failure response contract preserved without process exit');
+// Resolve registration without running scheduled business commands.
+$commands = app(Illuminate\Contracts\Console\Kernel::class)->all();
+$assert(!isset($commands['test']) || !$commands['test'] instanceof App\Console\Commands\Test, 'Empty application test command still shadows the framework command');
+foreach (['v2board:install', 'v2board:update', 'reset:password', 'reset:user', 'clear:user', 'check:server', 'telegram:notify'] as $name) {
+    $assert(isset($commands[$name]), 'Installation or manual operations command missing: '.$name);
+}
+foreach (App\Console\Commands\RunDailyTask::TASKS as $name => $at) {
+    $assert(isset($commands[$name]), 'Daily task is not registered: '.$name);
+}
+$schedule = app(Illuminate\Console\Scheduling\Schedule::class);
+foreach ($schedule->events() as $event) {
+    if (!$event->command) continue; // The scheduler heartbeat is a closure.
+    $assert((bool) preg_match('/artisan[\x27\x22]?\s+([\w:-]+)/', $event->command, $match), 'Cannot identify scheduled Artisan command');
+    $assert(isset($commands[$match[1]]), 'Scheduled command is not registered: '.$match[1]);
+}
+// Upgrades must still deserialize and safely consume retired notification jobs.
+$sentRequests = 0;
+Illuminate\Support\Facades\Http::fake(function () use (&$sentRequests) { $sentRequests++; throw new RuntimeException('Retired notification attempted HTTP delivery'); });
+$legacyJob = unserialize(serialize(new App\Jobs\SendTelegramJob(123, 'retired queue fixture')));
+$assert($legacyJob instanceof Illuminate\Contracts\Queue\ShouldQueue && $legacyJob->queue === 'send_telegram', 'Legacy notification queue compatibility lost');
+$legacyJob->handle();
+$assert($commands['telegram:notify']->run(new Symfony\Component\Console\Input\ArrayInput([]), new Symfony\Component\Console\Output\BufferedOutput) === 0, 'External legacy cron compatibility lost');
+$assert($sentRequests === 0, 'Retired notification sent a message');
+
 echo "Laravel 13: $checks checks passed; no real mail sent.\n";

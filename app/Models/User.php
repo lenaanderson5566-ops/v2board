@@ -9,6 +9,7 @@ class User extends Model
     protected $table = 'v2_user';
     protected $dateFormat = 'U';
     protected $guarded = ['id'];
+    protected $hidden = ['password', 'password_algo', 'password_salt'];
     protected static function booted() {
         static::creating(function ($user) {
             $currency = config('v2board.new_user_currency', 'CNY');

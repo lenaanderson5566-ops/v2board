@@ -3,13 +3,29 @@ $app = require __DIR__.'/support/bootstrap.php';
 if (!app()->environment('local')) throw new RuntimeException('Local test only');
 $checks=0; $routeCount=0; $protectedCount=0; $retained=[]; $findings=[];
 $testIpPrefix='198.18.'.random_int(0,255).'.';
-$authorizationProbe=0;
+$authorizationProbe=0; $legacyProbe=0; $legacyProtectedCount=0; $v10Probe=0;
 set_exception_handler(function($e) { fwrite(STDERR,$e->getMessage()."\n"); exit(1); });
 $assert = \Tests\Support\Assertions::counter($checks);
 $entries=json_decode(file_get_contents(base_path('docs/api-v10/endpoints.json')),true);
 $contracts=App\Http\Resources\V10\Resource::contracts()['endpoints'];
 $mapping=[];
 $allowlist=json_decode(file_get_contents(base_path('docs/api-v10/retained-legacy.json')),true);
+$httpKernel=app(Illuminate\Contracts\Http\Kernel::class);
+$verifiedMiddleware=[];
+$verifyMiddleware=function(array $stack) use (&$verifiedMiddleware,$assert) {
+    foreach ($stack as $middleware) {
+        $class=explode(':',$middleware,2)[0];
+        if (isset($verifiedMiddleware[$class])) continue;
+        $assert(class_exists($class) && method_exists($class,'handle'),'Unresolvable active middleware: '.$class);
+        $verifiedMiddleware[$class]=true;
+    }
+};
+$verifyMiddleware(array_merge($httpKernel->getGlobalMiddleware(),$httpKernel->getMiddlewarePriority(),array_values(app('router')->getMiddleware())));
+$assert(!array_key_exists('staff',app('router')->getMiddleware()),'Retired staff middleware alias must be absent');
+$assert(!glob(app_path('Http/Controllers/V1/Staff/*.php')),'Retired staff controllers must be removed');
+foreach (['Http/Routes/V1/StaffRoute.php','Http/Middleware/Staff.php','Http/Requests/Staff/UserUpdate.php'] as $retiredFile) {
+    $assert(!is_file(app_path($retiredFile)),'Retired staff implementation must be absent: '.$retiredFile);
+}
 $seen=[];
 foreach ($entries as $entry) {
     // Native V10 resources have no legacy action to map.
@@ -18,6 +34,9 @@ foreach ($entries as $entry) {
 }
 foreach (app('router')->getRoutes() as $route) {
     $routeCount++; $uri=$route->uri(); $action=$route->getActionName(); $middleware=preg_match('#^api/v[12]/server/#',$uri) ? $route->middleware() : $route->gatherMiddleware();
+    $assert(!preg_match('#^api/v[0-9]+/staff(?:/|$)#',$uri),'Retired staff API must not be registered: '.$uri);
+    $assert(!in_array('staff',$middleware,true),'Routes must not reference retired staff middleware: '.$uri);
+    $verifyMiddleware(app('router')->resolveMiddleware($middleware,$route->excludedMiddleware()));
     if ($action!=='Closure' && str_contains($action,'@')) {
         [$class,$method]=explode('@',$action,2);
         if (!class_exists($class) || !method_exists($class,$method)) {
@@ -25,7 +44,7 @@ foreach (app('router')->getRoutes() as $route) {
             continue;
         }
         $assert((new ReflectionMethod($class,$method))->isPublic(),'Non-public handler '.$uri);
-        if (preg_match('/\\\\V1\\\\(Admin|Risk|Staff)\\\\/',$class)) {
+        if (preg_match('/\\\\V1\\\\(Admin|Risk)\\\\/',$class)) {
             $adminMfaLogin = $class === App\Http\Controllers\V1\Admin\MfaController::class
                 && in_array($uri, ['api/v1/passport/mfa/emails', 'api/v1/passport/mfa/verifications'], true);
             if ($adminMfaLogin) {
@@ -38,10 +57,39 @@ foreach (app('router')->getRoutes() as $route) {
                 $payload = json_decode($response->getContent(), true);
                 $assert(!isset($payload['data']['auth_data']) && !isset($payload['data']['accessToken']), 'Invalid MFA login cannot issue credentials');
             } else {
-                $assert(count(array_intersect(['admin','staff'], $middleware))>0,'Unprotected management route '.$uri);
+                $assert(in_array('admin', $middleware, true),'Unprotected management route '.$uri);
             }
         }
         if (str_contains($class,'\\V1\\User\\')) $assert(in_array('user',$middleware,true),'Unprotected legacy user route '.$uri);
+    }
+    // Probe every retained protected legacy route, including configured admin/ops/custom paths.
+    // Rejection must happen before a controller can execute any business mutation.
+    if (count(array_intersect(['admin','user','client'], $middleware))>0 && !str_starts_with($uri,'api/v10/')) {
+        $legacyProtectedCount++;
+        foreach (array_diff($route->methods(), ['HEAD','OPTIONS']) as $httpMethod) {
+            foreach (['missing','array-query','array-body','forged-header'] as $variant) {
+                if ($variant==='array-body' && $httpMethod==='GET') continue;
+                $path='/'.preg_replace('/\{[^}]+\}/','1',$uri);
+                $forged=['auth_data'=>['is_admin'=>'1','is_staff'=>'1','id'=>1], 'token'=>['is_admin'=>'1'], 'user'=>['id'=>1,'is_admin'=>1,'is_staff'=>1]];
+                if ($variant==='array-query') $path.='?'.http_build_query($forged);
+                $server=['REMOTE_ADDR'=>'198.19.'.(intdiv(++$legacyProbe,250)%250).'.'.($legacyProbe%250+1), 'HTTP_ACCEPT'=>'application/json'];
+                if ($variant==='forged-header') $server['HTTP_AUTHORIZATION']='forged-legacy-jwt';
+                if ($variant==='array-body') $server['CONTENT_TYPE']='application/json';
+                $probe=Illuminate\Http\Request::create($path,$httpMethod,[],[],[],$server,$variant==='array-body'?json_encode($forged):null);
+                $response=$app->make(Illuminate\Contracts\Http\Kernel::class)->handle($probe);
+                $assert(in_array($response->getStatusCode(),[400,401,403],true),'Legacy route must reject '.$variant.': '.$httpMethod.' '.$uri.' HTTP '.$response->getStatusCode());
+            }
+        }
+    }
+    if (preg_match('#^api/v[12]/server/#',$uri)) {
+        foreach (array_diff($route->methods(), ['HEAD','OPTIONS']) as $httpMethod) {
+            foreach ([null, ['is_admin'=>'1'], 'invalid-node-token'] as $credential) {
+                $probe=Illuminate\Http\Request::create('/'.$uri,$httpMethod,['token'=>$credential,'node_type'=>'v2node','node_id'=>1],[],[],['HTTP_ACCEPT'=>'application/json']);
+                $response=$app->make(Illuminate\Contracts\Http\Kernel::class)->handle($probe);
+                $payload=json_decode($response->getContent(),true)??[];
+                $assert(!isset($payload['users']) && ($response->getStatusCode()>=400 || ($payload['status']??null)==='fail'),'Legacy node route rejects malformed credentials before returning configuration or user data: '.$uri);
+            }
+        }
     }
     if (preg_match('#^api/v1/(user|passport|guest|client)/#',$uri,$match)) {
         $assert(in_array($uri,$allowlist,true),'Retired route was reintroduced: '.$uri);
@@ -66,6 +114,14 @@ foreach ($entries as $entry) {
     $app->instance('request',$request);
     $response=$app->make(Illuminate\Contracts\Http\Kernel::class)->handle($request);
     $assert($response->getStatusCode()===401,'Account route must reject missing credentials: '.$entry['method'].' '.$path.' '.$response->getStatusCode());
+    foreach (['array-query','array-body','forged-bearer'] as $variant) {
+        $server=['REMOTE_ADDR'=>'198.20.'.(intdiv(++$v10Probe,250)%250).'.'.($v10Probe%250+1),'HTTP_ACCEPT'=>'application/json','CONTENT_TYPE'=>'application/json'];
+        if ($variant==='forged-bearer') $server['HTTP_AUTHORIZATION']='Bearer forged-v10-jwt';
+        $forged=['auth_data'=>['is_admin'=>1,'is_staff'=>1], 'accessToken'=>['id'=>1], 'user'=>['id'=>1,'is_admin'=>1]];
+        $probe=Illuminate\Http\Request::create($path.($variant==='array-query'?'?'.http_build_query($forged):''),$entry['method'],[],[],[],$server,$variant==='array-body'?json_encode($forged):null);
+        $response=$app->make(Illuminate\Contracts\Http\Kernel::class)->handle($probe);
+        $assert($response->getStatusCode()===401,'V10 account route rejects '.$variant.': '.$entry['method'].' '.$path);
+    }
     $protectedCount++;
 }
 // Rebuild legacy client routes under each configured subscription path.
@@ -96,9 +152,9 @@ if (in_array('--write-inventory',$argv,true)) {
         if (!preg_match('#^api/v[12]/server/#', $route->uri())) continue;
         $doc.='| '.implode('/', array_diff($route->methods(), ['HEAD'])).' | `/'.$route->uri()."` |\n";
     }
-    $doc.="\nV2 配置接口未填写 node_type 时默认 v2node。旧 Deepbwork、Tidalab、UniProxy/config 与动态控制器分发已移除。\n\n## 其他保留入口\n\n| 方法 | 路径 | 用途与条件 |\n|---|---|---|\n| GET/HEAD | 管理员配置的 `subscribe_path` | 自定义订阅路径，使用原 token 规则；与 V10 同时可用；旧默认路径已移除 |\n| GET/HEAD | `/api/v10/public/client-installers/{installerId}/content` | 镜像下载新版入口；原 `/client-mirrors/{id}` 已移除 |\n\n`/` 与 `/app` 是网页入口而非 API，也继续保留。后台安全路径、运营路径和客服 `/api/v1/staff/*` 不在本清单范围内。\n\n## 兼容说明\n\n- 上表旧用户/登录/公共/客户端路由共 {$count} 条；前端用户业务已通过集中传输层使用 V10，仅保留后台依赖、历史回调及订阅入口。\n- 旧用户业务 API（包括 `invite/save`）已移除；使用 V10。\n- 支付新订单与后台展示统一使用 V10 回调，旧支付回调兼容此前订单；两者保持原验签和应答。Telegram 保持已有兼容规则。\n- 不再注册旧用户业务中的 GET 写操作。\n- 节点管理、订阅、排序及当前节点排行仅使用 V2Node/V2Box；旧节点配置表通过定向迁移删除；共享账务记录保留。\n";
+    $doc.="\nV2 配置接口未填写 node_type 时默认 v2node。旧 Deepbwork、Tidalab、UniProxy/config 与动态控制器分发已移除。\n\n## 其他保留入口\n\n| 方法 | 路径 | 用途与条件 |\n|---|---|---|\n| GET/HEAD | 管理员配置的 `subscribe_path` | 自定义订阅路径，使用原 token 规则；与 V10 同时可用；旧默认路径已移除 |\n| GET/HEAD | `/api/v10/public/client-installers/{installerId}/content` | 镜像下载新版入口；原 `/client-mirrors/{id}` 已移除 |\n\n`/` 与 `/app` 是网页入口而非 API，也继续保留。后台安全路径和运营路径不在本清单范围内；未完成的 `/api/v1/staff/*` 接口已全部退役，返回 404。\n\n## 兼容说明\n\n- 上表旧用户/登录/公共/客户端路由共 {$count} 条；前端用户业务已通过集中传输层使用 V10，仅保留后台依赖、历史回调及订阅入口。\n- 旧用户业务 API（包括 `invite/save`）已移除；使用 V10。\n- 支付新订单与后台展示统一使用 V10 回调，旧支付回调兼容此前订单；两者保持原验签和应答。Telegram 保持已有兼容规则。\n- 不再注册旧用户业务中的 GET 写操作。\n- 节点管理、订阅、排序及当前节点排行仅使用 V2Node/V2Box；旧节点配置表通过定向迁移删除；共享账务记录保留。\n";
     file_put_contents(base_path('docs/api-v10/retained-endpoints.md'),$doc);
 }
-echo "Route audit: {$routeCount} registered routes, {$protectedCount} V10 authentication checks, {$checks} checks passed\n";
+echo "Route audit: {$routeCount} registered routes, {$protectedCount} V10 authentication checks, {$legacyProtectedCount} legacy protected routes / {$legacyProbe} rejection probes, {$checks} checks passed\n";
 foreach ($findings as $finding) echo "FINDING: {$finding}\n";
 if ($findings) exit(1);

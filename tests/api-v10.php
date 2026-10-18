@@ -99,6 +99,13 @@ try {
     $other=User::create(['email'=>Str::uuid().'@example.com','password'=>'x','token'=>Str::random(32),'uuid'=>(string)Str::uuid()]);
     $cleanupUsers[]=$other;
     $otherAuth=(new App\Services\AuthService($other))->generateAuthData(Illuminate\Http\Request::create('/'));
+    foreach (app('router')->getRoutes() as $machineRoute) {
+        if (!str_starts_with($machineRoute->uri(),'api/v10/server/')) continue;
+        foreach (array_diff($machineRoute->methods(),['HEAD','OPTIONS']) as $machineMethod) {
+            [$machineDenied,$machineProblem]=$call($machineMethod,'/'.$machineRoute->uri(),['user'=>['id'=>$user->id,'is_admin'=>1]],'Bearer '.$otherAuth['auth_data']);
+            $assert($machineDenied->getStatusCode()===401 && !isset($machineProblem['data']),'Account JWT cannot authenticate machine route: '.$machineRoute->uri());
+        }
+    }
     [$r,$j]=$call('GET','/api/v10/me/orders/'.$new,[],'Bearer '.$otherAuth['auth_data']);
     $assert($r->getStatusCode()===404,'Order ownership is enforced');
     [$r,$j]=$call('GET','/api/v10/me/orders?pageSize=1',[],$bearer);
@@ -169,6 +176,30 @@ try {
     $assert($r->getStatusCode()===200 && $j['data']['messages'][0]['mine']===true,'Ticket message resource');
     [$r,$j]=$call('GET','/api/v10/me/tickets/'.$ticketId,[],'Bearer '.$otherAuth['auth_data']);
     $assert($r->getStatusCode()===404,'Ticket owner cannot be bypassed');
+    $foreignBearer='Bearer '.$otherAuth['auth_data'];
+    $ticketBefore=App\Models\Ticket::findOrFail($ticketId)->getAttributes();
+    $messagesBefore=App\Models\TicketMessage::where('ticket_id',$ticketId)->count();
+    $orderBefore=Order::where('trade_no',$new)->firstOrFail()->getAttributes();
+    foreach ([['GET','/me/orders/'.$new,[]],['GET','/me/orders/'.$new.'/status',[]],['POST','/me/orders/'.$new.'/payments',['paymentMethodId'=>1]],['POST','/me/orders/'.$new.'/cancellation',[]],['GET','/me/tickets/'.$ticketId,[]],['POST','/me/tickets/'.$ticketId.'/messages',['message'=>'Unauthorized reply']],['POST','/me/tickets/'.$ticketId.'/closure',[]],['POST','/me/notifications/ticket-read-receipts',['ticketId'=>$ticketId,'version'=>1]]] as [$method,$path,$body]) {
+        [$denied,$problem]=$call($method,'/api/v10'.$path.'?'.http_build_query(['user'=>['id'=>$user->id],'userId'=>$user->id]),$body+['user'=>['id'=>$user->id,'is_admin'=>1],'userId'=>$user->id],$foreignBearer);
+        $assert($denied->getStatusCode()===404 && !isset($problem['data']),'Foreign resource rejects spoofed ownership: '.$method.' '.$path);
+    }
+    $assert($ticketBefore===App\Models\Ticket::findOrFail($ticketId)->getAttributes() && $messagesBefore===App\Models\TicketMessage::where('ticket_id',$ticketId)->count() && $orderBefore===Order::where('trade_no',$new)->firstOrFail()->getAttributes(),'Denied cross-user actions do not mutate orders or tickets');
+    $ownerClaims=(array)Firebase\JWT\JWT::decode($credentials['auth_data'],new Firebase\JWT\Key(config('app.key'),'HS256'));
+    [$deleted,$payload]=$call('DELETE','/api/v10/me/sessions/'.urlencode($ownerClaims['session']),[],$foreignBearer);
+    $assert($deleted->getStatusCode()===204 && App\Services\AuthService::decryptAuthData($credentials['auth_data'])!==false,'Deleting a foreign session ID cannot revoke its owner session');
+    $protectedFields=['id','email','password','token','uuid','is_admin','currency'];
+    $beforeOwn=$other->fresh()->only($protectedFields);
+    [$changed,$payload]=$call('PATCH','/api/v10/me',['user'=>['id'=>$user->id],'id'=>$user->id,'is_admin'=>1,'is_staff'=>1,'token'=>$user->token,'password'=>'Injected-password-123'],$foreignBearer);
+    $assert($changed->getStatusCode()===204 && $beforeOwn===$other->fresh()->only($protectedFields),'Profile input cannot change identity, roles, password or subscription credentials');
+    [$me,$payload]=$call('GET','/api/v10/me?user[id]='.$user->id.'&id='.$user->id,[],$foreignBearer);
+    $assert($me->getStatusCode()===200 && ($payload['data']['id']??null)===$other->id && !array_intersect(['password','password_algo','password_salt','token','uuid','auth_data'],array_keys($payload['data'])),'Account resource binds identity and excludes raw credentials');
+    foreach (['me','plans','payment-methods','knowledge-articles','knowledge-categories'] as $resource) {
+        [$private,$payload]=$call('GET','/api/v10/'.$resource,[],$foreignBearer);
+        $assert($private->getStatusCode()===200 && str_contains($private->headers->get('Cache-Control'),'no-store'),'Every authenticated resource prohibits storage: '.$resource);
+    }
+    [$subscription,$payload]=$call('GET','/api/v10/me/subscription?user[id]='.$user->id,[],$foreignBearer);
+    $assert($subscription->getStatusCode()===200 && !str_contains($subscription->getContent(),$user->token) && !str_contains($subscription->getContent(),$user->uuid),'Subscription ownership cannot be overridden to disclose another user credentials');
     [$r,$j]=$call('POST','/api/v10/me/tickets',['subject'=>'Duplicate','priority'=>'normal','message'=>'Local test'],$bearer);
     $assert($r->getStatusCode()===409,'Unresolved ticket conflict '.json_encode($j));
     App\Models\TicketMessage::create(['user_id'=>$other->id,'ticket_id'=>$ticketId,'message'=>'Staff fixture reply']);

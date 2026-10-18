@@ -1,12 +1,12 @@
 # FastDog V10 user API
 
-The new user API is `/api/v10`. Administration, operations/risk, staff management and node communication retain their existing APIs, as requested. No database business schema or framework version changes are required.
+The new user API is `/api/v10`. Administration, operations/risk and node communication retain their existing APIs. The unfinished `/api/v1/staff/*` API has been retired and is not migrated to V10. Staff retirement removes the legacy `is_staff` column through the approved upgrade migration; fresh installations omit it. Follow [the upgrade procedure](../update-script.md) for schema changes; no framework version change is required.
 
 ## Contracts and compatibility
 
 - [OpenAPI](openapi.json) describes all explicitly registered resources, inputs, outputs, permissions and native responses. [Mapping](mapping.md) lists every migrated legacy function. `endpoints.json` is the routing inventory; `contracts.json` declares field projections.
 - [Retained endpoints](retained-endpoints.md) lists legacy non-management routes and their V10 equivalents; [route audit](audit.md) records checks, findings and verification limits.
-- Legacy user business and public-content routes have been retired with explicit authorization. Only the routes in `retained-legacy.json`, administrative/staff/risk APIs, node communication, configured subscription paths and historical webhook URLs remain available. Both controller sets invoke shared business actions in `app/Services/Actions`; no HTTP forwarding or dynamic controller dispatch is used.
+- Legacy user business and public-content routes have been retired with explicit authorization. Only the routes in `retained-legacy.json`, administrative/risk APIs, node communication, configured subscription paths and historical webhook URLs remain available. Staff routes are retired. Both controller sets invoke shared business actions in `app/Services/Actions`; no HTTP forwarding or dynamic controller dispatch is used.
 - User browser requests require `Authorization: Bearer <existing session token>`. Existing local login storage, expiry and revocation are preserved. Query credentials cannot authenticate browser requests. Subscription credentials remain in their dedicated subscription path.
 - JSON successes use `{data, meta?}`. Amounts are integer minor currency units with `currency`, traffic uses bytes and dates use UTC ISO 8601. `null` prices mean unavailable; zero prices remain zero. Order, billing-period, ticket-priority and ticket-status enums are stable strings.
 - Pagination uses `page` and `pageSize` (default 20, maximum 100), returned in `meta.pagination`. Creation uses 201, queued mail uses 202 and a task identifier, and no-content actions use 204.

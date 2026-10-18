@@ -70,7 +70,7 @@ class AuthService
     {
         $data = self::activeClaims($jwt);
         if (!$data) return false;
-        $user = User::select(['v2_user.id', 'v2_user.email', 'v2_user.is_admin', 'v2_user.is_staff', 'v2_user.banned', 'v2_user_mfa.version as mfa_version'])
+        $user = User::select(['v2_user.id', 'v2_user.email', 'v2_user.is_admin', 'v2_user.banned', 'v2_user_mfa.version as mfa_version'])
             ->leftJoin('v2_user_mfa', 'v2_user_mfa.user_id', '=', 'v2_user.id')->find($data['id']);
         if (!$user || (int)($data['mfaVersion'] ?? 0) !== (int)($user->mfa_version ?? 0)) return false;
         unset($user->mfa_version);

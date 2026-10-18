@@ -703,6 +703,21 @@ body[data-console="admin"] .user-display-panel button {
     white-space: normal;
     min-height: 36px;
 }
+body[data-console="admin"] .node-display-panel [aria-label="可选显示列"] > button {
+    grid-column: 1 / -1;
+}
+body[data-console="admin"] .node-display-panel label {
+    flex-direction: row;
+    align-items: center;
+    min-height: 36px;
+    cursor: pointer;
+}
+body[data-console="admin"] .node-display-panel input[type="checkbox"] {
+    width: 16px;
+    min-height: 16px;
+    margin: 0;
+    flex: 0 0 auto;
+}
 body[data-console="admin"] .users-page > .panel .table-scroll th:last-child,
 body[data-console="admin"] .users-page > .panel .table-scroll td:last-child {
     min-width: 180px;

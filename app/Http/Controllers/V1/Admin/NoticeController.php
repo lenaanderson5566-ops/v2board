@@ -6,7 +6,6 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\NoticeSave;
 use App\Models\Notice;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Cache;
 
 class NoticeController extends Controller
 {

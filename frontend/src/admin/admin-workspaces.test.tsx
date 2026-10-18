@@ -372,7 +372,7 @@ it("restores saved user columns and can reset defaults", () => {
             .getAttribute("aria-pressed"),
     ).toBe("false");
     fireEvent.click(
-        within(picker).getByRole("button", { name: "恢复默认展示" }),
+        screen.getByRole("button", { name: "恢复默认展示" }),
     );
     expect(
         within(screen.getByLabelText("可选显示列"))
@@ -432,4 +432,26 @@ it("keeps ticket replies open and opens the selected user drawer without renderi
     expect(screen.getByRole("dialog", { name: "Support fixture" })).toBeTruthy();
     expect(api.request.mock.calls.some(([path]) => path.includes("ticket/close"))).toBe(false);
     await waitFor(() => expect((screen.getByLabelText(/回复内容/) as HTMLTextAreaElement).value).toBe(""));
+});
+
+it("shares display preferences across resource lists without leaking selected columns", async () => {
+    const { ResourcePage, resources } = await import("./admin");
+    localStorage.removeItem(`admin.columns.${resources.orders.fetch}`);
+    api.request.mockResolvedValue({ data: [], total: 0 });
+    const view = render(<ResourcePage resource={resources.orders} />);
+    fireEvent.click(screen.getByRole("button", { name: "显示设置" }));
+    const [key, label] = resources.orders.columns[0];
+    const option = within(screen.getByLabelText("可选显示列")).getByRole("button", { name: label });
+    fireEvent.click(option);
+    expect(option.getAttribute("aria-pressed")).toBe("false");
+    expect(JSON.parse(localStorage.getItem(`admin.columns.${resources.orders.fetch}`)!).includes(key)).toBe(false);
+    fireEvent.click(screen.getByRole("button", { name: "完成" }));
+    expect(screen.queryByRole("dialog")).toBeNull();
+    view.unmount();
+    render(<ResourcePage resource={resources.orders} />);
+    fireEvent.click(screen.getByRole("button", { name: "显示设置" }));
+    expect(within(screen.getByLabelText("可选显示列")).getByRole("button", { name: label }).getAttribute("aria-pressed")).toBe("false");
+    fireEvent.click(screen.getByRole("button", { name: "恢复默认展示" }));
+    expect(within(screen.getByLabelText("可选显示列")).getByRole("button", { name: label }).getAttribute("aria-pressed")).toBe("true");
+    localStorage.removeItem(`admin.columns.${resources.orders.fetch}`);
 });

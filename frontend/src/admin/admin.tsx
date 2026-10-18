@@ -1,3 +1,4 @@
+import { AdminDisplaySettings } from "./AdminDisplaySettings";
 import { languageCodes } from "../shared/language-options";
 import { Plus, Search } from "lucide-react";
 import { useEffect, useState, type ReactNode } from "react";
@@ -930,6 +931,18 @@ export function ResourcePage({
         )?.[0]
         .slice(4);
     const viewKey = resource.fetch;
+    const columnStorageKey = `admin.columns.${resource.fetch}`;
+    const [showDisplay, setShowDisplay] = useState(false);
+    const [columnViews, setColumnViews] = useState<Record<string, string[]>>({});
+    let storedColumns: string[] | undefined;
+    try { const saved = JSON.parse(localStorage.getItem(columnStorageKey) || "null"); if (Array.isArray(saved)) storedColumns = saved.filter(value => typeof value === "string"); } catch { /* Optional browser preference. */ }
+    const selectedColumns = columnViews[columnStorageKey] ?? storedColumns ?? resource.columns.map(([key]) => key);
+    const updateColumns = (columns: string[]) => {
+        setColumnViews(previous => ({ ...previous, [columnStorageKey]: columns }));
+        try { localStorage.setItem(columnStorageKey, JSON.stringify(columns)); } catch { /* Keep in-memory preferences. */ }
+    };
+    const ownDisplaySettings = resource !== resources.users;
+
     const [savedView] = useState(() => {
         const saved = readListView(viewKey);
         return saved.context === JSON.stringify(queryParams) &&
@@ -1124,10 +1137,14 @@ export function ResourcePage({
     );
     return (
         <>
+            {showDisplay && ownDisplaySettings && <AdminDisplaySettings title={`${resource.title}显示设置`}
+                columns={resource.columns.filter(([key]) => !hiddenColumns.includes(key))} selected={selectedColumns}
+                onChange={updateColumns} onReset={() => updateColumns(resource.columns.map(([key]) => key))} close={() => setShowDisplay(false)} />}
             <Panel
                 title={resource.title}
                 actions={
                     <>
+                        {ownDisplaySettings && <button type="button" onClick={() => setShowDisplay(true)}>显示设置</button>}
                         {searchable && !logKind && (
                             <div className="search">
                                 <Search size={16} />
@@ -1243,7 +1260,7 @@ export function ResourcePage({
                     <Table
                         data={list}
                         columns={resource.columns
-                            .filter(([key]) => !hiddenColumns.includes(key))
+                            .filter(([key]) => !hiddenColumns.includes(key) && (!ownDisplaySettings || selectedColumns.includes(key)))
                             .map(([key, label, render]) => {
                                 if (key === "group_id" && !render)
                                     return [

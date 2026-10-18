@@ -1,3 +1,4 @@
+import { AdminDisplaySettings } from "./AdminDisplaySettings";
 import { field, nameColumn } from "./admin-fields";
 import { useEffect, useState, type ComponentProps } from "react";
 import nodeLocations from "../../../resources/client/node-locations.json";
@@ -197,44 +198,8 @@ export function Nodes({
     return (
         <>
             {showDisplay && (
-                <Modal
-                    title="节点显示设置"
-                    variant="modal"
-                    close={() => setShowDisplay(false)}
-                >
-                    <div className="pad user-display-panel node-display-panel">
-                        <p className="muted">
-                            选择需要查看的信息。设置自动保存，仅影响当前浏览器。
-                        </p>
-                        <div className="actions" aria-label="可选显示列">
-                            <button
-                                type="button"
-                                onClick={() => setVisibleColumns(null)}
-                            >
-                                恢复默认展示
-                            </button>
-                            {columns.map(([key, label]) => (
-                                <label key={key}>
-                                    <input
-                                        type="checkbox"
-                                        checked={selectedColumns.includes(key)}
-                                        onChange={() =>
-                                            setVisibleColumns(
-                                                selectedColumns.includes(key)
-                                                    ? selectedColumns.filter(
-                                                          (value) =>
-                                                              value !== key,
-                                                      )
-                                                    : [...selectedColumns, key],
-                                            )
-                                        }
-                                    />
-                                    {label}
-                                </label>
-                            ))}
-                        </div>
-                    </div>
-                </Modal>
+                <AdminDisplaySettings title="节点显示设置" columns={columns} selected={selectedColumns}
+                    onChange={setVisibleColumns} onReset={() => setVisibleColumns(null)} close={() => setShowDisplay(false)} />
             )}
             {diagnosticNode && (
                 <NodeDiagnostics
@@ -247,7 +212,7 @@ export function Nodes({
                     {savedNodeNotice}
                 </p>
             )}
-            <nav className="node-management-tabs" aria-label="节点管理功能">
+            <nav className="section-tabs node-management-tabs" aria-label="节点管理功能">
                 <button
                     aria-pressed={tab === "nodes"}
                     onClick={() => {

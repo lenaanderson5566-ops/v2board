@@ -107,7 +107,7 @@ export function AdminMailLogs() {
                 ) : undefined
             }
         >
-            <nav className="actions pad" aria-label="邮件管理">
+            <nav className="section-tabs" aria-label="邮件管理">
                 <button
                     aria-pressed={view === "logs"}
                     onClick={() => setView("logs")}

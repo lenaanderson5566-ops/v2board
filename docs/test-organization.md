@@ -177,3 +177,7 @@ php tests/run.php --only=mfa,mfa-api,mfa-concurrency
 复用 console-smoke 验证管理员回复保持开启、最后回复不足 24 小时不关闭、超过 24 小时且最后消息来自管理员时关闭、用户追问不关闭、旧表单不能重新打开已关闭工单、非文本回复被拒绝。通过 retrieved 事件模拟调度扫描后收到新回复，验证关闭前会在行锁内重新读取状态。保留每分钟 check:ticket 调度。api-v10、notice-reads、notification-delivery 覆盖现行用户接口和通知兼容。结果位于 storage/app/test-organization/ticket-review。
 
 前端 admin-workspaces、AdminUserActivity、HelpSupport 共 29 项通过，覆盖对话中的邮箱抽屉、关闭抽屉后回到对话、发送回复不调用关闭接口、清空已发送草稿，以及恶意 img/svg 标签仅显示为文本。
+
+用户活动详情改版复用 AdminUserActivity.test.tsx，补充类型筛选计数、分类空状态、明细字段、UA 默认折叠及不解析 HTML 的回归；与 admin-workspaces.test.tsx 合计 22 项通过。此次仅改变展示，未修改后端查询或接口权限。
+
+后台显示设置统一复用 admin-workspaces.test.tsx 和 Nodes.test.tsx，保留用户列选择、排序恢复及节点偏好持久化断言，新增通用资源列表列偏好保存、重新打开恢复与重置验证。节点选择控件统一为 aria-pressed 按钮，测试同步更新，不新增独立测试模块。

@@ -1,3 +1,4 @@
+import { AdminDisplaySettings } from "./AdminDisplaySettings";
 import { UserFilters } from "./UserFilters";
 import { adminUserLabel } from "./admin-user-label";
 import { AdminMailComposer } from "./AdminMailComposer";
@@ -138,47 +139,9 @@ export function UsersPage() {
     return (
         <div className="users-page">
             {showDisplay && (
-                <Modal
-                    title="用户显示设置"
-                    variant="modal"
-                    close={() => setShowDisplay(false)}
-                >
-                    <div className="pad user-display-panel">
-                        <p className="muted">
-                            选择需要查看的信息。设置自动保存，仅影响当前浏览器。
-                        </p>
-                        <div className="actions" aria-label="可选显示列">
-                            <span>显示列：</span>
-                            <button
-                                type="button"
-                                onClick={() => {
-                                    setOptionalColumns(defaultUserColumns());
-                                    setPageSize(10);
-                                    setSort("created_at");
-                                    setDirection("DESC");
-                                }}
-                            >
-                                恢复默认展示
-                            </button>
-                            {resources.users.columns.map(([key, label]) => (
-                                <button
-                                    type="button"
-                                    key={key}
-                                    aria-pressed={optionalColumns.includes(key)}
-                                    onClick={() =>
-                                        setOptionalColumns((values) =>
-                                            values.includes(key)
-                                                ? values.filter(
-                                                      (value) => value !== key,
-                                                  )
-                                                : [...values, key],
-                                        )
-                                    }
-                                >
-                                    {label}
-                                </button>
-                            ))}
-                        </div>
+                <AdminDisplaySettings title="用户显示设置" columns={resources.users.columns} selected={optionalColumns}
+                    onChange={setOptionalColumns} close={() => setShowDisplay(false)}
+                    onReset={() => { setOptionalColumns(defaultUserColumns()); setPageSize(10); setSort("created_at"); setDirection("DESC"); }}>
                         <p className="muted">
                             上次连接为节点最近上报活动的时间，未上报显示为空，不代表当前在线。
                         </p>
@@ -211,17 +174,7 @@ export function UsersPage() {
                                 </select>
                             </label>
                         </div>
-                        <div className="actions">
-                            <button
-                                className="primary"
-                                type="button"
-                                onClick={() => setShowDisplay(false)}
-                            >
-                                完成
-                            </button>
-                        </div>
-                    </div>
-                </Modal>
+                </AdminDisplaySettings>
             )}
             <ResourcePage
                 key={JSON.stringify({ params, pageSize, revision })}

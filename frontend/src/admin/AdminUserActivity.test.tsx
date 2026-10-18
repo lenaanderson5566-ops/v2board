@@ -21,3 +21,24 @@ it("does not open a user drawer for unidentified events",()=>{
  expect(screen.queryByRole("button")).toBeNull();
  expect(screen.getByText(/未识别用户/)).toBeTruthy();
 });
+
+it("separates event fields, filters counts and shows an empty selected category", () => {
+ load.mockReturnValue({data:{user:{email:"test@example.com",banned:"0",credit_balance:0},events:[
+  {id:1,kind:"订阅",at:123,ip:"192.0.2.1",traffic_u:0,traffic_d:20,user_agent:"<img src=x onerror=alert(1)>"},
+  {id:2,kind:"连接",at:122,ip:"192.0.2.2",node:"Tokyo",client_type:"FastAI"},
+  {id:3,kind:"风控",at:121,rule_key:"rule",rule_name:"频率检测",payload:null},
+ ]},reload:vi.fn()});
+ render(<AdminUserActivityLink row={{user_id:7}}/>);
+ fireEvent.click(screen.getByRole("button",{name:/ID: 7/}));
+ expect(screen.getByRole("region",{name:"账户概况"})).toBeTruthy();
+ expect(screen.getByText("正常")).toBeTruthy();
+ expect(screen.getByRole("article",{name:"订阅记录"}).querySelector("dd")?.textContent).toContain("192.0.2.1");
+ expect(screen.getByText("0 / 20")).toBeTruthy();
+ expect(screen.getByText("客户端标识（UA）").closest("details")?.open).toBe(false);
+ expect(screen.getByRole("dialog").querySelector("img")).toBeNull();
+ fireEvent.click(screen.getByRole("button",{name:"连接 1"}));
+ expect(screen.queryByRole("article",{name:"订阅记录"})).toBeNull();
+ expect(screen.getByText("Tokyo")).toBeTruthy();
+ fireEvent.click(screen.getByRole("button",{name:"登录 0"}));
+ expect(screen.getByRole("status").textContent).toBe("暂无登录记录");
+});

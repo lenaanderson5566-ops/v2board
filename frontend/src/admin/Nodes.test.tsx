@@ -69,7 +69,7 @@ it("shows group names across numeric/string IDs and remembers selected node colu
     expect(screen.getByText("普通权限组 / 高级权限组")).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: "显示设置" }));
     fireEvent.click(
-        within(screen.getByLabelText("可选显示列")).getByRole("checkbox", {
+        within(screen.getByLabelText("可选显示列")).getByRole("button", {
             name: "权限组",
         }),
     );
@@ -83,11 +83,11 @@ it("shows group names across numeric/string IDs and remembers selected node colu
     fireEvent.click(screen.getByRole("button", { name: "显示设置" }));
     expect(
         (
-            within(screen.getByLabelText("可选显示列")).getByRole("checkbox", {
+            within(screen.getByLabelText("可选显示列")).getByRole("button", {
                 name: "权限组",
-            }) as HTMLInputElement
-        ).checked,
-    ).toBe(false);
+            })
+        ).getAttribute("aria-pressed"),
+    ).toBe("false");
     fireEvent.click(screen.getByRole("button", { name: "恢复默认展示" }));
     expect(screen.getByRole("columnheader", { name: "权限组" })).toBeTruthy();
     expect(screen.getByText("普通权限组 / 高级权限组")).toBeTruthy();

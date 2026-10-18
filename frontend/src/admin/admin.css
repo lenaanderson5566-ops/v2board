@@ -684,40 +684,6 @@ body[data-console="admin"] .user-toolbar {
 body[data-console="admin"] .user-toolbar .muted {
     flex-basis: 100%;
 }
-body[data-console="admin"] .user-display-panel > .actions {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 10px;
-    margin: 16px 0;
-}
-body[data-console="admin"] .user-display-panel [aria-label="可选显示列"] {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-}
-body[data-console="admin"] .user-display-panel [aria-pressed="true"] {
-    background: #e6f4ff;
-    color: #096dd9;
-    border-color: #91caff;
-}
-body[data-console="admin"] .user-display-panel button {
-    white-space: normal;
-    min-height: 36px;
-}
-body[data-console="admin"] .node-display-panel [aria-label="可选显示列"] > button {
-    grid-column: 1 / -1;
-}
-body[data-console="admin"] .node-display-panel label {
-    flex-direction: row;
-    align-items: center;
-    min-height: 36px;
-    cursor: pointer;
-}
-body[data-console="admin"] .node-display-panel input[type="checkbox"] {
-    width: 16px;
-    min-height: 16px;
-    margin: 0;
-    flex: 0 0 auto;
-}
 body[data-console="admin"] .users-page > .panel .table-scroll th:last-child,
 body[data-console="admin"] .users-page > .panel .table-scroll td:last-child {
     min-width: 180px;
@@ -1563,21 +1529,6 @@ body[data-console="admin"] .node-management-tools .node-quota-filter input {
     accent-color: #1684ee;
 }
 
-.node-management-tabs {
-    display: flex;
-    gap: 8px;
-    margin-bottom: 16px;
-    flex-wrap: wrap;
-}
-.node-management-tabs button {
-    padding: 10px 18px;
-    border-radius: 10px;
-}
-.node-management-tabs button[aria-pressed="true"] {
-    background: var(--primary, #2563eb);
-    color: white;
-    border-color: transparent;
-}
 
 .node-management-summary {
     display: grid;
@@ -2239,3 +2190,80 @@ body[data-console="admin"] .commission-review-context dd { margin: 0; overflow-w
 body[data-console="admin"] .invitation-workflow { display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:16px; }
 body[data-console="admin"] .invitation-workflow h2 { margin:0 0 8px; font-size:18px; }
 body[data-console="admin"] .invitation-workflow p { margin:0; max-width:75ch; }
+
+/* User activity: compact account overview and separated event records. */
+body[data-console="admin"] .user-activity-drawer .modal { width: min(780px, 100vw); }
+body[data-console="admin"] .user-activity { padding: 24px; }
+body[data-console="admin"] .user-activity-identity { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-bottom: 20px; }
+body[data-console="admin"] .user-activity-identity > div { min-width: 0; }
+body[data-console="admin"] .user-activity-identity button { flex-shrink: 0; }
+body[data-console="admin"] .user-activity-eyebrow { font-size: 12px; color: var(--muted); }
+body[data-console="admin"] .user-activity-identity h3 { margin: 6px 0 0; font-size: 18px; overflow-wrap: anywhere; }
+body[data-console="admin"] .user-activity-summary { background: #f8f9fc; border: 1px solid var(--border); border-radius: 12px; padding: 18px; }
+body[data-console="admin"] .user-activity :is(dl,p) { margin: 0; }
+body[data-console="admin"] .user-activity-summary dl,
+body[data-console="admin"] .user-activity-fields { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 16px 24px; }
+body[data-console="admin"] .user-activity dt { font-size: 12px; color: var(--muted); margin-bottom: 6px; }
+body[data-console="admin"] .user-activity dd { margin: 0; font-size: 13px; line-height: 1.6; overflow-wrap: anywhere; }
+body[data-console="admin"] .user-activity-summary dd { font-weight: 600; }
+body[data-console="admin"] .user-activity-filters { display: flex; gap: 8px; flex-wrap: wrap; margin: 24px 0 12px; }
+body[data-console="admin"] .user-activity-filters button { display: inline-flex; align-items: center; gap: 8px; border-radius: 8px; }
+body[data-console="admin"] .user-activity-filters button span { font-size: 11px; padding: 1px 6px; border-radius: 5px; background: #f0f2f6; color: #617087; }
+body[data-console="admin"] .user-activity-filters [aria-pressed="true"] { background: #eeecff; color: #5145cd; border-color: #c9c3ff; }
+body[data-console="admin"] .user-activity .user-activity-caption { color: var(--muted); font-size: 12px; line-height: 1.6; margin-bottom: 16px; }
+body[data-console="admin"] .user-activity-list { display: grid; gap: 14px; }
+body[data-console="admin"] .user-activity-event { --activity-color: #64748b; --activity-bg: #f1f5f9; border: 1px solid var(--border); border-radius: 12px; overflow: hidden; background: #fff; }
+body[data-console="admin"] .activity-subscription { --activity-color: #5b4dc4; --activity-bg: #f2efff; }
+body[data-console="admin"] .activity-connection { --activity-color: #16706b; --activity-bg: #eaf8f5; }
+body[data-console="admin"] .activity-risk { --activity-color: #9a580d; --activity-bg: #fff5e5; }
+body[data-console="admin"] .activity-login { --activity-color: #2666a3; --activity-bg: #edf5ff; }
+body[data-console="admin"] .user-activity-event-head { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; padding: 14px 18px; border-bottom: 1px solid var(--border); }
+body[data-console="admin"] .user-activity-kind { color: var(--activity-color); background: var(--activity-bg); border-radius: 6px; padding: 4px 9px; font-weight: 600; font-size: 12px; }
+body[data-console="admin"] .user-activity-event time { color: var(--muted); font-size: 12px; font-variant-numeric: tabular-nums; }
+body[data-console="admin"] .user-activity-result { margin-left: auto; }
+body[data-console="admin"] .user-activity-fields { padding: 18px; }
+body[data-console="admin"] .user-activity-full { grid-column: 1 / -1; }
+body[data-console="admin"] .user-activity-details { border-top: 1px solid var(--border); padding: 12px 18px; font-size: 12px; }
+body[data-console="admin"] .user-activity-details summary { cursor: pointer; color: #52627a; }
+body[data-console="admin"] .user-activity-details > p { margin-top: 12px; overflow-wrap: anywhere; line-height: 1.7; }
+body[data-console="admin"] .user-activity-details .risk-rule-card { margin: 12px 0 0; background: #fafbfc; }
+body[data-console="admin"] .user-activity-risk-level { display: inline-block; margin-left: 8px; color: #855400; font-size: 12px; }
+body[data-console="admin"] .user-activity-empty { padding: 40px 16px; border: 1px dashed var(--border); border-radius: 12px; text-align: center; color: var(--muted); }
+body[data-console="admin"] .user-activity .user-activity-notice { background: #fff7e8; padding: 14px; border-radius: 8px; font-size: 13px; }
+@media (max-width: 540px) {
+    body[data-console="admin"] .user-activity { padding: 16px; }
+    body[data-console="admin"] .user-activity-summary dl,
+    body[data-console="admin"] .user-activity-fields { grid-template-columns: minmax(0,1fr); gap: 14px; }
+    body[data-console="admin"] .user-activity-event-head { padding: 12px 14px; }
+}
+
+/* Shared list preferences and navigation hierarchy. */
+body[data-console="admin"] .admin-display-settings { padding: 24px; }
+body[data-console="admin"] .admin-display-settings > p { margin: 0 0 20px; font-size: 13px; line-height: 1.6; }
+body[data-console="admin"] .admin-display-heading { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px; margin-bottom: 14px; }
+body[data-console="admin"] .admin-display-heading h3 { margin: 0; font-size: 14px; }
+body[data-console="admin"] .admin-display-heading small { color: var(--muted); font-size: 12px; font-weight: 400; margin-left: 8px; }
+body[data-console="admin"] .admin-display-grid { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 10px; }
+body[data-console="admin"] .admin-display-grid button { display: flex; align-items: center; justify-content: space-between; gap: 12px; text-align: left; min-height: 44px; padding: 10px 12px; border: 1px solid var(--border); border-radius: 8px; background: #fff; color: var(--admin-text); white-space: normal; overflow-wrap: anywhere; }
+body[data-console="admin"] .admin-display-grid button svg { flex-shrink: 0; visibility: hidden; }
+body[data-console="admin"] .admin-display-grid button[aria-pressed="true"] { border-color: #bdb5f3; background: #f2efff; color: #5145cd; }
+body[data-console="admin"] .admin-display-grid button[aria-pressed="true"] svg { visibility: visible; }
+body[data-console="admin"] .admin-display-extra { margin-top: 20px; padding-top: 18px; border-top: 1px solid var(--border); }
+body[data-console="admin"] .admin-display-extra > p { font-size: 12px; line-height: 1.6; margin: 0 0 16px; }
+body[data-console="admin"] .admin-display-extra .actions { align-items: end; gap: 12px; }
+body[data-console="admin"] .admin-display-extra label { flex: 1; min-width: 140px; }
+body[data-console="admin"] .admin-display-settings footer { display: flex; justify-content: flex-end; margin-top: 24px; padding-top: 16px; border-top: 1px solid var(--border); }
+body[data-console="admin"] .section-tabs { display: flex; align-items: stretch; flex-wrap: nowrap; gap: 4px; padding: 0 12px; margin: 0; border: 0; border-bottom: 1px solid var(--border); background: #fff; overflow-x: auto; }
+body[data-console="admin"] .section-tabs > :is(button,a.button) { flex-shrink: 0; display: inline-flex; align-items: center; justify-content: center; min-height: 46px; padding: 12px 16px; border: 0; border-bottom: 2px solid transparent; border-radius: 0; box-shadow: none; background: transparent; color: var(--muted); font-size: 13px; font-weight: 500; white-space: nowrap; text-decoration: none; }
+body[data-console="admin"] .section-tabs > :is(button,a.button):hover { color: var(--accent); background: #f8f9fc; }
+body[data-console="admin"] .section-tabs > :is(.selected,[aria-selected="true"],[aria-pressed="true"],[data-state="active"]) { color: var(--accent); border-bottom-color: var(--accent); background: transparent; font-weight: 600; }
+body[data-console="admin"] :is(.admin-radio-group,.mail-blocklist-mode,.user-activity-filters) { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; }
+body[data-console="admin"] :is(.admin-radio-group,.mail-blocklist-mode,.user-activity-filters) > button { border: 1px solid var(--border); border-radius: 8px; min-height: 34px; padding: 6px 12px; box-shadow: none; background: #fff; color: var(--admin-text); font-size: 13px; }
+body[data-console="admin"] :is(.admin-radio-group,.mail-blocklist-mode,.user-activity-filters) > button[aria-pressed="true"] { color: #5145cd; background: #f2efff; border-color: #bdb5f3; }
+body[data-console="admin"] :is(.section-tabs,.admin-display-settings,.admin-radio-group) button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+@media (max-width: 540px) {
+    body[data-console="admin"] .admin-display-settings { padding: 16px; }
+    body[data-console="admin"] .admin-display-grid { grid-template-columns: minmax(0,1fr); }
+    body[data-console="admin"] .section-tabs { padding: 0 4px; }
+    body[data-console="admin"] .section-tabs > :is(button,a.button) { padding: 10px 12px; }
+}

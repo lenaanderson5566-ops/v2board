@@ -708,7 +708,7 @@
     "analyticsStorageError": "Não é possível carregar ou salvar as preferências. As estatísticas continuam desativadas. Confira as permissões de armazenamento do navegador e tente novamente.",
     "analyticsExperience": "With your permission, we also count download clicks, successful or failed copying, import attempts and help opens, plus numeric LCP/INP/CLS and sampled API timings/error categories. We never collect subscription links, form contents, request addresses, error messages or stack traces. Clicks do not prove installation or connection success.",
     "analyticsSources": "Com sua permissão, também medimos os domínios dos sites de origem para entender como os visitantes nos encontram. Não registramos URLs completas nem vinculamos as origens a contas ou pagamentos.",
-    "analyticsExplanation": "Este site mede visitas a páginas, categorias de dispositivo e idioma sem vinculá-los à sua conta. Sua escolha é salva neste navegador e podemos perguntar novamente após cerca de seis meses. Você pode desativar as estatísticas a qualquer momento. A nova coleta é interrompida e os dados existentes são eliminados conforme o prazo de retenção. Pedidos e registros de segurança necessários não são afetados.",
+    "analyticsExplanation": "Este site mede visitas a páginas, categorias de dispositivo e idioma sem vinculá-los à sua conta. Sua escolha é salva neste navegador e podemos perguntar novamente após cerca de seis meses. Você pode desativar as estatísticas a qualquer momento. A nova coleta é interrompida e os dados existentes são eliminados conforme o prazo de retenção. Pedidos e registros de segurança necessários não são afetados. With permission, we also record browser family and major version, operating system, in-app browser category and guide actions. Raw user-agent strings and full IP addresses are not stored in optional analytics.",
     "analyticsPrivacy": "Preferências de estatísticas",
     "analyticsConsent": "Usamos estatísticas opcionais para entender como nosso site é utilizado e melhorar sua experiência. Você pode recusar ou alterar sua escolha a qualquer momento em Preferências de estatísticas, no rodapé.",
     "analyticsSummary": "As estatísticas ajudam a entender visitas e etapas de compra sem vinculá-las à sua conta. Recusar não afeta o login, as compras ou o uso do serviço.",
@@ -796,7 +796,18 @@
     "nodes": "Detalhes de conexão e servidores disponíveis",
     "stepAccount": "Dados da conta",
     "stepVerify": "Verificação de e-mail",
-    "freeRegister": "Criar uma conta é grátis. Os valores são exibidos antes de qualquer ação paga."
+    "freeRegister": "Criar uma conta é grátis. Os valores são exibidos antes de qualquer ação paga.",
+    "browserOther": "in-app browser",
+    "browserIos": "On iPhone or iPad, use the menu to open in Safari. Menu labels can vary.",
+    "browserAndroid": "On Android, use the menu to open in your default browser. Menu labels can vary.",
+    "browserDesktop": "Use the app menu to open in your default browser, or copy the address below.",
+    "browserContinue": "Continue in this browser",
+    "xiaohongshu": "Xiaohongshu",
+    "douyin": "Douyin",
+    "bilibili": "bilibili",
+    "alipay": "Alipay",
+    "dingtalk": "DingTalk",
+    "wecom": "WeCom"
   },
   "ux": {
     "cancel": "Cancelar",

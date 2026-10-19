@@ -195,6 +195,56 @@
       "label": "允许 Passkey 登录",
       "hint": "使用设备生物识别、PIN 或安全密钥登录。需 HTTPS 站点 URL 和 Passkey 数据表；账户在安全中心自行绑定，已有 MFA 继续生效。",
       "child": false
+    },
+    "browser_policy_wechat": {
+      "label": "微信访问策略",
+      "hint": "仅控制用户页面引导，不限制管理入口或 API。重新加载页面生效；独立部署前端需重新导出运行配置。",
+      "child": false
+    },
+    "browser_policy_qq": {
+      "label": "QQ访问策略",
+      "hint": "仅控制用户页面引导，不限制管理入口或 API。重新加载页面生效；独立部署前端需重新导出运行配置。",
+      "child": false
+    },
+    "browser_policy_weibo": {
+      "label": "微博访问策略",
+      "hint": "仅控制用户页面引导，不限制管理入口或 API。重新加载页面生效；独立部署前端需重新导出运行配置。",
+      "child": false
+    },
+    "browser_policy_other": {
+      "label": "其他已识别内置浏览器访问策略",
+      "hint": "仅控制用户页面引导，不限制管理入口或 API。重新加载页面生效；独立部署前端需重新导出运行配置。",
+      "child": false
+    },
+    "browser_policy_xiaohongshu": {
+      "label": "小红书访问策略",
+      "hint": "仅控制用户页面引导，不限制管理入口或 API。重新加载页面生效；独立部署前端需重新导出运行配置。",
+      "child": false
+    },
+    "browser_policy_douyin": {
+      "label": "抖音访问策略",
+      "hint": "仅控制用户页面引导，不限制管理入口或 API。重新加载页面生效；独立部署前端需重新导出运行配置。",
+      "child": false
+    },
+    "browser_policy_bilibili": {
+      "label": "哔哩哔哩访问策略",
+      "hint": "仅控制用户页面引导，不限制管理入口或 API。重新加载页面生效；独立部署前端需重新导出运行配置。",
+      "child": false
+    },
+    "browser_policy_alipay": {
+      "label": "支付宝访问策略",
+      "hint": "仅控制用户页面引导，不限制管理入口或 API。重新加载页面生效；独立部署前端需重新导出运行配置。",
+      "child": false
+    },
+    "browser_policy_dingtalk": {
+      "label": "钉钉访问策略",
+      "hint": "仅控制用户页面引导，不限制管理入口或 API。重新加载页面生效；独立部署前端需重新导出运行配置。",
+      "child": false
+    },
+    "browser_policy_wecom": {
+      "label": "企业微信访问策略",
+      "hint": "仅控制用户页面引导，不限制管理入口或 API。重新加载页面生效；独立部署前端需重新导出运行配置。",
+      "child": false
     }
   },
   "subscribe": {

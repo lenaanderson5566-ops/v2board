@@ -7,11 +7,21 @@ import { Panel, State, useData } from "../shared/ui";
 import { formatInstant } from "../shared/timezone";
 import type { V10AnalyticsConfiguration } from "../shared/v10-types";
 import "./analytics.css";
+import { browserLabel } from "./browser-labels";
+import { ReportTable } from "./OperationsAnalytics";
 import { OperationsAnalytics } from "./OperationsAnalytics";
 
 type Report = {
     settings: V10AnalyticsConfiguration;
     ready: boolean;
+    browsersReady?: boolean;
+    browsers?: {
+        browser: string;
+        major: number | null;
+        os: string;
+        embedded: string;
+        sessions: number;
+    }[];
     sourcesReady?: boolean;
     sourceGroups?: number;
     sources?: {
@@ -88,6 +98,14 @@ function CollectionSettings({
 }: {
     settings: V10AnalyticsConfiguration;
     ready: boolean;
+    browsersReady?: boolean;
+    browsers?: {
+        browser: string;
+        major: number | null;
+        os: string;
+        embedded: string;
+        sessions: number;
+    }[];
     sourcesReady?: boolean;
     sourceGroups?: number;
     sources?: {
@@ -269,14 +287,45 @@ export function AdminAnalytics() {
                                 <small>仅限当前范围及设备</small>
                             </div>
                         </div>
+                        <details className="analytics-browser-details"><summary>访问浏览器与系统 · 查看分布</summary>
+                        <h3>访问浏览器与系统</h3>
+                        {data.browsersReady ? (
+                            <ReportTable
+                                headers={[
+                                    "浏览器",
+                                    "主要版本",
+                                    "系统",
+                                    "内置应用",
+                                    "会话",
+                                ]}
+                                rows={(data.browsers || []).map((r) => [
+                                    browserLabel(r.browser),
+                                    r.major ?? "—",
+                                    browserLabel(r.os),
+                                    browserLabel(r.embedded),
+                                    r.sessions,
+                                ])}
+                            />
+                        ) : (
+                            <p className="muted">浏览器统计迁移尚未完成。</p>
+                        )}
+                        <p className="muted">
+                            按会话首次收到的 UA 分类，展示前 100
+                            个组合；只包含同意统计的样本。历史未采集单列，未知不代表异常。内置浏览器可能携带
+                            Chrome/Safari
+                            标记，不代表可使用全部功能。引导页浏览量及复制、继续访问等操作见下方页面与体验报表，复制成功不代表已在外部浏览器打开。
+                        </p>
+                        </details>
                     </>
                 )}
             </Panel>
-            <OperationsAnalytics days={days} />
-            <JourneyAnalytics days={days} device={device} />
+            <nav className="analytics-section-links" aria-label="报表导航">{[["business","业务与安全"],["experience","体验与引导"],["trends","访问趋势"],["conversion","购买转化"],["privacy","采集设置"]].map(([id,label]) => <button key={id} type="button" onClick={() => document.getElementById(`analytics-${id}`)?.scrollIntoView({behavior:"smooth",block:"start"})}>{label}</button>)}</nav>
+            <p className="muted">设备筛选仅作用于访问与体验数据；业务与安全报表按统计天数汇总。不同来源的会话、账号和 IP 不应直接相除计算转化率。</p>
+            <section id="analytics-business"><OperationsAnalytics days={days} /></section>
+            <section id="analytics-experience"><JourneyAnalytics days={days} device={device} /></section>
             {data && (
                 <>
-                    <Panel padded title="数据质量与每日趋势">
+                    <div id="analytics-trends" /><Panel padded title="数据质量与每日趋势">
                         <p className="muted">
                             首次开启：
                             {data.collectionStartedAt
@@ -428,7 +477,7 @@ export function AdminAnalytics() {
                             </div>
                         </div>
                     </Panel>
-                    <Panel padded title="购买路径 · 同一访问会话">
+                    <div id="analytics-conversion" /><Panel padded title="购买路径 · 同一访问会话">
                         <Funnel
                             steps={data.funnel.map((step) => ({
                                 label: labels[step.step],
@@ -676,7 +725,7 @@ export function AdminAnalytics() {
                                 .join(" · ")}
                         </p>
                     </Panel>
-                    <Panel padded title="隐私与保留设置">
+                    <div id="analytics-privacy" /><Panel padded title="隐私与保留设置">
                         <p>
                             <ShieldCheck size={16} aria-hidden />{" "}
                             第一方统计，数据存放在本站数据库。

@@ -5,13 +5,13 @@ export function deviceContext(
     platform = "",
     touchPoints = 0,
 ): { device: Device; embedded: string | null } {
-    const embedded = /MicroMessenger/i.test(ua)
+    const embedded = /XiaoHongShu/i.test(ua) ? "xiaohongshu" : /Aweme/i.test(ua) ? "douyin" : /BiliApp/i.test(ua) ? "bilibili" : /AlipayClient/i.test(ua) ? "alipay" : /DingTalk/i.test(ua) ? "dingtalk" : /wxwork/i.test(ua) ? "wecom" : /MicroMessenger/i.test(ua)
         ? "WeChat"
         : /\bQQ\//i.test(ua)
           ? "QQ"
           : /Weibo/i.test(ua)
             ? "Weibo"
-            : null;
+            : /; wv\)|\bFBAN\/|\bFBAV\/|Instagram/i.test(ua) ? "Other" : null;
     const identity = `${ua} ${platform}`;
     const device: Device =
         /iPhone|iPad|iPod/i.test(ua) ||

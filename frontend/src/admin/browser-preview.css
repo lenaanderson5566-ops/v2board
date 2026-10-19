@@ -1,0 +1,5 @@
+.browser-preview-controls {display:flex;flex-wrap:wrap;gap:16px;align-items:end}
+.browser-preview-frame {width:390px;max-width:100%;max-height:780px;overflow:auto;border:1px solid var(--line);border-radius:20px;margin:20px auto;background:var(--surface);--ink:var(--text);--text-secondary:var(--muted);--surface-soft:var(--surface);--surface-tint:var(--surface);--brand:var(--primary);--on-brand:#fff}
+.browser-preview-frame .browser-notice {min-height:0;padding:20px 14px;box-sizing:border-box}
+.browser-preview-frame .browser-notice-card {padding:24px 18px;box-sizing:border-box}
+.browser-preview-frame .browser-notice h1 {font-size:25px}

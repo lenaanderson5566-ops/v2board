@@ -34,6 +34,12 @@ try {
         'invite_user_id' => $user->id,
     ]);
     $editUser = ['id' => $subject->id, 'email' => $subject->email, 'banned' => 0, 'is_admin' => 0, 'transfer_enable' => 10737418240, 'u' => 536870912, 'd' => 1073741824, 'commission_type' => 2];
+    foreach (['MicroMessenger/8','Weibo/13','QQ/9','python-requests/2',''] as $browserUa) {
+        $browserRequest=Illuminate\Http\Request::create('/app','GET',[],[],[],['HTTP_USER_AGENT'=>$browserUa]);
+        $browserResponse=app(Illuminate\Contracts\Http\Kernel::class)->handle($browserRequest);
+        $assert($browserResponse->getStatusCode()===200 && str_contains($browserResponse->getContent(),'window.V2BOARD') && str_contains($browserResponse->getContent(),'browserPolicies'),'All browser UAs receive the real frontend boot');
+        $assert(str_contains($browserResponse->headers->get('Cache-Control'),'no-store'),'Browser policy boot is not publicly cached');
+    }
     $operationsUrl='/api/v1/'.$securePath.'/analytics/operations';
     $assert($call($operationsUrl.'?days=7')->getStatusCode()===403,'Operations analytics rejects anonymous access');
     $subjectAuth=new App\Services\AuthService($subject);
@@ -386,9 +392,13 @@ try {
     config(['v2board.app_url'=>'http://unsafe.example.test']);
     $assert($call('/api/v1/'.$securePath.'/config/save',['passkey_enable'=>1],$token)->getStatusCode()===503,'Passkey rejects insecure production origin');
     config(['v2board.app_url'=>'https://passkey.example.test','v2board.recaptcha_enable'=>1,'v2board.recaptcha_key'=>'retired-test-only','v2board.frontend_theme_google_analytics'=>'retired-test-only']);
-    $response = $call('/api/v1/' . $securePath . '/config/save', ['custom_footer_html' => $footer,'passkey_enable'=>1], $token);
+    // config:cache boots a fresh container; validate with the transaction-bound user before that final save.
+    $invalidPolicy=$call('/api/v1/'.$securePath.'/config/save',['browser_policy_wechat'=>'invalid'],$token);
+    $assert($invalidPolicy->getStatusCode()===422,'Admin rejects invalid browser policy: '.$invalidPolicy->getStatusCode());
+    $response = $call('/api/v1/' . $securePath . '/config/save', ['custom_footer_html' => $footer,'passkey_enable'=>1,'browser_policy_wechat'=>'prompt','browser_policy_qq'=>'allow','browser_policy_weibo'=>'guide'], $token);
     $assert($response->getStatusCode() === 200, 'Footer save failed: ' . $response->getContent());
     $saved=require $configPath;
+    $assert($saved['browser_policy_wechat']==='prompt' && $saved['browser_policy_qq']==='allow' && $saved['browser_policy_weibo']==='guide','Admin API persists separate browser policy choices');
     $assert(($saved['passkey_enable']??0)==1,'Administrator can persist Passkey switch');
     $assert(!array_key_exists('recaptcha_enable',$saved) && !array_key_exists('recaptcha_key',$saved) && !array_key_exists('frontend_theme_google_analytics',$saved),'Saving settings removes legacy CAPTCHA and Google Analytics configuration');
     config(['v2board.app_url'=>$siteUrl]);

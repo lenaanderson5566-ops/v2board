@@ -54,6 +54,7 @@ export interface Boot {
     emailWhitelistEnabled?: boolean;
     emailWhitelistSuffixes?: string[];
     passkeyEnabled?: boolean;
+    browserPolicies?: Partial<Record<"wechat" | "qq" | "weibo" | "xiaohongshu" | "douyin" | "bilibili" | "alipay" | "dingtalk" | "wecom" | "other", "allow" | "prompt" | "guide">>;
     tosUrl: string;
     currency?: "CNY";
     currencySymbol: string;

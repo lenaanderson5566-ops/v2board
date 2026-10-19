@@ -706,7 +706,7 @@
     "analyticsStorageError": "設定を読み込み・保存できません。解析は停止中です。ブラウザの保存権限を確認してください。",
     "analyticsExperience": "With your permission, we also count download clicks, successful or failed copying, import attempts and help opens, plus numeric LCP/INP/CLS and sampled API timings/error categories. We never collect subscription links, form contents, request addresses, error messages or stack traces. Clicks do not prove installation or connection success.",
     "analyticsSources": "同意いただいた場合、参照元サイトのドメインも集計します。参照元の完全なURLは記録せず、アカウントや決済記録とは関連付けません。",
-    "analyticsExplanation": "ページ閲覧、端末の種類、言語を集計し、アカウントには紐付けません。選択はこのブラウザに保存され、約6か月後に再確認することがあります。いつでも無効にでき、その後の収集は停止します。既存データは保存期間に従って削除されます。注文記録や必要なセキュリティログには影響しません。",
+    "analyticsExplanation": "ページ閲覧、端末の種類、言語を集計し、アカウントには紐付けません。選択はこのブラウザに保存され、約6か月後に再確認することがあります。いつでも無効にでき、その後の収集は停止します。既存データは保存期間に従って削除されます。注文記録や必要なセキュリティログには影響しません。 With permission, we also record browser family and major version, operating system, in-app browser category and guide actions. Raw user-agent strings and full IP addresses are not stored in optional analytics.",
     "analyticsPrivacy": "アクセス解析の設定",
     "analyticsConsent": "任意のアクセス解析を使い、サイトの利用状況を把握して使いやすさを改善します。拒否することも、ページ下部の設定からいつでも選択を変更することもできます。",
     "analyticsSummary": "閲覧や購入手順を集計し、アカウントには紐付けません。拒否してもログイン、購入、サービス利用に影響しません。",
@@ -794,7 +794,18 @@
     "nodes": "接続情報と利用可能なサーバー",
     "stepAccount": "アカウント情報",
     "stepVerify": "メール確認",
-    "freeRegister": "アカウント作成は無料です。有料操作の前に料金を表示します。"
+    "freeRegister": "アカウント作成は無料です。有料操作の前に料金を表示します。",
+    "browserOther": "in-app browser",
+    "browserIos": "On iPhone or iPad, use the menu to open in Safari. Menu labels can vary.",
+    "browserAndroid": "On Android, use the menu to open in your default browser. Menu labels can vary.",
+    "browserDesktop": "Use the app menu to open in your default browser, or copy the address below.",
+    "browserContinue": "Continue in this browser",
+    "xiaohongshu": "Xiaohongshu",
+    "douyin": "Douyin",
+    "bilibili": "bilibili",
+    "alipay": "Alipay",
+    "dingtalk": "DingTalk",
+    "wecom": "WeCom"
   },
   "ux": {
     "cancel": "キャンセル",

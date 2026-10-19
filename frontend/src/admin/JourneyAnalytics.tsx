@@ -65,6 +65,8 @@ const count = (v: number | null) =>
 const duration = (v: number | null) =>
     v === null ? "—" : `${v.toLocaleString()} 秒`;
 const eventNames: Record<string, string> = {
+    guide_manual: "展开手动复制",
+    guide_continue: "继续当前浏览器",
     download: "下载点击",
     copy_success: "复制成功",
     copy_failed: "复制失败",

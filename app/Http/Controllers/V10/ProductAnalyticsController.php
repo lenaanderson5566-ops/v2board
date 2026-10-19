@@ -32,7 +32,7 @@ final class ProductAnalyticsController extends \App\Http\Controllers\Controller 
         if ($kind!=='view') abort_unless(app(\App\Services\ExperienceMeasurements::class)->ready(),503,'Analytics measurement migration is required.');
         abort_if(RateLimiter::tooManyAttempts('product-analytics-global',30000),429,'Collection is temporarily limited.');
         RateLimiter::hit('product-analytics-global',3600);
-        $service->record($event);
+        $service->record($event, $request->userAgent());
         return response('',204)->header('Cache-Control','no-store');
     }
 }

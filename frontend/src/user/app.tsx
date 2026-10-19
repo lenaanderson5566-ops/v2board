@@ -47,19 +47,13 @@ import { UserStatusGate } from "./AccountEntry";
 import { AnnouncementCenter } from "./AnnouncementCenter";
 import { InviteCampaign } from "./InviteCampaign";
 import { AccountMenu } from "./AccountMenu";
-import { EmbeddedBrowserNotice } from "./EmbeddedBrowserNotice";
-import { currentDevice } from "../shared/user-experience";
+import { BrowserAccessGate } from "./EmbeddedBrowserNotice";
 
 import { userNavigation } from "./user-navigation";
 import {
     WorkspaceSkeleton,
     LandingSkeleton,
 } from "../shared/WorkspaceSkeleton";
-setLanguagePersistence(async (language) => {
-    if (boot.mode !== "user" || !hasBrowserSession()) return false;
-    await request("user/update", { language });
-    return true;
-});
 const loadUserContent = () => import("./user-entry");
 const UserContent = React.lazy(loadUserContent);
 const ClientAuthorization = React.lazy(() => import("./ClientAuthorization"));
@@ -74,12 +68,22 @@ import "./product.css";
 export default function App() {
     return (
         <>
-            <UserApp />
+            <BrowserAccessGate footer={<AnalyticsPrivacyFooter />}>
+                <UserApp />
+            </BrowserAccessGate>
             <AnalyticsPrivacy />
         </>
     );
 }
 function UserApp() {
+    useEffect(() => {
+        setLanguagePersistence(async (language) => {
+            if (boot.mode !== "user" || !hasBrowserSession()) return false;
+            await request("user/update", { language });
+            return true;
+        });
+        return () => setLanguagePersistence(async () => false);
+    }, []);
     useEffect(() => {
         if (
             boot.landing ||
@@ -212,10 +216,6 @@ function UserApp() {
         };
         window.addEventListener("hashchange", fn);
         window.addEventListener("auth-expired", expire);
-        if (boot.mode === "user" && currentDevice().embedded) {
-            setLoading(false);
-            return;
-        }
         if (boot.landing && location.hash.startsWith("#/"))
             location.replace("/app" + location.hash);
         const verification =
@@ -270,13 +270,6 @@ function UserApp() {
             window.removeEventListener("auth-expired", expire);
         };
     }, []);
-    if (boot.mode === "user" && currentDevice().embedded)
-        return (
-            <div className="access-page">
-                <EmbeddedBrowserNotice />
-                <AnalyticsPrivacyFooter />
-            </div>
-        );
     if (boot.landing)
         return (
             <React.Suspense fallback={<LandingSkeleton />}>
@@ -495,7 +488,9 @@ function UserApp() {
                         {!path.startsWith("order/") && (
                             <div className="page-heading">
                                 <div>
-                                    <span className="eyebrow">{tx("工作空间")}</span>
+                                    <span className="eyebrow">
+                                        {tx("工作空间")}
+                                    </span>
                                     <h1>{tx(item?.label || "总览")}</h1>
                                 </div>
                                 <span className="today">

@@ -17,13 +17,13 @@ final class ProductAnalyticsController extends \App\Http\Controllers\Controller 
     public function operations(Request $request, \App\Services\OperationsAnalytics $service) {
         $input=$request->validate(['days'=>'sometimes|integer|in:7,30,90']);
         $days=(int)($input['days'] ?? 30);
-        $key='OPERATIONS_ANALYTICS_REPORT:v1:'.$days.':'.\App\Services\TimeZones::system();
+        $key='OPERATIONS_ANALYTICS_REPORT:v2:'.$days.':'.\App\Services\TimeZones::system();
         return response()->json(['data'=>Cache::remember($key,60,fn()=>$service->report($days))])->header('Cache-Control','private, no-store');
     }
     public function report(Request $request, ProductAnalytics $service) {
         $input=$request->validate(['days'=>'sometimes|integer|in:7,30,90','device'=>'sometimes|in:all,desktop,mobile,tablet']);
         $days=(int)($input['days'] ?? 30); $device=$input['device'] ?? 'all';
-        $key='PRODUCT_ANALYTICS_REPORT:v2:'.$days.':'.$device.':'.\App\Services\TimeZones::system().':'.$service->settings()['retentionDays'];
+        $key='PRODUCT_ANALYTICS_REPORT:v3:'.$days.':'.$device.':'.\App\Services\TimeZones::system().':'.$service->settings()['retentionDays'];
         $data=Cache::remember($key,60,fn()=>$service->report($days,$device));
         $data['settings']=$service->settings();
         return response()->json(['data'=>$data])->header('Cache-Control','private, no-store');

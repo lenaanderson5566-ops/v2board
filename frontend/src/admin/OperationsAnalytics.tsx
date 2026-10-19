@@ -1,3 +1,4 @@
+import { browserLabel } from "./browser-labels";
 import type { ReactNode } from "react";
 import { admin, query } from "../shared/api";
 import { Panel, State, useData } from "../shared/ui";
@@ -11,6 +12,23 @@ type Access = {
     unknown: number;
     successRate: number | null;
     latestAt: string | null;
+    clients?: {
+        uniqueIps: number;
+        unknownIpEvents: number;
+        browsers: {
+            category: string;
+            total: number;
+            success: number;
+            failed: number;
+        }[];
+        topIps: {
+            maskedIp: string;
+            total: number;
+            failed: number;
+            accounts: number;
+        }[];
+        countries: { country: string; total: number }[];
+    };
     reasons: { reason: string; count: number }[];
 };
 export type OperationsReport = {
@@ -216,6 +234,66 @@ function AccessReport({
                             <small>仅当前范围</small>
                         </div>
                     </div>
+                    {data.clients && (
+                        <>
+                            <h3>浏览器与 IP 分布</h3>
+                            <p>
+                                有效独立 IP：
+                                <strong>{data.clients.uniqueIps}</strong> ·
+                                缺失或无效 IP 事件：
+                                {data.clients.unknownIpEvents}
+                            </p>
+                            <ReportTable
+                                headers={[
+                                    "浏览器／内置应用",
+                                    "事件",
+                                    "成功",
+                                    "失败",
+                                    "失败比例",
+                                ]}
+                                rows={data.clients.browsers.map((r) => [
+                                    browserLabel(r.category),
+                                    r.total,
+                                    r.success,
+                                    r.failed,
+                                    percentage(
+                                        r.total ? r.failed / r.total : null,
+                                    ),
+                                ])}
+                            />
+                            <h3>IP 访问排行（失败次数优先，前 20）</h3>
+                            <ReportTable
+                                headers={[
+                                    "脱敏 IP",
+                                    "事件",
+                                    "失败",
+                                    "已知账户",
+                                ]}
+                                rows={data.clients.topIps.map((r) => [
+                                    r.maskedIp,
+                                    r.total,
+                                    r.failed,
+                                    r.accounts,
+                                ])}
+                            />
+                            <h3>国家／地区（前 30）</h3>
+                            <ReportTable
+                                headers={["日志记录的地区", "事件"]}
+                                rows={data.clients.countries.map((r) => [
+                                    r.country,
+                                    r.total,
+                                ])}
+                            />
+                            <p className="muted">
+                                复用当前范围内保留的日志。IP
+                                数不等于用户数，共享网络可能多人共用一个
+                                IP；排行按完整 IP
+                                去重后脱敏，外观相同的行可能是不同地址。账户数不包含未识别账户。UA
+                                可伪造，地理信息来自日志记录时的本地数据，未知不代表异常。反代／CDN
+                                需正确配置可信代理，否则日志可能只有代理地址。此处不是全站访客统计，也不据此自动封禁。
+                            </p>
+                        </>
+                    )}
                     <h3>失败原因排行</h3>
                     <ReportTable
                         headers={["原因", "事件数"]}

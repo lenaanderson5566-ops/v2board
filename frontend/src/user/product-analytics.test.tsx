@@ -66,7 +66,7 @@ it("requires renewed permission for previous allows while preserving prior refus
         }),
     );
     expect(consent()).toBe("deny");
-    expect(privacyRevision).toBe(4);
+    expect(privacyRevision).toBe(5);
 });
 it("does not report views, guide actions or API observations without permission", async () => {
     render(<Page />);
@@ -141,4 +141,17 @@ it("bounds API sampling and reports only error categories", async () => {
     expect(events().every((e) => !("url" in e) && !("message" in e))).toBe(
         true,
     );
+});
+
+it("guide actions remain consent gated and do not include the handoff URL or raw UA", async () => {
+    trackAction("guide_continue","browser_prompt");
+    await Promise.resolve();
+    expect(fetcher).not.toHaveBeenCalled();
+    savePrivacyChoice("allow",30);setCollection(true);
+    trackAction("guide_manual","browser_guide");
+    await waitFor(()=>expect(events().some(e=>e.event==="guide_manual")).toBe(true));
+    const event=events().find(e=>e.event==="guide_manual");
+    expect(event.page).toBe("browser_guide");
+    expect(event).not.toHaveProperty("url");expect(event).not.toHaveProperty("userAgent");
+    expect(event).not.toHaveProperty("ip");
 });

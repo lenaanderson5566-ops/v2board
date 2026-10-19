@@ -28,6 +28,7 @@ final class FrontendRuntime
             ],
             'appleAccountEnabled' => (bool) config('v2board.apple_account_enable', 0),
             'emailVerify' => (bool) config('v2board.email_verify', 0),
+            'browserPolicies' => \App\Services\BrowserAccess::policies(),
             'passkeyEnabled' => app(\App\Services\PasskeyService::class)->enabled(),
             'registerClosed' => (bool) config('v2board.stop_register', 0),
             'creditAccessPolicy' => \App\Services\TrafficCreditService::baseGroupId() !== null,

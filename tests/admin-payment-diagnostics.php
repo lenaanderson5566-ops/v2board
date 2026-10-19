@@ -84,6 +84,8 @@ try {
     $assert($mail['delivered']===1 && $mail['negative']===1 && $mail['averageTransportMs']===300,'Mail transport duration and delivery receipts are separate');
     $assert($report['health']['queues'][0]===['name'=>'order_handle','length'=>3,'waitSeconds'=>12,'processes'=>1],'Queue response uses a safe field whitelist');
     $assert($report['health']['lastPruneAt']===gmdate('c',$now-30) && $report['health']['dailyTasks'][0]['lastSuccessAt']===gmdate('c',$now-20),'Task snapshots expose persisted successful timestamps');
+    $assert($report['login']['clients']['uniqueIps']===1 && $report['login']['clients']['topIps'][0]['maskedIp']==='192.0.2.***','Existing IPs are counted by scope and masked');
+    $assert($report['subscription']['clients']['uniqueIps']===0 && $report['subscription']['clients']['unknownIpEvents']===3,'Missing IPs are not counted as visitors');
     $serialized=json_encode($report);
     foreach (['private@example.com','192.0.2.1','token=','another-secret','test-secret','private-note','code-secret'] as $secret) $assert(!str_contains($serialized,$secret),'Report does not expose '.$secret);
     $assert(App\Services\OperationsAnalytics::rate(0,0)===null,'Zero denominator is unavailable, not zero percent');
@@ -101,6 +103,11 @@ try {
     try { $controller->operations(Request::create('/','GET',['days'=>8]),$service); throw new RuntimeException('Invalid report range accepted'); }
     catch (Illuminate\Validation\ValidationException $e) { $assert(true,'Invalid report ranges rejected'); }
     $assert(DB::table('v2_login_log')->count()===6 && DB::table('v2_order')->count()===4,'Reports do not mutate source records');
+    foreach (['2001:db8::1','2001:0db8:0:0:0:0:0:1','invalid'] as $ip) DB::table('v2_login_log')->insert(['is_success'=>0,'ip'=>$ip,'user_agent'=>'Mozilla/5.0 Chrome/123.0 MicroMessenger/8','created_at'=>$now-1]);
+    $ipReport=$service->report(7)['login']['clients'];
+    $assert($ipReport['uniqueIps']===2 && $ipReport['unknownIpEvents']===1,'IPv6 spelling canonicalization and invalid-IP exclusion');
+    $assert(collect($ipReport['browsers'])->firstWhere('category','wechat')['total']===3,'Embedded browser takes precedence over Chrome signature');
+    $assert(!str_contains(json_encode($ipReport),'2001:db8::1') && !str_contains(json_encode($ipReport),'MicroMessenger'),'Report exposes neither raw IP nor UA');
     DB::table('v2_login_log')->delete(); DB::table('v2_subscribe_log')->delete(); DB::table('v2_mail_log')->delete(); DB::table('v2_order')->delete();
     $empty=$service->report(7);
     $assert($empty['login']['successRate']===null && $empty['subscription']['successRate']===null && $empty['mail']['providers']===[] && $empty['payments']['channels']===[],'Empty reports do not fabricate success rates');
@@ -144,7 +151,7 @@ try {
     $assert(!str_contains(json_encode($journey),'journey-a@example.test'),'Journey reports expose no account identifiers');
     $analytics->save(['enabled'=>true,'retentionDays'=>7]);
     $event=['sessionId'=>(string)Illuminate\Support\Str::uuid(),'page'=>'plan','device'=>'desktop','language'=>'zh-CN','consent'=>true];
-    $analytics->record($event);
+    $analytics->record($event, 'Mozilla/5.0 (Linux; Android 14) Chrome/123.0 MicroMessenger/8');
     foreach ([100,200,500,10000] as $value) $analytics->record($event+['event'=>'lcp','value'=>$value]);
     $analytics->record(array_replace($event,['page'=>'payment','event'=>'import_start']));
     $measurement=new App\Services\ExperienceMeasurements();
@@ -155,6 +162,12 @@ try {
     $assert(DB::table('v2_analytics_measurement')->sum('samples')==5,'Measurement migration is idempotent and preserves existing observations');
     $assert($lcp['samples']===4 && $lcp['sessions']===1 && $lcp['average']===2700.0 && $lcp['p75Upper']===500 && $lcp['p95Upper']===10000,'Numeric histograms retain exact sums and expose estimated percentile bucket bounds');
     $session=DB::table('v2_analytics_session')->first();
+    $assert($session->browser==='chrome' && $session->browser_major===123 && $session->embedded==='wechat' && $session->os==='android','Only coarse browser categories persist on first event');
+    $browserRows=$analytics->report(7,'all')['browsers'];
+    $assert($browserRows[0]['sessions']===1 && $browserRows[0]['browser']==='chrome','Browser aggregate uses session cohort');
+    $repeatBrowserMigration=require database_path('migrations/2026_10_19_000003_add_analytics_browsers.php');
+    $repeatBrowserMigration->up();
+    $assert(DB::table('v2_analytics_session')->first()->browser==='chrome','Repeat browser migration preserves observations');
     $assert(DB::table('v2_analytics_page')->sum('views')==1 && $session->stage===1,'Action and numeric events never inflate page views or purchase funnel stages');
     $assert($measurement->report(7,'mobile')['rows']===[],'Experience reports respect anonymous device filtering');
     DB::table('v2_analytics_measurement')->where('event','lcp')->where('bucket',100)->update(['samples'=>196]);

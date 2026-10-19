@@ -79,6 +79,7 @@ export function configField(
             arrayText: true,
             hint: "使用逗号分隔多个值。",
         };
+    if (key.startsWith("browser_policy_")) return {key,label,type:"select",options:[["allow","允许访问"],["prompt","提示后允许访问"],["guide","仅显示引导"]]};
     if (key === "new_user_currency") return {key,label:"新用户默认币种",type:"select",options:[["CNY","人民币 CNY"],["USD","美元 USD"]],hint:"只对之后创建的账号生效。账号币种固定，历史人民币余额不兑换。启用美元前请在订阅管理配置美元价格和汇率。"};
     if (key === "currency" || key === "currency_symbol")
         return {

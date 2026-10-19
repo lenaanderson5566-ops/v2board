@@ -293,3 +293,14 @@ it("integrates range, device-independent operations and local access distributio
             .every(([p]) => !p.includes("device")),
     ).toBe(true);
 });
+
+it("labels existing-log IP totals and renders masked addresses without implying unique users", async () => {
+    const data=fixture();
+    data.login.clients={uniqueIps:2,unknownIpEvents:1,browsers:[{category:"wechat",total:4,success:3,failed:1}],topIps:[{maskedIp:"192.0.2.***",total:4,failed:1,accounts:2}],countries:[{country:"未知",total:4}]};
+    setup(data);
+    render(<OperationsAnalytics days={7} />);
+    expect(await screen.findByText("192.0.2.***")).toBeTruthy();
+    expect(screen.getByText("微信")).toBeTruthy();
+    expect(screen.getByText(/IP 数不等于用户数/)).toBeTruthy();
+    expect(screen.queryByText("192.0.2.1")).toBeNull();
+});

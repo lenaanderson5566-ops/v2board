@@ -49,3 +49,9 @@ describe("configuration API contracts", () => {
         ).toBe("password");
     });
 });
+
+it("browser policies offer enum choices instead of arbitrary UA regular expressions", () => {
+    const field=configField("browser_policy_wechat","guide","sometimes|required|in:allow,prompt,guide","微信访问策略");
+    expect(field.type).toBe("select");
+    expect(field.options?.map(option=>option[0])).toEqual(["allow","prompt","guide"]);
+});

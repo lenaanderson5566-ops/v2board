@@ -6,7 +6,7 @@ use Illuminate\Support\Facades\Schema;
 
 final class ExperienceMeasurements
 {
-    public const EVENTS=['view','download','copy_success','copy_failed','import_start','help_open','api_request','api_error','network_error','js_error','lcp','inp','cls'];
+    public const EVENTS=['view','download','copy_success','copy_failed','import_start','help_open','api_request','api_error','network_error','js_error','lcp','inp','cls','guide_manual','guide_continue'];
     public const METRICS=['api_request','lcp','inp','cls'];
     public const BUCKETS=[0,10,50,100,200,250,500,1000,2500,4000,10000,30000,60000,600000];
 

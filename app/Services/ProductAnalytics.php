@@ -7,7 +7,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 
 final class ProductAnalytics {
-    public const PAGES = ['landing','register','login','forget','dashboard','plan','confirmation','payment','order','order_detail','activities','coupons','subscribe','knowledge','profile','security','invite','traffic','notifications','ticket'];
+    public const PAGES = ['landing','register','login','forget','dashboard','plan','confirmation','payment','order','order_detail','activities','coupons','subscribe','knowledge','profile','security','invite','traffic','notifications','ticket','browser_guide','browser_prompt'];
     public function settings(): array {
         return Cache::remember('PRODUCT_ANALYTICS_SETTINGS', 60, function () {
             $values = RiskSetting::whereIn('key', ['analytics_enabled','analytics_retention_days'])->pluck('value','key');
@@ -17,6 +17,7 @@ final class ProductAnalytics {
     }
     public function ready(): bool { return Schema::hasTable('v2_analytics_session') && Schema::hasTable('v2_analytics_page'); }
     public function sourcesReady(): bool { return Schema::hasColumn('v2_analytics_session', 'attribution_version'); }
+    public function browsersReady(): bool { return Schema::hasColumn('v2_analytics_session','browser_major') && Schema::hasColumn('v2_analytics_session','embedded'); }
     public function save(array $values): array {
         abort_unless($this->ready(),409,'请先执行数据库迁移，再开启访问统计。');
         DB::transaction(function () use ($values) {
@@ -27,15 +28,15 @@ final class ProductAnalytics {
         Cache::forget('PRODUCT_ANALYTICS_SETTINGS');
         return $this->settings();
     }
-    public function record(array $event): void {
+    public function record(array $event, ?string $userAgent = null): void {
         if (!$this->settings()['enabled']) return;
         $now = time();
         // No IP, user ID, raw UA, full referrer or URL is persisted. Hash is scoped to this deployment.
         $hash = hash_hmac('sha256', $event['sessionId'], (string)config('app.key'));
-        DB::transaction(function () use ($event, $now, $hash) {
-            $attribution = [];
+        DB::transaction(function () use ($event, $now, $hash, $userAgent) {
+            $attribution = $this->browsersReady() ? BrowserAccess::classify($userAgent) : [];
             if ($this->sourcesReady() && (int)($event['attributionVersion'] ?? 0) === 1) {
-                $attribution = ['attribution_version'=>1,'source_domain'=>$event['sourceDomain'] ?? null];
+                $attribution += ['attribution_version'=>1,'source_domain'=>$event['sourceDomain'] ?? null];
             }
             // Attribution is fixed on first insert; later events cannot overwrite it.
             DB::table('v2_analytics_session')->insertOrIgnore(array_merge(['session_hash'=>$hash,'created_at'=>$now,'last_at'=>$now,'device'=>$event['device'],'language'=>$event['language'],'stage'=>0], $attribution));
@@ -154,7 +155,13 @@ final class ProductAnalytics {
                 if ($stage==='completed') $q->whereIn('o.status',[3,4]);
             })->count();
         };
-        return ['settings'=>$settings,'ready'=>$ready,'timeZone'=>TimeZones::system(),'from'=>gmdate('c',$start),'to'=>gmdate('c',$now),
+        $browsers=[]; $browsersReady=$ready && $this->browsersReady();
+        if ($browsersReady) {
+            $browsers=(clone $sessions)->select('browser','browser_major','os','embedded')->selectRaw('COUNT(*) AS sessions')
+                ->groupBy('browser','browser_major','os','embedded')->orderByDesc('sessions')->orderBy('browser')->orderBy('browser_major')->orderBy('os')->orderBy('embedded')->limit(100)->get()
+                ->map(fn($r)=>['browser'=>$r->browser ?? 'historical','major'=>$r->browser_major===null ? null : (int)$r->browser_major,'os'=>$r->os ?? 'historical','embedded'=>$r->embedded ?? 'historical','sessions'=>(int)$r->sessions])->all();
+        }
+        return ['browsersReady'=>$browsersReady,'browsers'=>$browsers,'settings'=>$settings,'ready'=>$ready,'timeZone'=>TimeZones::system(),'from'=>gmdate('c',$start),'to'=>gmdate('c',$now),
             'hours'=>$hours,'weekdays'=>$weekdays,'sourcesReady'=>$sourcesReady,'sources'=>$sources,'sourceGroups'=>$sourceGroups,'daily'=>array_values($daily),'previous'=>$previous,'effectiveFrom'=>gmdate('c',max($effectiveStart,$started)),'collectionStartedAt'=>$started ? gmdate('c',$started) : null,
             'latestEventAt'=>$latest ? gmdate('c',$latest) : null,'sessions'=>$visits,'views'=>$views,'pages'=>$pages,'devices'=>$devices,
             'funnel'=>array_map(fn($id,$count)=>['step'=>$id,'sessions'=>$count],['plan','confirmation','payment'],$funnel),

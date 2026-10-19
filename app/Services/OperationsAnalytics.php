@@ -36,7 +36,24 @@ final class OperationsAnalytics
             ->get()->map(fn($r)=>['reason'=>$r->category,'count'=>(int)$r->count])->all();
         return ['available'=>true,'total'=>(int)$row->total,'success'=>(int)$row->success,'failed'=>(int)$row->failed,
             'unknown'=>(int)$row->total-(int)$row->success-(int)$row->failed,
-            'successRate'=>self::rate((int)$row->success,(int)$row->total),'latestAt'=>$row->latest ? gmdate('c',$row->latest) : null,'reasons'=>$reasons];
+            'successRate'=>self::rate((int)$row->success,(int)$row->total),'latestAt'=>$row->latest ? gmdate('c',$row->latest) : null,'reasons'=>$reasons,'clients'=>$this->clients($q,$success,$failure)];
+    }
+
+    private function clients($q, string $success, string $failure): array
+    {
+        $category=BrowserAccess::logCategorySql();
+        $browsers=DB::query()->fromSub((clone $q)->selectRaw("$category AS category, CASE WHEN $success THEN 1 ELSE 0 END AS succeeded, CASE WHEN $failure THEN 1 ELSE 0 END AS failed"),'clients')
+            ->select('category')->selectRaw('COUNT(*) AS total, SUM(succeeded) AS success, SUM(failed) AS failed')->groupBy('category')->orderByDesc('total')->orderBy('category')->get()
+            ->map(fn($r)=>['category'=>$r->category,'total'=>(int)$r->total,'success'=>(int)$r->success,'failed'=>(int)$r->failed])->all();
+        // MySQL INET6_ATON canonicalizes IPv6 spellings and excludes invalid historical input.
+        $ipQuery=(clone $q)->whereRaw('INET6_ATON(ip) IS NOT NULL');
+        $unique=(clone $ipQuery)->selectRaw('COUNT(DISTINCT INET6_ATON(ip)) AS total')->first();
+        $top=(clone $ipQuery)->selectRaw("HEX(INET6_ATON(ip)) AS packed, COUNT(*) AS total, SUM(CASE WHEN $failure THEN 1 ELSE 0 END) AS failed, COUNT(DISTINCT CASE WHEN user_id > 0 THEN user_id ELSE NULL END) AS accounts")
+            ->groupBy('packed')->orderByDesc('failed')->orderByDesc('total')->orderBy('packed')->limit(20)->get()
+            ->map(fn($r)=>['maskedIp'=>GeoIpService::maskSessionIp(inet_ntop(hex2bin($r->packed))),'total'=>(int)$r->total,'failed'=>(int)$r->failed,'accounts'=>(int)$r->accounts])->all();
+        $countries=(clone $q)->selectRaw("COALESCE(NULLIF(country,''),'未知') AS location, COUNT(*) AS total")
+            ->groupBy('location')->orderByDesc('total')->orderBy('location')->limit(30)->get()->map(fn($r)=>['country'=>$r->location,'total'=>(int)$r->total])->all();
+        return ['browsers'=>$browsers,'uniqueIps'=>(int)$unique->total,'unknownIpEvents'=>(clone $q)->whereRaw('INET6_ATON(ip) IS NULL')->count(),'topIps'=>$top,'countries'=>$countries];
     }
 
     private function risk(int $from, int $to): array

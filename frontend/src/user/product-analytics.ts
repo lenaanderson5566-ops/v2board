@@ -4,7 +4,7 @@ import { locale } from "../shared/i18n";
 import type { V10AnalyticsEvent } from "../shared/v10-types";
 import { setTelemetrySink } from "../shared/telemetry";
 
-export const privacyRevision = 4;
+export const privacyRevision = 5;
 export const privacyKey = `v2board.analytics.consent.v2.${encodeURIComponent(apiUrl("/api/v10"))}`;
 export type PrivacyChoice = {
     choice: "allow" | "deny";
@@ -18,7 +18,7 @@ export function privacyChoice(): PrivacyChoice | null {
         if (
             !value ||
             (value.version !== privacyRevision &&
-                !([2, 3].includes(value.version) && value.choice === "deny")) ||
+                !([2, 3, 4].includes(value.version) && value.choice === "deny")) ||
             !["allow", "deny"].includes(value.choice) ||
             !Number.isFinite(value.chosenAt) ||
             value.chosenAt > Date.now() ||
@@ -71,7 +71,9 @@ export function trackAction(
         | "copy_success"
         | "copy_failed"
         | "import_start"
-        | "help_open",
+        | "help_open"
+        | "guide_manual"
+        | "guide_continue",
     page?: V10AnalyticsEvent["page"],
 ) {
     const target = page ?? currentPage();

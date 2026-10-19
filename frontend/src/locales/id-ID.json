@@ -708,7 +708,7 @@
     "analyticsStorageError": "Tidak dapat memuat atau menyimpan preferensi. Analytics tetap tidak aktif. Periksa izin penyimpanan browser dan coba lagi.",
     "analyticsExperience": "With your permission, we also count download clicks, successful or failed copying, import attempts and help opens, plus numeric LCP/INP/CLS and sampled API timings/error categories. We never collect subscription links, form contents, request addresses, error messages or stack traces. Clicks do not prove installation or connection success.",
     "analyticsSources": "Dengan izin Anda, kami juga mengukur domain situs web perujuk untuk memahami bagaimana pengunjung menemukan kami. Kami tidak mencatat URL rujukan lengkap atau sumber tautan ke akun atau catatan pembayaran.",
-    "analyticsExplanation": "Situs ini mengukur kunjungan halaman, kategori perangkat, dan bahasa tanpa menghubungkannya ke akun Anda. Pilihan Anda disimpan di browser ini, dan kami mungkin akan menanyakannya lagi setelah sekitar enam bulan. Anda dapat menonaktifkan analitik kapan saja. Pengumpulan baru kemudian dihentikan, dan data yang ada dihapus sesuai dengan periode penyimpanan. Catatan pesanan dan log keamanan yang diperlukan tidak terpengaruh.",
+    "analyticsExplanation": "Situs ini mengukur kunjungan halaman, kategori perangkat, dan bahasa tanpa menghubungkannya ke akun Anda. Pilihan Anda disimpan di browser ini, dan kami mungkin akan menanyakannya lagi setelah sekitar enam bulan. Anda dapat menonaktifkan analitik kapan saja. Pengumpulan baru kemudian dihentikan, dan data yang ada dihapus sesuai dengan periode penyimpanan. Catatan pesanan dan log keamanan yang diperlukan tidak terpengaruh. With permission, we also record browser family and major version, operating system, in-app browser category and guide actions. Raw user-agent strings and full IP addresses are not stored in optional analytics.",
     "analyticsPrivacy": "Preferensi statistik",
     "analyticsConsent": "Kami menggunakan analitik opsional untuk memahami bagaimana situs web kami digunakan dan meningkatkan pengalaman Anda. Anda dapat menolak atau mengubah pilihan Anda kapan saja melalui preferensi Analytics di footer.",
     "analyticsSummary": "Analytics membantu kami memahami kunjungan halaman dan langkah-langkah pembelian tanpa menautkannya ke akun Anda. Penolakan tidak memengaruhi proses masuk, pembelian, atau penggunaan layanan.",
@@ -796,7 +796,18 @@
     "nodes": "Detail koneksi dan server yang tersedia",
     "stepAccount": "Detail akun",
     "stepVerify": "Verifikasi email",
-    "freeRegister": "Membuat akun itu gratis. Tagihan ditampilkan sebelum tindakan berbayar apa pun."
+    "freeRegister": "Membuat akun itu gratis. Tagihan ditampilkan sebelum tindakan berbayar apa pun.",
+    "browserOther": "in-app browser",
+    "browserIos": "On iPhone or iPad, use the menu to open in Safari. Menu labels can vary.",
+    "browserAndroid": "On Android, use the menu to open in your default browser. Menu labels can vary.",
+    "browserDesktop": "Use the app menu to open in your default browser, or copy the address below.",
+    "browserContinue": "Continue in this browser",
+    "xiaohongshu": "Xiaohongshu",
+    "douyin": "Douyin",
+    "bilibili": "bilibili",
+    "alipay": "Alipay",
+    "dingtalk": "DingTalk",
+    "wecom": "WeCom"
   },
   "ux": {
     "cancel": "Batal",

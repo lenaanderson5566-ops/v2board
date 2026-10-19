@@ -1,5 +1,6 @@
 <?php
 $app = require __DIR__.'/support/bootstrap.php';
+set_exception_handler(function(Throwable $e){fwrite(STDERR,(string)$e);exit(1);});
 $controller=new App\Services\Actions\Client\ClientActions;
 $method=new ReflectionMethod($controller,'buildUnavailableServers'); $method->setAccessible(true);
 $copy=require resource_path('client/copy.php');
@@ -36,15 +37,9 @@ foreach (new RecursiveIteratorIterator(new RecursiveDirectoryIterator(app_path()
         $checks++;
     }
 }
-foreach (App\Services\LanguagePreferenceService::SUPPORTED as $language) {
-    $request=Illuminate\Http\Request::create('/app');
-    $request->headers->set('User-Agent','MicroMessenger');
-    $request->headers->set('Accept-Language',$language);
-    $response=(new App\Http\Middleware\UAfilter)->handle($request,fn()=>response('unexpected'));
-    if ($response->headers->get('Content-Language') !== $language || !str_contains($response->getContent(),e($serverCatalogs[$language]['Unsupported browser']))) throw new RuntimeException('Untranslated browser notice '.$language);
-    if ($language==='fa-IR' && !str_contains($response->getContent(),'dir="rtl"')) throw new RuntimeException('Browser notice direction');
-    $checks++;
-}
+// The frontend owns browser guidance and localization; global interception must stay removed.
+if (str_contains(file_get_contents(app_path('Http/Kernel.php')),'UAfilter::class')) throw new RuntimeException('Obsolete browser intercept restored');
+$checks++;
 foreach (['client/copy.php', 'lang/telegram.php', 'lang/mfa.php'] as $resource) {
     $catalog = require resource_path($resource);
     foreach (App\Services\LanguagePreferenceService::SUPPORTED as $language) {

@@ -16,6 +16,7 @@
 </head>
 <body data-console="{{ $boot['mode'] }}">
     <div id="root"></div>
+    <noscript><p style="padding:24px;text-align:center">请启用 JavaScript；若应用内无法显示，请复制当前网址到系统浏览器打开。<br>Please enable JavaScript or copy this address into your system browser.</p></noscript>
     @if($boot['mode'] === 'user' && !$boot['landing'])
         <footer id="custom-footer">{!! \App\Support\FrontendConfig::footer() !!}</footer>
     @endif

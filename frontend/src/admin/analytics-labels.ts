@@ -1,4 +1,6 @@
 export const analyticsLabels: Record<string, string> = {
+    browser_guide: "仅显示浏览器引导",
+    browser_prompt: "提示后允许访问",
     landing: "首页",
     register: "注册",
     login: "登录",

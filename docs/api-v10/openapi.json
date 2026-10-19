@@ -9472,7 +9472,7 @@
         "security": [],
         "x-permission": "public",
         "summary": "POST public/analytics/events",
-        "description": "First-party, consent-gated anonymous views, named guide actions, numeric performance samples and error categories. Exact allowed Origin, JSON only, 1024-byte maximum, 60 requests/minute per IP. No query parameters, credentials, user IDs, URLs, error messages or additional fields. GPC/DNT and disabled collection return 204 without recording. Non-view events do not inflate page views or the purchase funnel. Numeric metric values are required only for api_request/lcp/inp/cls. Histograms and a 200-sample/session cap make these estimates, not proof of payment, download or connection success.",
+        "description": "First-party, consent-gated anonymous views, named guide actions, numeric performance samples and error categories. Exact allowed Origin, JSON only, 1024-byte maximum, 60 requests/minute per IP. No query parameters, credentials, user IDs, URLs, error messages or additional fields. GPC/DNT and disabled collection return 204 without recording. Non-view events do not inflate page views or the purchase funnel. Numeric metric values are required only for api_request/lcp/inp/cls. Histograms and a 200-sample/session cap make these estimates, not proof of payment, download or connection success. Browser family/major version, OS and embedded-app category are derived from a bounded request UA; raw UA and IP are not persisted in optional analytics. Guide views/actions require the same consent; copies do not prove external browser opening.",
         "responses": {
           "204": {
             "description": "Success"
@@ -13788,7 +13788,9 @@
               "invite",
               "traffic",
               "notifications",
-              "ticket"
+              "ticket",
+              "browser_guide",
+              "browser_prompt"
             ]
           },
           "device": {
@@ -13849,7 +13851,9 @@
               "js_error",
               "lcp",
               "inp",
-              "cls"
+              "cls",
+              "guide_manual",
+              "guide_continue"
             ],
             "description": "Omitted means view. Action/error events forbid value; numeric metrics require value."
           },
@@ -13898,7 +13902,9 @@
               "invite",
               "traffic",
               "notifications",
-              "ticket"
+              "ticket",
+              "browser_guide",
+              "browser_prompt"
             ]
           },
           "device": {
@@ -13961,7 +13967,9 @@
               "js_error",
               "lcp",
               "inp",
-              "cls"
+              "cls",
+              "guide_manual",
+              "guide_continue"
             ],
             "description": "Omitted means view. Action/error events forbid value; numeric metrics require value."
           },

@@ -708,7 +708,7 @@
     "analyticsStorageError": "Einstellungen können nicht geladen oder gespeichert werden. Analytics bleibt ausgeschaltet. Überprüfen Sie die Speicherberechtigungen des Browsers und versuchen Sie es erneut.",
     "analyticsExperience": "With your permission, we also count download clicks, successful or failed copying, import attempts and help opens, plus numeric LCP/INP/CLS and sampled API timings/error categories. We never collect subscription links, form contents, request addresses, error messages or stack traces. Clicks do not prove installation or connection success.",
     "analyticsSources": "Mit Ihrer Erlaubnis messen wir auch verweisende Website-Domains, um zu verstehen, wie Besucher uns finden. Wir erfassen keine vollständigen verweisenden URLs oder verlinken Quellen zu Konten oder Zahlungsaufzeichnungen.",
-    "analyticsExplanation": "Diese Website misst Seitenbesuche, Gerätekategorien und Sprache, ohne sie mit Ihrem Konto zu verknüpfen. Ihre Auswahl wird in diesem Browser gespeichert und wir fragen möglicherweise nach etwa sechs Monaten erneut nach. Sie können die Analyse jederzeit deaktivieren. Die erneute Erfassung wird dann gestoppt und vorhandene Daten werden entsprechend der Aufbewahrungsfrist gelöscht. Bestellaufzeichnungen und notwendige Sicherheitsprotokolle bleiben davon unberührt.",
+    "analyticsExplanation": "Diese Website misst Seitenbesuche, Gerätekategorien und Sprache, ohne sie mit Ihrem Konto zu verknüpfen. Ihre Auswahl wird in diesem Browser gespeichert und wir fragen möglicherweise nach etwa sechs Monaten erneut nach. Sie können die Analyse jederzeit deaktivieren. Die erneute Erfassung wird dann gestoppt und vorhandene Daten werden entsprechend der Aufbewahrungsfrist gelöscht. Bestellaufzeichnungen und notwendige Sicherheitsprotokolle bleiben davon unberührt. With permission, we also record browser family and major version, operating system, in-app browser category and guide actions. Raw user-agent strings and full IP addresses are not stored in optional analytics.",
     "analyticsPrivacy": "Statistikeinstellungen",
     "analyticsConsent": "Wir nutzen optionale Analysen, um zu verstehen, wie unsere Website genutzt wird, und um Ihr Erlebnis zu verbessern. Sie können Ihre Auswahl jederzeit über die Analytics-Einstellungen in der Fußzeile ablehnen oder ändern.",
     "analyticsSummary": "Analytics hilft uns, Seitenbesuche und Kaufschritte zu verstehen, ohne sie mit Ihrem Konto zu verknüpfen. Eine Ablehnung hat keine Auswirkungen auf die Anmeldung, den Kauf oder die Nutzung des Dienstes.",
@@ -796,7 +796,18 @@
     "nodes": "Verbindungsdetails und verfügbare Server",
     "stepAccount": "Kontodetails",
     "stepVerify": "E-Mail-Verifizierung",
-    "freeRegister": "Das Erstellen eines Kontos ist kostenlos. Gebühren werden vor jeder bezahlten Aktion angezeigt."
+    "freeRegister": "Das Erstellen eines Kontos ist kostenlos. Gebühren werden vor jeder bezahlten Aktion angezeigt.",
+    "browserOther": "in-app browser",
+    "browserIos": "On iPhone or iPad, use the menu to open in Safari. Menu labels can vary.",
+    "browserAndroid": "On Android, use the menu to open in your default browser. Menu labels can vary.",
+    "browserDesktop": "Use the app menu to open in your default browser, or copy the address below.",
+    "browserContinue": "Continue in this browser",
+    "xiaohongshu": "Xiaohongshu",
+    "douyin": "Douyin",
+    "bilibili": "bilibili",
+    "alipay": "Alipay",
+    "dingtalk": "DingTalk",
+    "wecom": "WeCom"
   },
   "ux": {
     "cancel": "Abbrechen",

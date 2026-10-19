@@ -708,7 +708,7 @@
     "analyticsStorageError": "بارگذاری یا ذخیره تنظیمات ممکن نیست. آمار خاموش است. مجوز ذخیره‌سازی مرورگر را بررسی کنید.",
     "analyticsExperience": "With your permission, we also count download clicks, successful or failed copying, import attempts and help opens, plus numeric LCP/INP/CLS and sampled API timings/error categories. We never collect subscription links, form contents, request addresses, error messages or stack traces. Clicks do not prove installation or connection success.",
     "analyticsSources": "با اجازه شما، دامنه سایت ارجاع‌دهنده را نیز بررسی می‌کنیم. نشانی کامل صفحه ارجاع‌دهنده ذخیره نمی‌شود و منبع بازدید به حساب یا سوابق پرداخت پیوند داده نمی‌شود.",
-    "analyticsExplanation": "این سایت بازدید صفحات، نوع دستگاه و زبان را بدون ارتباط با حساب شما بررسی می‌کند. انتخاب شما در این مرورگر ذخیره می‌شود و ممکن است حدود شش ماه بعد دوباره سؤال کنیم. هر زمان می‌توانید آمار را خاموش کنید تا جمع‌آوری جدید متوقف شود. داده‌های قبلی طبق دوره نگهداری پاک می‌شوند. سوابق سفارش و گزارش‌های امنیتی ضروری تغییری نمی‌کنند.",
+    "analyticsExplanation": "این سایت بازدید صفحات، نوع دستگاه و زبان را بدون ارتباط با حساب شما بررسی می‌کند. انتخاب شما در این مرورگر ذخیره می‌شود و ممکن است حدود شش ماه بعد دوباره سؤال کنیم. هر زمان می‌توانید آمار را خاموش کنید تا جمع‌آوری جدید متوقف شود. داده‌های قبلی طبق دوره نگهداری پاک می‌شوند. سوابق سفارش و گزارش‌های امنیتی ضروری تغییری نمی‌کنند. With permission, we also record browser family and major version, operating system, in-app browser category and guide actions. Raw user-agent strings and full IP addresses are not stored in optional analytics.",
     "analyticsPrivacy": "تنظیمات آمار",
     "analyticsConsent": "از آمار اختیاری برای شناخت نحوه استفاده از سایت و بهبود تجربه شما استفاده می‌کنیم. می‌توانید رد کنید یا هر زمان انتخاب خود را در تنظیمات آمار پایین صفحه تغییر دهید.",
     "analyticsSummary": "آمار بازدید و مراحل خرید به حساب شما مرتبط نمی‌شود. رد کردن بر ورود، خرید یا استفاده از خدمات اثری ندارد.",
@@ -796,7 +796,18 @@
     "nodes": "اطلاعات اتصال و سرورهای موجود",
     "stepAccount": "اطلاعات حساب",
     "stepVerify": "تأیید ایمیل",
-    "freeRegister": "ایجاد حساب رایگان است. هزینه‌ها پیش از پرداخت نمایش داده می‌شوند."
+    "freeRegister": "ایجاد حساب رایگان است. هزینه‌ها پیش از پرداخت نمایش داده می‌شوند.",
+    "browserOther": "in-app browser",
+    "browserIos": "On iPhone or iPad, use the menu to open in Safari. Menu labels can vary.",
+    "browserAndroid": "On Android, use the menu to open in your default browser. Menu labels can vary.",
+    "browserDesktop": "Use the app menu to open in your default browser, or copy the address below.",
+    "browserContinue": "Continue in this browser",
+    "xiaohongshu": "Xiaohongshu",
+    "douyin": "Douyin",
+    "bilibili": "bilibili",
+    "alipay": "Alipay",
+    "dingtalk": "DingTalk",
+    "wecom": "WeCom"
   },
   "ux": {
     "cancel": "لغو",

@@ -708,7 +708,7 @@
     "analyticsStorageError": "ไม่สามารถโหลดหรือบันทึกการตั้งค่าได้ การวิเคราะห์ยังคงปิดอยู่ ตรวจสอบการอนุญาตพื้นที่เก็บข้อมูลของเบราว์เซอร์แล้วลองอีกครั้ง",
     "analyticsExperience": "With your permission, we also count download clicks, successful or failed copying, import attempts and help opens, plus numeric LCP/INP/CLS and sampled API timings/error categories. We never collect subscription links, form contents, request addresses, error messages or stack traces. Clicks do not prove installation or connection success.",
     "analyticsSources": "เมื่อได้รับอนุญาตจากคุณ เรายังวัดโดเมนเว็บไซต์อ้างอิงเพื่อทำความเข้าใจว่าผู้เยี่ยมชมค้นพบเราได้อย่างไร เราไม่บันทึก URL อ้างอิงแบบเต็มหรือเชื่อมโยงแหล่งที่มาไปยังบัญชีหรือบันทึกการชำระเงิน",
-    "analyticsExplanation": "ไซต์นี้วัดการเข้าชมหน้า หมวดหมู่อุปกรณ์ และภาษา โดยไม่เชื่อมโยงกับบัญชีของคุณ ตัวเลือกของคุณจะถูกบันทึกไว้ในเบราว์เซอร์นี้ และเราอาจถามอีกครั้งหลังจากผ่านไปประมาณหกเดือน คุณสามารถปิดการวิเคราะห์ได้ตลอดเวลา จากนั้นคอลเลกชันใหม่จะหยุด และข้อมูลที่มีอยู่จะถูกล้างตามระยะเวลาการเก็บรักษา บันทึกคำสั่งซื้อและบันทึกความปลอดภัยที่จำเป็นจะไม่ได้รับผลกระทบ",
+    "analyticsExplanation": "ไซต์นี้วัดการเข้าชมหน้า หมวดหมู่อุปกรณ์ และภาษา โดยไม่เชื่อมโยงกับบัญชีของคุณ ตัวเลือกของคุณจะถูกบันทึกไว้ในเบราว์เซอร์นี้ และเราอาจถามอีกครั้งหลังจากผ่านไปประมาณหกเดือน คุณสามารถปิดการวิเคราะห์ได้ตลอดเวลา จากนั้นคอลเลกชันใหม่จะหยุด และข้อมูลที่มีอยู่จะถูกล้างตามระยะเวลาการเก็บรักษา บันทึกคำสั่งซื้อและบันทึกความปลอดภัยที่จำเป็นจะไม่ได้รับผลกระทบ With permission, we also record browser family and major version, operating system, in-app browser category and guide actions. Raw user-agent strings and full IP addresses are not stored in optional analytics.",
     "analyticsPrivacy": "การตั้งค่าสถิติการเข้าชม",
     "analyticsConsent": "เราใช้การวิเคราะห์เพิ่มเติมเพื่อทำความเข้าใจวิธีการใช้เว็บไซต์ของเราและปรับปรุงประสบการณ์ของคุณ คุณสามารถปฏิเสธหรือเปลี่ยนแปลงตัวเลือกของคุณได้ตลอดเวลาผ่านการตั้งค่า Analytics ในส่วนท้าย",
     "analyticsSummary": "การวิเคราะห์ช่วยให้เราเข้าใจการเข้าชมหน้าและขั้นตอนการซื้อโดยไม่ต้องเชื่อมโยงกับบัญชีของคุณ การปฏิเสธไม่ส่งผลต่อการลงชื่อเข้าใช้ การซื้อ หรือการใช้บริการ",
@@ -796,7 +796,18 @@
     "nodes": "รายละเอียดการเชื่อมต่อและเซิร์ฟเวอร์ที่มีอยู่",
     "stepAccount": "รายละเอียดบัญชี",
     "stepVerify": "การยืนยันอีเมล",
-    "freeRegister": "การสร้างบัญชีนั้นฟรี การเรียกเก็บเงินจะแสดงก่อนการดำเนินการชำระเงินใดๆ"
+    "freeRegister": "การสร้างบัญชีนั้นฟรี การเรียกเก็บเงินจะแสดงก่อนการดำเนินการชำระเงินใดๆ",
+    "browserOther": "in-app browser",
+    "browserIos": "On iPhone or iPad, use the menu to open in Safari. Menu labels can vary.",
+    "browserAndroid": "On Android, use the menu to open in your default browser. Menu labels can vary.",
+    "browserDesktop": "Use the app menu to open in your default browser, or copy the address below.",
+    "browserContinue": "Continue in this browser",
+    "xiaohongshu": "Xiaohongshu",
+    "douyin": "Douyin",
+    "bilibili": "bilibili",
+    "alipay": "Alipay",
+    "dingtalk": "DingTalk",
+    "wecom": "WeCom"
   },
   "ux": {
     "cancel": "ยกเลิก",

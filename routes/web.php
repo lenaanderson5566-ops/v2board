@@ -5,10 +5,10 @@ $renderConsole = function (string $mode, bool $landing = false) use ($securePath
     $manifestPath = public_path('console/.vite/manifest.json');
     abort_unless(is_file($manifestPath), 503, '请先在 frontend 目录执行 npm ci && npm run build');
     $manifest = json_decode(file_get_contents($manifestPath), true);
-    return view('console', [
+    return response()->view('console', [
         'entry' => $manifest[$mode === 'admin' ? 'admin.html' : 'index.html'],
         'boot' => \App\Support\FrontendRuntime::config($mode, $landing),
-    ]);
+    ])->header('Cache-Control', 'private, no-store');
 };
 Route::get('/', function (Request $request) use ($renderConsole) {
     if (config('v2board.app_url') && config('v2board.safe_mode_enable', 0)) {

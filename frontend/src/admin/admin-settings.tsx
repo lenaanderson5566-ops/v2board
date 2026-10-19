@@ -1,3 +1,4 @@
+import { AdminBrowserPreview } from "./AdminBrowserPreview";
 import { AdminChoiceGroup } from "./AdminChoices";
 import { useRef, useState } from "react";
 import { admin, request, rows, type Row } from "../shared/api";
@@ -90,6 +91,7 @@ export function Settings({ section }: { section?: "app" | "invite" } = {}) {
             setActionBusy(false);
         }
     }
+    const [previewValues, setPreviewValues] = useState<Row | null>(null);
     const raw = d.data?.[group] || {};
     const fields = settingsPresentation(
         group,
@@ -184,7 +186,7 @@ export function Settings({ section }: { section?: "app" | "invite" } = {}) {
                 onChange={value => {
                     if (value === group) return;
                     if (dirty && !window.confirm("当前分类有未保存的修改，确认放弃并切换？")) return;
-                    setGroup(value); setSaved(""); setDirty(false); setActionResult("");
+                    setPreviewValues(null); setGroup(value); setSaved(""); setDirty(false); setActionResult("");
                 }} /> }
             <State
                 loading={
@@ -245,6 +247,7 @@ export function Settings({ section }: { section?: "app" | "invite" } = {}) {
                         key={group + JSON.stringify(raw)}
                         fields={fields}
                         initial={raw}
+                        onValuesChange={setPreviewValues}
                         resolveFields={settingsFields}
                         linkValues={linkSettings}
                         onDirty={() => {
@@ -272,6 +275,7 @@ export function Settings({ section }: { section?: "app" | "invite" } = {}) {
                         }}
                     />
                 )}
+                {group === "safe" && <AdminBrowserPreview values={previewValues || raw} />}
                 {group === "subscribe" && (
                     <p className="pad muted">
                         设置额度基础权限组后：订阅有效时，额度沿用订阅权限；订阅到期或无订阅时，额度仅可使用基础组节点。适用于所有额度用户（含已迁移的一次性套餐）。额度余额、套餐记录及限速、设备限制不变。节点在下次拉取用户时更新权限，客户端需更新订阅以刷新节点列表。

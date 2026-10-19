@@ -708,7 +708,7 @@
     "analyticsStorageError": "Impossible de charger ou d'enregistrer les préférences. Analytics reste désactivé. Vérifiez les autorisations de stockage du navigateur et réessayez.",
     "analyticsExperience": "With your permission, we also count download clicks, successful or failed copying, import attempts and help opens, plus numeric LCP/INP/CLS and sampled API timings/error categories. We never collect subscription links, form contents, request addresses, error messages or stack traces. Clicks do not prove installation or connection success.",
     "analyticsSources": "Avec votre permission, nous mesurons également les domaines des sites Web référents pour comprendre comment les visiteurs nous trouvent. Nous n’enregistrons pas les URL de référence complètes ni ne lions les sources vers des comptes ou des enregistrements de paiement.",
-    "analyticsExplanation": "Ce site mesure les visites de pages, les catégories d'appareils et la langue sans les lier à votre compte. Votre choix est enregistré dans ce navigateur et nous pouvons vous le demander à nouveau après environ six mois. Vous pouvez désactiver les analyses à tout moment. La nouvelle collecte s'arrête alors et les données existantes sont effacées en fonction de la période de conservation. Les enregistrements de commandes et les journaux de sécurité nécessaires ne sont pas affectés.",
+    "analyticsExplanation": "Ce site mesure les visites de pages, les catégories d'appareils et la langue sans les lier à votre compte. Votre choix est enregistré dans ce navigateur et nous pouvons vous le demander à nouveau après environ six mois. Vous pouvez désactiver les analyses à tout moment. La nouvelle collecte s'arrête alors et les données existantes sont effacées en fonction de la période de conservation. Les enregistrements de commandes et les journaux de sécurité nécessaires ne sont pas affectés. With permission, we also record browser family and major version, operating system, in-app browser category and guide actions. Raw user-agent strings and full IP addresses are not stored in optional analytics.",
     "analyticsPrivacy": "Préférences de statistiques",
     "analyticsConsent": "Nous utilisons des analyses facultatives pour comprendre comment notre site Web est utilisé et améliorer votre expérience. Vous pouvez refuser ou modifier votre choix à tout moment via les préférences Analytics dans le pied de page.",
     "analyticsSummary": "Analytics nous aide à comprendre les visites de pages et les étapes d'achat sans les lier à votre compte. Le refus n’affecte pas la connexion, les achats ou l’utilisation du service.",
@@ -796,7 +796,18 @@
     "nodes": "Détails de connexion et serveurs disponibles",
     "stepAccount": "Détails du compte",
     "stepVerify": "Vérification des e-mails",
-    "freeRegister": "La création d'un compte est gratuite. Les frais sont affichés avant toute action payante."
+    "freeRegister": "La création d'un compte est gratuite. Les frais sont affichés avant toute action payante.",
+    "browserOther": "in-app browser",
+    "browserIos": "On iPhone or iPad, use the menu to open in Safari. Menu labels can vary.",
+    "browserAndroid": "On Android, use the menu to open in your default browser. Menu labels can vary.",
+    "browserDesktop": "Use the app menu to open in your default browser, or copy the address below.",
+    "browserContinue": "Continue in this browser",
+    "xiaohongshu": "Xiaohongshu",
+    "douyin": "Douyin",
+    "bilibili": "bilibili",
+    "alipay": "Alipay",
+    "dingtalk": "DingTalk",
+    "wecom": "WeCom"
   },
   "ux": {
     "cancel": "Annuler",

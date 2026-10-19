@@ -710,7 +710,7 @@
     "analyticsStorageError": "Не удалось загрузить или сохранить настройки. Аналитика отключена. Проверьте разрешения хранилища браузера.",
     "analyticsExperience": "With your permission, we also count download clicks, successful or failed copying, import attempts and help opens, plus numeric LCP/INP/CLS and sampled API timings/error categories. We never collect subscription links, form contents, request addresses, error messages or stack traces. Clicks do not prove installation or connection success.",
     "analyticsSources": "С вашего согласия мы также учитываем домены сайтов-источников. Полные адреса страниц не сохраняются; источники не связываются с аккаунтами или платежами.",
-    "analyticsExplanation": "Сайт учитывает просмотры страниц, тип устройства и язык без привязки к аккаунту. Выбор сохраняется в этом браузере; примерно через шесть месяцев мы можем спросить снова. Аналитику можно отключить в любой момент: сбор новых данных прекратится, а прежние будут удалены по сроку хранения. Записи заказов и необходимые журналы безопасности не затрагиваются.",
+    "analyticsExplanation": "Сайт учитывает просмотры страниц, тип устройства и язык без привязки к аккаунту. Выбор сохраняется в этом браузере; примерно через шесть месяцев мы можем спросить снова. Аналитику можно отключить в любой момент: сбор новых данных прекратится, а прежние будут удалены по сроку хранения. Записи заказов и необходимые журналы безопасности не затрагиваются. With permission, we also record browser family and major version, operating system, in-app browser category and guide actions. Raw user-agent strings and full IP addresses are not stored in optional analytics.",
     "analyticsPrivacy": "Настройки аналитики",
     "analyticsConsent": "Мы используем необязательную аналитику, чтобы понимать использование сайта и улучшать его. Вы можете отказаться или изменить выбор в настройках аналитики внизу страницы.",
     "analyticsSummary": "Статистика посещений и этапов покупки не связывается с аккаунтом. Отказ не влияет на вход, покупки или использование сервиса.",
@@ -798,7 +798,18 @@
     "nodes": "Подключение и доступные серверы",
     "stepAccount": "Данные аккаунта",
     "stepVerify": "Подтверждение почты",
-    "freeRegister": "Регистрация бесплатна. Стоимость показывается до оплаты."
+    "freeRegister": "Регистрация бесплатна. Стоимость показывается до оплаты.",
+    "browserOther": "in-app browser",
+    "browserIos": "On iPhone or iPad, use the menu to open in Safari. Menu labels can vary.",
+    "browserAndroid": "On Android, use the menu to open in your default browser. Menu labels can vary.",
+    "browserDesktop": "Use the app menu to open in your default browser, or copy the address below.",
+    "browserContinue": "Continue in this browser",
+    "xiaohongshu": "Xiaohongshu",
+    "douyin": "Douyin",
+    "bilibili": "bilibili",
+    "alipay": "Alipay",
+    "dingtalk": "DingTalk",
+    "wecom": "WeCom"
   },
   "ux": {
     "cancel": "Отмена",

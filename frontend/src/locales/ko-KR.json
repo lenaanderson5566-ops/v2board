@@ -706,7 +706,7 @@
     "analyticsStorageError": "설정을 불러오거나 저장할 수 없습니다. 통계는 꺼져 있습니다. 브라우저 저장 권한을 확인하세요.",
     "analyticsExperience": "With your permission, we also count download clicks, successful or failed copying, import attempts and help opens, plus numeric LCP/INP/CLS and sampled API timings/error categories. We never collect subscription links, form contents, request addresses, error messages or stack traces. Clicks do not prove installation or connection success.",
     "analyticsSources": "동의하시면 유입 사이트 도메인도 집계합니다. 전체 유입 URL은 기록하지 않으며 계정이나 결제 기록과 연결하지 않습니다.",
-    "analyticsExplanation": "페이지 방문, 기기 유형, 언어를 통계로 파악하며 계정과 연결하지 않습니다. 선택은 현재 브라우저에 저장되며 약 6개월 후 다시 요청할 수 있습니다. 언제든 끌 수 있으며 이후 수집이 중단됩니다. 기존 데이터는 보관 기간에 따라 삭제됩니다. 주문 기록과 필수 보안 로그에는 영향이 없습니다.",
+    "analyticsExplanation": "페이지 방문, 기기 유형, 언어를 통계로 파악하며 계정과 연결하지 않습니다. 선택은 현재 브라우저에 저장되며 약 6개월 후 다시 요청할 수 있습니다. 언제든 끌 수 있으며 이후 수집이 중단됩니다. 기존 데이터는 보관 기간에 따라 삭제됩니다. 주문 기록과 필수 보안 로그에는 영향이 없습니다. With permission, we also record browser family and major version, operating system, in-app browser category and guide actions. Raw user-agent strings and full IP addresses are not stored in optional analytics.",
     "analyticsPrivacy": "방문 통계 설정",
     "analyticsConsent": "선택적 통계로 웹사이트 이용 현황을 파악하고 경험을 개선합니다. 거부하거나 페이지 하단의 방문 통계 설정에서 언제든 선택을 변경할 수 있습니다.",
     "analyticsSummary": "페이지 방문과 구매 단계를 통계로 파악하며 계정과 연결하지 않습니다. 거부해도 로그인, 구매 및 서비스 이용에 영향이 없습니다.",
@@ -794,7 +794,18 @@
     "nodes": "연결 정보 및 이용 가능한 서버",
     "stepAccount": "계정 정보",
     "stepVerify": "이메일 인증",
-    "freeRegister": "계정 생성은 무료이며 결제 전 비용이 표시됩니다."
+    "freeRegister": "계정 생성은 무료이며 결제 전 비용이 표시됩니다.",
+    "browserOther": "in-app browser",
+    "browserIos": "On iPhone or iPad, use the menu to open in Safari. Menu labels can vary.",
+    "browserAndroid": "On Android, use the menu to open in your default browser. Menu labels can vary.",
+    "browserDesktop": "Use the app menu to open in your default browser, or copy the address below.",
+    "browserContinue": "Continue in this browser",
+    "xiaohongshu": "Xiaohongshu",
+    "douyin": "Douyin",
+    "bilibili": "bilibili",
+    "alipay": "Alipay",
+    "dingtalk": "DingTalk",
+    "wecom": "WeCom"
   },
   "ux": {
     "cancel": "취소",

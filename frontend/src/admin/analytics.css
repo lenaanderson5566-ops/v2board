@@ -112,3 +112,10 @@ body[data-console="admin"] .analytics-page td:last-child { position: static; rig
     font-size: 9px;
     white-space: nowrap;
 }
+
+.analytics-section-links {display:flex;gap:10px;flex-wrap:wrap}
+.analytics-section-links button {padding:10px 16px;border:1px solid var(--line);border-radius:10px;color:inherit;text-decoration:none}
+.analytics-browser-details {margin-top:20px;border-top:1px solid var(--line);padding-top:16px}
+.analytics-browser-details summary {cursor:pointer;font-weight:600}
+.analytics-page [id^="analytics-"] {scroll-margin-top:80px}
+.analytics-page > section {display:grid;gap:20px;min-width:0}

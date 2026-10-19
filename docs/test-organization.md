@@ -1,4 +1,20 @@
+## 浏览器策略预览与平台扩展
+
+- 后台安全与注册复用共享 BrowserNoticeView，预览跟随表单草稿，覆盖允许、提示后允许、仅引导以及模拟复制和继续；预览不调用用户统计或真实剪贴板。
+- 新增小红书、抖音、哔哩哔哩、支付宝、钉钉、企业微信策略和报表分类，默认允许。企业微信优先于普通微信，QQBrowser 不归类为 QQ 内置浏览器。
+- 前端全量 692 项通过；隔离副本 SQLite 测试库（使用现有客户端策略及风险配置迁移）运行 frontend-runtime.php，101 项通过；三处 PHP 文件语法检查通过。首次空 SQLite 库缺客户端配置表，补齐测试依赖后通过。
+- 访问与转化将概览指标前置、浏览器明细折叠，并提供不会改变哈希路由的分区导航和筛选口径说明。无需新增查询或数据库迁移。
+- 结果文件位于忽略目录 storage/app/test-organization/browser-access/frontend-platforms.json、build-platforms.log。
+
 # 测试整理记录
+
+## 浏览器策略与访问报表
+
+- 复用 frontend-runtime、admin-payment-diagnostics、backend-security、console-smoke、api-v10-inventory、api-route-audit、client-import-language 及 update-script；无新增独立后端脚本，清单不变。
+- 回归覆盖策略枚举与默认值、运行配置导出、微信/QQ/微博 UA 实际页面入口、HTML no-store、匿名浏览器首次归因与迁移重跑、IPv6 表示归一化、无效 IP 排除、脱敏与原始 UA 不外泄。新迁移接入 update.sh 定向白名单和执行顺序。
+- 可选统计沿用同意、DNT/GPC、限流、会话预算与清理；隐私版本升级为 5，旧允许需重新确认，旧拒绝继续有效。登录/订阅 IP 指标仅复用必要安全日志。
+- client-import-language 增加显式失败退出；修正原中文提现提示的 `:limitCNY` 占位符为 `:limit CNY`，保留原金额语义。原全局 UA 页面翻译断言改为禁止恢复旧中间件，实际前端文案和交互由组件测试覆盖。
+- 所有后端集成测试在 /tmp 项目副本、随机命名测试库与独立 Redis 中运行；未使用应用数据库或应用 Redis。结果位于忽略目录 `storage/app/test-organization/browser-access/`。后端运行配置 53 项、报表 63 项、安全 92 项、契约 1571 项、路由 2536 项、语言 3203 项、控制台 197 项及升级器 26 场景通过。最终前端全量 684 项通过，TypeScript、生产构建、生成器 12 项及七份契约一致性检查通过。
 
 ## 用户旅程与体验统计（第二批）
 

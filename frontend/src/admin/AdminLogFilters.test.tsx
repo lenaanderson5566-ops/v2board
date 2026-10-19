@@ -59,3 +59,20 @@ it("rejects reversed ranges without sending a query", () => {
     );
     expect(apply).not.toHaveBeenCalled();
 });
+
+it("uses the configured zone for filters without repeating it on labels", async () => {
+    const { configureTimeZone, setDisplayTimeZone } = await import("../shared/timezone");
+    const { AdminLogTimeZone, logTime } = await import("./admin-log-time");
+    configureTimeZone("Asia/Kathmandu", true);
+    setDisplayTimeZone("America/New_York");
+    const apply = vi.fn();
+    const at = Date.parse("2026-10-19T00:00:00Z") / 1000;
+    const view = render(<><AdminLogTimeZone /><AdminLogFilters kind="login" initialFilters={{from: at}} onApply={apply}/><span>{logTime(at)}</span></>);
+    expect(screen.getAllByText(/Asia\/Kathmandu/)).toHaveLength(1);
+    expect((screen.getByLabelText("日志开始时间") as HTMLInputElement).value).toBe("2026-10-19T05:45");
+    expect(view.container.textContent).not.toMatch(/GMT|UTC/);
+    fireEvent.click(screen.getByRole("button", {name:"查询"}));
+    expect(apply).toHaveBeenCalledWith({from:at});
+    configureTimeZone("Asia/Shanghai", true);
+    setDisplayTimeZone(null);
+});

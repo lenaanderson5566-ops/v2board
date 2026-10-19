@@ -526,3 +526,74 @@ it.each(legacyAdminMenu.map(([key, title]) => [key, title]))("renders menu page 
     expect(screen.queryByText(/此页面暂时无法加载/)).toBeNull();
     expect(screen.queryByText("页面未找到")).toBeNull();
 });
+
+it.each(["log-login", "log-subscribe", "log-connection", "log-risk", "system-log", "mail-logs", "client-diagnostics"])("shows one timezone note on %s", async (current) => {
+    const { configureTimeZone } = await import("../shared/timezone");
+    const { adminPageFixture } = await import("./test-support/page-fixtures");
+    configureTimeZone("Asia/Shanghai", true);
+    api.request.mockImplementation(async (path: string) => adminPageFixture(path));
+    render(<AdminContent current={current} />);
+    expect((await screen.findByTestId("log-time-zone")).textContent).toContain("Asia/Shanghai");
+    expect(screen.getAllByText(/Asia\/Shanghai/)).toHaveLength(1);
+});
+
+it("removes account generation and CSV export while preserving user management", async () => {
+    render(<UsersPage />);
+    await waitFor(() => expect((screen.getByRole("button", {name:"刷新"}) as HTMLButtonElement).disabled).toBe(false));
+    fireEvent.click(screen.getByText("操作", {selector:"summary"}));
+    expect(screen.queryByText("导出 CSV")).toBeNull();
+    expect(screen.queryByText("生成用户")).toBeNull();
+    expect(screen.getByRole("button", {name:"发送邮件"})).toBeTruthy();
+    expect(screen.getByRole("button", {name:"批量封禁"})).toBeTruthy();
+    expect(api.request.mock.calls.some(([path]) => /user\/(generate|dumpCSV)/.test(path))).toBe(false);
+});
+
+it("loads user drawer tabs on demand without replacing list filters", async () => {
+    localStorage.removeItem("admin.users.view.v1");
+    api.request.mockImplementation(async (path: string) => {
+        if(path.includes("user-activity/fetch")) return {data:{user:{email:"drawer@example.com"},events:[]}};
+        if(path.includes("user/fetch")) return {data:[{id:99,email:"drawer@example.com"}],total:1};
+        return {data:[],total:0};
+    });
+    const view=render(<UsersPage/>);
+    fireEvent.change(screen.getByLabelText("搜索所有用户邮箱"),{target:{value:"drawer@example.com"}});
+    fireEvent.submit(screen.getByRole("form",{name:"用户搜索与筛选"}));
+    fireEvent.click(await screen.findByRole("button",{name:/ID: 99.*drawer@example.com/}));
+    const drawer=await screen.findByRole("dialog",{name:/用户详情/});
+    expect(api.request.mock.calls.some(([path])=>path.includes("order/fetch") || path.includes("getStatUser") || path.includes("invite_user_id"))).toBe(false);
+    const selectTab=(name:string)=>fireEvent.mouseDown(within(drawer).getByRole("tab",{name}),{button:0,ctrlKey:false});
+    selectTab("邀请用户");
+    await waitFor(()=>expect(api.request.mock.calls.some(([path])=>decodeURIComponent(path).includes("invite_user_id") && decodeURIComponent(path).includes("99"))).toBe(true));
+    selectTab("订单");
+    await waitFor(()=>expect(api.request.mock.calls.some(([path])=>path.includes("order/fetch") && decodeURIComponent(path).includes("99"))).toBe(true));
+    selectTab("流量记录");
+    await waitFor(()=>expect(api.request.mock.calls.some(([path])=>path.includes("getStatUser") && path.includes("user_id=99"))).toBe(true));
+    fireEvent.click(within(drawer).getByRole("button",{name:"关闭"}));
+    expect((screen.getByLabelText("搜索所有用户邮箱") as HTMLInputElement).value).toBe("drawer@example.com");
+    expect(screen.getByRole("button",{name:"显示设置"}).closest(".panel-head")).toBeTruthy();
+    expect(view.container.querySelector('.user-toolbar-actions summary')).toBeTruthy();
+});
+it("keeps destructive user actions inside more and retains cancellation and confirmation", async () => {
+    localStorage.removeItem("admin.users.view.v1");
+    api.request.mockImplementation(async (path:string)=>path.includes("user/fetch") ? {data:[{id:98,email:"risk@example.com"}],total:1} : {data:[]});
+    Object.defineProperty(HTMLElement.prototype,"hidePopover",{configurable:true,value:vi.fn()});
+    const confirm=vi.spyOn(window,"confirm").mockReturnValue(false);
+    try {
+        const view=render(<UsersPage/>);
+        await screen.findByRole("button",{name:"分配订单"});
+        const menu=view.container.querySelector('.admin-row-popover')!;
+        const reset=within(menu as HTMLElement).getByText("重置订阅");
+        const remove=within(menu as HTMLElement).getByText("删除",{exact:true});
+        expect(view.container.querySelectorAll('.table-actions > .actions > button')).toHaveLength(3);
+        expect(screen.queryByText("TA 的订单")).toBeNull();
+        fireEvent.click(reset);
+        expect(confirm).toHaveBeenCalledWith(expect.stringContaining("旧链接和客户端凭据将失效"));
+        expect(api.request.mock.calls.some(([path])=>path.includes("resetSecret"))).toBe(false);
+        fireEvent.click(remove);
+        expect(confirm).toHaveBeenCalledWith(expect.stringContaining("永久删除"));
+        expect(api.request.mock.calls.some(([path])=>path.includes("delUser"))).toBe(false);
+        confirm.mockReturnValue(true);
+        fireEvent.click(reset);
+        await waitFor(()=>expect(api.request).toHaveBeenCalledWith("test-admin/user/resetSecret",expect.objectContaining({id:98})));
+    } finally { confirm.mockRestore();delete (HTMLElement.prototype as any).hidePopover; }
+});

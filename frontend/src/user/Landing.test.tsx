@@ -134,25 +134,10 @@ it("labels invitation-only entry clearly", () => {
 });
 
 it.each(["original", "minimal"])(
-    "keeps one privacy entry in the %s landing footer",
+    "removes the statistics preference entry from the %s landing footer",
     (style) => {
         mocks.boot.landingStyle = style;
-        const listener = vi.fn();
-        window.addEventListener("analytics-preferences", listener);
-        try {
-            const { container } = render(<Landing />);
-            const entry = screen.getByRole("button", {
-                name: "analyticsPrivacy",
-            });
-            expect(entry.closest("footer")).not.toBeNull();
-            expect(container.querySelectorAll("footer")).toHaveLength(1);
-            expect(
-                container.querySelector(".analytics-privacy-footer"),
-            ).toBeNull();
-            fireEvent.click(entry);
-            expect(listener).toHaveBeenCalledOnce();
-        } finally {
-            window.removeEventListener("analytics-preferences", listener);
-        }
+        render(<Landing />);
+        expect(screen.queryByRole("button", {name:"analyticsPrivacy"})).toBeNull();
     },
 );

@@ -1,3 +1,5 @@
+import { AdminTabs } from "./AdminChoices";
+import { UserActivityContent } from "./AdminUserActivity";
 import { AdminDisplaySettings } from "./AdminDisplaySettings";
 import { UserFilters } from "./UserFilters";
 import { adminUserLabel } from "./admin-user-label";
@@ -9,14 +11,13 @@ import {
     admin,
     request,
     query,
-    download,
     bytes,
     money,
     date,
     type Row,
 } from "../shared/api";
 import { Modal, Editor, State, Table, Pager, useData } from "../shared/ui";
-import { ResourcePage, resources, GenerateUsers } from "./admin";
+import { ResourcePage, resources } from "./admin";
 import {
     userFilterFields,
     userSortFields,
@@ -75,7 +76,6 @@ export function UsersPage() {
         [revision, setRevision] = useState(0),
         [error, setError] = useState(""),
         [notice, setNotice] = useState(""),
-        [busy, setBusy] = useState(false),
         [pageSize, setPageSize] = useState(
             [10, 20, 50, 100].includes(saved.pageSize) ? saved.pageSize : 10,
         ),
@@ -105,7 +105,6 @@ export function UsersPage() {
     const [detail, setDetail] = useState<{ kind: string; row: Row } | null>(
             null,
         ),
-        [generate, setGenerate] = useState(false),
         [bulk, setBulk] = useState<{
             kind: string;
             filters: UserFilter[];
@@ -113,18 +112,6 @@ export function UsersPage() {
         } | null>(null);
     const params = { filter: filters, sort, sort_type: direction };
     const refresh = () => setRevision((v) => v + 1);
-    async function exportCsv() {
-        setBusy(true);
-        setError("");
-        try {
-            await download(admin("user/dumpCSV"), params, "users.csv");
-            setNotice("CSV 已下载");
-        } catch (e) {
-            setError((e as Error).message);
-        } finally {
-            setBusy(false);
-        }
-    }
     async function copy(row: Row) {
         setError("");
         try {
@@ -196,9 +183,12 @@ export function UsersPage() {
                     setSort(key);
                     setDirection(next);
                 }}
+                onUserDetails={(row) => setDetail({kind:"profile",row})}
+                headerActions={<button type="button" onClick={() => setShowDisplay(true)}>显示设置</button>}
                 toolbar={
                     <div className="pad user-toolbar">
                         <form
+                            aria-label="用户搜索与筛选"
                             className="actions"
                             onSubmit={(e) => {
                                 e.preventDefault();
@@ -232,7 +222,7 @@ export function UsersPage() {
                                 清除筛选
                             </button>
                         </form>
-                        <div className="actions">
+                        <div className="actions user-toolbar-actions">
                             <details className="admin-bulk-menu">
                                 <summary>操作</summary>
                                 <div className="admin-bulk-content">
@@ -244,12 +234,6 @@ export function UsersPage() {
                                             setNotice("用量重置操作已完成");
                                         }}
                                     />
-                                    <button
-                                        disabled={busy || !total}
-                                        onClick={exportCsv}
-                                    >
-                                        导出 CSV
-                                    </button>
                                     <button
                                         disabled={!total}
                                         onClick={() =>
@@ -292,23 +276,10 @@ export function UsersPage() {
                                     </button>
                                 </div>
                             </details>
-                            <button
-                                className="primary"
-                                onClick={() => setGenerate(true)}
-                            >
-                                生成用户
-                            </button>
                         </div>
-                        <button
-                            type="button"
-                            onClick={() => setShowDisplay(true)}
-                        >
-                            显示设置
-                        </button>
-
                         <p className="muted">
                             {filters.length
-                                ? `当前筛选结果 ${total} 名用户；导出和批量操作使用全部匹配结果，不限当前页。`
+                                ? `当前筛选结果 ${total} 名用户；批量操作使用全部匹配结果，不限当前页。`
                                 : `共 ${total} 名用户；批量封禁和删除需要先设置筛选条件。`}
                         </p>
                         {filters.map((f, i) => (
@@ -344,55 +315,17 @@ export function UsersPage() {
                         {notice && <p role="status">{notice}</p>}
                     </div>
                 }
-                extraActions={(row, context) => (
-                    <AdminRowMenu context={context}>
-                        <AdminUsageReset
-                            single
-                            filters={[
-                                {
-                                    key: "id",
-                                    condition: "=",
-                                    value: row.id,
-                                },
-                            ]}
-                            count={1}
-                            onComplete={() => {
-                                refresh();
-                                setNotice("储备重置次数已发放");
-                            }}
-                        />
-                        <button
-                            onClick={() => setDetail({ kind: "assign", row })}
-                        >
-                            分配订单
-                        </button>
-                        <button onClick={() => copy(row)}>复制订阅链接</button>
-                        <button
-                            onClick={() => setDetail({ kind: "orders", row })}
-                        >
-                            TA 的订单
-                        </button>
-                        <button
-                            onClick={() => {
-                                setFilters([
-                                    {
-                                        key: "invite_user_id",
-                                        condition: "=",
-                                        value: row.id,
-                                    },
-                                ]);
-                                setEmail("");
-                                setNotice(`正在查看 ${row.email} 邀请的用户`);
-                            }}
-                        >
-                            TA 的邀请
-                        </button>
-                        <button
-                            onClick={() => setDetail({ kind: "traffic", row })}
-                        >
-                            TA 的流量记录
-                        </button>
-                    </AdminRowMenu>
+                extraActions={(row, context, secondary) => (
+                    <>
+                        <button onClick={() => setDetail({kind:"assign",row})}>分配订单</button>
+                        <AdminRowMenu context={context}>
+                            <button onClick={() => setDetail({kind:"profile",row})}>用户详情</button>
+                            <button onClick={() => copy(row)}>复制订阅链接</button>
+                            <AdminUsageReset single filters={[{key:"id",condition:"=",value:row.id}]} count={1}
+                                onComplete={() => {refresh();setNotice("储备重置次数已发放");}} />
+                            {secondary}
+                        </AdminRowMenu>
+                    </>
                 )}
             />
             {showFilters && (
@@ -410,21 +343,6 @@ export function UsersPage() {
                                 ),
                             );
                             setShowFilters(false);
-                        }}
-                    />
-                </Modal>
-            )}
-            {generate && (
-                <Modal
-                    variant="modal"
-                    title="生成用户"
-                    close={() => setGenerate(false)}
-                >
-                    <GenerateUsers
-                        onCreated={() => {
-                            setGenerate(false);
-                            refresh();
-                            setNotice("用户已生成");
                         }}
                     />
                 </Modal>
@@ -454,9 +372,10 @@ export function UsersPage() {
                     />
                 </Modal>
             )}
-            {detail && (
+            {detail?.kind === "profile" && <UserDetails key={detail.row.id} row={detail.row} close={() => setDetail(null)} />}
+            {detail && detail.kind !== "profile" && (
                 <Modal
-                    title={`${adminUserLabel({ user_id: detail.row.id, email: detail.row.email })} · ${{ assign: "分配订单", orders: "订单", traffic: "流量记录", link: "订阅链接" }[detail.kind as "assign"] || ""}`}
+                    title={`${adminUserLabel({ user_id: detail.row.id, email: detail.row.email })} · ${{ assign: "分配订单", link: "订阅链接" }[detail.kind as "assign"] || ""}`}
                     close={() => setDetail(null)}
                 >
                     {detail.kind === "assign" ? (
@@ -466,10 +385,6 @@ export function UsersPage() {
                             loading={plans.loading}
                             error={plans.error}
                         />
-                    ) : detail.kind === "orders" ? (
-                        <UserOrders row={detail.row} />
-                    ) : detail.kind === "traffic" ? (
-                        <UserTraffic row={detail.row} />
                     ) : (
                         <div className="pad">
                             <p>复制失败时，可手动选择以下链接。</p>
@@ -484,6 +399,32 @@ export function UsersPage() {
             )}
         </div>
     );
+}
+function UserDetails({row, close}: {row:Row; close:()=>void}) {
+    const [tab,setTab] = useState("activity");
+    return <Modal title={`用户详情 · ${adminUserLabel({user_id:row.id,email:row.email})}`} variant="drawer" wide className="user-details-drawer" close={close}>
+        <AdminTabs label="用户详情视图" value={tab} onChange={setTab} options={[
+            {value:"activity",label:"活动记录"},{value:"invitations",label:"邀请用户"},
+            {value:"orders",label:"订单"},{value:"traffic",label:"流量记录"}
+        ]}>
+            {tab === "activity" && <UserActivityContent row={{user_id:row.id,email:row.email}}/>}
+            {tab === "invitations" && <UserInvitations row={row}/>}
+            {tab === "orders" && <UserOrders row={row}/>}
+            {tab === "traffic" && <UserTraffic row={row}/>}
+        </AdminTabs>
+    </Modal>;
+}
+function UserInvitations({row}: {row:Row}) {
+    const [page,setPage]=useState(1), [pageSize,setPageSize]=useState(10);
+    const d=useData<Row[]>(query(admin("user/fetch"),{current:page,pageSize,filter:[{key:"invite_user_id",condition:"=",value:row.id}]}));
+    return <div className="pad"><State {...d} retry={d.reload}>
+        <Table data={d.data || []} columns={[
+            ["id","用户（ID / 邮箱）",r=>adminUserLabel({user_id:r.id,email:r.email})],
+            ["banned","状态",r=>Number(r.banned)===1 ? "已封禁" : "正常"],
+            ["created_at","注册时间",r=>date(r.created_at)]
+        ]}/>
+        <Pager page={page} total={d.total} size={pageSize} loading={d.loading} onChange={setPage} onSizeChange={size=>{setPageSize(size);setPage(1);}}/>
+    </State></div>;
 }
 function BulkUsers({
     operation,

@@ -1,6 +1,6 @@
 import { TableViewport } from "../shared/ui";
 import { Pager } from "../shared/ui";
-import { formatInstant } from "../shared/timezone";
+import { AdminLogTimeZone, logTime as date } from "./admin-log-time";
 import { useState } from "react";
 import { admin, request, type Row } from "../shared/api";
 import { Modal, Panel, State, useData } from "../shared/ui";
@@ -24,7 +24,7 @@ const labels: Record<string, string> = {
     configuration_removed: "配置已删除",
     report_key_rotated: "上报密钥已更换",
 };
-const date = (v: number) => (v ? formatInstant(v) : "—");
+
 export function AdminDDNS() {
     const [pageSize, setPageSize] = useState(20);
     const data = useData<Row>(admin("server/ddns/fetch"));
@@ -273,6 +273,7 @@ export function AdminDDNS() {
                 </State>
             </Panel>
             <Panel title="DDNS 日志">
+                <AdminLogTimeZone />
                 <div className="pad">
                     <p className="muted">
                         默认保留 30

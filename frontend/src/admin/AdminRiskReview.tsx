@@ -1,7 +1,8 @@
+import { logTime as date } from "./admin-log-time";
 import { RiskEvidence } from "./RiskEvidence";
 import { adminUserLabel } from "./admin-user-label";
 import {useState} from "react";
-import {ops,request,date,type Row} from "../shared/api";
+import {ops,request,type Row} from "../shared/api";
 import {Modal} from "../shared/ui";
 const states:Record<string,string>={pending:"待处理",confirmed:"已确认",false_positive:"误报",ignored:"已忽略"};
 const evidence:Record<string,string>={threshold:"命中阈值",window_seconds:"统计窗口（秒）",failed_count:"失败次数",distinct_ip_count:"不同 IP 数",request_count:"请求次数",subscribe_count:"成功订阅次数",subscribe_threshold:"订阅次数阈值",traffic_growth_bytes:"流量增长（字节）",traffic_growth_threshold_bytes:"流量增长上限（字节）",distinct_client_type_count:"客户端类型数",ip:"命中 IP",ua_hash:"命中 UA 哈希"};

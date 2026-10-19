@@ -1,16 +1,15 @@
+import { AdminLogTimeZone, logTime } from "./admin-log-time";
 import { TableViewport } from "../shared/ui";
 import { AdminFilterBar } from "./AdminFilterBar";
 import { Pager } from "../shared/ui";
 import {
-    formatInstant,
     dateTimeInput,
     parseDateTimeInput,
-    displayTimeZone,
 } from "../shared/timezone";
 import { useState } from "react";
 import { admin, type Row } from "../shared/api";
 import { Panel, Reload, State, useData } from "../shared/ui";
-const time = (value: number) => (value ? formatInstant(value) : "—");
+const time = logTime;
 const levels = [
     "DEBUG",
     "INFO",
@@ -76,6 +75,7 @@ export function AdminSystemLogs() {
                     <Reload onClick={logs.reload} loading={logs.loading} />
                 }
             >
+                <AdminLogTimeZone />
                 <AdminFilterBar
                     className="admin-log-filters"
                     onSubmit={(e) => {
@@ -100,7 +100,7 @@ export function AdminSystemLogs() {
                     }}
                 >
                     <label>
-                        开始时间（{displayTimeZone()}）
+                        开始时间
                         <input
                             aria-label="日志开始时间"
                             type="datetime-local"
@@ -111,7 +111,7 @@ export function AdminSystemLogs() {
                         />
                     </label>
                     <label>
-                        结束时间（{displayTimeZone()}）
+                        结束时间
                         <input
                             aria-label="日志结束时间"
                             type="datetime-local"

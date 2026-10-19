@@ -19,6 +19,15 @@ foreach($entries as $entry){
     $assert($call($entry['legacyMethod'],$path)->getStatusCode()===404,'Retired route still resolves: '.$path);
 }
 $assert($call('GET','/api/v1/user/resetSecurity')->getStatusCode()===404,'Retired GET credential rotation remains');
+// Removed administrator account export and generation must not remain as dead code.
+$adminPath=config('v2board.secure_path',config('v2board.frontend_admin_path',hash('crc32b',config('app.key'))));
+foreach (['dumpCSV', 'generate'] as $action) {
+    foreach (['GET','POST'] as $method) {
+        $assert($call($method,'/api/v1/'.$adminPath.'/user/'.$action)->getStatusCode()===404,'Removed admin user action still resolves: '.$action);
+    }
+    $assert(!method_exists(App\Http\Controllers\V1\Admin\UserController::class,$action),'Removed admin user implementation remains: '.$action);
+}
+$assert(!file_exists(app_path('Http/Requests/Admin/UserGenerate.php')),'Unused user generation validator remains');
 // Retired wrappers must not return as unregistered dead code.
 foreach (['User'=>['UserController.php'], 'Passport'=>['AuthController.php','CommController.php'], 'Guest'=>['PaymentController.php','TelegramController.php']] as $area=>$keep) {
     foreach (glob(app_path('Http/Controllers/V1/'.$area.'/*Controller.php')) as $file) {

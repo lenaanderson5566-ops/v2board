@@ -111,3 +111,13 @@ it("keeps opt-in retention at zero and saves the selected duration", async () =>
         ),
     );
 });
+
+it("renders log timestamps without a repeated zone suffix", async () => {
+    const { configureTimeZone } = await import("../shared/timezone");
+    configureTimeZone("Asia/Shanghai", true);
+    api.request.mockResolvedValue({data:[{id:1,created_at:1792368000,level:"INFO",title:"test"}],total:1});
+    render(<AdminSystemLogs />);
+    const cell = await screen.findByRole("cell", {name:/08:00:00/});
+    expect(cell.textContent).not.toMatch(/GMT|UTC/);
+    expect(screen.getAllByText(/Asia\/Shanghai/)).toHaveLength(1);
+});

@@ -1,6 +1,7 @@
+import { logTime as date } from "./admin-log-time";
 import { Pager } from "../shared/ui";
 import { useState } from "react";
-import { admin, date, type Row } from "../shared/api";
+import { admin, type Row } from "../shared/api";
 import { useData, Modal, Html, State } from "../shared/ui";
 const reasons: Record<string, string> = {
     manual_blocklist: "人工禁发名单",

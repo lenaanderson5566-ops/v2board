@@ -120,3 +120,18 @@ body[data-console="admin"] :is(.release-card,.risk-rule-card) p { line-height: 1
     body[data-console="admin"] .legacy-stat-extra { grid-template-columns: minmax(0, 1fr); gap: 16px; }
     body[data-console="admin"] .legacy-stat-main strong { font-size: 26px; overflow-wrap: anywhere; }
 }
+
+/* Search/filter controls stay left; bulk actions stay right, view tools in panel head. */
+body[data-console="admin"] .user-toolbar > form.actions { flex: 1 1 460px; }
+body[data-console="admin"] .user-toolbar > form.actions input { flex: 1 1 220px; max-width: 360px; }
+body[data-console="admin"] .user-toolbar-actions { margin-left: auto; flex: 0 0 auto; }
+body[data-console="admin"] .user-toolbar > p { margin: 4px 0 0; }
+@media (max-width: 600px) {
+    body[data-console="admin"] .user-toolbar > form.actions { flex-basis: 100%; }
+    body[data-console="admin"] .user-toolbar > form.actions input { flex-basis: 100%; max-width: none; }
+    body[data-console="admin"] .user-toolbar-actions { width: 100%; justify-content: flex-end; }
+}
+
+body[data-console="admin"] .user-details-drawer .modal > .panel-head { flex-wrap: nowrap; align-items: flex-start; }
+body[data-console="admin"] .user-details-drawer .modal > .panel-head h2 { flex: 1; min-width: 0; white-space: normal; overflow-wrap: anywhere; }
+body[data-console="admin"] .user-details-drawer .modal > .panel-head .icon-button { flex: 0 0 auto; }

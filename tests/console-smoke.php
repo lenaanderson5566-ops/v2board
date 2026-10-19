@@ -75,10 +75,14 @@ try {
     $response = $call('/api/v1/' . $securePath . '/user/fetch?' . http_build_query(['filter' => $scope, 'sort' => 'total_used', 'sort_type' => 'ASC']), null, $token);
     $payload = json_decode($response->getContent(), true);
     $assert($response->getStatusCode() === 200 && $payload['total'] === 1 && $payload['data'][0]['id'] === $subject->id, 'Nested user filtering/sorting failed');
-    $response = $call('/api/v1/' . $securePath . '/user/dumpCSV', ['filter' => $scope], $token);
-    $csv = array_map('str_getcsv', explode("\n", trim(substr($response->getContent(), 3))));
-    $deviceColumn = array_search('设备数限制', $csv[0], true);
-    $assert($response->getStatusCode() === 200 && strpos($response->headers->get('Content-Type'), 'text/csv') === 0 && count($csv) === 2 && $deviceColumn !== false && $csv[1][$deviceColumn] === '7', 'Scoped CSV or device count failed');
+    $beforeCount = App\Models\User::count();
+    foreach (['dumpCSV', 'generate'] as $retired) {
+        foreach ([null, $subjectToken, $token] as $credential) {
+            $response = $call('/api/v1/' . $securePath . '/user/' . $retired, ['email_suffix' => 'removed.invalid', 'generate_count' => 2], $credential);
+            $assert($response->getStatusCode() === 404, 'Retired user endpoint remains reachable: ' . $retired);
+        }
+    }
+    $assert(App\Models\User::count() === $beforeCount, 'Retired generation changed user count');
     foreach (['ban', 'allDel'] as $method) {
         $assert($call('/api/v1/' . $securePath . '/user/' . $method, [], $token)->getStatusCode() === 422, 'Unfiltered destructive operation accepted: ' . $method);
         $assert($call('/api/v1/' . $securePath . '/user/' . $method, ['filter' => $scope, 'expected_count' => 2], $token)->getStatusCode() === 409, 'Changed operation scope accepted: ' . $method);
@@ -89,13 +93,6 @@ try {
     $campaignId = json_decode($response->getContent(), true)['data']['campaign_id'] ?? null;
     $recipients = Illuminate\Support\Facades\DB::table('v2_mail_campaign_recipient')->where('campaign_id', $campaignId)->get();
     $assert($response->getStatusCode() === 202 && $recipients->count() === 1 && (int) $recipients->first()->user_id === $subject->id && $recipients->first()->status === 'queued', 'Scoped mail did not reach the campaign queue');
-    $suffix = 'console-batch-' . bin2hex(random_bytes(5)) . '.invalid';
-    $response = $call('/api/v1/' . $securePath . '/user/generate', ['email_suffix' => $suffix, 'generate_count' => 2, 'password' => '=test,quoted'], $token);
-    $csv = array_map('str_getcsv', explode("\n", trim(substr($response->getContent(), 3))));
-    $assert($response->getStatusCode() === 200 && strpos($response->headers->get('Content-Type'), 'text/csv') === 0 && count($csv) === 3 && $csv[1][1] === "'=test,quoted" && App\Models\User::where('email', 'like', '%@' . $suffix)->count() === 2, 'Batch account CSV/escaping failed');
-    $response = $call('/api/v1/' . $securePath . '/user/generate', ['email_prefix' => 'single', 'email_suffix' => $suffix], $token);
-    $assert($response->getStatusCode() === 200 && json_decode($response->getContent(), true)['data'] === true, 'Single account generation failed');
-    $assert($call('/api/v1/' . $securePath . '/user/generate', ['email_suffix' => $suffix, 'generate_count' => 0], $token)->getStatusCode() === 422, 'Zero account count accepted');
     $oldUuid = $subject->uuid; $oldToken = $subject->token;
     $response = $call('/api/v1/' . $securePath . '/user/resetSecret', ['id' => $subject->id], $token);
     $subject->refresh();

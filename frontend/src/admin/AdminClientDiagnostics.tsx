@@ -1,6 +1,7 @@
+import { AdminLogTimeZone, logTime as date } from "./admin-log-time";
 import { TableViewport } from "../shared/ui";
 import { useState } from "react";
-import { admin, date, type Row } from "../shared/api";
+import { admin, type Row } from "../shared/api";
 import { ResourcePage } from "./admin";
 import { Modal } from "../shared/ui";
 
@@ -79,6 +80,7 @@ export function AdminClientDiagnostics() {
                 queryParams={kind ? { kind } : {}}
                 toolbar={
                     <div className="pad">
+                        <AdminLogTimeZone />
                         <p className="muted">
                             用户自愿共享的运行事件，按邮箱、用户
                             ID、版本或报告编号检索。记录连接与同步结果、错误类别和耗时，默认保留

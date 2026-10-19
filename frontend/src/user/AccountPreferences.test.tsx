@@ -3,6 +3,7 @@ vi.mock("../shared/experience-copy", () => ({ e: (key: string) => key }));
 import { afterEach, expect, it, vi } from "vitest";
 import {
     cleanup,
+    act,
     render,
     screen,
     fireEvent,
@@ -55,9 +56,14 @@ vi.mock("../shared/ui", () => ({
     ),
 }));
 import { AccountPreferences } from "./AccountPreferences";
+import { AnalyticsPrivacy } from "./AnalyticsPrivacy";
+import { privacyKey, savePrivacyChoice, trackAction } from "./product-analytics";
 import { AccountSessions } from "./AccountSessions";
 afterEach(() => {
     cleanup();
+    vi.restoreAllMocks();
+    vi.unstubAllGlobals();
+    localStorage.clear();
     vi.clearAllMocks();
 });
 it("keeps the selected account language when persistence fails", async () => {
@@ -120,25 +126,72 @@ it("persists the display zone and allows following the device again", async () =
     );
 });
 
-it("keeps privacy preferences in a regular settings row and opens the same preference control", () => {
-    const listener = vi.fn();
-    window.addEventListener("analytics-preferences", listener);
+function privacyScreen(retentionDays = 30, enabled = true) {
+    vi.spyOn(document, "visibilityState", "get").mockReturnValue("visible");
+    const fetcher = vi.fn().mockResolvedValue({ ok: true, json: async () => ({data:{enabled, retentionDays}}) });
+    vi.stubGlobal("fetch", fetcher);
+    const view = render(<><AnalyticsPrivacy /><AccountPreferences user={{email:"settings@example.com"}} /></>);
+    return { ...view, fetcher };
+}
+it("only renders an inline settings switch and collects after explicit opt-in", async () => {
+    const {container, fetcher} = privacyScreen();
+    const toggle = screen.getByRole("switch", {name:"analyticsPrivacy"});
+    await waitFor(() => expect((toggle as HTMLButtonElement).disabled).toBe(false));
+    expect(toggle.getAttribute("aria-checked")).toBe("false");
+    expect(container.querySelector(".analytics-privacy")).toBeNull();
+    expect(toggle.closest(".settings-row")).not.toBeNull();
+    trackAction("download", "subscribe");
+    expect(fetcher).toHaveBeenCalledTimes(1);
+    fireEvent.click(toggle);
+    expect(toggle.getAttribute("aria-checked")).toBe("true");
+    trackAction("download", "subscribe");
+    await waitFor(() => expect(fetcher).toHaveBeenCalledTimes(2));
+    fireEvent.click(toggle);
+    expect(toggle.getAttribute("aria-checked")).toBe("false");
+    trackAction("download", "subscribe");
+    expect(fetcher).toHaveBeenCalledTimes(2);
+});
+it("revokes collection across tabs without opening a banner", async () => {
+    savePrivacyChoice("allow",30);
+    const {container} = privacyScreen();
+    const toggle = screen.getByRole("switch");
+    await waitFor(() => expect(toggle.getAttribute("aria-checked")).toBe("true"));
+    act(() => {localStorage.removeItem(privacyKey); window.dispatchEvent(new StorageEvent("storage",{key:privacyKey}));});
+    expect(toggle.getAttribute("aria-checked")).toBe("false");
+    expect(container.querySelector(".analytics-privacy")).toBeNull();
+});
+it("requires renewed opt-in for a longer retention period", async () => {
+    savePrivacyChoice("allow",7);
+    privacyScreen(90);
+    const toggle = screen.getByRole("switch");
+    await waitFor(() => expect((toggle as HTMLButtonElement).disabled).toBe(false));
+    expect(toggle.getAttribute("aria-checked")).toBe("false");
+    fireEvent.click(toggle);
+    expect(JSON.parse(localStorage.getItem(privacyKey)!).retentionDays).toBe(90);
+});
+it("keeps collection off when saving fails and allows retry", async () => {
+    privacyScreen();
+    const toggle = screen.getByRole("switch");
+    await waitFor(() => expect((toggle as HTMLButtonElement).disabled).toBe(false));
+    const write = vi.spyOn(Storage.prototype,"setItem").mockImplementation(() => {throw new Error("blocked");});
+    fireEvent.click(toggle);
+    expect(screen.getByRole("status").textContent).toBe("analyticsStorageError");
+    expect(toggle.getAttribute("aria-checked")).toBe("false");
+    write.mockRestore();
+    fireEvent.click(toggle);
+    expect(toggle.getAttribute("aria-checked")).toBe("true");
+});
+it.each(["doNotTrack", "globalPrivacyControl"])("honors browser privacy signal %s", async signal => {
+    Object.defineProperty(navigator, signal, {configurable:true, value: signal === "doNotTrack" ? "1" : true});
     try {
-        const { container } = render(
-            <AccountPreferences user={{ email: "settings@example.com" }} />,
-        );
-        const entry = screen.getByRole("button", {
-            name: "analyticsManage: analyticsPrivacy",
-        });
-        expect(entry.textContent).toContain("analyticsManage");
-        expect(entry.closest(".settings-row")).not.toBeNull();
-        expect(container.querySelectorAll(".settings-card")).toHaveLength(1);
-        expect(entry.classList.contains("analytics-privacy-entry-button")).toBe(
-            true,
-        );
-        fireEvent.click(entry);
-        expect(listener).toHaveBeenCalledOnce();
-    } finally {
-        window.removeEventListener("analytics-preferences", listener);
-    }
+        privacyScreen();
+        await waitFor(() => expect(screen.getByText("analyticsRetention", {exact:false})).toBeTruthy());
+        expect((screen.getByRole("switch") as HTMLButtonElement).disabled).toBe(true);
+        expect(screen.getByText("analyticsSignal")).toBeTruthy();
+    } finally { delete (navigator as unknown as Record<string, unknown>)[signal]; }
+});
+it("keeps the switch disabled when server collection is disabled", async () => {
+    privacyScreen(30,false);
+    await waitFor(() => expect(screen.getByText("analyticsRetention", {exact:false})).toBeTruthy());
+    expect((screen.getByRole("switch") as HTMLButtonElement).disabled).toBe(true);
 });

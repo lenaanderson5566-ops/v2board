@@ -4,7 +4,7 @@ import { Pager } from "../shared/ui";
 import { useState } from "react";
 import { admin, request, type Row } from "../shared/api";
 import { useData, State } from "../shared/ui";
-import { formatInstant } from "../shared/timezone";
+import { logTime } from "./admin-log-time";
 export function MailHealth() {
     const [pageSize, setPageSize] = useState(20);
     const health = useData<Row>(admin("mail-logs/health"));
@@ -105,7 +105,7 @@ export function MailHealth() {
                                                 ? "用户投诉"
                                                 : "永久退信"}
                                         </td>
-                                        <td>{formatInstant(row.updated_at)}</td>
+                                        <td>{logTime(row.updated_at)}</td>
                                         <td>
                                             <button
                                                 disabled={

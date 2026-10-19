@@ -1,6 +1,5 @@
-import { useEffect, useId, useRef, useState } from "react";
+import { useEffect, useId, useState, useSyncExternalStore } from "react";
 import { useTranslation } from "react-i18next";
-import { ShieldCheck } from "lucide-react";
 import { apiUrl } from "../shared/runtime-config";
 import { e } from "../shared/experience-copy";
 import {
@@ -14,29 +13,55 @@ import { boot } from "../shared/api";
 import { tx } from "../shared/i18n";
 import type { V10AnalyticsConfiguration } from "../shared/v10-types";
 
-export function AnalyticsPrivacyEntry({
-    label,
-    appearance = "link",
-}: {
-    label?: string;
-    appearance?: "link" | "button";
-}) {
+let configuration: V10AnalyticsConfiguration | null = null;
+let revision = 0;
+const listeners = new Set<() => void>();
+function publish() {
+    revision++;
+    listeners.forEach(listener => listener());
+}
+function subscribe(listener: () => void) {
+    listeners.add(listener);
+    return () => { listeners.delete(listener); };
+}
+function permitted() {
+    const choice = privacyChoice();
+    return !!configuration?.enabled && choice?.choice === "allow" &&
+        choice.retentionDays >= configuration.retentionDays && !privacySignal();
+}
+export function AnalyticsPrivacySetting() {
     useTranslation();
-    return (
-        <button
-            type="button"
-            className={`analytics-privacy-entry analytics-privacy-entry-${appearance}`}
-            aria-label={
-                label ? `${label}: ${e("analyticsPrivacy")}` : undefined
-            }
-            onClick={() =>
-                window.dispatchEvent(new Event("analytics-preferences"))
-            }
-        >
-            <ShieldCheck size={16} aria-hidden />
-            {label || e("analyticsPrivacy")}
-        </button>
-    );
+    useSyncExternalStore(subscribe, () => revision);
+    const [error, setError] = useState(false);
+    const descriptionId = useId();
+    const enabled = permitted();
+    function choose() {
+        const stored = savePrivacyChoice(enabled ? "deny" : "allow", configuration?.retentionDays ?? 30);
+        setError(!stored);
+        setCollection(stored && permitted());
+        publish();
+    }
+    return <div className="settings-row analytics-setting">
+        <div>
+            <strong>{e("analyticsPrivacy")}</strong>
+            <p id={descriptionId} className="muted">{e("analyticsConsent")}</p>
+            <details className="analytics-setting-details">
+                <summary>{e("analyticsDetails")}</summary>
+                <p>{e("analyticsSummary")}</p>
+                <p>{e("analyticsSources")}</p>
+                <p>{e("analyticsExperience")}</p>
+                <p>{e("analyticsExplanation")}</p>
+                {configuration && <p>{e("analyticsRetention")} {configuration.retentionDays} {e("analyticsDays")}</p>}
+            </details>
+            {!configuration?.enabled && <p className="muted">{e("analyticsUnavailable")}</p>}
+            {privacySignal() && <p className="muted">{e("analyticsSignal")}</p>}
+            {error && <p role="status">{e("analyticsStorageError")}</p>}
+        </div>
+        <button type="button" role="switch" className="analytics-setting-switch"
+            aria-label={e("analyticsPrivacy")} aria-describedby={descriptionId}
+            aria-checked={enabled} disabled={!enabled && (!configuration?.enabled || privacySignal())}
+            onClick={choose}><span aria-hidden="true" /></button>
+    </div>;
 }
 export function PrivacyFooterLinks() {
     useTranslation();
@@ -47,7 +72,6 @@ export function PrivacyFooterLinks() {
                     {tx("服务条款")}
                 </a>
             )}
-            <AnalyticsPrivacyEntry />
         </div>
     );
 }
@@ -59,203 +83,53 @@ export function AnalyticsPrivacyFooter() {
     );
 }
 
+// Global consent controller: deliberately renders no banner or preference entry.
 export function AnalyticsPrivacy() {
-    useTranslation();
-    const [configuration, setConfiguration] =
-        useState<V10AnalyticsConfiguration | null>(null);
-    const [open, setOpen] = useState(false);
-    const [expanded, setExpanded] = useState(false);
-    const detailsId = useId();
-    const [error, setError] = useState(false);
-    const region = useRef<HTMLElement>(null);
-    const [height, setHeight] = useState(0);
     useEffect(() => {
-        if (!open || !region.current) return;
-        const element = region.current;
-        const measure = () =>
-            setHeight(Math.ceil(element.getBoundingClientRect().height));
-        measure();
-        const observer = new ResizeObserver(measure);
-        observer.observe(element);
-        return () => observer.disconnect();
-    }, [open]);
-    const current = useRef<V10AnalyticsConfiguration | null>(null);
-    const requested = useRef(false);
-    const opener = useRef<HTMLElement | null>(null);
-    useEffect(() => {
-        const controller = new AbortController();
+        let disposed = false;
         let timer: ReturnType<typeof setTimeout>;
+        let controller: AbortController;
         async function refresh() {
+            controller = new AbortController();
             const timeout = window.setTimeout(() => controller.abort(), 5000);
             try {
-                const response = await fetch(
-                    apiUrl("/api/v10/public/analytics/configuration"),
-                    {
-                        credentials: "omit",
-                        referrerPolicy: "no-referrer",
-                        signal: controller.signal,
-                    },
-                );
+                const response = await fetch(apiUrl("/api/v10/public/analytics/configuration"), {
+                    credentials: "omit", referrerPolicy: "no-referrer", signal: controller.signal,
+                });
                 if (!response.ok) throw new Error();
-                const { data } = (await response.json()) as {
-                    data: V10AnalyticsConfiguration;
-                };
-                if (controller.signal.aborted) return;
-                if (
-                    typeof data.enabled !== "boolean" ||
-                    ![7, 30, 90].includes(data.retentionDays)
-                )
-                    throw new Error();
-                const old = current.current;
-                current.current = data;
-                setConfiguration(data);
-                const choice = privacyChoice();
-                const renewed =
-                    choice?.choice === "allow" &&
-                    choice.retentionDays < data.retentionDays;
-                if (
-                    !old ||
-                    old.enabled !== data.enabled ||
-                    old.retentionDays !== data.retentionDays ||
-                    !choice
-                )
-                    setCollection(data.enabled && !renewed);
-                if (data.enabled && (!choice || renewed) && !privacySignal())
-                    setOpen(true);
-                if (!data.enabled && !requested.current) setOpen(false);
-                setError(false);
+                const { data } = await response.json() as { data: V10AnalyticsConfiguration };
+                if (disposed) return;
+                if (typeof data.enabled !== "boolean" || ![7, 30, 90].includes(data.retentionDays)) throw new Error();
+                configuration = data;
+                setCollection(permitted());
             } catch {
-                current.current = null;
-                if (!controller.signal.aborted) setError(true);
+                if (disposed) return;
+                configuration = null;
                 setCollection(false);
             } finally {
                 clearTimeout(timeout);
-                if (!controller.signal.aborted)
+                if (!disposed) {
+                    publish();
                     timer = setTimeout(refresh, 300000);
+                }
             }
         }
         void refresh();
-        const show = () => {
-            opener.current =
-                document.activeElement instanceof HTMLElement
-                    ? document.activeElement
-                    : null;
-            requested.current = true;
-            setOpen(true);
-            requestAnimationFrame(() => {
-                region.current?.focus({ preventScroll: true });
-            });
-        };
         const sync = (event: StorageEvent) => {
             if (event.key !== privacyKey && event.key !== null) return;
-            const choice = privacyChoice();
-
-            setCollection(
-                !!current.current?.enabled &&
-                    !!choice &&
-                    choice.retentionDays >= current.current.retentionDays,
-            );
-            setOpen(!choice && !!current.current?.enabled && !privacySignal());
+            setCollection(permitted());
+            publish();
         };
-        window.addEventListener("analytics-preferences", show);
         window.addEventListener("storage", sync);
         return () => {
+            disposed = true;
             controller.abort();
             clearTimeout(timer);
+            configuration = null;
             setCollection(false);
-            window.removeEventListener("analytics-preferences", show);
+            publish();
             window.removeEventListener("storage", sync);
         };
     }, []);
-    function choose(value: "allow" | "deny") {
-        const stored = savePrivacyChoice(
-            value,
-            configuration?.retentionDays ?? 30,
-        );
-        setError(!stored);
-
-        setCollection(
-            stored && configuration?.enabled === true && value === "allow",
-        );
-        if (stored) {
-            requested.current = false;
-            setOpen(false);
-            requestAnimationFrame(() => {
-                if (opener.current?.isConnected) opener.current.focus();
-            });
-        }
-    }
-    if (!open) return null;
-    return (
-        <>
-            <div
-                className="analytics-privacy-spacer"
-                style={{ height: height + 32 }}
-                aria-hidden="true"
-            />
-            <section
-                ref={region}
-                tabIndex={-1}
-                className="analytics-privacy"
-                aria-label={e("analyticsPrivacy")}
-            >
-                <div className="analytics-privacy-copy">
-                    <div className="analytics-privacy-heading">
-                        <span className="analytics-privacy-icon">
-                            <ShieldCheck size={20} aria-hidden />
-                        </span>
-                        <strong>{e("analyticsPrivacy")}</strong>
-                    </div>
-                    <p>{e("analyticsConsent")}</p>
-                    <div
-                        id={detailsId}
-                        hidden={!expanded}
-                        className="analytics-privacy-details"
-                    >
-                        <p>{e("analyticsSummary")}</p>
-                        <p>{e("analyticsSources")}</p>
-                        <p>{e("analyticsExperience")}</p>
-                        <details>
-                            <summary>{e("analyticsDetails")}</summary>
-                            <p>{e("analyticsExplanation")}</p>
-                            {configuration && (
-                                <p>
-                                    {e("analyticsRetention")}{" "}
-                                    {configuration.retentionDays}{" "}
-                                    {e("analyticsDays")}
-                                </p>
-                            )}
-                        </details>
-                    </div>
-                    {!configuration?.enabled && (
-                        <p>{e("analyticsUnavailable")}</p>
-                    )}
-                    {privacySignal() && <p>{e("analyticsSignal")}</p>}
-                    {error && <p role="status">{e("analyticsStorageError")}</p>}
-                </div>
-                <div className="actions">
-                    <button
-                        type="button"
-                        aria-expanded={expanded}
-                        aria-controls={detailsId}
-                        onClick={() => setExpanded(!expanded)}
-                    >
-                        {e("analyticsManage")}
-                    </button>
-                    <button type="button" onClick={() => choose("deny")}>
-                        {e("analyticsDecline")}
-                    </button>
-                    <button
-                        type="button"
-                        disabled={
-                            !configuration?.enabled || privacySignal() || error
-                        }
-                        onClick={() => choose("allow")}
-                    >
-                        {e("analyticsAllow")}
-                    </button>
-                </div>
-            </section>
-        </>
-    );
+    return null;
 }

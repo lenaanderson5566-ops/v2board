@@ -1,5 +1,4 @@
-import { e } from "../shared/experience-copy";
-import { AnalyticsPrivacyEntry } from "./AnalyticsPrivacy";
+import { AnalyticsPrivacySetting } from "./AnalyticsPrivacy";
 import { TimeZonePicker } from "../shared/TimeZonePicker";
 import { useState, useRef } from "react";
 import { useTranslation } from "react-i18next";
@@ -110,13 +109,7 @@ export function AccountPreferences({ user }: { user: Row }) {
                         ))}
                     </select>
                 </div>
-                <div className="settings-row">
-                    <strong>{e("analyticsPrivacy")}</strong>
-                    <AnalyticsPrivacyEntry
-                        label={e("analyticsManage")}
-                        appearance="button"
-                    />
-                </div>
+                <AnalyticsPrivacySetting />
             </div>
             {error && (
                 <p className="alert" role="alert">

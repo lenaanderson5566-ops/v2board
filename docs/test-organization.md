@@ -354,3 +354,5 @@ mfa-api 沿用真实路由、Cookie、CSRF 和真实密钥签名，覆盖 ES256 
 最终归档：15 个相关后端模块均有完整成功输出，Passkey/MFA 197 项，原生配置 65 项；节点显示和订阅信息复测通过。summary.json 排除旧日志中的假成功，仅收录最终明确完成的结果。前端 675 项与构建通过，测试容器已停止，未部署生产。
 
 后台菜单逐页回归归入既有 frontend/src/admin/admin-workspaces.test.tsx，使用 test-support/page-fixtures.ts 统一空数据响应；覆盖所有 legacyAdminMenu 入口加载、标题与异常边界。浏览器截图、窄屏布局记录、全量 Vitest JSON 与构建日志仅写入 storage/app/test-organization/，不提交临时预览入口。
+
+用户导出及生成退役回归复用 api-retirement.php、console-smoke.php 与 admin-workspaces.test.tsx，下载公共测试改用仍在使用的优惠券接口；不新增独立测试脚本。

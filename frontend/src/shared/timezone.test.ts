@@ -71,3 +71,19 @@ describe("time zone conversion", () => {
         expect(calendarDay(now)).toBe("2026-03-09");
     });
 });
+
+it("removes only the timezone suffix for log display and preserves explicit formatting", async () => {
+    const { logTime } = await import("../admin/admin-log-time");
+    configureTimeZone("America/New_York", true);
+    const summer = Date.parse("2026-07-01T12:00:00Z") / 1000;
+    const winter = Date.parse("2026-01-01T12:00:00Z") / 1000;
+    expect(logTime(summer)).toContain("08:00:00");
+    expect(logTime(winter)).toContain("07:00:00");
+    expect(logTime(summer)).not.toMatch(/GMT|UTC|EDT|EST/);
+    expect(formatInstant(summer, {timeZoneName:"longOffset"})).toContain("GMT-04:00");
+    expect(formatInstant(winter, {timeZoneName:"longOffset"})).toContain("GMT-05:00");
+    expect(logTime(null)).toBe("—");
+    expect(logTime("")).toBe("—");
+    expect(logTime("invalid")).toBe("—");
+    expect(logTime(0)).not.toBe("—");
+});

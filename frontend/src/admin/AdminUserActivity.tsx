@@ -1,9 +1,10 @@
+import { AdminLogTimeZone, logTime as date } from "./admin-log-time";
 import { AdminChoiceGroup } from "./AdminChoices";
 import { RiskEvidence } from "./RiskEvidence";
 import { IpLocation } from "../shared/IpLocation";
 import { AdminStatus } from "../shared/admin-status";
 import { useState } from "react";
-import { ops, date, bytes, rows, type Row } from "../shared/api";
+import { ops, bytes, rows, type Row } from "../shared/api";
 import { Modal, State, useData } from "../shared/ui";
 import { adminUserLabel } from "./admin-user-label";
 export function AdminUserActivityLink({ row }: { row: Row }) {
@@ -16,13 +17,16 @@ const activityTones: Record<string, string> = { "订阅": "subscription", "连�
 const formatBytes = (value: unknown) => value == null ? "—" : bytes(Number(value));
 
 function Activity({ row, close }: { row: Row; close: () => void }) {
+    return <Modal title="用户活动详情" variant="drawer" wide className="user-activity-drawer" close={close}><UserActivityContent row={row}/></Modal>;
+}
+export function UserActivityContent({ row }: { row: Row }) {
     const [kind, setKind] = useState("全部");
     const d = useData(ops(`risk/user-activity/fetch?user_id=${encodeURIComponent(row.user_id)}`));
     const events = rows(d.data?.events);
     const visible = events.filter(event => kind === "全部" || event.kind === kind);
     const user = d.data?.user;
-    return <Modal title="用户活动详情" variant="drawer" wide className="user-activity-drawer" close={close}>
-        <div className="user-activity">
+    return <div className="user-activity">
+            <AdminLogTimeZone />
             <header className="user-activity-identity">
                 <div><span className="user-activity-eyebrow">账户 · ID {row.user_id}</span><h3>{user?.email || row.email || "邮箱不可用"}</h3></div>
                 <button onClick={d.reload} disabled={d.loading}>刷新记录</button>
@@ -61,6 +65,5 @@ function Activity({ row, close }: { row: Row; close: () => void }) {
                     </article>)}
                 </div>
             </State>
-        </div>
-    </Modal>;
+        </div>;
 }

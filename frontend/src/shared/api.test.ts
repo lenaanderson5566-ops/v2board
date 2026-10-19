@@ -136,7 +136,7 @@ describe("API client", () => {
     });
     it("uses the same safe error handling for CSV failures", async () => {
         vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response("null", { status: 401 })));
-        await expect(download("admin/user/dumpCSV", {}, "users.csv")).rejects.toMatchObject({ status: 401 });
+        await expect(download("admin/coupon/generate", {}, "coupons.csv")).rejects.toMatchObject({ status: 401 });
         expect(session.active).toBe(false);
     });
     it("reports server validation details", async () => {
@@ -201,7 +201,7 @@ describe("CSV download", () => {
             ),
         );
         await expect(
-            download("admin/user/dumpCSV", {}, "users.csv"),
+            download("admin/coupon/generate", {}, "coupons.csv"),
         ).rejects.toThrow("CSV");
     });
     it("sends filters with authentication and downloads the returned CSV", async () => {
@@ -225,9 +225,9 @@ describe("CSV download", () => {
         );
         vi.stubGlobal("fetch", fetchMock);
         await download(
-            "admin/user/dumpCSV",
+            "admin/coupon/generate",
             { filter: [{ key: "banned", condition: "=", value: 0 }] },
-            "users.csv",
+            "coupons.csv",
         );
         expect(fetchMock.mock.calls[0][1].headers.Authorization).toBeUndefined();
         expect(
@@ -235,7 +235,7 @@ describe("CSV download", () => {
         ).toBe(0);
         expect(create).toHaveBeenCalled();
         expect(JSON.parse(fetchMock.mock.calls[0][1].body).format).toBe("csv");
-        expect(link.download).toBe("users.csv");
+        expect(link.download).toBe("coupons.csv");
         expect(click).toHaveBeenCalled();
         expect(remove).toHaveBeenCalled();
     });

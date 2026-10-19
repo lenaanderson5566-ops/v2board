@@ -113,8 +113,6 @@ class AdminRoute
             $router->get ('/user/fetch', 'V1\\Admin\\UserController@fetch');
             $router->post('/user/update', 'V1\\Admin\\UserController@update');
             $router->get ('/user/getUserInfoById', 'V1\\Admin\\UserController@getUserInfoById');
-            $router->post('/user/generate', 'V1\\Admin\\UserController@generate');
-            $router->post('/user/dumpCSV', 'V1\\Admin\\UserController@dumpCSV');
             $router->get('/mail-campaigns/fetch', 'V1\\Admin\\MailCampaignController@fetch');
             $router->post('/user/previewMailAudience', 'V1\\Admin\\UserController@previewMailAudience')->middleware('throttle:20,1');
             $router->post('/user/sendMail', 'V1\\Admin\\UserController@sendMail');

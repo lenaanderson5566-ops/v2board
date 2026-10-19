@@ -1,3 +1,4 @@
+import { AdminLogTimeZone, logTime } from "./admin-log-time";
 import { TableViewport } from "../shared/ui";
 import { AdminFilterBar } from "./AdminFilterBar";
 import { AdminChoiceGroup } from "./AdminChoices";
@@ -8,9 +9,7 @@ import { useState } from "react";
 import { admin, type Row } from "../shared/api";
 import { Panel, Reload, State, useData } from "../shared/ui";
 import {
-    formatInstant,
     parseDateTimeInput,
-    displayTimeZone,
 } from "../shared/timezone";
 
 const statuses: Record<string, string> = {
@@ -110,6 +109,7 @@ export function AdminMailLogs() {
                 ) : undefined
             }
         >
+            <AdminLogTimeZone />
             <AdminChoiceGroup variant="navigation" label="邮件管理" value={view} onChange={setView}
                 options={[{value:"logs",label:"投递日志"},{value:"campaigns",label:"群发记录"}]}>
                 <a className="button" href="#/mail-blocklist">邮件禁发名单 ↗</a>
@@ -293,7 +293,7 @@ export function AdminMailLogs() {
                             </select>
                         </label>
                         <label>
-                            开始时间（{displayTimeZone()}）
+                            开始时间
                             <input
                                 type="datetime-local"
                                 value={draft.from}
@@ -303,7 +303,7 @@ export function AdminMailLogs() {
                             />
                         </label>
                         <label>
-                            结束时间（{displayTimeZone()}）
+                            结束时间
                             <input
                                 type="datetime-local"
                                 value={draft.to}
@@ -350,7 +350,7 @@ export function AdminMailLogs() {
                                     {(logs.data || []).map((row) => (
                                         <tr key={row.id}>
                                             <td>
-                                                {formatInstant(row.created_at)}
+                                                {logTime(row.created_at)}
                                             </td>
                                             <td>
                                                 {row.email}

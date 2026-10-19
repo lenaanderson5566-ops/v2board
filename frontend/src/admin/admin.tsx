@@ -1,3 +1,4 @@
+import { AdminLogTimeZone, logTime } from "./admin-log-time";
 import { AdminDisplaySettings } from "./AdminDisplaySettings";
 import { languageCodes } from "../shared/language-options";
 import { Plus, Search } from "lucide-react";
@@ -792,7 +793,7 @@ export const resources: Record<string, Resource> = {
                     <span className="admin-ua-text">{r.user_agent || "—"}</span>
                 ),
             ],
-            created,
+            ["created_at", "创建时间", (r) => logTime(r.created_at)],
         ],
         fields: [],
     },
@@ -840,7 +841,7 @@ export const resources: Record<string, Resource> = {
                     <span className="admin-ua-text">{r.user_agent || "—"}</span>
                 ),
             ],
-            created,
+            ["created_at", "创建时间", (r) => logTime(r.created_at)],
         ],
         fields: [],
     },
@@ -855,7 +856,7 @@ export const resources: Record<string, Resource> = {
             ],
             ["ip", "IP"],
             ["node", "节点"],
-            ["connected_at", "连接时间", (r) => date(r.connected_at)],
+            ["connected_at", "连接时间", (r) => logTime(r.connected_at)],
         ],
         fields: [],
     },
@@ -877,8 +878,8 @@ export const resources: Record<string, Resource> = {
                 (r) => <AdminRiskReview key={r.id} row={r} />,
             ],
             ["hit_count", "命中次数"],
-            ["first_hit_at", "首次命中", (r) => date(r.first_hit_at)],
-            ["hit_at", "最后命中", (r) => date(r.hit_at)],
+            ["first_hit_at", "首次命中", (r) => logTime(r.first_hit_at)],
+            ["hit_at", "最后命中", (r) => logTime(r.hit_at)],
         ],
         fields: [],
     },
@@ -893,7 +894,7 @@ export const resources: Record<string, Resource> = {
             ["http_status", "状态码"],
             ["duration_ms", "耗时（ms）"],
             ["request_id", "请求 ID"],
-            ["created_at", "时间", (r) => date(r.created_at)],
+            ["created_at", "时间", (r) => logTime(r.created_at)],
         ],
         fields: [],
     },
@@ -903,6 +904,8 @@ export function ResourcePage({
     queryParams = {},
     toolbar,
     extraActions,
+    headerActions,
+    onUserDetails,
     searchable = true,
     pageSize: initialPageSize = 20,
     onPageSizeChange,
@@ -915,7 +918,9 @@ export function ResourcePage({
     hiddenColumns?: string[];
     queryParams?: Row;
     toolbar?: ReactNode;
-    extraActions?: (row: Row, context?: boolean) => ReactNode;
+    extraActions?: (row: Row, context?: boolean, secondary?: ReactNode) => ReactNode;
+    headerActions?: ReactNode;
+    onUserDetails?: (row: Row) => void;
     searchable?: boolean;
     pageSize?: number;
     onPageSizeChange?: (size: number) => void;
@@ -1124,6 +1129,14 @@ export function ResourcePage({
             setError((e as Error).message);
         }
     }
+    const secondaryActions = (r: Row) => <>
+        {resource.actions?.map(([label, path, extra]) => (
+            <button key={label} className={resource === resources.users ? "danger" : undefined}
+                disabled={resource === resources.orders && r.status !== 0}
+                onClick={() => action(path, r, extra)}>{label}</button>
+        ))}
+        {resource.drop && <button className="danger" onClick={() => action(resource.drop!, r)}>删除</button>}
+    </>;
     const list = (d.data || []).filter(
         (r) =>
             Boolean(logKind) ||
@@ -1144,6 +1157,7 @@ export function ResourcePage({
                 title={resource.title}
                 actions={
                     <>
+                        {headerActions}
                         {ownDisplaySettings && <button type="button" onClick={() => setShowDisplay(true)}>显示设置</button>}
                         {searchable && !logKind && (
                             <div className="search">
@@ -1198,6 +1212,7 @@ export function ResourcePage({
                     </>
                 }
             >
+                {logKind && <AdminLogTimeZone />}
                 {logKind && (
                     <AdminLogFilters
                         key={logKind}
@@ -1262,6 +1277,8 @@ export function ResourcePage({
                         columns={resource.columns
                             .filter(([key]) => !hiddenColumns.includes(key) && (!ownDisplaySettings || selectedColumns.includes(key)))
                             .map(([key, label, render]) => {
+                                if (resource === resources.users && key === "id" && onUserDetails)
+                                    return [key, label, (r: Row) => <button className="link" onClick={() => onUserDetails(r)}>{adminUserLabel({user_id:r.id,email:r.email})}</button>] as [string,string,(r:Row)=>ReactNode];
                                 if (key === "group_id" && !render)
                                     return [
                                         key,
@@ -1484,34 +1501,8 @@ export function ResourcePage({
                                                       编辑
                                                   </button>
                                               )}
-                                          {resource.actions?.map(
-                                              ([label, path, extra]) => (
-                                                  <button
-                                                      key={label}
-                                                      disabled={
-                                                          resource ===
-                                                              resources.orders &&
-                                                          r.status !== 0
-                                                      }
-                                                      onClick={() =>
-                                                          action(path, r, extra)
-                                                      }
-                                                  >
-                                                      {label}
-                                                  </button>
-                                              ),
-                                          )}
-                                          {resource.drop && (
-                                              <button
-                                                  className="danger"
-                                                  onClick={() =>
-                                                      action(resource.drop!, r)
-                                                  }
-                                              >
-                                                  删除
-                                              </button>
-                                          )}
-                                          {extraActions?.(r, context)}
+                                          {resource !== resources.users || !extraActions ? secondaryActions(r) : null}
+                                          {extraActions?.(r, context, resource === resources.users ? secondaryActions(r) : undefined)}
                                       </>
                                   )
                                 : undefined
@@ -1767,76 +1758,6 @@ export function Translations() {
             ) : (
                 <Empty text="选择套餐后开始翻译" />
             )}
-        </Panel>
-    );
-}
-export function GenerateUsers({ onCreated }: { onCreated?: () => void }) {
-    const plans = useData<Row[]>(admin("plan/fetch"));
-    const [notice, setNotice] = useState("");
-    return (
-        <Panel title="生成用户">
-            <p className="pad muted">
-                填写邮箱前缀时创建一个用户；留空时批量生成并下载账号
-                CSV。密码留空时使用完整邮箱作为初始密码。
-            </p>
-            <State {...plans} retry={plans.reload}>
-                <Editor
-                    fields={[
-                        field("email_prefix", "邮箱前缀（单个用户）"),
-                        field("email_suffix", "邮箱域名", "text", true),
-                        {
-                            ...field(
-                                "generate_count",
-                                "生成数量（1–500）",
-                                "number",
-                            ),
-                            min: 1,
-                            max: 500,
-                            step: 1,
-                        },
-                        field("password", "初始密码", "password"),
-                        {
-                            ...field("plan_id", "套餐", "select"),
-                            nullable: true,
-                            options: (plans.data || []).map((p) => [
-                                String(p.id),
-                                p.name,
-                            ]),
-                        },
-                        field("expired_at", "到期时间", "datetime-local"),
-                    ]}
-                    initial={{ generate_count: 1 }}
-                    validate={(b) =>
-                        !b.email_prefix &&
-                        (!Number.isInteger(Number(b.generate_count)) ||
-                            Number(b.generate_count) < 1 ||
-                            Number(b.generate_count) > 500)
-                            ? "生成数量必须为 1–500 的整数"
-                            : undefined
-                    }
-                    onSave={async (b) => {
-                        if (b.email_prefix)
-                            await request(admin("user/generate"), b);
-                        else
-                            await download(
-                                admin("user/generate"),
-                                b,
-                                "generated-users.csv",
-                            );
-                        setNotice(
-                            b.email_prefix
-                                ? "用户已生成"
-                                : "用户已生成，账号 CSV 已下载",
-                        );
-                        onCreated?.();
-                    }}
-                />
-                {notice && (
-                    <p className="pad" role="status">
-                        {notice}
-                    </p>
-                )}
-            </State>
         </Panel>
     );
 }

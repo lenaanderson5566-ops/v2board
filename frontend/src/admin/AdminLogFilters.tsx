@@ -2,7 +2,6 @@ import { AdminFilterBar } from "./AdminFilterBar";
 import {
     dateTimeInput,
     parseDateTimeInput,
-    displayTimeZone,
 } from "../shared/timezone";
 import { useState } from "react";
 import type { Row } from "../shared/api";
@@ -66,9 +65,6 @@ export function AdminLogFilters({
             {fields.map(([key, label, type]) => (
                 <label key={key}>
                     {label}
-                    {type === "datetime-local"
-                        ? `（${displayTimeZone()}）`
-                        : ""}
                     <input
                         aria-label={`日志${label}`}
                         type={type}

@@ -115,7 +115,7 @@ export function Modal({
                 (boot.mode === "admin" &&
                 (variant === "drawer" ||
                     (!variant &&
-                        /编辑|新建|设置|配置|高级筛选|生成用户/.test(title)))
+                        /编辑|新建|设置|配置|高级筛选/.test(title)))
                     ? " admin-drawer"
                     : "") +
                 (wide ? " admin-wide-drawer" : "") +

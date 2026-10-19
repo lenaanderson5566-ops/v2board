@@ -39,7 +39,7 @@ function setup() {
     api.request.mockImplementation(async (path: string, body?: unknown) =>
         path.endsWith("logRetention")
             ? { data: body ? settings : { settings, lastRun: null } }
-            : { data: [], total: 0 },
+            : path.endsWith("analytics/settings") ? {data:{ready:true,settings:{enabled:false,retentionDays:30}}} : { data: [], total: 0 },
     );
 }
 it("submits exact filters and resets pagination", async () => {

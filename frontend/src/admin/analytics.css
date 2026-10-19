@@ -4,17 +4,55 @@
     gap: 20px;
     min-width: 0;
 }
-body[data-console="admin"] .analytics-page > .panel { margin-bottom: 0; min-width: 0; }
-body[data-console="admin"] .analytics-page .analytics-settings label { flex-direction: row; flex-wrap: wrap; margin: 0; }
-body[data-console="admin"] .analytics-page .analytics-settings select { width: auto; min-width: 120px; max-width: 100%; margin: 0; }
-body[data-console="admin"] .analytics-page .analytics-settings input[type="checkbox"] { flex: 0 0 18px; margin: 0; }
-.analytics-page .panel-body { overflow-wrap: anywhere; }
-.analytics-page .panel-body > p { line-height: 1.7; }
-.analytics-page .panel-body > .analytics-settings { margin-block: 16px; }
-.analytics-page .table-wrap { max-width: 100%; overflow-x: auto; }
-body[data-console="admin"] .analytics-page td:last-child { position: static; right: auto; box-shadow: none; }
-.analytics-time-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(260px, 100%), 1fr)); gap: 24px; }
-.analytics-metrics > div, .analytics-funnel > li { min-width: 0; }
+body[data-console="admin"] .analytics-page > .panel {
+    margin-bottom: 0;
+    min-width: 0;
+}
+body[data-console="admin"] .analytics-page .analytics-settings label {
+    flex-direction: row;
+    flex-wrap: wrap;
+    margin: 0;
+}
+body[data-console="admin"] .analytics-page .analytics-settings select {
+    width: auto;
+    min-width: 120px;
+    max-width: 100%;
+    margin: 0;
+}
+body[data-console="admin"]
+    .analytics-page
+    .analytics-settings
+    input[type="checkbox"] {
+    flex: 0 0 18px;
+    margin: 0;
+}
+.analytics-page .panel-body {
+    overflow-wrap: anywhere;
+}
+.analytics-page .panel-body > p {
+    line-height: 1.7;
+}
+.analytics-page .panel-body > .analytics-settings {
+    margin-block: 16px;
+}
+.analytics-page .table-wrap {
+    max-width: 100%;
+    overflow-x: auto;
+}
+body[data-console="admin"] .analytics-page td:last-child {
+    position: static;
+    right: auto;
+    box-shadow: none;
+}
+.analytics-time-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(260px, 100%), 1fr));
+    gap: 24px;
+}
+.analytics-metrics > div,
+.analytics-funnel > li {
+    min-width: 0;
+}
 
 .analytics-settings {
     display: flex;
@@ -113,9 +151,11 @@ body[data-console="admin"] .analytics-page td:last-child { position: static; rig
     white-space: nowrap;
 }
 
-.analytics-section-links {display:flex;gap:10px;flex-wrap:wrap}
-.analytics-section-links button {padding:10px 16px;border:1px solid var(--line);border-radius:10px;color:inherit;text-decoration:none}
-.analytics-browser-details {margin-top:20px;border-top:1px solid var(--line);padding-top:16px}
-.analytics-browser-details summary {cursor:pointer;font-weight:600}
-.analytics-page [id^="analytics-"] {scroll-margin-top:80px}
-.analytics-page > section {display:grid;gap:20px;min-width:0}
+.analytics-pagination {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 12px;
+    flex-wrap: wrap;
+    padding: 12px;
+}

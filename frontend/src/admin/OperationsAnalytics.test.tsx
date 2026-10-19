@@ -18,6 +18,7 @@ vi.mock("../shared/api", async (original) => ({
     readRequest: api.request,
 }));
 import {
+    ReportTable,
     OperationsAnalytics,
     type OperationsReport,
 } from "./OperationsAnalytics";
@@ -269,6 +270,22 @@ it("integrates range, device-independent operations and local access distributio
     await screen.findByRole("heading", { name: "访问时段分布" });
     expect(screen.getByText("23:00–24:00")).toBeTruthy();
     expect(screen.getByText("周日")).toBeTruthy();
+    expect(
+        api.request.mock.calls.every(
+            ([path]) =>
+                !path.includes("/operations") && !path.includes("/journey"),
+        ),
+    ).toBe(true);
+    expect(screen.queryByRole("heading", { name: "登录质量" })).toBeNull();
+    fireEvent.mouseDown(screen.getByRole("tab", { name: "安全访问" }), {
+        button: 0,
+        ctrlKey: false,
+    });
+    await screen.findByRole("heading", { name: "登录质量" });
+    expect(screen.queryByRole("heading", { name: "访问时段分布" })).toBeNull();
+    expect(
+        (screen.getByLabelText("访问设备") as HTMLSelectElement).disabled,
+    ).toBe(true);
     fireEvent.change(screen.getByLabelText("统计范围"), {
         target: { value: "90" },
     });
@@ -279,6 +296,12 @@ it("integrates range, device-independent operations and local access distributio
             ),
         ).toBe(true),
     );
+    fireEvent.mouseDown(screen.getByRole("tab", { name: "来源与浏览器" }), {
+        button: 0,
+        ctrlKey: false,
+    });
+    await screen.findByRole("heading", { name: "访问来源网站" });
+    expect(screen.queryByRole("heading", { name: "登录质量" })).toBeNull();
     fireEvent.change(screen.getByLabelText("访问设备"), {
         target: { value: "mobile" },
     });
@@ -295,8 +318,14 @@ it("integrates range, device-independent operations and local access distributio
 });
 
 it("labels existing-log IP totals and renders masked addresses without implying unique users", async () => {
-    const data=fixture();
-    data.login.clients={uniqueIps:2,unknownIpEvents:1,browsers:[{category:"wechat",total:4,success:3,failed:1}],topIps:[{maskedIp:"192.0.2.***",total:4,failed:1,accounts:2}],countries:[{country:"未知",total:4}]};
+    const data = fixture();
+    data.login.clients = {
+        uniqueIps: 2,
+        unknownIpEvents: 1,
+        browsers: [{ category: "wechat", total: 4, success: 3, failed: 1 }],
+        topIps: [{ maskedIp: "192.0.2.***", total: 4, failed: 1, accounts: 2 }],
+        countries: [{ country: "未知", total: 4 }],
+    };
     setup(data);
     render(<OperationsAnalytics days={7} />);
     expect(await screen.findByText("192.0.2.***")).toBeTruthy();
@@ -304,3 +333,40 @@ it("labels existing-log IP totals and renders masked addresses without implying 
     expect(screen.getByText(/IP 数不等于用户数/)).toBeTruthy();
     expect(screen.queryByText("192.0.2.1")).toBeNull();
 });
+
+it("paginates browser detail rows without losing the last partial page", () => {
+    const view = render(
+        <ReportTable
+            headers={["浏览器"]}
+            rows={Array.from({ length: 21 }, (_, i) => [`Browser ${i}`])}
+            pageSize={20}
+        />,
+    );
+    expect(screen.queryByText("Browser 20")).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "下一页" }));
+    expect(screen.getByText("Browser 20")).toBeTruthy();
+    expect(screen.queryByText("Browser 0")).toBeNull();
+    view.rerender(
+        <ReportTable
+            headers={["浏览器"]}
+            rows={[["New browser"]]}
+            pageSize={20}
+        />,
+    );
+    expect(screen.getByText("New browser")).toBeTruthy();
+});
+it.each([
+    ["security", "登录质量", "支付与开通质量"],
+    ["delivery", "支付与开通质量", "登录质量"],
+    ["health", "队列与定时任务健康", "邮件发送与送达"],
+] as const)(
+    "limits %s to relevant reports",
+    async (section, visible, hidden) => {
+        setup();
+        render(<OperationsAnalytics days={7} section={section} />);
+        expect(
+            await screen.findByRole("heading", { name: visible }),
+        ).toBeTruthy();
+        expect(screen.queryByRole("heading", { name: hidden })).toBeNull();
+    },
+);

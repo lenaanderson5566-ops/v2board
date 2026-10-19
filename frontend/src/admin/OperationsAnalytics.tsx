@@ -1,5 +1,5 @@
 import { browserLabel } from "./browser-labels";
-import type { ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 import { admin, query } from "../shared/api";
 import { Panel, State, useData } from "../shared/ui";
 import { formatInstant } from "../shared/timezone";
@@ -154,10 +154,16 @@ const states: Record<string, string> = {
 export function ReportTable({
     headers,
     rows,
+    pageSize,
 }: {
     headers: string[];
     rows: ReactNode[][];
+    pageSize?: number;
 }) {
+    const [page, setPage] = useState(0);
+    const size = pageSize || Math.max(rows.length, 1);
+    const pages = Math.max(1, Math.ceil(rows.length / size));
+    const current = Math.min(page, pages - 1);
     return rows.length ? (
         <div className="table-wrap">
             <table>
@@ -171,15 +177,38 @@ export function ReportTable({
                     </tr>
                 </thead>
                 <tbody>
-                    {rows.map((r, i) => (
-                        <tr key={i}>
-                            {r.map((v, j) => (
-                                <td key={j}>{v}</td>
-                            ))}
-                        </tr>
-                    ))}
+                    {rows
+                        .slice(current * size, (current + 1) * size)
+                        .map((r, i) => (
+                            <tr key={i}>
+                                {r.map((v, j) => (
+                                    <td key={j}>{v}</td>
+                                ))}
+                            </tr>
+                        ))}
                 </tbody>
             </table>
+            {pages > 1 && (
+                <div className="analytics-pagination" aria-label="表格分页">
+                    <button
+                        type="button"
+                        disabled={current === 0}
+                        onClick={() => setPage(current - 1)}
+                    >
+                        上一页
+                    </button>
+                    <span>
+                        第 {current + 1} / {pages} 页 · 共 {rows.length} 项
+                    </span>
+                    <button
+                        type="button"
+                        disabled={current + 1 === pages}
+                        onClick={() => setPage(current + 1)}
+                    >
+                        下一页
+                    </button>
+                </div>
+            )}
         </div>
     ) : (
         <p className="muted">当前范围暂无记录。</p>
@@ -311,7 +340,13 @@ function AccessReport({
         </Panel>
     );
 }
-export function OperationsAnalytics({ days }: { days: number }) {
+export function OperationsAnalytics({
+    days,
+    section = "all",
+}: {
+    days: number;
+    section?: "all" | "security" | "delivery" | "health";
+}) {
     const report = useData<OperationsReport>(
         query(admin("analytics/operations"), { days }),
         undefined,
@@ -346,250 +381,279 @@ export function OperationsAnalytics({ days }: { days: number }) {
             </Panel>
             {data && (
                 <>
-                    <AccessReport
-                        title="登录质量"
-                        data={data.login}
-                        retention={data.retention.login_log_retention_days}
-                        days={days}
-                    />
-                    <AccessReport
-                        title="订阅获取质量"
-                        data={data.subscription}
-                        retention={data.retention.subscribe_log_retention_days}
-                        days={days}
-                    />
-                    <Panel padded title="风控规则效果">
-                        {!data.risk.available ? (
-                            <p className="alert">
-                                风控日志表不可用，无法统计。
-                            </p>
-                        ) : (
-                            <ReportTable
-                                headers={[
-                                    "规则",
-                                    "命中",
-                                    "已知账户数",
-                                    "确认风险",
-                                    "误报",
-                                    "忽略",
-                                    "待复核",
-                                    "复核覆盖率",
-                                    "已复核误报率",
-                                ]}
-                                rows={data.risk.rules.map((r) => [
-                                    r.rule,
-                                    r.hits,
-                                    r.users,
-                                    r.confirmed,
-                                    r.falsePositive,
-                                    r.ignored,
-                                    r.pending,
-                                    percentage(r.coverage),
-                                    percentage(r.falsePositiveRate),
-                                ])}
+                    {(section === "all" || section === "security") && (
+                        <>
+                            <AccessReport
+                                title="登录质量"
+                                data={data.login}
+                                retention={
+                                    data.retention.login_log_retention_days
+                                }
+                                days={days}
                             />
-                        )}
-                        <p className="muted">
-                            按命中时间入选，展示当前复核状态。复核覆盖率 =（确认
-                            + 误报 + 忽略）/ 命中；误报率 = 误报 /
-                            已复核。未复核不视为有效命中；无复核时显示
-                            —。账户数按每条规则去重，不含未知账户。
-                        </p>
-                        <Retention
-                            days={data.retention.risk_log_retention_days}
-                            selected={days}
-                        />
-                    </Panel>
-                    <Panel padded title="支付与开通质量">
-                        {!data.payments.available ? (
-                            <p className="alert">
-                                订单或渠道表不可用，无法统计。
-                            </p>
-                        ) : (
-                            <>
-                                <ReportTable
-                                    headers={[
-                                        "订单当前／最终渠道",
-                                        "订单币种",
-                                        "订单数",
-                                        "已付款",
-                                        "已完成／折抵",
-                                        "付款比例",
-                                        "平均下单至付款",
-                                    ]}
-                                    rows={data.payments.channels.map((r) => [
-                                        r.channel,
-                                        r.currency,
-                                        r.orders,
-                                        r.paid,
-                                        r.completed,
-                                        percentage(r.paidRate),
-                                        seconds(r.averagePaymentWaitSeconds),
-                                    ])}
-                                />
-                                <p className="muted">
-                                    按创建时间选取订单，以 paid_at
-                                    判断付款，含余额、零元、充值及流量订单；按订单币种分组。渠道切换历史未完整记录，此比例不是支付尝试成功率。今日及新订单尚未充分观察。
-                                </p>
-                                <h3>支付回调结果</h3>
-                                {data.payments.callbacksAvailable ? (
+                            <AccessReport
+                                title="订阅获取质量"
+                                data={data.subscription}
+                                retention={
+                                    data.retention.subscribe_log_retention_days
+                                }
+                                days={days}
+                            />
+                            <Panel padded title="风控规则效果">
+                                {!data.risk.available ? (
+                                    <p className="alert">
+                                        风控日志表不可用，无法统计。
+                                    </p>
+                                ) : (
                                     <ReportTable
                                         headers={[
-                                            "渠道",
-                                            "回调事件",
-                                            "处理完成",
-                                            "失败",
-                                            "仅确认事件",
+                                            "规则",
+                                            "命中",
+                                            "已知账户数",
+                                            "确认风险",
+                                            "误报",
+                                            "忽略",
+                                            "待复核",
+                                            "复核覆盖率",
+                                            "已复核误报率",
                                         ]}
-                                        rows={data.payments.callbacks.map(
-                                            (r) => [
-                                                r.channel,
-                                                r.total,
-                                                r.handled,
-                                                r.failed,
-                                                r.acknowledged,
-                                            ],
-                                        )}
+                                        rows={data.risk.rules.map((r) => [
+                                            r.rule,
+                                            r.hits,
+                                            r.users,
+                                            r.confirmed,
+                                            r.falsePositive,
+                                            r.ignored,
+                                            r.pending,
+                                            percentage(r.coverage),
+                                            percentage(r.falsePositiveRate),
+                                        ])}
                                     />
-                                ) : (
-                                    <p className="alert">回调历史表不可用。</p>
                                 )}
                                 <p className="muted">
-                                    按回调接收时间计数，包含重复通知；处理完成不等同于新增付款。未验签的通知不归属订单。现有记录无法精确计算实际扣款至回调、到账至开通延迟。
-                                </p>
-                                <p>
-                                    当前全部已付款待开通订单：
-                                    <strong>
-                                        {data.payments.pendingActivation}
-                                    </strong>{" "}
-                                    · 最久等待：
-                                    {seconds(
-                                        data.payments
-                                            .oldestActivationWaitSeconds,
-                                    )}
+                                    按命中时间入选，展示当前复核状态。复核覆盖率
+                                    =（确认 + 误报 + 忽略）/ 命中；误报率 = 误报
+                                    / 已复核。未复核不视为有效命中；无复核时显示
+                                    —。账户数按每条规则去重，不含未知账户。
                                 </p>
                                 <Retention
                                     days={
-                                        data.retention
-                                            .payment_callback_retention_days
+                                        data.retention.risk_log_retention_days
                                     }
                                     selected={days}
                                 />
-                            </>
-                        )}
-                    </Panel>
-                    <Panel padded title="邮件发送与送达">
-                        {!data.mail.available ? (
-                            <p className="alert">
-                                邮件日志表不可用，无法统计。
-                            </p>
-                        ) : (
+                            </Panel>
+                        </>
+                    )}
+                    {(section === "all" || section === "delivery") && (
+                        <>
+                            <Panel padded title="支付与开通质量">
+                                {!data.payments.available ? (
+                                    <p className="alert">
+                                        订单或渠道表不可用，无法统计。
+                                    </p>
+                                ) : (
+                                    <>
+                                        <ReportTable
+                                            headers={[
+                                                "订单当前／最终渠道",
+                                                "订单币种",
+                                                "订单数",
+                                                "已付款",
+                                                "已完成／折抵",
+                                                "付款比例",
+                                                "平均下单至付款",
+                                            ]}
+                                            rows={data.payments.channels.map(
+                                                (r) => [
+                                                    r.channel,
+                                                    r.currency,
+                                                    r.orders,
+                                                    r.paid,
+                                                    r.completed,
+                                                    percentage(r.paidRate),
+                                                    seconds(
+                                                        r.averagePaymentWaitSeconds,
+                                                    ),
+                                                ],
+                                            )}
+                                        />
+                                        <p className="muted">
+                                            按创建时间选取订单，以 paid_at
+                                            判断付款，含余额、零元、充值及流量订单；按订单币种分组。渠道切换历史未完整记录，此比例不是支付尝试成功率。今日及新订单尚未充分观察。
+                                        </p>
+                                        <h3>支付回调结果</h3>
+                                        {data.payments.callbacksAvailable ? (
+                                            <ReportTable
+                                                headers={[
+                                                    "渠道",
+                                                    "回调事件",
+                                                    "处理完成",
+                                                    "失败",
+                                                    "仅确认事件",
+                                                ]}
+                                                rows={data.payments.callbacks.map(
+                                                    (r) => [
+                                                        r.channel,
+                                                        r.total,
+                                                        r.handled,
+                                                        r.failed,
+                                                        r.acknowledged,
+                                                    ],
+                                                )}
+                                            />
+                                        ) : (
+                                            <p className="alert">
+                                                回调历史表不可用。
+                                            </p>
+                                        )}
+                                        <p className="muted">
+                                            按回调接收时间计数，包含重复通知；处理完成不等同于新增付款。未验签的通知不归属订单。现有记录无法精确计算实际扣款至回调、到账至开通延迟。
+                                        </p>
+                                        <p>
+                                            当前全部已付款待开通订单：
+                                            <strong>
+                                                {
+                                                    data.payments
+                                                        .pendingActivation
+                                                }
+                                            </strong>{" "}
+                                            · 最久等待：
+                                            {seconds(
+                                                data.payments
+                                                    .oldestActivationWaitSeconds,
+                                            )}
+                                        </p>
+                                        <Retention
+                                            days={
+                                                data.retention
+                                                    .payment_callback_retention_days
+                                            }
+                                            selected={days}
+                                        />
+                                    </>
+                                )}
+                            </Panel>
+                            <Panel padded title="邮件发送与送达">
+                                {!data.mail.available ? (
+                                    <p className="alert">
+                                        邮件日志表不可用，无法统计。
+                                    </p>
+                                ) : (
+                                    <ReportTable
+                                        headers={[
+                                            "服务商",
+                                            "邮件类型",
+                                            "事件数",
+                                            "已接受",
+                                            "失败",
+                                            "结果不确定",
+                                            "其他／历史",
+                                            "接受比例",
+                                            "有送达回执",
+                                            "退信／拒绝／投诉",
+                                            "平均传输耗时",
+                                            "最近记录",
+                                        ]}
+                                        rows={data.mail.providers.map((r) => [
+                                            r.provider,
+                                            r.stream === "transactional"
+                                                ? "事务邮件"
+                                                : r.stream === "announcement"
+                                                  ? "公告邮件"
+                                                  : "历史类型",
+                                            r.total,
+                                            r.accepted,
+                                            r.failed,
+                                            r.uncertain,
+                                            r.other,
+                                            percentage(r.acceptedRate),
+                                            r.delivered,
+                                            r.negative,
+                                            r.averageTransportMs === null
+                                                ? "—"
+                                                : `${r.averageTransportMs} ms`,
+                                            instant(r.latestAt),
+                                        ])}
+                                    />
+                                )}
+                                <p className="muted">
+                                    接受比例 = 服务商接受 / 日志事件。发送中超过
+                                    120
+                                    秒归为结果不确定；其他包含跳过、发送中和历史未知。服务商接受不代表送达；无送达回执不代表失败。耗时仅为传输耗时，不含队列等待。
+                                </p>
+                                <Retention
+                                    days={
+                                        data.retention.mail_log_retention_days
+                                    }
+                                    selected={days}
+                                />
+                            </Panel>
+                        </>
+                    )}
+                    {(section === "all" || section === "health") && (
+                        <Panel padded title="队列与定时任务健康">
                             <ReportTable
-                                headers={[
-                                    "服务商",
-                                    "邮件类型",
-                                    "事件数",
-                                    "已接受",
-                                    "失败",
-                                    "结果不确定",
-                                    "其他／历史",
-                                    "接受比例",
-                                    "有送达回执",
-                                    "退信／拒绝／投诉",
-                                    "平均传输耗时",
-                                    "最近记录",
-                                ]}
-                                rows={data.mail.providers.map((r) => [
-                                    r.provider,
-                                    r.stream === "transactional"
-                                        ? "事务邮件"
-                                        : r.stream === "announcement"
-                                          ? "公告邮件"
-                                          : "历史类型",
-                                    r.total,
-                                    r.accepted,
-                                    r.failed,
-                                    r.uncertain,
-                                    r.other,
-                                    percentage(r.acceptedRate),
-                                    r.delivered,
-                                    r.negative,
-                                    r.averageTransportMs === null
-                                        ? "—"
-                                        : `${r.averageTransportMs} ms`,
-                                    instant(r.latestAt),
-                                ])}
-                            />
-                        )}
-                        <p className="muted">
-                            接受比例 = 服务商接受 / 日志事件。发送中超过 120
-                            秒归为结果不确定；其他包含跳过、发送中和历史未知。服务商接受不代表送达；无送达回执不代表失败。耗时仅为传输耗时，不含队列等待。
-                        </p>
-                        <Retention
-                            days={data.retention.mail_log_retention_days}
-                            selected={days}
-                        />
-                    </Panel>
-                    <Panel padded title="队列与定时任务健康">
-                        <ReportTable
-                            headers={["检查项", "状态", "说明"]}
-                            rows={data.health.checks.map((r) => [
-                                r.label,
-                                states[r.status] || "未知",
-                                r.message,
-                            ])}
-                        />
-                        <h3>队列快照</h3>
-                        {data.health.queues === null ? (
-                            <p className="alert">
-                                队列指标读取失败，请检查 Horizon。
-                            </p>
-                        ) : (
-                            <ReportTable
-                                headers={[
-                                    "队列",
-                                    "待执行",
-                                    "预计清空耗时",
-                                    "进程数",
-                                ]}
-                                rows={data.health.queues.map((r) => [
-                                    r.name,
-                                    r.length,
-                                    seconds(r.waitSeconds),
-                                    r.processes,
-                                ])}
-                            />
-                        )}
-                        <p className="muted">
-                            队列指标来自
-                            Horizon，预计清空耗时不是任务实际排队时长。空列表不表示队列健康，请同时查看主进程检查。
-                        </p>
-                        <p>
-                            失败任务库当前保留：
-                            {data.health.failedJobsRetained ?? "不可用"}
-                            （全部保留历史，不受日期筛选影响） ·
-                            最近日志清理成功：{instant(data.health.lastPruneAt)}
-                        </p>
-                        <h3>每日业务任务</h3>
-                        {data.health.dailyTasks === null ? (
-                            <p className="alert">每日任务记录表不可用。</p>
-                        ) : (
-                            <ReportTable
-                                headers={[
-                                    "任务",
-                                    "系统时区执行时间",
-                                    "今日状态",
-                                    "最近成功",
-                                ]}
-                                rows={data.health.dailyTasks.map((r) => [
-                                    r.task,
-                                    r.scheduledAt,
+                                headers={["检查项", "状态", "说明"]}
+                                rows={data.health.checks.map((r) => [
+                                    r.label,
                                     states[r.status] || "未知",
-                                    instant(r.lastSuccessAt),
+                                    r.message,
                                 ])}
                             />
-                        )}
-                    </Panel>
+                            <h3>队列快照</h3>
+                            {data.health.queues === null ? (
+                                <p className="alert">
+                                    队列指标读取失败，请检查 Horizon。
+                                </p>
+                            ) : (
+                                <ReportTable
+                                    headers={[
+                                        "队列",
+                                        "待执行",
+                                        "预计清空耗时",
+                                        "进程数",
+                                    ]}
+                                    rows={data.health.queues.map((r) => [
+                                        r.name,
+                                        r.length,
+                                        seconds(r.waitSeconds),
+                                        r.processes,
+                                    ])}
+                                />
+                            )}
+                            <p className="muted">
+                                队列指标来自
+                                Horizon，预计清空耗时不是任务实际排队时长。空列表不表示队列健康，请同时查看主进程检查。
+                            </p>
+                            <p>
+                                失败任务库当前保留：
+                                {data.health.failedJobsRetained ?? "不可用"}
+                                （全部保留历史，不受日期筛选影响） ·
+                                最近日志清理成功：
+                                {instant(data.health.lastPruneAt)}
+                            </p>
+                            <h3>每日业务任务</h3>
+                            {data.health.dailyTasks === null ? (
+                                <p className="alert">每日任务记录表不可用。</p>
+                            ) : (
+                                <ReportTable
+                                    headers={[
+                                        "任务",
+                                        "系统时区执行时间",
+                                        "今日状态",
+                                        "最近成功",
+                                    ]}
+                                    rows={data.health.dailyTasks.map((r) => [
+                                        r.task,
+                                        r.scheduledAt,
+                                        states[r.status] || "未知",
+                                        instant(r.lastSuccessAt),
+                                    ])}
+                                />
+                            )}
+                        </Panel>
+                    )}
                 </>
             )}
         </>

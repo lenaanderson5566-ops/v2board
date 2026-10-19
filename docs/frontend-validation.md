@@ -1,3 +1,13 @@
+## 分标签报表与设置归位
+
+访问与转化改为七个用途标签，只有当前标签内容挂载。保留时间/设备筛选，业务数据不会误受设备筛选限制。浏览器组合表按 20 项分页；其他报表保留原统计口径及空数据说明。
+
+后台路径：系统配置 → 浏览器访问（策略与预览）；日志与保留策略 → 访问统计 · 隐私与保留设置。旧配置键、策略值和统计保留时间保持兼容，无新增数据库迁移。
+
+IAB 使用 localhost Vite + 合成响应检查真实 React 组件：桌面点击「来源与浏览器」，确认浏览器/系统表、Edge/360 标签；390px iframe 检查筛选换行、标签横向滚动和概览单列。窄屏检查后将摘要卡片移入概览标签，让分类入口更早出现。截图在忽略目录 storage/app/test-organization/browser-access/report-tabs-desktop.png 和 report-tabs-narrow.png。未在生产后台或各品牌浏览器真机验收。
+
+UA 边界参考：[Microsoft Edge UA](https://learn.microsoft.com/en-us/microsoft-edge/web-platform/user-agent-guidance)、[Samsung UA 格式](https://developer.samsung.com/browser/user-agent-string-format.html)。360 等兼容模式可能隐藏品牌，分类仅表示 UA 声明；不添加高熵指纹识别。
+
 ## 浏览器策略预览与报表整理
 
 后台「系统配置 → 安全与注册」提供平台和 iOS / Android / 桌面选择，使用与用户端相同的卡片组件。预览使用固定 example.com 示例地址，复制按钮只模拟成功；继续访问展示入口示意。未保存的表单策略即时参与预览。

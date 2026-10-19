@@ -47,6 +47,13 @@ try {
     $assert($call($operationsUrl.'?days=7',null,$subjectToken)->getStatusCode()===403,'Operations analytics rejects ordinary account credentials');
     $journeyUrl='/api/v1/'.$securePath.'/analytics/journey';
     $assert($call($journeyUrl.'?days=7')->getStatusCode()===403 && $call($journeyUrl.'?days=7',null,$subjectToken)->getStatusCode()===403,'Journey analytics rejects anonymous and ordinary-account access');
+    $settingsUrl='/api/v1/'.$securePath.'/analytics/settings';
+    $assert($call($settingsUrl)->getStatusCode()===403 && $call($settingsUrl,null,$subjectToken)->getStatusCode()===403,'Analytics settings read is admin-only');
+    $beforeSettings=app(App\Services\ProductAnalytics::class)->settings();
+    $settingsResponse=$call($settingsUrl,null,$token);
+    $settingsData=json_decode($settingsResponse->getContent(),true)['data'] ?? [];
+    $assert($settingsResponse->getStatusCode()===200 && $settingsData['settings']===$beforeSettings && array_key_exists('ready',$settingsData),'Settings read returns configuration without report queries');
+    $assert(str_contains($settingsResponse->headers->get('Cache-Control'),'no-store') && app(App\Services\ProductAnalytics::class)->settings()===$beforeSettings,'Settings GET is private and read-only');
     $subjectAuth->removeAllSession();
     $opsReport=$call($operationsUrl.'?days=7',null,$token);
     $assert($opsReport->getStatusCode()===200 && isset(json_decode($opsReport->getContent(),true)['data']['risk']) && str_contains($opsReport->headers->get('Cache-Control'),'no-store'),'Operations analytics is available only to administrators and cannot be stored');

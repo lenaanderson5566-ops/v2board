@@ -27,6 +27,12 @@ try {
         $assert(App\Services\BrowserAccess::classify($ua)['embedded']===$expected,'Application UA: '.$expected);
         $assert(App\Services\BrowserAccess::policies()[$expected]==='allow','New platforms default allow');
     }
+    foreach ([['Chrome/120.0 360SE','360',null],['Chrome/120.0 360EE','360',null],['Chrome/120.0 SE 2.X MetaSr 1.0','sogou',null],['Chrome/120.0 SogouMobileBrowser/6.2','sogou',6],['Chrome/120.0 QQBrowser/12.1','qqbrowser',12],['Chrome/120.0 UCBrowser/17.2','uc',17],['Chrome/117.0 SamsungBrowser/24.0','samsung',24],['Chrome/120.0','chrome',120],['EdgiOS/120.0','edge',120]] as [$ua,$family,$major]) {
+        $classified=App\Services\BrowserAccess::classify($ua);
+        $assert($classified['browser']===$family && $classified['browser_major']===$major,'Browser family and own version: '.$family);
+        $sqlFamily=Illuminate\Support\Facades\DB::selectOne('SELECT '.App\Services\BrowserAccess::logCategorySql().' AS category FROM (SELECT ? AS user_agent) AS sample',[$ua])->category;
+        $assert($sqlFamily===$family,'Existing-log SQL agrees with browser category: '.$family);
+    }
     $user = App\Support\FrontendRuntime::config('user', false);
     $admin = App\Support\FrontendRuntime::config('admin');
     config(['v2board.landing_style' => 'minimal']);

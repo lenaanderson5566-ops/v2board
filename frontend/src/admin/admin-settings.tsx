@@ -25,6 +25,7 @@ const groupNames: Record<string, string> = {
     site: "站点设置",
     footer: "页脚 HTML",
     safe: "安全与注册",
+    browser: "浏览器访问",
     subscribe: "订阅设置",
     server: "节点通讯",
     invite: "邀请与佣金",
@@ -92,9 +93,16 @@ export function Settings({ section }: { section?: "app" | "invite" } = {}) {
         }
     }
     const [previewValues, setPreviewValues] = useState<Row | null>(null);
-    const raw = d.data?.[group] || {};
+    const source = d.data?.[group === "browser" ? "safe" : group] || {};
+    const raw: Row = Object.fromEntries(
+        Object.entries(source).filter(([key]) =>
+            group === "browser"
+                ? key.startsWith("browser_policy_")
+                : group !== "safe" || !key.startsWith("browser_policy_"),
+        ),
+    );
     const fields = settingsPresentation(
-        group,
+        group === "browser" ? "safe" : group,
         Object.entries(raw)
             .filter(
                 ([k]) =>
@@ -181,13 +189,31 @@ export function Settings({ section }: { section?: "app" | "invite" } = {}) {
             title={section ? groupNames[section] : "系统配置"}
             className="settings-panel"
         >
-            {!section && <AdminChoiceGroup variant="navigation" label="系统设置分类" value={group}
-                options={Object.keys(groupNames).filter(key => key !== "app").map(value => ({value,label:groupNames[value]}))}
-                onChange={value => {
-                    if (value === group) return;
-                    if (dirty && !window.confirm("当前分类有未保存的修改，确认放弃并切换？")) return;
-                    setPreviewValues(null); setGroup(value); setSaved(""); setDirty(false); setActionResult("");
-                }} /> }
+            {!section && (
+                <AdminChoiceGroup
+                    variant="navigation"
+                    label="系统设置分类"
+                    value={group}
+                    options={Object.keys(groupNames)
+                        .filter((key) => key !== "app")
+                        .map((value) => ({ value, label: groupNames[value] }))}
+                    onChange={(value) => {
+                        if (value === group) return;
+                        if (
+                            dirty &&
+                            !window.confirm(
+                                "当前分类有未保存的修改，确认放弃并切换？",
+                            )
+                        )
+                            return;
+                        setPreviewValues(null);
+                        setGroup(value);
+                        setSaved("");
+                        setDirty(false);
+                        setActionResult("");
+                    }}
+                />
+            )}
             <State
                 loading={
                     d.loading ||
@@ -275,7 +301,9 @@ export function Settings({ section }: { section?: "app" | "invite" } = {}) {
                         }}
                     />
                 )}
-                {group === "safe" && <AdminBrowserPreview values={previewValues || raw} />}
+                {group === "browser" && (
+                    <AdminBrowserPreview values={previewValues || raw} />
+                )}
                 {group === "subscribe" && (
                     <p className="pad muted">
                         设置额度基础权限组后：订阅有效时，额度沿用订阅权限；订阅到期或无订阅时，额度仅可使用基础组节点。适用于所有额度用户（含已迁移的一次性套餐）。额度余额、套餐记录及限速、设备限制不变。节点在下次拉取用户时更新权限，客户端需更新订阅以刷新节点列表。

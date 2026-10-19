@@ -59,7 +59,7 @@ const adminMenuKeywords: Record<string, string> = {
     "log-risk": "风控命中",
     "mail-logs": "邮件日志 退信 投诉 送达",
     "mail-blocklist": "邮件黑名单 禁发邮箱 风控与黑名单",
-    "log-settings": "日志设置 清理 保留期",
+    "log-settings": "日志设置 清理 保留期 隐私 访问统计 采集",
     security: "账户安全 MFA TOTP 恢复码",
 };
 export function adminPage(path: string): string {

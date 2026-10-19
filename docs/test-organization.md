@@ -1,3 +1,12 @@
+## 报表分类与设置入口整理
+
+- AdminAnalytics 使用共享 AdminTabs 拆分访问概览、来源与浏览器、购买转化、用户体验、安全访问、支付与邮件、运行健康；只挂载当前类别，时间/设备筛选在分类切换时保留。运营类禁用设备筛选，浏览器明细在最多 100 个服务端组合内按每页 20 项展示。
+- 系统配置单独增加「浏览器访问」，从「安全与注册」移出 browser_policy_* 字段；仍复用原配置存储与保存校验，不迁移既有值。访问统计采集开关、保留时间移至日志与保留策略。
+- 新增管理员 GET analytics/settings 只读取配置与迁移状态，不计算报表；POST 保存保持原行为。console-smoke 验证匿名及普通用户拒绝、管理员读取、no-store 和读取不修改配置。
+- 新增带明确标记的 360、QQ 浏览器、搜狗、UC、Samsung Internet 分类，保留 Edge 分类。无品牌标记不猜测；无应用版本时不借用 Chrome 版本；旧匿名会话不追溯补采。frontend-runtime 使用真实数据库 SQL 检查日志分类与 PHP 分类一致。
+- 本轮全量前端 699 项通过；最终布局调整后相关 16 项通过。隔离 MySQL/Redis 中 frontend-runtime 119、console-smoke 200、admin-payment-diagnostics 63、api-route-audit 2543 项通过；路由总数 346。生产构建通过。首次全量测试中旧日志页面 mock 未提供新配置响应，补齐 fixture 后全量通过。
+- 测试记录：storage/app/test-organization/browser-access/tabs-all.json、tabs-focused.json、tabs-build.log。浏览器截图使用合成数据，无生产访问记录。
+
 ## 浏览器策略预览与平台扩展
 
 - 后台安全与注册复用共享 BrowserNoticeView，预览跟随表单草稿，覆盖允许、提示后允许、仅引导以及模拟复制和继续；预览不调用用户统计或真实剪贴板。

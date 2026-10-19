@@ -708,7 +708,7 @@
     "analyticsSources": "同意いただいた場合、参照元サイトのドメインも集計します。参照元の完全なURLは記録せず、アカウントや決済記録とは関連付けません。",
     "analyticsExplanation": "ページ閲覧、端末の種類、言語を集計し、アカウントには紐付けません。選択はこのブラウザに保存され、約6か月後に再確認することがあります。いつでも無効にでき、その後の収集は停止します。既存データは保存期間に従って削除されます。注文記録や必要なセキュリティログには影響しません。 With permission, we also record browser family and major version, operating system, in-app browser category and guide actions. Raw user-agent strings and full IP addresses are not stored in optional analytics.",
     "analyticsPrivacy": "アクセス解析の設定",
-    "analyticsConsent": "任意のアクセス統計は、サイトの利用状況の把握と使いやすさの改善に役立ちます。ユーザー設定でいつでもオン・オフを切り替えられます。選択はこのブラウザーにのみ保存されます。",
+    "analyticsConsent": "サイトの改善に協力します。いつでもオフにできます。",
     "analyticsSummary": "閲覧や購入手順を集計し、アカウントには紐付けません。拒否してもログイン、購入、サービス利用に影響しません。",
     "analyticsManage": "設定を管理",
     "analyticsRetention": "保存期間（最大）",

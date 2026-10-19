@@ -710,7 +710,7 @@
     "analyticsSources": "Com sua permissão, também medimos os domínios dos sites de origem para entender como os visitantes nos encontram. Não registramos URLs completas nem vinculamos as origens a contas ou pagamentos.",
     "analyticsExplanation": "Este site mede visitas a páginas, categorias de dispositivo e idioma sem vinculá-los à sua conta. Sua escolha é salva neste navegador e podemos perguntar novamente após cerca de seis meses. Você pode desativar as estatísticas a qualquer momento. A nova coleta é interrompida e os dados existentes são eliminados conforme o prazo de retenção. Pedidos e registros de segurança necessários não são afetados. With permission, we also record browser family and major version, operating system, in-app browser category and guide actions. Raw user-agent strings and full IP addresses are not stored in optional analytics.",
     "analyticsPrivacy": "Preferências de estatísticas",
-    "analyticsConsent": "As estatísticas opcionais ajudam a entender o uso do site e melhorar sua experiência. Ative ou desative a qualquer momento nas configurações do usuário. Sua escolha é salva apenas neste navegador.",
+    "analyticsConsent": "Ajude a melhorar o site. Desative quando quiser.",
     "analyticsSummary": "As estatísticas ajudam a entender visitas e etapas de compra sem vinculá-las à sua conta. Recusar não afeta o login, as compras ou o uso do serviço.",
     "analyticsManage": "Gerenciar preferências",
     "analyticsRetention": "Retenção das estatísticas",

@@ -710,7 +710,7 @@
     "analyticsSources": "Dengan izin Anda, kami juga mengukur domain situs web perujuk untuk memahami bagaimana pengunjung menemukan kami. Kami tidak mencatat URL rujukan lengkap atau sumber tautan ke akun atau catatan pembayaran.",
     "analyticsExplanation": "Situs ini mengukur kunjungan halaman, kategori perangkat, dan bahasa tanpa menghubungkannya ke akun Anda. Pilihan Anda disimpan di browser ini, dan kami mungkin akan menanyakannya lagi setelah sekitar enam bulan. Anda dapat menonaktifkan analitik kapan saja. Pengumpulan baru kemudian dihentikan, dan data yang ada dihapus sesuai dengan periode penyimpanan. Catatan pesanan dan log keamanan yang diperlukan tidak terpengaruh. With permission, we also record browser family and major version, operating system, in-app browser category and guide actions. Raw user-agent strings and full IP addresses are not stored in optional analytics.",
     "analyticsPrivacy": "Preferensi statistik",
-    "analyticsConsent": "Statistik opsional membantu kami memahami penggunaan situs dan meningkatkan pengalaman Anda. Aktifkan atau nonaktifkan kapan saja di pengaturan pengguna. Pilihan Anda hanya disimpan di browser ini.",
+    "analyticsConsent": "Bantu tingkatkan situs. Nonaktifkan kapan saja.",
     "analyticsSummary": "Analytics membantu kami memahami kunjungan halaman dan langkah-langkah pembelian tanpa menautkannya ke akun Anda. Penolakan tidak memengaruhi proses masuk, pembelian, atau penggunaan layanan.",
     "analyticsManage": "Kelola preferensi",
     "analyticsRetention": "Retensi statistik",

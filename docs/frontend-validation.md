@@ -624,3 +624,8 @@ TypeScript --noEmit 与 git diff --check 均通过。
 复用 AccountPreferences.test.tsx、Landing.test.tsx 和 product-analytics.test.tsx；全量前端测试 774 项通过。覆盖实际开关触发上报/停止、存储失败可重试、跨标签页撤销、保留期限增加、两种浏览器隐私信号、服务端关闭以及首页不再提供统计入口。本轮没有进行浏览器人工视觉验收。测试报告位于 storage/app/test-organization/browser-access/privacy-settings-all.json，构建日志位于同目录 privacy-settings-build.log。
 
 提交前复核：TypeScript 与生产构建通过，350 个 manifest 条目及其文件/依赖引用完整。update.sh Bash 语法检查、26 个隔离更新场景、工作进程排空与重启回归全部通过。本次无 Composer 依赖或数据库迁移变更；生产站点更新尚未执行。
+
+
+## 用户设置视觉精简
+
+访问统计开关复用通知偏好的 toggle-control / toggle-track DOM 与样式，包含相同尺寸、颜色、焦点样式和 RTL 行为；窄屏仍保持说明与开关左右排列。14 种语言的简要说明缩短为帮助改善网站及随时关闭，完整说明仍可展开。Telegram 卡片统一使用“账号绑定与用户群”标题，移除重复介绍、大图标和三步进度条，用状态行及分隔线组织内容。保留身份核对、解绑确认、链接有效期、入群条件和异常反馈，业务请求逻辑未变。复用 AccountPreferences 与 Notifications 测试；本轮未执行浏览器人工视觉验收。

@@ -35,15 +35,5 @@
 .analytics-setting > div { min-width: 0; flex: 1; }
 .analytics-setting-details { margin-top: 12px; font-size: 13px; overflow-wrap: anywhere; }
 .analytics-setting-details summary { cursor: pointer; padding-block: 8px; }
-.analytics-setting .analytics-setting-switch {
-    width: 48px; min-width: 48px; height: 28px; min-height: 28px; padding: 3px;
-    flex: 0 0 auto; border: 1px solid var(--outline, #777); border-radius: 20px;
-    background: var(--text-secondary, #777); display: inline-flex; align-items: center;
-}
-.analytics-setting-switch span { width: 20px; height: 20px; border-radius: 50%; background: #fff; transition: transform 150ms; }
-.analytics-setting .analytics-setting-switch[aria-checked="true"] { background: var(--brand, #2563eb); border-color: var(--brand, #2563eb); }
-.analytics-setting-switch[aria-checked="true"] span { transform: translateX(20px); }
-[dir="rtl"] .analytics-setting-switch[aria-checked="true"] span { transform: translateX(-20px); }
-.analytics-setting-switch:disabled { opacity: .5; cursor: not-allowed; }
-.analytics-setting-switch:focus-visible, .analytics-setting-details summary:focus-visible { outline: 2px solid var(--brand, #2563eb); outline-offset: 3px; }
-@media (prefers-reduced-motion: reduce) { .analytics-setting-switch span { transition: none; } }
+.app.user .account-preferences .settings-row.analytics-setting { flex-direction: row; align-items: flex-start; }
+.analytics-setting-details summary:focus-visible { outline: 2px solid var(--brand, #2563eb); outline-offset: 3px; }

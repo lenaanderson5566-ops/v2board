@@ -708,7 +708,7 @@
     "analyticsSources": "Khi được bạn cho phép, chúng tôi cũng thống kê tên miền giới thiệu. Không lưu URL giới thiệu đầy đủ hoặc liên kết nguồn truy cập với tài khoản hay hồ sơ thanh toán.",
     "analyticsExplanation": "Trang web thống kê lượt xem, loại thiết bị và ngôn ngữ mà không liên kết với tài khoản. Lựa chọn được lưu trong trình duyệt này; chúng tôi có thể hỏi lại sau khoảng sáu tháng. Bạn có thể tắt bất kỳ lúc nào để dừng thu thập mới. Dữ liệu cũ được xóa theo thời hạn lưu trữ. Hồ sơ đơn hàng và nhật ký bảo mật cần thiết không bị ảnh hưởng. With permission, we also record browser family and major version, operating system, in-app browser category and guide actions. Raw user-agent strings and full IP addresses are not stored in optional analytics.",
     "analyticsPrivacy": "Tùy chọn thống kê",
-    "analyticsConsent": "Thống kê tùy chọn giúp chúng tôi hiểu cách sử dụng trang web và cải thiện trải nghiệm. Bạn có thể bật hoặc tắt bất cứ lúc nào trong cài đặt người dùng. Lựa chọn chỉ được lưu trong trình duyệt này.",
+    "analyticsConsent": "Giúp cải thiện trang web. Có thể tắt bất cứ lúc nào.",
     "analyticsSummary": "Thống kê lượt xem và các bước mua hàng không liên kết với tài khoản của bạn. Từ chối không ảnh hưởng đăng nhập, mua hàng hay sử dụng dịch vụ.",
     "analyticsManage": "Quản lý tùy chọn",
     "analyticsRetention": "Lưu tối đa",

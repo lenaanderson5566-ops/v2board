@@ -1,6 +1,5 @@
 import { useEffect, useRef, useState } from "react";
 import {
-    Send,
     ShieldCheck,
     Link2,
     Unlink,
@@ -90,21 +89,8 @@ export function TelegramIntegration() {
             <Icon aria-hidden="true" size={17} />
         );
     return (
-        <Panel title="Telegram">
+        <Panel title={tx("账号绑定与用户群")}>
             <div className="pad telegram-integration" aria-busy={!!busy}>
-                <div className="tg-intro">
-                    <span className="tg-avatar">
-                        <Send aria-hidden="true" size={24} />
-                    </span>
-                    <div>
-                        <strong>{tx("账号绑定与用户群")}</strong>
-                        <p className="muted">
-                            {tx(
-                                "在 Telegram 打开绑定链接后，请回到此页确认账号。无需发送密码或订阅链接。",
-                            )}
-                        </p>
-                    </div>
-                </div>
                 <State {...d} retry={d.reload}>
                     {info && (
                         <>
@@ -131,52 +117,6 @@ export function TelegramIntegration() {
                                     </span>
                                 )}
                             </div>
-                            {!info.linked && (
-                                <ol
-                                    className="tg-steps"
-                                    aria-label={tx("绑定步骤")}
-                                >
-                                    {[
-                                        "获取绑定链接",
-                                        "在 Telegram 中继续",
-                                        "确认绑定此账号",
-                                    ].map((label, index) => {
-                                        const step = pending
-                                            ? 2
-                                            : activeLink && !expired
-                                              ? 1
-                                              : 0;
-                                        return (
-                                            <li
-                                                key={label}
-                                                className={
-                                                    index === step
-                                                        ? "is-current"
-                                                        : index < step
-                                                          ? "is-done"
-                                                          : ""
-                                                }
-                                                aria-current={
-                                                    index === step
-                                                        ? "step"
-                                                        : undefined
-                                                }
-                                            >
-                                                <span aria-hidden="true">
-                                                    {index < step ? (
-                                                        <CircleCheck
-                                                            size={16}
-                                                        />
-                                                    ) : (
-                                                        index + 1
-                                                    )}
-                                                </span>
-                                                {tx(label)}
-                                            </li>
-                                        );
-                                    })}
-                                </ol>
-                            )}
                             {pending && (
                                 <div className="tg-confirm">
                                     <div className="tg-card-heading">

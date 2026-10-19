@@ -1449,7 +1449,7 @@
     font-size: 13px;
     color: var(--muted);
 }
-.app.user .notification-option .toggle-control {
+.app.user :is(.notification-option, .analytics-setting) .toggle-control {
     border: 0;
     background: transparent;
     box-shadow: none;
@@ -1457,7 +1457,7 @@
     padding: 8px 0 8px 8px;
     min-height: 44px;
 }
-.app.user .notification-option .toggle-control:focus-visible {
+.app.user :is(.notification-option, .analytics-setting) .toggle-control:focus-visible {
     outline: 2px solid currentColor;
     outline-offset: 4px;
 }
@@ -1574,91 +1574,33 @@ body[data-console="user"] .client-family-header p {
     flex-wrap: wrap;
 }
 
-/* Telegram account linking: explicit steps and separate membership actions. */
-.telegram-integration .tg-intro {
-    display: flex;
-    align-items: flex-start;
-    gap: 14px;
-}
-.telegram-integration .tg-intro > div {
-    min-width: 0;
-}
-.telegram-integration .tg-intro strong {
-    display: block;
-    margin-bottom: 4px;
-}
-.telegram-integration .tg-avatar {
-    display: grid;
-    place-items: center;
-    flex: 0 0 48px;
-    height: 48px;
-    border-radius: 16px;
-    background: var(--surface-tint);
-    color: var(--brand);
-}
+/* Telegram account linking: compact status and membership sections. */
 .telegram-integration .tg-status {
     display: flex;
     align-items: center;
     flex-wrap: wrap;
     gap: 10px;
-    padding: 14px 16px;
-    border-radius: 12px;
-    background: var(--surface-soft);
+    padding-block: 4px;
 }
 .telegram-integration .tg-status.is-linked {
     color: var(--success);
-    background: var(--success-soft);
 }
 .telegram-integration .tg-id {
     margin-inline-start: auto;
     font-size: 13px;
     overflow-wrap: anywhere;
 }
-.telegram-integration .tg-steps {
-    display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: 12px;
-    list-style: none;
-    padding: 0;
-    margin: 0;
-}
-.telegram-integration .tg-steps li {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    color: var(--text-secondary);
-    font-size: 13px;
-}
-.telegram-integration .tg-steps li > span {
-    display: grid;
-    place-items: center;
-    flex: 0 0 26px;
-    height: 26px;
-    border-radius: 50%;
-    background: var(--surface-tint);
-}
-.telegram-integration .tg-steps .is-current {
-    color: var(--brand);
-    font-weight: 600;
-}
-.telegram-integration .tg-steps .is-current > span {
-    background: var(--brand);
-    color: var(--on-brand);
-}
-.telegram-integration .tg-steps .is-done {
-    color: var(--success);
-}
 .telegram-integration .tg-confirm,
 .telegram-integration .tg-group,
 .telegram-integration .tg-link {
     display: grid;
     gap: 12px;
-    padding: 18px;
-    border: 1px solid var(--surface-tint);
-    border-radius: 14px;
+    padding-block: 16px;
+    border-top: 1px solid var(--line);
     min-width: 0;
 }
 .telegram-integration .tg-confirm {
+    padding-inline-start: 12px;
     border-inline-start: 3px solid var(--brand);
 }
 .telegram-integration .tg-card-heading {
@@ -1714,10 +1656,7 @@ body[data-console="user"] .client-family-header p {
     }
 }
 @media (max-width: 600px) {
-    .telegram-integration .tg-steps {
-        grid-template-columns: 1fr;
-        gap: 8px;
-    }
+
     .telegram-integration .tg-actions > button {
         width: 100%;
     }

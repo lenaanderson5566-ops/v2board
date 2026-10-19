@@ -710,7 +710,7 @@
     "analyticsSources": "With your permission, we also measure referring website domains to understand how visitors find us. We do not record full referring URLs or link sources to accounts or payment records.",
     "analyticsExplanation": "This site measures page visits, device categories and language without linking them to your account. Your choice is saved in this browser, and we may ask again after about six months. You can turn analytics off at any time. New collection then stops, and existing data is cleared according to the retention period. Order records and necessary security logs are unaffected. With permission, we also record browser family and major version, operating system, in-app browser category and guide actions. Raw user-agent strings and full IP addresses are not stored in optional analytics.",
     "analyticsPrivacy": "Analytics preferences",
-    "analyticsConsent": "Optional analytics help us understand website usage and improve your experience. Turn them on or off anytime in user settings. Your choice is saved only in this browser.",
+    "analyticsConsent": "Help improve the site. Turn off anytime.",
     "analyticsSummary": "Analytics helps us understand page visits and purchase steps without linking them to your account. Declining does not affect signing in, purchases or use of the service.",
     "analyticsManage": "Manage preferences",
     "analyticsRetention": "Analytics retention",

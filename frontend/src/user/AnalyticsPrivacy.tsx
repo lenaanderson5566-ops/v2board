@@ -57,10 +57,10 @@ export function AnalyticsPrivacySetting() {
             {privacySignal() && <p className="muted">{e("analyticsSignal")}</p>}
             {error && <p role="status">{e("analyticsStorageError")}</p>}
         </div>
-        <button type="button" role="switch" className="analytics-setting-switch"
+        <button type="button" role="switch" className="toggle-control"
             aria-label={e("analyticsPrivacy")} aria-describedby={descriptionId}
             aria-checked={enabled} disabled={!enabled && (!configuration?.enabled || privacySignal())}
-            onClick={choose}><span aria-hidden="true" /></button>
+            onClick={choose}><span className="toggle-track" aria-hidden="true"><i /></span></button>
     </div>;
 }
 export function PrivacyFooterLinks() {

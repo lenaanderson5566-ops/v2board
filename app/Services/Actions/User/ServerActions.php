@@ -16,7 +16,9 @@ class ServerActions
     {
         $nodes = [];
         foreach (['v2node' => \App\Models\ServerV2node::class, 'v2box' => \App\Models\ServerV2box::class] as $type => $model) {
-            foreach ($model::where('show', 1)->orderBy('sort')->orderBy('id')->get(['id', 'name', 'region_code', 'city_code', 'display_label', 'tags', 'sort']) as $node) {
+            // Older V2Box tables may lack optional display metadata. Keep the explicit projection safe.
+            $columns=array_values(array_intersect(['id','name','region_code','city_code','display_label','tags','sort'],\Illuminate\Support\Facades\Schema::getColumnListing((new $model)->getTable())));
+            foreach ($model::where('show', 1)->orderBy('sort')->orderBy('id')->get($columns) as $node) {
                 $nodes[] = \App\Services\NodeDisplayService::enrich([...$node->toArray(), 'type' => $type]);
             }
         }

@@ -130,12 +130,10 @@ class ConfigSave extends FormRequest
         'android_version' => '',
         'android_download_url' => '',
         // safe
+        'passkey_enable' => 'in:0,1',
         'email_whitelist_enable' => 'in:0,1',
         'email_whitelist_suffix' => 'nullable|array',
         'email_gmail_limit_enable' => 'in:0,1',
-        'recaptcha_enable' => 'in:0,1',
-        'recaptcha_key' => '',
-        'recaptcha_site_key' => '',
         'email_verify' => 'in:0,1',
         'safe_mode_enable' => 'in:0,1',
         'register_limit_by_ip_enable' => 'in:0,1',

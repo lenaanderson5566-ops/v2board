@@ -1,3 +1,4 @@
+import { trackAction } from "./product-analytics";
 import { SettingsHeading } from "./SettingsHeading";
 import { AccountBenefits } from "./AccountBenefits";
 import { Bell, Settings } from "lucide-react";
@@ -301,7 +302,7 @@ export function Knowledge() {
                                         <button
                                             className="article-link"
                                             key={item.id}
-                                            onClick={() => setId(item.id)}
+                                            onClick={() => { trackAction("help_open","knowledge"); setId(item.id); }}
                                         >
                                             <span>{item.title}</span>
                                             <ArrowUpRight size={16} />

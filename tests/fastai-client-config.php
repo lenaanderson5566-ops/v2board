@@ -1,5 +1,6 @@
 <?php
 $app = require __DIR__.'/support/bootstrap.php';
+set_exception_handler(function(Throwable $e){fwrite(STDERR,basename($e->getFile()).':'.$e->getLine().' '.$e->getMessage()."\n");exit(1);});
 if (!app()->environment('local')) throw new RuntimeException('Local test only');
 $checks = 0;
 $assert = \Tests\Support\Assertions::counter($checks);
@@ -26,7 +27,7 @@ try {
     App\Models\ServerV2node::create([
         'group_id'=>[98765], 'name'=>'FastAI test node', 'rate'=>'1',
         'host'=>'node.example.com', 'port'=>'443', 'server_port'=>443,
-        'cipher'=>'aes-128-gcm', 'show'=>1, 'protocol'=>'shadowsocks', 'tls'=>0, 'network'=>'tcp', 'up_mbps'=>0, 'down_mbps'=>0,
+        'cipher'=>'aes-128-gcm', 'show'=>1, 'sort'=>1, 'protocol'=>'shadowsocks', 'tls'=>0, 'network'=>'tcp', 'up_mbps'=>0, 'down_mbps'=>0,
     ]);
     config(['v2board.show_info_to_server_enable'=>1]);
     $auth = new App\Services\AuthService($user);
@@ -80,7 +81,7 @@ try {
     App\Models\ServerV2box::create([
         'group_id'=>[98765], 'name'=>'Naive capability node', 'rate'=>'1',
         'host'=>'naive.example.com', 'port'=>'443', 'server_port'=>443,
-        'show'=>1, 'protocol'=>'naive', 'tls'=>1, 'network'=>'tcp', 'up_mbps'=>0, 'down_mbps'=>0,
+        'show'=>1, 'sort'=>2, 'protocol'=>'naive', 'tls'=>1, 'network'=>'tcp', 'up_mbps'=>0, 'down_mbps'=>0,
     ]);
     $nativeSing = $call($path.'&core=sing-box', $token, 'GET', 'application/json');
     $nativeData = json_decode($nativeSing->getContent(),true)['data'];
@@ -99,6 +100,7 @@ try {
     $assert(str_contains($denied->headers->get('Content-Type'), 'application/problem+json') && isset($problem['requestId']), 'Structured error contract');
     $assert(App\Services\AuthService::decryptAuthData($token)!==false, 'Entitlement denial keeps session');
     $preview = $call('/api/v10/me/node-previews', $token, 'GET', 'application/json');
+    $assert($preview->getStatusCode()===200,'Node preview failed: '.$preview->getContent());
     $previews = json_decode($preview->getContent(), true)['data'];
     $assert($preview->getStatusCode()===200 && count($previews)>=2, 'Unpaid users can preview displayed routes');
     foreach ($previews as $item) {

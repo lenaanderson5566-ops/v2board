@@ -71,6 +71,7 @@ final class ClientAuthorizationActions
         $user->save();
         $request->attributes->set('mfa.verifiedUserId', (int) $user->id);
         $request->attributes->set('mfa.verifiedVersion', (int) $user->getRelation('mfaAssurance')->version);
+        $request->attributes->set('auth.authenticatedAt', (int)$user->getRelation('mfaAssurance')->authenticatedAt);
         $auth = (new AuthService($user))->generateAuthData($request);
         return response()->json(['data'=>$auth]);
     }

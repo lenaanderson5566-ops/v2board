@@ -22,7 +22,6 @@ const fields = (...keys: string[]): Field[] =>
 describe("admin dependency behavior", () => {
     it.each([
         ["email_whitelist_enable", "email_whitelist_suffix"],
-        ["recaptcha_enable", "recaptcha_key"],
         ["register_limit_by_ip_enable", "register_limit_count"],
         ["password_limit_enable", "password_limit_expire"],
         ["commission_distribution_enable", "commission_distribution_l2"],
@@ -86,8 +85,8 @@ describe("admin dependency behavior", () => {
         ).toBe(2525);
     });
     it("validates dependencies only when enabled", () => {
-        expect(validateSettings({ recaptcha_enable: 0 })).toBeUndefined();
-        expect(validateSettings({ recaptcha_enable: 1 })).toBeTruthy();
+        expect(validateSettings({ passkey_enable: 0 })).toBeUndefined();
+        expect(validateSettings({ passkey_enable: 1 })).toBeUndefined();
         expect(
             validateSettings({
                 email_whitelist_enable: 1,

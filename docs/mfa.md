@@ -16,4 +16,21 @@ TOTP 使用 SHA-1、6 位、30 秒，允许前后各一个时间步并防重放�
 
 测试：tests/mfa.php 覆盖 RFC 向量、启用证明、恢复码及动态码重放、撤销、两种角色、共存规则；tests/mfa-api.php 覆盖实际登录 Cookie、CSRF、Origin 和无凭据泄露；前端 MfaLogin / MfaSecurity 测试覆盖防重复、验证失败和一次性恢复码确认。财务回归在隔离数据库运行。
 
+## Passkey 登录
+
+后台「系统设置 → 安全」新增「允许 Passkey 登录」，默认关闭。安装 Composer 锁定依赖和 `2026_10_19_000002_create_passkeys.php` 迁移后才能开启；update.sh 已纳入该迁移。Google reCAPTCHA 的配置控件、公开字段、验证逻辑、浏览器脚本与 Composer 依赖已移除，TOTP、邮箱验证和登录限流保留。保存后台配置时删除旧 reCAPTCHA / Google Analytics 配置键；当前项目没有实际接入 Google Analytics 的脚本，已有第一方统计保持原功能。
+
+开启后，用户和管理员可在各自安全中心绑定最多 10 个 Passkey，在登录页使用「使用 Passkey 登录」。绑定或删除需要当前密码，以及最近 5 分钟内完成的登录（包括已启用的 MFA）；超时请重新登录。令牌迁移、浏览器链接和客户端授权兑换均继承原始验证时间，不能刷新这 5 分钟。没有可信验证时间的旧会话需重新登录。登录仍需完成账户已有 MFA。取消设备验证可继续使用密码。删除凭据撤销账户全部会话和未完成的安全/授权挑战（包括使用其他凭据发起的 MFA）；关闭站点开关阻止新的绑定和登录，但已有凭据仍可查看、移除。
+
+生产站点必须使用 HTTPS 和稳定域名，配置的 `app_url` 决定 RP ID 与精确浏览器 Origin（非默认端口保留，HTTPS 443 / HTTP 80 按浏览器规则省略）。当前仅支持该站点 Origin，独立前端也应部署到相同 Origin；不接受任意 CORS 来源进行 Passkey 操作。开发环境仅允许 HTTP localhost。变更域名后旧 RP 的凭据不能登录，应先使用密码登录并在新域名重新绑定。独立部署修改开关后需重新导出运行时配置并刷新页面。
+
+API：GET /api/v10/me/security/passkeys；POST /api/v10/me/security/passkeys/registration-options；POST /api/v10/me/security/passkeys；DELETE /api/v10/me/security/passkeys/{passkeyId}；POST /api/v10/auth/passkeys/options；POST /api/v10/auth/passkeys/sessions。写入使用 JSON、浏览器 Cookie、CSRF 与精确 Origin。挑战 300 秒、绑定发起浏览器、一次消费，校验 RP、Origin、UP/UV、签名与计数器。只保存凭据 ID、公钥和必要元数据，不保存私钥或 attestation 证书。既有 MFA 挑战在凭据被撤销或开关关闭后不能完成登录。原生客户端继续使用原有认证方式。
+
+自动化用 ES256、RSA 和 Ed25519 真实签名及零计数器同步凭据覆盖用户及管理员的浏览器登录、绑定、无效证明和 MFA 衔接；设备凭据管理器、指纹 / 人脸及实体安全密钥尚需部署环境真机验收。
+
 依据：https://cheatsheetseries.owasp.org/cheatsheets/Multifactor_Authentication_Cheat_Sheet.html 及 https://www.rfc-editor.org/rfc/rfc6238 。邮件弱于 TOTP，因此在 MFA 变更时不允许邮件降级替代已启用的 TOTP；前台仅把邮件展示为用户已明确开启的登录选项。
+
+
+Passkey 复核补充：删除在取得账户行锁后重新检查原会话、密码、邮箱及验证时间，随后提升账户安全版本，避免等待锁期间已撤销的会话继续删除或待验证挑战重新生成登录会话。畸形 clientData / CBOR / authenticatorData 返回 422 并消费挑战，不向客户端暴露解析错误；拒绝跨来源上下文和无 BE 的 BS 标志。新密码策略不用于验证历史账户的当前密码。
+
+前端为挑战和证明请求设置超时，组件卸载取消设备验证及后续证明提交；删除错误保留在确认弹窗中且清空已输入密码。管理请求收到 401 时回到登录，单次 Passkey 登录失败不会退出其他已有会话。兼容性依据：[WebAuthn Level 3](https://www.w3.org/TR/webauthn-3/) 与 [WebKit 的用户手势和异步挑战说明](https://webkit.org/blog/11312/meet-face-id-and-touch-id-for-the-web/)。自动化不代表 Safari、Firefox 或实体设备已经真机验收。

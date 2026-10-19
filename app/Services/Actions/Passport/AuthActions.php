@@ -17,7 +17,6 @@ use App\Utils\Dict;
 use App\Utils\Helper;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
-use ReCaptcha\ReCaptcha;
 
 class AuthActions
 {
@@ -29,13 +28,6 @@ class AuthActions
                 abort(request()->is('api/v10/*') ? 409 : 500, __('Register frequently, please try again after :minute minute', [
                     'minute' => config('v2board.register_limit_expire', 60)
                 ]));
-            }
-        }
-        if ((int)config('v2board.recaptcha_enable', 0)) {
-            $recaptcha = new ReCaptcha(config('v2board.recaptcha_key'));
-            $recaptchaResp = $recaptcha->verify($request->input('recaptcha_data'));
-            if (!$recaptchaResp->isSuccess()) {
-                abort(request()->is('api/v10/*') ? 409 : 500, __('Invalid code is incorrect'));
             }
         }
         if ((int)config('v2board.email_whitelist_enable', 0)) {
@@ -135,12 +127,6 @@ class AuthActions
 
     public function login(AuthLogin $request)
     {
-        if ((int)config('v2board.recaptcha_enable', 0)) {
-            $challenge = $request->input('recaptcha_data');
-            if (!is_string($challenge) || $challenge === '') abort(422, __('Invalid code is incorrect'));
-            $result = (new ReCaptcha(config('v2board.recaptcha_key')))->verify($challenge, $request->ip());
-            if (!$result->isSuccess()) abort(422, __('Invalid code is incorrect'));
-        }
         $email = $request->input('email');
         $password = $request->input('password');
         $riskLogService = new RiskLogService();
@@ -232,6 +218,7 @@ class AuthActions
             );
             $request->attributes->set('mfa.verifiedUserId', (int) $user->id);
             $request->attributes->set('mfa.verifiedVersion', (int) $user->getRelation('mfaAssurance')->version);
+            $request->attributes->set('auth.authenticatedAt', (int)$user->getRelation('mfaAssurance')->authenticatedAt);
             $user->last_login_at = time();
             $user->last_login_ip = $this->encodeIp($request->ip());
             $user->save();

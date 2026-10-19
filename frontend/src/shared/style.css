@@ -1039,6 +1039,17 @@ body[data-console] .overlay.mfa-setup-dialog.mfa-security .modal { width:min(560
 .mfa-setup-dialog .mfa-qr { display:block; width:fit-content; margin:0 auto; }
 .mfa-setup-dialog .mfa-step .actions { margin-top:8px; }
 @media(max-width:480px) { .mfa-setup-dialog .mfa-progress { gap:8px; font-size:11px; } }
+.passkey-login { margin-block:18px; }
+.passkey-login button { width:100%; }
+.passkey-login p { font-size:13px; line-height:1.6; }
+.passkey-security form { display:grid; gap:14px; max-width:540px; margin-top:20px; }
+.passkey-security label { display:grid; gap:8px; }
+.passkey-security input { width:100%; max-width:100%; }
+.passkey-security p { line-height:1.65; }
+.passkey-security ul { display:grid; gap:12px; padding:0; list-style:none; }
+.passkey-security li { padding:14px; border:1px solid var(--border); border-radius:12px; line-height:1.8; overflow-wrap:anywhere; }
+.passkey-security li button { margin-inline-start:8px; }
+.passkey-security form button { justify-self:start; }
 
 body[data-console="admin"] .dashboard-usage-grid {display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px;padding:20px;}
 body[data-console="admin"] .dashboard-usage-card {border:1px solid var(--border,#e5e7eb);border-radius:12px;padding:20px;background:var(--surface,#fff);}

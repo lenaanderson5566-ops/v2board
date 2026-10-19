@@ -1,10 +1,11 @@
+import { PasskeyLogin } from "../shared/PasskeyLogin";
 import { useAnalyticsPage } from "./product-analytics";
 import { MfaLogin } from "../shared/MfaLogin";
 import type { V10MfaChallenge } from "../shared/v10-types";
 import { RegistrationEmail } from "./RegistrationEmail";
 import { registrationEmailError } from "./registration-policy";
 import { RegistrationDomains } from "./RegistrationDomains";
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Eye, EyeOff, ArrowLeft, CheckCircle2, Sparkles } from "lucide-react";
 import { boot, request, storageKey, navigate, type Row } from "../shared/api";
 import {
@@ -23,13 +24,11 @@ import { useCooldown } from "../shared/useCooldown";
 export function UserAuth({
     mode,
     onLogin,
-    renderCaptcha,
     redirectPath,
 }: {
     mode: string;
     redirectPath?: string;
     onLogin: (user: Row) => void;
-    renderCaptcha: (onChange: (value: string) => void) => ReactNode;
 }) {
     useAnalyticsPage(
         mode === "register"
@@ -51,8 +50,7 @@ export function UserAuth({
         if (passwordUpdated)
             sessionStorage.removeItem(`${storageKey}.passwordUpdated`);
     }, [passwordUpdated]);
-    const [challenge, setChallenge] = useState(0),
-        [registered, setRegistered] = useState(false),
+    const [registered, setRegistered] = useState(false),
         [step, setStep] = useState(1),
         [email, setEmail] = useState(() =>
             register &&
@@ -64,7 +62,6 @@ export function UserAuth({
         ),
         [password, setPassword] = useState(""),
         [code, setCode] = useState(""),
-        [captcha, setCaptcha] = useState(""),
         [reveal, setReveal] = useState(false),
         [busy, setBusy] = useState(false),
         [error, setError] = useState(""),
@@ -104,6 +101,12 @@ export function UserAuth({
                   ? tx("受邀加入")
                   : tx("创建账户")
               : tx("欢迎回来");
+    async function completeLogin() {
+        const info = await request("user/info");
+        await applyAccountLanguage(info.data.language);
+        onLogin(info.data);
+        navigate(redirectPath ?? "dashboard");
+    }
     async function sendCode() {
         if (register) {
             if (registrationBlocked)
@@ -111,20 +114,13 @@ export function UserAuth({
             const domainError = registrationEmailError(email);
             if (domainError) throw new Error(domainError);
         }
-        if (boot.recaptchaSiteKey && !captcha)
-            throw new Error(tx("请先完成安全验证"));
         await request("passport/comm/sendEmailVerify", {
             email: email.trim(),
             isforget: forget ? 1 : 0,
             ...(register && invitation ? { invitation } : {}),
-            recaptcha_data: captcha,
         });
         setSent(true);
         startCooldown();
-        if (boot.recaptchaSiteKey) {
-            setCaptcha("");
-            setChallenge((value) => value + 1);
-        }
     }
     async function submit(event: React.FormEvent) {
         event.preventDefault();
@@ -141,8 +137,6 @@ export function UserAuth({
                 const domainError = registrationEmailError(email);
                 if (domainError) throw new Error(domainError);
             }
-            if (boot.recaptchaSiteKey && !captcha)
-                throw new Error(tx("请先完成安全验证"));
             if ((register || forget) && step === 1) {
                 if (verify) await sendCode();
                 setStep(2);
@@ -154,7 +148,6 @@ export function UserAuth({
                 email_code: code,
                 invitation,
                 language: locale(),
-                recaptcha_data: captcha,
             };
             if (forget) {
                 await request("passport/auth/forget", body);
@@ -166,35 +159,20 @@ export function UserAuth({
             if (register && !registered) {
                 await request("passport/auth/register", body);
                 setRegistered(true);
-                // Registration consumes the captcha; login needs a fresh challenge.
-                if (boot.recaptchaSiteKey) {
-                    setCaptcha("");
-                    setChallenge((value) => value + 1);
-                    return;
-                }
             }
             const login = await request("passport/auth/login", {
                 ...loginLanguagePreference(),
                 email: email.trim(),
                 password,
-                recaptcha_data: captcha,
             });
 
             if (login.data.mfaRequired) {
                 setPassword("");
-                setCaptcha("");
                 setMfa(login.data as V10MfaChallenge);
                 return;
             }
-            const info = await request("user/info");
-            await applyAccountLanguage(info.data.language);
-            onLogin(info.data);
-            navigate(redirectPath ?? "dashboard");
+            await completeLogin();
         } catch (reason) {
-            if (boot.recaptchaSiteKey) {
-                setCaptcha("");
-                setChallenge((value) => value + 1);
-            }
             if ((reason as Error & { code?: string }).code === "ACCOUNT_BANNED")
                 setSuspended(true);
             setError((reason as Error).message);
@@ -312,6 +290,7 @@ export function UserAuth({
                             {tx("密码已更新，请重新登录。")}
                         </div>
                     )}
+                    {!register && !forget && <PasskeyLogin disabled={busy} onMfa={setMfa} onComplete={completeLogin} />}
                     <div className="auth-title-row">
                         <h2 ref={heading} tabIndex={-1}>
                             {title}
@@ -563,11 +542,6 @@ export function UserAuth({
                                                     </p>
                                                 )}
                                             </>
-                                        )}
-                                        {boot.recaptchaSiteKey && (
-                                            <div key={challenge}>
-                                                {renderCaptcha(setCaptcha)}
-                                            </div>
                                         )}
                                         {error && (
                                             <div className="alert" role="alert">

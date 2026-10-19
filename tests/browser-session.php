@@ -129,8 +129,11 @@ try {
     $assert($call('v10/me',[],null,'GET',null,null,$token)->getStatusCode()===200,'Cookie logout preserves App');
     $assert($call('v1/user/info',[],'admin')->getStatusCode()===200,'Cookie logout preserves admin scope');
     $legacy=$auth->generateAuthData(Illuminate\Http\Request::create('/'))['auth_data'];
+    $sourceKey=App\Utils\CacheKey::get('USER_SESSIONS',$user->id);$sourceMeta=Illuminate\Support\Facades\Cache::get($sourceKey);$sourceRef=App\Services\AuthService::sessionReference($legacy);$sourceMeta[$sourceRef['sessionId']]['authenticated_at']=time()-3600;$proofAt=$sourceMeta[$sourceRef['sessionId']]['authenticated_at'];Illuminate\Support\Facades\Cache::put($sourceKey,$sourceMeta);
     $upgrade=$call('v10/auth/browser-session',['legacyToken'=>$legacy],'user','POST');
     $assert($upgrade->getStatusCode()===200 && $data($upgrade)['authenticated'],'Legacy token migrates to Cookie');
+    $destination=app(App\Services\BrowserSession::class)->load(Illuminate\Http\Request::create('/','GET',[],$jar['user']),'user');
+    $assert(App\Services\AuthService::authenticatedAt(App\Services\AuthService::sessionReference($destination['credential']))===$proofAt,'Legacy migration preserves original authentication age');
     $assert(App\Services\AuthService::decryptAuthData($legacy)===false,'Migration revokes old token');
     $assert($call('v10/auth/browser-session',['legacyToken'=>$legacy],'user','POST')->getStatusCode()===401,'Migration cannot replay');
     config(['browser.legacy_exchange_until'=>'2000-01-01T00:00:00Z']);
@@ -149,7 +152,7 @@ try {
     } finally { config(['browser.secure'=>$secure]); }
     // Registration must follow the same HttpOnly grant boundary as password login.
     Illuminate\Support\Facades\Queue::fake();
-    config(['v2board.stop_register'=>0,'v2board.invite_force'=>0,'v2board.email_verify'=>0,'v2board.recaptcha_enable'=>0,'v2board.email_whitelist_enable'=>0,'v2board.email_gmail_limit_enable'=>0,'v2board.register_limit_by_ip_enable'=>0,'v2board.try_out_plan_id'=>0]);
+    config(['v2board.stop_register'=>0,'v2board.invite_force'=>0,'v2board.email_verify'=>0,'v2board.email_whitelist_enable'=>0,'v2board.email_gmail_limit_enable'=>0,'v2board.register_limit_by_ip_enable'=>0,'v2board.try_out_plan_id'=>0]);
     $call('v10/auth/browser-session');
     $beforeSignup=$jar['user'];
     $signupEmail='browser-signup-'.bin2hex(random_bytes(6)).'@example.com';

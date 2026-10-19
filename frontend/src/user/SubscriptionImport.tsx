@@ -1,4 +1,5 @@
 import { iosDownloads, ClientDownload } from "./ClientDownload";
+import { trackAction } from "./product-analytics";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
@@ -101,9 +102,11 @@ export function SubscriptionImport({
     async function copy() {
         try {
             await navigator.clipboard.writeText(raw);
+            trackAction("copy_success");
             setCopied(true);
             setError("");
         } catch {
+            trackAction("copy_failed");
             setError(tx("复制失败，请使用一键导入或扫码。"));
         }
     }
@@ -122,7 +125,12 @@ export function SubscriptionImport({
               : downloads[selected];
     const content = (
         <div className="pad import-content">
-            <header className="client-family-header third-party"><span className="client-family-badge">{downloadKind("thirdParty")}</span><p>{downloadKind("thirdPartyGuide")}</p></header>
+            <header className="client-family-header third-party">
+                <span className="client-family-badge">
+                    {downloadKind("thirdParty")}
+                </span>
+                <p>{downloadKind("thirdPartyGuide")}</p>
+            </header>
             <section className="quick-step">
                 <h3>
                     <span>1</span>
@@ -243,7 +251,10 @@ export function SubscriptionImport({
                         <a
                             className="button primary import-open"
                             href={link}
-                            onClick={() => setAttempted(true)}
+                            onClick={() => {
+                                trackAction("import_start");
+                                setAttempted(true);
+                            }}
                         >
                             {tx("在 {{client}} 中打开", {
                                 client: clients.find(
@@ -281,7 +292,10 @@ export function SubscriptionImport({
                 <a
                     className="import-guide"
                     href="#/knowledge"
-                    onClick={() => setOpen(false)}
+                    onClick={() => {
+                        trackAction("help_open");
+                        setOpen(false);
+                    }}
                 >
                     <BookOpen size={16} />
                     {tx("使用文档")}

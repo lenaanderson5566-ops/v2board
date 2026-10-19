@@ -42,14 +42,6 @@ function page(mode = "register", redirectPath?: string) {
             mode={mode}
             redirectPath={redirectPath}
             onLogin={onLogin}
-            renderCaptcha={(onChange) => (
-                <button
-                    type="button"
-                    onClick={() => onChange("fresh-challenge")}
-                >
-                    captcha
-                </button>
-            )}
         />,
     );
     return { ...view, onLogin };
@@ -280,19 +272,18 @@ describe("user account steps", () => {
             ),
         ).toHaveLength(1);
     });
-    it("requires a new challenge after sending email rather than reusing the previous token", async () => {
+    it("ignores retired CAPTCHA configuration and completes registration without a CAPTCHA token", async () => {
         mocks.boot.recaptchaSiteKey = "test-key";
         page();
         credentials();
-        fireEvent.click(screen.getByRole("button", { name: "captcha" }));
         fireEvent.click(screen.getByRole("button", { name: "next" }));
         await screen.findByRole("heading", { name: "verify" });
         fireEvent.change(screen.getByLabelText("邮箱验证码"), {
             target: { value: "123456" },
         });
         fireEvent.click(screen.getByRole("button", { name: "create" }));
-        await screen.findByRole("alert");
-        expect(mocks.request).toHaveBeenCalledTimes(1);
+        await waitFor(() => expect(mocks.request).toHaveBeenCalledWith("passport/auth/register",expect.anything()));
+        for(const [,payload] of mocks.request.mock.calls) expect(payload || {}).not.toHaveProperty("recaptcha_data");
     });
 });
 

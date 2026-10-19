@@ -12,6 +12,8 @@ class AdminRoute
             'middleware' => ['admin', 'log'],
         ], function ($router) {
             $router->get('/analytics/report', 'V1\\Admin\\ProductAnalyticsController@report')->middleware('throttle:30,1,analytics-report:');
+            $router->get('/analytics/operations', 'V1\\Admin\\ProductAnalyticsController@operations')->middleware('throttle:30,1,analytics-operations:');
+            $router->get('/analytics/journey', 'V1\\Admin\\ProductAnalyticsController@journey')->middleware('throttle:30,1,analytics-journey:');
             $router->post('/analytics/settings', 'V1\\Admin\\ProductAnalyticsController@settings')->middleware('throttle:10,1,analytics-settings:');
             $router->post('/config/testAppleAccount', 'V1\\Admin\\ConfigController@testAppleAccount')->middleware('throttle:10,1');
             $router->post('/config/testFastaiEntrypoint', 'V1\\Admin\\ConfigController@testFastaiEntrypoint')->middleware('throttle:10,1');

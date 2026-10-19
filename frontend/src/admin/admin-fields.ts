@@ -114,7 +114,7 @@ export function configField(
             type: "select",
             options: enumValues.map((v) => [v, v]),
         };
-    const secret = /(?:password|token)$/.test(key) || key === "recaptcha_key" || ["email_mailgun_api_key", "email_resend_api_key", "email_ses_access_key", "email_ses_secret_key"].includes(key);
+    const secret = /(?:password|token)$/.test(key) || ["email_mailgun_api_key", "email_resend_api_key", "email_ses_access_key", "email_ses_secret_key"].includes(key);
     const type: Field["type"] =
         key === "custom_footer_html"
             ? "textarea"

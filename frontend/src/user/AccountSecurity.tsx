@@ -1,3 +1,4 @@
+import { PasskeySecurity } from "../shared/PasskeySecurity";
 import { SettingsHeading } from "./SettingsHeading";
 import { lazy, Suspense } from "react";
 const MfaSecurity = lazy(() =>
@@ -83,7 +84,8 @@ export function AccountSecurity() {
             </Suspense>
             {!mfaUpdated && (
                 <div className="security-maintenance">
-                    <AccountSessions />
+                    <PasskeySecurity />
+                      <AccountSessions />
                     <section className="settings-section">
                         <h2>{tx("修改密码")}</h2>
                         <div className="settings-card security-password-card">

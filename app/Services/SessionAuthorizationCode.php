@@ -56,7 +56,7 @@ final class SessionAuthorizationCode
             }
             if ($validateBinding && !$validateBinding($pending['binding'])) $this->fail($purpose, false);
             Cache::forget($key);
-            $user->setRelation('mfaAssurance', (object)['version' => (int)($pending['source']['mfaVersion'] ?? 0)]);
+            $user->setRelation('mfaAssurance', (object)['version' => (int)($pending['source']['mfaVersion'] ?? 0), 'authenticatedAt'=>AuthService::authenticatedAt($pending['source'])]);
             return $user;
         });
     }

@@ -1,3 +1,5 @@
+import { JourneyAnalytics } from "./JourneyAnalytics";
+import { analyticsLabels as labels } from "./analytics-labels";
 import { useState } from "react";
 import { BarChart3, ShieldCheck } from "lucide-react";
 import { admin, query, request } from "../shared/api";
@@ -5,6 +7,7 @@ import { Panel, State, useData } from "../shared/ui";
 import { formatInstant } from "../shared/timezone";
 import type { V10AnalyticsConfiguration } from "../shared/v10-types";
 import "./analytics.css";
+import { OperationsAnalytics } from "./OperationsAnalytics";
 
 type Report = {
     settings: V10AnalyticsConfiguration;
@@ -33,6 +36,8 @@ type Report = {
         available: boolean;
     }[];
     sessions: number;
+    hours?: number[];
+    weekdays?: number[];
     views: number;
     pages: { page: string; sessions: number; views: number }[];
     devices: { device: string; sessions: number }[];
@@ -47,31 +52,7 @@ type Report = {
         completed: number;
     };
 };
-const labels: Record<string, string> = {
-    landing: "首页",
-    register: "注册",
-    login: "登录",
-    forget: "找回密码",
-    dashboard: "用户概览",
-    plan: "浏览套餐",
-    confirmation: "确认订单",
-    payment: "进入付款",
-    order: "订单列表",
-    order_detail: "订单详情",
-    activities: "活动中心",
-    coupons: "我的优惠券",
-    subscribe: "连接与下载",
-    knowledge: "帮助中心",
-    profile: "账户设置",
-    security: "安全中心",
-    invite: "邀请好友",
-    traffic: "使用情况",
-    notifications: "通知设置",
-    ticket: "工单",
-    desktop: "电脑",
-    mobile: "手机",
-    tablet: "平板",
-};
+
 const percent = (part: number, total: number) =>
     total ? `${((part / total) * 100).toFixed(1)}%` : "—";
 function Funnel({ steps }: { steps: { label: string; count: number }[] }) {
@@ -180,7 +161,7 @@ function CollectionSettings({
                 {busy ? "保存中…" : "保存设置"}
             </button>
             <p className="muted">
-                默认关闭。开启后由用户自主允许或拒绝；尊重浏览器禁止追踪设置。仅记录页面标识、设备类别、语言和短期随机会话，不记录
+                默认关闭。开启后由用户自主允许或拒绝；尊重浏览器禁止追踪设置。仅记录页面标识、设备类别、语言、引导动作、性能数值、错误类别和短期随机会话，不记录
                 IP、邮箱、完整
                 UA、网址、表单或支付内容。缩短保留期会逐批清理旧统计，无法恢复。
             </p>
@@ -291,6 +272,8 @@ export function AdminAnalytics() {
                     </>
                 )}
             </Panel>
+            <OperationsAnalytics days={days} />
+            <JourneyAnalytics days={days} device={device} />
             {data && (
                 <>
                     <Panel padded title="数据质量与每日趋势">
@@ -367,6 +350,83 @@ export function AdminAnalytics() {
                         <p className="muted">
                             按会话开始日归属浏览次数，今日及窗口边界日可能不完整。未收集时不补造历史数据；趋势空白不代表没有真实访问。
                         </p>
+                    </Panel>
+                    <Panel padded title="访问时段分布">
+                        <p className="muted">
+                            按系统时区 {data.timeZone}{" "}
+                            的会话开始时间统计，沿用设备筛选与统计保留期；非人数或接口请求量，未采集与缺失数据不代表零访问。
+                        </p>
+                        <div className="analytics-time-grid">
+                            <div>
+                                <h3>小时分布</h3>
+                                <div className="table-wrap">
+                                    <table>
+                                        <thead>
+                                            <tr>
+                                                <th>小时</th>
+                                                <th>会话数</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {data.hours?.map((count, hour) => (
+                                                <tr key={hour}>
+                                                    <td>
+                                                        {String(hour).padStart(
+                                                            2,
+                                                            "0",
+                                                        )}
+                                                        :00–
+                                                        {String(
+                                                            hour + 1,
+                                                        ).padStart(2, "0")}
+                                                        :00
+                                                    </td>
+                                                    <td>{count}</td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                            <div>
+                                <h3>星期分布</h3>
+                                <div className="table-wrap">
+                                    <table>
+                                        <thead>
+                                            <tr>
+                                                <th>星期</th>
+                                                <th>会话数</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {data.weekdays?.map(
+                                                (count, day) => (
+                                                    <tr key={day}>
+                                                        <td>
+                                                            {
+                                                                [
+                                                                    "周一",
+                                                                    "周二",
+                                                                    "周三",
+                                                                    "周四",
+                                                                    "周五",
+                                                                    "周六",
+                                                                    "周日",
+                                                                ][day]
+                                                            }
+                                                        </td>
+                                                        <td>{count}</td>
+                                                    </tr>
+                                                ),
+                                            )}
+                                        </tbody>
+                                    </table>
+                                </div>
+                                <p className="muted">
+                                    各星期在范围内出现次数可能不同，数值为总量。
+                                </p>
+                            </div>
+                        </div>
                     </Panel>
                     <Panel padded title="购买路径 · 同一访问会话">
                         <Funnel

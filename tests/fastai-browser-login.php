@@ -1,5 +1,6 @@
 <?php
 $app = require __DIR__.'/support/bootstrap.php';
+set_exception_handler(function(Throwable $e){fwrite(STDERR,$e->getMessage()."\n");exit(1);});
 if (!app()->environment('local')) throw new RuntimeException('Local test only');
 $checks=0;
 $assert = \Tests\Support\Assertions::counter($checks);
@@ -22,6 +23,7 @@ try {
     $user=new App\Models\User(); $user->email='browser-auth-'.bin2hex(random_bytes(4)).'@example.com';
     $user->password=password_hash('Testing!2026',PASSWORD_DEFAULT); $user->token=bin2hex(random_bytes(16)); $user->uuid=Illuminate\Support\Str::uuid(); $user->save();
     $browser=(new App\Services\AuthService($user))->generateAuthData(Illuminate\Http\Request::create('/'))['auth_data']; $sessions[]=$browser;
+    $sessionKey=App\Utils\CacheKey::get('USER_SESSIONS',$user->id);$meta=Illuminate\Support\Facades\Cache::get($sessionKey);$proofAt=time()-3600;foreach($meta as &$m)$m['authenticated_at']=$proofAt;unset($m);Illuminate\Support\Facades\Cache::put($sessionKey,$meta);
     $start=$call('auth/client-authorizations',$body); $assert($start->getStatusCode()===201,'Start returns 201');
     $d=$data($start); $id=$d['authorizationId'];
     $assert(str_contains($d['authorizationUrl'],'/app#/client-authorize?authorizationId='.$id),'Fixed browser URL');
@@ -40,6 +42,7 @@ try {
     $result=$call('auth/client-session-exchanges',$exchange);$assert($result->getStatusCode()===200,'Valid exchange');
     $token=$data($result)['accessToken']; $sessions[]=$token;
     $assert($token!==$browser && $data($result)['tokenType']==='Bearer','Independent app session');
+    $assert(App\Services\AuthService::authenticatedAt(App\Services\AuthService::sessionReference($token))===$proofAt,'Client session exchange preserves original authentication age');
     $assert($call('me',[],$token,'GET')->getStatusCode()===200,'App session usable');
     $assert($call('auth/client-session-exchanges',$exchange)->getStatusCode()===410,'Code consumed once');
     foreach (['https://evil.example/callback','http://localhost:48321/fastai-auth/callback','http://127.0.0.1:80/fastai-auth/callback','ws.fastdog.fastai://import/profile'] as $uri) {

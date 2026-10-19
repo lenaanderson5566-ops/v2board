@@ -6,7 +6,16 @@ final class NodeDisplayService
     public static function catalog(): array
     {
         static $catalog;
-        return $catalog ?? ($catalog = json_decode(file_get_contents(resource_path('client/node-locations.json')), true, 512, JSON_THROW_ON_ERROR));
+        if ($catalog !== null) return $catalog;
+        $catalog=json_decode(file_get_contents(resource_path('client/node-locations.json')),true,512,JSON_THROW_ON_ERROR);
+        // The catalog, like rendered node names, exposes an English fallback for untranslated cities.
+        foreach (['regions','cities'] as $kind) {
+            foreach ($catalog[$kind] as &$names) {
+                foreach (LanguagePreferenceService::SUPPORTED as $language) $names[$language] ??= $names['en-US'];
+            }
+            unset($names);
+        }
+        return $catalog;
     }
 
     public static function regionCodes(): array

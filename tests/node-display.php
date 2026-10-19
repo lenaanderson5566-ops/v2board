@@ -1,5 +1,6 @@
 <?php
 $app = require __DIR__.'/support/bootstrap.php';
+set_exception_handler(function(Throwable $e){fwrite(STDERR,$e->getMessage()."\n");exit(1);});
 if (!app()->environment('local')) throw new RuntimeException('Local test only');
 $checks=0;
 $assert = \Tests\Support\Assertions::counter($checks);

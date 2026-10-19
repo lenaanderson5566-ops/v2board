@@ -12,7 +12,7 @@ export function settingsPresentation(group: string, fields: Field[]): Field[] {
                         hint?: string;
                         placeholder?: string;
                         child: boolean;
-                        line: number;
+                        line?: number;
                     }
                 >
             >
@@ -224,12 +224,10 @@ export const adminLabels: Record<string, string> = {
     device_limit_mode: "设备限制模式",
     server_node_report_min_traffic: "节点上报最低流量",
     server_device_online_min_traffic: "设备在线最低流量",
+    passkey_enable: "允许 Passkey 登录",
     email_verify: "注册邮箱验证",
     safe_mode_enable: "安全模式",
     secure_path: "后台入口路径",
-    recaptcha_enable: "启用 reCAPTCHA",
-    recaptcha_key: "reCAPTCHA 密钥",
-    recaptcha_site_key: "reCAPTCHA 站点密钥",
     invite_force: "注册必须通过邮件邀请",
     invite_commission: "邀请佣金比例",
     invite_registration_gb: "受邀注册奖励（GB，0 为关闭）",

@@ -2,8 +2,9 @@ import { useEffect } from "react";
 import { apiUrl } from "../shared/runtime-config";
 import { locale } from "../shared/i18n";
 import type { V10AnalyticsEvent } from "../shared/v10-types";
+import { setTelemetrySink } from "../shared/telemetry";
 
-export const privacyRevision = 3;
+export const privacyRevision = 4;
 export const privacyKey = `v2board.analytics.consent.v2.${encodeURIComponent(apiUrl("/api/v10"))}`;
 export type PrivacyChoice = {
     choice: "allow" | "deny";
@@ -17,7 +18,7 @@ export function privacyChoice(): PrivacyChoice | null {
         if (
             !value ||
             (value.version !== privacyRevision &&
-                !(value.version === 2 && value.choice === "deny")) ||
+                !([2, 3].includes(value.version) && value.choice === "deny")) ||
             !["allow", "deny"].includes(value.choice) ||
             !Number.isFinite(value.chosenAt) ||
             value.chosenAt > Date.now() ||
@@ -58,6 +59,100 @@ let generation = 0;
 let lastEvent = "";
 let lastAt = 0;
 let activeRequest: AbortController | undefined;
+let monitoring = false;
+let vitalsStarted = false;
+let apiSamples = 0;
+let budgetStart = 0;
+let budgetUsed = 0;
+const currentPage = () => [...screens.values()].at(-1) ?? null;
+export function trackAction(
+    event:
+        | "download"
+        | "copy_success"
+        | "copy_failed"
+        | "import_start"
+        | "help_open",
+    page?: V10AnalyticsEvent["page"],
+) {
+    const target = page ?? currentPage();
+    if (target) send(target, { event });
+}
+function beginMonitoring() {
+    setTelemetrySink((sample) => {
+        const page = currentPage();
+        if (
+            !page ||
+            !enabled ||
+            consent() !== "allow" ||
+            privacySignal() ||
+            apiSamples >= 20
+        )
+            return;
+        apiSamples++;
+        send(page, {
+            event: "api_request",
+            value: Math.min(600000, Math.max(0, Math.round(sample.duration))),
+        });
+        if (sample.failure) send(page, { event: sample.failure });
+    });
+    if (!monitoring) {
+        monitoring = true;
+        window.addEventListener("error", () => {
+            const page = currentPage();
+            if (page) send(page, { event: "js_error" });
+        });
+        window.addEventListener("unhandledrejection", () => {
+            const page = currentPage();
+            if (page) send(page, { event: "js_error" });
+        });
+    }
+    const initialPage = currentPage();
+    if (initialPage && !vitalsStarted) {
+        vitalsStarted = true;
+        const version = generation;
+        void import("web-vitals")
+            .then(({ onLCP, onINP, onCLS }) => {
+                if (
+                    !enabled ||
+                    version !== generation ||
+                    consent() !== "allow" ||
+                    privacySignal()
+                ) {
+                    vitalsStarted = false;
+                    return;
+                }
+                for (const [event, observe] of [
+                    ["lcp", onLCP],
+                    ["inp", onINP],
+                    ["cls", onCLS],
+                ] as const) {
+                    let reported = false;
+                    observe((metric) => {
+                        if (
+                            reported ||
+                            !enabled ||
+                            consent() !== "allow" ||
+                            privacySignal()
+                        )
+                            return;
+                        reported = true;
+                        const value = Math.round(
+                            metric.value * (event === "cls" ? 1000 : 1),
+                        );
+                        if (Number.isFinite(value))
+                            send(initialPage, {
+                                event,
+                                value: Math.min(
+                                    event === "cls" ? 100000 : 600000,
+                                    Math.max(0, value),
+                                ),
+                            });
+                    });
+                }
+            })
+            .catch(() => {});
+    }
+}
 export function privacySignal() {
     return (
         (navigator as Navigator & { globalPrivacyControl?: boolean })
@@ -72,12 +167,16 @@ export function setCollection(value: boolean) {
     generation++;
     lastEvent = "";
     if (!enabled) {
+        setTelemetrySink(undefined);
         activeRequest?.abort();
         try {
             sessionStorage.removeItem(sessionKey);
             sessionStorage.removeItem("v2board.analytics.session.v1");
         } catch {}
-    } else screens.forEach(send);
+    } else {
+        screens.forEach((page) => send(page));
+        beginMonitoring();
+    }
 }
 type Attribution = Pick<
     V10AnalyticsEvent,
@@ -105,17 +204,27 @@ function attribution(): Attribution {
     }
     return result;
 }
-function send(page: V10AnalyticsEvent["page"]) {
+function send(
+    page: V10AnalyticsEvent["page"],
+    details: Pick<V10AnalyticsEvent, "event" | "value"> = {},
+) {
     if (
         !enabled ||
         consent() !== "allow" ||
         privacySignal() ||
-        document.visibilityState !== "visible"
+        (document.visibilityState !== "visible" &&
+            !["lcp", "inp", "cls"].includes(details.event || ""))
     )
         return;
     const now = Date.now();
-    if (page === lastEvent && now - lastAt < 1000) return;
-    lastEvent = page;
+    if (!details.event && page === lastEvent && now - lastAt < 1000) return;
+    if (now - budgetStart >= 60000) {
+        budgetStart = now;
+        budgetUsed = 0;
+    }
+    if (budgetUsed >= 40) return;
+    budgetUsed++;
+    lastEvent = details.event ? "" : page;
     lastAt = now;
     const version = generation;
     chain = chain.then(async () => {
@@ -163,6 +272,7 @@ function send(page: V10AnalyticsEvent["page"]) {
                       : "desktop",
                 language: locale() as V10AnalyticsEvent["language"],
                 consent: true,
+                ...details,
             };
             const controller = new AbortController();
             activeRequest = controller;
@@ -174,6 +284,7 @@ function send(page: V10AnalyticsEvent["page"]) {
                     {
                         method: "POST",
                         credentials: "omit",
+                        keepalive: true,
                         referrerPolicy: "no-referrer",
                         headers: {
                             "Content-Type": "application/json",
@@ -200,6 +311,7 @@ export function useAnalyticsPage(page: V10AnalyticsEvent["page"] | null) {
         const key = Symbol();
         screens.set(key, page);
         send(page);
+        if (enabled) beginMonitoring();
         return () => {
             screens.delete(key);
         };

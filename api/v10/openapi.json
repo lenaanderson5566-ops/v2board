@@ -98,7 +98,13 @@
     "postMfaVerifications",
     "deleteMeSessions",
     "getPublicAnalyticsConfiguration",
-    "postPublicAnalyticsEvents"
+    "postPublicAnalyticsEvents",
+    "getMePasskeys",
+    "postMePasskeyRegistrationOptions",
+    "postMePasskeys",
+    "deleteMePasskey",
+    "postAuthPasskeyOptions",
+    "postAuthPasskeySessions"
   ],
   "x-node-order": [
     "/server/configuration GET",

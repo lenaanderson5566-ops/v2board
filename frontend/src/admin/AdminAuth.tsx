@@ -1,3 +1,4 @@
+import { PasskeyLogin } from "../shared/PasskeyLogin";
 import { useRef, useState } from "react";
 import {
     boot,
@@ -9,7 +10,6 @@ import {
 } from "../shared/api";
 import { Editor, type Field } from "../shared/ui";
 import { tx } from "../shared/i18n";
-import { Captcha } from "../shared/Captcha";
 import { MfaLogin } from "../shared/MfaLogin";
 import { useCooldown } from "../shared/useCooldown";
 import type { V10MfaChallenge } from "../shared/v10-types";
@@ -23,7 +23,6 @@ export function AdminAuth({
 }) {
     const forget = mode === "forget";
     const [mfa, setMfa] = useState<V10MfaChallenge | null>(null),
-        [captcha, setCaptcha] = useState(""),
         [mailError, setMailError] = useState(""),
         [sending, setSending] = useState(false);
     const formRef = useRef<HTMLDivElement>(null),
@@ -86,6 +85,7 @@ export function AdminAuth({
                             ? tx("使用邮箱验证码设置新密码")
                             : tx("登录统一管理后台")}
                     </p>
+                    {!forget && <PasskeyLogin onMfa={setMfa} onComplete={completeLogin} />}
                     <Editor
                         key={mode}
                         fields={fields.map((field) => ({
@@ -95,12 +95,9 @@ export function AdminAuth({
                         initial={{}}
                         submit={forget ? tx("重置密码") : tx("登录")}
                         onSave={async (body) => {
-                            if (boot.recaptchaSiteKey && !captcha)
-                                throw new Error(tx("请先完成安全验证"));
                             if (forget) {
                                 await request("passport/auth/forget", {
                                     ...body,
-                                    recaptcha_data: captcha,
                                 });
                                 navigate("login");
                                 return;
@@ -108,17 +105,14 @@ export function AdminAuth({
                             const login = await request("passport/auth/login", {
                                 email: body.email,
                                 password: body.password,
-                                recaptcha_data: captcha,
                             });
                             if (login.data.mfaRequired) {
-                                setCaptcha("");
                                 setMfa(login.data as V10MfaChallenge);
                                 return;
                             }
                             await completeLogin();
                         }}
                     >
-                        <Captcha onChange={setCaptcha} />
                         {forget && (
                             <>
                                 <button
@@ -143,19 +137,11 @@ export function AdminAuth({
                                                     throw new Error(
                                                         tx("请填写邮箱"),
                                                     );
-                                                if (
-                                                    boot.recaptchaSiteKey &&
-                                                    !captcha
-                                                )
-                                                    throw new Error(
-                                                        tx("请先完成安全验证"),
-                                                    );
                                                 await request(
                                                     "passport/comm/sendEmailVerify",
                                                     {
                                                         email,
                                                         isforget: 1,
-                                                        recaptcha_data: captcha,
                                                     },
                                                 );
                                                 cooldown.start();

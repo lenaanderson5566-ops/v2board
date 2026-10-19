@@ -69,6 +69,7 @@ $analytics=$openapi['components']['schemas']['postPublicAnalyticsEventsInput'];
 $assert($analytics['additionalProperties']===false,'Analytics rejects unexpected fields');
 $assert($analytics['required']===['sessionId','page','device','language','consent'],'Analytics consent and anonymous event fields are explicit');
 $assert($analytics['properties']['page']['enum']===App\Services\ProductAnalytics::PAGES,'Analytics page allowlist matches the published contract');
+$assert($analytics['properties']['event']['enum']===App\Services\ExperienceMeasurements::EVENTS,'Optional analytics action/metric allowlist matches the runtime');
 $assert($analytics['properties']['language']['enum']===App\Services\LanguagePreferenceService::SUPPORTED,'Analytics language allowlist matches all supported interface languages');
 $assert($openapi['paths']['/public/analytics/events']['post']['security']===[],'Public analytics never requires account credentials');
 foreach ($routes as $route) {

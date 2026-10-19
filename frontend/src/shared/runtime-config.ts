@@ -65,7 +65,7 @@ export async function initializeRuntime(mode: "user" | "admin"): Promise<void> {
         opsPath: "",
         emailVerify: false,
         registerClosed: false,
-        recaptchaSiteKey: "",
+        passkeyEnabled: false,
         tosUrl: "",
         currency: "CNY",
         currencySymbol: "CNY",

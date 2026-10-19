@@ -1774,5 +1774,105 @@
     "bindings": {},
     "role": "public",
     "status": 204
+  },
+  {
+    "key": "PasskeyController@state",
+    "legacy": "",
+    "legacyMethod": "GET",
+    "action": "App\\Http\\Controllers\\V10\\PasskeyController@state",
+    "parameters": [],
+    "middleware": [
+      "throttle:10,1,passkey:"
+    ],
+    "scope": "user",
+    "path": "me/security/passkeys",
+    "method": "GET",
+    "bindings": {},
+    "role": "user",
+    "status": 200
+  },
+  {
+    "key": "PasskeyController@options",
+    "legacy": "",
+    "legacyMethod": "POST",
+    "action": "App\\Http\\Controllers\\V10\\PasskeyController@options",
+    "parameters": [],
+    "middleware": [
+      "throttle:10,1,passkey:"
+    ],
+    "scope": "user",
+    "path": "me/security/passkeys/registration-options",
+    "method": "POST",
+    "bindings": {},
+    "role": "user",
+    "status": 201
+  },
+  {
+    "key": "PasskeyController@store",
+    "legacy": "",
+    "legacyMethod": "POST",
+    "action": "App\\Http\\Controllers\\V10\\PasskeyController@store",
+    "parameters": [],
+    "middleware": [
+      "throttle:10,1,passkey:"
+    ],
+    "scope": "user",
+    "path": "me/security/passkeys",
+    "method": "POST",
+    "bindings": {},
+    "role": "user",
+    "status": 201
+  },
+  {
+    "key": "PasskeyController@remove",
+    "legacy": "",
+    "legacyMethod": "DELETE",
+    "action": "App\\Http\\Controllers\\V10\\PasskeyController@remove",
+    "parameters": [
+      "passkeyId"
+    ],
+    "middleware": [
+      "throttle:10,1,passkey:"
+    ],
+    "scope": "user",
+    "path": "me/security/passkeys/{passkeyId}",
+    "method": "DELETE",
+    "bindings": {
+      "passkeyId": "passkeyId"
+    },
+    "role": "user",
+    "status": 204
+  },
+  {
+    "key": "PasskeyController@loginOptions",
+    "legacy": "",
+    "legacyMethod": "POST",
+    "action": "App\\Http\\Controllers\\V10\\PasskeyController@loginOptions",
+    "parameters": [],
+    "middleware": [
+      "throttle:10,1,passkey:"
+    ],
+    "scope": "passport",
+    "path": "auth/passkeys/options",
+    "method": "POST",
+    "bindings": {},
+    "role": "public",
+    "status": 201
+  },
+  {
+    "key": "PasskeyController@login",
+    "legacy": "",
+    "legacyMethod": "POST",
+    "action": "App\\Http\\Controllers\\V10\\PasskeyController@login",
+    "parameters": [],
+    "middleware": [
+      "throttle:10,1,passkey:"
+    ],
+    "scope": "passport",
+    "path": "auth/passkeys/sessions",
+    "method": "POST",
+    "bindings": {},
+    "role": "public",
+    "status": 200
   }
 ]

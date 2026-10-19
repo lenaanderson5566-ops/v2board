@@ -3,6 +3,7 @@ import {
     setDisplayTimeZone,
     formatInstant,
 } from "./timezone";
+import { observeApi } from "./telemetry";
 import {
     browserFetch,
     queueBrowserLogout,
@@ -52,7 +53,7 @@ export interface Boot {
     appleAccountEnabled?: boolean;
     emailWhitelistEnabled?: boolean;
     emailWhitelistSuffixes?: string[];
-    recaptchaSiteKey: string;
+    passkeyEnabled?: boolean;
     tosUrl: string;
     currency?: "CNY";
     currencySymbol: string;
@@ -60,10 +61,6 @@ export interface Boot {
 declare global {
     interface Window {
         V2BOARD: Boot;
-        grecaptcha?: {
-            render: (el: HTMLElement, opts: Row) => number;
-            reset: (id: number) => void;
-        };
     }
 }
 export const boot = window.V2BOARD;
@@ -133,6 +130,8 @@ export async function request<T = Row>(
     body?: Row | FormData,
     options?: { signal?: AbortSignal; timeoutMs?: number },
 ): Promise<Envelope<T>> {
+    const observedStart=performance.now();
+    let observedFailure: "api_error" | "network_error" | null = null;
     if (body) readCache.clear();
     const token = hasBrowserSession();
     const controller = new AbortController();
@@ -146,7 +145,7 @@ export async function request<T = Row>(
     }, options?.timeoutMs ?? 30000);
     try {
         const v10 =
-            boot.mode === "user" && /^(user|passport|guest)\//.test(path)
+            (boot.mode === "user" || path === "user/info") && /^(user|passport|guest)\//.test(path)
                 ? v10Request(path, body instanceof FormData ? undefined : body)
                 : null;
         const res = await browserFetch(apiUrl(v10?.url ?? `/api/v1/${path}`), {
@@ -175,6 +174,7 @@ export async function request<T = Row>(
                     }
                   : {}),
         }).catch((error: unknown) => {
+            observedFailure="network_error";
             if (error instanceof TypeError && !controller.signal.aborted) {
                 throw Object.assign(
                     new Error(tx("网络连接中断，请检查网络后确认操作结果")),
@@ -184,6 +184,7 @@ export async function request<T = Row>(
             throw error;
         });
         let json: Envelope<T>;
+        if (!res.ok) observedFailure="api_error";
         try {
             json =
                 res.status === 204
@@ -191,6 +192,7 @@ export async function request<T = Row>(
                     : await res.json();
             if (v10 && res.ok && res.status !== 204) json = v10.decode(json);
         } catch {
+            observedFailure="api_error";
             if (!res.ok) throw apiFailure(undefined, res.status, token, Boolean(v10));
             throw new Error(
                 tx("服务响应异常 ({{value0}})", { value0: res.status }),
@@ -226,6 +228,7 @@ export async function request<T = Row>(
             );
         throw error;
     } finally {
+        if (boot.mode === "user" && !options?.signal?.aborted) observeApi({duration: performance.now()-observedStart, failure: observedFailure});
         clearTimeout(timer);
         options?.signal?.removeEventListener("abort", abort);
     }

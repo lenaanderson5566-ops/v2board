@@ -98,6 +98,12 @@ Admin, operations/risk and supported node APIs retain their API versions. The un
 | `POST user/logoutAll` | `DELETE /api/v10/me/sessions` | user | scalar |
 | `New native resource` | `GET /api/v10/public/analytics/configuration` | public | analyticsConfiguration |
 | `New native resource` | `POST /api/v10/public/analytics/events` | public | scalar |
+| `New native resource` | `GET /api/v10/me/security/passkeys` | user | passkeyState |
+| `New native resource` | `POST /api/v10/me/security/passkeys/registration-options` | user | passkeyOptions |
+| `New native resource` | `POST /api/v10/me/security/passkeys` | user | passkeyCreated |
+| `New native resource` | `DELETE /api/v10/me/security/passkeys/{passkeyId}` | user | scalar |
+| `New native resource` | `POST /api/v10/auth/passkeys/options` | public | passkeyOptions |
+| `New native resource` | `POST /api/v10/auth/passkeys/sessions` | public | authentication |
 
 V2Box support: administrative `server/v2box/{save,update,copy,drop}` routes use the existing admin prefix. Node config `/api/v2/server/config` and retained UniProxy endpoints accept `node_type=v2box`. V10 subscription paths and resource shapes are unchanged; stable node identities distinguish `v2box` from `v2node`. See [V2Box integration](../v2box.md).
 

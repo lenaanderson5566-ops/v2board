@@ -1,5 +1,21 @@
 # 测试整理记录
 
+## 用户旅程与体验统计（第二批）
+
+- 复用 `admin-payment-diagnostics.php`，保留第一批全部断言，增加完整观察窗、管理员/未成熟样本排除、首次付款与订阅时序、非套餐排除、日流量/登录去重、D7/D30 独立队列、续费/到期快照、匿名数值桶/均值/分位上界、设备筛选、不污染浏览漏斗、200 事件上限、非法字段/数值拒绝、GPC、清理及幂等迁移；最终 55 项通过。
+- `console-smoke.php` 增加旅程报表匿名/普通用户拒绝、管理员允许、私有响应与日期校验，完整 181 项通过。真实路由审计 2,479 项、后端安全 92 项、V10 inventory 1,518 项通过；初次 inventory 因隔离副本缺生成的 `v10-contracts.json` 失败，补齐后完整通过，未改断言。清单仍为 112 入口、14 辅助项，没有新增后端独立脚本。
+- 新增就近 `JourneyAnalytics.test.tsx` 与 `product-analytics.test.tsx`，验证报表边界/过滤/刷新/失败状态、重新同意与旧拒绝保留、无同意不采集、撤回停止采集、DNT、数值白名单/凭据不上传及接口采样上限。修正 jsdom 没有 DNT getter 的夹具后，相关 47 项通过；全量 107 文件、659 项通过。最终报表文案/窄屏修正后定向 8 项通过，TypeScript、Vite 与前后台打包通过。
+- V10 源合同、四份发生变化的生成物及全部七份出版物一致性检查通过；生成器既有 12 项测试通过。Windows 沙箱的临时目录权限错误通过正常本机权限重跑解决。更新脚本加入新迁移并保持 Unix 换行，既有 26 个隔离升级场景通过且断言新迁移实际执行。
+- 后端使用 `/tmp/v2board-journey-report` 可丢弃副本、无数据卷独立 MySQL 容器及随机测试库；未改现有数据库权限、生产表或 Redis 数据。运行结果在 `storage/app/test-organization/journey-report/`：`final.json` 为最终专项/后台结果，`inventory-final.json` 为最终合同结果，`backend.json` 保留初次结果；`frontend.json`、`build-final.log`、`updater.log` 记录其他验证。临时预览文件/服务和独立测试数据库容器在完成后清理，未部署生产。
+
+## 运营与安全统计
+
+- 复用 `admin-payment-diagnostics.php` 增加日志时间边界、固定失败原因聚合/敏感字段排除、未知状态分母、风控嵌套复核/覆盖率/误报率、账户去重、币种隔离、余额订单、重复回调、邮件超时/回执/传输耗时、队列字段白名单/失败降级、任务成功时间、空数据、只读性及四分之一小时时区的跨午夜分布验证。原有支付回调与版本断言保留，共 36 项通过。
+- `console-smoke.php` 通过真实路由验证匿名和普通账户拒绝、管理员允许及 no-store 响应，完整 178 项通过。现有路由审计 2,472 项与后端安全 92 项通过。测试清单未变，无新增后端独立脚本；清单校验 112 入口、14 辅助引用通过。
+- 后端使用 `/tmp` 可丢弃项目副本、独立无数据卷 MySQL 容器及随机测试库，不改现有数据库权限或业务数据。首次后台回归因隔离副本缺 public，补齐后又发现缺只读 GeoIP，补齐后全量后台回归通过；没有修改或删除断言。最初应用账号无法建随机测试库，临时授权方案被自动审批拒绝且未执行，随后使用独立数据库完成验证。
+- 前端新增就近 `OperationsAnalytics.test.tsx`，覆盖数字口径与说明、来源缺失、保留不足、零分母、刷新、范围切换/错误，以及原后台页面的访问时段和设备筛选独立性。连同系统/邮件日志相关界面共 16 项通过；Windows 沙箱临时文件重命名失败后在正常本机权限执行通过。TypeScript 和生产构建通过，静态包已更新。
+- 结果位于 `storage/app/test-organization/operations-report/backend.json` 与 `console-final.json`；后者是后台回归最终通过结果。浏览器验证见 `frontend-validation.md`。未部署生产，未调用真实邮件/支付服务。
+
 ## 退役接口相关服务、模型与缓存定义清理
 
 - 沿服务调用、命令/队列、V10 适配器、保留路由、测试和配置检查引用。删除无调用的 ServerLog、ServerStat 两个旧模型；删除 ServerService::log、StatisticalService 的三个旧查询入口及三个排行辅助方法、UserService 的三个用户查询辅助方法、TelegramService::discoverCommands，共 11 个方法，并清理随之失效的导入。现行日统计、后台排行榜、节点授权、邀请历史和固定 Telegram 命令菜单继续使用原实现。
@@ -263,3 +279,29 @@ Composer validate、当前 PHP 8.4.26 下生产平台要求和锁文件审计通
 覆盖注册与邀请、Cookie/CSRF/Origin、原生登录、MFA 与会话并发、订阅授权和配置、套餐/余额/充值/优惠券、多币种报价与支付快照、取消/替换订单、回调幂等、返佣、邮件/工单通知与回复满 24 小时关闭、后台用户/日志/风控、节点/地址/DDNS/流量去重和额度、用量重置、安装及旧库升级、队列排空和恢复。支付、邮件、翻译及云服务使用各领域已有测试替身，不产生真实扣款、邮件或云资源变更。
 
 汇总逐一比较 suites.json 与结果 ID 集合，确认 112/112 全部完成；前端 104 文件 645 项及类型检查通过，生成器 12 项和七份产物 --check 通过。结果保存在忽略目录 storage/app/test-organization/business-simulation/{backend,summary}.json 和 frontend.log。本轮没有发现新的失败，未修改业务实现；模拟覆盖来自现有自动化用例，不能等同于所有设备、生产配置和外部服务真实联调已验收。
+
+
+## Passkey 与 Google 组件清理
+
+沿用 auth-security、mfa-api、console-smoke、frontend-runtime 等已登记模块：旧 reCAPTCHA 配置不再影响密码登录；后台规则移除旧字段并提供 passkey_enable；保存配置清理 Google 旧键；真实 ES256 注册/签名贯穿用户和管理员的 Cookie、CSRF、Origin、MFA 流程。mfa-api 同时验证 RP、UV、签名/计数器、一次性与过期挑战、发起浏览器绑定、管理员越权、跨账户删除、数量限制、关闭开关、凭据撤销及会话退出。新安装 SQL 与升级迁移保持一致，迁移重复执行无损。
+
+发现原 mfa-api 未设置异常退出处理，Laravel 的全局处理器使失败断言可能返回 0；已显式设置失败退出码，并修正限流测试清理键的前缀。修复后检查完整输出的完成计数，全部断言实际完成。首次合并运行邀请模块触发共享测试限流，独立重跑 42 项通过；首次设置保存测试因 config:cache 后在同进程继续发送旧测试凭据而失败，改为一次保存完整目标配置，185 项通过。没有移除业务断言。
+
+所有后端检查在 /tmp/v2board-passkey-report 一次性副本、随机数据库和专用一次性 Redis 容器运行，不清空应用缓存。认证安全 137、后端安全 92、浏览器会话 524、MFA 57、路由审计 2537、V10 清单 1571、运行时 17、语言偏好 47、注册策略 16、邮件邀请 42 项均通过；最终 Passkey/MFA 114 项、迁移健康 7 项、配置保存 185 项通过；结果见忽略目录 storage/app/test-organization/passkey-report。升级脚本 26 场景和生成器 12 项通过，七份契约产物 --check 无漂移。前端验证见 frontend-validation.md。未运行生产安装、迁移，也未产生真实邮件。
+
+
+## Passkey 安全与兼容复核
+
+修复会话兑换刷新验证时间的问题：AuthService 保存独立 authenticated_at，浏览器链接、客户端授权和令牌迁移继承源会话的验证时间；没有可信时间的旧会话不能管理 Passkey。令牌迁移携带已验证的 MFA 版本。删除取得账户行锁后重新核对会话、密码、邮箱和验证时间，并提升安全版本以撤销未完成的安全与授权挑战。
+
+mfa-api 沿用真实路由、Cookie、CSRF 和真实密钥签名，覆盖 ES256 / RS256 / Ed25519、备份凭据的零计数器、无效备份标志、畸形 JSON/CBOR、错误 RP/Origin、默认端口与大小写、旧密码验证、撤销与锁等待、跨账户删除和实际限流。mfa-concurrency 扩展两个真实并行进程场景：同一 Passkey 挑战和不同挑战上的相同签名计数器都只能消费一次，保持原 MFA / 恢复码 / TOTP 并发断言。
+
+复用 browser-session、fastai-browser-login、session-authorization、auth-security、backend-security、console-smoke、frontend-runtime、api-route-audit、api-v10-inventory 验证会话和兼容边界。最终 Passkey/MFA 197 项、浏览器会话 525 项、后台 185 项通过；前端 109 文件 675 项、类型与生产构建、生成器 12 项和七份契约 --check 通过。其余脚本和完整输出见 storage/app/test-organization/passkey-audit/。
+
+检查完整输出发现原 fastai-client-config 也存在失败却返回 0 的旧问题，已补严格异常退出码和响应状态断言，并显式指定节点夹具顺序。扩展回归发现旧 V2Box 表缺少可选显示字段时预览返回 500；预览现按实际表结构取显式白名单，缺省字段维持空显示，不扩大敏感字段投影，不修改数据库结构。所有后端执行于 /tmp/v2board-passkey-audit 一次性副本、随机测试数据库和本轮专用 Redis，未清空应用缓存。日志不记录原始证明或凭据，设备真机验收范围见 frontend-validation.md。
+
+
+节点显示模块的完整输出复核还发现历史城市词典缺少部分语言条目，且该脚本同样未设置异常退出处理。现已让 NodeDisplayService 的目录与名称渲染一致：缺失条目显式使用既有英文回退，不伪造本地语言翻译；node-display 保留原有所有语言覆盖断言并严格失败退出。该修复不修改原始词典和表结构。
+
+
+最终归档：15 个相关后端模块均有完整成功输出，Passkey/MFA 197 项，原生配置 65 项；节点显示和订阅信息复测通过。summary.json 排除旧日志中的假成功，仅收录最终明确完成的结果。前端 675 项与构建通过，测试容器已停止，未部署生产。

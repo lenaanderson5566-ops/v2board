@@ -341,3 +341,9 @@ it("maps private ticket notification receipts to their explicit V10 route",async
  expect(send.mock.calls[0][0]).toBe("/api/v10/me/notifications/ticket-read-receipts");
  expect(JSON.parse(send.mock.calls[0][1].body)).toEqual({ticketId:42,version:7});
 });
+
+it("loads administrator account identity from the retained V10 account endpoint",async()=>{
+ window.V2BOARD.mode="admin";session.active=true;
+ const send=vi.fn().mockResolvedValue(new Response(JSON.stringify({data:{id:42,email:"admin@example.test"}}),{status:200}));vi.stubGlobal("fetch",send);
+ try{await request("user/info");expect(send.mock.calls[0][0]).toBe("/api/v10/me");}finally{window.V2BOARD.mode="user";}
+});

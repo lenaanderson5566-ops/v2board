@@ -9,7 +9,6 @@ import {
     hasBrowserSession,
     forgetBrowserSession,
 } from "../shared/browser-session";
-import { Captcha } from "../shared/Captcha";
 import DOMPurify from "dompurify";
 import { installChatLayout } from "./chat-layout";
 import {
@@ -311,7 +310,6 @@ function UserApp() {
                     redirectPath={
                         authorizationReturn.current ?? purchaseReturn.current
                     }
-                    renderCaptcha={(handler) => <Captcha onChange={handler} />}
                 />
                 <AnalyticsPrivacyFooter />
             </div>

@@ -34,6 +34,19 @@ try {
         'invite_user_id' => $user->id,
     ]);
     $editUser = ['id' => $subject->id, 'email' => $subject->email, 'banned' => 0, 'is_admin' => 0, 'transfer_enable' => 10737418240, 'u' => 536870912, 'd' => 1073741824, 'commission_type' => 2];
+    $operationsUrl='/api/v1/'.$securePath.'/analytics/operations';
+    $assert($call($operationsUrl.'?days=7')->getStatusCode()===403,'Operations analytics rejects anonymous access');
+    $subjectAuth=new App\Services\AuthService($subject);
+    $subjectToken=$subjectAuth->generateAuthData(Illuminate\Http\Request::create('/'))['auth_data'];
+    $assert($call($operationsUrl.'?days=7',null,$subjectToken)->getStatusCode()===403,'Operations analytics rejects ordinary account credentials');
+    $journeyUrl='/api/v1/'.$securePath.'/analytics/journey';
+    $assert($call($journeyUrl.'?days=7')->getStatusCode()===403 && $call($journeyUrl.'?days=7',null,$subjectToken)->getStatusCode()===403,'Journey analytics rejects anonymous and ordinary-account access');
+    $subjectAuth->removeAllSession();
+    $opsReport=$call($operationsUrl.'?days=7',null,$token);
+    $assert($opsReport->getStatusCode()===200 && isset(json_decode($opsReport->getContent(),true)['data']['risk']) && str_contains($opsReport->headers->get('Cache-Control'),'no-store'),'Operations analytics is available only to administrators and cannot be stored');
+    $journeyReport=$call($journeyUrl.'?days=7&device=mobile',null,$token);
+    $assert($journeyReport->getStatusCode()===200 && isset(json_decode($journeyReport->getContent(),true)['data']['business']['activation']) && str_contains($journeyReport->headers->get('Cache-Control'),'no-store'),'Journey analytics accepts administrator filters with private response');
+    $assert($call($journeyUrl.'?days=8',null,$token)->getStatusCode()===422,'Journey report rejects unsupported date ranges');
     $response = $call('/api/v1/' . $securePath . '/user/update', $editUser + ['is_staff'=>1], $token);
     $subject->refresh();
     $assert($response->getStatusCode() === 200 && $subject->u == 536870912 && $subject->d == 1073741824 && $subject->commission_type == 2, 'User traffic and commission fields did not persist');
@@ -117,6 +130,7 @@ try {
     $response = $call('/api/v1/' . $securePath . '/console/configSchema', null, $token);
     $rules = json_decode($response->getContent(), true)['data'] ?? [];
     $assert($response->getStatusCode() === 200 && ($rules['email_verify'] ?? '') === 'in:0,1' && ($rules['reset_traffic_method'] ?? '') === 'in:0,1,2,3,4', 'Configuration control schema failed');
+    $assert(($rules['passkey_enable'] ?? '') === 'in:0,1' && !isset($rules['recaptcha_enable'],$rules['recaptcha_key'],$rules['recaptcha_site_key']), 'Passkey replaces retired CAPTCHA settings');
     $assert($call('/api/v1/' . $securePath . '/console/nodeSchema?type=v2node')->getStatusCode() === 403, 'Node schema must require admin authentication');
     foreach (['v2node', 'v2box'] as $type) {
         $response = $call('/api/v1/' . $securePath . '/console/nodeSchema?type=' . $type, null, $token);
@@ -368,8 +382,16 @@ try {
     $geo = (new App\Services\GeoIpService())->lookup('8.8.8.8');
     $assert($geo['country'] !== null && $geo['asn'] === 'AS15169', 'GeoIP lookup failed');
     $footer = '<div data-console-smoke="footer">Footer smoke test</div>';
-    $response = $call('/api/v1/' . $securePath . '/config/save', ['custom_footer_html' => $footer], $token);
+    $siteUrl=config('v2board.app_url');
+    config(['v2board.app_url'=>'http://unsafe.example.test']);
+    $assert($call('/api/v1/'.$securePath.'/config/save',['passkey_enable'=>1],$token)->getStatusCode()===503,'Passkey rejects insecure production origin');
+    config(['v2board.app_url'=>'https://passkey.example.test','v2board.recaptcha_enable'=>1,'v2board.recaptcha_key'=>'retired-test-only','v2board.frontend_theme_google_analytics'=>'retired-test-only']);
+    $response = $call('/api/v1/' . $securePath . '/config/save', ['custom_footer_html' => $footer,'passkey_enable'=>1], $token);
     $assert($response->getStatusCode() === 200, 'Footer save failed: ' . $response->getContent());
+    $saved=require $configPath;
+    $assert(($saved['passkey_enable']??0)==1,'Administrator can persist Passkey switch');
+    $assert(!array_key_exists('recaptcha_enable',$saved) && !array_key_exists('recaptcha_key',$saved) && !array_key_exists('frontend_theme_google_analytics',$saved),'Saving settings removes legacy CAPTCHA and Google Analytics configuration');
+    config(['v2board.app_url'=>$siteUrl]);
     $assert(config('v2board.password_limit_enable', 1) === ($originalConfig['password_limit_enable'] ?? 1), 'Partial settings update changed an unrelated switch');
     config(['v2board.custom_footer_html' => $footer]);
     $assert(strpos($call('/app')->getContent(), $footer) !== false, 'Footer was not rendered in user shell');

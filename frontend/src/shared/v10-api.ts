@@ -71,7 +71,7 @@ function decode(name:string,value:any):any {
         if (!(external in value)) continue;
         let v=value[external];
         if (type === 'time') v=v ? Math.floor(Date.parse(v)/1000) : null;
-        else if (type === 'boolean') v=['auto_renewal','remind_expire','remind_traffic','banned','is_admin','is_online','is_read','is_telegram','withdraw_close','commission_distribution_enable','renew','is_email_verify','is_invite_force','is_recaptcha'].includes(internal) ? (v ? 1 : 0) : v;
+        else if (type === 'boolean') v=['auto_renewal','remind_expire','remind_traffic','banned','is_admin','is_online','is_read','is_telegram','withdraw_close','commission_distribution_enable','renew','is_email_verify','is_invite_force'].includes(internal) ? (v ? 1 : 0) : v;
         else if (type === 'gb') v=Number(v)/1073741824;
         else if (type === 'period') v=Object.keys(periods).find(k=>periods[k]===v);
         else if (type === 'orderStatus') v=statuses.indexOf(v);

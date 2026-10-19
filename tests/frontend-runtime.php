@@ -18,6 +18,7 @@ try {
     $assert($user['adminPath'] === '' && $user['opsPath'] === '', 'User configuration hides administrative paths');
     $assert($admin['adminPath'] === 'test-admin', 'Admin path preserved');
     $assert($user['landing'] === false && !array_key_exists('landing', $admin), 'Server and standalone landing selection');
+    $assert(array_key_exists('passkeyEnabled',$user) && !array_key_exists('recaptchaSiteKey',$user) && !array_key_exists('recaptchaSiteKey',$admin), 'Runtime exports Passkey feature flag without retired CAPTCHA settings');
     $assert(!str_contains(json_encode($user), 'must-not-be-exported') && !str_contains(json_encode($admin), 'must-not-be-exported'), 'No backend secrets exported');
     $assert(Illuminate\Support\Facades\Artisan::call('console:export-runtime', ['--api-origin' => 'https://api.example.test', '--output' => $directory, '--mode' => 'user']) === 0, 'Public user export');
     $assert(is_file($directory . '/user-config.json') && !is_file($directory . '/admin-config.json'), 'User deployment excludes admin config');

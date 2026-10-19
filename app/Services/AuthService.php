@@ -40,6 +40,8 @@ class AuthService
         $stored = self::addSession($this->user->id, $guid, [
             'ip' => $request->ip(),
             'login_at' => $now,
+            // Session exchanges inherit proof age; issuing a new token is not reauthentication.
+            'authenticated_at' => (int)$request->attributes->get('auth.authenticatedAt', $now),
             'ua' => $request->userAgent(),
             'auth_data' => $authData,
             'expires_at' => $now + 30 * 86400,
@@ -93,6 +95,13 @@ class AuthService
         if (!$user || (int)($reference['mfaVersion'] ?? 0) !== (int)($user->mfa_version ?? 0)) return null;
         unset($user->mfa_version);
         return $user;
+    }
+
+    public static function authenticatedAt(?array $reference): int
+    {
+        if (!$reference) return 0;
+        $sessions=(array)Cache::get(CacheKey::get('USER_SESSIONS',$reference['userId']),[]);
+        return (int)($sessions[$reference['sessionId']]['authenticated_at'] ?? 0);
     }
 
     private static function checkSession($userId, $session)

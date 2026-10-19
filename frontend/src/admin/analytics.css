@@ -12,6 +12,8 @@ body[data-console="admin"] .analytics-page .analytics-settings input[type="check
 .analytics-page .panel-body > p { line-height: 1.7; }
 .analytics-page .panel-body > .analytics-settings { margin-block: 16px; }
 .analytics-page .table-wrap { max-width: 100%; overflow-x: auto; }
+body[data-console="admin"] .analytics-page td:last-child { position: static; right: auto; box-shadow: none; }
+.analytics-time-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(260px, 100%), 1fr)); gap: 24px; }
 .analytics-metrics > div, .analytics-funnel > li { min-width: 0; }
 
 .analytics-settings {

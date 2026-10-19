@@ -35,7 +35,7 @@ $app->instance(App\Services\Mail\MailRateLimiter::class, new class extends App\S
 DB::beginTransaction();
 $users = []; $tokens = [];
 try {
-    config(['v2board.app_url'=>'https://site.example','v2board.stop_register'=>0,'v2board.invite_force'=>0,'v2board.invite_gen_limit'=>5,'v2board.email_verify'=>0,'v2board.email_whitelist_enable'=>0,'v2board.email_gmail_limit_enable'=>0,'v2board.recaptcha_enable'=>0,'v2board.register_limit_by_ip_enable'=>0,'v2board.try_out_plan_id'=>0]);
+    config(['v2board.app_url'=>'https://site.example','v2board.stop_register'=>0,'v2board.invite_force'=>0,'v2board.invite_gen_limit'=>5,'v2board.email_verify'=>0,'v2board.email_whitelist_enable'=>0,'v2board.email_gmail_limit_enable'=>0,'v2board.register_limit_by_ip_enable'=>0,'v2board.try_out_plan_id'=>0]);
     $makeUser = function ($email) use (&$users) {
         $user=User::create(['email'=>$email,'password'=>password_hash('Test-phrase-123!',PASSWORD_DEFAULT),'uuid'=>App\Utils\Helper::guid(true),'token'=>App\Utils\Helper::guid()]);
         $users[]=$user; return $user;

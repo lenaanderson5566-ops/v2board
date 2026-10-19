@@ -58,8 +58,7 @@ try {
     $assert($r->getStatusCode()===200 && $j['data']['billingPeriod']==='deposit' && $j['data']['totalAmount']===500,'Deposit detail preserves amount and period');
     [$r,$j]=$call('POST','/api/v10/me/orders/'.$depositNumber.'/cancellation',[],$bearer);
     $assert($r->getStatusCode()===204,'Deposit can be cancelled');
-    config(['v2board.recaptcha_enable'=>0]);
-    [$r,$j]=$call('POST','/api/v10/auth/sessions',['email'=>$user->email,'password'=>'V10testpassword','language'=>'en-US']);
+       [$r,$j]=$call('POST','/api/v10/auth/sessions',['email'=>$user->email,'password'=>'V10testpassword','language'=>'en-US']);
     $assert($r->getStatusCode()===200 && $j['data']['tokenType']==='Bearer' && isset($j['data']['expiresAt']) && App\Services\AuthService::decryptAuthData($j['data']['accessToken']),'Login resource '.json_encode($j));
     [$r,$j]=$call('POST','/api/v10/auth/sessions',['email'=>$user->email,'password'=>'InvalidPassword']);
     $assert($r->getStatusCode()===401 && $r->headers->get('WWW-Authenticate')==='Bearer','Invalid login uses 401');

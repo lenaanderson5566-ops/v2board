@@ -12,7 +12,7 @@ const mocks = vi.hoisted(() => ({
     request: vi.fn(),
     logout: vi.fn(),
     navigate: vi.fn(),
-    boot: { mode: "admin", title: "Local admin", recaptchaSiteKey: "" },
+    boot: { mode: "admin", title: "Local admin" },
 }));
 vi.mock("../shared/api", () => ({
     ...mocks,

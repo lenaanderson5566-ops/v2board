@@ -199,15 +199,13 @@ class ConfigController extends Controller
                 'apple_account_share' => config('v2board.apple_account_share', ''),
             ],
             'safe' => [
+                'passkey_enable' => (int)config('v2board.passkey_enable',0),
                 'email_verify' => (int)config('v2board.email_verify', 0),
                 'safe_mode_enable' => (int)config('v2board.safe_mode_enable', 0),
                 'secure_path' => config('v2board.secure_path', config('v2board.frontend_admin_path', hash('crc32b', config('app.key')))),
                 'email_whitelist_enable' => (int)config('v2board.email_whitelist_enable', 0),
                 'email_whitelist_suffix' => config('v2board.email_whitelist_suffix', Dict::EMAIL_WHITELIST_SUFFIX_DEFAULT),
                 'email_gmail_limit_enable' => config('v2board.email_gmail_limit_enable', 0),
-                'recaptcha_enable' => (int)config('v2board.recaptcha_enable', 0),
-                'recaptcha_key' => config('v2board.recaptcha_key'),
-                'recaptcha_site_key' => config('v2board.recaptcha_site_key'),
                 'register_limit_by_ip_enable' => (int)config('v2board.register_limit_by_ip_enable', 0),
                 'register_limit_count' => config('v2board.register_limit_count', 3),
                 'register_limit_expire' => config('v2board.register_limit_expire', 60),
@@ -246,6 +244,8 @@ class ConfigController extends Controller
     public function save(ConfigSave $request)
     {
         $data = $request->validated();
+        if (!empty($data['passkey_enable'])) abort_unless(app(\App\Services\PasskeyService::class)->available(),409,'请先通过更新流程安装 Passkey 数据表和依赖。');
+        if (!empty($data['passkey_enable'])) app(\App\Services\PasskeyService::class)->assertConfigured();
         if (($data['new_user_currency'] ?? null) === 'USD') {
             abort_unless(\App\Models\Plan::where('show',1)->whereNotNull('usd_prices')->get()->contains(fn($p)=>collect($p->usd_prices)->contains(fn($v)=>$v !== null)),422,'请先为至少一个在售套餐配置美元价格。');
             abort_unless(\App\Models\Payment::where('enable',1)->whereIn('payment',['EPay','Paytaro','PaytaroQR','StripeCheckout'])->exists(),422,'请先启用支付方式。');
@@ -309,7 +309,7 @@ class ConfigController extends Controller
         if (empty($data['apple_account_token'])) unset($data['apple_account_token']);
         $config = config('v2board');
         $config['custom_footer_html'] = \App\Support\FrontendConfig::footer();
-        foreach (['frontend_theme', 'frontend_theme_sidebar', 'frontend_theme_header', 'frontend_theme_color', 'frontend_background_url'] as $legacyKey) {
+        foreach (['frontend_theme', 'frontend_theme_sidebar', 'frontend_theme_header', 'frontend_theme_color', 'frontend_background_url', 'recaptcha_enable', 'recaptcha_key', 'recaptcha_site_key', 'frontend_theme_google_analytics', 'google_analytics'] as $legacyKey) {
             unset($config[$legacyKey]);
         }
         foreach (ConfigSave::allRules() as $k => $v) {

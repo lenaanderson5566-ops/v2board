@@ -90,6 +90,7 @@ final class MfaService
         if ($state['totpEnabled'] && $state['recoveryCodesRemaining'] > 0) $methods[] = 'recovery';
         if ($state['emailEnabled']) $methods[] = 'email';
         $challenge = $this->issue($user, $request, ['purpose' => 'login', 'version' => (int) $row->version,
+            'passkeyHash'=>$request->attributes->get('passkey.credentialHash'),
             'methods' => $methods, 'language' => $request->input('language'), 'languageSelected' => $request->boolean('language_selected')]);
         return $challenge + ['mfaRequired' => true, 'methods' => $methods, 'preferredMethod' => $state['totpEnabled'] ? 'totp' : 'email'];
     }
@@ -184,6 +185,7 @@ final class MfaService
                 $row = $this->row($user->id);
                 abort_unless((int) $row->version === $record['version'], 409, __('Security settings changed. Please start again.'));
                 $purpose = $record['purpose'];
+                if (!empty($record['passkeyHash'])) abort_unless(config('v2board.passkey_enable',0) && DB::table('v2_passkey')->where('credential_hash',$record['passkeyHash'])->where('user_id',$user->id)->exists(),409,__('Security challenge expired. Please start again.'));
                 $email = $purpose === 'login' ? ($input['verificationCode'] ?? '') : ($input['emailCode'] ?? '');
                 $validEmail = isset($record['emailHash']) && hash_equals($record['emailHash'], hash_hmac('sha256', $email, config('app.key')));
                 if ($purpose === 'login') {

@@ -82,7 +82,7 @@
         "security": [],
         "x-permission": "public",
         "summary": "POST public/analytics/events",
-        "description": "First-party, consent-gated anonymous view statistics. Exact allowed Origin, JSON only, 1024-byte maximum, 60 requests/minute per IP. No query parameters, credentials, user IDs, URLs or additional fields. GPC/DNT and disabled collection return 204 without recording. Client events are estimates, not proof of payment.",
+        "description": "First-party, consent-gated anonymous views, named guide actions, numeric performance samples and error categories. Exact allowed Origin, JSON only, 1024-byte maximum, 60 requests/minute per IP. No query parameters, credentials, user IDs, URLs, error messages or additional fields. GPC/DNT and disabled collection return 204 without recording. Non-view events do not inflate page views or the purchase funnel. Numeric metric values are required only for api_request/lcp/inp/cls. Histograms and a 200-sample/session cap make these estimates, not proof of payment, download or connection success.",
         "responses": {
           "204": {
             "description": "Success"
@@ -137,7 +137,9 @@
             "language": "language",
             "consent": "consent",
             "attributionVersion": "attributionVersion",
-            "sourceDomain": "sourceDomain"
+            "sourceDomain": "sourceDomain",
+            "event": "event",
+            "value": "value"
           },
           "output": "scalar",
           "role": "public",
@@ -296,6 +298,37 @@
               "sourceDomain"
             ],
             "maxLength": 253
+          },
+          "event": {
+            "type": "string",
+            "enum": [
+              "view",
+              "download",
+              "copy_success",
+              "copy_failed",
+              "import_start",
+              "help_open",
+              "api_request",
+              "api_error",
+              "network_error",
+              "js_error",
+              "lcp",
+              "inp",
+              "cls"
+            ],
+            "description": "Omitted means view. Action/error events forbid value; numeric metrics require value.",
+            "x-runtime-field": [
+              "event"
+            ]
+          },
+          "value": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 600000,
+            "description": "Metric only: milliseconds for lcp/inp/api_request; thousandths for cls (maximum 100000).",
+            "x-runtime-field": [
+              "value"
+            ]
           }
         },
         "x-runtime-resource": true
@@ -384,6 +417,31 @@
             "maxLength": 253,
             "pattern": "^(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\\.)+[a-z]{2,63}$",
             "description": "External hostname only; no IP literals, URLs, paths, credentials, or local/internal/test/invalid suffixes."
+          },
+          "event": {
+            "type": "string",
+            "enum": [
+              "view",
+              "download",
+              "copy_success",
+              "copy_failed",
+              "import_start",
+              "help_open",
+              "api_request",
+              "api_error",
+              "network_error",
+              "js_error",
+              "lcp",
+              "inp",
+              "cls"
+            ],
+            "description": "Omitted means view. Action/error events forbid value; numeric metrics require value."
+          },
+          "value": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 600000,
+            "description": "Metric only: milliseconds for lcp/inp/api_request; thousandths for cls (maximum 100000)."
           }
         }
       }

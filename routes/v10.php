@@ -114,3 +114,11 @@
 \Illuminate\Support\Facades\Route::post('me/security/mfa/challenges', [\App\Http\Controllers\V10\MfaController::class, 'start'])->middleware('throttle:10,1')->name('v10.postMeMfaChallenges');
 \Illuminate\Support\Facades\Route::post('auth/mfa/emails', [\App\Http\Controllers\V10\MfaController::class, 'sendEmail'])->middleware('throttle:10,1')->name('v10.postMfaEmails');
 \Illuminate\Support\Facades\Route::post('auth/mfa/verifications', [\App\Http\Controllers\V10\MfaController::class, 'finish'])->middleware('throttle:30,1')->name('v10.postMfaVerifications');
+
+// Passkey ceremonies retain browser CSRF and scoped HttpOnly session grants.
+\Illuminate\Support\Facades\Route::get('me/security/passkeys', [\App\Http\Controllers\V10\PasskeyController::class, 'state'])->middleware('throttle:10,1,passkey:')->name('v10.getMePasskeys');
+\Illuminate\Support\Facades\Route::post('me/security/passkeys/registration-options', [\App\Http\Controllers\V10\PasskeyController::class, 'options'])->middleware('throttle:10,1,passkey:')->name('v10.postMePasskeyRegistrationOptions');
+\Illuminate\Support\Facades\Route::post('me/security/passkeys', [\App\Http\Controllers\V10\PasskeyController::class, 'store'])->middleware('throttle:10,1,passkey:')->name('v10.postMePasskeys');
+\Illuminate\Support\Facades\Route::delete('me/security/passkeys/{passkeyId}', [\App\Http\Controllers\V10\PasskeyController::class, 'remove'])->middleware('throttle:10,1,passkey:')->name('v10.deleteMePasskey');
+\Illuminate\Support\Facades\Route::post('auth/passkeys/options', [\App\Http\Controllers\V10\PasskeyController::class, 'loginOptions'])->middleware('throttle:10,1,passkey:')->name('v10.postAuthPasskeyOptions');
+\Illuminate\Support\Facades\Route::post('auth/passkeys/sessions', [\App\Http\Controllers\V10\PasskeyController::class, 'login'])->middleware('throttle:10,1,passkey:')->name('v10.postAuthPasskeySessions');

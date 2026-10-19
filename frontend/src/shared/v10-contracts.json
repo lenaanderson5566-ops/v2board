@@ -336,13 +336,6 @@
         "email_whitelist_suffix",
         "strings"
       ],
-      "captchaRequired": [
-        "is_recaptcha",
-        "boolean"
-      ],
-      "captchaSiteKey": [
-        "recaptcha_site_key"
-      ],
       "description": [
         "app_description"
       ],
@@ -1169,6 +1162,12 @@
       ],
       "sourceDomain": [
         "sourceDomain"
+      ],
+      "event": [
+        "event"
+      ],
+      "value": [
+        "value"
       ]
     }
   },
@@ -1180,7 +1179,6 @@
         "emailCode": "email_code",
         "invitation": "invitation",
         "inviteCode": "invite_code",
-        "captchaToken": "recaptcha_data",
         "language": "language",
         "languageSelected": "language_selected"
       },
@@ -1197,7 +1195,6 @@
       "input": {
         "email": "email",
         "password": "password",
-        "captchaToken": "recaptcha_data",
         "language": "language",
         "languageSelected": "language_selected"
       },
@@ -1259,7 +1256,6 @@
         "email": "email",
         "resetPassword": "isforget",
         "invitation": "invitation",
-        "captchaToken": "recaptcha_data",
         "language": "language"
       },
       "output": "task",
@@ -1481,6 +1477,91 @@
       "status": 200,
       "raw": false,
       "path": "auth/mfa/verifications",
+      "method": "POST"
+    },
+    "getMePasskeys": {
+      "input": {},
+      "output": "passkeyState",
+      "role": "user",
+      "status": 200,
+      "raw": false,
+      "bindings": {},
+      "key": "PasskeyController@state",
+      "path": "me/security/passkeys",
+      "method": "GET"
+    },
+    "postMePasskeys": {
+      "input": {
+        "challengeId": "challengeId",
+        "credentialId": "credentialId",
+        "clientDataJSON": "clientDataJSON",
+        "attestationObject": "attestationObject"
+      },
+      "output": "passkeyCreated",
+      "role": "user",
+      "status": 201,
+      "raw": false,
+      "bindings": {},
+      "key": "PasskeyController@store",
+      "path": "me/security/passkeys",
+      "method": "POST"
+    },
+    "postMePasskeyRegistrationOptions": {
+      "input": {
+        "password": "password",
+        "name": "name"
+      },
+      "output": "passkeyOptions",
+      "role": "user",
+      "status": 201,
+      "raw": false,
+      "bindings": {},
+      "key": "PasskeyController@options",
+      "path": "me/security/passkeys/registration-options",
+      "method": "POST"
+    },
+    "deleteMePasskey": {
+      "input": {
+        "password": "password"
+      },
+      "output": "scalar",
+      "role": "user",
+      "status": 204,
+      "raw": false,
+      "bindings": {
+        "passkeyId": "passkeyId"
+      },
+      "key": "PasskeyController@remove",
+      "path": "me/security/passkeys/{passkeyId}",
+      "method": "DELETE"
+    },
+    "postAuthPasskeyOptions": {
+      "input": {},
+      "output": "passkeyOptions",
+      "role": "public",
+      "status": 201,
+      "raw": false,
+      "bindings": {},
+      "key": "PasskeyController@loginOptions",
+      "path": "auth/passkeys/options",
+      "method": "POST"
+    },
+    "postAuthPasskeySessions": {
+      "input": {
+        "challengeId": "challengeId",
+        "credentialId": "credentialId",
+        "clientDataJSON": "clientDataJSON",
+        "authenticatorData": "authenticatorData",
+        "signature": "signature",
+        "userHandle": "userHandle"
+      },
+      "output": "authentication",
+      "role": "public",
+      "status": 200,
+      "raw": false,
+      "bindings": {},
+      "key": "PasskeyController@login",
+      "path": "auth/passkeys/sessions",
       "method": "POST"
     },
     "getPublicBanners": {
@@ -2441,7 +2522,9 @@
         "language": "language",
         "consent": "consent",
         "attributionVersion": "attributionVersion",
-        "sourceDomain": "sourceDomain"
+        "sourceDomain": "sourceDomain",
+        "event": "event",
+        "value": "value"
       },
       "output": "scalar",
       "role": "public",

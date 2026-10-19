@@ -214,6 +214,7 @@ export function AnalyticsPrivacy() {
                     >
                         <p>{e("analyticsSummary")}</p>
                         <p>{e("analyticsSources")}</p>
+                        <p>{e("analyticsExperience")}</p>
                         <details>
                             <summary>{e("analyticsDetails")}</summary>
                             <p>{e("analyticsExplanation")}</p>

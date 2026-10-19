@@ -1,5 +1,6 @@
 <?php
 $app = require __DIR__.'/support/bootstrap.php';
+set_exception_handler(function(Throwable $e){fwrite(STDERR,$e->getMessage()."\n");exit(1);});
 require __DIR__.'/commerce-bootstrap.php';
 $database=getenv('COMMERCE_TEST_DATABASE');
 if(!$database)throw new RuntimeException('Requires isolated database');
@@ -13,7 +14,14 @@ Cache::store('redis')->getStore()->setPrefix('MFA_TEST:'.$database.':');
 $make=function($body=[]){$request=Illuminate\Http\Request::create('/','POST',$body,[],[],['HTTP_USER_AGENT'=>'MfaConcurrency','REMOTE_ADDR'=>'192.0.2.72']);app()->instance('request',$request);return $request;};
 if(($argv[1]??'')==='worker') {
     $input=json_decode(stream_get_contents(STDIN),true);
-    try {(new MfaService())->finish($input['challenge'],$make(['verificationMethod'=>$input['method'],'verificationCode'=>$input['code']]));echo 'ok';}
+    try {
+      if(($input['type']??'')==='passkey'){
+       config(['v2board.passkey_enable'=>1,'v2board.app_url'=>'https://concurrency.example.test']);
+       $request=$make($input['proof']);$request->headers->set('Origin','https://concurrency.example.test');$request->attributes->set('browser.session',$input['browser']);
+       (new App\Services\PasskeyService())->login($request);
+      } else (new MfaService())->finish($input['challenge'],$make(['verificationMethod'=>$input['method'],'verificationCode'=>$input['code']]));
+      echo 'ok';
+    }
     catch(Symfony\Component\HttpKernel\Exception\HttpException $error){if(!in_array($error->getStatusCode(),[409,422],true))exit(2);echo 'rejected';}
     catch(Throwable $error){echo get_class($error);exit(2);}exit;
 }
@@ -35,10 +43,26 @@ try {
         $method=$case==='totp'?'totp':'recovery';$code=$case==='totp'?Totp::code($secret,intdiv(time(),30)):$recovery;
         $run([['challenge'=>$first['challengeId'],'method'=>$method,'code'=>$code],['challenge'=>$second['challengeId'],'method'=>$method,'code'=>$code]]);
     }
-    echo "MFA concurrency: one-use challenge, recovery code and TOTP passed across real parallel processes.\n";
+    config(['v2board.passkey_enable'=>1,'v2board.app_url'=>'https://concurrency.example.test']);
+    $encode=[App\Services\PasskeyService::class,'encode'];
+    foreach(['sameChallenge','sameCounter'] as $case){
+      $user=User::create(['email'=>'passkey-concurrent-'.$case.'-'.bin2hex(random_bytes(4)).'@example.test','password'=>'unused','uuid'=>Illuminate\Support\Str::uuid(),'token'=>bin2hex(random_bytes(16)),'transfer_enable'=>0]);$users[]=$user->id;
+      $private=openssl_pkey_new(['private_key_type'=>OPENSSL_KEYTYPE_EC,'curve_name'=>'prime256v1']);$public=openssl_pkey_get_details($private)['key'];$raw=random_bytes(32);$handle=$encode(random_bytes(32));
+      DB::table('v2_passkey')->insert(['user_id'=>$user->id,'credential_hash'=>hash('sha256',$raw),'credential_id'=>$encode($raw),'public_key'=>$public,'user_handle'=>$handle,'rp_id'=>'concurrency.example.test','name'=>'Race','sign_count'=>0,'created_at'=>time()]);
+      $browser=['scope'=>'user','id'=>bin2hex(random_bytes(32))];$request=$make();$request->headers->set('Origin','https://concurrency.example.test');$request->attributes->set('browser.session',$browser);$passkeys=new App\Services\PasskeyService();
+      $first=$passkeys->loginOptions($request);$second=$case==='sameChallenge'?$first:$passkeys->loginOptions($request);$proofs=[];
+      foreach([$first,$second] as $options){
+       $client=json_encode(['type'=>'webauthn.get','challenge'=>$options['publicKey']['challenge'],'origin'=>'https://concurrency.example.test']);$auth=hash('sha256','concurrency.example.test',true)."\x05".pack('N',1);openssl_sign($auth.hash('sha256',$client,true),$signature,$private,OPENSSL_ALGO_SHA256);
+       $proofs[]=['type'=>'passkey','browser'=>$browser,'proof'=>['challengeId'=>$options['challengeId'],'credentialId'=>$encode($raw),'clientDataJSON'=>$encode($client),'authenticatorData'=>$encode($auth),'signature'=>$encode($signature),'userHandle'=>$handle]];
+      }
+      $run($proofs);
+      if(count((new App\Services\AuthService($user))->getSessions())!==1)throw new RuntimeException('Parallel Passkey assertions granted multiple sessions');
+    }
+    echo "MFA and Passkey concurrency: challenge, recovery, TOTP and signature counter enforce single consumption across real parallel processes.\n";
 }finally{
     foreach($tokens as $token)Cache::forget('MFA_CHALLENGE:'.hash('sha256',$token));
     DB::table('v2_user_mfa')->whereIn('user_id',$users)->delete();
+    DB::table('v2_passkey')->whereIn('user_id',$users)->delete();
     User::whereIn('id',$users)->delete();
     foreach($users as $id){Cache::forget(CacheKey::get('USER_SESSIONS',$id));foreach(['login:','verify:'] as $purpose)Cache::forget('MFA_LIMIT:'.hash('sha256',$purpose.$id));}
 }

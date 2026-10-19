@@ -99,7 +99,6 @@
             "emailCode": "email_code",
             "invitation": "invitation",
             "inviteCode": "invite_code",
-            "captchaToken": "recaptcha_data",
             "language": "language",
             "languageSelected": "language_selected"
           },
@@ -236,7 +235,6 @@
           "input": {
             "email": "email",
             "password": "password",
-            "captchaToken": "recaptcha_data",
             "language": "language",
             "languageSelected": "language_selected"
           },
@@ -354,7 +352,7 @@
         "security": [],
         "x-permission": "public",
         "x-legacy-path": "/api/v1/passport/auth/token2Login",
-        "description": " Atomically exchange a browser-purpose code for an independent browser session. The source session must still be active; expired or replayed codes are rejected.",
+        "description": " Atomically exchange a browser-purpose code for an independent browser session. The source session must still be active; expired or replayed codes are rejected. Exchanged sessions retain the source authentication time and cannot extend Passkey management assurance.",
         "requestBody": {
           "required": true,
           "content": {
@@ -737,7 +735,6 @@
             "email": "email",
             "resetPassword": "isforget",
             "invitation": "invitation",
-            "captchaToken": "recaptcha_data",
             "language": "language"
           },
           "output": "task",
@@ -1757,7 +1754,7 @@
         },
         "security": [],
         "x-permission": "public",
-        "description": " Atomically exchange an app-purpose code using S256 PKCE and the original redirect URI. Codes expire after 60 seconds and require an active source session; the resulting App session is independently revocable.",
+        "description": " Atomically exchange an app-purpose code using S256 PKCE and the original redirect URI. Codes expire after 60 seconds and require an active source session; the resulting App session is independently revocable. Exchanged sessions retain the source authentication time and cannot extend Passkey management assurance.",
         "requestBody": {
           "required": true,
           "content": {
@@ -1987,7 +1984,7 @@
         },
         "security": [],
         "x-permission": "public",
-        "description": " Browser-only scoped HttpOnly session. X-Browser-Client selects user/admin; mutations require an exact allowed Origin and synchronizer X-CSRF-Token. POST migrates a valid legacy token during the configured transition window.",
+        "description": " Browser-only scoped HttpOnly session. X-Browser-Client selects user/admin; mutations require an exact allowed Origin and synchronizer X-CSRF-Token. POST migrates a valid legacy token during the configured transition window. Exchanged sessions retain the source authentication time and cannot extend Passkey management assurance.",
         "requestBody": {
           "required": false,
           "content": {
@@ -2546,6 +2543,629 @@
           ]
         }
       }
+    },
+    "/me/security/passkeys": {
+      "get": {
+        "operationId": "getMePasskeys",
+        "tags": [
+          "user"
+        ],
+        "summary": "GET /me/security/passkeys",
+        "description": "Browser-only Passkey ceremony. Requires scoped X-Browser-Client, exact configured site Origin and CSRF for mutations. Challenges expire after 300 seconds and have one attempt. Registration requires a current password and a login completed within the last five minutes including existing MFA. User verification and resident credentials are required. Password fallback and existing MFA remain in force. Browser login returns only a scoped HttpOnly session projection, never a bearer token. Removing a credential revokes all account sessions and pending security/authorization proofs. Session exchange or token migration does not refresh the five-minute authentication assurance. Legacy sessions without a trusted authentication timestamp must sign in again. Origins use browser serialization, omitting default ports. No attestation certificates or private keys are retained.",
+        "security": [
+          {
+            "browserUserCookie": []
+          },
+          {
+            "browserAdminCookie": []
+          }
+        ],
+        "x-permission": "user",
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": [
+                    "data"
+                  ],
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/passkeyState"
+                    }
+                  }
+                }
+              }
+            },
+            "headers": {
+              "Cache-Control": {
+                "$ref": "#/components/headers/PrivateNoStore"
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "403": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "409": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "413": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "415": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "419": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "422": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "429": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "500": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "503": {
+            "$ref": "#/components/responses/ProblemDetails"
+          }
+        },
+        "x-runtime": {
+          "input": {},
+          "output": "passkeyState",
+          "role": "user",
+          "status": 200,
+          "raw": false,
+          "bindings": {},
+          "key": "PasskeyController@state"
+        },
+        "x-legacy-entry": {
+          "key": "PasskeyController@state",
+          "legacy": "",
+          "legacyMethod": "GET",
+          "action": "App\\Http\\Controllers\\V10\\PasskeyController@state",
+          "parameters": [],
+          "middleware": [
+            "throttle:10,1,passkey:"
+          ],
+          "scope": "user"
+        }
+      },
+      "post": {
+        "operationId": "postMePasskeys",
+        "tags": [
+          "user"
+        ],
+        "summary": "POST /me/security/passkeys",
+        "description": "Browser-only Passkey ceremony. Requires scoped X-Browser-Client, exact configured site Origin and CSRF for mutations. Challenges expire after 300 seconds and have one attempt. Registration requires a current password and a login completed within the last five minutes including existing MFA. User verification and resident credentials are required. Password fallback and existing MFA remain in force. Browser login returns only a scoped HttpOnly session projection, never a bearer token. Removing a credential revokes all account sessions and pending security/authorization proofs. Session exchange or token migration does not refresh the five-minute authentication assurance. Legacy sessions without a trusted authentication timestamp must sign in again. Origins use browser serialization, omitting default ports. No attestation certificates or private keys are retained.",
+        "security": [
+          {
+            "browserUserCookie": []
+          },
+          {
+            "browserAdminCookie": []
+          }
+        ],
+        "x-permission": "user",
+        "responses": {
+          "201": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": [
+                    "data"
+                  ],
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/passkeyCreated"
+                    }
+                  }
+                }
+              }
+            },
+            "headers": {
+              "Cache-Control": {
+                "$ref": "#/components/headers/PrivateNoStore"
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "403": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "409": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "413": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "415": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "419": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "422": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "429": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "500": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "503": {
+            "$ref": "#/components/responses/ProblemDetails"
+          }
+        },
+        "x-runtime": {
+          "input": {
+            "challengeId": "challengeId",
+            "credentialId": "credentialId",
+            "clientDataJSON": "clientDataJSON",
+            "attestationObject": "attestationObject"
+          },
+          "output": "passkeyCreated",
+          "role": "user",
+          "status": 201,
+          "raw": false,
+          "bindings": {},
+          "key": "PasskeyController@store"
+        },
+        "x-legacy-entry": {
+          "key": "PasskeyController@store",
+          "legacy": "",
+          "legacyMethod": "POST",
+          "action": "App\\Http\\Controllers\\V10\\PasskeyController@store",
+          "parameters": [],
+          "middleware": [
+            "throttle:10,1,passkey:"
+          ],
+          "scope": "user"
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/postMePasskeysInput"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/me/security/passkeys/registration-options": {
+      "post": {
+        "operationId": "postMePasskeyRegistrationOptions",
+        "tags": [
+          "user"
+        ],
+        "summary": "POST /me/security/passkeys/registration-options",
+        "description": "Browser-only Passkey ceremony. Requires scoped X-Browser-Client, exact configured site Origin and CSRF for mutations. Challenges expire after 300 seconds and have one attempt. Registration requires a current password and a login completed within the last five minutes including existing MFA. User verification and resident credentials are required. Password fallback and existing MFA remain in force. Browser login returns only a scoped HttpOnly session projection, never a bearer token. Removing a credential revokes all account sessions and pending security/authorization proofs. Session exchange or token migration does not refresh the five-minute authentication assurance. Legacy sessions without a trusted authentication timestamp must sign in again. Origins use browser serialization, omitting default ports. No attestation certificates or private keys are retained.",
+        "security": [
+          {
+            "browserUserCookie": []
+          },
+          {
+            "browserAdminCookie": []
+          }
+        ],
+        "x-permission": "user",
+        "responses": {
+          "201": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": [
+                    "data"
+                  ],
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/passkeyOptions"
+                    }
+                  }
+                }
+              }
+            },
+            "headers": {
+              "Cache-Control": {
+                "$ref": "#/components/headers/PrivateNoStore"
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "403": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "409": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "413": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "415": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "419": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "422": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "429": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "500": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "503": {
+            "$ref": "#/components/responses/ProblemDetails"
+          }
+        },
+        "x-runtime": {
+          "input": {
+            "password": "password",
+            "name": "name"
+          },
+          "output": "passkeyOptions",
+          "role": "user",
+          "status": 201,
+          "raw": false,
+          "bindings": {},
+          "key": "PasskeyController@options"
+        },
+        "x-legacy-entry": {
+          "key": "PasskeyController@options",
+          "legacy": "",
+          "legacyMethod": "POST",
+          "action": "App\\Http\\Controllers\\V10\\PasskeyController@options",
+          "parameters": [],
+          "middleware": [
+            "throttle:10,1,passkey:"
+          ],
+          "scope": "user"
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/postMePasskeyRegistrationOptionsInput"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/me/security/passkeys/{passkeyId}": {
+      "delete": {
+        "operationId": "deleteMePasskey",
+        "tags": [
+          "user"
+        ],
+        "summary": "DELETE /me/security/passkeys/{passkeyId}",
+        "description": "Browser-only Passkey ceremony. Requires scoped X-Browser-Client, exact configured site Origin and CSRF for mutations. Challenges expire after 300 seconds and have one attempt. Registration requires a current password and a login completed within the last five minutes including existing MFA. User verification and resident credentials are required. Password fallback and existing MFA remain in force. Browser login returns only a scoped HttpOnly session projection, never a bearer token. Removing a credential revokes all account sessions and pending security/authorization proofs. Session exchange or token migration does not refresh the five-minute authentication assurance. Legacy sessions without a trusted authentication timestamp must sign in again. Origins use browser serialization, omitting default ports. No attestation certificates or private keys are retained.",
+        "security": [
+          {
+            "browserUserCookie": []
+          },
+          {
+            "browserAdminCookie": []
+          }
+        ],
+        "x-permission": "user",
+        "responses": {
+          "204": {
+            "description": "Success",
+            "headers": {
+              "Cache-Control": {
+                "$ref": "#/components/headers/PrivateNoStore"
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "403": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "409": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "413": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "415": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "419": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "422": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "429": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "500": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "503": {
+            "$ref": "#/components/responses/ProblemDetails"
+          }
+        },
+        "x-runtime": {
+          "input": {
+            "password": "password"
+          },
+          "output": "scalar",
+          "role": "user",
+          "status": 204,
+          "raw": false,
+          "bindings": {
+            "passkeyId": "passkeyId"
+          },
+          "key": "PasskeyController@remove"
+        },
+        "x-legacy-entry": {
+          "key": "PasskeyController@remove",
+          "legacy": "",
+          "legacyMethod": "DELETE",
+          "action": "App\\Http\\Controllers\\V10\\PasskeyController@remove",
+          "parameters": [
+            "passkeyId"
+          ],
+          "middleware": [
+            "throttle:10,1,passkey:"
+          ],
+          "scope": "user"
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/deleteMePasskeyInput"
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "passkeyId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            }
+          }
+        ]
+      }
+    },
+    "/auth/passkeys/options": {
+      "post": {
+        "operationId": "postAuthPasskeyOptions",
+        "tags": [
+          "passport"
+        ],
+        "summary": "POST /auth/passkeys/options",
+        "description": "Browser-only Passkey ceremony. Requires scoped X-Browser-Client, exact configured site Origin and CSRF for mutations. Challenges expire after 300 seconds and have one attempt. Registration requires a current password and a login completed within the last five minutes including existing MFA. User verification and resident credentials are required. Password fallback and existing MFA remain in force. Browser login returns only a scoped HttpOnly session projection, never a bearer token. Removing a credential revokes all account sessions and pending security/authorization proofs. Session exchange or token migration does not refresh the five-minute authentication assurance. Legacy sessions without a trusted authentication timestamp must sign in again. Origins use browser serialization, omitting default ports. No attestation certificates or private keys are retained.",
+        "security": [],
+        "x-permission": "public",
+        "responses": {
+          "201": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": [
+                    "data"
+                  ],
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/passkeyOptions"
+                    }
+                  }
+                }
+              }
+            },
+            "headers": {
+              "Cache-Control": {
+                "$ref": "#/components/headers/PrivateNoStore"
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "403": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "409": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "413": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "415": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "419": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "422": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "429": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "500": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "503": {
+            "$ref": "#/components/responses/ProblemDetails"
+          }
+        },
+        "x-runtime": {
+          "input": {},
+          "output": "passkeyOptions",
+          "role": "public",
+          "status": 201,
+          "raw": false,
+          "bindings": {},
+          "key": "PasskeyController@loginOptions"
+        },
+        "x-legacy-entry": {
+          "key": "PasskeyController@loginOptions",
+          "legacy": "",
+          "legacyMethod": "POST",
+          "action": "App\\Http\\Controllers\\V10\\PasskeyController@loginOptions",
+          "parameters": [],
+          "middleware": [
+            "throttle:10,1,passkey:"
+          ],
+          "scope": "passport"
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [],
+                "properties": {}
+              }
+            }
+          }
+        }
+      }
+    },
+    "/auth/passkeys/sessions": {
+      "post": {
+        "operationId": "postAuthPasskeySessions",
+        "tags": [
+          "passport"
+        ],
+        "summary": "POST /auth/passkeys/sessions",
+        "description": "Browser-only Passkey ceremony. Requires scoped X-Browser-Client, exact configured site Origin and CSRF for mutations. Challenges expire after 300 seconds and have one attempt. Registration requires a current password and a login completed within the last five minutes including existing MFA. User verification and resident credentials are required. Password fallback and existing MFA remain in force. Browser login returns only a scoped HttpOnly session projection, never a bearer token. Removing a credential revokes all account sessions and pending security/authorization proofs. Session exchange or token migration does not refresh the five-minute authentication assurance. Legacy sessions without a trusted authentication timestamp must sign in again. Origins use browser serialization, omitting default ports. No attestation certificates or private keys are retained.",
+        "security": [],
+        "x-permission": "public",
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": [
+                    "data"
+                  ],
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/authentication"
+                    }
+                  }
+                }
+              }
+            },
+            "headers": {
+              "Cache-Control": {
+                "$ref": "#/components/headers/PrivateNoStore"
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "403": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "409": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "413": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "415": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "419": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "422": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "429": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "500": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "503": {
+            "$ref": "#/components/responses/ProblemDetails"
+          }
+        },
+        "x-runtime": {
+          "input": {
+            "challengeId": "challengeId",
+            "credentialId": "credentialId",
+            "clientDataJSON": "clientDataJSON",
+            "authenticatorData": "authenticatorData",
+            "signature": "signature",
+            "userHandle": "userHandle"
+          },
+          "output": "authentication",
+          "role": "public",
+          "status": 200,
+          "raw": false,
+          "bindings": {},
+          "key": "PasskeyController@login"
+        },
+        "x-legacy-entry": {
+          "key": "PasskeyController@login",
+          "legacy": "",
+          "legacyMethod": "POST",
+          "action": "App\\Http\\Controllers\\V10\\PasskeyController@login",
+          "parameters": [],
+          "middleware": [
+            "throttle:10,1,passkey:"
+          ],
+          "scope": "passport"
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/postAuthPasskeySessionsInput"
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -2735,9 +3355,6 @@
           "inviteCode": {
             "type": "string"
           },
-          "captchaToken": {
-            "type": "string"
-          },
           "language": {
             "type": "string"
           },
@@ -2758,9 +3375,6 @@
             "format": "email"
           },
           "password": {
-            "type": "string"
-          },
-          "captchaToken": {
             "type": "string"
           },
           "language": {
@@ -2828,9 +3442,6 @@
             "type": "boolean"
           },
           "invitation": {
-            "type": "string"
-          },
-          "captchaToken": {
             "type": "string"
           },
           "language": {
@@ -3061,6 +3672,426 @@
             "enum": [
               true
             ]
+          }
+        }
+      },
+      "passkeyCreationKey": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "challenge",
+          "rp",
+          "user",
+          "pubKeyCredParams",
+          "timeout",
+          "authenticatorSelection",
+          "attestation",
+          "excludeCredentials"
+        ],
+        "properties": {
+          "challenge": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9_-]+$",
+            "maxLength": 1400
+          },
+          "rp": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "id",
+              "name"
+            ],
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "name": {
+                "type": "string"
+              }
+            }
+          },
+          "user": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "id",
+              "name",
+              "displayName"
+            ],
+            "properties": {
+              "id": {
+                "type": "string",
+                "pattern": "^[A-Za-z0-9_-]+$",
+                "maxLength": 1400
+              },
+              "name": {
+                "type": "string"
+              },
+              "displayName": {
+                "type": "string"
+              }
+            }
+          },
+          "pubKeyCredParams": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "type",
+                "alg"
+              ],
+              "properties": {
+                "type": {
+                  "type": "string",
+                  "enum": [
+                    "public-key"
+                  ]
+                },
+                "alg": {
+                  "type": "integer",
+                  "enum": [
+                    -7,
+                    -257,
+                    -8
+                  ]
+                }
+              }
+            }
+          },
+          "timeout": {
+            "type": "integer"
+          },
+          "authenticatorSelection": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "requireResidentKey",
+              "residentKey",
+              "userVerification"
+            ],
+            "properties": {
+              "requireResidentKey": {
+                "type": "boolean",
+                "enum": [
+                  true
+                ]
+              },
+              "residentKey": {
+                "type": "string",
+                "enum": [
+                  "required"
+                ]
+              },
+              "userVerification": {
+                "type": "string",
+                "enum": [
+                  "required"
+                ]
+              },
+              "authenticatorAttachment": {
+                "type": "string"
+              }
+            }
+          },
+          "attestation": {
+            "type": "string",
+            "enum": [
+              "none"
+            ]
+          },
+          "excludeCredentials": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "type",
+                "id"
+              ],
+              "properties": {
+                "type": {
+                  "type": "string",
+                  "enum": [
+                    "public-key"
+                  ]
+                },
+                "id": {
+                  "type": "string",
+                  "pattern": "^[A-Za-z0-9_-]+$",
+                  "maxLength": 1400
+                },
+                "transports": {
+                  "type": "array",
+                  "items": {
+                    "type": "string",
+                    "enum": [
+                      "usb",
+                      "nfc",
+                      "ble",
+                      "hybrid",
+                      "internal"
+                    ]
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "passkeyRequestKey": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "challenge",
+          "rpId",
+          "timeout",
+          "userVerification"
+        ],
+        "properties": {
+          "challenge": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9_-]+$",
+            "maxLength": 1400
+          },
+          "rpId": {
+            "type": "string"
+          },
+          "timeout": {
+            "type": "integer"
+          },
+          "userVerification": {
+            "type": "string",
+            "enum": [
+              "required"
+            ]
+          },
+          "allowCredentials": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "type",
+                "id"
+              ],
+              "properties": {
+                "type": {
+                  "type": "string",
+                  "enum": [
+                    "public-key"
+                  ]
+                },
+                "id": {
+                  "type": "string",
+                  "pattern": "^[A-Za-z0-9_-]+$",
+                  "maxLength": 1400
+                },
+                "transports": {
+                  "type": "array",
+                  "items": {
+                    "type": "string",
+                    "enum": [
+                      "usb",
+                      "nfc",
+                      "ble",
+                      "hybrid",
+                      "internal"
+                    ]
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "passkeyOptions": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "challengeId",
+          "expiresAt",
+          "publicKey"
+        ],
+        "properties": {
+          "challengeId": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$"
+          },
+          "expiresAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "publicKey": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/passkeyCreationKey"
+              },
+              {
+                "$ref": "#/components/schemas/passkeyRequestKey"
+              }
+            ]
+          }
+        }
+      },
+      "passkeyEntry": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "name",
+          "rpId",
+          "createdAt",
+          "lastUsedAt"
+        ],
+        "properties": {
+          "id": {
+            "type": "integer"
+          },
+          "name": {
+            "type": "string"
+          },
+          "rpId": {
+            "type": "string"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "lastUsedAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          }
+        }
+      },
+      "passkeyState": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "enabled",
+          "credentials"
+        ],
+        "properties": {
+          "enabled": {
+            "type": "boolean"
+          },
+          "credentials": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/passkeyEntry"
+            }
+          }
+        }
+      },
+      "passkeyCreated": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id"
+        ],
+        "properties": {
+          "id": {
+            "type": "integer"
+          }
+        }
+      },
+      "postMePasskeyRegistrationOptionsInput": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "password",
+          "name"
+        ],
+        "properties": {
+          "password": {
+            "type": "string",
+            "maxLength": 128
+          },
+          "name": {
+            "type": "string",
+            "maxLength": 64
+          }
+        }
+      },
+      "postMePasskeysInput": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "challengeId",
+          "credentialId",
+          "clientDataJSON",
+          "attestationObject"
+        ],
+        "properties": {
+          "challengeId": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$"
+          },
+          "credentialId": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9_-]+$",
+            "maxLength": 1400
+          },
+          "clientDataJSON": {
+            "type": "string",
+            "maxLength": 16384
+          },
+          "attestationObject": {
+            "type": "string",
+            "maxLength": 131072
+          }
+        }
+      },
+      "deleteMePasskeyInput": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "password"
+        ],
+        "properties": {
+          "password": {
+            "type": "string",
+            "maxLength": 128
+          }
+        }
+      },
+      "postAuthPasskeySessionsInput": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "challengeId",
+          "credentialId",
+          "clientDataJSON",
+          "authenticatorData",
+          "signature",
+          "userHandle"
+        ],
+        "properties": {
+          "challengeId": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$"
+          },
+          "credentialId": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9_-]+$",
+            "maxLength": 1400
+          },
+          "clientDataJSON": {
+            "type": "string",
+            "maxLength": 16384
+          },
+          "authenticatorData": {
+            "type": "string",
+            "maxLength": 8192
+          },
+          "signature": {
+            "type": "string",
+            "maxLength": 4096
+          },
+          "userHandle": {
+            "type": "string",
+            "maxLength": 128
           }
         }
       }

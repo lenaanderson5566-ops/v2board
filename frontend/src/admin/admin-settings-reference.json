@@ -144,26 +144,6 @@
       "child": true,
       "line": 5841
     },
-    "recaptcha_enable": {
-      "label": "防机器人",
-      "hint": "开启后将会使用Google reCAPTCHA防止机器人。",
-      "child": false,
-      "line": 5847
-    },
-    "recaptcha_key": {
-      "label": "密钥",
-      "hint": "在Google reCAPTCHA申请的密钥。",
-      "placeholder": "请输入",
-      "child": true,
-      "line": 5857
-    },
-    "recaptcha_site_key": {
-      "label": "网站密钥",
-      "hint": "在Google reCAPTCH申请的网站密钥。",
-      "placeholder": "请输入",
-      "child": true,
-      "line": 5867
-    },
     "register_limit_by_ip_enable": {
       "label": "IP注册限制",
       "hint": "开启后如果IP注册账户达到规则要求将会被限制注册，请注意IP判断可能因为CDN或前置代理导致问题。",
@@ -210,6 +190,11 @@
       "placeholder": "请输入",
       "child": true,
       "line": 6026
+    },
+    "passkey_enable": {
+      "label": "允许 Passkey 登录",
+      "hint": "使用设备生物识别、PIN 或安全密钥登录。需 HTTPS 站点 URL 和 Passkey 数据表；账户在安全中心自行绑定，已有 MFA 继续生效。",
+      "child": false
     }
   },
   "subscribe": {

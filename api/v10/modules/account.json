@@ -1955,20 +1955,6 @@
               "strings"
             ]
           },
-          "captchaRequired": {
-            "type": "boolean",
-            "x-runtime-field": [
-              "is_recaptcha",
-              "boolean"
-            ]
-          },
-          "captchaSiteKey": {
-            "type": "string",
-            "nullable": true,
-            "x-runtime-field": [
-              "recaptcha_site_key"
-            ]
-          },
           "description": {
             "type": "string",
             "nullable": true,

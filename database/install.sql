@@ -747,3 +747,20 @@ CREATE TABLE IF NOT EXISTS `v2_user_mfa` (
   `version` int unsigned NOT NULL DEFAULT 0,
   PRIMARY KEY (`user_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS `v2_passkey` (
+  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
+  `user_id` int unsigned NOT NULL,
+  `credential_hash` varchar(64) NOT NULL,
+  `credential_id` text NOT NULL,
+  `public_key` text NOT NULL,
+  `user_handle` varchar(64) NOT NULL,
+  `rp_id` varchar(253) NOT NULL,
+  `name` varchar(64) NOT NULL,
+  `sign_count` bigint unsigned NOT NULL DEFAULT 0,
+  `created_at` int unsigned NOT NULL,
+  `last_used_at` int unsigned DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `v2_passkey_credential_hash_unique` (`credential_hash`),
+  KEY `v2_passkey_user_id_index` (`user_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;

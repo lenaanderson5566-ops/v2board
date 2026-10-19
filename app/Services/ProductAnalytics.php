@@ -42,6 +42,11 @@ final class ProductAnalytics {
             $session = DB::table('v2_analytics_session')->where('session_hash',$hash)->lockForUpdate()->first();
             // A browser identifier cannot extend a session indefinitely.
             if ($now-(int)$session->last_at > 1800 || $now-(int)$session->created_at >= 86400) return;
+            if (($event['event'] ?? 'view') !== 'view') {
+                DB::table('v2_analytics_session')->where('id',$session->id)->update(['last_at'=>$now]);
+                app(ExperienceMeasurements::class)->record((int)$session->id,$event);
+                return;
+            }
             $page = $event['page'];
             $stage = (int)$session->stage;
             $next = ['plan'=>1,'confirmation'=>2,'payment'=>3][$page] ?? 0;
@@ -61,6 +66,7 @@ final class ProductAnalytics {
         $ids = DB::table('v2_analytics_session')->where('created_at','<',$cutoff)->orderBy('id')->limit(5000)->pluck('id');
         if ($ids->isEmpty()) return 0;
         return DB::transaction(function () use ($ids) {
+            if (app(ExperienceMeasurements::class)->ready()) DB::table('v2_analytics_measurement')->whereIn('session_id',$ids)->delete();
             DB::table('v2_analytics_page')->whereIn('session_id',$ids)->delete();
             return DB::table('v2_analytics_session')->whereIn('id',$ids)->delete();
         });
@@ -78,7 +84,15 @@ final class ProductAnalytics {
         $started=(int)RiskSetting::where('key','analytics_started_at')->value('value');
         $daily=[]; $previous=null; $sources=[]; $sourceGroups=0; $sourcesReady=$ready && $this->sourcesReady();
         $pages=[]; $funnel=[0,0,0]; $visits=0; $views=0; $devices=[]; $latest=null;
+        $hours=array_fill(0,24,0); $weekdays=array_fill(0,7,0);
         if ($ready) {
+            // UTC quarter-hour buckets support current half/quarter-hour offsets without MySQL timezone tables.
+            $slots=(clone $sessions)->selectRaw('FLOOR(created_at / 900) AS slot, COUNT(*) AS count')->groupBy('slot')->get();
+            foreach ($slots as $slot) {
+                $local=(new \DateTimeImmutable('@'.((int)$slot->slot*900)))->setTimezone($zone);
+                $hours[(int)$local->format('G')]+=(int)$slot->count;
+                $weekdays[(int)$local->format('N')-1]+=(int)$slot->count;
+            }
             if ($sourcesReady) {
                 $grouped=(clone $sessions)->select('attribution_version','source_domain')
                     ->selectRaw('COUNT(*) AS sessions, SUM(CASE WHEN stage>=1 THEN 1 ELSE 0 END) AS plans, SUM(CASE WHEN stage>=2 THEN 1 ELSE 0 END) AS confirmations, SUM(CASE WHEN stage>=3 THEN 1 ELSE 0 END) AS payments')
@@ -141,7 +155,7 @@ final class ProductAnalytics {
             })->count();
         };
         return ['settings'=>$settings,'ready'=>$ready,'timeZone'=>TimeZones::system(),'from'=>gmdate('c',$start),'to'=>gmdate('c',$now),
-            'sourcesReady'=>$sourcesReady,'sources'=>$sources,'sourceGroups'=>$sourceGroups,'daily'=>array_values($daily),'previous'=>$previous,'effectiveFrom'=>gmdate('c',max($effectiveStart,$started)),'collectionStartedAt'=>$started ? gmdate('c',$started) : null,
+            'hours'=>$hours,'weekdays'=>$weekdays,'sourcesReady'=>$sourcesReady,'sources'=>$sources,'sourceGroups'=>$sourceGroups,'daily'=>array_values($daily),'previous'=>$previous,'effectiveFrom'=>gmdate('c',max($effectiveStart,$started)),'collectionStartedAt'=>$started ? gmdate('c',$started) : null,
             'latestEventAt'=>$latest ? gmdate('c',$latest) : null,'sessions'=>$visits,'views'=>$views,'pages'=>$pages,'devices'=>$devices,
             'funnel'=>array_map(fn($id,$count)=>['step'=>$id,'sessions'=>$count],['plan','confirmation','payment'],$funnel),
             'cohort'=>['from'=>gmdate('c',$cohortStart),'to'=>gmdate('c',$cohortEnd),'windowDays'=>7,'registered'=>$registered,

@@ -28,6 +28,11 @@ final class BrowserSessionActions
             abort_unless($user,401,__('Unauthenticated.'));
             abort_if($user['banned'] || ($record['scope']==='admin' && !$user['is_admin']),403,__('Account is disabled.'));
             $auth=new AuthService(\App\Models\User::findOrFail($user['id']));
+            $source=AuthService::sessionReference($credential);
+            abort_unless($source,401,__('Unauthenticated.'));
+            $request->attributes->set('auth.authenticatedAt',AuthService::authenticatedAt($source));
+            $request->attributes->set('mfa.verifiedUserId',(int)$user['id']);
+            $request->attributes->set('mfa.verifiedVersion',(int)$source['mfaVersion']);
             $new=$auth->generateAuthData($request)['auth_data'];
             $auth->removeCurrentSession($credential);
             app(BrowserSession::class)->destroy($record);

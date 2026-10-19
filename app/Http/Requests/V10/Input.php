@@ -19,6 +19,8 @@ final class Input
             throw \Illuminate\Validation\ValidationException::withMessages(['couponCode'=>__('Please select this coupon from your wallet.')]);
         }
         $types = [
+            'clientDataJSON'=>'string|max:16384','attestationObject'=>'string|max:131072','credentialId'=>'string|max:1400',
+            'authenticatorData'=>'string|max:8192','signature'=>'string|max:4096','userHandle'=>'string|max:128','passkeyId'=>'integer|min:1',
             'displayTimeZone'=>'nullable|string|timezone',
             'telegramId'=>'string|regex:/^[1-9][0-9]{0,15}$/D',
             'events'=>'array|max:30',
@@ -36,7 +38,7 @@ final class Input
             'email'=>'string|email:strict|max:254', 'password'=>'string|min:8|max:128',
             'oldPassword'=>'string|max:128','newPassword'=>'string|min:8|max:128',
             'emailCode'=>'string|digits:6', 'invitation'=>'string|regex:/^[a-f0-9]{64}$/',
-            'captchaToken'=>'string|max:8192','verificationToken'=>'string|max:128',
+            'verificationToken'=>'string|max:128',
             'planId'=>'integer|min:0','replacementOrderNumber'=>'string|max:64',
             'billingPeriod'=>'string|in:monthly,quarterly,semiannual,annual,biennial,triennial,credits,reset,deposit',
             'orderNumber'=>'string|max:64','expectedPaymentAmount'=>'integer|min:1|max:1000000000','expectedPaymentCurrency'=>'in:CNY,USD',
@@ -52,6 +54,8 @@ final class Input
             'notificationId'=>'integer|min:1','version'=>'integer|min:0','redirect'=>'string|regex:/^[a-z0-9-]+$/',
             'placement'=>'in:landing,dashboard','status'=>'in:unpaid,processing,cancelled,completed,discounted'
         ];
+        // Existing passwords are verified, not changed; legacy accounts may predate the new-password policy.
+        if (in_array($contract['key'],['PasskeyController@options','PasskeyController@remove'],true)) $types['password']='string|max:128';
         $required = [
             'User/NoticeController@readTicket'=>['ticketId','version'],
             'User/TelegramController@confirmBinding'=>['telegramId'],

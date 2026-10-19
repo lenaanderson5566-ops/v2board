@@ -20,8 +20,6 @@ const dependencies: Record<string, (values: Row) => boolean> = {
     email_mailgun_api_key: (v) => v.email_provider === "mailgun",
     try_out_hour: (v) => Number(v.try_out_plan_id) > 0,
     email_whitelist_suffix: (v) => on(v.email_whitelist_enable),
-    recaptcha_key: (v) => on(v.recaptcha_enable),
-    recaptcha_site_key: (v) => on(v.recaptcha_enable),
     register_limit_count: (v) => on(v.register_limit_by_ip_enable),
     register_limit_expire: (v) => on(v.register_limit_by_ip_enable),
     password_limit_count: (v) => on(v.password_limit_enable),
@@ -74,11 +72,6 @@ export function validateSettings(values: Row): string | undefined {
             Number(values.show_subscribe_expire) < 1)
     )
         return "限时订阅链接有效时间至少为 1 分钟";
-    if (
-        on(values.recaptcha_enable) &&
-        (!values.recaptcha_key || !values.recaptcha_site_key)
-    )
-        return "启用 reCAPTCHA 时必须填写站点密钥和服务端密钥";
     if (on(values.email_whitelist_enable)) {
         let suffixes = values.email_whitelist_suffix;
         if (typeof suffixes === "string") {

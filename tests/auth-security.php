@@ -123,7 +123,8 @@ try {
     $assert((int)Illuminate\Support\Facades\Cache::get($limitKey)===2, 'Case variation bypassed password limiter');
     $assert($login($user->email,'test-only-password')->getStatusCode()===500, 'Password limit not enforced');
     config(['v2board.recaptcha_enable'=>1]);
-    $assert($login($user->email,'test-only-password')->getStatusCode()===422, 'Enabled CAPTCHA accepted a missing challenge');
+    Illuminate\Support\Facades\Cache::forget($limitKey);
+    $assert($login($user->email,'test-only-password')->getStatusCode()===200, 'Retired CAPTCHA configuration must not block password login');
     $auth->removeAllSession();
     $assert(App\Services\AuthService::decryptAuthData($second)===false, 'All-session revocation failed');
     echo "Authentication security: $checks checks passed\n";

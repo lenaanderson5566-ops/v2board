@@ -19,7 +19,7 @@ $assert(!Helper::emailSuffixVerify('x@y@qq.com',['qq.com']),'Malformed email acc
 $original=config('v2board');Queue::fake();DB::beginTransaction();
 $emails=['policy-new@example.test','policy-existing@legacy.test'];
 try{
- config(['v2board.invite_force'=>1,'v2board.email_whitelist_enable'=>1,'v2board.email_whitelist_suffix'=>' Example.Test ','v2board.stop_register'=>0,'v2board.recaptcha_enable'=>0,'v2board.email_gmail_limit_enable'=>0]);
+ config(['v2board.invite_force'=>1,'v2board.email_whitelist_enable'=>1,'v2board.email_whitelist_suffix'=>' Example.Test ','v2board.stop_register'=>0,'v2board.email_gmail_limit_enable'=>0]);
  $owner=User::create(['email'=>'policy-owner@example.test','password'=>'test','uuid'=>Helper::guid(true),'token'=>Helper::guid(),'banned'=>0]);
  User::create(['email'=>$emails[1],'password'=>'test','uuid'=>Helper::guid(true),'token'=>Helper::guid()]);
  $token=str_repeat('a',64);$inv=EmailInvitation::create(['user_id'=>$owner->id,'email'=>$emails[0],'email_hash'=>hash('sha256',$emails[0]),'token_hash'=>hash('sha256',$token),'expires_at'=>time()+3600,'last_requested_at'=>time()]);

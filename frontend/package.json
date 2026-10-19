@@ -9,7 +9,7 @@
         "package:frontends": "node scripts/package-frontends.mjs",
         "test": "vitest run",
         "test:payments": "vitest run src/user/BillingFlow.test.tsx src/user/PaymentCheckout.test.tsx src/user/PaymentMethodPicker.test.tsx src/user/PaymentPolling.test.tsx src/user/OrderHelp.test.tsx src/user/PendingOrderNotice.test.tsx src/shared/order-price.test.ts src/shared/field-values.test.ts src/shared/v10-api.test.ts src/admin/payment-fields.test.ts src/admin/Payments.test.tsx src/admin/PaymentCallbackHistory.test.tsx src/admin/billing-price-input.test.ts src/admin/AdminBillingCurrency.test.tsx",
-        "test:mfa": "vitest run Mfa UserAuth.test AdminAuth.test",
+        "test:mfa": "vitest run Mfa Passkey passkey UserAuth.test AdminAuth.test",
         "test:mail": "vitest run AdminMail MailHealth EmailInvites",
         "test:coupons": "vitest run Coupon"
     },
@@ -27,7 +27,8 @@
         "react-ace": "^15.0.0",
         "react-dom": "^19.0.0",
         "react-i18next": "^17.0.15",
-        "react-markdown-editor-lite": "^1.4.2"
+        "react-markdown-editor-lite": "^1.4.2",
+        "web-vitals": "6.2.3"
     },
     "overrides": {
         "react-markdown-editor-lite": {

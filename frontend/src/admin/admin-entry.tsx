@@ -1,3 +1,4 @@
+import { PasskeySecurity } from "../shared/PasskeySecurity";
 import { ErrorBoundary } from "../shared/ErrorBoundary";
 import { lazy, Suspense } from "react";
 const AdminAnalytics = lazy(() =>
@@ -96,7 +97,7 @@ const Overview = lazy(() =>
 );
 function AdminPageContent({ current }: { current: string }) {
     if (current === "analytics") return <AdminAnalytics />;
-    if (current === "security") return <MfaSecurity />;
+    if (current === "security") return <><MfaSecurity /><PasskeySecurity /></>;
     if (current === "plans" || current === "translations")
         return <AdminSubscriptions key={current} initialTab={current} />;
     if (current === "log-settings" || current === "risk-settings")

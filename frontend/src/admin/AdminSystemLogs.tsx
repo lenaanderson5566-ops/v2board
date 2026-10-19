@@ -1,3 +1,4 @@
+import { TableViewport } from "../shared/ui";
 import { AdminFilterBar } from "./AdminFilterBar";
 import { Pager } from "../shared/ui";
 import {
@@ -185,7 +186,7 @@ export function AdminSystemLogs() {
                     小时。历史日志的检索字段由清理任务分批补齐；不展示原始请求参数、异常内容或历史敏感字段。
                 </p>
                 <State {...logs} retry={logs.reload}>
-                    <div className="table-scroll">
+                    <TableViewport>
                         <table>
                             <thead>
                                 <tr>
@@ -226,7 +227,7 @@ export function AdminSystemLogs() {
                         {!logs.data?.length && (
                             <p className="pad">暂无匹配日志</p>
                         )}
-                    </div>
+                    </TableViewport>
                 </State>
                 <Pager
                     page={page}

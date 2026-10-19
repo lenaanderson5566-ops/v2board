@@ -1,3 +1,4 @@
+import { TableViewport } from "../shared/ui";
 import { useRef, useState } from "react";
 import {
     AlertCircle,
@@ -94,7 +95,7 @@ function EvidenceComparison({ row }: { row: Row }) {
     return (
         <section className="invitation-evidence">
             <h3>注册来源对比</h3>
-            <div className="table-wrap">
+            <TableViewport>
                 <table className="invitation-comparison">
                     <thead>
                         <tr>
@@ -148,7 +149,7 @@ function EvidenceComparison({ row }: { row: Row }) {
                         </tr>
                     </tbody>
                 </table>
-            </div>
+            </TableViewport>
             <p className="muted">
                 IP、UA
                 结果为受邀用户注册时的摘要比对，不是当前登录来源。系统未保存原始注册

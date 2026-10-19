@@ -1,3 +1,25 @@
+## 后台共用界面回归
+
+复用 admin-workspaces.test.tsx 增加统一表格可聚焦、操作列标记、操作回调、筛选提交/重置分离检查。沿用 OperationsAnalytics 分页及空数据测试，以及全部用户、订单、节点、优惠券、邮件、风控、设置组件回归。优惠券模拟补入真实 TableViewport，保留取消操作确认及防重复断言；补齐共享组件的 14 种语言无障碍文案。
+
+最终前端全量 721 项通过，TypeScript 与生产构建通过。首轮 718 项通过、3 项失败（2 项模拟缺少新组件导出、1 项缺少翻译），修正后全量重跑通过。过程与最终报告为 storage/app/test-organization/browser-access/admin-unified-{all,final}.json，构建日志为 admin-unified-build.log。未修改后端接口或迁移，视觉验证范围见 frontend-validation.md。
+
+## 节点编辑界面验证
+
+复用 admin-location-select.test.tsx 与 node-location-options.test.ts，23 项通过，覆盖当前选项定位、Enter 不误清空、Home / End、匹配数量提示、名称预览、清空地区回退原名称、城市别名及自定义后缀安全转义。首次定位测试发现勾号进入无障碍名称，修复 aria-hidden 后重跑全部定向测试通过。TypeScript 与生产构建通过，构建日志 storage/app/test-organization/browser-access/node-ui-build.log。未修改后端或新增接口。
+
+## 节点专用国家字典与独立地区语义
+
+复用 tests/node-display.php：验证节点目录使用节点专用国家字典、代码归一化、未知代码与语言兜底、私有及无效 IP 保持未知、节点展示不读取 GeoIP 字段。以本地确定性 GeoIP Reader 记录验证已知及未知代码都保留 GeoIP 自身名称，不引用节点字典；恢复静态 Reader，避免污染后续测试。于容器内独立副本和 SQLite 内存配置运行，5,685 项断言通过，未访问业务数据库。
+
+前一轮前端全量 715 项通过（geography-all.json）。将字典限定为节点专用并恢复 GeoIP 原逻辑后，重新运行后端 5,685 项、前端地区选择及城市联动定向 19 项；TypeScript 检查及生产构建结果见 storage/app/test-organization/browser-access/node-geography-build.log。新增字典保持原有 264 项代码和翻译，未新增迁移或改变 API 合约。
+
+## 浏览器引导语言验证
+
+复用 AdminBrowserPreview.test.tsx、EmbeddedBrowserNotice.test.tsx 和 localization.test.ts：遍历 14 个语言资源验证引导词条非空、占位符一致、非英语文案不再沿用英文兜底；逐语言渲染标题、iOS 提示、继续按钮、复制反馈和手动网址。检查局部 lang / dir、全局文档语言与持久化偏好不变，以及快速切换后仅显示最终语言。保留原策略、复制失败、安全链接清洗和业务页面隔离断言。
+
+定向 89 项、全量 714 项通过，生产构建通过。全量与构建结果见 storage/app/test-organization/browser-access/languages-all.json 和 languages-build.log。本轮仅前端文案和预览调整，无 PHP、路由、数据库或接口契约修改。
+
 ## 报表分类与设置入口整理
 
 - AdminAnalytics 使用共享 AdminTabs 拆分访问概览、来源与浏览器、购买转化、用户体验、安全访问、支付与邮件、运行健康；只挂载当前类别，时间/设备筛选在分类切换时保留。运营类禁用设备筛选，浏览器明细在最多 100 个服务端组合内按每页 20 项展示。
@@ -330,3 +352,5 @@ mfa-api 沿用真实路由、Cookie、CSRF 和真实密钥签名，覆盖 ES256 
 
 
 最终归档：15 个相关后端模块均有完整成功输出，Passkey/MFA 197 项，原生配置 65 项；节点显示和订阅信息复测通过。summary.json 排除旧日志中的假成功，仅收录最终明确完成的结果。前端 675 项与构建通过，测试容器已停止，未部署生产。
+
+后台菜单逐页回归归入既有 frontend/src/admin/admin-workspaces.test.tsx，使用 test-support/page-fixtures.ts 统一空数据响应；覆盖所有 legacyAdminMenu 入口加载、标题与异常边界。浏览器截图、窄屏布局记录、全量 Vitest JSON 与构建日志仅写入 storage/app/test-organization/，不提交临时预览入口。

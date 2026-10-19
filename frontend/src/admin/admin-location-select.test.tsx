@@ -16,6 +16,7 @@ import { Editor, EditorFieldContext } from "../shared/ui";
 import { adminEditorField } from "./admin-editor-fields";
 import { linkNode } from "./admin-linkage";
 import { AdminCitySelect } from "./admin-city-select";
+import { NodeNamePreview } from "./NodeNamePreview";
 import { AdminRegionSelect } from "./admin-region-select";
 afterEach(cleanup);
 it("limits city references to the selected country", () => {
@@ -118,7 +119,9 @@ it("renders a Chinese city label but saves the city identifier in the node edito
 
 it("searches geographic names without cloud code aliases", () => {
     const change = vi.fn();
-    render(<AdminCitySelect label="位置" value="" region="US" onChange={change} />);
+    render(
+        <AdminCitySelect label="位置" value="" region="US" onChange={change} />,
+    );
     const input = screen.getByRole("combobox");
     fireEvent.change(input, { target: { value: "California" } });
     expect(change).toHaveBeenLastCalledWith("california");
@@ -218,4 +221,90 @@ it("submits the country code through the node editor and clears to null", async 
     await waitFor(() =>
         expect(save).toHaveBeenLastCalledWith({ region_code: null }),
     );
+});
+
+it("keeps node display regions independent of IP observations", async () => {
+    const { nodeSettingsFields, nodeSettingsPayload } =
+        await import("./node-settings");
+    const fields = nodeSettingsFields([
+        { key: "region_code", label: "国家 / 地区", type: "select" },
+    ]);
+    expect(fields[0].hint).toContain("不会自动覆盖");
+    const payload = nodeSettingsPayload({
+        region_code: "US",
+        country: "Japan",
+        city_code: "",
+    });
+    expect(payload.region_code).toBe("US");
+});
+
+it("opens the region picker at the saved selection without clearing it on Enter", () => {
+    const change = vi.fn();
+    render(<AdminRegionSelect label="地区" value="JP" onChange={change} />);
+    const input = screen.getByRole("combobox");
+    fireEvent.focus(input);
+    const selected = screen.getByRole("option", { name: "日本（JP）" });
+    expect(input.getAttribute("aria-activedescendant")).toBe(selected.id);
+    fireEvent.keyDown(input, { key: "Enter" });
+    expect(change).toHaveBeenCalledWith("JP");
+});
+it("supports Home and End and announces filtered region results", () => {
+    render(<AdminRegionSelect label="地区" value="" onChange={() => {}} />);
+    const input = screen.getByRole("combobox");
+    fireEvent.change(input, { target: { value: "United" } });
+    const options = screen.getAllByRole("option");
+    expect(screen.getByRole("status").textContent).toContain(
+        `共 ${options.length} 个选项`,
+    );
+    fireEvent.keyDown(input, { key: "End" });
+    expect(input.getAttribute("aria-activedescendant")).toBe(
+        options.at(-1)!.id,
+    );
+    fireEvent.keyDown(input, { key: "Home" });
+    expect(input.getAttribute("aria-activedescendant")).toBe(options[0].id);
+});
+it("previews localized node names and reacts to clearing the configured region", () => {
+    const { rerender } = render(
+        <NodeNamePreview
+            values={{
+                name: "Legacy",
+                region_code: "US",
+                city_code: "San Jose",
+                display_label: " A ",
+            }}
+        />,
+    );
+    expect(screen.getByText("美国 · 圣何塞 · A")).toBeTruthy();
+    expect(screen.getByText("United States · San Jose · A")).toBeTruthy();
+    rerender(
+        <NodeNamePreview
+            values={{
+                name: "Legacy",
+                region_code: "",
+                city_code: "tokyo",
+                country: "Japan",
+            }}
+        />,
+    );
+    expect(screen.getAllByText("Legacy")).toHaveLength(2);
+    expect(
+        screen.getByText("未选择国家 / 地区，将保留原节点名称。"),
+    ).toBeTruthy();
+});
+it("escapes custom suffixes and supports custom city slugs", () => {
+    render(
+        <NodeNamePreview
+            values={{
+                region_code: "US",
+                city_code: "custom_city",
+                display_label: "<img src=x onerror=alert(1)>",
+            }}
+        />,
+    );
+    expect(
+        screen.getByText(
+            "United States · Custom City · <img src=x onerror=alert(1)>",
+        ),
+    ).toBeTruthy();
+    expect(document.querySelector("img")).toBeNull();
 });

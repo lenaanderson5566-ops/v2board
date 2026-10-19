@@ -1,3 +1,31 @@
+## 后台统一界面基础
+
+后台入口统一载入 admin-surfaces.css，维护面板标题、工具区、筛选、表格、分页、空状态的间距与窄屏规则；业务组件继续负责查询与保存。共享 TableViewport 位于 shared/ui，保留 ui.tsx 公共导出。后台通用 Table 使用同一可键盘聚焦的滚动容器，用户侧 Table 保留原容器行为。
+
+12 个自定义表格模块接入 TableViewport：AdminAnalytics、AdminClientDiagnostics、AdminCouponCampaigns、AdminDDNS、AdminMailBlocklist、AdminMailLogs、AdminSystemLogs、AdminTelegramCommunity、InvitationEmails、InvitationReviews、MailHealth、OperationsAnalytics。日志筛选、邀请邮件、邮件健康和禁发名单查询接入 AdminFilterBar；ReportTable 复用 Pager 与 Empty，分页条在滚动区之外。通用资源页、用户、订单、节点、支付等继续通过既有 Panel/Table/Editor 复用统一规则，未改业务接口。
+
+修复全局 td:last-child 固定造成普通统计列遮挡：仅明确标记的 table-actions 固定，600px 以下取消固定。修复 section-tabs 普通按钮选择器优先级高于选中样式的问题，统一突出当前标签。TableViewport 无障碍名称包含全部 14 种语言翻译。
+
+IAB 在本机合成组件页面检查桌面列表、日志筛选、报表末页和 390px iframe 中的筛选/表单/空状态。真实组件使用合成数据，没有连接生产后台；并非逐页真实账号验收。截图位于 storage/app/test-organization/browser-access/admin-unified-{desktop,mobile}.png。验证选中标签的计算颜色与下边框均为 #635bff。
+
+## 节点编辑名称预览与地区选择
+
+节点编辑复用节点专用国家、城市字典，显示中文和英文名称预览，随地区、城市、线路后缀变化；未设地区保留原名称，未知代码提示重新选择。注明订阅可能额外附加旗帜、代码及重名序号，避免将预览误当作完整订阅输出。纯本地计算，不调用 GeoIP 或新增请求。
+
+地区选择器打开时定位当前选项，保留名称/代码/多语言搜索，新增 Home / End、匹配数量及操作提示；选中勾号对读屏隐藏。IAB 在本地合成节点编辑表单（360px 容器）检查实际组件布局、中文/英文预览和 US → JP 城市清空联动。截图 storage/app/test-organization/browser-access/node-ui-preview.png；未连接生产后台。
+
+## 节点地区与访问来源区分
+
+节点地区选择器及编辑器改用节点专用 node-countries.json。节点编辑提示明确管理员配置、订阅用途和不被 GeoIP 覆盖；访问统计标题及表头明确访问 IP / GeoIP。复用 admin-location-select 与 node-location-options 测试，检查选择、城市联动、配置地区不受观测名称影响。此轮未进行新的浏览器视觉验收。
+
+## 浏览器引导多语言补全与独立预览
+
+补全当前 14 种支持语言的浏览器引导文案：11 种语言原有英文兜底的应用内浏览器名称、iOS / Android / 桌面步骤和继续访问按钮已本地化；统一系统浏览器标题、理由及复制反馈，兼顾桌面设备。品牌名称保留通用名称，繁体中文品牌名本地化。
+
+后台预览新增「预览语言」，按需载入既有 locale JSON，仅向共享 BrowserNoticeView 注入对应词条；不调用全局 changeLanguage，不改文档语言、语言偏好、账号或访问统计。切换语言期间显示加载状态，失败可重试，过时异步响应被忽略。波斯语卡片设置 lang=fa-IR / dir=rtl，示例网址始终 dir=ltr。
+
+IAB 使用仅本机 Vite 和合成站点检查德语长标题换行、波斯语 RTL 及后台中文控制区。预览宽度 390px，卡片可纵向滚动；未进行真实应用浏览器验收。截图：storage/app/test-organization/browser-access/language-preview-fa.png。
+
 ## 分标签报表与设置归位
 
 访问与转化改为七个用途标签，只有当前标签内容挂载。保留时间/设备筛选，业务数据不会误受设备筛选限制。浏览器组合表按 20 项分页；其他报表保留原统计口径及空数据说明。
@@ -505,3 +533,52 @@ V10 前端契约和类型改由规范源统一生成；复用 v10-api.test.ts �
 设备验证仍由点击/表单提交触发，经 fetch 获取服务端挑战后调用 WebAuthn；未预设为平台认证器，继续允许跨设备和安全密钥。服务端补验 ES256、RS256、Ed25519 和同步凭据的零计数器，并规范化配置域名大小写及默认端口。前端为 DOM/请求模拟，本轮未做 Safari/Firefox 或指纹、人脸、实体安全密钥的真机验收；不能以接口和签名测试代替设备交互验收。
 
 结果位于忽略目录 storage/app/test-organization/passkey-audit-frontend-all.log、passkey-audit-build.log 和 passkey-audit/。构建仅保留原有编辑器分包大小提示。未部署到生产。
+
+
+## 后台菜单逐页统一验收
+
+覆盖当前全部 34 个菜单入口，使用真实 AdminWorkspace 与本地合成响应检查默认视图。统一面板标题、筛选区、按钮分组、表格滚动容器、分页、空状态及客户端/风控卡片；恢复用户、订单、知识库和公告卡片标题；空数据提示移至宽表外，避免偏离可见区域；窄屏仪表盘金额卡片改为单列。节点国家地区字典与 GeoIP 继续独立。
+
+以下为桌面与 390px iframe 视口（有滚动条时内容宽 375px）的逐页检查，全部无整页水平溢出。宽表内部横向滚动属于预期。截图覆盖默认视图；长页下方、编辑弹窗、各子标签及真实生产业务操作不应据此声称完成全面端到端验收，已有专项自动回归继续覆盖对应交互。
+
+| 页面 | 桌面入口检查 | 390px 窄屏检查 |
+| --- | --- | --- |
+| 仪表盘 | 已通过 | 已通过 |
+| 访问与转化 | 已通过 | 已通过 |
+| 用户管理 | 已通过 | 已通过 |
+| 在线用户 | 已通过 | 已通过 |
+| 工单管理 | 已通过 | 已通过 |
+| 知识库 | 已通过 | 已通过 |
+| 套餐管理 | 已通过 | 已通过 |
+| 订单管理 | 已通过 | 已通过 |
+| 支付渠道 | 已通过 | 已通过 |
+| 优惠券管理 | 已通过 | 已通过 |
+| 礼品卡管理 | 已通过 | 已通过 |
+| 邀请与奖励 | 已通过 | 已通过 |
+| 公告管理 | 已通过 | 已通过 |
+| 横幅管理 | 已通过 | 已通过 |
+| 节点管理 | 已通过 | 已通过 |
+| 节点权限组 | 已通过 | 已通过 |
+| 路由管理 | 已通过 | 已通过 |
+| 专用客户端下载 | 已通过 | 已通过 |
+| 访问与版本策略 | 已通过 | 已通过 |
+| 第三方客户端 | 已通过 | 已通过 |
+| 风控规则 | 已通过 | 已通过 |
+| IP 黑名单 | 已通过 | 已通过 |
+| UA 黑名单 | 已通过 | 已通过 |
+| 邮件禁发名单 | 已通过 | 已通过 |
+| 登录日志 | 已通过 | 已通过 |
+| 订阅请求日志 | 已通过 | 已通过 |
+| 连接日志 | 已通过 | 已通过 |
+| 风控命中日志 | 已通过 | 已通过 |
+| 邮件发送日志 | 已通过 | 已通过 |
+| 客户端运行记录 | 已通过 | 已通过 |
+| 系统日志 | 已通过 | 已通过 |
+| 系统配置 | 已通过 | 已通过 |
+| 日志与保留策略 | 已通过 | 已通过 |
+| 管理员账户安全 | 已通过 | 已通过 |
+
+新增 34 项菜单入口回归，检查标题、业务内容完成加载及异常边界。复用 admin-workspaces.test.tsx，合成响应在 admin/test-support/page-fixtures.ts 集中维护；不调用生产 API。浏览器记录与截图位于忽略目录 storage/app/test-organization/admin-pages/。全量测试及构建日志位于 storage/app/test-organization/browser-access/admin-every-page-*。
+
+本轮全量 Vitest 755 项全部通过，生产构建成功，生成用户包 316 文件和管理包 76 文件；资源闭包由 package-frontends.mjs 校验。保留既有编辑器大分包提示。未提交、推送或部署。
+TypeScript --noEmit 与 git diff --check 均通过。

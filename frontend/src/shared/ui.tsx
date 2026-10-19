@@ -5,3 +5,5 @@ export { Modal } from "./ui/Modal";
 export { type Field, type EditorFieldRenderer, EditorFieldContext, Editor } from "./ui/Editor";
 export { FilterActions, Pager, Reload } from "./ui/controls";
 export { Table } from "./ui/Table";
+
+export { TableViewport } from "./ui/TableViewport";

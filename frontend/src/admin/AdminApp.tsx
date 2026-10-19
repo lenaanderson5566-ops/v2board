@@ -5,6 +5,7 @@ import {
 import "../shared/style.css";
 import "../shared/console.css";
 import "./admin.css";
+import "./admin-surfaces.css";
 import { useEffect, useRef, useState } from "react";
 import { AdminAuth } from "./AdminAuth";
 import AdminWorkspace from "./admin-workspace";

@@ -1,3 +1,4 @@
+import { TableViewport } from "../shared/ui";
 import { AdminFilterBar } from "./AdminFilterBar";
 import { AdminChoiceGroup } from "./AdminChoices";
 import { Pager, FilterActions } from "../shared/ui";
@@ -327,7 +328,7 @@ export function AdminMailLogs() {
                         </p>
                     )}
                     <State {...logs} retry={logs.reload}>
-                        <div className="table-wrap">
+                        <TableViewport>
                             <table>
                                 <thead>
                                     <tr>
@@ -426,7 +427,7 @@ export function AdminMailLogs() {
                             {!logs.data?.length && (
                                 <p className="pad">暂无匹配邮件日志</p>
                             )}
-                        </div>
+                        </TableViewport>
                     </State>
                     <Pager
                         size={pageSize}

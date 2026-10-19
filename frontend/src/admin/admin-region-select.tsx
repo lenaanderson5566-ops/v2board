@@ -1,9 +1,9 @@
 import { useEffect, useId, useRef, useState } from "react";
-import locations from "../../../resources/client/node-locations.json";
+import locations from "../../../resources/client/node-countries.json";
 
 const options = [
     { code: "", label: "保留原节点名称", search: "保留原节点名称" },
-    ...Object.entries(locations.regions).map(([code, names]) => ({
+    ...Object.entries(locations).map(([code, names]) => ({
         code,
         label: `${names["zh-CN"]}（${code}）`,
         search: [code, ...Object.values(names)].join(" ").toLowerCase(),
@@ -39,6 +39,17 @@ export function AdminRegionSelect({
                 .getElementById(`${listId}-${active}`)
                 ?.scrollIntoView?.({ block: "nearest" });
     }, [open, active, query, listId]);
+    const show = () => {
+        if (open) return;
+        setQuery("");
+        setActive(
+            Math.max(
+                0,
+                options.findIndex((option) => option.code === code),
+            ),
+        );
+        setOpen(true);
+    };
     const close = () => {
         setOpen(false);
         setQuery("");
@@ -77,8 +88,8 @@ export function AdminRegionSelect({
                     autoComplete="off"
                     placeholder="输入国家 / 地区名称或代码"
                     value={open ? query : (selected?.label ?? code)}
-                    onFocus={() => setOpen(true)}
-                    onClick={() => setOpen(true)}
+                    onFocus={show}
+                    onClick={show}
                     onChange={(event) => {
                         setQuery(event.target.value);
                         setActive(0);
@@ -111,11 +122,22 @@ export function AdminRegionSelect({
                                     : 0,
                             );
                         }
+                        if (
+                            open &&
+                            (event.key === "Home" || event.key === "End")
+                        ) {
+                            event.preventDefault();
+                            setActive(
+                                event.key === "Home"
+                                    ? 0
+                                    : Math.max(0, matches.length - 1),
+                            );
+                        }
                         if (event.key === "Enter") {
                             event.preventDefault();
                             if (open && matches[active])
                                 select(matches[active].code);
-                            else setOpen(true);
+                            else show();
                         }
                     }}
                 />
@@ -133,13 +155,22 @@ export function AdminRegionSelect({
                         if (open) close();
                         else {
                             input.current?.focus();
-                            setOpen(true);
+                            show();
                         }
                     }}
                 >
                     ⌄
                 </button>
             </div>
+            <span
+                className="muted admin-region-summary"
+                role="status"
+                aria-live="polite"
+            >
+                {open
+                    ? `共 ${matches.length} 个选项，可用方向键选择，Enter 确认，Esc 关闭`
+                    : ""}
+            </span>
             {open && (
                 <div
                     id={listId}
@@ -160,7 +191,9 @@ export function AdminRegionSelect({
                             onClick={() => select(option.code)}
                         >
                             {option.label}
-                            <span>{code === option.code ? "✓" : ""}</span>
+                            <span aria-hidden="true">
+                                {code === option.code ? "✓" : ""}
+                            </span>
                         </button>
                     ))}
                     {!matches.length && (

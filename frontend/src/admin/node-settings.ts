@@ -204,17 +204,21 @@ export function nodeSettingsFields(fields: Field[]): Field[] {
               : [
                     {
                         ...field,
-                        ...(field.key === "city_code"
+                        ...(field.key === "region_code"
                             ? {
-                                  label: "城市 / 州（可选）",
-                                  hint: "选城市或州即可，留空仅显示国家；支持中英文名称检索。",
+                                  hint: "管理员配置的节点展示地区，用于节点名称和订阅；与访问 IP 的 GeoIP 归属地独立，不会自动覆盖。留空保留原节点名称。",
                               }
-                            : field.key === "display_label"
+                            : field.key === "city_code"
                               ? {
-                                    label: "线路编号 / 后缀（可选）",
-                                    hint: "留空不追加编号，也不会追加原节点名称。",
+                                    label: "城市 / 州（可选）",
+                                    hint: "选城市或州即可，留空仅显示国家；支持中英文名称检索。",
                                 }
-                              : {}),
+                              : field.key === "display_label"
+                                ? {
+                                      label: "线路编号 / 后缀（可选）",
+                                      hint: "留空不追加编号，也不会追加原节点名称。",
+                                  }
+                                : {}),
                     },
                 ],
     );

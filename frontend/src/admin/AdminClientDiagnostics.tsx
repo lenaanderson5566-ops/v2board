@@ -1,3 +1,4 @@
+import { TableViewport } from "../shared/ui";
 import { useState } from "react";
 import { admin, date, type Row } from "../shared/api";
 import { ResourcePage } from "./admin";
@@ -108,7 +109,7 @@ export function AdminClientDiagnostics() {
                     <p className="muted">
                         {detail.report_id} · {date(detail.created_at)}
                     </p>
-                    <table>
+                    <TableViewport><table>
                         <thead>
                             <tr>
                                 <th>事件</th>
@@ -139,7 +140,7 @@ export function AdminClientDiagnostics() {
                                 </tr>
                             ))}
                         </tbody>
-                    </table>
+                    </table></TableViewport>
                 </Modal>
             )}
         </>

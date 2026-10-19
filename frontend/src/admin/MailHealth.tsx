@@ -1,3 +1,5 @@
+import { AdminFilterBar } from "./AdminFilterBar";
+import { TableViewport } from "../shared/ui";
 import { Pager } from "../shared/ui";
 import { useState } from "react";
 import { admin, request, type Row } from "../shared/api";
@@ -65,7 +67,7 @@ export function MailHealth() {
                 <p className="muted">
                     只限制向该地址发邮件，不禁用网站账号。投诉地址不能直接恢复；永久退信需先核实邮箱。服务商抑制名单需另外处理。
                 </p>
-                <form
+                <AdminFilterBar
                     onSubmit={(e) => {
                         e.preventDefault();
                         setFilter(email.trim());
@@ -81,10 +83,10 @@ export function MailHealth() {
                         />
                     </label>
                     <button>查询</button>
-                </form>
+                </AdminFilterBar>
                 {error && <p role="alert">{error}</p>}
                 <State {...suppressed} retry={suppressed.reload}>
-                    <div className="table-wrap">
+                    <TableViewport>
                         <table>
                             <thead>
                                 <tr>
@@ -119,7 +121,7 @@ export function MailHealth() {
                                 ))}
                             </tbody>
                         </table>
-                    </div>
+                    </TableViewport>
                 </State>
                 <Pager
                     page={page}

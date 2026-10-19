@@ -1,5 +1,6 @@
 {
   "translation": {
+    "数据表格": "Data table",
     "邮箱不可用": "Email unavailable",
     "取消": "Cancel",
     "订阅安全": "Subscription security",
@@ -777,8 +778,8 @@
     "browserChoose": "Choose Open in browser",
     "browserChooseDetail": "Look for Open in browser or a similar option and follow the prompts.",
     "browserAlternative": "Can’t find that option?",
-    "browserPaste": "Copy this page’s address, then paste it into your phone’s browser.",
-    "browserCopied": "Link copied. Open your phone’s browser and paste the address to continue.",
+    "browserPaste": "Copy this page’s address, then paste it into your system browser.",
+    "browserCopied": "Link copied. Open your system browser and paste the address to continue.",
     "browserManual": "Copy link manually",
     "browserCopyHelp": "Automatic copying failed. Press and hold the address below, then choose Copy.",
     "browserTitle": "Open in your system browser",

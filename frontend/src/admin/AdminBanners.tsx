@@ -6,7 +6,7 @@ import {
 } from "../shared/timezone";
 import { useRef, useState } from "react";
 import { admin, request, Row } from "../shared/api";
-import { Modal, Panel, State, useData } from "../shared/ui";
+import { Empty, Modal, Panel, State, useData } from "../shared/ui";
 import { languages } from "../shared/i18n";
 import {
     bannerUrl,
@@ -146,7 +146,7 @@ export function AdminBanners() {
                     </article>
                 ))}
                 {data.data?.length === 0 && (
-                    <p>暂无 Banner，点击“新建 Banner”添加。</p>
+                    <Empty text="暂无 Banner，点击“新建 Banner”添加。" />
                 )}
             </div>
             {editing && (

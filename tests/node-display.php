@@ -5,6 +5,37 @@ if (!app()->environment('local')) throw new RuntimeException('Local test only');
 $checks=0;
 $assert = \Tests\Support\Assertions::counter($checks);
 $catalog = App\Services\NodeDisplayService::catalog();
+$assert($catalog['regions'] === App\Services\NodeCountryDictionary::all(), 'Node regions use node-only country dictionary');
+$assert(App\Services\NodeCountryDictionary::name(' us ', 'zh-CN') === '美国', 'Node codes normalize to localized names');
+$assert(App\Services\NodeCountryDictionary::name('US', 'unsupported') === 'United States', 'Unknown language falls back to English');
+$assert(App\Services\NodeCountryDictionary::name('ZZ') === null && App\Services\NodeCountryDictionary::name(null) === null, 'Unknown country is not inferred');
+$geo = new App\Services\GeoIpService();
+foreach ([null, '', 'not-an-ip', '127.0.0.1', '10.0.0.1', '::1'] as $ip) {
+    $assert($geo->lookup($ip) === ['country'=>null,'region'=>null,'city'=>null,'asn'=>null,'isp'=>null], 'Invalid/private IP retains legacy log shape');
+    $assert($geo->sessionCountry($ip) === null, 'Invalid/private IP has no inferred country');
+}
+$assert(App\Services\NodeDisplayService::name(['name'=>'Legacy', 'country'=>'Japan', 'region'=>'Tokyo'], 'en-US') === 'Legacy', 'GeoIP observations cannot supply node display metadata');
+$assert(App\Services\NodeDisplayService::name(['name'=>'Legacy', 'region_code'=>'US', 'country'=>'Japan'], 'en-US') === 'United States', 'Configured node country is independent of GeoIP');
+
+// Exercise real GeoIP enrichment using deterministic local reader records.
+$readersProperty = new ReflectionProperty(App\Services\GeoIpService::class, 'readers');
+$savedReaders = $readersProperty->getValue();
+$reader = new class extends GeoIp2\Database\Reader {
+    public string $code = 'US';
+    public function __construct() {}
+    public function country(string $ipAddress): GeoIp2\Model\Country {
+        return new GeoIp2\Model\Country(['country'=>['iso_code'=>$this->code, 'names'=>['en'=>'Provider country', 'zh-CN'=>'数据库名称']]]);
+    }
+};
+try {
+    $readersProperty->setValue(null, ['country'=>$reader, 'city'=>null, 'asn'=>null]);
+    $assert($geo->lookup('8.8.8.8')['country'] === '数据库名称', 'GeoIP preserves provider names independently of node dictionary');
+    $assert($geo->sessionCountry('8.8.8.8') === 'US', 'Session retains observed ISO code');
+    $reader->code = 'ZZ';
+    $assert($geo->lookup('8.8.8.8')['country'] === '数据库名称', 'Unrecognized country preserves provider name');
+} finally {
+    $readersProperty->setValue(null, $savedReaders);
+}
 foreach (['regions', 'cities'] as $kind) {
     foreach ($catalog[$kind] as $code => $names) {
         foreach (App\Services\LanguagePreferenceService::SUPPORTED as $language) {

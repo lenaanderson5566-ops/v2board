@@ -1,3 +1,4 @@
+import { TableViewport } from "../shared/ui";
 import { useState } from "react";
 import { admin, request, type Row } from "../shared/api";
 import { State, Modal, Reload, Pager } from "../shared/ui";
@@ -32,7 +33,7 @@ export function AdminCouponCampaigns() {
             </p>
             <AdminOperationNotice notice={operation.notice} />
             <State {...list} retry={list.reload}>
-                <div className="table-scroll">
+                <TableViewport>
                     <table>
                         <thead>
                             <tr>
@@ -105,7 +106,7 @@ export function AdminCouponCampaigns() {
                     {!list.data?.length && (
                         <p className="pad muted">暂无发放批次。</p>
                     )}
-                </div>
+                </TableViewport>
             </State>
             <Pager
                 loading={list.loading}
@@ -205,7 +206,7 @@ function CouponRecipients({ id }: { id: number }) {
                 </select>
             </label>
             <State {...data} retry={data.reload}>
-                <div className="table-scroll">
+                <TableViewport>
                     <table>
                         <thead>
                             <tr>
@@ -232,7 +233,7 @@ function CouponRecipients({ id }: { id: number }) {
                             ))}
                         </tbody>
                     </table>
-                </div>
+                </TableViewport>
             </State>
             <Pager
                 loading={data.loading}

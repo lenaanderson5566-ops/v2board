@@ -288,28 +288,6 @@ body[data-console="admin"]
     > .panel-head {
     background: #fff;
 }
-body[data-console="admin"]
-    .admin-content[data-page="users"]
-    .panel
-    > .panel-head
-    h2,
-body[data-console="admin"]
-    .admin-content[data-page="orders"]
-    .panel
-    > .panel-head
-    h2,
-body[data-console="admin"]
-    .admin-content[data-page="knowledge"]
-    > .panel
-    > .panel-head
-    h2,
-body[data-console="admin"]
-    .admin-content[data-page="notices"]
-    > .panel
-    > .panel-head
-    h2 {
-    display: none;
-}
 body[data-console="admin"] .pad {
     padding: 16px;
 }
@@ -420,7 +398,7 @@ body[data-console="admin"] td {
 body[data-console="admin"] tbody tr:hover {
     background: #f8f9fc;
 }
-body[data-console="admin"] td:last-child {
+body[data-console="admin"] :is(th, td).table-actions {
     position: sticky;
     right: 0;
     background: #fff;
@@ -2192,4 +2170,33 @@ body[data-console="admin"] .user-activity .user-activity-notice { background: #f
     body[data-console="admin"] .user-activity-summary dl,
     body[data-console="admin"] .user-activity-fields { grid-template-columns: minmax(0,1fr); gap: 14px; }
     body[data-console="admin"] .user-activity-event-head { padding: 12px 14px; }
+}
+
+body[data-console="admin"] .admin-node-name-preview {
+    margin-top: 10px;
+    padding: 12px;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    background: #f8fafc;
+    min-width: 0;
+    overflow-wrap: anywhere;
+}
+body[data-console="admin"] .admin-node-name-preview dl {
+    margin: 8px 0;
+}
+body[data-console="admin"] .admin-node-name-preview dl > div {
+    display: flex;
+    gap: 12px;
+    margin: 6px 0;
+}
+body[data-console="admin"] .admin-node-name-preview dt {
+    flex: 0 0 54px;
+    color: #64748b;
+}
+body[data-console="admin"] .admin-node-name-preview dd {
+    margin: 0;
+    min-width: 0;
+}
+body[data-console="admin"] .admin-node-name-preview p {
+    margin: 8px 0 0;
 }

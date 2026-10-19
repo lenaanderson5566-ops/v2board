@@ -1,3 +1,4 @@
+import { TableViewport } from "../shared/ui";
 import { Pager } from "../shared/ui";
 import { formatInstant } from "../shared/timezone";
 import { useState } from "react";
@@ -107,54 +108,56 @@ export function AdminDDNS() {
                         >
                             新增凭据
                         </button>
-                        <table>
-                            <thead>
-                                <tr>
-                                    <th>名称</th>
-                                    <th>Zone ID</th>
-                                    <th>状态</th>
-                                    <th>操作</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {credentials.map((c) => (
-                                    <tr key={c.id}>
-                                        <td>{c.name}</td>
-                                        <td>{c.zone_id}</td>
-                                        <td>
-                                            {labels[c.status] || c.status}
-                                            {c.next_run > 0 &&
-                                                ` · ${date(c.next_run)}`}
-                                        </td>
-                                        <td>
-                                            <button
-                                                onClick={() =>
-                                                    edit("credentials", c)
-                                                }
-                                            >
-                                                编辑
-                                            </button>
-                                            <button
-                                                disabled={busy}
-                                                onClick={() => {
-                                                    if (
-                                                        window.confirm(
-                                                            "删除此凭据？",
-                                                        )
-                                                    )
-                                                        void action(
-                                                            "credentials/drop",
-                                                            { id: c.id },
-                                                        );
-                                                }}
-                                            >
-                                                删除
-                                            </button>
-                                        </td>
+                        <TableViewport>
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>名称</th>
+                                        <th>Zone ID</th>
+                                        <th>状态</th>
+                                        <th>操作</th>
                                     </tr>
-                                ))}
-                            </tbody>
-                        </table>
+                                </thead>
+                                <tbody>
+                                    {credentials.map((c) => (
+                                        <tr key={c.id}>
+                                            <td>{c.name}</td>
+                                            <td>{c.zone_id}</td>
+                                            <td>
+                                                {labels[c.status] || c.status}
+                                                {c.next_run > 0 &&
+                                                    ` · ${date(c.next_run)}`}
+                                            </td>
+                                            <td>
+                                                <button
+                                                    onClick={() =>
+                                                        edit("credentials", c)
+                                                    }
+                                                >
+                                                    编辑
+                                                </button>
+                                                <button
+                                                    disabled={busy}
+                                                    onClick={() => {
+                                                        if (
+                                                            window.confirm(
+                                                                "删除此凭据？",
+                                                            )
+                                                        )
+                                                            void action(
+                                                                "credentials/drop",
+                                                                { id: c.id },
+                                                            );
+                                                    }}
+                                                >
+                                                    删除
+                                                </button>
+                                            </td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </TableViewport>
                         <h3>节点绑定</h3>
                         <button
                             disabled={!credentials.length}
@@ -171,96 +174,101 @@ export function AdminDDNS() {
                         >
                             新增 DDNS
                         </button>
-                        <table>
-                            <thead>
-                                <tr>
-                                    <th>节点 / 域名</th>
-                                    <th>公网 IP / 上报时间</th>
-                                    <th>状态 / 最近成功</th>
-                                    <th>操作</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {assignments.map((a) => (
-                                    <tr key={a.id}>
-                                        <td>
-                                            {a.node_type} #{a.node_id}
-                                            <br />
-                                            {a.domain}
-                                            <br />
-                                            {
-                                                credentials.find(
-                                                    (c) =>
-                                                        c.id ===
-                                                        a.credential_id,
-                                                )?.name
-                                            }
-                                        </td>
-                                        <td>
-                                            {a.ipv4 || "—"} ·{" "}
-                                            {date(a.ipv4_seen_at)}
-                                            <br />
-                                            {a.ipv6 || "—"} ·{" "}
-                                            {date(a.ipv6_seen_at)}
-                                        </td>
-                                        <td>
-                                            {a.enabled
-                                                ? labels[a.status] || a.status
-                                                : "已停用"}
-                                            <br />
-                                            {date(a.last_success)}
-                                        </td>
-                                        <td>
-                                            <button
-                                                onClick={() =>
-                                                    edit("assignments", a)
+                        <TableViewport>
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>节点 / 域名</th>
+                                        <th>公网 IP / 上报时间</th>
+                                        <th>状态 / 最近成功</th>
+                                        <th>操作</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {assignments.map((a) => (
+                                        <tr key={a.id}>
+                                            <td>
+                                                {a.node_type} #{a.node_id}
+                                                <br />
+                                                {a.domain}
+                                                <br />
+                                                {
+                                                    credentials.find(
+                                                        (c) =>
+                                                            c.id ===
+                                                            a.credential_id,
+                                                    )?.name
                                                 }
-                                            >
-                                                编辑 / 恢复
-                                            </button>
-                                            <button
-                                                disabled={busy || !a.enabled}
-                                                onClick={async () => {
-                                                    if (
-                                                        !window.confirm(
-                                                            "生成新密钥将立即撤销旧密钥，需要在节点重新配置上报。继续？",
+                                            </td>
+                                            <td>
+                                                {a.ipv4 || "—"} ·{" "}
+                                                {date(a.ipv4_seen_at)}
+                                                <br />
+                                                {a.ipv6 || "—"} ·{" "}
+                                                {date(a.ipv6_seen_at)}
+                                            </td>
+                                            <td>
+                                                {a.enabled
+                                                    ? labels[a.status] ||
+                                                      a.status
+                                                    : "已停用"}
+                                                <br />
+                                                {date(a.last_success)}
+                                            </td>
+                                            <td>
+                                                <button
+                                                    onClick={() =>
+                                                        edit("assignments", a)
+                                                    }
+                                                >
+                                                    编辑 / 恢复
+                                                </button>
+                                                <button
+                                                    disabled={
+                                                        busy || !a.enabled
+                                                    }
+                                                    onClick={async () => {
+                                                        if (
+                                                            !window.confirm(
+                                                                "生成新密钥将立即撤销旧密钥，需要在节点重新配置上报。继续？",
+                                                            )
                                                         )
-                                                    )
-                                                        return;
-                                                    const r = await action(
-                                                        "assignments/rotate",
-                                                        { id: a.id },
-                                                    );
-                                                    if (r)
-                                                        setDeployment({
-                                                            ...r,
-                                                            domain: a.domain,
-                                                        });
-                                                }}
-                                            >
-                                                配置节点上报
-                                            </button>
-                                            <button
-                                                disabled={busy}
-                                                onClick={() => {
-                                                    if (
-                                                        window.confirm(
-                                                            "删除 DDNS 配置并撤销上报密钥？现有 DNS 记录保留。",
-                                                        )
-                                                    )
-                                                        void action(
-                                                            "assignments/drop",
+                                                            return;
+                                                        const r = await action(
+                                                            "assignments/rotate",
                                                             { id: a.id },
                                                         );
-                                                }}
-                                            >
-                                                删除
-                                            </button>
-                                        </td>
-                                    </tr>
-                                ))}
-                            </tbody>
-                        </table>
+                                                        if (r)
+                                                            setDeployment({
+                                                                ...r,
+                                                                domain: a.domain,
+                                                            });
+                                                    }}
+                                                >
+                                                    配置节点上报
+                                                </button>
+                                                <button
+                                                    disabled={busy}
+                                                    onClick={() => {
+                                                        if (
+                                                            window.confirm(
+                                                                "删除 DDNS 配置并撤销上报密钥？现有 DNS 记录保留。",
+                                                            )
+                                                        )
+                                                            void action(
+                                                                "assignments/drop",
+                                                                { id: a.id },
+                                                            );
+                                                    }}
+                                                >
+                                                    删除
+                                                </button>
+                                            </td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </TableViewport>
                     </div>
                 </State>
             </Panel>
@@ -290,26 +298,28 @@ export function AdminDDNS() {
                         </select>
                     </label>
                     <State {...events}>
-                        <table>
-                            <thead>
-                                <tr>
-                                    <th>时间</th>
-                                    <th>绑定编号</th>
-                                    <th>事件</th>
-                                    <th>HTTP</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {events.data?.map((e) => (
-                                    <tr key={e.id}>
-                                        <td>{date(e.created_at)}</td>
-                                        <td>{e.assignment_id}</td>
-                                        <td>{labels[e.code] || e.code}</td>
-                                        <td>{e.http_status || "—"}</td>
+                        <TableViewport>
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>时间</th>
+                                        <th>绑定编号</th>
+                                        <th>事件</th>
+                                        <th>HTTP</th>
                                     </tr>
-                                ))}
-                            </tbody>
-                        </table>
+                                </thead>
+                                <tbody>
+                                    {events.data?.map((e) => (
+                                        <tr key={e.id}>
+                                            <td>{date(e.created_at)}</td>
+                                            <td>{e.assignment_id}</td>
+                                            <td>{labels[e.code] || e.code}</td>
+                                            <td>{e.http_status || "—"}</td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </TableViewport>
                     </State>
                     <Pager
                         page={page}

@@ -1,3 +1,4 @@
+import { TableViewport } from "../shared/ui";
 import { formatInstant } from "../shared/timezone";
 import { useRef, useState } from "react";
 import { admin, request } from "../shared/api";
@@ -86,7 +87,7 @@ export function AdminTelegramCommunity({ disabled }: { disabled: boolean }) {
                         {(d.data.paymentFailures || []).map((r: any) => <p key={`payment-${r.id}`} className="muted">到账提醒 #{r.id} · {r.status} · {r.error_code}</p>)}
                         <h3>成员检查记录</h3>
                         <div style={{ overflowX: "auto" }}>
-                            <table>
+                            <TableViewport><table>
                                 <thead>
                                     <tr>
                                         <th>Telegram ID</th>
@@ -107,7 +108,7 @@ export function AdminTelegramCommunity({ disabled }: { disabled: boolean }) {
                                         </tr>
                                     ))}
                                 </tbody>
-                            </table>
+                            </table></TableViewport>
                         </div>
                         <p className="muted">
                             最多显示 50 条，异常优先。BAN_REQUIRES_REVIEW

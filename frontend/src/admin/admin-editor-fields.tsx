@@ -1,6 +1,7 @@
 import { TimeZonePicker } from "../shared/TimeZonePicker";
 import { lazy, Suspense } from "react";
 import { AdminCitySelect } from "./admin-city-select";
+import { NodeNamePreview } from "./NodeNamePreview";
 import { AdminRegionSelect } from "./admin-region-select";
 import { AdminMultiSelect } from "./admin-multiselect";
 import type { EditorFieldRenderer } from "../shared/ui";
@@ -33,11 +34,14 @@ export const adminEditorField: EditorFieldRenderer = (
         );
     if (field.key === "region_code" && field.type === "select")
         return (
-            <AdminRegionSelect
-                label={field.label}
-                value={value}
-                onChange={onChange}
-            />
+            <>
+                <AdminRegionSelect
+                    label={field.label}
+                    value={value}
+                    onChange={onChange}
+                />
+                <NodeNamePreview values={values} />
+            </>
         );
     if (field.key === "city_code")
         return (

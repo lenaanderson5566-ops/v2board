@@ -4,7 +4,8 @@ import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/re
 const api=vi.hoisted(()=>({request:vi.fn(),reload:vi.fn()}));
 vi.mock('../shared/api',()=>({admin:(path:string)=>path,request:api.request}));
 vi.mock('../shared/timezone',()=>({formatInstant:()=> '2026-10-14'}));
-vi.mock('../shared/ui',()=>({
+vi.mock('../shared/ui',async()=>({
+    TableViewport:(await import('../shared/ui/TableViewport')).TableViewport,
     useData:()=>({loading:false,error:'',total:1,reload:api.reload,data:[{id:3,couponName:'Fixture',discountPercent:10,scope:'all',status:'queued',matched:2,pending:2,issued:0,skipped:0,failed:0,cancelled:0,createdAt:1}]}),
     State:({children}:{children:React.ReactNode})=>children,
     Modal:({children,title}:{children:React.ReactNode,title:string})=><div role="dialog" aria-label={title}>{children}</div>,

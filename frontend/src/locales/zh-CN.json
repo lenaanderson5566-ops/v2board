@@ -1,5 +1,6 @@
 {
   "translation": {
+    "数据表格": "数据表格",
     "邮箱不可用": "邮箱不可用",
     "取消": "取消",
     "订阅安全": "订阅安全",
@@ -775,8 +776,8 @@
     "browserChoose": "选择在浏览器中打开",
     "browserChooseDetail": "找到「在浏览器中打开」或类似选项，按提示继续。",
     "browserAlternative": "没有找到这个选项？",
-    "browserPaste": "复制当前页面地址，再打开手机浏览器粘贴访问。",
-    "browserCopied": "链接已复制。打开手机浏览器，粘贴地址即可继续。",
+    "browserPaste": "复制当前页面地址，再打开系统浏览器粘贴访问。",
+    "browserCopied": "链接已复制。打开系统浏览器，粘贴地址即可继续。",
     "browserManual": "手动复制链接",
     "browserCopyHelp": "自动复制未完成，请长按下方地址并选择复制。",
     "browserTitle": "建议在系统浏览器打开",

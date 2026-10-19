@@ -1,3 +1,4 @@
+import { Empty, Pager, TableViewport } from "../shared/ui";
 import { browserLabel } from "./browser-labels";
 import { useState, type ReactNode } from "react";
 import { admin, query } from "../shared/api";
@@ -165,53 +166,42 @@ export function ReportTable({
     const pages = Math.max(1, Math.ceil(rows.length / size));
     const current = Math.min(page, pages - 1);
     return rows.length ? (
-        <div className="table-wrap">
-            <table>
-                <thead>
-                    <tr>
-                        {headers.map((h) => (
-                            <th key={h} scope="col">
-                                {h}
-                            </th>
-                        ))}
-                    </tr>
-                </thead>
-                <tbody>
-                    {rows
-                        .slice(current * size, (current + 1) * size)
-                        .map((r, i) => (
-                            <tr key={i}>
-                                {r.map((v, j) => (
-                                    <td key={j}>{v}</td>
-                                ))}
-                            </tr>
-                        ))}
-                </tbody>
-            </table>
+        <>
+            <TableViewport>
+                <table>
+                    <thead>
+                        <tr>
+                            {headers.map((h) => (
+                                <th key={h} scope="col">
+                                    {h}
+                                </th>
+                            ))}
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {rows
+                            .slice(current * size, (current + 1) * size)
+                            .map((r, i) => (
+                                <tr key={i}>
+                                    {r.map((v, j) => (
+                                        <td key={j}>{v}</td>
+                                    ))}
+                                </tr>
+                            ))}
+                    </tbody>
+                </table>
+            </TableViewport>
             {pages > 1 && (
-                <div className="analytics-pagination" aria-label="表格分页">
-                    <button
-                        type="button"
-                        disabled={current === 0}
-                        onClick={() => setPage(current - 1)}
-                    >
-                        上一页
-                    </button>
-                    <span>
-                        第 {current + 1} / {pages} 页 · 共 {rows.length} 项
-                    </span>
-                    <button
-                        type="button"
-                        disabled={current + 1 === pages}
-                        onClick={() => setPage(current + 1)}
-                    >
-                        下一页
-                    </button>
-                </div>
+                <Pager
+                    page={current + 1}
+                    size={size}
+                    total={rows.length}
+                    onChange={(next) => setPage(next - 1)}
+                />
             )}
-        </div>
+        </>
     ) : (
-        <p className="muted">当前范围暂无记录。</p>
+        <Empty text="当前范围暂无记录。" />
     );
 }
 function Retention({ days, selected }: { days: number; selected: number }) {
@@ -305,9 +295,9 @@ function AccessReport({
                                     r.accounts,
                                 ])}
                             />
-                            <h3>国家／地区（前 30）</h3>
+                            <h3>访问 IP 国家／地区（前 30）</h3>
                             <ReportTable
-                                headers={["日志记录的地区", "事件"]}
+                                headers={["GeoIP 归属地（日志记录）", "事件"]}
                                 rows={data.clients.countries.map((r) => [
                                     r.country,
                                     r.total,
@@ -318,7 +308,7 @@ function AccessReport({
                                 数不等于用户数，共享网络可能多人共用一个
                                 IP；排行按完整 IP
                                 去重后脱敏，外观相同的行可能是不同地址。账户数不包含未识别账户。UA
-                                可伪造，地理信息来自日志记录时的本地数据，未知不代表异常。反代／CDN
+                                可伪造，地理信息来自日志记录时的本地数据，未知不代表异常，与管理员配置的节点展示地区独立。反代／CDN
                                 需正确配置可信代理，否则日志可能只有代理地址。此处不是全站访客统计，也不据此自动封禁。
                             </p>
                         </>

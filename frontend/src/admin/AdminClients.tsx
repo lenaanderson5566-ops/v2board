@@ -107,7 +107,7 @@ export function AdminClients({
     const [revision, setRevision] = useState(0);
     return (
         <div className="release-monitor">
-            <h2>第三方客户端</h2>
+            <h2>{tab === "policy" ? "访问与版本策略" : "第三方客户端"}</h2>
             <AdminChoiceGroup variant="navigation" label="客户端管理视图" value={tab} onChange={setTab}
                 options={[{value:"updates",label:"推荐与智能更新"},{value:"policy",label:"访问与版本策略"}]} />
             {tab === "policy" ? (

@@ -1,5 +1,6 @@
 {
   "translation": {
+    "数据表格": "資料表格",
     "邮箱不可用": "電子郵件無法使用",
     "取消": "取消",
     "订阅安全": "訂閱安全",
@@ -775,8 +776,8 @@
     "browserChoose": "選擇在瀏覽器中開啟",
     "browserChooseDetail": "找到「在瀏覽器中開啟」或類似選項，依提示繼續。",
     "browserAlternative": "找不到這個選項？",
-    "browserPaste": "複製目前頁面網址，再開啟手機瀏覽器貼上。",
-    "browserCopied": "連結已複製。開啟手機瀏覽器，貼上網址即可繼續。",
+    "browserPaste": "複製目前頁面網址，再開啟系統瀏覽器貼上網址。",
+    "browserCopied": "連結已複製。開啟系統瀏覽器，貼上網址即可繼續。",
     "browserManual": "手動複製連結",
     "browserCopyHelp": "自動複製未完成，請長按下方網址並選擇複製。",
     "browserTitle": "建議在系統瀏覽器開啟",
@@ -800,12 +801,12 @@
     "browserAndroid": "Android：透過應用程式選單選擇在預設瀏覽器開啟。不同版本的選單名稱可能不同。",
     "browserDesktop": "透過應用程式選單在預設瀏覽器開啟，或複製下方網址。",
     "browserContinue": "繼續在目前瀏覽器瀏覽",
-    "xiaohongshu": "Xiaohongshu",
-    "douyin": "Douyin",
-    "bilibili": "bilibili",
-    "alipay": "Alipay",
-    "dingtalk": "DingTalk",
-    "wecom": "WeCom"
+    "xiaohongshu": "小紅書",
+    "douyin": "抖音",
+    "bilibili": "嗶哩嗶哩",
+    "alipay": "支付寶",
+    "dingtalk": "釘釘",
+    "wecom": "企業微信"
   },
   "ux": {
     "cancel": "取消",

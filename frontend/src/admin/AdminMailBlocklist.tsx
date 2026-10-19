@@ -1,3 +1,5 @@
+import { AdminFilterBar } from "./AdminFilterBar";
+import { TableViewport } from "../shared/ui";
 import { AdminChoiceGroup } from "./AdminChoices";
 import { MailX, Plus, Search } from "lucide-react";
 import { Pager, Empty } from "../shared/ui";
@@ -241,7 +243,7 @@ export function AdminMailBlocklist() {
                     {error}
                 </p>
             )}
-            <form
+            <AdminFilterBar
                 className="mail-blocklist-filters"
                 onSubmit={(e) => {
                     e.preventDefault();
@@ -274,9 +276,9 @@ export function AdminMailBlocklist() {
                 <button>
                     <Search size={16} aria-hidden /> 查询
                 </button>
-            </form>
+            </AdminFilterBar>
             <State {...list} retry={list.reload}>
-                <div className="table-wrap">
+                <TableViewport>
                     <table>
                         <thead>
                             <tr>
@@ -361,7 +363,7 @@ export function AdminMailBlocklist() {
                         </tbody>
                     </table>
                     {!list.data?.length && <Empty text="暂无匹配的禁发记录" />}
-                </div>
+                </TableViewport>
             </State>
             <Pager
                 size={pageSize}

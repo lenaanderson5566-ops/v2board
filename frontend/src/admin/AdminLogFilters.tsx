@@ -1,3 +1,4 @@
+import { AdminFilterBar } from "./AdminFilterBar";
 import {
     dateTimeInput,
     parseDateTimeInput,
@@ -39,7 +40,7 @@ export function AdminLogFilters({
             : []),
     ];
     return (
-        <form
+        <AdminFilterBar
             className="admin-log-filters"
             onSubmit={(event) => {
                 event.preventDefault();
@@ -125,7 +126,8 @@ export function AdminLogFilters({
                     </select>
                 </label>
             )}
-            <button type="submit">查询</button>
+            <div className="admin-filter-actions">
+            <button type="submit" className="primary">查询</button>
             <button
                 type="button"
                 onClick={() => {
@@ -136,7 +138,8 @@ export function AdminLogFilters({
             >
                 重置
             </button>
+            </div>
             {error && <span role="alert">{error}</span>}
-        </form>
+        </AdminFilterBar>
     );
 }

@@ -113,6 +113,7 @@ it("restores log filters after leaving and reopening a list", async () => {
 });
 afterEach(() => {
     cleanup();
+    vi.unstubAllGlobals();
     vi.clearAllMocks();
 });
 it("shows yearly income and lazily switches to risk without removed dashboard blocks", async () => {
@@ -483,4 +484,45 @@ it("keeps shared filter choices from submitting forms and respects busy state", 
     view.rerender(<AdminFilterBar onSubmit={submit}><AdminChoiceGroup label="筛选" value="one" options={options} onChange={change} disabled/></AdminFilterBar>);
     fireEvent.click(screen.getByRole("button",{name:"二"}));
     expect(change).toHaveBeenCalledTimes(1);
+});
+
+it("uses the same accessible table viewport for custom and standard tables", async () => {
+    const { Table, TableViewport } = await import("../shared/ui");
+    const action = vi.fn();
+    const view = render(<Table data={[{id: 1, name: "示例"}]} columns={[["name", "名称"]]} actions={() => <button onClick={action}>编辑记录</button>} />);
+    const viewport = screen.getByRole("region", {name: "数据表格"});
+    expect(viewport.tabIndex).toBe(0);
+    expect(viewport.querySelectorAll(".table-actions")).toHaveLength(2);
+    expect(screen.getByRole("columnheader", {name: "名称"}).classList.contains("table-actions")).toBe(false);
+    fireEvent.click(screen.getByRole("button", {name: "编辑记录"}));
+    expect(action).toHaveBeenCalledOnce();
+    view.rerender(<TableViewport aria-label="日志表"><table><thead><tr><th>时间</th></tr></thead><tbody><tr><td>2026</td></tr></tbody></table></TableViewport>);
+    expect(screen.getByRole("region", {name: "日志表"}).tabIndex).toBe(0);
+    expect(screen.getByRole("cell", {name: "2026"})).toBeTruthy();
+});
+it("keeps shared filter submissions and reset actions separate", async () => {
+    const { AdminFilterBar } = await import("./AdminFilterBar");
+    const submit = vi.fn(), reset = vi.fn();
+    render(<AdminFilterBar onSubmit={event => {event.preventDefault();submit();}}><label>关键词<input /></label><button type="submit">执行查询</button><button type="button" onClick={reset}>清空条件</button></AdminFilterBar>);
+    expect(screen.getByRole("form", {name: "筛选条件"})).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", {name: "清空条件"}));
+    expect(reset).toHaveBeenCalledOnce();
+    expect(submit).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole("button", {name: "执行查询"}));
+    expect(submit).toHaveBeenCalledOnce();
+});
+
+it.each(legacyAdminMenu.map(([key, title]) => [key, title]))("renders menu page %s with its shell and without page failures", async (key, title) => {
+    const { adminPageFixture } = await import("./test-support/page-fixtures");
+    const { default: AdminWorkspace } = await import("./admin-workspace");
+    const { MfaRecoveryProvider } = await import("../shared/MfaRecovery");
+    api.request.mockImplementation(async (path: string) => adminPageFixture(path));
+    vi.stubGlobal("fetch", vi.fn(async (input: unknown) => new Response(JSON.stringify(adminPageFixture(String(input))), {headers: {"Content-Type": "application/json"}})));
+    const view = render(<MfaRecoveryProvider><AdminWorkspace path={key} user={{email: "preview@example.com"}} logout={() => {}} /></MfaRecoveryProvider>);
+    expect(screen.getByRole("heading", {level: 1, name: title})).toBeTruthy();
+    await waitFor(() => expect(view.container.querySelector('.admin-content :is(.panel,.release-monitor,.risk-workspace,.risk-rule-grid)')).toBeTruthy());
+    await waitFor(() => expect(screen.queryByText("正在加载页面…")).toBeNull());
+    await waitFor(() => expect(view.container.querySelector('.admin-content [aria-busy="true"]')).toBeNull());
+    expect(screen.queryByText(/此页面暂时无法加载/)).toBeNull();
+    expect(screen.queryByText("页面未找到")).toBeNull();
 });

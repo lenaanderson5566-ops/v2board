@@ -1,0 +1,122 @@
+/* Shared workspace geometry. Business-specific layouts stay in their modules. */
+body[data-console="admin"] {
+    --admin-space: 16px;
+    --admin-control-height: 36px;
+    --admin-surface-soft: #f8fafc;
+}
+body[data-console="admin"] :is(.panel, .panel-body, .admin-data-state, [role="tabpanel"]) {
+    min-width: 0;
+    max-width: 100%;
+}
+body[data-console="admin"] .panel > .panel-head {
+    gap: 12px;
+    padding: var(--admin-space);
+}
+body[data-console="admin"] .panel-head h2 {
+    font-size: 16px;
+    line-height: 1.5;
+    overflow-wrap: anywhere;
+}
+body[data-console="admin"] .panel-head > .actions {
+    flex-wrap: wrap;
+    gap: 8px;
+    min-width: 0;
+}
+body[data-console="admin"] :is(.panel-body, .pad) {
+    padding: var(--admin-space);
+}
+body[data-console="admin"] .admin-filter-bar {
+    gap: 12px;
+    padding: var(--admin-space);
+    background: var(--admin-surface-soft);
+}
+body[data-console="admin"] .admin-filter-bar > label {
+    flex: 1 1 168px;
+    max-width: 360px;
+    gap: 6px;
+}
+body[data-console="admin"] .admin-filter-bar :is(input, select, button) {
+    min-height: var(--admin-control-height);
+    height: auto;
+    margin: 0;
+}
+body[data-console="admin"] .admin-filter-bar :is(input, select) {
+    width: 100%;
+    min-width: 0;
+}
+body[data-console="admin"] :is(.panel-head, .pager, .form-bottom) > :is(button, .button),
+body[data-console="admin"] .panel-head > .actions > :is(button, .button),
+body[data-console="admin"] .pager-buttons > button {
+    min-height: var(--admin-control-height);
+}
+body[data-console="admin"] .table-viewport {
+    max-width: 100%;
+    min-width: 0;
+    overflow: auto;
+    overscroll-behavior-inline: contain;
+}
+body[data-console="admin"] .table-viewport:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: -2px;
+}
+body[data-console="admin"] .table-viewport th {
+    font-weight: 600;
+    background: var(--admin-surface-soft);
+}
+body[data-console="admin"] .table-viewport :is(th, td) {
+    padding: 12px var(--admin-space);
+    vertical-align: middle;
+}
+body[data-console="admin"] .table-viewport th.table-actions { z-index: 1; }
+body[data-console="admin"] .pager {
+    padding: var(--admin-space);
+    margin: 0;
+    border-top: 1px solid var(--border);
+    background: #fff;
+}
+body[data-console="admin"] .state:not(.full) {
+    padding: 36px var(--admin-space);
+    gap: 10px;
+    text-align: center;
+    white-space: normal;
+    font-size: 13px;
+}
+body[data-console="admin"] .state:not(.full) span { font-size: 12px; }
+body[data-console="admin"] :is(.admin-section-head p, .panel-body > p, .admin-log-note) {
+    line-height: 1.7;
+    overflow-wrap: anywhere;
+}
+@media (max-width: 600px) {
+    body[data-console="admin"] { --admin-space: 12px; --admin-control-height: 40px; }
+    body[data-console="admin"] .admin-filter-bar > label {
+        flex: 1 1 100%;
+        max-width: none;
+    }
+    body[data-console="admin"] .panel-head > .actions { width: 100%; }
+    body[data-console="admin"] .panel-head > .actions:empty { display: none; }
+    body[data-console="admin"] .pager { gap: 12px; }
+    body[data-console="admin"] .pager > span { flex-basis: 100%; text-align: center; }
+    body[data-console="admin"] .table-viewport .table-actions { position: static; box-shadow: none; }
+}
+
+/* Page audit: shared geometry for standalone filters and legacy cards. */
+body[data-console="admin"] .admin-filter-bar > select { flex: 0 1 180px; width: auto; }
+body[data-console="admin"] .admin-filter-actions { display: flex; flex: 0 0 auto; gap: 8px; align-items: center; }
+body[data-console="admin"] .table-empty-state { position: sticky; left: 0; width: 100%; }
+body[data-console="admin"] :is(.release-card, .risk-rule-card, .release-hero) { border: 1px solid var(--border); border-radius: var(--admin-radius); padding: var(--admin-space); background: var(--surface); box-shadow: none; }
+body[data-console="admin"] :is(.release-hero, .release-monitor) > h2,
+body[data-console="admin"] .release-hero h2 { font-size: 18px; line-height: 1.5; margin: 0 0 12px; }
+body[data-console="admin"] :is(.release-card,.risk-rule-card) > h3 { font-size: 16px; margin: 0 0 12px; }
+body[data-console="admin"] .release-grid { grid-template-columns: repeat(auto-fit,minmax(min(100%,290px),1fr)); gap: 16px; }
+body[data-console="admin"] :is(.release-card,.risk-rule-card) p { line-height: 1.7; }
+@media(max-width:600px) {
+ body[data-console="admin"] .admin-filter-bar > select { flex: 1 1 100%; width: 100%; }
+ body[data-console="admin"] .admin-filter-actions { width: 100%; }
+ body[data-console="admin"] .release-hero { flex-wrap: wrap; gap: 12px; }
+}
+
+@media (max-width: 600px) {
+    body[data-console="admin"] .legacy-stat-main,
+    body[data-console="admin"] .legacy-stat-extra { grid-template-columns: minmax(0, 1fr); gap: 16px; }
+    body[data-console="admin"] .legacy-stat-main strong { font-size: 26px; overflow-wrap: anywhere; }
+}

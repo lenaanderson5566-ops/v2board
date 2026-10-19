@@ -1,3 +1,4 @@
+import { TableViewport } from "./TableViewport";
 import { useEffect, useState, useRef, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { IpLocation } from "../IpLocation";
@@ -25,6 +26,7 @@ export function Table({
     onSort?: (key: string, direction: string) => void;
     onReorder?: (data: Row[]) => void | Promise<void>;
 }) {
+    const Viewport = boot.mode === "admin" ? TableViewport : "div";
     const [dragged, setDragged] = useState<number | null>(null);
     const [reorderError, setReorderError] = useState("");
     const [reordering, setReordering] = useState(false);
@@ -52,8 +54,8 @@ export function Table({
     }, [context]);
     if (!data.length && boot.mode !== "admin") return <Empty />;
     return (
-        <div
-            className={`table-scroll ${compact ? "compact-mobile-table" : ""}`}
+        <Viewport
+            className={`${boot.mode === "admin" ? "" : "table-scroll"} ${compact ? "compact-mobile-table" : ""}`}
         >
             {reorderError && (
                 <div className="alert" role="alert">
@@ -66,6 +68,7 @@ export function Table({
                         {onReorder && <th>{ux("sort")}</th>}
                         {columns.map(([k, label]) => (
                             <th
+                                scope="col"
                                 key={k}
                                 aria-sort={
                                     sort?.key === k
@@ -103,23 +106,14 @@ export function Table({
                                 )}
                             </th>
                         ))}
-                        {actions && <th>{tx("操作")}</th>}
+                        {actions && (
+                            <th scope="col" className="table-actions">
+                                {tx("操作")}
+                            </th>
+                        )}
                     </tr>
                 </thead>
                 <tbody>
-                    {!data.length && (
-                        <tr>
-                            <td
-                                colSpan={
-                                    columns.length +
-                                    (actions ? 1 : 0) +
-                                    (onReorder ? 1 : 0)
-                                }
-                            >
-                                <Empty />
-                            </td>
-                        </tr>
-                    )}
                     {data.map((r, i) => (
                         <tr
                             key={
@@ -221,7 +215,7 @@ export function Table({
                                 </td>
                             ))}
                             {actions && (
-                                <td>
+                                <td className="table-actions">
                                     <div className="actions">{actions(r)}</div>
                                 </td>
                             )}
@@ -229,6 +223,7 @@ export function Table({
                     ))}
                 </tbody>
             </table>
+            {!data.length && <div className="table-empty-state"><Empty /></div>}
             {context &&
                 actions &&
                 createPortal(
@@ -249,6 +244,6 @@ export function Table({
                     </div>,
                     document.body,
                 )}
-        </div>
+        </Viewport>
     );
 }

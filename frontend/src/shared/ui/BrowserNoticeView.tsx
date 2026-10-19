@@ -1,16 +1,57 @@
 import { useTranslation } from "react-i18next";
 import { useRef, useState, type ReactNode } from "react";
-import { Compass, Copy, Check, MoreHorizontal, ExternalLink, Sparkles } from "lucide-react";
-import { e } from "../experience-copy";
-import { tx } from "../i18n";
+import {
+    Compass,
+    Copy,
+    Check,
+    MoreHorizontal,
+    ExternalLink,
+    Sparkles,
+} from "lucide-react";
+import { e as defaultExperience } from "../experience-copy";
+import { tx as defaultText } from "../i18n";
 import "./browser-notice.css";
 
-export function BrowserNoticeView({onContinue, embedded, device, address, title, onAction = () => {}, copy = async (value: string) => navigator.clipboard.writeText(value), languagePicker}: {
-    onContinue?: () => void; embedded: string | null; device: string; address: string; title: string;
-    onAction?: (action: "copy_success" | "copy_failed" | "guide_manual" | "guide_continue", page: "browser_prompt" | "browser_guide") => void;
-    copy?: (value: string) => Promise<void>; languagePicker?: ReactNode;
+export function BrowserNoticeView({
+    onContinue,
+    embedded,
+    device,
+    address,
+    title,
+    onAction = () => {},
+    copy = async (value: string) => navigator.clipboard.writeText(value),
+    languagePicker,
+    translations,
+    language,
+}: {
+    language?: string;
+    translations?: {
+        experience: Record<string, string>;
+        translation: Record<string, string>;
+    };
+    onContinue?: () => void;
+    embedded: string | null;
+    device: string;
+    address: string;
+    title: string;
+    onAction?: (
+        action:
+            "copy_success" | "copy_failed" | "guide_manual" | "guide_continue",
+        page: "browser_prompt" | "browser_guide",
+    ) => void;
+    copy?: (value: string) => Promise<void>;
+    languagePicker?: ReactNode;
 }) {
     useTranslation();
+    const e: typeof defaultExperience = (key, values) =>
+        translations
+            ? (translations.experience[key] || key).replace(
+                  /{{\s*(\w+)\s*}}/g,
+                  (_, name: string) => String(values?.[name] ?? ""),
+              )
+            : defaultExperience(key, values);
+    const tx = (key: string) =>
+        translations ? translations.translation[key] || key : defaultText(key);
     const page = onContinue ? "browser_prompt" : "browser_guide";
     const [copied, setCopied] = useState(false),
         [failed, setFailed] = useState(false),
@@ -18,15 +59,34 @@ export function BrowserNoticeView({onContinue, embedded, device, address, title,
         [busy, setBusy] = useState(false);
     const copying = useRef(false);
     if (!embedded) return null;
-    const app = (["xiaohongshu", "douyin", "bilibili", "alipay", "dingtalk", "wecom"].includes(embedded) ? e(embedded as "xiaohongshu" | "douyin" | "bilibili" | "alipay" | "dingtalk" | "wecom") : "") || e(
-        embedded === "WeChat"
-            ? "wechat"
-            : embedded === "QQ"
-              ? "qq"
-              : embedded === "Weibo"
-                ? "weibo"
-                : "browserOther",
-    );
+    const app =
+        ([
+            "xiaohongshu",
+            "douyin",
+            "bilibili",
+            "alipay",
+            "dingtalk",
+            "wecom",
+        ].includes(embedded)
+            ? e(
+                  embedded as
+                      | "xiaohongshu"
+                      | "douyin"
+                      | "bilibili"
+                      | "alipay"
+                      | "dingtalk"
+                      | "wecom",
+              )
+            : "") ||
+        e(
+            embedded === "WeChat"
+                ? "wechat"
+                : embedded === "QQ"
+                  ? "qq"
+                  : embedded === "Weibo"
+                    ? "weibo"
+                    : "browserOther",
+        );
     async function copyAddress() {
         if (copying.current) return;
         copying.current = true;
@@ -47,7 +107,11 @@ export function BrowserNoticeView({onContinue, embedded, device, address, title,
         }
     }
     return (
-        <main className="browser-notice">
+        <main
+            className="browser-notice"
+            lang={language}
+            dir={language ? (language === "fa-IR" ? "rtl" : "ltr") : undefined}
+        >
             <div className="browser-notice-brand">
                 <Sparkles size={19} aria-hidden="true" />
                 <strong>{title}</strong>

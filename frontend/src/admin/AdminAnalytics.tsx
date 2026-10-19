@@ -1,3 +1,4 @@
+import { TableViewport } from "../shared/ui";
 import { AdminTabs } from "./AdminChoices";
 import { JourneyAnalytics } from "./JourneyAnalytics";
 import { analyticsLabels as labels } from "./analytics-labels";
@@ -324,7 +325,7 @@ export function AdminAnalytics() {
                                     </div>
                                     <details>
                                         <summary>每日详细数据</summary>
-                                        <div className="table-wrap">
+                                        <TableViewport>
                                             <table>
                                                 <thead>
                                                     <tr>
@@ -351,7 +352,7 @@ export function AdminAnalytics() {
                                                     ))}
                                                 </tbody>
                                             </table>
-                                        </div>
+                                        </TableViewport>
                                     </details>
                                     <p className="muted">
                                         按会话开始日归属浏览次数，今日及窗口边界日可能不完整。未收集时不补造历史数据；趋势空白不代表没有真实访问。
@@ -367,7 +368,7 @@ export function AdminAnalytics() {
                                     <div className="analytics-time-grid">
                                         <div>
                                             <h3>小时分布</h3>
-                                            <div className="table-wrap">
+                                            <TableViewport>
                                                 <table>
                                                     <thead>
                                                         <tr>
@@ -404,11 +405,11 @@ export function AdminAnalytics() {
                                                         )}
                                                     </tbody>
                                                 </table>
-                                            </div>
+                                            </TableViewport>
                                         </div>
                                         <div>
                                             <h3>星期分布</h3>
-                                            <div className="table-wrap">
+                                            <TableViewport>
                                                 <table>
                                                     <thead>
                                                         <tr>
@@ -443,7 +444,7 @@ export function AdminAnalytics() {
                                                         )}
                                                     </tbody>
                                                 </table>
-                                            </div>
+                                            </TableViewport>
                                             <p className="muted">
                                                 各星期在范围内出现次数可能不同，数值为总量。
                                             </p>
@@ -514,7 +515,7 @@ export function AdminAnalytics() {
                                     <p className="muted">
                                         以同一注册批次的业务数据定位环节，逐次调整并观察完整窗口。差额代表窗口内尚未进入下一步的用户，不直接说明流失原因。
                                     </p>
-                                    <div className="table-wrap">
+                                    <TableViewport>
                                         <table>
                                             <thead>
                                                 <tr>
@@ -601,7 +602,7 @@ export function AdminAnalytics() {
                                                 </tr>
                                             </tbody>
                                         </table>
-                                    </div>
+                                    </TableViewport>
                                     <p className="muted">
                                         待转化人数可能包含仍在考虑或处理中的用户；不自动向用户发送推广邮件。
                                     </p>
@@ -622,7 +623,7 @@ export function AdminAnalytics() {
                                         </p>
                                     ) : (
                                         <>
-                                            <div className="table-wrap">
+                                            <TableViewport>
                                                 <table>
                                                     <thead>
                                                         <tr>
@@ -668,7 +669,7 @@ export function AdminAnalytics() {
                                                         )}
                                                     </tbody>
                                                 </table>
-                                            </div>
+                                            </TableViewport>
                                             <p className="muted">
                                                 按会话数展示前 50 项，共{" "}
                                                 {data.sourceGroups || 0}{" "}
@@ -687,7 +688,7 @@ export function AdminAnalytics() {
                             {tab === "audience" && (
                                 <Panel padded title="页面表现">
                                     {data.pages.length ? (
-                                        <div className="table-wrap">
+                                        <TableViewport>
                                             <table>
                                                 <thead>
                                                     <tr>
@@ -721,7 +722,7 @@ export function AdminAnalytics() {
                                                     ))}
                                                 </tbody>
                                             </table>
-                                        </div>
+                                        </TableViewport>
                                     ) : (
                                         <p className="muted">
                                             暂无访问数据。开启收集、用户同意并浏览页面后显示；业务支付数据不会填充此表。

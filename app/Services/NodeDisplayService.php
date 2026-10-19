@@ -8,6 +8,7 @@ final class NodeDisplayService
         static $catalog;
         if ($catalog !== null) return $catalog;
         $catalog=json_decode(file_get_contents(resource_path('client/node-locations.json')),true,512,JSON_THROW_ON_ERROR);
+        $catalog['regions'] = NodeCountryDictionary::all();
         // The catalog, like rendered node names, exposes an English fallback for untranslated cities.
         foreach (['regions','cities'] as $kind) {
             foreach ($catalog[$kind] as &$names) {

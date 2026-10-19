@@ -2,7 +2,7 @@ import { AdminChoiceGroup } from "./AdminChoices";
 import { AdminDisplaySettings } from "./AdminDisplaySettings";
 import { field, nameColumn } from "./admin-fields";
 import { useEffect, useState, type ComponentProps } from "react";
-import nodeLocations from "../../../resources/client/node-locations.json";
+import nodeLocations from "../../../resources/client/node-countries.json";
 import {
     admin,
     bytes,
@@ -199,8 +199,14 @@ export function Nodes({
     return (
         <>
             {showDisplay && (
-                <AdminDisplaySettings title="节点显示设置" columns={columns} selected={selectedColumns}
-                    onChange={setVisibleColumns} onReset={() => setVisibleColumns(null)} close={() => setShowDisplay(false)} />
+                <AdminDisplaySettings
+                    title="节点显示设置"
+                    columns={columns}
+                    selected={selectedColumns}
+                    onChange={setVisibleColumns}
+                    onReset={() => setVisibleColumns(null)}
+                    close={() => setShowDisplay(false)}
+                />
             )}
             {diagnosticNode && (
                 <NodeDiagnostics
@@ -213,11 +219,21 @@ export function Nodes({
                     {savedNodeNotice}
                 </p>
             )}
-            <AdminChoiceGroup variant="navigation" label="节点管理功能" value={tab}
-                onChange={value => { setTab(value); if (value === "nodes") d.reload(); }} options={[
-                    {value:"nodes",label:"节点列表"},{value:"ddns",label:"Cloudflare DDNS"},
-                    {value:"lightsail",label:"Lightsail IP"},{value:"traffic",label:"服务器流量"}
-                ]} />
+            <AdminChoiceGroup
+                variant="navigation"
+                label="节点管理功能"
+                value={tab}
+                onChange={(value) => {
+                    setTab(value);
+                    if (value === "nodes") d.reload();
+                }}
+                options={[
+                    { value: "nodes", label: "节点列表" },
+                    { value: "ddns", label: "Cloudflare DDNS" },
+                    { value: "lightsail", label: "Lightsail IP" },
+                    { value: "traffic", label: "服务器流量" },
+                ]}
+            />
             {tab === "ddns" && <AdminDDNS />}
             {tab === "lightsail" && <AdminLightsail nodes={rows(d.data)} />}
             {tab === "traffic" && (
@@ -759,7 +775,7 @@ export function Nodes({
                                                 options: [
                                                     ["", "保留原节点名称"],
                                                     ...Object.entries(
-                                                        nodeLocations.regions,
+                                                        nodeLocations,
                                                     ).map(([code, names]) => [
                                                         code,
                                                         `${names["zh-CN"]} (${code})`,

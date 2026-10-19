@@ -1,3 +1,5 @@
+import { AdminFilterBar } from "./AdminFilterBar";
+import { TableViewport } from "../shared/ui";
 import { Pager, FilterActions } from "../shared/ui";
 import { useState } from "react";
 import { admin, date, type Row } from "../shared/api";
@@ -49,7 +51,7 @@ export function InvitationEmails() {
             <p className="pad muted">
                 每行是一位用户对一个邮箱的邀请，展示最近一次发送尝试。重发会更新记录并使旧链接失效。服务商接受不代表送达，送达不代表阅读；历史未关联邮件日志的记录不推断送达状态。邮件记录不作为奖励或异常复核的自动判定依据。
             </p>
-            <form
+            <AdminFilterBar
                 className="admin-log-filters"
                 onSubmit={(e) => {
                     e.preventDefault();
@@ -102,9 +104,9 @@ export function InvitationEmails() {
                         setPage(1);
                     }}
                 />
-            </form>
+            </AdminFilterBar>
             <State {...rows} retry={rows.reload}>
-                <div className="table-wrap">
+                <TableViewport>
                     <table>
                         <thead>
                             <tr>
@@ -189,7 +191,7 @@ export function InvitationEmails() {
                     {!rows.data?.length && (
                         <p className="pad">暂无匹配邀请邮件</p>
                     )}
-                </div>
+                </TableViewport>
             </State>
             <Pager
                 size={pageSize}

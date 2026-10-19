@@ -104,7 +104,9 @@
     "postMePasskeys",
     "deleteMePasskey",
     "postAuthPasskeyOptions",
-    "postAuthPasskeySessions"
+    "postAuthPasskeySessions",
+    "getMeAccountDeletion",
+    "deleteMe"
   ],
   "x-node-order": [
     "/server/configuration GET",

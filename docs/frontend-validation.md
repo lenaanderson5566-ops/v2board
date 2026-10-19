@@ -629,3 +629,15 @@ TypeScript --noEmit 与 git diff --check 均通过。
 ## 用户设置视觉精简
 
 访问统计开关复用通知偏好的 toggle-control / toggle-track DOM 与样式，包含相同尺寸、颜色、焦点样式和 RTL 行为；窄屏仍保持说明与开关左右排列。14 种语言的简要说明缩短为帮助改善网站及随时关闭，完整说明仍可展开。Telegram 卡片统一使用“账号绑定与用户群”标题，移除重复介绍、大图标和三步进度条，用状态行及分隔线组织内容。保留身份核对、解绑确认、链接有效期、入群条件和异常反馈，业务请求逻辑未变。复用 AccountPreferences 与 Notifications 测试；本轮未执行浏览器人工视觉验收。
+
+## 账户删除与后台时间统一
+
+后台“安全与注册”增加 account_deletion_enable 开关，默认关闭；开启后用户安全中心显示删除入口。删除需要 5 分钟内完成的登录安全验证、当前密码、输入 DELETE 与后果确认。服务端拒绝管理员、有余额/佣金、未完成订单、待结算佣金或未关闭工单的账户；事务内匿名化身份，删除 Passkey/MFA 等凭据并撤销所有会话及订阅访问，保留不可恢复标记与必要账务、安全记录。14 种语言文案已覆盖。敏感操作重新认证参考 [OWASP Authentication Cheat Sheet](https://cheatsheetseries.owasp.org/cheatsheets/Authentication_Cheat_Sheet.html)。
+
+后台用户管理、在线用户、订单、节点和资源列表的共享 date 渲染器，以及报表、公告、优惠券、邮件黑名单、诊断、Telegram 同步和管理员 Passkey 时间统一省略 GMT 后缀。后台按系统时区显示，工作区顶部提示一次，日志页面内部提示通过上下文去重。时区选择器的选项仍保留 UTC 偏移以便辨识，导出序列化保持时区信息。
+
+浏览器使用合成数据验证用户管理、在线用户列表及账户删除确认弹窗，未删除实际账户。截图位于 storage/app/test-organization/admin-pages/users-timezone-unified.png、online-timezone-unified.png、account-deletion-confirm.png。检查并修复确认复选框横向布局。TypeScript 和生产构建通过，产物已更新。测试报告与构建日志位于 storage/app/test-organization/browser-access/account-deletion-*。
+
+验证限制：后端使用一次性项目副本和 SQLite 测试库；本地 MySQL 测试账户无建库权限，未验证 MySQL 并发锁行为。实际服务器升级尚未执行。
+
+最终全量前端回归：780 项通过、0 项失败；生产构建成功。

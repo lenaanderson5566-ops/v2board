@@ -1,3 +1,4 @@
+import { AccountDeletion } from "./AccountDeletion";
 import { PasskeySecurity } from "../shared/PasskeySecurity";
 import { SettingsHeading } from "./SettingsHeading";
 import { lazy, Suspense } from "react";
@@ -204,6 +205,7 @@ export function AccountSecurity() {
                             </button>
                         </div>
                     </section>
+                    <AccountDeletion />
                     {resetOpen && (
                         <Modal
                             title={tx("重置订阅链接")}

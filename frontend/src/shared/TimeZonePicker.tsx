@@ -96,7 +96,7 @@ export function TimeZonePicker({
                 <option value="__more">{tx("更多时区")}</option>
             </select>
             <small>
-                {tx("当前时间")}：{formatInstant(now, {}, effective)}
+                {tx("当前时间")}：{formatInstant(now, {timeZoneName: undefined}, effective)}
             </small>
             {value && <small dir="ltr">{value}</small>}
             {more && (

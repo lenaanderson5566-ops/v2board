@@ -1,5 +1,5 @@
 import { AnalyticsCollectionSettings } from "./AnalyticsCollectionSettings";
-import { formatInstant } from "../shared/timezone";
+import { adminInstant as formatInstant } from "./admin-log-time";
 import { admin, request, type Row } from "../shared/api";
 import { Editor, Panel, State, useData } from "../shared/ui";
 const time = (value: number) => (value ? formatInstant(value) : "—");

@@ -17,6 +17,7 @@ class User extends Model
             if ($currency !== 'CNY') $user->currency = $currency;
         });
         static::updating(function ($user) {
+            if ($user->getOriginal('account_deleted_at') && ($user->isDirty('account_deleted_at') || !$user->banned || $user->isDirty('email') || $user->isDirty('password'))) throw new \RuntimeException('Deleted accounts cannot be restored');
             if ($user->isDirty('currency')) throw new \InvalidArgumentException('Account currency cannot be changed');
         });
     }
@@ -35,7 +36,7 @@ class User extends Model
     }
     public function scopeWithUsableTraffic($query)
     {
-        return $query->where('banned', 0)->where(function ($q) {
+        return $query->whereNull('account_deleted_at')->where('banned', 0)->where(function ($q) {
             $q->whereRaw(\App\Services\CreditExpiryService::usableSql().' > 0')->orWhere(function ($base) {
                 $base->whereRaw('u + d < transfer_enable')->where(function ($expiry) {
                     $expiry->whereNull('expired_at')->orWhere('expired_at', '>', time());

@@ -356,3 +356,13 @@ mfa-api 沿用真实路由、Cookie、CSRF 和真实密钥签名，覆盖 ES256 
 后台菜单逐页回归归入既有 frontend/src/admin/admin-workspaces.test.tsx，使用 test-support/page-fixtures.ts 统一空数据响应；覆盖所有 legacyAdminMenu 入口加载、标题与异常边界。浏览器截图、窄屏布局记录、全量 Vitest JSON 与构建日志仅写入 storage/app/test-organization/，不提交临时预览入口。
 
 用户导出及生成退役回归复用 api-retirement.php、console-smoke.php 与 admin-workspaces.test.tsx，下载公共测试改用仍在使用的优惠券接口；不新增独立测试脚本。
+
+## 账户删除与后台时间回归
+
+复用 tests/auth-security.php，新增默认关闭、认证与确认、密码校验、越权目标拒绝、管理员/资金/订单/佣金/工单拦截、近期登录、清理失败回滚、身份匿名化、会话与 Passkey 撤销、账务保留、禁止恢复和排队邮件抑制断言。隔离 SQLite 项目副本 163 项检查通过，V10 路由清单 1588 项检查通过。数据库迁移验证了缺列升级、重复执行与回滚仍保留删除标记；update.sh 的 26 个隔离场景通过。V10 生成器 12 项测试通过，7 个生成文件一致。
+
+前端复用 AccountPreferences.test.tsx 与 AdminLogFilters.test.tsx，覆盖关闭时隐藏入口、阻断原因、三重确认、删除失败保留会话、成功清理会话、后台共享日期渲染、单次时区提示、ISO/夏令时及显式导出偏移。运行结果保存在 storage/app/test-organization/browser-access/account-deletion-complete.json；生产构建日志为 account-deletion-complete-build.log。没有新增独立可执行测试模块。
+
+未操作真实业务数据库；MySQL 测试账号无法创建隔离库，因此数据库验证使用 SQLite，MySQL 行锁并发语义仍需具备专用测试库后验证。
+
+最终全量前端结果：780 项通过、0 项失败；所有新增用例包含在该次完整执行中。

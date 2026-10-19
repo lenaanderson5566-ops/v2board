@@ -416,6 +416,7 @@ CREATE TABLE `v2_ticket_message` (
 
 DROP TABLE IF EXISTS `v2_user`;
 CREATE TABLE `v2_user` (
+  `account_deleted_at` bigint unsigned DEFAULT NULL,
   `currency` varchar(3) NOT NULL DEFAULT 'CNY',
   `announcement_email` tinyint(1) NOT NULL DEFAULT 0,
   `display_timezone` varchar(64) DEFAULT NULL,

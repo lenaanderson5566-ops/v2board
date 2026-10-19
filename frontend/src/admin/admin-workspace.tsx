@@ -1,3 +1,4 @@
+import { AdminTimeZoneScope } from "./admin-log-time";
 import { clearListViews } from "./list-view-state";
 import { AdminShell, adminPage } from "./admin-shell";
 import AdminContent from "./admin-entry";
@@ -37,7 +38,7 @@ export default function AdminWorkspace({
                     logout();
                 }}
             >
-                <AdminContent current={current} />
+                <AdminTimeZoneScope><AdminContent current={current} /></AdminTimeZoneScope>
             </AdminShell>
         </EditorFieldContext.Provider>
     );

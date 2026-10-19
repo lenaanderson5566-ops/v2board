@@ -1,9 +1,5 @@
-import {
-    displayTimeZone,
-    formatInstant,
-    dateTimeInput,
-    parseDateTimeInput,
-} from "../shared/timezone";
+import { displayTimeZone, dateTimeInput, parseDateTimeInput } from "../shared/timezone";
+import { adminInstant as formatInstant } from "./admin-log-time";
 import { useRef, useState } from "react";
 import { admin, request, Row } from "../shared/api";
 import { Empty, Modal, Panel, State, useData } from "../shared/ui";

@@ -1,6 +1,6 @@
 import { admin, query } from "../shared/api";
 import { Panel, State, useData } from "../shared/ui";
-import { formatInstant } from "../shared/timezone";
+import { adminInstant as formatInstant } from "./admin-log-time";
 import { ReportTable } from "./OperationsAnalytics";
 import { analyticsLabels } from "./analytics-labels";
 

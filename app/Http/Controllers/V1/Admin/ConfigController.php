@@ -209,6 +209,7 @@ class ConfigController extends Controller
                 'browser_policy_dingtalk' => \App\Services\BrowserAccess::policies()['dingtalk'],
                 'browser_policy_wecom' => \App\Services\BrowserAccess::policies()['wecom'],
                 'browser_policy_other' => \App\Services\BrowserAccess::policies()['other'],
+                'account_deletion_enable' => (int)config('v2board.account_deletion_enable',0),
                 'passkey_enable' => (int)config('v2board.passkey_enable',0),
                 'email_verify' => (int)config('v2board.email_verify', 0),
                 'safe_mode_enable' => (int)config('v2board.safe_mode_enable', 0),

@@ -306,7 +306,7 @@ export const bytes = (n: unknown) => {
     return `${v.toFixed(i ? 2 : 0)} ${units[i]}`;
 };
 export const date = (n: unknown) =>
-    n != null && n !== "" ? formatInstant(Number(n)) : "—";
+    n != null && n !== "" ? formatInstant(Number(n), boot.mode === "admin" ? { timeZoneName: undefined } : {}) : "—";
 export const navigate = (path: string) => {
     location.hash = "/" + path;
 };

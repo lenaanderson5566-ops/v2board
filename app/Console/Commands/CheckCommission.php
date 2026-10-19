@@ -99,7 +99,7 @@ class CheckCommission extends Command
         }
         for ($l = 0; $l < $level; $l++) {
             $inviter = User::whereKey($inviteUserId)->lockForUpdate()->first();
-            if (!$inviter) continue;
+            if (!$inviter || $inviter->account_deleted_at) break;
             if (!isset($commissionShareLevels[$l])) continue;
             $sourceCommission = (int)floor($order->commission_balance * ($commissionShareLevels[$l] / 100));
             $commissionBalance = \App\Services\ExchangeRate::convert($sourceCommission, $order->currency ?: 'CNY', $inviter->currency ?: 'CNY', $order->fx_snapshot ?? []);

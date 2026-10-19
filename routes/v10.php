@@ -122,3 +122,6 @@
 \Illuminate\Support\Facades\Route::delete('me/security/passkeys/{passkeyId}', [\App\Http\Controllers\V10\PasskeyController::class, 'remove'])->middleware('throttle:10,1,passkey:')->name('v10.deleteMePasskey');
 \Illuminate\Support\Facades\Route::post('auth/passkeys/options', [\App\Http\Controllers\V10\PasskeyController::class, 'loginOptions'])->middleware('throttle:10,1,passkey:')->name('v10.postAuthPasskeyOptions');
 \Illuminate\Support\Facades\Route::post('auth/passkeys/sessions', [\App\Http\Controllers\V10\PasskeyController::class, 'login'])->middleware('throttle:10,1,passkey:')->name('v10.postAuthPasskeySessions');
+
+\Illuminate\Support\Facades\Route::get('me/account-deletion', [\App\Http\Controllers\V10\AccountDeletionController::class,'state'])->name('v10.getMeAccountDeletion');
+\Illuminate\Support\Facades\Route::delete('me', [\App\Http\Controllers\V10\AccountDeletionController::class,'remove'])->middleware('throttle:10,1,account-deletion:')->name('v10.deleteMe');

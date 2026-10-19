@@ -224,6 +224,7 @@ export const adminLabels: Record<string, string> = {
     device_limit_mode: "设备限制模式",
     server_node_report_min_traffic: "节点上报最低流量",
     server_device_online_min_traffic: "设备在线最低流量",
+    account_deletion_enable: "允许用户删除账户",
     passkey_enable: "允许 Passkey 登录",
     email_verify: "注册邮箱验证",
     safe_mode_enable: "安全模式",

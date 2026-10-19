@@ -1,5 +1,5 @@
 import { TableViewport } from "../shared/ui";
-import { formatInstant } from "../shared/timezone";
+import { adminInstant as formatInstant } from "./admin-log-time";
 import { useRef, useState } from "react";
 import { admin, request } from "../shared/api";
 import { Reload, State, useData } from "../shared/ui";

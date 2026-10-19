@@ -21,6 +21,7 @@ class AuthService
 
     public function generateAuthData(Request $request)
     {
+        abort_if($this->user->account_deleted_at,403,__('Account is disabled.'));
         $mfa = \Illuminate\Support\Facades\DB::table('v2_user_mfa')->where('user_id', $this->user->id)->first();
         $version = (int) ($mfa->version ?? 0);
         // Exchanges retain their validated version even when a concurrent change disables MFA.
@@ -72,10 +73,10 @@ class AuthService
     {
         $data = self::activeClaims($jwt);
         if (!$data) return false;
-        $user = User::select(['v2_user.id', 'v2_user.email', 'v2_user.is_admin', 'v2_user.banned', 'v2_user_mfa.version as mfa_version'])
+        $user = User::select(['v2_user.id', 'v2_user.email', 'v2_user.is_admin', 'v2_user.banned', 'v2_user.account_deleted_at', 'v2_user_mfa.version as mfa_version'])
             ->leftJoin('v2_user_mfa', 'v2_user_mfa.user_id', '=', 'v2_user.id')->find($data['id']);
-        if (!$user || (int)($data['mfaVersion'] ?? 0) !== (int)($user->mfa_version ?? 0)) return false;
-        unset($user->mfa_version);
+        if (!$user || $user->account_deleted_at || (int)($data['mfaVersion'] ?? 0) !== (int)($user->mfa_version ?? 0)) return false;
+        unset($user->mfa_version, $user->account_deleted_at);
         return $user->toArray();
     }
 
@@ -92,8 +93,8 @@ class AuthService
         if (!self::checkSession($reference['userId'], $reference['sessionId'])) return null;
         $user = User::select(['v2_user.*', 'v2_user_mfa.version as mfa_version'])
             ->leftJoin('v2_user_mfa', 'v2_user_mfa.user_id', '=', 'v2_user.id')->find($reference['userId']);
-        if (!$user || (int)($reference['mfaVersion'] ?? 0) !== (int)($user->mfa_version ?? 0)) return null;
-        unset($user->mfa_version);
+        if (!$user || $user->account_deleted_at || (int)($reference['mfaVersion'] ?? 0) !== (int)($user->mfa_version ?? 0)) return null;
+        unset($user->mfa_version, $user->account_deleted_at);
         return $user;
     }
 

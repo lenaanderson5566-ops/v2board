@@ -84,7 +84,8 @@ class OrderActions
         abort_if($request->exists('coupon_code') || $request->exists('couponCode'), 422, __('Please select this coupon from your wallet.'));
         // Serialize order creation and keep cancellation/refund/new order atomic.
         return DB::transaction(function () use ($request) {
-            User::where('id', $request->user['id'])->lockForUpdate()->firstOrFail();
+            $lockedUser = User::where('id', $request->user['id'])->lockForUpdate()->firstOrFail();
+            abort_if($lockedUser->banned,403,__('Account is disabled.'));
             if ($request->filled('replace_trade_no')) {
                 $previous = Order::where('user_id', $request->user['id'])
                     ->where('trade_no', $request->input('replace_trade_no'))->lockForUpdate()->first();

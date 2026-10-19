@@ -76,3 +76,28 @@ it("uses the configured zone for filters without repeating it on labels", async 
     configureTimeZone("Asia/Shanghai", true);
     setDisplayTimeZone(null);
 });
+
+it("uses one timezone hint for the workspace and formats ISO dates without a suffix", async () => {
+    const { AdminTimeZoneScope, AdminLogTimeZone, adminInstant }=await import("./admin-log-time");
+    const { configureTimeZone, formatInstant }=await import("../shared/timezone");
+    configureTimeZone("America/New_York",true);
+    const view=render(<AdminTimeZoneScope><AdminLogTimeZone/><AdminLogTimeZone/><span>{adminInstant("2026-07-01T12:00:00Z")}</span></AdminTimeZoneScope>);
+    expect(screen.getAllByTestId("log-time-zone")).toHaveLength(1);
+    expect(view.container.textContent).toContain("08:00:00");
+    expect(view.container.textContent).not.toMatch(/GMT|EDT|EST/);
+    expect(formatInstant("2026-07-01T12:00:00Z",{timeZoneName:"longOffset"})).toContain("GMT-04:00");
+    configureTimeZone("Asia/Shanghai",true);
+});
+it("omits GMT in the shared user-management and online-user date renderer only in admin mode", async () => {
+    window.V2BOARD ??= {mode:"admin",systemTimeZone:"Asia/Shanghai"} as typeof window.V2BOARD;
+    const { boot, date }=await import("../shared/api");
+    const { configureTimeZone }=await import("../shared/timezone");
+    const previous=boot.mode;
+    try {
+        configureTimeZone("Asia/Shanghai",true);boot.mode="admin";
+        expect(date(1700000000)).not.toMatch(/GMT|UTC/);
+        expect(date(1700000000)).toContain("06:13:20");
+        boot.mode="user";
+        expect(date(1700000000)).toMatch(/GMT|UTC/);
+    } finally {boot.mode=previous;}
+});

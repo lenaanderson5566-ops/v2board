@@ -2,7 +2,7 @@ import { useState, type FormEvent } from "react";
 import { Coins, RefreshCw, Save, ArrowRightLeft } from "lucide-react";
 import { admin, request, money } from "../shared/api";
 import { State, useData } from "../shared/ui";
-import { formatInstant } from "../shared/timezone";
+import { adminInstant as formatInstant } from "./admin-log-time";
 import { AdminSectionHead, AdminOperationNotice } from "./admin-section";
 import { useAdminOperation } from "./admin-operation";
 import { parseUsdPrice } from "./billing-price-input";

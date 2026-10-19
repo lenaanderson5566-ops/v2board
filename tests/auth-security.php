@@ -127,6 +127,73 @@ try {
     $assert($login($user->email,'test-only-password')->getStatusCode()===200, 'Retired CAPTCHA configuration must not block password login');
     $auth->removeAllSession();
     $assert(App\Services\AuthService::decryptAuthData($second)===false, 'All-session revocation failed');
+    // Self-service account deletion uses the real V10 router and isolated fixtures.
+    $deleting=App\Models\User::create(['email'=>'delete-'.bin2hex(random_bytes(6)).'@example.com','password'=>password_hash('test-only-password',PASSWORD_DEFAULT),'uuid'=>App\Utils\Helper::guid(true),'token'=>App\Utils\Helper::guid()]);
+    $deleteAuth=new App\Services\AuthService($deleting);
+    $deleteToken=$deleteAuth->generateAuthData(Illuminate\Http\Request::create('/'))['auth_data'];
+    $otherToken=$deleteAuth->generateAuthData(Illuminate\Http\Request::create('/'))['auth_data'];
+    $oldEmail=$deleting->email; $oldSubscription=$deleting->token;
+    $call=0;
+    $deleteCall=function($method='DELETE',$body=null,$credential=true) use($kernel,$deleteToken,&$call,$deleting) {
+        Illuminate\Support\Facades\RateLimiter::clear('ACCOUNT_DELETION:'.$deleting->id);
+        $body=$body ?? ['password'=>'test-only-password','confirmation'=>'DELETE'];
+        $req=Illuminate\Http\Request::create('/api/v10/me'.($method==='GET' ? '/account-deletion' : ''),$method,[],[],[],['CONTENT_TYPE'=>'application/json','HTTP_ACCEPT'=>'application/json','REMOTE_ADDR'=>'203.0.113.'.(++$call)],json_encode($body));
+        if ($credential) $req->headers->set('Authorization','Bearer '.$deleteToken);
+        return $kernel->handle($req);
+    };
+    config(['v2board.account_deletion_enable'=>0]);
+    $assert(json_decode($deleteCall('GET')->getContent(),true)['data']['enabled']===false,'Deletion is disabled by default');
+    $assert($deleteCall()->getStatusCode()===403,'Disabled deletion is enforced by the API');
+    config(['v2board.account_deletion_enable'=>1]);
+    $assert($deleteCall('DELETE',null,false)->getStatusCode()===401,'Deletion requires authentication');
+    $assert($deleteCall('DELETE',['password'=>'test-only-password','confirmation'=>'yes'])->getStatusCode()===422,'Deletion requires exact explicit confirmation');
+    $assert($deleteCall('DELETE',['password'=>'wrong','confirmation'=>'DELETE'])->getStatusCode()===422,'Deletion requires current password');
+    $assert($deleteCall('DELETE',['password'=>'test-only-password','confirmation'=>'DELETE','id'=>$target->id])->getStatusCode()===422,'Deletion cannot target another account');
+    $deleting->update(['is_admin'=>1]);
+    $assert($deleteCall()->getStatusCode()===409,'Administrators cannot self-delete');
+    $deleting->update(['is_admin'=>0,'balance'=>100]);
+    $assert($deleteCall()->getStatusCode()===409,'Positive balance blocks deletion');
+    $deleting->update(['balance'=>0,'commission_balance'=>1]);
+    $assert($deleteCall()->getStatusCode()===409,'Commission balance blocks deletion');
+    $deleting->update(['commission_balance'=>0]);
+    $order=App\Models\Order::create(['user_id'=>$deleting->id,'plan_id'=>1,'type'=>1,'period'=>'month_price','trade_no'=>bin2hex(random_bytes(12)),'total_amount'=>100,'status'=>0]);
+    $assert($deleteCall()->getStatusCode()===409,'Unpaid order blocks deletion');
+    $order->update(['status'=>1]);
+    $assert($deleteCall()->getStatusCode()===409,'Processing order blocks deletion');
+    $order->update(['status'=>3]);
+    $order->update(['invite_user_id'=>$deleting->id,'commission_balance'=>100,'commission_status'=>0]);
+    $assert($deleteCall()->getStatusCode()===409,'Unsettled commission blocks deletion');
+    $order->update(['commission_balance'=>0]);
+    $openTicket=Illuminate\Support\Facades\DB::table('v2_ticket')->insertGetId(['user_id'=>$deleting->id,'subject'=>'Deletion test','level'=>1,'status'=>0,'created_at'=>time(),'updated_at'=>time()]);
+    $assert($deleteCall()->getStatusCode()===409,'Open support ticket blocks deletion');
+    Illuminate\Support\Facades\DB::table('v2_ticket')->where('id',$openTicket)->update(['status'=>1]);
+    $ref=App\Services\AuthService::sessionReference($deleteToken);
+    $sessions=$deleteAuth->getSessions();$sessions[$ref['sessionId']]['authenticated_at']=time()-301;
+    Illuminate\Support\Facades\Cache::put(App\Utils\CacheKey::get('USER_SESSIONS',$deleting->id),$sessions);
+    $assert($deleteCall()->getStatusCode()===409,'Old login assurance blocks deletion');
+    $sessions[$ref['sessionId']]['authenticated_at']=time();
+    Illuminate\Support\Facades\Cache::put(App\Utils\CacheKey::get('USER_SESSIONS',$deleting->id),$sessions);
+    Illuminate\Support\Facades\DB::table('v2_passkey')->insert(['user_id'=>$deleting->id,'credential_hash'=>str_repeat('a',64),'credential_id'=>'test','public_key'=>'test','user_handle'=>'test','rp_id'=>'example.test','name'=>'test','sign_count'=>0,'created_at'=>time()]);
+    $rollbackOnce=true;
+    Illuminate\Support\Facades\Event::listen(Illuminate\Database\Events\QueryExecuted::class,function($query) use (&$rollbackOnce) {
+        if ($rollbackOnce && str_starts_with(strtolower($query->sql),'delete from') && str_contains($query->sql,'v2_passkey')) { $rollbackOnce=false; throw new RuntimeException('Test rollback'); }
+    });
+    $assert($deleteCall()->getStatusCode()===500,'Unexpected cleanup failure aborts deletion');
+    $assert(App\Models\User::find($deleting->id)->email===$oldEmail && Illuminate\Support\Facades\DB::table('v2_passkey')->where('user_id',$deleting->id)->exists(),'Cleanup failure rolls back identity and credentials');
+    $deleted=$deleteCall();
+    $assert($deleted->getStatusCode()===204,'Deletion succeeds: '.$deleted->getContent());
+    $deleting->refresh();
+    $assert($deleting->banned && $deleting->account_deleted_at && $deleting->email!==$oldEmail && $deleting->token!==$oldSubscription,'Identity erased and subscription revoked');
+    $assert(!password_verify('test-only-password',$deleting->password),'Old password erased');
+    $assert(!App\Services\AuthService::decryptAuthData($deleteToken) && !App\Services\AuthService::decryptAuthData($otherToken),'Every session is revoked');
+    $assert(!Illuminate\Support\Facades\DB::table('v2_passkey')->where('user_id',$deleting->id)->exists(),'Passkeys erased');
+    $assert(App\Models\Order::whereKey($order->id)->exists(),'Accounting records retained');
+    $mail=(new App\Jobs\SendEmailJob(['user_id'=>$deleting->id,'email'=>$oldEmail,'template_name'=>'notify']))->handle();
+    $assert(($mail['reason'] ?? null)==='ACCOUNT_DELETED','Queued account mail is suppressed after deletion');
+    $assert($deleteCall()->getStatusCode()===401,'Replayed deletion cannot authenticate');
+    try {$deleting->update(['banned'=>0]);$assert(false,'Deleted account was restored');} catch(RuntimeException $e) {$assert(str_contains($e->getMessage(),'cannot be restored'),'Deletion marker prevents restoration');}
+    $assert(App\Models\User::whereKey($target->id)->exists(),'Unrelated account remains intact');
+    Illuminate\Support\Facades\RateLimiter::clear('ACCOUNT_DELETION:'.$deleting->id);
     echo "Authentication security: $checks checks passed\n";
 } finally {
     if ($auth) $auth->removeAllSession();

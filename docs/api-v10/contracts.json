@@ -1666,6 +1666,20 @@
       "path": "me",
       "method": "PATCH"
     },
+    "deleteMe": {
+      "input": {
+        "password": "password",
+        "confirmation": "confirmation"
+      },
+      "output": "scalar",
+      "role": "user",
+      "status": 204,
+      "raw": false,
+      "bindings": {},
+      "key": "AccountDeletionController@remove",
+      "path": "me",
+      "method": "DELETE"
+    },
     "getMeSummary": {
       "input": {},
       "output": "summary",
@@ -1701,6 +1715,17 @@
       "bindings": {},
       "key": "User/StatController@getTrafficLog",
       "path": "me/traffic-records",
+      "method": "GET"
+    },
+    "getMeAccountDeletion": {
+      "input": {},
+      "output": "accountDeletionState",
+      "role": "user",
+      "status": 200,
+      "raw": false,
+      "bindings": {},
+      "key": "AccountDeletionController@state",
+      "path": "me/account-deletion",
       "method": "GET"
     },
     "getSubscriptionsSubscriptionToken": {

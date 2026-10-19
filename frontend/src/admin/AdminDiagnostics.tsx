@@ -1,4 +1,4 @@
-import { formatInstant } from "../shared/timezone";
+import { adminInstant as formatInstant } from "./admin-log-time";
 import { admin, date, type Row } from "../shared/api";
 import { Modal, Panel, State, useData } from "../shared/ui";
 

@@ -2,7 +2,7 @@ import { TableViewport } from "../shared/ui";
 import { useState } from "react";
 import { admin, request, type Row } from "../shared/api";
 import { State, Modal, Reload, Pager } from "../shared/ui";
-import { formatInstant } from "../shared/timezone";
+import { adminInstant as formatInstant } from "./admin-log-time";
 import { useData } from "../shared/ui";
 import { useAdminOperation } from "./admin-operation";
 import { AdminOperationNotice } from "./admin-section";

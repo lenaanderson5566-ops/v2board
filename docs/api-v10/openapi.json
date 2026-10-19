@@ -2992,6 +2992,74 @@
             }
           }
         }
+      },
+      "delete": {
+        "operationId": "deleteMe",
+        "tags": [
+          "user"
+        ],
+        "summary": "DELETE /me",
+        "description": "Self-service account deletion, disabled by default. Requires current password, explicit DELETE confirmation and a full login including configured MFA within five minutes. Administrators, balances, unsettled orders and commissions block deletion. Erases account identity and credentials, terminates subscription access, retains a pseudonymous accounting reference and necessary security records under existing retention rules. Irreversible; no automatic refund.",
+        "security": [
+          {
+            "bearerAuth": []
+          },
+          {
+            "browserUserCookie": []
+          }
+        ],
+        "x-permission": "user",
+        "responses": {
+          "204": {
+            "description": "Success",
+            "headers": {
+              "Cache-Control": {
+                "$ref": "#/components/headers/PrivateNoStore"
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "403": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "409": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "413": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "415": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "419": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "422": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "429": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "500": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "503": {
+            "$ref": "#/components/responses/ProblemDetails"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/deleteMeInput"
+              }
+            }
+          }
+        },
+        "parameters": []
       }
     },
     "/me/summary": {
@@ -3277,6 +3345,82 @@
         "x-permission": "user",
         "x-legacy-path": "/api/v1/user/stat/getTrafficLog",
         "description": "Requires an active session. Order and ticket identifiers are checked against the authenticated owner. Unauthenticated: 401; banned account: 403."
+      }
+    },
+    "/me/account-deletion": {
+      "get": {
+        "operationId": "getMeAccountDeletion",
+        "tags": [
+          "user"
+        ],
+        "summary": "GET /me/account-deletion",
+        "description": "Self-service account deletion, disabled by default. Requires current password, explicit DELETE confirmation and a full login including configured MFA within five minutes. Administrators, balances, unsettled orders and commissions block deletion. Erases account identity and credentials, terminates subscription access, retains a pseudonymous accounting reference and necessary security records under existing retention rules. Irreversible; no automatic refund.",
+        "security": [
+          {
+            "bearerAuth": []
+          },
+          {
+            "browserUserCookie": []
+          }
+        ],
+        "x-permission": "user",
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": [
+                    "data"
+                  ],
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/accountDeletionState"
+                    }
+                  }
+                }
+              }
+            },
+            "headers": {
+              "Cache-Control": {
+                "$ref": "#/components/headers/PrivateNoStore"
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "403": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "409": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "413": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "415": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "419": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "422": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "429": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "500": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "503": {
+            "$ref": "#/components/responses/ProblemDetails"
+          }
+        },
+        "parameters": []
       }
     },
     "/subscriptions/{subscriptionToken}": {
@@ -11079,6 +11223,53 @@
             "nullable": true
           }
         },
+        "additionalProperties": false
+      },
+      "accountDeletionState": {
+        "type": "object",
+        "properties": {
+          "enabled": {
+            "type": "boolean"
+          },
+          "blockers": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": [
+                "ADMIN_ACCOUNT",
+                "ACCOUNT_FUNDS",
+                "OPEN_ORDERS",
+                "PENDING_COMMISSION",
+                "OPEN_TICKETS"
+              ]
+            }
+          }
+        },
+        "required": [
+          "enabled",
+          "blockers"
+        ],
+        "additionalProperties": false
+      },
+      "deleteMeInput": {
+        "type": "object",
+        "properties": {
+          "password": {
+            "type": "string",
+            "maxLength": 128,
+            "writeOnly": true
+          },
+          "confirmation": {
+            "type": "string",
+            "enum": [
+              "DELETE"
+            ]
+          }
+        },
+        "required": [
+          "password",
+          "confirmation"
+        ],
         "additionalProperties": false
       },
       "subscription": {

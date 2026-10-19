@@ -140,6 +140,7 @@ class ConfigSave extends FormRequest
         'browser_policy_dingtalk' => 'sometimes|required|in:allow,prompt,guide',
         'browser_policy_wecom' => 'sometimes|required|in:allow,prompt,guide',
         'browser_policy_other' => 'sometimes|required|in:allow,prompt,guide',
+        'account_deletion_enable' => 'in:0,1',
         'passkey_enable' => 'in:0,1',
         'email_whitelist_enable' => 'in:0,1',
         'email_whitelist_suffix' => 'nullable|array',

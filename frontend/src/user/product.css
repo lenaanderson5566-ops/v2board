@@ -2435,3 +2435,6 @@ body[data-console="user"] .client-family-header p {
     .landing-footer > .privacy-footer-links { margin-inline-start: 0; justify-content: flex-start; }
     .minimal-landing-footer > .privacy-footer-links { grid-column: 1 / -1; justify-self: start; justify-content: flex-start; }
 }
+
+.account-deletion-ack { display: flex; flex-direction: row; align-items: flex-start; gap: 10px; margin-block: 16px; }
+.account-deletion-ack input[type="checkbox"] { width: 18px; min-width: 18px; height: 18px; margin: 3px 0 0; }

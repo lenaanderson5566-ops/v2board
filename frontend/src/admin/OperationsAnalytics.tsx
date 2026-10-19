@@ -3,7 +3,7 @@ import { browserLabel } from "./browser-labels";
 import { useState, type ReactNode } from "react";
 import { admin, query } from "../shared/api";
 import { Panel, State, useData } from "../shared/ui";
-import { formatInstant } from "../shared/timezone";
+import { adminInstant as formatInstant } from "./admin-log-time";
 
 type Access = {
     available: boolean;

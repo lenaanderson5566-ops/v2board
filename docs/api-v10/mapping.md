@@ -104,6 +104,8 @@ Admin, operations/risk and supported node APIs retain their API versions. The un
 | `New native resource` | `DELETE /api/v10/me/security/passkeys/{passkeyId}` | user | scalar |
 | `New native resource` | `POST /api/v10/auth/passkeys/options` | public | passkeyOptions |
 | `New native resource` | `POST /api/v10/auth/passkeys/sessions` | public | authentication |
+| `New native resource` | `GET /api/v10/me/account-deletion` | user | accountDeletionState |
+| `New native resource` | `DELETE /api/v10/me` | user | scalar |
 
 V2Box support: administrative `server/v2box/{save,update,copy,drop}` routes use the existing admin prefix. Node config `/api/v2/server/config` and retained UniProxy endpoints accept `node_type=v2box`. V10 subscription paths and resource shapes are unchanged; stable node identities distinguish `v2box` from `v2node`. See [V2Box integration](../v2box.md).
 
@@ -209,3 +211,5 @@ GET /me/security/mfa reads default-off email/TOTP state. POST /me/security/mfa/c
 New first-party resources (no legacy V1 alias): `GET /api/v10/public/analytics/configuration` and `POST /api/v10/public/analytics/events`. Explicit anonymous event schema; credentials omitted. The historical `/public/page-views` invitation counter is retired (404); current analytics events are unaffected. Admin report/settings remain under the existing protected V1 admin prefix at `/analytics/report` (GET) and `/analytics/settings` (POST).
 
 Analytics source extension: optional attributionVersion=1 and sourceDomain on the existing public event contract. Hostname-only allowlist; no URLs, campaign parameters, account IDs or payment attribution. First accepted event fixes the session source. Existing clients may omit both fields. Migration 2026_10_17_000002 adds source fields; without it ordinary analytics continues and the admin report exposes sourcesReady=false. Report sources are the top 50 domains within the same time/device scope, with ordered browser funnel counts and sourceGroups. Historical sessions remain distinct from direct/unknown traffic. Sources follow session retention. Consent revision 3 re-prompts prior allows while preserving valid prior denials; eight-language disclosure updated.
+
+Account deletion: GET /me/account-deletion and DELETE /me are native V10 resources, default disabled by account_deletion_enable. DELETE requires current password, DELETE confirmation, recent full authentication, and no funds/unsettled orders or commissions. Account identity is anonymized and access revoked; a pseudonymous user ID remains for accounting and necessary security retention. No V1 self-deletion route is introduced.

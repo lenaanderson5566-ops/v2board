@@ -13,7 +13,10 @@ const mocks = vi.hoisted(() => ({
     changeLanguage: vi.fn(),
     request: vi.fn(),
     reload: vi.fn(),
+    browserFetch: vi.fn(),
+    forgetBrowserSession: vi.fn(),
 }));
+vi.mock("../shared/browser-session", () => ({ browserFetch: mocks.browserFetch, forgetBrowserSession: mocks.forgetBrowserSession }));
 vi.mock("react-i18next", () => ({ useTranslation: () => ({}) }));
 vi.mock("./profile-copy", () => ({ p: (key: string) => key }));
 vi.mock("../shared/i18n", () => ({
@@ -55,6 +58,7 @@ vi.mock("../shared/ui", () => ({
         </div>
     ),
 }));
+import { AccountDeletion } from "./AccountDeletion";
 import { AccountPreferences } from "./AccountPreferences";
 import { AnalyticsPrivacy } from "./AnalyticsPrivacy";
 import { privacyKey, savePrivacyChoice, trackAction } from "./product-analytics";
@@ -194,4 +198,46 @@ it("keeps the switch disabled when server collection is disabled", async () => {
     privacyScreen(30,false);
     await waitFor(() => expect(screen.getByText("analyticsRetention", {exact:false})).toBeTruthy());
     expect((screen.getByRole("switch") as HTMLButtonElement).disabled).toBe(true);
+});
+
+it("hides account deletion while the administrator switch is off", async () => {
+    mocks.browserFetch.mockResolvedValue({ok:true,status:200,json:async()=>({data:{enabled:false,blockers:[]}})});
+    const {container}=render(<AccountDeletion />);
+    await waitFor(()=>expect(mocks.browserFetch).toHaveBeenCalled());
+    expect(container.textContent).toBe("");
+});
+it("shows deletion blockers and prevents confirmation", async () => {
+    mocks.browserFetch.mockResolvedValue({ok:true,status:200,json:async()=>({data:{enabled:true,blockers:["ACCOUNT_FUNDS"]}})});
+    render(<AccountDeletion />);
+    const button=await screen.findByRole("button",{name:"删除账户"});
+    expect((button as HTMLButtonElement).disabled).toBe(true);
+    expect(screen.getByText("请先处理账户余额和佣金。")).toBeTruthy();
+});
+it("requires password, typed confirmation and acknowledgement, then clears login state", async () => {
+    mocks.browserFetch.mockResolvedValueOnce({ok:true,status:200,json:async()=>({data:{enabled:true,blockers:[]}})}).mockResolvedValueOnce({ok:true,status:204});
+    render(<AccountDeletion />);
+    fireEvent.click(await screen.findByRole("button",{name:"删除账户"}));
+    const submit=screen.getByRole("button",{name:"确认删除账户"});
+    expect((submit as HTMLButtonElement).disabled).toBe(true);
+    fireEvent.change(screen.getByLabelText("当前密码"),{target:{value:"test-password"}});
+    fireEvent.change(screen.getByLabelText("输入 DELETE 确认删除"),{target:{value:"DELETE"}});
+    expect((submit as HTMLButtonElement).disabled).toBe(true);
+    fireEvent.click(screen.getByRole("checkbox"));
+    fireEvent.click(submit);
+    await screen.findByText("账户已删除。");
+    expect(mocks.browserFetch.mock.calls[1][0]).toContain("/api/v10/me");
+    expect(mocks.browserFetch.mock.calls[1][1].method).toBe("DELETE");
+    expect(JSON.parse(mocks.browserFetch.mock.calls[1][1].body)).toEqual({password:"test-password",confirmation:"DELETE"});
+    expect(mocks.forgetBrowserSession).toHaveBeenCalledOnce();
+});
+it("keeps the account signed in and clears the password after a rejected deletion", async () => {
+    mocks.browserFetch.mockResolvedValueOnce({ok:true,status:200,json:async()=>({data:{enabled:true,blockers:[]}})}).mockResolvedValueOnce({ok:false,status:409,json:async()=>({code:"RECENT_LOGIN_REQUIRED"})});
+    render(<AccountDeletion />);
+    fireEvent.click(await screen.findByRole("button",{name:"删除账户"}));
+    fireEvent.change(screen.getByLabelText("当前密码"),{target:{value:"test-password"}});
+    fireEvent.change(screen.getByLabelText("输入 DELETE 确认删除"),{target:{value:"DELETE"}});
+    fireEvent.click(screen.getByRole("checkbox"));fireEvent.click(screen.getByRole("button",{name:"确认删除账户"}));
+    await screen.findByRole("alert");
+    expect((screen.getByLabelText("当前密码") as HTMLInputElement).value).toBe("");
+    expect(mocks.forgetBrowserSession).not.toHaveBeenCalled();
 });

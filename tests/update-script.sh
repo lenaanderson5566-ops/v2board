@@ -270,5 +270,6 @@ grep -q 'All approved migrations completed' "$TMP/output"
 grep -q 'migrate --path=database/migrations/2026_10_18_000001_drop_retired_staff_role.php --force --no-interaction' calls.log
 grep -q 'migrate --path=database/migrations/2026_10_19_000001_create_analytics_measurements.php --force --no-interaction' calls.log
 grep -q 'migrate --path=database/migrations/2026_10_19_000003_add_analytics_browsers.php --force --no-interaction' calls.log
+grep -q 'migrate --path=database/migrations/2026_10_19_000004_add_account_deletion.php --force --no-interaction' calls.log
 grep -q 'migrate --path=database/migrations/2026_10_19_000002_create_passkeys.php --force --no-interaction' calls.log
 echo 'Updater: 26 isolated scenarios passed'

@@ -6,7 +6,7 @@ import { Pager, Empty } from "../shared/ui";
 import { useRef, useState } from "react";
 import { admin, request, type Row } from "../shared/api";
 import { Modal, State, useData } from "../shared/ui";
-import { formatInstant } from "../shared/timezone";
+import { adminInstant as formatInstant } from "./admin-log-time";
 
 const actions: Record<string, string> = {
     add: "加入禁发",

@@ -1874,5 +1874,35 @@
     "bindings": {},
     "role": "public",
     "status": 200
+  },
+  {
+    "key": "AccountDeletionController@state",
+    "legacy": "",
+    "legacyMethod": "GET",
+    "action": "App\\Http\\Controllers\\V10\\AccountDeletionController@state",
+    "parameters": [],
+    "middleware": [],
+    "scope": "user",
+    "path": "me/account-deletion",
+    "method": "GET",
+    "bindings": {},
+    "role": "user",
+    "status": 200
+  },
+  {
+    "key": "AccountDeletionController@remove",
+    "legacy": "",
+    "legacyMethod": "DELETE",
+    "action": "App\\Http\\Controllers\\V10\\AccountDeletionController@remove",
+    "parameters": [],
+    "middleware": [
+      "throttle:10,1,account-deletion:"
+    ],
+    "scope": "user",
+    "path": "me",
+    "method": "DELETE",
+    "bindings": {},
+    "role": "user",
+    "status": 204
   }
 ]

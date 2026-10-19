@@ -6,7 +6,7 @@ import { useState } from "react";
 import { BarChart3 } from "lucide-react";
 import { admin, query } from "../shared/api";
 import { Panel, State, useData } from "../shared/ui";
-import { formatInstant } from "../shared/timezone";
+import { adminInstant as formatInstant } from "./admin-log-time";
 import type { V10AnalyticsConfiguration } from "../shared/v10-types";
 import "./analytics.css";
 import { browserLabel } from "./browser-labels";

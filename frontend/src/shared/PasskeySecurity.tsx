@@ -18,7 +18,7 @@ export function PasskeySecurity() {
         <p className="muted">{tx("绑定和删除需要当前密码及最近 5 分钟内的完整登录验证；会话过期时请重新登录。")}</p>
         {state && <>
             {!state.enabled && <p className="muted">{tx("站点尚未开启 Passkey，可查看或移除已有绑定。")}</p>}
-            <ul>{state.credentials.map(item=><li key={item.id}><strong>{item.name}</strong> · {item.rpId} · {tx("绑定时间")} {formatInstant(item.createdAt)} · {tx("最近使用")} {item.lastUsedAt ? formatInstant(item.lastUsedAt) : tx("尚未使用")} <button type="button" disabled={busy} onClick={()=>{setPassword("");setError("");setRemoving(item.id);}}>{tx("移除")}</button></li>)}</ul>
+            <ul>{state.credentials.map(item=><li key={item.id}><strong>{item.name}</strong> · {item.rpId} · {tx("绑定时间")} {formatInstant(item.createdAt, {timeZoneName: window.V2BOARD?.mode === "admin" ? undefined : "short"})} · {tx("最近使用")} {item.lastUsedAt ? formatInstant(item.lastUsedAt, {timeZoneName: window.V2BOARD?.mode === "admin" ? undefined : "short"}) : tx("尚未使用")} <button type="button" disabled={busy} onClick={()=>{setPassword("");setError("");setRemoving(item.id);}}>{tx("移除")}</button></li>)}</ul>
             {!state.credentials.length && <p className="muted">{tx("尚未绑定 Passkey。")}</p>}
             <form onSubmit={event=>{event.preventDefault();void run(async(signal)=>{await registerPasskey(password,name,signal);if(!signal.aborted){setName("");await load(signal);}});}}>
                 <label>{tx("Passkey 名称")}<input required maxLength={64} value={name} onChange={event=>setName(event.target.value)} disabled={busy || !state.enabled}/></label>

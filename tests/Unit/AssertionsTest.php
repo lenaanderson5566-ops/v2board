@@ -2,22 +2,11 @@
 
 namespace Tests\Unit;
 
-use Illuminate\Foundation\Testing\RefreshDatabase;
-use Tests\TestCase;
+use PHPUnit\Framework\TestCase;
 use Tests\Support\Assertions;
 
-class ExampleTest extends TestCase
+class AssertionsTest extends TestCase
 {
-    /**
-     * A basic test example.
-     *
-     * @return void
-     */
-    public function testBasicTest()
-    {
-        $this->assertTrue(true);
-    }
-
     public function testCounterIncrementsOnlyAfterSuccessfulAssertion(): void
     {
         require_once dirname(__DIR__).'/support/Assertions.php';

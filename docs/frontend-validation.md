@@ -701,3 +701,7 @@ ClientRecognition 统一登录／订阅日志、用户活动及运营访问报�
 功能维护边界及默认阈值见 observability-governance.md。无新增数据库迁移，沿用已有定时调度；外部通知关闭且未增加通知渠道。发布资源已构建并随功能代码一同交付，服务器沿用 update.sh 更新；恢复定时任务后自动开始采集。
 
 本轮最终前端验证：全量 792 项通过，TypeScript 和生产构建通过。报告位于 storage/app/test-organization/browser-access/observability-full.json，构建日志为 observability-build.log。
+
+## 文档与测试清理
+
+本轮仅清理旧文档、重复／占位 PHPUnit 测试及其辅助配置，未改动前端实现和发布资源，不涉及新的浏览器视觉验收。首页行为仍由 console-smoke.php 的页面入口回归覆盖。

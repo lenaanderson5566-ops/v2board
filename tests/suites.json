@@ -110,13 +110,9 @@
     {"id": "usage-resets", "file": "tests/usage-resets.php", "suite": "integration"},
     {"id": "usage-window", "file": "tests/usage-window.php", "suite": "integration"},
     {"id": "v2box", "file": "tests/v2box.php", "suite": "integration"},
-    {"id": "phpunit-unit", "file": "tests/Unit/ExampleTest.php", "suite": "unit", "type": "phpunit", "args": ["--testsuite", "Unit"]},
-    {"id": "phpunit-integration", "file": "tests/Feature/ExampleTest.php", "suite": "integration", "type": "phpunit", "args": ["--testsuite", "Feature"]}
+    {"id": "phpunit-unit", "file": "tests/Unit/AssertionsTest.php", "suite": "unit", "type": "phpunit", "args": ["--testsuite", "Unit"]}
   ],
   "helpers": [
-  "tests/Bootstrap.php",
-  "tests/CreatesApplication.php",
-  "tests/TestCase.php",
   "tests/commerce-bootstrap.php",
   "tests/console-ui-fixtures.php",
   "tests/user-experience-fixtures.php",

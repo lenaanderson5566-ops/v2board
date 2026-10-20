@@ -17,7 +17,7 @@
 - 保留已有缓存前缀、分布式锁及显式本地磁盘根目录 storage/app，避免缓存命名空间和文件路径变化。
 - 项目不使用 HasUuids、默认依赖注入日期或数据库密码令牌构造器；原有 UUID 和认证流程继续使用。
 - Banner 上传原本就不允许 SVG，继续只允许指定的位图格式。
-- 测试依赖更新至 PHPUnit 12（开发环境 PHP 8.4+）、Collision 8.9，保留事件订阅扩展与独立测试缓存。
+- 测试依赖更新至 PHPUnit 12（开发环境 PHP 8.4+）、Collision 8.9，当前 PHPUnit 仅运行纯单元测试；框架及 HTTP 集成检查归入 tests/suites.json 的独立测试脚本。
 - 本次不新增数据库迁移。
 - Tinker 升级至 3；本次锁文件使用 Symfony 8，生产 PHP 最低要求为 8.4，实际在 PHP 8.4.26 下验证。
 - cache.serializable_classes=false：缓存只恢复数组和标量，不恢复任意 PHP 对象；节点在线状态、登录会话和验证码继续使用原有数据格式。
@@ -62,3 +62,9 @@ Lightsail 静态 IP 任务使用 Laravel 13 队列属性 Connection、Queue、Tr
 旧版数据库缺少 `v2_login_log` 等早期运维表时，升级脚本先执行 `2026_10_11_000000_ensure_operations_schema` 补齐日志、风控、客户端策略、在线快照与套餐翻译结构。
 已有表、策略和黑名单保留，不重放历史默认 UA 黑名单；在线快照只保留每用户/来源最新记录。
 `index_log_metadata` 可恢复部分完成的字段/索引创建，失败后重新运行完整升级脚本即可，无需手动删列、删索引或删迁移记录。
+
+## 旧升级文档归并
+
+Laravel 9–12 的过渡部署步骤不再单独保留，完整历史可通过 Git 查阅。仍适用的兼容边界为：保留可信代理白名单、SMTP 地址控制字符校验、安全日志脱敏、原缓存前缀与锁命名空间，以及已有会话和额度日期语义。当前框架、Carbon 和 PHP 依赖以 composer.lock 及平台预检为准，不沿用旧版约束或历史临时安全审计参数。
+
+历史 PHPUnit 验证数量仅表示当时结果。当前断言工具测试位于 tests/Unit/AssertionsTest.php；首页与后台入口由 tests/console-smoke.php 验证，框架升级和缓存兼容仍使用上述专项脚本。

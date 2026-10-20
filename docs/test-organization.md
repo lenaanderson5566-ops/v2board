@@ -139,7 +139,7 @@
 
 ## 统一结构与入口
 
-`tests/suites.json` 是后端文件与检查项的对应清单，按 unit、integration、api、security、regression 分类；工作进程、浏览器夹具和导出脚本单独列为辅助项。保留既有 PHPUnit Unit/Feature 目录、Vitest 就近测试、Flutter test/plugin 目录和 Go 包内测试，避免破坏现有调用路径。
+`tests/suites.json` 是后端文件与检查项的对应清单，按 unit、integration、api、security、regression 分类；工作进程、浏览器夹具和导出脚本单独列为辅助项。PHPUnit Unit 目录保留纯单元测试；HTTP 集成检查归入独立领域脚本。保留 Vitest 就近测试、Flutter test/plugin 目录和 Go 包内测试。
 
 ```sh
 php tests/run.php --validate
@@ -414,3 +414,11 @@ mfa-api 沿用真实路由、Cookie、CSRF 和真实密钥签名，覆盖 ES256 
 功能维护边界及默认阈值见 observability-governance.md。无新增数据库迁移，沿用已有定时调度；外部通知关闭且未增加通知渠道。发布资源已构建并随功能代码一同交付，服务器沿用 update.sh 更新；恢复定时任务后自动开始采集。
 
 本轮最终前端验证：全量 792 项通过，TypeScript 和生产构建通过。报告位于 storage/app/test-organization/browser-access/observability-full.json，构建日志为 observability-build.log。
+
+## 无效文档与测试清理
+
+删除四份旧框架过渡说明及一次性资源清理报告，适用边界归并到 laravel13-upgrade.md、project-structure.md，并更新文档索引。历史完整内容由 Git 保留。
+
+移除 PHPUnit 无条件通过的占位断言、与 console-smoke.php 首页检查重复的 Feature 示例，以及不再被引用的应用 TestCase、创建应用 trait、缓存预热扩展。断言计数工具的失败抛错与成功计数测试保留为 tests/Unit/AssertionsTest.php，直接继承 PHPUnit TestCase，不再启动 Laravel 或生成缓存。phpunit.xml 和 suites.json 同步移除空 Feature 套件与旧辅助项；业务、安全和迁移专项测试保留。清单当前为 111 个测试入口、11 个辅助入口。
+
+清理验证：隔离副本运行 tests/run.php --validate，通过 111 个测试入口和 11 个辅助入口校验；PHPUnit --fail-on-warning --fail-on-risky 通过（1 test、2 assertions）。扫描已跟踪源码／配置未发现已删除文件引用，docs 下相对 Markdown 链接均存在。未修改应用代码，因此未重跑全部业务测试。

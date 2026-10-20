@@ -25,7 +25,7 @@ export function AdminTabList({ label, options }: { label: string; options: reado
 
 // Manual activation avoids fetching another workspace merely on arrow-key focus.
 export function AdminTabs<T extends string>({ label, options, value, onChange, children }: ChoiceProps<T> & { children: ReactNode }) {
-    return <Tabs.Root value={value} onValueChange={next => {
+    return <Tabs.Root className="admin-workspace-tabs" value={value} onValueChange={next => {
         const option = options.find(option => option.value === next);
         if (option && !option.disabled) onChange(option.value);
     }} activationMode="manual">

@@ -48,16 +48,17 @@ if ($status!==1 || hash_file('sha256',$environment)!==$before) throw new LogicEx
 $writer=new ReflectionMethod($installer,'saveToEnv');
 $directory=storage_path('app/install-env-'.bin2hex(random_bytes(6)));
 mkdir($directory,0700,true); file_put_contents($directory.'/.env',"KEEP=unchanged\nDB_PASSWORD=old\n");
-$originalPath=$app->environmentPath();
+// config:cache may rebind the application container; the writer uses app().
+$originalPath=app()->environmentPath();
 try {
-    $app->useEnvironmentPath($directory);
+    app()->useEnvironmentPath($directory);
     foreach (['space #hash', 'quote" dollar${NAME} slash\\ tail', "line\nnext\rline", ''] as $password) {
         $writer->invoke($installer,['DB_PASSWORD'=>$password,'NEW_KEY'=>'added']);
         $parsed=Dotenv\Dotenv::parse(file_get_contents($directory.'/.env'));
         if ($parsed['DB_PASSWORD']!==$password || $parsed['KEEP']!=='unchanged' || $parsed['NEW_KEY']!=='added') throw new LogicException('Environment roundtrip failed');
     }
 } finally {
-    $app->useEnvironmentPath($originalPath);
+    app()->useEnvironmentPath($originalPath);
     unlink($directory.'/.env'); rmdir($directory);
 }
 
@@ -65,6 +66,11 @@ foreach(['v2_mail_blocklist'=>['email_encrypted','note','released_at'],'v2_mail_
     if (!Illuminate\Support\Facades\Schema::hasColumns($table,$columns)) throw new RuntimeException('Missing schema: '.$table);
 }
 // Exercise the installer's real administrator creation against the unmodified install SQL.
+$nodeMigration=require __DIR__.'/../database/migrations/2026_10_20_000003_create_node_credentials.php';
+$nodeMigration->up(); $nodeMigration->up();
+foreach(['v2_node_credential'=>['secret_hash','revoked_at','last_used_at'],'v2_node_credential_state'=>['node_type','node_id','migrated_at']] as $table=>$columns) {
+    if (!Illuminate\Support\Facades\Schema::hasColumns($table,$columns)) throw new RuntimeException('Missing node credential schema: '.$table);
+}
 if (Illuminate\Support\Facades\Schema::hasColumn('v2_user','is_staff')) throw new RuntimeException('Fresh install recreated retired staff role');
 $registerAdmin=new ReflectionMethod(App\Console\Commands\V2boardInstall::class,'registerAdmin');
 $registerAdmin->setAccessible(true);

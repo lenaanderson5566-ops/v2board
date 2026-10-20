@@ -68,7 +68,7 @@ export function AdminClientReleases() {
                 <div>
                     <span className="release-eyebrow">CLIENT UPDATES</span>
                     <h2>官方版本与安装包</h2>
-                    <p>每 6 小时检查官方稳定版，及时掌握客户端与内核变化。</p>
+                    <p>每 6 小时检查官方稳定版。</p>
                 </div>
                 <button
                     disabled={!!busy}

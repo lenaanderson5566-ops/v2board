@@ -1,4 +1,5 @@
 import { NodeDictionaryProvider } from "./node-dictionary";
+import { NodeCredentials } from "./NodeCredentials";
 import { AdminChoiceGroup } from "./AdminChoices";
 import { AdminDisplaySettings } from "./AdminDisplaySettings";
 import { field, nameColumn } from "./admin-fields";
@@ -56,6 +57,7 @@ function NodesContent({
     const [savedNodeNotice, setSavedNodeNotice] = useState("");
 
     const [diagnosticNode, setDiagnosticNode] = useState<Row | null>(null);
+    const [credentialNode, setCredentialNode] = useState<Row | null>(null);
     const [statusFilter, setStatusFilter] = useState("");
     const [nodeSearch, setNodeSearch] = useState("");
     const [backendFilter, setBackendFilter] = useState("");
@@ -400,6 +402,7 @@ function NodesContent({
                                     >
                                         运行状态
                                     </button>
+                                    {!r.parent_id && <button onClick={() => setCredentialNode(r)}>接入与凭据</button>}
                                     {r.install_command && (
                                         <button onClick={() => setCommand(r)}>
                                             安装命令
@@ -478,8 +481,10 @@ function NodesContent({
                     </State>
                 </Panel>
             )}
+            {credentialNode && <NodeCredentials node={credentialNode} close={() => setCredentialNode(null)} />}
             {command && (
                 <Modal title="节点安装命令" close={() => setCommand(null)}>
+                    <p className="muted">命令不包含通讯密钥。V2Box 在安装器提示时输入独立密钥；已有配置请使用“接入与凭据”中的更新步骤。旧 V2Node 请按其安装器要求手动配置。</p>
                     <div className="pad">
                         <p>
                             可选：在节点管理的“Cloudflare
@@ -563,9 +568,7 @@ function NodesContent({
                     close={closeNode}
                 >
                     <div className="pad node-editor-intro">
-                        <p>
-                            依次核对连接地址、协议及权限组。保存配置成功不代表节点已应用，请结合节点最近通信与运行状态确认。
-                        </p>
+                        <p>保存后请核对节点通信与运行状态，确认配置已应用。</p>
                         <p className="muted">
                             切换协议可能清除不兼容配置；高级 JSON
                             中未单列的扩展参数仍会保留。

@@ -14,7 +14,7 @@ export function AdminDisplaySettings({ title, columns, selected, onChange, onRes
 }) {
     return <Modal title={title} close={close}>
         <div className="admin-display-settings">
-            <p className="muted">选择需要查看的信息。设置自动保存，仅影响当前浏览器。</p>
+            <p className="muted">自动保存至当前浏览器。</p>
             <div className="admin-display-heading"><h3>显示列 <small>{columns.filter(([key]) => selected.includes(key)).length} / {columns.length}</small></h3><button type="button" onClick={onReset}>恢复默认展示</button></div>
             <div className="admin-display-grid" aria-label="可选显示列">
                 {columns.map(([key, label]) => <button type="button" key={key} aria-pressed={selected.includes(key)} onClick={() => onChange(selected.includes(key) ? selected.filter(value => value !== key) : [...selected, key])}>

@@ -1,9 +1,9 @@
 import { TableViewport } from "../shared/ui";
 import { AdminTabs } from "./AdminChoices";
+import { AdminTargetStatistics } from "./AdminTargetStatistics";
 import { JourneyAnalytics } from "./JourneyAnalytics";
 import { analyticsLabels as labels } from "./analytics-labels";
 import { useState } from "react";
-import { BarChart3 } from "lucide-react";
 import { admin, query } from "../shared/api";
 import { Panel, State, useData } from "../shared/ui";
 import { adminInstant as formatInstant } from "./admin-log-time";
@@ -108,15 +108,12 @@ export function AdminAnalytics() {
     return (
         <div className="analytics-page">
             <Panel padded title="访问与转化">
-                <p className="muted">
-                    <BarChart3 size={16} aria-hidden />{" "}
-                    了解用户浏览、确认订单和付款之间的流失。页面漏斗与业务结果分别统计，避免混淆点击和实际支付。
-                </p>
                 <div className="analytics-settings">
                     <label>
                         统计范围{" "}
                         <select
                             value={days}
+                            disabled={tab === "targets"}
                             onChange={(event) =>
                                 setDays(Number(event.target.value))
                             }
@@ -192,9 +189,11 @@ export function AdminAnalytics() {
                     { value: "security", label: "安全访问" },
                     { value: "delivery", label: "支付与邮件" },
                     { value: "health", label: "运行健康" },
+                    { value: "targets", label: "节点访问目标" },
                 ]}
             >
                 <div className="analytics-page">
+                    {tab === "targets" && <AdminTargetStatistics />}
                     {tab === "overview" && data && (
                         <Panel padded title="访问摘要">
                             {" "}
@@ -263,17 +262,8 @@ export function AdminAnalytics() {
                                     浏览器统计迁移尚未完成。
                                 </p>
                             )}
-                            <p className="muted">
-                                按会话首次收到的 UA 分类，展示前 100
-                                个组合；只包含同意统计的样本。历史未采集单列，未知不代表异常。内置浏览器可能携带
-                                Chrome/Safari
-                                标记，不代表可使用全部功能。引导页浏览量及复制、继续访问等操作见“页面表现”和“用户体验”标签，复制成功不代表已在外部浏览器打开。
-                            </p>
-                            <p className="muted">
-                                仅在 UA 明确声明品牌时单列；360
-                                等浏览器隐藏标记时可能归入
-                                Chrome，不能据此判断未使用该品牌。旧会话保持采集时的分类。
-                            </p>
+                            <p className="muted">按首次 UA 分类，展示前 100 个组合，仅含同意统计的样本。历史未采集单列，未知不代表异常；内置浏览器可能声明 Chrome/Safari。引导动作见“用户体验”，复制成功不代表外部打开成功。</p>
+                            <p className="muted">仅按 UA 声明识别品牌；隐藏标记的 360 等浏览器可能归入 Chrome。</p>
                         </Panel>
                     )}
                     {data && (
@@ -354,9 +344,7 @@ export function AdminAnalytics() {
                                             </table>
                                         </TableViewport>
                                     </details>
-                                    <p className="muted">
-                                        按会话开始日归属浏览次数，今日及窗口边界日可能不完整。未收集时不补造历史数据；趋势空白不代表没有真实访问。
-                                    </p>
+                                    <p className="muted">按会话开始日统计；边界日期可能不完整，未采集的历史数据不补算。</p>
                                 </Panel>
                             )}
                             {tab === "overview" && (
@@ -460,10 +448,7 @@ export function AdminAnalytics() {
                                             count: step.sessions,
                                         }))}
                                     />
-                                    <p className="muted">
-                                        按顺序统计“浏览套餐 → 确认订单 →
-                                        进入付款”，每个会话每步最多一次。跨设备、跨会话、直接续付旧订单或未同意统计的用户不进入完整漏斗。此处不代表支付成功。
-                                    </p>
+                                    <p className="muted">按会话依次统计“浏览套餐 → 确认订单 → 进入付款”，每步最多一次；跨会话、直接续付和未同意统计的用户可能缺失。进入付款不代表支付成功。</p>
                                     <p className="muted">
                                         会话按开始时间归入范围，仅展示尚在{" "}
                                         {data.settings.retentionDays}{" "}
@@ -512,9 +497,7 @@ export function AdminAnalytics() {
                             )}
                             {tab === "conversion" && (
                                 <Panel padded title="转化改进工作台">
-                                    <p className="muted">
-                                        以同一注册批次的业务数据定位环节，逐次调整并观察完整窗口。差额代表窗口内尚未进入下一步的用户，不直接说明流失原因。
-                                    </p>
+
                                     <TableViewport>
                                         <table>
                                             <thead>
@@ -603,16 +586,12 @@ export function AdminAnalytics() {
                                             </tbody>
                                         </table>
                                     </TableViewport>
-                                    <p className="muted">
-                                        待转化人数可能包含仍在考虑或处理中的用户；不自动向用户发送推广邮件。
-                                    </p>
+
                                 </Panel>
                             )}
                             {tab === "audience" && (
                                 <Panel padded title="访问来源网站">
-                                    <p className="muted">
-                                        了解访客从哪个网站进入本站，无需设置推广链接。仅统计同意采集的访问，遵循当前时间与设备筛选，不关联具体账号，也不代表成功登录人数。
-                                    </p>
+                                    <p className="muted">仅统计同意采集的访问来源，沿用时间与设备筛选，不关联账号。</p>
                                     {!data.sourcesReady ? (
                                         <p role="status">
                                             来源统计字段尚未安装，请通过更新流程执行数据库迁移。

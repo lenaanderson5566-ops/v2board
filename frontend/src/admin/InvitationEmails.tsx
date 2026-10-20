@@ -48,9 +48,7 @@ export function InvitationEmails() {
             title="邀请邮件"
             actions={<Reload onClick={rows.reload} loading={rows.loading} />}
         >
-            <p className="pad muted">
-                每行是一位用户对一个邮箱的邀请，展示最近一次发送尝试。重发会更新记录并使旧链接失效。服务商接受不代表送达，送达不代表阅读；历史未关联邮件日志的记录不推断送达状态。邮件记录不作为奖励或异常复核的自动判定依据。
-            </p>
+            <p className="pad muted">展示每次邀请的最近发送结果。重发会使旧链接失效；服务商接受不代表送达，送达不代表阅读。邮件状态不自动决定奖励或复核结果。</p>
             <AdminFilterBar
                 className="admin-log-filters"
                 onSubmit={(e) => {

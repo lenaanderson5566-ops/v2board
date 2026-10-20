@@ -273,6 +273,9 @@ grep -q 'migrate --path=database/migrations/2026_10_19_000003_add_analytics_brow
 grep -q 'migrate --path=database/migrations/2026_10_19_000004_add_account_deletion.php --force --no-interaction' calls.log
 grep -q 'migrate --path=database/migrations/2026_10_19_000002_create_passkeys.php --force --no-interaction' calls.log
 grep -q 'migrate --path=database/migrations/2026_10_20_000001_create_node_dictionary.php --force --no-interaction' calls.log
-echo 'Updater: 26 isolated scenarios passed'
 
 grep -q 'migrate --path=database/migrations/2026_10_20_000002_create_client_recognition.php --force --no-interaction' calls.log
+
+grep -q 'migrate --path=database/migrations/2026_10_20_000003_create_node_credentials.php --force --no-interaction' calls.log
+
+echo 'Updater: 26 isolated scenarios passed'

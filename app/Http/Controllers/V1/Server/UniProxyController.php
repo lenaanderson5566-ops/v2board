@@ -15,16 +15,12 @@ class UniProxyController extends Controller
 
     private function initialize(Request $request): void
     {
-        $token = $request->input('token');
-        if (empty($token)) {
-            abort(500, 'token is null');
-        }
-        if ($token !== config('v2board.server_token')) {
-            abort(500, 'token is error');
-        }
+        $request->validate(['node_id'=>'required|integer|min:1','token'=>'sometimes|string']);
+        $token = $request->bearerToken() ?? $request->input('token','');
         $this->nodeType = $request->input('node_type');
         abort_unless(in_array($this->nodeType, ['v2node', 'v2box'], true), 422, 'Unsupported node type');
-        $this->nodeId = $request->input('node_id');
+        $this->nodeId = (int)$request->input('node_id');
+        \App\Services\NodeCredentials::authenticate((string)$token,$this->nodeType,(int)$this->nodeId,$request->bearerToken()!==null);
         $this->serverService = new ServerService();
         $this->nodeInfo = $this->serverService->getServer($this->nodeId, $this->nodeType);
         if (!$this->nodeInfo) abort(500, 'server is not exist');

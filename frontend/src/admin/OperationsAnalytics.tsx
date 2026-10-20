@@ -349,10 +349,7 @@ export function OperationsAnalytics({
     return (
         <>
             <Panel padded title="运营与安全报表">
-                <p className="muted">
-                    复用后台业务与审计记录；使用上方统计范围，不受访问设备筛选或浏览器统计开关影响。最多缓存
-                    60 秒，队列与积压为生成时快照。
-                </p>
+                <p className="muted">沿用上方日期范围，不受设备筛选与浏览器采集开关影响。缓存 60 秒，队列数据为生成时快照。</p>
                 <button
                     type="button"
                     onClick={report.reload}
@@ -614,10 +611,7 @@ export function OperationsAnalytics({
                                     ])}
                                 />
                             )}
-                            <p className="muted">
-                                队列指标来自
-                                Horizon，预计清空耗时不是任务实际排队时长。空列表不表示队列健康，请同时查看主进程检查。
-                            </p>
+                            <p className="muted">队列来自 Horizon；预计清空耗时不等于实际等待时长，请结合主进程状态判断。</p>
                             <p>
                                 失败任务库当前保留：
                                 {data.health.failedJobsRetained ?? "不可用"}

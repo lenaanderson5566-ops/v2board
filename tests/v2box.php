@@ -62,7 +62,9 @@ try {
     $assert(ServerV2node::find($id)->name==='V2Box test','V2Node untouched');
     $admin->copy(Request::create('/','POST',['id'=>$id]));
     $assert(ServerV2box::where('name','V2Box updated')->count()===2,'V2Box copy');
+    $credential=App\Services\NodeCredentials::issue('v2box',$id,1);
     $admin->drop(Request::create('/','POST',['id'=>$id]));
+    $assert(DB::table('v2_node_credential')->where('id',$credential['id'])->value('revoked_at')!==null,'Deleted node credentials revoked');
     $assert(!ServerV2box::find($id) && ServerV2node::find($id),'V2Box delete isolated');
     $schema=json_decode((new App\Http\Controllers\V1\Admin\ConsoleController())->nodeSchema(Request::create('/','GET',['type'=>'v2box']))->getContent(),true)['data'];
     $assert(isset($schema['protocol'],$schema['region_code']) && $schema['network']==='required|in:tcp,ws,grpc,httpupgrade','Admin schema');

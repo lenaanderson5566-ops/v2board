@@ -139,3 +139,21 @@ body[data-console="admin"] .user-details-drawer .modal > .panel-head .icon-butto
 .admin-dictionary-fields { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; margin-block: 20px; }
 .admin-dictionary-actions { position: sticky; bottom: -16px; padding-block: 16px; background: var(--panel, #fff); border-top: 1px solid var(--line, #e5e7eb); }
 @media (max-width: 520px) { .admin-dictionary-fields { grid-template-columns: minmax(0, 1fr); } }
+
+/* Shared tab workspaces, readable notes and wrapping actions across admin pages. */
+body[data-console="admin"] .admin-workspace-tabs { min-width: 0; }
+body[data-console="admin"] .admin-workspace-tabs > .section-tabs { margin-bottom: var(--admin-space); }
+body[data-console="admin"] .admin-workspace-tabs > [role="tabpanel"] { outline-offset: 3px; }
+body[data-console="admin"] .admin-workspace-tabs > [role="tabpanel"]:focus-visible { outline: 2px solid var(--accent); }
+body[data-console="admin"] :is(.panel-body, .pad) > p.muted { font-size: 12px; line-height: 1.7; margin-block: 8px 12px; }
+body[data-console="admin"] .panel-head > :is(h2, div) { min-width: 0; }
+body[data-console="admin"] .admin-filter-actions { flex-wrap: wrap; }
+body[data-console="admin"] .admin-filter-actions > a { align-self: center; font-size: 12px; }
+body[data-console="admin"] .admin-dictionary-fields > label { min-width: 0; display: flex; flex-direction: column; gap: 6px; }
+body[data-console="admin"] .admin-dictionary-fields input { width: 100%; min-width: 0; }
+body[data-console="admin"] .admin-dictionary-fields small { overflow-wrap: anywhere; }
+@media (max-width: 600px) {
+    body[data-console="admin"] .admin-filter-actions > button { flex: 1 1 auto; }
+    body[data-console="admin"] .admin-filter-actions > a { flex-basis: 100%; }
+    body[data-console="admin"] .admin-dictionary-actions { flex-wrap: wrap; bottom: -12px; }
+}

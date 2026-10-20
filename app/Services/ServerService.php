@@ -97,17 +97,14 @@ class ServerService
             }
 
             $apiHost = config('v2board.server_api_url', config('v2board.app_url'));
-            $apiKey = config('v2board.server_token', '');
             $nodeId = (int) $v['id'];
             $apiHostArg = escapeshellarg((string) $apiHost);
-            $apiKeyArg = escapeshellarg((string) $apiKey);
             $servers[$k]['install_command'] = sprintf(
                 $type === 'v2box'
-                    ? 'curl -fSL https://raw.githubusercontent.com/lenaanderson5566-ops/v2box/main/script/install.sh -o install-v2box.sh && bash install-v2box.sh --node-type v2box --api-host %s --node-id %d --api-key %s'
-                    : 'wget -N https://raw.githubusercontent.com/wyx2685/v2node/master/script/install.sh && bash install.sh --api-host %s --node-id %d --api-key %s',
+                    ? 'curl -fSL https://raw.githubusercontent.com/lenaanderson5566-ops/v2box/main/script/install.sh -o install-v2box.sh && bash install-v2box.sh --node-type v2box --api-host %s --node-id %d --prompt-api-key'
+                    : 'wget -N https://raw.githubusercontent.com/wyx2685/v2node/master/script/install.sh && bash install.sh --api-host %s --node-id %d',
                 $apiHostArg,
-                $nodeId,
-                $apiKeyArg
+                $nodeId
             );
         }
         return $servers;

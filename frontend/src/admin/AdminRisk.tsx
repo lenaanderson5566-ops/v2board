@@ -198,9 +198,7 @@ export function RiskRules() {
         : [];
     return (
         <>
-            <p className="pad muted">
-                异常检测仅记录事件，风险等级用于排查排序。订阅限流与黑名单负责拦截，客户端准入在客户端策略中管理。
-            </p>
+            <p className="pad muted">异常检测仅记录事件；拦截由限流与黑名单执行，客户端准入在客户端策略中管理。</p>
             <AdminChoiceGroup label="风控规则范围" value={scene} onChange={setScene}
                 options={[{value:"all",label:"全部规则"},{value:"subscribe",label:"订阅"}]} />
             {scene !== "login" && <AdminSubscriptionProtection />}

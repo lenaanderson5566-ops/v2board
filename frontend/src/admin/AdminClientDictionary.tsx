@@ -44,8 +44,8 @@ export function AdminClientDictionary() {
     return <section className="panel">
         <header className="panel-head"><h2>客户端识别</h2></header>
         <div className="pad">
-            <p className="muted">维护第三方客户端的展示名称与 UA 产品别名。内置规则优先，自定义规则按优先级从高到低匹配；未知客户端归为“其他”，原始 UA 保留。</p>
-            <p className="muted">仅用于日志与统计展示，不改变客户端白名单、最低版本、订阅格式或权限。下载、图标和教程在客户端管理维护。</p>
+            <p className="muted">维护客户端名称与 UA 别名。内置规则优先，自定义规则按优先级匹配，未知归为“其他”。</p>
+            <p className="muted">仅影响日志与统计展示；准入、版本、下载和教程在客户端管理维护。</p>
             {notice && <p role="status">{notice}</p>}
             <AdminFilterBar onSubmit={e=>e.preventDefault()}><input aria-label="搜索客户端识别" placeholder="搜索名称、代码或别名" value={search} onChange={e=>{setSearch(e.target.value);setPage(1);}}/></AdminFilterBar>
             <State {...data} retry={data.reload}>

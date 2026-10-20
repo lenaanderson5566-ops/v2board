@@ -185,11 +185,7 @@ export function AdminObservability() {
                             </>
                         )}
                         <h3>接口耗时与慢查询</h3>
-                        <p className="muted">
-                            记录服务端处理耗时，不含网络传输。P95
-                            为分桶上界；慢查询只记录数量及耗时，不保存 SQL
-                            或参数。按慢请求数量排序，最多展示 50 个接口。
-                        </p>
+                        <p className="muted">服务端耗时不含网络传输；P95 为分桶估计。慢查询仅记录次数与耗时，不保存 SQL 或参数；展示慢请求最多的 50 个接口。</p>
                         <Table
                             data={metrics.routes}
                             columns={[
@@ -218,10 +214,7 @@ export function AdminObservability() {
                         <h3>前端资源体积</h3>
                         {report?.assets ? (
                             <>
-                                <p className="muted">
-                                    来自当前部署构建产物。gzip
-                                    为构建估算，实际传输取决于服务器压缩与缓存；启动外壳不包含后续按需加载页面。
-                                </p>
+                                <p className="muted">当前部署资源体积；gzip 为构建估算，首屏不含按需加载页面。</p>
                                 {(report.assets.warnings || []).map(
                                     (warning: string) => (
                                         <p className="alert" key={warning}>
@@ -277,10 +270,7 @@ export function AdminObservability() {
                             save();
                         }}
                     >
-                        <p className="muted">
-                            告警仅在后台显示。调整采样或阈值后请求样本重新累计；SQL
-                            文本、请求参数和用户身份不会被采集。
-                        </p>
+                        <p className="muted">调整采样或阈值后重新累计请求样本，不采集 SQL 文本、请求参数或用户身份。</p>
                         {fields.map(([key, label, min, max]) => (
                             <label key={key}>
                                 {label}

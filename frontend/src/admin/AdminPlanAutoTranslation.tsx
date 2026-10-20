@@ -135,9 +135,7 @@ export function AdminPlanAutoTranslation({
     return (
         <section className="pad">
             <h3>Azure 自动翻译</h3>
-            <p className="muted">
-                读取当前套餐说明，补齐缺失语言。保留功能列表、支持状态与数字；已有译文不覆盖。
-            </p>
+            <p className="muted">补齐缺失译文，保留已有翻译、功能列表与数字。</p>
             <div className="actions">
                 <label>
                     原文语言{" "}

@@ -9,6 +9,24 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
 
 class NodeController extends Controller {
+    public function targetStatisticsPolicy(Request $request) {
+        $this->node($request);
+        return response()->json(['data'=>app(\App\Services\TargetStatistics::class)->policy()])->header('Cache-Control','no-store');
+    }
+    public function targetStatistics(Request $request) {
+        $node=$this->node($request);
+        $statistics=app(\App\Services\TargetStatistics::class);
+        if (!$statistics->policy()['enabled']) return response()->json(['data'=>['accepted'=>false]]);
+        $input=$request->validate([
+            'version'=>'required|uuid','batchId'=>'required|uuid','dropped'=>'required|integer|min:0|max:1000000000',
+            'records'=>'present|array|max:500','records.*.userId'=>'required|integer|min:1',
+            'records.*.target'=>'required|string|max:253','records.*.type'=>'required|in:domain,ip',
+            'records.*.connections'=>'required|integer|min:0|max:1000000000',
+            'records.*.uploadBytes'=>'required|integer|min:0|max:1000000000000000',
+            'records.*.downloadBytes'=>'required|integer|min:0|max:1000000000000000',
+        ]);
+        return response()->json(['data'=>$statistics->receive($node,$input)]);
+    }
     private function node(Request $request) {
         // Only V2Box implements this machine contract today; reject unknown types
         // rather than looking up a colliding ID in the wrong backend table.

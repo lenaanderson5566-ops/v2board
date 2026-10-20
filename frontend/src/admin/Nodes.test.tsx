@@ -28,12 +28,45 @@ vi.mock("../shared/api", async (importOriginal) => ({
     readRequest: api.request,
 }));
 import { Nodes, ResourcePage, resources } from "./admin";
+import { NodeCredentials } from "./NodeCredentials";
 afterEach(() => {
     cleanup();
     vi.restoreAllMocks();
     vi.clearAllMocks();
     vi.unstubAllGlobals();
     localStorage.clear();
+});
+it("shows a newly generated credential only once and requires password for mutations", async () => {
+    vi.spyOn(window,"confirm").mockReturnValue(true);
+    const close=vi.fn();
+    api.request.mockImplementation(async (path:string) => path.endsWith("/issue")
+        ? {data:{secret:"nk_test-once"}}
+        : {data:{migrated:false,legacyEnabled:true,keys:[],legacyNodes:[{type:"v2box",id:1,name:"A"}]}});
+    const view=render(<NodeCredentials node={{type:"v2box",id:1,name:"A"}} close={close}/>);
+    const button=await screen.findByRole("button",{name:"生成 / 手动轮换密钥"});
+    expect((button as HTMLButtonElement).disabled).toBe(true);
+    fireEvent.change(screen.getByLabelText("凭据操作管理员密码"),{target:{value:"test-password"}});
+    fireEvent.click(button);
+    expect(await screen.findByLabelText("新节点密钥")).toHaveProperty("value","nk_test-once");
+    expect(screen.getByLabelText("凭据操作管理员密码")).toHaveProperty("value","");
+    expect(api.request).toHaveBeenCalledWith(expect.stringContaining("/issue"),expect.objectContaining({type:"v2box",id:1,password:"test-password"}));
+    view.unmount();
+    render(<NodeCredentials node={{type:"v2box",id:1,name:"A"}} close={close}/>);
+    expect(screen.queryByLabelText("新节点密钥")).toBeNull();
+});
+it("blocks a second rotation and preserves revoked state on failed requests", async () => {
+    vi.spyOn(window,"confirm").mockReturnValue(true);
+    api.request.mockImplementation(async (path:string) => {
+        if(path.endsWith("/revoke")) throw new Error("拒绝操作");
+        return {data:{migrated:true,legacyEnabled:false,keys:[{id:"key1",fingerprint:"abc",status:"retiring",createdAt:1}]}};
+    });
+    render(<NodeCredentials node={{type:"v2box",id:1,name:"A"}} close={()=>{}}/>);
+    const revoke=await screen.findByRole("button",{name:"撤销 abc"});
+    fireEvent.change(screen.getByLabelText("凭据操作管理员密码"),{target:{value:"wrong"}});
+    expect((screen.getByRole("button",{name:"生成 / 手动轮换密钥"}) as HTMLButtonElement).disabled).toBe(true);
+    fireEvent.click(revoke);
+    expect(await screen.findByRole("alert")).toHaveProperty("textContent","拒绝操作");
+    expect(screen.getByText("宽限期")).toBeTruthy();
 });
 it("shows group names across numeric/string IDs and remembers selected node columns", async () => {
     api.request.mockImplementation(async (path: string) => {

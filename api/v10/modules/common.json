@@ -121,7 +121,7 @@
       "nodeBearer": {
         "type": "http",
         "scheme": "bearer",
-        "description": "Panel server_token for V2Box machine API. Query tokens are not accepted."
+        "description": "Per-node credential bound to X-Node-Type and X-Node-ID. Revoked or expired keys are rejected. Existing unmigrated nodes may use server_token until legacy authentication is disabled. Query tokens are not accepted."
       },
       "nodeReportBearer": {
         "type": "http",

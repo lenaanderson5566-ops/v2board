@@ -14,7 +14,7 @@ export function PaymentCategoryEditor({ value, onChange }: { value: PaymentCateg
             <option value="regular">常规支付</option><option value="crypto">加密货币</option>
         </select></label>
         {value.category === "crypto" && <>
-            <p className="muted">币种和网络必须与支付接口中的渠道配置一致。这里只控制展示与分组，不会开通新的支付网络。</p>
+            <p className="muted">仅设置展示与分组；币种和网络须与支付接口一致。</p>
             <label>币种<select value={builtinAsset ? value.asset : "custom"} onChange={event => update({ asset: event.target.value === "custom" ? "" : event.target.value })}>
                 {catalog.assets.map(item => <option key={item.id} value={item.id}>{item.name}</option>)}<option value="custom">自定义币种</option>
             </select></label>
@@ -34,7 +34,7 @@ export function PaymentCategoryEditor({ value, onChange }: { value: PaymentCateg
                 <span>币种图标</span><img src={iconSource(catalog.assets.find(item => item.id === value.asset)?.icon || "crypto-generic")} alt={value.asset || "币种"} />
                 <span>网络图标</span><img key={value.networkIcon || value.network} src={value.networkIcon || iconSource(catalog.networks.find(item => item.id === value.network)?.icon || "crypto-generic")} alt={value.networkName || "网络"} onError={event => { event.currentTarget.src = iconSource("crypto-generic"); }} />
             </div>
-            <p className="muted">默认使用币种和网络的内置图标。支付图标链接覆盖币种图标，网络图标链接覆盖网络图标。</p>
+            <p className="muted">留空使用内置图标，填写链接后覆盖对应图标。</p>
         </>}
     </div>;
 }

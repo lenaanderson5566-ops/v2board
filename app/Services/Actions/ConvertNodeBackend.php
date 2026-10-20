@@ -36,6 +36,10 @@ class ConvertNodeBackend {
                 abort_if($target->parent_id,422,'Lightsail 配置只支持主节点');
                 DB::table('v2_lightsail_server')->where('id',$cloud->id)->update(['node_type'=>$targetType,'node_id'=>$target->id]);
             }
+            \App\Services\NodeCredentials::retire($sourceType,(int)$source->id);
+            // A converted migrated node must not silently regain global-key access.
+            if (\App\Services\NodeCredentials::migrated($sourceType,(int)$source->id))
+                DB::table('v2_node_credential_state')->insert(['node_type'=>$targetType,'node_id'=>$target->id,'migrated_at'=>time()]);
             $source->delete();
             return $target;
         });

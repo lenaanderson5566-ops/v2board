@@ -10,8 +10,8 @@ class NodeV10 {
     public function handle($request, Closure $next) {
         $id = $request->attributes->get('requestId') ?: (string) Str::uuid();
         try {
-            $token = (string) config('v2board.server_token');
-            abort_unless($token !== '' && hash_equals($token, (string) $request->bearerToken()), 401);
+            \App\Services\NodeCredentials::authenticate((string)$request->bearerToken(),
+                (string)$request->header('X-Node-Type'), (int)$request->header('X-Node-ID'), true);
             $response = $next($request);
         } catch (\Throwable $e) {
             $status = $e instanceof ValidationException ? 422 : ($e instanceof HttpExceptionInterface ? $e->getStatusCode() : 500);

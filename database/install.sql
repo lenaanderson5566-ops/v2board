@@ -769,3 +769,25 @@ CREATE TABLE IF NOT EXISTS `v2_passkey` (
 CREATE TABLE IF NOT EXISTS `v2_node_dictionary` (`key` varchar(80) NOT NULL, `names` text NOT NULL, `version` int unsigned NOT NULL DEFAULT 0, `updated_by` int unsigned NOT NULL, `updated_at` bigint unsigned NOT NULL, PRIMARY KEY (`key`)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 CREATE TABLE IF NOT EXISTS `v2_client_recognition` (`id` int unsigned NOT NULL, `rules` text NOT NULL, `version` int unsigned NOT NULL DEFAULT 0, `updated_by` int unsigned NOT NULL, `updated_at` bigint unsigned NOT NULL, PRIMARY KEY (`id`)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS `v2_node_credential_state` (
+  `node_type` varchar(16) NOT NULL,
+  `node_id` int unsigned NOT NULL,
+  `migrated_at` int unsigned NOT NULL,
+  PRIMARY KEY (`node_type`,`node_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS `v2_node_credential` (
+  `id` varchar(32) NOT NULL,
+  `node_type` varchar(16) NOT NULL,
+  `node_id` int unsigned NOT NULL,
+  `secret_hash` varchar(64) NOT NULL,
+  `created_at` int unsigned NOT NULL,
+  `created_by` int unsigned NOT NULL,
+  `last_used_at` int unsigned DEFAULT NULL,
+  `expires_at` int unsigned DEFAULT NULL,
+  `revoked_at` int unsigned DEFAULT NULL,
+  `revoked_by` int unsigned DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  KEY `v2_node_credential_node_type_node_id_index` (`node_type`,`node_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;

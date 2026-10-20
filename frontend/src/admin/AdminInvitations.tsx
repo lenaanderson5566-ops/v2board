@@ -85,9 +85,7 @@ export function AdminInvitations() {
             <section className="panel pad invitation-workflow">
                 <div>
                     <h2>邀请与奖励</h2>
-                    <p className="muted">
-                        从邮件邀请、注册和连接，到佣金审核，按环节追踪。订阅与连接记录可辅助判断使用进度，不等同于付款或奖励到账。
-                    </p>
+                    <p className="muted">查看邀请关系、佣金审核与邀请邮件。</p>
                 </div>
                 <div className="actions">
                     <a className="button" href="#/invitation-settings">

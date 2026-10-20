@@ -21,9 +21,7 @@ function Recommendations({ saved }: { saved: () => void }) {
     return (
         <section className="release-card">
             <h3>用户端推荐</h3>
-            <p className="muted">
-                选择主推荐和备选；智能同步与配置中心使用相同推荐规则。禁用的客户端不会自动上架。
-            </p>
+            <p className="muted">设置主推荐与备选，禁用客户端不自动上架。</p>
             <State {...d} retry={d.reload}>
                 <div className="release-grid">
                     {Object.entries(platforms).map(([os, label]) => (
@@ -116,11 +114,7 @@ export function AdminClients({
                         开启「允许订阅访问」，即可允许该行 UA 拉取订阅。按 UA
                         开头匹配，不区分大小写；未知或关闭的客户端拒绝访问。匹配后仍需有效订阅凭证。
                     </p>
-                    <p className="muted">
-                        展开「实际请求 UA」可查看近 30 天记录。24
-                        小时请求包含成功和失败，每分钟刷新。只检查 UA
-                        时，编辑中的最低版本留空。关闭后也会停止该客户端的推荐与自动上架。
-                    </p>{" "}
+                    <p className="muted">“实际请求 UA”保留近 30 天记录；24 小时请求含成功与失败，每分钟刷新。最低版本留空时只检查 UA；关闭后停止推荐与自动上架。</p>{" "}
                     <ResourcePage resource={resources.clients} />
                 </>
             ) : (

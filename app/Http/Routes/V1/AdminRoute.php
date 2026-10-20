@@ -11,6 +11,12 @@ class AdminRoute
             'prefix' => config('v2board.secure_path', config('v2board.frontend_admin_path', hash('crc32b', config('app.key')))),
             'middleware' => ['admin', 'log'],
         ], function ($router) {
+            $router->get('/server/credentials', 'V1\\Admin\\NodeCredentialController@index');
+            $router->post('/server/credentials/issue', 'V1\\Admin\\NodeCredentialController@issue')->middleware('throttle:5,1,node-credentials:');
+            $router->post('/server/credentials/revoke', 'V1\\Admin\\NodeCredentialController@revoke')->middleware('throttle:5,1,node-credentials:');
+            $router->post('/server/credentials/disable-legacy', 'V1\\Admin\\NodeCredentialController@disableLegacy')->middleware('throttle:5,1,node-credentials:');
+            $router->get('/target-statistics', 'V1\\Admin\\TargetStatisticsController@report')->middleware('throttle:30,1,target-report:');
+            $router->post('/target-statistics/settings', 'V1\\Admin\\TargetStatisticsController@settings')->middleware('throttle:10,1,target-settings:');
             $router->get('/dictionary/clients', 'V1\\Admin\\ClientRecognitionController@fetch');
             $router->post('/dictionary/clients/save', 'V1\\Admin\\ClientRecognitionController@save')->middleware('throttle:30,1,client-dictionary:');
             $router->post('/dictionary/clients/preview', 'V1\\Admin\\ClientRecognitionController@preview')->middleware('throttle:60,1,client-dictionary-preview:');

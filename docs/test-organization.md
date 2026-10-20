@@ -426,3 +426,36 @@ mfa-api 沿用真实路由、Cookie、CSRF 和真实密钥签名，覆盖 ES256 
 ## 头像套餐标签样式恢复
 
 按用户要求恢复 2075113a 之前的 avatar-plan 样式：深色底、白色 10px 文字、最大宽度 64px，移除额外加粗。仅修改右上角头像套餐标签，不回退账单与使用情况卡片。与旧提交 CSS 逐项比对一致，复用 AccountControls.test.tsx，12 项通过；结果与构建日志位于 storage/app/test-organization/browser-access/avatar-plan-restore*。本轮未进行浏览器视觉验收。
+
+## 节点访问目标统计
+
+复用 tests/node-v10.php 增加默认关闭、节点鉴权、域名/IP 规范化、固定批次去重与冲突、非法数据拒绝、关闭后拒收、重新开启拒绝旧批次，以及普通用户/管理员开关权限检查。隔离 SQLite 副本通过 65 项；SQLite 通过 tests/support/bootstrap.php 注册 FIELD/GREATEST 兼容函数，不改变生产查询。未增加独立后端测试入口。
+
+V10 生成器 12 项测试及七份产物同步检查通过。V2Box 使用 with_quic,with_utls 标签运行 api/v2board 和 core 全包通过，涵盖 TCP/UDP 实际协议流量与计费字节对照；core 目标统计 race 检查通过。后续性能检查已将 TestRejectedReloadIsRetriedWithoutConfigChange 的测试夹具改为 HTTPS，并仅在测试进程信任夹具 CA；node 包回归通过，生产证书校验保持不变。未进行生产压测或真实节点部署。
+
+
+## 独立节点凭据
+
+复用 node-v10.php 验证独立凭据绑定、摘要存储、一次性展示、跨节点/跨内核拒绝、仅 Bearer 接受、禁止全局回退、30 分钟手动轮换宽限、冲突拒绝、到期与撤销、管理员密码/权限、全局迁移关闭及安装命令无密钥；MySQL 专用测试库 93 项通过；最终补充旧接口数组身份拒绝检查后，SQLite 95 项通过。node-routes.php 增加转换撤销与禁止回退断言，36 项通过；v2box.php 增加删除撤销断言，29 项通过；node-backends.php 774 项通过。SQLite 的 FIELD/GREATEST 兼容函数集中在现有 bootstrap 辅助文件，不修改生产查询。测试清单仍为 111 项和 11 个辅助引用，校验通过。
+
+mail-install-schema.php 在专用空 MySQL 数据库通过真实安装、管理员认证、新凭据表和重复迁移；同时修正测试夹具在 config:cache 重绑定容器后仍修改旧实例环境路径的问题。测试数据库仅用于本轮并在完成后删除。update-script.sh 26 个隔离场景通过，新增凭据迁移命令断言。未执行生产迁移。
+
+V2Box api/v2board 全包回归通过，新增 legacy 模式独立凭据仅进入 Authorization、不会进入查询参数的断言。Python 脚本 20 项测试中 18 项通过、2 项平台跳过；新配置工具覆盖单节点更新、其他配置保留、非法密钥拒绝、写入失败保留原文件和临时文件清理。Windows 未验证 POSIX 权限位和真实终端隐藏输入；Linux shell 语法检查通过，未执行真实节点安装或重启。V10 生成器 12 项通过，七份生成产物同步检查通过。
+
+
+## V2Box 统计性能与资源回收检查
+
+统计热路径按节点、用户分锁；关闭时直接返回；同一目标不同端口共用缓存。独立统计任务不占用计费上报，关闭时取消并等待退出；请求总超时五秒，响应最多 4 KiB。重试批次五分钟过期，旧确认不能清除新批次；同版本策略在租约过期后重新授权会刷新连接计数代次。
+
+复用 Go 测试增加共享 meter 并发读写与策略切换、并发 500 行上限、每连接 64 目标上限、端口归一化、重试过期、旧确认隔离、租约重新授权、异常响应与 UUID 校验。全量 `go test -tags with_quic,with_utls ./...` 和 `go vet` 通过；core/node/api 的 race 回归通过。Python 辅助脚本 20 项中 18 项通过、2 项平台跳过。
+
+Windows amd64 本机独立微基准（每种两次，预热目标、8 个逻辑处理器、不同用户并行）：开启统计由约 276–287 ns/op 降至 49–52 ns/op，单线程约 180–191 ns/op，稳定路径均为零分配；关闭单线程约 1.8–2.1 ns/op。此数据是统计函数开销，不等同真实网络吞吐提升；首次目标识别仍有有界缓存分配。
+
+开启统计后执行八种协议共 144 次启停，回收后协程增量为 0，最后一组堆内存相对预热组增加约 334 KiB，低于测试阈值 2 MiB；单独 100 轮统计启停堆内存增量约 -8 KiB、协程增量为 0。未发现本轮覆盖范围内的数据竞争或资源失控；不代表生产长期零泄漏保证，未执行 Linux 生产负载测试。日志位于 storage/app/test-organization/browser-access/v2box-review-* 和 v2box-target-{before,after}.log。
+
+
+## 后台管理页面评估与备注清理
+
+复用 admin-workspaces.test.tsx 的 35 个导航页面渲染回归及筛选、抽屉、保存、高危操作断言；AnalyticsCollectionSettings.test.tsx 增加节点目标用户 ID 草稿不请求、提交查询、翻页保留条件及重置回第一页的回归。最终全量 Vitest 113 文件、798 项通过，未删改既有安全或业务断言。精简节点诊断说明时保留“没有应用回执”的重要边界，原断言继续通过。初次沙箱运行遇到临时目录 EPERM，后在正常权限环境完成全部回归。
+
+浏览器逐页打开 35 个导航入口；桌面与 390px 窄屏检查字典筛选、表格和多语言编辑抽屉，使用既有 page-fixtures 合成数据。详细覆盖范围与逐页结论见 frontend-validation.md。TypeScript、生产构建及前后台打包通过；运行日志为 storage/app/test-organization/admin-review-*.log。未新增后端接口或独立验证脚本。

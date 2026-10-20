@@ -1,4 +1,5 @@
 import { AnalyticsCollectionSettings } from "./AnalyticsCollectionSettings";
+import { TargetStatisticsSettings } from "./AdminTargetStatistics";
 import { adminInstant as formatInstant } from "./admin-log-time";
 import { admin, request, type Row } from "../shared/api";
 import { Editor, Panel, State, useData } from "../shared/ui";
@@ -56,10 +57,7 @@ export function AdminLogSettings() {
         <>
             <Panel title="日志与保留策略">
                 <div className="pad">
-                    <p>
-                        保存后由定时任务每 5
-                        分钟分批清理，不在节点上报请求中删除日志。缩短保留时间后，过期数据会被永久删除。
-                    </p>
+                    <p>每 5 分钟清理过期日志。缩短保留时间会永久删除过期数据。</p>
                     <p className="muted">
                         最近成功执行：{time(retention.data?.lastRun?.at)}
                         {retention.data?.lastRun &&
@@ -107,6 +105,7 @@ export function AdminLogSettings() {
                 </State>
             </Panel>
             <AnalyticsCollectionSettings />
+            <TargetStatisticsSettings />
         </>
     );
 }

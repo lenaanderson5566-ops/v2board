@@ -61,10 +61,7 @@ export function AdminBrowserPreview({ values }: { values: Row }) {
     return (
         <section className="pad browser-preview" aria-label="浏览器策略预览">
             <h3>浏览器策略预览</h3>
-            <p className="muted">
-                预览语言仅作用于卡片，不更改后台或用户的语言偏好。跟随当前表单设置，保存后对新加载的用户页面生效。按钮仅演示，不复制后台地址、不发送访问统计。UA
-                识别依赖应用版本，隐藏标识的应用可能无法识别。
-            </p>
+            <p className="muted">预览当前表单，保存后对新加载的用户页面生效。语言和按钮仅用于演示；隐藏 UA 标识的应用可能无法识别。</p>
             <div className="browser-preview-controls">
                 <label>
                     预览语言

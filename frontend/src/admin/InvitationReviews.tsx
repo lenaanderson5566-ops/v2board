@@ -150,16 +150,8 @@ function EvidenceComparison({ row }: { row: Row }) {
                     </tbody>
                 </table>
             </TableViewport>
-            <p className="muted">
-                IP、UA
-                结果为受邀用户注册时的摘要比对，不是当前登录来源。系统未保存原始注册
-                IP 或
-                UA，无法显示地址、地区、浏览器或系统版本；无记录不代表不同。
-            </p>
-            <p className="muted">
-                相同 IP 可能来自家庭、公司、校园网或代理出口；相同 UA
-                可能来自相同客户端版本。时间接近也仅是辅助线索，不能据此单独认定自邀。
-            </p>
+            <p className="muted">比对注册时的 IP、UA 摘要；无原始地址与 UA，无记录不代表不同。</p>
+            <p className="muted">共享网络或相同客户端可能产生相同 IP、UA，不能单独据此认定自邀。</p>
         </section>
     );
 }

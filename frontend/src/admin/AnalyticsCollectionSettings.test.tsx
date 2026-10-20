@@ -18,9 +18,40 @@ vi.mock("../shared/api", async (original) => ({
 }));
 import { AnalyticsCollectionSettings } from "./AnalyticsCollectionSettings";
 import { Settings } from "./admin-settings";
+import { TargetStatisticsSettings, AdminTargetStatistics } from "./AdminTargetStatistics";
 afterEach(() => {
     cleanup();
     vi.clearAllMocks();
+});
+it("keeps target collection off until the administrator enables its independent switch", async () => {
+    api.request.mockImplementation(async (_path,body)=>({data:body ? {enabled:body.enabled} : {settings:{enabled:false},nodes:[],rows:[],total:0}}));
+    render(<TargetStatisticsSettings />);
+    const toggle=await screen.findByRole("switch",{name:"统计用户访问的域名和 IP"});
+    expect(toggle.getAttribute("aria-checked")).toBe("false");
+    fireEvent.click(toggle);
+    await waitFor(()=>expect(toggle.getAttribute("aria-checked")).toBe("true"));
+    expect(api.request).toHaveBeenCalledWith("test-admin/target-statistics/settings",{enabled:true});
+    fireEvent.click(toggle);
+    await waitFor(()=>expect(api.request).toHaveBeenCalledWith("test-admin/target-statistics/settings",{enabled:false}));
+});
+it("keeps target collection unchanged when saving fails", async () => {
+    api.request.mockImplementation(async (_path,body)=>{
+        if(body)throw new Error("保存失败");
+        return {data:{settings:{enabled:false}}};
+    });
+    render(<TargetStatisticsSettings />);
+    const toggle=await screen.findByRole("switch");
+    fireEvent.click(toggle);
+    expect(await screen.findByRole("alert")).toBeTruthy();
+    expect(toggle.getAttribute("aria-checked")).toBe("false");
+});
+it("shows domain and IP target aggregates and filters by node", async () => {
+    api.request.mockResolvedValue({data:{settings:{enabled:true},nodes:[{id:7,name:"节点 7",supported:true}],rows:[{userId:1,type:"domain",target:"example.com",connections:2,uploadBytes:100,downloadBytes:200},{userId:1,type:"ip",target:"2001:db8::1",connections:1,uploadBytes:10,downloadBytes:20}],total:2,dropped:0}});
+    render(<AdminTargetStatistics />);
+    expect(await screen.findByText("example.com")).toBeTruthy();
+    expect(screen.getByText("2001:db8::1")).toBeTruthy();
+    fireEvent.change(screen.getByLabelText("访问目标节点"),{target:{value:"7"}});
+    await waitFor(()=>expect(api.request.mock.calls.some(([path])=>path.includes("nodeId=7"))).toBe(true));
 });
 it("reads and saves collection settings through the dedicated configuration endpoint", async () => {
     api.request.mockResolvedValue({
@@ -84,4 +115,25 @@ it("moves browser policies to a separate settings tab without changing saved key
             browser_policy_wechat: "prompt",
         }),
     );
+});
+
+it("applies target user filters only on submit and keeps shared pagination", async () => {
+ api.request.mockResolvedValue({data:{settings:{enabled:true},nodes:[{id:7,name:"节点 7",supported:true}],rows:[{userId:123,type:"domain",target:"example.com",connections:1}],total:26,dropped:0}});
+ render(<AdminTargetStatistics />);
+ await screen.findByText("example.com");
+ fireEvent.change(screen.getByLabelText("访问目标节点"),{target:{value:"7"}});
+ await waitFor(()=>expect(api.request.mock.calls.some(([path])=>path.includes("nodeId=7"))).toBe(true));
+ await waitFor(()=>expect((screen.getByRole("button",{name:"查询"}) as HTMLButtonElement).disabled).toBe(false));
+ api.request.mockClear();
+ fireEvent.change(screen.getByLabelText("访问目标用户 ID"),{target:{value:"123"}});
+ expect(api.request).not.toHaveBeenCalled();
+ fireEvent.submit(screen.getByRole("form",{name:"访问目标筛选"}));
+ await waitFor(()=>expect(api.request.mock.calls.some(([path])=>path.includes("userId=123") && path.includes("page=1"))).toBe(true));
+ await waitFor(()=>expect((screen.getByRole("button",{name:"下一页"}) as HTMLButtonElement).disabled).toBe(false));
+ fireEvent.click(screen.getByRole("button",{name:"下一页"}));
+ await waitFor(()=>expect(api.request.mock.calls.some(([path])=>path.includes("userId=123") && path.includes("nodeId=7") && path.includes("page=2"))).toBe(true));
+ await waitFor(()=>expect((screen.getByRole("button",{name:"重置"}) as HTMLButtonElement).disabled).toBe(false));
+ fireEvent.click(screen.getByRole("button",{name:"重置"}));
+ await waitFor(()=>expect(api.request.mock.calls.some(([path])=>path.includes("userId=0") && path.includes("nodeId=0") && path.includes("page=1"))).toBe(true));
+ expect((screen.getByLabelText("访问目标用户 ID") as HTMLInputElement).value).toBe("");
 });

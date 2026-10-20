@@ -28,7 +28,7 @@ function NodeDictionaryEditor() {
     }).sort(([a],[b])=>a.localeCompare(b));
     const currentPage=Math.min(page,Math.max(1,Math.ceil(entries.length/pageSize)));
     async function save(event:FormEvent) {event.preventDefault();if(!edit||pending.current)return;pending.current=true;setBusy(true);setError("");try {await request(admin("dictionary/save"),edit);setEdit(null);setNotice("字典已保存，节点展示名称将使用新的翻译。");data.reload();}catch(e){setError((e as Error).message);}finally{pending.current=false;setBusy(false);}}
-    return <section className="panel"><header className="panel-head"><h2>字典维护</h2></header><div className="pad"><p className="muted">维护节点国家／地区及州、省、城市的显示名称，不影响 GeoIP、国家代码、旗帜或节点归属。空白翻译使用内置名称，未收录的语言回退到英文。</p>
+    return <section className="panel"><header className="panel-head"><h2>字典维护</h2></header><div className="pad"><p className="muted">仅维护节点地区显示名称，不影响 GeoIP、代码或节点归属。留空使用内置名称，缺少译文时回退到英文。</p>
         {notice && <p role="status">{notice}</p>}
         <AdminFilterBar onSubmit={e=>e.preventDefault()}><AdminChoiceGroup label="字典类型" value={kind} onChange={value=>{setKind(value as typeof kind);setPage(1);setSearch("");setRegion("");}} options={[{value:"regions",label:"国家／地区"},{value:"cities",label:"州、省与城市"}]} /><input aria-label="搜索字典" placeholder="搜索名称或代码" value={search} onChange={e=>{setSearch(e.target.value);setPage(1);}} />
             <label>预览语言<select aria-label="预览语言" value={language} onChange={e=>setLanguage(e.target.value)}>{(data.data?.languages || ["zh-CN"]).map(code=><option key={code} value={code}>{languages.find(item=>item.code===code)?.name || code}</option>)}</select></label>

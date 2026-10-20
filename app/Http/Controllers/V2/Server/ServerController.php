@@ -14,7 +14,8 @@ class ServerController extends Controller
 
     private function initialize(Request $request): ?\Illuminate\Http\JsonResponse
     {
-        $token = $request->input('token');
+        $request->validate(['node_id'=>'required|integer|min:1','token'=>'sometimes|string']);
+        $token = $request->bearerToken() ?? $request->input('token','');
 
         // token 为空（业务失败，不抛异常）
         if (empty($token)) {
@@ -24,18 +25,11 @@ class ServerController extends Controller
             ], 200);
         }
 
-        // token 错误
-        if ($token !== config('v2board.server_token')) {
-            return response()->json([
-                'status' => 'fail',
-                'message' => 'token is error'
-            ], 200);
-        }
-
-        $this->nodeId = $request->input('node_id');
+        $this->nodeId = (int)$request->input('node_id');
         $this->serverService = new ServerService();
         $nodeType = $request->input('node_type', 'v2node');
         abort_unless(in_array($nodeType, ['v2node', 'v2box'], true), 422, 'Unsupported node type');
+        \App\Services\NodeCredentials::authenticate((string)$token,$nodeType,(int)$this->nodeId,$request->bearerToken()!==null);
         $this->nodeInfo = $this->serverService->getServer($this->nodeId, $nodeType);
 
         // 节点不存在

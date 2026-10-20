@@ -250,6 +250,42 @@
           },
           "304": {
             "description": "Unchanged"
+          },
+          "403": {
+            "description": "Node API problem",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "type": {
+                      "type": "string"
+                    },
+                    "title": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "type": "integer",
+                      "minimum": 0
+                    },
+                    "code": {
+                      "type": "string"
+                    },
+                    "requestId": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "title",
+                    "status",
+                    "code",
+                    "requestId"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
           }
         }
       }
@@ -499,6 +535,42 @@
           },
           "304": {
             "description": "Unchanged"
+          },
+          "403": {
+            "description": "Node API problem",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "type": {
+                      "type": "string"
+                    },
+                    "title": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "type": "integer",
+                      "minimum": 0
+                    },
+                    "code": {
+                      "type": "string"
+                    },
+                    "requestId": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "title",
+                    "status",
+                    "code",
+                    "requestId"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
           }
         }
       }
@@ -738,6 +810,42 @@
                 }
               }
             }
+          },
+          "403": {
+            "description": "Node API problem",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "type": {
+                      "type": "string"
+                    },
+                    "title": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "type": "integer",
+                      "minimum": 0
+                    },
+                    "code": {
+                      "type": "string"
+                    },
+                    "requestId": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "title",
+                    "status",
+                    "code",
+                    "requestId"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
           }
         }
       }
@@ -907,6 +1015,42 @@
             }
           },
           "500": {
+            "description": "Node API problem",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "type": {
+                      "type": "string"
+                    },
+                    "title": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "type": "integer",
+                      "minimum": 0
+                    },
+                    "code": {
+                      "type": "string"
+                    },
+                    "requestId": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "title",
+                    "status",
+                    "code",
+                    "requestId"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "403": {
             "description": "Node API problem",
             "content": {
               "application/problem+json": {
@@ -1205,6 +1349,42 @@
                 }
               }
             }
+          },
+          "403": {
+            "description": "Node API problem",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "type": {
+                      "type": "string"
+                    },
+                    "title": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "type": "integer",
+                      "minimum": 0
+                    },
+                    "code": {
+                      "type": "string"
+                    },
+                    "requestId": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "title",
+                    "status",
+                    "code",
+                    "requestId"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
           }
         },
         "requestBody": {
@@ -1429,6 +1609,42 @@
             }
           },
           "500": {
+            "description": "Node API problem",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "type": {
+                      "type": "string"
+                    },
+                    "title": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "type": "integer",
+                      "minimum": 0
+                    },
+                    "code": {
+                      "type": "string"
+                    },
+                    "requestId": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "title",
+                    "status",
+                    "code",
+                    "requestId"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "403": {
             "description": "Node API problem",
             "content": {
               "application/problem+json": {
@@ -1691,6 +1907,363 @@
           },
           "404": {
             "description": "Node not found"
+          },
+          "403": {
+            "description": "Credential is not authorized for this node identity."
+          }
+        }
+      }
+    },
+    "/server/target-statistics/policy": {
+      "get": {
+        "operationId": "nodeTargetStatisticsPolicy",
+        "tags": [
+          "V2Box node communication"
+        ],
+        "security": [
+          {
+            "nodeBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "X-Node-Type",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "v2box"
+              ]
+            }
+          },
+          {
+            "name": "X-Node-ID",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            }
+          },
+          {
+            "name": "If-None-Match",
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Node-Capabilities",
+            "in": "header",
+            "schema": {
+              "type": "string"
+            },
+            "description": "Comma-separated features. native-routing-v1 is required when singBox is configured."
+          }
+        ],
+        "description": "Default off. A successful enabled lease allows at most 120 seconds of bounded in-memory target collection. Legacy nodes ignore this optional resource.",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/nodeTargetPolicy"
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthenticated"
+          },
+          "404": {
+            "description": "Node not found"
+          },
+          "403": {
+            "description": "Credential is not authorized for this node identity."
+          }
+        }
+      }
+    },
+    "/server/target-statistics": {
+      "post": {
+        "operationId": "nodeTargetStatistics",
+        "tags": [
+          "V2Box node communication"
+        ],
+        "security": [
+          {
+            "nodeBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "X-Node-Type",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "v2box"
+              ]
+            }
+          },
+          {
+            "name": "X-Node-ID",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            }
+          },
+          {
+            "name": "If-None-Match",
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Node-Capabilities",
+            "in": "header",
+            "schema": {
+              "type": "string"
+            },
+            "description": "Comma-separated features. native-routing-v1 is required when singBox is configured."
+          }
+        ],
+        "description": "Optional non-billing target aggregates. Disabled or stale policy returns accepted=false. Retry the same immutable batch ID. Data expires from cache within one hour.",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "accepted": {
+                          "type": "boolean"
+                        }
+                      },
+                      "required": [
+                        "accepted"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthenticated"
+          },
+          "404": {
+            "description": "Node not found"
+          },
+          "422": {
+            "description": "Node API problem",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "type": {
+                      "type": "string"
+                    },
+                    "title": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "type": "integer",
+                      "minimum": 0
+                    },
+                    "code": {
+                      "type": "string"
+                    },
+                    "requestId": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "title",
+                    "status",
+                    "code",
+                    "requestId"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Node API problem",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "type": {
+                      "type": "string"
+                    },
+                    "title": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "type": "integer",
+                      "minimum": 0
+                    },
+                    "code": {
+                      "type": "string"
+                    },
+                    "requestId": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "title",
+                    "status",
+                    "code",
+                    "requestId"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Node API problem",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "type": {
+                      "type": "string"
+                    },
+                    "title": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "type": "integer",
+                      "minimum": 0
+                    },
+                    "code": {
+                      "type": "string"
+                    },
+                    "requestId": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "title",
+                    "status",
+                    "code",
+                    "requestId"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Node API problem",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "type": {
+                      "type": "string"
+                    },
+                    "title": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "type": "integer",
+                      "minimum": 0
+                    },
+                    "code": {
+                      "type": "string"
+                    },
+                    "requestId": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "title",
+                    "status",
+                    "code",
+                    "requestId"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Credential is not authorized for this node identity."
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "version": {
+                    "type": "string",
+                    "format": "uuid"
+                  },
+                  "batchId": {
+                    "type": "string",
+                    "format": "uuid"
+                  },
+                  "dropped": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 1000000000
+                  },
+                  "records": {
+                    "type": "array",
+                    "maxItems": 500,
+                    "items": {
+                      "$ref": "#/components/schemas/nodeTargetRecord"
+                    }
+                  }
+                },
+                "required": [
+                  "version",
+                  "batchId",
+                  "dropped",
+                  "records"
+                ],
+                "additionalProperties": false
+              }
+            }
           }
         }
       }
@@ -2232,6 +2805,73 @@
         "traffic"
       ],
       "additionalProperties": false
+    },
+    "nodeTargetPolicy": {
+      "type": "object",
+      "properties": {
+        "enabled": {
+          "type": "boolean"
+        },
+        "version": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "leaseSeconds": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 120
+        }
+      },
+      "required": [
+        "enabled",
+        "version",
+        "leaseSeconds"
+      ],
+      "additionalProperties": false
+    },
+    "nodeTargetRecord": {
+      "type": "object",
+      "properties": {
+        "userId": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "target": {
+          "type": "string",
+          "maxLength": 253
+        },
+        "type": {
+          "type": "string",
+          "enum": [
+            "domain",
+            "ip"
+          ]
+        },
+        "connections": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 1000000000
+        },
+        "uploadBytes": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 1000000000000000
+        },
+        "downloadBytes": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 1000000000000000
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "userId",
+        "target",
+        "type",
+        "connections",
+        "uploadBytes",
+        "downloadBytes"
+      ]
     }
   },
   "endpoints": [

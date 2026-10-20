@@ -73,7 +73,7 @@ export function AdminBanners() {
             }
         >
             <div className="banner-list">
-                <p>排序数字越小越靠前；每个位置最多展示 6 张。</p>
+                <p>数字越小越靠前，每个位置最多 6 张。</p>
                 <State {...data} retry={data.reload}>
                     {null}
                 </State>

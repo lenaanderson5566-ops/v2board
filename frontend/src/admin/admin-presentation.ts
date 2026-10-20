@@ -217,7 +217,7 @@ export const adminLabels: Record<string, string> = {
     tos_url: "服务条款 URL",
     fastai_enabled: "启用 FastAI 客户端",
     fastai_releases: "FastAI 客户端版本与下载",
-    server_token: "节点通讯密钥",
+    server_token: "旧节点全局通讯密钥",
     server_api_url: "节点 API URL",
     server_pull_interval: "节点拉取间隔",
     server_push_interval: "节点推送间隔",

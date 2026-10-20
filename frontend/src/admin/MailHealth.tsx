@@ -64,9 +64,7 @@ export function MailHealth() {
             </State>
             <details>
                 <summary>邮件抑制名单（永久退信 / 投诉）</summary>
-                <p className="muted">
-                    只限制向该地址发邮件，不禁用网站账号。投诉地址不能直接恢复；永久退信需先核实邮箱。服务商抑制名单需另外处理。
-                </p>
+                <p className="muted">仅限制邮件发送。投诉地址不能直接恢复，永久退信需先核实邮箱；服务商抑制名单须另行处理。</p>
                 <AdminFilterBar
                     onSubmit={(e) => {
                         e.preventDefault();

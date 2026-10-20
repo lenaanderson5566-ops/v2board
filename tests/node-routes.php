@@ -77,9 +77,12 @@ try {
     $existingTarget=ServerV2box::create($base+['route_id'=>[]]);
     $source=ServerV2node::create(array_replace($base,['name'=>'conversion source','route_id'=>[$old->id],'tags'=>['keep'],'show'=>1]));
     $originalId=$source->id;$created=$source->created_at;
+    $sourceKey=App\Services\NodeCredentials::issue('v2node',$originalId,1);
     $converted=(new V2boxController())->save($request(array_replace($base,['source_type'=>'v2node','source_id'=>$originalId,'route_id'=>[$nativeId]])));
     $targetId=json_decode($converted->getContent(),true)['data']['id'];
     $target=ServerV2box::findOrFail($targetId);
+    $assert(App\Services\NodeCredentials::migrated('v2box',$targetId),'Conversion preserves no-global-fallback policy');
+    $assert(DB::table('v2_node_credential')->where('id',$sourceKey['id'])->value('revoked_at')!==null,'Conversion revokes source credentials');
     $assert(!ServerV2node::find($originalId) && $target->route_id===[$nativeId], 'Conversion moves source and selects target rules');
     $assert($target->created_at===$created && $target->tags===['keep'] && (int)$target->show===1,'Conversion preserves key seed and metadata');
     $assert(ServerV2box::find($existingTarget->id)!==null,'Existing target node untouched');

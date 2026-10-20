@@ -2,7 +2,7 @@ import { expect, it } from "vitest";
 import { anytlsPresets, paddingPreset } from "./anytls-padding";
 import { nodeSettingsInitial, nodeSettingsPayload, nodeSettingsFields } from "./node-settings";
 import { linkNode, nodeFields } from "./admin-linkage";
-import { nodeDeploymentCommand } from "./node-deployment";
+import { nodeDeploymentCommand, nodeIPCommand, nodeReportCommand } from "./node-deployment";
 it("saves all AnyTLS presets as native arrays without the UI-only selector", () => {
     for (const preset of anytlsPresets) {
         const linked = linkNode("padding_preset",preset.id,{protocol:"anytls"});
@@ -27,4 +27,11 @@ it("keeps DDNS opt-in and quotes generated shell arguments", () => {
     expect(nodeDeploymentCommand({...row,ddns:true,ddns_domain:"node.example.com",ddns_family:"dual"})).toBe("bash install.sh --ddns --ddns-domain 'node.example.com' --ddns-family dual");
     expect(nodeDeploymentCommand({...row,ddns:true,ddns_domain:"a'b"})).toContain("'a'\\''b'");
     expect(nodeDeploymentCommand({...row,type:"v2node",ddns:true})).toContain("python3 node-network.py configure");
+});
+
+it("uses versioned network helpers included in the released backend", () => {
+ for(const command of [nodeIPCommand,nodeReportCommand("dual"),nodeDeploymentCommand({type:"v2node",install_command:"install",ddns:true})]) {
+  expect(command).toContain("/v2box/v1.0.1/script/node-network.py");
+  expect(command).not.toContain("/v2box/main/");
+ }
 });

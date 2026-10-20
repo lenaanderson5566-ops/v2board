@@ -768,3 +768,8 @@ ClientRecognition 统一登录／订阅日志、用户活动及运营访问报�
 复用 Nodes.test.tsx 验证密码门槛、创建后一次性展示、关闭后清除、请求失败不误报成功和宽限期禁止重复轮换，13 项通过；前端全量 797 项通过。TypeScript 与生产构建通过，静态发布资源已更新。报告位于 storage/app/test-organization/browser-access/node-credentials-*。本轮未进行浏览器视觉验收。
 
 旧全局密钥设置已明确标注兼容用途，避免与每节点独立凭据混淆；设置字段与展示测试另行通过。
+
+
+## V2Box 正式版本安装入口
+
+节点安装、IP 查询、DDNS 上报命令改为已验证的 v1.0.1 标签地址，避免 main 分支旧脚本不兼容新参数。node-options 和 Nodes 共 17 项通过，保留 shell 参数转义、DDNS 显式启用和独立凭据交互断言；TypeScript、生产构建及用户/管理端打包通过。本轮未改变可见布局，没有新增浏览器视觉验收；真实安装验证范围见 test-organization.md。

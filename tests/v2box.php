@@ -51,7 +51,11 @@ try {
     $all=$svc->getAllServers();
     $nodes=array_values(array_filter($all,fn($n)=>$n['id']==$id && in_array($n['type'],['v2node','v2box'])));
     $assert(count($nodes)===2,'Both types listed with same id');
-    foreach ($nodes as $node) if ($node['type']==='v2box') $assert(strpos($node['install_command'],'--node-type v2box')!==false,'Installer selects V2Box');
+    foreach ($nodes as $node) if ($node['type']==='v2box') {
+        $assert(strpos($node['install_command'],'--node-type v2box')!==false,'Installer selects V2Box');
+        $assert(strpos($node['install_command'],'/v2box/v1.0.1/script/install.sh')!==false,'Installer uses published version, not legacy main');
+        $assert(strpos($node['install_command'],'--prompt-api-key')!==false,'Installer keeps credential input interactive');
+    }
     $admin=new App\Http\Controllers\V1\Admin\Server\V2boxController();
     foreach ([['network'=>'xhttp'], ['network'=>'http'], ['encryption'=>'mlkem768x25519plus'], ['trusted_x_forwarded_for'=>['127.0.0.1']], ['tls_settings'=>['ech'=>'custom']]] as $invalid) {
         try { $admin->save(Request::create('/','POST',array_merge($base,$invalid))); throw new RuntimeException('Invalid config accepted'); }

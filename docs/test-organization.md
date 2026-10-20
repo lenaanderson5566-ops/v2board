@@ -459,3 +459,12 @@ Windows amd64 本机独立微基准（每种两次，预热目标、8 个逻辑�
 复用 admin-workspaces.test.tsx 的 35 个导航页面渲染回归及筛选、抽屉、保存、高危操作断言；AnalyticsCollectionSettings.test.tsx 增加节点目标用户 ID 草稿不请求、提交查询、翻页保留条件及重置回第一页的回归。最终全量 Vitest 113 文件、798 项通过，未删改既有安全或业务断言。精简节点诊断说明时保留“没有应用回执”的重要边界，原断言继续通过。初次沙箱运行遇到临时目录 EPERM，后在正常权限环境完成全部回归。
 
 浏览器逐页打开 35 个导航入口；桌面与 390px 窄屏检查字典筛选、表格和多语言编辑抽屉，使用既有 page-fixtures 合成数据。详细覆盖范围与逐页结论见 frontend-validation.md。TypeScript、生产构建及前后台打包通过；运行日志为 storage/app/test-organization/admin-review-*.log。未新增后端接口或独立验证脚本。
+
+
+## V2Box Release 与一键部署验证
+
+正式 Release v1.0.1 的源提交为 e6951a7346209741b3f01a47f3bfd3667c4dec31，包含 2bf3b02 的全部修改。首轮 v1.0.0 Linux CI 检出上游 SS2022 首次响应写入与 Close 竞态，未创建 Release。修复在 SS2022 适配层先关闭原 TCP 中断 I/O，等待加密读写结束后释放缓冲区；专用阻塞写关闭测试及用户热更新用例连续十轮 race 通过，不跳过失败测试。v1.0.1 的 GitHub Linux 全量 race、Reality/Vision 兼容、go vet、Shell 语法和 Python 回归全部通过。
+
+六个操作系统/架构组合构建成功后，由统一发布任务检查六个压缩包、六份 SHA-256 和包内安装器/凭据工具，再创建正式 Release，避免空包发布。独立 Debian amd64 容器从真实公开 Release 下载：验证隐藏终端输入不回显、配置 0600、二进制版本、服务单元和辅助工具；省略版本参数查询真实 latest，验证逐字节保留含两个节点及自定义字段的配置、保留旧二进制、发出重启请求。错误 HTTP 现有配置在变更二进制与服务前拒绝。两个 Linux 包均通过真实 SHA-256、清单和 ELF 架构检查；实际安装的 amd64 二进制中核对到精确源提交。systemctl 仅在此独立容器中模拟，没有操作现有服务；未进行 ARM 真机或生产节点端到端验收。验证后销毁测试容器。
+
+面板 ServerService 安装入口及 node-deployment IP/DDNS 辅助命令固定至 v1.0.1；复用 tests/v2box.php，31 项通过，包含版本固定与交互密钥断言；复用 node-options/Nodes 前端测试，17 项通过，类型检查、生产构建及打包通过。发布记录和验证日志位于 storage/app/test-organization/v2box-release-*，不提交运行脚本或测试密钥。工作流：https://github.com/lenaanderson5566-ops/v2box/actions/runs/39433672490 。

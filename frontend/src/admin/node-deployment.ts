@@ -1,7 +1,7 @@
 import type { Row } from "../shared/api";
 const quote = (value: string) => "'" + value.replace(/'/g, "'\\''") + "'";
 export const nodeIPCommand =
-    "curl -fSL https://raw.githubusercontent.com/lenaanderson5566-ops/v2box/main/script/node-network.py -o node-network.py && python3 node-network.py ip";
+    "curl -fSL https://raw.githubusercontent.com/lenaanderson5566-ops/v2box/v1.0.1/script/node-network.py -o node-network.py && python3 node-network.py ip";
 export function nodeDeploymentCommand(node: Row): string {
     const base = String(node.install_command || "");
     if (!node.ddns) return base;
@@ -19,7 +19,7 @@ export function nodeDeploymentCommand(node: Row): string {
         );
     return (
         base +
-        " && curl -fSL https://raw.githubusercontent.com/lenaanderson5566-ops/v2box/main/script/node-network.py -o node-network.py && python3 node-network.py configure" +
+        " && curl -fSL https://raw.githubusercontent.com/lenaanderson5566-ops/v2box/v1.0.1/script/node-network.py -o node-network.py && python3 node-network.py configure" +
         (domain ? " --domain " + quote(domain) : "") +
         " --family " +
         family
@@ -29,7 +29,7 @@ export function nodeDeploymentCommand(node: Row): string {
 export function nodeReportCommand(family: string): string {
     const f = ["ipv4", "ipv6", "dual"].includes(family) ? family : "ipv4";
     return (
-        "curl -fSL https://raw.githubusercontent.com/lenaanderson5566-ops/v2box/main/script/node-network.py -o node-network.py && python3 node-network.py report-configure --family " +
+        "curl -fSL https://raw.githubusercontent.com/lenaanderson5566-ops/v2box/v1.0.1/script/node-network.py -o node-network.py && python3 node-network.py report-configure --family " +
         f
     );
 }

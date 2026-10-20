@@ -422,3 +422,7 @@ mfa-api 沿用真实路由、Cookie、CSRF 和真实密钥签名，覆盖 ES256 
 移除 PHPUnit 无条件通过的占位断言、与 console-smoke.php 首页检查重复的 Feature 示例，以及不再被引用的应用 TestCase、创建应用 trait、缓存预热扩展。断言计数工具的失败抛错与成功计数测试保留为 tests/Unit/AssertionsTest.php，直接继承 PHPUnit TestCase，不再启动 Laravel 或生成缓存。phpunit.xml 和 suites.json 同步移除空 Feature 套件与旧辅助项；业务、安全和迁移专项测试保留。清单当前为 111 个测试入口、11 个辅助入口。
 
 清理验证：隔离副本运行 tests/run.php --validate，通过 111 个测试入口和 11 个辅助入口校验；PHPUnit --fail-on-warning --fail-on-risky 通过（1 test、2 assertions）。扫描已跟踪源码／配置未发现已删除文件引用，docs 下相对 Markdown 链接均存在。未修改应用代码，因此未重跑全部业务测试。
+
+## 头像套餐标签样式恢复
+
+按用户要求恢复 2075113a 之前的 avatar-plan 样式：深色底、白色 10px 文字、最大宽度 64px，移除额外加粗。仅修改右上角头像套餐标签，不回退账单与使用情况卡片。与旧提交 CSS 逐项比对一致，复用 AccountControls.test.tsx，12 项通过；结果与构建日志位于 storage/app/test-organization/browser-access/avatar-plan-restore*。本轮未进行浏览器视觉验收。

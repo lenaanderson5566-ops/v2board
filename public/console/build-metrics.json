@@ -3,9 +3,9 @@
   "modes": [
     {
       "mode": "user",
-      "startupGzipBytes": 274673,
+      "startupGzipBytes": 274672,
       "budget": 307200,
-      "totalBytes": 2829678,
+      "totalBytes": 2829658,
       "fileCount": 314
     },
     {

@@ -705,3 +705,7 @@ ClientRecognition 统一登录／订阅日志、用户活动及运营访问报�
 ## 文档与测试清理
 
 本轮仅清理旧文档、重复／占位 PHPUnit 测试及其辅助配置，未改动前端实现和发布资源，不涉及新的浏览器视觉验收。首页行为仍由 console-smoke.php 的页面入口回归覆盖。
+
+## 头像套餐标签样式恢复
+
+按用户要求恢复 2075113a 之前的 avatar-plan 样式：深色底、白色 10px 文字、最大宽度 64px，移除额外加粗。仅修改右上角头像套餐标签，不回退账单与使用情况卡片。与旧提交 CSS 逐项比对一致，复用 AccountControls.test.tsx，12 项通过；结果与构建日志位于 storage/app/test-organization/browser-access/avatar-plan-restore*。本轮未进行浏览器视觉验收。

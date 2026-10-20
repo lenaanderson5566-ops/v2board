@@ -374,3 +374,31 @@ mfa-api 沿用真实路由、Cookie、CSRF 和真实密钥签名，覆盖 ES256 
 新增的 AdminDictionary.test.tsx 位于对应组件旁，覆盖编辑、恢复默认需保存、冲突保留输入、分类切换；复用 Nodes.test.tsx 和后台全菜单页面夹具，复用 UsageBilling.test.tsx 验证重复入口移除且业务操作保留。全量前端 786 项通过，相关最终回归详见 dictionary-final-focused.json。
 
 新表 v2_node_dictionary 独立保存节点展示名称覆盖值与版本，不提供任意业务枚举 CRUD，不删除被引用的代码。保存按项执行事务、行锁与版本比较；操作日志记录管理员与字典键，查询在请求作用域内复用，后续请求读取新数据。迁移及安装表定义保持一致；update.sh 的 26 个隔离更新场景包含新迁移执行断言。
+
+## 账户偏好、套餐展示与统计说明
+
+复用 AccountPreferences、TimeZonePicker、UsageBilling、JourneyAnalytics 组件测试，共 32 项通过。保留偏好保存失败重试、账单业务行为等断言；留存说明断言跟随精简后的统计口径更新。邮箱只读展示使用普通文本元素，避免 output 的隐式 status 角色干扰保存反馈。未新增测试入口或修改后端统计逻辑。
+
+## 后台刷新入口清理
+
+静态配置列表（路由、风控规则、优惠券、礼品卡、节点字典）移除常驻刷新按钮，继续使用保存后重新加载与加载失败重试。字典保存失败时保留输入，取消或关闭编辑后重新加载，支持版本冲突后的再次编辑。经营概览合并为一个刷新入口，同时刷新概览、系统状态、订单和四项排行榜，并在任一请求进行时禁用按钮。日志、在线用户、订单、节点监控、异步任务、报表以及汇率等实际业务刷新操作保留，不新增轮询。
+
+复用 admin-workspaces.test.tsx 和 AdminDictionary.test.tsx，验证统一刷新覆盖所有数据源，以及冲突取消后的恢复流程；结果位于 storage/app/test-organization/browser-access/admin-refresh-cleanup.json，构建日志为 admin-refresh-cleanup-build.log。本轮未进行浏览器视觉验证。
+
+## 后台用户抽屉统一
+
+用户管理、日志、在线用户、风控和工单账户入口统一使用 AdminUserDetails，包含活动记录、邀请用户、订单和流量记录。将活动内容独立为 UserActivityContent，避免共享抽屉依赖整个用户管理页面；删除旧 Activity 包装与 user-activity-drawer 样式。各标签按需加载，日志行使用 user_id 而非日志 id，未识别用户不提供打开入口，历史已删除账户提示保留。邀请、订单、流量使用后台统一时间格式并显示一次时区说明。
+
+复用 AdminUserActivity.test.tsx 和 admin-workspaces.test.tsx，覆盖日志入口四标签用户过滤、活动筛选、未识别用户、工单嵌套抽屉关闭返回及用户管理回归。报告为 storage/app/test-organization/browser-access/user-drawer-unification.json；构建日志为 user-drawer-unification-build.log。本轮未进行浏览器视觉验收。
+
+## 字典管理筛选与预览
+
+复用 AdminDictionary.test.tsx 覆盖自定义／内置来源筛选、切换语言仅预览不保存，保留固定代码、版本、保存、恢复默认与冲突取消回归；复用 Nodes.test.tsx 验证节点字典消费者。未修改后端字典存储及接口。
+
+## 客户端识别库回归
+
+复用 security 套件 tests/client-identity.php：内置 UA 与版本回归、自定义首产品识别、伪装浏览器及子串拒绝、白名单隔离、非法／冲突别名、全库版本冲突、恢复默认、真实管理员 GET／预览／保存及非管理员拒绝。增加日志识别与原始 UA／代码保留、OperationsAnalytics 应用分组准确性验证。新增部分使用隔离项目 SQLite 和回滚事务；不要在生产环境执行。复用 admin-log-search.php 验证列表搜索及分页。
+
+前端复用 AdminDictionary.test.tsx 验证服务端预览不保存、冲突保留输入、取消重新加载与恢复默认版本提交；复用用户活动、后台全菜单与运营报表模块。更新公共合成页面夹具。清单仍为 112 个测试和 14 个辅助入口。结果位于 storage/app/test-organization/browser-access/client-recognition-*.json/log。
+
+客户端识别库最终验证：全量前端 790 项通过，后端客户端识别 278 项与日志搜索 6 项通过，生产构建通过，更新脚本 26 场景通过。尚未提交或推送。

@@ -651,3 +651,41 @@ TypeScript --noEmit 与 git diff --check 均通过。
 浏览器使用合成数据验证 390px 账单页面以及后台字典搜索、双列语言编辑抽屉。截图：storage/app/test-organization/admin-pages/billing-refined-mobile.png、dictionary-editor.png。预览发现开发模式 lazy 初始化顺序问题，已修复并通过页面回归。未修改服务器上的字典数据。
 
 全量前端 786 项通过；最终相关回归 99 项通过（以 dictionary-final-focused.json 为准）。生产构建通过。报告及日志位于 storage/app/test-organization/browser-access/dictionary-*。新增迁移已加入 update.sh 白名单、执行列表和目标文件检查，26 个隔离更新场景通过。本轮没有提交或推送。
+
+## 账户偏好与使用情况展示
+
+统一邮箱、时间显示时区、界面语言的标题、控件宽度、44px 最小高度和间距，窄屏改为单列，长邮箱允许换行。使用情况当前套餐采用品牌浅色卡片，分别显示标签、套餐名称与到期时间，保留原有操作入口和账户状态判断。移除后台仪表盘历史时区长提示，留存报表仅保留简明统计口径。
+
+相关组件回归 32 项通过，报告为 storage/app/test-organization/browser-access/preference-usage-style.json。本轮未进行浏览器截图验证；移动端布局通过响应式样式检查，实际视觉仍需浏览器验收。
+
+## 后台刷新入口清理
+
+静态配置列表（路由、风控规则、优惠券、礼品卡、节点字典）移除常驻刷新按钮，继续使用保存后重新加载与加载失败重试。字典保存失败时保留输入，取消或关闭编辑后重新加载，支持版本冲突后的再次编辑。经营概览合并为一个刷新入口，同时刷新概览、系统状态、订单和四项排行榜，并在任一请求进行时禁用按钮。日志、在线用户、订单、节点监控、异步任务、报表以及汇率等实际业务刷新操作保留，不新增轮询。
+
+复用 admin-workspaces.test.tsx 和 AdminDictionary.test.tsx，验证统一刷新覆盖所有数据源，以及冲突取消后的恢复流程；结果位于 storage/app/test-organization/browser-access/admin-refresh-cleanup.json，构建日志为 admin-refresh-cleanup-build.log。本轮未进行浏览器视觉验证。
+
+## 后台用户抽屉统一
+
+用户管理、日志、在线用户、风控和工单账户入口统一使用 AdminUserDetails，包含活动记录、邀请用户、订单和流量记录。将活动内容独立为 UserActivityContent，避免共享抽屉依赖整个用户管理页面；删除旧 Activity 包装与 user-activity-drawer 样式。各标签按需加载，日志行使用 user_id 而非日志 id，未识别用户不提供打开入口，历史已删除账户提示保留。邀请、订单、流量使用后台统一时间格式并显示一次时区说明。
+
+复用 AdminUserActivity.test.tsx 和 admin-workspaces.test.tsx，覆盖日志入口四标签用户过滤、活动筛选、未识别用户、工单嵌套抽屉关闭返回及用户管理回归。报告为 storage/app/test-organization/browser-access/user-drawer-unification.json；构建日志为 user-drawer-unification-build.log。本轮未进行浏览器视觉验收。
+
+## 字典维护范围与管理优化
+
+本轮代码评估：节点国家／地区、州省城市名称属于可运营展示字典，沿用现有多语言覆盖表；GeoIP 地理解析独立维护。语言清单与时区复用 language-options 和现有时区组件。订单／支付状态、风控等级、节点协议、下载任务状态属于程序枚举，不开放任意增删或改码；支付渠道、套餐、客户端已有专用管理界面，不重复建设通用字典。整站文案继续使用现有国际化资源。
+
+字典管理增加语言预览、来源筛选、城市所属地区筛选；支持按地区名称搜索城市、稳定代码排序与统一分页／每页数量。编辑统一为抽屉，展示每种语言默认值及保存后的有效名称，恢复默认仍需保存。保存后筛选结果减少时自动校正当前页。不新增后台请求、数据库表或迁移。预览仅本地计算，后台验证及版本冲突保护沿用现有实现。
+
+复用 AdminDictionary、Nodes 测试；报告 dictionary-management.json，构建日志 dictionary-management-build.log，均位于 storage/app/test-organization/browser-access。本轮未执行浏览器视觉验收。
+
+## 第三方客户端识别库
+
+字典维护新增“客户端识别”独立分类。复用 SubscriptionClientRegistry 固定代码和 ClientIdentity 内置 UA 别名，支持展示名称、自定义产品别名、优先级、恢复默认与服务端 UA 草稿测试。内置规则不可删除、始终优先；自定义别名仅匹配 UA 首部产品边界，拒绝正则、通用浏览器／工具标识、重复及跨客户端前缀冲突。编辑失败保留输入，取消后重新读取版本。图标、下载安装包与教程仍由现有客户端管理负责。
+
+ClientRecognition 统一登录／订阅日志、用户活动及运营访问报表的应用识别；客户端策略列表名称也读取此库，旧 client_name 在尚无覆盖值时保留。运营报表按当前规则对原始 UA 分组重算，固定类别累计数量，未知归为其他；不覆盖历史 client_type 和 user_agent。不把自定义识别用于白名单、最低版本、配置格式或授权。无 UA 的连接与在线记录不猜测客户端。请求作用域缓存规则与名称，不为表格每行发起接口或数据库查询。
+
+浏览器使用合成数据检查桌面编辑抽屉与 390px 手机页面。发现字典表格撑宽页面，节点与客户端字典均改用 TableViewport；修复后 clientWidth 和 scrollWidth 均为 390。截图：storage/app/test-organization/admin-pages/client-recognition-editor.png。浏览器仅验证布局；真实预览、保存、冲突与权限由隔离后端测试验证。
+
+新增 v2_client_recognition 存储全库版本与规则，与节点字典及 GeoIP 独立。迁移和安装 SQL、update.sh 白名单／存在性检查／执行列表同步，更新脚本 26 个隔离场景通过。SQLite 上验证实际管理员路由、版本冲突、日志与报表联动；未验证 MySQL 并发锁竞争及大规模日志聚合耗时。
+
+客户端识别库最终验证：全量前端 790 项通过，后端客户端识别 278 项与日志搜索 6 项通过，生产构建通过，更新脚本 26 场景通过。尚未提交或推送。

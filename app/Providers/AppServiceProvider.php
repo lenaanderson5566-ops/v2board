@@ -14,6 +14,7 @@ class AppServiceProvider extends ServiceProvider
     public function register()
     {
         $this->app->scoped(\App\Services\NodeDictionary::class);
+        $this->app->scoped(\App\Services\ClientRecognition::class);
     }
 
     /**

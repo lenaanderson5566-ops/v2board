@@ -100,7 +100,7 @@ it("shows mature cohorts, observed retention, honest renewal and percentile desc
     expect(screen.getByText("0.250")).toBeTruthy();
     expect(screen.getByText(/不计算历史流失率/)).toBeTruthy();
     expect(screen.getByText(/不能证明订阅后的精确连接顺序/)).toBeTruthy();
-    expect(screen.getByText(/历史时区调整和日志清理会造成缺口/)).toBeTruthy();
+    expect(screen.getByText(/登录留存按登录记录统计/)).toBeTruthy();
 });
 it("keeps business reports available before telemetry migration and uses unavailable denominators", async () => {
     const data = fixture();

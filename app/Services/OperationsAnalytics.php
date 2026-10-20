@@ -53,7 +53,23 @@ final class OperationsAnalytics
             ->map(fn($r)=>['maskedIp'=>GeoIpService::maskSessionIp(inet_ntop(hex2bin($r->packed))),'total'=>(int)$r->total,'failed'=>(int)$r->failed,'accounts'=>(int)$r->accounts])->all();
         $countries=(clone $q)->selectRaw("COALESCE(NULLIF(country,''),'未知') AS location, COUNT(*) AS total")
             ->groupBy('location')->orderByDesc('total')->orderBy('location')->limit(30)->get()->map(fn($r)=>['country'=>$r->location,'total'=>(int)$r->total])->all();
-        return ['browsers'=>$browsers,'uniqueIps'=>(int)$unique->total,'unknownIpEvents'=>(clone $q)->whereRaw('INET6_ATON(ip) IS NULL')->count(),'topIps'=>$top,'countries'=>$countries];
+        $applications=$this->applications($q,$success,$failure);
+        return ['applications'=>$applications,'browsers'=>$browsers,'uniqueIps'=>(int)$unique->total,'unknownIpEvents'=>(clone $q)->whereRaw('INET6_ATON(ip) IS NULL')->count(),'topIps'=>$top,'countries'=>$countries];
+    }
+
+    private function applications($q, string $success, string $failure): array
+    {
+        $applications=[];
+        $recognition=app(ClientRecognition::class);
+        $recognition->catalog(); // Load rules before opening the UA cursor.
+        // Group raw UAs in SQL; accumulate only the fixed client categories in memory.
+        foreach ((clone $q)->select('user_agent')->selectRaw("COUNT(*) AS total, SUM(CASE WHEN $success THEN 1 ELSE 0 END) AS success, SUM(CASE WHEN $failure THEN 1 ELSE 0 END) AS failed")->groupBy('user_agent')->cursor() as $row) {
+            $client=$recognition->identify((string)$row->user_agent); $code=$client['code'];
+            $applications[$code] ??= ['code'=>$code,'name'=>$client['name'],'total'=>0,'success'=>0,'failed'=>0];
+            foreach (['total','success','failed'] as $key) $applications[$code][$key]+=(int)$row->$key;
+        }
+        usort($applications,fn($a,$b)=>($b['total']<=>$a['total']) ?: strcmp($a['code'],$b['code']));
+        return $applications;
     }
 
     private function risk(int $from, int $to): array

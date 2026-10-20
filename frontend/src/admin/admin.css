@@ -2129,7 +2129,6 @@ body[data-console="admin"] .invitation-workflow h2 { margin:0 0 8px; font-size:1
 body[data-console="admin"] .invitation-workflow p { margin:0; max-width:75ch; }
 
 /* User activity: compact account overview and separated event records. */
-body[data-console="admin"] .user-activity-drawer .modal { width: min(780px, 100vw); }
 body[data-console="admin"] .user-activity { padding: 24px; }
 body[data-console="admin"] .user-activity-identity { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-bottom: 20px; }
 body[data-console="admin"] .user-activity-identity > div { min-width: 0; }

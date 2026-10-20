@@ -70,9 +70,13 @@ export function UsagePage() {
             >
                 <div>
                     {usable && sub.data?.plan && (
-                        <span className="subscription-label">
-                            {tx("当前套餐")} · {sub.data.plan.name}
-                        </span>
+                        <div className="usage-current-plan">
+                            <span className="subscription-label">{tx("当前套餐")}</span>
+                            <strong className="subscription-name">{sub.data.plan.name}</strong>
+                            <span className="subscription-expiry">
+                                {tx("订阅到期")} · {sub.data.expired_at ? date(sub.data.expired_at) : tx("长期有效")}
+                            </span>
+                        </div>
                     )}
                     <p className="settings-intro">{b("usageIntro")}</p>
                 </div>

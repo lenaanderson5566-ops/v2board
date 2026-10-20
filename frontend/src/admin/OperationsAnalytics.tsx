@@ -14,6 +14,7 @@ type Access = {
     successRate: number | null;
     latestAt: string | null;
     clients?: {
+        applications?: {code:string;name:string;total:number;success:number;failed:number}[];
         uniqueIps: number;
         unknownIpEvents: number;
         browsers: {
@@ -280,6 +281,7 @@ function AccessReport({
                                     ),
                                 ])}
                             />
+                            {data.clients.applications && <><h3>第三方客户端</h3><p className="muted">按当前识别库汇总 UA；未匹配的浏览器及客户端归为其他。</p><ReportTable headers={["客户端","事件","成功","失败"]} rows={data.clients.applications.map(r=>[r.name,r.total,r.success,r.failed])}/></>}
                             <h3>IP 访问排行（失败次数优先，前 20）</h3>
                             <ReportTable
                                 headers={[

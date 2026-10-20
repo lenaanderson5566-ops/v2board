@@ -423,7 +423,7 @@ it("keeps ticket replies open and opens the selected user drawer without renderi
     expect(await within(dialog).findByText(attack)).toBeTruthy();
     expect(dialog.querySelector(".messages img, .messages svg, .messages script")).toBeNull();
     fireEvent.click(within(dialog).getByRole("button", { name: /guest@example.com/ }));
-    const drawer = await screen.findByRole("dialog", { name: "用户活动详情" });
+    const drawer = await screen.findByRole("dialog", { name: /用户详情/ });
     await waitFor(() => expect(api.request.mock.calls.some(([path]) => path.includes("user-activity/fetch?user_id=7"))).toBe(true));
     fireEvent.click(within(drawer).getByRole("button", { name: "关闭" }));
     expect(screen.getByRole("dialog", { name: "Support fixture" })).toBeTruthy();
@@ -596,4 +596,17 @@ it("keeps destructive user actions inside more and retains cancellation and conf
         fireEvent.click(reset);
         await waitFor(()=>expect(api.request).toHaveBeenCalledWith("test-admin/user/resetSecret",expect.objectContaining({id:98})));
     } finally { confirm.mockRestore();delete (HTMLElement.prototype as any).hidePopover; }
+});
+
+it("refreshes every overview section from one action", async () => {
+    render(<Overview />);
+    const refresh = screen.getByRole("button", { name: "刷新" });
+    await waitFor(() => expect((refresh as HTMLButtonElement).disabled).toBe(false));
+    api.request.mockClear();
+    fireEvent.click(refresh);
+    await waitFor(() => {
+        for (const path of ["stat/getOverride", "system/getSystemStatus", "stat/getOrder", "stat/getServerTodayRank", "stat/getServerLastRank", "stat/getUserTodayRank", "stat/getUserLastRank"]) {
+            expect(api.request.mock.calls.some(([url]) => String(url).includes(path))).toBe(true);
+        }
+    });
 });

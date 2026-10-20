@@ -66,6 +66,10 @@ class ClientStrategyService
         return collect($this->scanProtocols())->map(function ($defaults, $type) use ($existing, $enabledMap) {
                 $row = $existing->get($type) ?? new ClientStrategy($defaults + ['is_enabled'=>1, 'sort'=>0]);
                 $type = $row->client_type;
+                foreach (app(ClientRecognition::class)->catalog() as $identity) if ($identity['code']===$type) {
+                    $row->setAttribute('client_name',$identity['name']);
+                    break;
+                }
                 $row->setAttribute('is_enabled', $enabledMap[$type]);
                 $row->setAttribute('client_id', SubscriptionClientRegistry::canonicalId($type));
                 $examples = ['fastai'=>'1.0.0', 'mihomo'=>'1.19.0', 'sing-box'=>'1.12.0', 'clash-verge'=>'2.3.1', 'flclash'=>'0.8.0'];

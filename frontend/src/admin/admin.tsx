@@ -712,7 +712,7 @@ export const resources: Record<string, Resource> = {
             ],
         ],
         fields: [
-            field("client_name", "名称"),
+
             {
                 ...field("min_version", "最低版本（可选）"),
                 hint: "只需检查 UA 时留空。填写后还会检查对应版本，未提供版本也会拒绝。Mihomo / sing-box 填内核版本，FastAI / FlClash / Clash Verge 填应用版本。FastAI 还需满足安装包发布设置中的平台最低版本；两处限制同时生效。",
@@ -790,7 +790,7 @@ export const resources: Record<string, Resource> = {
                 "user_agent",
                 "客户端",
                 (r) => (
-                    <span className="admin-ua-text">{r.user_agent || "—"}</span>
+                    <span className="admin-ua-text">{r.recognized_client && <strong>{r.recognized_client.name} · </strong>}{r.user_agent || "—"}</span>
                 ),
             ],
             ["created_at", "创建时间", (r) => logTime(r.created_at)],
@@ -833,12 +833,12 @@ export const resources: Record<string, Resource> = {
                     );
                 },
             ],
-            ["client_type", "客户端类型"],
+            ["client_type", "客户端类型", (r) => r.recognized_client?.name || r.client_name || r.client_type || "其他"],
             [
                 "user_agent",
                 "UA",
                 (r) => (
-                    <span className="admin-ua-text">{r.user_agent || "—"}</span>
+                    <span className="admin-ua-text">{r.recognized_client && <strong>{r.recognized_client.name} · </strong>}{r.user_agent || "—"}</span>
                 ),
             ],
             ["created_at", "创建时间", (r) => logTime(r.created_at)],
@@ -1178,10 +1178,7 @@ export function ResourcePage({
                                 />
                             </div>
                         )}
-                        {resource !== resources.plans &&
-                            resource !== resources.groups &&
-                            resource !== resources.notices &&
-                            resource !== resources.knowledge && (
+                        {(logKind || [resources.users, resources.orders, resources.online, resources.clients].includes(resource)) && (
                                 <Reload
                                     onClick={d.reload}
                                     loading={d.loading}

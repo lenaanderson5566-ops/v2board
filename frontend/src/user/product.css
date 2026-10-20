@@ -2158,16 +2158,21 @@ body[data-console="user"] .client-family-header p {
     padding: 22px 24px;
     border: 1px solid var(--line);
     border-radius: 18px;
-    background: var(--surface);
+    background: linear-gradient(115deg, var(--brand-soft), var(--surface) 72%);
     gap: 20px;
 }
-.subscription-label {
+.app.user .subscription-ready > div { min-width: 0; }
+.app.user .subscription-ready > .button { flex-shrink: 0; }
+.app.user .usage-current-plan { display: grid; gap: 8px; margin-bottom: 12px; }
+.app.user .subscription-name { font-size: 24px; line-height: 1.3; color: var(--ink); overflow-wrap: anywhere; }
+.app.user .subscription-expiry { color: var(--muted); font-size: 13px; line-height: 1.6; overflow-wrap: anywhere; }
+.app.user .subscription-label {
     display: block;
-    color: var(--success);
+    color: var(--brand);
     font-size: 14px;
     font-weight: 650;
     overflow-wrap: anywhere;
-    margin-bottom: 8px;
+    margin-bottom: 0;
 }
 .app.user .subscription-ready .settings-intro {
     margin: 0;

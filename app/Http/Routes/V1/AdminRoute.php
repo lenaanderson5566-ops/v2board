@@ -11,6 +11,9 @@ class AdminRoute
             'prefix' => config('v2board.secure_path', config('v2board.frontend_admin_path', hash('crc32b', config('app.key')))),
             'middleware' => ['admin', 'log'],
         ], function ($router) {
+            $router->get('/dictionary/clients', 'V1\\Admin\\ClientRecognitionController@fetch');
+            $router->post('/dictionary/clients/save', 'V1\\Admin\\ClientRecognitionController@save')->middleware('throttle:30,1,client-dictionary:');
+            $router->post('/dictionary/clients/preview', 'V1\\Admin\\ClientRecognitionController@preview')->middleware('throttle:60,1,client-dictionary-preview:');
             $router->get('/dictionary/fetch', 'V1\\Admin\\NodeDictionaryController@fetch');
             $router->post('/dictionary/save', 'V1\\Admin\\NodeDictionaryController@save')->middleware('throttle:30,1,node-dictionary:');
             $router->get('/analytics/report', 'V1\\Admin\\ProductAnalyticsController@report')->middleware('throttle:30,1,analytics-report:');

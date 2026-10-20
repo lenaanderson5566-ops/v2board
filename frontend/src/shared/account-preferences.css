@@ -37,3 +37,16 @@
 .analytics-setting-details summary { cursor: pointer; padding-block: 8px; }
 .app.user .account-preferences .settings-row.analytics-setting { flex-direction: row; align-items: flex-start; }
 .analytics-setting-details summary:focus-visible { outline: 2px solid var(--brand, #2563eb); outline-offset: 3px; }
+
+/* Account identity and preferences share the same two-column field layout. */
+.app.user .account-preferences .preference-row { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 320px); align-items: start; }
+.app.user .account-preferences .preference-title { display: block; margin: 0; color: var(--ink); font-size: 14px; line-height: 1.5; font-weight: 600; }
+.app.user .account-preferences .preference-control { width: 100%; min-width: 0; }
+.app.user .account-preferences .preference-control > select,
+.app.user .account-preferences .preference-control .timezone-picker { width: 100%; min-width: 0; }
+.app.user .account-preferences .preference-control select:not([size]),
+.app.user .account-preferences .preference-readonly { min-height: 44px; width: 100%; box-sizing: border-box; border: 1px solid var(--outline); border-radius: 10px; background: var(--surface); color: var(--ink); padding: 10px 12px; font: inherit; font-size: 14px; line-height: 22px; }
+.app.user .account-preferences .preference-readonly { display: block; background: var(--surface-soft); overflow-wrap: anywhere; user-select: text; }
+@media (max-width: 600px) {
+    .app.user .account-preferences .preference-row { grid-template-columns: minmax(0, 1fr); gap: 12px; }
+}

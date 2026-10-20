@@ -958,6 +958,7 @@ class LogController extends Controller
             foreach ($location as $key => $value) {
                 if (empty($row->$key)) $row->$key = $value;
             }
+            if (!empty($row->user_agent)) $row->recognized_client = app(\App\Services\ClientRecognition::class)->identify((string)$row->user_agent);
             if ($row->rule_key) $row->rule_name = RiskLogService::ruleName($row->rule_key);
         }
     }
@@ -1091,7 +1092,7 @@ class LogController extends Controller
             [UserConnectionLog::class, 'connected_at', '连接'], [RiskRuleHit::class, 'hit_at', '风控']] as [$model, $time, $kind]) {
             $columns = ['id', 'user_id', 'ip', $time];
             if ($kind === '风控') $columns = array_merge($columns, ['rule_key', 'risk_level', 'status', 'payload', 'reason']);
-            if ($kind === '登录') $columns = array_merge($columns, ['is_success', 'reason']);
+            if ($kind === '登录') $columns = array_merge($columns, ['is_success', 'reason', 'user_agent']);
             if ($kind === '订阅') $columns = array_merge($columns, ['client_type', 'status', 'reason', 'user_agent', 'traffic_u', 'traffic_d']);
             if ($kind === '连接') $columns[] = 'node';
             foreach ($model::query()->where('user_id', $id)->orderByDesc($time)->orderByDesc('id')->limit(50)->get($columns) as $row) {
@@ -1101,6 +1102,7 @@ class LogController extends Controller
                 $event['ip'] = $this->formatIp($row->ip);
                 $event = array_merge($event, (new GeoIpService())->lookup($event['ip']));
                 if (isset($event['rule_key'])) $event['rule_name'] = RiskLogService::ruleName($event['rule_key']);
+                if (!empty($event['user_agent'])) $event['recognized_client'] = app(\App\Services\ClientRecognition::class)->identify($event['user_agent']);
                 $events->push($event);
             }
         }

@@ -71,3 +71,53 @@ foreach ($cases as [$type, $flag, $ua, $expected]) {
     }
 }
 echo 'PASS: '.$versionChecks." version identification checks\n";
+
+// Operational aliases cannot change authentication or subscription format rules.
+$app = require __DIR__.'/support/bootstrap.php';
+if (!app()->environment('local')) throw new RuntimeException('Local test only');
+use App\Services\ClientRecognition as R;
+$rules=['flclash'=>['name'=>'FlClash Custom','aliases'=>['ExampleClient'],'priority'=>200]];
+$valid=R::validate($rules);
+$library=app(R::class);
+$assert($library->identify('ExampleClient/1.2',$valid)['code']==='flclash','Custom product alias');
+$assert($library->identify('Mozilla/5.0 ExampleClient/1.2',$valid)['code']==='other','No embedded alias match');
+$assert($library->identify('ExampleClientFake/1.2',$valid)['code']==='other','Product boundary');
+$assert(C::identify('ExampleClient/1.2')===null,'Display alias cannot change trusted registry');
+$assert(!C::whitelistAllows('ExampleClient/1.2',true,['flclash']),'Display alias cannot bypass whitelist');
+foreach (['FlClash','Mozilla','curl','Example.*','<script>'] as $alias) {
+ try {R::validate(['flclash'=>['name'=>'Test','aliases'=>[$alias],'priority'=>100]]);throw new RuntimeException('Invalid alias accepted');}
+ catch (Symfony\Component\HttpKernel\Exception\HttpException $e) {$assert($e->getStatusCode()===422,'Reject conflicting or unsafe alias');}
+}
+try {R::validate($rules+['mihomo'=>['name'=>'Mihomo','aliases'=>['ExampleClient-X'],'priority'=>10]]);throw new RuntimeException('Cross-client overlap accepted');}
+catch (Symfony\Component\HttpKernel\Exception\HttpException $e) {$assert($e->getStatusCode()===422,'Reject prefix collision across clients');}
+Illuminate\Support\Facades\DB::beginTransaction();
+try {
+ $version=$library->snapshot()['version'];$library->save($rules,$version,1);
+ $assert($library->identify('ExampleClient/2')['name']==='FlClash Custom','Saved name and alias');
+ try {$library->save([],$version,1);throw new RuntimeException('Stale save accepted');}
+ catch (Symfony\Component\HttpKernel\Exception\HttpException $e) {$assert($e->getStatusCode()===409,'Global version conflict');}
+ $library->save([],$version+1,1);
+ $assert($library->identify('ExampleClient/2')['code']==='other','Restore removes custom aliases');
+ $admin=App\Models\User::create(['email'=>'client-dictionary-test@example.test','password'=>password_hash('test-only',PASSWORD_DEFAULT),'is_admin'=>1,'uuid'=>App\Utils\Helper::guid(true),'token'=>App\Utils\Helper::guid()]);
+ $auth=new App\Services\AuthService($admin);$token=$auth->generateAuthData(Illuminate\Http\Request::create('/'))['auth_data'];
+ $kernel=app(Illuminate\Contracts\Http\Kernel::class);
+ $prefix='/api/v1/'.config('v2board.secure_path',config('v2board.frontend_admin_path',hash('crc32b',config('app.key'))));
+ $call=function($method,$path,$body=[],$authorized=true)use($kernel,$prefix,$token){$r=Illuminate\Http\Request::create($prefix.'/dictionary/clients'.$path,$method,[],[],[],['CONTENT_TYPE'=>'application/json','HTTP_ACCEPT'=>'application/json'],json_encode($body));if($authorized)$r->headers->set('Authorization',$token);return $kernel->handle($r);};
+ $assert($call('GET','',[],false)->getStatusCode()===403,'Anonymous cannot read library');
+ $assert($call('GET','')->getStatusCode()===200,'Admin reads library');
+ $preview=$call('POST','/preview',['rules'=>$rules,'ua'=>'ExampleClient/2']);
+ $assert($preview->getStatusCode()===200 && json_decode($preview->getContent(),true)['data']['code']==='flclash','Preview uses draft without persisting');
+ $assert($call('POST','/save',['rules'=>$rules,'version'=>$version+2])->getStatusCode()===200,'Admin saves library');
+ App\Models\SubscribeLog::create(['user_id'=>$admin->id,'email'=>$admin->email,'ip'=>'127.0.0.1','client_type'=>'mihomo','user_agent'=>'ExampleClient/2','status'=>'success']);
+ $controller=new App\Http\Controllers\V1\Risk\LogController();
+ $logs=$controller->getSubscribeLogs(Illuminate\Http\Request::create('/','GET',['keyword'=>'ExampleClient']))->getOriginalContent();
+ $assert($logs['data'][0]->recognized_client['code']==='flclash','Log uses shared recognition');
+ $assert($logs['data'][0]->client_type==='mihomo' && $logs['data'][0]->user_agent==='ExampleClient/2','Raw identity and UA retained');
+ $report=new ReflectionMethod(App\Services\OperationsAnalytics::class,'applications');
+ $categories=$report->invoke(new App\Services\OperationsAnalytics(),Illuminate\Support\Facades\DB::table('v2_subscribe_log')->where('user_id',$admin->id),"status = 'success'","status = 'failed'");
+ $assert(count($categories)===1 && $categories[0]['code']==='flclash' && $categories[0]['success']===1,'Reports share recognition and exact counts');
+ $admin->update(['is_admin'=>0]);
+ $assert($call('POST','/save',['rules'=>[],'version'=>$version+3])->getStatusCode()===403,'Non-admin cannot save');
+ $auth->removeAllSession();
+} finally {Illuminate\Support\Facades\DB::rollBack();app()->forgetInstance(R::class);}
+echo "Client recognition library: {$n} total identity checks passed\n";

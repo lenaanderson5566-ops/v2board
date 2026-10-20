@@ -3,7 +3,8 @@ import locations from "../../../../resources/client/node-locations.json";
 // Synthetic read responses shared by menu regression tests and local visual fixtures.
 export function adminPageFixture(path: string) {
     let data: unknown = [];
-    if (path.includes("dictionary/fetch")) data = {catalog:{...locations,regions:countries},defaults:{regions:countries,cities:locations.cities},versions:{},overrides:{},languages:Object.keys(countries.US)};
+    if (path.includes("dictionary/clients")) data = {version:0,items:[{code:"flclash",name:"FlClash",defaultName:"FlClash",builtinAliases:["FlClash"],aliases:[],priority:100},{code:"sing-box",name:"sing-box",defaultName:"sing-box",builtinAliases:["sing-box","singbox","Hiddify"],aliases:[],priority:100}]};
+    else if (path.includes("dictionary/fetch")) data = {catalog:{...locations,regions:countries},defaults:{regions:countries,cities:locations.cities},versions:{},overrides:{},languages:Object.keys(countries.US)};
     else if (path.includes("config/fetch")) data = {
         site: { app_name: "界面验证站点", app_description: "测试说明", app_url: "https://example.com" },
         safe: { browser_policy_wechat: "prompt", browser_policy_weibo: "guide" },

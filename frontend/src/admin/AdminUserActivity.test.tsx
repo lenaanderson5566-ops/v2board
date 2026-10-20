@@ -1,9 +1,10 @@
 // @vitest-environment jsdom
 import { afterEach, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
-vi.mock("../shared/api", () => ({ ops: (s:string)=>s, bytes: (s:unknown)=>String(s), date: (s:unknown)=>String(s), rows:(v:any)=>v || [] }));
+vi.mock("../shared/api", () => ({ admin: (s:string)=>s, query: vi.fn((s:string)=>s), money: (s:unknown)=>String(s), ops: (s:string)=>s, bytes: (s:unknown)=>String(s), date: (s:unknown)=>String(s), rows:(v:any)=>v || [] }));
 const load = vi.hoisted(()=>vi.fn());
-vi.mock("../shared/ui",()=>({useData:load, Modal:({children,close}:any)=><div role="dialog"><button onClick={close}>关闭</button>{children}</div>,State:({children}:any)=><>{children}</>}));
+vi.mock("../shared/ui",()=>({useData:load, Table:()=>null, Pager:()=>null, Modal:({children,close}:any)=><div role="dialog"><button onClick={close}>关闭</button>{children}</div>,State:({children}:any)=><>{children}</>}));
+import { query } from "../shared/api";
 import { AdminUserActivityLink } from "./AdminUserActivity";
 afterEach(cleanup);
 it("loads only the selected user when opened and closes the drawer",()=>{
@@ -13,6 +14,12 @@ it("loads only the selected user when opened and closes the drawer",()=>{
  fireEvent.click(screen.getByRole("button",{name:/ID: 7/}));
  expect(load).toHaveBeenCalledWith("risk/user-activity/fetch?user_id=7");
  expect(screen.getByText("登录失败")).toBeTruthy();
+ fireEvent.mouseDown(screen.getByRole("tab",{name:"邀请用户"}),{button:0,ctrlKey:false});
+ expect(query).toHaveBeenCalledWith("user/fetch",expect.objectContaining({filter:[{key:"invite_user_id",condition:"=",value:7}]}));
+ fireEvent.mouseDown(screen.getByRole("tab",{name:"订单"}),{button:0,ctrlKey:false});
+ expect(query).toHaveBeenCalledWith("order/fetch",expect.objectContaining({filter:[{key:"user_id",condition:"=",value:7}]}));
+ fireEvent.mouseDown(screen.getByRole("tab",{name:"流量记录"}),{button:0,ctrlKey:false});
+ expect(query).toHaveBeenCalledWith("stat/getStatUser",expect.objectContaining({user_id:7}));
  fireEvent.click(screen.getByRole("button",{name:"关闭"}));
  expect(screen.queryByRole("dialog")).toBeNull();
 });

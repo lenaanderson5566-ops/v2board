@@ -68,11 +68,9 @@ function IncomeOverview() {
             <Panel
                 actions={
                     <Reload
-                        loading={stat.loading || health.loading || orders.loading}
+                        loading={[stat, health, orders, todayNodes, lastNodes, todayUsers, lastUsers].some((source) => source.loading)}
                         onClick={() => {
-                            stat.reload();
-                            health.reload();
-                            orders.reload();
+                            [stat, health, orders, todayNodes, lastNodes, todayUsers, lastUsers].forEach((source) => source.reload());
                         }}
                     />
                 }
@@ -121,7 +119,7 @@ function IncomeOverview() {
                     />
                 </State>
             </Panel>
-            <Panel title="用户活跃与流量" actions={<Reload onClick={stat.reload} loading={stat.loading}/> }>
+            <Panel title="用户活跃与流量">
                 <State {...stat} retry={stat.reload}>
                     {stats.usage ? <>
                         <div className="dashboard-usage-grid">
@@ -133,7 +131,6 @@ function IncomeOverview() {
                         </div>
                         <p className="pad muted">按 {stats.usage.timezone} 自然日统计，近 7 / 30 天均包含今日；有节点上报流量才算活跃，同一用户跨设备、节点及日期去重。流量为上传＋下载，不乘计费倍率。最多缓存 2 分钟，另有节点上报和队列延迟。</p>
                         {!stats.usage.has_records && <p className="pad muted">近 30 天尚无流量记录；零值仅表示未记录到使用，不能证明历史采集完整。</p>}
-                        {stats.usage.mixed_timezone && <p className="pad alert">存在不同统计时区或未标记时区的历史日汇总，时间边界附近可能有偏差，无法按新的时区精确重分历史流量。</p>}
                         <div className="pad actions"><span>每日流量趋势</span><span className="muted">单位：GiB · 今日尚未结束 · 没有记录的日期不补零</span></div>
                         <HistoryChart data={(stats.usage.daily as Row[]).map(r=>({type:"实际流量（GiB）",date:r.date,value:Number(r.bytes)/1073741824}))}/>
                     </> : <p className="pad muted">暂无活跃与流量统计，请确认后端已更新。</p>}
@@ -151,7 +148,6 @@ function IncomeOverview() {
                         <Panel
                             key={String(title)}
                             title={String(title)}
-                            actions={<Reload onClick={d.reload} loading={d.loading} />}
                         >
                             <State {...d} retry={d.reload}>
                                 <RankChart

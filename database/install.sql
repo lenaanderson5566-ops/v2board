@@ -765,3 +765,5 @@ CREATE TABLE IF NOT EXISTS `v2_passkey` (
   UNIQUE KEY `v2_passkey_credential_hash_unique` (`credential_hash`),
   KEY `v2_passkey_user_id_index` (`user_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS `v2_node_dictionary` (`key` varchar(80) NOT NULL, `names` text NOT NULL, `version` int unsigned NOT NULL DEFAULT 0, `updated_by` int unsigned NOT NULL, `updated_at` bigint unsigned NOT NULL, PRIMARY KEY (`key`)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;

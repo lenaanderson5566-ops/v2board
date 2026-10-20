@@ -69,7 +69,7 @@
     {"id": "node-address", "file": "tests/node-address.php", "suite": "integration"},
     {"id": "node-backends", "file": "tests/node-backends.php", "suite": "integration"},
     {"id": "node-ddns", "file": "tests/node-ddns.php", "suite": "integration"},
-    {"id": "node-display", "file": "tests/node-display.php", "suite": "unit"},
+    {"id": "node-display", "file": "tests/node-display.php", "suite": "integration"},
     {"id": "node-routes", "file": "tests/node-routes.php", "suite": "integration"},
     {"id": "node-traffic-batches", "file": "tests/node-traffic-batches.php", "suite": "integration"},
     {"id": "node-traffic-concurrency", "file": "tests/node-traffic-concurrency.php", "suite": "integration"},

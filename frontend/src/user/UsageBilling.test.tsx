@@ -272,3 +272,11 @@ it("blocks another paid reset when an unfinished order exists", () => {
     render(<UsagePage />);
     expect((screen.getByRole("button", { name: /paidReset/ }) as HTMLButtonElement).disabled).toBe(true);
 });
+
+it("omits duplicate coupon and usage shortcuts while retaining billing actions", () => {
+ render(<BillingPage />);
+ expect(screen.queryByRole("link", {name:"我的优惠券"})).toBeNull();
+ expect(screen.queryByRole("link", {name:"使用情况"})).toBeNull();
+ expect(screen.getByRole("button", {name:"兑换礼品卡"})).toBeTruthy();
+ expect(screen.getByRole("button", {name:"账户充值"})).toBeTruthy();
+});

@@ -1,7 +1,10 @@
+import countries from "../../../../resources/client/node-countries.json";
+import locations from "../../../../resources/client/node-locations.json";
 // Synthetic read responses shared by menu regression tests and local visual fixtures.
 export function adminPageFixture(path: string) {
     let data: unknown = [];
-    if (path.includes("config/fetch")) data = {
+    if (path.includes("dictionary/fetch")) data = {catalog:{...locations,regions:countries},defaults:{regions:countries,cities:locations.cities},versions:{},overrides:{},languages:Object.keys(countries.US)};
+    else if (path.includes("config/fetch")) data = {
         site: { app_name: "界面验证站点", app_description: "测试说明", app_url: "https://example.com" },
         safe: { browser_policy_wechat: "prompt", browser_policy_weibo: "guide" },
         app: { fastai_enabled: 1, fastai_releases: [] },

@@ -1,3 +1,4 @@
+import { adminPageFixture } from "./test-support/page-fixtures";
 // @vitest-environment jsdom
 import { afterEach, expect, it, vi } from "vitest";
 import {
@@ -36,6 +37,7 @@ afterEach(() => {
 });
 it("shows group names across numeric/string IDs and remembers selected node columns", async () => {
     api.request.mockImplementation(async (path: string) => {
+        if(path.endsWith("dictionary/fetch")) return adminPageFixture(path);
         if (path.endsWith("server/group/fetch"))
             return {
                 data: [
@@ -98,6 +100,7 @@ it.each(["v2node", "v2box"])(
         vi.stubGlobal("structuredClone", undefined);
         const own = backend === "v2box" ? 22 : 11;
         api.request.mockImplementation(async (path: string) => {
+        if(path.endsWith("dictionary/fetch")) return adminPageFixture(path);
             if (path.includes("console/nodeSchema"))
                 return {
                     data: {
@@ -174,6 +177,7 @@ it.each(["v2node", "v2box"])(
 );
 it("filters the catalog and preserves sing-box ownership when editing", async () => {
     api.request.mockImplementation(async (path: string) => {
+        if(path.endsWith("dictionary/fetch")) return adminPageFixture(path);
         if (path.includes("server/route/fetch"))
             return {
                 data: path.includes("backend=v2box")
@@ -229,6 +233,7 @@ it.each(["v2node", "v2box"])(
         const target = source === "v2node" ? "v2box" : "v2node";
         let converted = false;
         api.request.mockImplementation(async (path: string) => {
+        if(path.endsWith("dictionary/fetch")) return adminPageFixture(path);
             if (path.includes("console/nodeSchema"))
                 return {
                     data: {
@@ -295,6 +300,7 @@ it.each(["v2node", "v2box"])(
 
 it("guides deployment to panel-managed DDNS", async () => {
     api.request.mockImplementation(async (path: string) => {
+        if(path.endsWith("dictionary/fetch")) return adminPageFixture(path);
         if (path.includes("console/nodeSchema")) return { data: {} };
         if (path.endsWith("server/manage/getNodes"))
             return {
@@ -328,6 +334,7 @@ it("guides deployment to panel-managed DDNS", async () => {
 
 it("saves an AnyTLS preset through the real node form", async () => {
     api.request.mockImplementation(async (path: string) => {
+        if(path.endsWith("dictionary/fetch")) return adminPageFixture(path);
         if (path.includes("console/nodeSchema"))
             return {
                 data: {

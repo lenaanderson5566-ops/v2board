@@ -145,4 +145,35 @@ try {
 
 
 } finally { if ($original===null) unlink($paths[0]); else file_put_contents($paths[0],$original); }
+
+// Dictionary overrides preserve identifiers, reject stale writes and remain node-only.
+Illuminate\Support\Facades\DB::beginTransaction();
+try {
+ $dictionary=app(App\Services\NodeDictionary::class);
+ $dictionary->save(['kind'=>'regions','code'=>'US','version'=>0,'names'=>['zh-CN'=>'测试美国']],1);
+ $assert(App\Services\NodeCountryDictionary::name('US','zh-CN')==='测试美国','Country override is active');
+ $assert(App\Services\NodeDisplayService::name(['region_code'=>'US','name'=>'old'],'zh-CN')==='测试美国','Node rendering uses override');
+ $assert(App\Services\NodeCountryDictionary::name('US','en-US')==='United States','Other languages retain defaults');
+ foreach ([['kind'=>'regions','code'=>'ZZ','version'=>0,'names'=>[]],['kind'=>'regions','code'=>'US','version'=>1,'names'=>['en-US'=>'<script>']],['kind'=>'regions','code'=>'US','version'=>1,'names'=>['xx'=>'test']]] as $invalid) {
+  try {$dictionary->save($invalid,1);$assert(false,'Invalid dictionary accepted');} catch(Symfony\Component\HttpKernel\Exception\HttpException $e) {$assert($e->getStatusCode()===422,'Invalid dictionary rejected');}
+ }
+ try {$dictionary->save(['kind'=>'regions','code'=>'US','version'=>0,'names'=>[]],1);$assert(false,'Stale dictionary accepted');} catch(Symfony\Component\HttpKernel\Exception\HttpException $e) {$assert($e->getStatusCode()===409,'Stale write conflicts');}
+ $dictionary->save(['kind'=>'regions','code'=>'US','version'=>1,'names'=>[]],1);
+ $assert(App\Services\NodeCountryDictionary::name('US','zh-CN')==='美国','Restoring defaults preserves country');
+ $dictionary->save(['kind'=>'cities','code'=>'tokyo','version'=>0,'names'=>['zh-CN'=>'测试东京']],1);
+ $assert(App\Services\NodeDisplayService::catalog()['cityRegions']['tokyo']==='JP','City country mapping immutable');
+ $assert(App\Services\NodeDisplayService::name(['region_code'=>'JP','city_code'=>'tokyo','name'=>'old'],'zh-CN')==='日本 · 测试东京','City override used in node name');
+ $admin=App\Models\User::create(['email'=>'dictionary-test@example.test','password'=>password_hash('test-only',PASSWORD_DEFAULT),'is_admin'=>1,'uuid'=>App\Utils\Helper::guid(true),'token'=>App\Utils\Helper::guid()]);
+ $auth=new App\Services\AuthService($admin);$token=$auth->generateAuthData(Illuminate\Http\Request::create('/'))['auth_data'];
+ $kernel=app(Illuminate\Contracts\Http\Kernel::class);
+ $prefix='/api/v1/'.config('v2board.secure_path',config('v2board.frontend_admin_path',hash('crc32b',config('app.key'))));
+ $call=function($method,$path,$body=[],$authorized=true)use($kernel,$prefix,$token){$r=Illuminate\Http\Request::create($prefix.'/dictionary/'.$path,$method,[],[],[],['CONTENT_TYPE'=>'application/json','HTTP_ACCEPT'=>'application/json'],json_encode($body));if($authorized)$r->headers->set('Authorization',$token);return $kernel->handle($r);};
+ $assert($call('GET','fetch',[],false)->getStatusCode()===403,'Dictionary requires administrator');
+ $assert($call('GET','fetch')->getStatusCode()===200,'Dictionary fetch via admin router');
+ $assert($call('POST','save',['kind'=>'cities','code'=>'tokyo','version'=>1,'names'=>[]])->getStatusCode()===200,'Dictionary save via admin router');
+ $assert($call('POST','save',['kind'=>'cities','code'=>'tokyo','version'=>1,'names'=>[]])->getStatusCode()===409,'Router rejects stale edits');
+ $admin->update(['is_admin'=>0]);
+ $assert($call('POST','save',['kind'=>'cities','code'=>'tokyo','version'=>2,'names'=>[]])->getStatusCode()===403,'Non-admin cannot edit dictionary');
+ $auth->removeAllSession();
+} finally {Illuminate\Support\Facades\DB::rollBack();app(App\Services\NodeDictionary::class)->reset();}
 echo "node display: {$checks} checks passed\n";

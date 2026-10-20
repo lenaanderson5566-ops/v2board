@@ -1,6 +1,7 @@
+import { useNodeCatalog } from "./node-dictionary";
 import { useEffect, useId, useRef, useState } from "react";
 import {
-    locationOptions,
+    buildLocationOptions,
     optionsForCountry,
     resolveLocation,
 } from "./node-location-options";
@@ -16,6 +17,7 @@ export function AdminCitySelect({
     region: unknown;
     onChange: (value: string) => void;
 }) {
+    const locationOptions=buildLocationOptions(useNodeCatalog());
     const id = useId();
     const input = useRef<HTMLInputElement>(null);
     const [open, setOpen] = useState(false);
@@ -23,7 +25,7 @@ export function AdminCitySelect({
     const [active, setActive] = useState(0);
     const code = String(value ?? "");
     const selected = locationOptions.find((option) => option.code === code);
-    const matches = optionsForCountry(region).filter((option) =>
+    const matches = optionsForCountry(region,locationOptions).filter((option) =>
         option.search.includes(query.trim().toLowerCase()),
     );
     const close = () => {
@@ -78,7 +80,7 @@ export function AdminCitySelect({
                         setQuery(text);
                         setActive(0);
                         setOpen(true);
-                        onChange(resolveLocation(text, region) ?? text);
+                        onChange(resolveLocation(text, region,locationOptions) ?? text);
                     }}
                     onKeyDown={(event) => {
                         if (event.key === "Escape") {

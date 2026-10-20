@@ -1,3 +1,4 @@
+import { NodeDictionaryProvider } from "./node-dictionary";
 import { AdminChoiceGroup } from "./AdminChoices";
 import { AdminDisplaySettings } from "./AdminDisplaySettings";
 import { field, nameColumn } from "./admin-fields";
@@ -44,7 +45,8 @@ const nodeTypes = [
     "v2node",
     "v2box",
 ] as const satisfies readonly NodeBackendType[];
-export function Nodes({
+export function Nodes(props: {initialTab?: "nodes" | "ddns" | "lightsail" | "traffic"}) { return <NodeDictionaryProvider><NodesContent {...props} /></NodeDictionaryProvider>; }
+function NodesContent({
     initialTab = "nodes",
 }: { initialTab?: "nodes" | "ddns" | "lightsail" | "traffic" } = {}) {
     const [tab, setTab] = useState(initialTab);

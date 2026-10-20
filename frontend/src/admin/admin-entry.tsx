@@ -1,6 +1,7 @@
 import { PasskeySecurity } from "../shared/PasskeySecurity";
 import { ErrorBoundary } from "../shared/ErrorBoundary";
 import { lazy, Suspense } from "react";
+const AdminDictionary = lazy(() => import("./AdminDictionary").then(m=>({default:m.AdminDictionary})));
 const AdminAnalytics = lazy(() =>
     import("./AdminAnalytics").then((module) => ({
         default: module.AdminAnalytics,
@@ -96,6 +97,7 @@ const Overview = lazy(() =>
     })),
 );
 function AdminPageContent({ current }: { current: string }) {
+    if (current === "dictionary") return <AdminDictionary />;
     if (current === "analytics") return <AdminAnalytics />;
     if (current === "security") return <><MfaSecurity /><PasskeySecurity /></>;
     if (current === "plans" || current === "translations")

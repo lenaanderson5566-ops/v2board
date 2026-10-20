@@ -1,14 +1,6 @@
 import { useEffect, useId, useRef, useState } from "react";
-import locations from "../../../resources/client/node-countries.json";
+import { useNodeCatalog } from "./node-dictionary";
 
-const options = [
-    { code: "", label: "保留原节点名称", search: "保留原节点名称" },
-    ...Object.entries(locations).map(([code, names]) => ({
-        code,
-        label: `${names["zh-CN"]}（${code}）`,
-        search: [code, ...Object.values(names)].join(" ").toLowerCase(),
-    })),
-];
 
 export function AdminRegionSelect({
     label,
@@ -19,6 +11,16 @@ export function AdminRegionSelect({
     value: unknown;
     onChange: (value: string) => void;
 }) {
+    const catalog=useNodeCatalog();
+const options = [
+    { code: "", label: "保留原节点名称", search: "保留原节点名称" },
+    ...Object.entries(catalog.regions).map(([code, names]) => ({
+        code,
+        label: `${names["zh-CN"]}（${code}）`,
+        search: [code, ...Object.values(names)].join(" ").toLowerCase(),
+    })),
+];
+
     const listId = useId();
     const input = useRef<HTMLInputElement>(null);
     const [open, setOpen] = useState(false);

@@ -37,6 +37,7 @@ export const legacyAdminMenu = [
     ["mail-logs", "邮件发送日志", "notebook", "日志与诊断"],
     ["client-diagnostics", "客户端运行记录", "screen-smartphone", "日志与诊断"],
     ["system-log", "系统日志", "notebook", "日志与诊断"],
+    ["dictionary", "字典维护", "notebook", "系统设置"],
     ["settings", "系统配置", "equalizer", "系统设置"],
     ["log-settings", "日志与保留策略", "settings", "系统设置"],
     ["security", "管理员账户安全", "shield", "系统设置"],

@@ -8,7 +8,6 @@ import {
     ChevronRight,
     Gift,
     Plus,
-    TicketPercent,
 } from "lucide-react";
 import {
     bytes,
@@ -36,23 +35,11 @@ export function BillingPage() {
     const status = ["待支付", "开通中", "已取消", "已完成", "已折抵"];
     return (
         <div className="settings-content billing-page">
-            <div className="billing-shortcuts">
-                <p className="settings-intro">{b("billingIntro")}</p>
-                <a href="#/coupons">
-                    <TicketPercent size={18} aria-hidden="true" />
-                    {tx("我的优惠券")}
-                </a>
-            </div>
-            {info.data && info.data.account_status?.state !== "active" && (
-                <a className="billing-usage-link" href="#/traffic">
-                    {tx("使用情况")}
-                    <ArrowUpRight size={15} />
-                </a>
-            )}
+            <p className="settings-intro">{b("billingIntro")}</p>
             <section className="settings-section">
                 <h2>{b("currentPlan")}</h2>
                 <State {...sub} retry={sub.reload}>
-                    <div className="settings-card settings-row">
+                    <div className="settings-card settings-row billing-current-plan">
                         <div>
                             <strong>
                                 {sub.data?.has_subscription === false

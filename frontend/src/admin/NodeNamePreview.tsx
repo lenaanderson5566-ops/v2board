@@ -1,12 +1,13 @@
-import countries from "../../../resources/client/node-countries.json";
-import locations from "../../../resources/client/node-locations.json";
-import { resolveLocation } from "./node-location-options";
+import { useNodeCatalog } from "./node-dictionary";
+import { resolveLocation, buildLocationOptions } from "./node-location-options";
 
 export function NodeNamePreview({
     values,
 }: {
     values: Record<string, unknown>;
 }) {
+    const locations=useNodeCatalog();
+    const countries=locations.regions;
     const region = String(values.region_code ?? "")
         .trim()
         .toUpperCase();
@@ -15,7 +16,7 @@ export function NodeNamePreview({
     ];
     const rawCity = String(values.city_code ?? "").trim();
     const cityCode =
-        resolveLocation(rawCity, region) ??
+        resolveLocation(rawCity, region,buildLocationOptions(locations)) ??
         rawCity.toLowerCase().replace(/[\s_]+/g, "-");
     const city = (locations.cities as Record<string, Record<string, string>>)[
         cityCode

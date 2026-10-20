@@ -8,7 +8,7 @@ class DashboardUsage
     {
         $zone=TimeZones::system();
         $today=(new \DateTimeImmutable('now',new \DateTimeZone($zone)))->setTime(0,0);
-        return Cache::remember('dashboard-usage:v1:'.$zone.':'.$today->getTimestamp(),120,function() use($zone,$today){
+        return Cache::remember('dashboard-usage:v2:'.$zone.':'.$today->getTimestamp(),120,function() use($zone,$today){
             $starts=[$today->getTimestamp(),$today->modify('-6 days')->getTimestamp(),$today->modify('-29 days')->getTimestamp()];
             $end=$today->modify('+1 day')->getTimestamp();
             $query=DB::table('v2_stat_user')->where('record_type','d')->where('record_at','>=',$starts[2])->where('record_at','<',$end)->where(function($q){$q->where('u','>',0)->orWhere('d','>',0);});
@@ -30,8 +30,7 @@ class DashboardUsage
                 $series[$label]['bytes']+=(int)$row->bytes;
             }
             return ['timezone'=>$zone,'generated_at'=>time(),'periods'=>$periods,'daily'=>array_values($series),
-                'has_records'=>$daily->isNotEmpty(),
-                'mixed_timezone'=>(clone $query)->where(function($q) use($zone){$q->whereNull('record_timezone')->orWhere('record_timezone','!=',$zone);})->exists()];
+                'has_records'=>$daily->isNotEmpty()];
         });
     }
 }

@@ -184,6 +184,8 @@ class AdminRoute
             $router->post('/payment/show', 'V1\\Admin\\PaymentController@show');
             $router->post('/payment/sort', 'V1\\Admin\\PaymentController@sort');
             // System
+            $router->get('/system/observability', 'V1\\Admin\\SystemController@observability')->middleware('throttle:30,1');
+            $router->post('/system/observability/settings', 'V1\\Admin\\SystemController@saveObservability')->middleware('throttle:10,1');
             $router->get('/system/health', 'V1\\Admin\\SystemController@health')->middleware('throttle:20,1');
             $router->get ('/system/getSystemStatus', 'V1\\Admin\\SystemController@getSystemStatus');
             $router->get ('/system/getQueueStats', 'V1\\Admin\\SystemController@getQueueStats');

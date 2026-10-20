@@ -92,6 +92,8 @@ try {R::validate($rules+['mihomo'=>['name'=>'Mihomo','aliases'=>['ExampleClient-
 catch (Symfony\Component\HttpKernel\Exception\HttpException $e) {$assert($e->getStatusCode()===422,'Reject prefix collision across clients');}
 Illuminate\Support\Facades\DB::beginTransaction();
 try {
+ try {(new App\Services\ClientStrategyService())->updateStrategies([['client_type'=>'flclash','client_name'=>'Duplicate']]);throw new RuntimeException('Duplicate name writer accepted');}
+ catch (Symfony\Component\HttpKernel\Exception\HttpException $e) {$assert($e->getStatusCode()===422,'Client names are maintained in dictionary');}
  $version=$library->snapshot()['version'];$library->save($rules,$version,1);
  $assert($library->identify('ExampleClient/2')['name']==='FlClash Custom','Saved name and alias');
  try {$library->save([],$version,1);throw new RuntimeException('Stale save accepted');}

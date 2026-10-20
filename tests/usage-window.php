@@ -27,6 +27,10 @@ try {
         try { $read($invalid); throw new RuntimeException('Invalid window accepted'); }
         catch (Illuminate\Validation\ValidationException $error) { $checks++; }
     }
+    $usage=App\Services\DashboardUsage::summary();
+    $assert(!array_key_exists('mixed_timezone',$usage), 'Retired timezone warning queried or exposed');
+    $assert(count($usage['periods'])===3 && $usage['has_records'], 'Usage summary remains available');
+    $assert(array_sum(array_column($usage['daily'],'bytes'))===$usage['periods'][2]['bytes'], 'Daily and rolling totals diverge');
     echo "Usage window: $checks checks passed\n";
 } finally {
     Illuminate\Support\Facades\DB::rollBack();

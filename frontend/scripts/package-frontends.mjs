@@ -8,6 +8,7 @@ import {
 } from "node:fs";
 import { resolve, dirname, sep } from "node:path";
 import { fileURLToPath } from "node:url";
+import { buildMetrics } from "./build-metrics.mjs";
 
 const frontend = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const source = resolve(frontend, "../public/console");
@@ -15,6 +16,14 @@ const dist = resolve(frontend, "dist");
 const manifest = JSON.parse(
     readFileSync(resolve(source, ".vite/manifest.json"), "utf8"),
 );
+const metrics = buildMetrics(manifest, (file) => {
+    const path = resolve(source, file);
+    if (!path.startsWith(source + sep)) throw new Error("Invalid asset path");
+    return readFileSync(path);
+});
+const metricsJson = JSON.stringify(metrics, null, 2) + "\n";
+writeFileSync(resolve(source, "build-metrics.json"), metricsJson);
+for (const warning of metrics.warnings) console.warn(warning);
 for (const [mode, entry] of [
     ["user", "index.html"],
     ["admin", "admin.html"],
@@ -53,5 +62,6 @@ for (const [mode, entry] of [
         copyFileSync(input, target);
     }
     if (runtime) writeFileSync(resolve(output, configName), runtime);
+    writeFileSync(resolve(output, "build-metrics.json"), metricsJson);
     console.log(`Packaged ${mode}: ${files.size} files → dist/${mode}`);
 }

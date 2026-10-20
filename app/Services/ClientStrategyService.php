@@ -176,6 +176,7 @@ class ClientStrategyService
         }
         unset($item);
         foreach ($items as $item) {
+            abort_if(array_key_exists('client_name', $item),422,'客户端展示名称请在字典维护中修改。');
             if (!isset(SubscriptionClientRegistry::CLIENTS[strtolower((string) ($item['client_type'] ?? ''))])) abort(422, 'invalid client_type');
             if (!empty($item['min_version']) && ClientIdentity::normalizeVersion((string) $item['min_version']) === null) abort(422, '最低版本格式无效，例如 1.19.0、v2.3.1 或 2.0.0-rc.1');
         }
@@ -202,9 +203,6 @@ class ClientStrategyService
                 }
                 if (array_key_exists('sort', $item)) {
                     $payload['sort'] = (int) $item['sort'];
-                }
-                if (array_key_exists('client_name', $item) && !is_null($item['client_name'])) {
-                    $payload['client_name'] = trim((string) $item['client_name']);
                 }
                 if (array_key_exists('min_version', $item)) {
                     $payload['min_version'] = trim((string) ($item['min_version'] ?? '')) ?: null;

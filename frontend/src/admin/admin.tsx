@@ -29,7 +29,7 @@ import {
     useData,
     type Field,
 } from "../shared/ui";
-import { SystemHealth } from "./AdminDiagnostics";
+import { AdminObservability } from "./AdminObservability";
 import { AdminLogFilters } from "./AdminLogFilters";
 import { AdminPlanAutoTranslation } from "./AdminPlanAutoTranslation";
 import { AdminRiskReview } from "./AdminRiskReview";
@@ -43,7 +43,7 @@ import {
     resourceFields,
     validateResource,
 } from "./admin-linkage";
-import { formPresentation, adminLabels as labels } from "./admin-presentation";
+import { formPresentation } from "./admin-presentation";
 import { AdminSwitch } from "./admin-switch";
 import { QueueDetails, SortButton } from "./admin-tools";
 import { adminUserLabel } from "./admin-user-label";
@@ -1759,59 +1759,10 @@ export function Translations() {
     );
 }
 export function System() {
-    const status = useData(admin("system/getSystemStatus")),
-        queue = useData(admin("system/getQueueStats"));
-    return (
-        <>
-            <SystemHealth />
-            <div className="split">
-                {[
-                    [status, "系统状态"],
-                    [queue, "队列状态"],
-                ].map(([d, title]) => {
-                    const data = d as ReturnType<typeof useData>;
-                    return (
-                        <Panel
-                            key={title as string}
-                            title={title as string}
-                            actions={
-                                <Reload
-                                    onClick={data.reload}
-                                    loading={data.loading}
-                                />
-                            }
-                        >
-                            <State {...data}>
-                                <div className="stats-list">
-                                    {Object.entries(data.data || {}).map(
-                                        ([k, v]) => (
-                                            <div key={k}>
-                                                <span>{labels[k] || k}</span>
-                                                <strong>
-                                                    {k ===
-                                                    "schedule_last_runtime"
-                                                        ? date(v)
-                                                        : typeof v === "boolean"
-                                                          ? v
-                                                              ? "运行中"
-                                                              : "未运行"
-                                                          : typeof v ===
-                                                              "object"
-                                                            ? JSON.stringify(v)
-                                                            : String(v)}
-                                                </strong>
-                                            </div>
-                                        ),
-                                    )}
-                                </div>
-                            </State>
-                        </Panel>
-                    );
-                })}
-            </div>
-            <QueueDetails />
-        </>
-    );
+    const [details, setDetails] = useState(false);
+    return <><AdminObservability /><Panel title="队列进程详情" actions={<button onClick={() => setDetails(!details)}>{details ? "收起详情" : "查看详情"}</button>}>
+        {details && <QueueDetails />}
+    </Panel></>;
 }
 
 export { Nodes } from "./admin-nodes";

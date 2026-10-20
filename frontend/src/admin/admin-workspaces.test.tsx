@@ -229,12 +229,12 @@ it("removes operations grouping and keeps each new group contiguous", () => {
 it("opens system monitoring only on its dashboard tab", async () => {
     render(<Overview />);
     expect(
-        api.request.mock.calls.some(([path]) => path.includes("getQueueStats")),
+        api.request.mock.calls.some(([path]) => path.includes("system/observability")),
     ).toBe(false);
     fireEvent.mouseDown(screen.getByRole("tab", { name: "系统监控" }), { button: 0, ctrlKey: false });
-    await screen.findByText("队列状态");
+    await screen.findByText("性能与告警");
     expect(
-        api.request.mock.calls.some(([path]) => path.includes("getQueueStats")),
+        api.request.mock.calls.some(([path]) => path.includes("system/observability")),
     ).toBe(true);
 });
 it("loads translations from subscription management and supports old links", async () => {

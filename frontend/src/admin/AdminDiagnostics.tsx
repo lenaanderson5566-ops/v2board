@@ -1,6 +1,6 @@
 import { adminInstant as formatInstant } from "./admin-log-time";
 import { admin, date, type Row } from "../shared/api";
-import { Modal, Panel, State, useData } from "../shared/ui";
+import { Modal, State, useData } from "../shared/ui";
 
 export const nodeRuntimeLabels: Record<string, string> = {
     online: "在线",
@@ -80,61 +80,5 @@ export function NodeDiagnostics({
                 <button onClick={data.reload}>刷新配置状态</button>
             </div>
         </Modal>
-    );
-}
-export function SystemHealth() {
-    const data = useData<Row>(admin("system/health"));
-    return (
-        <Panel
-            title="系统健康检查"
-            actions={<button onClick={data.reload}>重新检查</button>}
-        >
-            <State {...data} retry={data.reload}>
-                {data.data && (
-                    <div className="pad">
-                        <p className="muted">
-                            PHP {data.data.phpVersion} · Laravel{" "}
-                            {data.data.frameworkVersion} · 检查时间{" "}
-                            {date(data.data.checkedAt)}
-                        </p>
-                        <div className="health-check-grid">
-                            {(data.data.checks || []).map((check: Row) => (
-                                <article
-                                    key={check.key}
-                                    className={`health-check ${check.status}`}
-                                >
-                                    <strong>{check.label}</strong>
-                                    <span>
-                                        {(
-                                            {
-                                                healthy: "正常",
-                                                warning: "需处理",
-                                                error: "异常",
-                                            } as Record<string, string>
-                                        )[check.status] || "未知"}
-                                    </span>
-                                    <p>{check.message}</p>
-                                    {check.lastRunAt && (
-                                        <small>
-                                            最近执行：{date(check.lastRunAt)}
-                                        </small>
-                                    )}
-                                    {check.pendingCount > 0 && (
-                                        <small>
-                                            未执行迁移：{check.pendingCount} 项
-                                        </small>
-                                    )}
-                                </article>
-                            ))}
-                        </div>
-                        <p className="muted">
-                            只读检查，不执行迁移、不重启进程。队列状态表示
-                            Horizon
-                            主进程运行状态，不保证每个任务都执行成功；任务失败请结合队列详情与系统日志排查。
-                        </p>
-                    </div>
-                )}
-            </State>
-        </Panel>
     );
 }

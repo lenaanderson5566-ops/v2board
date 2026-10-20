@@ -402,3 +402,15 @@ mfa-api 沿用真实路由、Cookie、CSRF 和真实密钥签名，覆盖 ES256 
 前端复用 AdminDictionary.test.tsx 验证服务端预览不保存、冲突保留输入、取消重新加载与恢复默认版本提交；复用用户活动、后台全菜单与运营报表模块。更新公共合成页面夹具。清单仍为 112 个测试和 14 个辅助入口。结果位于 storage/app/test-organization/browser-access/client-recognition-*.json/log。
 
 客户端识别库最终验证：全量前端 790 项通过，后端客户端识别 278 项与日志搜索 6 项通过，生产构建通过，更新脚本 26 场景通过。尚未提交或推送。
+
+## 性能、后台告警与功能治理
+
+系统监控统一为 AdminObservability，健康与队列读取每分钟缓存快照，进程详情按需加载；移除原 SystemHealth 展示组件及重复状态卡片，保留兼容 API。新增配置抽屉复用 Modal、Table 和统一后台时间。前端构建同时生成 build-metrics.json，独立部署包也包含报告。
+
+复用 AdminDiagnostics.test.tsx 验证未运行／过期不显示健康、健康与失败检查并列、迁移提示、队列不可用及保存采样开关；复用 admin-workspaces.test.tsx 验证系统监控按标签加载。build-metrics.test.mjs 验证循环／共享依赖去重、动态页面与启动模块区别及清单缺失失败。公共页面夹具已更新。本轮未进行浏览器视觉验收。
+
+后端仅在隔离项目副本及 SQLite 测试库验证：诊断与监控 47 项、客户端识别 279 项、流量窗口 11 项通过；update.sh 替身回归 26 场景通过。真实 SQL 监听测试确认只保留计数和耗时，实际 URL、查询文本不进入指标；覆盖管理员鉴权、越界设置拒绝、采样关闭、分钟过期、容量上限、缓存失败不阻断业务、认证失败不计 5xx、同分钟去重和告警恢复。没有进行生产压测或真实线上慢查询注入。
+
+功能维护边界及默认阈值见 observability-governance.md。无新增数据库迁移，沿用已有定时调度；外部通知关闭且未增加通知渠道。发布资源已构建并随功能代码一同交付，服务器沿用 update.sh 更新；恢复定时任务后自动开始采集。
+
+本轮最终前端验证：全量 792 项通过，TypeScript 和生产构建通过。报告位于 storage/app/test-organization/browser-access/observability-full.json，构建日志为 observability-build.log。

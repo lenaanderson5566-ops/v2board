@@ -15,6 +15,8 @@ class AppServiceProvider extends ServiceProvider
     {
         $this->app->scoped(\App\Services\NodeDictionary::class);
         $this->app->scoped(\App\Services\ClientRecognition::class);
+        $this->app->scoped(\App\Services\ObservabilitySettings::class);
+        $this->app->scoped(\App\Services\RequestPerformance::class);
     }
 
     /**
@@ -24,6 +26,9 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot()
     {
+        \Illuminate\Support\Facades\DB::listen(function ($query) {
+            app(\App\Services\RequestPerformance::class)->query((float)$query->time);
+        });
         \App\Services\TimeZones::apply();
         \Illuminate\Support\Facades\Queue::before(function () { \App\Services\TimeZones::apply(true); });
         \Illuminate\Support\Facades\Validator::resolver(function ($translator, $data, $rules, $messages, $attributes) {

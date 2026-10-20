@@ -26,6 +26,7 @@ class Kernel extends ConsoleKernel
      */
     protected function schedule(Schedule $schedule)
     {
+        $schedule->command('system:monitor')->everyMinute()->withoutOverlapping(2)->runInBackground();
         $schedule->command('billing:exchange-rates')->hourly()->withoutOverlapping();
         $schedule->command('mail:campaigns')->everyMinute()->withoutOverlapping();
         $schedule->command('coupons:campaigns')->everyMinute()->withoutOverlapping();

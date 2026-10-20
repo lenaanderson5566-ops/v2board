@@ -17,6 +17,16 @@ use Laravel\Horizon\WaitTimeCalculator;
 
 class SystemController extends Controller
 {
+    public function observability(\App\Services\ObservabilityMonitor $monitor)
+    {
+        return response(['data'=>$monitor->report()])->header('Cache-Control','no-store');
+    }
+    public function saveObservability(Request $request, \App\Services\ObservabilitySettings $settings)
+    {
+        abort_unless($request->isJson(),415,'JSON required');
+        return response(['data'=>$settings->save($request->except(['user','auth_data']))]);
+    }
+
     public function health()
     {
         return response(['data' => (new \App\Services\SystemHealthService())->inspect()]);

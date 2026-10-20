@@ -14,6 +14,8 @@
 
 ## 功能与运维
 
+- [性能监控、后台告警与功能维护入口](observability-governance.md)
+
 - [账户进入界面与 Laravel 状态规则](account-entry-states.md)
 - [iOS 下载账号](apple-accounts.md)
 - [登录安全检查与升级兼容](authentication-security.md)

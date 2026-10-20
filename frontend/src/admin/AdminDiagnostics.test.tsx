@@ -10,10 +10,55 @@ vi.mock("../shared/api", async (original) => ({
     request: api.request,
     readRequest: api.request,
 }));
-import { NodeDiagnostics, SystemHealth } from "./AdminDiagnostics";
+import { NodeDiagnostics } from "./AdminDiagnostics";
+import { AdminObservability } from "./AdminObservability";
 afterEach(() => {
     cleanup();
     vi.clearAllMocks();
+});
+it("shows stale monitoring without reporting healthy and saves backend-only thresholds", async () => {
+    const settings = {
+        sample_percent: 10,
+        slow_request_ms: 2000,
+        slow_query_ms: 200,
+        error_percent: 5,
+        slow_percent: 20,
+        min_samples: 20,
+        queue_length: 100,
+        queue_wait_seconds: 60,
+        failed_jobs: 1,
+    };
+    api.request.mockResolvedValue({
+        data: {
+            stale: true,
+            snapshot: null,
+            alerts: [],
+            settings,
+            metrics: {
+                total: {
+                    samples: 0,
+                    errors: 0,
+                    slowRequests: 0,
+                    slowQueries: 0,
+                },
+                routes: [],
+                dropped: 0,
+            },
+        },
+    });
+    render(<AdminObservability />);
+    expect(await screen.findByText(/等待监控任务首次运行/)).toBeTruthy();
+    expect(screen.queryByText("暂无告警")).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "监控设置" }));
+    fireEvent.change(screen.getByLabelText("请求采样比例（%）"), {
+        target: { value: "0" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "保存" }));
+    expect(await screen.findByText(/监控设置已保存/)).toBeTruthy();
+    expect(api.request).toHaveBeenCalledWith(
+        "test-admin/system/observability/settings",
+        { ...settings, sample_percent: 0 },
+    );
 });
 it("distinguishes provided configuration from application confirmation", async () => {
     api.request.mockResolvedValue({
@@ -46,29 +91,35 @@ it("distinguishes provided configuration from application confirmation", async (
 it("shows failing health checks alongside healthy components", async () => {
     api.request.mockResolvedValue({
         data: {
-            checks: [
-                {
-                    key: "database",
-                    label: "数据库",
-                    status: "healthy",
-                    message: "连接正常",
+            stale: false,
+            settings: { sample_percent: 10 },
+            metrics: { total: { samples: 0 }, routes: [] },
+            snapshot: {
+                checkedAt: 123,
+                queue: { available: false },
+                health: {
+                    checks: [
+                        {
+                            key: "database",
+                            label: "数据库",
+                            status: "healthy",
+                            message: "连接正常",
+                        },
+                        {
+                            key: "migrations",
+                            label: "数据库迁移",
+                            status: "warning",
+                            message: "请运行 update.sh",
+                            pendingCount: 2,
+                        },
+                    ],
                 },
-                {
-                    key: "migrations",
-                    label: "数据库迁移",
-                    status: "warning",
-                    message: "请运行 update.sh",
-                    pendingCount: 2,
-                },
-            ],
-            phpVersion: "8.4",
-            frameworkVersion: "13",
-            checkedAt: 123,
+            },
         },
     });
-    render(<SystemHealth />);
+    render(<AdminObservability />);
     expect(await screen.findByText("请运行 update.sh")).toBeTruthy();
     expect(screen.getByText("连接正常")).toBeTruthy();
     expect(screen.getByText("未执行迁移：2 项")).toBeTruthy();
-    expect(screen.getByText(/只读检查/)).toBeTruthy();
+    expect(screen.getByText("队列数据暂不可用")).toBeTruthy();
 });

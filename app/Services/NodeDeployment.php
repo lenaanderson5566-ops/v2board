@@ -40,7 +40,7 @@ final class NodeDeployment
             abort_unless(self::cache()->put($key,['id'=>$id,'actor'=>$actor,'actorProof'=>hash('sha256',(string)User::findOrFail($actor)->password),'expires'=>$expires,'proof'=>self::proof($id),'host'=>$host],self::TTL),503);
             abort_unless(self::cache()->put($index,$hash,self::TTL),503);
             $quote=fn($v)=>"'".str_replace("'","'\\''",$v)."'";
-            $command='( umask 077; deploy_dir=$(mktemp -d) && trap \'rm -rf -- "$deploy_dir"\' EXIT && wget --https-only -q -O "$deploy_dir/install-v2box.sh" '.$quote($host.'/api/v10/public/node-deployment/bootstrap').' && sh "$deploy_dir/install-v2box.sh" <<\'V2BOX_DEPLOY\''."\n".$host."\n".$token."\nV2BOX_DEPLOY\n)";
+            $command='( umask 077; deploy_dir=$(mktemp -d) && trap \'rm -rf -- "$deploy_dir"\' EXIT && wget --https-only -q -O "$deploy_dir/install-v2box.sh" '.$quote($host.'/api/v10/public/node-deployment/bootstrap').' && printf \'%s\n\' '.$quote($token).' | sh "$deploy_dir/install-v2box.sh" --api-host '.$quote($host).' --node-id '.$id.' )';
             return ['command'=>$command,'expiresAt'=>gmdate('Y-m-d\TH:i:s\Z',$expires)];
         });
     }

@@ -1,5 +1,5 @@
 import { AdminBrowserPreview } from "./AdminBrowserPreview";
-import { AdminChoiceGroup } from "./AdminChoices";
+import "./admin-management.css";
 import { useRef, useState } from "react";
 import { admin, request, rows, type Row } from "../shared/api";
 import { supportedClients as recommendationClients } from "../shared/import-links";
@@ -36,6 +36,32 @@ const groupNames: Record<string, string> = {
     app: "专用客户端下载",
     entrypoints: "服务入口",
 };
+const settingsCategories = [
+    { label: "站点与体验", keys: ["site", "footer", "browser"] },
+    {
+        label: "账户与业务",
+        keys: ["safe", "subscribe", "invite", "deposit", "ticket"],
+    },
+    {
+        label: "通知与接入",
+        keys: ["email", "telegram", "server", "entrypoints"],
+    },
+];
+const groupDescriptions: Record<string, string> = {
+    site: "站点信息、展示与默认偏好",
+    footer: "页脚内容与自定义 HTML",
+    browser: "内置浏览器访问规则与引导预览",
+    safe: "注册、登录与账户保护",
+    subscribe: "订阅交付、试用与额度权限",
+    invite: "邀请奖励和佣金规则",
+    deposit: "账户充值与奖励规则",
+    ticket: "工单提交与服务支持",
+    email: "发送通道、投递回调与测试",
+    telegram: "机器人通知与用户群",
+    server: "节点 API 与通讯设置",
+    entrypoints: "服务地址与入口配置",
+    app: "客户端分发与下载账号",
+};
 export function Settings({ section }: { section?: "app" | "invite" } = {}) {
     const d = useData(admin("config/fetch"));
     const schema = useData(admin("console/configSchema"));
@@ -43,6 +69,8 @@ export function Settings({ section }: { section?: "app" | "invite" } = {}) {
     const creditGroups = useData<Row[]>(admin("server/group/fetch"));
     const [group, setGroup] = useState(section || "site"),
         [saved, setSaved] = useState("");
+    const [categorySearch, setCategorySearch] = useState("");
+    const [saving, setSaving] = useState(false);
     const [dirty, setDirty] = useState(false),
         [actionBusy, setActionBusy] = useState(false),
         [actionResult, setActionResult] = useState("");
@@ -189,258 +217,343 @@ export function Settings({ section }: { section?: "app" | "invite" } = {}) {
             title={section ? groupNames[section] : "系统配置"}
             className="settings-panel"
         >
-            {!section && (
-                <AdminChoiceGroup
-                    variant="navigation"
-                    label="系统设置分类"
-                    value={group}
-                    options={Object.keys(groupNames)
-                        .filter((key) => key !== "app")
-                        .map((value) => ({ value, label: groupNames[value] }))}
-                    onChange={(value) => {
-                        if (value === group) return;
-                        if (
-                            dirty &&
-                            !window.confirm(
-                                "当前分类有未保存的修改，确认放弃并切换？",
-                            )
-                        )
-                            return;
-                        setPreviewValues(null);
-                        setGroup(value);
-                        setSaved("");
-                        setDirty(false);
-                        setActionResult("");
-                    }}
-                />
-            )}
-            <State
-                loading={
-                    d.loading ||
-                    schema.loading ||
-                    plans.loading ||
-                    creditGroups.loading
-                }
-                error={
-                    d.error || schema.error || plans.error || creditGroups.error
-                }
-                retry={() => {
-                    d.reload();
-                    schema.reload();
-                    plans.reload();
-                    creditGroups.reload();
-                }}
-            >
-                {group === "entrypoints" && (
-                    <AdminEntrypoints
-                        key={JSON.stringify(raw.fastai_entrypoints)}
-                        initial={raw.fastai_entrypoints || []}
-                        publicKey={raw.fastai_entrypoint_public_key}
-                        version={raw.fastai_entrypoints_version || 1}
-                        save={async (entries) => {
-                            await request(admin("config/save"), {
-                                fastai_entrypoints: entries,
-                            });
-                            d.reload();
-                        }}
-                    />
+            <div className={section ? "" : "admin-settings-layout"}>
+                {!section && (
+                    <nav
+                        className="admin-settings-nav"
+                        aria-label="系统设置分类"
+                    >
+                        <label className="admin-settings-search">
+                            搜索设置分类
+                            <input
+                                type="search"
+                                value={categorySearch}
+                                placeholder="站点、邮件、节点…"
+                                onChange={(e) =>
+                                    setCategorySearch(e.target.value)
+                                }
+                            />
+                        </label>
+                        {settingsCategories.map((category) => {
+                            const keys = category.keys.filter((key) =>
+                                (groupNames[key] + groupDescriptions[key])
+                                    .toLowerCase()
+                                    .includes(
+                                        categorySearch.trim().toLowerCase(),
+                                    ),
+                            );
+                            return keys.length ? (
+                                <section key={category.label}>
+                                    <h3>{category.label}</h3>
+                                    {keys.map((key) => (
+                                        <button
+                                            type="button"
+                                            key={key}
+                                            aria-pressed={key === group}
+                                            disabled={saving || actionBusy}
+                                            onClick={() => {
+                                                if (key === group) return;
+                                                if (
+                                                    dirty &&
+                                                    !window.confirm(
+                                                        "当前分类有未保存的修改，确认放弃并切换？",
+                                                    )
+                                                )
+                                                    return;
+                                                setPreviewValues(null);
+                                                setGroup(key);
+                                                setSaved("");
+                                                setDirty(false);
+                                                setActionResult("");
+                                            }}
+                                        >
+                                            {groupNames[key]}
+                                        </button>
+                                    ))}
+                                </section>
+                            ) : null;
+                        })}
+                        {categorySearch &&
+                            !settingsCategories.some((category) =>
+                                category.keys.some((key) =>
+                                    (groupNames[key] + groupDescriptions[key])
+                                        .toLowerCase()
+                                        .includes(
+                                            categorySearch.trim().toLowerCase(),
+                                        ),
+                                ),
+                            ) && <p className="muted">没有匹配的设置分类</p>}
+                    </nav>
                 )}
-                {group === "app" && (
-                    <AdminFastaiDownloads
-                        key={JSON.stringify(raw.fastai_releases)}
-                        initial={raw.fastai_releases || []}
-                        save={async (releases) => {
-                            await request(admin("config/save"), {
-                                fastai_releases: releases,
-                            });
-                        }}
-                    />
-                )}
-                {group === "email" && (
-                    <div className="pad" role="note">
-                        <strong>
-                            当前已保存的事务通道：
-                            {mailProviders[raw.email_provider || "smtp"] ||
-                                "未知"}
-                        </strong>
-                        <p className="muted">
-                            验证码、账单和服务提醒使用事务通道；必要服务群发使用事务通道。活动与推广可独立配置服务商与发件子域名，只发给主动订阅的用户。修改后保存并重启队列。星号表示凭据已设置，不代表已验证可用。
-                        </p>
-                    </div>
-                )}
-                {group !== "entrypoints" && (
-                    <Editor
-                        key={group + JSON.stringify(raw)}
-                        fields={fields}
-                        initial={raw}
-                        onValuesChange={setPreviewValues}
-                        resolveFields={settingsFields}
-                        linkValues={linkSettings}
-                        onDirty={() => {
-                            setSaved("");
-                            setDirty(true);
-                            setActionResult("");
-                        }}
-                        validate={validateSettings}
-                        onSave={async (body) => {
-                            const changes = changedSettings(body, raw);
-                            if (Object.keys(changes).length)
-                                await request(admin("config/save"), changes);
-                            if (
-                                Object.prototype.hasOwnProperty.call(
-                                    changes,
-                                    "system_timezone",
-                                )
-                            ) {
-                                setTimeout(() => window.location.reload(), 0);
-                                return;
-                            }
-                            setSaved("设置已保存");
-                            setDirty(false);
-                            d.reload();
-                        }}
-                    />
-                )}
-                {group === "browser" && (
-                    <AdminBrowserPreview values={previewValues || raw} />
-                )}
-                {group === "subscribe" && (
-                    <p className="pad muted">
-                        设置额度基础权限组后：订阅有效时，额度沿用订阅权限；订阅到期或无订阅时，额度仅可使用基础组节点。适用于所有额度用户（含已迁移的一次性套餐）。额度余额、套餐记录及限速、设备限制不变。节点在下次拉取用户时更新权限，客户端需更新订阅以刷新节点列表。
-                    </p>
-                )}
-                {group === "app" && (
-                    <div className="pad">
-                        <p className="muted">
-                            填写 AppleAuto 的 HTTPS
-                            接口域名及分享链接最后一段代码。接口地址不包含
-                            /share 或 /client
-                            路径。仅有效订阅或有剩余额度的用户可查看。请先保存，再测试连接；启用后刷新用户页面。
-                        </p>
-                        <button
-                            disabled={dirty || actionBusy}
-                            onClick={() => runAction("config/testAppleAccount")}
-                        >
-                            测试下载账号连接
-                        </button>
-                    </div>
-                )}
-                {group === "email" && (
-                    <div className="pad">
-                        <p className="muted">
-                            测试邮件发往当前管理员邮箱，使用已保存的发送通道。修改邮件配置后需重启队列服务。发送成功仅代表服务商接受。
-                        </p>
-                        <button
-                            disabled={
-                                dirty ||
-                                actionBusy ||
-                                (raw.email_provider === "mailgun"
-                                    ? !raw.email_mailgun_domain ||
-                                      !raw.email_mailgun_key_configured
-                                    : raw.email_provider === "resend"
-                                      ? !raw.email_resend_key_configured
-                                      : raw.email_provider === "ses"
-                                        ? !raw.email_ses_region ||
-                                          (raw.email_ses_auth === "key" &&
-                                              !raw.email_ses_key_configured)
-                                        : !raw.email_host) ||
-                                !raw.email_from_address
-                            }
-                            onClick={() => runAction("config/testSendMail")}
-                        >
-                            发送测试邮件
-                        </button>
-                        <p className="muted">
-                            {raw.email_provider === "ses" &&
-                            raw.email_ses_auth !== "key"
-                                ? "使用服务器 IAM 凭据，发送测试邮件可检查权限。"
-                                : raw.email_provider !== "smtp" && (
-                                      <>
-                                          通道密钥：
-                                          {raw[
-                                              `email_${raw.email_provider}_key_configured`
-                                          ]
-                                              ? "已配置（留空保留）"
-                                              : "未配置"}{" "}
-                                          ·{" "}
-                                      </>
-                                  )}
-                            <a href="#/mail-logs">查看邮件日志</a>
-                        </p>
-                        <button
-                            disabled={
-                                dirty ||
-                                actionBusy ||
-                                !raw.email_announcement_separate
-                            }
-                            onClick={() =>
-                                runAction("config/testSendMail", {
-                                    stream: "announcement",
-                                })
-                            }
-                        >
-                            测试推广通道（发往管理员）
-                        </button>
-                        <details>
-                            <summary>投递回调配置</summary>
-                            <p className="muted">
-                                在服务商订阅 delivered / bounce / complaint
-                                事件。SMTP
-                                本身没有通用异步回调。两个通道若使用不同账号，需将回调统一到同一可信账号或主题；目前每个服务商配置一组回调凭据。
-                            </p>
-                            {["mailgun", "resend", "ses"].map((provider) => (
-                                <p key={provider}>
-                                    {mailProviders[provider]}：
-                                    <code>
-                                        {String(
-                                            raw.email_public_url ||
-                                                "https://你的API域名",
-                                        ).replace(/\/$/, "")}
-                                        /api/v10/webhooks/mail/{provider}
-                                    </code>
+                <section className="admin-settings-content">
+                    {!section && (
+                        <header className="admin-settings-heading">
+                            <div>
+                                <h3>{groupNames[group]}</h3>
+                                <p className="muted">
+                                    {groupDescriptions[group]}
                                 </p>
-                            ))}
-                        </details>
-                        <AdminMailPreview />
-                    </div>
-                )}
-                {group === "telegram" && (
-                    <div className="pad">
-                        <p className="muted">
-                            使用已保存的机器人 Token 在 Telegram 注册本站
-                            Webhook；站点需有可访问的 HTTPS 地址。
-                        </p>
-                        <button
-                            disabled={
-                                dirty || actionBusy || !raw.telegram_bot_token
-                            }
-                            onClick={() =>
-                                runAction("config/setTelegramWebhook")
-                            }
-                        >
-                            设置 Telegram Webhook
-                        </button>
-                        <AdminTelegramCommunity
-                            disabled={dirty || actionBusy}
-                        />
-                    </div>
-                )}
-                {dirty && ["email", "telegram"].includes(group) && (
-                    <p className="pad muted">
-                        请先保存配置，再执行测试或连接操作。
-                    </p>
-                )}
-                {actionResult && (
-                    <p className="pad" role="status">
-                        {actionResult}
-                    </p>
-                )}
-                {saved && (
-                    <p className="success-message" role="status">
-                        {saved}
-                    </p>
-                )}
-            </State>
+                            </div>
+                            {dirty && (
+                                <span className="admin-unsaved">
+                                    有未保存的修改
+                                </span>
+                            )}
+                        </header>
+                    )}
+                    <State
+                        loading={
+                            d.loading ||
+                            schema.loading ||
+                            plans.loading ||
+                            creditGroups.loading
+                        }
+                        error={
+                            d.error ||
+                            schema.error ||
+                            plans.error ||
+                            creditGroups.error
+                        }
+                        retry={() => {
+                            d.reload();
+                            schema.reload();
+                            plans.reload();
+                            creditGroups.reload();
+                        }}
+                    >
+                        {group === "entrypoints" && (
+                            <AdminEntrypoints
+                                key={JSON.stringify(raw.fastai_entrypoints)}
+                                initial={raw.fastai_entrypoints || []}
+                                publicKey={raw.fastai_entrypoint_public_key}
+                                version={raw.fastai_entrypoints_version || 1}
+                                save={async (entries) => {
+                                    await request(admin("config/save"), {
+                                        fastai_entrypoints: entries,
+                                    });
+                                    d.reload();
+                                }}
+                            />
+                        )}
+                        {group === "app" && (
+                            <AdminFastaiDownloads
+                                key={JSON.stringify(raw.fastai_releases)}
+                                initial={raw.fastai_releases || []}
+                                save={async (releases) => {
+                                    await request(admin("config/save"), {
+                                        fastai_releases: releases,
+                                    });
+                                }}
+                            />
+                        )}
+                        {group === "email" && (
+                            <div className="pad" role="note">
+                                <strong>
+                                    当前已保存的事务通道：
+                                    {mailProviders[
+                                        raw.email_provider || "smtp"
+                                    ] || "未知"}
+                                </strong>
+                                <p className="muted">
+                                    验证码、账单和服务提醒使用事务通道；必要服务群发使用事务通道。活动与推广可独立配置服务商与发件子域名，只发给主动订阅的用户。修改后保存并重启队列。星号表示凭据已设置，不代表已验证可用。
+                                </p>
+                            </div>
+                        )}
+                        {group !== "entrypoints" && (
+                            <Editor
+                                key={group + JSON.stringify(raw)}
+                                fields={fields}
+                                initial={raw}
+                                onValuesChange={setPreviewValues}
+                                resolveFields={settingsFields}
+                                linkValues={linkSettings}
+                                onBusyChange={setSaving}
+                                onDirty={() => {
+                                    setSaved("");
+                                    setDirty(true);
+                                    setActionResult("");
+                                }}
+                                validate={validateSettings}
+                                onSave={async (body) => {
+                                    const changes = changedSettings(body, raw);
+                                    if (Object.keys(changes).length)
+                                        await request(
+                                            admin("config/save"),
+                                            changes,
+                                        );
+                                    if (
+                                        Object.prototype.hasOwnProperty.call(
+                                            changes,
+                                            "system_timezone",
+                                        )
+                                    ) {
+                                        setTimeout(
+                                            () => window.location.reload(),
+                                            0,
+                                        );
+                                        return;
+                                    }
+                                    setSaved("设置已保存");
+                                    setDirty(false);
+                                    d.reload();
+                                }}
+                            />
+                        )}
+                        {group === "browser" && (
+                            <AdminBrowserPreview
+                                values={previewValues || raw}
+                            />
+                        )}
+                        {group === "subscribe" && (
+                            <p className="pad muted">
+                                设置额度基础权限组后：订阅有效时，额度沿用订阅权限；订阅到期或无订阅时，额度仅可使用基础组节点。适用于所有额度用户（含已迁移的一次性套餐）。额度余额、套餐记录及限速、设备限制不变。节点在下次拉取用户时更新权限，客户端需更新订阅以刷新节点列表。
+                            </p>
+                        )}
+                        {group === "app" && (
+                            <div className="pad">
+                                <p className="muted">
+                                    填写 AppleAuto 的 HTTPS
+                                    接口域名及分享链接最后一段代码。接口地址不包含
+                                    /share 或 /client
+                                    路径。仅有效订阅或有剩余额度的用户可查看。请先保存，再测试连接；启用后刷新用户页面。
+                                </p>
+                                <button
+                                    disabled={dirty || actionBusy}
+                                    onClick={() =>
+                                        runAction("config/testAppleAccount")
+                                    }
+                                >
+                                    测试下载账号连接
+                                </button>
+                            </div>
+                        )}
+                        {group === "email" && (
+                            <div className="pad">
+                                <p className="muted">
+                                    测试邮件发往当前管理员邮箱，使用已保存的发送通道。修改邮件配置后需重启队列服务。发送成功仅代表服务商接受。
+                                </p>
+                                <button
+                                    disabled={
+                                        dirty ||
+                                        actionBusy ||
+                                        (raw.email_provider === "mailgun"
+                                            ? !raw.email_mailgun_domain ||
+                                              !raw.email_mailgun_key_configured
+                                            : raw.email_provider === "resend"
+                                              ? !raw.email_resend_key_configured
+                                              : raw.email_provider === "ses"
+                                                ? !raw.email_ses_region ||
+                                                  (raw.email_ses_auth ===
+                                                      "key" &&
+                                                      !raw.email_ses_key_configured)
+                                                : !raw.email_host) ||
+                                        !raw.email_from_address
+                                    }
+                                    onClick={() =>
+                                        runAction("config/testSendMail")
+                                    }
+                                >
+                                    发送测试邮件
+                                </button>
+                                <p className="muted">
+                                    {raw.email_provider === "ses" &&
+                                    raw.email_ses_auth !== "key"
+                                        ? "使用服务器 IAM 凭据，发送测试邮件可检查权限。"
+                                        : raw.email_provider !== "smtp" && (
+                                              <>
+                                                  通道密钥：
+                                                  {raw[
+                                                      `email_${raw.email_provider}_key_configured`
+                                                  ]
+                                                      ? "已配置（留空保留）"
+                                                      : "未配置"}{" "}
+                                                  ·{" "}
+                                              </>
+                                          )}
+                                    <a href="#/mail-logs">查看邮件日志</a>
+                                </p>
+                                <button
+                                    disabled={
+                                        dirty ||
+                                        actionBusy ||
+                                        !raw.email_announcement_separate
+                                    }
+                                    onClick={() =>
+                                        runAction("config/testSendMail", {
+                                            stream: "announcement",
+                                        })
+                                    }
+                                >
+                                    测试推广通道（发往管理员）
+                                </button>
+                                <details>
+                                    <summary>投递回调配置</summary>
+                                    <p className="muted">
+                                        在服务商订阅 delivered / bounce /
+                                        complaint 事件。SMTP
+                                        本身没有通用异步回调。两个通道若使用不同账号，需将回调统一到同一可信账号或主题；目前每个服务商配置一组回调凭据。
+                                    </p>
+                                    {["mailgun", "resend", "ses"].map(
+                                        (provider) => (
+                                            <p key={provider}>
+                                                {mailProviders[provider]}：
+                                                <code>
+                                                    {String(
+                                                        raw.email_public_url ||
+                                                            "https://你的API域名",
+                                                    ).replace(/\/$/, "")}
+                                                    /api/v10/webhooks/mail/
+                                                    {provider}
+                                                </code>
+                                            </p>
+                                        ),
+                                    )}
+                                </details>
+                                <AdminMailPreview />
+                            </div>
+                        )}
+                        {group === "telegram" && (
+                            <div className="pad">
+                                <p className="muted">
+                                    使用已保存的机器人 Token 在 Telegram
+                                    注册本站 Webhook；站点需有可访问的 HTTPS
+                                    地址。
+                                </p>
+                                <button
+                                    disabled={
+                                        dirty ||
+                                        actionBusy ||
+                                        !raw.telegram_bot_token
+                                    }
+                                    onClick={() =>
+                                        runAction("config/setTelegramWebhook")
+                                    }
+                                >
+                                    设置 Telegram Webhook
+                                </button>
+                                <AdminTelegramCommunity
+                                    disabled={dirty || actionBusy}
+                                />
+                            </div>
+                        )}
+                        {dirty && ["email", "telegram"].includes(group) && (
+                            <p className="pad muted">
+                                请先保存配置，再执行测试或连接操作。
+                            </p>
+                        )}
+                        {actionResult && (
+                            <p className="pad" role="status">
+                                {actionResult}
+                            </p>
+                        )}
+                        {saved && (
+                            <p className="success-message" role="status">
+                                {saved}
+                            </p>
+                        )}
+                    </State>
+                </section>
+            </div>
         </Panel>
     );
 }

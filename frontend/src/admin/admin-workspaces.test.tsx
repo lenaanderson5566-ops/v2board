@@ -610,3 +610,15 @@ it("refreshes every overview section from one action", async () => {
         }
     });
 });
+
+it("groups target logs in diagnostics and loads dashboard analytics only on selection", async () => {
+    expect(legacyAdminMenu.find(([key]) => key === "log-targets")?.[3]).toBe("日志与诊断");
+    expect(legacyAdminMenu.some(([key]) => key === "analytics")).toBe(false);
+    const { adminPageFixture } = await import("./test-support/page-fixtures");
+    api.request.mockImplementation(async (path: string) => adminPageFixture(path));
+    render(<Overview />);
+    await screen.findByText("本年度收入");
+    expect(api.request.mock.calls.some(([path]) => path.includes("analytics/report"))).toBe(false);
+    fireEvent.mouseDown(screen.getByRole("tab", {name: "访问与转化"}), {button: 0, ctrlKey: false});
+    await waitFor(() => expect(api.request.mock.calls.some(([path]) => path.includes("analytics/report"))).toBe(true));
+});

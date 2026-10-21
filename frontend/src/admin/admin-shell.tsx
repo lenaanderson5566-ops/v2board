@@ -7,7 +7,6 @@ import { boot, type Row } from "../shared/api";
 // Stable menu order and navigation aliases; styling is owned by admin.css.
 export const legacyAdminMenu = [
     ["overview", "仪表盘", "speedometer", "概览"],
-    ["analytics", "访问与转化", "bar-chart", "概览"],
     ["users", "用户管理", "users", "用户与支持"],
     ["online", "在线用户", "users", "用户与支持"],
     ["tickets", "工单管理", "support", "用户与支持"],
@@ -30,6 +29,7 @@ export const legacyAdminMenu = [
     ["blacklist-ip", "IP 黑名单", "ban", "安全与风控"],
     ["blacklist-ua", "UA 黑名单", "ban", "安全与风控"],
     ["mail-blocklist", "邮件禁发名单", "ban", "安全与风控"],
+    ["log-targets", "节点访问目标", "layers", "日志与诊断"],
     ["log-login", "登录日志", "login", "日志与诊断"],
     ["log-subscribe", "订阅请求日志", "notebook", "日志与诊断"],
     ["log-connection", "连接日志", "link", "日志与诊断"],
@@ -44,8 +44,8 @@ export const legacyAdminMenu = [
 ] as const;
 // Keep old labels and common task terms searchable after regrouping.
 const adminMenuKeywords: Record<string, string> = {
-    overview: "运营概览 系统状态 队列 风控概览",
-    analytics: "访问统计 漏斗 转化率 隐私",
+    overview: "运营概览 系统状态 队列 风控概览 访问与转化 访问统计 漏斗 转化率",
+    "log-targets": "节点 域名 IP 访问目标 流量",
     plans: "订阅管理 订阅套餐 套餐翻译 订阅多语言 价格 币种 汇率",
     payments: "支付配置 支付方式 支付接口",
     groups: "权限组管理 服务器",
@@ -162,7 +162,10 @@ export function AdminShell({
     const title =
         legacyAdminMenu.find(
             ([key]) =>
-                key === (current === "operations" ? "overview" : current),
+                key ===
+                (["operations", "analytics", "system"].includes(current)
+                    ? "overview"
+                    : current),
         )?.[1] ||
         (
             {
@@ -272,9 +275,13 @@ export function AdminShell({
                                     </div>
                                 )}
                                 <a
-                                    className={`nav-main-link ${(current === "operations" ? "overview" : current) === key ? "active" : ""}`}
+                                    className={`nav-main-link ${(["operations", "analytics", "system"].includes(current) ? "overview" : current) === key ? "active" : ""}`}
                                     aria-current={
-                                        (current === "operations"
+                                        ([
+                                            "operations",
+                                            "analytics",
+                                            "system",
+                                        ].includes(current)
                                             ? "overview"
                                             : current) === key
                                             ? "page"

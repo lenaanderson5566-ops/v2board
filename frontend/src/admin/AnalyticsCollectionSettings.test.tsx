@@ -182,3 +182,17 @@ it("distinguishes fixed cadence nodes from nodes supporting the setting", async 
     expect(await screen.findByRole("option",{name:"旧节点（周期固定）"})).toBeTruthy();
     expect(screen.getByRole("option",{name:"新节点"})).toBeTruthy();
 });
+
+it("filters settings categories without hiding the current editor", async () => {
+    api.request.mockResolvedValue({data: {site: {}, safe: {}}});
+    render(<Settings />);
+    const search = screen.getByRole("searchbox", {name: "搜索设置分类"});
+    fireEvent.change(search, {target: {value: "邮件"}});
+    expect(screen.getByRole("button", {name: "邮件发送"})).toBeTruthy();
+    expect(screen.queryByRole("button", {name: "安全与注册"})).toBeNull();
+    expect(screen.getByRole("heading", {name: "站点设置"})).toBeTruthy();
+    fireEvent.change(search, {target: {value: "不存在的分类"}});
+    expect(screen.getByText("没有匹配的设置分类")).toBeTruthy();
+    fireEvent.change(search, {target: {value: ""}});
+    expect(screen.getByRole("button", {name: "安全与注册"})).toBeTruthy();
+});

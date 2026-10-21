@@ -1,6 +1,5 @@
 import { TableViewport } from "../shared/ui";
 import { AdminTabs } from "./AdminChoices";
-import { AdminTargetStatistics } from "./AdminTargetStatistics";
 import { JourneyAnalytics } from "./JourneyAnalytics";
 import { analyticsLabels as labels } from "./analytics-labels";
 import { useState } from "react";
@@ -113,7 +112,6 @@ export function AdminAnalytics() {
                         统计范围{" "}
                         <select
                             value={days}
-                            disabled={tab === "targets"}
                             onChange={(event) =>
                                 setDays(Number(event.target.value))
                             }
@@ -175,7 +173,9 @@ export function AdminAnalytics() {
             </Panel>
             <p className="muted">
                 设备筛选作用于访问与体验样本，业务转化及安全日志不受设备筛选影响。
-                <a href="#/log-settings">管理采集开关与保留时间</a>
+                <a href="#/log-settings?tab=analytics">
+                    管理采集开关与保留时间
+                </a>
             </p>
             <AdminTabs
                 label="访问与转化报表分类"
@@ -189,11 +189,9 @@ export function AdminAnalytics() {
                     { value: "security", label: "安全访问" },
                     { value: "delivery", label: "支付与邮件" },
                     { value: "health", label: "运行健康" },
-                    { value: "targets", label: "节点访问目标" },
                 ]}
             >
                 <div className="analytics-page">
-                    {tab === "targets" && <AdminTargetStatistics />}
                     {tab === "overview" && data && (
                         <Panel padded title="访问摘要">
                             {" "}
@@ -262,8 +260,15 @@ export function AdminAnalytics() {
                                     浏览器统计迁移尚未完成。
                                 </p>
                             )}
-                            <p className="muted">按首次 UA 分类，展示前 100 个组合，仅含同意统计的样本。历史未采集单列，未知不代表异常；内置浏览器可能声明 Chrome/Safari。引导动作见“用户体验”，复制成功不代表外部打开成功。</p>
-                            <p className="muted">仅按 UA 声明识别品牌；隐藏标记的 360 等浏览器可能归入 Chrome。</p>
+                            <p className="muted">
+                                按首次 UA 分类，展示前 100
+                                个组合，仅含同意统计的样本。历史未采集单列，未知不代表异常；内置浏览器可能声明
+                                Chrome/Safari。引导动作见“用户体验”，复制成功不代表外部打开成功。
+                            </p>
+                            <p className="muted">
+                                仅按 UA 声明识别品牌；隐藏标记的 360
+                                等浏览器可能归入 Chrome。
+                            </p>
                         </Panel>
                     )}
                     {data && (
@@ -344,7 +349,9 @@ export function AdminAnalytics() {
                                             </table>
                                         </TableViewport>
                                     </details>
-                                    <p className="muted">按会话开始日统计；边界日期可能不完整，未采集的历史数据不补算。</p>
+                                    <p className="muted">
+                                        按会话开始日统计；边界日期可能不完整，未采集的历史数据不补算。
+                                    </p>
                                 </Panel>
                             )}
                             {tab === "overview" && (
@@ -448,7 +455,10 @@ export function AdminAnalytics() {
                                             count: step.sessions,
                                         }))}
                                     />
-                                    <p className="muted">按会话依次统计“浏览套餐 → 确认订单 → 进入付款”，每步最多一次；跨会话、直接续付和未同意统计的用户可能缺失。进入付款不代表支付成功。</p>
+                                    <p className="muted">
+                                        按会话依次统计“浏览套餐 → 确认订单 →
+                                        进入付款”，每步最多一次；跨会话、直接续付和未同意统计的用户可能缺失。进入付款不代表支付成功。
+                                    </p>
                                     <p className="muted">
                                         会话按开始时间归入范围，仅展示尚在{" "}
                                         {data.settings.retentionDays}{" "}
@@ -497,7 +507,6 @@ export function AdminAnalytics() {
                             )}
                             {tab === "conversion" && (
                                 <Panel padded title="转化改进工作台">
-
                                     <TableViewport>
                                         <table>
                                             <thead>
@@ -586,12 +595,13 @@ export function AdminAnalytics() {
                                             </tbody>
                                         </table>
                                     </TableViewport>
-
                                 </Panel>
                             )}
                             {tab === "audience" && (
                                 <Panel padded title="访问来源网站">
-                                    <p className="muted">仅统计同意采集的访问来源，沿用时间与设备筛选，不关联账号。</p>
+                                    <p className="muted">
+                                        仅统计同意采集的访问来源，沿用时间与设备筛选，不关联账号。
+                                    </p>
                                     {!data.sourcesReady ? (
                                         <p role="status">
                                             来源统计字段尚未安装，请通过更新流程执行数据库迁移。

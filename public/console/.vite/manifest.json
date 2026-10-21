@@ -1,10 +1,10 @@
 {
-  "_AdminApp-DJo4igBx.css": {
-    "file": "assets/AdminApp-DJo4igBx.css",
-    "src": "_AdminApp-DJo4igBx.css"
+  "_AdminApp-BlgLempV.css": {
+    "file": "assets/AdminApp-BlgLempV.css",
+    "src": "_AdminApp-BlgLempV.css"
   },
-  "_AdminApp-h4_mSUEj.js": {
-    "file": "assets/AdminApp-h4_mSUEj.js",
+  "_AdminApp-DmIydllj.js": {
+    "file": "assets/AdminApp-DmIydllj.js",
     "name": "AdminApp",
     "isDynamicEntry": true,
     "imports": [
@@ -22,7 +22,7 @@
     ],
     "dynamicImports": [
       "src/admin/AdminDictionary.tsx",
-      "src/admin/AdminAnalytics.tsx",
+      "src/admin/AdminTargetStatistics.tsx",
       "src/shared/MfaSecurity.tsx",
       "src/admin/AdminMailBlocklist.tsx",
       "src/admin/AdminCoupons.tsx",
@@ -47,7 +47,7 @@
       "src/admin/admin-code-editor.tsx"
     ],
     "css": [
-      "assets/AdminApp-DJo4igBx.css"
+      "assets/AdminApp-BlgLempV.css"
     ]
   },
   "_BannerStrip-CH8JEajQ.css": {
@@ -197,19 +197,6 @@
   "_admin-status-mAD5wjFD.css": {
     "file": "assets/admin-status-mAD5wjFD.css",
     "src": "_admin-status-mAD5wjFD.css"
-  },
-  "_analytics-2z_hmDFV.js": {
-    "file": "assets/analytics-2z_hmDFV.js",
-    "name": "analytics",
-    "imports": [
-      "_admin-status-DX2kk5tG.js",
-      "_browser-notice-B6PpC3f0.js",
-      "_PasskeySecurity-DFNGWddM.js",
-      "_AdminApp-h4_mSUEj.js"
-    ],
-    "css": [
-      "assets/analytics-D-Jfyk_h.css"
-    ]
   },
   "_analytics-D-Jfyk_h.css": {
     "file": "assets/analytics-D-Jfyk_h.css",
@@ -680,7 +667,7 @@
     ]
   },
   "admin.html": {
-    "file": "assets/admin-3mh-N8JX.js",
+    "file": "assets/admin-BCh3nXhw.js",
     "name": "admin",
     "src": "admin.html",
     "isEntry": true,
@@ -688,7 +675,7 @@
       "_runtime-config-Cm8ZLzu1.js"
     ],
     "dynamicImports": [
-      "_AdminApp-h4_mSUEj.js",
+      "_AdminApp-DmIydllj.js",
       "src/shared/render-app.tsx"
     ]
   },
@@ -716,7 +703,7 @@
     "isDynamicEntry": true
   },
   "src/admin/AdminAnalytics.tsx": {
-    "file": "assets/AdminAnalytics-DQ0s5W-9.js",
+    "file": "assets/AdminAnalytics-2YrI8dk8.js",
     "name": "AdminAnalytics",
     "src": "src/admin/AdminAnalytics.tsx",
     "isDynamicEntry": true,
@@ -724,8 +711,7 @@
       "_admin-status-DX2kk5tG.js",
       "_browser-notice-B6PpC3f0.js",
       "_PasskeySecurity-DFNGWddM.js",
-      "_AdminApp-h4_mSUEj.js",
-      "_analytics-2z_hmDFV.js",
+      "_AdminApp-DmIydllj.js",
       "_browser-labels-DmLegWCk.js",
       "_runtime-config-Cm8ZLzu1.js",
       "_smartphone-R1d6RtWt.js",
@@ -735,16 +721,19 @@
       "_PlanDescription-CLrEdza4.js",
       "_plus-BCSUHikK.js",
       "_TimeZonePicker-tgFNRnSY.js"
+    ],
+    "css": [
+      "assets/analytics-D-Jfyk_h.css"
     ]
   },
   "src/admin/AdminBanners.tsx": {
-    "file": "assets/AdminBanners-aS-ANnHH.js",
+    "file": "assets/AdminBanners-Osx_hjUN.js",
     "name": "AdminBanners",
     "src": "src/admin/AdminBanners.tsx",
     "isDynamicEntry": true,
     "imports": [
       "_admin-status-DX2kk5tG.js",
-      "_AdminApp-h4_mSUEj.js",
+      "_AdminApp-DmIydllj.js",
       "_browser-notice-B6PpC3f0.js",
       "_BannerStrip-CRYUfXnk.js",
       "_runtime-config-Cm8ZLzu1.js",
@@ -759,13 +748,13 @@
     ]
   },
   "src/admin/AdminClientDiagnostics.tsx": {
-    "file": "assets/AdminClientDiagnostics-CL7Gm4Dc.js",
+    "file": "assets/AdminClientDiagnostics-BsPT7on9.js",
     "name": "AdminClientDiagnostics",
     "src": "src/admin/AdminClientDiagnostics.tsx",
     "isDynamicEntry": true,
     "imports": [
       "_admin-status-DX2kk5tG.js",
-      "_AdminApp-h4_mSUEj.js",
+      "_AdminApp-DmIydllj.js",
       "_PasskeySecurity-DFNGWddM.js",
       "_runtime-config-Cm8ZLzu1.js",
       "_browser-notice-B6PpC3f0.js",
@@ -779,13 +768,13 @@
     ]
   },
   "src/admin/AdminClients.tsx": {
-    "file": "assets/AdminClients-CjZSUm6Y.js",
+    "file": "assets/AdminClients-19G2wkfK.js",
     "name": "AdminClients",
     "src": "src/admin/AdminClients.tsx",
     "isDynamicEntry": true,
     "imports": [
       "_admin-status-DX2kk5tG.js",
-      "_AdminApp-h4_mSUEj.js",
+      "_AdminApp-DmIydllj.js",
       "_browser-notice-B6PpC3f0.js",
       "_import-links-CrG1NT38.js",
       "_PasskeySecurity-DFNGWddM.js",
@@ -803,13 +792,13 @@
     ]
   },
   "src/admin/AdminCoupons.tsx": {
-    "file": "assets/AdminCoupons-Czt87HGn.js",
+    "file": "assets/AdminCoupons-Dxt5aZuO.js",
     "name": "AdminCoupons",
     "src": "src/admin/AdminCoupons.tsx",
     "isDynamicEntry": true,
     "imports": [
       "_admin-status-DX2kk5tG.js",
-      "_AdminApp-h4_mSUEj.js",
+      "_AdminApp-DmIydllj.js",
       "_browser-notice-B6PpC3f0.js",
       "_PasskeySecurity-DFNGWddM.js",
       "_admin-section-CAzpWuJh.js",
@@ -828,13 +817,13 @@
     ]
   },
   "src/admin/AdminDictionary.tsx": {
-    "file": "assets/AdminDictionary-CedMnusM.js",
+    "file": "assets/AdminDictionary-lf73l69G.js",
     "name": "AdminDictionary",
     "src": "src/admin/AdminDictionary.tsx",
     "isDynamicEntry": true,
     "imports": [
       "_admin-status-DX2kk5tG.js",
-      "_AdminApp-h4_mSUEj.js",
+      "_AdminApp-DmIydllj.js",
       "_browser-notice-B6PpC3f0.js",
       "_PasskeySecurity-DFNGWddM.js",
       "_runtime-config-Cm8ZLzu1.js",
@@ -848,13 +837,13 @@
     ]
   },
   "src/admin/AdminInvitations.tsx": {
-    "file": "assets/AdminInvitations-BBlXPK_7.js",
+    "file": "assets/AdminInvitations-ruCH9eT1.js",
     "name": "AdminInvitations",
     "src": "src/admin/AdminInvitations.tsx",
     "isDynamicEntry": true,
     "imports": [
       "_admin-status-DX2kk5tG.js",
-      "_AdminApp-h4_mSUEj.js",
+      "_AdminApp-DmIydllj.js",
       "_browser-notice-B6PpC3f0.js",
       "_PasskeySecurity-DFNGWddM.js",
       "_circle-check-BwkXzv5a.js",
@@ -873,15 +862,15 @@
     ]
   },
   "src/admin/AdminLogSettings.tsx": {
-    "file": "assets/AdminLogSettings-DL87w_FC.js",
+    "file": "assets/AdminLogSettings-BPtwupC7.js",
     "name": "AdminLogSettings",
     "src": "src/admin/AdminLogSettings.tsx",
     "isDynamicEntry": true,
     "imports": [
       "_admin-status-DX2kk5tG.js",
+      "_AdminApp-DmIydllj.js",
       "_browser-notice-B6PpC3f0.js",
-      "_analytics-2z_hmDFV.js",
-      "_AdminApp-h4_mSUEj.js",
+      "src/admin/AdminTargetStatistics.tsx",
       "_runtime-config-Cm8ZLzu1.js",
       "_PasskeySecurity-DFNGWddM.js",
       "_smartphone-R1d6RtWt.js",
@@ -891,16 +880,19 @@
       "_PlanDescription-CLrEdza4.js",
       "_plus-BCSUHikK.js",
       "_TimeZonePicker-tgFNRnSY.js"
+    ],
+    "css": [
+      "assets/analytics-D-Jfyk_h.css"
     ]
   },
   "src/admin/AdminMailBlocklist.tsx": {
-    "file": "assets/AdminMailBlocklist-Ch8HO9aT.js",
+    "file": "assets/AdminMailBlocklist-BGNF7rfN.js",
     "name": "AdminMailBlocklist",
     "src": "src/admin/AdminMailBlocklist.tsx",
     "isDynamicEntry": true,
     "imports": [
       "_admin-status-DX2kk5tG.js",
-      "_AdminApp-h4_mSUEj.js",
+      "_AdminApp-DmIydllj.js",
       "_browser-notice-B6PpC3f0.js",
       "_PasskeySecurity-DFNGWddM.js",
       "_plus-BCSUHikK.js",
@@ -914,13 +906,13 @@
     ]
   },
   "src/admin/AdminMailLogs.tsx": {
-    "file": "assets/AdminMailLogs-DAQ2BR0P.js",
+    "file": "assets/AdminMailLogs-DUUYVWhr.js",
     "name": "AdminMailLogs",
     "src": "src/admin/AdminMailLogs.tsx",
     "isDynamicEntry": true,
     "imports": [
       "_admin-status-DX2kk5tG.js",
-      "_AdminApp-h4_mSUEj.js",
+      "_AdminApp-DmIydllj.js",
       "_browser-notice-B6PpC3f0.js",
       "_PasskeySecurity-DFNGWddM.js",
       "_runtime-config-Cm8ZLzu1.js",
@@ -934,13 +926,13 @@
     ]
   },
   "src/admin/AdminRisk.tsx": {
-    "file": "assets/AdminRisk-Ckht_Qwu.js",
+    "file": "assets/AdminRisk-DCLGEQ_q.js",
     "name": "AdminRisk",
     "src": "src/admin/AdminRisk.tsx",
     "isDynamicEntry": true,
     "imports": [
       "_admin-status-DX2kk5tG.js",
-      "_AdminApp-h4_mSUEj.js",
+      "_AdminApp-DmIydllj.js",
       "_browser-notice-B6PpC3f0.js",
       "_PasskeySecurity-DFNGWddM.js",
       "_runtime-config-Cm8ZLzu1.js",
@@ -957,13 +949,13 @@
     ]
   },
   "src/admin/AdminSubscriptions.tsx": {
-    "file": "assets/AdminSubscriptions-CNcKQ35W.js",
+    "file": "assets/AdminSubscriptions-D_GNkn5O.js",
     "name": "AdminSubscriptions",
     "src": "src/admin/AdminSubscriptions.tsx",
     "isDynamicEntry": true,
     "imports": [
       "_admin-status-DX2kk5tG.js",
-      "_AdminApp-h4_mSUEj.js",
+      "_AdminApp-DmIydllj.js",
       "_browser-notice-B6PpC3f0.js",
       "_admin-section-CAzpWuJh.js",
       "_arrow-right-left-D_RBgoML.js",
@@ -981,15 +973,35 @@
     ]
   },
   "src/admin/AdminSystemLogs.tsx": {
-    "file": "assets/AdminSystemLogs-0TDS_eOr.js",
+    "file": "assets/AdminSystemLogs-BarJ8vtH.js",
     "name": "AdminSystemLogs",
     "src": "src/admin/AdminSystemLogs.tsx",
     "isDynamicEntry": true,
     "imports": [
       "_admin-status-DX2kk5tG.js",
-      "_AdminApp-h4_mSUEj.js",
+      "_AdminApp-DmIydllj.js",
       "_browser-notice-B6PpC3f0.js",
       "_PasskeySecurity-DFNGWddM.js",
+      "_runtime-config-Cm8ZLzu1.js",
+      "_smartphone-R1d6RtWt.js",
+      "_credit-card-DvsqFb_J.js",
+      "_sliders-horizontal-CS_VfZWA.js",
+      "_ErrorBoundary-CUcJwEVJ.js",
+      "_PlanDescription-CLrEdza4.js",
+      "_plus-BCSUHikK.js",
+      "_TimeZonePicker-tgFNRnSY.js"
+    ]
+  },
+  "src/admin/AdminTargetStatistics.tsx": {
+    "file": "assets/AdminTargetStatistics-DMcOAE7Y.js",
+    "name": "AdminTargetStatistics",
+    "src": "src/admin/AdminTargetStatistics.tsx",
+    "isDynamicEntry": true,
+    "imports": [
+      "_admin-status-DX2kk5tG.js",
+      "_browser-notice-B6PpC3f0.js",
+      "_PasskeySecurity-DFNGWddM.js",
+      "_AdminApp-DmIydllj.js",
       "_runtime-config-Cm8ZLzu1.js",
       "_smartphone-R1d6RtWt.js",
       "_credit-card-DvsqFb_J.js",
@@ -1014,13 +1026,13 @@
     ]
   },
   "src/admin/admin-content.tsx": {
-    "file": "assets/admin-content-BCxxZBvQ.js",
+    "file": "assets/admin-content-DtwXNmm5.js",
     "name": "admin-content",
     "src": "src/admin/admin-content.tsx",
     "isDynamicEntry": true,
     "imports": [
       "_admin-status-DX2kk5tG.js",
-      "_AdminApp-h4_mSUEj.js",
+      "_AdminApp-DmIydllj.js",
       "_browser-notice-B6PpC3f0.js",
       "_Tickets-CtPPJpO_.js",
       "_runtime-config-Cm8ZLzu1.js",
@@ -1035,17 +1047,17 @@
     ]
   },
   "src/admin/admin-dashboard.tsx": {
-    "file": "assets/admin-dashboard-Buuwa_HB.js",
+    "file": "assets/admin-dashboard-BGvQzSV2.js",
     "name": "admin-dashboard",
     "src": "src/admin/admin-dashboard.tsx",
     "isDynamicEntry": true,
     "imports": [
+      "_runtime-config-Cm8ZLzu1.js",
       "_admin-status-DX2kk5tG.js",
-      "_AdminApp-h4_mSUEj.js",
+      "_AdminApp-DmIydllj.js",
       "src/admin/AdminRisk.tsx",
       "_browser-notice-B6PpC3f0.js",
       "_PasskeySecurity-DFNGWddM.js",
-      "_runtime-config-Cm8ZLzu1.js",
       "_smartphone-R1d6RtWt.js",
       "_credit-card-DvsqFb_J.js",
       "_sliders-horizontal-CS_VfZWA.js",
@@ -1053,6 +1065,9 @@
       "_PlanDescription-CLrEdza4.js",
       "_plus-BCSUHikK.js",
       "_TimeZonePicker-tgFNRnSY.js"
+    ],
+    "dynamicImports": [
+      "src/admin/AdminAnalytics.tsx"
     ]
   },
   "src/admin/admin-markdown.tsx": {
@@ -1069,13 +1084,13 @@
     ]
   },
   "src/admin/admin-nodes.tsx": {
-    "file": "assets/admin-nodes-DzuxAxri.js",
+    "file": "assets/admin-nodes--hInLOSs.js",
     "name": "admin-nodes",
     "src": "src/admin/admin-nodes.tsx",
     "isDynamicEntry": true,
     "imports": [
       "_admin-status-DX2kk5tG.js",
-      "_AdminApp-h4_mSUEj.js",
+      "_AdminApp-DmIydllj.js",
       "_browser-notice-B6PpC3f0.js",
       "_PasskeySecurity-DFNGWddM.js",
       "_runtime-config-Cm8ZLzu1.js",
@@ -1089,13 +1104,13 @@
     ]
   },
   "src/admin/admin-orders.tsx": {
-    "file": "assets/admin-orders-CX7E-_VA.js",
+    "file": "assets/admin-orders-Dl94rojv.js",
     "name": "admin-orders",
     "src": "src/admin/admin-orders.tsx",
     "isDynamicEntry": true,
     "imports": [
       "_admin-status-DX2kk5tG.js",
-      "_AdminApp-h4_mSUEj.js",
+      "_AdminApp-DmIydllj.js",
       "_PasskeySecurity-DFNGWddM.js",
       "_browser-notice-B6PpC3f0.js",
       "src/admin/admin-users.tsx",
@@ -1111,13 +1126,13 @@
     ]
   },
   "src/admin/admin-payments.tsx": {
-    "file": "assets/admin-payments-BQX4bNgI.js",
+    "file": "assets/admin-payments-BxPReJm_.js",
     "name": "admin-payments",
     "src": "src/admin/admin-payments.tsx",
     "isDynamicEntry": true,
     "imports": [
       "_admin-status-DX2kk5tG.js",
-      "_AdminApp-h4_mSUEj.js",
+      "_AdminApp-DmIydllj.js",
       "_browser-notice-B6PpC3f0.js",
       "_PasskeySecurity-DFNGWddM.js",
       "_runtime-config-Cm8ZLzu1.js",
@@ -1131,7 +1146,7 @@
     ]
   },
   "src/admin/admin-settings.tsx": {
-    "file": "assets/admin-settings-B-Sr4f_n.js",
+    "file": "assets/admin-settings-B6dyFvew.js",
     "name": "admin-settings",
     "src": "src/admin/admin-settings.tsx",
     "isDynamicEntry": true,
@@ -1140,7 +1155,7 @@
       "_runtime-config-Cm8ZLzu1.js",
       "_browser-access-C3Y1Qeq-.js",
       "_browser-labels-DmLegWCk.js",
-      "_AdminApp-h4_mSUEj.js",
+      "_AdminApp-DmIydllj.js",
       "_import-links-CrG1NT38.js",
       "_browser-notice-B6PpC3f0.js",
       "_PasskeySecurity-DFNGWddM.js",
@@ -1172,13 +1187,13 @@
     ]
   },
   "src/admin/admin-users.tsx": {
-    "file": "assets/admin-users-D0Zrk5je.js",
+    "file": "assets/admin-users-BeKrY4eS.js",
     "name": "admin-users",
     "src": "src/admin/admin-users.tsx",
     "isDynamicEntry": true,
     "imports": [
       "_admin-status-DX2kk5tG.js",
-      "_AdminApp-h4_mSUEj.js",
+      "_AdminApp-DmIydllj.js",
       "_UserFilters-BQCkmfl4.js",
       "_browser-notice-B6PpC3f0.js",
       "_runtime-config-Cm8ZLzu1.js",

@@ -121,3 +121,24 @@ it("renders log timestamps without a repeated zone suffix", async () => {
     expect(cell.textContent).not.toMatch(/GMT|UTC/);
     expect(screen.getAllByText(/Asia\/Shanghai/)).toHaveLength(1);
 });
+
+it("loads only the selected retention category and protects unsaved changes", async () => {
+    window.location.hash = "#/log-settings";
+    setup();
+    render(<AdminLogSettings />);
+    const field = await screen.findByLabelText(/登录日志保留天数/);
+    expect(api.request.mock.calls.some(([path]) => path.includes("analytics/settings"))).toBe(false);
+    fireEvent.change(field, {target: {value: "90"}});
+    const confirm = vi.spyOn(window, "confirm").mockReturnValue(false);
+    try {
+        const select = () => fireEvent.mouseDown(screen.getByRole("tab", {name: "访问统计"}), {button: 0, ctrlKey: false});
+        select();
+        expect(confirm).toHaveBeenCalledOnce();
+        expect((field as HTMLInputElement).value).toBe("90");
+        expect(api.request.mock.calls.some(([path]) => path.includes("analytics/settings"))).toBe(false);
+        confirm.mockReturnValue(true);
+        select();
+        expect(await screen.findByLabelText("开启访问统计")).toBeTruthy();
+        expect(screen.queryByLabelText(/登录日志保留天数/)).toBeNull();
+    } finally { confirm.mockRestore(); }
+});

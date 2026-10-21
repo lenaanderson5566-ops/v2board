@@ -3,7 +3,12 @@ import { admin, request } from "../shared/api";
 import { Panel, State, useData } from "../shared/ui";
 import type { V10AnalyticsConfiguration } from "../shared/v10-types";
 import "./analytics.css";
-export function AnalyticsCollectionSettings() {
+type SettingsEvents = {
+    onDirty?: () => void;
+    onSaved?: () => void;
+    onBusyChange?: (busy: boolean) => void;
+};
+export function AnalyticsCollectionSettings(events: SettingsEvents = {}) {
     const data = useData<{
         settings: V10AnalyticsConfiguration;
         ready: boolean;
@@ -30,7 +35,12 @@ export function AnalyticsCollectionSettings() {
                                 key={JSON.stringify(data.data.settings)}
                                 settings={data.data.settings}
                                 ready={data.data.ready}
-                                saved={data.reload}
+                                saved={() => {
+                                    events.onSaved?.();
+                                    data.reload();
+                                }}
+                                onDirty={events.onDirty}
+                                onBusyChange={events.onBusyChange}
                             />
                         </>
                     )}
@@ -44,7 +54,9 @@ function CollectionSettings({
     settings,
     ready,
     saved,
-}: {
+    onDirty,
+    onBusyChange,
+}: SettingsEvents & {
     settings: V10AnalyticsConfiguration;
     ready: boolean;
     saved: () => void;
@@ -61,6 +73,7 @@ function CollectionSettings({
                 event.preventDefault();
                 if (busy) return;
                 setBusy(true);
+                onBusyChange?.(true);
                 setMessage("");
                 try {
                     await request(admin("analytics/settings"), {
@@ -77,6 +90,7 @@ function CollectionSettings({
                     );
                 } finally {
                     setBusy(false);
+                    onBusyChange?.(false);
                 }
             }}
             className="analytics-settings"
@@ -85,7 +99,10 @@ function CollectionSettings({
                 <input
                     type="checkbox"
                     checked={enabled}
-                    onChange={(event) => setEnabled(event.target.checked)}
+                    onChange={(event) => {
+                        setEnabled(event.target.checked);
+                        onDirty?.();
+                    }}
                     disabled={!ready || busy}
                 />{" "}
                 开启访问统计
@@ -95,9 +112,10 @@ function CollectionSettings({
                 <select
                     value={retentionDays}
                     disabled={!ready || busy}
-                    onChange={(event) =>
-                        setRetention(Number(event.target.value))
-                    }
+                    onChange={(event) => {
+                        setRetention(Number(event.target.value));
+                        onDirty?.();
+                    }}
                 >
                     {[7, 30, 90].map((value) => (
                         <option key={value} value={value}>

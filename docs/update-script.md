@@ -181,3 +181,16 @@ Lightsail IP 管理新增 `2026_10_11_000010_create_lightsail_servers.php` 定�
 ## 独立节点凭据
 
 升级清单加入 2026_10_20_000003_create_node_credentials.php，并检查 v2_node_credential 与 v2_node_credential_state。迁移为新增表，可重复执行，不修改现有 server_token 或自动迁移节点。新安装 SQL 包含同样结构。后台手动迁移步骤见 v2box.md 的节点接入凭据章节；V2Box 的交互配置工具需要另行升级节点发行版。
+
+
+## V2Box v1.0.2 配套更新
+
+面板继续通过本页的 update.sh 更新 codex/payment-icon-picker，部署入口固定到已发布的 V2Box v1.0.2。此次统计时间桶/周期设置复用既有 RiskSetting 表，不新增迁移；脚本仍执行既有白名单迁移和配置缓存刷新。新增统计 Redis 连接默认沿用现有 Redis 配置，无需为了更新新增环境变量；独立实例与缓存预算可选配置见 [节点管理界面](node-management-ui.md)。
+
+先完成面板更新，再在节点以 root 运行：
+
+```bash
+curl -fSL https://raw.githubusercontent.com/lenaanderson5566-ops/v2box/v1.0.2/script/install.sh -o /tmp/install-v2box.sh && bash /tmp/install-v2box.sh v1.0.2
+```
+
+已有 /etc/v2box/config.json 将保留，不需再次填写密钥；升级会备份旧二进制并重启 v2box。后台四档上报周期需要新版节点才能生效，旧节点继续固定周期。统计保持默认关闭，开关不会因更新自动开启。Release 与安装验证见 [测试组织](test-organization.md)。

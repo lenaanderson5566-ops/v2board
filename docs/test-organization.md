@@ -488,3 +488,12 @@ V2Box 增加 UDP 全节点缓存地址/连接限额、关闭与退代释放、�
 复用 AnalyticsCollectionSettings.test.tsx，11 项通过，新增周期独立保存、失败恢复和固定周期节点提示。类型检查、生产构建、用户/管理端打包通过；未进行浏览器视觉验收。V10 生成器 12 项及七份生成物同步检查通过。
 
 V2Box 增加可选 reportIntervalSeconds 及 target-statistics-interval-v1 能力；旧面板缺省 60 秒，非法间隔拒绝。动态调度将策略检查限制在最多 60 秒另加 10% 抖动，失败上报约 30 秒另加抖动重试；长上报周期不延长采集租约。复用 common/task、api/v2board、node 测试，覆盖动态周期无抖动时的重调度、长周期续租/停采、缩短周期和异常值回退。全包常规测试、core/api/node/task race 和 go vet 通过；未进行生产部署或发布新版二进制。
+
+
+## V2Box v1.0.2 发布与更新验证
+
+V2Box 更新分支 codex/sing-box-backend 提交 fddd53cb89ad88385d2d2e7bd403e982eced4678，v1.0.2 标签通过 Linux 全量 race、Reality/Vision、go vet、Shell 和 Python 检查；六个 OS/架构构建及统一资产校验通过。Release 含六个压缩包和六份 SHA-256，公开 latest 已指向 v1.0.2。CI：https://github.com/lenaanderson5566-ops/v2box/actions/runs/39523850036 。
+
+独立 Debian amd64 容器下载实际公开 Release：核对源提交及可配置周期能力，真实终端隐藏输入不回显、配置 0600、服务单元和辅助工具齐全。随后使用真实 v1.0.1 二进制，运行不带版本参数的新版安装器查询 latest 升级至 v1.0.2：含两个节点和自定义字段的配置逐字节保留，旧二进制备份、包装命令版本和重启请求验证通过；HTTP 旧配置在变更程序或服务前拒绝。Linux amd64/arm64 公网下载、SHA-256、归档清单及 ELF 架构检查通过。仅在独立容器模拟 systemctl，未操作现有服务；未进行 ARM 真机或生产节点验收。
+
+面板安装/IP/DDNS 辅助入口固定至 v1.0.2。隔离 node-v10.php 156 项、v2box.php 31 项，完整前端 113 文件/803 项及类型、生产构建、打包通过；清单 111 项/12 helpers 校验通过。update-script.sh 26 个隔离场景、update-drain.sh 和 update-restart.sh 通过，新 Redis 配置执行 config:cache/config:clear 成功。源码和生产静态资源一起提交，未提交本地 Docker/环境配置或运行文件。

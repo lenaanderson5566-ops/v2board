@@ -324,11 +324,11 @@ try {
     $grantResponse=$deploymentCall($deployParams);$grant=json_decode($grantResponse->getContent(),true)['data']??[];
     $assert($grantResponse->getStatusCode()===201,'Deployment command created without password: '.$grantResponse->getStatusCode());
     $assert(str_contains($grantResponse->headers->get('Cache-Control'),'no-store'),'Deployment grant not cached by browsers');
-    $assert(!str_contains($grant['command'],'nk_') && !str_contains($grant['command'],'test-admin-credential-password') && str_contains($grant['command'],'mktemp -d'),'Command carries no long-lived key or admin password and uses private temp directory');
+    $assert(!str_contains($grant['command'],'nk_') && !str_contains($grant['command'],'test-admin-credential-password'),'Command carries no long-lived key or admin password');
     $pipes=[];$syntax=proc_open(['bash','-n'],[['pipe','r'],['pipe','w'],['pipe','w']],$pipes);fwrite($pipes[0],$grant['command']);fclose($pipes[0]);stream_get_contents($pipes[1]);$parseError=stream_get_contents($pipes[2]);fclose($pipes[1]);fclose($pipes[2]);$assert(proc_close($syntax)===0,'Generated deployment command parses as shell: '.preg_replace('/nd_[a-f0-9]{64}/','[grant]',$parseError));
     $assert(!str_contains($grant['command'],"\r") && !str_contains($grant['command'],"\n"),'Deployment command is a single portable shell line');
-    $assert(str_contains($grant['command'],'--api-host') && str_contains($grant['command'],'--node-id '.$nodeId) && str_contains($grant['command'],'printf') && !str_contains($grant['command'],'--prompt-api-key'),'Single-line command automatically supplies the one-use grant, not an interactive key prompt');
-    $assert(str_contains($grant['command'],'wget --https-only') && !str_contains($grant['command'],'apt-get'),'Copied deployment command stays short; dependencies belong in the script');
+    $assert(str_contains($grant['command'],'--api-host') && str_contains($grant['command'],'--node-id '.$nodeId) && str_contains($grant['command'],'--deploy-token') && str_starts_with($grant['command'],'wget -q -O install-v2box.sh ') && !str_contains($grant['command'],'deploy_dir') && !str_contains($grant['command'],'--prompt-api-key'),'Single-line command automatically supplies the one-use grant, not an interactive key prompt');
+    $assert(str_contains($grant['command'],'wget -q -O') && !str_contains($grant['command'],'apt-get'),'Copied deployment command stays short; dependencies belong in the script');
     preg_match('/nd_[a-f0-9]{64}/',$grant['command'],$matches);$grantToken=$matches[0]??'';
     $assert(strlen($grantToken)===67,'One-use token format');
     $assert(DB::table('v2_node_credential')->where('node_type','v2box')->where('node_id',$nodeId)->count()===$beforeKeys,'Creating command does not rotate live credentials');

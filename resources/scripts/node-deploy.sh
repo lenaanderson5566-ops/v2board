@@ -1,5 +1,5 @@
 #!/bin/sh
-# One-use grant on stdin; no long-lived key in shell arguments or command history.
+# One-use grant via --deploy-token (legacy stdin supported); never a long-lived key.
 set +x
 set -eu
 __NODE_PREREQUISITES__
@@ -16,6 +16,7 @@ if [[ "${1:-}" == --install ]]; then
   exit
 fi
 requested_id=''
+grant=''
 if (($#)); then
   panel_url=''
   while (($#)); do
@@ -23,12 +24,13 @@ if (($#)); then
     case "$1" in
       --api-host) panel_url=$2;;
       --node-id) requested_id=$2;;
+      --deploy-token) grant=$2;;
       *) echo 'Unknown deployment argument' >&2; exit 1;;
     esac
     shift 2
   done
   [[ "$requested_id" =~ ^[1-9][0-9]*$ ]] || { echo 'Invalid node ID' >&2; exit 1; }
-  IFS= read -r grant
+  if [[ -z "$grant" ]]; then IFS= read -r grant; fi
 else
   # Compatibility with previously copied URL/grant stdin commands.
   IFS= read -r panel_url

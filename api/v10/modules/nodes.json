@@ -873,7 +873,7 @@
           "V2Box node communication"
         ],
         "security": [],
-        "description": "Static Linux sh entry point using official pinned v1.0.2 installer. Installs missing dependencies before re-executing bash. Default mode accepts --api-host/--node-id and reads a single-use grant on stdin, checks the returned identity, and refuses configured nodes. Legacy URL/grant stdin remains supported. --install forwards subsequent arguments to the official installer for manual installation or configuration-preserving upgrade.",
+        "description": "Static Linux sh entry point using official pinned v1.0.2 installer. Installs missing dependencies before re-executing bash. Default mode accepts --api-host/--node-id/--deploy-token for noninteractive installation (grant stdin remains compatible), checks the returned identity, and refuses configured nodes. Legacy URL/grant stdin remains supported. --install forwards subsequent arguments to the official installer for manual installation or configuration-preserving upgrade.",
         "responses": {
           "200": {
             "description": "Bash bootstrap script",

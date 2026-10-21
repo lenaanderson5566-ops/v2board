@@ -1,4 +1,5 @@
-import { defineConfig } from "vite";
+import { defineConfig, searchForWorkspaceRoot } from "vite";
+import { fileURLToPath } from "node:url";
 import react from "@vitejs/plugin-react";
 import { userBundleIsolation } from "./build-isolation";
 export default defineConfig({
@@ -30,5 +31,13 @@ export default defineConfig({
         manifest: true,
         rollupOptions: { input: { user: "index.html", admin: "admin.html" } },
     },
-    server: { proxy: { "/api": "http://localhost:8080" } },
+    server: {
+        proxy: { "/api": "http://localhost:8080" },
+        fs: {
+            allow: [
+                searchForWorkspaceRoot(process.cwd()),
+                fileURLToPath(new URL("../resources/scripts", import.meta.url)),
+            ],
+        },
+    },
 });

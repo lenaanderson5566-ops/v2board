@@ -43,18 +43,11 @@ final class NodeDeployment
             $prepare = <<<'SH'
 ( set -eu
 umask 077
-[ "$(id -u)" -eq 0 ] || { echo 'Run as root on Linux' >&2; exit 1; }
-if ! command -v curl >/dev/null || ! command -v bash >/dev/null; then
-  if command -v apt-get >/dev/null; then apt-get update -qq && DEBIAN_FRONTEND=noninteractive apt-get install -y -qq ca-certificates curl bash jq unzip coreutils
-  elif command -v apk >/dev/null; then apk add --no-cache ca-certificates curl bash jq unzip coreutils
-  elif command -v dnf >/dev/null; then dnf install -y ca-certificates curl bash jq unzip coreutils
-  elif command -v yum >/dev/null; then yum install -y ca-certificates curl bash jq unzip coreutils
-  else echo 'Install curl and bash first' >&2; exit 1; fi
-fi
-command -v curl >/dev/null && command -v bash >/dev/null || exit 1
+__NODE_PREREQUISITES__
 deploy_dir=$(mktemp -d)
 trap 'rm -rf -- "$deploy_dir"' EXIT
 SH;
+            $prepare=str_replace("__NODE_PREREQUISITES__",file_get_contents(resource_path('scripts/node-prerequisites.sh')),$prepare);
             $prepare=str_replace("\r\n","\n",$prepare);
             $command=$prepare."\n".'curl -fSL --proto \'=https\' --connect-timeout 10 --max-time 120 '.$quote($host.'/api/v10/public/node-deployment/bootstrap').' -o "$deploy_dir/deploy.sh" && bash "$deploy_dir/deploy.sh" <<\'V2BOX_DEPLOY\''."\n".$host."\n".$token."\nV2BOX_DEPLOY\n)";
             return ['command'=>$command,'expiresAt'=>gmdate('Y-m-d\TH:i:s\Z',$expires)];

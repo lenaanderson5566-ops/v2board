@@ -303,6 +303,7 @@ try {
     try {$credentials::disableLegacy((int)$user->id);$assert(false,'Unconfirmed migration cannot disable legacy');}
     catch(Symfony\Component\HttpKernel\Exception\HttpException $e){$assert($e->getStatusCode()===409,'Unconfirmed migration cannot disable legacy');}
     $install=(new App\Services\ServerService())->getAllServers();
+    foreach ($install as $server) if ($server['type']==='v2box') $assert(str_contains($server['install_command'],'apt-get install') && str_contains($server['install_command'],') && curl -fSL'),'Manual install command prepares dependencies before downloading');
     $assert(!str_contains(json_encode($install),'node-v10-test-secret'),'Install commands never expose global token');
     $freshSecret=json_decode($issued->getContent(),true)['data']['secret'];
     $assert($call('GET',$root.'/users',[],['HTTP_AUTHORIZATION'=>'Bearer '.$freshSecret])->getStatusCode()===200,'Replacement confirmed before global retirement');
@@ -326,6 +327,7 @@ try {
     $assert(!str_contains($grant['command'],'nk_') && !str_contains($grant['command'],'test-admin-credential-password') && str_contains($grant['command'],'mktemp -d'),'Command carries no long-lived key or admin password and uses private temp directory');
     $pipes=[];$syntax=proc_open(['bash','-n'],[['pipe','r'],['pipe','w'],['pipe','w']],$pipes);fwrite($pipes[0],$grant['command']);fclose($pipes[0]);stream_get_contents($pipes[1]);$parseError=stream_get_contents($pipes[2]);fclose($pipes[1]);fclose($pipes[2]);$assert(proc_close($syntax)===0,'Generated deployment command parses as shell: '.preg_replace('/nd_[a-f0-9]{64}/','[grant]',$parseError));
     $assert(!str_contains($grant['command'],"\r"),'Deployment command uses portable LF line endings');
+    $assert(str_contains($grant['command'],'ca-certificates curl bash jq unzip coreutils') && str_contains($grant['command'],'for tool in curl bash jq unzip sha256sum install'),'Copied deployment command installs every required dependency');
     preg_match('/^nd_[a-f0-9]{64}$/m',$grant['command'],$matches);$grantToken=$matches[0]??'';
     $assert(strlen($grantToken)===67,'One-use token format');
     $assert(DB::table('v2_node_credential')->where('node_type','v2box')->where('node_id',$nodeId)->count()===$beforeKeys,'Creating command does not rotate live credentials');

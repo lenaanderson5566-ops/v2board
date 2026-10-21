@@ -2,7 +2,7 @@ import { expect, it } from "vitest";
 import { anytlsPresets, paddingPreset } from "./anytls-padding";
 import { nodeSettingsInitial, nodeSettingsPayload, nodeSettingsFields } from "./node-settings";
 import { linkNode, nodeFields } from "./admin-linkage";
-import { nodeDeploymentCommand, nodeIPCommand, nodeReportCommand } from "./node-deployment";
+import { nodeDeploymentCommand, nodeIPCommand, nodeReportCommand, nodeUpgradeCommand } from "./node-deployment";
 it("saves all AnyTLS presets as native arrays without the UI-only selector", () => {
     for (const preset of anytlsPresets) {
         const linked = linkNode("padding_preset",preset.id,{protocol:"anytls"});
@@ -34,4 +34,13 @@ it("uses versioned network helpers included in the released backend", () => {
   expect(command).toContain("/v2box/v1.0.2/script/node-network.py");
   expect(command).not.toContain("/v2box/main/");
  }
+});
+
+it("prepares curl and all installer dependencies before the upgrade download", () => {
+ expect(nodeUpgradeCommand).toContain("apt-get install -y -qq ca-certificates curl bash jq unzip coreutils");
+ expect(nodeUpgradeCommand).toContain("apk add --no-cache");
+ expect(nodeUpgradeCommand).toContain("dnf install -y");
+ expect(nodeUpgradeCommand).toContain("yum install -y");
+ expect(nodeUpgradeCommand.indexOf("apt-get install")).toBeLessThan(nodeUpgradeCommand.indexOf("curl -fSL"));
+ expect(nodeUpgradeCommand).toContain(") && curl -fSL");
 });

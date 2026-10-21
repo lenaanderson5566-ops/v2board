@@ -10,6 +10,7 @@ export function TargetStatisticsSettings({
     const data = useData<Row>(admin("target-statistics"));
     const [saved, setSaved] = useState<boolean | null>(null);
     const [interval, setInterval] = useState<number | null>(null);
+    const [retention, setRetention] = useState<number | null>(null);
     const [busy, setBusy] = useState(false);
     const [error, setError] = useState("");
     return (
@@ -78,6 +79,59 @@ export function TargetStatisticsSettings({
                                 <option value={300}>5 分钟</option>
                             </select>
                         </label>
+                        <label className="field">
+                            <span>访问目标保留时间</span>
+                            <select
+                                aria-label="访问目标保留时间"
+                                disabled={busy}
+                                value={
+                                    retention ??
+                                    data.data?.settings?.retentionHours ??
+                                    1
+                                }
+                                onChange={async (event) => {
+                                    const hours = Number(event.target.value);
+                                    if (
+                                        hours <
+                                            (retention ??
+                                                data.data?.settings
+                                                    ?.retentionHours ??
+                                                1) &&
+                                        !window.confirm(
+                                            "缩短保留时间将清理超期访问目标统计，确认继续？",
+                                        )
+                                    )
+                                        return;
+                                    setBusy(true);
+                                    onBusyChange?.(true);
+                                    setError("");
+                                    try {
+                                        const result = await request(
+                                            admin("target-statistics/settings"),
+                                            { retentionHours: hours },
+                                        );
+                                        setRetention(
+                                            result.data.retentionHours,
+                                        );
+                                        data.reload();
+                                    } catch (e) {
+                                        setError((e as Error).message);
+                                    } finally {
+                                        setBusy(false);
+                                        onBusyChange?.(false);
+                                    }
+                                }}
+                            >
+                                <option value={1}>1 小时</option>
+                                <option value={6}>6 小时（推荐）</option>
+                                <option value={12}>12 小时</option>
+                                <option value={24}>24 小时</option>
+                            </select>
+                        </label>
+                        <p className="muted">
+                            日常建议 6 小时，跨天排障可选 24
+                            小时。延长后逐步积累，已过期数据不能恢复；缓存或数据库容量不足时统计可能不完整，请关注归档状态。
+                        </p>
                         {error && <p role="alert">{error}</p>}
                         <p className="muted">
                             周期越长，上报请求越少，数据更新越慢；高负载时可能因批次容量限制丢失更多统计。新版节点同步生效，旧节点沿用原周期。
@@ -86,7 +140,8 @@ export function TargetStatisticsSettings({
                 )}
             </State>
             <p className="muted">
-                默认关闭，仅支持新版 V2Box。保留最近 1 小时的域名、IP
+                默认关闭，仅支持新版 V2Box。Redis
+                接收上报，定时将五分钟汇总保存到数据库。按设置时间保留域名、IP
                 与流量，不记录网址路径、内容或来源 IP。
             </p>
             <p className="muted">
@@ -114,7 +169,7 @@ export function AdminTargetStatistics() {
     return (
         <Panel
             padded
-            title="节点访问目标 · 最近 1 小时"
+            title={`节点访问目标 · 最近 ${data?.settings?.retentionHours ?? 1} 小时`}
             actions={
                 <button onClick={report.reload} disabled={report.loading}>
                     刷新统计
@@ -125,6 +180,23 @@ export function AdminTargetStatistics() {
                 按原始域名或 IP 统计，不反向解析或替换嗅探名称。每 5
                 分钟汇总；连接数不等于网页访问次数。
             </p>
+            {data?.archive && (
+                <p className="muted" role="status">
+                    {!data.archive.ready
+                        ? "数据库迁移未完成，当前仅使用缓存。"
+                        : !data.archive.at
+                          ? "等待定时归档运行，请确认调度器正常。"
+                          : data.archive.full
+                            ? "统计数据库已达到容量上限，新增历史暂停归档。"
+                            : `历史汇总已写入数据库，占用 ${bytes(data.archive.usedBytes ?? 0)} / ${bytes(data.archive.budgetBytes ?? 0)}。`}
+                </p>
+            )}
+            {data?.truncated && (
+                <p role="status" className="muted">
+                    当前结果达到 6000
+                    项展示上限，仅显示部分访问目标。请按用户筛选后查询。
+                </p>
+            )}
             <AdminFilterBar
                 aria-label="访问目标筛选"
                 onSubmit={(event) => {

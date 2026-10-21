@@ -11,7 +11,7 @@ use Illuminate\Support\Facades\Cache;
 class NodeController extends Controller {
     public function targetStatisticsPolicy(Request $request) {
         $this->node($request);
-        return response()->json(['data'=>app(\App\Services\TargetStatistics::class)->policy()])->header('Cache-Control','no-store');
+        return response()->json(['data'=>app(\App\Services\TargetStatistics::class)->nodePolicy()])->header('Cache-Control','no-store');
     }
     public function targetStatistics(Request $request) {
         $node=$this->node($request);
@@ -53,7 +53,7 @@ class NodeController extends Controller {
         \App\Services\NodeRuntimeService::record('v2box', (int) $node->id, $configuration, 'v10');
         $response = $this->cached($request, $configuration);
         if (in_array('target-statistics-policy-v2', explode(',', $request->header('X-Node-Capabilities', '')), true)) {
-            try { $response->header('X-Target-Statistics-Policy', json_encode(app(\App\Services\TargetStatistics::class)->policy())); }
+            try { $response->header('X-Target-Statistics-Policy', json_encode(app(\App\Services\TargetStatistics::class)->nodePolicy())); }
             catch (\Throwable $e) { /* Optional telemetry must not interrupt configuration. */ }
         }
         return $response;

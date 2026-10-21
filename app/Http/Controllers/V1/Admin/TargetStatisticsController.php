@@ -15,7 +15,7 @@ final class TargetStatisticsController extends Controller
     public function settings(Request $request, TargetStatistics $statistics)
     {
         abort_unless($request->isJson(),415);
-        $input=$request->validate(['enabled'=>'required_without:reportIntervalSeconds|boolean','reportIntervalSeconds'=>'required_without:enabled|integer|in:30,60,120,300']);
-        return response()->json(['data'=>$statistics->configure(array_key_exists('enabled',$input) ? (bool)$input['enabled'] : null, isset($input['reportIntervalSeconds']) ? (int)$input['reportIntervalSeconds'] : null)]);
+        $input=$request->validate(['enabled'=>'required_without_all:reportIntervalSeconds,retentionHours|boolean','reportIntervalSeconds'=>'required_without_all:enabled,retentionHours|integer|in:30,60,120,300','retentionHours'=>'required_without_all:enabled,reportIntervalSeconds|integer|in:1,6,12,24']);
+        return response()->json(['data'=>$statistics->configure(array_key_exists('enabled',$input) ? (bool)$input['enabled'] : null, isset($input['reportIntervalSeconds']) ? (int)$input['reportIntervalSeconds'] : null, isset($input['retentionHours']) ? (int)$input['retentionHours'] : null)]);
     }
 }

@@ -38,33 +38,6 @@ export const legacyAdminMenu = [
     ["notification-settings", "通知设置", "speech", "系统设置"],
     ["dictionary", "字典维护", "notebook", "系统设置"],
 ] as const;
-// Keep old labels and common task terms searchable after regrouping.
-const adminMenuKeywords: Record<string, string> = {
-    "site-settings": "基础信息 浏览器访问 浏览器引导 页脚 HTML",
-    "notification-settings": "邮件 Telegram 机器人 禁发名单",
-    "account-settings": "注册 登录 用户安全 Passkey 删除账户",
-    "access-logs": "登录 订阅请求 连接 风控命中 日志",
-    "access-blacklist": "IP UA 黑名单",
-    overview: "运营概览 系统状态 队列 风控概览 访问与转化 访问统计 漏斗 转化率",
-    "log-targets": "节点 域名 IP 访问目标 流量",
-    plans: "订阅管理 订阅套餐 套餐翻译 订阅多语言 价格 币种 汇率",
-    payments: "支付配置 支付渠道 支付方式 支付接口 充值规则 充值奖励 余额",
-    groups: "权限组管理 服务器",
-    invitations: "邀请管理 佣金规则 审核 复核 邀请邮件",
-    banners: "Banner 管理 轮播图",
-    knowledge: "知识库管理 帮助中心",
-    coupons: "优惠码 活动 发放 券包",
-    nodes: "服务器 DDNS 域名 流量预算 Lightsail 节点通讯",
-    clients:
-        "FastAI 专用客户端 UA 最低版本 下载 服务入口 服务域名 面板地址 访问与版本策略",
-    "client-releases": "第三方客户端管理 推荐 下载",
-    "access-logs-subscriptions": "订阅日志",
-    "access-logs-risk": "风控命中",
-    "mail-logs": "邮件日志 退信 投诉 送达",
-    "notification-blocklist": "邮件黑名单 禁发邮箱 风控与黑名单",
-    "log-settings": "日志设置 清理 保留期 隐私 访问统计 采集",
-    security: "账户安全 MFA TOTP 恢复码",
-};
 export function adminPage(path: string): string {
     return path || "overview";
 }
@@ -80,8 +53,6 @@ export function AdminShell({
     children: ReactNode;
     logout: () => void;
 }) {
-    const [navSearch, setNavSearch] = useState("");
-    const searchInput = useRef<HTMLInputElement>(null);
     const mobileToggle = useRef<HTMLButtonElement>(null);
     const [offline, setOffline] = useState(() => !navigator.onLine);
     useEffect(() => {
@@ -96,34 +67,14 @@ export function AdminShell({
     const canLeave = () =>
         !document.querySelector('[data-unsaved="true"]') ||
         window.confirm("有尚未保存的修改，确认离开当前页面？");
-    const searchTerms = navSearch
-        .trim()
-        .toLowerCase()
-        .split(/\s+/)
-        .filter(Boolean);
-    const visibleMenu = legacyAdminMenu.filter(([key, label, , group]) => {
-        const searchable =
-            `${key} ${label} ${group} ${adminMenuKeywords[key] || ""}`.toLowerCase();
-        return searchTerms.every((term) => searchable.includes(term));
-    });
     const [open, setOpen] = useState(false);
     const [menu, setMenu] = useState(false);
     useEffect(() => {
         setOpen(false);
         setMenu(false);
-        setNavSearch("");
     }, [current]);
     useEffect(() => {
         const escape = (e: KeyboardEvent) => {
-            if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "k") {
-                if (
-                    document.querySelector('[role="dialog"][aria-modal="true"]')
-                )
-                    return;
-                e.preventDefault();
-                setOpen(true);
-                requestAnimationFrame(() => searchInput.current?.focus());
-            }
             if (e.key === "Escape") {
                 setMenu(false);
                 setOpen(false);
@@ -223,38 +174,14 @@ export function AdminShell({
                 </div>
                 <div className="content-side">
                     <ul className="nav-main">
-                        <li className="admin-nav-search">
-                            <input
-                                ref={searchInput}
-                                type="search"
-                                aria-keyshortcuts="Control+k Meta+k"
-                                aria-label="搜索后台功能"
-                                placeholder="搜索功能… Ctrl / ⌘ K"
-                                value={navSearch}
-                                onChange={(e) => setNavSearch(e.target.value)}
-                            />
-                        </li>
-                        {visibleMenu.length === 0 && (
-                            <li className="admin-nav-empty" role="status">
-                                没有匹配的功能
-                                <button
-                                    type="button"
-                                    onClick={() => {
-                                        setNavSearch("");
-                                        searchInput.current?.focus();
-                                    }}
-                                >
-                                    清除搜索
-                                </button>
-                            </li>
-                        )}
-                        {visibleMenu.map(([key, label, icon, group], i) => (
+                        {legacyAdminMenu.map(([key, label, icon, group], i) => (
                             <li key={key} className="nav-main-item">
-                                {group && group !== visibleMenu[i - 1]?.[3] && (
-                                    <div className="nav-main-heading">
-                                        {group}
-                                    </div>
-                                )}
+                                {group &&
+                                    group !== legacyAdminMenu[i - 1]?.[3] && (
+                                        <div className="nav-main-heading">
+                                            {group}
+                                        </div>
+                                    )}
                                 <a
                                     className={`nav-main-link ${(["overview-risk", "overview-analytics", "overview-system"].includes(current) ? "overview" : current) === key ? "active" : ""}`}
                                     aria-current={

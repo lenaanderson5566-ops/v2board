@@ -1390,27 +1390,6 @@ body[data-console="admin"]
     outline-offset: 3px;
 }
 
-body[data-console="admin"] .admin-nav-search {
-    padding: 4px 4px 12px;
-}
-body[data-console="admin"] .admin-nav-search input {
-    width: 100%;
-    box-sizing: border-box;
-    border-radius: 8px;
-    background: #fff;
-    border: 1px solid var(--border);
-    color: inherit;
-    padding: 9px 12px;
-}
-body[data-console="admin"] .admin-nav-search input::placeholder {
-    color: inherit;
-    opacity: 0.65;
-}
-body[data-console="admin"] .admin-nav-empty {
-    padding: 12px 20px;
-    opacity: 0.7;
-}
-
 body[data-console="admin"] .lightsail-content {
     padding: 20px;
 }
@@ -2039,7 +2018,6 @@ body[data-console="admin"] .admin-skip-link { position: fixed; top: -80px; left:
 body[data-console="admin"] .admin-skip-link:focus { top: 12px; }
 body[data-console="admin"] .admin-page-heading { flex: 1; min-width: 0; display: flex; align-items: center; gap: 12px; }
 body[data-console="admin"] .admin-page-group { font-size: 12px; color: var(--muted,#64748b); padding-right: 12px; border-right: 1px solid var(--border,#e2e8f0); white-space: nowrap; }
-body[data-console="admin"] .admin-nav-empty button { display: block; margin-top: 8px; }
 body[data-console="admin"] .admin-refresh-note { padding: 10px 16px; border-bottom: 1px solid var(--border,#e2e8f0); color: var(--muted,#64748b); font-size: 12px; }
 body[data-console="admin"] .admin-stale-content { opacity: .65; }
 body[data-console="admin"] .admin-stale-warning { display: block; margin: 6px 0; }

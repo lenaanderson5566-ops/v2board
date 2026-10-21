@@ -120,6 +120,7 @@ return [
     |
     */
 
+    'target_statistics_database_budget_mb' => (int)env('TARGET_STATISTICS_DATABASE_BUDGET_MB', 256),
     'target_statistics_budget_mb' => (int)env('TARGET_STATISTICS_CACHE_BUDGET_MB', 64),
 
     'prefix' => $cachePrefix,

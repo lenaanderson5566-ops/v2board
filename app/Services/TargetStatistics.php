@@ -17,34 +17,41 @@ final class TargetStatistics
     {
         $saved = json_decode(RiskSetting::where('key', self::SETTING)->value('value') ?? '{}', true);
         return ['enabled'=>($saved['enabled'] ?? false) === true,
+            'retentionHours'=>in_array($saved['retentionHours'] ?? null,[1,6,12,24],true) ? $saved['retentionHours'] : 1,
             'version'=>$saved['version'] ?? '00000000-0000-0000-0000-000000000000', 'leaseSeconds'=>120,
             'reportIntervalSeconds'=>in_array($saved['reportIntervalSeconds'] ?? null, [30,60,120,300], true) ? $saved['reportIntervalSeconds'] : 60];
     }
 
     public function policy(): array
     {
-        if ($policy = $this->store->policy()) return $policy + ['reportIntervalSeconds'=>60];
+        if ($policy = $this->store->policy()) return $policy + ['reportIntervalSeconds'=>60,'retentionHours'=>1];
         return $this->store->repository()->lock('policy-load', 15)->block(5, function () {
             $policy = $this->store->policy() ?? $this->savedPolicy();
             $this->store->publishPolicy($policy);
-            return $policy + ['reportIntervalSeconds'=>60];
+            return $policy + ['reportIntervalSeconds'=>60,'retentionHours'=>1];
         });
     }
 
-    public function configure(?bool $enabled = null, ?int $reportIntervalSeconds = null): array
+    public function nodePolicy(): array { return array_intersect_key($this->policy(), array_flip(['enabled','version','leaseSeconds','reportIntervalSeconds'])); }
+
+    public function configure(?bool $enabled = null, ?int $reportIntervalSeconds = null, ?int $retentionHours = null): array
     {
-        return $this->store->repository()->lock('policy-load', 15)->block(5, function () use ($enabled, $reportIntervalSeconds) {
+        return $this->store->repository()->lock('policy-load', 15)->block(5, function () use ($enabled, $reportIntervalSeconds, $retentionHours) {
             $policy = $this->savedPolicy();
+            $retentionHours ??= $policy['retentionHours'];
+            abort_unless(in_array($retentionHours,[1,6,12,24],true),422);
             $enabled ??= $policy['enabled'];
             $reportIntervalSeconds ??= $policy['reportIntervalSeconds'];
             abort_unless(in_array($reportIntervalSeconds,[30,60,120,300],true),422);
-            if ($policy['enabled'] !== $enabled || $policy['reportIntervalSeconds'] !== $reportIntervalSeconds) {
+            if ($policy['enabled'] !== $enabled || $policy['reportIntervalSeconds'] !== $reportIntervalSeconds || $policy['retentionHours'] !== $retentionHours) {
                 if ($policy['enabled'] !== $enabled) $policy['version'] = (string)Str::uuid();
+                $policy['retentionHours'] = $retentionHours;
                 $policy['enabled'] = $enabled;
                 $policy['reportIntervalSeconds'] = $reportIntervalSeconds;
                 RiskSetting::updateOrCreate(['key'=>self::SETTING], ['value'=>json_encode($policy)]);
             }
             $this->store->publishPolicy($policy);
+            app(TargetStatisticsArchive::class)->shorten($policy['retentionHours']);
             return $policy;
         });
     }
@@ -101,12 +108,12 @@ final class TargetStatistics
         })->all();
         $rows = []; $dropped = 0;
         if ($policy['enabled'] && in_array($nodeId, array_column($nodes,'id'), true)) {
-            $state = $this->store->report($nodeId, $policy['version']);
+            $state = $this->store->report($nodeId, $policy['version'], $policy['retentionHours'], $userId);
             $rows = array_values(array_filter($state['rows'], fn($row)=>!$userId || $row['userId'] === $userId));
             $dropped = $state['dropped'];
         }
         usort($rows, fn($a,$b)=>($b['uploadBytes']+$b['downloadBytes']) <=> ($a['uploadBytes']+$a['downloadBytes']));
         return ['settings'=>$policy, 'nodes'=>$nodes, 'rows'=>array_slice($rows,($page-1)*25,25),
-            'total'=>count($rows), 'page'=>$page, 'pageSize'=>25, 'dropped'=>$dropped, 'usage'=>$this->store->usage()];
+            'truncated'=>$state['truncated'] ?? false, 'total'=>count($rows), 'page'=>$page, 'pageSize'=>25, 'dropped'=>$dropped, 'usage'=>$this->store->usage(), 'archive'=>app(TargetStatisticsArchive::class)->status()];
     }
 }

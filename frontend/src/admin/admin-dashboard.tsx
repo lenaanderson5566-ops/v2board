@@ -1,3 +1,4 @@
+import "./admin-dashboard.css";
 import { AdminTabs } from "./AdminChoices";
 import { adminUserLabel } from "./admin-user-label";
 import { System } from "./admin";
@@ -7,7 +8,7 @@ const AdminAnalytics = lazy(() =>
     import("./AdminAnalytics").then((m) => ({ default: m.AdminAnalytics })),
 );
 import { admin, money, type Row } from "../shared/api";
-import { Panel, State, Table, Reload, useData } from "../shared/ui";
+import { Panel, State, Table, Reload, Metric, useData } from "../shared/ui";
 
 function usageBytes(value: unknown) {
     let bytes = Math.max(0, Number(value) || 0);
@@ -27,7 +28,7 @@ export function Overview({
 }) {
     const [tab, setTab] = useState(initialTab);
     return (
-        <>
+        <div className="dashboard-workspace">
             <AdminTabs
                 label="仪表盘视图"
                 value={tab}
@@ -57,7 +58,7 @@ export function Overview({
                     <IncomeOverview />
                 )}
             </AdminTabs>
-        </>
+        </div>
     );
 }
 function IncomeOverview() {
@@ -65,16 +66,16 @@ function IncomeOverview() {
     const health = useData<Row>(admin("system/getSystemStatus"));
     const orders = useData<Row[]>(admin("stat/getOrder"));
     const todayNodes = useData<Row[]>(admin("stat/getServerTodayRank"));
-    const lastNodes = useData<Row[]>(admin("stat/getServerLastRank"));
     const todayUsers = useData<Row[]>(admin("stat/getUserTodayRank"));
-    const lastUsers = useData<Row[]>(admin("stat/getUserLastRank"));
     const stats = stat.data || {};
 
     return (
         <>
             {health.data && (!health.data.horizon || !health.data.schedule) && (
                 <div className="alert">
-                    <a href="#/overview-system">队列或定时任务异常，查看系统状态</a>
+                    <a href="#/overview-system">
+                        队列或定时任务异常，查看系统状态
+                    </a>
                 </div>
             )}
             {Number(stats.ticket_pending_total) > 0 && (
@@ -90,6 +91,7 @@ function IncomeOverview() {
                 </div>
             )}
             <Panel
+                title="经营核心指标"
                 actions={
                     <Reload
                         loading={[
@@ -97,9 +99,7 @@ function IncomeOverview() {
                             health,
                             orders,
                             todayNodes,
-                            lastNodes,
                             todayUsers,
-                            lastUsers,
                         ].some((source) => source.loading)}
                         onClick={() => {
                             [
@@ -107,50 +107,31 @@ function IncomeOverview() {
                                 health,
                                 orders,
                                 todayNodes,
-                                lastNodes,
                                 todayUsers,
-                                lastUsers,
                             ].forEach((source) => source.reload());
                         }}
                     />
                 }
             >
                 <State {...stat} retry={stat.reload}>
-                    <div className="legacy-stat-main">
+                    <div className="dashboard-core-metrics">
                         {[
-                            ["近 10 分钟活跃用户", stats.online_user ?? "—"],
                             ["今日收入", money(stats.day_income || 0)],
-                            ["今日新增用户", stats.day_register_total ?? "—"],
-                        ].map(([label, value]) => (
-                            <div key={String(label)}>
-                                <span>{label}</span>
-                                <strong>{value}</strong>
-                            </div>
-                        ))}
-                    </div>
-                    <div className="legacy-stat-extra">
-                        {[
                             ["本月收入", money(stats.month_income || 0)],
                             ["上月收入", money(stats.last_month_income || 0)],
-                            ["本年度收入", money(stats.year_income || 0)],
-                            ["上年度收入", money(stats.last_year_income || 0)],
-                            [
-                                "上年度同期收入",
-                                money(stats.last_year_same_period_income || 0),
-                            ],
-                            ["本月新增用户", stats.month_register_total || 0],
+                            ["近 10 分钟活跃用户", stats.online_user ?? "—"],
+                            ["今日新增用户", stats.day_register_total ?? "—"],
+                            ["本月新增用户", stats.month_register_total ?? "—"],
                         ].map(([label, value]) => (
-                            <div key={String(label)}>
-                                {value}
-                                <span>{label}</span>
-                            </div>
+                            <Metric
+                                key={String(label)}
+                                label={String(label)}
+                                value={value}
+                            />
                         ))}
                     </div>
                 </State>
-                <p className="pad muted">
-                    收入按实际支付时间统计（CNY）；上年度同期为去年年初至去年同月同日同一时刻，闰日按
-                    2 月末计算。
-                </p>
+                <p className="pad muted">收入按实际支付时间统计（CNY）。</p>
                 <State {...orders} retry={orders.reload}>
                     <HistoryChart
                         data={(orders.data || []).filter(
@@ -229,9 +210,7 @@ function IncomeOverview() {
             <div className="legacy-ranks">
                 {[
                     ["今日节点流量排行", todayNodes, "server_name"],
-                    ["昨日节点流量排行", lastNodes, "server_name"],
                     ["今日用户流量排行", todayUsers, "email"],
-                    ["昨日用户流量排行", lastUsers, "email"],
                 ].map(([title, result, key]) => {
                     const d = result as typeof todayNodes;
                     return (

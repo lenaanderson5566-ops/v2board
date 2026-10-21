@@ -25,6 +25,7 @@ $call=function($method,$path,$body=[],$headers=[])use($kernel,&$nodeId){
     $request=Request::create($path,$method,[],[],[],$server,json_encode($body));
     return $kernel->handle($request);
 };
+(require __DIR__.'/../database/migrations/2026_10_21_000001_create_node_target_snapshots.php')->up();
 DB::beginTransaction();
 try {
     $base=['group_id'=>[999997],'name'=>'V10 node test','host'=>'example.test','port'=>'443','server_port'=>443,'listen_ip'=>'0.0.0.0','protocol'=>'vless','tls'=>0,'network'=>'tcp','network_settings'=>[],'encryption_settings'=>[],'disable_sni'=>0,'zero_rtt_handshake'=>0,'rate'=>'1','show'=>1];
@@ -150,6 +151,53 @@ try {
     $usage=$store->usage();
     $assert($usage['acceptedBatches']===1 && $usage['duplicateBatches']===1 && $usage['usedBytes']>0,'Capacity and batch metrics exposed');
     $prepared=[['key'=>hash('sha256','exact'),'meta'=>json_encode(['userId'=>1,'type'=>'domain','target'=>'exact.test']), 'connections'=>1,'uploadBytes'=>1000000000000000,'downloadBytes'=>0]];
+    $assert($stats->policy()['retentionHours']===1,'Existing retention remains one hour');
+    $longPolicy=$stats->configure(null,null,24);
+    $assert($longPolicy['version']===$policy['version'],'Retention change preserves generation');
+    $oldTime=intdiv(time(),300)*300-7200;
+    $store->ingest(999997,$policy['version'],(string)Illuminate\Support\Str::uuid(),'retention',$prepared,0,100,$oldTime);
+    $oldKey=$store->prefix().'999997:'.$oldTime;
+    $assert($store->connection()->ttl($oldKey)>75000,'Extended retention uses physical Redis TTL');
+    $assert(count($store->report(999997,$policy['version'],24)['rows'])===1,'Report includes buckets older than one hour');
+    $assert(count($store->report(999997,$policy['version'],1)['rows'])===0,'Short window excludes older buckets');
+    $archive=app(App\Services\TargetStatisticsArchive::class);
+    $archiveResult=$archive->flush();
+    $assert($archiveResult['savedBuckets']>=1,'Completed bucket archived in SQL: '.json_encode($archiveResult));
+    $assert(!$store->connection()->exists($oldKey),'Archived bucket releases Redis payload');
+    $existingSnapshot=DB::table(App\Services\TargetStatisticsArchive::TABLE)->where('node_id',999997)->first();
+    DB::table(App\Services\TargetStatisticsArchive::TABLE)->where('id',$existingSnapshot->id)->update(['payload_bytes'=>$archive->budget()]);
+    $store->ingest(999995,$policy['version'],(string)Illuminate\Support\Str::uuid(),'database-budget',$prepared,0,100,$oldTime);
+    $blockedArchive=$archive->flush();
+    $assert($blockedArchive['full'] && $store->connection()->exists($store->prefix().'999995:'.$oldTime),'Database capacity pressure retains Redis data');
+    DB::table(App\Services\TargetStatisticsArchive::TABLE)->where('id',$existingSnapshot->id)->update(['payload_bytes'=>$existingSnapshot->payload_bytes]);
+
+    $assert(count($store->report(999997,$policy['version'],24)['rows'])===1,'SQL history remains visible after Redis handoff');
+    $archive->flush();
+    $assert(DB::table(App\Services\TargetStatisticsArchive::TABLE)->where('node_id',999997)->count()===1,'Archive retry does not duplicate snapshots');
+    // Simulate a crash after SQL commit and before Redis release.
+    $payload=json_decode(DB::table(App\Services\TargetStatisticsArchive::TABLE)->where('node_id',999997)->value('payload'),true);
+    $store->connection()->hmset($oldKey,$payload);$store->connection()->expire($oldKey,3600);
+    $assert($store->report(999997,$policy['version'],24)['rows'][0]['uploadBytes']===1000000000000000,'SQL and Redis overlap never double counts');
+    $store->connection()->del($oldKey);
+
+    $assert(count($store->report(999997,$policy['version'],24,999999)['rows'])===0,'User filter applies before aggregation');
+    $usedBefore=$store->usage()['usedBytes'];
+    $stats->configure(null,null,1);
+    $assert(!$store->connection()->exists($oldKey),'Shorter retention deletes expired payload immediately');
+    $assert($store->usage()['usedBytes']<=$usedBefore,'Shortening does not increase ledger capacity');
+    $assert(DB::table(App\Services\TargetStatisticsArchive::TABLE)->where('node_id',999997)->count()===0,'Shortening prunes expired database snapshots');
+    $stats->configure(null,null,24);
+    $assert(count($store->report(999997,$policy['version'],24)['rows'])===0,'Increasing retention cannot restore expired payload');
+    $assert(!array_key_exists('retentionHours',$stats->nodePolicy()),'Storage retention is not sent to node policy protocol');
+    $bulk=[];
+    for($i=0;$i<500;$i++) $bulk[]=['key'=>hash('sha256','cap'.$i),'meta'=>json_encode(['userId'=>1,'type'=>'domain','target'=>'cap'.$i.'.test']),'connections'=>1,'uploadBytes'=>1,'downloadBytes'=>0];
+    for($j=0;$j<13;$j++) {
+        $records=array_map(function($row)use($j){$row['key']=hash('sha256',$row['key'].$j);$meta=json_decode($row['meta'],true);$meta['target']=$j.'.'.$meta['target'];$row['meta']=json_encode($meta);return $row;},$bulk);
+        $store->ingest(999996,$policy['version'],(string)Illuminate\Support\Str::uuid(),'cap'.$j,$records,0,100,intdiv(time(),300)*300-3600-$j*300);
+    }
+    $bounded=$store->report(999996,$policy['version'],24);
+    $assert(count($bounded['rows'])===6000 && $bounded['truncated'],'Long report enforces aggregate bound and explicit partial marker');
+    $stats->configure(null,null,1);
     $fixedNow=intdiv(time(),300)*300;
     $stableId=(string)Illuminate\Support\Str::uuid();
     $store->ingest(999999,$policy['version'],$stableId,'hash',$prepared,0,100,$fixedNow-300);
@@ -248,6 +296,14 @@ try {
     }
     foreach([0,10,45,301,-30,60.5,'invalid',null] as $seconds) { $invalidResponse=$intervalCall($token,['reportIntervalSeconds'=>$seconds]);$assert($invalidResponse->getStatusCode()===422,'Invalid cadence rejected '.json_encode($seconds).': '.$invalidResponse->getStatusCode().' '.$invalidResponse->getContent()); }
     $assert($stats->policy()['reportIntervalSeconds']===300,'Invalid save preserves previous cadence');
+    foreach([1,6,12,24] as $hours) {
+        $r=$intervalCall($token,['retentionHours'=>$hours]);
+        $assert($r->getStatusCode()===200 && json_decode($r->getContent(),true)['data']['retentionHours']===$hours,'Retention-only settings accepted');
+    }
+    foreach([0,2,25,168,null,6.5] as $hours) $assert($intervalCall($token,['retentionHours'=>$hours])->getStatusCode()===422,'Invalid retention rejected');
+    $assert($intervalCall('',['retentionHours'=>6])->getStatusCode()===403,'Anonymous cannot alter retention');
+    $stats->configure(null,null,1);
+
     $assert($intervalCall($token,[])->getStatusCode()===422,'Empty settings update rejected');
     $stats->configure(true);
     $afterToggle=$stats->configure(false);

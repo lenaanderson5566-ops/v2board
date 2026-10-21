@@ -277,3 +277,31 @@
 .admin-deployment-card > p {
     line-height: 1.7;
 }
+
+/* Match shared drawer content gutters; cards must not touch the drawer edges. */
+.node-deployment-drawer .admin-deployment {
+    padding: 20px 24px;
+    box-sizing: border-box;
+}
+.node-deployment-drawer .admin-deployment > .admin-workspace-tabs {
+    min-width: 0;
+}
+.node-deployment-drawer .admin-deployment .section-tabs {
+    margin: 0 0 16px;
+}
+.node-deployment-drawer .admin-deployment-card {
+    margin: 16px 0;
+    background: transparent;
+    border-radius: 8px;
+}
+.node-deployment-drawer .admin-deployment-tools {
+    border-radius: 8px;
+}
+.node-deployment-drawer .admin-deployment textarea {
+    max-width: 100%;
+}
+@media (max-width: 760px) {
+    .node-deployment-drawer .admin-deployment {
+        padding: 16px;
+    }
+}

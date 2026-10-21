@@ -1,3 +1,11 @@
+## 核心仪表盘与访问目标数据库汇总（2026-10-21）
+
+前端相关四模块 147 项通过；数据库状态接入后的报表/导航两模块 120 项通过。移除搜索和年度/昨日重复指标，保留设置、分页、部署授权及导航安全断言。TypeScript 与生产构建通过，资源已更新。
+
+隔离 SQLite 项目与独立 Redis 前缀执行 node-v10.php，215 项通过；新增保留时间校验、物理过期、缩短释放、延长不恢复、6000 项聚合上限、数据库归档释放缓存、重复归档、交接重叠不重复计数、数据库预算不足保留缓存等检查。最初归档测试发现 Redis 连接前缀重复，修正逻辑键转换后通过。数据库保存五分钟 JSON 汇总快照，不在节点上报请求中写 SQL；迁移与新安装表结构同步。
+
+update-script.sh 的 26 个隔离升级场景通过，并断言新增快照表迁移执行。未在生产环境执行迁移，未进行真实浏览器视觉验收。日志：storage/app/test-organization/core-dashboard-{final-tests,build}.log、target-archive-{api,frontend,update}.log。
+
 ## 低频设置分类回归（2026-10-21）
 
 复用 admin-workspaces 增加业务归属、侧栏高亮、设置标签直达、搜索关键词与不请求其他业务页数据检查；退役地址断言增加原充值规则和服务入口路径。admin-workspaces、Payments、AnalyticsCollectionSettings 共 121 项通过。TypeScript 与生产构建通过，发布资源更新。日志：storage/app/test-organization/admin-settings-consolidation-{tests,build}.log。

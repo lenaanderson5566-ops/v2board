@@ -37,6 +37,7 @@ class Kernel extends ConsoleKernel
             $schedule->command('system:daily',[$task])->everyMinute()->withoutOverlapping(60)->runInBackground();
         }
         // traffic
+        $schedule->command('nodes:archive-targets')->everyMinute()->withoutOverlapping(2)->runInBackground();
         $schedule->command('traffic:process-batches')->everyMinute()->withoutOverlapping(10);
         $schedule->command('credits:expire')->everyMinute()->withoutOverlapping();
         $schedule->command('traffic:update')->everyMinute()->withoutOverlapping();

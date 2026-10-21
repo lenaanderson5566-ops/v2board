@@ -791,3 +791,16 @@ CREATE TABLE IF NOT EXISTS `v2_node_credential` (
   PRIMARY KEY (`id`),
   KEY `v2_node_credential_node_type_node_id_index` (`node_type`,`node_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS `v2_node_target_snapshot` (
+  `id` varchar(64) NOT NULL,
+  `node_id` int unsigned NOT NULL,
+  `version` varchar(36) NOT NULL,
+  `bucket_at` bigint unsigned NOT NULL,
+  `expires_at` bigint unsigned NOT NULL,
+  `payload_bytes` int unsigned NOT NULL,
+  `payload` longtext NOT NULL,
+  PRIMARY KEY (`id`),
+  KEY `node_target_lookup` (`node_id`,`version`,`bucket_at`),
+  KEY `v2_node_target_snapshot_expires_at_index` (`expires_at`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

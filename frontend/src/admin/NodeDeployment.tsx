@@ -72,6 +72,7 @@ export function NodeDeployment({
         <Modal
             title={`${node.name} · 部署与接入`}
             variant="drawer"
+            className="node-deployment-drawer"
             wide
             close={() => {
                 if (!busy) close();

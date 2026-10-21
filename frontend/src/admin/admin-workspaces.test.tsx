@@ -116,10 +116,12 @@ afterEach(() => {
     vi.unstubAllGlobals();
     vi.clearAllMocks();
 });
-it("shows yearly income and lazily switches to risk without removed dashboard blocks", async () => {
+it("shows core income and lazily switches to risk without removed dashboard blocks", async () => {
     render(<Overview />);
-    expect(await screen.findByText("本年度收入")).toBeTruthy();
-    expect(screen.getByText("上年度同期收入")).toBeTruthy();
+    expect(await screen.findByText("本月收入")).toBeTruthy();
+    expect(screen.queryByText("上年度同期收入")).toBeNull();
+    expect(screen.queryByText("本年度收入")).toBeNull();
+    expect(api.request.mock.calls.some(([path]) => /get(Server|User)LastRank/.test(path))).toBe(false);
     expect(screen.queryByText("上月佣金支出")).toBeNull();
     expect(screen.queryByText("近 31 天运营记录")).toBeNull();
     expect(screen.queryByText("系统设置")).toBeNull();
@@ -604,7 +606,7 @@ it("refreshes every overview section from one action", async () => {
     api.request.mockClear();
     fireEvent.click(refresh);
     await waitFor(() => {
-        for (const path of ["stat/getOverride", "system/getSystemStatus", "stat/getOrder", "stat/getServerTodayRank", "stat/getServerLastRank", "stat/getUserTodayRank", "stat/getUserLastRank"]) {
+        for (const path of ["stat/getOverride", "system/getSystemStatus", "stat/getOrder", "stat/getServerTodayRank", "stat/getUserTodayRank"]) {
             expect(api.request.mock.calls.some(([url]) => String(url).includes(path))).toBe(true);
         }
     });
@@ -616,7 +618,7 @@ it("groups target logs in diagnostics and loads dashboard analytics only on sele
     const { adminPageFixture } = await import("./test-support/page-fixtures");
     api.request.mockImplementation(async (path: string) => adminPageFixture(path));
     render(<Overview />);
-    await screen.findByText("本年度收入");
+    await screen.findByText("本月收入");
     expect(api.request.mock.calls.some(([path]) => path.includes("analytics/report"))).toBe(false);
     fireEvent.mouseDown(screen.getByRole("tab", {name: "访问与转化"}), {button: 0, ctrlKey: false});
     await waitFor(() => expect(api.request.mock.calls.some(([path]) => path.includes("analytics/report"))).toBe(true));
@@ -658,7 +660,7 @@ it.each(["service-entrypoints","deposit-settings","settings","config/system","da
 it.each([
     ["payment-deposit","payments","支付与充值","充值规则","充值"],
     ["client-entrypoints","clients","客户端访问与接入","服务入口","服务入口"]
-])("keeps low-frequency %s inside its business workspace and searchable", async (route,root,title,tab,keyword) => {
+])("keeps low-frequency %s inside its business workspace without sidebar search", async (route,root,title,tab) => {
     const {default: AdminWorkspace} = await import("./admin-workspace");
     const {adminPageFixture} = await import("./test-support/page-fixtures");
     api.request.mockImplementation(async (path:string)=>adminPageFixture(path));
@@ -666,7 +668,7 @@ it.each([
     render(<AdminWorkspace path={route} user={{email:"preview@example.com"}} logout={()=>{}}/>);
     expect(screen.getByRole("heading",{level:1,name:title})).toBeTruthy();
     expect(await screen.findByRole("tab",{name:tab,selected:true})).toBeTruthy();
-    fireEvent.change(screen.getByRole("searchbox",{name:"搜索后台功能"}),{target:{value:keyword}});
+    expect(screen.queryByRole("searchbox",{name:"搜索后台功能"})).toBeNull();
     const link=within(screen.getByRole("navigation",{name:"后台导航"})).getByRole("link",{name:title});
     expect(link.getAttribute("href")).toBe("#/"+root);
     expect(api.request.mock.calls.some(([path])=>path.includes("payment/fetch") || path.includes("client/fetch"))).toBe(false);

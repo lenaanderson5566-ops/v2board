@@ -196,3 +196,17 @@ it("filters settings categories without hiding the current editor", async () => 
     fireEvent.change(search, {target: {value: ""}});
     expect(screen.getByRole("button", {name: "安全与注册"})).toBeTruthy();
 });
+
+it("saves target retention independently and confirms shortening", async () => {
+    api.request.mockImplementation(async (_path,body)=>({data:body ? {retentionHours:body.retentionHours} : {settings:{enabled:false,retentionHours:6}}}));
+    render(<TargetStatisticsSettings/>);
+    const field=await screen.findByLabelText("访问目标保留时间");
+    const confirm=vi.spyOn(window,"confirm").mockReturnValue(false);
+    try {
+        fireEvent.change(field,{target:{value:"1"}});
+        expect((field as HTMLSelectElement).value).toBe("6");
+        expect(api.request.mock.calls.some(([,body])=>body)).toBe(false);
+        fireEvent.change(field,{target:{value:"24"}});
+        await waitFor(()=>expect(api.request).toHaveBeenCalledWith("test-admin/target-statistics/settings",{retentionHours:24}));
+    } finally {confirm.mockRestore();}
+});

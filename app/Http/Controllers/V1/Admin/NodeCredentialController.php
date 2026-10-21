@@ -9,9 +9,8 @@ final class NodeCredentialController extends Controller {
     }
     private function verify(Request $r): int {
         abort_unless($r->isJson(),415);
-        $r->validate(['password'=>'required|string|max:1024']);
         $user=\App\Models\User::findOrFail($r->input('user.id'));
-        abort_unless(\App\Utils\Helper::multiPasswordVerify($user->password_algo,$user->password_salt,$r->input('password'),$user->password),403,'管理员密码不正确');
+        abort_unless($user->is_admin && !$user->banned,403);
         return (int)$user->id;
     }
     public function index(Request $r) {

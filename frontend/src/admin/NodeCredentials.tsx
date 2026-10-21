@@ -17,7 +17,6 @@ export function NodeCredentials({
 }) {
     const identity = { type: node.type, id: node.id };
     const report = useData<Row>(query(admin("server/credentials"), identity));
-    const [password, setPassword] = useState("");
     const [secret, setSecret] = useState("");
     const [busy, setBusy] = useState(false);
     const [error, setError] = useState("");
@@ -39,7 +38,7 @@ export function NodeCredentials({
         try {
             const result = await request(
                 admin(`server/credentials/${action}`),
-                { ...identity, credentialId, password },
+                { ...identity, credentialId },
             );
             setSecret(result.data?.secret || "");
             report.reload();
@@ -49,7 +48,6 @@ export function NodeCredentials({
         } finally {
             setBusy(false);
             onBusyChange?.(false);
-            setPassword("");
         }
     }
     const content = (
@@ -112,7 +110,7 @@ export function NodeCredentials({
                             actions={(r) =>
                                 ["active", "retiring"].includes(r.status) && (
                                     <button
-                                        disabled={busy || !password}
+                                        disabled={busy}
                                         onClick={() => act("revoke", r.id)}
                                     >
                                         撤销 {r.fingerprint}
@@ -120,16 +118,6 @@ export function NodeCredentials({
                                 )
                             }
                         />
-                        <label>
-                            管理员密码
-                            <input
-                                aria-label="凭据操作管理员密码"
-                                type="password"
-                                autoComplete="current-password"
-                                value={password}
-                                onChange={(e) => setPassword(e.target.value)}
-                            />
-                        </label>
                         <div className="actions">
                             <button
                                 disabled={busy || report.loading}
@@ -140,7 +128,6 @@ export function NodeCredentials({
                             <button
                                 disabled={
                                     busy ||
-                                    !password ||
                                     (report.data.keys || []).some(
                                         (k: Row) => k.status === "retiring",
                                     )
@@ -167,7 +154,6 @@ export function NodeCredentials({
                                 <button
                                     disabled={
                                         busy ||
-                                        !password ||
                                         !!report.data.legacyNodes?.length
                                     }
                                     onClick={() => act("disable-legacy")}

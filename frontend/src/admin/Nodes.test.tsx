@@ -37,7 +37,7 @@ afterEach(() => {
     vi.unstubAllGlobals();
     localStorage.clear();
 });
-it("shows a newly generated credential only once and requires password for mutations", async () => {
+it("shows a newly generated credential only once without requesting an administrator password", async () => {
     vi.spyOn(window,"confirm").mockReturnValue(true);
     const close=vi.fn();
     api.request.mockImplementation(async (path:string) => path.endsWith("/issue")
@@ -45,12 +45,11 @@ it("shows a newly generated credential only once and requires password for mutat
         : {data:{migrated:false,legacyEnabled:true,keys:[],legacyNodes:[{type:"v2box",id:1,name:"A"}]}});
     const view=render(<NodeCredentials node={{type:"v2box",id:1,name:"A"}} close={close}/>);
     const button=await screen.findByRole("button",{name:"生成 / 手动轮换密钥"});
-    expect((button as HTMLButtonElement).disabled).toBe(true);
-    fireEvent.change(screen.getByLabelText("凭据操作管理员密码"),{target:{value:"test-password"}});
+    expect((button as HTMLButtonElement).disabled).toBe(false);
     fireEvent.click(button);
     expect(await screen.findByLabelText("新节点密钥")).toHaveProperty("value","nk_test-once");
-    expect(screen.getByLabelText("凭据操作管理员密码")).toHaveProperty("value","");
-    expect(api.request).toHaveBeenCalledWith(expect.stringContaining("/issue"),expect.objectContaining({type:"v2box",id:1,password:"test-password"}));
+    expect(screen.queryByLabelText("凭据操作管理员密码")).toBeNull();
+    expect(api.request).toHaveBeenCalledWith(expect.stringContaining("/issue"),expect.objectContaining({type:"v2box",id:1,credentialId:undefined}));
     view.unmount();
     render(<NodeCredentials node={{type:"v2box",id:1,name:"A"}} close={close}/>);
     expect(screen.queryByLabelText("新节点密钥")).toBeNull();
@@ -63,7 +62,6 @@ it("blocks a second rotation and preserves revoked state on failed requests", as
     });
     render(<NodeCredentials node={{type:"v2box",id:1,name:"A"}} close={()=>{}}/>);
     const revoke=await screen.findByRole("button",{name:"撤销 abc"});
-    fireEvent.change(screen.getByLabelText("凭据操作管理员密码"),{target:{value:"wrong"}});
     expect((screen.getByRole("button",{name:"生成 / 手动轮换密钥"}) as HTMLButtonElement).disabled).toBe(true);
     fireEvent.click(revoke);
     expect(await screen.findByRole("alert")).toHaveProperty("textContent","拒绝操作");
@@ -493,18 +491,18 @@ it("manages Lightsail and traffic in peer pages without an outer dialog", async 
     expect(await screen.findByLabelText("搜索节点")).toBeTruthy();
 });
 
-it("creates one-use deployment only after password confirmation and copies no permanent credential", async () => {
+it("creates one-use deployment without a password and copies no permanent credential", async () => {
     const writeText=vi.fn().mockResolvedValue(undefined);
     Object.defineProperty(navigator,"clipboard",{configurable:true,value:{writeText}});
     api.request.mockImplementation(async (path:string)=> path.endsWith("/deployment") ? {data:{command:"one-use-command",expiresAt:new Date(Date.now()+600000).toISOString()}} : {data:{keys:[],migrated:false}});
     render(<NodeDeployment node={{id:1,type:"v2box",name:"A",install_command:"manual-install"}} close={()=>{}}/>);
     const create=await screen.findByRole("button",{name:"生成一键部署命令"});
-    expect((create as HTMLButtonElement).disabled).toBe(true);
+    await waitFor(()=>expect((create as HTMLButtonElement).disabled).toBe(false));
     expect(api.request.mock.calls.some(([path])=>path.endsWith("/deployment"))).toBe(false);
-    fireEvent.change(screen.getByLabelText("部署操作管理员密码"),{target:{value:"admin-password"}});
     fireEvent.click(create);
     expect(await screen.findByLabelText("一键部署命令")).toHaveProperty("value","one-use-command");
-    expect(screen.getByLabelText("部署操作管理员密码")).toHaveProperty("value","");
+    expect(screen.queryByLabelText("部署操作管理员密码")).toBeNull();
+    expect(api.request).toHaveBeenCalledWith(expect.stringContaining("/deployment"),{type:"v2box",id:1});
     fireEvent.click(screen.getByRole("button",{name:"复制部署命令"}));
     await waitFor(()=>expect(writeText).toHaveBeenCalledWith("one-use-command"));
     expect(localStorage.length).toBe(0);
@@ -515,12 +513,13 @@ it("creates one-use deployment only after password confirmation and copies no pe
 it("keeps deployment retryable on error and groups credentials in the same drawer", async () => {
     api.request.mockImplementation(async(path:string)=>{if(path.endsWith("/deployment"))throw new Error("授权失败");return {data:{keys:[],legacyEnabled:false}};});
     render(<NodeDeployment node={{id:1,type:"v2box",name:"A"}} close={()=>{}}/>);
-    fireEvent.change(await screen.findByLabelText("部署操作管理员密码"),{target:{value:"bad-password"}});
+    await waitFor(()=>expect((screen.getByRole("button",{name:"生成一键部署命令"}) as HTMLButtonElement).disabled).toBe(false));
     fireEvent.click(screen.getByRole("button",{name:"生成一键部署命令"}));
     expect(await screen.findByRole("alert")).toHaveProperty("textContent","授权失败");
     expect(screen.queryByLabelText("一键部署命令")).toBeNull();
     fireEvent.mouseDown(screen.getByRole("tab",{name:"凭据管理"}),{button:0,ctrlKey:false});
-    expect(await screen.findByLabelText("凭据操作管理员密码")).toBeTruthy();
+    expect(await screen.findByRole("button",{name:"生成 / 手动轮换密钥"})).toBeTruthy();
+    expect(screen.queryByLabelText("凭据操作管理员密码")).toBeNull();
     expect(screen.getAllByRole("dialog")).toHaveLength(1);
 });
 

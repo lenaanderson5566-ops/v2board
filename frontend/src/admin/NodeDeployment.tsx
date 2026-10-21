@@ -18,8 +18,7 @@ export function NodeDeployment({
 }) {
     const [tab, setTab] = useState("deploy"),
         [mode, setMode] = useState("new");
-    const [password, setPassword] = useState(""),
-        [busy, setBusy] = useState(false),
+    const [busy, setBusy] = useState(false),
         [error, setError] = useState("");
     const [deployment, setDeployment] = useState<Row | null>(null),
         [copied, setCopied] = useState("");
@@ -55,14 +54,13 @@ export function NodeDeployment({
         try {
             const result = await request(
                 admin("server/credentials/deployment"),
-                { type: node.type, id: node.id, password },
+                { type: node.type, id: node.id },
             );
             setDeployment(result.data);
         } catch (e) {
             setError((e as Error).message);
         } finally {
             setBusy(false);
-            setPassword("");
         }
     }
     const keys: Row[] = report.data?.keys || [];
@@ -147,23 +145,10 @@ export function NodeDeployment({
                                     以 root 执行部署命令，自动安装依赖、V2Box
                                     并配置独立凭据。已有节点配置不会被覆盖。
                                 </p>
-                                <label className="field">
-                                    <span>管理员密码</span>
-                                    <input
-                                        aria-label="部署操作管理员密码"
-                                        type="password"
-                                        autoComplete="current-password"
-                                        value={password}
-                                        onChange={(e) =>
-                                            setPassword(e.target.value)
-                                        }
-                                    />
-                                </label>
                                 <button
                                     className="primary"
                                     disabled={
                                         busy ||
-                                        !password ||
                                         report.loading ||
                                         keys.some(
                                             (k) => k.status === "retiring",

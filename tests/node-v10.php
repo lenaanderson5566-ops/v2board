@@ -290,15 +290,13 @@ try {
         return $kernel->handle(Request::create($adminPath.'/server/credentials/'.$action,'POST',[],[],[],
             ['CONTENT_TYPE'=>'application/json','HTTP_ACCEPT'=>'application/json','HTTP_AUTHORIZATION'=>$authorization??$token],json_encode($body)));
     };
-    $params=['type'=>'v2box','id'=>$nodeId,'password'=>'wrong'];
-    $assert($credentialCall('issue',$params)->getStatusCode()===403,'Sensitive operation verifies password');
-    $params['password']='test-admin-credential-password';
+    $params=['type'=>'v2box','id'=>$nodeId];
     $assert($credentialCall('issue',$params,'')->getStatusCode()===403,'Anonymous cannot generate credentials');
     $user->is_admin=0;$user->save();
     $assert($credentialCall('issue',$params)->getStatusCode()===403,'Ordinary user cannot generate credentials');
     $user->is_admin=1;$user->save();
     $issued=$credentialCall('issue',$params);
-    $assert($issued->getStatusCode()===201,'Administrator generates credential');
+    $assert($issued->getStatusCode()===201,'Administrator generates credential without password');
     $assert(str_contains($issued->headers->get('Cache-Control'),'no-store'),'One-time credential response not cached');
     $publicKeys=$kernel->handle(Request::create($adminPath.'/server/credentials?type=v2box&id='.$nodeId,'GET',[],[],[],['HTTP_AUTHORIZATION'=>$token,'HTTP_ACCEPT'=>'application/json']));
     $assert($publicKeys->getStatusCode()===200 && !str_contains($publicKeys->getContent(),'nk_'),'Later listing never reveals secret');
@@ -317,17 +315,15 @@ try {
         Illuminate\Support\Facades\RateLimiter::clear('node-deployment:'.sha1('|127.0.0.1'));
         return $kernel->handle(Request::create($adminPath.'/server/credentials/deployment','POST',[],[],[],['CONTENT_TYPE'=>'application/json','HTTP_ACCEPT'=>'application/json','HTTP_AUTHORIZATION'=>$authorization??$token],json_encode($body)));
     };
-    $deployParams=['type'=>'v2box','id'=>$nodeId,'password'=>'wrong'];
-    $assert($deploymentCall($deployParams)->getStatusCode()===403,'Deployment requires current password');
-    $deployParams['password']='test-admin-credential-password';
+    $deployParams=['type'=>'v2box','id'=>$nodeId];
     $assert($deploymentCall($deployParams,'')->getStatusCode()===403,'Anonymous deployment forbidden');
     $user->is_admin=0;$user->save();$assert($deploymentCall($deployParams)->getStatusCode()===403,'Ordinary user cannot create deployment grants');$user->is_admin=1;$user->save();
     $assert($deploymentCall(array_merge($deployParams,['type'=>'v2node']))->getStatusCode()===422,'Automatic enrollment limited to V2Box');
     $beforeKeys=DB::table('v2_node_credential')->where('node_type','v2box')->where('node_id',$nodeId)->count();
     $grantResponse=$deploymentCall($deployParams);$grant=json_decode($grantResponse->getContent(),true)['data']??[];
-    $assert($grantResponse->getStatusCode()===201,'Deployment command created: '.$grantResponse->getStatusCode());
+    $assert($grantResponse->getStatusCode()===201,'Deployment command created without password: '.$grantResponse->getStatusCode());
     $assert(str_contains($grantResponse->headers->get('Cache-Control'),'no-store'),'Deployment grant not cached by browsers');
-    $assert(!str_contains($grant['command'],'nk_') && !str_contains($grant['command'],$deployParams['password']) && str_contains($grant['command'],'mktemp -d'),'Command carries no long-lived key or admin password and uses private temp directory');
+    $assert(!str_contains($grant['command'],'nk_') && !str_contains($grant['command'],'test-admin-credential-password') && str_contains($grant['command'],'mktemp -d'),'Command carries no long-lived key or admin password and uses private temp directory');
     $pipes=[];$syntax=proc_open(['bash','-n'],[['pipe','r'],['pipe','w'],['pipe','w']],$pipes);fwrite($pipes[0],$grant['command']);fclose($pipes[0]);stream_get_contents($pipes[1]);$parseError=stream_get_contents($pipes[2]);fclose($pipes[1]);fclose($pipes[2]);$assert(proc_close($syntax)===0,'Generated deployment command parses as shell: '.preg_replace('/nd_[a-f0-9]{64}/','[grant]',$parseError));
     $assert(!str_contains($grant['command'],"\r"),'Deployment command uses portable LF line endings');
     preg_match('/^nd_[a-f0-9]{64}$/m',$grant['command'],$matches);$grantToken=$matches[0]??'';

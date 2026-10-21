@@ -622,7 +622,7 @@ it("groups target logs in diagnostics and loads dashboard analytics only on sele
     await waitFor(() => expect(api.request.mock.calls.some(([path]) => path.includes("analytics/report"))).toBe(true));
 });
 
-it.each(["browser-settings","footer-settings","notification-settings","telegram-settings","account-settings","subscription-settings","ticket-settings","node-settings","service-entrypoints","deposit-settings","invitation-rules","access-blacklist-ua","access-logs-subscriptions","access-logs-connections","access-logs-risk","notification-blocklist"])("opens relocated route %s directly", async current => {
+it.each(["browser-settings","footer-settings","notification-settings","telegram-settings","account-settings","subscription-settings","ticket-settings","node-settings","client-entrypoints","payment-deposit","invitation-rules","access-blacklist-ua","access-logs-subscriptions","access-logs-connections","access-logs-risk","notification-blocklist"])("opens relocated route %s directly", async current => {
     const {adminPageFixture} = await import("./test-support/page-fixtures");
     api.request.mockImplementation(async (path:string)=>adminPageFixture(path));
     const view=render(<AdminContent current={current}/>);
@@ -648,9 +648,26 @@ it("routes site settings tabs by URL and blocks navigation during a save", async
     } finally {content.remove();view.unmount();}
 });
 
-it.each(["settings","config/system","dashboard","usage","generate","analytics","operations","system","translations","ddns","risk-settings","invitation-settings","mail-blocklist","blacklist-ip","blacklist-ua","log-login","log-subscribe","log-connection","log-risk"])("rejects retired address %s without redirecting", async path => {
+it.each(["service-entrypoints","deposit-settings","settings","config/system","dashboard","usage","generate","analytics","operations","system","translations","ddns","risk-settings","invitation-settings","mail-blocklist","blacklist-ip","blacklist-ua","log-login","log-subscribe","log-connection","log-risk"])("rejects retired address %s without redirecting", async path => {
     const {adminPage}=await import("./admin-shell");
     expect(adminPage(path)).toBe(path);
     render(<AdminContent current={adminPage(path)} />);
     expect(await screen.findByText("页面未找到")).toBeTruthy();
+});
+
+it.each([
+    ["payment-deposit","payments","支付与充值","充值规则","充值"],
+    ["client-entrypoints","clients","客户端访问与接入","服务入口","服务入口"]
+])("keeps low-frequency %s inside its business workspace and searchable", async (route,root,title,tab,keyword) => {
+    const {default: AdminWorkspace} = await import("./admin-workspace");
+    const {adminPageFixture} = await import("./test-support/page-fixtures");
+    api.request.mockImplementation(async (path:string)=>adminPageFixture(path));
+    expect(legacyAdminMenu.some(([key])=>String(key)===route)).toBe(false);
+    render(<AdminWorkspace path={route} user={{email:"preview@example.com"}} logout={()=>{}}/>);
+    expect(screen.getByRole("heading",{level:1,name:title})).toBeTruthy();
+    expect(await screen.findByRole("tab",{name:tab,selected:true})).toBeTruthy();
+    fireEvent.change(screen.getByRole("searchbox",{name:"搜索后台功能"}),{target:{value:keyword}});
+    const link=within(screen.getByRole("navigation",{name:"后台导航"})).getByRole("link",{name:title});
+    expect(link.getAttribute("href")).toBe("#/"+root);
+    expect(api.request.mock.calls.some(([path])=>path.includes("payment/fetch") || path.includes("client/fetch"))).toBe(false);
 });

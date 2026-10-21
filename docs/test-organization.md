@@ -1,3 +1,7 @@
+## 低频设置分类回归（2026-10-21）
+
+复用 admin-workspaces 增加业务归属、侧栏高亮、设置标签直达、搜索关键词与不请求其他业务页数据检查；退役地址断言增加原充值规则和服务入口路径。admin-workspaces、Payments、AnalyticsCollectionSettings 共 121 项通过。TypeScript 与生产构建通过，发布资源更新。日志：storage/app/test-organization/admin-settings-consolidation-{tests,build}.log。
+
 ## 导航归位与旧地址退役验证（2026-10-21）
 
 复用 admin-workspaces 测试覆盖新导航全部页面、16 个搬迁入口、标签地址切换、保存中禁止切换，以及 19 个旧地址不再重定向。全量 113 文件、845 项首轮 840 通过，5 项日志筛选/时区检查失败：重命名后旧 log- 前缀检测失效。改为 access-logs 分类后，相关两个模块 111 项全部通过，其余 112 个测试文件已通过。此前导航分组顺序与菜单断言问题已修复。生产构建及 TypeScript 检查通过，发布资源同步更新。

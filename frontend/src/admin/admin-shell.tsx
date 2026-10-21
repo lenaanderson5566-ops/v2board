@@ -13,8 +13,7 @@ export const legacyAdminMenu = [
     ["knowledge", "知识库", "bulb", "用户与支持"],
     ["plans", "套餐与订阅", "bag", "套餐与支付"],
     ["orders", "订单管理", "list", "套餐与支付"],
-    ["deposit-settings", "充值规则", "credit-card", "套餐与支付"],
-    ["payments", "支付渠道", "credit-card", "套餐与支付"],
+    ["payments", "支付与充值", "credit-card", "套餐与支付"],
     ["coupons", "优惠券管理", "present", "营销与内容"],
     ["giftcards", "礼品卡管理", "star", "营销与内容"],
     ["invitations", "邀请与奖励", "users", "营销与内容"],
@@ -22,10 +21,9 @@ export const legacyAdminMenu = [
     ["banners", "横幅管理", "picture", "营销与内容"],
     ["nodes", "节点管理", "layers", "节点与接入"],
     ["groups", "节点权限组", "wrench", "节点与接入"],
-    ["service-entrypoints", "服务入口", "link", "节点与接入"],
     ["routes", "路由管理", "shuffle", "节点与接入"],
     ["client-downloads", "专用客户端下载", "screen-smartphone", "客户端"],
-    ["clients", "访问与版本策略", "shield", "客户端"],
+    ["clients", "客户端访问与接入", "shield", "客户端"],
     ["client-releases", "第三方客户端", "screen-smartphone", "客户端"],
     ["account-settings", "账户与注册", "shield", "安全与风控"],
     ["risk", "风控规则", "shield", "安全与风控"],
@@ -50,14 +48,15 @@ const adminMenuKeywords: Record<string, string> = {
     overview: "运营概览 系统状态 队列 风控概览 访问与转化 访问统计 漏斗 转化率",
     "log-targets": "节点 域名 IP 访问目标 流量",
     plans: "订阅管理 订阅套餐 套餐翻译 订阅多语言 价格 币种 汇率",
-    payments: "支付配置 支付方式 支付接口",
+    payments: "支付配置 支付渠道 支付方式 支付接口 充值规则 充值奖励 余额",
     groups: "权限组管理 服务器",
     invitations: "邀请管理 佣金规则 审核 复核 邀请邮件",
     banners: "Banner 管理 轮播图",
     knowledge: "知识库管理 帮助中心",
     coupons: "优惠码 活动 发放 券包",
     nodes: "服务器 DDNS 域名 流量预算 Lightsail 节点通讯",
-    clients: "FastAI 专用客户端 UA 最低版本 下载",
+    clients:
+        "FastAI 专用客户端 UA 最低版本 下载 服务入口 服务域名 面板地址 访问与版本策略",
     "client-releases": "第三方客户端管理 推荐 下载",
     "access-logs-subscriptions": "订阅日志",
     "access-logs-risk": "风控命中",
@@ -66,7 +65,9 @@ const adminMenuKeywords: Record<string, string> = {
     "log-settings": "日志设置 清理 保留期 隐私 访问统计 采集",
     security: "账户安全 MFA TOTP 恢复码",
 };
-export function adminPage(path: string): string { return path || "overview"; }
+export function adminPage(path: string): string {
+    return path || "overview";
+}
 
 export function AdminShell({
     current,
@@ -139,7 +140,11 @@ export function AdminShell({
         legacyAdminMenu.find(
             ([key]) =>
                 key ===
-                (["overview-risk", "overview-analytics", "overview-system"].includes(current)
+                ([
+                    "overview-risk",
+                    "overview-analytics",
+                    "overview-system",
+                ].includes(current)
                     ? "overview"
                     : current),
         )?.[1] ||

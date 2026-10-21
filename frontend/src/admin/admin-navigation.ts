@@ -1,6 +1,22 @@
 // One canonical workspace per task; each tab keeps a bookmarkable route.
 export const adminWorkspaces = [
     {
+        root: "payments",
+        label: "支付与充值",
+        tabs: [
+            ["payments", "支付渠道"],
+            ["payment-deposit", "充值规则"],
+        ],
+    },
+    {
+        root: "clients",
+        label: "客户端访问与接入",
+        tabs: [
+            ["clients", "访问与版本策略"],
+            ["client-entrypoints", "服务入口"],
+        ],
+    },
+    {
         root: "site-settings",
         label: "站点设置",
         tabs: [
@@ -84,7 +100,7 @@ export const settingSections: Record<string, string> = {
     "subscription-settings": "subscribe",
     "ticket-settings": "ticket",
     "node-settings": "server",
-    "service-entrypoints": "entrypoints",
-    "deposit-settings": "deposit",
+    "client-entrypoints": "entrypoints",
+    "payment-deposit": "deposit",
     "invitation-rules": "invite",
 };

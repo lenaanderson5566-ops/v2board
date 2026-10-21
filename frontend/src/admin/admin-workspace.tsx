@@ -1,3 +1,4 @@
+import { adminWorkspace } from "./admin-navigation";
 import { AdminTimeZoneScope } from "./admin-log-time";
 import { clearListViews } from "./list-view-state";
 import { AdminShell, adminPage } from "./admin-shell";
@@ -20,16 +21,16 @@ export default function AdminWorkspace({
         <EditorFieldContext.Provider value={adminEditorField}>
             <AdminShell
                 current={
-                    current === "invitation-settings"
-                        ? "invitations"
-                        : current === "ddns"
-                          ? "nodes"
-                          : current === "system" || current === "operations"
-                            ? "overview"
-                            : current === "translations"
-                              ? "plans"
-                              : current === "risk-settings"
-                                ? "log-settings"
+                    adminWorkspace(current)
+                        ? adminWorkspace(current)!.root
+                        : current === "invitation-rules"
+                          ? "invitations"
+                          : current === "nodes-ddns"
+                            ? "nodes"
+                            : current === "overview-system" || current === "overview-risk"
+                              ? "overview"
+                              : current === "plans-translations"
+                                ? "plans"
                                 : current
                 }
                 user={user}
@@ -38,7 +39,9 @@ export default function AdminWorkspace({
                     logout();
                 }}
             >
-                <AdminTimeZoneScope><AdminContent current={current} /></AdminTimeZoneScope>
+                <AdminTimeZoneScope>
+                    <AdminContent current={current} />
+                </AdminTimeZoneScope>
             </AdminShell>
         </EditorFieldContext.Provider>
     );

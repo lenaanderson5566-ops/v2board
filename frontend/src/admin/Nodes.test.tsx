@@ -506,7 +506,7 @@ it("creates one-use deployment without a password and copies no permanent creden
     fireEvent.click(screen.getByRole("button",{name:"复制部署命令"}));
     await waitFor(()=>expect(writeText).toHaveBeenCalledWith("one-use-command"));
     expect(localStorage.length).toBe(0);
-    fireEvent.change(screen.getByLabelText("部署场景"),{target:{value:"upgrade"}});
+    fireEvent.click(screen.getByRole("button",{name:"已有节点升级"}));
     expect((screen.getByLabelText("节点升级命令") as HTMLTextAreaElement).value).toContain("v1.0.2");
     expect(api.request.mock.calls.filter(([path])=>path.endsWith("/deployment"))).toHaveLength(1);
 });
@@ -535,4 +535,24 @@ it("routes child deployment to its parent without issuing a child credential", a
     expect(await screen.findByText("Parent · 部署与接入")).toBeTruthy();
     expect(api.request.mock.calls.some(([path])=>path.includes("server/credentials") && path.includes("id=1"))).toBe(true);
     expect(screen.queryByRole("button",{name:"安装命令"})).toBeNull();
+});
+
+it("uses accessible runtime dots and keeps only the visibility switch", async () => {
+    api.request.mockImplementation(async (path: string) => {
+        if (path.endsWith("server/manage/getNodes")) return {data:[
+            {id:1,name:"Green",type:"v2box",runtime_status:"online",show:1,group_id:[]},
+            {id:2,name:"Red",type:"v2box",runtime_status:"offline",show:0,group_id:[]},
+            {id:3,name:"Unknown",type:"v2box",show:0,group_id:[]}
+        ]};
+        return adminPageFixture(path);
+    });
+    render(<Nodes />);
+    const online = await screen.findByRole("button",{name:"Green：在线，查看运行详情"});
+    expect(online.getAttribute("data-state")).toBe("online");
+    expect(screen.getByRole("button",{name:"Red：离线，查看运行详情"}).getAttribute("data-state")).toBe("offline");
+    expect(screen.getByRole("button",{name:"Unknown：暂无通信记录，查看运行详情"}).getAttribute("data-state")).toBe("unknown");
+    expect(screen.queryByRole("button",{name:"切换展示"})).toBeNull();
+    expect(screen.getByRole("switch",{name:"Green 显示"})).toBeTruthy();
+    fireEvent.click(online);
+    expect(await screen.findByRole("dialog")).toBeTruthy();
 });

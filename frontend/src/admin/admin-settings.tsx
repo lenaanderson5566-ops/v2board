@@ -62,7 +62,7 @@ const groupDescriptions: Record<string, string> = {
     entrypoints: "服务地址与入口配置",
     app: "客户端分发与下载账号",
 };
-export function Settings({ section }: { section?: "app" | "invite" } = {}) {
+export function Settings({ section }: { section?: string } = {}) {
     const d = useData(admin("config/fetch"));
     const schema = useData(admin("console/configSchema"));
     const plans = useData<Row[]>(admin("plan/fetch"));
@@ -214,10 +214,13 @@ export function Settings({ section }: { section?: "app" | "invite" } = {}) {
     ).map((field) => mailCredentialField(field, raw));
     return (
         <Panel
-            title={section ? groupNames[section] : "系统配置"}
+            title={section ? ({site:"基础信息",browser:"浏览器引导",safe:"账户与注册"} as Record<string,string>)[section] || groupNames[section] : "系统配置"}
             className="settings-panel"
         >
-            <div className={section ? "" : "admin-settings-layout"}>
+            <div
+                data-saving={saving || actionBusy ? "true" : undefined}
+                className={section ? "" : "admin-settings-layout"}
+            >
                 {!section && (
                     <nav
                         className="admin-settings-nav"

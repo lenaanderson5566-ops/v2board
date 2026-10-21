@@ -74,7 +74,7 @@ function IncomeOverview() {
         <>
             {health.data && (!health.data.horizon || !health.data.schedule) && (
                 <div className="alert">
-                    <a href="#/system">队列或定时任务异常，查看系统状态</a>
+                    <a href="#/overview-system">队列或定时任务异常，查看系统状态</a>
                 </div>
             )}
             {Number(stats.ticket_pending_total) > 0 && (

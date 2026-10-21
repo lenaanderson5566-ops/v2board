@@ -56,6 +56,16 @@ export default function AdminApp() {
             if (
                 !expiring &&
                 !loggingOut.current &&
+                document.querySelector(
+                    '.admin-content [data-saving="true"], .admin-content form[aria-busy="true"]',
+                )
+            ) {
+                history.replaceState(history.state, "", acceptedUrl);
+                return;
+            }
+            if (
+                !expiring &&
+                !loggingOut.current &&
                 document.querySelector('[data-unsaved="true"]') &&
                 !window.confirm("有尚未保存的修改，确认离开当前页面？")
             ) {
@@ -96,9 +106,6 @@ export default function AdminApp() {
             window.removeEventListener("auth-expired", expired);
         };
     }, []);
-    useEffect(() => {
-        if (path === "generate") navigate("users");
-    }, [path]);
     if (loading)
         return (
             <div className="state full">

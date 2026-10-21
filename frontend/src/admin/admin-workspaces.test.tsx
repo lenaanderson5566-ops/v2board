@@ -93,7 +93,7 @@ beforeEach(() => {
 it("restores log filters after leaving and reopening a list", async () => {
     const { ResourcePage, resources } = await import("./admin");
     api.request.mockResolvedValue({ data: [], total: 0 });
-    const view = render(<ResourcePage resource={resources["log-subscribe"]} />);
+    const view = render(<ResourcePage resource={resources["access-logs-subscriptions"]} />);
     fireEvent.change(screen.getByLabelText("日志关键词"), {
         target: { value: "FastAI" },
     });
@@ -106,7 +106,7 @@ it("restores log filters after leaving and reopening a list", async () => {
         ).toBe(true),
     );
     view.unmount();
-    render(<ResourcePage resource={resources["log-subscribe"]} />);
+    render(<ResourcePage resource={resources["access-logs-subscriptions"]} />);
     expect(
         (screen.getByLabelText("日志关键词") as HTMLInputElement).value,
     ).toBe("FastAI");
@@ -257,21 +257,20 @@ it("loads translations from subscription management and supports old links", asy
         ),
     ).toBe(true);
     view.unmount();
-    render(<AdminContent current="translations" />);
+    render(<AdminContent current="plans-translations" />);
     expect(
         await screen.findByRole("tab", { name: "套餐翻译", selected: true }),
     ).toBeTruthy();
 });
 it("consolidates settings and monitoring navigation", () => {
-    expect(legacyAdminMenu.find(([key]) => key === "mail-blocklist")?.[1]).toBe(
-        "邮件禁发名单",
-    );
+    expect(legacyAdminMenu.some(([key]) => String(key) === "notification-blocklist")).toBe(false);
+    expect(legacyAdminMenu.find(([key]) => key === "notification-settings")?.[1]).toBe("通知设置");
     for (const key of ["system", "risk-settings", "translations"])
         expect(legacyAdminMenu.some(([item]) => String(item) === key)).toBe(
             false,
         );
     expect(legacyAdminMenu.find(([key]) => key === "log-settings")?.[3]).toBe(
-        "系统设置",
+        "日志与诊断",
     );
 });
 
@@ -527,7 +526,7 @@ it.each(legacyAdminMenu.map(([key, title]) => [key, title]))("renders menu page 
     expect(screen.queryByText("页面未找到")).toBeNull();
 });
 
-it.each(["log-login", "log-subscribe", "log-connection", "log-risk", "system-log", "mail-logs", "client-diagnostics"])("shows one timezone note on %s", async (current) => {
+it.each(["access-logs", "access-logs-subscriptions", "access-logs-connections", "access-logs-risk", "system-log", "mail-logs", "client-diagnostics"])("shows one timezone note on %s", async (current) => {
     const { configureTimeZone } = await import("../shared/timezone");
     const { adminPageFixture } = await import("./test-support/page-fixtures");
     configureTimeZone("Asia/Shanghai", true);
@@ -613,7 +612,7 @@ it("refreshes every overview section from one action", async () => {
 
 it("groups target logs in diagnostics and loads dashboard analytics only on selection", async () => {
     expect(legacyAdminMenu.find(([key]) => key === "log-targets")?.[3]).toBe("日志与诊断");
-    expect(legacyAdminMenu.some(([key]) => key === "analytics")).toBe(false);
+    expect(legacyAdminMenu.some(([key]) => String(key) === "analytics")).toBe(false);
     const { adminPageFixture } = await import("./test-support/page-fixtures");
     api.request.mockImplementation(async (path: string) => adminPageFixture(path));
     render(<Overview />);
@@ -621,4 +620,37 @@ it("groups target logs in diagnostics and loads dashboard analytics only on sele
     expect(api.request.mock.calls.some(([path]) => path.includes("analytics/report"))).toBe(false);
     fireEvent.mouseDown(screen.getByRole("tab", {name: "访问与转化"}), {button: 0, ctrlKey: false});
     await waitFor(() => expect(api.request.mock.calls.some(([path]) => path.includes("analytics/report"))).toBe(true));
+});
+
+it.each(["browser-settings","footer-settings","notification-settings","telegram-settings","account-settings","subscription-settings","ticket-settings","node-settings","service-entrypoints","deposit-settings","invitation-rules","access-blacklist-ua","access-logs-subscriptions","access-logs-connections","access-logs-risk","notification-blocklist"])("opens relocated route %s directly", async current => {
+    const {adminPageFixture} = await import("./test-support/page-fixtures");
+    api.request.mockImplementation(async (path:string)=>adminPageFixture(path));
+    const view=render(<AdminContent current={current}/>);
+    await waitFor(()=>expect(view.container.querySelector(".panel")).toBeTruthy());
+    await waitFor(()=>expect(screen.queryByText("正在加载页面…")).toBeNull());
+    expect(screen.queryByText("页面未找到")).toBeNull();
+    expect(screen.queryByLabelText("系统设置分类")).toBeNull();
+});
+it("routes site settings tabs by URL and blocks navigation during a save", async () => {
+    const {adminPageFixture} = await import("./test-support/page-fixtures");
+    api.request.mockImplementation(async (path:string)=>adminPageFixture(path));
+    const view=render(<AdminContent current="site-settings"/>);
+    const tab=await screen.findByRole("tab",{name:"浏览器引导"});
+    const content=document.createElement("div");content.className="admin-content";
+    const marker=document.createElement("div");marker.dataset.saving="true";content.append(marker);document.body.append(content);
+    try {
+        window.location.hash="#/site-settings";
+        fireEvent.mouseDown(tab,{button:0,ctrlKey:false});
+        expect(window.location.hash).toBe("#/site-settings");
+        marker.remove();
+        fireEvent.mouseDown(tab,{button:0,ctrlKey:false});
+        expect(window.location.hash).toBe("#/browser-settings");
+    } finally {content.remove();view.unmount();}
+});
+
+it.each(["settings","config/system","dashboard","usage","generate","analytics","operations","system","translations","ddns","risk-settings","invitation-settings","mail-blocklist","blacklist-ip","blacklist-ua","log-login","log-subscribe","log-connection","log-risk"])("rejects retired address %s without redirecting", async path => {
+    const {adminPage}=await import("./admin-shell");
+    expect(adminPage(path)).toBe(path);
+    render(<AdminContent current={adminPage(path)} />);
+    expect(await screen.findByText("页面未找到")).toBeTruthy();
 });

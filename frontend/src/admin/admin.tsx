@@ -722,7 +722,7 @@ export const resources: Record<string, Resource> = {
         ],
         defaults: { is_enabled: 1, sort: 0 },
     },
-    "blacklist-ip": {
+    "access-blacklist": {
         title: "IP 黑名单",
         fetch: ops("risk/blacklist/ip/fetch"),
         save: ops("risk/blacklist/ip/update"),
@@ -741,7 +741,7 @@ export const resources: Record<string, Resource> = {
         ],
         defaults: { type: "ip", is_enabled: 1 },
     },
-    "blacklist-ua": {
+    "access-blacklist-ua": {
         title: "UA 黑名单",
         fetch: ops("risk/blacklist/ua/fetch"),
         save: ops("risk/blacklist/ua/update"),
@@ -775,7 +775,7 @@ export const resources: Record<string, Resource> = {
         ],
         fields: [],
     },
-    "log-login": {
+    "access-logs": {
         title: "登录日志",
         fetch: ops("log/login/fetch"),
         columns: [
@@ -797,7 +797,7 @@ export const resources: Record<string, Resource> = {
         ],
         fields: [],
     },
-    "log-subscribe": {
+    "access-logs-subscriptions": {
         title: "订阅日志",
         fetch: ops("log/subscribe/fetch"),
         columns: [
@@ -845,7 +845,7 @@ export const resources: Record<string, Resource> = {
         ],
         fields: [],
     },
-    "log-connection": {
+    "access-logs-connections": {
         title: "连接日志",
         fetch: ops("log/user-connection/fetch"),
         columns: [
@@ -860,7 +860,7 @@ export const resources: Record<string, Resource> = {
         ],
         fields: [],
     },
-    "log-risk": {
+    "access-logs-risk": {
         title: "风控命中日志",
         fetch: ops("log/rule-hit/fetch?grouped=1"),
         columns: [
@@ -932,7 +932,7 @@ export function ResourcePage({
     const pageSize = onPageSizeChange ? initialPageSize : localPageSize;
     const logKind = Object.entries(resources)
         .find(
-            ([key, value]) => key.startsWith("log-") && value === resource,
+            ([key, value]) => key.startsWith("access-logs") && value === resource,
         )?.[0]
         .slice(4);
     const viewKey = resource.fetch;
@@ -1261,7 +1261,7 @@ export function ResourcePage({
                         。节点未上报时可能不显示。
                     </p>
                 )}
-                {resource === resources["log-risk"] && (
+                {resource === resources["access-logs-risk"] && (
                     <p className="admin-log-note muted">
                         近 30 天，同一用户、规则、IP 和处理结果按固定 10
                         分钟窗口合并；总数为合并后的事件数。点击用户查看原始活动。

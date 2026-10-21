@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import "./admin-management.css";
 import { admin, date, query, request, type Row } from "../shared/api";
 import { Modal, State, useData } from "../shared/ui";
-import { AdminTabs } from "./AdminChoices";
+import { AdminChoiceGroup, AdminTabs } from "./AdminChoices";
 import { NodeCredentials } from "./NodeCredentials";
 import {
     nodeDeploymentCommand,
@@ -129,40 +129,36 @@ export function NodeDeployment({
                                 凭据认证不代表代理运行正常；部署后还需检查节点列表中的运行状态。
                             </p>
                             {node.type === "v2box" && (
-                                <label className="admin-deployment-mode">
-                                    <span>部署场景</span>
-                                    <select
-                                        aria-label="部署场景"
+                                <div className="admin-deployment-mode">
+                                    <AdminChoiceGroup
+                                        label="部署场景"
                                         value={mode}
                                         disabled={busy}
-                                        onChange={(e) => {
-                                            setMode(e.target.value);
+                                        options={[
+                                            { value: "new", label: "新安装" },
+                                            {
+                                                value: "upgrade",
+                                                label: "已有节点升级",
+                                            },
+                                        ]}
+                                        onChange={(value) => {
+                                            setMode(value);
                                             setCopied("");
                                             setError("");
                                         }}
-                                    >
-                                        <option value="new">新安装</option>
-                                        <option value="upgrade">
-                                            已有节点升级
-                                        </option>
-                                    </select>
-                                </label>
+                                    />
+                                </div>
                             )}
                             {node.type === "v2box" && mode === "new" ? (
                                 <section className="admin-deployment-card">
                                     <h3>新节点安装</h3>
-                                    <ol className="admin-deployment-steps">
-                                        <li>生成命令</li>
-                                        <li>在节点执行</li>
-                                        <li>检查接入状态</li>
-                                    </ol>
-                                    <p>
-                                        以 root
-                                        执行部署命令，自动安装依赖、V2Box
-                                        并配置独立凭据，无需手动输入密钥。已有节点配置不会被覆盖。
+
+                                    <p className="muted">
+                                        复制后在节点以 root
+                                        执行，自动安装依赖并配置密钥。已有配置不会被覆盖。
                                     </p>
                                     <button
-                                        className="primary"
+                                        className={deployment ? "" : "primary"}
                                         disabled={
                                             busy ||
                                             report.loading ||
@@ -178,7 +174,10 @@ export function NodeDeployment({
                                     </button>
                                     {deployment && (
                                         <>
-                                            <p role="status">
+                                            <p
+                                                role="status"
+                                                className="admin-deployment-expiry"
+                                            >
                                                 有效至{" "}
                                                 {date(deployment.expiresAt)}
                                                 ，仅可使用一次。新命令会使旧命令失效。
@@ -187,10 +186,12 @@ export function NodeDeployment({
                                                 className="admin-command-input"
                                                 aria-label="一键部署命令"
                                                 readOnly
-                                                rows={3}
+                                                rows={4}
+                                                spellCheck={false}
                                                 value={deployment.command}
                                             />
                                             <button
+                                                className="primary"
                                                 onClick={() =>
                                                     copy(
                                                         deployment.command,
@@ -293,11 +294,13 @@ export function NodeDeployment({
                                     </button>
                                 </div>
                             </details>
-                            <div className="admin-deployment-help">
-                                <span>安装后检查</span>
-                                <code>v2box status</code>
-                                <code>v2box log</code>
-                            </div>
+                            {node.type === "v2box" && (
+                                <div className="admin-deployment-help">
+                                    <span>安装后检查</span>
+                                    <code>v2box status</code>
+                                    <code>v2box log</code>
+                                </div>
+                            )}
                         </>
                     )}
                 </AdminTabs>

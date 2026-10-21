@@ -140,9 +140,9 @@ export function RiskOverview() {
                     />
                 </Panel>
                 <div className="actions pad">
-                    <a href="#/log-risk">全部命中记录</a>
-                    <a href="#/blacklist-ip">IP 黑名单</a>
-                    <a href="#/blacklist-ua">UA 黑名单</a>
+                    <a href="#/access-logs-risk">全部命中记录</a>
+                    <a href="#/access-blacklist">IP 黑名单</a>
+                    <a href="#/access-blacklist-ua">UA 黑名单</a>
                 </div>
             </State>
         </div>

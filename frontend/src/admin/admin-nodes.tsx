@@ -45,7 +45,15 @@ const nodeTypes = [
     "v2node",
     "v2box",
 ] as const satisfies readonly NodeBackendType[];
-export function Nodes(props: {initialTab?: "nodes" | "ddns" | "lightsail" | "traffic"}) { return <NodeDictionaryProvider><NodesContent {...props} /></NodeDictionaryProvider>; }
+export function Nodes(props: {
+    initialTab?: "nodes" | "ddns" | "lightsail" | "traffic";
+}) {
+    return (
+        <NodeDictionaryProvider>
+            <NodesContent {...props} />
+        </NodeDictionaryProvider>
+    );
+}
 function NodesContent({
     initialTab = "nodes",
 }: { initialTab?: "nodes" | "ddns" | "lightsail" | "traffic" } = {}) {
@@ -109,12 +117,16 @@ function NodesContent({
             "runtime_status",
             "运行状态",
             (r) => (
-                <span
-                    title={`最近通信：${date(Math.max(Number(r.last_check_at || 0), Number(r.last_push_at || 0)))}`}
+                <button
+                    type="button"
+                    className="node-runtime-indicator"
+                    data-state={r.runtime_status || "unknown"}
+                    aria-label={`${r.name}：${nodeRuntimeLabels[r.runtime_status] || nodeRuntimeLabels.unknown}，查看运行详情`}
+                    title={`${nodeRuntimeLabels[r.runtime_status] || nodeRuntimeLabels.unknown} · 最近通信：${date(Math.max(Number(r.last_check_at || 0), Number(r.last_push_at || 0)))}`}
+                    onClick={() => setDiagnosticNode(r)}
                 >
-                    {nodeRuntimeLabels[r.runtime_status] ||
-                        nodeRuntimeLabels.unknown}
-                </span>
+                    <span aria-hidden="true" />
+                </button>
             ),
         ],
         ["host", "主机"],
@@ -395,13 +407,34 @@ function NodesContent({
                             }}
                             actions={(r) => (
                                 <>
-                                    <button
-                                        onClick={() => setDiagnosticNode(r)}
-                                    >
-                                        运行状态
-                                    </button>
-                                    {!r.parent_id ? <button onClick={() => setCredentialNode(r)}>部署与接入</button> :
-                                        <button onClick={() => { const parent=(d.data || []).find(n=>n.type===r.type && Number(n.id)===Number(r.parent_id)); if(parent)setCredentialNode(parent);else setError("父节点不可用，请先检查节点配置"); }}>父节点接入</button>}
+                                    {!r.parent_id ? (
+                                        <button
+                                            onClick={() => setCredentialNode(r)}
+                                        >
+                                            部署与接入
+                                        </button>
+                                    ) : (
+                                        <button
+                                            onClick={() => {
+                                                const parent = (
+                                                    d.data || []
+                                                ).find(
+                                                    (n) =>
+                                                        n.type === r.type &&
+                                                        Number(n.id) ===
+                                                            Number(r.parent_id),
+                                                );
+                                                if (parent)
+                                                    setCredentialNode(parent);
+                                                else
+                                                    setError(
+                                                        "父节点不可用，请先检查节点配置",
+                                                    );
+                                            }}
+                                        >
+                                            父节点接入
+                                        </button>
+                                    )}
                                     <button
                                         onClick={() => {
                                             setType(r.type);
@@ -427,26 +460,7 @@ function NodesContent({
                                     >
                                         复制
                                     </button>
-                                    <button
-                                        onClick={async () => {
-                                            try {
-                                                await request(
-                                                    admin(
-                                                        `server/${r.type}/update`,
-                                                    ),
-                                                    {
-                                                        id: r.id,
-                                                        show: r.show ? 0 : 1,
-                                                    },
-                                                );
-                                                d.reload();
-                                            } catch (e) {
-                                                setError((e as Error).message);
-                                            }
-                                        }}
-                                    >
-                                        切换展示
-                                    </button>
+
                                     <button
                                         className="danger"
                                         onClick={async () => {
@@ -475,7 +489,13 @@ function NodesContent({
                     </State>
                 </Panel>
             )}
-            {credentialNode && <NodeDeployment key={`${credentialNode.type}:${credentialNode.id}`} node={credentialNode} close={() => setCredentialNode(null)} />}
+            {credentialNode && (
+                <NodeDeployment
+                    key={`${credentialNode.type}:${credentialNode.id}`}
+                    node={credentialNode}
+                    close={() => setCredentialNode(null)}
+                />
+            )}
             {editing && (
                 <Modal
                     title={

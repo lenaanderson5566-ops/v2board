@@ -1,3 +1,5 @@
+import { adminWorkspace, settingSections } from "./admin-navigation";
+import { AdminTabs } from "./AdminChoices";
 import { PasskeySecurity } from "../shared/PasskeySecurity";
 import { ErrorBoundary } from "../shared/ErrorBoundary";
 import { lazy, Suspense } from "react";
@@ -99,9 +101,35 @@ const Overview = lazy(() =>
     })),
 );
 function AdminPageContent({ current }: { current: string }) {
+    const workspace = adminWorkspace(current);
+    const content = <AdminPageBody key={current} current={current} />;
+    return workspace ? (
+        <AdminTabs
+            label={workspace.label}
+            value={current}
+            options={workspace.tabs.map(([value, label]) => ({ value, label }))}
+            onChange={(next) => {
+                if (
+                    document.querySelector(
+                        '.admin-content [data-saving="true"], .admin-content form[aria-busy="true"]',
+                    )
+                )
+                    return;
+                window.location.hash = "/" + next;
+            }}
+        >
+            {content}
+        </AdminTabs>
+    ) : (
+        content
+    );
+}
+function AdminPageBody({ current }: { current: string }) {
+    if (settingSections[current])
+        return <Settings key={current} section={settingSections[current]} />;
     if (current === "dictionary") return <AdminDictionary />;
-    if (current === "analytics")
-        return <Overview key="analytics" initialTab="analytics" />;
+    if (current === "overview-analytics")
+        return <Overview key="overview-analytics" initialTab="analytics" />;
     if (current === "log-targets") return <AdminTargetStatistics />;
     if (current === "security")
         return (
@@ -110,13 +138,13 @@ function AdminPageContent({ current }: { current: string }) {
                 <PasskeySecurity />
             </>
         );
-    if (current === "plans" || current === "translations")
-        return <AdminSubscriptions key={current} initialTab={current} />;
-    if (current === "log-settings" || current === "risk-settings")
+    if (current === "plans" || current === "plans-translations")
+        return <AdminSubscriptions key={current} initialTab={current === "plans-translations" ? "translations" : "plans"} />;
+    if (current === "log-settings")
         return <AdminLogSettings />;
-    if (current === "system")
-        return <Overview key="system" initialTab="system" />;
-    if (current === "mail-blocklist")
+    if (current === "overview-system")
+        return <Overview key="overview-system" initialTab="system" />;
+    if (current === "notification-blocklist")
         return (
             <section className="panel">
                 <div className="panel-head">
@@ -127,14 +155,12 @@ function AdminPageContent({ current }: { current: string }) {
         );
     if (current === "mail-logs") return <AdminMailLogs />;
     if (current === "system-log") return <AdminSystemLogs />;
-    if (current === "ddns") return <Nodes key="ddns" initialTab="ddns" />;
+    if (current === "nodes-ddns") return <Nodes key="nodes-ddns" initialTab="ddns" />;
     if (current === "client-diagnostics") return <AdminClientDiagnostics />;
     if (current === "client-downloads")
         return <Settings key="client-downloads" section="app" />;
-    if (current === "invitation-settings")
-        return <Settings key="invitation-settings" section="invite" />;
     if (current === "invitations") return <AdminInvitations />;
-    if (current === "users" || current === "usage") return <UsersPage />;
+    if (current === "users") return <UsersPage />;
     if (current === "orders") return <OrdersPage />;
     if (current === "knowledge" || current === "notices")
         return <ContentPage kind={current} />;
@@ -152,10 +178,8 @@ function AdminPageContent({ current }: { current: string }) {
     switch (current) {
         case "banners":
             return <AdminBanners />;
-        case "operations":
+        case "overview-risk":
             return <Overview key="risk" initialTab="risk" />;
-        case "settings":
-            return <Settings key="settings" />;
         case "tickets":
             return <AdminTickets />;
         case "payments":

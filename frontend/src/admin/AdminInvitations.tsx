@@ -88,10 +88,7 @@ export function AdminInvitations() {
                     <p className="muted">查看邀请关系、佣金审核与邀请邮件。</p>
                 </div>
                 <div className="actions">
-                    <a className="button" href="#/invitation-settings">
-                        奖励规则
-                    </a>
-                    <a className="button" href="#/analytics">
+                    <a className="button" href="#/overview-analytics">
                         查看业务转化
                     </a>
                 </div>

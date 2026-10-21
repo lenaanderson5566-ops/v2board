@@ -1,3 +1,13 @@
+## 导航归位与旧地址退役验证（2026-10-21）
+
+复用 admin-workspaces 测试覆盖新导航全部页面、16 个搬迁入口、标签地址切换、保存中禁止切换，以及 19 个旧地址不再重定向。全量 113 文件、845 项首轮 840 通过，5 项日志筛选/时区检查失败：重命名后旧 log- 前缀检测失效。改为 access-logs 分类后，相关两个模块 111 项全部通过，其余 112 个测试文件已通过。此前导航分组顺序与菜单断言问题已修复。生产构建及 TypeScript 检查通过，发布资源同步更新。
+
+日志：storage/app/test-organization/admin-navigation-{final-tests,log-recheck,build}.log。只修改前端导航、设置入口及表单离开保护，后端 API、配置键、存量数据保持不变。按用户要求无旧链接兼容，站内链接更新为新地址。
+
+## 节点列表与部署界面回归（2026-10-21）
+
+Nodes.test.tsx 增加在线/离线/未知状态圆点、可访问名称、诊断打开及唯一显隐开关检查；既有部署授权、复制、升级切换测试保留。Nodes、node-options 和 admin-workspaces 三个模块共 93 项通过。修复上轮导航负向断言的字面量联合类型比较错误后，TypeScript 与生产构建通过，发布资源同步更新。日志：storage/app/test-organization/node-interface-{tests,build}.log。
+
 ## 简化节点一键命令验证（2026-10-21）
 
 后台命令改为 wget 下载后 sh 执行，传入 --api-host、--node-id 和 --deploy-token。复用 node-v10.php：186 项通过，覆盖授权单次兑换、失效、替换授权、身份校验及不输出长期密钥。命令格式断言同步更新；旧 stdin 参数兼容逻辑保留。V10 七份生成产物检查、12 项生成器测试通过。

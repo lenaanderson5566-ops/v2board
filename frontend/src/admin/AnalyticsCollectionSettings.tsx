@@ -45,7 +45,7 @@ export function AnalyticsCollectionSettings(events: SettingsEvents = {}) {
                         </>
                     )}
                 </State>
-                <a href="#/analytics">查看访问与转化报表</a>
+                <a href="#/overview-analytics">查看访问与转化报表</a>
             </Panel>
         </div>
     );

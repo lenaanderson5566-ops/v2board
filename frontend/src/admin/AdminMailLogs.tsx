@@ -112,7 +112,7 @@ export function AdminMailLogs() {
             <AdminLogTimeZone />
             <AdminChoiceGroup variant="navigation" label="邮件管理" value={view} onChange={setView}
                 options={[{value:"logs",label:"投递日志"},{value:"campaigns",label:"群发记录"}]}>
-                <a className="button" href="#/mail-blocklist">邮件禁发名单 ↗</a>
+                <a className="button" href="#/notification-blocklist">邮件禁发名单 ↗</a>
             </AdminChoiceGroup>
             {view === "campaigns" && <AdminMailCampaigns />}
             {view === "logs" && (

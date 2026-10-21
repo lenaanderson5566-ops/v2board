@@ -7,7 +7,7 @@ import { lazy, Suspense, useState } from "react";
 const AdminAnalytics = lazy(() =>
     import("./AdminAnalytics").then((m) => ({ default: m.AdminAnalytics })),
 );
-import { admin, money, type Row } from "../shared/api";
+import { admin, type Row } from "../shared/api";
 import { Panel, State, Table, Reload, Metric, useData } from "../shared/ui";
 
 function usageBytes(value: unknown) {
@@ -64,10 +64,17 @@ export function Overview({
 function IncomeOverview() {
     const stat = useData<Row>(admin("stat/getOverride"));
     const health = useData<Row>(admin("system/getSystemStatus"));
-    const orders = useData<Row[]>(admin("stat/getOrder"));
+    const [currency, setCurrency] = useState("CNY");
     const todayNodes = useData<Row[]>(admin("stat/getServerTodayRank"));
     const todayUsers = useData<Row[]>(admin("stat/getUserTodayRank"));
     const stats = stat.data || {};
+    const finance = (stats.financial?.currencies || []).find(
+        (row: Row) => row.currency === currency,
+    );
+    const amount = (value: unknown) =>
+        value == null
+            ? "—"
+            : `${currency} ${(Number(value) / 100).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
     return (
         <>
@@ -94,34 +101,51 @@ function IncomeOverview() {
                 title="经营核心指标"
                 actions={
                     <Reload
-                        loading={[
-                            stat,
-                            health,
-                            orders,
-                            todayNodes,
-                            todayUsers,
-                        ].some((source) => source.loading)}
+                        loading={[stat, health, todayNodes, todayUsers].some(
+                            (source) => source.loading,
+                        )}
                         onClick={() => {
-                            [
-                                stat,
-                                health,
-                                orders,
-                                todayNodes,
-                                todayUsers,
-                            ].forEach((source) => source.reload());
+                            [stat, health, todayNodes, todayUsers].forEach(
+                                (source) => source.reload(),
+                            );
                         }}
                     />
                 }
             >
+                <label className="pad actions">
+                    统计币种{" "}
+                    <select
+                        aria-label="经营统计币种"
+                        value={currency}
+                        onChange={(e) => setCurrency(e.target.value)}
+                    >
+                        <option>CNY</option>
+                        <option>USD</option>
+                    </select>
+                </label>
                 <State {...stat} retry={stat.reload}>
                     <div className="dashboard-core-metrics">
                         {[
-                            ["今日收入", money(stats.day_income || 0)],
-                            ["本月收入", money(stats.month_income || 0)],
-                            ["上月收入", money(stats.last_month_income || 0)],
-                            ["近 10 分钟活跃用户", stats.online_user ?? "—"],
-                            ["今日新增用户", stats.day_register_total ?? "—"],
-                            ["本月新增用户", stats.month_register_total ?? "—"],
+                            [
+                                "今日已支付订单金额",
+                                amount(finance?.today_amount),
+                            ],
+                            [
+                                "本月已支付订单金额",
+                                amount(finance?.month_amount),
+                            ],
+                            [
+                                "上月已支付订单金额",
+                                amount(finance?.previous_amount),
+                            ],
+                            ["本月已支付订单", finance?.month_count ?? "—"],
+                            ["平均支付金额", amount(finance?.average_amount)],
+                            [
+                                "较上月同期",
+                                finance?.change_percent == null
+                                    ? "—"
+                                    : `${finance.change_percent > 0 ? "+" : ""}${finance.change_percent}%`,
+                            ],
                         ].map(([label, value]) => (
                             <Metric
                                 key={String(label)}
@@ -131,16 +155,77 @@ function IncomeOverview() {
                         ))}
                     </div>
                 </State>
-                <p className="pad muted">收入按实际支付时间统计（CNY）。</p>
-                <State {...orders} retry={orders.reload}>
-                    <HistoryChart
-                        data={(orders.data || []).filter(
-                            (r) => !String(r.type).includes("佣金"),
-                        )}
-                    />
-                </State>
+                <p className="pad muted">
+                    按支付时间与订单币种统计（
+                    {stats.financial?.timeZone || "系统时区"}），最多缓存 60
+                    秒。金额为余额抵扣后的订单应付金额，不是渠道结算或净利润；零元订单计入笔数。上月同期按相同日期和时刻比较，月末按上月最后一天截断。
+                </p>
+                {finance && (
+                    <>
+                        <h3 className="pad">业务构成与佣金</h3>
+                        <div className="dashboard-core-metrics">
+                            {[
+                                [
+                                    "本月订阅订单金额",
+                                    amount(finance.subscription_amount),
+                                ],
+                                [
+                                    "本月充值订单金额",
+                                    amount(finance.deposit_amount),
+                                ],
+                                [
+                                    "本月已发放佣金",
+                                    amount(finance.commission_paid),
+                                ],
+                                [
+                                    "待审核佣金",
+                                    amount(finance.commission_pending),
+                                ],
+                            ].map(([label, value]) => (
+                                <Metric
+                                    key={label}
+                                    label={label}
+                                    value={value}
+                                />
+                            ))}
+                        </div>
+                        <p className="pad muted">
+                            充值与订阅金额分别展示，不将充值到账后使用的余额再次计入收款。待审核佣金{" "}
+                            {finance.commission_pending_count} 笔。
+                        </p>
+                        <h3 className="pad">近 30 天订单金额</h3>
+                        <HistoryChart
+                            data={finance.daily.map((r: Row) => ({
+                                date: r.date,
+                                type: `订单金额（${currency}）`,
+                                value: r.amount / 100,
+                            }))}
+                        />
+                        <h3 className="pad">近 30 天支付订单笔数</h3>
+                        <HistoryChart
+                            data={finance.daily.map((r: Row) => ({
+                                date: r.date,
+                                type: "支付订单笔数",
+                                value: r.count,
+                            }))}
+                        />
+                    </>
+                )}
             </Panel>
             <Panel title="用户活跃与流量">
+                <div className="dashboard-core-metrics">
+                    {[
+                        ["近 10 分钟活跃用户", stats.online_user ?? "—"],
+                        ["今日新增用户", stats.day_register_total ?? "—"],
+                        ["本月新增用户", stats.month_register_total ?? "—"],
+                    ].map(([label, value]) => (
+                        <Metric
+                            key={String(label)}
+                            label={String(label)}
+                            value={value}
+                        />
+                    ))}
+                </div>
                 <State {...stat} retry={stat.reload}>
                     {stats.usage ? (
                         <>

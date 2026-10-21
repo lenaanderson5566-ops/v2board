@@ -68,10 +68,10 @@ export const adminWorkspaces = [
     },
     {
         root: "access-blacklist",
-        label: "访问黑名单",
+        label: "订阅访问黑名单",
         tabs: [
-            ["access-blacklist", "IP 黑名单"],
-            ["access-blacklist-ua", "UA 黑名单"],
+            ["access-blacklist", "订阅 IP 黑名单"],
+            ["access-blacklist-ua", "订阅 UA 黑名单"],
         ],
     },
     {

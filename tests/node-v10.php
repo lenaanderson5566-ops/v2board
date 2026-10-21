@@ -26,6 +26,7 @@ $call=function($method,$path,$body=[],$headers=[])use($kernel,&$nodeId){
     return $kernel->handle($request);
 };
 (require __DIR__.'/../database/migrations/2026_10_21_000001_create_node_target_snapshots.php')->up();
+(require __DIR__.'/../database/migrations/2026_10_21_000002_create_node_target_daily.php')->up();
 DB::beginTransaction();
 try {
     $base=['group_id'=>[999997],'name'=>'V10 node test','host'=>'example.test','port'=>'443','server_port'=>443,'listen_ip'=>'0.0.0.0','protocol'=>'vless','tls'=>0,'network'=>'tcp','network_settings'=>[],'encryption_settings'=>[],'disable_sni'=>0,'zero_rtt_handshake'=>0,'rate'=>'1','show'=>1];
@@ -173,11 +174,44 @@ try {
 
     $assert(count($store->report(999997,$policy['version'],24)['rows'])===1,'SQL history remains visible after Redis handoff');
     $archive->flush();
+    $daily=app(App\Services\TargetStatisticsDaily::class);
+    $dailyRows=$daily->report(999997,7,1);
+    $assert($dailyRows['total']===1 && !isset($dailyRows['rows'][0]['userId']),'Daily archive strips user identity');
+    $beforeDaily=$dailyRows['rows'][0]['connections'];
+    $archive->flush();
+    $assert($daily->report(999997,7,1)['rows'][0]['connections']===$beforeDaily,'Archive retry does not double count daily counters');
+    $assert($daily->report(999996,7,1)['total']===0,'Daily query is node scoped');
+    $assert($daily->report(999997,7,2)['rows']===[],'Daily query paginates in SQL');
+    $remaining=1000; $sample=['m:a'=>json_encode(['userId'=>1,'type'=>'domain','target'=>'daily.test']),'c:a'=>3,'u:a'=>10,'d:a'=>20,'m:b'=>json_encode(['userId'=>2,'type'=>'domain','target'=>'daily.test']),'c:b'=>4,'u:b'=>5,'d:b'=>6];
+    $daily->add(999994,time()-600,$sample,30,$remaining);
+    $daily->add(999994,time()-400,$sample,30,$remaining);
+    $r=$daily->report(999994,30,1);
+    $assert($r['rows'][0]['connections']===14 && $r['rows'][0]['uploadBytes']===30 && $r['total']===1,'Daily merges users and buckets without storing identity');
+    DB::table(App\Services\TargetStatisticsDaily::TABLE)->where('node_id',999994)->update(['expires_at'=>time()-1]);
+    DB::table(App\Services\TargetStatisticsDaily::DAYS)->where('node_id',999994)->update(['expires_at'=>time()-1]);
+    $remaining=0;$daily->add(999994,time()-400,$sample,30,$remaining);
+    $assert($daily->report(999994,30,1)['rows'][0]['connections']===7,'Reenabled daily collection replaces expired counters without resurrecting history');
+    $remaining=0; $daily->add(999993,time()-600,$sample,30,$remaining);
+    $assert($daily->report(999993,30,1)['truncated'] && $daily->report(999993,30,1)['total']===0,'Daily capacity rejection is visible');
+    $many=[];for($i=0;$i<501;$i++){ $many['m:'.$i]=json_encode(['userId'=>1,'type'=>'domain','target'=>'cap'.$i.'.test']);$many['c:'.$i]=1; }
+    $remaining=1000;DB::enableQueryLog();DB::flushQueryLog();$daily->add(999991,time()-600,$many,30,$remaining);$writes=count(DB::getQueryLog());DB::disableQueryLog();
+    $assert($daily->report(999991,30,1)['total']===500 && $daily->report(999991,30,1)['truncated'],'Daily per-node target cap is enforced');
+    $assert($writes<15,'Daily 500-row bucket is batch-written with bounded query count');
+    $remaining=1000;$daily->add(999990,time()-31*86400,$sample,30,$remaining);
+    $assert($daily->report(999990,30,1)['total']===0,'Daily expired input is not resurrected');
+    $remaining=1000;$daily->add(999992,time()-10*86400,$sample,30,$remaining);
+    $assert($daily->report(999992,30,1)['total']===1 && $daily->report(999992,7,1)['total']===0,'Thirty day retention does not extend recent detail queries');
+    $daily->shorten(7);$daily->shorten(30);
+    $assert($daily->report(999992,30,1)['total']===0,'Shortened daily history cannot be restored by extension');
+
     $assert(DB::table(App\Services\TargetStatisticsArchive::TABLE)->where('node_id',999997)->count()===1,'Archive retry does not duplicate snapshots');
     // Simulate a crash after SQL commit and before Redis release.
     $payload=json_decode(DB::table(App\Services\TargetStatisticsArchive::TABLE)->where('node_id',999997)->value('payload'),true);
     $store->connection()->hmset($oldKey,$payload);$store->connection()->expire($oldKey,3600);
     $assert($store->report(999997,$policy['version'],24)['rows'][0]['uploadBytes']===1000000000000000,'SQL and Redis overlap never double counts');
+    $store->connection()->eval("return redis.call('ZADD',KEYS[1],ARGV[1],KEYS[2])",2,$store->prefix().'expiry',$oldKey,time()+3600);
+    $archive->flush();
+    $assert($daily->report(999997,7,1)['rows'][0]['connections']===$beforeDaily,'Crash retry preserves daily exactly-once aggregation');
     $store->connection()->del($oldKey);
 
     $assert(count($store->report(999997,$policy['version'],24,999999)['rows'])===0,'User filter applies before aggregation');
@@ -287,6 +321,11 @@ try {
     $user->is_admin=0;$user->save();
     $assert($intervalCall($token,['reportIntervalSeconds'=>300])->getStatusCode()===403,'Ordinary user cannot change report cadence');
     $user->is_admin=1;$user->save();
+    $dailyCall=function($authorization,$query='view=daily')use($kernel,$adminPath){return $kernel->handle(Request::create($adminPath.'/target-statistics?'.$query,'GET',[],[],[],['HTTP_ACCEPT'=>'application/json','HTTP_AUTHORIZATION'=>$authorization]));};
+    $assert($dailyCall('')->getStatusCode()===403,'Daily history requires administrator authentication');
+    $assert($dailyCall($token)->getStatusCode()===200,'Administrator can query daily history while collection disabled');
+    $assert($dailyCall($token,'view=daily&userId=1')->getStatusCode()===422,'Daily user filter is explicitly unsupported');
+    $assert($dailyCall($token,'view=invalid')->getStatusCode()===422,'Unknown target report view rejected');
     $current=$stats->policy();
     foreach([30,60,120,300] as $seconds) {
         $r=$intervalCall($token,['reportIntervalSeconds'=>$seconds]);
@@ -300,6 +339,13 @@ try {
         $r=$intervalCall($token,['retentionHours'=>$hours]);
         $assert($r->getStatusCode()===200 && json_decode($r->getContent(),true)['data']['retentionHours']===$hours,'Retention-only settings accepted');
     }
+    foreach([0,7,30] as $days) {
+        $r=$intervalCall($token,['dailyRetentionDays'=>$days]);
+        $assert($r->getStatusCode()===200 && json_decode($r->getContent(),true)['data']['dailyRetentionDays']===$days,'Daily retention-only setting accepted');
+    }
+    foreach([1,31,-1,null,7.5] as $days)$assert($intervalCall($token,['dailyRetentionDays'=>$days])->getStatusCode()===422,'Invalid daily retention rejected');
+    $assert($intervalCall('',['dailyRetentionDays'=>30])->getStatusCode()===403,'Anonymous cannot change daily retention');
+    $assert(!array_key_exists('dailyRetentionDays',$stats->nodePolicy()),'Daily retention does not change node wire contract');
     foreach([0,2,25,168,null,6.5] as $hours) $assert($intervalCall($token,['retentionHours'=>$hours])->getStatusCode()===422,'Invalid retention rejected');
     $assert($intervalCall('',['retentionHours'=>6])->getStatusCode()===403,'Anonymous cannot alter retention');
     $stats->configure(null,null,1);

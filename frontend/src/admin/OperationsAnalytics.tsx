@@ -14,7 +14,13 @@ type Access = {
     successRate: number | null;
     latestAt: string | null;
     clients?: {
-        applications?: {code:string;name:string;total:number;success:number;failed:number}[];
+        applications?: {
+            code: string;
+            name: string;
+            total: number;
+            success: number;
+            failed: number;
+        }[];
         uniqueIps: number;
         unknownIpEvents: number;
         browsers: {
@@ -281,7 +287,31 @@ function AccessReport({
                                     ),
                                 ])}
                             />
-                            {data.clients.applications && <><h3>第三方客户端</h3><p className="muted">按当前识别库汇总 UA；未匹配的浏览器及客户端归为其他。</p><ReportTable headers={["客户端","事件","成功","失败"]} rows={data.clients.applications.map(r=>[r.name,r.total,r.success,r.failed])}/></>}
+                            {data.clients.applications && (
+                                <>
+                                    <h3>第三方客户端</h3>
+                                    <p className="muted">
+                                        按当前识别库汇总
+                                        UA；未匹配的浏览器及客户端归为其他。
+                                    </p>
+                                    <ReportTable
+                                        headers={[
+                                            "客户端",
+                                            "事件",
+                                            "成功",
+                                            "失败",
+                                        ]}
+                                        rows={data.clients.applications.map(
+                                            (r) => [
+                                                r.name,
+                                                r.total,
+                                                r.success,
+                                                r.failed,
+                                            ],
+                                        )}
+                                    />
+                                </>
+                            )}
                             <h3>IP 访问排行（失败次数优先，前 20）</h3>
                             <ReportTable
                                 headers={[
@@ -349,7 +379,10 @@ export function OperationsAnalytics({
     return (
         <>
             <Panel padded title="运营与安全报表">
-                <p className="muted">沿用上方日期范围，不受设备筛选与浏览器采集开关影响。缓存 60 秒，队列数据为生成时快照。</p>
+                <p className="muted">
+                    沿用上方日期范围，不受设备筛选与浏览器采集开关影响。缓存 60
+                    秒，队列数据为生成时快照。
+                </p>
                 <button
                     type="button"
                     onClick={report.reload}
@@ -611,7 +644,10 @@ export function OperationsAnalytics({
                                     ])}
                                 />
                             )}
-                            <p className="muted">队列来自 Horizon；预计清空耗时不等于实际等待时长，请结合主进程状态判断。</p>
+                            <p className="muted">
+                                队列来自
+                                Horizon；预计清空耗时不等于实际等待时长，请结合主进程状态判断。
+                            </p>
                             <p>
                                 失败任务库当前保留：
                                 {data.health.failedJobsRetained ?? "不可用"}
@@ -643,5 +679,43 @@ export function OperationsAnalytics({
                 </>
             )}
         </>
+    );
+}
+
+export function OperationsDetails({
+    section,
+}: {
+    section: "security" | "delivery" | "health";
+}) {
+    const [open, setOpen] = useState(false),
+        [days, setDays] = useState(30);
+    const title = {
+        security: "登录与订阅质量",
+        delivery: "支付与邮件送达",
+        health: "历史运行健康",
+    }[section];
+    return (
+        <section className="analytics-page">
+            <div className="actions pad">
+                <button aria-expanded={open} onClick={() => setOpen(!open)}>
+                    {open ? "收起" : "查看"}
+                    {title}
+                </button>
+                {open && (
+                    <label>
+                        报表范围{" "}
+                        <select
+                            value={days}
+                            onChange={(e) => setDays(Number(e.target.value))}
+                        >
+                            <option value={7}>近 7 天</option>
+                            <option value={30}>近 30 天</option>
+                            <option value={90}>近 90 天</option>
+                        </select>
+                    </label>
+                )}
+            </div>
+            {open && <OperationsAnalytics days={days} section={section} />}
+        </section>
     );
 }

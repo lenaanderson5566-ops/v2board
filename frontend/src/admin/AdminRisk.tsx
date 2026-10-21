@@ -1,3 +1,4 @@
+import { OperationsDetails } from "./OperationsAnalytics";
 import { AdminChoiceGroup } from "./AdminChoices";
 import { displayTimeZone } from "../shared/timezone";
 import { AdminSubscriptionProtection } from "./AdminSubscriptionProtection";
@@ -37,8 +38,16 @@ export function RiskOverview() {
     return (
         <div className="risk-workspace">
             <div className="actions risk-toolbar">
-                <AdminChoiceGroup label="风控统计时间范围" value={window} onChange={setWindow}
-                    options={[{value:"today",label:"近 24 小时"},{value:"7d",label:"近 7 天"},{value:"30d",label:"近 30 天"}]} />
+                <AdminChoiceGroup
+                    label="风控统计时间范围"
+                    value={window}
+                    onChange={setWindow}
+                    options={[
+                        { value: "today", label: "近 24 小时" },
+                        { value: "7d", label: "近 7 天" },
+                        { value: "30d", label: "近 30 天" },
+                    ]}
+                />
                 <a className="button" href="#/risk">
                     管理规则
                 </a>
@@ -141,10 +150,11 @@ export function RiskOverview() {
                 </Panel>
                 <div className="actions pad">
                     <a href="#/access-logs-risk">全部命中记录</a>
-                    <a href="#/access-blacklist">IP 黑名单</a>
-                    <a href="#/access-blacklist-ua">UA 黑名单</a>
+                    <a href="#/access-blacklist">订阅 IP 黑名单</a>
+                    <a href="#/access-blacklist-ua">订阅 UA 黑名单</a>
                 </div>
             </State>
+            <OperationsDetails section="security" />
         </div>
     );
 }
@@ -198,9 +208,18 @@ export function RiskRules() {
         : [];
     return (
         <>
-            <p className="pad muted">异常检测仅记录事件；拦截由限流与黑名单执行，客户端准入在客户端策略中管理。</p>
-            <AdminChoiceGroup label="风控规则范围" value={scene} onChange={setScene}
-                options={[{value:"all",label:"全部规则"},{value:"subscribe",label:"订阅"}]} />
+            <p className="pad muted">
+                异常检测仅记录事件；拦截由限流与黑名单执行，客户端准入在客户端策略中管理。
+            </p>
+            <AdminChoiceGroup
+                label="风控规则范围"
+                value={scene}
+                onChange={setScene}
+                options={[
+                    { value: "all", label: "全部规则" },
+                    { value: "subscribe", label: "订阅" },
+                ]}
+            />
             {scene !== "login" && <AdminSubscriptionProtection />}
             <State {...d} retry={d.reload}>
                 <div className="risk-rule-grid">
@@ -221,7 +240,7 @@ export function RiskRules() {
                                 {r.scene === "login" ? "登录行为" : "订阅访问"}{" "}
                                 ·{" "}
                                 {r.rule_key.includes("blacklist")
-                                    ? "黑名单命中记录"
+                                    ? "订阅黑名单命中记录"
                                     : "异常行为记录"}
                             </p>
                             <p className="muted">

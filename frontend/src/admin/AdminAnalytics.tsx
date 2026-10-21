@@ -10,7 +10,6 @@ import type { V10AnalyticsConfiguration } from "../shared/v10-types";
 import "./analytics.css";
 import { browserLabel } from "./browser-labels";
 import { ReportTable } from "./OperationsAnalytics";
-import { OperationsAnalytics } from "./OperationsAnalytics";
 
 type Report = {
     settings: V10AnalyticsConfiguration;
@@ -94,7 +93,7 @@ function Funnel({ steps }: { steps: { label: string; count: number }[] }) {
 }
 export function AdminAnalytics() {
     const [tab, setTab] = useState("overview");
-    const productTab = ["overview", "audience", "conversion"].includes(tab);
+    const productTab = ["overview", "conversion"].includes(tab);
     const [days, setDays] = useState(30);
     const [device, setDevice] = useState("all");
     const report = useData<Report>(
@@ -138,15 +137,6 @@ export function AdminAnalytics() {
                             ))}
                         </select>
                     </label>
-                    {productTab && (
-                        <button
-                            type="button"
-                            onClick={report.reload}
-                            disabled={report.loading}
-                        >
-                            刷新报表
-                        </button>
-                    )}
                 </div>
                 <State loading={report.loading} error={report.error}>
                     {null}
@@ -172,7 +162,7 @@ export function AdminAnalytics() {
                 )}
             </Panel>
             <p className="muted">
-                设备筛选作用于访问与体验样本，业务转化及安全日志不受设备筛选影响。
+                设备筛选作用于访问与体验样本，业务转化不受设备筛选影响。
                 <a href="#/log-settings?tab=analytics">
                     管理采集开关与保留时间
                 </a>
@@ -183,12 +173,8 @@ export function AdminAnalytics() {
                 onChange={setTab}
                 options={[
                     { value: "overview", label: "访问概览" },
-                    { value: "audience", label: "来源与浏览器" },
                     { value: "conversion", label: "购买转化" },
-                    { value: "experience", label: "用户体验" },
-                    { value: "security", label: "安全访问" },
-                    { value: "delivery", label: "支付与邮件" },
-                    { value: "health", label: "运行健康" },
+                    { value: "experience", label: "体验问题" },
                 ]}
             >
                 <div className="analytics-page">
@@ -225,16 +211,14 @@ export function AdminAnalytics() {
                         </Panel>
                     )}
 
-                    {["security", "delivery", "health"].includes(tab) && (
-                        <OperationsAnalytics
+                    {tab === "experience" && (
+                        <JourneyAnalytics
                             days={days}
-                            section={tab as "security" | "delivery" | "health"}
+                            device={device}
+                            experienceOnly
                         />
                     )}
-                    {tab === "experience" && (
-                        <JourneyAnalytics days={days} device={device} />
-                    )}
-                    {tab === "audience" && data && (
+                    {tab === "overview" && data && (
                         <Panel padded title="访问浏览器与系统">
                             {data.browsersReady ? (
                                 <ReportTable
@@ -354,99 +338,6 @@ export function AdminAnalytics() {
                                     </p>
                                 </Panel>
                             )}
-                            {tab === "overview" && (
-                                <Panel padded title="访问时段分布">
-                                    <p className="muted">
-                                        按系统时区 {data.timeZone}{" "}
-                                        的会话开始时间统计，沿用设备筛选与统计保留期；非人数或接口请求量，未采集与缺失数据不代表零访问。
-                                    </p>
-                                    <div className="analytics-time-grid">
-                                        <div>
-                                            <h3>小时分布</h3>
-                                            <TableViewport>
-                                                <table>
-                                                    <thead>
-                                                        <tr>
-                                                            <th>小时</th>
-                                                            <th>会话数</th>
-                                                        </tr>
-                                                    </thead>
-                                                    <tbody>
-                                                        {data.hours?.map(
-                                                            (count, hour) => (
-                                                                <tr key={hour}>
-                                                                    <td>
-                                                                        {String(
-                                                                            hour,
-                                                                        ).padStart(
-                                                                            2,
-                                                                            "0",
-                                                                        )}
-                                                                        :00–
-                                                                        {String(
-                                                                            hour +
-                                                                                1,
-                                                                        ).padStart(
-                                                                            2,
-                                                                            "0",
-                                                                        )}
-                                                                        :00
-                                                                    </td>
-                                                                    <td>
-                                                                        {count}
-                                                                    </td>
-                                                                </tr>
-                                                            ),
-                                                        )}
-                                                    </tbody>
-                                                </table>
-                                            </TableViewport>
-                                        </div>
-                                        <div>
-                                            <h3>星期分布</h3>
-                                            <TableViewport>
-                                                <table>
-                                                    <thead>
-                                                        <tr>
-                                                            <th>星期</th>
-                                                            <th>会话数</th>
-                                                        </tr>
-                                                    </thead>
-                                                    <tbody>
-                                                        {data.weekdays?.map(
-                                                            (count, day) => (
-                                                                <tr key={day}>
-                                                                    <td>
-                                                                        {
-                                                                            [
-                                                                                "周一",
-                                                                                "周二",
-                                                                                "周三",
-                                                                                "周四",
-                                                                                "周五",
-                                                                                "周六",
-                                                                                "周日",
-                                                                            ][
-                                                                                day
-                                                                            ]
-                                                                        }
-                                                                    </td>
-                                                                    <td>
-                                                                        {count}
-                                                                    </td>
-                                                                </tr>
-                                                            ),
-                                                        )}
-                                                    </tbody>
-                                                </table>
-                                            </TableViewport>
-                                            <p className="muted">
-                                                各星期在范围内出现次数可能不同，数值为总量。
-                                            </p>
-                                        </div>
-                                    </div>
-                                </Panel>
-                            )}
                             {tab === "conversion" && (
                                 <Panel padded title="购买路径 · 同一访问会话">
                                     <Funnel
@@ -505,99 +396,7 @@ export function AdminAnalytics() {
                                     </p>
                                 </Panel>
                             )}
-                            {tab === "conversion" && (
-                                <Panel padded title="转化改进工作台">
-                                    <TableViewport>
-                                        <table>
-                                            <thead>
-                                                <tr>
-                                                    <th>环节</th>
-                                                    <th>窗口内待转化</th>
-                                                    <th>建议检查</th>
-                                                    <th>配置入口</th>
-                                                </tr>
-                                            </thead>
-                                            <tbody>
-                                                <tr>
-                                                    <td>注册 → 下单</td>
-                                                    <td>
-                                                        {Math.max(
-                                                            0,
-                                                            data.cohort
-                                                                .registered -
-                                                                data.cohort
-                                                                    .ordered,
-                                                        )}{" "}
-                                                        人
-                                                    </td>
-                                                    <td>
-                                                        套餐价值、价格与周期是否清楚；试用或优惠是否适合当前用户。
-                                                    </td>
-                                                    <td>
-                                                        <a href="#/plans">
-                                                            套餐管理
-                                                        </a>{" "}
-                                                        ·{" "}
-                                                        <a href="#/coupons">
-                                                            优惠券
-                                                        </a>
-                                                    </td>
-                                                </tr>
-                                                <tr>
-                                                    <td>下单 → 付款</td>
-                                                    <td>
-                                                        {Math.max(
-                                                            0,
-                                                            data.cohort
-                                                                .ordered -
-                                                                data.cohort
-                                                                    .paid,
-                                                        )}{" "}
-                                                        人
-                                                    </td>
-                                                    <td>
-                                                        可用支付方式、币种、金额和失败提示；先排查通道故障再调整促销。
-                                                    </td>
-                                                    <td>
-                                                        <a href="#/payments">
-                                                            支付渠道
-                                                        </a>{" "}
-                                                        ·{" "}
-                                                        <a href="#/orders">
-                                                            订单管理
-                                                        </a>
-                                                    </td>
-                                                </tr>
-                                                <tr>
-                                                    <td>付款 → 完成</td>
-                                                    <td>
-                                                        {Math.max(
-                                                            0,
-                                                            data.cohort.paid -
-                                                                data.cohort
-                                                                    .completed,
-                                                        )}{" "}
-                                                        人
-                                                    </td>
-                                                    <td>
-                                                        支付回调、订单处理与开通延迟；引导用户下载适合其平台的客户端。
-                                                    </td>
-                                                    <td>
-                                                        <a href="#/orders">
-                                                            核查订单
-                                                        </a>{" "}
-                                                        ·{" "}
-                                                        <a href="#/client-downloads">
-                                                            专用客户端下载
-                                                        </a>
-                                                    </td>
-                                                </tr>
-                                            </tbody>
-                                        </table>
-                                    </TableViewport>
-                                </Panel>
-                            )}
-                            {tab === "audience" && (
+                            {tab === "overview" && (
                                 <Panel padded title="访问来源网站">
                                     <p className="muted">
                                         仅统计同意采集的访问来源，沿用时间与设备筛选，不关联账号。
@@ -671,59 +470,6 @@ export function AdminAnalytics() {
                                     <p className="muted">
                                         只保存来源域名，每次访问固定首次记录的来源，站内跳转不覆盖。直接打开、复制链接、App
                                         内打开或浏览器隐藏来源时，可能无法识别来源网站；“来源未知”不等同于主动输入网址。
-                                    </p>
-                                </Panel>
-                            )}
-                            {tab === "audience" && (
-                                <Panel padded title="页面表现">
-                                    {data.pages.length ? (
-                                        <TableViewport>
-                                            <table>
-                                                <thead>
-                                                    <tr>
-                                                        <th>页面</th>
-                                                        <th>浏览次数</th>
-                                                        <th>访问会话</th>
-                                                        <th>会话覆盖率</th>
-                                                    </tr>
-                                                </thead>
-                                                <tbody>
-                                                    {data.pages.map((page) => (
-                                                        <tr key={page.page}>
-                                                            <td>
-                                                                {labels[
-                                                                    page.page
-                                                                ] || page.page}
-                                                            </td>
-                                                            <td>
-                                                                {page.views.toLocaleString()}
-                                                            </td>
-                                                            <td>
-                                                                {page.sessions.toLocaleString()}
-                                                            </td>
-                                                            <td>
-                                                                {percent(
-                                                                    page.sessions,
-                                                                    data.sessions,
-                                                                )}
-                                                            </td>
-                                                        </tr>
-                                                    ))}
-                                                </tbody>
-                                            </table>
-                                        </TableViewport>
-                                    ) : (
-                                        <p className="muted">
-                                            暂无访问数据。开启收集、用户同意并浏览页面后显示；业务支付数据不会填充此表。
-                                        </p>
-                                    )}
-                                    <p className="muted">
-                                        {data.devices
-                                            .map(
-                                                (item) =>
-                                                    `${labels[item.device]} ${item.sessions.toLocaleString()} 会话`,
-                                            )
-                                            .join(" · ")}
                                     </p>
                                 </Panel>
                             )}

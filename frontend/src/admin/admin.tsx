@@ -1,3 +1,4 @@
+import { OperationsDetails } from "./OperationsAnalytics";
 import { AdminLogTimeZone, logTime } from "./admin-log-time";
 import { AdminDisplaySettings } from "./AdminDisplaySettings";
 import { languageCodes } from "../shared/language-options";
@@ -723,7 +724,7 @@ export const resources: Record<string, Resource> = {
         defaults: { is_enabled: 1, sort: 0 },
     },
     "access-blacklist": {
-        title: "IP 黑名单",
+        title: "订阅 IP 黑名单",
         fetch: ops("risk/blacklist/ip/fetch"),
         save: ops("risk/blacklist/ip/update"),
         drop: ops("risk/blacklist/ip/delete"),
@@ -742,7 +743,7 @@ export const resources: Record<string, Resource> = {
         defaults: { type: "ip", is_enabled: 1 },
     },
     "access-blacklist-ua": {
-        title: "UA 黑名单",
+        title: "订阅 UA 黑名单",
         fetch: ops("risk/blacklist/ua/fetch"),
         save: ops("risk/blacklist/ua/update"),
         drop: ops("risk/blacklist/ua/delete"),
@@ -1150,6 +1151,7 @@ export function ResourcePage({
     );
     return (
         <>
+            {(resource === resources["access-blacklist"] || resource === resources["access-blacklist-ua"]) && <p className="muted">仅拦截订阅获取请求，不限制网站登录及节点代理流量。</p>}
             {showDisplay && ownDisplaySettings && <AdminDisplaySettings title={`${resource.title}显示设置`}
                 columns={resource.columns.filter(([key]) => !hiddenColumns.includes(key))} selected={selectedColumns}
                 onChange={updateColumns} onReset={() => updateColumns(resource.columns.map(([key]) => key))} close={() => setShowDisplay(false)} />}
@@ -1762,7 +1764,7 @@ export function System() {
     const [details, setDetails] = useState(false);
     return <><AdminObservability /><Panel title="队列进程详情" actions={<button onClick={() => setDetails(!details)}>{details ? "收起详情" : "查看详情"}</button>}>
         {details && <QueueDetails />}
-    </Panel></>;
+    </Panel><OperationsDetails section="health"/></>;
 }
 
 export { Nodes } from "./admin-nodes";

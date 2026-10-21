@@ -17,6 +17,7 @@ final class TargetStatistics
     {
         $saved = json_decode(RiskSetting::where('key', self::SETTING)->value('value') ?? '{}', true);
         return ['enabled'=>($saved['enabled'] ?? false) === true,
+            'dailyRetentionDays'=>in_array($saved['dailyRetentionDays'] ?? null,[0,7,30],true) ? $saved['dailyRetentionDays'] : 7,
             'retentionHours'=>in_array($saved['retentionHours'] ?? null,[1,6,12,24],true) ? $saved['retentionHours'] : 1,
             'version'=>$saved['version'] ?? '00000000-0000-0000-0000-000000000000', 'leaseSeconds'=>120,
             'reportIntervalSeconds'=>in_array($saved['reportIntervalSeconds'] ?? null, [30,60,120,300], true) ? $saved['reportIntervalSeconds'] : 60];
@@ -24,36 +25,41 @@ final class TargetStatistics
 
     public function policy(): array
     {
-        if ($policy = $this->store->policy()) return $policy + ['reportIntervalSeconds'=>60,'retentionHours'=>1];
+        if ($policy = $this->store->policy()) return $policy + ['reportIntervalSeconds'=>60,'retentionHours'=>1,'dailyRetentionDays'=>7];
         return $this->store->repository()->lock('policy-load', 15)->block(5, function () {
             $policy = $this->store->policy() ?? $this->savedPolicy();
             $this->store->publishPolicy($policy);
-            return $policy + ['reportIntervalSeconds'=>60,'retentionHours'=>1];
+            return $policy + ['reportIntervalSeconds'=>60,'retentionHours'=>1,'dailyRetentionDays'=>7];
         });
     }
 
     public function nodePolicy(): array { return array_intersect_key($this->policy(), array_flip(['enabled','version','leaseSeconds','reportIntervalSeconds'])); }
 
-    public function configure(?bool $enabled = null, ?int $reportIntervalSeconds = null, ?int $retentionHours = null): array
+    public function configure(?bool $enabled = null, ?int $reportIntervalSeconds = null, ?int $retentionHours = null, ?int $dailyRetentionDays = null): array
     {
-        return $this->store->repository()->lock('policy-load', 15)->block(5, function () use ($enabled, $reportIntervalSeconds, $retentionHours) {
+        return $this->store->repository()->lock('archive-flush', 120)->block(5, fn()=> $this->store->repository()->lock('policy-load', 15)->block(5, function () use ($enabled, $reportIntervalSeconds, $retentionHours, $dailyRetentionDays) {
             $policy = $this->savedPolicy();
+            $previousHours=$policy['retentionHours']; $previousDays=$policy['dailyRetentionDays'];
+            $dailyRetentionDays ??= $policy['dailyRetentionDays'];
+            abort_unless(in_array($dailyRetentionDays,[0,7,30],true),422);
             $retentionHours ??= $policy['retentionHours'];
             abort_unless(in_array($retentionHours,[1,6,12,24],true),422);
             $enabled ??= $policy['enabled'];
             $reportIntervalSeconds ??= $policy['reportIntervalSeconds'];
             abort_unless(in_array($reportIntervalSeconds,[30,60,120,300],true),422);
-            if ($policy['enabled'] !== $enabled || $policy['reportIntervalSeconds'] !== $reportIntervalSeconds || $policy['retentionHours'] !== $retentionHours) {
+            if ($policy['dailyRetentionDays'] !== $dailyRetentionDays || $policy['enabled'] !== $enabled || $policy['reportIntervalSeconds'] !== $reportIntervalSeconds || $policy['retentionHours'] !== $retentionHours) {
                 if ($policy['enabled'] !== $enabled) $policy['version'] = (string)Str::uuid();
                 $policy['retentionHours'] = $retentionHours;
+                $policy['dailyRetentionDays'] = $dailyRetentionDays;
                 $policy['enabled'] = $enabled;
                 $policy['reportIntervalSeconds'] = $reportIntervalSeconds;
                 RiskSetting::updateOrCreate(['key'=>self::SETTING], ['value'=>json_encode($policy)]);
             }
             $this->store->publishPolicy($policy);
-            app(TargetStatisticsArchive::class)->shorten($policy['retentionHours']);
+            if($policy['retentionHours']<$previousHours) app(TargetStatisticsArchive::class)->shorten($policy['retentionHours']);
+            if($policy['dailyRetentionDays']<$previousDays) app(TargetStatisticsDaily::class)->shorten($policy['dailyRetentionDays']);
             return $policy;
-        });
+        }));
     }
 
     public static function target(string $target, string $type): string
@@ -95,7 +101,7 @@ final class TargetStatistics
             hash('sha256', json_encode($input)), $rows, (int)$input['dropped'], $bytes);
     }
 
-    public function report(int $nodeId, int $userId, int $page): array
+    public function report(int $nodeId, int $userId, int $page, string $view = 'recent'): array
     {
         $policy = $this->policy();
         $catalog = ServerV2box::orderBy('id')->get(['id','name']);
@@ -106,6 +112,7 @@ final class TargetStatistics
                 'supported'=>in_array('target-statistics-v1', $features, true),
                 'configurableInterval'=>in_array('target-statistics-interval-v1', $features, true)];
         })->all();
+        if ($view === 'daily') return array_merge(['settings'=>$policy,'nodes'=>$nodes,'page'=>$page,'pageSize'=>25,'archive'=>app(TargetStatisticsArchive::class)->status()], app(TargetStatisticsDaily::class)->report($nodeId,$policy['dailyRetentionDays'],$page));
         $rows = []; $dropped = 0;
         if ($policy['enabled'] && in_array($nodeId, array_column($nodes,'id'), true)) {
             $state = $this->store->report($nodeId, $policy['version'], $policy['retentionHours'], $userId);

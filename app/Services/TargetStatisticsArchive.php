@@ -23,16 +23,20 @@ final class TargetStatisticsArchive {
         if (!$this->ready()) return ['ready'=>false];
         return $this->store->repository()->lock('archive-flush',120)->block(1,function(){
             $policy=app(TargetStatistics::class)->policy();
+            $daily=app(TargetStatisticsDaily::class); $dailyReady=$daily->ready();
+            if($dailyReady)$daily->prune($policy['dailyRetentionDays']);
+            $remaining=$dailyReady ? max(0,$daily->limit()-DB::table(TargetStatisticsDaily::TABLE)->count()) : 0;
             $pruned=$this->prune($policy['retentionHours']);
             $used=(int)DB::table(self::TABLE)->sum('payload_bytes');
             $count=DB::table(self::TABLE)->count(); $saved=0; $full=false;
             $prefix=$this->store->prefix(); $current=intdiv(time(),300)*300;
+            // Leave a five-minute settling interval before treating a bucket as immutable.
             // The index has at most MAX_CONTAINERS entries, never scan unrelated Redis keys.
             $keys=$policy['enabled'] ? $this->store->connection()->zrangebyscore($prefix.'expiry',time(),'+inf') : [];
             $inspected=0;
             foreach($keys as $key) {
                 if ($saved>=48 || $inspected>=96) break;
-                if (!preg_match('/:(\d+):(\d+)$/D',$key,$m) || (int)$m[2]>=$current) continue;
+                if (!preg_match('/:(\d+):(\d+)$/D',$key,$m) || (int)$m[2]>$current-600) continue;
                 $bucket=(int)$m[2]; $node=(int)$m[1];
                 // Lua ledger members contain the connection prefix; rebuild the logical key before a client command.
                 $key=$prefix.$node.':'.$bucket;
@@ -46,10 +50,16 @@ final class TargetStatisticsArchive {
                 }
                 $payload=json_encode($value,JSON_THROW_ON_ERROR); $bytes=strlen($payload);
                 $id=hash('sha256',$node.'|'.$bucket.'|'.$value['_version']);
-                $existing=DB::table(self::TABLE)->where('id',$id)->first(['payload_bytes','expires_at']);
+                $existing=DB::table(self::TABLE)->where('id',$id)->first();
                 if ($used-($existing->payload_bytes??0)+$bytes>$this->budget() || (!$existing && $count>=50000)) { $full=true;break; }
                 // Upsert snapshots replaces counters, never adds them. Crash retries are idempotent.
+                DB::transaction(function()use($id,$node,$value,$bucket,$expires,$existing,$bytes,$payload,$dailyReady,$daily,$policy,&$remaining){
                 DB::table(self::TABLE)->upsert([['id'=>$id,'node_id'=>$node,'version'=>$value['_version'],'bucket_at'=>$bucket,'expires_at'=>min($expires,$existing->expires_at??$expires),'payload_bytes'=>$bytes,'payload'=>$payload]],['id'],['payload','payload_bytes','expires_at']);
+                    if($dailyReady && !($existing->daily_archived??false)) {
+                        $daily->add($node,$bucket,$value,$policy['dailyRetentionDays'],$remaining);
+                        DB::table(self::TABLE)->where('id',$id)->update(['daily_archived'=>true]);
+                    }
+                });
                 $used=$used-($existing->payload_bytes??0)+$bytes; if(!$existing)$count++;
                 // Release Redis only after SQL succeeds. Keep batch deduplication independent.
                 $this->store->connection()->eval(self::RELEASE,4,$key,$prefix.'sizes',$prefix.'expiry',$prefix.'used',$value['_version']);

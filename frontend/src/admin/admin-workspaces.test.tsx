@@ -118,7 +118,7 @@ afterEach(() => {
 });
 it("shows core income and lazily switches to risk without removed dashboard blocks", async () => {
     render(<Overview />);
-    expect(await screen.findByText("本月收入")).toBeTruthy();
+    expect(await screen.findByText("本月已支付订单金额")).toBeTruthy();
     expect(screen.queryByText("上年度同期收入")).toBeNull();
     expect(screen.queryByText("本年度收入")).toBeNull();
     expect(api.request.mock.calls.some(([path]) => /get(Server|User)LastRank/.test(path))).toBe(false);
@@ -606,7 +606,7 @@ it("refreshes every overview section from one action", async () => {
     api.request.mockClear();
     fireEvent.click(refresh);
     await waitFor(() => {
-        for (const path of ["stat/getOverride", "system/getSystemStatus", "stat/getOrder", "stat/getServerTodayRank", "stat/getUserTodayRank"]) {
+        for (const path of ["stat/getOverride", "system/getSystemStatus", "stat/getServerTodayRank", "stat/getUserTodayRank"]) {
             expect(api.request.mock.calls.some(([url]) => String(url).includes(path))).toBe(true);
         }
     });
@@ -618,7 +618,7 @@ it("groups target logs in diagnostics and loads dashboard analytics only on sele
     const { adminPageFixture } = await import("./test-support/page-fixtures");
     api.request.mockImplementation(async (path: string) => adminPageFixture(path));
     render(<Overview />);
-    await screen.findByText("本月收入");
+    await screen.findByText("本月已支付订单金额");
     expect(api.request.mock.calls.some(([path]) => path.includes("analytics/report"))).toBe(false);
     fireEvent.mouseDown(screen.getByRole("tab", {name: "访问与转化"}), {button: 0, ctrlKey: false});
     await waitFor(() => expect(api.request.mock.calls.some(([path]) => path.includes("analytics/report"))).toBe(true));
@@ -672,4 +672,16 @@ it.each([
     const link=within(screen.getByRole("navigation",{name:"后台导航"})).getByRole("link",{name:title});
     expect(link.getAttribute("href")).toBe("#/"+root);
     expect(api.request.mock.calls.some(([path])=>path.includes("payment/fetch") || path.includes("client/fetch"))).toBe(false);
+});
+
+it("switches financial currency without mixing amounts or requesting legacy trend",async()=>{
+    api.request.mockImplementation(async(path:string)=>({data:path.includes("stat/getOverride")?{financial:{timeZone:"Asia/Shanghai",currencies:[{currency:"CNY",today_amount:12345,month_amount:20000,previous_amount:30000,average_amount:10000,month_count:2,daily:[],commission_pending_count:0},{currency:"USD",today_amount:6789,month_amount:9000,previous_amount:0,month_count:1,daily:[],commission_pending_count:0}]}}:path.includes("Rank")?[]:{}}));
+    render(<Overview/>);
+    expect(await screen.findByText("CNY 123.45")).toBeTruthy();
+    fireEvent.change(screen.getByLabelText("经营统计币种"),{target:{value:"USD"}});
+    expect(screen.getByText("USD 67.89")).toBeTruthy();
+    expect(screen.queryByText("CNY 123.45")).toBeNull();
+    expect(api.request.mock.calls.some(([p])=>p.includes("stat/getOrder"))).toBe(false);
+    expect(resources["access-blacklist"].title).toBe("订阅 IP 黑名单");
+    expect(legacyAdminMenu.find(([key])=>key==="access-blacklist")?.[1]).toBe("订阅访问黑名单");
 });

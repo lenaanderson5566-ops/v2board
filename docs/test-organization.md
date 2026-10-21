@@ -1,3 +1,15 @@
+## 财务与节点日汇总回归（2026-10-21）
+
+复用 dashboard-revenue.php、node-v10.php、update-script.sh 及已有前端测试模块，无新增独立测试脚本或测试清单变更。
+
+- 隔离 SQLite：dashboard-revenue 验证订单状态、支付日期、CNY/USD 隔离、充值分类、零元订单、同期比较、30 天补零及财务四查询上限。
+- 隔离 SQLite + 独立 Redis 前缀：node-v10 共 242 项通过，含日汇总无用户维度、分页/节点隔离、归档重试不重复、每日 500 目标/全局容量限制、500 目标少于 15 条 SQL、过期/缩短/重新开启、管理员权限与筛选校验。88 并发提交为回归检查，不是生产容量基准。
+- 本地 MySQL 8.0.46 独立临时数据库：新增安装表/索引、唯一键更新及事务回滚通过；临时库已删除。未执行生产迁移，也未对完整 API 做 MySQL 压测。
+- update-script.sh：26 个隔离升级场景通过，包括新增日汇总迁移；已有快照迁移先于日汇总迁移执行。
+- 前端 admin-workspaces、AnalyticsCollectionSettings、OperationsAnalytics、JourneyAnalytics：137 项通过；TypeScript 和生产打包通过。未运行真实浏览器视觉验收。
+
+运行结果仅在 storage/app/test-organization/daily-{finance-api,node-api,finance-frontend,finance-build,update,mysql}.log，不提交运行数据。
+
 ## 核心仪表盘与访问目标数据库汇总（2026-10-21）
 
 前端相关四模块 147 项通过；数据库状态接入后的报表/导航两模块 120 项通过。移除搜索和年度/昨日重复指标，保留设置、分页、部署授权及导航安全断言。TypeScript 与生产构建通过，资源已更新。

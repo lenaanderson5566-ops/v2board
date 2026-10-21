@@ -83,9 +83,11 @@ const eventNames: Record<string, string> = {
 export function JourneyAnalytics({
     days,
     device,
+    experienceOnly = false,
 }: {
     days: number;
     device: string;
+    experienceOnly?: boolean;
 }) {
     const report = useData<JourneyReport>(
         query(admin("analytics/journey"), { days, device }),
@@ -106,10 +108,14 @@ export function JourneyAnalytics({
         ) || [];
     return (
         <>
-            <Panel padded title="用户旅程与体验">
+            <Panel
+                padded
+                title={experienceOnly ? "体验问题与引导" : "用户旅程与体验"}
+            >
                 <p className="muted">
-                    业务指标复用订单、订阅、登录和日流量记录，排除管理员，不受设备筛选和匿名统计开关影响。体验指标沿用设备筛选、用户同意和统计保留期。最多缓存
-                    60 秒。
+                    {experienceOnly
+                        ? "体验样本受设备筛选、用户同意和保留期影响，可能存在漏报。最多缓存 60 秒。"
+                        : "业务指标复用订单、订阅、登录和日流量记录，排除管理员，不受设备筛选和匿名统计开关影响。体验指标沿用设备筛选、用户同意和统计保留期。最多缓存 60 秒。"}
                 </p>
                 <button
                     type="button"
@@ -121,14 +127,14 @@ export function JourneyAnalytics({
                 <State loading={report.loading} error={report.error}>
                     {null}
                 </State>
-                {b && (
+                {!experienceOnly && b && (
                     <p className="muted">
                         生成于 {formatInstant(b.generatedAt)} · 系统时区{" "}
                         {b.timeZone}
                     </p>
                 )}
             </Panel>
-            {b && (
+            {!experienceOnly && b && (
                 <>
                     <Panel padded title="注册到首次使用 · 7 日观察窗">
                         <p className="muted">
@@ -152,7 +158,7 @@ export function JourneyAnalytics({
                                     ),
                                 ],
                                 [
-                            "上述付款后有订阅成功日志",
+                                    "上述付款后有订阅成功日志",
                                     count(b.activation.subscribed),
                                     ratio(
                                         b.activation.subscribed !== null &&
@@ -221,8 +227,7 @@ export function JourneyAnalytics({
                         />
                         <p className="muted">
                             各批次分别向前移动观察天数，仅包含完整观察窗；按账户去重，注册当天为第
-                            1
-                            日。登录留存按登录记录统计，使用留存按日流量统计。
+                            1 日。登录留存按登录记录统计，使用留存按日流量统计。
                         </p>
                         <p className="muted">
                             当前登录日志保留：
@@ -329,7 +334,11 @@ export function JourneyAnalytics({
                                     ];
                                 })}
                             />
-                            <p className="muted">下载、导入和帮助仅统计发起动作，不代表完成或连接成功。每页最多采样 20 次接口调用，仅记录耗时和错误类别；客户端样本可能漏报，不用于风控或账务。</p>
+                            <p className="muted">
+                                下载、导入和帮助仅统计发起动作，不代表完成或连接成功。每页最多采样
+                                20
+                                次接口调用，仅记录耗时和错误类别；客户端样本可能漏报，不用于风控或账务。
+                            </p>
                             <p className="muted">
                                 LCP/INP/CLS 使用
                                 web-vitals，每个文档各指标取首次可上报值，归属启动监测时的入口页面；SPA

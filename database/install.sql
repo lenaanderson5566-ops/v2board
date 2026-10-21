@@ -31,7 +31,8 @@ CREATE TABLE `failed_jobs` (
                                `id` bigint(20) unsigned NOT NULL AUTO_INCREMENT,
                                `connection` text COLLATE utf8mb4_unicode_ci NOT NULL,
                                `queue` text COLLATE utf8mb4_unicode_ci NOT NULL,
-                               `payload` longtext COLLATE utf8mb4_unicode_ci NOT NULL,
+                               `daily_archived` tinyint(1) NOT NULL DEFAULT 0,
+  `payload` longtext COLLATE utf8mb4_unicode_ci NOT NULL,
                                `exception` longtext COLLATE utf8mb4_unicode_ci NOT NULL,
                                `failed_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
                                PRIMARY KEY (`id`)
@@ -799,8 +800,22 @@ CREATE TABLE IF NOT EXISTS `v2_node_target_snapshot` (
   `bucket_at` bigint unsigned NOT NULL,
   `expires_at` bigint unsigned NOT NULL,
   `payload_bytes` int unsigned NOT NULL,
+  `daily_archived` tinyint(1) NOT NULL DEFAULT 0,
   `payload` longtext NOT NULL,
   PRIMARY KEY (`id`),
   KEY `node_target_lookup` (`node_id`,`version`,`bucket_at`),
   KEY `v2_node_target_snapshot_expires_at_index` (`expires_at`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS `v2_node_target_day` (
+ `id` varchar(64) NOT NULL PRIMARY KEY, `node_id` int unsigned NOT NULL, `day_at` bigint unsigned NOT NULL,
+ `expires_at` bigint unsigned NOT NULL, `target_count` int unsigned NOT NULL DEFAULT 0,
+ `omitted` bigint unsigned NOT NULL DEFAULT 0, `source_dropped` bigint unsigned NOT NULL DEFAULT 0,
+ `last_bucket_at` bigint unsigned NOT NULL, KEY `target_day_expiry` (`expires_at`), KEY `target_day_lookup` (`node_id`,`day_at`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+CREATE TABLE IF NOT EXISTS `v2_node_target_daily` (
+ `id` varchar(64) NOT NULL PRIMARY KEY, `node_id` int unsigned NOT NULL, `day_at` bigint unsigned NOT NULL,
+ `type` varchar(8) NOT NULL, `target` varchar(253) NOT NULL, `connections` bigint unsigned NOT NULL,
+ `upload_bytes` bigint unsigned NOT NULL, `download_bytes` bigint unsigned NOT NULL, `total_bytes` bigint unsigned NOT NULL,
+ `expires_at` bigint unsigned NOT NULL, KEY `target_daily_expiry` (`expires_at`), KEY `target_daily_lookup` (`node_id`,`day_at`,`total_bytes`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;

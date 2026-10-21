@@ -20,6 +20,7 @@ vi.mock("../shared/api", async (original) => ({
 import {
     ReportTable,
     OperationsAnalytics,
+    OperationsDetails,
     type OperationsReport,
 } from "./OperationsAnalytics";
 import { AdminAnalytics } from "./AdminAnalytics";
@@ -267,41 +268,16 @@ it("integrates range, device-independent operations and local access distributio
               },
     }));
     render(<AdminAnalytics />);
-    await screen.findByRole("heading", { name: "访问时段分布" });
-    expect(screen.getByText("23:00–24:00")).toBeTruthy();
-    expect(screen.getByText("周日")).toBeTruthy();
-    expect(
-        api.request.mock.calls.every(
-            ([path]) =>
-                !path.includes("/operations") && !path.includes("/journey"),
-        ),
-    ).toBe(true);
-    expect(screen.queryByRole("heading", { name: "登录质量" })).toBeNull();
-    fireEvent.mouseDown(screen.getByRole("tab", { name: "安全访问" }), {
-        button: 0,
-        ctrlKey: false,
-    });
-    await screen.findByRole("heading", { name: "登录质量" });
-    expect(screen.queryByRole("heading", { name: "访问时段分布" })).toBeNull();
-    expect(
-        (screen.getByLabelText("访问设备") as HTMLSelectElement).disabled,
-    ).toBe(true);
-    fireEvent.change(screen.getByLabelText("统计范围"), {
-        target: { value: "90" },
-    });
-    await waitFor(() =>
-        expect(
-            api.request.mock.calls.some(
-                ([p]) => p === "test-admin/analytics/operations?days=90",
-            ),
-        ).toBe(true),
-    );
-    fireEvent.mouseDown(screen.getByRole("tab", { name: "来源与浏览器" }), {
-        button: 0,
-        ctrlKey: false,
-    });
-    await screen.findByRole("heading", { name: "访问来源网站" });
-    expect(screen.queryByRole("heading", { name: "登录质量" })).toBeNull();
+    await screen.findByRole("heading", { name: "访问摘要" });
+    expect(screen.getAllByRole("tab").map(tab=>tab.textContent)).toEqual(["访问概览","购买转化","体验问题"]);
+    expect(screen.queryByRole("heading", {name:"访问时段分布"})).toBeNull();
+    expect(api.request.mock.calls.every(([path])=>!path.includes("/operations") && !path.includes("/journey"))).toBe(true);
+    fireEvent.mouseDown(screen.getByRole("tab",{name:"购买转化"}),{button:0,ctrlKey:false});
+    await screen.findByRole("heading",{name:"注册后的业务转化 · 7 天观察窗"});
+    expect(screen.queryByRole("heading",{name:"转化改进工作台"})).toBeNull();
+    fireEvent.mouseDown(screen.getByRole("tab",{name:"访问概览"}),{button:0,ctrlKey:false});
+    fireEvent.change(screen.getByLabelText("统计范围"),{target:{value:"90"}});
+    await waitFor(()=>expect(api.request.mock.calls.some(([p])=>p.includes("days=90"))).toBe(true));
     fireEvent.change(screen.getByLabelText("访问设备"), {
         target: { value: "mobile" },
     });
@@ -370,3 +346,12 @@ it.each([
         expect(screen.queryByRole("heading", { name: hidden })).toBeNull();
     },
 );
+
+it("loads relocated operational details only when expanded",async()=>{
+    setup(fixture());
+    render(<OperationsDetails section="security"/>);
+    expect(api.request).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole("button",{name:"查看登录与订阅质量"}));
+    await screen.findByRole("heading",{name:"登录质量"});
+    expect(screen.queryByRole("heading",{name:"队列健康"})).toBeNull();
+});

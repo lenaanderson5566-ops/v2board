@@ -1,7 +1,9 @@
+import { adminInstant } from "./admin-log-time";
 import { useState } from "react";
 import { admin, bytes, query, request, type Row } from "../shared/api";
 import { Panel, State, Table, Pager, useData } from "../shared/ui";
 import { AdminFilterBar } from "./AdminFilterBar";
+import { AdminChoiceGroup } from "./AdminChoices";
 import { AdminSwitch } from "./admin-switch";
 
 export function TargetStatisticsSettings({
@@ -10,6 +12,7 @@ export function TargetStatisticsSettings({
     const data = useData<Row>(admin("target-statistics"));
     const [saved, setSaved] = useState<boolean | null>(null);
     const [interval, setInterval] = useState<number | null>(null);
+    const [dailyRetention, setDailyRetention] = useState<number | null>(null);
     const [retention, setRetention] = useState<number | null>(null);
     const [busy, setBusy] = useState(false);
     const [error, setError] = useState("");
@@ -128,6 +131,60 @@ export function TargetStatisticsSettings({
                                 <option value={24}>24 小时</option>
                             </select>
                         </label>
+                        <label className="field">
+                            <span>节点日汇总保留时间</span>
+                            <select
+                                aria-label="节点日汇总保留时间"
+                                disabled={busy}
+                                value={
+                                    dailyRetention ??
+                                    data.data.settings.dailyRetentionDays ??
+                                    7
+                                }
+                                onChange={async (e) => {
+                                    const days = Number(e.target.value);
+                                    if (
+                                        days <
+                                            (dailyRetention ??
+                                                data.data?.settings
+                                                    ?.dailyRetentionDays ??
+                                                7) &&
+                                        !window.confirm(
+                                            "缩短保留时间将清理超期日汇总，确认继续？",
+                                        )
+                                    )
+                                        return;
+                                    setBusy(true);
+                                    onBusyChange?.(true);
+                                    setError("");
+                                    try {
+                                        const result = await request(
+                                            admin("target-statistics/settings"),
+                                            { dailyRetentionDays: days },
+                                        );
+                                        setDailyRetention(
+                                            result.data.dailyRetentionDays,
+                                        );
+                                        data.reload();
+                                    } catch (e) {
+                                        setError((e as Error).message);
+                                    } finally {
+                                        setBusy(false);
+                                        onBusyChange?.(false);
+                                    }
+                                }}
+                            >
+                                <option value={0}>不保留日汇总</option>
+                                <option value={7}>7 天（默认）</option>
+                                <option value={30}>30 天</option>
+                            </select>
+                        </label>
+                        <p className="muted">
+                            日汇总不含用户 ID，按 UTC
+                            日期保留节点、域名/IP、连接数与流量；每天每节点最多
+                            500
+                            个目标，容量不足时标记为不完整。近期详细聚合与日汇总独立清理。
+                        </p>
                         <p className="muted">
                             日常建议 6 小时，跨天排障可选 24
                             小时。延长后逐步积累，已过期数据不能恢复；缓存或数据库容量不足时统计可能不完整，请关注归档状态。
@@ -145,8 +202,8 @@ export function TargetStatisticsSettings({
                 与流量，不记录网址路径、内容或来源 IP。
             </p>
             <p className="muted">
-                关闭后立即停止接收，节点下次同步停采；授权最多 120
-                秒。重新开启后重新累计，不影响计费。
+                关闭后立即停止接收，节点下次同步停采；日汇总在保留期内可查。授权最多
+                120 秒。重新开启后重新累计，不影响计费。
             </p>
             <a href="#/log-targets">查看节点访问目标</a>
         </Panel>
@@ -154,6 +211,7 @@ export function TargetStatisticsSettings({
 }
 
 export function AdminTargetStatistics() {
+    const [view, setView] = useState("recent");
     const [nodeId, setNode] = useState(0),
         [userId, setUser] = useState(""),
         [userDraft, setUserDraft] = useState(""),
@@ -161,7 +219,8 @@ export function AdminTargetStatistics() {
     const report = useData<Row>(
         query(admin("target-statistics"), {
             nodeId,
-            userId: Number(userId) || 0,
+            view,
+            userId: view === "recent" ? Number(userId) || 0 : 0,
             page,
         }),
     );
@@ -169,16 +228,45 @@ export function AdminTargetStatistics() {
     return (
         <Panel
             padded
-            title={`节点访问目标 · 最近 ${data?.settings?.retentionHours ?? 1} 小时`}
+            title={
+                view === "recent"
+                    ? `节点访问目标 · 最近 ${data?.settings?.retentionHours ?? 1} 小时`
+                    : `节点访问目标 · 近 ${data?.settings?.dailyRetentionDays ?? 7} 天日汇总`
+            }
             actions={
                 <button onClick={report.reload} disabled={report.loading}>
                     刷新统计
                 </button>
             }
         >
+            <AdminChoiceGroup
+                variant="navigation"
+                label="目标统计视图"
+                value={view}
+                onChange={(v) => {
+                    setView(v);
+                    setPage(1);
+                }}
+                options={[
+                    { value: "recent", label: "近期详细聚合" },
+                    { value: "daily", label: "节点日汇总" },
+                ]}
+            />
+            {view === "daily" && (
+                <p className="muted" role="status">
+                    按 UTC 自然日聚合，不含用户维度，今日尚未结束。
+                    {data?.dailyReady === false
+                        ? "请先更新数据库迁移。"
+                        : `日汇总 ${Number(data?.dailyUsedRows || 0).toLocaleString()} / ${Number(data?.dailyMaxRows || 0).toLocaleString()} 行；当前节点最早记录 ${data?.availableFrom || "暂无"}。`}
+                    {data?.latestBucketAt &&
+                        ` 最近归档 ${adminInstant(data.latestBucketAt)}。`}
+                    {data?.settings?.dailyRetentionDays === 0 &&
+                        "日汇总保留已关闭。"}
+                </p>
+            )}
             <p className="muted">
                 按原始域名或 IP 统计，不反向解析或替换嗅探名称。每 5
-                分钟汇总；连接数不等于网页访问次数。
+                分钟汇总，结束后等待 5 分钟再归档；连接数不等于网页访问次数。
             </p>
             {data?.archive && (
                 <p className="muted" role="status">
@@ -193,8 +281,9 @@ export function AdminTargetStatistics() {
             )}
             {data?.truncated && (
                 <p role="status" className="muted">
-                    当前结果达到 6000
-                    项展示上限，仅显示部分访问目标。请按用户筛选后查询。
+                    {view === "daily"
+                        ? "日汇总触发目标数量或全局容量限制，仅显示已保留目标，不能视为完整排行。"
+                        : "当前结果达到 6000 项展示上限，仅显示部分访问目标。请按用户筛选后查询。"}
                 </p>
             )}
             <AdminFilterBar
@@ -231,6 +320,7 @@ export function AdminTargetStatistics() {
                 <label>
                     用户 ID
                     <input
+                        disabled={view === "daily"}
                         aria-label="访问目标用户 ID"
                         type="number"
                         min={1}
@@ -292,7 +382,12 @@ export function AdminTargetStatistics() {
                         <Table
                             data={data.rows || []}
                             columns={[
-                                ["userId", "用户 ID"],
+                                [
+                                    view === "daily" ? "date" : "userId",
+                                    view === "daily"
+                                        ? "日期（UTC）"
+                                        : "用户 ID",
+                                ],
                                 [
                                     "type",
                                     "类型",

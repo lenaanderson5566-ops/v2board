@@ -71,3 +71,20 @@ foreach (['getUserTodayRank', 'getUserLastRank'] as $method) {
     $assert(count(DB::getQueryLog()), 2);
 }
 echo "Dashboard user ranks: aggregation, rate weighting, ties, dates and batched emails passed\n";
+
+Schema::table('v2_order',function(Blueprint $t){$t->string('period')->default('month_price');$t->integer('commission_status')->default(0);$t->integer('commission_balance')->default(0);$t->integer('invite_user_id')->nullable();});
+Schema::create('v2_commission_log',function(Blueprint $t){$t->increments('id');$t->string('currency');$t->integer('created_at');$t->integer('get_amount');});
+DB::table('v2_order')->delete();
+$add('2026-10-12 11:00:00',1000);$add('2026-10-12 11:00:00',0);
+$add('2026-09-12 11:00:00',500);$add('2026-09-13 11:00:00',999);
+$add('2026-10-12 11:00:00',999,0);$add('2026-10-12 11:00:00',999,2);
+DB::table('v2_order')->insert(['currency'=>'USD','period'=>'deposit','paid_at'=>C::parse('2026-10-12 11:00:00')->timestamp,'created_at'=>1,'status'=>3,'total_amount'=>700]);
+DB::table('v2_commission_log')->insert(['currency'=>'USD','created_at'=>C::parse('2026-10-12')->timestamp,'get_amount'=>50]);
+DB::flushQueryLog();$finance=DashboardRevenue::financial(C::parse('2026-10-12 12:00:00'));
+$assert(count(DB::getQueryLog()),4);
+$cny=$finance['currencies'][0];$usd=$finance['currencies'][1];
+$assert($cny['month_amount'],1000);$assert($cny['month_count'],2);$assert($cny['average_amount'],500);
+$assert($cny['comparable_amount'],500);$assert($cny['change_percent'],100.0);$assert($cny['deposit_amount'],0);
+$assert($usd['month_amount'],700);$assert($usd['deposit_amount'],700);$assert($usd['subscription_amount'],0);$assert($usd['commission_paid'],50);
+$assert($usd['change_percent'],null);$assert($usd['daily'][29]['count'],1);$assert(count($usd['daily']),30);$assert($usd['daily'][0]['count'],0);
+echo "Financial dashboard: currency isolation, deposits, zero payments, same-period comparison, daily counts and four-query bound passed\n";

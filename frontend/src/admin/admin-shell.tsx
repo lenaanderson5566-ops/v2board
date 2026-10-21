@@ -27,7 +27,7 @@ export const legacyAdminMenu = [
     ["client-releases", "第三方客户端", "screen-smartphone", "客户端"],
     ["account-settings", "账户与注册", "shield", "安全与风控"],
     ["risk", "风控规则", "shield", "安全与风控"],
-    ["access-blacklist", "访问黑名单", "ban", "安全与风控"],
+    ["access-blacklist", "订阅访问黑名单", "ban", "安全与风控"],
     ["log-targets", "节点访问目标", "layers", "日志与诊断"],
     ["access-logs", "访问日志", "login", "日志与诊断"],
     ["mail-logs", "邮件发送日志", "notebook", "日志与诊断"],

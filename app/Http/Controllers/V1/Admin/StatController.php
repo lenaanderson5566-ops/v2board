@@ -21,6 +21,7 @@ class StatController extends Controller
     {
         return [
             'data' => array_merge(\App\Services\DashboardRevenue::summary(), [
+                'financial' => \Illuminate\Support\Facades\Cache::remember('dashboard-financial-v1:'.config('app.timezone'),60,fn()=>\App\Services\DashboardRevenue::financial()),
                 'usage' => \App\Services\DashboardUsage::summary(),
                 'online_user' => User::where('t','>=', time() - 600)
                     ->count(),

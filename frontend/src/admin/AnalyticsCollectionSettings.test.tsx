@@ -210,3 +210,25 @@ it("saves target retention independently and confirms shortening", async () => {
         await waitFor(()=>expect(api.request).toHaveBeenCalledWith("test-admin/target-statistics/settings",{retentionHours:24}));
     } finally {confirm.mockRestore();}
 });
+
+it("saves daily retention independently and preserves prior value after failure", async()=>{
+    api.request.mockImplementation(async (_path,body)=>{if(body)throw new Error("日汇总保存失败");return {data:{settings:{enabled:true,dailyRetentionDays:7,retentionHours:6}}};});
+    render(<TargetStatisticsSettings/>);
+    const field=await screen.findByLabelText("节点日汇总保留时间");
+    fireEvent.change(field,{target:{value:"30"}});
+    expect(await screen.findByRole("alert")).toHaveProperty("textContent","日汇总保存失败");
+    expect((field as HTMLSelectElement).value).toBe("7");
+    expect(api.request).toHaveBeenCalledWith("test-admin/target-statistics/settings",{dailyRetentionDays:30});
+});
+it("daily view resets pagination and excludes user filters",async()=>{
+    api.request.mockResolvedValue({data:{settings:{enabled:true,dailyRetentionDays:30},nodes:[],rows:[],total:0,dailyReady:true,dailyUsedRows:0,dailyMaxRows:200000}});
+    render(<AdminTargetStatistics/>);
+    await screen.findByText("请选择节点查看统计。");
+    fireEvent.change(screen.getByLabelText("访问目标用户 ID"),{target:{value:"123"}});
+    fireEvent.submit(screen.getByRole("form",{name:"访问目标筛选"}));
+    fireEvent.click(screen.getByRole("button",{name:"节点日汇总"}));
+    await waitFor(()=>expect(api.request.mock.calls.some(([p])=>p.includes("view=daily")&&p.includes("userId=0")&&p.includes("page=1"))).toBe(true));
+    expect((screen.getByLabelText("访问目标用户 ID") as HTMLInputElement).disabled).toBe(true);
+    expect(screen.getByRole("columnheader",{name:"日期（UTC）"})).toBeTruthy();
+    expect(screen.queryByRole("columnheader",{name:"用户 ID"})).toBeNull();
+});

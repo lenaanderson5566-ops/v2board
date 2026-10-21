@@ -120,6 +120,7 @@ return [
     |
     */
 
+    'target_statistics_daily_max_rows' => (int) env('TARGET_STATISTICS_DAILY_MAX_ROWS', 200000),
     'target_statistics_database_budget_mb' => (int)env('TARGET_STATISTICS_DATABASE_BUDGET_MB', 256),
     'target_statistics_budget_mb' => (int)env('TARGET_STATISTICS_CACHE_BUDGET_MB', 64),
 

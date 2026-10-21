@@ -137,3 +137,48 @@ it("applies target user filters only on submit and keeps shared pagination", asy
  await waitFor(()=>expect(api.request.mock.calls.some(([path])=>path.includes("userId=0") && path.includes("nodeId=0") && path.includes("page=1"))).toBe(true));
  expect((screen.getByLabelText("访问目标用户 ID") as HTMLInputElement).value).toBe("");
 });
+
+it("shows bounded cache usage and rejected target batches", async () => {
+    api.request.mockResolvedValue({data:{settings:{enabled:true},nodes:[],rows:[],total:0,dropped:0,
+        usage:{usedBytes:1048576,budgetBytes:67108864,receivedBytes:2048,rejectedBatches:3}}});
+    render(<AdminTargetStatistics />);
+    expect(await screen.findByText(/缓存预算/)).toBeTruthy();
+    expect(screen.getByText(/容量拒收 3 批/)).toBeTruthy();
+});
+
+it("saves target cadence independently of collection and defaults older settings to one minute", async () => {
+    let seconds=60;
+    api.request.mockImplementation(async (_path,body)=> {
+        if(body?.reportIntervalSeconds) {seconds=body.reportIntervalSeconds;return {data:{enabled:false,reportIntervalSeconds:seconds}};}
+        return {data:{settings:{enabled:false,reportIntervalSeconds:seconds}}};
+    });
+    render(<TargetStatisticsSettings />);
+    const select=await screen.findByRole("combobox",{name:"统计上报周期"});
+    expect((select as HTMLSelectElement).value).toBe("60");
+    fireEvent.change(select,{target:{value:"300"}});
+    await waitFor(()=>expect((select as HTMLSelectElement).value).toBe("300"));
+    expect(api.request).toHaveBeenCalledWith("test-admin/target-statistics/settings",{reportIntervalSeconds:300});
+    expect(screen.getByRole("switch").getAttribute("aria-checked")).toBe("false");
+});
+it("preserves cadence on failed save and allows retry", async () => {
+    api.request.mockImplementation(async (_path,body)=> {
+        if(body) throw new Error("周期保存失败");
+        return {data:{settings:{enabled:true,reportIntervalSeconds:120}}};
+    });
+    render(<TargetStatisticsSettings />);
+    const select=await screen.findByRole("combobox",{name:"统计上报周期"});
+    fireEvent.change(select,{target:{value:"300"}});
+    expect(await screen.findByRole("alert")).toHaveProperty("textContent","周期保存失败");
+    expect((select as HTMLSelectElement).value).toBe("120");
+    expect((select as HTMLSelectElement).disabled).toBe(false);
+});
+
+it("distinguishes fixed cadence nodes from nodes supporting the setting", async () => {
+    api.request.mockResolvedValue({data:{settings:{enabled:true},rows:[],total:0,nodes:[
+        {id:1,name:"旧节点",supported:true,configurableInterval:false},
+        {id:2,name:"新节点",supported:true,configurableInterval:true}
+    ]}});
+    render(<AdminTargetStatistics />);
+    expect(await screen.findByRole("option",{name:"旧节点（周期固定）"})).toBeTruthy();
+    expect(screen.getByRole("option",{name:"新节点"})).toBeTruthy();
+});

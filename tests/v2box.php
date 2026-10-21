@@ -53,7 +53,7 @@ try {
     $assert(count($nodes)===2,'Both types listed with same id');
     foreach ($nodes as $node) if ($node['type']==='v2box') {
         $assert(strpos($node['install_command'],'--node-type v2box')!==false,'Installer selects V2Box');
-        $assert(strpos($node['install_command'],'/v2box/v1.0.1/script/install.sh')!==false,'Installer uses published version, not legacy main');
+        $assert(strpos($node['install_command'],'/v2box/v1.0.2/script/install.sh')!==false,'Installer uses published version, not legacy main');
         $assert(strpos($node['install_command'],'--prompt-api-key')!==false,'Installer keeps credential input interactive');
     }
     $admin=new App\Http\Controllers\V1\Admin\Server\V2boxController();

@@ -118,6 +118,7 @@
   "tests/user-experience-fixtures.php",
   "tests/traffic-credit-fixtures.php",
   "tests/node-traffic-batch-worker.php",
+  "tests/node-target-statistics-worker.php",
   "tests/singbox-config-export.php",
   "tests/run.php",
   "tests/mail-cases.php",

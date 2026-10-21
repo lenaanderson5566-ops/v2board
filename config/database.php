@@ -134,6 +134,15 @@ return [
             'database' => env('REDIS_DB', 0),
         ],
 
+        // A dedicated instance may disable persistence without affecting queues or billing.
+        'target_statistics' => [
+            'url' => env('TARGET_STATISTICS_REDIS_URL', env('REDIS_URL')),
+            'host' => env('REDIS_HOST', '127.0.0.1'),
+            'password' => env('REDIS_PASSWORD', null),
+            'port' => env('REDIS_PORT', 6379),
+            'database' => env('TARGET_STATISTICS_REDIS_DB', env('REDIS_CACHE_DB', 1)),
+        ],
+
         'cache' => [
             'url' => env('REDIS_URL'),
             'host' => env('REDIS_HOST', '127.0.0.1'),

@@ -12,6 +12,9 @@ $checks=0;
 set_exception_handler(function($e) { fwrite(STDERR,$e->getMessage()."\n"); exit(1); });
 $assert = \Tests\Support\Assertions::counter($checks);
 config(['v2board.server_token'=>'node-v10-test-secret', 'cache.default'=>'array']);
+$targetPrefix = 'target-statistics-test-'.bin2hex(random_bytes(12)).':';
+config(['cache.stores.target_statistics.prefix'=>$targetPrefix,'cache.target_statistics_budget_mb'=>64]);
+Cache::purge('target_statistics');
 Queue::fake();
 $kernel=$app->make(Illuminate\Contracts\Http\Kernel::class);
 $nodeId=0;
@@ -88,6 +91,15 @@ try {
     foreach($public as $item) $assert(!array_key_exists('sing_box',$item),'Server credentials hidden from subscribers');
     $stats=app(App\Services\TargetStatistics::class);
     $assert($stats->policy()['enabled']===false,'Target statistics defaults off');
+    $assert($stats->policy()['reportIntervalSeconds']===60,'Existing installation defaults to 60 second reports');
+    $capabilityKey='V2BOX_CAPABILITIES:'.$nodeId;$originalCapabilities=Cache::get($capabilityKey);
+    $oldNode=$stats->report($nodeId,0,1)['nodes'];
+    $assert(collect($oldNode)->firstWhere('id',$nodeId)['configurableInterval']===false,'Older node marked fixed cadence');
+    Cache::put($capabilityKey,['features'=>['target-statistics-v1','target-statistics-interval-v1']],60);
+    $newNode=$stats->report($nodeId,0,1)['nodes'];
+    $assert(collect($newNode)->firstWhere('id',$nodeId)['configurableInterval']===true,'New node cadence capability exposed');
+    Cache::put($capabilityKey,$originalCapabilities,86400);
+
     $assert($call('GET',$root.'/target-statistics/policy',[],['HTTP_AUTHORIZATION'=>'Bearer wrong'])->getStatusCode()===401,'Target policy requires node authentication');
     $assert(json_decode($call('POST',$root.'/target-statistics',['records'=>[]])->getContent(),true)['data']['accepted']===false,'Disabled receiver rejects collection');
     $policy=$stats->configure(true);
@@ -100,6 +112,9 @@ try {
     $assert($call('POST',$root.'/target-statistics',$batch)->getStatusCode()===200,'Retry accepted');
     $report=$stats->report($nodeId,(int)$user->id,1);
     $assert($report['total']===2 && $report['rows'][0]['uploadBytes']===100,'Retry counted only once');
+    $changedCadence=$stats->configure(null,300);
+    $assert($changedCadence['version']===$policy['version'] && $stats->report($nodeId,0,1)['total']===2,'Cadence adjustment preserves active collected rows');
+    $stats->configure(null,60);
     $assert($report['rows'][0]['target']==='example.com' && $report['rows'][1]['target']==='2001:db8::1','Domain and IP normalized');
     $assert($stats->report($nodeId,2147483646,1)['total']===0,'User filter isolated');
     $changed=$batch;$changed['records'][0]['uploadBytes']=999;
@@ -109,7 +124,97 @@ try {
     $assert($stats->report($nodeId,0,1)['total']===2,'Invalid batch not partially written');
     $bad=$batch;$bad['batchId']=(string)Illuminate\Support\Str::uuid();$bad['records'][0]['uploadBytes']=-1;
     $assert($call('POST',$root.'/target-statistics',$bad)->getStatusCode()===422,'Negative target traffic rejected');
+    $requestBody = function($raw,$headers=[])use($kernel,$root,&$nodeId) {
+        return $kernel->handle(Request::create($root.'/target-statistics','POST',[],[],[],array_merge([
+            'CONTENT_TYPE'=>'application/json','HTTP_ACCEPT'=>'application/json','HTTP_AUTHORIZATION'=>'Bearer node-v10-test-secret',
+            'HTTP_X_NODE_TYPE'=>'v2box','HTTP_X_NODE_ID'=>(string)$nodeId],$headers),$raw));
+    };
+    $assert($requestBody(str_repeat(' ',262145))->getStatusCode()===413,'Raw request size bounded without Content-Length');
+    $assert($requestBody('{}',['CONTENT_LENGTH'=>'262145'])->getStatusCode()===413,'Declared oversized request rejected before decode');
+    $assert($requestBody('{')->getStatusCode()===400,'Malformed JSON rejected');
+    $assert($requestBody('{}',['HTTP_CONTENT_ENCODING'=>'gzip'])->getStatusCode()===415,'Unsupported compression rejected');
+    $huge=$batch;$huge['batchId']=(string)Illuminate\Support\Str::uuid();
+    $huge['records'][0]['uploadBytes']=1000000000000000;$huge['records'][1]['uploadBytes']=1;
+    $assert($call('POST',$root.'/target-statistics',$huge)->getStatusCode()===422,'Whole batch integer bound prevents Redis overflow');
+    $headerResponse=$call('GET',$root.'/configuration',[],['HTTP_X_NODE_CAPABILITIES'=>'native-routing-v1,target-statistics-policy-v2']);
+    $headerPolicy=json_decode($headerResponse->headers->get('X-Target-Statistics-Policy'),true);
+    $assert($headerPolicy['version']===$policy['version'],'Configuration carries optional statistics policy');
+    $notModified=$call('GET',$root.'/configuration',[],['HTTP_X_NODE_CAPABILITIES'=>'native-routing-v1,target-statistics-policy-v2','HTTP_IF_NONE_MATCH'=>$headerResponse->headers->get('ETag')]);
+    $assert($notModified->getStatusCode()===304 && $notModified->headers->has('X-Target-Statistics-Policy'),'304 renews optional lease without config reload');
+    $store=app(App\Services\TargetStatisticsStore::class);
+    config(['cache.target_statistics_budget_mb'=>-1]);$assert($store->budgetBytes()===8*1024*1024,'Budget has a safe lower bound');
+    config(['cache.target_statistics_budget_mb'=>999999]);$assert($store->budgetBytes()===1024*1024*1024,'Budget has a safe upper bound');
+    config(['cache.target_statistics_budget_mb'=>64]);
+    $usage=$store->usage();
+    $assert($usage['acceptedBatches']===1 && $usage['duplicateBatches']===1 && $usage['usedBytes']>0,'Capacity and batch metrics exposed');
+    $prepared=[['key'=>hash('sha256','exact'),'meta'=>json_encode(['userId'=>1,'type'=>'domain','target'=>'exact.test']), 'connections'=>1,'uploadBytes'=>1000000000000000,'downloadBytes'=>0]];
+    $fixedNow=intdiv(time(),300)*300;
+    $stableId=(string)Illuminate\Support\Str::uuid();
+    $store->ingest(999999,$policy['version'],$stableId,'hash',$prepared,0,100,$fixedNow-300);
+    $store->ingest(999999,$policy['version'],$stableId,'hash',$prepared,0,100,$fixedNow);
+    $assert($store->report(999999,$policy['version'])['rows'][0]['uploadBytes']===1000000000000000,'Retry across bucket boundary stays deduplicated');
+    $jobs=[];
+    $prepared[0]['uploadBytes']=999999999999999;
+    for($i=0;$i<11;$i++) $jobs[]=['version'=>$policy['version'],'batchId'=>(string)Illuminate\Support\Str::uuid(),'hash'=>'exact-'.$i,'rows'=>$prepared];
+    $processes=[];$started=microtime(true);
+    for($i=0;$i<8;$i++) {
+        $pipes=[];
+        $process=proc_open([PHP_BINARY,__DIR__.'/node-target-statistics-worker.php',$targetPrefix], [['pipe','r'],['pipe','w'],['pipe','w']], $pipes);
+        $assert(is_resource($process),'Concurrent Redis worker started');
+        fwrite($pipes[0],json_encode($jobs));fclose($pipes[0]);$processes[]=[$process,$pipes];
+    }
+    foreach($processes as [$process,$pipes]) {
+        $output=stream_get_contents($pipes[1]).stream_get_contents($pipes[2]);fclose($pipes[1]);fclose($pipes[2]);
+        $assert(proc_close($process)===0,'Concurrent worker succeeded: '.$output);
+    }
+    $assert($store->report(999997,$policy['version'])['rows'][0]['uploadBytes']===10999999999999989,'Parallel retries accumulated exactly once above double precision');
+    echo 'Redis parallel 88 submissions: '.round((microtime(true)-$started)*1000).' ms'."\n";
+    $prefix=$store->prefix();
+    // Admission failure must not create a dedup entry or partly merge counters.
+    $used=$store->connection()->get($prefix.'used');
+    $store->connection()->setex($prefix.'used',7200,App\Services\TargetStatisticsStore::BUDGET_BYTES);
+    try {$store->ingest(999998,$policy['version'],(string)Illuminate\Support\Str::uuid(),'budget',$prepared,0,100);$assert(false,'Budget rejection');}
+    catch(Symfony\Component\HttpKernel\Exception\HttpException $e){$assert($e->getStatusCode()===429,'Global cache budget enforced');}
+    $assert($store->report(999998,$policy['version'])['rows']===[],'Budget rejects without partial rows');
+    $store->connection()->setex($prefix.'used',7200,$used);
+    $capRows=[];
+    for($i=0;$i<501;$i++) $capRows[]=['key'=>hash('sha256','cap-'.$i),'meta'=>json_encode(['userId'=>1,'type'=>'domain','target'=>'cap'.$i.'.test']),'connections'=>1,'uploadBytes'=>1,'downloadBytes'=>1];
+    $store->ingest(999995,$policy['version'],(string)Illuminate\Support\Str::uuid(),'cap-a',array_slice($capRows,0,250),0,100);
+    $store->ingest(999995,$policy['version'],(string)Illuminate\Support\Str::uuid(),'cap-b',array_slice($capRows,250),0,100);
+    $capped=$store->report(999995,$policy['version']);
+    $assert(count($capped['rows'])===500 && $capped['dropped']===1,'Bucket admits at most 500 unique rows and records dropped rows');
+    $dedup=[];for($i=0;$i<1000;$i++) $dedup['fixture-'.$i]='hash';
+    $store->connection()->hmset($prefix.'999994:batches',$dedup);
+    $store->connection()->expire($prefix.'999994:batches',60);
+    try {$store->ingest(999994,$policy['version'],(string)Illuminate\Support\Str::uuid(),'full',$prepared,0,100);$assert(false,'Dedup capacity rejection');}
+    catch(Symfony\Component\HttpKernel\Exception\HttpException $e){$assert($e->getStatusCode()===429,'Dedup capacity rejects without evicting old batch identities');}
+    $key='target-ingest:v2:v2box:'.$nodeId;
+    Illuminate\Support\Facades\RateLimiter::clear($key);
+    for($i=0;$i<30;$i++) Illuminate\Support\Facades\RateLimiter::hit($key,60);
+    $limited=$call('POST',$root.'/target-statistics',$batch);
+    $assert($limited->getStatusCode()===429 && $limited->headers->has('Retry-After'),'Per-node rate limit includes retry advice');
+    $assert($call('POST',$root.'/target-statistics',['records'=>[]],['HTTP_X_NODE_ID'=>(string)($nodeId+1)])->getStatusCode()!==429,'Nodes behind same IP do not share quota');
+    Illuminate\Support\Facades\RateLimiter::clear($key);
+    if (in_array('--benchmark',$argv,true)) {
+        $full=[];$legacy=[];
+        for($i=0;$i<500;$i++) {
+            $row=['userId'=>1,'type'=>'domain','target'=>'host'.$i.'.example.test','connections'=>1,'uploadBytes'=>100,'downloadBytes'=>200];
+            $full[]=['key'=>hash('sha256',(string)$i),'meta'=>json_encode(array_intersect_key($row,array_flip(['userId','type','target']))),'connections'=>1,'uploadBytes'=>100,'downloadBytes'=>200];
+            $legacy[hash('sha256',(string)$i)]=$row;
+        }
+        $legacyState=['buckets'=>array_fill(0,12,['rows'=>$legacy,'dropped'=>0]),'batches'=>array_fill(0,360,['at'=>time(),'hash'=>str_repeat('f',64)])];
+        $repo=$store->repository();$repo->put('benchmark-legacy',$legacyState,60);
+        $started=microtime(true);
+        for($i=0;$i<20;$i++) {$copy=$repo->get('benchmark-legacy');$copy['buckets'][0]['rows'][array_key_first($legacy)]['uploadBytes']++;$repo->put('benchmark-legacy',$copy,60);}
+        $legacyMs=(microtime(true)-$started)*1000;
+        $started=microtime(true);
+        for($i=0;$i<20;$i++) $store->ingest(999996,$policy['version'],(string)Illuminate\Support\Str::uuid(),'bench-'.$i,$full,0,strlen(json_encode($full)));
+        $atomicMs=(microtime(true)-$started)*1000;
+        echo 'Synthetic Redis 20x500: legacy='.round($legacyMs,1).'ms atomic='.round($atomicMs,1).'ms; legacy state='.strlen(serialize($legacyState)).' bytes; merge payload='.strlen(json_encode($full)).' bytes'."\n";
+        $repo->forget('benchmark-legacy');
+    }
     $stats->configure(false);
+    $assert($store->ingest(999997,$policy['version'],(string)Illuminate\Support\Str::uuid(),'disabled',$prepared,0,100)['accepted']===false,'Atomic Redis gate rejects a writer that loaded policy before disable');
     $assert($stats->report($nodeId,0,1)['total']===0,'Disabled report hides previous generation');
     $assert(json_decode($call('POST',$root.'/target-statistics',$batch)->getContent(),true)['data']['accepted']===false,'Disabled rejects in-flight batch');
     $newPolicy=$stats->configure(true);
@@ -124,6 +229,29 @@ try {
     $adminResponse=$adminCall($token,false);
     $assert($adminResponse->getStatusCode()===200,'Administrator disables statistics: '.$adminResponse->getStatusCode().' '.$adminResponse->getContent());
     $assert($stats->policy()['enabled']===false,'Admin switch persisted');
+    $intervalCall=function($authorization,$body)use($kernel,$adminPath){
+        // Only this fixture's array-cache quota; keep parameter checks independent of the 10/minute setting limit.
+        Illuminate\Support\Facades\RateLimiter::clear('target-settings:'.sha1('|127.0.0.1'));
+        return $kernel->handle(Request::create($adminPath.'/target-statistics/settings','POST',[],[],[],['CONTENT_TYPE'=>'application/json','HTTP_ACCEPT'=>'application/json','HTTP_AUTHORIZATION'=>$authorization],json_encode($body)));};
+    $assert($intervalCall('',['reportIntervalSeconds'=>300])->getStatusCode()===403,'Anonymous cannot change report cadence');
+    $user->is_admin=0;$user->save();
+    $assert($intervalCall($token,['reportIntervalSeconds'=>300])->getStatusCode()===403,'Ordinary user cannot change report cadence');
+    $user->is_admin=1;$user->save();
+    $current=$stats->policy();
+    foreach([30,60,120,300] as $seconds) {
+        $r=$intervalCall($token,['reportIntervalSeconds'=>$seconds]);
+        $settings=json_decode($r->getContent(),true)['data'] ?? [];
+        $assert($r->getStatusCode()===200 && ($settings['reportIntervalSeconds']??0)===$seconds,'Supported cadence saved');
+        $assert($settings['enabled']===false && $settings['version']===$current['version'] && $settings['leaseSeconds']===120,'Cadence-only update preserves switch, generation and short lease');
+    }
+    foreach([0,10,45,301,-30,60.5,'invalid',null] as $seconds) { $invalidResponse=$intervalCall($token,['reportIntervalSeconds'=>$seconds]);$assert($invalidResponse->getStatusCode()===422,'Invalid cadence rejected '.json_encode($seconds).': '.$invalidResponse->getStatusCode().' '.$invalidResponse->getContent()); }
+    $assert($stats->policy()['reportIntervalSeconds']===300,'Invalid save preserves previous cadence');
+    $assert($intervalCall($token,[])->getStatusCode()===422,'Empty settings update rejected');
+    $stats->configure(true);
+    $afterToggle=$stats->configure(false);
+    $assert($afterToggle['reportIntervalSeconds']===300,'Switch-only updates preserve cadence');
+    $restored=$stats->configure(null,60);
+    $assert($restored['version']===$afterToggle['version'] && $restored['reportIntervalSeconds']===60,'Interval-only settings supported without replacing generation');
     $credentials=App\Services\NodeCredentials::class;
     $assert(!$credentials::listing('v2box',$nodeId)['migrated'],'Existing node remains compatible before migration');
     $key=$credentials::issue('v2box',$nodeId,(int)$user->id);
@@ -184,4 +312,9 @@ try {
     $assert($call('GET',$root.'/users',[],['HTTP_X_NODE_ID'=>'999999999'])->getStatusCode()===401,'Retired global key cannot access new identities');
     $auth->removeAllSession();
     echo "PASS: $checks V10 node checks\n";
-} finally { DB::rollBack(); }
+} finally {
+    $store=app(App\Services\TargetStatisticsStore::class);
+    // Unique fixture namespace only; never flush a shared Redis database.
+    $store->connection()->eval("local keys=redis.call('KEYS',KEYS[1]..'*'); for _,k in ipairs(keys) do redis.call('DEL',k) end; return #keys",1,$targetPrefix);
+    DB::rollBack();
+}

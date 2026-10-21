@@ -18,6 +18,7 @@ class Kernel extends HttpKernel
         \App\Http\Middleware\CORS::class,
         \App\Http\Middleware\ObservePerformance::class,
         \App\Http\Middleware\V10Dispatch::class,
+        \App\Http\Middleware\NodeTargetStatisticsBody::class,
         \App\Http\Middleware\BrowserSession::class,
         \App\Http\Middleware\CheckForMaintenanceMode::class,
         \Illuminate\Foundation\Http\Middleware\ValidatePostSize::class,

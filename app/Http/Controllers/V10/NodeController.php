@@ -25,7 +25,7 @@ class NodeController extends Controller {
             'records.*.uploadBytes'=>'required|integer|min:0|max:1000000000000000',
             'records.*.downloadBytes'=>'required|integer|min:0|max:1000000000000000',
         ]);
-        return response()->json(['data'=>$statistics->receive($node,$input)]);
+        return response()->json(['data'=>$statistics->receive($node,$input,(int)$request->attributes->get('targetStatisticsBytes',0))]);
     }
     private function node(Request $request) {
         // Only V2Box implements this machine contract today; reject unknown types
@@ -51,7 +51,12 @@ class NodeController extends Controller {
             abort_unless(in_array('native-routing-v1', $features, true), 409);
         }
         \App\Services\NodeRuntimeService::record('v2box', (int) $node->id, $configuration, 'v10');
-        return $this->cached($request, $configuration);
+        $response = $this->cached($request, $configuration);
+        if (in_array('target-statistics-policy-v2', explode(',', $request->header('X-Node-Capabilities', '')), true)) {
+            try { $response->header('X-Target-Statistics-Policy', json_encode(app(\App\Services\TargetStatistics::class)->policy())); }
+            catch (\Throwable $e) { /* Optional telemetry must not interrupt configuration. */ }
+        }
+        return $response;
     }
     public function capabilities(Request $request) {
         $node = $this->node($request);

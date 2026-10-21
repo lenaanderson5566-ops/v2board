@@ -85,6 +85,12 @@ return [
             'connection' => 'cache',
         ],
 
+        'target_statistics' => [
+            'driver' => 'redis',
+            'prefix' => $legacyStorePrefix.'target-statistics:',
+            'connection' => 'target_statistics',
+        ],
+
         'dynamodb' => [
             'driver' => 'dynamodb',
             'prefix' => $legacyStorePrefix,
@@ -107,6 +113,8 @@ return [
     | value to get prefixed to all our keys so we can avoid collisions.
     |
     */
+
+    'target_statistics_budget_mb' => (int)env('TARGET_STATISTICS_CACHE_BUDGET_MB', 64),
 
     'prefix' => $cachePrefix,
 

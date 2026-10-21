@@ -8979,6 +8979,15 @@
                   "additionalProperties": false
                 }
               }
+            },
+            "headers": {
+              "X-Target-Statistics-Policy": {
+                "description": "Optional JSON target statistics lease for target-statistics-policy-v2 capable nodes; refreshed on 200 and 304 without changing the configuration ETag. If absent, use the policy endpoint.",
+                "schema": {
+                  "type": "string",
+                  "maxLength": 4096
+                }
+              }
             }
           },
           "401": {
@@ -8997,7 +9006,16 @@
             "$ref": "#/components/responses/NodeAPIProblem"
           },
           "304": {
-            "description": "Unchanged"
+            "description": "Unchanged",
+            "headers": {
+              "X-Target-Statistics-Policy": {
+                "description": "Optional JSON target statistics lease for target-statistics-policy-v2 capable nodes; refreshed on 200 and 304 without changing the configuration ETag. If absent, use the policy endpoint.",
+                "schema": {
+                  "type": "string",
+                  "maxLength": 4096
+                }
+              }
+            }
           },
           "403": {
             "$ref": "#/components/responses/NodeAPIProblem",
@@ -9664,7 +9682,7 @@
             "$ref": "#/components/parameters/HeaderXNodeCapabilities"
           }
         ],
-        "description": "Optional non-billing target aggregates. Disabled or stale policy returns accepted=false. Retry the same immutable batch ID. Data expires from cache within one hour.",
+        "description": "Optional non-billing target aggregates. Disabled or stale policy returns accepted=false. Retry the same immutable batch ID. Data expires from cache within one hour. Uncompressed JSON body limit: 262144 bytes. Quota: 30 requests/minute per authenticated node, independent of source IP. Each counter summed over all records in a batch must not exceed 1000000000000000; rejection writes no partial rows.",
         "responses": {
           "200": {
             "description": "OK",
@@ -9714,6 +9732,15 @@
           },
           "403": {
             "description": "Credential is not authorized for this node identity."
+          },
+          "400": {
+            "$ref": "#/components/responses/NodeAPIProblem"
+          },
+          "413": {
+            "$ref": "#/components/responses/NodeAPIProblem"
+          },
+          "415": {
+            "$ref": "#/components/responses/NodeAPIProblem"
           }
         },
         "requestBody": {
@@ -14138,6 +14165,17 @@
             "type": "integer",
             "minimum": 1,
             "maximum": 120
+          },
+          "reportIntervalSeconds": {
+            "type": "integer",
+            "enum": [
+              30,
+              60,
+              120,
+              300
+            ],
+            "default": 60,
+            "description": "Optional reporting cadence. Omitted on older panels means 60 seconds. Refresh policy independently at most every 60 seconds; leaseSeconds remains at most 120."
           }
         },
         "required": [

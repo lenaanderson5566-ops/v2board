@@ -31,7 +31,7 @@ it("keeps DDNS opt-in and quotes generated shell arguments", () => {
 
 it("uses versioned network helpers included in the released backend", () => {
  for(const command of [nodeIPCommand,nodeReportCommand("dual"),nodeDeploymentCommand({type:"v2node",install_command:"install",ddns:true})]) {
-  expect(command).toContain("/v2box/v1.0.1/script/node-network.py");
+  expect(command).toContain("/v2box/v1.0.2/script/node-network.py");
   expect(command).not.toContain("/v2box/main/");
  }
 });

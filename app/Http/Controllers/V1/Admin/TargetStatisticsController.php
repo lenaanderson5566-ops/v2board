@@ -15,7 +15,7 @@ final class TargetStatisticsController extends Controller
     public function settings(Request $request, TargetStatistics $statistics)
     {
         abort_unless($request->isJson(),415);
-        $input=$request->validate(['enabled'=>'required|boolean']);
-        return response()->json(['data'=>$statistics->configure((bool)$input['enabled'])]);
+        $input=$request->validate(['enabled'=>'required_without:reportIntervalSeconds|boolean','reportIntervalSeconds'=>'required_without:enabled|integer|in:30,60,120,300']);
+        return response()->json(['data'=>$statistics->configure(array_key_exists('enabled',$input) ? (bool)$input['enabled'] : null, isset($input['reportIntervalSeconds']) ? (int)$input['reportIntervalSeconds'] : null)]);
     }
 }

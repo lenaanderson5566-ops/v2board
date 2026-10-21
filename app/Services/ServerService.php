@@ -101,7 +101,7 @@ class ServerService
             $apiHostArg = escapeshellarg((string) $apiHost);
             $servers[$k]['install_command'] = sprintf(
                 $type === 'v2box'
-                    ? 'curl -fSL https://raw.githubusercontent.com/lenaanderson5566-ops/v2box/v1.0.1/script/install.sh -o install-v2box.sh && bash install-v2box.sh --node-type v2box --api-host %s --node-id %d --prompt-api-key'
+                    ? 'curl -fSL https://raw.githubusercontent.com/lenaanderson5566-ops/v2box/v1.0.2/script/install.sh -o install-v2box.sh && bash install-v2box.sh --node-type v2box --api-host %s --node-id %d --prompt-api-key'
                     : 'wget -N https://raw.githubusercontent.com/wyx2685/v2node/master/script/install.sh && bash install.sh --api-host %s --node-id %d',
                 $apiHostArg,
                 $nodeId

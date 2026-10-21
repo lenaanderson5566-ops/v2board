@@ -773,3 +773,9 @@ ClientRecognition 统一登录／订阅日志、用户活动及运营访问报�
 ## V2Box 正式版本安装入口
 
 节点安装、IP 查询、DDNS 上报命令改为已验证的 v1.0.1 标签地址，避免 main 分支旧脚本不兼容新参数。node-options 和 Nodes 共 17 项通过，保留 shell 参数转义、DDNS 显式启用和独立凭据交互断言；TypeScript、生产构建及用户/管理端打包通过。本轮未改变可见布局，没有新增浏览器视觉验收；真实安装验证范围见 test-organization.md。
+
+
+节点访问目标报表新增估算缓存预算、累计接收和容量拒收信息，复用 AnalyticsCollectionSettings.test.tsx 验证显示、开关保存及筛选分页。完整前端测试 800 项通过，生产构建与打包通过。本轮未进行浏览器视觉验收；新增信息使用现有 muted/status 行和字节格式组件。
+
+
+节点访问目标统计设置增加四档上报周期，默认一分钟；保存周期与开关互不覆盖，失败保留原值并显示错误。报表节点选择区分固定周期旧节点。AnalyticsCollectionSettings.test.tsx 11 项通过，类型检查及生产构建/打包通过。本轮未进行浏览器视觉验收。

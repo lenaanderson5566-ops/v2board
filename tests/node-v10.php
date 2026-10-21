@@ -303,7 +303,7 @@ try {
     try {$credentials::disableLegacy((int)$user->id);$assert(false,'Unconfirmed migration cannot disable legacy');}
     catch(Symfony\Component\HttpKernel\Exception\HttpException $e){$assert($e->getStatusCode()===409,'Unconfirmed migration cannot disable legacy');}
     $install=(new App\Services\ServerService())->getAllServers();
-    foreach ($install as $server) if ($server['type']==='v2box') $assert(str_contains($server['install_command'],'apt-get install') && str_contains($server['install_command'],') && curl -fSL'),'Manual install command prepares dependencies before downloading');
+    foreach ($install as $server) if ($server['type']==='v2box') $assert(str_starts_with($server['install_command'],'wget --https-only -O install-v2box.sh ') && str_contains($server['install_command'],'&& sh install-v2box.sh --install v1.0.2') && str_contains($server['upgrade_command'],'--install v1.0.2'),'Manual install and upgrade use short wget/script commands');
     $assert(!str_contains(json_encode($install),'node-v10-test-secret'),'Install commands never expose global token');
     $freshSecret=json_decode($issued->getContent(),true)['data']['secret'];
     $assert($call('GET',$root.'/users',[],['HTTP_AUTHORIZATION'=>'Bearer '.$freshSecret])->getStatusCode()===200,'Replacement confirmed before global retirement');
@@ -327,7 +327,7 @@ try {
     $assert(!str_contains($grant['command'],'nk_') && !str_contains($grant['command'],'test-admin-credential-password') && str_contains($grant['command'],'mktemp -d'),'Command carries no long-lived key or admin password and uses private temp directory');
     $pipes=[];$syntax=proc_open(['bash','-n'],[['pipe','r'],['pipe','w'],['pipe','w']],$pipes);fwrite($pipes[0],$grant['command']);fclose($pipes[0]);stream_get_contents($pipes[1]);$parseError=stream_get_contents($pipes[2]);fclose($pipes[1]);fclose($pipes[2]);$assert(proc_close($syntax)===0,'Generated deployment command parses as shell: '.preg_replace('/nd_[a-f0-9]{64}/','[grant]',$parseError));
     $assert(!str_contains($grant['command'],"\r"),'Deployment command uses portable LF line endings');
-    $assert(str_contains($grant['command'],'ca-certificates curl bash jq unzip coreutils') && str_contains($grant['command'],'for tool in curl bash jq unzip sha256sum install'),'Copied deployment command installs every required dependency');
+    $assert(str_contains($grant['command'],'wget --https-only') && !str_contains($grant['command'],'apt-get'),'Copied deployment command stays short; dependencies belong in the script');
     preg_match('/^nd_[a-f0-9]{64}$/m',$grant['command'],$matches);$grantToken=$matches[0]??'';
     $assert(strlen($grantToken)===67,'One-use token format');
     $assert(DB::table('v2_node_credential')->where('node_type','v2box')->where('node_id',$nodeId)->count()===$beforeKeys,'Creating command does not rotate live credentials');
@@ -363,7 +363,7 @@ try {
     $assert($call('GET',$root.'/users',[],['HTTP_AUTHORIZATION'=>'Bearer '.$newToken])->getStatusCode()===401,'Deployment token never authenticates machine endpoints');
     $assert($deploymentCall($deployParams)->getStatusCode()===409,'Deployment refuses unfinished rotation');
     $bootstrap=$call('GET','/api/v10/public/node-deployment/bootstrap',[],['HTTP_AUTHORIZATION'=>'']);
-    $assert($bootstrap->getStatusCode()===200 && str_starts_with($bootstrap->getContent(),'#!/usr/bin/env bash'),'Public bootstrap is static shell, no credentials');
+    $assert($bootstrap->getStatusCode()===200 && str_starts_with($bootstrap->getContent(),'#!/bin/sh') && str_contains($bootstrap->getContent(),'ca-certificates curl bash jq unzip coreutils') && !str_contains($bootstrap->getContent(),'__NODE_PREREQUISITES__') && str_contains($bootstrap->getContent(),'--install'),'Public bootstrap is static shell, no credentials');
     $auth->removeAllSession();
     echo "PASS: $checks V10 node checks\n";
 } finally {

@@ -38,4 +38,4 @@ V2Box 新安装：生成一键部署命令、复制后在 Linux 节点以 root �
 
 抽屉区分独立凭据是否认证与节点运行状态；检查接入状态仅验证当前有效密钥的最近认证，不把旧宽限密钥或认证请求当作节点运行正常。全局密钥迁移仍收在凭据管理的高级折叠项，不再要求重复输入管理员密码，保留管理员登录鉴权及操作确认保护。
 
-V2Box 新安装、手动安装和已有节点升级的复制命令共用 resources/scripts/node-prerequisites.sh：在下载前检查 curl、bash、jq、unzip、sha256sum 和 install，缺少时通过 apt-get、apk、dnf 或 yum 安装依赖及 CA 证书；安装失败或依赖仍缺少即停止。以 Linux root 执行，需要能够访问对应系统软件源和 GitHub。继续复用正式 v1.0.2 安装器和二进制，无需单独预装 curl。
+V2Box 参考原 V2Node 的“wget 下载安装入口，再执行并传参”结构，长依赖检查移入面板提供的公开静态脚本。手动安装和升级命令为 wget 下载 install-v2box.sh 后由 sh 执行 --install；脚本自动安装 curl、bash、jq、unzip、coreutils 和 CA 证书，再转入正式 v1.0.2 安装器。sh 入口兼容最初未安装 bash 的机器。以 Linux root 执行，下载入口需先有支持 HTTPS 的 GNU wget，并能访问面板、系统软件源和 GitHub。一键授权部署使用私有临时目录和 stdin 授权，仍不暴露长期密钥；原 V2Node 安装入口保持不变。

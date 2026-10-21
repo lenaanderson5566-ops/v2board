@@ -40,16 +40,7 @@ final class NodeDeployment
             abort_unless(self::cache()->put($key,['id'=>$id,'actor'=>$actor,'actorProof'=>hash('sha256',(string)User::findOrFail($actor)->password),'expires'=>$expires,'proof'=>self::proof($id),'host'=>$host],self::TTL),503);
             abort_unless(self::cache()->put($index,$hash,self::TTL),503);
             $quote=fn($v)=>"'".str_replace("'","'\\''",$v)."'";
-            $prepare = <<<'SH'
-( set -eu
-umask 077
-__NODE_PREREQUISITES__
-deploy_dir=$(mktemp -d)
-trap 'rm -rf -- "$deploy_dir"' EXIT
-SH;
-            $prepare=str_replace("__NODE_PREREQUISITES__",file_get_contents(resource_path('scripts/node-prerequisites.sh')),$prepare);
-            $prepare=str_replace("\r\n","\n",$prepare);
-            $command=$prepare."\n".'curl -fSL --proto \'=https\' --connect-timeout 10 --max-time 120 '.$quote($host.'/api/v10/public/node-deployment/bootstrap').' -o "$deploy_dir/deploy.sh" && bash "$deploy_dir/deploy.sh" <<\'V2BOX_DEPLOY\''."\n".$host."\n".$token."\nV2BOX_DEPLOY\n)";
+            $command='( umask 077; deploy_dir=$(mktemp -d) && trap \'rm -rf -- "$deploy_dir"\' EXIT && wget --https-only -q -O "$deploy_dir/install-v2box.sh" '.$quote($host.'/api/v10/public/node-deployment/bootstrap').' && sh "$deploy_dir/install-v2box.sh" <<\'V2BOX_DEPLOY\''."\n".$host."\n".$token."\nV2BOX_DEPLOY\n)";
             return ['command'=>$command,'expiresAt'=>gmdate('Y-m-d\TH:i:s\Z',$expires)];
         });
     }

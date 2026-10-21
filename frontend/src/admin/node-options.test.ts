@@ -36,11 +36,8 @@ it("uses versioned network helpers included in the released backend", () => {
  }
 });
 
-it("prepares curl and all installer dependencies before the upgrade download", () => {
- expect(nodeUpgradeCommand).toContain("apt-get install -y -qq ca-certificates curl bash jq unzip coreutils");
- expect(nodeUpgradeCommand).toContain("apk add --no-cache");
- expect(nodeUpgradeCommand).toContain("dnf install -y");
- expect(nodeUpgradeCommand).toContain("yum install -y");
- expect(nodeUpgradeCommand.indexOf("apt-get install")).toBeLessThan(nodeUpgradeCommand.indexOf("curl -fSL"));
- expect(nodeUpgradeCommand).toContain(") && curl -fSL");
+it("uses the short server-provided upgrade command", () => {
+ const command="wget --https-only -O install-v2box.sh 'https://panel.example/api/v10/public/node-deployment/bootstrap' && sh install-v2box.sh --install v1.0.2";
+ expect(nodeUpgradeCommand({upgrade_command:command})).toBe(command);
+ expect(nodeUpgradeCommand({})).toBe("");
 });

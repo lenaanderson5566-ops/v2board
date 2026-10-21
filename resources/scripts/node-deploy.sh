@@ -1,23 +1,24 @@
-#!/usr/bin/env bash
+#!/bin/sh
 # One-use grant on stdin; no long-lived key in shell arguments or command history.
 set +x
-set -euo pipefail
+set -eu
+__NODE_PREREQUISITES__
+# The downloaded entry point works with sh even if bash was initially absent.
+if [ -z "${BASH_VERSION:-}" ]; then exec bash "$0" "$@"; fi
+set -o pipefail
 umask 077
+if [[ "${1:-}" == --install ]]; then
+  shift
+  stage=$(mktemp -d)
+  trap 'rm -rf -- "$stage"' EXIT
+  curl -fSL --proto '=https' --connect-timeout 10 --max-time 120 https://raw.githubusercontent.com/lenaanderson5566-ops/v2box/v1.0.2/script/install.sh -o "$stage/install.sh"
+  bash "$stage/install.sh" "$@"
+  exit
+fi
 IFS= read -r panel_url
 IFS= read -r grant
 [[ $EUID -eq 0 && $(uname -s) == Linux ]] || { echo 'Run as root on Linux' >&2; exit 1; }
 [[ "$panel_url" =~ ^https://[^/?#[:space:]@]+(/[^?#[:space:]]*)?$ && "$grant" =~ ^nd_[a-f0-9]{64}$ ]] || { echo 'Invalid deployment authorization' >&2; exit 1; }
-for tool in curl jq unzip sha256sum install; do
-  if ! command -v "$tool" >/dev/null; then
-    if command -v apt-get >/dev/null; then
-      apt-get update -qq && DEBIAN_FRONTEND=noninteractive apt-get install -y -qq ca-certificates curl jq unzip coreutils
-    elif command -v apk >/dev/null; then apk add --no-cache ca-certificates curl jq unzip coreutils
-    elif command -v dnf >/dev/null; then dnf install -y ca-certificates curl jq unzip coreutils
-    elif command -v yum >/dev/null; then yum install -y ca-certificates curl jq unzip coreutils
-    else echo 'Install curl, jq, unzip and coreutils first' >&2; exit 1; fi
-    break
-  fi
-done
 [[ ! -L /etc/v2box && ! -L /etc/v2box/config.json && ! -L /etc/v2box/.deployment-pending ]] || { echo 'Refusing symlinked configuration' >&2; exit 1; }
 if [[ -e /etc/v2box/config.json ]]; then
   [[ -f /etc/v2box/.deployment-pending ]] && jq -e '.Nodes | length == 1 and .[0].ApiKey == "REPLACE_ME" and .[0].ApiHost == "https://panel.example.com"' /etc/v2box/config.json >/dev/null || {

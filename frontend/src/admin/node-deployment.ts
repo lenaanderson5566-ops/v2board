@@ -1,7 +1,6 @@
 import type { Row } from "../shared/api";
-import nodePrerequisites from "../../../resources/scripts/node-prerequisites.sh?raw";
 const quote = (value: string) => "'" + value.replace(/'/g, "'\\''") + "'";
-export const nodeUpgradeCommand = "( " + nodePrerequisites.replace(/\r\n/g, "\n") + ") && curl -fSL https://raw.githubusercontent.com/lenaanderson5566-ops/v2box/v1.0.2/script/install.sh -o install-v2box.sh && bash install-v2box.sh v1.0.2";
+export const nodeUpgradeCommand = (node: Row): string => String(node.upgrade_command || "");
 export const nodeIPCommand =
     "curl -fSL https://raw.githubusercontent.com/lenaanderson5566-ops/v2box/v1.0.2/script/node-network.py -o node-network.py && python3 node-network.py ip";
 export function nodeDeploymentCommand(node: Row): string {

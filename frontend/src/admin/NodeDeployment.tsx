@@ -193,12 +193,12 @@ export function NodeDeployment({
                                     aria-label="节点升级命令"
                                     readOnly
                                     rows={3}
-                                    value={nodeUpgradeCommand}
+                                    value={nodeUpgradeCommand(node)}
                                 />
                                 <button
                                     onClick={() =>
                                         copy(
-                                            nodeUpgradeCommand,
+                                            nodeUpgradeCommand(node),
                                             "升级命令已复制",
                                         )
                                     }

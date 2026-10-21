@@ -8,7 +8,8 @@ use Illuminate\Http\Request;
 final class NodeDeploymentController extends Controller
 {
     public function bootstrap() {
-        return response(file_get_contents(resource_path('scripts/node-deploy.sh')),200,
+        $script=str_replace('__NODE_PREREQUISITES__',file_get_contents(resource_path('scripts/node-prerequisites.sh')),file_get_contents(resource_path('scripts/node-deploy.sh')));
+        return response(str_replace("\r\n","\n",$script),200,
             ['Content-Type'=>'text/x-shellscript; charset=utf-8','Cache-Control'=>'no-store','X-Content-Type-Options'=>'nosniff']);
     }
     public function redeem(Request $request) {

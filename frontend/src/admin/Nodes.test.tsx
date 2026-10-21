@@ -29,6 +29,7 @@ vi.mock("../shared/api", async (importOriginal) => ({
 }));
 import { Nodes, ResourcePage, resources } from "./admin";
 import { NodeCredentials } from "./NodeCredentials";
+import { NodeDeployment } from "./NodeDeployment";
 afterEach(() => {
     cleanup();
     vi.restoreAllMocks();
@@ -350,7 +351,8 @@ it("guides deployment to panel-managed DDNS", async () => {
         return { data: [] };
     });
     render(<Nodes />);
-    fireEvent.click(await screen.findByRole("button", { name: "安装命令" }));
+    fireEvent.click(await screen.findByRole("button", { name: "部署与接入" }));
+    fireEvent.click(screen.getByText("手动安装与网络辅助"));
     expect(screen.getByText(/在节点管理的“Cloudflare DDNS”/)).toBeTruthy();
     expect(
         (screen.getByLabelText("查询服务器 IP 命令") as HTMLTextAreaElement)
@@ -489,4 +491,49 @@ it("manages Lightsail and traffic in peer pages without an outer dialog", async 
     expect(screen.queryByRole("dialog")).toBeNull();
     fireEvent.click(screen.getByRole("button", { name: "节点列表" }));
     expect(await screen.findByLabelText("搜索节点")).toBeTruthy();
+});
+
+it("creates one-use deployment only after password confirmation and copies no permanent credential", async () => {
+    const writeText=vi.fn().mockResolvedValue(undefined);
+    Object.defineProperty(navigator,"clipboard",{configurable:true,value:{writeText}});
+    api.request.mockImplementation(async (path:string)=> path.endsWith("/deployment") ? {data:{command:"one-use-command",expiresAt:new Date(Date.now()+600000).toISOString()}} : {data:{keys:[],migrated:false}});
+    render(<NodeDeployment node={{id:1,type:"v2box",name:"A",install_command:"manual-install"}} close={()=>{}}/>);
+    const create=await screen.findByRole("button",{name:"生成一键部署命令"});
+    expect((create as HTMLButtonElement).disabled).toBe(true);
+    expect(api.request.mock.calls.some(([path])=>path.endsWith("/deployment"))).toBe(false);
+    fireEvent.change(screen.getByLabelText("部署操作管理员密码"),{target:{value:"admin-password"}});
+    fireEvent.click(create);
+    expect(await screen.findByLabelText("一键部署命令")).toHaveProperty("value","one-use-command");
+    expect(screen.getByLabelText("部署操作管理员密码")).toHaveProperty("value","");
+    fireEvent.click(screen.getByRole("button",{name:"复制部署命令"}));
+    await waitFor(()=>expect(writeText).toHaveBeenCalledWith("one-use-command"));
+    expect(localStorage.length).toBe(0);
+    fireEvent.change(screen.getByLabelText("部署场景"),{target:{value:"upgrade"}});
+    expect((screen.getByLabelText("节点升级命令") as HTMLTextAreaElement).value).toContain("v1.0.2");
+    expect(api.request.mock.calls.filter(([path])=>path.endsWith("/deployment"))).toHaveLength(1);
+});
+it("keeps deployment retryable on error and groups credentials in the same drawer", async () => {
+    api.request.mockImplementation(async(path:string)=>{if(path.endsWith("/deployment"))throw new Error("授权失败");return {data:{keys:[],legacyEnabled:false}};});
+    render(<NodeDeployment node={{id:1,type:"v2box",name:"A"}} close={()=>{}}/>);
+    fireEvent.change(await screen.findByLabelText("部署操作管理员密码"),{target:{value:"bad-password"}});
+    fireEvent.click(screen.getByRole("button",{name:"生成一键部署命令"}));
+    expect(await screen.findByRole("alert")).toHaveProperty("textContent","授权失败");
+    expect(screen.queryByLabelText("一键部署命令")).toBeNull();
+    fireEvent.mouseDown(screen.getByRole("tab",{name:"凭据管理"}),{button:0,ctrlKey:false});
+    expect(await screen.findByLabelText("凭据操作管理员密码")).toBeTruthy();
+    expect(screen.getAllByRole("dialog")).toHaveLength(1);
+});
+
+it("routes child deployment to its parent without issuing a child credential", async () => {
+    api.request.mockImplementation(async(path:string)=>{
+        if(path.endsWith("dictionary/fetch"))return adminPageFixture(path);
+        if(path.endsWith("server/manage/getNodes"))return {data:[{id:1,name:"Parent",type:"v2box",group_id:[]},{id:2,name:"Child",type:"v2box",parent_id:1,group_id:[]}]};
+        if(path.includes("server/credentials"))return {data:{keys:[]}};
+        return {data:[]};
+    });
+    render(<Nodes/>);
+    fireEvent.click(await screen.findByRole("button",{name:"父节点接入"}));
+    expect(await screen.findByText("Parent · 部署与接入")).toBeTruthy();
+    expect(api.request.mock.calls.some(([path])=>path.includes("server/credentials") && path.includes("id=1"))).toBe(true);
+    expect(screen.queryByRole("button",{name:"安装命令"})).toBeNull();
 });

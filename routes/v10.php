@@ -127,3 +127,6 @@
 
 \Illuminate\Support\Facades\Route::get('me/account-deletion', [\App\Http\Controllers\V10\AccountDeletionController::class,'state'])->name('v10.getMeAccountDeletion');
 \Illuminate\Support\Facades\Route::delete('me', [\App\Http\Controllers\V10\AccountDeletionController::class,'remove'])->middleware('throttle:10,1,account-deletion:')->name('v10.deleteMe');
+
+\Illuminate\Support\Facades\Route::get('public/node-deployment/bootstrap', [\App\Http\Controllers\V10\NodeDeploymentController::class,'bootstrap'])->middleware('throttle:30,1,node-bootstrap:')->name('v10.nodeDeployment.bootstrap');
+\Illuminate\Support\Facades\Route::post('server/enrollments/redeem', [\App\Http\Controllers\V10\NodeDeploymentController::class,'redeem'])->middleware('throttle:60,1,node-enrollment:')->name('v10.nodeDeployment.redeem');

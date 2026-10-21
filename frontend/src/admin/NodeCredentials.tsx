@@ -5,9 +5,15 @@ import { Modal, State, Table, useData } from "../shared/ui";
 export function NodeCredentials({
     node,
     close,
+    embedded = false,
+    onBusyChange,
+    onChanged,
 }: {
     node: Row;
     close: () => void;
+    embedded?: boolean;
+    onBusyChange?: (busy: boolean) => void;
+    onChanged?: () => void;
 }) {
     const identity = { type: node.type, id: node.id };
     const report = useData<Row>(query(admin("server/credentials"), identity));
@@ -27,6 +33,7 @@ export function NodeCredentials({
         )
             return;
         setBusy(true);
+        onBusyChange?.(true);
         setError("");
         setSecret("");
         try {
@@ -36,20 +43,17 @@ export function NodeCredentials({
             );
             setSecret(result.data?.secret || "");
             report.reload();
+            onChanged?.();
         } catch (e) {
             setError((e as Error).message);
         } finally {
             setBusy(false);
+            onBusyChange?.(false);
             setPassword("");
         }
     }
-    return (
-        <Modal
-            title={`${node.name} · 接入与凭据`}
-            close={() => {
-                if (!busy) close();
-            }}
-        >
+    const content = (
+        <>
             <p className="muted">
                 凭据仅授权此节点。生成后完整密钥只显示一次，请保存到节点配置；遗失请重新生成。此处不会自动轮换。
             </p>
@@ -187,6 +191,18 @@ export function NodeCredentials({
                     </p>
                 </section>
             )}
+        </>
+    );
+    return embedded ? (
+        content
+    ) : (
+        <Modal
+            title={`${node.name} · 接入与凭据`}
+            close={() => {
+                if (!busy) close();
+            }}
+        >
+            {content}
         </Modal>
     );
 }

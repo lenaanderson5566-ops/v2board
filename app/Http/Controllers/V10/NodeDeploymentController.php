@@ -1,0 +1,20 @@
+<?php
+namespace App\Http\Controllers\V10;
+
+use App\Http\Controllers\Controller;
+use App\Services\NodeDeployment;
+use Illuminate\Http\Request;
+
+final class NodeDeploymentController extends Controller
+{
+    public function bootstrap() {
+        return response(file_get_contents(resource_path('scripts/node-deploy.sh')),200,
+            ['Content-Type'=>'text/x-shellscript; charset=utf-8','Cache-Control'=>'no-store','X-Content-Type-Options'=>'nosniff']);
+    }
+    public function redeem(Request $request) {
+        abort_unless($request->isJson(),415);
+        abort_unless($request->json()->all()===[],422,'Deployment request body must be empty');
+        return response()->json(['data'=>NodeDeployment::redeem((string)$request->bearerToken())])
+            ->header('Cache-Control','private, no-store');
+    }
+}

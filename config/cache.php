@@ -85,6 +85,12 @@ return [
             'connection' => 'cache',
         ],
 
+        'node_deployment' => [
+            'driver' => 'redis',
+            'prefix' => $legacyStorePrefix.'node-deployment:',
+            'connection' => 'cache',
+        ],
+
         'target_statistics' => [
             'driver' => 'redis',
             'prefix' => $legacyStorePrefix.'target-statistics:',

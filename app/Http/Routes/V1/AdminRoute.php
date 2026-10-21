@@ -12,6 +12,7 @@ class AdminRoute
             'middleware' => ['admin', 'log'],
         ], function ($router) {
             $router->get('/server/credentials', 'V1\\Admin\\NodeCredentialController@index');
+            $router->post('/server/credentials/deployment', 'V1\\Admin\\NodeCredentialController@deployment')->middleware('throttle:5,1,node-deployment:');
             $router->post('/server/credentials/issue', 'V1\\Admin\\NodeCredentialController@issue')->middleware('throttle:5,1,node-credentials:');
             $router->post('/server/credentials/revoke', 'V1\\Admin\\NodeCredentialController@revoke')->middleware('throttle:5,1,node-credentials:');
             $router->post('/server/credentials/disable-legacy', 'V1\\Admin\\NodeCredentialController@disableLegacy')->middleware('throttle:5,1,node-credentials:');

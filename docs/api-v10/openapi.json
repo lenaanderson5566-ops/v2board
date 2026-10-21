@@ -9784,6 +9784,129 @@
         }
       }
     },
+    "/public/node-deployment/bootstrap": {
+      "get": {
+        "operationId": "nodeDeploymentBootstrap",
+        "tags": [
+          "V2Box node communication"
+        ],
+        "security": [],
+        "description": "Static Linux bootstrap using official pinned v1.0.2 installer. Reads URL/grant on stdin, refuses configured nodes.",
+        "responses": {
+          "200": {
+            "description": "Bash bootstrap script",
+            "content": {
+              "text/x-shellscript": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "429": {
+            "$ref": "#/components/responses/NodeAPIProblem"
+          }
+        }
+      }
+    },
+    "/server/enrollments/redeem": {
+      "post": {
+        "operationId": "redeemNodeDeployment",
+        "tags": [
+          "V2Box node communication"
+        ],
+        "security": [
+          {
+            "nodeDeploymentBearer": []
+          }
+        ],
+        "description": "Burn a 10-minute one-use grant and issue one scoped credential. New grants supersede old grants. Credential/administrator changes invalidate grants; issuance does not happen until redemption. Lost responses require a new grant. No query tokens.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "One-time scoped credential; private, no-store",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "data"
+                  ],
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "required": [
+                        "nodeType",
+                        "nodeId",
+                        "apiHost",
+                        "apiKey",
+                        "credentialId"
+                      ],
+                      "properties": {
+                        "nodeType": {
+                          "type": "string",
+                          "enum": [
+                            "v2box"
+                          ]
+                        },
+                        "nodeId": {
+                          "type": "integer",
+                          "minimum": 1
+                        },
+                        "apiHost": {
+                          "type": "string",
+                          "format": "uri"
+                        },
+                        "apiKey": {
+                          "type": "string",
+                          "description": "One-time secret. Never logged or listed."
+                        },
+                        "credentialId": {
+                          "type": "string"
+                        }
+                      },
+                      "additionalProperties": false
+                    }
+                  },
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/NodeAPIProblem"
+          },
+          "403": {
+            "$ref": "#/components/responses/NodeAPIProblem"
+          },
+          "409": {
+            "$ref": "#/components/responses/NodeAPIProblem"
+          },
+          "415": {
+            "$ref": "#/components/responses/NodeAPIProblem"
+          },
+          "429": {
+            "$ref": "#/components/responses/NodeAPIProblem"
+          },
+          "503": {
+            "$ref": "#/components/responses/NodeAPIProblem"
+          },
+          "422": {
+            "$ref": "#/components/responses/NodeAPIProblem"
+          }
+        }
+      }
+    },
     "/public/analytics/configuration": {
       "get": {
         "operationId": "getPublicAnalyticsConfiguration",
@@ -14502,6 +14625,11 @@
         "type": "http",
         "scheme": "bearer",
         "description": "Per-node DDNS report key. Stored hashed; cannot call other machine endpoints."
+      },
+      "nodeDeploymentBearer": {
+        "type": "http",
+        "scheme": "bearer",
+        "description": "10-minute single-use deployment grant, only for POST /server/enrollments/redeem. Never a node/user credential. No query tokens."
       }
     },
     "headers": {

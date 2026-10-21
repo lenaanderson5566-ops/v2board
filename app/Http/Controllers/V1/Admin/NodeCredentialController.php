@@ -18,6 +18,11 @@ final class NodeCredentialController extends Controller {
         $p=$this->identity($r);
         return response()->json(['data'=>NodeCredentials::listing($p['type'],(int)$p['id'])]);
     }
+    public function deployment(Request $r) {
+        $p=$this->identity($r);$actor=$this->verify($r);
+        abort_unless($p['type']==='v2box',422,'一键接入仅支持 V2Box');
+        return response()->json(['data'=>\App\Services\NodeDeployment::create((int)$p['id'],$actor)],201)->header('Cache-Control','private, no-store');
+    }
     public function issue(Request $r) {
         $p=$this->identity($r); $actor=$this->verify($r);
         return response()->json(['data'=>NodeCredentials::issue($p['type'],(int)$p['id'],$actor)],201);

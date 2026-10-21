@@ -183,6 +183,7 @@ export type V10NodeOnlineUsersInput = { "records": Array<V10NodeOnlineRecord> };
 export type V10NodeCapabilitiesInput = V10NodeCapabilities;
 export type V10NodeAddressesInput = V10NodeAddressReport;
 export type V10NodeTargetStatisticsInput = { "version": string; "batchId": string; "dropped": number; "records": Array<V10NodeTargetRecord> };
+export type V10RedeemNodeDeploymentInput = {  };
 export type MfaMethod = V10MfaChallenge["methods"][number];
 export type V10MfaPurpose = V10PostMeMfaChallengesInput["purpose"];
 export type V10LoginResult = V10Authentication | V10MfaChallenge;

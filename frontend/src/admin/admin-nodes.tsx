@@ -1,5 +1,5 @@
 import { NodeDictionaryProvider } from "./node-dictionary";
-import { NodeCredentials } from "./NodeCredentials";
+import { NodeDeployment } from "./NodeDeployment";
 import { AdminChoiceGroup } from "./AdminChoices";
 import { AdminDisplaySettings } from "./AdminDisplaySettings";
 import { field, nameColumn } from "./admin-fields";
@@ -34,7 +34,6 @@ import { linkNode, nodeFields } from "./admin-linkage";
 import { formPresentation } from "./admin-presentation";
 import { AdminSwitch } from "./admin-switch";
 import { SortButton } from "./admin-tools";
-import { nodeDeploymentCommand, nodeIPCommand } from "./node-deployment";
 import {
     nodeBackendInitial,
     nodeEditorPresentation,
@@ -69,7 +68,6 @@ function NodesContent({
     const [type, setType] = useState("v2node"),
         [editing, setEditing] = useState<Row | null>(null);
     const [error, setError] = useState("");
-    const [command, setCommand] = useState<Row | null>(null);
     const schema = useData<Row>(query(admin("console/nodeSchema"), { type }));
     useEffect(() => {
         setNodeDirty(false);
@@ -402,12 +400,8 @@ function NodesContent({
                                     >
                                         运行状态
                                     </button>
-                                    {!r.parent_id && <button onClick={() => setCredentialNode(r)}>接入与凭据</button>}
-                                    {r.install_command && (
-                                        <button onClick={() => setCommand(r)}>
-                                            安装命令
-                                        </button>
-                                    )}
+                                    {!r.parent_id ? <button onClick={() => setCredentialNode(r)}>部署与接入</button> :
+                                        <button onClick={() => { const parent=(d.data || []).find(n=>n.type===r.type && Number(n.id)===Number(r.parent_id)); if(parent)setCredentialNode(parent);else setError("父节点不可用，请先检查节点配置"); }}>父节点接入</button>}
                                     <button
                                         onClick={() => {
                                             setType(r.type);
@@ -481,79 +475,7 @@ function NodesContent({
                     </State>
                 </Panel>
             )}
-            {credentialNode && <NodeCredentials node={credentialNode} close={() => setCredentialNode(null)} />}
-            {command && (
-                <Modal title="节点安装命令" close={() => setCommand(null)}>
-                    <p className="muted">命令不包含通讯密钥。V2Box 在安装器提示时输入独立密钥；已有配置请使用“接入与凭据”中的更新步骤。旧 V2Node 请按其安装器要求手动配置。</p>
-                    <div className="pad">
-                        <p>
-                            可选：在节点管理的“Cloudflare
-                            DDNS”保存凭据并绑定此节点，然后配置节点 IP 上报。
-                        </p>
-                        <p className="muted">
-                            查询部署服务器公网 IPv4 /
-                            IPv6：在节点服务器执行以下命令。DDNS
-                            默认关闭，Cloudflare Token 加密保存在面板。
-                        </p>
-                        <textarea
-                            aria-label="查询服务器 IP 命令"
-                            readOnly
-                            rows={3}
-                            value={nodeIPCommand}
-                        />
-                        <button
-                            onClick={async () => {
-                                try {
-                                    await navigator.clipboard.writeText(
-                                        nodeIPCommand,
-                                    );
-                                    setCommand({ ...command, ipCopied: true });
-                                } catch {
-                                    setCommand({
-                                        ...command,
-                                        error: "复制失败，请手动复制命令",
-                                    });
-                                }
-                            }}
-                        >
-                            {command.ipCopied
-                                ? "IP 查询命令已复制"
-                                : "复制 IP 查询命令"}
-                        </button>
-                    </div>
-                    <div className="pad">
-                        <p className="muted">
-                            命令包含节点通讯凭据，仅在目标服务器使用。
-                        </p>
-                        <textarea
-                            readOnly
-                            aria-label="节点安装命令"
-                            value={nodeDeploymentCommand(command)}
-                        />
-                        <button
-                            onClick={async () => {
-                                try {
-                                    await navigator.clipboard.writeText(
-                                        nodeDeploymentCommand(command),
-                                    );
-                                    setCommand({ ...command, copied: true });
-                                } catch (e) {
-                                    setCommand({
-                                        ...command,
-                                        error: (e as Error).message,
-                                    });
-                                }
-                            }}
-                        >
-                            复制命令
-                        </button>
-                        {command.copied && <p role="status">已复制</p>}
-                        {command.error && (
-                            <p className="alert">{command.error}</p>
-                        )}
-                    </div>
-                </Modal>
-            )}
+            {credentialNode && <NodeDeployment key={`${credentialNode.type}:${credentialNode.id}`} node={credentialNode} close={() => setCredentialNode(null)} />}
             {editing && (
                 <Modal
                     title={
@@ -880,7 +802,7 @@ function NodesContent({
                                             r.type === type &&
                                             r.id === saved.data.id,
                                     );
-                                    if (converted) setCommand(converted);
+                                    if (converted) setCredentialNode(converted);
                                 }
                             }}
                         />

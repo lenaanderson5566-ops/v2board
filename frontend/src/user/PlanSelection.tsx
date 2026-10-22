@@ -200,16 +200,6 @@ export function PlanSelection({
                                 </div>
                             )}
                         </dl>
-                        {quote.months > 1 && (
-                            <p className="purchase-equivalent">
-                                {pc("equivalent", {
-                                    price: money(
-                                        quote.amount / quote.months,
-                                        plan.currency,
-                                    ),
-                                })}
-                            </p>
-                        )}
                         <details className="purchase-fee-note">
                             <summary>{pc("feeDetails")}</summary>
                             <p>{pc("discountOrder")}</p>

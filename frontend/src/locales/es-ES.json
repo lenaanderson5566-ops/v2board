@@ -873,14 +873,12 @@
     "title": "Descargar cliente",
     "official": "Descarga oficial",
     "mirror": "Descarga alternativa",
-    "provided": "Fuente de descarga proporcionada por este sitio",
     "unavailable": "No disponible",
     "hint": "Elige la versión para tu sistema operativo y procesador."
   },
   "fastaiDownload": {
     "dedicated": "Cliente del sitio",
     "thirdParty": "Clientes de terceros",
-    "thirdPartyGuide": "Importa tu enlace de suscripción. Las actualizaciones provienen del proyecto original; estos clientes no necesitan tu contraseña del sitio.",
     "appUpdates": "Acceso con cuenta · Sincronización de suscripción · Actualizaciones en la aplicación",
     "title": "Cliente dedicado",
     "guide": "Instala e inicia sesión con tu cuenta del sitio para sincronizar la suscripción. No necesitas un enlace.",
@@ -921,7 +919,7 @@
   "clientImport": {
     "invalid": "Suscripción no disponible. Actualiza e inténtalo de nuevo.",
     "copied": "Copiado. Pégalo en el gestor de suscripciones de tu cliente y actualiza.",
-    "opened": "Abriendo tu cliente. Confirma allí la importación y actualiza; esta página no puede verificar el resultado. Si no se abre, instala el cliente o copia la suscripción."
+    "opened": "Confirme la importación y actualice la configuración en el cliente. Si el cliente no se abre, instálelo o copie el enlace de suscripción para importarlo manualmente."
   },
   "landing": {
     "inviteStart": "Unirse por invitación",

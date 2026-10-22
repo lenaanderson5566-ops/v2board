@@ -871,14 +871,12 @@
     "title": "Tải ứng dụng",
     "official": "Tải chính thức",
     "mirror": "Tải từ máy chủ dự phòng",
-    "provided": "Nguồn tải do trang này cung cấp",
     "unavailable": "Chưa có",
     "hint": "Chọn phiên bản phù hợp hệ điều hành và bộ xử lý."
   },
   "fastaiDownload": {
     "dedicated": "Dành cho trang này",
     "thirdParty": "Ứng dụng bên thứ ba",
-    "thirdPartyGuide": "Nhập liên kết đăng ký. Dự án gốc cung cấp cập nhật; không cần nhập mật khẩu trang web vào ứng dụng này.",
     "appUpdates": "Đăng nhập · Đồng bộ gói · Cập nhật trong ứng dụng",
     "title": "Ứng dụng chuyên dụng",
     "guide": "Cài đặt và đăng nhập bằng tài khoản trang web để đồng bộ gói dịch vụ, không cần sao chép liên kết.",
@@ -919,7 +917,7 @@
   "clientImport": {
     "invalid": "Cấu hình chưa khả dụng. Tải lại và thử lại.",
     "copied": "Đã sao chép. Dán vào mục đăng ký của ứng dụng rồi cập nhật.",
-    "opened": "Đang mở ứng dụng. Xác nhận nhập và cập nhật trong ứng dụng; trang này không xác minh được kết quả. Nếu không mở, cài ứng dụng hoặc sao chép đăng ký."
+    "opened": "Xác nhận nhập và cập nhật cấu hình trong ứng dụng. Nếu ứng dụng không mở, hãy cài đặt ứng dụng hoặc sao chép liên kết đăng ký để nhập thủ công."
   },
   "landing": {
     "inviteStart": "Đăng ký qua lời mời",

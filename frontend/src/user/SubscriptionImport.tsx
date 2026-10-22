@@ -129,7 +129,6 @@ export function SubscriptionImport({
                 <span className="client-family-badge">
                     {downloadKind("thirdParty")}
                 </span>
-                <p>{downloadKind("thirdPartyGuide")}</p>
             </header>
             <section className="quick-step">
                 <h3>

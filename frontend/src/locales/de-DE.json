@@ -873,14 +873,12 @@
     "title": "Client herunterladen",
     "official": "Offizieller Download",
     "mirror": "Spiegel-Download",
-    "provided": "Von dieser Website bereitgestellte Download-Quelle",
     "unavailable": "Nicht verfügbar",
     "hint": "Wählen Sie die Version für Ihr Betriebssystem und Ihren Prozessor."
   },
   "fastaiDownload": {
     "dedicated": "Site-Client",
     "thirdParty": "Drittanbieter-Clients",
-    "thirdPartyGuide": "Importieren Sie Ihren Abonnementlink. Aktualisierungen stammen vom Originalprojekt; Ihr Site-Passwort ist für diese Clients nicht erforderlich.",
     "appUpdates": "Kontoanmeldung · Abonnementsynchronisierung · In-App-Updates",
     "title": "Dedizierter Client",
     "guide": "Installieren Sie Ihr Site-Konto und melden Sie sich an, um Ihr Abonnement zu synchronisieren. Es ist kein Abonnementlink erforderlich.",
@@ -921,7 +919,7 @@
   "clientImport": {
     "invalid": "Abonnement nicht verfügbar. Aktualisieren Sie und versuchen Sie es erneut.",
     "copied": "Kopiert. Fügen Sie es in den Abonnement-Manager Ihres Clients ein und aktualisieren Sie es.",
-    "opened": "Öffnen Sie Ihren Client. Bestätigen Sie dort den Import und die Aktualisierung; Diese Seite kann den Erfolg nicht überprüfen. Wenn es nicht geöffnet wird, installieren Sie den Client oder kopieren Sie das Abonnement."
+    "opened": "Bestätigen Sie den Import und aktualisieren Sie die Konfiguration im Client. Falls sich der Client nicht öffnet, installieren Sie ihn oder kopieren Sie den Abonnementlink für den manuellen Import."
   },
   "landing": {
     "inviteStart": "Treten Sie auf Einladung bei",

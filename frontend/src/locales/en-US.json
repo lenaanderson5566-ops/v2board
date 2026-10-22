@@ -873,14 +873,12 @@
     "title": "Download client",
     "official": "Official download",
     "mirror": "Mirror download",
-    "provided": "Download source provided by this site",
     "unavailable": "Not available",
     "hint": "Choose the version for your operating system and processor."
   },
   "fastaiDownload": {
     "dedicated": "Site client",
     "thirdParty": "Third-party clients",
-    "thirdPartyGuide": "Import your subscription link. Updates come from the original project; your site password is not needed in these clients.",
     "appUpdates": "Account sign-in · Subscription sync · In-app updates",
     "title": "Dedicated client",
     "guide": "Install and sign in with your site account to sync your subscription. No subscription link is needed.",
@@ -921,7 +919,7 @@
   "clientImport": {
     "invalid": "Subscription unavailable. Refresh and try again.",
     "copied": "Copied. Paste in your client’s subscription manager and update.",
-    "opened": "Opening your client. Confirm the import and update there; this page cannot verify success. If it does not open, install the client or copy the subscription."
+    "opened": "Confirm the import and update the configuration in the client. If the client does not open, install it or copy the subscription link to import it manually."
   },
   "landing": {
     "inviteStart": "Join by invitation",

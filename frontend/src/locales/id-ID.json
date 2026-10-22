@@ -873,14 +873,12 @@
     "title": "Unduh klien",
     "official": "Unduhan resmi",
     "mirror": "Unduhan cermin",
-    "provided": "Sumber unduhan disediakan oleh situs ini",
     "unavailable": "Tidak tersedia",
     "hint": "Pilih versi untuk sistem operasi dan prosesor Anda."
   },
   "fastaiDownload": {
     "dedicated": "Klien situs",
     "thirdParty": "Klien pihak ketiga",
-    "thirdPartyGuide": "Impor tautan langganan Anda. Pembaruan datang dari proyek asli; kata sandi situs Anda tidak diperlukan di klien ini.",
     "appUpdates": "Masuk akun · Sinkronisasi langganan · Pembaruan dalam aplikasi",
     "title": "Klien yang berdedikasi",
     "guide": "Instal dan masuk dengan akun situs Anda untuk menyinkronkan langganan Anda. Tidak diperlukan tautan berlangganan.",
@@ -921,7 +919,7 @@
   "clientImport": {
     "invalid": "Langganan tidak tersedia. Segarkan dan coba lagi.",
     "copied": "Disalin. Tempelkan ke manajer langganan klien Anda dan perbarui.",
-    "opened": "Membuka klien Anda. Konfirmasikan impor dan perbarui di sana; halaman ini tidak dapat memverifikasi keberhasilan. Jika tidak terbuka, instal klien atau salin langganannya."
+    "opened": "Konfirmasikan impor dan perbarui konfigurasi di aplikasi. Jika aplikasi tidak terbuka, instal aplikasi atau salin tautan langganan untuk mengimpornya secara manual."
   },
   "landing": {
     "inviteStart": "Bergabung karena undangan",

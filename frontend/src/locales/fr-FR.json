@@ -873,14 +873,12 @@
     "title": "Télécharger le client",
     "official": "Téléchargement officiel",
     "mirror": "Téléchargement miroir",
-    "provided": "Source de téléchargement fournie par ce site",
     "unavailable": "Non disponible",
     "hint": "Choisissez la version pour votre système d'exploitation et votre processeur."
   },
   "fastaiDownload": {
     "dedicated": "Client du site",
     "thirdParty": "Clients tiers",
-    "thirdPartyGuide": "Importez votre lien d'abonnement. Les mises à jour proviennent du projet d'origine ; le mot de passe de votre site n'est pas nécessaire dans ces clients.",
     "appUpdates": "Connexion au compte · Synchronisation des abonnements · Mises à jour dans l'application",
     "title": "Client dédié",
     "guide": "Installez et connectez-vous avec votre compte de site pour synchroniser votre abonnement. Aucun lien d'abonnement n'est nécessaire.",
@@ -921,7 +919,7 @@
   "clientImport": {
     "invalid": "Abonnement indisponible. Actualisez et réessayez.",
     "copied": "Copié. Collez dans le gestionnaire d’abonnements de votre client et mettez à jour.",
-    "opened": "Ouverture de votre client. Confirmez l'importation et la mise à jour ici ; cette page ne peut pas vérifier le succès. S'il ne s'ouvre pas, installez le client ou copiez l'abonnement."
+    "opened": "Confirmez l’importation et actualisez la configuration dans le client. Si le client ne s’ouvre pas, installez-le ou copiez le lien d’abonnement pour l’importer manuellement."
   },
   "landing": {
     "inviteStart": "Rejoindre sur invitation",

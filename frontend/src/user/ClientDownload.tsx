@@ -72,7 +72,6 @@ export function ClientDownload({
                 <span className="client-family-badge">
                     {kind("thirdParty")}
                 </span>
-                <p className="muted">{kind("thirdPartyGuide")}</p>
                 <p className="download-client">
                     {clients.find((item) => item.id === client)?.name}
                     <span>{device === "unknown" ? "" : device}</span>
@@ -130,7 +129,6 @@ export function ClientDownload({
                             <Download size={22} />
                             <span>
                                 <strong>{t("mirror")}</strong>
-                                <small>{t("provided")}</small>
                             </span>
                             <ArrowUpRight size={18} />
                         </a>

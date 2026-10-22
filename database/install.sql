@@ -31,8 +31,7 @@ CREATE TABLE `failed_jobs` (
                                `id` bigint(20) unsigned NOT NULL AUTO_INCREMENT,
                                `connection` text COLLATE utf8mb4_unicode_ci NOT NULL,
                                `queue` text COLLATE utf8mb4_unicode_ci NOT NULL,
-                               `daily_archived` tinyint(1) NOT NULL DEFAULT 0,
-  `payload` longtext COLLATE utf8mb4_unicode_ci NOT NULL,
+                               `payload` longtext COLLATE utf8mb4_unicode_ci NOT NULL,
                                `exception` longtext COLLATE utf8mb4_unicode_ci NOT NULL,
                                `failed_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
                                PRIMARY KEY (`id`)
@@ -51,7 +50,8 @@ CREATE TABLE `v2_commission_log` (
                                      `get_amount` int(11) NOT NULL,
                                      `created_at` int(11) NOT NULL,
                                      `updated_at` int(11) NOT NULL,
-                                     PRIMARY KEY (`id`)
+                                     PRIMARY KEY (`id`),
+                                     KEY `commission_created_currency` (`created_at`,`currency`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 
@@ -215,7 +215,9 @@ CREATE TABLE `v2_order` (
                             PRIMARY KEY (`id`),
                             UNIQUE KEY `trade_no` (`trade_no`),
                             INDEX idx_user (`user_id`),
-                            INDEX idx_user_status (`user_id`, `status`)
+                            INDEX idx_user_status (`user_id`, `status`),
+                            KEY `order_paid_currency` (`paid_at`,`status`,`currency`),
+                            KEY `order_pending_commission` (`commission_status`,`commission_balance`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8;
 
 

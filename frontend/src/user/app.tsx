@@ -78,7 +78,7 @@ export default function App() {
 function UserApp() {
     useEffect(() => {
         setLanguagePersistence(async (language) => {
-            if (boot.mode !== "user" || !hasBrowserSession()) return false;
+            if (!hasBrowserSession()) return false;
             await request("user/update", { language });
             return true;
         });
@@ -131,6 +131,10 @@ function UserApp() {
             await logoutSession();
             purchaseReturn.current = undefined;
             setUser(null);
+            navigate("login");
+        } catch (reason) {
+            setUser(null);
+            setError((reason as Error).message);
             navigate("login");
         } finally {
             loggingOut.current = false;
@@ -219,7 +223,7 @@ function UserApp() {
         if (boot.landing && location.hash.startsWith("#/"))
             location.replace("/app" + location.hash);
         const verification =
-            boot.mode === "user" && !boot.landing
+            !boot.landing
                 ? new URLSearchParams(location.hash.split("?")[1]).get("verify")
                 : null;
         if (verification) {
@@ -232,7 +236,7 @@ function UserApp() {
             forgetBrowserSession();
         }
         // Start code loading alongside the account request; do not delay authentication on it.
-        if (boot.mode === "user" && !boot.landing && hasBrowserSession())
+        if (!boot.landing && hasBrowserSession())
             void loadUserContent().catch(() => {});
         if (!boot.landing)
             initializeBrowserSession()
@@ -251,8 +255,7 @@ function UserApp() {
                 })
                 .then(async (r) => {
                     if (!r) return;
-                    if (boot.mode === "user")
-                        await applyAccountLanguage(r.data.language);
+                    await applyAccountLanguage(r.data.language);
                     setUser(r.data);
                     if (verification) {
                         setPath("dashboard");
@@ -276,23 +279,13 @@ function UserApp() {
                 <Landing />
             </React.Suspense>
         );
-    if (loading)
-        return boot.mode === "user" ? (
-            <WorkspaceSkeleton full />
-        ) : (
-            <div className="state full">
-                <span className="spinner" />
-                {tx("正在加载工作空间…")}
-            </div>
-        );
+    if (loading) return <WorkspaceSkeleton full />;
     if (!user)
         return (
             <div className="access-page">
-                {boot.mode === "user" && (
-                    <div className="auth-language">
-                        <LanguagePicker />
-                    </div>
-                )}
+                <div className="auth-language">
+                    <LanguagePicker />
+                </div>
                 {error && <div className="alert">{error}</div>}
                 <UserAuth
                     key={path}
@@ -353,13 +346,11 @@ function UserApp() {
         ].find((n) => n.key === current),
         groups = [...new Set(nav.map((n) => n.group))],
         navigationCurrent =
-            boot.mode === "user" && current === "ticket"
+            current === "ticket"
                 ? "knowledge"
-                : boot.mode === "user" &&
-                    ["security", "notifications"].includes(current)
+                : ["security", "notifications"].includes(current)
                   ? "profile"
-                  : boot.mode === "user" &&
-                      current === "traffic" &&
+                  : current === "traffic" &&
                       user.account_status?.state === "active"
                     ? "dashboard"
                     : current,
@@ -386,7 +377,7 @@ function UserApp() {
                 </React.Suspense>
             }
         >
-            <div className={"app " + boot.mode}>
+            <div className="app user">
                 {open && (
                     <div
                         className="nav-backdrop"
@@ -479,8 +470,8 @@ function UserApp() {
                             <strong>{tx(item?.label || "总览")}</strong>
                         </div>
                         <div className="actions header-controls">
-                            {boot.mode === "user" && <LanguagePicker />}
-                            {boot.mode === "user" && <AnnouncementCenter />}
+                            <LanguagePicker />
+                            <AnnouncementCenter />
                             <AccountMenu user={user} logout={handleLogout} />
                         </div>
                     </header>
@@ -513,7 +504,6 @@ function UserApp() {
                         </footer>
                     </main>
                 </div>
-                {boot.mode === "user" && (
                     <nav
                         className="bottom-nav"
                         inert={mobile && open}
@@ -550,7 +540,6 @@ function UserApp() {
                                 </a>
                             ))}
                     </nav>
-                )}
             </div>
         </UserStatusGate>
     );

@@ -110,7 +110,7 @@ foreach ($entries as $entry) {
     if (isset($entry['key'])) $assert($contract['key'] === $entry['key'], 'Explicit contract key mismatch '.$key);
     if ($contract['role']!=='user') continue;
     $path='/api/v10/'.preg_replace('/\{[^}]+\}/','1',$entry['path']);
-    $request=Illuminate\Http\Request::create($path,$entry['method'],[],[],[],['REMOTE_ADDR'=>$testIpPrefix.(++$authorizationProbe),'HTTP_ACCEPT'=>'application/json','HTTP_USER_AGENT'=>'API-Audit']);
+    $request=Illuminate\Http\Request::create($path,$entry['method'],[],[],[],['REMOTE_ADDR'=>$testIpPrefix.(++$authorizationProbe),'HTTP_ACCEPT'=>'application/json','HTTP_USER_AGENT'=>'API-Audit','CONTENT_TYPE'=>'application/json'],'{}');
     $app->instance('request',$request);
     $response=$app->make(Illuminate\Contracts\Http\Kernel::class)->handle($request);
     $assert($response->getStatusCode()===401,'Account route must reject missing credentials: '.$entry['method'].' '.$path.' '.$response->getStatusCode());
@@ -120,7 +120,10 @@ foreach ($entries as $entry) {
         $forged=['auth_data'=>['is_admin'=>1,'is_staff'=>1], 'accessToken'=>['id'=>1], 'user'=>['id'=>1,'is_admin'=>1]];
         $probe=Illuminate\Http\Request::create($path.($variant==='array-query'?'?'.http_build_query($forged):''),$entry['method'],[],[],[],$server,$variant==='array-body'?json_encode($forged):null);
         $response=$app->make(Illuminate\Contracts\Http\Kernel::class)->handle($probe);
-        $assert($response->getStatusCode()===401,'V10 account route rejects '.$variant.': '.$entry['method'].' '.$path);
+        // Account deletion rejects unsupported input fields before authentication; a valid
+        // empty JSON request above and the forged Bearer below still must return 401.
+        $expected=($path==='/api/v10/me' && $entry['method']==='DELETE' && $variant!=='forged-bearer') ? 422 : 401;
+        $assert($response->getStatusCode()===$expected,'V10 account route rejects '.$variant.': '.$entry['method'].' '.$path.' '.$response->getStatusCode());
     }
     $protectedCount++;
 }

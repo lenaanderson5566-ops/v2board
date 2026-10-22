@@ -1550,6 +1550,7 @@ body[data-console="admin"] .user-toolbar [aria-pressed="true"] {
 }
 
 body[data-console="admin"] .admin-row-popover {
+    z-index: 100;
     position: fixed;
     margin: 0;
     width: 210px;
@@ -1561,7 +1562,7 @@ body[data-console="admin"] .admin-row-popover {
     background: var(--surface, white);
     box-shadow: 0 12px 35px #0003;
 }
-body[data-console="admin"] .admin-row-popover:popover-open {
+body[data-console="admin"] .admin-row-popover:not([hidden]) {
     display: grid;
     gap: 4px;
 }

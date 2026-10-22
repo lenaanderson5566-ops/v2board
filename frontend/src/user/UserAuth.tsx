@@ -1,3 +1,4 @@
+import { sessionPreferences } from "../shared/browser-storage";
 import { PasskeyLogin } from "../shared/PasskeyLogin";
 import { useAnalyticsPage } from "./product-analytics";
 import { MfaLogin } from "../shared/MfaLogin";
@@ -44,11 +45,11 @@ export function UserAuth({
     const [passwordUpdated] = useState(
         () =>
             mode === "login" &&
-            sessionStorage.getItem(`${storageKey}.passwordUpdated`) === "1",
+            sessionPreferences.getItem(`${storageKey}.passwordUpdated`) === "1",
     );
     useEffect(() => {
         if (passwordUpdated)
-            sessionStorage.removeItem(`${storageKey}.passwordUpdated`);
+            sessionPreferences.removeItem(`${storageKey}.passwordUpdated`);
     }, [passwordUpdated]);
     const [registered, setRegistered] = useState(false),
         [step, setStep] = useState(1),

@@ -157,3 +157,9 @@ body[data-console="admin"] .admin-dictionary-fields small { overflow-wrap: anywh
     body[data-console="admin"] .admin-filter-actions > a { flex-basis: 100%; }
     body[data-console="admin"] .admin-dictionary-actions { flex-wrap: wrap; bottom: -12px; }
 }
+
+/* Row actions use the same controls as other admin surfaces, including keyboard focus. */
+body[data-console="admin"] .admin-row-popover { border-radius: var(--admin-radius, 8px); }
+body[data-console="admin"] .admin-row-popover > button { min-height: var(--admin-control-height); padding: 8px 12px; white-space: normal; }
+body[data-console="admin"] .admin-row-popover > button:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+body[data-console="admin"] .admin-row-popover[hidden] { display: none; }

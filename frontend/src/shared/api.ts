@@ -1,3 +1,4 @@
+import { localPreferences } from "./browser-storage";
 import {
     configureTimeZone,
     setDisplayTimeZone,
@@ -87,7 +88,7 @@ export function readRequest<T = Row>(
     if (boot.mode !== "user" || body || !cacheable.has(path))
         return request<T>(path, body);
     return readCache.read(
-        `${localStorage.getItem(`v2board.${boot.mode}.sessionRevision`) || ""}\0${locale()}\0${path}`,
+        `${localPreferences.getItem(`v2board.${boot.mode}.sessionRevision`) || ""}\0${locale()}\0${path}`,
         () => request<T>(path),
         fresh,
     );

@@ -10,7 +10,12 @@ export function AdminSubscriptions({
 }) {
     const [tab, setTab] = useState<string>(initialTab);
     return (
-        <Tabs.Root className="admin-workspace-tabs" value={tab} onValueChange={setTab} activationMode="manual">
+        <Tabs.Root className="admin-workspace-tabs" value={tab} onValueChange={next => {
+            const root = document.querySelector('.admin-content') || document;
+            if (root.querySelector('[data-saving="true"], form[aria-busy="true"]')) return;
+            if (root.querySelector('[data-unsaved="true"]') && !window.confirm("有尚未保存的修改，确认离开当前页面？")) return;
+            setTab(next);
+        }} activationMode="manual">
             <AdminTabList label="套餐管理视图" options={[{value:"plans",label:"套餐列表"},{value:"translations",label:"套餐翻译"},{value:"currencies",label:"价格与币种"}]} />
             <Tabs.Content value="plans">
                 <ResourcePage resource={resources.plans} />

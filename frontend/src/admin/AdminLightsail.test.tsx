@@ -121,3 +121,20 @@ it("offers bounded recovery for stalled jobs and no second rotation", () => {
     expect(screen.getByRole("button", { name: "恢复旧 IP" })).toBeTruthy();
     expect(screen.queryByRole("button", { name: "更换 IP" })).toBeNull();
 });
+
+it("pauses background polling when hidden and removes timers after unmount", () => {
+    vi.useFakeTimers();
+    const visibility = vi.spyOn(document, "visibilityState", "get").mockReturnValue("hidden");
+    mocks.rows = [{...row,status:"running"}];
+    const view = render(<AdminLightsail nodes={[]} close={vi.fn()}/>);
+    try {
+        vi.advanceTimersByTime(10000);
+        expect(mocks.reload).not.toHaveBeenCalled();
+        visibility.mockReturnValue("visible");
+        vi.advanceTimersByTime(5000);
+        expect(mocks.reload).toHaveBeenCalledTimes(1);
+        view.unmount();
+        vi.advanceTimersByTime(10000);
+        expect(mocks.reload).toHaveBeenCalledTimes(1);
+    } finally { view.unmount();visibility.mockRestore();vi.useRealTimers(); }
+});

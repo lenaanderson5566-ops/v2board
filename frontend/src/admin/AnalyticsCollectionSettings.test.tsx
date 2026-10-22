@@ -232,3 +232,11 @@ it("daily view resets pagination and excludes user filters",async()=>{
     expect(screen.getByRole("columnheader",{name:"日期（UTC）"})).toBeTruthy();
     expect(screen.queryByRole("columnheader",{name:"用户 ID"})).toBeNull();
 });
+
+it("prevents retention expansion while background expiry cleanup is pending",async()=>{
+    api.request.mockResolvedValue({data:{settings:{enabled:true,dailyRetentionDays:7,dailyCleanupPending:true}}});
+    render(<TargetStatisticsSettings/>);
+    const field=await screen.findByLabelText("节点日汇总保留时间");
+    expect((field as HTMLSelectElement).disabled).toBe(true);
+    expect(screen.getByRole("button",{name:"检查清理进度"})).toBeTruthy();
+});

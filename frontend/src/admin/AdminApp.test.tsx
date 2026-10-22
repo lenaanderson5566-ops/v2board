@@ -30,3 +30,14 @@ it("returns to login when the saved session lacks administrative access", async 
     expect(screen.queryByText("Admin workspace")).toBeNull();
 
 });
+
+it("clears administrative data and shows a persistent error if offline revocation cannot be queued", async () => {
+    mocks.request.mockResolvedValue({data:{email:"admin@example.test"}});
+    mocks.logout.mockRejectedValue(new Error("退出未完成，请联网后重试。"));
+    render(<AdminApp />);
+    await screen.findByText("Admin workspace");
+    fireEvent.click(screen.getByText("Logout"));
+    await screen.findByText("Admin login");
+    expect(screen.queryByText("Admin workspace")).toBeNull();
+    expect(screen.getByText("退出未完成，请联网后重试。")).toBeTruthy();
+});

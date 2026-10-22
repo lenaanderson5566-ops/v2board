@@ -19,9 +19,9 @@ class StatController extends Controller
 {
     public function getOverride(Request $request)
     {
-        return [
+        return \App\Services\DashboardRevenue::cachedOverview(fn()=>[
             'data' => array_merge(\App\Services\DashboardRevenue::summary(), [
-                'financial' => \Illuminate\Support\Facades\Cache::remember('dashboard-financial-v1:'.config('app.timezone'),60,fn()=>\App\Services\DashboardRevenue::financial()),
+                'financial' => \App\Services\DashboardRevenue::financial(),
                 'usage' => \App\Services\DashboardUsage::summary(),
                 'online_user' => User::where('t','>=', time() - 600)
                     ->count(),
@@ -46,7 +46,7 @@ class StatController extends Controller
                     ->where('created_at', '<', strtotime(date('Y-m-1')))
                     ->where('currency','CNY')->sum('get_amount'),
             ])
-        ];
+        ]);
     }
 
     public function getOrder(Request $request)

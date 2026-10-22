@@ -65,10 +65,10 @@ const groupDescriptions: Record<string, string> = {
 export function Settings({ section }: { section?: string } = {}) {
     const d = useData(admin("config/fetch"));
     const schema = useData(admin("console/configSchema"));
-    const plans = useData<Row[]>(admin("plan/fetch"));
-    const creditGroups = useData<Row[]>(admin("server/group/fetch"));
     const [group, setGroup] = useState(section || "site"),
         [saved, setSaved] = useState("");
+    const plans = useData<Row[]>(group === "site" ? admin("plan/fetch") : "");
+    const creditGroups = useData<Row[]>(group === "subscribe" ? admin("server/group/fetch") : "");
     const [categorySearch, setCategorySearch] = useState("");
     const [saving, setSaving] = useState(false);
     const [dirty, setDirty] = useState(false),

@@ -630,7 +630,8 @@
     "剩余套餐、流量和优惠权益将作废，不会自动退款。必要账务及安全记录按保留规则保存，不会全部立即清除。": "Remaining subscription, data and coupon benefits will be lost, with no automatic refund. Necessary accounting and security records remain under retention rules and are not all erased immediately.",
     "输入 DELETE 确认删除": "Type DELETE to confirm",
     "我已了解删除后果，并确认永久删除账户。": "I understand the consequences and confirm permanent deletion.",
-    "确认删除账户": "Permanently delete account"
+    "确认删除账户": "Permanently delete account",
+    "退出未完成，请联网后重试。": "Sign-out is incomplete. Reconnect and try again."
   },
   "account": {
     "notificationAutoSave": "Changes save automatically",

@@ -79,7 +79,7 @@ Schema::create('v2_mail_log', function (Blueprint $t) {
 $one=User::create(['email'=>'one@example.test','telegram_id'=>111,'language'=>'zh-TW']);
 User::create(['email'=>'duplicate1@example.test','telegram_id'=>222]);
 User::create(['email'=>'duplicate2@example.test','telegram_id'=>222]);
-foreach (['2026_10_13_000005_add_telegram_membership.php','2026_10_14_000001_harden_telegram_delivery.php','2026_10_14_000002_add_mail_delivery_metadata.php','2026_10_14_000003_add_mail_transport_codes.php','2026_10_14_000004_add_mail_feedback.php','2026_10_14_000005_add_mail_campaigns.php','2026_10_14_000006_add_mail_blocklist.php','2026_10_14_000011_add_optional_mfa.php'] as $name) {
+foreach (['2026_10_13_000005_add_telegram_membership.php','2026_10_14_000001_harden_telegram_delivery.php','2026_10_14_000002_add_mail_delivery_metadata.php','2026_10_14_000003_add_mail_transport_codes.php','2026_10_14_000004_add_mail_feedback.php','2026_10_14_000005_add_mail_campaigns.php','2026_10_14_000006_add_mail_blocklist.php','2026_10_14_000011_add_optional_mfa.php','2026_10_19_000004_add_account_deletion.php'] as $name) {
     $migration=require __DIR__.'/../database/migrations/'.$name;
     $migration->up(); $migration->up(); // Safe retry after interrupted upgrades.
 }

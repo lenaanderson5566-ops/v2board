@@ -3,7 +3,7 @@ import { AdminLogTimeZone, logTime } from "./admin-log-time";
 import { AdminDisplaySettings } from "./AdminDisplaySettings";
 import { languageCodes } from "../shared/language-options";
 import { Plus, Search } from "lucide-react";
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { PlanDescription } from "../shared/PlanDescription";
 import {
     admin,
@@ -1107,7 +1107,10 @@ export function ResourcePage({
         onTotal?.(d.total);
     }, [d.total, onTotal]);
     const key = resource.key || "id";
+    const actionPending = useRef(false);
+    const [actionBusy, setActionBusy] = useState(false);
     async function action(path: string, r: Row, extra: Row = {}) {
+        if (actionPending.current) return;
         if (
             !confirm(
                 resource === resources.users
@@ -1118,6 +1121,9 @@ export function ResourcePage({
             )
         )
             return;
+        actionPending.current = true;
+        setActionBusy(true);
+        setError("");
         try {
             await request(path, {
                 [key]: r[key],
@@ -1128,15 +1134,18 @@ export function ResourcePage({
             d.reload();
         } catch (e) {
             setError((e as Error).message);
+        } finally {
+            actionPending.current = false;
+            setActionBusy(false);
         }
     }
     const secondaryActions = (r: Row) => <>
         {resource.actions?.map(([label, path, extra]) => (
             <button key={label} className={resource === resources.users ? "danger" : undefined}
-                disabled={resource === resources.orders && r.status !== 0}
+                disabled={actionBusy || d.loading || (resource === resources.orders && r.status !== 0)}
                 onClick={() => action(path, r, extra)}>{label}</button>
         ))}
-        {resource.drop && <button className="danger" onClick={() => action(resource.drop!, r)}>删除</button>}
+        {resource.drop && <button className="danger" disabled={actionBusy || d.loading} onClick={() => action(resource.drop!, r)}>删除</button>}
     </>;
     const list = (d.data || []).filter(
         (r) =>
@@ -1211,6 +1220,7 @@ export function ResourcePage({
                     </>
                 }
             >
+                {actionBusy && <div className="admin-refresh-note" role="status" data-saving="true">正在提交操作…</div>}
                 {logKind && <AdminLogTimeZone />}
                 {logKind && (
                     <AdminLogFilters

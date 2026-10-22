@@ -7,6 +7,18 @@ use Carbon\CarbonImmutable;
 
 class DashboardRevenue
 {
+    /** Cache the whole overview, including legacy fields; recheck after locking on a miss. */
+    public static function cachedOverview(callable $build): array
+    {
+        $key='dashboard-overview-v2:'.config('app.timezone');
+        if (($value=\Illuminate\Support\Facades\Cache::get($key))!==null)return $value;
+        try {
+            return \Illuminate\Support\Facades\Cache::lock($key.':build',60)->block(5,fn()=>\Illuminate\Support\Facades\Cache::remember($key,60,$build));
+        } catch (\Illuminate\Contracts\Cache\LockTimeoutException $e) {
+            abort(503,'Dashboard statistics are being refreshed. Please retry.');
+        }
+    }
+
     /** Amounts remain order-currency amounts, not gateway settlement or profit. */
     public static function financial(?CarbonImmutable $now = null): array
     {

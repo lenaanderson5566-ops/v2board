@@ -582,7 +582,8 @@ it("keeps destructive user actions inside more and retains cancellation and conf
     try {
         const view=render(<UsersPage/>);
         await screen.findByRole("button",{name:"分配订单"});
-        const menu=view.container.querySelector('.admin-row-popover')!;
+        fireEvent.click(screen.getByRole('button',{name:'更多操作'}));
+        const menu=document.querySelector('.admin-row-popover')!;
         const reset=within(menu as HTMLElement).getByText("重置订阅");
         const remove=within(menu as HTMLElement).getByText("删除",{exact:true});
         expect(view.container.querySelectorAll('.table-actions > .actions > button')).toHaveLength(3);
@@ -684,4 +685,77 @@ it("switches financial currency without mixing amounts or requesting legacy tren
     expect(api.request.mock.calls.some(([p])=>p.includes("stat/getOrder"))).toBe(false);
     expect(resources["access-blacklist"].title).toBe("订阅 IP 黑名单");
     expect(legacyAdminMenu.find(([key])=>key==="access-blacklist")?.[1]).toBe("订阅访问黑名单");
+});
+
+
+it.each(["email", "browser", "safe", "server", "footer", "app", "invite", "deposit", "telegram", "ticket", "entrypoints"])("does not fetch unrelated plan and group options for %s settings", async section => {
+    const { Settings } = await import("./admin-settings");
+    const { adminPageFixture } = await import("./test-support/page-fixtures");
+    api.request.mockImplementation(async (path: string) => adminPageFixture(path));
+    render(<Settings section={section}/>);
+    await waitFor(() => expect(api.request.mock.calls.some(([path]) => path.includes("config/fetch"))).toBe(true));
+    expect(api.request.mock.calls.some(([path]) => path.includes("plan/fetch") || path.includes("server/group/fetch"))).toBe(false);
+});
+
+it("locks duplicate destructive resource actions and unlocks after a failure", async () => {
+    const { ResourcePage } = await import("./admin");
+    let reject!: (error: Error) => void;
+    api.request.mockImplementation((path: string) => path.includes("/drop") ? new Promise((_, fail) => {reject = fail;}) : Promise.resolve({data:[{id:1,name:"测试组"}]}));
+    const confirm = vi.spyOn(window, "confirm").mockReturnValue(true);
+    try {
+        render(<ResourcePage resource={resources.groups}/>);
+        const button = await screen.findByRole("button", {name:"删除"});
+        fireEvent.click(button);fireEvent.click(button);
+        expect(api.request.mock.calls.filter(([path]) => path.includes("/drop"))).toHaveLength(1);
+        expect((button as HTMLButtonElement).disabled).toBe(true);
+        reject(new Error("删除失败，请重试"));
+        await screen.findByText("删除失败，请重试");
+        expect((button as HTMLButtonElement).disabled).toBe(false);
+    } finally { confirm.mockRestore(); }
+});
+
+it("keeps an unsaved subscription editor when a tab switch is cancelled", async () => {
+    const confirm = vi.spyOn(window, "confirm").mockReturnValue(false);
+    const view = render(<div className="admin-content"><div data-unsaved="true"/><AdminSubscriptions/></div>);
+    try {
+        const tab = screen.getByRole("tab",{name:"套餐翻译"});
+        fireEvent.mouseDown(tab,{button:0,ctrlKey:false});
+        expect(confirm).toHaveBeenCalledTimes(1);
+        expect(screen.getByRole("tab",{name:"套餐列表"}).getAttribute("aria-selected")).toBe("true");
+        view.container.querySelector('[data-unsaved]')?.setAttribute("data-saving","true");
+        fireEvent.mouseDown(tab,{button:0,ctrlKey:false});
+        expect(confirm).toHaveBeenCalledTimes(1);
+    } finally { confirm.mockRestore(); }
+});
+
+it("opens row actions without native popover APIs and supports keyboard dismissal", async () => {
+    const { AdminRowMenu } = await import("./AdminRowMenu");
+    const action = vi.fn();
+    render(<form onSubmit={event => {event.preventDefault();throw new Error("unexpected submit");}}><AdminRowMenu><button onClick={action}>查看详情</button><button>重置链接</button></AdminRowMenu></form>);
+    const trigger = screen.getByRole("button",{name:"更多操作"});
+    fireEvent.click(trigger);
+    expect(document.activeElement).toBe(screen.getByRole("button",{name:"查看详情"}));
+    fireEvent.keyDown(document.activeElement!,{key:"ArrowDown"});
+    expect(document.activeElement).toBe(screen.getByRole("button",{name:"重置链接"}));
+    fireEvent.keyDown(document.activeElement!,{key:"Escape"});
+    expect(trigger.getAttribute("aria-expanded")).toBe("false");
+    expect(document.activeElement).toBe(trigger);
+    fireEvent.click(trigger);
+    fireEvent.click(screen.getByRole("button",{name:"查看详情"}));
+    expect(action).toHaveBeenCalledTimes(1);
+    expect(trigger.getAttribute("aria-expanded")).toBe("false");
+});
+
+it("keeps a nested row action dialog mounted when the action list closes", async () => {
+    const {AdminRowMenu} = await import("./AdminRowMenu");
+    const {AdminUsageReset} = await import("./AdminUsageReset");
+    render(<AdminRowMenu><AdminUsageReset single count={1} filters={[]} onComplete={()=>{}}/></AdminRowMenu>);
+    const trigger=screen.getByRole("button",{name:"更多操作"});
+    fireEvent.click(trigger);
+    fireEvent.click(screen.getByRole("button",{name:"发放储备重置"}));
+    expect(await screen.findByRole("dialog")).toBeTruthy();
+    expect(trigger.getAttribute("aria-expanded")).toBe("false");
+    fireEvent.click(screen.getByRole("button",{name:"关闭"}));
+    expect(screen.queryByRole("dialog")).toBeNull();
+    expect(document.activeElement).toBe(trigger);
 });

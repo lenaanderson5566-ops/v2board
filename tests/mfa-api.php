@@ -26,7 +26,7 @@ $call=function($path,$body=[],$scope='user',$method='GET',$sendCsrf=true,$origin
 };
 DB::beginTransaction();
 try {
- config(['v2board.app_url'=>'https://mfa.example.test','v2board.passkey_enable'=>1,'browser.legacy_exchange_until'=>'2099-01-01T00:00:00Z']);
+ config(['v2board.app_url'=>'https://mfa.example.test','v2board.passkey_enable'=>1]);
  foreach(['user','admin'] as $scope){
   Cache::flush();$jar[$scope]=[];unset($csrf[$scope]);
   $user=User::create(['email'=>'browser-mfa-'.$scope.'@example.test','password'=>password_hash('BrowserMfa!2026',PASSWORD_DEFAULT),'token'=>bin2hex(random_bytes(16)),'uuid'=>Illuminate\Support\Str::uuid(),'is_admin'=>$scope==='admin','transfer_enable'=>0]);
@@ -53,7 +53,8 @@ try {
   $assert(array_keys($body['data'])===['emailEnabled','totpEnabled','recoveryCodesRemaining'],'State never discloses secrets');
   $record=app(App\Services\BrowserSession::class)->load(Illuminate\Http\Request::create('/','GET',[],$jar[$scope]),$scope);
   [$response,$body]=$call('v10/auth/browser-session',['legacyToken'=>$record['credential']],$scope,'POST');
-  $assert($response->getStatusCode()===200 && $body['data']['authenticated'],'Validated MFA session can migrate without losing MFA assurance');
+  $assert($response->getStatusCode()===405,'Retired legacy exchange cannot replace an MFA browser session');
+  [$response,$body]=$call('v10/auth/browser-session',[],$scope);$assert($body['data']['authenticated'] && $body['data']['accountId']===$user->id,'Retired exchange preserves the existing MFA session');
   // A stolen challenge alone cannot switch the logged-in browser to another account.
   [$response,$body]=$call($finishPath,$proof,$scope,'POST');$assert($response->getStatusCode()===409,'Completed challenge cannot replay');
  }

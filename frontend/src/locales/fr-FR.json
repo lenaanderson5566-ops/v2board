@@ -630,7 +630,8 @@
     "剩余套餐、流量和优惠权益将作废，不会自动退款。必要账务及安全记录按保留规则保存，不会全部立即清除。": "Les avantages restants du forfait, des données et des coupons seront perdus, sans remboursement automatique. Les données comptables et de sécurité nécessaires sont conservées selon les règles de conservation, sans effacement immédiat intégral.",
     "输入 DELETE 确认删除": "Saisissez DELETE pour confirmer",
     "我已了解删除后果，并确认永久删除账户。": "Je comprends les conséquences et confirme la suppression définitive.",
-    "确认删除账户": "Supprimer définitivement le compte"
+    "确认删除账户": "Supprimer définitivement le compte",
+    "退出未完成，请联网后重试。": "La déconnexion est incomplète. Reconnectez-vous au réseau et réessayez."
   },
   "account": {
     "notificationAutoSave": "Les modifications sont enregistrées automatiquement",

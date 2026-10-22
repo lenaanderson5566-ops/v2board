@@ -111,6 +111,12 @@ try {
     App\Models\StatUser::create(['user_id' => $subject->id, 'server_rate' => 1, 'u' => 1024, 'd' => 2048, 'record_type' => 'd', 'record_at' => time()]);
     $response = $call('/api/v1/' . $securePath . '/stat/getStatUser?user_id=' . $subject->id, null, $token);
     $assert($response->getStatusCode() === 200 && json_decode($response->getContent(), true)['total'] === 1, 'User traffic records failed');
+    // Build disposable records directly; the retired generation endpoint must stay absent.
+    $suffix='bulk-'.bin2hex(random_bytes(6)).'.example.test';
+    for ($i=0;$i<3;$i++) App\Models\User::create([
+        'email'=>'delete-'.$i.'@'.$suffix,'password'=>'test-only-unusable-hash',
+        'uuid'=>App\Utils\Helper::guid(true),'token'=>App\Utils\Helper::guid(),
+    ]);
     $batchScope = [['key' => 'email', 'condition' => '模糊', 'value' => '@' . $suffix]];
     $response = $call('/api/v1/' . $securePath . '/user/allDel', ['filter' => $batchScope, 'expected_count' => 3], $token);
     $assert($response->getStatusCode() === 200 && App\Models\User::where('email', 'like', '%@' . $suffix)->count() === 0 && App\Models\User::find($subject->id), 'Scoped deletion changed unrelated users');

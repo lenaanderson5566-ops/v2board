@@ -5,6 +5,22 @@ use Illuminate\Support\Facades\Schema;
 use Illuminate\Database\Schema\Blueprint;
 use Carbon\CarbonImmutable as C;
 use App\Services\DashboardRevenue;
+if (getenv('DASHBOARD_FINANCIAL_PERF')==='1') {
+    if(!app()->environment('local') || DB::getDriverName()!=='mysql' || !str_starts_with(DB::connection()->getDatabaseName(),'v2board_test_'))throw new RuntimeException('Financial load fixture requires an isolated MySQL database');
+    Schema::create('v2_order',function(Blueprint $t){$t->increments('id');$t->string('currency',3);$t->integer('paid_at');$t->integer('status');$t->integer('total_amount');$t->string('period',24);$t->integer('commission_status');$t->integer('commission_balance');$t->integer('invite_user_id')->nullable();});
+    Schema::create('v2_commission_log',function(Blueprint $t){$t->increments('id');$t->string('currency',3);$t->integer('created_at');$t->integer('get_amount');});
+    $now=C::now();
+    for($chunk=0;$chunk<200;$chunk++){$rows=[];for($i=$chunk*500;$i<($chunk+1)*500;$i++)$rows[]=['currency'=>$i%2?'USD':'CNY','paid_at'=>$now->subDays($i%730)->timestamp,'status'=>3,'total_amount'=>1000,'period'=>$i%5?'month_price':'deposit','commission_status'=>$i%100?3:0,'commission_balance'=>$i%100?0:100,'invite_user_id'=>1];DB::table('v2_order')->insert($rows);}
+    for($chunk=0;$chunk<20;$chunk++){$rows=[];for($i=$chunk*500;$i<($chunk+1)*500;$i++)$rows[]=['currency'=>$i%2?'USD':'CNY','created_at'=>$now->subDays($i%730)->timestamp,'get_amount'=>100];DB::table('v2_commission_log')->insert($rows);}
+    $start=microtime(true);$before=DashboardRevenue::financial($now);$metrics=['orders'=>100000,'commissionRows'=>10000,'beforeIndexMs'=>round((microtime(true)-$start)*1000,2)];
+    $migration=require __DIR__.'/../database/migrations/2026_10_21_000003_index_dashboard_financial.php';$migration->up();$migration->up();
+    DB::enableQueryLog();DB::flushQueryLog();$start=microtime(true);$after=DashboardRevenue::financial($now);$metrics['afterIndexMs']=round((microtime(true)-$start)*1000,2);$queries=DB::getQueryLog();DB::disableQueryLog();
+    if($before!==$after)throw new RuntimeException('Index changed financial results');
+    foreach($queries as $q)$metrics['plans'][]=DB::select('EXPLAIN '.$q['query'],$q['bindings']);
+    config(['cache.default'=>'array']);$start=microtime(true);DashboardRevenue::cachedOverview(fn()=>['legacy'=>DashboardRevenue::summary($now),'financial'=>DashboardRevenue::financial($now)]);$metrics['coldCombinedMs']=round((microtime(true)-$start)*1000,2);
+    DB::enableQueryLog();DB::flushQueryLog();$start=microtime(true);DashboardRevenue::cachedOverview(function(){throw new RuntimeException('Cache hit rebuilt financial report');});$metrics['warmCombinedMs']=round((microtime(true)-$start)*1000,2);if(count(DB::getQueryLog()))throw new RuntimeException('Warm overview ran SQL');
+    $metrics['peakMiB']=round(memory_get_peak_usage(true)/1048576,2);echo json_encode($metrics,JSON_PRETTY_PRINT)."\n";exit(0);
+}
 config(['database.default' => 'dashboard_test', 'database.connections.dashboard_test' => ['driver' => 'sqlite', 'database' => ':memory:', 'prefix' => '']]);
 Schema::create('v2_order', function (Blueprint $table) {
     $table->string('currency',3)->default('CNY');
@@ -88,3 +104,17 @@ $assert($cny['comparable_amount'],500);$assert($cny['change_percent'],100.0);$as
 $assert($usd['month_amount'],700);$assert($usd['deposit_amount'],700);$assert($usd['subscription_amount'],0);$assert($usd['commission_paid'],50);
 $assert($usd['change_percent'],null);$assert($usd['daily'][29]['count'],1);$assert(count($usd['daily']),30);$assert($usd['daily'][0]['count'],0);
 echo "Financial dashboard: currency isolation, deposits, zero payments, same-period comparison, daily counts and four-query bound passed\n";
+
+config(['cache.default'=>'array']);
+DB::flushQueryLog();
+$cached=DashboardRevenue::cachedOverview(fn()=>DashboardRevenue::financial(C::parse('2026-10-12 12:00:00')));
+$assert(count(DB::getQueryLog()),4);DB::flushQueryLog();
+$again=DashboardRevenue::cachedOverview(function(){throw new RuntimeException('Cache hit must not rebuild');});
+$assert($again,$cached);$assert(count(DB::getQueryLog()),0);
+echo "Dashboard overview cache: warm requests execute no financial SQL\n";
+
+$indexes=require __DIR__.'/../database/migrations/2026_10_21_000003_index_dashboard_financial.php';$indexes->up();$indexes->up();
+$assert(Schema::hasIndex('v2_order','order_paid_currency'),true);
+$assert(Schema::hasIndex('v2_order','order_pending_commission'),true);
+$assert(Schema::hasIndex('v2_commission_log','commission_created_currency'),true);
+echo "Financial index migration is idempotent\n";

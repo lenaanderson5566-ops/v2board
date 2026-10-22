@@ -135,7 +135,7 @@ export function TargetStatisticsSettings({
                             <span>节点日汇总保留时间</span>
                             <select
                                 aria-label="节点日汇总保留时间"
-                                disabled={busy}
+                                disabled={busy || !!data.data.settings.dailyCleanupPending}
                                 value={
                                     dailyRetention ??
                                     data.data.settings.dailyRetentionDays ??
@@ -179,6 +179,7 @@ export function TargetStatisticsSettings({
                                 <option value={30}>30 天</option>
                             </select>
                         </label>
+                        {data.data.settings.dailyCleanupPending && <p role="status" className="muted">日汇总保留期正在后台分批清理，完成后可再次调整；请保持定时任务运行。 <button type="button" disabled={busy || data.loading} onClick={data.reload}>检查清理进度</button></p>}
                         <p className="muted">
                             日汇总不含用户 ID，按 UTC
                             日期保留节点、域名/IP、连接数与流量；每天每节点最多

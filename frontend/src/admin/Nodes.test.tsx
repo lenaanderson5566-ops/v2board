@@ -556,3 +556,19 @@ it("uses accessible runtime dots and keeps only the visibility switch", async ()
     fireEvent.click(online);
     expect(await screen.findByRole("dialog")).toBeTruthy();
 });
+
+it("prevents duplicate node copies and restores actions after a failed request", async () => {
+    let reject!: (reason: Error) => void;
+    api.request.mockImplementation((path: string) => {
+        if (path.endsWith("/copy")) return new Promise((_, fail) => {reject=fail;});
+        if (path.includes("getNodes")) return Promise.resolve({data:[{id:1,name:"Test node",type:"v2box",group_id:[],route_id:[]}]});
+        return Promise.resolve(adminPageFixture(path));
+    });
+    render(<Nodes/>);
+    const button = await screen.findByRole("button",{name:"复制"});
+    fireEvent.click(button);fireEvent.click(button);
+    expect(api.request.mock.calls.filter(([p]) => p.endsWith("/copy"))).toHaveLength(1);
+    reject(new Error("复制失败，请重试"));
+    await screen.findByText("复制失败，请重试");
+    expect((button as HTMLButtonElement).disabled).toBe(false);
+});

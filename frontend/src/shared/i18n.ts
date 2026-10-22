@@ -1,3 +1,4 @@
+import { localPreferences, sessionPreferences } from "./browser-storage";
 import i18next from "i18next";
 import { initReactI18next } from "react-i18next";
 import zhCN from "../locales/zh-CN.json";
@@ -69,7 +70,7 @@ i18next.use({
         );
     },
 });
-const saved = localStorage.getItem(languageKey);
+const saved = localPreferences.getItem(languageKey);
 export const languageReady = i18next.use(initReactI18next).init({
     partialBundledLanguages: true,
     resources: {
@@ -115,7 +116,7 @@ export function loginLanguagePreference() {
     return {
         language: locale(),
         language_selected:
-            sessionStorage.getItem(pendingLanguageKey) === locale(),
+            sessionPreferences.getItem(pendingLanguageKey) === locale(),
     };
 }
 async function ensureCatalog(value: string) {
@@ -127,11 +128,11 @@ async function ensureCatalog(value: string) {
     }
 }
 export async function applyAccountLanguage(value: unknown) {
-    sessionStorage.removeItem(pendingLanguageKey);
+    sessionPreferences.removeItem(pendingLanguageKey);
     if (typeof value !== "string" || !languages.some((l) => l.code === value))
         return;
     await ensureCatalog(value);
-    localStorage.setItem(languageKey, value);
+    localPreferences.setItem(languageKey, value);
     await i18next.changeLanguage(value);
 }
 export async function changeLanguage(value: string) {
@@ -142,9 +143,9 @@ export async function changeLanguage(value: string) {
     const savedToAccount = persistLanguage
         ? await persistLanguage(value)
         : false;
-    if (savedToAccount) sessionStorage.removeItem(pendingLanguageKey);
-    else sessionStorage.setItem(pendingLanguageKey, value);
-    localStorage.setItem(languageKey, value);
+    if (savedToAccount) sessionPreferences.removeItem(pendingLanguageKey);
+    else sessionPreferences.setItem(pendingLanguageKey, value);
+    localPreferences.setItem(languageKey, value);
     await i18next.changeLanguage(value);
 }
 export default i18next;

@@ -1396,20 +1396,6 @@
       "path": "auth/browser-session",
       "method": "GET"
     },
-    "postAuthBrowserSession": {
-      "input": {
-        "legacyToken": "legacyToken"
-      },
-      "output": "browserSession",
-      "role": "public",
-      "status": 200,
-      "raw": false,
-      "bindings": {},
-      "key": "Passport/BrowserSessionController@migrate",
-      "description": "Browser-only scoped HttpOnly session. X-Browser-Client selects user/admin; mutations require an exact allowed Origin and synchronizer X-CSRF-Token. POST migrates a valid legacy token during the configured transition window.",
-      "path": "auth/browser-session",
-      "method": "POST"
-    },
     "deleteAuthBrowserSession": {
       "input": {},
       "output": "scalar",

@@ -27,6 +27,43 @@ $call=function($method,$path,$body=[],$headers=[])use($kernel,&$nodeId){
 };
 (require __DIR__.'/../database/migrations/2026_10_21_000001_create_node_target_snapshots.php')->up();
 (require __DIR__.'/../database/migrations/2026_10_21_000002_create_node_target_daily.php')->up();
+// Explicit opt-in load fixture; never populate an ordinary application database.
+if (getenv('TARGET_STATISTICS_PERF')==='1') {
+    if(DB::getDriverName()!=='mysql' || !str_starts_with(DB::connection()->getDatabaseName(),'v2board_test_'))throw new RuntimeException('Performance fixture requires an isolated MySQL test database');
+    Illuminate\Support\Facades\Schema::create('v2_risk_setting',function($t){$t->increments('id');$t->string('key')->unique();$t->text('value');$t->integer('created_at');$t->integer('updated_at');});
+    $daily=app(App\Services\TargetStatisticsDaily::class);$store=app(App\Services\TargetStatisticsStore::class);
+    if(DB::table($daily::TABLE)->exists())throw new RuntimeException('Performance fixture requires empty target tables');
+    config(['cache.target_statistics_daily_max_rows'=>400000]);
+    $midnight=intdiv(time(),86400)*86400;$start=microtime(true);
+    for($node=1;$node<=20;$node++)for($offset=0;$offset<30;$offset++) {
+        $day=$midnight-$offset*86400;$rows=[];
+        for($i=0;$i<500;$i++) {
+            $target='target'.$i.'.test';$rows[]=['id'=>hash('sha256',$node.'|'.$day.'|domain|'.$target),'node_id'=>$node,'day_at'=>$day,'expires_at'=>$day+30*86400,'type'=>'domain','target'=>$target,'connections'=>1,'upload_bytes'=>100,'download_bytes'=>200,'total_bytes'=>300];
+        }
+        DB::table($daily::TABLE)->insert($rows);
+        DB::table($daily::DAYS)->insert(['id'=>hash('sha256',$node.'|'.$day),'node_id'=>$node,'day_at'=>$day,'expires_at'=>$day+30*86400,'target_count'=>500,'omitted'=>0,'source_dropped'=>0,'last_bucket_at'=>$day]);
+    }
+    $metrics=['rows'=>DB::table($daily::TABLE)->count(),'seedSeconds'=>round(microtime(true)-$start,3)];
+    foreach([1,600] as $page){$start=microtime(true);$r=$daily->report(1,30,$page);$metrics['page'.$page.'Ms']=round((microtime(true)-$start)*1000,2);$assert($r['total']===15000 && count($r['rows'])===25,'Thirty-day node page has bounded results');}
+    $start=microtime(true);$daily->report(1,30,1);$metrics['warmPage1Ms']=round((microtime(true)-$start)*1000,2);
+    DB::enableQueryLog();DB::flushQueryLog();$daily->report(1,30,1);$queries=DB::getQueryLog();DB::disableQueryLog();
+    $assert(!collect($queries)->contains(fn($q)=>str_contains($q['query'],'count(*)') && str_contains($q['query'],'v2_node_target_daily') && !str_contains($q['query'],'where')),'Warm report never counts all nodes');
+    foreach($queries as $q)if(str_contains($q['query'],'order by')&&str_contains($q['query'],'v2_node_target_daily'))$metrics['pagePlan']=DB::select('EXPLAIN '.$q['query'],$q['bindings']);
+    $metrics['cleanupPlan']=DB::select('EXPLAIN SELECT id FROM v2_node_target_daily WHERE expires_at <= ? ORDER BY expires_at LIMIT 1000',[time()]);
+    $assert(!str_contains(json_encode($metrics['pagePlan']),'filesort'),'Daily page follows reverse index order without filesort');
+    $version=(string)Illuminate\Support\Str::uuid();$store->publishPolicy(['enabled'=>true,'version'=>$version,'retentionHours'=>24,'dailyRetentionDays'=>30,'reportIntervalSeconds'=>60,'leaseSeconds'=>120]);
+    $prepared=[];for($i=0;$i<500;$i++)$prepared[]=['key'=>hash('sha256','1|domain|target'.$i.'.test'),'meta'=>json_encode(['userId'=>1,'type'=>'domain','target'=>'target'.$i.'.test']),'connections'=>1,'uploadBytes'=>100,'downloadBytes'=>200];
+    for($node=1;$node<=20;$node++)$store->ingest($node,$version,(string)Illuminate\Support\Str::uuid(),'perf-'.$node,$prepared,0,100,intdiv(time(),300)*300-600);
+    $start=microtime(true);$result=app(App\Services\TargetStatisticsArchive::class)->flush();$metrics['archive20x500Ms']=round((microtime(true)-$start)*1000,2);$assert($result['savedBuckets']===20,'Twenty full node buckets archived');
+    $start=microtime(true);$daily->prune(30);$metrics['emptyCleanupMs']=round((microtime(true)-$start)*1000,2);
+    DB::table($daily::TABLE)->where('day_at',$midnight-29*86400)->update(['expires_at'=>time()-1]);
+    $before=DB::table($daily::TABLE)->count();$start=microtime(true);$daily->prune(30);$metrics['cleanup1000Ms']=round((microtime(true)-$start)*1000,2);$assert($before-DB::table($daily::TABLE)->count()===1000,'Cleanup deletes at most one thousand rows per pass');
+    $start=microtime(true);$daily->scheduleShorten(7);$metrics['scheduleShortenMs']=round((microtime(true)-$start)*1000,2);$assert($daily->report(1,7,1)['total']===3500,'Shortened policy hides older rows before physical cleanup');
+    $start=microtime(true);$updated=$daily->runCleanup();$metrics['cleanupExpiry5000Ms']=round((microtime(true)-$start)*1000,2);$assert($updated<=5000 && $daily->cleanupPending(),'Expiry rewrite bounded to five thousand rows');
+    $metrics['peakMiB']=round(memory_get_peak_usage(true)/1048576,2);echo json_encode($metrics,JSON_PRETTY_PRINT)."\n";
+    $store->connection()->eval("local keys=redis.call('KEYS',KEYS[1]..'*'); for _,k in ipairs(keys) do redis.call('DEL',k) end; return #keys",1,$targetPrefix);
+    exit(0);
+}
 DB::beginTransaction();
 try {
     $base=['group_id'=>[999997],'name'=>'V10 node test','host'=>'example.test','port'=>'443','server_port'=>443,'listen_ip'=>'0.0.0.0','protocol'=>'vless','tls'=>0,'network'=>'tcp','network_settings'=>[],'encryption_settings'=>[],'disable_sni'=>0,'zero_rtt_handshake'=>0,'rate'=>'1','show'=>1];
@@ -191,6 +228,12 @@ try {
     DB::table(App\Services\TargetStatisticsDaily::DAYS)->where('node_id',999994)->update(['expires_at'=>time()-1]);
     $remaining=0;$daily->add(999994,time()-400,$sample,30,$remaining);
     $assert($daily->report(999994,30,1)['rows'][0]['connections']===7,'Reenabled daily collection replaces expired counters without resurrecting history');
+    $remaining=1000;$cross=[];for($i=0;$i<20;$i++){$cross['m:'.$i]=json_encode(['userId'=>1,'type'=>'domain','target'=>'page'.$i.'.test']);$cross['c:'.$i]=1;}
+    $daily->add(999989,intdiv(time(),86400)*86400-86400,$cross,30,$remaining);$daily->add(999989,intdiv(time(),86400)*86400-2*86400,$cross,30,$remaining);
+    $page1=$daily->report(999989,30,1);$page2=$daily->report(999989,30,2);
+    $assert(count($page1['rows'])===25 && count($page2['rows'])===15 && $page1['total']===40,'Day-header pagination spans uneven daily counts');
+    $keys=fn($rows)=>array_map(fn($r)=>$r['date'].'|'.$r['target'],$rows);
+    $assert(count(array_unique(array_merge($keys($page1['rows']),$keys($page2['rows']))))===40,'Day-header pagination has no gaps or duplicates');
     $remaining=0; $daily->add(999993,time()-600,$sample,30,$remaining);
     $assert($daily->report(999993,30,1)['truncated'] && $daily->report(999993,30,1)['total']===0,'Daily capacity rejection is visible');
     $many=[];for($i=0;$i<501;$i++){ $many['m:'.$i]=json_encode(['userId'=>1,'type'=>'domain','target'=>'cap'.$i.'.test']);$many['c:'.$i]=1; }
@@ -201,7 +244,7 @@ try {
     $assert($daily->report(999990,30,1)['total']===0,'Daily expired input is not resurrected');
     $remaining=1000;$daily->add(999992,time()-10*86400,$sample,30,$remaining);
     $assert($daily->report(999992,30,1)['total']===1 && $daily->report(999992,7,1)['total']===0,'Thirty day retention does not extend recent detail queries');
-    $daily->shorten(7);$daily->shorten(30);
+    $daily->scheduleShorten(7);while($daily->cleanupPending())$daily->runCleanup();
     $assert($daily->report(999992,30,1)['total']===0,'Shortened daily history cannot be restored by extension');
 
     $assert(DB::table(App\Services\TargetStatisticsArchive::TABLE)->where('node_id',999997)->count()===1,'Archive retry does not duplicate snapshots');
@@ -340,9 +383,14 @@ try {
         $assert($r->getStatusCode()===200 && json_decode($r->getContent(),true)['data']['retentionHours']===$hours,'Retention-only settings accepted');
     }
     foreach([0,7,30] as $days) {
+        while($daily->cleanupPending())$daily->runCleanup();
         $r=$intervalCall($token,['dailyRetentionDays'=>$days]);
         $assert($r->getStatusCode()===200 && json_decode($r->getContent(),true)['data']['dailyRetentionDays']===$days,'Daily retention-only setting accepted');
     }
+    $assert($intervalCall($token,['dailyRetentionDays'=>7])->getStatusCode()===200,'Shortening queues durable cleanup');
+    $assert($intervalCall($token,['dailyRetentionDays'=>30])->getStatusCode()===409,'Expansion blocked until expiry rewrite completes');
+    while($daily->cleanupPending())$daily->runCleanup();
+    $assert($intervalCall($token,['dailyRetentionDays'=>30])->getStatusCode()===200,'Expansion allowed after cleanup without restoring expired rows');
     foreach([1,31,-1,null,7.5] as $days)$assert($intervalCall($token,['dailyRetentionDays'=>$days])->getStatusCode()===422,'Invalid daily retention rejected');
     $assert($intervalCall('',['dailyRetentionDays'=>30])->getStatusCode()===403,'Anonymous cannot change daily retention');
     $assert(!array_key_exists('dailyRetentionDays',$stats->nodePolicy()),'Daily retention does not change node wire contract');

@@ -19,7 +19,7 @@ function Recommendations({ saved }: { saved: () => void }) {
         ios: "iOS",
     } as const;
     return (
-        <section className="release-card">
+        <section className="release-card" data-unsaved={Object.keys(changes).length > 0 || undefined} data-saving={busy || undefined}>
             <h3>用户端推荐</h3>
             <p className="muted">设置主推荐与备选，禁用客户端不自动上架。</p>
             <State {...d} retry={d.reload}>
@@ -101,12 +101,12 @@ export function AdminClients({
 }: {
     initialTab?: "updates" | "policy";
 }) {
-    const [tab, setTab] = useState(initialTab);
+    const tab = initialTab;
     const [revision, setRevision] = useState(0);
     return (
         <div className="release-monitor">
             <h2>{tab === "policy" ? "访问与版本策略" : "第三方客户端"}</h2>
-            <AdminChoiceGroup variant="navigation" label="客户端管理视图" value={tab} onChange={setTab}
+            <AdminChoiceGroup variant="navigation" label="客户端管理视图" value={tab} onChange={next => { window.location.hash = next === "policy" ? "/clients" : "/client-releases"; }}
                 options={[{value:"updates",label:"推荐与智能更新"},{value:"policy",label:"访问与版本策略"}]} />
             {tab === "policy" ? (
                 <>

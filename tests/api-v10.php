@@ -108,7 +108,9 @@ try {
     foreach (app('router')->getRoutes() as $machineRoute) {
         if (!str_starts_with($machineRoute->uri(),'api/v10/server/')) continue;
         foreach (array_diff($machineRoute->methods(),['HEAD','OPTIONS']) as $machineMethod) {
-            [$machineDenied,$machineProblem]=$call($machineMethod,'/'.$machineRoute->uri(),['user'=>['id'=>$user->id,'is_admin'=>1]],'Bearer '.$otherAuth['auth_data']);
+            // Enrollment has its own one-time credential and requires an empty JSON object.
+            $machineBody=$machineRoute->uri()==='api/v10/server/enrollments/redeem' ? [] : ['user'=>['id'=>$user->id,'is_admin'=>1]];
+            [$machineDenied,$machineProblem]=$call($machineMethod,'/'.$machineRoute->uri(),$machineBody,'Bearer '.$otherAuth['auth_data']);
             $assert($machineDenied->getStatusCode()===401 && !isset($machineProblem['data']),'Account JWT cannot authenticate machine route: '.$machineRoute->uri());
         }
     }

@@ -1,4 +1,4 @@
-import { useEffect, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useState, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import { completePages } from "../paginated-data";
 import { WorkspaceSkeleton } from "../WorkspaceSkeleton";
@@ -95,13 +95,14 @@ export function useData<T = Row>(
             document.removeEventListener("visibilitychange", visible);
         };
     }, [path, refreshOnEvents]);
+    const reload = useCallback(() => setVersion((v) => v + 1), []);
     return {
         data: path && resultKey === queryKey ? data : null,
         error: path && resultKey === queryKey ? error : "",
         loading: !!path && (resultKey !== queryKey || loading),
         total: path && resultKey === queryKey ? total : 0,
         meta: path && resultKey === queryKey ? meta : undefined,
-        reload: () => setVersion((v) => v + 1),
+        reload,
     };
 }
 

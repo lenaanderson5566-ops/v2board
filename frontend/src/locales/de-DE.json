@@ -630,7 +630,8 @@
     "剩余套餐、流量和优惠权益将作废，不会自动退款。必要账务及安全记录按保留规则保存，不会全部立即清除。": "Verbleibende Tarif-, Daten- und Gutscheinleistungen verfallen ohne automatische Erstattung. Erforderliche Buchhaltungs- und Sicherheitsdaten bleiben gemäß den Aufbewahrungsregeln erhalten und werden nicht alle sofort gelöscht.",
     "输入 DELETE 确认删除": "Zur Bestätigung DELETE eingeben",
     "我已了解删除后果，并确认永久删除账户。": "Ich verstehe die Folgen und bestätige die dauerhafte Löschung.",
-    "确认删除账户": "Konto endgültig löschen"
+    "确认删除账户": "Konto endgültig löschen",
+    "退出未完成，请联网后重试。": "Die Abmeldung ist noch nicht abgeschlossen. Stelle die Verbindung wieder her und versuche es erneut."
   },
   "account": {
     "notificationAutoSave": "Änderungen werden automatisch gespeichert",

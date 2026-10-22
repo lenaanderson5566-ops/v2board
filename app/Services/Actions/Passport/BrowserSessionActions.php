@@ -1,7 +1,6 @@
 <?php
 namespace App\Services\Actions\Passport;
 
-use App\Services\AuthService;
 use App\Services\BrowserSession;
 use Illuminate\Http\Request;
 
@@ -16,30 +15,6 @@ final class BrowserSessionActions
     public function show(Request $request)
     {
         return response()->json(['data'=>app(BrowserSession::class)->projection($this->record($request))]);
-    }
-
-    public function migrate(Request $request)
-    {
-        $record=$this->record($request);
-        abort_unless(time() < strtotime((string)config('browser.legacy_exchange_until')), 410, __('Token error'));
-        $credential=(string)$request->input('legacyToken');
-        $record = \Illuminate\Support\Facades\Cache::lock('BROWSER_MIGRATION:'.hash('sha256',$credential),5)->block(3,function() use ($credential,$record,$request) {
-            $user=AuthService::decryptAuthData($credential);
-            abort_unless($user,401,__('Unauthenticated.'));
-            abort_if($user['banned'] || ($record['scope']==='admin' && !$user['is_admin']),403,__('Account is disabled.'));
-            $auth=new AuthService(\App\Models\User::findOrFail($user['id']));
-            $source=AuthService::sessionReference($credential);
-            abort_unless($source,401,__('Unauthenticated.'));
-            $request->attributes->set('auth.authenticatedAt',AuthService::authenticatedAt($source));
-            $request->attributes->set('mfa.verifiedUserId',(int)$user['id']);
-            $request->attributes->set('mfa.verifiedVersion',(int)$source['mfaVersion']);
-            $new=$auth->generateAuthData($request)['auth_data'];
-            $auth->removeCurrentSession($credential);
-            app(BrowserSession::class)->destroy($record);
-            return app(BrowserSession::class)->rotate($record,$new);
-        });
-        $request->attributes->set('browser.session',$record);
-        return response()->json(['data'=>app(BrowserSession::class)->projection($record)]);
     }
 
     public function destroy(Request $request)

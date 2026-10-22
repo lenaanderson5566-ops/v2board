@@ -83,7 +83,6 @@
     "postMeClientAuthorizationsAuthorizationIdApproval",
     "postAuthClientSessionExchanges",
     "getAuthBrowserSession",
-    "postAuthBrowserSession",
     "deleteAuthBrowserSession",
     "getPublicFastaiEntrypoints",
     "getMeNodePreviews",

@@ -5,7 +5,7 @@ $checks=0;
 $assert = \Tests\Support\Assertions::counter($checks);
 $jar=['user'=>[],'admin'=>[]];$csrf=[];$keys=[];$auth=null;$registrationUsers=[];
 $testIp='192.0.2.'.random_int(2,254);
-$original=config('v2board.app_url');$deadline=config('browser.legacy_exchange_until');
+$original=config('v2board.app_url');
 $call=function($path,$body=[],$scope='user',$method='GET',$csrfOverride=null,$origin='https://fastdog.ws',$bearer=null) use ($app,&$jar,&$csrf,&$keys,$testIp) {
     $request=Illuminate\Http\Request::create('https://fastdog.ws/api/'.$path,$method,$body,$scope?$jar[$scope]:[],[],['REMOTE_ADDR'=>$testIp]);
     $request->headers->set('Accept','application/json');
@@ -24,7 +24,7 @@ $call=function($path,$body=[],$scope='user',$method='GET',$csrfOverride=null,$or
 $data=fn($r)=>json_decode($r->getContent(),true)['data']??[];
 Illuminate\Support\Facades\DB::beginTransaction();
 try {
-    config(['v2board.app_url'=>'https://fastdog.ws','browser.legacy_exchange_until'=>'2099-01-01T00:00:00Z']);
+    config(['v2board.app_url'=>'https://fastdog.ws']);
     $email='cookie-'.bin2hex(random_bytes(5)).'@example.com';
     $user=App\Models\User::create(['email'=>$email,'password'=>password_hash('Testing!2026',PASSWORD_DEFAULT),'uuid'=>App\Utils\Helper::guid(true),'token'=>App\Utils\Helper::guid(),'is_admin'=>1]);
     $auth=new App\Services\AuthService($user);
@@ -129,15 +129,11 @@ try {
     $assert($call('v10/me',[],null,'GET',null,null,$token)->getStatusCode()===200,'Cookie logout preserves App');
     $assert($call('v1/user/info',[],'admin')->getStatusCode()===200,'Cookie logout preserves admin scope');
     $legacy=$auth->generateAuthData(Illuminate\Http\Request::create('/'))['auth_data'];
-    $sourceKey=App\Utils\CacheKey::get('USER_SESSIONS',$user->id);$sourceMeta=Illuminate\Support\Facades\Cache::get($sourceKey);$sourceRef=App\Services\AuthService::sessionReference($legacy);$sourceMeta[$sourceRef['sessionId']]['authenticated_at']=time()-3600;$proofAt=$sourceMeta[$sourceRef['sessionId']]['authenticated_at'];Illuminate\Support\Facades\Cache::put($sourceKey,$sourceMeta);
+    $before=$jar['user'];
     $upgrade=$call('v10/auth/browser-session',['legacyToken'=>$legacy],'user','POST');
-    $assert($upgrade->getStatusCode()===200 && $data($upgrade)['authenticated'],'Legacy token migrates to Cookie');
-    $destination=app(App\Services\BrowserSession::class)->load(Illuminate\Http\Request::create('/','GET',[],$jar['user']),'user');
-    $assert(App\Services\AuthService::authenticatedAt(App\Services\AuthService::sessionReference($destination['credential']))===$proofAt,'Legacy migration preserves original authentication age');
-    $assert(App\Services\AuthService::decryptAuthData($legacy)===false,'Migration revokes old token');
-    $assert($call('v10/auth/browser-session',['legacyToken'=>$legacy],'user','POST')->getStatusCode()===401,'Migration cannot replay');
-    config(['browser.legacy_exchange_until'=>'2000-01-01T00:00:00Z']);
-    $assert($call('v10/auth/browser-session',['legacyToken'=>$token],'user','POST')->getStatusCode()===410,'Migration deadline enforced');
+    $assert($upgrade->getStatusCode()===405,'Retired token migration has no POST route');
+    $assert($jar['user']===$before && !$data($call('v10/auth/browser-session'))['authenticated'],'Retired migration cannot authenticate a browser');
+    $assert(App\Services\AuthService::decryptAuthData($legacy)!==false,'Retired migration does not mutate the supplied native session');
     $evil=$call('v10/auth/browser-session',[],'user','GET',null,'https://evil.example');
     $assert(!$evil->headers->has('Access-Control-Allow-Origin') && !$evil->headers->has('Access-Control-Allow-Credentials'),'CORS denies arbitrary credentialed origins');
     $auth->removeAllSession();
@@ -174,5 +170,5 @@ try {
     if ($auth) $auth->removeAllSession();
     foreach ($registrationUsers as $registered) (new App\Services\AuthService($registered))->removeAllSession();
     foreach ($keys as $key) Illuminate\Support\Facades\Cache::forget($key);
-    Illuminate\Support\Facades\DB::rollBack(); config(['v2board.app_url'=>$original,'browser.legacy_exchange_until'=>$deadline]);
+    Illuminate\Support\Facades\DB::rollBack(); config(['v2board.app_url'=>$original]);
 }

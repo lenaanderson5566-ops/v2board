@@ -42,6 +42,7 @@ final class TargetStatistics
             $previousHours=$policy['retentionHours']; $previousDays=$policy['dailyRetentionDays'];
             $dailyRetentionDays ??= $policy['dailyRetentionDays'];
             abort_unless(in_array($dailyRetentionDays,[0,7,30],true),422);
+            abort_if($dailyRetentionDays>$previousDays && app(TargetStatisticsDaily::class)->cleanupPending(),409,'Daily retention cleanup is still running; retry after it completes.');
             $retentionHours ??= $policy['retentionHours'];
             abort_unless(in_array($retentionHours,[1,6,12,24],true),422);
             $enabled ??= $policy['enabled'];
@@ -53,12 +54,15 @@ final class TargetStatistics
                 $policy['dailyRetentionDays'] = $dailyRetentionDays;
                 $policy['enabled'] = $enabled;
                 $policy['reportIntervalSeconds'] = $reportIntervalSeconds;
-                RiskSetting::updateOrCreate(['key'=>self::SETTING], ['value'=>json_encode($policy)]);
+                \Illuminate\Support\Facades\DB::transaction(function()use($policy,$previousDays){
+                    RiskSetting::updateOrCreate(['key'=>self::SETTING], ['value'=>json_encode($policy)]);
+                    if($policy['dailyRetentionDays']<$previousDays)app(TargetStatisticsDaily::class)->scheduleShorten($policy['dailyRetentionDays']);
+                });
             }
             $this->store->publishPolicy($policy);
             if($policy['retentionHours']<$previousHours) app(TargetStatisticsArchive::class)->shorten($policy['retentionHours']);
-            if($policy['dailyRetentionDays']<$previousDays) app(TargetStatisticsDaily::class)->shorten($policy['dailyRetentionDays']);
-            return $policy;
+
+            return $policy + ['dailyCleanupPending'=>app(TargetStatisticsDaily::class)->cleanupPending()];
         }));
     }
 
@@ -104,6 +108,7 @@ final class TargetStatistics
     public function report(int $nodeId, int $userId, int $page, string $view = 'recent'): array
     {
         $policy = $this->policy();
+        $policy['dailyCleanupPending']=app(TargetStatisticsDaily::class)->cleanupPending();
         $catalog = ServerV2box::orderBy('id')->get(['id','name']);
         $capabilities = Cache::many($catalog->map(fn($node)=>'V2BOX_CAPABILITIES:'.$node->id)->all());
         $nodes = $catalog->map(function ($node) use ($capabilities) {

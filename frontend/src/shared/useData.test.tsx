@@ -96,3 +96,15 @@ it("clears data and pagination when a conditional request is disabled", async ()
         meta: undefined,
     });
 });
+
+it("keeps reload stable across requests and parent renders", async () => {
+    read.mockResolvedValue({data: []});
+    const {result, rerender} = renderHook(() => useData("example"));
+    const reload = result.current.reload;
+    await waitFor(() => expect(result.current.loading).toBe(false));
+    rerender();
+    expect(result.current.reload).toBe(reload);
+    act(() => reload());
+    await waitFor(() => expect(read).toHaveBeenCalledTimes(2));
+    expect(result.current.reload).toBe(reload);
+});

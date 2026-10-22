@@ -45,10 +45,12 @@ export function AdminLightsail({
         ["queued", "running"].includes(r.status),
     );
     useEffect(() => {
-        if (!active) return;
-        const timer = window.setInterval(() => data.reload(), 5000);
+        if (!active || data.loading || data.error || busy || editing || operation) return;
+        const timer = window.setInterval(() => {
+            if (document.visibilityState === "visible") data.reload();
+        }, 5000);
         return () => window.clearInterval(timer);
-    }, [active, data.reload]);
+    }, [active, data.loading, data.error, data.reload, busy, editing, operation]);
     async function send(path: string, body: Row) {
         if (busy) return;
         setBusy(true);
@@ -103,7 +105,7 @@ export function AdminLightsail({
                     </button>
                     <button onClick={data.reload}>刷新状态</button>
                 </div>
-                <State {...data}>
+                <State {...data} retry={data.reload}>
                     <div className="infrastructure-grid">
                         {(data.data || []).map((row) => (
                             <article

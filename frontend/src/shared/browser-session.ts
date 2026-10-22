@@ -1,3 +1,4 @@
+import { localPreferences } from "./browser-storage";
 import { tx } from "./i18n";
 import { apiUrl } from "./runtime-config";
 
@@ -12,7 +13,7 @@ export const browserSessionKey = () =>
 let pending: Promise<void> | undefined;
 export const hasBrowserSession = () => authenticated;
 function signalSessionChange() {
-    localStorage.setItem(
+    localPreferences.setItem(
         `v2board.${mode()}.sessionRevision`,
         `${Date.now()}:${Math.random()}`,
     );
@@ -23,8 +24,9 @@ export function forgetBrowserSession() {
     signalSessionChange();
 }
 export function queueBrowserLogout() {
-    localStorage.setItem(`${legacyKey()}.pendingLogout`, "1");
+    const persisted = localPreferences.setItem(`${legacyKey()}.pendingLogout`, "1");
     pending = undefined;
+    if (!persisted) throw new Error(tx("退出未完成，请联网后重试。"));
 }
 export function acceptBrowserResponse(response: Response) {
     const next = response.headers.get("X-CSRF-Token");
@@ -52,7 +54,9 @@ async function bootstrap() {
     csrfToken = result.data.csrfToken;
     authenticated = result.data.authenticated;
     accountId = result.data.accountId;
-    if (localStorage.getItem(`${legacyKey()}.pendingLogout`)) {
+    if (localPreferences.getItem(`${legacyKey()}.pendingLogout`)) {
+        authenticated = false;
+        accountId = null;
         const revoked = await sessionFetch(apiUrl("/api/v10/auth/browser-session"), {
             method: "DELETE",
             credentials: "include",
@@ -67,48 +71,20 @@ async function bootstrap() {
                 tx("服务响应异常 ({{value0}})", { value0: revoked.status }),
             );
         acceptBrowserResponse(revoked);
-        localStorage.removeItem(`${legacyKey()}.pendingLogout`);
-        localStorage.removeItem(legacyKey());
+        localPreferences.removeItem(`${legacyKey()}.pendingLogout`);
+        localPreferences.removeItem(legacyKey());
         authenticated = false;
         accountId = null;
     }
-    const legacyToken = localStorage.getItem(legacyKey());
-    if (legacyToken) {
-        if (!authenticated) {
-            const exchanged = await sessionFetch(
-                apiUrl("/api/v10/auth/browser-session"),
-                {
-                    method: "POST",
-                    credentials: "include",
-                    headers: {
-                        Accept: "application/json",
-                        "Content-Type": "application/json",
-                        "X-Browser-Client": mode(),
-                        "X-CSRF-Token": csrfToken,
-                    },
-                    body: JSON.stringify({ legacyToken }),
-                },
-            );
-            if (exchanged.ok) {
-                const migrated = await exchanged.json();
-                csrfToken = migrated.data.csrfToken;
-                authenticated = migrated.data.authenticated;
-                accountId = migrated.data.accountId;
-            } else if (![401, 403, 410].includes(exchanged.status)) {
-                throw new Error(
-                    tx("服务响应异常 ({{value0}})", {
-                        value0: exchanged.status,
-                    }),
-                );
-            }
-        }
-        localStorage.removeItem(legacyKey());
-    }
+    // Delete obsolete JavaScript-readable credentials; never exchange or reuse them.
+    try { localStorage.removeItem(legacyKey()); } catch { /* Storage may be blocked. */ }
 }
 export async function initializeBrowserSession() {
     if (!pending)
         pending = bootstrap().catch((error) => {
             pending = undefined;
+            authenticated = false;
+            accountId = null;
             throw error;
         });
     await pending;
@@ -118,11 +94,16 @@ export async function browserHeaders() {
     return { "X-Browser-Client": mode(), "X-CSRF-Token": csrfToken };
 }
 export async function browserFetch(url: string, options: RequestInit = {}) {
+    const mergeHeaders = (session: Record<string, string>) => {
+        const headers = new Headers(options.headers);
+        for (const [key, value] of Object.entries(session)) headers.set(key, value);
+        return headers;
+    };
     const headers = await browserHeaders();
     let response = await fetch(url, {
         ...options,
         credentials: "include",
-        headers: { ...options.headers, ...headers },
+        headers: mergeHeaders(headers),
     });
     acceptBrowserResponse(response);
     // 419 is returned before any business action; refresh stale CSRF after another tab signs in.
@@ -132,7 +113,7 @@ export async function browserFetch(url: string, options: RequestInit = {}) {
         response = await fetch(url, {
             ...options,
             credentials: "include",
-            headers: { ...options.headers, ...fresh },
+            headers: mergeHeaders(fresh),
         });
         acceptBrowserResponse(response);
     }

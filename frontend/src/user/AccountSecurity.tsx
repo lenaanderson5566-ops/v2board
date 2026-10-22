@@ -1,3 +1,4 @@
+import { sessionPreferences } from "../shared/browser-storage";
 import { AccountDeletion } from "./AccountDeletion";
 import { PasskeySecurity } from "../shared/PasskeySecurity";
 import { SettingsHeading } from "./SettingsHeading";
@@ -69,7 +70,7 @@ export function AccountSecurity() {
             setConfirmation("");
             clearReadCache();
             forgetBrowserSession();
-            sessionStorage.setItem(`${storageKey}.passwordUpdated`, "1");
+            sessionPreferences.setItem(`${storageKey}.passwordUpdated`, "1");
             window.dispatchEvent(new Event("auth-expired"));
         } catch (problem) {
             setError((problem as Error).message);

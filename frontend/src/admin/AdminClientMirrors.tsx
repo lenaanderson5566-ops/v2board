@@ -27,7 +27,7 @@ export function AdminClientMirrors({clients, checkUpdates, checking}: {clients: 
  const selected=candidates.find(a=>String(a.id)===asset);
  const items=rows(d.data?.items);
  const active=items.some(r=>["queued","downloading"].includes(r.status));
- useEffect(()=>{if(!active)return;const timer=setInterval(()=>d.reload(),5000);return()=>clearInterval(timer);},[active]);
+ useEffect(()=>{if(!active || d.loading || d.error || busy)return;const timer=setInterval(()=>{if(document.visibilityState === "visible")d.reload();},5000);return()=>clearInterval(timer);},[active,d.loading,d.error,d.reload,busy]);
  async function run(path:string,body:Row){setBusy(true);setError("");try{await request(ops(path),body);d.reload();}catch(e){setError((e as Error).message);}finally{setBusy(false);}}
  async function downloadUpdates(allRecommended=false){
   setBusy(true);setError("");setResults([]);setBatchMessage("正在检查已有镜像的官方版本…");

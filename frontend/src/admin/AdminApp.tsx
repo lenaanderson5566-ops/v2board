@@ -31,13 +31,11 @@ export default function AdminApp() {
         loggingOut.current = true;
         try {
             await logoutSession();
+        } catch (reason) {
+            setError(reason instanceof Error ? reason.message : "退出未完成，请联网后重试。");
+        } finally {
             setUser(null);
             navigate("login");
-        } catch (reason) {
-            window.alert(
-                reason instanceof Error ? reason.message : "退出失败，请重试。",
-            );
-        } finally {
             loggingOut.current = false;
         }
     }

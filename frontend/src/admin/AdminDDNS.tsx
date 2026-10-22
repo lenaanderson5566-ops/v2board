@@ -98,7 +98,7 @@ export function AdminDDNS() {
                         {error}
                     </p>
                 )}
-                <State {...data}>
+                <State {...data} retry={data.reload}>
                     <div className="pad">
                         <h3>Cloudflare 凭据</h3>
                         <button
@@ -298,7 +298,7 @@ export function AdminDDNS() {
                             ))}
                         </select>
                     </label>
-                    <State {...events}>
+                    <State {...events} retry={events.reload}>
                         <TableViewport>
                             <table>
                                 <thead>

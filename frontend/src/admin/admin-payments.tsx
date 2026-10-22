@@ -1,5 +1,5 @@
 import { field } from "./admin-fields";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { admin, request, type Row } from "../shared/api";
 import {
     Editor,
@@ -31,6 +31,9 @@ export function Payments() {
     const d = useData<Row[]>(admin("payment/fetch")),
         methods = useData<string[]>(admin("payment/getPaymentMethods"));
     const [editing, setEditing] = useState<Row | null>(null);
+    const pending = useRef(false);
+    const [deleting, setDeleting] = useState(false);
+    const [error, setError] = useState("");
     return (
         <>
             <Panel
@@ -58,6 +61,8 @@ export function Payments() {
                     </>
                 }
             >
+                {error && <div className="alert" role="alert">{error}</div>}
+                {deleting && <div className="admin-refresh-note" role="status" data-saving="true">正在删除支付方式…</div>}
                 <State
                     loading={d.loading || methods.loading}
                     error={d.error || methods.error}
@@ -106,33 +111,21 @@ export function Payments() {
                                     编辑
                                 </button>
                                 <button
+                                    className="danger"
+                                    disabled={deleting || d.loading}
                                     onClick={async () => {
+                                        if (pending.current || !confirm(`确认删除支付方式「${r.name}」？`)) return;
+                                        pending.current = true;
+                                        setDeleting(true);
+                                        setError("");
                                         try {
-                                            await request(
-                                                admin("payment/show"),
-                                                { id: r.id },
-                                            );
+                                            await request(admin("payment/drop"), { id: r.id });
                                             d.reload();
                                         } catch (e) {
-                                            alert((e as Error).message);
-                                        }
-                                    }}
-                                >
-                                    切换启用
-                                </button>
-                                <button
-                                    className="danger"
-                                    onClick={async () => {
-                                        if (confirm("确认删除支付方式？")) {
-                                            try {
-                                                await request(
-                                                    admin("payment/drop"),
-                                                    { id: r.id },
-                                                );
-                                                d.reload();
-                                            } catch (e) {
-                                                alert((e as Error).message);
-                                            }
+                                            setError((e as Error).message);
+                                        } finally {
+                                            pending.current = false;
+                                            setDeleting(false);
                                         }
                                     }}
                                 >

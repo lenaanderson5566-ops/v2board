@@ -630,7 +630,8 @@
     "剩余套餐、流量和优惠权益将作废，不会自动退款。必要账务及安全记录按保留规则保存，不会全部立即清除。": "Se perderán los beneficios restantes del plan, datos y cupones, sin reembolso automático. Los registros contables y de seguridad necesarios se conservan según las reglas de retención y no se borran todos de inmediato.",
     "输入 DELETE 确认删除": "Escriba DELETE para confirmar",
     "我已了解删除后果，并确认永久删除账户。": "Entiendo las consecuencias y confirmo la eliminación permanente.",
-    "确认删除账户": "Eliminar cuenta permanentemente"
+    "确认删除账户": "Eliminar cuenta permanentemente",
+    "退出未完成，请联网后重试。": "No se ha completado el cierre de sesión. Vuelve a conectarte e inténtalo de nuevo."
   },
   "account": {
     "notificationAutoSave": "Los cambios se guardan automáticamente",

@@ -41,7 +41,7 @@ try {
         $table->string('email')->nullable(); $table->string('password')->nullable();
         $table->string('token')->nullable(); $table->string('uuid')->nullable();
         $table->integer('is_admin')->default(0); $table->integer('is_staff')->default(0);
-        $table->integer('banned')->default(0);
+        $table->integer('banned')->default(0); $table->unsignedBigInteger('account_deleted_at')->nullable();
     });
     $tables[]='v2_user_mfa';
     $schema->create('v2_user_mfa',function(Blueprint $table){$table->integer('user_id');$table->integer('version')->default(0);});

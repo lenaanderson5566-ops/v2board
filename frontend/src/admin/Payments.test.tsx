@@ -47,3 +47,19 @@ it("keeps the disabled state and displays activation errors", async () => {
     expect((await screen.findByRole("alert")).textContent).toBe("保存失败");
     expect(screen.getByRole("switch").getAttribute("aria-checked")).toBe("false");
 });
+
+it("has one enable control and prevents duplicate deletion while showing errors inline", async () => {
+    let reject!: (reason: Error) => void;
+    api.request.mockImplementation((path: string) => path.endsWith("/drop") ? new Promise((_, fail) => {reject = fail;}) : Promise.resolve({data:path.endsWith("getPaymentMethods") ? ["Stripe"] : [{id:1,name:"Card",payment:"Stripe",enable:1}]}));
+    const confirm = vi.spyOn(window,"confirm").mockReturnValue(true);
+    try {
+        render(<Payments/>);
+        const button = await screen.findByRole("button",{name:"删除"});
+        expect(screen.queryByRole("button",{name:"切换启用"})).toBeNull();
+        fireEvent.click(button);fireEvent.click(button);
+        expect(api.request.mock.calls.filter(([p]) => p.endsWith("/drop"))).toHaveLength(1);
+        reject(new Error("操作失败"));
+        await screen.findByRole("alert");
+        expect((button as HTMLButtonElement).disabled).toBe(false);
+    } finally {confirm.mockRestore();}
+});

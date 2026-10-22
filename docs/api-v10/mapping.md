@@ -82,7 +82,6 @@ Admin, operations/risk and supported node APIs retain their API versions. The un
 | `New native resource` | `POST /api/v10/me/client-authorizations/{authorizationId}/approval` | user | clientAuthorizationApproval |
 | `New native resource` | `POST /api/v10/auth/client-session-exchanges` | public | authentication |
 | `New native resource` | `GET /api/v10/auth/browser-session` | public | browserSession |
-| `New native resource` | `POST /api/v10/auth/browser-session` | public | browserSession |
 | `New native resource` | `DELETE /api/v10/auth/browser-session` | public | scalar |
 | `New native resource` | `GET /api/v10/public/fastai/entrypoints` | public | signedEntrypoints |
 | `New native resource` | `GET /api/v10/me/node-previews` | user | array:nodePreview |

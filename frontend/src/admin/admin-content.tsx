@@ -1,5 +1,4 @@
 import { AdminFilterBar } from "./AdminFilterBar";
-import { AdminChoiceGroup } from "./AdminChoices";
 import { StatusBadge } from "../shared/StatusBadge";
 import { AdminUserActivityLink } from "./AdminUserActivity";
 import { useState } from "react";
@@ -72,8 +71,6 @@ export function AdminTickets() {
                         onChange={(e) => setDraftEmail(e.target.value)}
                     />
                     <button>搜索</button>
-                    <AdminChoiceGroup label="工单状态快捷筛选" value={status} onChange={setStatus}
-                        options={[{value:"0",label:"已开启"},{value:"1",label:"已关闭"}]} />
                     <select
                         aria-label="工单状态"
                         value={status}

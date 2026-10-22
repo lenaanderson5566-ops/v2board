@@ -26,7 +26,6 @@ export type V10DeleteMeSessionsSessionIdInput = {  };
 export type V10PostAuthClientAuthorizationsInput = { "codeChallenge": string; "state": string; "redirectUri": string; "platform": "windows" | "android" | "macos" | "linux" | "ios" };
 export type V10PostAuthClientSessionExchangesInput = { "authorizationCode": string; "codeVerifier": string; "redirectUri": string };
 export type V10GetAuthBrowserSessionInput = {  };
-export type V10PostAuthBrowserSessionInput = { "legacyToken"?: string };
 export type V10DeleteAuthBrowserSessionInput = {  };
 export type V10MfaState = { "emailEnabled": boolean; "totpEnabled": boolean; "recoveryCodesRemaining": number };
 export type V10MfaChallenge = { "mfaRequired": true; "challengeId": string; "methods": Array<"totp" | "email" | "recovery">; "preferredMethod": "totp" | "email"; "expiresAt": string };

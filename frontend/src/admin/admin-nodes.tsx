@@ -3,7 +3,7 @@ import { NodeDeployment } from "./NodeDeployment";
 import { AdminChoiceGroup } from "./AdminChoices";
 import { AdminDisplaySettings } from "./AdminDisplaySettings";
 import { field, nameColumn } from "./admin-fields";
-import { useEffect, useState, type ComponentProps } from "react";
+import { useEffect, useRef, useState, type ComponentProps } from "react";
 import nodeLocations from "../../../resources/client/node-countries.json";
 import {
     admin,
@@ -76,6 +76,24 @@ function NodesContent({
     const [type, setType] = useState("v2node"),
         [editing, setEditing] = useState<Row | null>(null);
     const [error, setError] = useState("");
+    const actionPending = useRef(false);
+    const [actionBusy, setActionBusy] = useState(false);
+    async function nodeAction(row: Row, kind: "copy" | "drop") {
+        if (actionPending.current || (kind === "drop" && !confirm(`确认删除节点「${row.name}」？`))) return;
+        actionPending.current = true;
+        setActionBusy(true);
+        setError("");
+        try {
+            await request(admin(`server/${row.type}/${kind}`), {id: row.id});
+            d.reload();
+        } catch (error) {
+            setError((error as Error).message);
+        } finally {
+            actionPending.current = false;
+            setActionBusy(false);
+        }
+    }
+
     const schema = useData<Row>(query(admin("console/nodeSchema"), { type }));
     useEffect(() => {
         setNodeDirty(false);
@@ -291,7 +309,8 @@ function NodesContent({
                         </>
                     }
                 >
-                    <State {...d}>
+                    {actionBusy && <div className="admin-refresh-note" role="status" data-saving="true">正在提交节点操作…</div>}
+                    <State {...d} retry={d.reload}>
                         {error && <div className="alert">{error}</div>}
                         <div
                             className="node-management-summary"
@@ -443,46 +462,8 @@ function NodesContent({
                                     >
                                         编辑
                                     </button>
-                                    <button
-                                        onClick={async () => {
-                                            try {
-                                                await request(
-                                                    admin(
-                                                        `server/${r.type}/copy`,
-                                                    ),
-                                                    { id: r.id },
-                                                );
-                                                d.reload();
-                                            } catch (e) {
-                                                setError((e as Error).message);
-                                            }
-                                        }}
-                                    >
-                                        复制
-                                    </button>
-
-                                    <button
-                                        className="danger"
-                                        onClick={async () => {
-                                            if (confirm("确认删除节点？")) {
-                                                try {
-                                                    await request(
-                                                        admin(
-                                                            `server/${r.type}/drop`,
-                                                        ),
-                                                        { id: r.id },
-                                                    );
-                                                    d.reload();
-                                                } catch (e) {
-                                                    setError(
-                                                        (e as Error).message,
-                                                    );
-                                                }
-                                            }
-                                        }}
-                                    >
-                                        删除
-                                    </button>
+                                    <button disabled={actionBusy || d.loading} onClick={() => nodeAction(r, "copy")}>复制</button>
+                                    <button className="danger" disabled={actionBusy || d.loading} onClick={() => nodeAction(r, "drop")}>删除</button>
                                 </>
                             )}
                         />

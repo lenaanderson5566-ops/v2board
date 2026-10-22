@@ -745,8 +745,8 @@
     "paymentReturn": "Revenez ici après avoir payé pour la confirmation automatique. Si vous êtes facturé, ne payez plus. Cette commande reste disponible dans Facturation.",
     "retryPayment": "Redémarrez seulement si vous n'avez pas payé. En cas de facturation, vérifiez le résultat ou contactez le support pour éviter de payer deux fois.",
     "startUsing": "Ensuite : ouvrez Quick Start pour télécharger un client et importer votre abonnement. Les clients existants peuvent actualiser leur abonnement.",
-    "newTitle": "Bienvenue. Configurez votre espace de travail IA",
-    "newDetail": "Votre compte est prêt. Choisissez un forfait, puis configurez votre appareil.",
+    "newTitle": "Votre compte est prêt. Choisissez une offre.",
+    "newDetail": "Vérifiez le montant, réglez votre commande, puis suivez le guide de connexion de votre appareil.",
     "expiredTitle": "Votre forfait a expiré",
     "expiredDetail": "Renouveler ou choisir un nouveau forfait pour continuer. Votre compte et vos commandes restent accessibles.",
     "renew": "Renouveler ou choisir un forfait",
@@ -774,7 +774,6 @@
     "registerClosed": "Les inscriptions sont actuellement fermées",
     "next": "Continuer",
     "verify": "Vérifiez votre email",
-    "review": "Vérifiez votre compte",
     "edit": "Modifier les détails du compte",
     "verifyHelp": "Entrez le code e-mail à 6 chiffres. Vérifiez le spam ou renvoyez si nécessaire.",
     "codeExpiry": "Le code expire dans 5 minutes.",
@@ -813,7 +812,7 @@
     "refreshing": "Mise à jour…",
     "manage": "Plus d'options d'abonnement",
     "nodes": "Détails de connexion et serveurs disponibles",
-    "stepAccount": "Détails du compte",
+    "stepAccount": "Saisissez votre adresse e-mail et créez un mot de passe.",
     "stepVerify": "Vérification des e-mails",
     "freeRegister": "La création d'un compte est gratuite. Les frais sont affichés avant toute action payante.",
     "browserOther": "navigateur intégré",
@@ -925,7 +924,6 @@
     "opened": "Ouverture de votre client. Confirmez l'importation et la mise à jour ici ; cette page ne peut pas vérifier le succès. S'il ne s'ouvre pas, installez le client ou copiez l'abonnement."
   },
   "landing": {
-    "scrollToAuth": "Faites défiler pour vous connecter",
     "inviteStart": "Rejoindre sur invitation",
     "aiTitle": "Connectez-vous à votre monde IA",
     "aiIntro": "Outils familiers. Plus de possibilités.",
@@ -1002,7 +1000,11 @@
     "annual": "Equivalent à {{price}}/mois, facturé annuellement",
     "total": "Un paiement pour la période sélectionnée",
     "save": "Économisez {{percent}}% par rapport aux paiements mensuels",
-    "fallback": "Disponible : {{period}}. Voir les autres périodes à la caisse."
+    "catalogHint": "Choisissez une période de facturation, puis comparez les offres. Le prix indiqué couvre toute la période.",
+    "trafficVolume": "Volume de données",
+    "speedCap": "Limite de débit",
+    "setupAfterPayment": "Après le paiement, ouvrez Connexion et téléchargements pour obtenir le client et la configuration.",
+    "speedValue": "{{value}} Mbps"
   },
   "profile": {
     "intro": "Consultez votre e-mail de connexion et gérez votre langue et vos services connectés.",

@@ -92,9 +92,7 @@ export function UserAuth({
     const title = registered
         ? tx("登录")
         : step === 2
-          ? verify
-              ? e("verify")
-              : e("review")
+          ? e("verify")
           : forget
             ? tx("重置密码")
             : register
@@ -138,8 +136,8 @@ export function UserAuth({
                 const domainError = registrationEmailError(email);
                 if (domainError) throw new Error(domainError);
             }
-            if ((register || forget) && step === 1) {
-                if (verify) await sendCode();
+            if (verify && step === 1 && !registered) {
+                await sendCode();
                 setStep(2);
                 return;
             }
@@ -193,6 +191,7 @@ export function UserAuth({
                     minLength={register || forget ? 8 : undefined}
                     maxLength={forget ? 64 : undefined}
                     value={password}
+                    readOnly={registered}
                     autoComplete={
                         register || forget ? "new-password" : "current-password"
                     }
@@ -291,12 +290,18 @@ export function UserAuth({
                             {tx("密码已更新，请重新登录。")}
                         </div>
                     )}
-                    {!register && !forget && <PasskeyLogin disabled={busy} onMfa={setMfa} onComplete={completeLogin} />}
+                    {!register && !forget && (
+                        <PasskeyLogin
+                            disabled={busy}
+                            onMfa={setMfa}
+                            onComplete={completeLogin}
+                        />
+                    )}
                     <div className="auth-title-row">
                         <h2 ref={heading} tabIndex={-1}>
                             {title}
                         </h2>
-                        {(register || forget) &&
+                        {verify &&
                             !done &&
                             !registered &&
                             !registrationBlocked && (
@@ -323,9 +328,7 @@ export function UserAuth({
                             {!registrationBlocked && !registered && (
                                 <p className="muted">
                                     {step === 2
-                                        ? verify
-                                            ? e("verifyHelp")
-                                            : e("review")
+                                        ? e("verifyHelp")
                                         : forget
                                           ? tx("使用邮箱验证码设置新密码")
                                           : register
@@ -368,6 +371,7 @@ export function UserAuth({
                                         {step === 1 ? (
                                             <>
                                                 {register &&
+                                                !registered &&
                                                 !invitation &&
                                                 boot.emailWhitelistEnabled &&
                                                 boot.emailWhitelistSuffixes
@@ -390,10 +394,11 @@ export function UserAuth({
                                                             required
                                                             value={email}
                                                             readOnly={
-                                                                register &&
-                                                                Boolean(
-                                                                    invitation,
-                                                                )
+                                                                registered ||
+                                                                (register &&
+                                                                    Boolean(
+                                                                        invitation,
+                                                                    ))
                                                             }
                                                             maxLength={
                                                                 forget
@@ -552,20 +557,22 @@ export function UserAuth({
                                         {register &&
                                             !registered &&
                                             boot.tosUrl &&
-                                            step === 2 && (
+                                            (step === 2 || !verify) && (
                                                 <label className="auth-terms">
                                                     <input
                                                         type="checkbox"
                                                         required
                                                     />
-                                                    {tx("注册即表示同意")}{" "}
-                                                    <a
-                                                        href={boot.tosUrl}
-                                                        target="_blank"
-                                                        rel="noreferrer"
-                                                    >
-                                                        {tx("服务条款")}
-                                                    </a>
+                                                    <span>
+                                                        {tx("注册即表示同意")}{" "}
+                                                        <a
+                                                            href={boot.tosUrl}
+                                                            target="_blank"
+                                                            rel="noreferrer"
+                                                        >
+                                                            {tx("服务条款")}
+                                                        </a>
+                                                    </span>
                                                 </label>
                                             )}
                                         <button
@@ -580,8 +587,7 @@ export function UserAuth({
                                                 </>
                                             ) : registered ? (
                                                 tx("登录")
-                                            ) : step === 1 &&
-                                              (register || forget) ? (
+                                            ) : step === 1 && verify ? (
                                                 e("next")
                                             ) : forget ? (
                                                 tx("重置密码")

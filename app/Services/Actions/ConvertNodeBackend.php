@@ -40,6 +40,7 @@ class ConvertNodeBackend {
             // A converted migrated node must not silently regain global-key access.
             if (\App\Services\NodeCredentials::migrated($sourceType,(int)$source->id))
                 DB::table('v2_node_credential_state')->insert(['node_type'=>$targetType,'node_id'=>$target->id,'migrated_at'=>time()]);
+            DB::table('v2_node_maintenance')->where('type',$sourceType)->where('node_id',$id)->update(['type'=>$targetType,'node_id'=>$target->id]);
             $source->delete();
             return $target;
         });

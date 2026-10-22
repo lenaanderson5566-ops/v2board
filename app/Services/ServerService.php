@@ -18,7 +18,9 @@ class ServerService
         $modelClass = $type === 'v2box' ? ServerV2box::class : ServerV2node::class;
         $model = $modelClass::orderBy('sort', 'ASC');
         $v2node = $model->get()->keyBy('id');
+        $maintenance = NodeMaintenance::active();
         foreach ($v2node as $key => $v) {
+            if (NodeMaintenance::hidden($maintenance, $type, (int)$v['id'], $v['parent_id'])) continue;
             if (!$v['show']) continue;
             $v2node[$key]['type'] = $type;
             $v2node[$key]['last_check_at'] = Cache::get(CacheKey::get('SERVER_' . strtoupper($type) . '_LAST_CHECK_AT', $v['id']));
@@ -139,6 +141,7 @@ class ServerService
         $this->mergeData($servers);
         $servers = NodeAddressService::forNodes($servers);
         $servers = ServerTrafficBudgetService::decorateNodes($servers);
+        $servers = NodeRuntimeService::decorate($servers);
         foreach ($servers as &$server) {
             $server['runtime_status'] = NodeRuntimeService::connection($server['last_check_at'] ?? null, $server['last_push_at'] ?? null, (bool) ($server['traffic_budget']['blocked'] ?? false));
         }

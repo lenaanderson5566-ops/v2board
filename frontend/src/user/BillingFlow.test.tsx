@@ -21,6 +21,8 @@ const mocks = vi.hoisted(() => ({
     methods: [] as any[],
     detail: {} as any,
     detailLoading: false,
+    subLoading: false,
+    subError: "",
 }));
 vi.mock("../shared/api", () => ({
     boot: { mode: "user" },
@@ -62,8 +64,8 @@ vi.mock("../shared/ui", () => ({
                       : path.startsWith("user/order/detail")
                         ? mocks.detail
                         : mocks.methods,
-        loading: path.startsWith("user/order/detail") && mocks.detailLoading,
-        error: "",
+        loading: path === "user/getSubscribe" ? mocks.subLoading : path.startsWith("user/order/detail") && mocks.detailLoading,
+        error: path === "user/getSubscribe" ? mocks.subError : "",
         reload: vi.fn(),
     }),
     State: ({ children, loading, data }: any) =>
@@ -116,6 +118,8 @@ beforeEach(() => {
     mocks.plans = [plan];
     mocks.orders = [];
     mocks.sub = {};
+    mocks.subLoading = false;
+    mocks.subError = "";
     mocks.detail = { ...order };
     mocks.detailLoading = false;
     mocks.methods = [
@@ -687,4 +691,45 @@ it("hides coupon controls when no enabled usable coupons exist", () => {
     fireEvent.click(screen.getByRole("button", { name: "subscribe{}" }));
     expect(screen.queryByText("使用优惠码")).toBeNull();
     expect(screen.queryByLabelText("优惠码（可选）")).toBeNull();
+});
+
+
+it("compares configured quota and limits without implying unlimited or monthly data", () => {
+    mocks.plans = [{ ...plan, device_limit: 3, speed_limit: 100 }];
+    const view = render(<SubscriptionPurchase />);
+    expect(screen.getByText("53687091200 B")).toBeTruthy();
+    expect(screen.getByText('speedValue{"value":100}')).toBeTruthy();
+    expect(screen.getByText("deviceLimit")).toBeTruthy();
+    expect(screen.getByText("total{}")).toBeTruthy();
+    mocks.plans = [{ ...plan, transfer_enable: null, device_limit: null, speed_limit: 0 }];
+    view.rerender(<SubscriptionPurchase />);
+    expect(document.querySelector(".pricing-specs")?.children.length).toBe(0);
+    expect(screen.queryByText("不限速")).toBeNull();
+    expect(screen.queryByText("不限设备数")).toBeNull();
+});
+it.each(["loading", "error"])("waits for authoritative subscription state before selection (%s)", (state) => {
+    mocks.subLoading = state === "loading";
+    mocks.subError = state === "error" ? "Subscription temporarily unavailable" : "";
+    render(<SubscriptionPurchase />);
+    const action = screen.getByRole("button", { name: "subscribe{}" });
+    expect(action.matches(":disabled")).toBe(true);
+    fireEvent.click(action);
+    expect(screen.queryByRole("dialog")).toBeNull();
+    expect(mocks.request).not.toHaveBeenCalled();
+});
+it("initially shows an available plan on mobile instead of a sold-out first plan", () => {
+    mocks.plans = [{ ...plan, capacity_limit: 0 }, { ...plan, id: 2, name: "Available", capacity_limit: 5 }];
+    render(<SubscriptionPurchase />);
+    expect(document.querySelector(".mobile-active")?.id).toBe("pricing-plan-2");
+    fireEvent.click(within(screen.getByRole("group", { name: "选择套餐" })).getByRole("button", { name: "Basic" }));
+    expect(document.querySelector(".mobile-active")?.id).toBe("pricing-plan-1");
+    expect(screen.getByRole("button", { name: "暂时售罄" }).matches(":disabled")).toBe(true);
+});
+it("puts the connection action before receipt details after successful payment", () => {
+    checkout({ status: 3 });
+    const action = screen.getByRole("link", { name: "快速开始" });
+    const receipt = document.querySelector(".receipt-card")!;
+    expect(action.getAttribute("href")).toBe("#/subscribe");
+    expect(action.compareDocumentPosition(receipt) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "确认支付" })).toBeNull();
 });

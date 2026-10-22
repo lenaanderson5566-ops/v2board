@@ -1031,7 +1031,7 @@
     align-items: center;
     justify-content: space-between;
     gap: 16px;
-    margin-top: 24px;
+    margin-block: 24px;
 }
 .credit-balance-card .balance-amount {
     display: block;

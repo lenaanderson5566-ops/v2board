@@ -85,6 +85,20 @@ describe("landing and interactive control translations", () => {
     });
 });
 describe("localization resources", () => {
+    it.each(["zh-CN", "zh-TW"])("%s uses formal interface copy and consistent account terminology", (code) => {
+        // Check rendered catalog values; legacy lookup keys remain stable.
+        const informal = /你|輕鬆|轻松|折腾|折騰|这里|這裡|怎么办|怎麼辦|换个|換個|没收到|沒收到|朋友|好友|一份心意|顺手|順手|账号|帐号|賬戶|賬號|帳號/;
+        for (const [namespace, values] of Object.entries(resources[code]))
+            for (const [key, value] of Object.entries(values))
+                expect(value, `${code}/${namespace}/${key}`).not.toMatch(informal);
+    });
+    it("keeps user-facing server errors actionable without conversational interjections", () => {
+        for (const code of ["zh-CN", "zh-TW", "en-US"]) {
+            const messages = JSON.parse(readFileSync(new URL(`../../../resources/lang/${code}.json`, import.meta.url), "utf8"));
+            for (const value of Object.values(messages))
+                expect(String(value), code).not.toMatch(/Uh-oh|Oops|出了点|出了點|出现了点|出現了點|遇到了些|过一会儿|過一會兒|你的|我们正在|我們正在/);
+        }
+    });
     it("loads only the requested extra catalog and keeps language switching translated", async () => {
         expect(i18n.hasResourceBundle("zh-TW", "translation")).toBe(true);
         expect(i18n.hasResourceBundle("ja-JP", "translation")).toBe(false);

@@ -330,7 +330,7 @@ it("accepts browser login metadata without expecting a bearer token", async () =
 it("normalizes browser network failures without retrying the request", async () => {
     const fetcher = vi.fn().mockRejectedValue(new TypeError("Load failed"));
     vi.stubGlobal("fetch", fetcher);
-    await expect(request("user/info")).rejects.toMatchObject({ code: "NETWORK_ERROR", message: "网络连接中断，请检查网络后确认操作结果" });
+    await expect(request("user/info")).rejects.toMatchObject({ code: "NETWORK_ERROR", message: "网络连接中断，请检查网络并确认操作结果。" });
     expect(fetcher).toHaveBeenCalledTimes(1);
 });
 

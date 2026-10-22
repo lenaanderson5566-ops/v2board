@@ -40,7 +40,7 @@ it("shows iOS guidance and loads accounts only on request without a nested modal
  render(<ClientDownload client="shadowrocket" device="ios" official="https://apps.apple.com/app/id932747118" close={() => {}} />);
  expect(screen.queryByText("Account list loaded")).toBeNull();
  expect(screen.queryByRole("button", {name: /镜像下载/})).toBeNull();
- fireEvent.click(screen.getByRole("button", {name: /使用下载账号/}));
+ fireEvent.click(screen.getByRole("button", {name: /使用下载账户/}));
  expect(screen.getByText("Account list loaded")).toBeTruthy();
  expect(screen.getByText(/请勿退出或登录 iCloud/)).toBeTruthy();
  expect(screen.getAllByRole("dialog")).toHaveLength(1);
@@ -49,7 +49,7 @@ it("keeps official download available when account sharing is disabled", () => {
  boot.appleAccountEnabled = false;
  render(<ClientDownload client="shadowrocket" device="ios" official="https://apps.apple.com/app/id932747118" close={() => {}} />);
  expect(screen.getByRole("link", {name: /官方下载/})).toBeTruthy();
- expect(screen.queryByRole("button", {name: /使用下载账号/})).toBeNull();
+ expect(screen.queryByRole("button", {name: /使用下载账户/})).toBeNull();
  boot.appleAccountEnabled = true;
 });
 

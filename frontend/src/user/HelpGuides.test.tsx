@@ -30,11 +30,11 @@ describe("self-service FAQ", () => {
             target: { value: " GB " },
         });
         expect(container.querySelectorAll("details")).toHaveLength(1);
-        expect(screen.getByText("套餐流量和独立额度有什么区别？")).toBeTruthy();
+        expect(screen.getByText("套餐流量与独立额度的区别")).toBeTruthy();
     });
     it("clears query and category when no results match", () => {
         const { container } = render(<HelpGuides />);
-        fireEvent.click(screen.getByRole("button", { name: "账单与账号" }));
+        fireEvent.click(screen.getByRole("button", { name: "账单与账户" }));
         fireEvent.change(screen.getByRole("searchbox"), {
             target: { value: "not-a-real-topic" },
         });
@@ -75,7 +75,7 @@ describe("self-service FAQ", () => {
         expect(container.querySelectorAll("details")).toHaveLength(1);
         expect(
             screen.getByText(
-                "When does usage reset? Does an early reset change expiry?",
+                "Usage reset schedule and expiry rules",
             ),
         ).toBeTruthy();
     });

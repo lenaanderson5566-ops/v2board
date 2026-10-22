@@ -95,6 +95,7 @@ class AdminRoute
             $router->post('/server/traffic-budget/save', 'V1\\Admin\\ServerTrafficBudgetController@save');
             $router->get('/server/manage/runtime', 'V1\\Admin\\Server\\ManageController@runtime')->middleware('throttle:60,1');
             $router->get ('/server/manage/getNodes', 'V1\\Admin\\Server\\ManageController@getNodes');
+            $router->post('/server/manage/maintenance', 'V1\\Admin\\Server\\ManageController@maintenance')->middleware('throttle:30,1');
             $router->post('/server/manage/sort', 'V1\\Admin\\Server\\ManageController@sort');
             $router->group([
                 'prefix' => 'server/v2node'

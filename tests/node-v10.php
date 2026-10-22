@@ -85,10 +85,31 @@ try {
     $assert($call('GET',$root.'/configuration',[],['HTTP_IF_NONE_MATCH'=>$r->headers->get('ETag')])->getStatusCode()===304,'Config ETag');
     $assert($call('GET',$root.'/configuration',[],['HTTP_X_NODE_CAPABILITIES'=>''])->getStatusCode()===409,'Capability guard');
     $tag=$r->headers->get('ETag');
+    $hash=trim($tag,'"');
+    $receipt=['coreVersion'=>'v1.14.3','features'=>['native-routing-v1','configuration-receipt-v1'],
+        'configuration'=>['hash'=>$hash,'state'=>'applied']];
+    $assert($call('POST',$root.'/capabilities',$receipt)->getStatusCode()===200,'Applied receipt accepted');
+    $runtime=App\Services\NodeRuntimeService::inspect('v2box',$node);
+    $assert($runtime['applicationState']==='applied' && $runtime['lastAppliedAt']!==null,'Exact served configuration confirmed');
+    $lastApplied=$runtime['lastAppliedAt'];
+    $failed=$receipt;$failed['configuration']=['hash'=>$hash,'state'=>'failed','errorCode'=>'core'];
+    $assert($call('POST',$root.'/capabilities',$failed)->getStatusCode()===200,'Bounded failure receipt accepted');
+    $runtime=App\Services\NodeRuntimeService::inspect('v2box',$node);
+    $assert($runtime['applicationState']==='failed' && $runtime['lastAppliedAt']===$lastApplied && $runtime['errorCode']==='core','Failure preserves last success');
+    $stale=$receipt;$stale['configuration']['hash']=str_repeat('0',64);
+    $assert($call('POST',$root.'/capabilities',$stale)->getStatusCode()===200,'Delayed report does not interrupt capabilities');
+    $assert(App\Services\NodeRuntimeService::inspect('v2box',$node)['applicationState']==='failed','Stale receipt cannot confirm latest config');
+    foreach ([['hash'=>'bad','state'=>'applied'],['hash'=>$hash,'state'=>'failed'],['hash'=>$hash,'state'=>'failed','errorCode'=>'secret text'],['hash'=>$hash,'state'=>'applied','exception'=>'secret']] as $invalid) {
+        $bad=$receipt;$bad['configuration']=$invalid;
+        $assert($call('POST',$root.'/capabilities',$bad)->getStatusCode()===422,'Malformed or sensitive receipt rejected');
+    }
+    $assert($call('POST',$root.'/capabilities',$receipt,['HTTP_AUTHORIZATION'=>'Bearer wrong'])->getStatusCode()===401,'Receipt requires node authentication');
+
     $updated=$native;$updated['route']['rules'][]=['domain_suffix'=>['updated.test'],'action'=>'reject'];
     $profile->update(['sing_box'=>$updated]);
     $changed=$call('GET',$root.'/configuration',[],['HTTP_IF_NONE_MATCH'=>$tag]);
     $assert($changed->getStatusCode()===200 && $changed->headers->get('ETag')!==$tag,'Catalog rule edit changes configuration ETag');
+    $assert(App\Services\NodeRuntimeService::inspect('v2box',$node)['applicationState']==='unconfirmed','Changed hash invalidates old receipt');
     $profile->update(['sing_box'=>$native]);
     $r=$call('GET',$root.'/users');$assert($r->getStatusCode()===200 && json_decode($r->getContent(),true)['data']===[],'Empty user table: '.$r->getStatusCode().' '.$r->getContent());
     $assert($call('GET',$root.'/users',[],['HTTP_IF_NONE_MATCH'=>$r->headers->get('ETag')])->getStatusCode()===304,'User ETag');
@@ -128,6 +149,17 @@ try {
     $user=new App\Models\User(['email'=>'node-v10-test@example.test','password'=>'unused','uuid'=>'b831381d-6324-4d53-ad4f-8cda48b30811','token'=>'node-v10-test','group_id'=>999997,'expired_at'=>null,'transfer_enable'=>1024,'u'=>0,'d'=>0,'banned'=>0]);$user->save();
     $r=$call('GET',$root.'/users');$list=json_decode($r->getContent(),true)['data'];
     $assert(count($list)===1 && $list[0]['uuid']===$user->uuid && array_key_exists('speedLimit',$list[0]),'User resource projection');
+    $maintenance=App\Services\NodeMaintenance::class;
+    $child=$node->replicate();$child->name='maintenance child';$child->parent_id=$nodeId;$child->save();
+    $maintenance::save('v2box',$nodeId,['enabled'=>true,'reason'=>'maintenance-test','endsAt'=>time()+3600,'hideSubscription'=>true]);
+    $assert(!collect((new App\Services\ServerService())->getAvailableV2node($user,'v2box'))->contains('id',$nodeId),'Maintenance hides new subscription entry');
+    $assert(!collect((new App\Services\ServerService())->getAvailableV2node($user,'v2box'))->contains('id',$child->id),'Parent maintenance hides child subscription');
+    $preview=json_decode((new App\Services\Actions\User\ServerActions())->previews(Request::create('/'))->getContent(),true)['data'];
+    $assert(!collect($preview)->contains(fn($n)=>$n['type']==='v2box' && in_array($n['id'],[$nodeId,$child->id],true)),'Public preview respects maintenance hiding');
+    $assert(json_decode($call('GET',$root.'/users')->getContent(),true)['data']!==null,'Maintenance does not deny node user pulls');
+    $maintenance::save('v2box',$nodeId,['enabled'=>false]);
+    $assert(collect((new App\Services\ServerService())->getAvailableV2node($user,'v2box'))->contains('id',$child->id),'Ending maintenance restores child without overwriting show');
+    $child->delete();
     $public=(new App\Services\ServerService())->getAvailableV2node($user,'v2box');
     foreach($public as $item) $assert(!array_key_exists('sing_box',$item),'Server credentials hidden from subscribers');
     $stats=app(App\Services\TargetStatistics::class);

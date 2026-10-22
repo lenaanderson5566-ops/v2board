@@ -23,6 +23,19 @@ class ManageController extends Controller
         return response(['data' => \App\Services\NodeRuntimeService::inspect($input['type'], $node)]);
     }
 
+    public function maintenance(Request $request)
+    {
+        $input=$request->validate(['type'=>'required|in:v2node,v2box','id'=>'required|integer|min:1',
+            'enabled'=>'required|boolean','reason'=>'required_if:enabled,true|string|max:200',
+            'endsAt'=>'required_if:enabled,true|integer|min:1','hideSubscription'=>'required|boolean']);
+        DB::transaction(function () use ($input) {
+            $model=$input['type']==='v2box' ? ServerV2box::class : ServerV2node::class;
+            abort_unless($model::whereKey($input['id'])->lockForUpdate()->first(),404,'节点不存在');
+            \App\Services\NodeMaintenance::save($input['type'],$input['id'],$input);
+        });
+        return response(['data'=>true]);
+    }
+
     public function sort(Request $request)
     {
         $models = ['v2node' => ServerV2node::class, 'v2box' => ServerV2box::class];

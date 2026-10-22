@@ -49,6 +49,42 @@ export function OrderReceipt({ order }: { order: Row }) {
                     </p>
                 </div>
             </div>
+            {!cancelled && !applied && !credit && !deposit && (
+                <p className="checkout-guidance">{e("startUsing")}</p>
+            )}
+            <div className="receipt-actions">
+                <a
+                    className="button primary"
+                    href={
+                        cancelled
+                            ? credit
+                                ? "#/traffic"
+                                : deposit
+                                  ? "#/order"
+                                  : "#/plan"
+                            : deposit
+                              ? "#/order"
+                              : credit
+                                ? "#/traffic"
+                                : "#/subscribe"
+                    }
+                >
+                    {cancelled
+                        ? tx(
+                              credit
+                                  ? "使用情况"
+                                  : deposit
+                                    ? "账单"
+                                    : "选择套餐",
+                          )
+                        : deposit
+                          ? tx("账单")
+                          : credit
+                            ? tx("使用情况")
+                            : tx("快速开始")}
+                </a>
+                <OrderHelp tradeNo={String(order.trade_no)} />
+            </div>
             <section className="receipt-card">
                 <div className="receipt-product">
                     <h3>
@@ -174,42 +210,6 @@ export function OrderReceipt({ order }: { order: Row }) {
                     )}
                 </dl>
             </section>
-            {!cancelled && !applied && !credit && !deposit && (
-                <p className="checkout-guidance">{e("startUsing")}</p>
-            )}
-            <div className="receipt-actions">
-                <a
-                    className="button primary"
-                    href={
-                        cancelled
-                            ? credit
-                                ? "#/traffic"
-                                : deposit
-                                  ? "#/order"
-                                  : "#/plan"
-                            : deposit
-                              ? "#/order"
-                              : credit
-                                ? "#/traffic"
-                                : "#/subscribe"
-                    }
-                >
-                    {cancelled
-                        ? tx(
-                              credit
-                                  ? "使用情况"
-                                  : deposit
-                                    ? "账单"
-                                    : "选择套餐",
-                          )
-                        : deposit
-                          ? tx("账单")
-                          : credit
-                            ? tx("使用情况")
-                            : tx("快速开始")}
-                </a>
-                <OrderHelp tradeNo={String(order.trade_no)} />
-            </div>
         </article>
     );
 }

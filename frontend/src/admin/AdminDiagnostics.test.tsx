@@ -123,3 +123,86 @@ it("shows failing health checks alongside healthy components", async () => {
     expect(screen.getByText("未执行迁移：2 项")).toBeTruthy();
     expect(screen.getByText("队列数据暂不可用")).toBeTruthy();
 });
+
+it("shows exact application receipt and saves maintenance without changing node visibility", async () => {
+    api.request.mockResolvedValue({
+        data: {
+            configurationState: "provided",
+            applicationState: "applied",
+            receiptSupported: true,
+            lastAppliedAt: 123,
+            receiptAt: 124,
+            ownMaintenance: null,
+        },
+    });
+    render(
+        <NodeDiagnostics
+            node={{ id: 2, type: "v2box", name: "A", runtime_status: "online" }}
+            close={() => {}}
+        />,
+    );
+    expect(await screen.findByText("当前配置已生效")).toBeTruthy();
+    expect(screen.queryByText(/没有应用回执/)).toBeNull();
+    fireEvent.click(screen.getByRole("switch", { name: "此节点启用维护" }));
+    fireEvent.change(screen.getByLabelText("维护原因"), {
+        target: { value: "更换线路" },
+    });
+    fireEvent.click(
+        screen.getByRole("switch", { name: "从新生成的订阅中隐藏" }),
+    );
+    fireEvent.click(screen.getByRole("button", { name: "保存维护设置" }));
+    expect(await screen.findByText("维护设置已保存")).toBeTruthy();
+    expect(api.request).toHaveBeenCalledWith(
+        "test-admin/server/manage/maintenance",
+        expect.objectContaining({
+            type: "v2box",
+            id: 2,
+            enabled: true,
+            reason: "更换线路",
+            hideSubscription: true,
+            endsAt: expect.any(Number),
+        }),
+    );
+    expect(
+        api.request.mock.calls.some(([path]) =>
+            String(path).includes("v2box/update"),
+        ),
+    ).toBe(false);
+});
+it("retains unsaved maintenance on failure and explains inherited parent maintenance", async () => {
+    api.request.mockImplementation(async (path: string) => {
+        if (path.endsWith("/maintenance")) throw new Error("保存失败");
+        return {
+            data: {
+                configurationState: "provided",
+                applicationState: "failed",
+                errorCode: "certificate",
+                receiptSupported: true,
+                maintenance: {
+                    nodeId: 1,
+                    reason: "父节点维护",
+                    endsAt: 2000000000,
+                },
+                ownMaintenance: null,
+            },
+        };
+    });
+    render(
+        <NodeDiagnostics
+            node={{ id: 2, type: "v2box", name: "Child" }}
+            close={() => {}}
+        />,
+    );
+    expect(await screen.findByText("证书准备失败")).toBeTruthy();
+    expect(screen.getByText(/父节点 #1/)).toBeTruthy();
+    fireEvent.click(screen.getByRole("switch", { name: "此节点启用维护" }));
+    fireEvent.change(screen.getByLabelText("维护原因"), {
+        target: { value: "准备升级" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "保存维护设置" }));
+    expect(await screen.findByText("保存失败")).toBeTruthy();
+    expect(screen.getByLabelText("维护原因")).toHaveProperty(
+        "value",
+        "准备升级",
+    );
+});

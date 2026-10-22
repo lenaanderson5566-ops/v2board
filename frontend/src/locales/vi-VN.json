@@ -743,8 +743,8 @@
     "paymentReturn": "Sau khi trả tiền, quay lại đây để tự động xác nhận. Nếu đã bị trừ tiền, đừng trả lại; xem đơn trong Hóa đơn.",
     "retryPayment": "Chỉ bắt đầu lại nếu chưa thanh toán. Nếu đã bị trừ tiền, kiểm tra kết quả hoặc liên hệ hỗ trợ.",
     "startUsing": "Tiếp theo: mở Bắt đầu nhanh để tải ứng dụng và nhập đăng ký. Ứng dụng hiện có có thể cập nhật đăng ký.",
-    "newTitle": "Chào mừng. Thiết lập môi trường AI",
-    "newDetail": "Tài khoản đã sẵn sàng. Chọn gói rồi cấu hình thiết bị.",
+    "newTitle": "Tài khoản đã sẵn sàng. Hãy chọn một gói.",
+    "newDetail": "Kiểm tra chi phí, hoàn tất thanh toán rồi làm theo hướng dẫn kết nối cho thiết bị.",
     "expiredTitle": "Gói đã hết hạn",
     "expiredDetail": "Gia hạn hoặc chọn gói mới. Tài khoản và lịch sử đơn hàng vẫn truy cập được.",
     "renew": "Gia hạn hoặc chọn gói",
@@ -772,7 +772,6 @@
     "registerClosed": "Hiện chưa mở đăng ký",
     "next": "Tiếp tục",
     "verify": "Xác minh email",
-    "review": "Xác nhận tài khoản",
     "edit": "Sửa thông tin",
     "verifyHelp": "Nhập mã 6 chữ số trong email. Kiểm tra thư rác hoặc gửi lại.",
     "codeExpiry": "Mã có hiệu lực trong 5 phút.",
@@ -811,7 +810,7 @@
     "refreshing": "Đang cập nhật…",
     "manage": "Thêm tùy chọn gói",
     "nodes": "Thông tin kết nối và máy chủ khả dụng",
-    "stepAccount": "Thông tin tài khoản",
+    "stepAccount": "Nhập email và đặt mật khẩu.",
     "stepVerify": "Xác minh email",
     "freeRegister": "Tạo tài khoản miễn phí. Chi phí được hiển thị trước khi thanh toán.",
     "browserOther": "trình duyệt trong ứng dụng",
@@ -923,7 +922,6 @@
     "opened": "Đang mở ứng dụng. Xác nhận nhập và cập nhật trong ứng dụng; trang này không xác minh được kết quả. Nếu không mở, cài ứng dụng hoặc sao chép đăng ký."
   },
   "landing": {
-    "scrollToAuth": "Cuộn để đăng nhập",
     "inviteStart": "Đăng ký qua lời mời",
     "aiTitle": "Kết nối thế giới AI của bạn",
     "aiIntro": "Công cụ quen thuộc, nhiều khả năng hơn.",
@@ -1000,7 +998,11 @@
     "annual": "Tương đương {{price}} / tháng, thanh toán theo năm",
     "total": "Thanh toán một lần cho kỳ đã chọn",
     "save": "Tiết kiệm {{percent}}% so với trả hàng tháng",
-    "fallback": "Có kỳ {{period}}. Xem kỳ khác khi thanh toán."
+    "catalogHint": "Chọn kỳ thanh toán rồi so sánh các gói. Giá hiển thị là tổng tiền cho kỳ đó.",
+    "trafficVolume": "Dung lượng dữ liệu",
+    "speedCap": "Giới hạn tốc độ",
+    "setupAfterPayment": "Sau khi thanh toán, mở Kết nối và tải xuống để lấy ứng dụng và cấu hình.",
+    "speedValue": "{{value}} Mbps"
   },
   "profile": {
     "intro": "Xem email đăng nhập, quản lý ngôn ngữ và dịch vụ đã kết nối.",

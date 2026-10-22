@@ -1,5 +1,6 @@
 import { useState } from "react";
-import { money, type Row } from "../shared/api";
+import { bytes, money, type Row } from "../shared/api";
+import { e } from "../shared/experience-copy";
 import { tx } from "../shared/i18n";
 import { PlanDescription } from "../shared/PlanDescription";
 import { Empty, Modal, State, useData } from "../shared/ui";
@@ -60,12 +61,26 @@ export function SubscriptionPurchase() {
         cyclePlans.find(
             (plan) =>
                 Number(plan.id) ===
-                Number(sub.data?.plan_id || currentPlan?.id),
+                    Number(sub.data?.plan_id || currentPlan?.id) &&
+                Number(plan.renew) !== 0,
+        ) ||
+        cyclePlans.find(
+            (plan) =>
+                (plan.capacity_limit == null ||
+                    Number(plan.capacity_limit) > 0) &&
+                !(
+                    Number(plan.id) ===
+                        Number(sub.data?.plan_id || currentPlan?.id) &&
+                    Number(plan.renew) === 0
+                ),
         ) ||
         cyclePlans[0];
     return (
         <section className="subscription-catalog">
             <PurchaseSteps step={1} />
+            <State {...sub} retry={sub.reload}>
+                {null}
+            </State>
             <State {...orders} retry={orders.reload}>
                 {pending && (
                     <PendingOrderNotice
@@ -76,6 +91,7 @@ export function SubscriptionPurchase() {
             </State>
             <State {...plans} retry={plans.reload}>
                 <div className="pricing-toolbar">
+                    <p className="pricing-guide">{pc("catalogHint")}</p>
                     <div
                         className="pricing-cycle"
                         role="group"
@@ -130,6 +146,8 @@ export function SubscriptionPurchase() {
                                 (Boolean(pending) && !replaceable) ||
                                 orders.loading ||
                                 Boolean(orders.error) ||
+                                sub.loading ||
+                                Boolean(sub.error) ||
                                 !available.length ||
                                 soldOut ||
                                 (same && Number(plan.renew) === 0);
@@ -154,6 +172,52 @@ export function SubscriptionPurchase() {
                                             </span>
                                         )}
                                     </div>
+                                    <dl className="pricing-specs">
+                                        {Number.isFinite(
+                                            Number(plan.transfer_enable),
+                                        ) &&
+                                            Number(plan.transfer_enable) >
+                                                0 && (
+                                                <div>
+                                                    <dt>
+                                                        {pc("trafficVolume")}
+                                                    </dt>
+                                                    <dd>
+                                                        <bdi dir="ltr">
+                                                            {bytes(
+                                                                Number(
+                                                                    plan.transfer_enable,
+                                                                ) * 1073741824,
+                                                            )}
+                                                        </bdi>
+                                                    </dd>
+                                                </div>
+                                            )}
+                                        {Number.isFinite(
+                                            Number(plan.device_limit),
+                                        ) &&
+                                            Number(plan.device_limit) > 0 && (
+                                                <div>
+                                                    <dt>{e("deviceLimit")}</dt>
+                                                    <dd>{plan.device_limit}</dd>
+                                                </div>
+                                            )}
+                                        {Number.isFinite(
+                                            Number(plan.speed_limit),
+                                        ) &&
+                                            Number(plan.speed_limit) > 0 && (
+                                                <div>
+                                                    <dt>{pc("speedCap")}</dt>
+                                                    <dd>
+                                                        <bdi dir="ltr">
+                                                            {pc("speedValue", {
+                                                                value: plan.speed_limit,
+                                                            })}
+                                                        </bdi>
+                                                    </dd>
+                                                </div>
+                                            )}
+                                    </dl>
                                     <div className="pricing-summary">
                                         <div className="plan-price">
                                             {money(
@@ -175,6 +239,9 @@ export function SubscriptionPurchase() {
                                                         )}
                                             </small>
                                         </div>
+                                        <p className="pricing-total-note">
+                                            {pc("total")}
+                                        </p>
                                         <div className="pricing-note pricing-meta">
                                             {billingPeriodMonths[displayed] >
                                                 1 && (
@@ -207,17 +274,6 @@ export function SubscriptionPurchase() {
                                                     })}
                                                 </span>
                                             )}
-                                            {displayed !== activePeriod && (
-                                                <span>
-                                                    {pc("fallback", {
-                                                        period: tx(
-                                                            billingPeriods[
-                                                                displayed
-                                                            ],
-                                                        ),
-                                                    })}
-                                                </span>
-                                            )}
                                         </div>
                                     </div>
                                     <button
@@ -245,6 +301,12 @@ export function SubscriptionPurchase() {
                         <Empty text={tx("暂无可购买套餐")} />
                     )}
                 </div>
+                {visiblePlans.length > 0 && (
+                    <p className="pricing-help">
+                        <a href="#/knowledge">{tx("帮助中心")}</a>
+                        <span>{pc("setupAfterPayment")}</span>
+                    </p>
+                )}
             </State>
             {selected && (
                 <Modal

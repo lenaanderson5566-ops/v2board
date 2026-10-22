@@ -286,6 +286,17 @@ try {
     $vmess = App\Models\ServerV2box::where('name', 'console-smoke-v2box-vmess')->first();
     $response = $call('/api/v1/' . $securePath . '/server/manage/sort', ['v2node' => [$node->id => 2], 'v2box' => [$vmess->id => 1]], $token);
     $assert($response->getStatusCode() === 200 && $node->refresh()->sort == 2 && $vmess->refresh()->sort == 1, 'Cross-backend node order failed: ' . $response->getContent());
+    $maintenanceUrl='/api/v1/'.$securePath.'/server/manage/maintenance';
+    $maintenanceInput=['type'=>'v2box','id'=>$vmess->id,'enabled'=>true,'reason'=>'升级维护','endsAt'=>time()+3600,'hideSubscription'=>true];
+    foreach ([null,$subjectToken] as $unauthorized) $assert($call($maintenanceUrl,$maintenanceInput,$unauthorized)->getStatusCode()===403,'Maintenance is admin-only');
+    $originalShow=$vmess->show;
+    $assert($call($maintenanceUrl,$maintenanceInput,$token)->getStatusCode()===200,'Administrator may enable maintenance');
+    $assert($vmess->refresh()->show===$originalShow,'Maintenance never overwrites subscription visibility setting');
+    $assert($call($maintenanceUrl,array_merge($maintenanceInput,['endsAt'=>time()-1]),$token)->getStatusCode()===422,'Past maintenance end rejected');
+    $assert($call($maintenanceUrl,array_merge($maintenanceInput,['endsAt'=>time()+31*86400]),$token)->getStatusCode()===422,'Unbounded maintenance end rejected');
+    $assert($call($maintenanceUrl,array_merge($maintenanceInput,['type'=>'vless']),$token)->getStatusCode()===422,'Unknown maintenance backend rejected');
+    $assert($call($maintenanceUrl,array_merge($maintenanceInput,['id'=>2147483647]),$token)->getStatusCode()===404,'Missing node maintenance rejected');
+    $assert($call($maintenanceUrl,['type'=>'v2box','id'=>$vmess->id,'enabled'=>false,'hideSubscription'=>false],$token)->getStatusCode()===200,'Administrator may end maintenance');
     $knowledge = [];
     foreach ([1, 2] as $index) {
         $title = 'console-knowledge-' . $index;

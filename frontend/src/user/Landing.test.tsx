@@ -42,8 +42,8 @@ it("selects the minimal landing and keeps a keyboard-accessible auth entry", () 
     expect(screen.getByText("Gemini")).toBeTruthy();
     expect(screen.getByText("aiNote")).toBeTruthy();
     expect(
-        screen.getByRole("link", { name: "scrollToAuth" }).getAttribute("href"),
-    ).toBe("/app#/login");
+        screen.getByRole("link", { name: "start" }).getAttribute("href"),
+    ).toBe("/app#/register");
     expect(
         screen.getByRole("link", { name: "signIn" }).getAttribute("href"),
     ).toBe("/app#/login");
@@ -53,31 +53,28 @@ it("falls back to the original landing for unknown settings", () => {
     render(<Landing />);
     expect(screen.getByText("OpenAI")).toBeTruthy();
 });
-it("enters auth only after scrolling and removes its listener on unmount", () => {
+it("does not attach scroll navigation to the minimal landing", () => {
     mocks.boot.landingStyle = "minimal";
     const add = vi.spyOn(window, "addEventListener");
-    const remove = vi.spyOn(window, "removeEventListener");
-    const view = render(<Landing />);
-    const listener = add.mock.calls.find(
-        ([name]) => name === "scroll",
-    )?.[1] as () => void;
-    const assign = vi.fn();
-    const fakeWindow = { scrollY: 0, location: { assign } };
-    try {
-        vi.stubGlobal("window", fakeWindow);
-        listener();
-        expect(assign).not.toHaveBeenCalled();
-        fakeWindow.scrollY = 80;
-        listener();
-        listener();
-        expect(assign).toHaveBeenCalledExactlyOnceWith("/app#/login");
-    } finally {
-        vi.unstubAllGlobals();
-        view.unmount();
-    }
-    expect(remove).toHaveBeenCalledWith("scroll", listener);
+    render(<Landing />);
+    expect(add.mock.calls.some(([name]) => name === "scroll")).toBe(false);
+    expect(document.querySelector(".minimal-landing-scroll-space")).toBeNull();
     add.mockRestore();
-    remove.mockRestore();
+});
+it.each([true, false])("minimal landing respects registration closure (%s)", (closed) => {
+    mocks.boot.landingStyle = "minimal";
+    mocks.boot.registerClosed = closed;
+    render(<Landing />);
+    expect(screen.getByRole("link", { name: closed ? "signIn" : "start" }).getAttribute("href"))
+        .toBe(closed ? "/app#/login" : "/app#/register");
+    if (closed) expect(document.querySelector('a[href="/app#/register"]')).toBeNull();
+});
+it("minimal landing labels invitation-only registration", () => {
+    mocks.boot.landingStyle = "minimal";
+    mocks.boot.inviteRequired = true;
+    render(<Landing />);
+    expect(screen.getByRole("link", { name: "inviteStart" }).getAttribute("href")).toBe("/app#/register");
+    expect(screen.getByRole("link", { name: "signIn" })).toBeTruthy();
 });
 describe("public product entry", () => {
     it("uses the configured brand and shows AI service brands before setup", () => {

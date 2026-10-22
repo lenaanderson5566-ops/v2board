@@ -163,3 +163,42 @@ body[data-console="admin"] .admin-row-popover { border-radius: var(--admin-radiu
 body[data-console="admin"] .admin-row-popover > button { min-height: var(--admin-control-height); padding: 8px 12px; white-space: normal; }
 body[data-console="admin"] .admin-row-popover > button:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
 body[data-console="admin"] .admin-row-popover[hidden] { display: none; }
+
+.node-detail-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 16px;
+    margin: 16px 0;
+}
+.node-detail-grid dt {
+    color: var(--muted);
+    font-size: 12px;
+    margin-bottom: 4px;
+}
+.node-detail-grid dd {
+    margin: 0;
+    overflow-wrap: anywhere;
+}
+.node-maintenance-form fieldset {
+    border: 0;
+    padding: 0;
+    margin: 0;
+    min-width: 0;
+    display: grid;
+    gap: 16px;
+}
+.node-maintenance-form label {
+    display: grid;
+    gap: 6px;
+}
+.node-maintenance-switch {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+}
+@media (max-width: 560px) {
+    .node-detail-grid {
+        grid-template-columns: 1fr;
+    }
+}

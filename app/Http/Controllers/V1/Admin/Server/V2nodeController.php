@@ -300,6 +300,7 @@ class V2nodeController extends Controller
                 $cloud=\Illuminate\Support\Facades\DB::table('v2_lightsail_server')->where('node_type',$type)->where('node_id',$server->id)->lockForUpdate()->first();
                 abort_if($cloud,409,'请先移除 Lightsail 配置再删除节点');
                 \App\Services\NodeCredentials::retire($type,(int)$server->id);
+                \Illuminate\Support\Facades\DB::table('v2_node_maintenance')->where('type',$type)->where('node_id',$server->id)->delete();
                 return $server->delete();
             })
         ]);

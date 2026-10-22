@@ -13741,6 +13741,38 @@
             "items": {
               "type": "string"
             }
+          },
+          "configuration": {
+            "type": "object",
+            "description": "Optional application receipt for the configuration ETag SHA-256. Stale hashes are ignored. No raw error text.",
+            "properties": {
+              "hash": {
+                "type": "string",
+                "pattern": "^[a-f0-9]{64}$"
+              },
+              "state": {
+                "type": "string",
+                "enum": [
+                  "applied",
+                  "failed"
+                ]
+              },
+              "errorCode": {
+                "type": "string",
+                "enum": [
+                  "decode",
+                  "core",
+                  "users",
+                  "certificate",
+                  "start"
+                ]
+              }
+            },
+            "required": [
+              "hash",
+              "state"
+            ],
+            "additionalProperties": false
           }
         },
         "required": [

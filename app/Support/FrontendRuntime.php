@@ -14,7 +14,7 @@ final class FrontendRuntime
             'landing' => $landing,
             'landingStyle' => config('v2board.landing_style') === 'minimal' ? 'minimal' : 'original',
             'title' => config('v2board.app_name', 'V2Board'),
-            'description' => $landing ? 'AI 应用配置助手，让设备配置更简单。' : config('v2board.app_description', '连接世界，轻松管理你的订阅。'),
+            'description' => $landing ? '提供 AI 应用配置、设备使用指引与技术支持。' : config('v2board.app_description', '查看订阅状态、管理账户与设备连接。'),
             'adminPath' => $mode === 'admin' ? $securePath : '',
             'opsPath' => $mode === 'admin' ? config('v2board.ops_api_path', 'ops') : '',
             'clientRecommendations' => collect(['android','windows','macos','linux','ios'])->mapWithKeys(fn($os) => [$os => [config('v2board.client_primary_'.$os), config('v2board.client_secondary_'.$os)]])->all(),

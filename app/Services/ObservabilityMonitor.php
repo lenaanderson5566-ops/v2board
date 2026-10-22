@@ -23,7 +23,15 @@ final class ObservabilityMonitor
         $settings=app(ObservabilitySettings::class)->get();
         $snapshot=['checkedAt'=>time(),'health'=>$health,'queue'=>$queue];
         $conditions=self::conditions($snapshot,$metrics,$settings);
-        $alerts=self::advance(Cache::get(self::ALERTS,[]),$conditions,time());
+        $previous=Cache::get(self::ALERTS,[]);
+        try { $conditions+=NodeRuntimeService::alertConditions(app(ServerService::class)->getAllServers()); }
+        catch (\Throwable $error) {
+            $conditions['nodes:probe']=['label'=>'节点状态检查','message'=>'无法读取节点状态，请检查数据库与缓存。','severity'=>'warning'];
+            // A failed probe cannot establish recovery of an existing node incident.
+            foreach ($previous as $key=>$alert) if (str_starts_with($key,'nodes:') && !empty($alert['conditionActive']))
+                $conditions[$key] ??= array_intersect_key($alert,array_flip(['label','message','severity']));
+        }
+        $alerts=self::advance($previous,$conditions,time());
         Cache::put(self::ALERTS,$alerts,604800);
         Cache::put(self::SNAPSHOT,$snapshot,604800);
         return $snapshot+['alerts'=>array_values($alerts)];

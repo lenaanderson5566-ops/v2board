@@ -34,7 +34,7 @@ try {
     NodeRuntimeService::record('v2node', $id, NodeConfiguration::build($node), 'v2');
     $state = NodeRuntimeService::inspect('v2node', $node);
     $assert($state['configurationState'] === 'provided' && $state['applicationState'] === 'unconfirmed');
-    $assert(count(Cache::get($key)) === 3 && !isset($state['hash']));
+    $assert(count(Cache::get($key)) === 4 && !isset($state['hash']));
     $node->server_port = 8443;
     $assert(NodeRuntimeService::inspect('v2node', $node)['configurationState'] === 'pending');
     NodeRuntimeService::record('v2node', $id, NodeConfiguration::build($node), 'v2');
@@ -69,6 +69,24 @@ try {
     Illuminate\Support\Facades\DB::beginTransaction();
     try {
         $settings->save(App\Services\ObservabilitySettings::DEFAULTS);
+        $maintenance=App\Services\NodeMaintenance::class;
+        $maintenance::save('v2node',$id,['enabled'=>true,'reason'=>'Test maintenance','endsAt'=>time()+3600,'hideSubscription'=>true]);
+        $policies=$maintenance::active();
+        $assert($maintenance::hidden($policies,'v2node',$id,null));
+        $assert($maintenance::hidden($policies,'v2node',$id-1,$id));
+        $assert(!$maintenance::hidden($policies,'v2box',$id,null));
+        $assert($servers->getAllServers()[0]['maintenance']['reason']==='Test maintenance');
+        $assert($servers->getAllServers()[0]['issues']===[]);
+        $assert(NodeRuntimeService::alertConditions($servers->getAllServers())===[]);
+        Illuminate\Support\Facades\DB::table('v2_node_maintenance')->where('node_id',$id)->update(['ends_at'=>time()-1]);
+        $assert(!$maintenance::hidden($maintenance::active(),'v2node',$id,null));
+        Cache::put($heartbeat,time()-400,3600);
+        $assert(isset(NodeRuntimeService::alertConditions($servers->getAllServers())['nodes:offline']));
+        $maintenance::save('v2node',$id,['enabled'=>false]);
+        $assert(!Illuminate\Support\Facades\DB::table('v2_node_maintenance')->where('node_id',$id)->exists());
+        try {$maintenance::save('v2node',$id,['enabled'=>true,'endsAt'=>time()-1]);$assert(false);}
+        catch (Symfony\Component\HttpKernel\Exception\HttpException $e) {$assert($e->getStatusCode()===422);}
+
         try {$settings->save(['sample_percent'=>101]);$assert(false);}
         catch (Illuminate\Validation\ValidationException $e) {$assert(true);}
         try {$settings->save(['unknown'=>1]);$assert(false);}
@@ -117,16 +135,27 @@ try {
         try {$middleware->handle($request,fn()=>throw new Illuminate\Auth\AuthenticationException());$assert(false);}
         catch (Illuminate\Auth\AuthenticationException $e) {$assert($collector->summary()['total']['errors']===0);}
         $healthMock=Mockery::mock(SystemHealthService::class);
-        $healthMock->shouldReceive('inspect')->once()->andReturn(['checks'=>[['key'=>'database','label'=>'Database','message'=>'Unavailable','status'=>'error']]]);
+        $healthMock->shouldReceive('inspect')->twice()->andReturn(['checks'=>[['key'=>'database','label'=>'Database','message'=>'Unavailable','status'=>'error']]]);
         app()->instance(SystemHealthService::class,$healthMock);
         $workload=Mockery::mock(Laravel\Horizon\Contracts\WorkloadRepository::class);
-        $workload->shouldReceive('get')->once()->andReturn([]);
+        $workload->shouldReceive('get')->twice()->andReturn([]);
         app()->instance(Laravel\Horizon\Contracts\WorkloadRepository::class,$workload);
         $jobs=Mockery::mock(Laravel\Horizon\Contracts\JobRepository::class);
-        $jobs->shouldReceive('countRecentlyFailed')->once()->andReturn(0);
+        $jobs->shouldReceive('countRecentlyFailed')->twice()->andReturn(0);
         app()->instance(Laravel\Horizon\Contracts\JobRepository::class,$jobs);
         $monitor->inspect();
         $assert($monitor->report()['stale']===false && $monitor->report()['alerts'][0]['state']==='pending');
+        $nodeCondition=['nodes:offline'=>['label'=>'节点通信中断','message'=>'test','severity'=>'critical']];
+        $prior=$monitor::advance([],$nodeCondition,time()-120);
+        $prior=$monitor::advance($prior,$nodeCondition,time()-60);
+        Cache::put($monitor::ALERTS,$prior,600);
+        $nodeProbe=Mockery::mock(App\Services\ServerService::class);
+        $nodeProbe->shouldReceive('getAllServers')->once()->andThrow(new RuntimeException('private backend error'));
+        app()->instance(App\Services\ServerService::class,$nodeProbe);
+        $failedProbe=$monitor->inspect();
+        $assert(collect($failedProbe['alerts'])->firstWhere('key','nodes:offline')['state']==='firing');
+        $assert(collect($failedProbe['alerts'])->firstWhere('key','nodes:probe')!==null && !str_contains(json_encode($failedProbe),'private backend error'));
+        app()->forgetInstance(App\Services\ServerService::class);
         Cache::put(App\Services\ObservabilityMonitor::SNAPSHOT,['checkedAt'=>time()-181],600);
         $assert($monitor->report()['stale']===true);
         $admin=App\Models\User::create(['email'=>'monitor-test@example.test','password'=>password_hash('test-only',PASSWORD_DEFAULT),'is_admin'=>1,'uuid'=>App\Utils\Helper::guid(true),'token'=>App\Utils\Helper::guid()]);

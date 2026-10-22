@@ -745,8 +745,8 @@
     "paymentReturn": "Vuelve aquí después de pagar para confirmar automáticamente. Si ya se cobró, no vuelvas a pagar. Este pedido seguirá disponible en Facturación.",
     "retryPayment": "Reinicia solo si no has pagado. Si ya se cobró, revisa el resultado o contacta con soporte para evitar pagar dos veces.",
     "startUsing": "Siguiente: abre Inicio rápido para descargar un cliente e importar tu suscripción. Los clientes existentes pueden actualizarla.",
-    "newTitle": "Bienvenido. Configura tu espacio de IA",
-    "newDetail": "Tu cuenta está lista. Elige un plan y configura tu dispositivo.",
+    "newTitle": "Tu cuenta está lista. Elige un plan.",
+    "newDetail": "Revisa el coste, completa el pago y sigue la guía de conexión de tu dispositivo.",
     "expiredTitle": "Tu plan ha caducado",
     "expiredDetail": "Renueva o elige otro plan para continuar. Tu cuenta y pedidos siguen accesibles.",
     "renew": "Renovar o elegir un plan",
@@ -774,7 +774,6 @@
     "registerClosed": "El registro está cerrado actualmente",
     "next": "Continuar",
     "verify": "Verifica tu correo",
-    "review": "Revisa tu cuenta",
     "edit": "Editar datos de la cuenta",
     "verifyHelp": "Introduce el código de 6 dígitos del correo. Revisa el correo no deseado o vuelve a enviarlo si es necesario.",
     "codeExpiry": "El código caduca en 5 minutos.",
@@ -813,7 +812,7 @@
     "refreshing": "Actualizando…",
     "manage": "Más opciones de suscripción",
     "nodes": "Detalles de conexión y servidores disponibles",
-    "stepAccount": "Datos de la cuenta",
+    "stepAccount": "Introduce tu correo y crea una contraseña.",
     "stepVerify": "Verificación de correo",
     "freeRegister": "Crear una cuenta es gratis. Los cargos se muestran antes de cualquier acción de pago.",
     "browserOther": "navegador integrado",
@@ -925,7 +924,6 @@
     "opened": "Abriendo tu cliente. Confirma allí la importación y actualiza; esta página no puede verificar el resultado. Si no se abre, instala el cliente o copia la suscripción."
   },
   "landing": {
-    "scrollToAuth": "Desplazarse para iniciar sesión",
     "inviteStart": "Unirse por invitación",
     "aiTitle": "Conéctate a tu mundo de IA",
     "aiIntro": "Herramientas conocidas. Más posibilidades.",
@@ -1002,7 +1000,11 @@
     "annual": "Equivale a {{price}} / mes, con facturación anual",
     "total": "Un solo pago por el período elegido",
     "save": "Ahorra {{percent}} % frente al pago mensual",
-    "fallback": "Disponible: {{period}}. Consulta otros períodos al pagar."
+    "catalogHint": "Elige un periodo de facturación y compara los planes. El precio es el total de ese periodo.",
+    "trafficVolume": "Datos incluidos",
+    "speedCap": "Límite de velocidad",
+    "setupAfterPayment": "Tras pagar, abre Conexión y descargas para obtener el cliente y la configuración.",
+    "speedValue": "{{value}} Mbps"
   },
   "profile": {
     "intro": "Consulta tu correo de acceso y gestiona el idioma y los servicios vinculados.",

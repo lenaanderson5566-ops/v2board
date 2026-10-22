@@ -77,10 +77,12 @@ try {
     $existingTarget=ServerV2box::create($base+['route_id'=>[]]);
     $source=ServerV2node::create(array_replace($base,['name'=>'conversion source','route_id'=>[$old->id],'tags'=>['keep'],'show'=>1]));
     $originalId=$source->id;$created=$source->created_at;
+    App\Services\NodeMaintenance::save('v2node',$originalId,['enabled'=>true,'reason'=>'转换维护','endsAt'=>time()+3600,'hideSubscription'=>true]);
     $sourceKey=App\Services\NodeCredentials::issue('v2node',$originalId,1);
     $converted=(new V2boxController())->save($request(array_replace($base,['source_type'=>'v2node','source_id'=>$originalId,'route_id'=>[$nativeId]])));
     $targetId=json_decode($converted->getContent(),true)['data']['id'];
     $target=ServerV2box::findOrFail($targetId);
+    $assert(isset(App\Services\NodeMaintenance::active()['v2box:'.$targetId]) && !isset(App\Services\NodeMaintenance::active()['v2node:'.$originalId]),'Maintenance follows conversion identity');
     $assert(App\Services\NodeCredentials::migrated('v2box',$targetId),'Conversion preserves no-global-fallback policy');
     $assert(DB::table('v2_node_credential')->where('id',$sourceKey['id'])->value('revoked_at')!==null,'Conversion revokes source credentials');
     $assert(!ServerV2node::find($originalId) && $target->route_id===[$nativeId], 'Conversion moves source and selects target rules');
@@ -94,5 +96,8 @@ try {
     $assert(ServerV2node::find($reverseId)!==null,'Rejected conversion retains original node');
     $reject(fn()=>(new V2boxController())->save($request($base+['source_type'=>'v2node','source_id'=>$reverseId,'id'=>$existingTarget->id])),'Source identity cannot be combined with target update ID');
     $reject(fn()=>(new V2nodeController())->save($request(array_replace($base,['protocol'=>'naive','source_type'=>'v2box','source_id'=>$existingTarget->id]))),'Unsupported target protocol rejected');
+    $child->delete();
+    (new V2nodeController())->drop($request(['id'=>$reverseId]));
+    $assert(!DB::table('v2_node_maintenance')->where('type','v2node')->where('node_id',$reverseId)->exists(),'Node deletion removes maintenance record');
     echo "PASS: $checks independent node routing checks\n";
 } finally { DB::rollBack(); }

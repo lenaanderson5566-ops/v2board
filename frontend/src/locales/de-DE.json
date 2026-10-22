@@ -745,8 +745,8 @@
     "paymentReturn": "Kehren Sie hierher zurück, nachdem Sie für die automatische Bestätigung bezahlt haben. Wenn eine Gebühr erhoben wird, zahlen Sie nicht erneut. Diese Bestellung bleibt in der Abrechnung verfügbar.",
     "retryPayment": "Starten Sie nur neu, wenn Sie nicht bezahlt haben. Wenn eine Gebühr erhoben wird, überprüfen Sie das Ergebnis oder wenden Sie sich an den Support, um Doppelzahlungen zu vermeiden.",
     "startUsing": "Als Nächstes: Öffnen Sie Quick Start, um einen Client herunterzuladen und Ihr Abonnement zu importieren. Bestehende Clients können ihr Abonnement aktualisieren.",
-    "newTitle": "Willkommen. Richten Sie Ihren KI-Arbeitsbereich ein",
-    "newDetail": "Ihr Konto ist bereit. Wählen Sie einen Tarif und konfigurieren Sie dann Ihr Gerät.",
+    "newTitle": "Dein Konto ist bereit. Wähle einen Tarif.",
+    "newDetail": "Prüfe den Betrag, schließe die Zahlung ab und folge der Einrichtungsanleitung für dein Gerät.",
     "expiredTitle": "Ihr Tarif ist abgelaufen",
     "expiredDetail": "Erneuern Sie den Tarif oder wählen Sie einen neuen Tarif, um fortzufahren. Ihr Konto und Ihre Bestellungen bleiben weiterhin zugänglich.",
     "renew": "Tarif verlängern oder auswählen",
@@ -774,7 +774,6 @@
     "registerClosed": "Die Registrierung ist derzeit geschlossen",
     "next": "Weiter",
     "verify": "Bestätigen Sie Ihre E-Mail",
-    "review": "Überprüfen Sie Ihr Konto",
     "edit": "Kontodetails bearbeiten",
     "verifyHelp": "Geben Sie den 6-stelligen E-Mail-Code ein. Überprüfen Sie den Spam oder senden Sie ihn bei Bedarf erneut.",
     "codeExpiry": "Der Code läuft in 5 Minuten ab.",
@@ -813,7 +812,7 @@
     "refreshing": "Aktualisierung…",
     "manage": "Weitere Abonnementoptionen",
     "nodes": "Verbindungsdetails und verfügbare Server",
-    "stepAccount": "Kontodetails",
+    "stepAccount": "Gib deine E-Mail-Adresse ein und lege ein Passwort fest.",
     "stepVerify": "E-Mail-Verifizierung",
     "freeRegister": "Das Erstellen eines Kontos ist kostenlos. Gebühren werden vor jeder bezahlten Aktion angezeigt.",
     "browserOther": "In-App-Browser",
@@ -925,7 +924,6 @@
     "opened": "Öffnen Sie Ihren Client. Bestätigen Sie dort den Import und die Aktualisierung; Diese Seite kann den Erfolg nicht überprüfen. Wenn es nicht geöffnet wird, installieren Sie den Client oder kopieren Sie das Abonnement."
   },
   "landing": {
-    "scrollToAuth": "Scrollen Sie, um sich anzumelden",
     "inviteStart": "Treten Sie auf Einladung bei",
     "aiTitle": "Verbinde dich mit deiner KI-Welt",
     "aiIntro": "Vertraute Werkzeuge. Mehr Möglichkeiten.",
@@ -1002,7 +1000,11 @@
     "annual": "Entspricht {{price}} / Monat, jährliche Abrechnung",
     "total": "Eine Zahlung für den ausgewählten Zeitraum",
     "save": "Sparen Sie {{percent}} % gegenüber monatlichen Zahlungen",
-    "fallback": "Verfügbar: {{period}}. Weitere Zeiträume finden Sie an der Kasse."
+    "catalogHint": "Wähle einen Abrechnungszeitraum und vergleiche die Tarife. Angezeigt wird der Gesamtpreis für diesen Zeitraum.",
+    "trafficVolume": "Datenvolumen",
+    "speedCap": "Geschwindigkeitslimit",
+    "setupAfterPayment": "Öffne nach der Zahlung Verbindung und Downloads, um Client und Konfiguration zu erhalten.",
+    "speedValue": "{{value}} Mbps"
   },
   "profile": {
     "intro": "Sehen Sie sich Ihre Anmelde-E-Mail an und verwalten Sie Ihre Sprache und verbundene Dienste.",

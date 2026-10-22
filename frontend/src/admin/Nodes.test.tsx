@@ -572,3 +572,49 @@ it("prevents duplicate node copies and restores actions after a failed request",
     await screen.findByText("复制失败，请重试");
     expect((button as HTMLButtonElement).disabled).toBe(false);
 });
+
+it("filters actionable nodes separately from maintenance and opens unified details", async () => {
+    api.request.mockImplementation(async (path: string) => {
+        if (path.endsWith("dictionary/fetch")) return adminPageFixture(path);
+        if (path.endsWith("server/manage/getNodes"))
+            return {
+                data: [
+                    {
+                        id: 1,
+                        name: "异常节点甲",
+                        type: "v2box",
+                        issues: ["configuration_failed"],
+                        runtime_status: "online",
+                    },
+                    {
+                        id: 2,
+                        name: "维护节点乙",
+                        type: "v2box",
+                        issues: [],
+                        maintenance: { active: true },
+                    },
+                    { id: 3, name: "正常节点丙", type: "v2box", issues: [] },
+                ],
+            };
+        if (path.includes("server/manage/runtime"))
+            return {
+                data: {
+                    configurationState: "provided",
+                    applicationState: "failed",
+                    errorCode: "core",
+                    receiptSupported: true,
+                },
+            };
+        return { data: [] };
+    });
+    render(<Nodes />);
+    await screen.findByRole("button", { name: "异常节点甲" });
+    fireEvent.click(screen.getByLabelText("仅显示异常节点"));
+    expect(screen.queryByRole("button", { name: "维护节点乙" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "正常节点丙" })).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "异常节点甲" }));
+    expect(
+        await screen.findByRole("dialog", { name: "节点详情 · 异常节点甲" }),
+    ).toBeTruthy();
+    expect(await screen.findByText("内核配置校验失败")).toBeTruthy();
+});

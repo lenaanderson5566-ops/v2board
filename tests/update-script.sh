@@ -275,6 +275,7 @@ grep -q 'migrate --path=database/migrations/2026_10_19_000002_create_passkeys.ph
 grep -q 'migrate --path=database/migrations/2026_10_20_000001_create_node_dictionary.php --force --no-interaction' calls.log
 grep -q 'migrate --path=database/migrations/2026_10_21_000001_create_node_target_snapshots.php --force --no-interaction' calls.log
 grep -q 'migrate --path=database/migrations/2026_10_21_000002_create_node_target_daily.php --force --no-interaction' calls.log
+grep -q 'migrate --path=database/migrations/2026_10_22_000001_create_node_maintenance.php --force --no-interaction' calls.log
 grep -q 'migrate --path=database/migrations/2026_10_21_000003_index_dashboard_financial.php --force --no-interaction' calls.log
 
 grep -q 'migrate --path=database/migrations/2026_10_20_000002_create_client_recognition.php --force --no-interaction' calls.log

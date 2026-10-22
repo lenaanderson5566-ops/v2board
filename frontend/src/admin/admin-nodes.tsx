@@ -2,7 +2,7 @@ import { NodeDictionaryProvider } from "./node-dictionary";
 import { NodeDeployment } from "./NodeDeployment";
 import { AdminChoiceGroup } from "./AdminChoices";
 import { AdminDisplaySettings } from "./AdminDisplaySettings";
-import { field, nameColumn } from "./admin-fields";
+import { field } from "./admin-fields";
 import { useEffect, useRef, useState, type ComponentProps } from "react";
 import nodeLocations from "../../../resources/client/node-countries.json";
 import {
@@ -26,7 +26,11 @@ import {
     type Field,
 } from "../shared/ui";
 import { AdminDDNS } from "./AdminDDNS";
-import { NodeDiagnostics, nodeRuntimeLabels } from "./AdminDiagnostics";
+import {
+    NodeDiagnostics,
+    nodeRuntimeLabels,
+    nodeIssueLabels,
+} from "./AdminDiagnostics";
 import { AdminLightsail } from "./AdminLightsail";
 import { ServerTrafficBudgets } from "./ServerTrafficBudgets";
 import { sortPayload } from "./admin-actions";
@@ -68,6 +72,8 @@ function NodesContent({
     const [statusFilter, setStatusFilter] = useState("");
     const [nodeSearch, setNodeSearch] = useState("");
     const [backendFilter, setBackendFilter] = useState("");
+    const [onlyIssues, setOnlyIssues] = useState(false);
+    const [onlyMaintenance, setOnlyMaintenance] = useState(false);
     const [quotaFilter, setQuotaFilter] = useState(false);
 
     const groups = useData<Row[]>(admin("server/group/fetch"));
@@ -79,12 +85,16 @@ function NodesContent({
     const actionPending = useRef(false);
     const [actionBusy, setActionBusy] = useState(false);
     async function nodeAction(row: Row, kind: "copy" | "drop") {
-        if (actionPending.current || (kind === "drop" && !confirm(`确认删除节点「${row.name}」？`))) return;
+        if (
+            actionPending.current ||
+            (kind === "drop" && !confirm(`确认删除节点「${row.name}」？`))
+        )
+            return;
         actionPending.current = true;
         setActionBusy(true);
         setError("");
         try {
-            await request(admin(`server/${row.type}/${kind}`), {id: row.id});
+            await request(admin(`server/${row.type}/${kind}`), { id: row.id });
             d.reload();
         } catch (error) {
             setError((error as Error).message);
@@ -117,6 +127,8 @@ function NodesContent({
     const nodeRows = rows(d.data);
     const filteredNodes = nodeRows.filter(
         (n) =>
+            (!onlyIssues || !!n.issues?.length) &&
+            (!onlyMaintenance || !!n.maintenance) &&
             (!backendFilter || n.type === backendFilter) &&
             (!statusFilter ||
                 (n.runtime_status || "unknown") === statusFilter) &&
@@ -128,7 +140,27 @@ function NodesContent({
 
     const columns: ComponentProps<typeof Table>["columns"] = [
         ["id", "ID"],
-        nameColumn,
+        [
+            "name",
+            "名称",
+            (r) => (
+                <button className="link" onClick={() => setDiagnosticNode(r)}>
+                    {r.name}
+                </button>
+            ),
+        ],
+        [
+            "management",
+            "管理状态",
+            (r) =>
+                r.maintenance
+                    ? "维护中"
+                    : r.issues?.length
+                      ? r.issues
+                            .map((key: string) => nodeIssueLabels[key] || key)
+                            .join(" · ")
+                      : "—",
+        ],
         ["type", "类型"],
         ["protocol", "协议"],
         [
@@ -244,6 +276,23 @@ function NodesContent({
                 <NodeDiagnostics
                     node={diagnosticNode}
                     close={() => setDiagnosticNode(null)}
+                    onSaved={d.reload}
+                    deploy={() => {
+                        const target = diagnosticNode.parent_id
+                            ? nodeRows.find(
+                                  (n) =>
+                                      n.type === diagnosticNode.type &&
+                                      Number(n.id) ===
+                                          Number(diagnosticNode.parent_id),
+                              )
+                            : diagnosticNode;
+                        if (!target) {
+                            setError("父节点不可用，请先检查节点配置");
+                            return;
+                        }
+                        setDiagnosticNode(null);
+                        setCredentialNode(target);
+                    }}
                 />
             )}
             {savedNodeNotice && (
@@ -309,7 +358,15 @@ function NodesContent({
                         </>
                     }
                 >
-                    {actionBusy && <div className="admin-refresh-note" role="status" data-saving="true">正在提交节点操作…</div>}
+                    {actionBusy && (
+                        <div
+                            className="admin-refresh-note"
+                            role="status"
+                            data-saving="true"
+                        >
+                            正在提交节点操作…
+                        </div>
+                    )}
                     <State {...d} retry={d.reload}>
                         {error && <div className="alert">{error}</div>}
                         <div
@@ -321,22 +378,20 @@ function NodesContent({
                                 <strong>{nodeRows.length}</strong>
                             </div>
                             <div>
-                                <span>V2Node</span>
+                                <span>异常节点</span>
                                 <strong>
                                     {
-                                        nodeRows.filter(
-                                            (n) => n.type === "v2node",
-                                        ).length
+                                        nodeRows.filter((n) => n.issues?.length)
+                                            .length
                                     }
                                 </strong>
                             </div>
                             <div>
-                                <span>V2Box</span>
+                                <span>维护中</span>
                                 <strong>
                                     {
-                                        nodeRows.filter(
-                                            (n) => n.type === "v2box",
-                                        ).length
+                                        nodeRows.filter((n) => n.maintenance)
+                                            .length
                                     }
                                 </strong>
                             </div>
@@ -403,6 +458,26 @@ function NodesContent({
                                 />
                                 仅显示额度受限节点
                             </label>
+                            <label className="node-quota-filter">
+                                <input
+                                    type="checkbox"
+                                    checked={onlyIssues}
+                                    onChange={(e) =>
+                                        setOnlyIssues(e.target.checked)
+                                    }
+                                />
+                                仅显示异常节点
+                            </label>
+                            <label className="node-quota-filter">
+                                <input
+                                    type="checkbox"
+                                    checked={onlyMaintenance}
+                                    onChange={(e) =>
+                                        setOnlyMaintenance(e.target.checked)
+                                    }
+                                />
+                                仅显示维护中节点
+                            </label>
                             <span className="muted">
                                 显示 {filteredNodes.length} / {nodeRows.length}{" "}
                                 个节点
@@ -462,8 +537,19 @@ function NodesContent({
                                     >
                                         编辑
                                     </button>
-                                    <button disabled={actionBusy || d.loading} onClick={() => nodeAction(r, "copy")}>复制</button>
-                                    <button className="danger" disabled={actionBusy || d.loading} onClick={() => nodeAction(r, "drop")}>删除</button>
+                                    <button
+                                        disabled={actionBusy || d.loading}
+                                        onClick={() => nodeAction(r, "copy")}
+                                    >
+                                        复制
+                                    </button>
+                                    <button
+                                        className="danger"
+                                        disabled={actionBusy || d.loading}
+                                        onClick={() => nodeAction(r, "drop")}
+                                    >
+                                        删除
+                                    </button>
                                 </>
                             )}
                         />

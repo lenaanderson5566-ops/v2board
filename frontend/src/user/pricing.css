@@ -36,6 +36,16 @@
 .app.user .pricing-card-heading .badge {
     flex-shrink: 0;
 }
+.app.user .pricing-guide,
+.app.user .pricing-total-note,
+.app.user .pricing-help { color: var(--text-secondary); line-height: 1.6; }
+.app.user .pricing-total-note { font-size: 12px; margin: 0 0 8px; }
+.app.user .pricing-specs { display: grid; gap: 8px; margin: 16px 0 0; padding-block: 12px; border-block: 1px solid var(--border); font-size: 13px; }
+.app.user .pricing-specs:empty { display: none; }
+.app.user .pricing-specs > div { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; }
+.app.user .pricing-specs dt { color: var(--text-secondary); }
+.app.user .pricing-specs dd { margin: 0; font-weight: 600; text-align: end; font-variant-numeric: tabular-nums; }
+.app.user .pricing-help { display: flex; flex-wrap: wrap; gap: 8px 16px; margin: 20px 0 0; font-size: 13px; }
 .app.user .pricing-summary {
     min-height: 72px;
     padding-block: 12px;
@@ -69,7 +79,8 @@
 .app.user .pricing-toolbar {
     display: flex;
     align-items: center;
-    justify-content: flex-end;
+    justify-content: space-between;
+    flex-wrap: wrap;
     gap: 12px;
     margin-bottom: 12px;
 }
@@ -99,9 +110,7 @@
         justify-content: center;
         margin-bottom: 12px;
     }
-    .app.user .pricing-toolbar p {
-        display: none;
-    }
+    .app.user .pricing-toolbar p { width: 100%; }
     .app.user .mobile-plan-picker {
         display: flex;
         gap: 8px;
@@ -208,7 +217,7 @@
     min-height: 44px;
 }
 .app.user .pricing-summary .plan-price {
-    white-space: nowrap;
+    overflow-wrap: anywhere;
 }
 @media (max-width: 700px) {
     .app.user main:has(.subscription-catalog) {

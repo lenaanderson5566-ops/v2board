@@ -60,7 +60,14 @@ class NodeController extends Controller {
     }
     public function capabilities(Request $request) {
         $node = $this->node($request);
-        $data = $request->validate(['coreVersion'=>'required|string|max:80', 'features'=>'present|array|max:32', 'features.*'=>'required|string|max:80|distinct']);
+        $data = $request->validate(['coreVersion'=>'required|string|max:80', 'features'=>'present|array|max:32', 'features.*'=>'required|string|max:80|distinct',
+            'configuration'=>'sometimes|array:hash,state,errorCode','configuration.hash'=>'required_with:configuration|string|regex:/^[a-f0-9]{64}$/',
+            'configuration.state'=>'required_with:configuration|in:applied,failed','configuration.errorCode'=>'required_if:configuration.state,failed|in:decode,core,users,certificate,start'
+        ]);
+        if (isset($data['configuration'])) {
+            \App\Services\NodeRuntimeService::receipt((int)$node->id,$data['configuration']);
+            unset($data['configuration']);
+        }
         $data['reportedAt'] = gmdate('Y-m-d\TH:i:s\Z');
         Cache::put(\App\Utils\CacheKey::get('SERVER_V2BOX_LAST_CHECK_AT', $node->id), time(), 3600);
         Cache::put('V2BOX_CAPABILITIES:'.$node->id, $data, 86400);

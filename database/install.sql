@@ -821,3 +821,13 @@ CREATE TABLE IF NOT EXISTS `v2_node_target_daily` (
  `upload_bytes` bigint unsigned NOT NULL, `download_bytes` bigint unsigned NOT NULL, `total_bytes` bigint unsigned NOT NULL,
  `expires_at` bigint unsigned NOT NULL, KEY `target_daily_expiry` (`expires_at`), KEY `target_daily_lookup` (`node_id`,`day_at`,`total_bytes`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS `v2_node_maintenance` (
+  `type` varchar(16) NOT NULL,
+  `node_id` int unsigned NOT NULL,
+  `reason` varchar(200) NOT NULL DEFAULT '',
+  `hide_subscription` tinyint(1) NOT NULL DEFAULT 0,
+  `ends_at` int unsigned NOT NULL,
+  `updated_at` int unsigned NOT NULL,
+  PRIMARY KEY (`type`, `node_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;

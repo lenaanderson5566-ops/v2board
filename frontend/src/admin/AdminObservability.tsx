@@ -132,6 +132,11 @@ export function AdminObservability() {
                                     {states[alert.state] || alert.state}
                                 </strong>
                                 <p>{alert.message}</p>
+                                {String(alert.key).startsWith("nodes:") && (
+                                    <p>
+                                        <a href="#/nodes">查看节点</a>
+                                    </p>
+                                )}
                                 <small>
                                     首次发现：{adminInstant(alert.firstSeenAt)}
                                     {alert.resolvedAt
@@ -185,7 +190,11 @@ export function AdminObservability() {
                             </>
                         )}
                         <h3>接口耗时与慢查询</h3>
-                        <p className="muted">服务端耗时不含网络传输；P95 为分桶估计。慢查询仅记录次数与耗时，不保存 SQL 或参数；展示慢请求最多的 50 个接口。</p>
+                        <p className="muted">
+                            服务端耗时不含网络传输；P95
+                            为分桶估计。慢查询仅记录次数与耗时，不保存 SQL
+                            或参数；展示慢请求最多的 50 个接口。
+                        </p>
                         <Table
                             data={metrics.routes}
                             columns={[
@@ -214,7 +223,10 @@ export function AdminObservability() {
                         <h3>前端资源体积</h3>
                         {report?.assets ? (
                             <>
-                                <p className="muted">当前部署资源体积；gzip 为构建估算，首屏不含按需加载页面。</p>
+                                <p className="muted">
+                                    当前部署资源体积；gzip
+                                    为构建估算，首屏不含按需加载页面。
+                                </p>
                                 {(report.assets.warnings || []).map(
                                     (warning: string) => (
                                         <p className="alert" key={warning}>
@@ -270,7 +282,10 @@ export function AdminObservability() {
                             save();
                         }}
                     >
-                        <p className="muted">调整采样或阈值后重新累计请求样本，不采集 SQL 文本、请求参数或用户身份。</p>
+                        <p className="muted">
+                            调整采样或阈值后重新累计请求样本，不采集 SQL
+                            文本、请求参数或用户身份。
+                        </p>
                         {fields.map(([key, label, min, max]) => (
                             <label key={key}>
                                 {label}

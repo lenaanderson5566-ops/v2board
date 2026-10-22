@@ -120,8 +120,6 @@ describe("user account steps", () => {
         fireEvent.change(screen.getByLabelText("密码", { exact: true }), {
             target: { value: "A-long-test-phrase!23" },
         });
-        fireEvent.click(screen.getByRole("button", { name: "next" }));
-        await screen.findByRole("heading", { name: "review" });
         fireEvent.click(screen.getByRole("button", { name: "注册账户" }));
         await waitFor(() =>
             expect(mocks.request).toHaveBeenCalledWith(
@@ -208,12 +206,10 @@ describe("user account steps", () => {
                 .value,
         ).toBe("A-long-test-phrase!23");
     });
-    it("offers account review without sending mail when email verification is disabled", async () => {
+    it("creates an account in one step without sending mail when verification is disabled", async () => {
         mocks.boot.emailVerify = false;
         page();
         credentials();
-        fireEvent.click(screen.getByRole("button", { name: "next" }));
-        await screen.findByRole("heading", { name: "review" });
         expect(mocks.request).not.toHaveBeenCalled();
         fireEvent.click(screen.getByRole("button", { name: "注册账户" }));
         await waitFor(() =>
@@ -260,8 +256,6 @@ describe("user account steps", () => {
         });
         const { onLogin } = page();
         credentials();
-        fireEvent.click(screen.getByRole("button", { name: "next" }));
-        await screen.findByRole("heading", { name: "review" });
         fireEvent.click(screen.getByRole("button", { name: "注册账户" }));
         await screen.findByRole("alert");
         fireEvent.click(screen.getByRole("button", { name: "登录" }));
@@ -392,4 +386,35 @@ it("keeps the invited address locked instead of offering a domain selector", () 
     expect(
         (screen.getByLabelText("邮箱地址") as HTMLInputElement).readOnly,
     ).toBe(true);
+});
+
+
+it("keeps required terms on single-step registration and preserves the purchase destination", async () => {
+    mocks.boot.emailVerify = false;
+    mocks.boot.tosUrl = "https://example.test/terms";
+    page("register", "plan");
+    credentials();
+    const terms = screen.getByRole("checkbox") as HTMLInputElement;
+    expect(terms.required).toBe(true);
+    expect(terms.checkValidity()).toBe(false);
+    expect(screen.queryByText("1 / 2")).toBeNull();
+    expect(screen.getByRole("link", { name: "服务条款" }).getAttribute("href")).toBe(mocks.boot.tosUrl);
+    fireEvent.click(terms);
+    expect(terms.checkValidity()).toBe(true);
+    fireEvent.click(screen.getByRole("button", { name: "注册账户" }));
+    await waitFor(() => expect(mocks.navigate).toHaveBeenCalledWith("plan"));
+    expect(mocks.request.mock.calls.some(([path]) => path === "passport/comm/sendEmailVerify")).toBe(false);
+});
+it("prevents repeated submission while single-step registration is in flight", async () => {
+    mocks.boot.emailVerify = false;
+    let complete!: (value: any) => void;
+    mocks.request.mockImplementationOnce(() => new Promise((resolve) => { complete = resolve; }));
+    page();
+    credentials();
+    const form = document.querySelector("form")!;
+    fireEvent.submit(form);
+    fireEvent.submit(form);
+    expect(mocks.request).toHaveBeenCalledTimes(1);
+    complete({ data: true });
+    await waitFor(() => expect(mocks.navigate).toHaveBeenCalledWith("dashboard"));
 });

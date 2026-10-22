@@ -745,8 +745,8 @@
     "paymentReturn": "Kembali ke sini setelah membayar untuk konfirmasi otomatis. Jika dikenakan, jangan membayar lagi. Pesanan ini tetap tersedia di Penagihan.",
     "retryPayment": "Mulai ulang hanya jika Anda belum membayar. Jika dikenakan biaya, periksa hasilnya atau hubungi dukungan untuk menghindari pembayaran dua kali.",
     "startUsing": "Selanjutnya: buka Mulai Cepat untuk mengunduh klien dan mengimpor langganan Anda. Klien yang sudah ada dapat menyegarkan langganan mereka.",
-    "newTitle": "Selamat datang. Siapkan ruang kerja AI Anda",
-    "newDetail": "Akun Anda sudah siap. Pilih paket, lalu konfigurasikan perangkat Anda.",
+    "newTitle": "Akun Anda siap. Pilih paket.",
+    "newDetail": "Periksa biaya, selesaikan pembayaran, lalu ikuti panduan koneksi untuk perangkat Anda.",
     "expiredTitle": "Paketmu telah habis masa berlakunya",
     "expiredDetail": "Perbarui atau pilih paket baru untuk melanjutkan. Akun dan pesanan Anda tetap dapat diakses.",
     "renew": "Perbarui atau pilih paket",
@@ -774,7 +774,6 @@
     "registerClosed": "Pendaftaran sedang ditutup",
     "next": "Lanjutkan",
     "verify": "Verifikasi email Anda",
-    "review": "Tinjau akun Anda",
     "edit": "Edit detail akun",
     "verifyHelp": "Masukkan 6 digit kode email. Periksa spam atau kirim ulang jika diperlukan.",
     "codeExpiry": "Kode kedaluwarsa dalam 5 menit.",
@@ -813,7 +812,7 @@
     "refreshing": "Memperbarui…",
     "manage": "Opsi berlangganan lainnya",
     "nodes": "Detail koneksi dan server yang tersedia",
-    "stepAccount": "Detail akun",
+    "stepAccount": "Masukkan email dan buat kata sandi.",
     "stepVerify": "Verifikasi email",
     "freeRegister": "Membuat akun itu gratis. Tagihan ditampilkan sebelum tindakan berbayar apa pun.",
     "browserOther": "browser dalam aplikasi",
@@ -925,7 +924,6 @@
     "opened": "Membuka klien Anda. Konfirmasikan impor dan perbarui di sana; halaman ini tidak dapat memverifikasi keberhasilan. Jika tidak terbuka, instal klien atau salin langganannya."
   },
   "landing": {
-    "scrollToAuth": "Gulir untuk masuk",
     "inviteStart": "Bergabung karena undangan",
     "aiTitle": "Terhubung ke dunia AI Anda",
     "aiIntro": "Alat yang familier. Lebih banyak kemungkinan.",
@@ -1002,7 +1000,11 @@
     "annual": "Setara dengan {{price}} / bulan, ditagih setiap tahun",
     "total": "Satu pembayaran untuk periode yang dipilih",
     "save": "Hemat {{percent}}% vs. pembayaran bulanan",
-    "fallback": "Tersedia: {{period}}. Lihat periode lain saat checkout."
+    "catalogHint": "Pilih periode tagihan, lalu bandingkan paket. Harga yang ditampilkan adalah total untuk periode tersebut.",
+    "trafficVolume": "Kuota data",
+    "speedCap": "Batas kecepatan",
+    "setupAfterPayment": "Setelah membayar, buka Koneksi dan unduhan untuk mendapatkan klien dan konfigurasi.",
+    "speedValue": "{{value}} Mbps"
   },
   "profile": {
     "intro": "Lihat email masuk Anda dan kelola bahasa serta layanan terhubung Anda.",

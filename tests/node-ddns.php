@@ -334,6 +334,29 @@ try {
     $eid=$net->entry($req(['server_id'=>$ingress,'credential_id'=>$cid,'prefix'=>'entry','family'=>'ipv4']))['data']['id'];
     $entry=DB::table('v2_node_ddns')->find($eid);
     $assert($entry->purpose==='entry' && $entry->server_id===$ingress,'entry belongs to physical ingress server');
+    // New server, quota and optional ingress are created atomically.
+    $serverCount=DB::table('v2_network_server')->count();$quotaCount=DB::table('v2_server_traffic_budget')->count();$assignmentCount=DB::table('v2_node_ddns')->count();
+    $combined=['name'=>'Combined ingress','family'=>'dual','enabled'=>true,'traffic'=>['limitBytes'=>4096,'countingMode'=>'both','resetDay'=>5],'entry'=>['credential_id'=>$cid,'prefix'=>'combined-entry','family'=>'ipv4']];
+    $combinedResult=$net->save($req($combined))['data'];$combinedEntry=DB::table('v2_node_ddns')->find($combinedResult['entryId']);
+    $assert($combinedEntry && $combinedEntry->server_id===$combinedResult['id'] && $combinedEntry->domain==='combined-entry.example.test','one save creates an entry fixed to the new physical server');
+    $assert($combinedEntry->purpose==='entry' && $combinedEntry->family==='ipv4' && $combinedEntry->status==='awaiting_report','combined entry remains pending IP reporting, not falsely ready');
+    $assert((int)DB::table('v2_server_traffic_budget')->where('network_server_id',$combinedResult['id'])->value('limit_bytes')===4096,'combined create retains physical quota');
+    $assert(DB::table('v2_network_server')->count()===$serverCount+1 && DB::table('v2_node_ddns')->count()===$assignmentCount+1,'combined request creates exactly one server and one entry');
+    $quotaCount++;$serverCount++;$assignmentCount++;
+    foreach([
+        array_replace($combined,['name'=>'Duplicate entry']),
+        array_replace($combined,['family'=>'ipv4','entry'=>['credential_id'=>$cid,'prefix'=>'wrong-family','family'=>'ipv6']]),
+        array_replace($combined,['entry'=>['credential_id'=>9999999,'prefix'=>'missing-root','family'=>'ipv4']]),
+        array_replace($combined,['entry'=>['credential_id'=>$cid,'prefix'=>'bad;prefix','family'=>'ipv4']])
+    ] as $invalid){
+        $reject(fn()=>$net->save($req($invalid)),$invalid['name']==='Duplicate entry'?409:422);
+        $assert(DB::table('v2_network_server')->count()===$serverCount && DB::table('v2_server_traffic_budget')->count()===$quotaCount && DB::table('v2_node_ddns')->count()===$assignmentCount,'entry failure rolls back server, quota and entry together');
+    }
+    $reject(fn()=>$net->save($req(array_replace($combined,['enabled'=>false]))),422);
+    $reject(fn()=>$net->save($req(array_replace($combined,['id'=>$combinedResult['id']]))),422);
+    $reject(fn()=>$net->save($req(array_replace($combined,['entry'=>[]]))),422);
+    $reject(fn()=>$net->save($req(array_replace($combined,['entry'=>$combined['entry']+['server_id'=>$ingress]]))),422);
+
     $tls=['cert_mode'=>'dns','provider'=>'cloudflare','dns_env'=>['CF_DNS_API_TOKEN'=>'test-only-acme'],'server_name'=>'old-cert.example.test'];
     $relay=App\Models\ServerV2box::create(array_replace($base,['host'=>'old-relay.example.test','tls'=>1,'tls_settings'=>$tls,'server_port'=>9443]));
     $relay2=App\Models\ServerV2box::create(array_replace($base,['host'=>'old-relay2.example.test','tls'=>1,'tls_settings'=>$tls,'server_port'=>9444]));

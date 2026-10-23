@@ -10,17 +10,20 @@ use Illuminate\Support\Facades\DB;
 
 final class NetworkServerController extends Controller {
     public function save(Request $request) {
-        $v=$request->validate(['id'=>'nullable|integer|min:1','name'=>'required|string|max:100','family'=>'required|in:ipv4,ipv6,dual','enabled'=>'required|boolean','traffic'=>'sometimes|array:limitBytes,countingMode,resetDay','traffic.limitBytes'=>'required_with:traffic|integer|min:0|max:9007199254740991','traffic.countingMode'=>'required_with:traffic|in:upload,download,both','traffic.resetDay'=>'required_with:traffic|integer|min:1|max:28']);
+        $v=$request->validate(['id'=>'nullable|integer|min:1','name'=>'required|string|max:100','family'=>'required|in:ipv4,ipv6,dual','enabled'=>'required|boolean','traffic'=>'sometimes|array:limitBytes,countingMode,resetDay','traffic.limitBytes'=>'required_with:traffic|integer|min:0|max:9007199254740991','traffic.countingMode'=>'required_with:traffic|in:upload,download,both','traffic.resetDay'=>'required_with:traffic|integer|min:1|max:28','entry'=>'sometimes|array:credential_id,prefix,family|required_array_keys:credential_id,prefix,family','entry.credential_id'=>'required_with:entry|integer|min:1','entry.prefix'=>'required_with:entry|string|max:63','entry.family'=>'required_with:entry|in:ipv4,ipv6,dual']);
         return NodeDnsLifecycle::locked(fn()=>DB::transaction(function()use($v){
             $old=isset($v['id'])?DB::table('v2_network_server')->find($v['id']):null;
             abort_if(isset($v['id']) && !$old,404);
             abort_if(!$old && DB::table('v2_network_server')->count()>=1000,422,'最多维护 1000 台服务器');
             abort_if($old && $old->family!==$v['family'] && DB::table('v2_node_ddns')->where('server_id',$old->id)->exists(),409,'请先调整关联域名，再更改服务器地址类型');
-            $traffic=$v['traffic']??null;unset($v['id'],$v['traffic']);
+            $traffic=$v['traffic']??null;$entry=$v['entry']??null;
+            abort_if($entry && ($old || !$v['enabled']),422,'请在启用的新服务器配置入口；已有服务器请在详情管理入口域名');
+            unset($v['id'],$v['traffic'],$v['entry']);
             $id=$old?$old->id:DB::table('v2_network_server')->insertGetId($v);
             if ($old) DB::table('v2_network_server')->where('id',$id)->update($v);
             if($traffic) \App\Services\NetworkServerTraffic::save((int)$id,$traffic);
-            return ['data'=>['id'=>$id]];
+            $entryId=$entry?$this->saveEntry($entry+['server_id'=>(int)$id])['data']['id']:null;
+            return ['data'=>['id'=>$id,'entryId'=>$entryId]];
         }));
     }
     public function traffic(Request $request) {
@@ -54,22 +57,24 @@ final class NetworkServerController extends Controller {
     }
     public function entry(Request $request) {
         $v=$request->validate(['id'=>'nullable|integer|min:1','server_id'=>'required|integer|min:1','credential_id'=>'required|integer|min:1','prefix'=>'required|string|max:63','family'=>'required|in:ipv4,ipv6,dual']);
-        return NodeDnsLifecycle::locked(fn()=>DB::transaction(function()use($v){
-            $c=DB::table('v2_ddns_credential')->find($v['credential_id']);
-            abort_unless($c && $c->root_domain,422,'请先维护 Cloudflare 根域名');
-            $old=isset($v['id'])?DB::table('v2_node_ddns')->find($v['id']):null;
-            abort_if(isset($v['id']) && (!$old || $old->purpose!=='entry'),404);
-            abort_if($old && (DB::table('v2_node_ddns')->where('entry_id',$old->id)->exists() || \App\Services\NodeConnection::referencesEntry($old->id)),409,'正在使用的入口请新增域名后逐个验证切换，避免影响共享节点');
-            $domain=NodeDnsLifecycle::name(strtolower($v['prefix']),$c->root_domain);
-            abort_if(DB::table('v2_node_ddns')->where('domain',$domain)->where('id','!=',$old->id??0)->exists() || DB::table('v2_node_dns_record')->where('domain',$domain)->where('assignment_id','!=',$old->id??0)->exists(),409,'域名已被使用或仍在清理中');
-            abort_if(DB::table('v2_node_ddns')->where('server_id',$v['server_id'])->where('id','!=',$old->id??0)->count()>=100,422,'一台服务器最多关联 100 个域名');
-            if ($old && $old->domain!==$domain) NodeDnsLifecycle::retire($old->id);
-            $data=['credential_id'=>$c->id,'domain'=>$domain,'family'=>$v['family'],'purpose'=>'entry','node_type'=>'entry','enabled'=>true,'managed'=>true,'next_run'=>0,'status'=>'awaiting_report','published_domain'=>$domain];
-            $id=$old?$old->id:DB::table('v2_node_ddns')->insertGetId($data+['node_id'=>0]);
-            DB::table('v2_node_ddns')->where('id',$id)->update($data+['node_id'=>$id]);
-            NetworkServer::attach($id,$v['server_id']);
-            return ['data'=>['id'=>$id]];
-        }));
+        return NodeDnsLifecycle::locked(fn()=>DB::transaction(fn()=>$this->saveEntry($v)));
+    }
+    /** Caller owns the lifecycle lock and transaction; never acquire it recursively. */
+    private function saveEntry(array $v): array {
+        $c=DB::table('v2_ddns_credential')->find($v['credential_id']);
+        abort_unless($c && $c->root_domain,422,'请先维护 Cloudflare 根域名');
+        $old=isset($v['id'])?DB::table('v2_node_ddns')->find($v['id']):null;
+        abort_if(isset($v['id']) && (!$old || $old->purpose!=='entry'),404);
+        abort_if($old && (DB::table('v2_node_ddns')->where('entry_id',$old->id)->exists() || \App\Services\NodeConnection::referencesEntry($old->id)),409,'正在使用的入口请新增域名后逐个验证切换，避免影响共享节点');
+        $domain=NodeDnsLifecycle::name(strtolower($v['prefix']),$c->root_domain);
+        abort_if(DB::table('v2_node_ddns')->where('domain',$domain)->where('id','!=',$old->id??0)->exists() || DB::table('v2_node_dns_record')->where('domain',$domain)->where('assignment_id','!=',$old->id??0)->exists(),409,'域名已被使用或仍在清理中');
+        abort_if(DB::table('v2_node_ddns')->where('server_id',$v['server_id'])->where('id','!=',$old->id??0)->count()>=100,422,'一台服务器最多关联 100 个域名');
+        if ($old && $old->domain!==$domain) NodeDnsLifecycle::retire($old->id);
+        $data=['credential_id'=>$c->id,'domain'=>$domain,'family'=>$v['family'],'purpose'=>'entry','node_type'=>'entry','enabled'=>true,'managed'=>true,'next_run'=>0,'status'=>'awaiting_report','published_domain'=>$domain];
+        $id=$old?$old->id:DB::table('v2_node_ddns')->insertGetId($data+['node_id'=>0]);
+        DB::table('v2_node_ddns')->where('id',$id)->update($data+['node_id'=>$id]);
+        NetworkServer::attach($id,$v['server_id']);
+        return ['data'=>['id'=>$id]];
     }
     public function dropEntry(Request $request) {
         $v=$request->validate(['id'=>'required|integer|min:1']);

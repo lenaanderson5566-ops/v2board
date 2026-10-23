@@ -651,3 +651,62 @@ it("shows server use and a valid report time when only one address family report
     expect(screen.queryByText("尚未上报")).toBeNull();
     expect(screen.queryByText("Invalid Date")).toBeNull();
 });
+
+function serverEntryFixture(){
+    const data={servers:[{id:10,name:"Entry machine",family:"dual",enabled:true}],credentials:[{id:1,root_domain:"example.test"}],assignments:[{id:20,server_id:10,purpose:"entry",credential_id:1,domain:"old.example.test",family:"ipv4",status:"healthy",connection_count:2},{id:21,server_id:11,purpose:"entry",domain:"other.example.test",family:"ipv4"}]};
+    api.request.mockImplementation(async(path:string)=>String(path).includes("network/traffic?")?{data:{budget:null,nodes:[],history:[]}}:String(path).endsWith("traffic-budget/fetch")?{data:[]}:{data:{id:10,entryId:20}});
+    return data;
+}
+it("offers optional relay configuration only inside server creation and submits one atomic request",async()=>{
+    const data=serverEntryFixture();render(<NetworkServers data={data} reload={()=>{}}/>);
+    expect(screen.queryByRole("button",{name:"添加入口域名"})).toBeNull();
+    fireEvent.click(screen.getByRole("button",{name:"添加服务器"}));
+    expect(screen.queryByLabelText("入口根域名")).toBeNull();
+    fireEvent.change(screen.getByLabelText("服务器名称"),{target:{value:"New entry"}});
+    fireEvent.click(screen.getByRole("switch",{name:"配置中转入口"}));
+    fireEvent.change(screen.getByLabelText("入口根域名"),{target:{value:"1"}});
+    fireEvent.change(screen.getByLabelText("入口子域名前缀"),{target:{value:"Relay"}});
+    await waitFor(()=>expect(screen.getByRole("button",{name:"保存"})).toHaveProperty("disabled",false));
+    fireEvent.click(screen.getByRole("button",{name:"保存"}));
+    await waitFor(()=>expect(api.request).toHaveBeenCalledWith("test-admin/server/network/save",expect.objectContaining({name:"New entry",entry:{credential_id:1,prefix:"relay",family:"ipv4"},traffic:{limitBytes:0,countingMode:"both",resetDay:1}})));
+    expect(api.request.mock.calls.some(([path])=>String(path).endsWith("network/entry"))).toBe(false);
+});
+it("scopes existing entry management to the server details without another server selector",async()=>{
+    const data=serverEntryFixture();render(<NetworkServers data={data} reload={()=>{}}/>);
+    expect(screen.queryByText("old.example.test")).toBeNull();
+    fireEvent.click(screen.getByRole("button",{name:"详情"}));
+    expect(await screen.findByText("old.example.test")).toBeTruthy();expect(screen.queryByText("other.example.test")).toBeNull();
+    fireEvent.click(screen.getByRole("button",{name:"添加入口域名"}));
+    expect(screen.queryByLabelText("入口服务器")).toBeNull();
+    fireEvent.change(screen.getByLabelText("入口根域名"),{target:{value:"1"}});fireEvent.change(screen.getByLabelText("入口子域名前缀"),{target:{value:"new"}});
+    fireEvent.click(screen.getByRole("button",{name:"保存入口域名"}));
+    await waitFor(()=>expect(api.request).toHaveBeenCalledWith("test-admin/server/network/entry",{id:undefined,server_id:10,credential_id:1,prefix:"new",family:"dual"}));
+    expect(screen.getAllByRole("dialog")).toHaveLength(1);
+});
+it("retains entry input on server save failure and allows opting out without an entry payload",async()=>{
+    const data=serverEntryFixture();api.request.mockImplementation(async(path:string)=>String(path).endsWith("network/save")?Promise.reject(new Error("域名已被使用")):{data:[]});
+    render(<NetworkServers data={data} reload={()=>{}}/>);fireEvent.click(screen.getByRole("button",{name:"添加服务器"}));
+    fireEvent.change(screen.getByLabelText("服务器名称"),{target:{value:"New"}});fireEvent.click(screen.getByRole("switch",{name:"配置中转入口"}));
+    fireEvent.change(screen.getByLabelText("入口根域名"),{target:{value:"1"}});fireEvent.change(screen.getByLabelText("入口子域名前缀"),{target:{value:"keep"}});
+    await waitFor(()=>expect(screen.getByRole("button",{name:"保存"})).toHaveProperty("disabled",false));fireEvent.click(screen.getByRole("button",{name:"保存"}));
+    expect(await screen.findByText("域名已被使用")).toBeTruthy();expect(screen.getByLabelText("入口子域名前缀")).toHaveProperty("value","keep");
+    fireEvent.click(screen.getByRole("switch",{name:"配置中转入口"}));fireEvent.click(screen.getByRole("button",{name:"保存"}));
+    await waitFor(()=>expect(api.request.mock.calls.filter(([path])=>String(path).endsWith("network/save"))).toHaveLength(2));
+    const body=api.request.mock.calls.filter(([path])=>String(path).endsWith("network/save"))[1][1];expect(body).not.toHaveProperty("entry");
+});
+
+it("protects referenced entries and keeps edit errors within the server detail",async()=>{
+    const data=serverEntryFixture();render(<NetworkServers data={data} reload={()=>{}}/>);fireEvent.click(screen.getByRole("button",{name:"详情"}));
+    expect(await screen.findByRole("button",{name:"编辑入口"})).toHaveProperty("disabled",true);
+    expect(screen.getByRole("button",{name:"删除入口"})).toHaveProperty("disabled",true);
+    expect(screen.getByRole("button",{name:"添加入口域名"})).toHaveProperty("disabled",false);
+});
+it("edits an unused entry in its original server and retains input if a concurrent reference rejects it",async()=>{
+    const data=serverEntryFixture();data.assignments[0].connection_count=0;
+    const original=api.request.getMockImplementation()!;api.request.mockImplementation(async(path:string,...args:any[])=>String(path).endsWith("network/entry")?Promise.reject(new Error("正在使用的入口请新增域名")):original(path,...args));
+    render(<NetworkServers data={data} reload={()=>{}}/>);fireEvent.click(screen.getByRole("button",{name:"详情"}));
+    fireEvent.click(await screen.findByRole("button",{name:"编辑入口"}));expect(screen.getByLabelText("入口子域名前缀")).toHaveProperty("value","old");
+    fireEvent.change(screen.getByLabelText("入口子域名前缀"),{target:{value:"changed"}});fireEvent.click(screen.getByRole("button",{name:"保存入口域名"}));
+    expect(await screen.findByText("正在使用的入口请新增域名")).toBeTruthy();expect(screen.getByLabelText("入口子域名前缀")).toHaveProperty("value","changed");
+    expect(api.request).toHaveBeenCalledWith("test-admin/server/network/entry",{id:20,server_id:10,credential_id:1,prefix:"changed",family:"ipv4"});
+});

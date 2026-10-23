@@ -1,7 +1,7 @@
 import { ServerTrafficFields, trafficDraft, trafficPayload } from "./ServerTrafficFields";
 import { ServerTrafficDetails, quotaState } from "./ServerTrafficDetails";
 import { ServerTrafficBudgets } from "./ServerTrafficBudgets";
-import { domainStatus } from "./NodeDomains";
+import { ServerEntryDomains, ServerEntryFields, entryPayload } from "./ServerEntryDomains";
 import { AdminSwitch } from "./admin-switch";
 import { useMemo, useRef, useState } from "react";
 import { admin, request, rows, bytes, type Row } from "../shared/api";
@@ -30,25 +30,21 @@ export function NetworkServers({
     },[budgets.data,data.assignments]);
     const budgetFor=(id: number)=>budgetMap.get(Number(id));
     const [detail,setDetail]=useState<Row | null>(null);
+    const [detailBusy,setDetailBusy]=useState(false),[detailDirty,setDetailDirty]=useState(false),[serverDirty,setServerDirty]=useState(false);
     const [legacyOpen,setLegacyOpen]=useState(false);
     const legacyNodes=useData<Row[]>(legacyOpen?admin("server/manage/getNodes"):"");
-    function editServer(server: Row) {if(budgets.loading || budgets.error){setError("请先成功加载流量额度后再编辑服务器");return;}setKind("save");setEditing({...server,...trafficDraft(budgetFor(server.id))});}
+    function editServer(server: Row) {if(budgets.loading || budgets.error){setError("请先成功加载流量额度后再编辑服务器");return false;}setServerDirty(false);setEditing({...server,...trafficDraft(budgetFor(server.id))});return true;}
 
-    const entries: Row[] = (data.assignments || []).filter(
-        (a: Row) => a.purpose === "entry",
-    );
     const roots: Row[] = (data.credentials || []).filter(
         (a: Row) => a.root_domain,
     );
     const [editing, setEditing] = useState<Row | null>(null);
-    const [kind, setKind] = useState("save");
     const [error, setError] = useState("");
     const [notice, setNotice] = useState("");
     const [command, setCommand] = useState("");
-    const [adoption, setAdoption] = useState<Row | null>(null);
     const [busy, setBusy] = useState(false);
     const pending = useRef(false);
-    async function act(path: string, body: Row, domain = false) {
+    async function act(path: string, body: Row) {
         if (pending.current) return;
         pending.current = true;
         setBusy(true);
@@ -60,19 +56,17 @@ export function NetworkServers({
                 const traffic=trafficPayload(editing || {});
                 const old=budgetFor(Number(body.id));
                 if(old && (old.resetDay!==traffic.resetDay || old.countingMode!==traffic.countingMode || (traffic.limitBytes>0 && traffic.limitBytes<=Number(old.usedBytes))) && !confirm("此变更会重新计算当前周期用量，或立即限制达到额度的服务。确认保存？"))return;
-                body={...body,traffic};
+                body={...body,traffic,...(!body.id && editing?.configureEntry ? {entry:entryPayload(editing)} : {})};
             }
             const r = await request<Row>(
-                admin(`server/${domain ? "domains" : "network"}/${path}`),
+                admin(`server/network/${path}`),
                 body,
             );
-            if (path === "adopt")
-                setAdoption(r.data?.rows ? { ...r.data, id: body.id } : null);
             if (r.data?.command) setCommand(r.data.command);
             reload();
             if(path==="save")budgets.reload();
-            if (path === "retry") setNotice("已安排 DNS 同步，将由下一轮后台调度执行。同步使用服务器最近上报的 IP，不重启节点或切换线路。");
-            setEditing(null);
+            if(path==="save")setNotice(r.data?.entryId ? "服务器与入口域名已保存，请配置服务器 IP 上报并等待解析同步。" : "服务器已保存。");
+            setServerDirty(false);setEditing(null);
         } catch (e) {
             setError((e as Error).message);
         } finally {
@@ -88,30 +82,17 @@ export function NetworkServers({
                     <div className="actions">
                         <button
                             onClick={() => {
-                                setKind("save");
+                                setServerDirty(false);
                                 setEditing({
                                     name: "",
                                     family: "ipv4",
                                     enabled: true,
                                     ...trafficDraft(),
+                                    configureEntry:false,entry_credential_id:"",entry_prefix:"",entry_family:"ipv4",
                                 });
                             }}
                         >
                             添加服务器
-                        </button>
-                        <button
-                            disabled={!servers.length || !roots.length}
-                            onClick={() => {
-                                setKind("entry");
-                                setEditing({
-                                    server_id: servers[0]?.id,
-                                    credential_id: roots[0]?.id,
-                                    prefix: "",
-                                    family: "ipv4",
-                                });
-                            }}
-                        >
-                            添加入口域名
                         </button>
                     </div>
                 }
@@ -155,7 +136,7 @@ export function NetworkServers({
                                 "操作",
                                 (r: Row) => (
                                     <div className="actions">
-                                        <button disabled={busy} onClick={()=>setDetail(r)}>详情</button>
+                                        <button disabled={busy} onClick={()=>{setDetail(r);setDetailDirty(false);}}>详情</button>
                                         <button
                                             disabled={busy}
                                             onClick={() => {
@@ -190,100 +171,6 @@ export function NetworkServers({
                             ],
                         ]}
                     />
-                    <h3>共享入口域名</h3>
-                    <Table
-                        data={entries}
-                        columns={[
-                            ["domain", "入口域名"],
-                            [
-                                "server_id",
-                                "入口服务器",
-                                (r: Row) =>
-                                    servers.find((s) => s.id === r.server_id)
-                                        ?.name || "—",
-                            ],
-                            [
-                                "status",
-                                "解析状态",
-                                (r: Row) => domainStatus[r.status] || r.status,
-                            ],
-                            [
-                                "references",
-                                "关联线路",
-                                (r: Row) =>
-                                    r.connection_count ?? (data.assignments || []).filter(
-                                        (a: Row) => a.entry_id === r.id,
-                                    ).length,
-                            ],
-                            [
-                                "actions",
-                                "操作",
-                                (r: Row) => (
-                                    <div className="actions">
-                                        <button
-                                            disabled={busy}
-                                            onClick={() => {
-                                                setKind("entry");
-                                                setEditing({
-                                                    ...r,
-                                                    prefix: r.domain.slice(
-                                                        0,
-                                                        -(
-                                                            roots.find(
-                                                                (c) =>
-                                                                    c.id ===
-                                                                    r.credential_id,
-                                                            )?.root_domain
-                                                                ?.length || 0
-                                                        ) - 1,
-                                                    ),
-                                                });
-                                            }}
-                                        >
-                                            编辑
-                                        </button>
-                                        <button
-                                            disabled={busy}
-                                            onClick={() =>
-                                                act("retry", { id: r.id }, true)
-                                            }
-                                        >
-                                            重试 DNS 同步
-                                        </button>
-                                        {r.status === "ownership_conflict" && (
-                                            <button
-                                                disabled={busy}
-                                                onClick={() =>
-                                                    act(
-                                                        "adopt",
-                                                        { id: r.id },
-                                                        true,
-                                                    )
-                                                }
-                                            >
-                                                预览现有解析
-                                            </button>
-                                        )}
-                                        <button
-                                            disabled={busy}
-                                            onClick={() => {
-                                                if (
-                                                    confirm(
-                                                        "删除此入口域名及其托管解析？存在关联节点时禁止删除。",
-                                                    )
-                                                )
-                                                    act("entry-drop", {
-                                                        id: r.id,
-                                                    });
-                                            }}
-                                        >
-                                            删除
-                                        </button>
-                                    </div>
-                                ),
-                            ],
-                        ]}
-                    />
                     <p className="muted">
                         已有节点的一键部署会配置所属服务器的上报。独立入口服务器只需配置上报，不安装或重启
                         V2Box。
@@ -292,40 +179,8 @@ export function NetworkServers({
                     {rows(budgets.data).some(b=>!b.networkServerId) && <details><summary>历史未关联额度</summary><p>保留历史用量。整理服务绑定后，编辑对应服务器即可自动关联；不会自动合并不同额度。</p><button onClick={()=>setLegacyOpen(true)}>整理历史额度</button></details>}
                 </div>
             </Panel>
-            {detail && <ServerTrafficDetails server={detail} close={()=>setDetail(null)} edit={()=>{editServer(detail);setDetail(null);}}/>}
+            {detail && <ServerTrafficDetails server={detail} busy={detailBusy} close={()=>{if(!detailBusy && (!detailDirty || confirm("入口域名尚未保存，确认放弃修改？")))setDetail(null);}} edit={()=>{if(!detailBusy && (!detailDirty || confirm("入口域名尚未保存，确认放弃修改？")) && editServer(detail))setDetail(null);}}><ServerEntryDomains key={detail.id} server={detail} data={data} reload={reload} onBusy={setDetailBusy} onDirty={setDetailDirty}/></ServerTrafficDetails>}
             {legacyOpen && <Modal title="历史未关联额度" close={()=>setLegacyOpen(false)}><State {...legacyNodes} retry={legacyNodes.reload}><ServerTrafficBudgets legacyOnly nodes={rows(legacyNodes.data)} onSaved={()=>{budgets.reload();reload();}}/></State></Modal>}
-            {adoption && (
-                <Modal
-                    title="接管入口解析"
-                    close={() => !busy && setAdoption(null)}
-                >
-                    <Table
-                        data={adoption.rows}
-                        columns={[
-                            ["name", "域名"],
-                            ["type", "类型"],
-                            ["content", "当前 IP"],
-                        ]}
-                    />
-                    <p>
-                        确认以上记录属于所选入口服务器后接管，后续仅按入口服务器上报的
-                        IP 更新。
-                    </p>
-                    <button
-                        disabled={busy || !adoption.rows?.length}
-                        onClick={() =>
-                            act(
-                                "adopt",
-                                { id: adoption.id, proof: adoption.proof },
-                                true,
-                            )
-                        }
-                    >
-                        确认接管
-                    </button>
-                    {error && <p role="alert">{error}</p>}
-                </Modal>
-            )}
             {command && (
                 <Modal title="配置服务器 IP 上报" close={() => setCommand("")}>
                     <p>
@@ -345,168 +200,22 @@ export function NetworkServers({
                     </button>
                 </Modal>
             )}
-            {editing && (
-                <Modal
-                    variant="drawer"
-                    title={kind === "save" ? "服务器信息" : "入口域名"}
-                    close={() => !busy && setEditing(null)}
-                >
-                    <form
-                        className={`node-domain-form ${kind === "save" ? "server-config-form" : ""}`}
-                        onSubmit={(e) => {
-                            e.preventDefault();
-                            act(
-                                kind,
-                                kind === "save"
-                                    ? {
-                                          id: editing.id,
-                                          name: editing.name,
-                                          family: editing.family,
-                                          enabled: !!editing.enabled,
-                                      }
-                                    : {
-                                          id: editing.id,
-                                          server_id: Number(editing.server_id),
-                                          credential_id: Number(
-                                              editing.credential_id,
-                                          ),
-                                          prefix: editing.prefix,
-                                          family: editing.family,
-                                      },
-                            );
-                        }}
-                    >
-                        {kind === "save" ? (
-                            <>
-                                <label>
-                                    服务器名称
-                                    <input
-                                        required
-                                        maxLength={100}
-                                        value={editing.name}
-                                        onChange={(e) =>
-                                            setEditing({
-                                                ...editing,
-                                                name: e.target.value,
-                                            })
-                                        }
-                                    />
-                                </label>
-                                <label>
-                                    允许 IP 上报与解析同步
-                                    <AdminSwitch
-                                        label="允许 IP 上报与解析同步"
-                                        checked={!!editing.enabled}
-                                        onChange={async (checked) => {
-                                            setEditing({
-                                                ...editing,
-                                                enabled: checked,
-                                            });
-                                        }}
-                                    />
-                                </label>
-                            </>
-                        ) : (
-                            <>
-                                <label>
-                                    入口服务器
-                                    <select
-                                        value={editing.server_id}
-                                        onChange={(e) =>
-                                            setEditing({
-                                                ...editing,
-                                                server_id: e.target.value,
-                                            })
-                                        }
-                                    >
-                                        {servers
-                                            .filter((s) => s.enabled)
-                                            .map((s) => (
-                                                <option key={s.id} value={s.id}>
-                                                    {s.name}
-                                                </option>
-                                            ))}
-                                    </select>
-                                </label>
-                                <label>
-                                    根域名
-                                    <select
-                                        value={editing.credential_id}
-                                        onChange={(e) =>
-                                            setEditing({
-                                                ...editing,
-                                                credential_id: e.target.value,
-                                            })
-                                        }
-                                    >
-                                        {roots.map((r) => (
-                                            <option key={r.id} value={r.id}>
-                                                {r.root_domain}
-                                            </option>
-                                        ))}
-                                    </select>
-                                </label>
-                                <label>
-                                    子域名前缀
-                                    <input
-                                        required
-                                        maxLength={63}
-                                        pattern="[a-z0-9]([a-z0-9-]*[a-z0-9])?"
-                                        value={editing.prefix}
-                                        onChange={(e) =>
-                                            setEditing({
-                                                ...editing,
-                                                prefix: e.target.value.toLowerCase(),
-                                            })
-                                        }
-                                    />
-                                </label>
-                            </>
-                        )}
-                        <label>
-                            地址类型
-                            <select
-                                value={editing.family}
-                                onChange={(e) =>
-                                    setEditing({
-                                        ...editing,
-                                        family: e.target.value,
-                                    })
-                                }
-                            >
-                                <option value="ipv4">IPv4</option>
-                                <option value="ipv6">IPv6</option>
-                                <option value="dual">双栈</option>
-                            </select>
-                        </label>
-                        {kind === "save" && <ServerTrafficFields value={editing} onChange={setEditing}/>}
-                        <button className="primary" disabled={busy || (kind==="save" && (budgets.loading || !!budgets.error))}>
-                            保存
-                        </button>
-                        {kind === "save" && editing.id && (
-                            <button
-                                type="button"
-                                disabled={busy || !editing.enabled}
-                                onClick={() => {
-                                    if (
-                                        confirm(
-                                            "重置会使此服务器的旧上报凭据立即失效。需重新执行生成的命令，现有 DNS 记录保留。确认继续？",
-                                        )
-                                    )
-                                        act("reset", {
-                                            id: editing.id,
-                                            confirm: true,
-                                        });
-                                }}
-                            >
-                                重置上报凭据
-                            </button>
-                        )}
-                        {error && <p role="alert">{error}</p>}
-                    </form>
-                </Modal>
-            )}
-            {error && !editing && !adoption && <p role="alert">{error}</p>}
+            {editing && <Modal variant="drawer" title="服务器信息" dismissible={!busy} close={()=>{if(!busy && (!serverDirty || confirm("服务器配置尚未保存，确认放弃修改？")))setEditing(null);}}>
+                <form className="node-domain-form server-config-form" data-unsaved={serverDirty || undefined} data-saving={busy || undefined} onSubmit={e=>{e.preventDefault();act("save",{id:editing.id,name:editing.name,family:editing.family,enabled:!!editing.enabled});}}>
+                    <label>服务器名称<input required maxLength={100} value={editing.name} onChange={e=>{setEditing({...editing,name:e.target.value});setServerDirty(true);}}/></label>
+                    <label>允许 IP 上报与解析同步<AdminSwitch label="允许 IP 上报与解析同步" checked={!!editing.enabled} onChange={async enabled=>{setEditing({...editing,enabled,configureEntry:enabled?editing.configureEntry:false});setServerDirty(true);}}/></label>
+                    <label>地址类型<select value={editing.family} onChange={e=>{setEditing({...editing,family:e.target.value,entry_family:e.target.value==="dual"?editing.entry_family:e.target.value});setServerDirty(true);}}><option value="ipv4">IPv4</option><option value="ipv6">IPv6</option><option value="dual">双栈</option></select></label>
+                    <ServerTrafficFields value={editing} onChange={value=>{setEditing(value);setServerDirty(true);}}/>
+                    {!editing.id && <fieldset><legend>中转入口（可选）</legend><label>配置中转入口<AdminSwitch label="配置中转入口" disabled={!editing.enabled || busy} checked={!!editing.configureEntry} onChange={async enabled=>{setEditing({...editing,configureEntry:enabled});setServerDirty(true);}}/></label>
+                        {editing.configureEntry && <ServerEntryFields value={editing} roots={roots} family={editing.family} disabled={busy} onChange={value=>{setEditing(value);setServerDirty(true);}}/>}
+                        {!editing.enabled && <p className="muted">启用 IP 上报与解析同步后可配置入口。</p>}
+                    </fieldset>}
+                    <button className="primary" disabled={busy || budgets.loading || !!budgets.error || (!!editing.configureEntry && !roots.length)}>保存</button>
+                    {editing.id && <button type="button" disabled={busy || !editing.enabled} onClick={()=>{if(confirm("重置会使旧上报凭据立即失效，未保存的服务器修改不会保存。需重新执行生成的命令，现有 DNS 记录保留。确认继续？"))act("reset",{id:editing.id,confirm:true});}}>重置上报凭据</button>}
+                    {error && <p role="alert">{error}</p>}
+                </form>
+            </Modal>}
+            {error && !editing && <p role="alert">{error}</p>}
             {notice && <p role="status">{notice}</p>}
         </>
     );

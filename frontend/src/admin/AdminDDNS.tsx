@@ -1,6 +1,4 @@
-import { NodeNetworkSetup } from "./NodeNetworkSetup";
 import {
-    NodeDomainBinding,
     NodeDomainTools,
     domainStatus,
     certificateTransitionStatus,
@@ -8,10 +6,9 @@ import {
 import { TableViewport } from "../shared/ui";
 import { Pager } from "../shared/ui";
 import { AdminLogTimeZone, logTime as date } from "./admin-log-time";
-import { useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { admin, request, type Row } from "../shared/api";
 import { Modal, Panel, State, useData } from "../shared/ui";
-import { nodeReportCommand } from "./node-deployment";
 const labels: Record<string, string> = {
     ...domainStatus,
     domain_activated: "连接域名已切换",
@@ -41,14 +38,13 @@ const labels: Record<string, string> = {
 
 export function AdminDDNS() {
     const [pageSize, setPageSize] = useState(20);
-    const [domainNode, setDomainNode] = useState<Row | null>(null);
+    const [domainPage, setDomainPage] = useState(1),
+        [domainQuery, setDomainQuery] = useState("");
+    const pending = useRef(false);
     const data = useData<Row>(admin("server/ddns/fetch"));
-    const nodes = useData<Row[]>(admin("server/manage/getNodes"));
     const [editing, setEditing] = useState<Row | null>(null),
-        [kind, setKind] = useState(""),
         [error, setError] = useState(""),
-        [busy, setBusy] = useState(false),
-        [deployment, setDeployment] = useState<Row | null>(null);
+        [busy, setBusy] = useState(false);
     const [page, setPage] = useState(1),
         [filter, setFilter] = useState("");
     const events = useData<Row[]>(
@@ -57,9 +53,29 @@ export function AdminDDNS() {
         ),
     );
     const credentials: Row[] = data.data?.credentials || [],
-        assignments: Row[] = (data.data?.assignments || []).filter((a: Row) => a.purpose !== "entry");
+        assignments: Row[] = data.data?.assignments || [];
+    const serverNames = useMemo(
+        () =>
+            new Map<number, string>(
+                (data.data?.servers || []).map((s: Row) => [
+                    Number(s.id),
+                    s.name,
+                ]),
+            ),
+        [data.data?.servers],
+    );
+    const matching = assignments.filter((a) =>
+        String(a.domain)
+            .toLowerCase()
+            .includes(domainQuery.trim().toLowerCase()),
+    );
+    const currentDomainPage = Math.min(
+        domainPage,
+        Math.max(1, Math.ceil(matching.length / 20)),
+    );
     async function action(path: string, payload: Row) {
-        if (busy) return;
+        if (pending.current) return;
+        pending.current = true;
         setBusy(true);
         setError("");
         try {
@@ -73,17 +89,21 @@ export function AdminDDNS() {
         } catch (e) {
             setError((e as Error).message);
         } finally {
+            pending.current = false;
             setBusy(false);
         }
     }
-    function edit(k: string, row: Row) {
-        setKind(k);
+    function edit(row: Row) {
         setEditing({ ...row, token: "" });
         setError("");
     }
     return (
         <>
-            <p className="pad muted">维护 Cloudflare 根域名、节点解析与同步记录。共享入口域名在 <a href="#/servers">服务器管理</a> 中配置；节点的域名切换在 <a href="#/nodes">部署与接入</a> 中完成。</p>
+            <p className="pad muted">
+                维护 Cloudflare 根域名、节点解析与同步记录。共享入口域名在{" "}
+                <a href="#/servers">服务器管理</a> 中配置；节点的域名切换在{" "}
+                <a href="#/nodes">部署与接入</a> 中完成。
+            </p>
             <Panel
                 title="域名与解析"
                 actions={
@@ -99,7 +119,7 @@ export function AdminDDNS() {
             >
                 <div className="pad">
                     <p>
-                        Token 在面板加密保存。节点仅持有独立上报密钥，每 5
+                        Token 在面板加密保存。服务器仅持有独立上报凭据，每 5
                         分钟上报公网 IP；面板更新 A / AAAA 记录，关闭 Cloudflare
                         代理。
                     </p>
@@ -116,11 +136,7 @@ export function AdminDDNS() {
                 <State {...data} retry={data.reload}>
                     <div className="pad">
                         <h3>Cloudflare 凭据</h3>
-                        <button
-                            onClick={() =>
-                                edit("credentials", { name: "", zone_id: "" })
-                            }
-                        >
+                        <button onClick={() => edit({ name: "", zone_id: "" })}>
                             新增凭据
                         </button>
                         <TableViewport>
@@ -149,11 +165,7 @@ export function AdminDDNS() {
                                                     ` · ${date(c.next_run)}`}
                                             </td>
                                             <td>
-                                                <button
-                                                    onClick={() =>
-                                                        edit("credentials", c)
-                                                    }
-                                                >
+                                                <button onClick={() => edit(c)}>
                                                     编辑
                                                 </button>
                                                 <button
@@ -178,141 +190,94 @@ export function AdminDDNS() {
                                 </tbody>
                             </table>
                         </TableViewport>
-                        <h3>节点绑定</h3>
-                        <button
-                            disabled={!credentials.some((c) => c.root_domain)}
-                            onClick={() => setDomainNode({ select: true })}
-                        >
-                            配置节点域名
-                        </button>
+                        <h3>解析状态</h3>
+                        <p className="muted">
+                            节点域名在 <a href="#/nodes">节点管理</a>{" "}
+                            的“部署与接入”中配置；共享入口在{" "}
+                            <a href="#/servers">服务器详情</a> 中管理。
+                        </p>
+                        <label>
+                            搜索域名
+                            <input
+                                type="search"
+                                value={domainQuery}
+                                onChange={(e) => {
+                                    setDomainQuery(e.target.value);
+                                    setDomainPage(1);
+                                }}
+                            />
+                        </label>
                         <TableViewport>
                             <table>
                                 <thead>
                                     <tr>
-                                        <th>节点 / 域名</th>
-                                        <th>公网 IP / 上报时间</th>
-                                        <th>状态 / 最近成功</th>
-                                        <th>操作</th>
+                                        <th>域名 / 用途</th>
+                                        <th>服务器</th>
+                                        <th>状态</th>
+                                        <th>最近成功</th>
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    {assignments.map((a) => (
-                                        <tr key={a.id}>
-                                            <td>
-                                                {a.node_type} #{a.node_id}
-                                                <br />
-                                                {a.domain}
-                                                <br />
-                                                {
-                                                    credentials.find(
-                                                        (c) =>
-                                                            c.id ===
-                                                            a.credential_id,
-                                                    )?.name
-                                                }
-                                            </td>
-                                            <td>
-                                                {a.ipv4 || "—"} ·{" "}
-                                                {date(a.ipv4_seen_at)}
-                                                <br />
-                                                {a.ipv6 || "—"} ·{" "}
-                                                {date(a.ipv6_seen_at)}
-                                            </td>
-                                            <td>
-                                                {a.enabled
-                                                    ? labels[a.status] ||
-                                                      a.status
-                                                    : "已停用"}
-                                                <br />
-                                                {date(a.last_success)}
-                                                {certificateTransitionStatus[
-                                                    a.tls_transition_state
-                                                ] && (
-                                                    <p className="muted">
-                                                        {
-                                                            certificateTransitionStatus[
-                                                                a
-                                                                    .tls_transition_state
-                                                            ]
-                                                        }
-                                                    </p>
-                                                )}
-                                            </td>
-                                            <td>
-                                                <button
-                                                    onClick={() =>
-                                                        a.managed
-                                                            ? setDomainNode({
-                                                                  type: a.node_type,
-                                                                  id: a.node_id,
-                                                                  host: a.published_domain,
-                                                              })
-                                                            : edit(
-                                                                  "assignments",
-                                                                  a,
-                                                              )
-                                                    }
-                                                >
-                                                    编辑 / 恢复
-                                                </button>
-                                                {a.node_type === "v2box" ? (
-                                                    <NodeNetworkSetup
-                                                        node={{ id: a.node_id }}
-                                                        disabled={
-                                                            busy || !a.enabled
-                                                        }
-                                                    />
-                                                ) : (
-                                                    <button
-                                                        disabled={
-                                                            busy || !a.enabled
-                                                        }
-                                                        onClick={async () => {
-                                                            if (
-                                                                !window.confirm(
-                                                                    "生成新密钥将立即撤销旧密钥，需要在节点重新配置上报。继续？",
-                                                                )
-                                                            )
-                                                                return;
-                                                            const r =
-                                                                await action(
-                                                                    "assignments/rotate",
-                                                                    {
-                                                                        id: a.id,
-                                                                    },
-                                                                );
-                                                            if (r)
-                                                                setDeployment({
-                                                                    ...r,
-                                                                    domain: a.domain,
-                                                                });
-                                                        }}
-                                                    >
-                                                        配置节点上报
-                                                    </button>
-                                                )}
-                                                <button
-                                                    disabled={busy}
-                                                    onClick={() => {
-                                                        if (
-                                                            window.confirm(
-                                                                "删除绑定并撤销上报密钥？系统托管且无引用的解析将进入清理队列，未托管解析保留。",
-                                                            )
-                                                        )
-                                                            void action(
-                                                                "assignments/drop",
-                                                                { id: a.id },
-                                                            );
-                                                    }}
-                                                >
-                                                    删除
-                                                </button>
+                                    {matching
+                                        .slice(
+                                            (currentDomainPage - 1) * 20,
+                                            currentDomainPage * 20,
+                                        )
+                                        .map((a) => (
+                                            <tr key={a.id}>
+                                                <td>
+                                                    {a.domain}
+                                                    <br />
+                                                    <small className="muted">
+                                                        {a.purpose === "entry"
+                                                            ? "中转入口"
+                                                            : "节点回源 / 直连"}
+                                                    </small>
+                                                </td>
+                                                <td>
+                                                    {serverNames.get(
+                                                        Number(a.server_id),
+                                                    ) || "尚未关联"}
+                                                </td>
+                                                <td>
+                                                    {a.enabled
+                                                        ? labels[a.status] ||
+                                                          a.status
+                                                        : "已停用"}
+                                                    {certificateTransitionStatus[
+                                                        a.tls_transition_state
+                                                    ] && (
+                                                        <p className="muted">
+                                                            {
+                                                                certificateTransitionStatus[
+                                                                    a
+                                                                        .tls_transition_state
+                                                                ]
+                                                            }
+                                                        </p>
+                                                    )}
+                                                </td>
+                                                <td>{date(a.last_success)}</td>
+                                            </tr>
+                                        ))}
+                                    {!matching.length && (
+                                        <tr>
+                                            <td colSpan={4}>
+                                                {assignments.length
+                                                    ? "没有匹配的域名。"
+                                                    : "暂无托管解析，请先配置节点域名或服务器入口。"}
                                             </td>
                                         </tr>
-                                    ))}
+                                    )}
                                 </tbody>
                             </table>
                         </TableViewport>
+                        <Pager
+                            page={currentDomainPage}
+                            total={matching.length}
+                            size={20}
+                            onChange={setDomainPage}
+                        />
                     </div>
                 </State>
             </Panel>
@@ -320,46 +285,6 @@ export function AdminDDNS() {
                 credentials={credentials}
                 onChanged={data.reload}
             />
-            {domainNode && (
-                <Modal title="节点域名与解析" close={() => setDomainNode(null)}>
-                    <div className="pad">
-                        {domainNode.select ? (
-                            <label>
-                                选择节点
-                                <select
-                                    aria-label="配置节点域名"
-                                    value=""
-                                    onChange={(e) => {
-                                        const n = nodes.data?.find(
-                                            (n) =>
-                                                `${n.type}:${n.id}` ===
-                                                e.target.value,
-                                        );
-                                        if (n) setDomainNode(n);
-                                    }}
-                                >
-                                    <option value="">选择代理服务配置域名</option>
-                                    {nodes.data
-                                        ?.filter((n) => !n.service_id)
-                                        .map((n) => (
-                                            <option
-                                                key={`${n.type}:${n.id}`}
-                                                value={`${n.type}:${n.id}`}
-                                            >
-                                                {n.name} · #{n.id}
-                                            </option>
-                                        ))}
-                                </select>
-                            </label>
-                        ) : (
-                            <NodeDomainBinding
-                                node={domainNode}
-                                onChanged={data.reload}
-                            />
-                        )}
-                    </div>
-                </Modal>
-            )}
             <Panel title="DDNS 日志">
                 <AdminLogTimeZone />
                 <div className="pad">
@@ -369,9 +294,9 @@ export function AdminDDNS() {
                         更新。
                     </p>
                     <label>
-                        节点筛选
+                        域名筛选
                         <select
-                            aria-label="日志节点筛选"
+                            aria-label="日志域名筛选"
                             value={filter}
                             onChange={(e) => {
                                 setFilter(e.target.value);
@@ -425,258 +350,101 @@ export function AdminDDNS() {
             </Panel>
             {editing && (
                 <Modal
-                    title={
-                        kind === "credentials"
-                            ? "Cloudflare 凭据"
-                            : "DDNS 节点绑定"
-                    }
-                    close={() => setEditing(null)}
+                    title="Cloudflare 凭据"
+                    dismissible={!busy}
+                    close={() => {
+                        if (!busy) setEditing(null);
+                    }}
                 >
                     <form
                         className="pad"
                         onSubmit={async (e) => {
                             e.preventDefault();
-                            const payload =
-                                kind === "credentials"
-                                    ? {
-                                          id: editing.id,
-                                          name: editing.name,
-                                          zone_id: editing.zone_id,
-                                          root_domain:
-                                              editing.root_domain || undefined,
-                                          token: editing.token || undefined,
-                                      }
-                                    : {
-                                          id: editing.id,
-                                          credential_id: Number(
-                                              editing.credential_id,
-                                          ),
-                                          node_type: editing.node_type,
-                                          node_id: Number(editing.node_id),
-                                          domain: editing.domain,
-                                          family: editing.family,
-                                          enabled: Boolean(editing.enabled),
-                                      };
-                            if (await action(`${kind}/save`, payload))
+                            if (
+                                await action("credentials/save", {
+                                    id: editing.id,
+                                    name: editing.name,
+                                    zone_id: editing.zone_id,
+                                    root_domain:
+                                        editing.root_domain || undefined,
+                                    token: editing.token || undefined,
+                                })
+                            )
                                 setEditing(null);
                         }}
                     >
-                        {kind === "credentials" ? (
-                            <>
-                                <label>
-                                    名称
-                                    <input
-                                        required
-                                        value={editing.name}
-                                        onChange={(e) =>
-                                            setEditing({
-                                                ...editing,
-                                                name: e.target.value,
-                                            })
-                                        }
-                                    />
-                                </label>
-                                <label>
-                                    根域名
-                                    <input
-                                        aria-label="根域名"
-                                        required={!editing.id}
-                                        placeholder="example.com"
-                                        value={editing.root_domain || ""}
-                                        onChange={(e) =>
-                                            setEditing({
-                                                ...editing,
-                                                root_domain: e.target.value
-                                                    .trim()
-                                                    .toLowerCase(),
-                                            })
-                                        }
-                                    />
-                                </label>
-                                <p className="muted">
-                                    保存时校验 Zone 与根域名。Token 仅需对应
-                                    Zone 的读取及 DNS 编辑权限，不会下发至节点。
-                                </p>
-                                <label>
-                                    Zone ID
-                                    <input
-                                        required
-                                        pattern="[a-fA-F0-9]{32}"
-                                        value={editing.zone_id}
-                                        onChange={(e) =>
-                                            setEditing({
-                                                ...editing,
-                                                zone_id: e.target.value,
-                                            })
-                                        }
-                                    />
-                                </label>
-                                <label>
-                                    API Token
-                                    <input
-                                        type="password"
-                                        autoComplete="new-password"
-                                        required={!editing.id}
-                                        value={editing.token}
-                                        onChange={(e) =>
-                                            setEditing({
-                                                ...editing,
-                                                token: e.target.value,
-                                            })
-                                        }
-                                    />
-                                </label>
-                                <p className="muted">
-                                    已保存的 Token 不回显；留空保留原值。替换
-                                    Token 后恢复认证失败的同步。
-                                </p>
-                            </>
-                        ) : (
-                            <>
-                                <label>
-                                    节点
-                                    <select
-                                        aria-label="DDNS 节点"
-                                        required
-                                        disabled={!!editing.id}
-                                        value={
-                                            editing.node_id
-                                                ? `${editing.node_type}:${editing.node_id}`
-                                                : ""
-                                        }
-                                        onChange={(e) => {
-                                            const [type, id] =
-                                                e.target.value.split(":");
-                                            setEditing({
-                                                ...editing,
-                                                node_type: type,
-                                                node_id: Number(id),
-                                            });
-                                        }}
-                                    >
-                                        <option value="">请选择节点</option>
-                                        {nodes.data?.map((n) => (
-                                            <option
-                                                key={`${n.type}:${n.id}`}
-                                                value={`${n.type}:${n.id}`}
-                                            >
-                                                {n.name} ({n.type} #{n.id})
-                                            </option>
-                                        ))}
-                                    </select>
-                                </label>
-                                {nodes.error && (
-                                    <p role="alert">{nodes.error}</p>
-                                )}
-                                <label>
-                                    凭据
-                                    <select
-                                        value={editing.credential_id}
-                                        onChange={(e) =>
-                                            setEditing({
-                                                ...editing,
-                                                credential_id: Number(
-                                                    e.target.value,
-                                                ),
-                                            })
-                                        }
-                                    >
-                                        {credentials.map((c) => (
-                                            <option key={c.id} value={c.id}>
-                                                {c.name}
-                                            </option>
-                                        ))}
-                                    </select>
-                                </label>
-                                <label>
-                                    专用域名
-                                    <input
-                                        required
-                                        value={editing.domain}
-                                        placeholder="node.example.com"
-                                        onChange={(e) =>
-                                            setEditing({
-                                                ...editing,
-                                                domain: e.target.value.trim(),
-                                            })
-                                        }
-                                    />
-                                </label>
-                                <label>
-                                    地址类型
-                                    <select
-                                        value={editing.family}
-                                        onChange={(e) =>
-                                            setEditing({
-                                                ...editing,
-                                                family: e.target.value,
-                                            })
-                                        }
-                                    >
-                                        <option value="ipv4">IPv4 / A</option>
-                                        <option value="ipv6">
-                                            IPv6 / AAAA
-                                        </option>
-                                        <option value="dual">双栈</option>
-                                    </select>
-                                </label>
-                                <label>
-                                    <input
-                                        type="checkbox"
-                                        checked={Boolean(editing.enabled)}
-                                        onChange={(e) =>
-                                            setEditing({
-                                                ...editing,
-                                                enabled: e.target.checked,
-                                            })
-                                        }
-                                    />{" "}
-                                    启用
-                                </label>
-                                <p className="muted">
-                                    保存会恢复此绑定的同步；凭据限流和认证暂停仍需等待或更换
-                                    Token。更改地址类型后需重新配置节点上报。
-                                </p>
-                            </>
-                        )}
-                        {error && (
-                            <p className="alert" role="alert">
-                                {error}
-                            </p>
-                        )}
+                        <label>
+                            名称
+                            <input
+                                required
+                                value={editing.name}
+                                onChange={(e) =>
+                                    setEditing({
+                                        ...editing,
+                                        name: e.target.value,
+                                    })
+                                }
+                            />
+                        </label>
+                        <label>
+                            根域名
+                            <input
+                                aria-label="根域名"
+                                required={!editing.id}
+                                placeholder="example.com"
+                                value={editing.root_domain || ""}
+                                onChange={(e) =>
+                                    setEditing({
+                                        ...editing,
+                                        root_domain: e.target.value
+                                            .trim()
+                                            .toLowerCase(),
+                                    })
+                                }
+                            />
+                        </label>
+                        <p className="muted">
+                            保存时校验 Zone 与根域名。Token 仅需对应 Zone
+                            的读取及 DNS 编辑权限，不会下发至节点。
+                        </p>
+                        <label>
+                            Zone ID
+                            <input
+                                required
+                                pattern="[a-fA-F0-9]{32}"
+                                value={editing.zone_id}
+                                onChange={(e) =>
+                                    setEditing({
+                                        ...editing,
+                                        zone_id: e.target.value,
+                                    })
+                                }
+                            />
+                        </label>
+                        <label>
+                            API Token
+                            <input
+                                type="password"
+                                autoComplete="new-password"
+                                required={!editing.id}
+                                value={editing.token}
+                                onChange={(e) =>
+                                    setEditing({
+                                        ...editing,
+                                        token: e.target.value,
+                                    })
+                                }
+                            />
+                        </label>
+                        <p className="muted">
+                            已保存的 Token 不回显；留空保留原值。替换 Token
+                            后恢复认证失败的同步。
+                        </p>
+                        {error && <p role="alert">{error}</p>}
                         <button className="primary" disabled={busy}>
                             保存
                         </button>
                     </form>
-                </Modal>
-            )}
-            {deployment && (
-                <Modal title="配置节点上报" close={() => setDeployment(null)}>
-                    <div className="pad">
-                        <p>
-                            在 {deployment.domain} 的节点服务器执行以下命令（需
-                            Python
-                            3），按提示粘贴上报密钥。密钥仅显示本次，关闭后不能再次查看。
-                        </p>
-                        <textarea
-                            aria-label="IP 上报配置命令"
-                            readOnly
-                            rows={4}
-                            value={nodeReportCommand(deployment.family)}
-                        />
-                        <label>
-                            独立上报密钥
-                            <input
-                                readOnly
-                                autoComplete="off"
-                                value={deployment.reportToken}
-                            />
-                        </label>
-                        <p className="muted">
-                            密钥仅允许此节点上报 IP，不具备 Cloudflare
-                            或面板管理权限。
-                        </p>
-                    </div>
                 </Modal>
             )}
         </>

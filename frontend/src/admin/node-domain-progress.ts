@@ -36,7 +36,7 @@ export function nodeDomainProgress(
     if (binding.server_enabled === false) {
         title = "下一步：启用所属服务器";
         description =
-            "所属服务器已停用，请在服务器与共享入口中恢复上报与解析同步。";
+            "所属服务器已停用，请在服务器管理中编辑所属服务器，恢复上报与解析同步。";
     } else if (!binding.enabled) {
         title = "下一步：启用域名绑定";
         description = "此绑定已停用。请在 域名与解析 中恢复后继续。";

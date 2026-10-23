@@ -1,3 +1,4 @@
+import { SelectionPicker } from "../shared/ui/SelectionPicker";
 import { useCouponActivities } from "./useCouponActivities";
 import { useEffect, useId } from "react";
 import { formatInstant } from "../shared/timezone";
@@ -90,43 +91,65 @@ export function CouponPicker({
             <State {...wallet} retry={wallet.reload}>
                 {rows.length > 0 ? (
                     <>
-                        <select
+                        <SelectionPicker
                             id={name}
-                            value={selected?.id ?? ""}
-                            onChange={(event) => {
+                            label={tx("我的优惠券")}
+                            value={selected ? String(selected.id) : ""}
+                            unavailableLabel={pc("unavailableCoupons")}
+                            options={[
+                                { value: "", label: tx("不使用优惠券") },
+                                ...[...available, ...unavailable].map(
+                                    (coupon) => ({
+                                        value: String(coupon.id),
+                                        label: coupon.name,
+                                        disabled: !usable(coupon),
+                                        description: (
+                                            <>
+                                                {usable(coupon) ? (
+                                                    <>
+                                                        {tx("减免")}{" "}
+                                                        {coupon.discountPercent}
+                                                        %
+                                                        {amount > 0 && (
+                                                            <>
+                                                                {" "}
+                                                                ·{" "}
+                                                                {pc(
+                                                                    "couponSaving",
+                                                                    {
+                                                                        amount: money(
+                                                                            Math.floor(
+                                                                                (amount *
+                                                                                    coupon.discountPercent) /
+                                                                                    100,
+                                                                            ),
+                                                                            currency,
+                                                                        ),
+                                                                    },
+                                                                )}
+                                                            </>
+                                                        )}
+                                                    </>
+                                                ) : (
+                                                    unavailableReason(coupon)
+                                                )}
+                                                <br />
+                                                {tx("有效期至")}{" "}
+                                                {formatInstant(
+                                                    coupon.expiresAt,
+                                                )}
+                                            </>
+                                        ),
+                                    }),
+                                ),
+                            ]}
+                            onChange={(nextValue) => {
                                 const next = available.find(
-                                    (coupon) =>
-                                        String(coupon.id) ===
-                                        event.target.value,
+                                    (coupon) => String(coupon.id) === nextValue,
                                 );
                                 onChange(next?.id ?? null, next);
                             }}
-                        >
-                            <option value="">{tx("不使用优惠券")}</option>
-                            {available.map((coupon) => (
-                                <option key={coupon.id} value={coupon.id}>
-                                    {coupon.name} · {tx("减免")}{" "}
-                                    {coupon.discountPercent}%
-                                    {amount > 0
-                                        ? ` · ${pc("couponSaving", { amount: money(Math.floor((amount * coupon.discountPercent) / 100), currency) })}`
-                                        : ""}
-                                </option>
-                            ))}
-                            {unavailable.length > 0 && (
-                                <optgroup label={pc("unavailableCoupons")}>
-                                    {unavailable.map((coupon) => (
-                                        <option
-                                            key={coupon.id}
-                                            disabled
-                                            value={coupon.id}
-                                        >
-                                            {coupon.name} ·{" "}
-                                            {unavailableReason(coupon)}
-                                        </option>
-                                    ))}
-                                </optgroup>
-                            )}
-                        </select>
+                        />
                         {selected && (
                             <small className="coupon-selected-detail">
                                 {tx("有效期至")}{" "}

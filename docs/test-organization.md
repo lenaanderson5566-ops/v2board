@@ -1,3 +1,15 @@
+## 用户选择控件回归（2026-10-23）
+
+复用 CouponPicker、AccountPreferences 和 BillingFlow 测试，更新原生 select 的交互断言，新增取消草稿及恢复焦点、主动不使用优惠券、时区名称和偏移搜索、无结果、保存失败重试及保存期间防重复/禁止关闭验证。新增“确认选择”“上海”词条覆盖全部 14 种语言。初次本地化扫描发现中文搜索别名硬编码，改用翻译资源后相关 4 模块/117 项通过；完整前端 113 文件/897 项通过。类型检查及最终生产构建通过。
+
+没有改动服务端接口、权限或金额计算；未重跑后端数据库测试。真实浏览器模拟数据验证范围见 frontend-validation.md。日志位于 storage/app/test-organization/selection-controls-{tests,full,build-final}.log。
+
+## 结算说明书面化（2026-10-23）
+
+检查结算、订单和支付提示，将“下一步确认”改为支付页面金额提示，“预占可用余额”改为余额抵扣及取消返还说明，“无需外部付款”改为无需额外支付；优惠说明简化为先计入周期优惠、再使用优惠券。同步 14 种语言，保留翻译查找键，不更改计费、手续费或退款行为。
+
+本地化、BillingFlow、PaymentCheckout、order-price 四个现有模块共 106 项通过，覆盖语言键及插值、付款展示和金额计算。类型检查和生产构建通过，配套前端发布资源已更新。本轮未进行真实浏览器或实际付款验收。日志位于 storage/app/test-organization/payment-copy-{tests,build}.log。
+
 ## 结算金额展示精简（2026-10-23）
 
 移除 PlanSelection 价格明细中的折合月价及无用样式，套餐选购页继续显示折合月价用于周期比较；周期总价、优惠及订单金额计算保持不变。复用 BillingFlow、PaymentCheckout 和 order-price 三个模块，50 项通过，包含套餐比较、订单创建、支付展示和金额计算。未新增仅验证元素删除的测试，未进行真实付款或浏览器验收。日志位于 storage/app/test-organization/checkout-total-{tests,build}.log。

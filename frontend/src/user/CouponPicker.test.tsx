@@ -1,14 +1,14 @@
 // @vitest-environment jsdom
 // @vitest-environment jsdom
 import { afterEach, expect, it, vi } from "vitest";
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 const mocks = vi.hoisted(() => ({
     request: vi.fn(),
     reload: vi.fn(),
     wallet: [] as any[],
     offers: [] as any[],
 }));
-vi.mock("../shared/api", () => ({ request: mocks.request, money: (n: number, currency: string) => `${currency} ${(n / 100).toFixed(2)}` }));
+vi.mock("../shared/api", () => ({ boot: {mode: "user"}, request: mocks.request, money: (n: number, currency: string) => `${currency} ${(n / 100).toFixed(2)}` }));
 vi.mock("./pricing-copy", () => ({ pricingCopy: (key: string, args: any = {}) => `${key} ${args.amount || ""}` }));
 vi.mock("../shared/i18n", () => ({
     locale: () => "zh-CN",
@@ -50,9 +50,35 @@ it("selects a wallet entry without entering a coupon code", () => {
             onChange={change}
         />,
     );
-    fireEvent.change(screen.getByRole("combobox", { name: "我的优惠券" }), { target: { value: "1" } });
+    fireEvent.click(screen.getByRole("button", { name: "我的优惠券" }));
+    fireEvent.click(screen.getByRole("radio", { name: /Welcome/ }));
+    fireEvent.click(screen.getByRole("button", { name: "确认选择" }));
     expect(change).toHaveBeenCalledWith(1, coupon);
     expect(screen.queryByRole("textbox")).toBeNull();
+});
+it("cancels draft selection with Escape and restores focus without applying a coupon", () => {
+    mocks.wallet = [coupon];
+    const change = vi.fn();
+    render(<CouponPicker planId={1} period="month_price" value={null} onChange={change} />);
+    const trigger = screen.getByRole("button", {name:"我的优惠券"});
+    trigger.focus(); fireEvent.click(trigger);
+    fireEvent.click(screen.getByRole("radio", {name:/Welcome/}));
+    fireEvent.keyDown(document, {key:"Escape"});
+    expect(screen.queryByRole("dialog")).toBeNull();
+    expect(change).not.toHaveBeenCalled();
+    expect(document.activeElement).toBe(trigger);
+    fireEvent.click(trigger);
+    expect((screen.getByRole("radio", {name:"不使用优惠券"}) as HTMLInputElement).checked).toBe(true);
+});
+it("confirms opting out of a selected coupon", async () => {
+    mocks.wallet = [coupon];
+    const change = vi.fn();
+    render(<CouponPicker planId={1} period="month_price" value={1} onChange={change} />);
+    fireEvent.click(screen.getByRole("button", {name:"我的优惠券"}));
+    fireEvent.click(screen.getByRole("radio", {name:"不使用优惠券"}));
+    fireEvent.click(screen.getByRole("button", {name:"确认选择"}));
+    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+    expect(change).toHaveBeenCalledWith(null, undefined);
 });
 it("disables expired, used and ineligible coupons", () => {
     mocks.wallet = [
@@ -69,7 +95,9 @@ it("disables expired, used and ineligible coupons", () => {
             onChange={vi.fn()}
         />,
     );
-    const radios = screen.getAllByRole("option") as HTMLOptionElement[];
+    fireEvent.click(screen.getByRole("button", { name: "我的优惠券" }));
+    fireEvent.click(screen.getByText("unavailableCoupons", {exact:false}));
+    const radios = screen.getAllByRole("radio") as HTMLInputElement[];
     expect(radios[0].disabled).toBe(false);
     expect(radios.slice(1).every((r) => r.disabled)).toBe(true);
 });
@@ -97,8 +125,9 @@ it("sorts usable coupons by savings, previews integer-cent discounts and clears 
     mocks.wallet = [coupon, { ...coupon, id: 2, name: "Better", discountPercent: 25 }];
     const change = vi.fn();
     const view = render(<CouponPicker planId={1} period="month_price" value={1} onChange={change} amount={999} currency="USD" />);
-    expect(screen.getAllByRole("option")[1].textContent).toContain("Better");
-    expect(screen.getByRole("option", { name: /couponSaving USD 2.49/ })).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "我的优惠券" }));
+    expect(screen.getAllByRole("radio")[1].closest("label")?.textContent).toContain("Better");
+    expect(screen.getByRole("radio", { name: /couponSaving USD 2.49/ })).toBeTruthy();
     mocks.wallet = [{ ...coupon, planIds: [1] }];
     view.rerender(<CouponPicker planId={2} period="month_price" value={1} onChange={change} />);
     expect(change).toHaveBeenCalledWith(null);

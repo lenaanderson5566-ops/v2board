@@ -1,8 +1,7 @@
 import type { Row } from "../shared/api";
 const quote = (value: string) => "'" + value.replace(/'/g, "'\\''") + "'";
-export const nodeUpgradeCommand = (node: Row): string => String(node.upgrade_command || "");
-export const nodeIPCommand =
-    "curl -fSL https://raw.githubusercontent.com/lenaanderson5566-ops/v2box/v1.0.3/script/node-network.py -o node-network.py && python3 node-network.py ip";
+export const nodeUpgradeCommand = (node: Row): string =>
+    String(node.upgrade_command || "");
 export function nodeDeploymentCommand(node: Row): string {
     const base = String(node.install_command || "");
     if (!node.ddns) return base;

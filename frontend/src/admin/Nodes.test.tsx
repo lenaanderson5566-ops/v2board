@@ -350,6 +350,8 @@ it.each(["v2node", "v2box"])(
 it("guides deployment to panel-managed DDNS", async () => {
     api.request.mockImplementation(async (path: string) => {
         if(path.endsWith("dictionary/fetch")) return adminPageFixture(path);
+        if (path.includes("server/credentials?")) return { data: { keys: [] } };
+        if (path.endsWith("server/ddns/fetch")) return { data: { credentials: [], assignments: [] } };
         if (path.includes("console/nodeSchema")) return { data: {} };
         if (path.endsWith("server/manage/getNodes"))
             return {
@@ -367,12 +369,9 @@ it("guides deployment to panel-managed DDNS", async () => {
     });
     render(<Nodes />);
     fireEvent.click(await screen.findByRole("button", { name: "部署与接入" }));
-    fireEvent.click(screen.getByText("手动安装与网络辅助"));
-    expect(screen.getByText(/在节点管理的“Cloudflare DDNS”/)).toBeTruthy();
-    expect(
-        (screen.getByLabelText("查询服务器 IP 命令") as HTMLTextAreaElement)
-            .value,
-    ).toContain("node-network.py ip");
+    expect(screen.getByRole("heading", { name: "自动 IP 上报" })).toBeTruthy();
+    expect(screen.queryByLabelText("查询服务器 IP 命令")).toBeNull();
+    fireEvent.click(screen.getByText("高级：手动安装"));
     expect(
         (
             screen.getByRole("textbox", {
@@ -380,6 +379,9 @@ it("guides deployment to panel-managed DDNS", async () => {
             }) as HTMLTextAreaElement
         ).value,
     ).toBe("bash install.sh");
+    fireEvent.click(screen.getByRole("button", { name: "管理域名与 IP 上报" }));
+    expect(await screen.findByText("请先在 Cloudflare DDNS 中添加并验证根域名。")).toBeTruthy();
+    expect(api.request.mock.calls.some(([path]) => path.endsWith("credentials/deployment"))).toBe(false);
 });
 
 it("saves an AnyTLS preset through the real node form", async () => {

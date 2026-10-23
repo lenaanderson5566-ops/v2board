@@ -5,11 +5,7 @@ import { admin, date, query, request, type Row } from "../shared/api";
 import { Modal, State, useData } from "../shared/ui";
 import { AdminChoiceGroup, AdminTabs } from "./AdminChoices";
 import { NodeCredentials } from "./NodeCredentials";
-import {
-    nodeDeploymentCommand,
-    nodeIPCommand,
-    nodeUpgradeCommand,
-} from "./node-deployment";
+import { nodeDeploymentCommand, nodeUpgradeCommand } from "./node-deployment";
 
 export function NodeDeployment({
     node,
@@ -267,13 +263,26 @@ export function NodeDeployment({
                                     独立凭据。
                                 </p>
                             )}
+                            {node.type === "v2box" && (
+                                <section className="admin-deployment-card">
+                                    <h3>自动 IP 上报</h3>
+                                    <p className="muted">
+                                        定时将节点公网 IP
+                                        上报面板，用于更新域名解析。
+                                        新安装时已绑定域名会自动配置；已有节点缺少上报或上报异常时，可单独配置或修复。
+                                    </p>
+                                    <button onClick={() => setTab("domain")}>
+                                        管理域名与 IP 上报
+                                    </button>
+                                </section>
+                            )}
                             <details className="admin-deployment-tools">
-                                <summary>手动安装与网络辅助</summary>
+                                <summary>高级：手动安装</summary>
                                 <div>
                                     <p className="muted">
-                                        V2Box
-                                        手动安装时按提示输入独立密钥；更换已有密钥请执行
-                                        v2box credential，再执行 v2box restart。
+                                        {node.type === "v2box"
+                                            ? "手动安装需自行配置节点接入密钥和 IP 上报；通常使用“新安装”中的一键部署即可。"
+                                            : "手动安装后配置节点独立凭据；IP 自动上报可在 Cloudflare DDNS 中绑定节点后配置。"}
                                     </p>
                                     {node.install_command && (
                                         <>
@@ -300,28 +309,6 @@ export function NodeDeployment({
                                             </button>
                                         </>
                                     )}
-                                    <p>
-                                        可选：在节点管理的“Cloudflare
-                                        DDNS”保存凭据并绑定此节点，然后配置节点
-                                        IP 上报。
-                                    </p>
-                                    <textarea
-                                        className="admin-command-input"
-                                        aria-label="查询服务器 IP 命令"
-                                        readOnly
-                                        rows={3}
-                                        value={nodeIPCommand}
-                                    />
-                                    <button
-                                        onClick={() =>
-                                            copy(
-                                                nodeIPCommand,
-                                                "IP 查询命令已复制",
-                                            )
-                                        }
-                                    >
-                                        复制 IP 查询命令
-                                    </button>
                                 </div>
                             </details>
                             {node.type === "v2box" && (

@@ -224,9 +224,10 @@ export function NodeDomainBinding({
                         {!binding.ipv4 && !binding.ipv6 && (
                             <p className="muted">
                                 尚未收到独立 IP 上报。节点列表的 IP
-                                也可能来自连接面板时的出口地址。请检查节点的
-                                node-network 上报服务；已有节点可在 Cloudflare
-                                DDNS 中配置节点上报。
+                                也可能来自连接面板时的出口地址。
+                                {node.type === "v2box"
+                                    ? "请使用下方“配置 / 修复 IP 上报”为已有节点配置自动上报。"
+                                    : "请在 Cloudflare DDNS 中配置节点上报。"}
                             </p>
                         )}
                         <div className="actions">

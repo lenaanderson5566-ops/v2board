@@ -2,7 +2,7 @@ import { expect, it } from "vitest";
 import { anytlsPresets, paddingPreset } from "./anytls-padding";
 import { nodeSettingsInitial, nodeSettingsPayload, nodeSettingsFields } from "./node-settings";
 import { linkNode, nodeFields } from "./admin-linkage";
-import { nodeDeploymentCommand, nodeIPCommand, nodeReportCommand, nodeUpgradeCommand } from "./node-deployment";
+import { nodeDeploymentCommand, nodeReportCommand, nodeUpgradeCommand } from "./node-deployment";
 it("saves all AnyTLS presets as native arrays without the UI-only selector", () => {
     for (const preset of anytlsPresets) {
         const linked = linkNode("padding_preset",preset.id,{protocol:"anytls"});
@@ -30,7 +30,7 @@ it("keeps DDNS opt-in and quotes generated shell arguments", () => {
 });
 
 it("uses versioned network helpers included in the released backend", () => {
- for(const command of [nodeIPCommand,nodeReportCommand("dual"),nodeDeploymentCommand({type:"v2node",install_command:"install",ddns:true})]) {
+ for(const command of [nodeReportCommand("dual"),nodeDeploymentCommand({type:"v2node",install_command:"install",ddns:true})]) {
   expect(command).toContain("/v2box/v1.0.3/script/node-network.py");
   expect(command).not.toContain("/v2box/main/");
  }

@@ -6,6 +6,7 @@ import ipaddress
 import json
 import os
 from pathlib import Path
+import re
 import socket
 import ssl
 import subprocess
@@ -24,7 +25,8 @@ class NoRedirect(urllib.request.HTTPRedirectHandler):
         return None
 
 def json_request(url, token=None, body=None):
-    headers={'Accept':'application/dns-json' if body is None else 'application/json'}
+    headers={'User-Agent':'v2box-deployment/1.0 (+https://github.com/lenaanderson5566-ops/v2box)',
+             'Accept':'application/dns-json' if body is None else 'application/json'}
     if token:
         headers['Authorization']='Bearer '+token
     if body is not None:
@@ -37,8 +39,30 @@ def json_request(url, token=None, body=None):
                 raise DeploymentError('Response exceeded size limit')
             return json.loads(raw)
     except urllib.error.HTTPError as e:
+        # A proxy rejection is not evidence that the panel revoked deployment
+        # authority. Never print arbitrary upstream bodies or reflected secrets.
+        try:
+            try:
+                payload=json.loads(e.read(16384))
+            except (ValueError,UnicodeError,OSError):
+                payload={}
+            if not isinstance(payload,dict): payload={}
+            signature=str(payload.get('detail','')).lower()
+            browser_block=e.code==403 and (
+                payload.get('error_code') in (1010,'1010') or
+                signature in (
+                    "the site owner has blocked access based on your browser's signature.",
+                    "the owner of this website has banned your access based on your browser's signature"
+                ) or e.headers.get('cf-mitigated')=='challenge')
+            if browser_block:
+                ray=e.headers.get('cf-ray','')
+                reference=' Ray ID: '+ray+'.' if re.fullmatch(r'[a-zA-Z0-9-]{1,128}',ray) else ''
+                raise DeploymentError('Browser protection blocked the deployment request (HTTP 403).'+reference+
+                    ' Check Cloudflare Browser Integrity Check or challenge rules for the deployment API, then resume. Panel authorization was not verified.') from None
+        finally:
+            e.close()
         if e.code in (401,403,409,422):
-            raise DeploymentError('Panel rejected deployment (%s); check authorization and node settings. Do not delete existing certificates.' % e.code) from None
+            raise DeploymentError('Deployment request rejected (%s); check gateway rules, authorization and node settings. Do not delete existing certificates.' % e.code) from None
         raise OSError('HTTP service unavailable') from None
     except (ValueError,UnicodeError):
         raise OSError('Invalid response') from None

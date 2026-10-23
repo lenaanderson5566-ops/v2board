@@ -136,3 +136,15 @@ V2Box 参考原 V2Node 的“wget 下载安装入口，再执行并传参”结�
 ### 托管 TLS 域名验证
 
 “验证并启用域名”先准备候选证书，普通 TLS 的连接域名、SNI、证书身份在节点验证和监听启动确认后同步发布；Reality 的 SNI 不变。绑定卡片及域名管理列表展示验证中、切换未完成和已同步状态，验证中阻止重复启用，失败保留原地址并可重试。证书模式、失败恢复、升级依赖与连接中断边界见 [V2Box 验证切换](v2box.md#托管域名与-tls-验证切换)。
+
+### Cloudflare 拦截部署恢复请求
+
+部署恢复返回 403 且说明因 browser's signature 阻止访问时，请先检查 Cloudflare 安全事件与 Ray ID；这不代表面板已撤销部署授权。部署助手使用明确的 `v2box-deployment` User-Agent，但客户端标识不能替代鉴权，也不能保证通过浏览器防护。
+
+若命中 Browser Integrity Check，可创建仅针对面板部署进度接口的自定义 Skip 规则，选择跳过 **Browser Integrity Check**，保留其他 WAF、限速和面板鉴权。将下面的主机名替换为实际面板主机：
+
+```text
+(http.host eq "panel.example.com" and http.request.method eq "POST" and http.request.uri.path eq "/api/v10/server/enrollments/progress")
+```
+
+参考 [Cloudflare Browser Integrity Check](https://developers.cloudflare.com/waf/tools/browser-integrity-check/)。仍被拦截时按安全事件确认具体规则，不扩大为全站跳过防护。规则修正后，从面板重新下载 bootstrap，再执行 `sh install-v2box.sh --resume`；保留原部署状态和证书，不需要重新兑换授权或更新节点二进制。实际授权过期、撤销或节点配置冲突仍会停止部署，需按对应面板错误处理。

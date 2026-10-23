@@ -163,7 +163,7 @@ SH,
     }
     if (getenv('V2BOX_BOOTSTRAP_TEST')==='1') {
         $python=<<<'PY'
-import importlib.util, json, os, sys, tempfile, unittest, subprocess
+import importlib.util, io, json, os, sys, tempfile, unittest, subprocess
 from pathlib import Path
 from unittest.mock import patch
 spec=importlib.util.spec_from_file_location('deploy',sys.argv[1]);m=importlib.util.module_from_spec(spec);spec.loader.exec_module(m)
@@ -249,6 +249,43 @@ class WorkflowTests(unittest.TestCase):
         with patch.object(m,'json_request',side_effect=m.DeploymentError('revoked')) as request:
             with self.assertRaises(m.DeploymentError):m.Deployment.progress(self.deploy)
             self.assertEqual(request.call_count,1)
+    def test_machine_request_identifies_itself_without_url_secrets(self):
+        class Response(io.BytesIO):
+            pass
+        token='dp_'+'f'*64
+        with patch.object(m.urllib.request,'build_opener') as build:
+            build.return_value.open.return_value=Response(b'{"data":{"dnsReady":true}}')
+            self.assertTrue(m.json_request('https://panel.example.test/api/v10/server/enrollments/progress',token,{'action':'status'})['data']['dnsReady'])
+            request=build.return_value.open.call_args.args[0]
+            self.assertTrue(request.get_header('User-agent').startswith('v2box-deployment/'))
+            self.assertEqual(request.get_header('Authorization'),'Bearer '+token)
+            self.assertNotIn(token,request.full_url)
+            self.assertEqual(json.loads(request.data),{'action':'status'})
+            self.assertIsInstance(build.call_args.args[0],m.NoRedirect)
+    def test_browser_signature_block_is_not_revocation(self):
+        for body,headers in [
+            ({'detail':"The site owner has blocked access based on your browser's signature.",'reflected':'dp_'+'f'*64},{'cf-ray':'test-NRT'}),
+            ({'error_code':1010},{'cf-ray':'test-NRT'}),
+            (None,{'cf-mitigated':'challenge','cf-ray':'invalid\nsecret'}),
+        ]:
+            stream=io.BytesIO(json.dumps(body).encode() if body is not None else b'<html>challenge</html>')
+            error=m.urllib.error.HTTPError('https://panel.example.test',403,'Forbidden',headers,stream)
+            with patch.object(m.urllib.request,'build_opener') as build:
+                build.return_value.open.side_effect=error
+                with self.assertRaisesRegex(m.DeploymentError,'Browser protection blocked') as caught:
+                    m.json_request('https://panel.example.test',body={'action':'status'})
+                self.assertNotIn('dp_',str(caught.exception));self.assertNotIn('invalid\nsecret',str(caught.exception))
+                self.assertNotIn('Panel rejected',str(caught.exception))
+                self.assertTrue(stream.closed)
+    def test_application_403_and_other_json_errors_remain_rejected(self):
+        for body in [{'code':'FORBIDDEN','detail':'revoked'},[],None,'not json']:
+            stream=io.BytesIO(json.dumps(body).encode())
+            error=m.urllib.error.HTTPError('https://panel.example.test',403,'Forbidden',{'cf-ray':'test-NRT'},stream)
+            with patch.object(m.urllib.request,'build_opener') as build:
+                build.return_value.open.side_effect=error
+                with self.assertRaisesRegex(m.DeploymentError,'Deployment request rejected'):
+                    m.json_request('https://panel.example.test',body={'action':'status'})
+                self.assertTrue(stream.closed)
     def test_port_conflict_never_starts_certificate_request(self):
         with patch.object(m.socket,'socket',side_effect=OSError(m.errno.EADDRINUSE,'in use')):
             with self.assertRaises(m.DeploymentError):m.Deployment.check_http_port(self.deploy)

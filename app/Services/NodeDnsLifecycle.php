@@ -67,6 +67,7 @@ final class NodeDnsLifecycle
         self::locked(function()use($id){
             $a=DB::table('v2_node_ddns')->find($id);
             if (!$a || !$a->enabled || !$a->managed || $a->next_run<0 || $a->next_run>time()) return;
+            NodeTlsTransition::reconcile($a);
             $c=DB::table('v2_ddns_credential')->find($a->credential_id);
             if (!$c || $c->next_run<0 || $c->next_run>time()) return;
             $status='healthy'; $next=time()+300;
@@ -93,8 +94,8 @@ final class NodeDnsLifecycle
         self::locked(fn()=>self::activateLocked($id));
     }
     /** Caller must hold the DNS lifecycle lock. */
-    public static function activateLocked(int $id): void {
-        DB::transaction(function()use($id){
+    public static function activateLocked(int $id,bool $verified=false,?array $candidate=null,?string $fingerprint=null): void {
+        DB::transaction(function()use($id,$verified,$candidate,$fingerprint){
             $a=DB::table('v2_node_ddns')->where('id',$id)->lockForUpdate()->first();
             abort_unless($a && $a->managed && $a->enabled && in_array($a->status,['ready_to_switch','healthy'],true) && $a->last_success>=time()-900,409,'请等待有效 IP 上报及解析同步成功');
             foreach ($a->family==='dual'?['ipv4','ipv6']:[$a->family] as $family) {
@@ -105,13 +106,26 @@ final class NodeDnsLifecycle
             abort_unless($node && ($node->host===$a->published_domain || $node->host===$a->domain),409,'节点地址已变化，请重新保存域名绑定');
             // Only the selected node and its direct children sharing the old hostname are changed.
             $affected=DB::table($table)->where(fn($q)=>$q->where('id',$a->node_id)->orWhere('parent_id',$a->node_id))->where('host',$node->host)->get();
-            foreach ($affected as $n) {
-                $tls=json_decode($n->tls_settings??'{}',true)?:[];
-                abort_if((int)$n->tls===1 && empty($tls['server_name']),422,'TLS 节点须先设置并验证独立的证书名称，再切换连接域名');
+            if (!$verified && $affected->contains(fn($n)=>(int)$n->tls===1)) {
+                NodeTlsTransition::queue($a,$node,$affected); return;
             }
-            DB::table($table)->whereIn('id',$affected->pluck('id'))->update(['host'=>$a->domain,'updated_at'=>time()]);
+            foreach ($affected as $n) {
+                $update=['host'=>$a->domain,'updated_at'=>time()];
+                if ((int)$n->tls===1) {
+                    $tls=json_decode($n->tls_settings??'{}',true)?:[];
+                    $identity=$candidate ?? $tls;
+                    abort_unless(($identity['server_name']??'')===$a->domain && preg_match('/^[a-f0-9]{64}$/D',$fingerprint??''),409,'节点尚未验证目标域名的证书');
+                    foreach (['server_name','cert_mode','cert_file','key_file','tls_cert','tls_key'] as $field) {
+                        unset($tls[$field]); if (isset($identity[$field])) $tls[$field]=$identity[$field];
+                    }
+                    unset($tls['server_names'],$tls['pinned_peer_cert_sha256']);
+                    if (in_array($tls['cert_mode'],['self','remote'],true)) $tls['pinned_peer_cert_sha256']=$fingerprint;
+                    $update['tls_settings']=json_encode($tls);
+                }
+                DB::table($table)->where('id',$n->id)->update($update);
+            }
             DB::table('v2_node_dns_record')->where('assignment_id',$id)->where('delete_after',0)->where('domain','!=',$a->domain)->update(['delete_after'=>time()+86400,'next_run'=>0,'status'=>'pending_cleanup']);
-            DB::table('v2_node_ddns')->where('id',$id)->update(['published_domain'=>$a->domain,'status'=>'healthy']);
+            DB::table('v2_node_ddns')->where('id',$id)->update(['published_domain'=>$a->domain,'status'=>'healthy','tls_transition'=>null,'tls_transition_state'=>$verified?'applied':'none']);
             NodeDdnsService::event($id,'domain_activated');
         });
     }

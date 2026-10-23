@@ -46,6 +46,7 @@ class NodeController extends Controller {
     public function configuration(Request $request) {
         $node = $this->node($request);
         $configuration = NodeV10Config::build($node);
+        if (isset($configuration['domainTransition'])) abort_unless(in_array('certificate-transition-v1',explode(',',$request->header('X-Node-Capabilities','')),true),409,'请升级支持证书验证切换的 V2Box');
         if (!empty($configuration['singBox'])) {
             $features = explode(',', $request->header('X-Node-Capabilities', ''));
             abort_unless(in_array('native-routing-v1', $features, true), 409);
@@ -61,17 +62,21 @@ class NodeController extends Controller {
     public function capabilities(Request $request) {
         $node = $this->node($request);
         $data = $request->validate(['coreVersion'=>'required|string|max:80', 'features'=>'present|array|max:32', 'features.*'=>'required|string|max:80|distinct',
-            'configuration'=>'sometimes|array:hash,state,errorCode','configuration.hash'=>'required_with:configuration|string|regex:/^[a-f0-9]{64}$/',
+            'configuration'=>'sometimes|array:hash,state,errorCode,certificateFingerprint,transitionId','configuration.hash'=>'required_with:configuration|string|regex:/^[a-f0-9]{64}$/',
+            'configuration.transitionId'=>'sometimes|string|regex:/^[a-f0-9]{32}$/',
+            'configuration.certificateFingerprint'=>'sometimes|string|regex:/^[a-f0-9]{64}$/',
             'configuration.state'=>'required_with:configuration|in:applied,failed','configuration.errorCode'=>'required_if:configuration.state,failed|in:decode,core,users,certificate,start'
         ]);
+        $transitionAccepted=null;
         if (isset($data['configuration'])) {
             \App\Services\NodeRuntimeService::receipt((int)$node->id,$data['configuration']);
+            if (in_array('certificate-transition-v1',$data['features'],true) && isset($data['configuration']['transitionId'])) $transitionAccepted=\App\Services\NodeTlsTransition::receipt((int)$node->id,$data['configuration']);
             unset($data['configuration']);
         }
         $data['reportedAt'] = gmdate('Y-m-d\TH:i:s\Z');
         Cache::put(\App\Utils\CacheKey::get('SERVER_V2BOX_LAST_CHECK_AT', $node->id), time(), 3600);
         Cache::put('V2BOX_CAPABILITIES:'.$node->id, $data, 86400);
-        return response()->json(['data'=>['accepted'=>true]]);
+        return response()->json(['data'=>['accepted'=>true]+($transitionAccepted!==null?['domainTransitionAccepted'=>$transitionAccepted]:[])]);
     }
     public function trafficBudget(Request $request) {
         $node=$this->node($request);

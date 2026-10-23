@@ -284,4 +284,6 @@ grep -q 'migrate --path=database/migrations/2026_10_20_000003_create_node_creden
 
 grep -q 'migrate --path=database/migrations/2026_10_23_000001_manage_node_dns.php --force --no-interaction' calls.log
 
+grep -q 'migrate --path=database/migrations/2026_10_23_000002_node_tls_transition.php --force --no-interaction' calls.log
+
 echo 'Updater: 26 isolated scenarios passed'

@@ -96,8 +96,9 @@ export const resources: Record<string, Resource> = {
         save: admin("plan/save"),
         drop: admin("plan/drop"),
         columns: [
-            ["show", "销售状态"],
             nameColumn,
+            ["show", "展示"],
+            ["renew", "允许续费"],
             ["count", "统计"],
             ["transfer_enable", "流量 (GB)"],
             ["device_limit", "设备数限制"],
@@ -128,7 +129,6 @@ export const resources: Record<string, Resource> = {
                     ] as [string, string, (r: Row) => ReactNode],
             ),
             ["group_id", "权限组"],
-            ["renew", "允许续费"],
         ],
         fields: [
             field("name", "套餐名称", "text", true),
@@ -175,12 +175,6 @@ export const resources: Record<string, Resource> = {
             },
         ],
         defaults: { transfer_enable: 100 },
-        actions: [
-            ["展示", admin("plan/update"), { show: 1 }],
-            ["隐藏", admin("plan/update"), { show: 0 }],
-            ["开启续费", admin("plan/update"), { renew: 1 }],
-            ["关闭续费", admin("plan/update"), { renew: 0 }],
-        ],
     },
     groups: {
         title: "节点权限组",

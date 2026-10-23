@@ -841,6 +841,7 @@ CREATE TABLE IF NOT EXISTS `v2_node_ddns` (
  `id` int unsigned NOT NULL AUTO_INCREMENT PRIMARY KEY, `credential_id` int unsigned NOT NULL,
  `node_type` varchar(10) NOT NULL, `node_id` int unsigned NOT NULL, `domain` varchar(253) NOT NULL,
  `family` varchar(8) NOT NULL, `enabled` tinyint(1) NOT NULL DEFAULT 1, `managed` tinyint(1) NOT NULL DEFAULT 0,
+ `tls_transition` longtext DEFAULT NULL, `tls_transition_state` varchar(16) NOT NULL DEFAULT 'none',
  `published_domain` varchar(253) DEFAULT NULL, `report_hash` varchar(64) DEFAULT NULL,
  `ipv4` varchar(45) DEFAULT NULL, `ipv6` varchar(45) DEFAULT NULL,
  `ipv4_seen_at` bigint NOT NULL DEFAULT 0, `ipv6_seen_at` bigint NOT NULL DEFAULT 0,

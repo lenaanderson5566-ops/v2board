@@ -60,6 +60,7 @@ class NodeV10Config {
         return $out;
     }
     public static function build($node): array {
+        [$node,$transition] = \App\Services\NodeTlsTransition::overlay($node);
         $source = NodeConfiguration::build($node);
         foreach (['tls_settings', 'base_config'] as $key) $source[$key] = (object) self::fields($source[$key] ?? [], self::NESTED);
         if (isset($source['routes']) && $source['routes'] instanceof \Illuminate\Contracts\Support\Arrayable) $source['routes'] = $source['routes']->toArray();
@@ -69,6 +70,6 @@ class NodeV10Config {
         }
         $source['sing_box'] = \App\Services\NodeRouteService::forNode($node);
         if (isset($source['sing_box']['route'])) $source['sing_box']['route'] = (object) $source['sing_box']['route'];
-        return self::fields($source, self::FIELDS) + ['trafficBatchDedup'=>true,'trafficBudgetSupported'=>true];
+        return self::fields($source, self::FIELDS) + ['trafficBatchDedup'=>true,'trafficBudgetSupported'=>true] + ($transition ? ['domainTransition'=>$transition] : []);
     }
 }

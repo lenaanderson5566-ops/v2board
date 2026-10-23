@@ -78,11 +78,18 @@ try {
     // Run the shipped bootstrap with fake downloads/services and a private config directory.
     // No installation, external HTTP, system service changes or real credentials are involved.
     // Opt-in: a disposable Linux root container with bash/jq; regular PHP runs need neither.
-    foreach (getenv('V2BOX_BOOTSTRAP_TEST')==='1' ? [0,1] : [] as $reportFailure) {
+    foreach (getenv('V2BOX_BOOTSTRAP_TEST')==='1' ? [[0,false],[1,false],[0,true],[1,true]] : [] as [$reportFailure,$networkOnly]) {
         $fixture=sys_get_temp_dir().'/v2box-deploy-test-'.bin2hex(random_bytes(8));
         mkdir($fixture,0700);mkdir($fixture.'/bin',0700);mkdir($fixture.'/tmp',0700);mkdir($fixture.'/lib',0700);
         try {
             $response=['data'=>['nodeId'=>3,'nodeType'=>'v2box','apiHost'=>'https://panel.example.invalid','apiKey'=>'nk_'.str_repeat('a',32).'.'.str_repeat('b',64),'networkReport'=>['token'=>str_repeat('c',64),'family'=>'ipv4']]];
+            $originalKey=$response['data']['apiKey'];
+            if ($networkOnly) {
+                mkdir($fixture.'/config',0700);
+                file_put_contents($fixture.'/config/config.json',json_encode(['Nodes'=>[['NodeType'=>'v2box','NodeID'=>3,'ApiHost'=>'https://panel.example.invalid','ApiKey'=>$originalKey]]]));
+                $originalHash=hash_file('sha256',$fixture.'/config/config.json');
+                unset($response['data']['apiKey']);$response['data']['purpose']='network';
+            }
             file_put_contents($fixture.'/response.json',json_encode($response));
             $mocks=[
                 'curl'=><<<'SH'
@@ -97,7 +104,7 @@ while (($#)); do
   esac
   shift
 done
-if $response; then cp "$DNS_FIXTURE/response.json" "$out"; else printf '#!/bin/bash\nexit 0\n' > "$out"; fi
+if $response; then echo redeemed >> "$DNS_FIXTURE/redemptions"; cp "$DNS_FIXTURE/response.json" "$out"; else printf '#!/bin/bash\nexit 0\n' > "$out"; fi
 SH,
                 'v2box'=><<<'SH'
 #!/bin/bash
@@ -107,6 +114,7 @@ SH,
                 'python3'=><<<'SH'
 #!/bin/bash
 set -eu
+if [[ "$1" == -m && "$2" == py_compile ]]; then exit 0; fi
 if [[ "$1" == */panel-deploy.py ]]; then exec /usr/bin/python3 "$@"; fi
 [[ "$1" == */node-network.py && "$2" == report-configure && "$3" == --panel-url && "$4" == https://panel.example.invalid && "$5" == --family && "$6" == ipv4 && "$7" == --token-file ]] || exit 2
 [[ "$(stat -c %a "$8")" == 600 && "$(cat "$8")" =~ ^c{64}$ ]] || exit 3
@@ -116,14 +124,29 @@ SH,
             ];
             foreach ($mocks as $name=>$script) {file_put_contents($fixture.'/bin/'.$name,$script."\n");chmod($fixture.'/bin/'.$name,0700);}
             $script=str_replace('__NODE_DEPLOY_HELPER__',file_get_contents(resource_path('scripts/node-deploy.py')),file_get_contents(resource_path('scripts/node-deploy.sh')));
-            $script=str_replace(['__NODE_PREREQUISITES__','/etc/v2box','/usr/local/lib/v2box'],['',$fixture.'/config',$fixture.'/lib'],$script);
+            $script=str_replace(['__NODE_PREREQUISITES__','/etc/v2box','/usr/local/lib/v2box','/etc/node-network'],['',$fixture.'/config',$fixture.'/lib',$fixture.'/network'],$script);
             file_put_contents($fixture.'/bootstrap.sh',$script);
-            $run=function()use($fixture,$reportFailure){
-                $pipes=[];$p=proc_open(['bash',$fixture.'/bootstrap.sh','--api-host','https://panel.example.invalid','--node-id','3','--deploy-token','nd_'.str_repeat('d',64)],[['pipe','r'],['pipe','w'],['pipe','w']],$pipes,null,array_merge(getenv(),['PATH'=>$fixture.'/bin:'.getenv('PATH'),'TMPDIR'=>$fixture.'/tmp','DNS_FIXTURE'=>$fixture,'DNS_REPORT_FAILURE'=>(string)$reportFailure]));
+            $run=function($failure=null)use($fixture,$reportFailure,$networkOnly){
+                $pipes=[];$p=proc_open(['bash',$fixture.'/bootstrap.sh',...($networkOnly?['--network-only']:[]),'--api-host','https://panel.example.invalid','--node-id','3','--deploy-token','nd_'.str_repeat('d',64)],[['pipe','r'],['pipe','w'],['pipe','w']],$pipes,null,array_merge(getenv(),['PATH'=>$fixture.'/bin:'.getenv('PATH'),'TMPDIR'=>$fixture.'/tmp','DNS_FIXTURE'=>$fixture,'DNS_REPORT_FAILURE'=>(string)($failure??$reportFailure)]));
                 fclose($pipes[0]);$output=stream_get_contents($pipes[1]).stream_get_contents($pipes[2]);fclose($pipes[1]);fclose($pipes[2]);return [proc_close($p),$output];
             };
             [$exit,$output]=$run();
             $assert($exit===$reportFailure,'Deployment bootstrap reports address setup result: '.$exit.' '.preg_replace('/(?:nk_|nd_)?[a-f0-9.]{64,}/','[redacted]',$output));
+            if ($networkOnly) {
+                $assert(file_get_contents($fixture.'/events')==="report\n",'Network-only setup never restarts node');
+                $assert(hash_file('sha256',$fixture.'/config/config.json')===$originalHash,'Network-only setup preserves node configuration and key');
+                $assert(!str_contains($output,$response['data']['networkReport']['token']) && count(glob($fixture.'/tmp/*'))===0,'Network-only setup cleans temporary secrets');
+                if ($reportFailure) {
+                    $assert(is_file($fixture.'/network/enrollment-state.json') && (fileperms($fixture.'/network/enrollment-state.json')&0777)===0600,'Failure retains private state for resume');
+                    [$resumed]=$run(0);
+                    $assert($resumed===0 && file_get_contents($fixture.'/redemptions')==="redeemed\n",'Resume uses private state without redeeming consumed grant');
+                }
+                $assert(!file_exists($fixture.'/network/enrollment-state.json'),'Successful reporting removes enrollment secret');
+                file_put_contents($fixture.'/config/config.json',json_encode(['Nodes'=>[['NodeType'=>'v2box','NodeID'=>999,'ApiHost'=>'https://panel.example.invalid']]]));
+                [$wrong]=$run(0);
+                $assert($wrong===1 && file_get_contents($fixture.'/redemptions')==="redeemed\n",'Wrong node rejected before grant consumption');
+                continue;
+            }
             $assert(file_get_contents($fixture.'/events')===($reportFailure ? "report\n" : "report\nrestart\n"),'IP reporting must succeed before starting the node');
             $config=json_decode(file_get_contents($fixture.'/config/config.json'),true);
             $assert($config['Nodes'][0]['ApiKey']===$response['data']['apiKey'] && (fileperms($fixture.'/config/config.json')&0777)===0600,'Deployment atomically installs private node configuration');

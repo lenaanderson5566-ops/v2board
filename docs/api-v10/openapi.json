@@ -9753,114 +9753,175 @@
                   ],
                   "properties": {
                     "data": {
-                      "type": "object",
-                      "required": [
-                        "nodeType",
-                        "nodeId",
-                        "apiHost",
-                        "apiKey",
-                        "credentialId"
-                      ],
-                      "properties": {
-                        "nodeType": {
-                          "type": "string",
-                          "enum": [
-                            "v2box"
-                          ]
-                        },
-                        "nodeId": {
-                          "type": "integer",
-                          "minimum": 1
-                        },
-                        "apiHost": {
-                          "type": "string",
-                          "format": "uri"
-                        },
-                        "apiKey": {
-                          "type": "string",
-                          "description": "One-time secret. Never logged or listed."
-                        },
-                        "credentialId": {
-                          "type": "string"
-                        },
-                        "networkReport": {
+                      "oneOf": [
+                        {
                           "type": "object",
-                          "description": "Optional scoped address-reporting setup. Cloudflare credentials are never returned.",
                           "required": [
-                            "token",
-                            "family"
+                            "nodeType",
+                            "nodeId",
+                            "apiHost",
+                            "apiKey",
+                            "credentialId"
                           ],
                           "properties": {
-                            "token": {
-                              "type": "string",
-                              "pattern": "^[a-f0-9]{64}$"
-                            },
-                            "family": {
+                            "nodeType": {
                               "type": "string",
                               "enum": [
-                                "ipv4",
-                                "ipv6",
-                                "dual"
+                                "v2box"
                               ]
+                            },
+                            "nodeId": {
+                              "type": "integer",
+                              "minimum": 1
+                            },
+                            "apiHost": {
+                              "type": "string",
+                              "format": "uri"
+                            },
+                            "apiKey": {
+                              "type": "string",
+                              "description": "One-time secret. Never logged or listed."
+                            },
+                            "credentialId": {
+                              "type": "string"
+                            },
+                            "networkReport": {
+                              "type": "object",
+                              "description": "Optional scoped address-reporting setup. Cloudflare credentials are never returned.",
+                              "required": [
+                                "token",
+                                "family"
+                              ],
+                              "properties": {
+                                "token": {
+                                  "type": "string",
+                                  "pattern": "^[a-f0-9]{64}$"
+                                },
+                                "family": {
+                                  "type": "string",
+                                  "enum": [
+                                    "ipv4",
+                                    "ipv6",
+                                    "dual"
+                                  ]
+                                }
+                              },
+                              "additionalProperties": false
+                            },
+                            "deployment": {
+                              "type": "object",
+                              "required": [
+                                "token",
+                                "domain",
+                                "tls",
+                                "certificateMode",
+                                "certificateDomain",
+                                "certificateFile",
+                                "protocol",
+                                "listenPort",
+                                "listenAddress"
+                              ],
+                              "properties": {
+                                "token": {
+                                  "type": "string",
+                                  "pattern": "^dp_[a-f0-9]{64}$"
+                                },
+                                "domain": {
+                                  "type": "string"
+                                },
+                                "tls": {
+                                  "type": "integer",
+                                  "enum": [
+                                    0,
+                                    1,
+                                    2
+                                  ]
+                                },
+                                "certificateMode": {
+                                  "type": "string"
+                                },
+                                "certificateDomain": {
+                                  "type": "string"
+                                },
+                                "certificateFile": {
+                                  "type": "string"
+                                },
+                                "protocol": {
+                                  "type": "string"
+                                },
+                                "listenPort": {
+                                  "type": "integer",
+                                  "minimum": 1,
+                                  "maximum": 65535
+                                },
+                                "listenAddress": {
+                                  "type": "string"
+                                }
+                              },
+                              "additionalProperties": false,
+                              "description": "Optional managed-domain workflow. Scoped token expires after 24 hours; store privately only for resume. No Cloudflare token."
                             }
                           },
                           "additionalProperties": false
                         },
-                        "deployment": {
+                        {
                           "type": "object",
                           "required": [
-                            "token",
-                            "domain",
-                            "tls",
-                            "certificateMode",
-                            "certificateDomain",
-                            "certificateFile",
-                            "protocol",
-                            "listenPort",
-                            "listenAddress"
+                            "purpose",
+                            "nodeType",
+                            "nodeId",
+                            "apiHost",
+                            "networkReport"
                           ],
                           "properties": {
-                            "token": {
+                            "nodeType": {
                               "type": "string",
-                              "pattern": "^dp_[a-f0-9]{64}$"
-                            },
-                            "domain": {
-                              "type": "string"
-                            },
-                            "tls": {
-                              "type": "integer",
                               "enum": [
-                                0,
-                                1,
-                                2
+                                "v2box"
                               ]
                             },
-                            "certificateMode": {
-                              "type": "string"
-                            },
-                            "certificateDomain": {
-                              "type": "string"
-                            },
-                            "certificateFile": {
-                              "type": "string"
-                            },
-                            "protocol": {
-                              "type": "string"
-                            },
-                            "listenPort": {
+                            "nodeId": {
                               "type": "integer",
-                              "minimum": 1,
-                              "maximum": 65535
+                              "minimum": 1
                             },
-                            "listenAddress": {
-                              "type": "string"
+                            "apiHost": {
+                              "type": "string",
+                              "format": "uri"
+                            },
+                            "networkReport": {
+                              "type": "object",
+                              "description": "Optional scoped address-reporting setup. Cloudflare credentials are never returned.",
+                              "required": [
+                                "token",
+                                "family"
+                              ],
+                              "properties": {
+                                "token": {
+                                  "type": "string",
+                                  "pattern": "^[a-f0-9]{64}$"
+                                },
+                                "family": {
+                                  "type": "string",
+                                  "enum": [
+                                    "ipv4",
+                                    "ipv6",
+                                    "dual"
+                                  ]
+                                }
+                              },
+                              "additionalProperties": false
+                            },
+                            "purpose": {
+                              "type": "string",
+                              "enum": [
+                                "network"
+                              ]
                             }
                           },
                           "additionalProperties": false,
-                          "description": "Optional managed-domain workflow. Scoped token expires after 24 hours; store privately only for resume. No Cloudflare token."
+                          "description": "Network-only setup: no node credentials or certificate workflow. Generated by an administrator using networkOnly=true; does not restart or reinstall V2Box."
                         }
-                      },
-                      "additionalProperties": false
+                      ]
                     }
                   },
                   "additionalProperties": false
@@ -13959,6 +14020,16 @@
                   "certificate",
                   "start"
                 ]
+              },
+              "certificateFingerprint": {
+                "type": "string",
+                "pattern": "^[a-f0-9]{64}$",
+                "description": "SHA-256 leaf certificate fingerprint after certificate verification and listener startup."
+              },
+              "transitionId": {
+                "type": "string",
+                "pattern": "^[a-f0-9]{32}$",
+                "description": "Echo the candidate transition ID. Applied transitions require an explicit publication acknowledgement."
               }
             },
             "required": [
@@ -13979,6 +14050,10 @@
         "properties": {
           "accepted": {
             "type": "boolean"
+          },
+          "domainTransitionAccepted": {
+            "type": "boolean",
+            "description": "Present for domain transition receipts. True only after publishing the verified domain or acknowledging the exact already-committed operation."
           }
         },
         "required": [
@@ -14257,6 +14332,41 @@
           "trafficBudgetSupported": {
             "type": "boolean",
             "description": "When true, GET /server/traffic-budget is supported."
+          },
+          "domainTransition": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string",
+                "pattern": "^[a-f0-9]{32}$"
+              },
+              "domain": {
+                "type": "string",
+                "maxLength": 253
+              },
+              "addresses": {
+                "type": "object",
+                "properties": {
+                  "ipv4": {
+                    "type": "string",
+                    "format": "ipv4"
+                  },
+                  "ipv6": {
+                    "type": "string",
+                    "format": "ipv6"
+                  }
+                },
+                "minProperties": 1,
+                "additionalProperties": false
+              }
+            },
+            "required": [
+              "id",
+              "domain",
+              "addresses"
+            ],
+            "additionalProperties": false,
+            "description": "Candidate domain; verify public DNS and the certificate before starting listeners and reporting applied. Failure retains the previous configuration."
           }
         },
         "required": [

@@ -536,8 +536,26 @@ try {
     DB::table('v2_node_credential')->where('id',$freshId)->update(['expires_at'=>null]);
     $child=$node->replicate();$child->name='Deployment child';$child->parent_id=$nodeId;$child->save();
     $assert($deploymentCall(array_merge($deployParams,['id'=>(int)$child->id]))->getStatusCode()===422,'Child node cannot issue deployment grant');
-    $node->refresh();$node->tls=0;$node->save();
+    $node->refresh();$node->tls=1;$node->tls_settings=['cert_mode'=>'self','server_name'=>'deployment.example.test'];$node->save();
+    $child->tls=0;$child->save();
     $deploymentBinding=DB::table('v2_node_ddns')->insertGetId(['credential_id'=>999999,'node_type'=>'v2box','node_id'=>$nodeId,'domain'=>'deployment.example.test','family'=>'dual','enabled'=>true,'managed'=>true,'published_domain'=>$node->host]);
+    // Reporting-only enrollment must not issue a node key or change live addresses/backoff.
+    DB::table('v2_node_ddns')->where('id',$deploymentBinding)->update(['report_hash'=>hash('sha256',str_repeat('e',64)),'ipv4'=>'8.8.8.8','ipv4_seen_at'=>time(),'next_run'=>time()+900]);
+    $networkBefore=DB::table('v2_node_ddns')->find($deploymentBinding);
+    $keysBefore=DB::table('v2_node_credential')->where('node_id',$nodeId)->where('node_type','v2box')->get()->toJson();
+    $networkGrant=$deploymentCall($deployParams+['networkOnly'=>true]);
+    $assert($networkGrant->getStatusCode()===201,'Network-only command generated');
+    $networkCommand=json_decode($networkGrant->getContent(),true)['data']['command'];
+    $assert(str_contains($networkCommand,'--network-only') && !str_contains($networkCommand,str_repeat('e',64)),'Network command contains purpose but no long-lived reporting key');
+    $assert(DB::table('v2_node_ddns')->find($deploymentBinding)->report_hash===$networkBefore->report_hash,'Generating network command preserves active reporter');
+    preg_match('/nd_[a-f0-9]{64}/',$networkCommand,$m);$networkToken=$m[0];
+    $networkResult=$redeem($networkToken);$networkData=json_decode($networkResult->getContent(),true)['data']??[];
+    $assert($networkResult->getStatusCode()===200 && ($networkData['purpose']??'')==='network' && !isset($networkData['apiKey'],$networkData['deployment']),'Network enrollment returns scoped setup only');
+    $assert(!isset($networkData['apiKey']) && !isset($networkData['credentialId']) && !isset($networkData['deployment']),'Network grant cannot obtain node credentials or certificate workflow');
+    $assert(DB::table('v2_node_credential')->where('node_id',$nodeId)->where('node_type','v2box')->get()->toJson()===$keysBefore,'Network setup never rotates node credentials');
+    $networkAfter=DB::table('v2_node_ddns')->find($deploymentBinding);
+    $assert($networkAfter->report_hash===hash('sha256',$networkData['networkReport']['token']) && $networkAfter->ipv4===$networkBefore->ipv4 && $networkAfter->ipv4_seen_at===$networkBefore->ipv4_seen_at && $networkAfter->next_run===$networkBefore->next_run,'Network enrollment changes only reporting key and retains current IP/provider backoff');
+    $assert($redeem($networkToken)->getStatusCode()===401,'Network grant can only be redeemed once');
     $newGrant=$deploymentCall($deployParams);preg_match('/nd_[a-f0-9]{64}/',json_decode($newGrant->getContent(),true)['data']['command'],$m);$newToken=$m[0];
     $result=$redeem($newToken);$enrolled=json_decode($result->getContent(),true)['data']??[];
     $assert($result->getStatusCode()===200 && $enrolled['nodeId']===$nodeId && $enrolled['apiHost']==='https://panel.example.invalid','One-use enrollment returns authoritative node identity: '.$result->getStatusCode());
@@ -560,6 +578,8 @@ try {
     App\Services\NodeRuntimeService::receipt($nodeId,['hash'=>$fetch['hash'],'state'=>'failed','errorCode'=>'certificate']);
     $assert(json_decode($progress('status')->getContent(),true)['data']['errorCode']==='certificate' && $progress('complete')->getStatusCode()===409,'Certificate failure cannot publish domain');
     App\Services\NodeRuntimeService::receipt($nodeId,['hash'=>$fetch['hash'],'state'=>'applied']);
+    $assert($progress('complete')->getStatusCode()===409,'TLS deployment cannot publish without verified certificate fingerprint');
+    App\Services\NodeRuntimeService::receipt($nodeId,['hash'=>$fetch['hash'],'state'=>'applied','certificateFingerprint'=>str_repeat('d',64)]);
     $done=$progress('complete');
     $assert($done->getStatusCode()===200 && $node->fresh()->host==='deployment.example.test','Fresh applied receipt activates only enrolled binding');
     $assert(json_decode($progress('complete')->getContent(),true)['data']['completed']===true,'Completion remains idempotent after lost response');

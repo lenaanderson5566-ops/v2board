@@ -69,6 +69,20 @@ export function NodeDeployment({
     const authenticated = keys.some(
         (k) => k.status === "active" && !!k.lastUsedAt,
     );
+    useEffect(() => {
+        if (
+            tab !== "deploy" ||
+            authenticated ||
+            busy ||
+            report.loading ||
+            report.error
+        )
+            return;
+        const timer = window.setInterval(() => {
+            if (document.visibilityState === "visible") report.reload();
+        }, 15000);
+        return () => window.clearInterval(timer);
+    }, [tab, authenticated, busy, report.loading, report.error, report.reload]);
     return (
         <Modal
             title={`${node.name} · 部署与接入`}

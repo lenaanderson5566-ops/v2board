@@ -168,10 +168,12 @@ try {
         $realQueue=new Illuminate\Queue\RedisQueue($testRedis,'send_email_mass','default',90,null);
         $realQueue->setContainer($app);$realQueue->setConnectionName('redis');
         $savedBus=Illuminate\Support\Facades\Bus::getFacadeRoot();
-        $queueBus=new class($realQueue) {
-            public function __construct(private $queue) {}
-            public function dispatch($job) { return $this->queue->later($job->delay??0,$job,'',$job->queue); }
-        };
+        $queueBus=new Illuminate\Bus\Dispatcher($app,fn($connection)=>$realQueue);
+        $settingsPath=base_path('config/v2board.php');
+        $savedSettings=is_file($settingsPath)?file_get_contents($settingsPath):null;
+        $worker=new Illuminate\Queue\Worker(app('queue'),app('events'),app(Illuminate\Contracts\Debug\ExceptionHandler::class),fn()=>false);
+        $options=new Illuminate\Queue\WorkerOptions;
+        $options->maxTries=1;
         $timedTransport=new class {
             public array $times=[];
             public function forgetMailers() {}
@@ -182,13 +184,14 @@ try {
         config(['v2board.email_provider'=>'smtp','v2board.email_host'=>null,'v2board.email_announcement_separate'=>0,'v2board.email_send_interval'=>2,'v2board.email_bulk_interval'=>3,'v2board.email_domain_interval'=>5,'v2board.email_from_address'=>"queue-$token@example.test",'mail.from.address'=>"queue-$token@example.test",'mail.username'=>$token]);
         Illuminate\Support\Facades\Bus::swap($queueBus);
         try {
+            file_put_contents($settingsPath,"<?php return ['email_send_interval'=>2,'email_bulk_interval'=>3,'email_domain_interval'=>5];");
             foreach(DB::table('v2_mail_campaign_recipient')->where('campaign_id',$campaign)->pluck('id') as $id) $queueBus->dispatch(new App\Jobs\SendCampaignMailJob($id));
             $deadline=microtime(true)+25;
             do {
                 if($reserved=$realQueue->pop('send_email_mass')) {
-                    $command=unserialize($reserved->payload()['data']['command'],['allowed_classes'=>[App\Jobs\SendCampaignMailJob::class]]);
-                    $assert($command instanceof App\Jobs\SendCampaignMailJob,'Unexpected isolated queue payload');
-                    $command->handle();$reserved->delete();
+                    $assert($reserved->resolveName()===App\Jobs\SendCampaignMailJob::class,'Unexpected isolated queue payload');
+                    $worker->process('redis',$reserved,$options);
+                    $assert(!$reserved->hasFailed(),'Actual worker failed campaign payload');
                 } else usleep(100000);
             } while(count($timedTransport->times)<3 && microtime(true)<$deadline);
             $assert(count($timedTransport->times)===3,'Campaign still depends on minute scheduler');
@@ -196,9 +199,11 @@ try {
             $assert($times[1]-$times[0]>=4 && $times[2]-$times[1]>=4,'Provider interval bypassed');
             $assert($times[2]-$times[0]<20,'Seconds-based delivery regressed to minute scheduling');
             $assert(DB::table('v2_mail_campaign_recipient')->where('campaign_id',$campaign)->where('status','accepted')->where('attempts',1)->count()===3,'Deferred recipients not completed exactly once');
-            echo 'PASS real Redis campaign: 3 simulated deliveries in '.round($times[2]-$times[0],2)." seconds (2/3/5 second settings)\n";
+            echo 'PASS real Redis worker campaign: 3 simulated deliveries in '.round($times[2]-$times[0],2)." seconds (2/3/5 second settings)\n";
         } finally {
             Illuminate\Support\Facades\Bus::swap($savedBus);
+            if($savedSettings===null) unlink($settingsPath);else file_put_contents($settingsPath,$savedSettings);
+            if(function_exists('opcache_invalidate')) opcache_invalidate($settingsPath,true);
             $realQueue->clear('send_email_mass'); // This Redis manager has a unique test-only prefix.
             $rateScope='mail-rate:'.hash('sha256','smtp|'.config('v2board.email_mailgun_domain').'|'.config('mail.host').'|'.$token.'|'."queue-$token@example.test");
             foreach([':all',':bulk',':lock',':'.hash('sha256','example.test').':bulk'] as $suffix) Cache::store('redis')->forget($rateScope.$suffix);

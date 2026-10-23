@@ -11,7 +11,13 @@ class NodeDdnsController extends Controller {
     public function fetch() {
         return ['data'=>[
             'credentials'=>DB::table('v2_ddns_credential')->select('id','name','zone_id','root_domain','status','next_run')->orderBy('id')->get(),
-            'assignments'=>DB::table('v2_node_ddns')->select('id','credential_id','node_type','node_id','domain','published_domain','managed','family','enabled','ipv4','ipv6','ipv4_seen_at','ipv6_seen_at','last_success','status','next_run')->orderBy('id')->get(),
+            'assignments'=>DB::table('v2_node_ddns')->select('id','credential_id','node_type','node_id','domain','published_domain','tls_transition_state','tls_transition','managed','family','enabled','ipv4','ipv6','ipv4_seen_at','ipv6_seen_at','last_success','status','next_run')->orderBy('id')->get()->map(function($a){
+                if ($a->tls_transition_state==='pending') {
+                    try { $p=json_decode(Crypt::decryptString($a->tls_transition),true,512,JSON_THROW_ON_ERROR); if (($p['expires']??0)<=time()) $a->tls_transition_state='failed'; }
+                    catch (\Throwable $e) { $a->tls_transition_state='failed'; }
+                }
+                unset($a->tls_transition); return $a;
+            }),
         ]];
     }
     public function saveCredential(Request $request) {

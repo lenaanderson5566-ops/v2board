@@ -1,7 +1,9 @@
+import { NodeNetworkSetup } from "./NodeNetworkSetup";
 import {
     NodeDomainBinding,
     NodeDomainTools,
     domainStatus,
+    certificateTransitionStatus,
 } from "./NodeDomains";
 import { TableViewport } from "../shared/ui";
 import { Pager } from "../shared/ui";
@@ -13,6 +15,8 @@ import { nodeReportCommand } from "./node-deployment";
 const labels: Record<string, string> = {
     ...domainStatus,
     domain_activated: "连接域名已切换",
+    certificate_transition_pending: "开始验证新域名证书",
+    certificate_transition_failed: "域名切换未完成，原配置已保留",
     domain_prepared: "新域名已准备",
     dns_removed: "托管解析已清理",
     historical_dns_removed: "历史解析已清理",
@@ -220,6 +224,18 @@ export function AdminDDNS() {
                                                     : "已停用"}
                                                 <br />
                                                 {date(a.last_success)}
+                                                {certificateTransitionStatus[
+                                                    a.tls_transition_state
+                                                ] && (
+                                                    <p className="muted">
+                                                        {
+                                                            certificateTransitionStatus[
+                                                                a
+                                                                    .tls_transition_state
+                                                            ]
+                                                        }
+                                                    </p>
+                                                )}
                                             </td>
                                             <td>
                                                 <button
@@ -238,30 +254,42 @@ export function AdminDDNS() {
                                                 >
                                                     编辑 / 恢复
                                                 </button>
-                                                <button
-                                                    disabled={
-                                                        busy || !a.enabled
-                                                    }
-                                                    onClick={async () => {
-                                                        if (
-                                                            !window.confirm(
-                                                                "生成新密钥将立即撤销旧密钥，需要在节点重新配置上报。继续？",
+                                                {a.node_type === "v2box" ? (
+                                                    <NodeNetworkSetup
+                                                        node={{ id: a.node_id }}
+                                                        disabled={
+                                                            busy || !a.enabled
+                                                        }
+                                                    />
+                                                ) : (
+                                                    <button
+                                                        disabled={
+                                                            busy || !a.enabled
+                                                        }
+                                                        onClick={async () => {
+                                                            if (
+                                                                !window.confirm(
+                                                                    "生成新密钥将立即撤销旧密钥，需要在节点重新配置上报。继续？",
+                                                                )
                                                             )
-                                                        )
-                                                            return;
-                                                        const r = await action(
-                                                            "assignments/rotate",
-                                                            { id: a.id },
-                                                        );
-                                                        if (r)
-                                                            setDeployment({
-                                                                ...r,
-                                                                domain: a.domain,
-                                                            });
-                                                    }}
-                                                >
-                                                    配置节点上报
-                                                </button>
+                                                                return;
+                                                            const r =
+                                                                await action(
+                                                                    "assignments/rotate",
+                                                                    {
+                                                                        id: a.id,
+                                                                    },
+                                                                );
+                                                            if (r)
+                                                                setDeployment({
+                                                                    ...r,
+                                                                    domain: a.domain,
+                                                                });
+                                                        }}
+                                                    >
+                                                        配置节点上报
+                                                    </button>
+                                                )}
                                                 <button
                                                     disabled={busy}
                                                     onClick={() => {

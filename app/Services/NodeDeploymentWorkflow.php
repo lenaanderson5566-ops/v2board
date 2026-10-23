@@ -24,7 +24,7 @@ final class NodeDeploymentWorkflow
         if (!$a || !$a->managed) return;
         if ((int)$node->tls===1) {
             abort_unless(in_array($tls['cert_mode']??'',['http','dns','self','remote','file'],true),422,'请选择有效的 TLS 证书模式');
-            abort_unless(!empty($tls['server_name']),422,'请先填写 TLS 服务器名称；自动申请可使用所绑定的节点域名');
+            abort_unless(($tls['server_name']??'')===$a->domain,422,'一键部署的 TLS 服务器名称须与托管节点域名一致；已运行节点请先使用域名切换验证证书');
             if (in_array($tls['cert_mode']??'',['http','dns'],true)) {
                 abort_unless(preg_match('/^(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,63}$/D',$tls['server_name']),422,'自动申请证书需要有效的单个域名');
                 abort_if(($tls['cert_mode']??'')==='http' && (int)$node->server_port===80,422,'HTTP 证书验证需要独立的 80 端口，请调整节点监听端口');
@@ -67,7 +67,9 @@ final class NodeDeploymentWorkflow
             $applied=$w['startedAt'] && ($cred->last_used_at??0)>=$w['startedAt'] && $runtime['applicationState']==='applied' && ($runtime['lastAppliedAt']??0)>=$w['startedAt'] && ($runtime['lastCheckAt']??0)>=time()-180 && ($runtime['providedAt']??0)>=$w['startedAt'];
             if ($action==='complete') {
                 abort_unless($ready && $applied,409,'节点尚未确认应用当前配置');
-                NodeDnsLifecycle::activateLocked($a->id);
+                $receipt=Cache::get("NODE_CONFIG_RECEIPT:v2box:{$node->id}",[]);
+                NodeDnsLifecycle::activateLocked($a->id,true,null,$receipt['certificateFingerprint']??null);
+                $w['proof']=self::snapshot($node->fresh());
                 $w['completed']=true;$cache->put($key,$w,$w['expires']-time());
             }
             return ['completed'=>$w['completed'],'dnsReady'=>(bool)$ready,'addresses'=>(object)$addresses,

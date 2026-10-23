@@ -3,6 +3,7 @@ import { adminPageFixture } from "./test-support/page-fixtures";
 import { afterEach, expect, it, vi } from "vitest";
 import {
     cleanup,
+    act,
     fireEvent,
     render,
     screen,
@@ -32,10 +33,26 @@ import { NodeCredentials } from "./NodeCredentials";
 import { NodeDeployment } from "./NodeDeployment";
 afterEach(() => {
     cleanup();
+    vi.useRealTimers();
     vi.restoreAllMocks();
     vi.clearAllMocks();
     vi.unstubAllGlobals();
     localStorage.clear();
+});
+it("updates deployment authentication automatically and stops once authenticated", async () => {
+    api.request.mockResolvedValue({ data: { keys: [] } });
+    vi.useFakeTimers();
+    vi.spyOn(document, "visibilityState", "get").mockReturnValue("visible");
+    let view!: ReturnType<typeof render>;
+    await act(async () => { view = render(<NodeDeployment node={{ id: 1, type: "v2box", name: "Node" }} close={() => {}} />); });
+    expect(screen.getByText("独立凭据尚未认证")).toBeTruthy();
+    api.request.mockResolvedValue({ data: { keys: [{ status: "active", lastUsedAt: "2026-10-23T00:00:00Z" }] } });
+    const calls = api.request.mock.calls.length;
+    await act(() => vi.advanceTimersByTimeAsync(15000));
+    expect(screen.getByText("独立凭据已认证")).toBeTruthy();
+    await act(() => vi.advanceTimersByTimeAsync(60000));
+    expect(api.request).toHaveBeenCalledTimes(calls + 1);
+    view.unmount();
 });
 it("shows a newly generated credential only once without requesting an administrator password", async () => {
     vi.spyOn(window,"confirm").mockReturnValue(true);

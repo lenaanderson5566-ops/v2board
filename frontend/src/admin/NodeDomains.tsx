@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from "react";
 import { admin, request, type Row } from "../shared/api";
 import { Panel, State, Table, useData } from "../shared/ui";
-import { logTime } from "./admin-log-time";
+import { AdminLogTimeZone, logTime } from "./admin-log-time";
+import { NodeNetworkSetup } from "./NodeNetworkSetup";
 
 export const domainStatus: Record<string, string> = {
     awaiting_report: "等待 IP 上报",
@@ -18,6 +19,12 @@ export const domainStatus: Record<string, string> = {
     unexpected_record: "解析响应异常，等待重试",
     provider_error: "Cloudflare 服务异常",
     dns_adopted: "已接管现有解析",
+};
+
+export const certificateTransitionStatus: Record<string, string> = {
+    pending: "正在验证证书与节点就绪状态，当前地址继续保留",
+    failed: "切换未完成，已保留原配置。请检查节点日志后重试",
+    applied: "域名与证书已同步",
 };
 
 export function NodeDomainBinding({
@@ -42,6 +49,21 @@ export function NodeDomainBinding({
         [notice, setNotice] = useState("");
     const [adoption, setAdoption] = useState<Row | null>(null);
     const pending = useRef(false);
+    useEffect(() => {
+        if (!binding?.enabled || data.loading || data.error || busy || adoption)
+            return;
+        const timer = window.setInterval(() => {
+            if (document.visibilityState === "visible") data.reload();
+        }, 15000);
+        return () => window.clearInterval(timer);
+    }, [
+        binding?.enabled,
+        data.loading,
+        data.error,
+        data.reload,
+        busy,
+        adoption,
+    ]);
     useEffect(() => {
         if (binding) {
             setRoot(String(binding.credential_id));
@@ -161,15 +183,59 @@ export function NodeDomainBinding({
                 {binding && (
                     <div>
                         <p>目标域名：{binding.domain}</p>
+                        {certificateTransitionStatus[
+                            binding.tls_transition_state
+                        ] && (
+                            <p role="status">
+                                {
+                                    certificateTransitionStatus[
+                                        binding.tls_transition_state
+                                    ]
+                                }
+                            </p>
+                        )}
                         <p>
                             当前地址：{binding.published_domain || node.host} ·{" "}
                             {domainStatus[binding.status] || binding.status}
                         </p>
+                        <AdminLogTimeZone />
+                        {(binding.family === "dual"
+                            ? ["ipv4", "ipv6"]
+                            : [binding.family]
+                        ).map((family) => {
+                            const seen = Number(binding[`${family}_seen_at`]);
+                            return (
+                                <p key={family}>
+                                    {family === "ipv4" ? "IPv4" : "IPv6"} 上报：
+                                    {binding[family] || "尚未收到"} · 最近上报：
+                                    {seen ? logTime(seen) : "—"}
+                                    {seen > 0 && seen < Date.now() / 1000 - 900
+                                        ? " · 已超过 15 分钟，请检查上报服务"
+                                        : ""}
+                                </p>
+                            );
+                        })}
                         <p>
-                            IPv4：{binding.ipv4 || "—"} · IPv6：
-                            {binding.ipv6 || "—"}
+                            最近解析同步：
+                            {binding.last_success
+                                ? logTime(binding.last_success)
+                                : "—"}
                         </p>
+                        {!binding.ipv4 && !binding.ipv6 && (
+                            <p className="muted">
+                                尚未收到独立 IP 上报。节点列表的 IP
+                                也可能来自连接面板时的出口地址。请检查节点的
+                                node-network 上报服务；已有节点可在 Cloudflare
+                                DDNS 中配置节点上报。
+                            </p>
+                        )}
                         <div className="actions">
+                            {node.type === "v2box" && (
+                                <NodeNetworkSetup
+                                    node={node}
+                                    disabled={busy || !binding.enabled}
+                                />
+                            )}
                             {binding.managed &&
                                 binding.status === "ownership_conflict" && (
                                     <button
@@ -185,7 +251,10 @@ export function NodeDomainBinding({
                                     </button>
                                 )}
 
-                            <button disabled={busy} onClick={data.reload}>
+                            <button
+                                disabled={busy || data.loading}
+                                onClick={data.reload}
+                            >
                                 检查解析状态
                             </button>
                             <button
@@ -194,32 +263,35 @@ export function NodeDomainBinding({
                             >
                                 重试同步
                             </button>
-                            {binding.status === "ready_to_switch" && (
-                                <button
-                                    className="primary"
-                                    disabled={busy}
-                                    onClick={() => {
-                                        if (
-                                            window.confirm(
-                                                `确认将节点连接地址切换为 ${binding.domain}？请先确认解析和 TLS 证书可用。证书名称与 Reality SNI 保持不变，旧托管解析至少保留 24 小时。`,
+                            {["ready_to_switch", "healthy"].includes(
+                                binding.status,
+                            ) &&
+                                binding.tls_transition_state !== "pending" && (
+                                    <button
+                                        className="primary"
+                                        disabled={busy}
+                                        onClick={() => {
+                                            if (
+                                                window.confirm(
+                                                    `确认将节点连接地址切换为 ${binding.domain}？普通 TLS 节点将先验证新证书与监听，再同步连接地址、SNI 和证书域名；失败保留原配置。Reality 仅更新连接地址，旧托管解析至少保留 24 小时。`,
+                                                )
                                             )
-                                        )
-                                            void act("activate", {
-                                                id: binding.id,
-                                                confirm: true,
-                                            });
-                                    }}
-                                >
-                                    启用新域名
-                                </button>
-                            )}
+                                                void act("activate", {
+                                                    id: binding.id,
+                                                    confirm: true,
+                                                });
+                                        }}
+                                    >
+                                        验证并启用域名
+                                    </button>
+                                )}
                         </div>
                     </div>
                 )}
                 <p className="muted">
-                    解析使用 DNS
-                    only。域名同步成功后启用新地址；同址子节点一并更新。证书与
-                    Reality SNI 独立配置。
+                    解析使用 DNS only。普通 TLS
+                    节点验证通过后同步域名与证书，同址子节点一并更新。Reality
+                    SNI 保持独立。
                 </p>
             </State>
             {adoption && binding && (
@@ -418,7 +490,7 @@ export function NodeDomainTools({
                                 onClick={async () => {
                                     if (
                                         !window.confirm(
-                                            "确认启用本批次所有已就绪域名？请先核实 TLS 证书。未就绪或校验失败的节点保持原地址。",
+                                            "确认启用本批次所有已就绪域名？普通 TLS 节点验证新证书及监听后切换；未就绪或校验失败的节点保留原配置。",
                                         )
                                     )
                                         return;

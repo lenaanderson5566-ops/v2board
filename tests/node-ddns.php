@@ -98,7 +98,7 @@ try {
     $unauth=$kernel->handle(Request::create($path,'POST',$payload,[],[],['HTTP_ACCEPT'=>'application/json']));
     $assert($unauth->getStatusCode()===403,'admin credential endpoint protected');
     $http=$kernel->handle(Request::create($path,'POST',$payload,[],[],['HTTP_ACCEPT'=>'application/json','HTTP_AUTHORIZATION'=>$auth]));
-    $assert($http->getStatusCode()===200,'admin credential HTTP route works');
+    $assert($http->getStatusCode()===200,'admin credential HTTP route works: '.$http->getStatusCode().' '.(json_decode($http->getContent(),true)['message']??''));
     $last=DB::table('v2_log')->orderByDesc('id')->first();
     $context=json_decode($last->context,true);
     $assert($last->title==='Admin operation' && $context['status']===200 && $context['requestId']===$http->headers->get('X-Request-ID'),'admin result and request ID logged');
@@ -106,5 +106,118 @@ try {
     $assert(Crypt::decryptString(DB::table('v2_ddns_credential')->find($cid)->secret)==='http-secret-test','HTTP token encrypted');
     $admin->dropAssignment($req(['id'=>$id]));$admin->dropCredential($req(['id'=>$cid]));
     $assert(!DB::table('v2_ddns_credential')->find($cid),'unreferenced credential removable');
+
+    // Managed DNS lifecycle: use a stateful Cloudflare fake, never the live provider.
+    $domains=new App\Http\Controllers\V1\Admin\NodeDomainController();
+    $remote=[]; $nextRecord=1;
+    $fake(function($r)use(&$remote,&$nextRecord){
+        $path=parse_url($r->url(),PHP_URL_PATH);
+        if (!str_contains($path,'dns_records')) {
+            $name=str_contains($path,str_repeat('c',32))?'new.example.test':'example.test';
+            return Http::response(['success'=>true,'result'=>['name'=>$name,'status'=>'active']],200);
+        }
+        preg_match('#/zones/([^/]+)/dns_records(?:/([^/]+))?#',$path,$m);$zone=$m[1];$rid=$m[2]??null;
+        if ($r->method()==='GET') {
+            if ($rid) return Http::response(['success'=>true,'result'=>$remote[$zone][$rid]??null],isset($remote[$zone][$rid])?200:404);
+            $all=array_values($remote[$zone]??[]);
+            if($r['name']??null)$all=array_values(array_filter($all,fn($v)=>$v['name']===$r['name'] && $v['type']===$r['type']));
+            return Http::response(['success'=>true,'result'=>$all,'result_info'=>['total_pages'=>1]],200);
+        }
+        if($r->method()==='DELETE'){unset($remote[$zone][$rid]);return Http::response(['success'=>true,'result'=>['id'=>$rid]],200);}
+        $rid=$rid??str_pad(dechex($nextRecord++),32,'0',STR_PAD_LEFT);
+        $remote[$zone][$rid]=array_merge($remote[$zone][$rid]??[],$r->data(),['id'=>$rid]);
+        return Http::response(['success'=>true,'result'=>$remote[$zone][$rid]],200);
+    });
+    $cid=$admin->saveCredential($req(['name'=>'Managed','zone_id'=>str_repeat('a',32),'token'=>'test-managed-token','root_domain'=>'example.test']))['data']['id'];
+    $cid2=$admin->saveCredential($req(['name'=>'New root','zone_id'=>str_repeat('c',32),'token'=>'test-target-token','root_domain'=>'new.example.test']))['data']['id'];
+    $reject(fn()=>$admin->saveCredential($req(['name'=>'Wrong zone','zone_id'=>str_repeat('a',32),'token'=>'test-only','root_domain'=>'wrong.test'])),422);
+    $managed=App\Models\ServerV2box::create(array_replace($base,['host'=>'old.example.test']));
+    $body=['credential_id'=>$cid,'node_type'=>'v2box','node_id'=>$managed->id,'prefix'=>'hk-01','family'=>'ipv4'];
+    $bound=$domains->bind($req($body))['data'];$bid=$bound['id'];
+    $assert($bound['domain']==='hk-01.example.test','prefix joined to verified root');
+    $assert($managed->fresh()->host==='old.example.test','binding does not publish unresolved DNS');
+    $reject(fn()=>$domains->bind($req(array_replace($body,['prefix'=>'../evil']))),422);
+    $reject(fn()=>$domains->activate($req(['id'=>$bid,'confirm'=>true])),409);
+    $report=json_decode($admin->rotate($req(['id'=>$bid]))->getContent(),true)['data']['reportToken'];
+    $assert($call($report,['ipv4'=>'8.8.8.8'])->getStatusCode()===202,'managed binding accepts scoped report');
+    $service->sync($bid);
+    $ledger=DB::table('v2_node_dns_record')->where('assignment_id',$bid)->first();
+    $assert($ledger && $ledger->record_id && $remote[str_repeat('a',32)][$ledger->record_id]['comment']==='v2board:'.$ledger->owner,'provider record ownership persisted');
+    $assert(DB::table('v2_node_ddns')->find($bid)->status==='ready_to_switch','successful DNS preparation requires activation');
+    DB::table('v2_node_ddns')->where('id',$bid)->update(['ipv4'=>'1.1.1.1']);
+    $reject(fn()=>$domains->activate($req(['id'=>$bid,'confirm'=>true])),409);
+    DB::table('v2_node_ddns')->where('id',$bid)->update(['ipv4'=>'8.8.8.8']);
+    $managed->tls=1;$managed->tls_settings=[];$managed->save();
+    $reject(fn()=>$domains->activate($req(['id'=>$bid,'confirm'=>true])),422);
+    $managed->tls_settings=['server_name'=>'certificate.example.test'];$managed->save();
+    $domains->activate($req(['id'=>$bid,'confirm'=>true]));
+    $assert($managed->fresh()->host==='hk-01.example.test','activation updates connection hostname');
+    $assert($managed->fresh()->tls_settings['server_name']==='certificate.example.test','activation preserves TLS identity');
+    $plan=$domains->migrate($req(['from'=>$cid,'to'=>$cid2]))['data'];
+    $assert($plan['rows'][0]['new']==='hk-01.new.example.test','root migration preserves prefix');
+    $reject(fn()=>$domains->migrate($req(['from'=>$cid,'to'=>$cid2,'proof'=>str_repeat('0',64)])),409);
+    $domains->migrate($req(['from'=>$cid,'to'=>$cid2,'proof'=>$plan['proof']]));
+    $assert($managed->fresh()->host==='hk-01.example.test','migration leaves active address intact');
+    $service->sync($bid);$domains->activate($req(['id'=>$bid,'confirm'=>true]));
+    $assert($managed->fresh()->host==='hk-01.new.example.test','new root activated after synchronization');
+    $oldLedger=DB::table('v2_node_dns_record')->find($ledger->id);
+    $assert($oldLedger->delete_after>=time()+86390,'old DNS kept for 24 hours');
+    $life=new App\Services\NodeDnsLifecycle();$life->cleanup($ledger->id);
+    $assert(isset($remote[str_repeat('a',32)][$ledger->record_id]),'grace period prevents early cleanup');
+    DB::table('v2_node_dns_record')->where('id',$ledger->id)->update(['delete_after'=>time()-1]);
+    $managed->refresh();$managed->tls_settings=['server_name'=>$ledger->domain];$managed->save();
+    $life->cleanup($ledger->id);
+    $assert(DB::table('v2_node_dns_record')->find($ledger->id)->status==='still_in_use' && isset($remote[str_repeat('a',32)][$ledger->record_id]),'certificate references prevent old DNS cleanup');
+    $managed->tls_settings=['server_name'=>'certificate.example.test'];$managed->save();$domains->cleanup($req(['id'=>$ledger->id]));
+    $remote[str_repeat('a',32)][$ledger->record_id]['comment']='changed-owner';
+    $life->cleanup($ledger->id);
+    $assert(DB::table('v2_node_dns_record')->find($ledger->id)->status==='ownership_conflict','cleanup refuses changed ownership');
+    $remote[str_repeat('a',32)][$ledger->record_id]['comment']='v2board:'.$ledger->owner;
+    $remote[str_repeat('a',32)][$ledger->record_id]['id']=str_repeat('f',32);
+    $domains->cleanup($req(['id'=>$ledger->id]));$life->cleanup($ledger->id);
+    $assert(DB::table('v2_node_dns_record')->find($ledger->id)->status==='ownership_conflict','cleanup validates the exact provider record identity');
+    $remote[str_repeat('a',32)][$ledger->record_id]['id']=$ledger->record_id;
+    $domains->cleanup($req(['id'=>$ledger->id]));$life->cleanup($ledger->id);
+    $assert(!isset($remote[str_repeat('a',32)][$ledger->record_id]),'owned unused old record removed');
+    $reject(fn()=>$admin->dropCredential($req(['id'=>$cid2])),409);
+    // A same-name third-party record must never be silently adopted or overwritten.
+    $foreign=App\Models\ServerV2box::create(array_replace($base,['host'=>'foreign.example.test']));
+    $fb=$domains->bind($req(array_replace($body,['node_id'=>$foreign->id,'prefix'=>'foreign'])))['data']['id'];
+    DB::table('v2_node_ddns')->where('id',$fb)->update(['ipv4'=>'1.1.1.1','ipv4_seen_at'=>time()]);
+    $foreignId=str_repeat('d',32);$remote[str_repeat('a',32)][$foreignId]=['id'=>$foreignId,'name'=>'foreign.example.test','type'=>'A','content'=>'9.9.9.9','proxied'=>false];
+    $service->sync($fb);
+    $assert(DB::table('v2_node_ddns')->find($fb)->status==='ownership_conflict' && $remote[str_repeat('a',32)][$foreignId]['content']==='9.9.9.9','unowned same-name record unchanged');
+    $adoption=$domains->adopt($req(['id'=>$fb]))['data'];
+    $assert(count($adoption['rows'])===1 && empty($remote[str_repeat('a',32)][$foreignId]['comment']),'adoption preview does not modify DNS');
+    $reject(fn()=>$domains->adopt($req(['id'=>$fb,'proof'=>str_repeat('f',64)])),409);
+    $domains->adopt($req(['id'=>$fb,'proof'=>$adoption['proof']]));$service->sync($fb);
+    $assert($remote[str_repeat('a',32)][$foreignId]['content']==='1.1.1.1' && str_starts_with($remote[str_repeat('a',32)][$foreignId]['comment'],'v2board:'),'explicit adoption enables managed updates');
+    $foreign->host='manual.example.test';$foreign->save();$domains->retry($req(['id'=>$fb]));$service->sync($fb);
+    $assert(DB::table('v2_node_ddns')->find($fb)->status==='host_changed','manual hostname change pauses managed updates');
+    $domains->bind($req(array_replace($body,['node_id'=>$foreign->id,'prefix'=>'foreign'])));
+    $batch=$domains->activateBatch($req(['ids'=>[$bid,$fb],'confirm'=>true]))['data'];
+    $assert($batch[0]['success'] && !$batch[1]['success'] && $foreign->fresh()->host==='manual.example.test','batch activation isolates unready nodes');
+    // Historical cleanup requires an explicit, unexpired preview and unchanged record.
+    $unusedId=str_repeat('e',32);$remote[str_repeat('a',32)][$unusedId]=['id'=>$unusedId,'name'=>'unused.example.test','type'=>'A','content'=>'1.1.1.1','proxied'=>false];
+    $scan=$domains->inspect($req(['credential_id'=>$cid]))['data']['rows'];
+    $candidate=array_values(array_filter($scan,fn($v)=>$v['domain']==='unused.example.test'))[0];
+    $remote[str_repeat('a',32)][$unusedId]['content']='8.8.8.8';
+    $reject(fn()=>$domains->removeHistorical($req(['token'=>$candidate['cleanupToken'],'domain'=>$candidate['domain'],'confirm'=>true])),409);
+    $scan=$domains->inspect($req(['credential_id'=>$cid]))['data']['rows'];$candidate=array_values(array_filter($scan,fn($v)=>$v['domain']==='unused.example.test'))[0];
+    $domains->removeHistorical($req(['token'=>$candidate['cleanupToken'],'domain'=>$candidate['domain'],'confirm'=>true]));
+    $assert(!isset($remote[str_repeat('a',32)][$unusedId]),'explicit historical cleanup removes exact reviewed record');
+    $reject(fn()=>$domains->removeHistorical($req(['token'=>$candidate['cleanupToken'],'domain'=>$candidate['domain'],'confirm'=>true])),409);
+    $active=DB::table('v2_node_dns_record')->where('assignment_id',$bid)->first();
+    (new App\Http\Controllers\V1\Admin\Server\V2boxController())->drop($req(['id'=>$managed->id]));
+    $assert(!DB::table('v2_node_ddns')->find($bid) && DB::table('v2_node_dns_record')->find($active->id)->delete_after>0,'node deletion revokes reporting and queues owned records');
+    DB::table('v2_node_dns_record')->where('id',$active->id)->update(['delete_after'=>time()-1]);$life->cleanup($active->id);
+    $assert(!DB::table('v2_node_dns_record')->find($active->id),'deleted node DNS cleaned independently');
+    DB::table('v2_node_ddns')->where('id',$fb)->delete();$domains->cleanup($req([]));
+    $assert(DB::table('v2_node_dns_record')->where('assignment_id',$fb)->value('delete_after')>0,'orphaned ownership records enter guarded cleanup');
+    DB::table('v2_ddns_credential')->where('id',$cid2)->update(['next_run'=>time()+3600]);
+    for($i=0;$i<10;$i++) DB::table('v2_node_dns_record')->insert(['assignment_id'=>99999999,'credential_id'=>$cid2,'domain'=>'paused-'.$i.'.new.example.test','type'=>'A','owner'=>bin2hex(random_bytes(24)),'delete_after'=>time()-1,'next_run'=>0]);
+    DB::table('v2_node_dns_record')->where('assignment_id',$fb)->update(['delete_after'=>time()-1,'next_run'=>time()-1]);
+    Illuminate\Support\Facades\Artisan::call('nodes:sync-ddns');
+    $assert(!DB::table('v2_node_dns_record')->where('assignment_id',$fb)->exists() && DB::table('v2_node_dns_record')->where('assignment_id',99999999)->count()===10,'paused credentials cannot starve cleanup of healthy credentials');
     echo "Node DDNS: $checks checks passed\n";
 } finally { DB::rollBack(); }

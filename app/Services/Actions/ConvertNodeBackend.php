@@ -19,6 +19,7 @@ class ConvertNodeBackend {
             $target->route_id = $params['route_id'] ?? [];
             $target->parent_id = $params['parent_id'] ?? null;
             if ($target->parent_id) {
+                abort_if(DB::table('v2_node_ddns')->where('node_type',$sourceType)->where('node_id',$id)->exists(),422,'请先解除节点域名绑定，再设置为子节点');
                 abort_if(DB::table('v2_server_traffic_binding')->where('node_type',$sourceType)->where('node_id',$id)->exists(),422,'请先解除服务器额度绑定，再设置为子节点');
                 $parent = $models[$targetType]::find($target->parent_id);
                 abort_unless($parent && $parent->protocol === $target->protocol, 422, '请选择目标类型下同协议的父节点');

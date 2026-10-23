@@ -73,6 +73,15 @@ class AdminRoute
             $router->post('/ops/i18n/plan/save', 'V1\Admin\PlanI18nController@save');
             $router->post('/ops/i18n/plan/generate', 'V1\Admin\PlanI18nController@generate')->middleware('throttle:10,1');
             // Server
+            $router->post('/server/domains/bind', 'V1\\Admin\\NodeDomainController@bind')->middleware('throttle:30,1');
+            $router->post('/server/domains/adopt', 'V1\\Admin\\NodeDomainController@adopt')->middleware('throttle:10,1,node-domain-adopt:');
+            $router->post('/server/domains/activate', 'V1\\Admin\\NodeDomainController@activate')->middleware('throttle:30,1');
+            $router->post('/server/domains/activate-batch', 'V1\\Admin\\NodeDomainController@activateBatch')->middleware('throttle:5,1,node-domain-batch:');
+            $router->post('/server/domains/retry', 'V1\\Admin\\NodeDomainController@retry')->middleware('throttle:30,1');
+            $router->post('/server/domains/migrate', 'V1\\Admin\\NodeDomainController@migrate')->middleware('throttle:30,1');
+            $router->post('/server/domains/cleanup', 'V1\\Admin\\NodeDomainController@cleanup')->middleware('throttle:30,1');
+            $router->post('/server/domains/inspect', 'V1\\Admin\\NodeDomainController@inspect')->middleware('throttle:30,1');
+            $router->post('/server/domains/remove-historical', 'V1\\Admin\\NodeDomainController@removeHistorical')->middleware('throttle:30,1');
             $router->get('/server/ddns/fetch', 'V1\\Admin\\NodeDdnsController@fetch');
             $router->get('/server/ddns/events', 'V1\\Admin\\NodeDdnsController@events');
             $router->post('/server/ddns/credentials/save', 'V1\\Admin\\NodeDdnsController@saveCredential');

@@ -87,7 +87,10 @@ function NodesContent({
     async function nodeAction(row: Row, kind: "copy" | "drop") {
         if (
             actionPending.current ||
-            (kind === "drop" && !confirm(`确认删除节点「${row.name}」？`))
+            (kind === "drop" &&
+                !confirm(
+                    `确认删除节点「${row.name}」？关联的托管 DNS 解析将进入清理队列。`,
+                ))
         )
             return;
         actionPending.current = true;
@@ -880,7 +883,7 @@ function NodesContent({
                                 );
                                 setEditing(null);
                                 d.reload();
-                                if (converting) {
+                                if (converting || !editing.id) {
                                     const updated = await request<Row[]>(
                                         admin("server/manage/getNodes"),
                                     );
@@ -889,7 +892,11 @@ function NodesContent({
                                             r.type === type &&
                                             r.id === saved.data.id,
                                     );
-                                    if (converted) setCredentialNode(converted);
+                                    if (converted)
+                                        setCredentialNode({
+                                            ...converted,
+                                            _new: !editing.id,
+                                        });
                                 }
                             }}
                         />

@@ -831,3 +831,33 @@ CREATE TABLE IF NOT EXISTS `v2_node_maintenance` (
   `updated_at` int unsigned NOT NULL,
   PRIMARY KEY (`type`, `node_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+
+CREATE TABLE IF NOT EXISTS `v2_ddns_credential` (
+ `id` int unsigned NOT NULL AUTO_INCREMENT PRIMARY KEY, `name` varchar(100) NOT NULL, `zone_id` varchar(32) NOT NULL,
+ `secret` text NOT NULL, `root_domain` varchar(253) DEFAULT NULL, `next_run` bigint NOT NULL DEFAULT 0, `status` varchar(40) NOT NULL DEFAULT 'ready'
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+CREATE TABLE IF NOT EXISTS `v2_node_ddns` (
+ `id` int unsigned NOT NULL AUTO_INCREMENT PRIMARY KEY, `credential_id` int unsigned NOT NULL,
+ `node_type` varchar(10) NOT NULL, `node_id` int unsigned NOT NULL, `domain` varchar(253) NOT NULL,
+ `family` varchar(8) NOT NULL, `enabled` tinyint(1) NOT NULL DEFAULT 1, `managed` tinyint(1) NOT NULL DEFAULT 0,
+ `published_domain` varchar(253) DEFAULT NULL, `report_hash` varchar(64) DEFAULT NULL,
+ `ipv4` varchar(45) DEFAULT NULL, `ipv6` varchar(45) DEFAULT NULL,
+ `ipv4_seen_at` bigint NOT NULL DEFAULT 0, `ipv6_seen_at` bigint NOT NULL DEFAULT 0,
+ `next_run` bigint NOT NULL DEFAULT 0, `last_success` bigint NOT NULL DEFAULT 0, `status` varchar(40) NOT NULL DEFAULT 'awaiting_report',
+ UNIQUE KEY `ddns_node` (`node_type`,`node_id`), UNIQUE KEY `ddns_domain` (`domain`), UNIQUE KEY `ddns_report` (`report_hash`),
+ KEY `ddns_credential` (`credential_id`), KEY `ddns_next` (`next_run`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+CREATE TABLE IF NOT EXISTS `v2_ddns_event` (
+ `id` bigint unsigned NOT NULL AUTO_INCREMENT PRIMARY KEY, `assignment_id` int unsigned NOT NULL,
+ `code` varchar(40) NOT NULL, `http_status` smallint unsigned DEFAULT NULL, `created_at` bigint NOT NULL,
+ KEY `ddns_event_assignment` (`assignment_id`), KEY `ddns_event_time` (`created_at`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+CREATE TABLE IF NOT EXISTS `v2_node_dns_record` (
+ `id` int unsigned NOT NULL AUTO_INCREMENT PRIMARY KEY, `assignment_id` int unsigned NOT NULL, `credential_id` int unsigned NOT NULL,
+ `domain` varchar(253) NOT NULL, `type` varchar(4) NOT NULL, `record_id` varchar(32) DEFAULT NULL,
+ `owner` varchar(64) NOT NULL, `content` varchar(45) DEFAULT NULL, `status` varchar(40) NOT NULL DEFAULT 'pending',
+ `delete_after` bigint NOT NULL DEFAULT 0, `next_run` bigint NOT NULL DEFAULT 0,
+ UNIQUE KEY `node_dns_identity` (`credential_id`,`domain`,`type`), UNIQUE KEY `node_dns_owner` (`owner`),
+ KEY `node_dns_assignment` (`assignment_id`), KEY `node_dns_credential` (`credential_id`), KEY `node_dns_delete` (`delete_after`), KEY `node_dns_next` (`next_run`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;

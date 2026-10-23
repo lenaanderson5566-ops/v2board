@@ -305,3 +305,10 @@
         padding: 16px;
     }
 }
+
+.node-domain-form { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:16px; margin-block:16px; }
+.node-domain-form > label { display:flex; flex-direction:column; gap:6px; min-width:0; }
+.node-domain-form input,.node-domain-form select { width:100%; min-height:40px; }
+.node-domain-form > p { grid-column:1/-1; overflow-wrap:anywhere; }
+.node-domain-form > button { align-self:end; justify-self:start; }
+@media(max-width:600px) { .node-domain-form {grid-template-columns:minmax(0,1fr);} }

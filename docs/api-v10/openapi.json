@@ -9782,6 +9782,29 @@
                         },
                         "credentialId": {
                           "type": "string"
+                        },
+                        "networkReport": {
+                          "type": "object",
+                          "description": "Optional scoped address-reporting setup. Cloudflare credentials are never returned.",
+                          "required": [
+                            "token",
+                            "family"
+                          ],
+                          "properties": {
+                            "token": {
+                              "type": "string",
+                              "pattern": "^[a-f0-9]{64}$"
+                            },
+                            "family": {
+                              "type": "string",
+                              "enum": [
+                                "ipv4",
+                                "ipv6",
+                                "dual"
+                              ]
+                            }
+                          },
+                          "additionalProperties": false
                         }
                       },
                       "additionalProperties": false

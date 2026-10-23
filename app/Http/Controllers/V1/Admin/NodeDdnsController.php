@@ -2,6 +2,7 @@
 namespace App\Http\Controllers\V1\Admin;
 use App\Http\Controllers\Controller;
 use App\Services\NodeDdnsService;
+use App\Services\NodeDnsLifecycle;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Crypt;
@@ -9,36 +10,54 @@ use Illuminate\Validation\Rule;
 class NodeDdnsController extends Controller {
     public function fetch() {
         return ['data'=>[
-            'credentials'=>DB::table('v2_ddns_credential')->select('id','name','zone_id','status','next_run')->orderBy('id')->get(),
-            'assignments'=>DB::table('v2_node_ddns')->select('id','credential_id','node_type','node_id','domain','family','enabled','ipv4','ipv6','ipv4_seen_at','ipv6_seen_at','last_success','status','next_run')->orderBy('id')->get(),
+            'credentials'=>DB::table('v2_ddns_credential')->select('id','name','zone_id','root_domain','status','next_run')->orderBy('id')->get(),
+            'assignments'=>DB::table('v2_node_ddns')->select('id','credential_id','node_type','node_id','domain','published_domain','managed','family','enabled','ipv4','ipv6','ipv4_seen_at','ipv6_seen_at','last_success','status','next_run')->orderBy('id')->get(),
         ]];
     }
     public function saveCredential(Request $request) {
-        $v=$request->validate(['id'=>'nullable|integer|min:1','name'=>'required|string|max:100','zone_id'=>['required','regex:/^[a-f0-9]{32}$/i'],'token'=>'nullable|string|max:512|regex:/^[A-Za-z0-9_.-]+$/']);
-        return DB::transaction(function () use ($v) {
-            $old=isset($v['id']) ? DB::table('v2_ddns_credential')->where('id',$v['id'])->lockForUpdate()->first() : null;
+        $v=$request->validate(['id'=>'nullable|integer|min:1','name'=>'required|string|max:100','zone_id'=>['required','regex:/^[a-f0-9]{32}$/i'],'token'=>'nullable|string|max:512|regex:/^[A-Za-z0-9_.-]+$/','root_domain'=>'nullable|string|max:253']);
+        return NodeDnsLifecycle::locked(function () use ($v) {
+            $old=isset($v['id']) ? DB::table('v2_ddns_credential')->find($v['id']) : null;
             abort_if(isset($v['id']) && !$old,404);
-            abort_if(empty($v['token']) && (!$old || $old->zone_id!==$v['zone_id']),422,'新增凭据或更换 Zone 时必须填写 Token');
-            $data=['name'=>$v['name'],'zone_id'=>strtolower($v['zone_id'])];
+            $zone=strtolower($v['zone_id']);
+            abort_if($old && $old->zone_id!==$zone && (DB::table('v2_node_ddns')->where('credential_id',$old->id)->exists() || DB::table('v2_node_dns_record')->where('credential_id',$old->id)->exists()),409,'凭据仍关联节点或历史解析，请新增根域名后使用批量迁移');
+            abort_if(empty($v['token']) && (!$old || $old->zone_id!==$zone),422,'新增凭据或更换 Zone 时必须填写 Token');
+            $data=['name'=>$v['name'],'zone_id'=>$zone];
             if (!empty($v['token'])) $data+=['secret'=>Crypt::encryptString($v['token']),'status'=>'ready','next_run'=>0];
-            $id=$old ? $old->id : DB::table('v2_ddns_credential')->insertGetId($data);
-            if ($old) {
-                DB::table('v2_ddns_credential')->where('id',$id)->update($data);
-                if (!empty($v['token'])) DB::table('v2_node_ddns')->where('credential_id',$id)->update(['next_run'=>0,'status'=>'awaiting_report']);
+            $root=strtolower(trim($v['root_domain']??$old->root_domain??''));
+            if ($root) {
+                abort_unless(preg_match('/^(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,63}$/D',$root),422,'根域名格式无效');
+                abort_if($old && $old->root_domain && $old->root_domain!==$root,409,'更换根域名请新增凭据并执行迁移');
+                try { $zoneInfo=app(NodeDdnsService::class)->api((object)($data+['secret'=>$old->secret??'']),'GET','',[],true); }
+                catch (\App\Services\NodeDdnsFailure $e) { abort(422,'根域名验证失败：'.$e->getMessage()); }
+                abort_unless(($zoneInfo['result']['name']??'')===$root && ($zoneInfo['result']['status']??'')==='active',422,'Zone 与根域名不一致或域名尚未激活');
+                $data['root_domain']=$root;
+            }
+            $id=$old?$old->id:DB::table('v2_ddns_credential')->insertGetId($data);
+            if ($old) DB::table('v2_ddns_credential')->where('id',$id)->update($data);
+            if (!empty($v['token'])) {
+                DB::table('v2_node_ddns')->where('credential_id',$id)->update(['next_run'=>0,'status'=>'awaiting_report']);
+                DB::table('v2_node_dns_record')->where('credential_id',$id)->where('delete_after','>',0)->update(['next_run'=>0]);
             }
             return ['data'=>['id'=>$id]];
         });
     }
     public function dropCredential(Request $request) {
+        return NodeDnsLifecycle::locked(fn()=>$this->dropCredentialUnlocked($request));
+    }
+    private function dropCredentialUnlocked(Request $request) {
         $v=$request->validate(['id'=>'required|integer|min:1']);
         return DB::transaction(function () use ($v) {
             DB::table('v2_ddns_credential')->where('id',$v['id'])->lockForUpdate()->first();
-            abort_if(DB::table('v2_node_ddns')->where('credential_id',$v['id'])->exists(),409,'请先移除使用此凭据的 DDNS 配置');
+            abort_if(DB::table('v2_node_dns_record')->where('credential_id',$v['id'])->exists() || DB::table('v2_node_ddns')->where('credential_id',$v['id'])->exists(),409,'请先移除使用此凭据的 DDNS 配置');
             DB::table('v2_ddns_credential')->where('id',$v['id'])->delete();
             return ['data'=>true];
         });
     }
     public function saveAssignment(Request $request) {
+        return NodeDnsLifecycle::locked(fn()=>$this->saveAssignmentUnlocked($request));
+    }
+    private function saveAssignmentUnlocked(Request $request) {
         $v=$request->validate(['id'=>'nullable|integer|min:1','credential_id'=>'required|integer|min:1','node_type'=>['required',Rule::in(['v2node','v2box'])],'node_id'=>'required|integer|min:1','domain'=>['required','string','max:253','regex:/^(?:[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?\.)+[a-zA-Z]{2,63}$/'],'family'=>['required',Rule::in(['ipv4','ipv6','dual'])],'enabled'=>'required|boolean']);
         $v['domain']=strtolower($v['domain']);
         return DB::transaction(function () use ($v) {
@@ -46,6 +65,7 @@ class NodeDdnsController extends Controller {
             abort_unless(NodeDdnsService::nodeExists((object)$v),422,'节点不存在');
             $old=isset($v['id']) ? DB::table('v2_node_ddns')->where('id',$v['id'])->lockForUpdate()->first() : null;
             abort_if(isset($v['id']) && !$old,404);
+            abort_if($old && $old->managed,409,'托管域名请通过域名与解析编辑');
             abort_if($old && ($old->node_type!==$v['node_type'] || $old->node_id!=$v['node_id']),422,'不能更换已绑定的节点，请新建配置');
             $other=DB::table('v2_node_ddns')->where('id','!=',$old->id ?? 0);
             abort_if((clone $other)->where('domain',$v['domain'])->exists() || (clone $other)->where('node_type',$v['node_type'])->where('node_id',$v['node_id'])->exists(),409,'该域名或节点已有 DDNS 配置');
@@ -60,11 +80,17 @@ class NodeDdnsController extends Controller {
     }
     public function dropAssignment(Request $request) {
         $v=$request->validate(['id'=>'required|integer|min:1']);
-        DB::table('v2_node_ddns')->where('id',$v['id'])->delete();
-        NodeDdnsService::event($v['id'],'configuration_removed');
+        NodeDnsLifecycle::locked(fn()=>DB::transaction(function()use($v){
+            NodeDnsLifecycle::retire($v['id']);
+            DB::table('v2_node_ddns')->where('id',$v['id'])->delete();
+            NodeDdnsService::event($v['id'],'configuration_removed');
+        }));
         return ['data'=>true];
     }
     public function rotate(Request $request) {
+        return NodeDnsLifecycle::locked(fn()=>$this->rotateUnlocked($request));
+    }
+    private function rotateUnlocked(Request $request) {
         $v=$request->validate(['id'=>'required|integer|min:1']);
         return DB::transaction(function () use ($v) {
             $row=DB::table('v2_node_ddns')->where('id',$v['id'])->lockForUpdate()->first(); abort_unless($row,404);

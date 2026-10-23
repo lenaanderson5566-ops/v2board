@@ -21,6 +21,11 @@ class V2nodeController extends Controller
 
     public function save(Request $request)
     {
+        return \App\Services\NodeDnsLifecycle::locked(fn()=>$this->saveUnlocked($request));
+    }
+
+    protected function saveUnlocked(Request $request)
+    {
         $request->merge(\App\Services\NodeDisplayService::normalizeInput($request->all()));
         $params = $request->validate([
             'group_id' => 'required',
@@ -264,6 +269,7 @@ class V2nodeController extends Controller
                 abort(500, '服务器不存在');
             }
             if (!empty($params['parent_id'])) {
+                abort_if(\Illuminate\Support\Facades\DB::table('v2_node_ddns')->where('node_type',$backend)->where('node_id',$server->id)->exists(),422,'请先解除节点域名绑定，再设置为子节点');
                 abort_if(\Illuminate\Support\Facades\DB::table('v2_server_traffic_binding')->where('node_type',$backend)->where('node_id',$server->id)->exists(),422,'请先解除服务器额度绑定，再设置为子节点');
                 abort_if(\Illuminate\Support\Facades\DB::table('v2_lightsail_server')->where('node_type',$backend)->where('node_id',$server->id)->exists(),422,'请先移除 Lightsail 配置，再设置为子节点');
             }
@@ -277,11 +283,11 @@ class V2nodeController extends Controller
             ]);
         }
 
-        if (!$this->model::create($params)) {
+        if (!$created = $this->model::create($params)) {
             abort(500, '创建失败');
         }
         return response([
-            'data' => true
+            'data' => ['id'=>$created->id,'type'=>$backend]
         ]);
     }
 
@@ -294,15 +300,16 @@ class V2nodeController extends Controller
             }
         }
         return response([
-            'data' => \Illuminate\Support\Facades\DB::transaction(function()use($server){
+            'data' => \App\Services\NodeDnsLifecycle::locked(fn()=>\Illuminate\Support\Facades\DB::transaction(function()use($server){
                 $server=$this->model::whereKey($server->id)->lockForUpdate()->firstOrFail();
                 $type=$this->model===\App\Models\ServerV2box::class ? 'v2box' : 'v2node';
                 $cloud=\Illuminate\Support\Facades\DB::table('v2_lightsail_server')->where('node_type',$type)->where('node_id',$server->id)->lockForUpdate()->first();
                 abort_if($cloud,409,'请先移除 Lightsail 配置再删除节点');
                 \App\Services\NodeCredentials::retire($type,(int)$server->id);
                 \Illuminate\Support\Facades\DB::table('v2_node_maintenance')->where('type',$type)->where('node_id',$server->id)->delete();
+                \App\Services\NodeDnsLifecycle::removeNode($type,(int)$server->id);
                 return $server->delete();
-            })
+            }))
         ]);
     }
 

@@ -11,7 +11,7 @@ if [[ "${1:-}" == --install ]]; then
   shift
   stage=$(mktemp -d)
   trap 'rm -rf -- "$stage"' EXIT
-  curl -fSL --proto '=https' --connect-timeout 10 --max-time 120 https://raw.githubusercontent.com/lenaanderson5566-ops/v2box/v1.0.2/script/install.sh -o "$stage/install.sh"
+  curl -fSL --proto '=https' --connect-timeout 10 --max-time 120 https://raw.githubusercontent.com/lenaanderson5566-ops/v2box/v1.0.3/script/install.sh -o "$stage/install.sh"
   bash "$stage/install.sh" "$@"
   exit
 fi
@@ -50,8 +50,8 @@ stage=$(mktemp -d)
 config_stage=''
 trap 'rm -rf -- "$stage"; [[ -z "$config_stage" ]] || rm -f -- "$config_stage"' EXIT
 # Finish package download and verification before consuming the grant.
-curl -fSL --proto '=https' --connect-timeout 10 --max-time 120 https://raw.githubusercontent.com/lenaanderson5566-ops/v2box/v1.0.2/script/install.sh -o "$stage/install.sh"
-bash "$stage/install.sh" v1.0.2 </dev/null
+curl -fSL --proto '=https' --connect-timeout 10 --max-time 120 https://raw.githubusercontent.com/lenaanderson5566-ops/v2box/v1.0.3/script/install.sh -o "$stage/install.sh"
+bash "$stage/install.sh" v1.0.3 </dev/null
 printf 'header = "Authorization: Bearer %s"\n' "$grant" > "$stage/authorization"
 unset grant
 curl -fsS --proto '=https' --connect-timeout 10 --max-time 30 --config "$stage/authorization" --header 'Content-Type: application/json' --data '{}' \
@@ -65,4 +65,10 @@ mv -f -- "$config_stage" /etc/v2box/config.json
 config_stage=''
 rm -f /etc/v2box/.deployment-pending
 v2box restart
+if jq -e '.data.networkReport != null' "$stage/response.json" >/dev/null; then
+  jq -e '.data.networkReport | (.token | test("^[a-f0-9]{64}$")) and (.family == "ipv4" or .family == "ipv6" or .family == "dual")' "$stage/response.json" >/dev/null || { echo 'Invalid address reporting configuration' >&2; exit 1; }
+  jq -r '.data.networkReport.token' "$stage/response.json" > "$stage/report-token"
+  family=$(jq -r '.data.networkReport.family' "$stage/response.json")
+  python3 /usr/local/lib/v2box/node-network.py report-configure --panel-url "$panel_url" --family "$family" --token-file "$stage/report-token" || { echo 'Address reporting setup failed; configure reporting from the panel before enabling the new domain.' >&2; exit 1; }
+fi
 echo 'Installation complete. Check node authentication and runtime status in the panel.'

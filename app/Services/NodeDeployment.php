@@ -14,6 +14,7 @@ final class NodeDeployment
     private static function proof(int $id): string {
         return hash('sha256', json_encode([
             NodeCredentials::migrated('v2box',$id),
+            DB::table('v2_node_ddns')->where('node_type','v2box')->where('node_id',$id)->first(['id','credential_id','domain','family','enabled','report_hash']),
             DB::table('v2_node_credential')->where('node_type','v2box')->where('node_id',$id)
                 ->orderBy('id')->get(['id','revoked_at','expires_at'])->toArray(),
         ]));
@@ -55,15 +56,23 @@ final class NodeDeployment
                 && hash_equals((string)self::cache()->get('latest:'.$grant['id']),$hash),401,'部署授权已使用、撤销或过期');
             // Burn before issuing; a lost response must never allow a second redemption.
             abort_unless(self::cache()->forget($key),401);self::cache()->forget('latest:'.$grant['id']);
-            return DB::transaction(function()use($grant){
+            return NodeDnsLifecycle::locked(fn()=>DB::transaction(function()use($grant){
                 $node=ServerV2box::whereKey($grant['id'])->lockForUpdate()->first();
                 $actor=User::find($grant['actor']);
                 abort_unless($grant['expires']>time() && $node && !$node->parent_id && $actor && $actor->is_admin && !$actor->banned && hash_equals($grant['actorProof'],hash('sha256',(string)$actor->password)),403);
                 abort_unless(hash_equals($grant['proof'],self::proof((int)$node->id)) && hash_equals($grant['host'],self::host()),409,'节点接入信息已变更，请重新生成命令');
                 $credential=NodeCredentials::issue('v2box',(int)$node->id,(int)$actor->id);
-                return ['nodeType'=>'v2box','nodeId'=>(int)$node->id,'apiHost'=>$grant['host'],
+                $network=[];
+                $binding=DB::table('v2_node_ddns')->where('node_type','v2box')->where('node_id',$node->id)->where('enabled',true)->lockForUpdate()->first();
+                if ($binding) {
+                    $reportToken=bin2hex(random_bytes(32));
+                    DB::table('v2_node_ddns')->where('id',$binding->id)->update(['report_hash'=>hash('sha256',$reportToken),'next_run'=>0,'status'=>'awaiting_report','ipv4'=>null,'ipv6'=>null,'ipv4_seen_at'=>0,'ipv6_seen_at'=>0]);
+                    $network=['networkReport'=>['token'=>$reportToken,'family'=>$binding->family]];
+                    NodeDdnsService::event($binding->id,'report_key_rotated');
+                }
+                return $network+['nodeType'=>'v2box','nodeId'=>(int)$node->id,'apiHost'=>$grant['host'],
                     'apiKey'=>$credential['secret'],'credentialId'=>$credential['id']];
-            });
+            }));
         });
     }
 }

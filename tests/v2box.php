@@ -53,7 +53,7 @@ try {
     $assert(count($nodes)===2,'Both types listed with same id');
     foreach ($nodes as $node) if ($node['type']==='v2box') {
         $assert(strpos($node['install_command'],'--node-type v2box')!==false,'Installer selects V2Box');
-        $assert(strpos($node['install_command'],'/v2box/v1.0.2/script/install.sh')!==false,'Installer uses published version, not legacy main');
+        $assert(str_contains($node['install_command'],'--install v1.0.3'),'Installer uses published version, not legacy main');
         $assert(strpos($node['install_command'],'--prompt-api-key')!==false,'Installer keeps credential input interactive');
     }
     $admin=new App\Http\Controllers\V1\Admin\Server\V2boxController();
@@ -72,6 +72,64 @@ try {
     $assert(!ServerV2box::find($id) && ServerV2node::find($id),'V2Box delete isolated');
     $schema=json_decode((new App\Http\Controllers\V1\Admin\ConsoleController())->nodeSchema(Request::create('/','GET',['type'=>'v2box']))->getContent(),true)['data'];
     $assert(isset($schema['protocol'],$schema['region_code']) && $schema['network']==='required|in:tcp,ws,grpc,httpupgrade','Admin schema');
+    // Run the shipped bootstrap with fake downloads/services and a private config directory.
+    // No installation, external HTTP, system service changes or real credentials are involved.
+    // Opt-in: a disposable Linux root container with bash/jq; regular PHP runs need neither.
+    foreach (getenv('V2BOX_BOOTSTRAP_TEST')==='1' ? [0,1] : [] as $reportFailure) {
+        $fixture=sys_get_temp_dir().'/v2box-deploy-test-'.bin2hex(random_bytes(8));
+        mkdir($fixture,0700);mkdir($fixture.'/bin',0700);mkdir($fixture.'/tmp',0700);
+        try {
+            $response=['data'=>['nodeId'=>3,'nodeType'=>'v2box','apiHost'=>'https://panel.example.invalid','apiKey'=>'nk_'.str_repeat('a',32).'.'.str_repeat('b',64),'networkReport'=>['token'=>str_repeat('c',64),'family'=>'ipv4']]];
+            file_put_contents($fixture.'/response.json',json_encode($response));
+            $mocks=[
+                'curl'=><<<'SH'
+#!/bin/bash
+set -eu
+out=''
+response=false
+while (($#)); do
+  case "$1" in
+    -o) out=$2; shift;;
+    */enrollments/redeem) response=true;;
+  esac
+  shift
+done
+if $response; then cp "$DNS_FIXTURE/response.json" "$out"; else printf '#!/bin/bash\nexit 0\n' > "$out"; fi
+SH,
+                'v2box'=><<<'SH'
+#!/bin/bash
+[[ "$1" == restart ]] || exit 1
+echo restart >> "$DNS_FIXTURE/events"
+SH,
+                'python3'=><<<'SH'
+#!/bin/bash
+set -eu
+[[ "$1" == */node-network.py && "$2" == report-configure && "$3" == --panel-url && "$4" == https://panel.example.invalid && "$5" == --family && "$6" == ipv4 && "$7" == --token-file ]] || exit 2
+[[ "$(stat -c %a "$8")" == 600 && "$(cat "$8")" =~ ^c{64}$ ]] || exit 3
+echo report >> "$DNS_FIXTURE/events"
+exit "$DNS_REPORT_FAILURE"
+SH,
+            ];
+            foreach ($mocks as $name=>$script) {file_put_contents($fixture.'/bin/'.$name,$script."\n");chmod($fixture.'/bin/'.$name,0700);}
+            $script=str_replace(['__NODE_PREREQUISITES__','/etc/v2box'],['',$fixture.'/config'],file_get_contents(resource_path('scripts/node-deploy.sh')));
+            file_put_contents($fixture.'/bootstrap.sh',$script);
+            $run=function()use($fixture,$reportFailure){
+                $pipes=[];$p=proc_open(['bash',$fixture.'/bootstrap.sh','--api-host','https://panel.example.invalid','--node-id','3','--deploy-token','nd_'.str_repeat('d',64)],[['pipe','r'],['pipe','w'],['pipe','w']],$pipes,null,array_merge(getenv(),['PATH'=>$fixture.'/bin:'.getenv('PATH'),'TMPDIR'=>$fixture.'/tmp','DNS_FIXTURE'=>$fixture,'DNS_REPORT_FAILURE'=>(string)$reportFailure]));
+                fclose($pipes[0]);$output=stream_get_contents($pipes[1]).stream_get_contents($pipes[2]);fclose($pipes[1]);fclose($pipes[2]);return [proc_close($p),$output];
+            };
+            [$exit,$output]=$run();
+            $assert($exit===$reportFailure,'Deployment bootstrap reports address setup result: '.$exit.' '.preg_replace('/(?:nk_|nd_)?[a-f0-9.]{64,}/','[redacted]',$output));
+            $assert(file_get_contents($fixture.'/events')==="restart\nreport\n",'Node starts even if address reporting fails');
+            $config=json_decode(file_get_contents($fixture.'/config/config.json'),true);
+            $assert($config['Nodes'][0]['ApiKey']===$response['data']['apiKey'] && (fileperms($fixture.'/config/config.json')&0777)===0600,'Deployment atomically installs private node configuration');
+            $assert(!str_contains($output,$response['data']['networkReport']['token']) && count(glob($fixture.'/tmp/*'))===0,'Deployment removes temporary reporting secrets');
+            $before=hash_file('sha256',$fixture.'/config/config.json');[$exit]=$run();
+            $assert($exit===1 && hash_file('sha256',$fixture.'/config/config.json')===$before,'Redeployment preserves existing node config');
+        } finally {
+            $files=new RecursiveIteratorIterator(new RecursiveDirectoryIterator($fixture,FilesystemIterator::SKIP_DOTS),RecursiveIteratorIterator::CHILD_FIRST);
+            foreach($files as $file) {if($file->isDir())rmdir($file->getPathname());else unlink($file->getPathname());}rmdir($fixture);
+        }
+    }
     echo "PASS: $checks V2Box integration checks\n";
 } finally {
     DB::rollBack();

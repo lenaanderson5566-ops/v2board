@@ -485,7 +485,7 @@ try {
     try {$credentials::disableLegacy((int)$user->id);$assert(false,'Unconfirmed migration cannot disable legacy');}
     catch(Symfony\Component\HttpKernel\Exception\HttpException $e){$assert($e->getStatusCode()===409,'Unconfirmed migration cannot disable legacy');}
     $install=(new App\Services\ServerService())->getAllServers();
-    foreach ($install as $server) if ($server['type']==='v2box') $assert(str_starts_with($server['install_command'],'wget --https-only -O install-v2box.sh ') && str_contains($server['install_command'],'&& sh install-v2box.sh --install v1.0.2') && str_contains($server['upgrade_command'],'--install v1.0.2'),'Manual install and upgrade use short wget/script commands');
+    foreach ($install as $server) if ($server['type']==='v2box') $assert(str_starts_with($server['install_command'],'wget --https-only -O install-v2box.sh ') && str_contains($server['install_command'],'&& sh install-v2box.sh --install v1.0.3') && str_contains($server['upgrade_command'],'--install v1.0.3'),'Manual install and upgrade use short wget/script commands');
     $assert(!str_contains(json_encode($install),'node-v10-test-secret'),'Install commands never expose global token');
     $freshSecret=json_decode($issued->getContent(),true)['data']['secret'];
     $assert($call('GET',$root.'/users',[],['HTTP_AUTHORIZATION'=>'Bearer '.$freshSecret])->getStatusCode()===200,'Replacement confirmed before global retirement');
@@ -536,10 +536,12 @@ try {
     DB::table('v2_node_credential')->where('id',$freshId)->update(['expires_at'=>null]);
     $child=$node->replicate();$child->name='Deployment child';$child->parent_id=$nodeId;$child->save();
     $assert($deploymentCall(array_merge($deployParams,['id'=>(int)$child->id]))->getStatusCode()===422,'Child node cannot issue deployment grant');
+    $deploymentBinding=DB::table('v2_node_ddns')->insertGetId(['credential_id'=>999999,'node_type'=>'v2box','node_id'=>$nodeId,'domain'=>'deployment.example.test','family'=>'dual','enabled'=>true]);
     $newGrant=$deploymentCall($deployParams);preg_match('/nd_[a-f0-9]{64}/',json_decode($newGrant->getContent(),true)['data']['command'],$m);$newToken=$m[0];
     $result=$redeem($newToken);$enrolled=json_decode($result->getContent(),true)['data']??[];
     $assert($result->getStatusCode()===200 && $enrolled['nodeId']===$nodeId && $enrolled['apiHost']==='https://panel.example.invalid','One-use enrollment returns authoritative node identity: '.$result->getStatusCode());
     $assert(str_contains($result->headers->get('Cache-Control'),'no-store'),'Credential enrollment response not cached');
+    $assert(($enrolled['networkReport']['family']??'')==='dual' && preg_match('/^[a-f0-9]{64}$/',$enrolled['networkReport']['token']??'') && DB::table('v2_node_ddns')->find($deploymentBinding)->report_hash===hash('sha256',$enrolled['networkReport']['token']),'Enrollment configures scoped address reporting without Cloudflare secret');
     $assert($redeem($newToken)->getStatusCode()===401,'Deployment grant cannot be replayed');
     $assert($call('GET',$root.'/users',[],['HTTP_AUTHORIZATION'=>'Bearer '.$enrolled['apiKey']])->getStatusCode()===200,'Redeemed credential authenticates only its node');
     $assert($call('GET',$root.'/users',[],['HTTP_AUTHORIZATION'=>'Bearer '.$enrolled['apiKey'],'HTTP_X_NODE_ID'=>(string)($nodeId+1)])->getStatusCode()===403,'Redeemed credential cannot access another node');

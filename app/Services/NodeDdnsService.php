@@ -25,16 +25,17 @@ class NodeDdnsService {
     public static function event(int $id, string $code, ?int $http=null): void {
         DB::table('v2_ddns_event')->insert(['assignment_id'=>$id,'code'=>$code,'http_status'=>$http,'created_at'=>time()]);
     }
-    private function api($credential, string $method, string $path='', array $data=[]): array {
+    public function api($credential, string $method, string $path='', array $data=[], bool $zone=false): array {
         try {
             $token=Crypt::decryptString($credential->secret);
         } catch (\Throwable $e) { throw new NodeDdnsFailure('credential_unreadable',0,-1,true); }
         try {
             $response=Http::withToken($token)->acceptJson()->timeout(8)->withOptions(['connect_timeout'=>4])->withoutRedirecting()
-                ->send($method,'https://api.cloudflare.com/client/v4/zones/'.$credential->zone_id.'/dns_records'.$path,
+                ->send($method,'https://api.cloudflare.com/client/v4/zones/'.$credential->zone_id.($zone ? '' : '/dns_records').$path,
                     $method==='GET' ? ['query'=>$data] : ['json'=>$data]);
         } catch (\Illuminate\Http\Client\ConnectionException $e) { throw new NodeDdnsFailure('network_error'); }
         $status=$response->status();
+        if ($status===404 && in_array($method,['GET','DELETE'],true) && !$zone && $path!=='') return ['success'=>true,'result'=>null];
         if ($status===429) {
             $retry=$response->header('Retry-After');
             throw new NodeDdnsFailure('rate_limited',429,ctype_digit((string)$retry) ? max(300,min(86400,(int)$retry)) : 900,true);
@@ -49,8 +50,9 @@ class NodeDdnsService {
     public function sync(int $id): void {
         $initial=DB::table('v2_node_ddns')->find($id);
         if (!$initial) return;
+        if ($initial->managed) { app(NodeDnsLifecycle::class)->sync($id); return; }
         // Serialize with credential edits and node reconfiguration, including manual command runs.
-        DB::transaction(function () use ($id,$initial) {
+        NodeDnsLifecycle::locked(fn()=>DB::transaction(function () use ($id,$initial) {
             $credential=DB::table('v2_ddns_credential')->where('id',$initial->credential_id)->lockForUpdate()->first();
             $row=DB::table('v2_node_ddns')->where('id',$id)->lockForUpdate()->first();
             if (!$row || !$credential || $row->credential_id!==$initial->credential_id || !$row->enabled || $row->next_run<0 || $row->next_run>time() || $credential->next_run<0 || $credential->next_run>time()) return;
@@ -81,6 +83,6 @@ class NodeDdnsService {
             DB::table('v2_node_ddns')->where('id',$id)->update(['status'=>$code,'next_run'=>$delay<0 ? -1 : time()+$delay]);
             if ($changed) self::event($id,'dns_updated');
             if ($code!==$row->status) self::event($id,$code,$http);
-        });
+        }));
     }
 }

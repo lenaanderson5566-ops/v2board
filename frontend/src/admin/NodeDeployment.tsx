@@ -1,3 +1,4 @@
+import { NodeDomainBinding } from "./NodeDomains";
 import { useEffect, useState } from "react";
 import "./admin-management.css";
 import { admin, date, query, request, type Row } from "../shared/api";
@@ -17,7 +18,7 @@ export function NodeDeployment({
     node: Row;
     close: () => void;
 }) {
-    const [tab, setTab] = useState("deploy"),
+    const [tab, setTab] = useState(node._new ? "domain" : "deploy"),
         [mode, setMode] = useState("new");
     const [busy, setBusy] = useState(false),
         [error, setError] = useState("");
@@ -90,13 +91,23 @@ export function NodeDeployment({
                     options={[
                         { value: "deploy", label: "部署", disabled: busy },
                         {
+                            value: "domain",
+                            label: "域名与解析",
+                            disabled: busy,
+                        },
+                        {
                             value: "credentials",
                             label: "凭据管理",
                             disabled: busy,
                         },
                     ]}
                 >
-                    {tab === "credentials" ? (
+                    {tab === "domain" ? (
+                        <NodeDomainBinding
+                            node={node}
+                            onChanged={() => setDeployment(null)}
+                        />
+                    ) : tab === "credentials" ? (
                         <NodeCredentials
                             node={node}
                             close={close}
@@ -156,7 +167,8 @@ export function NodeDeployment({
 
                                     <p className="muted">
                                         复制后在节点以 root
-                                        执行，自动安装依赖并配置密钥。已有配置不会被覆盖。
+                                        执行，自动安装依赖并配置密钥；已绑定域名时同时配置
+                                        IP 上报。已有配置不会被覆盖。
                                     </p>
                                     <button
                                         className={deployment ? "" : "primary"}

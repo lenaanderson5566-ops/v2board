@@ -1,3 +1,8 @@
+import {
+    NodeDomainBinding,
+    NodeDomainTools,
+    domainStatus,
+} from "./NodeDomains";
 import { TableViewport } from "../shared/ui";
 import { Pager } from "../shared/ui";
 import { AdminLogTimeZone, logTime as date } from "./admin-log-time";
@@ -6,6 +11,11 @@ import { admin, request, type Row } from "../shared/api";
 import { Modal, Panel, State, useData } from "../shared/ui";
 import { nodeReportCommand } from "./node-deployment";
 const labels: Record<string, string> = {
+    ...domainStatus,
+    domain_activated: "连接域名已切换",
+    domain_prepared: "新域名已准备",
+    dns_removed: "托管解析已清理",
+    historical_dns_removed: "历史解析已清理",
     ready: "可用",
     awaiting_report: "等待有效 IP 上报",
     healthy: "正常",
@@ -27,6 +37,7 @@ const labels: Record<string, string> = {
 
 export function AdminDDNS() {
     const [pageSize, setPageSize] = useState(20);
+    const [domainNode, setDomainNode] = useState<Row | null>(null);
     const data = useData<Row>(admin("server/ddns/fetch"));
     const nodes = useData<Row[]>(admin("server/manage/getNodes"));
     const [editing, setEditing] = useState<Row | null>(null),
@@ -88,9 +99,8 @@ export function AdminDDNS() {
                         代理。
                     </p>
                     <p className="muted">
-                        为专用域名配置 DNS
-                        编辑权限；节点地址应填写相同域名。暂停或删除配置不会删除现有
-                        DNS 记录。
+                        为专用域名配置 DNS 编辑及 Zone
+                        读取权限。托管解析在删除节点后自动清理；旧版未托管解析保留，可在历史解析检查中核查。
                     </p>
                 </div>
                 {error && (
@@ -113,7 +123,7 @@ export function AdminDDNS() {
                                 <thead>
                                     <tr>
                                         <th>名称</th>
-                                        <th>Zone ID</th>
+                                        <th>根域名 / Zone ID</th>
                                         <th>状态</th>
                                         <th>操作</th>
                                     </tr>
@@ -122,7 +132,12 @@ export function AdminDDNS() {
                                     {credentials.map((c) => (
                                         <tr key={c.id}>
                                             <td>{c.name}</td>
-                                            <td>{c.zone_id}</td>
+                                            <td>
+                                                {c.root_domain ||
+                                                    "尚未验证根域名"}
+                                                <br />
+                                                {c.zone_id}
+                                            </td>
                                             <td>
                                                 {labels[c.status] || c.status}
                                                 {c.next_run > 0 &&
@@ -160,19 +175,10 @@ export function AdminDDNS() {
                         </TableViewport>
                         <h3>节点绑定</h3>
                         <button
-                            disabled={!credentials.length}
-                            onClick={() =>
-                                edit("assignments", {
-                                    credential_id: credentials[0]?.id,
-                                    node_type: "v2box",
-                                    node_id: "",
-                                    domain: "",
-                                    family: "ipv4",
-                                    enabled: true,
-                                })
-                            }
+                            disabled={!credentials.some((c) => c.root_domain)}
+                            onClick={() => setDomainNode({ select: true })}
                         >
-                            新增 DDNS
+                            配置节点域名
                         </button>
                         <TableViewport>
                             <table>
@@ -218,7 +224,16 @@ export function AdminDDNS() {
                                             <td>
                                                 <button
                                                     onClick={() =>
-                                                        edit("assignments", a)
+                                                        a.managed
+                                                            ? setDomainNode({
+                                                                  type: a.node_type,
+                                                                  id: a.node_id,
+                                                                  host: a.published_domain,
+                                                              })
+                                                            : edit(
+                                                                  "assignments",
+                                                                  a,
+                                                              )
                                                     }
                                                 >
                                                     编辑 / 恢复
@@ -252,7 +267,7 @@ export function AdminDDNS() {
                                                     onClick={() => {
                                                         if (
                                                             window.confirm(
-                                                                "删除 DDNS 配置并撤销上报密钥？现有 DNS 记录保留。",
+                                                                "删除绑定并撤销上报密钥？系统托管且无引用的解析将进入清理队列，未托管解析保留。",
                                                             )
                                                         )
                                                             void action(
@@ -272,6 +287,50 @@ export function AdminDDNS() {
                     </div>
                 </State>
             </Panel>
+            <NodeDomainTools
+                credentials={credentials}
+                onChanged={data.reload}
+            />
+            {domainNode && (
+                <Modal title="节点域名与解析" close={() => setDomainNode(null)}>
+                    <div className="pad">
+                        {domainNode.select ? (
+                            <label>
+                                选择节点
+                                <select
+                                    aria-label="配置节点域名"
+                                    value=""
+                                    onChange={(e) => {
+                                        const n = nodes.data?.find(
+                                            (n) =>
+                                                `${n.type}:${n.id}` ===
+                                                e.target.value,
+                                        );
+                                        if (n) setDomainNode(n);
+                                    }}
+                                >
+                                    <option value="">选择父节点配置域名</option>
+                                    {nodes.data
+                                        ?.filter((n) => !n.parent_id)
+                                        .map((n) => (
+                                            <option
+                                                key={`${n.type}:${n.id}`}
+                                                value={`${n.type}:${n.id}`}
+                                            >
+                                                {n.name} · #{n.id}
+                                            </option>
+                                        ))}
+                                </select>
+                            </label>
+                        ) : (
+                            <NodeDomainBinding
+                                node={domainNode}
+                                onChanged={data.reload}
+                            />
+                        )}
+                    </div>
+                </Modal>
+            )}
             <Panel title="DDNS 日志">
                 <AdminLogTimeZone />
                 <div className="pad">
@@ -354,6 +413,8 @@ export function AdminDDNS() {
                                           id: editing.id,
                                           name: editing.name,
                                           zone_id: editing.zone_id,
+                                          root_domain:
+                                              editing.root_domain || undefined,
                                           token: editing.token || undefined,
                                       }
                                     : {
@@ -386,6 +447,27 @@ export function AdminDDNS() {
                                         }
                                     />
                                 </label>
+                                <label>
+                                    根域名
+                                    <input
+                                        aria-label="根域名"
+                                        required={!editing.id}
+                                        placeholder="example.com"
+                                        value={editing.root_domain || ""}
+                                        onChange={(e) =>
+                                            setEditing({
+                                                ...editing,
+                                                root_domain: e.target.value
+                                                    .trim()
+                                                    .toLowerCase(),
+                                            })
+                                        }
+                                    />
+                                </label>
+                                <p className="muted">
+                                    保存时校验 Zone 与根域名。Token 仅需对应
+                                    Zone 的读取及 DNS 编辑权限，不会下发至节点。
+                                </p>
                                 <label>
                                     Zone ID
                                     <input

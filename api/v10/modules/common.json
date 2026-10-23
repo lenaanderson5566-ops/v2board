@@ -132,6 +132,11 @@
         "type": "http",
         "scheme": "bearer",
         "description": "10-minute single-use deployment grant, only for POST /server/enrollments/redeem. Never a node/user credential. No query tokens."
+      },
+      "nodeDeploymentWorkflowBearer": {
+        "type": "http",
+        "scheme": "bearer",
+        "description": "24-hour dp_ token restricted to one deployment; revoked by administrator, credential, node or binding changes."
       }
     },
     "headers": {

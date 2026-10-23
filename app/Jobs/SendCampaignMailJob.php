@@ -25,7 +25,7 @@ class SendCampaignMailJob implements ShouldQueue {
             $reason=!$campaign || $campaign->expires_at<=time() ? 'expired' : (!$user || !hash_equals($row->recipient_hash,MailDeliveryLog::recipientHash($user->email)) ? 'recipient_changed' : MailCampaign::reason($user,$campaign->purpose));
             if($reason) { $q->update(['status'=>'skipped','reason'=>$reason,'updated_at'=>time()]); return; }
             $result=(new SendEmailJob(['email'=>$user->email,'subject'=>$campaign->subject,'template_name'=>'notify','mail_purpose'=>$campaign->purpose,'campaign_recipient_id'=>$row->id,'source_language'=>$campaign->source_language,'translations'=>json_decode($campaign->translations,true),'expires_at'=>$campaign->expires_at,'template_value'=>['content'=>$campaign->content]],'send_email_mass'))->handle();
-            if(isset($result['deferred'])) { $q->update(['status'=>'queued','scheduled_at'=>0,'available_at'=>time()+max(1,(int)$result['deferred']),'updated_at'=>time()]); return; }
+            if(isset($result['deferred'])) { $this->defer(max(1,(int)$result['deferred'])); return; }
             $status=!empty($result['skipped']) ? 'skipped' : (!empty($result['error']) ? 'failed':'accepted');
             $log=!empty($result['log_id']) ? DB::table('v2_mail_log')->find($result['log_id']) : null;
             if($log && ($log->status==='uncertain' || ($status==='failed' && $log->provider==='smtp' && empty($result['permanent'])))) $status='uncertain';
@@ -35,6 +35,18 @@ class SendCampaignMailJob implements ShouldQueue {
         } catch(\Throwable $e) {
             // A worker interruption may occur after delivery. Leave ambiguous attempts for review.
             $q->update(['status'=>'uncertain','reason'=>'processing_interrupted','updated_at'=>time()]);
+        }
+    }
+    private function defer(int $delay): void {
+        $available=time()+$delay;
+        $q=DB::table('v2_mail_campaign_recipient')->where('id',$this->recipientId);
+        // Persist first: the minute scheduler remains a recovery path if enqueueing fails.
+        $q->update(['status'=>'queued','scheduled_at'=>$available,'available_at'=>$available,'updated_at'=>time()]);
+        try {
+            // A fresh job keeps limiter waits separate from transport retry attempts/tries=1.
+            \Illuminate\Support\Facades\Bus::dispatch((new self($this->recipientId))->delay($delay));
+        } catch(\Throwable $e) {
+            $q->where('status','queued')->where('scheduled_at',$available)->update(['scheduled_at'=>0]);
         }
     }
 }

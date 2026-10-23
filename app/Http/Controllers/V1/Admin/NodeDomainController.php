@@ -21,6 +21,11 @@ final class NodeDomainController extends Controller
             $prefix=strtolower($v['prefix']??'');
             if (!$prefix) $prefix='n-'.bin2hex(random_bytes(5));
             $domain=NodeDnsLifecycle::name($prefix,$c->root_domain);
+            $tls=json_decode($n->tls_settings??'{}',true)?:[];
+            if ((int)$n->tls===1 && in_array($tls['cert_mode']??'',['http','dns'],true) && empty($tls['server_name'])) {
+                $tls['server_name']=$domain;
+                DB::table('v2_server_'.$v['node_type'])->where('id',$n->id)->update(['tls_settings'=>json_encode($tls),'updated_at'=>time()]);
+            }
             abort_if(DB::table('v2_node_ddns')->where('domain',$domain)->where('id','!=',$old->id??0)->exists(),409,'域名已绑定其他节点');
             abort_if(DB::table('v2_node_dns_record')->where('domain',$domain)->where('delete_after','>',0)->exists(),409,'此域名仍在历史解析清理中');
             if ($old && ($old->domain!==$domain || $old->credential_id!=$c->id)) {

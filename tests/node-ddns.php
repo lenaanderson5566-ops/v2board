@@ -131,10 +131,11 @@ try {
     $cid=$admin->saveCredential($req(['name'=>'Managed','zone_id'=>str_repeat('a',32),'token'=>'test-managed-token','root_domain'=>'example.test']))['data']['id'];
     $cid2=$admin->saveCredential($req(['name'=>'New root','zone_id'=>str_repeat('c',32),'token'=>'test-target-token','root_domain'=>'new.example.test']))['data']['id'];
     $reject(fn()=>$admin->saveCredential($req(['name'=>'Wrong zone','zone_id'=>str_repeat('a',32),'token'=>'test-only','root_domain'=>'wrong.test'])),422);
-    $managed=App\Models\ServerV2box::create(array_replace($base,['host'=>'old.example.test']));
+    $managed=App\Models\ServerV2box::create(array_replace($base,['host'=>'old.example.test','tls'=>1,'tls_settings'=>['cert_mode'=>'http']]));
     $body=['credential_id'=>$cid,'node_type'=>'v2box','node_id'=>$managed->id,'prefix'=>'hk-01','family'=>'ipv4'];
     $bound=$domains->bind($req($body))['data'];$bid=$bound['id'];
     $assert($bound['domain']==='hk-01.example.test','prefix joined to verified root');
+    $assert($managed->fresh()->tls_settings['server_name']===$bound['domain'],'Automatic certificate mode fills an empty SNI from the managed domain');
     $assert($managed->fresh()->host==='old.example.test','binding does not publish unresolved DNS');
     $reject(fn()=>$domains->bind($req(array_replace($body,['prefix'=>'../evil']))),422);
     $reject(fn()=>$domains->activate($req(['id'=>$bid,'confirm'=>true])),409);

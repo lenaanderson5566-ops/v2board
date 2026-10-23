@@ -168,7 +168,10 @@ export function NodeDeployment({
                                     <p className="muted">
                                         复制后在节点以 root
                                         执行，自动安装依赖并配置密钥；已绑定域名时同时配置
-                                        IP 上报。已有配置不会被覆盖。
+                                        IP
+                                        上报，等待解析生效并验证节点就绪后启用域名。自动申请证书需选择
+                                        HTTP 或 DNS 申请；HTTP 验证需开放 80
+                                        端口。失败后按终端提示恢复。已有配置不会被覆盖。
                                     </p>
                                     <button
                                         className={deployment ? "" : "primary"}

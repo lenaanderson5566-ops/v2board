@@ -5,6 +5,16 @@ use Illuminate\Support\Facades\Cache;
 /** All mail workers for this application share the same sender budget in Redis. */
 class MailRateLimiter
 {
+    public static function reloadSettings(): void
+    {
+        $path=base_path('config/v2board.php');
+        if (!is_file($path)) return;
+        if (function_exists('opcache_invalidate')) @opcache_invalidate($path,true);
+        $settings=require $path;
+        foreach (['email_send_interval'=>2,'email_bulk_interval'=>10,'email_domain_interval'=>30] as $key=>$default) {
+            config(['v2board.'.$key=>max(1,min(3600,(int)($settings[$key]??$default)))]);
+        }
+    }
     private function scope()
     {
         return 'mail-rate:' . hash('sha256', config('v2board.email_provider', 'smtp').'|'.config('v2board.email_mailgun_domain').'|'.config('mail.host').'|'.config('mail.username').'|'.config('mail.from.address'));

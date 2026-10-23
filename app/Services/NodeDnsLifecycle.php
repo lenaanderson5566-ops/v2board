@@ -90,7 +90,11 @@ final class NodeDnsLifecycle
         });
     }
     public static function activate(int $id): void {
-        self::locked(fn()=>DB::transaction(function()use($id){
+        self::locked(fn()=>self::activateLocked($id));
+    }
+    /** Caller must hold the DNS lifecycle lock. */
+    public static function activateLocked(int $id): void {
+        DB::transaction(function()use($id){
             $a=DB::table('v2_node_ddns')->where('id',$id)->lockForUpdate()->first();
             abort_unless($a && $a->managed && $a->enabled && in_array($a->status,['ready_to_switch','healthy'],true) && $a->last_success>=time()-900,409,'请等待有效 IP 上报及解析同步成功');
             foreach ($a->family==='dual'?['ipv4','ipv6']:[$a->family] as $family) {
@@ -109,7 +113,7 @@ final class NodeDnsLifecycle
             DB::table('v2_node_dns_record')->where('assignment_id',$id)->where('delete_after',0)->where('domain','!=',$a->domain)->update(['delete_after'=>time()+86400,'next_run'=>0,'status'=>'pending_cleanup']);
             DB::table('v2_node_ddns')->where('id',$id)->update(['published_domain'=>$a->domain,'status'=>'healthy']);
             NodeDdnsService::event($id,'domain_activated');
-        }));
+        });
     }
     public function cleanup(int $id): void {
         self::locked(function()use($id){

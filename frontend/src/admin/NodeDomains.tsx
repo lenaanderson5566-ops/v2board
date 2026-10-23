@@ -68,7 +68,7 @@ export function NodeDomainBinding({
             onChanged?.();
             setNotice(
                 path === "bind"
-                    ? "域名已保存。新安装会自动配置 IP 上报；已有节点请使用配置节点上报。"
+                    ? "域名已保存。新安装会等待解析并验证节点后启用；已有节点请先配置上报，再确认切换。"
                     : "操作已完成",
             );
             return r.data;

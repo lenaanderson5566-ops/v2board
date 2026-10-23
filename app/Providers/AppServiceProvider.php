@@ -30,7 +30,12 @@ class AppServiceProvider extends ServiceProvider
             app(\App\Services\RequestPerformance::class)->query((float)$query->time);
         });
         \App\Services\TimeZones::apply();
-        \Illuminate\Support\Facades\Queue::before(function () { \App\Services\TimeZones::apply(true); });
+        \Illuminate\Support\Facades\Queue::before(function ($event) {
+            \App\Services\TimeZones::apply(true);
+            if (in_array($event->job->resolveName(), [\App\Jobs\SendEmailJob::class, \App\Jobs\SendCampaignMailJob::class], true)) {
+                \App\Services\Mail\MailRateLimiter::reloadSettings();
+            }
+        });
         \Illuminate\Support\Facades\Validator::resolver(function ($translator, $data, $rules, $messages, $attributes) {
             return new \App\Validation\Validator($translator, $data, $rules, $messages, $attributes);
         });

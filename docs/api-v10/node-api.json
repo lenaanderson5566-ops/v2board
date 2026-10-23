@@ -2539,6 +2539,59 @@
                             }
                           },
                           "additionalProperties": false
+                        },
+                        "deployment": {
+                          "type": "object",
+                          "required": [
+                            "token",
+                            "domain",
+                            "tls",
+                            "certificateMode",
+                            "certificateDomain",
+                            "certificateFile",
+                            "protocol",
+                            "listenPort",
+                            "listenAddress"
+                          ],
+                          "properties": {
+                            "token": {
+                              "type": "string",
+                              "pattern": "^dp_[a-f0-9]{64}$"
+                            },
+                            "domain": {
+                              "type": "string"
+                            },
+                            "tls": {
+                              "type": "integer",
+                              "enum": [
+                                0,
+                                1,
+                                2
+                              ]
+                            },
+                            "certificateMode": {
+                              "type": "string"
+                            },
+                            "certificateDomain": {
+                              "type": "string"
+                            },
+                            "certificateFile": {
+                              "type": "string"
+                            },
+                            "protocol": {
+                              "type": "string"
+                            },
+                            "listenPort": {
+                              "type": "integer",
+                              "minimum": 1,
+                              "maximum": 65535
+                            },
+                            "listenAddress": {
+                              "type": "string"
+                            }
+                          },
+                          "additionalProperties": false,
+                          "description": "Optional managed-domain workflow. Scoped token expires after 24 hours; store privately only for resume. No Cloudflare token."
                         }
                       },
                       "additionalProperties": false

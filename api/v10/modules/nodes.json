@@ -979,6 +979,59 @@
                             }
                           },
                           "additionalProperties": false
+                        },
+                        "deployment": {
+                          "type": "object",
+                          "required": [
+                            "token",
+                            "domain",
+                            "tls",
+                            "certificateMode",
+                            "certificateDomain",
+                            "certificateFile",
+                            "protocol",
+                            "listenPort",
+                            "listenAddress"
+                          ],
+                          "properties": {
+                            "token": {
+                              "type": "string",
+                              "pattern": "^dp_[a-f0-9]{64}$"
+                            },
+                            "domain": {
+                              "type": "string"
+                            },
+                            "tls": {
+                              "type": "integer",
+                              "enum": [
+                                0,
+                                1,
+                                2
+                              ]
+                            },
+                            "certificateMode": {
+                              "type": "string"
+                            },
+                            "certificateDomain": {
+                              "type": "string"
+                            },
+                            "certificateFile": {
+                              "type": "string"
+                            },
+                            "protocol": {
+                              "type": "string"
+                            },
+                            "listenPort": {
+                              "type": "integer",
+                              "minimum": 1,
+                              "maximum": 65535
+                            },
+                            "listenAddress": {
+                              "type": "string"
+                            }
+                          },
+                          "additionalProperties": false,
+                          "description": "Optional managed-domain workflow. Scoped token expires after 24 hours; store privately only for resume. No Cloudflare token."
                         }
                       },
                       "additionalProperties": false
@@ -1013,6 +1066,123 @@
         }
       },
       "x-node-path": true
+    },
+    "/server/enrollments/progress": {
+      "post": {
+        "operationId": "progressNodeDeployment",
+        "tags": [
+          "V2Box node communication"
+        ],
+        "security": [
+          {
+            "nodeDeploymentWorkflowBearer": []
+          }
+        ],
+        "description": "Check managed DNS and current configuration receipt; start records a deployment boundary; complete activates only this unchanged binding after a fresh applied receipt. Idempotent completion. Does not bypass provider or ACME backoff. No query credentials.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "action"
+                ],
+                "properties": {
+                  "action": {
+                    "type": "string",
+                    "enum": [
+                      "status",
+                      "start",
+                      "complete"
+                    ]
+                  }
+                },
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Private deployment progress",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "data"
+                  ],
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "required": [
+                        "completed",
+                        "dnsReady",
+                        "addresses",
+                        "applicationState",
+                        "errorCode"
+                      ],
+                      "properties": {
+                        "completed": {
+                          "type": "boolean"
+                        },
+                        "dnsReady": {
+                          "type": "boolean"
+                        },
+                        "addresses": {
+                          "type": "object",
+                          "properties": {
+                            "ipv4": {
+                              "type": "string"
+                            },
+                            "ipv6": {
+                              "type": "string"
+                            }
+                          },
+                          "additionalProperties": false
+                        },
+                        "applicationState": {
+                          "type": "string",
+                          "enum": [
+                            "applied",
+                            "failed",
+                            "unconfirmed"
+                          ]
+                        },
+                        "errorCode": {
+                          "type": "string",
+                          "nullable": true
+                        },
+                        "dnsStatus": {
+                          "type": "string"
+                        }
+                      },
+                      "additionalProperties": false
+                    }
+                  },
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/NodeAPIProblem"
+          },
+          "403": {
+            "$ref": "#/components/responses/NodeAPIProblem"
+          },
+          "409": {
+            "$ref": "#/components/responses/NodeAPIProblem"
+          },
+          "422": {
+            "$ref": "#/components/responses/NodeAPIProblem"
+          },
+          "429": {
+            "$ref": "#/components/responses/NodeAPIProblem"
+          }
+        }
+      }
     }
   },
   "components": {

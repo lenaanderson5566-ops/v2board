@@ -159,5 +159,50 @@ try {
     $request=Illuminate\Http\Request::create('/api/v1/'.$route.'/config/previewMail','POST',['template'=>'verify','language'=>'en-US']); $request->headers->set('Accept','application/json');
     $assert($kernel->handle($request)->getStatusCode()!==200,'Anonymous preview allowed');
 
+    // Real Redis delayed queue + limiter, simulated transport; no minute scheduler is invoked.
+    if ($testDatabase) {
+        $token=bin2hex(random_bytes(8));$ids=[];
+        for($i=0;$i<3;$i++) $ids[]=App\Models\User::create(['email'=>"queue-$token-$i@example.test",'password'=>'not-a-login','uuid'=>App\Utils\Helper::guid(true),'token'=>App\Utils\Helper::guid(),'announcement_email'=>1])->id;
+        $campaign=App\Services\Mail\MailCampaign::create(App\Models\User::whereIn('id',$ids),['request_key'=>(string)Illuminate\Support\Str::uuid(),'purpose'=>'service','subject'=>'Queue test','content'=>'Queue test','translations'=>[]],1);
+        $testRedis=new Illuminate\Redis\RedisManager($app,config('database.redis.client'),['options'=>['prefix'=>"mail-queue-test:$token:"],'default'=>config('database.redis.default')]);
+        $realQueue=new Illuminate\Queue\RedisQueue($testRedis,'send_email_mass','default',90,null);
+        $realQueue->setContainer($app);$realQueue->setConnectionName('redis');
+        $savedBus=Illuminate\Support\Facades\Bus::getFacadeRoot();
+        $queueBus=new class($realQueue) {
+            public function __construct(private $queue) {}
+            public function dispatch($job) { return $this->queue->later($job->delay??0,$job,'',$job->queue); }
+        };
+        $timedTransport=new class {
+            public array $times=[];
+            public function forgetMailers() {}
+            public function send($views,$data,$callback) { $this->times[]=microtime(true); }
+        };
+        Mail::swap($timedTransport);
+        app()->instance(MailRateLimiter::class,new MailRateLimiter);
+        config(['v2board.email_provider'=>'smtp','v2board.email_host'=>null,'v2board.email_announcement_separate'=>0,'v2board.email_send_interval'=>2,'v2board.email_bulk_interval'=>3,'v2board.email_domain_interval'=>5,'v2board.email_from_address'=>"queue-$token@example.test",'mail.from.address'=>"queue-$token@example.test",'mail.username'=>$token]);
+        Illuminate\Support\Facades\Bus::swap($queueBus);
+        try {
+            foreach(DB::table('v2_mail_campaign_recipient')->where('campaign_id',$campaign)->pluck('id') as $id) $queueBus->dispatch(new App\Jobs\SendCampaignMailJob($id));
+            $deadline=microtime(true)+25;
+            do {
+                if($reserved=$realQueue->pop('send_email_mass')) {
+                    $command=unserialize($reserved->payload()['data']['command'],['allowed_classes'=>[App\Jobs\SendCampaignMailJob::class]]);
+                    $assert($command instanceof App\Jobs\SendCampaignMailJob,'Unexpected isolated queue payload');
+                    $command->handle();$reserved->delete();
+                } else usleep(100000);
+            } while(count($timedTransport->times)<3 && microtime(true)<$deadline);
+            $assert(count($timedTransport->times)===3,'Campaign still depends on minute scheduler');
+            $times=$timedTransport->times;
+            $assert($times[1]-$times[0]>=4 && $times[2]-$times[1]>=4,'Provider interval bypassed');
+            $assert($times[2]-$times[0]<20,'Seconds-based delivery regressed to minute scheduling');
+            $assert(DB::table('v2_mail_campaign_recipient')->where('campaign_id',$campaign)->where('status','accepted')->where('attempts',1)->count()===3,'Deferred recipients not completed exactly once');
+            echo 'PASS real Redis campaign: 3 simulated deliveries in '.round($times[2]-$times[0],2)." seconds (2/3/5 second settings)\n";
+        } finally {
+            Illuminate\Support\Facades\Bus::swap($savedBus);
+            $realQueue->clear('send_email_mass'); // This Redis manager has a unique test-only prefix.
+            $rateScope='mail-rate:'.hash('sha256','smtp|'.config('v2board.email_mailgun_domain').'|'.config('mail.host').'|'.$token.'|'."queue-$token@example.test");
+            foreach([':all',':bulk',':lock',':'.hash('sha256','example.test').':bulk'] as $suffix) Cache::store('redis')->forget($rateScope.$suffix);
+        }
+    }
     echo "Product mail: $checks checks passed; no real mail sent.\n";
 } finally { DB::rollBack(); }

@@ -14,6 +14,7 @@ final class NodeDeployment
     private static function proof(int $id): string {
         return hash('sha256', json_encode([
             NodeCredentials::migrated('v2box',$id),
+            NodeDeploymentWorkflow::snapshot(ServerV2box::findOrFail($id)),
             DB::table('v2_node_ddns')->where('node_type','v2box')->where('node_id',$id)->first(['id','credential_id','domain','family','enabled','report_hash']),
             DB::table('v2_node_credential')->where('node_type','v2box')->where('node_id',$id)
                 ->orderBy('id')->get(['id','revoked_at','expires_at'])->toArray(),
@@ -31,6 +32,7 @@ final class NodeDeployment
         $host=self::host();
         return self::cache()->lock('node:'.$id,15)->block(3,function()use($id,$actor,$host){
             $node=ServerV2box::findOrFail($id);
+            NodeDeploymentWorkflow::validate($node);
             abort_if($node->parent_id,422,'子节点使用父节点接入');
             abort_if(DB::table('v2_node_credential')->where('node_type','v2box')->where('node_id',$id)
                 ->whereNull('revoked_at')->where('expires_at','>',time())->exists(),409,'请先完成当前密钥轮换');
@@ -70,7 +72,8 @@ final class NodeDeployment
                     $network=['networkReport'=>['token'=>$reportToken,'family'=>$binding->family]];
                     NodeDdnsService::event($binding->id,'report_key_rotated');
                 }
-                return $network+['nodeType'=>'v2box','nodeId'=>(int)$node->id,'apiHost'=>$grant['host'],
+                $workflow=NodeDeploymentWorkflow::issue($node,$credential['id'],$grant);
+                return $workflow+$network+['nodeType'=>'v2box','nodeId'=>(int)$node->id,'apiHost'=>$grant['host'],
                     'apiKey'=>$credential['secret'],'credentialId'=>$credential['id']];
             }));
         });

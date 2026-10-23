@@ -326,6 +326,72 @@ $data['request_key']=(string)Illuminate\Support\Str::uuid();$data['purpose']='se
 (new SendCampaignMailJob($r->id))->handle();$assert(DB::table('v2_mail_campaign_recipient')->find($r->id)->reason==='recipient_changed','Campaign followed changed recipient address');
 DB::table('v2_mail_campaign_recipient')->where('id',$r->id)->update(['status'=>'sending','updated_at'=>time()-700]);
 (new App\Console\Commands\ProcessMailCampaigns)->handle();$assert(DB::table('v2_mail_campaign_recipient')->find($r->id)->status==='uncertain','Interrupted campaign automatically replayed');
+// Rate-limit waits must re-enter the seconds-based queue without another scheduler tick.
+$originalLimiter=app(App\Services\Mail\MailRateLimiter::class);
+$waitingLimiter=new class extends App\Services\Mail\MailRateLimiter {
+    public int $delay=5;
+    public function acquire($email,$bulk,$priority=false) { return $this->delay; }
+};
+app()->instance(App\Services\Mail\MailRateLimiter::class,$waitingLimiter);
+Illuminate\Support\Facades\Queue::fake();
+$data['request_key']=(string)Illuminate\Support\Str::uuid();$data['purpose']='service';
+$waitingCampaign=MailCampaign::create($q,$data,1);
+$waitingRow=DB::table('v2_mail_campaign_recipient')->where('campaign_id',$waitingCampaign)->first();
+$waitingId=$waitingRow->id;
+$waitingQuery=fn()=>DB::table('v2_mail_campaign_recipient')->where('id',$waitingId);
+$fakeHttp(['*'=>Http::response(['id'=>'delayed-campaign'],200)]);
+(new SendCampaignMailJob($waitingRow->id))->handle();
+$waitingRow=$waitingQuery()->first();
+$assert($waitingRow->status==='queued' && $waitingRow->attempts===0 && $waitingRow->available_at>=time()+4 && $waitingRow->scheduled_at===$waitingRow->available_at,'Limiter wait lost durable seconds-based state or consumed send attempts');
+Illuminate\Support\Facades\Queue::assertPushed(SendCampaignMailJob::class,fn($job)=>$job->recipientId===$waitingRow->id && $job->delay===5 && $job->connection==='redis' && $job->queue==='send_email_mass');$checks++;
+(new SendCampaignMailJob($waitingRow->id))->handle();
+Illuminate\Support\Facades\Queue::assertPushed(SendCampaignMailJob::class,1);$checks++;
+Http::assertNothingSent();$checks++;
+(new App\Console\Commands\ProcessMailCampaigns)->handle();
+Illuminate\Support\Facades\Queue::assertPushed(SendCampaignMailJob::class,1);$checks++;
+// Another worker can consume the next slot; repeated waits still do not consume tries.
+$waitingQuery()->update(['available_at'=>time()-1]);$waitingLimiter->delay=3;
+(new SendCampaignMailJob($waitingRow->id))->handle();
+Illuminate\Support\Facades\Queue::assertPushed(SendCampaignMailJob::class,fn($job)=>$job->delay===3);$checks++;
+$assert((int)$waitingQuery()->value('attempts')===0,'Repeated limiter wait counted as delivery failure');
+$waitingQuery()->update(['available_at'=>time()-1]);$waitingLimiter->delay=0;
+(new SendCampaignMailJob($waitingRow->id))->handle();
+(new SendCampaignMailJob($waitingRow->id))->handle();
+$assert($waitingQuery()->value('status')==='accepted' && (int)$waitingQuery()->value('attempts')===1,'Delayed campaign failed to finish once');
+Http::assertSentCount(1);$checks++;
+// Queue outage is recoverable; no transport was attempted and it is not an uncertain delivery.
+$waitingQuery()->update(['status'=>'queued','attempts'=>0,'available_at'=>time()-1]);$waitingLimiter->delay=5;
+$bus=Illuminate\Support\Facades\Bus::getFacadeRoot();
+Illuminate\Support\Facades\Bus::swap(new class { public function dispatch($job) { throw new RuntimeException('simulated queue outage'); } });
+try { (new SendCampaignMailJob($waitingRow->id))->handle(); }
+finally { Illuminate\Support\Facades\Bus::swap($bus); }
+$waitingRow=$waitingQuery()->first();
+$assert($waitingRow->status==='queued' && $waitingRow->scheduled_at===0 && $waitingRow->attempts===0,'Queue outage lost recoverable recipient');
+$waitingQuery()->update(['available_at'=>time()-1]);
+Illuminate\Support\Facades\Queue::fake();
+(new App\Console\Commands\ProcessMailCampaigns)->handle();
+Illuminate\Support\Facades\Queue::assertPushed(SendCampaignMailJob::class,fn($job)=>$job->recipientId===$waitingRow->id);$checks++;
+$waitingQuery()->update(['status'=>'skipped']);
+app()->instance(App\Services\Mail\MailRateLimiter::class,$originalLimiter);
+// Exercise the actual worker event: saved intervals replace stale in-memory settings.
+$settingsPath=base_path('config/v2board.php');$savedSettings=is_file($settingsPath)?file_get_contents($settingsPath):null;$savedRuntime=config('v2board');
+try {
+    file_put_contents($settingsPath,"<?php return ['email_send_interval'=>2,'email_bulk_interval'=>3,'email_domain_interval'=>5];");
+    config(['v2board.email_send_interval'=>60,'v2board.email_bulk_interval'=>60,'v2board.email_domain_interval'=>60]);
+    $queueJob=Mockery::mock(Illuminate\Contracts\Queue\Job::class);
+    $queueJob->shouldReceive('resolveName')->andReturn(SendCampaignMailJob::class);
+    $queueJob->shouldReceive('payload')->andReturn([]);
+    event(new Illuminate\Queue\Events\JobProcessing('redis',$queueJob));
+    $assert(config('v2board.email_send_interval')===2 && config('v2board.email_bulk_interval')===3 && config('v2board.email_domain_interval')===5,'Running worker did not load saved intervals');
+    file_put_contents($settingsPath,"<?php return ['email_send_interval'=>4,'email_bulk_interval'=>6,'email_domain_interval'=>8];");
+    event(new Illuminate\Queue\Events\JobProcessing('redis',$queueJob));
+    $assert(config('v2board.email_bulk_interval')===6 && config('v2board.email_domain_interval')===8,'Worker missed subsequent settings change');
+} finally {
+    if($savedSettings===null) unlink($settingsPath);else file_put_contents($settingsPath,$savedSettings);
+    if(function_exists('opcache_invalidate')) opcache_invalidate($settingsPath,true);
+    config(['v2board'=>$savedRuntime]);App\Services\TimeZones::apply();
+}
+echo "PASS campaign seconds-based deferral, queue recovery and live worker intervals\n";
 // Private ticket replies are merged per ticket, with owner-scoped versioned read receipts.
 Schema::create('v2_ticket',function($t){$t->bigIncrements('id');$t->unsignedBigInteger('user_id');});
 Schema::create('v2_ticket_message',function($t){$t->bigIncrements('id');$t->unsignedBigInteger('ticket_id');$t->unsignedBigInteger('user_id');$t->unsignedInteger('created_at');});

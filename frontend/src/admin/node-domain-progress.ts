@@ -63,7 +63,7 @@ export function nodeDomainProgress(
     } else if (dnsReady && unsupported) {
         title = "下一步：升级 V2Box";
         description =
-            "解析已就绪，但节点尚未上报证书切换能力。请升级至 v1.0.4 或更新版本，等待节点重新连接后继续。仅更新面板不会完成此步骤。";
+            "解析已就绪，但节点尚未上报证书切换能力。请升级至 v1.0.5 或更新版本，等待节点重新连接后继续。仅更新面板不会完成此步骤。";
     } else if (dnsReady) {
         title = failed
             ? "下一步：检查日志后重新验证"

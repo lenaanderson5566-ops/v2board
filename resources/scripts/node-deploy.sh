@@ -16,7 +16,7 @@ if [[ "${1:-}" == --install ]]; then
   shift
   stage=$(mktemp -d)
   trap 'rm -rf -- "$stage"' EXIT
-  curl -fSL --proto '=https' --connect-timeout 10 --max-time 120 https://raw.githubusercontent.com/lenaanderson5566-ops/v2box/v1.0.4/script/install.sh -o "$stage/install.sh"
+  curl -fSL --proto '=https' --connect-timeout 10 --max-time 120 https://raw.githubusercontent.com/lenaanderson5566-ops/v2box/v1.0.5/script/install.sh -o "$stage/install.sh"
   bash "$stage/install.sh" "$@" 9>&-
   exit
 fi
@@ -70,7 +70,7 @@ if $network_only; then
   stage=$(mktemp -d)
   trap 'rm -rf -- "$stage"' EXIT
   # Download and validate prerequisites before consuming the one-use grant.
-  curl -fsS --proto '=https' --connect-timeout 10 --max-time 120 https://raw.githubusercontent.com/lenaanderson5566-ops/v2box/v1.0.4/script/node-network.py -o "$stage/node-network.py"
+  curl -fsS --proto '=https' --connect-timeout 10 --max-time 120 https://raw.githubusercontent.com/lenaanderson5566-ops/v2box/v1.0.5/script/node-network.py -o "$stage/node-network.py"
   python3 -m py_compile "$stage/node-network.py"
   validate_network_response() {
     jq -e --arg host "$panel_url" --argjson id "$requested_id" '.data | .purpose == "network" and .nodeType == "v2box" and .nodeId == $id and .apiHost == $host and (has("apiKey") | not) and (.networkReport.token | test("^[a-f0-9]{64}$")) and (.networkReport.family | . == "ipv4" or . == "ipv6" or . == "dual")' "$1" >/dev/null
@@ -117,8 +117,8 @@ stage=$(mktemp -d)
 config_stage=''
 trap 'rm -rf -- "$stage"; [[ -z "$config_stage" ]] || rm -f -- "$config_stage"' EXIT
 # Finish package download and verification before consuming the grant.
-curl -fSL --proto '=https' --connect-timeout 10 --max-time 120 https://raw.githubusercontent.com/lenaanderson5566-ops/v2box/v1.0.4/script/install.sh -o "$stage/install.sh"
-bash "$stage/install.sh" v1.0.4 </dev/null 9>&-
+curl -fSL --proto '=https' --connect-timeout 10 --max-time 120 https://raw.githubusercontent.com/lenaanderson5566-ops/v2box/v1.0.5/script/install.sh -o "$stage/install.sh"
+bash "$stage/install.sh" v1.0.5 </dev/null 9>&-
 printf 'header = "Authorization: Bearer %s"\n' "$grant" > "$stage/authorization"
 unset grant
 curl -fsS --proto '=https' --connect-timeout 10 --max-time 30 --config "$stage/authorization" --header 'Content-Type: application/json' --data '{}' \

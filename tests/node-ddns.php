@@ -196,8 +196,10 @@ try {
     config(['v2board.server_token'=>'tls-transition-test']);
     $fetchCandidate=fn($features)=>$kernel->handle(Request::create('/api/v10/server/configuration','GET',[],[],[],['HTTP_ACCEPT'=>'application/json','HTTP_AUTHORIZATION'=>'Bearer tls-transition-test','HTTP_X_NODE_TYPE'=>'v2box','HTTP_X_NODE_ID'=>(string)$managed->id,'HTTP_X_NODE_CAPABILITIES'=>$features]));
     $assert($fetchCandidate('native-routing-v1')->getStatusCode()===409,'downgraded node cannot receive pending TLS configuration');
-    $assert($fetchCandidate('native-routing-v1,certificate-transition-v1')->getStatusCode()===200,'capable node receives pending TLS configuration');
-    $candidate=$config();$hash=hash('sha256',json_encode($candidate));
+    $candidateResponse=$fetchCandidate('native-routing-v1,certificate-transition-v1');
+    $assert($candidateResponse->getStatusCode()===200,'capable node receives pending TLS configuration');
+    $candidate=$config();$hash=json_decode($candidateResponse->getContent(),true)['meta']['configurationHash'];
+    $assert($hash===hash('sha256',json_encode($candidate)),'TLS publication uses the exact panel-issued body hash independently of transport headers');
     App\Services\NodeRuntimeService::record('v2box',$managed->id,$candidate,'v10');
     $payload=['coreVersion'=>'test','features'=>['certificate-transition-v1'],'configuration'=>['hash'=>$hash,'state'=>'applied','transitionId'=>$candidate['domainTransition']['id'],'certificateFingerprint'=>str_repeat('a',64)]];
     $receiptCall=fn($body)=>$kernel->handle(Request::create('/api/v10/server/capabilities','POST',[],[],[],['CONTENT_TYPE'=>'application/json','HTTP_ACCEPT'=>'application/json','HTTP_AUTHORIZATION'=>'Bearer tls-transition-test','HTTP_X_NODE_TYPE'=>'v2box','HTTP_X_NODE_ID'=>(string)$managed->id],json_encode($body)));

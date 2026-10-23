@@ -38,10 +38,11 @@ class NodeController extends Controller {
         \App\Services\NodeAddressService::observe($request, 'v2box', (int) $id);
         return $node;
     }
-    private function cached(Request $request, array $data) {
-        $tag = '"'.hash('sha256', json_encode($data)).'"';
+    private function cached(Request $request, array $data, bool $configuration = false) {
+        $hash = hash('sha256', json_encode($data));
+        $tag = '"'.$hash.'"';
         if ($request->header('If-None-Match') === $tag) return response('', 304)->header('ETag', $tag);
-        return response()->json(['data' => $data])->header('ETag', $tag);
+        return response()->json(['data' => $data] + ($configuration ? ['meta'=>['configurationHash'=>$hash]] : []))->header('ETag', $tag);
     }
     public function configuration(Request $request) {
         $node = $this->node($request);
@@ -52,7 +53,7 @@ class NodeController extends Controller {
             abort_unless(in_array('native-routing-v1', $features, true), 409);
         }
         \App\Services\NodeRuntimeService::record('v2box', (int) $node->id, $configuration, 'v10');
-        $response = $this->cached($request, $configuration);
+        $response = $this->cached($request, $configuration, true);
         if (in_array('target-statistics-policy-v2', explode(',', $request->header('X-Node-Capabilities', '')), true)) {
             try { $response->header('X-Target-Statistics-Policy', json_encode(app(\App\Services\TargetStatistics::class)->nodePolicy())); }
             catch (\Throwable $e) { /* Optional telemetry must not interrupt configuration. */ }

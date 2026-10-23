@@ -58,10 +58,25 @@
                   "properties": {
                     "data": {
                       "$ref": "#/components/schemas/nodeMachineConfig"
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {
+                        "configurationHash": {
+                          "type": "string",
+                          "pattern": "^[a-f0-9]{64}$",
+                          "description": "Panel-issued configuration SHA-256 for application receipts. Prefer this value over the transport ETag, which proxies may weaken or remove."
+                        }
+                      },
+                      "required": [
+                        "configurationHash"
+                      ],
+                      "additionalProperties": false
                     }
                   },
                   "required": [
-                    "data"
+                    "data",
+                    "meta"
                   ],
                   "additionalProperties": false
                 }

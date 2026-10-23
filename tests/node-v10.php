@@ -80,6 +80,8 @@ try {
     $r=$call('GET',$root.'/configuration');$body=json_decode($r->getContent(),true);
     $assert($r->getStatusCode()===200 && $body['data']['listenPort']===443 && $body['data']['singBox']===$native,'V10 config projection: '.$r->getStatusCode().' '.$r->getContent());
     $assert(!isset($body['data']['server_port']),'No legacy field naming');
+    $assert(($body['meta']['configurationHash']??null)===trim($r->headers->get('ETag'),'"'),'Configuration receipt hash survives ETag weakening/removal via explicit metadata');
+    $assert($body['meta']['configurationHash']===hash('sha256',json_encode(App\Services\Actions\NodeV10Config::build($node->fresh()))),'Receipt metadata identifies exactly the authoritative configuration');
     $assert(is_object(json_decode($r->getContent())->data->tlsSettings),'Empty TLS settings encoded as object');
     $assert(is_object(json_decode($r->getContent())->data->networkSettings) && is_object(json_decode($r->getContent())->data->encryptionSettings),'Empty protocol settings encoded as objects');
     $assert($call('GET',$root.'/configuration',[],['HTTP_IF_NONE_MATCH'=>$r->headers->get('ETag')])->getStatusCode()===304,'Config ETag');
@@ -485,7 +487,7 @@ try {
     try {$credentials::disableLegacy((int)$user->id);$assert(false,'Unconfirmed migration cannot disable legacy');}
     catch(Symfony\Component\HttpKernel\Exception\HttpException $e){$assert($e->getStatusCode()===409,'Unconfirmed migration cannot disable legacy');}
     $install=(new App\Services\ServerService())->getAllServers();
-    foreach ($install as $server) if ($server['type']==='v2box') $assert(str_starts_with($server['install_command'],'wget --https-only -O install-v2box.sh ') && str_contains($server['install_command'],'&& sh install-v2box.sh --install v1.0.4') && str_contains($server['upgrade_command'],'--install v1.0.4'),'Manual install and upgrade use short wget/script commands');
+    foreach ($install as $server) if ($server['type']==='v2box') $assert(str_starts_with($server['install_command'],'wget --https-only -O install-v2box.sh ') && str_contains($server['install_command'],'&& sh install-v2box.sh --install v1.0.5') && str_contains($server['upgrade_command'],'--install v1.0.5'),'Manual install and upgrade use short wget/script commands');
     $assert(!str_contains(json_encode($install),'node-v10-test-secret'),'Install commands never expose global token');
     $freshSecret=json_decode($issued->getContent(),true)['data']['secret'];
     $assert($call('GET',$root.'/users',[],['HTTP_AUTHORIZATION'=>'Bearer '.$freshSecret])->getStatusCode()===200,'Replacement confirmed before global retirement');

@@ -31,13 +31,13 @@ it("keeps DDNS opt-in and quotes generated shell arguments", () => {
 
 it("uses versioned network helpers included in the released backend", () => {
  for(const command of [nodeReportCommand("dual"),nodeDeploymentCommand({type:"v2node",install_command:"install",ddns:true})]) {
-  expect(command).toContain("/v2box/v1.0.4/script/node-network.py");
+  expect(command).toContain("/v2box/v1.0.5/script/node-network.py");
   expect(command).not.toContain("/v2box/main/");
  }
 });
 
 it("uses the short server-provided upgrade command", () => {
- const command="wget --https-only -O install-v2box.sh 'https://panel.example/api/v10/public/node-deployment/bootstrap' && sh install-v2box.sh --install v1.0.4";
+ const command="wget --https-only -O install-v2box.sh 'https://panel.example/api/v10/public/node-deployment/bootstrap' && sh install-v2box.sh --install v1.0.5";
  expect(nodeUpgradeCommand({upgrade_command:command})).toBe(command);
  expect(nodeUpgradeCommand({})).toBe("");
 });

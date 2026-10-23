@@ -299,6 +299,7 @@ export function Editor({
                                           }
                                         : undefined
                                 }
+                                data-field={f.key}
                                 data-child={f.child || undefined}
                                 className={
                                     f.type === "textarea" ||

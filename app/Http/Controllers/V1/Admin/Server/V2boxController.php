@@ -42,7 +42,7 @@ class V2boxController extends V2nodeController
                 'tls' => 'required|in:1',
                 'disable_sni' => 'required|in:0',
                 'tls_settings.cert_mode' => 'required|in:http,dns,file',
-                'tls_settings.server_name' => 'required|string|max:253',
+                'tls_settings.server_name' => $request->has('deployment_setup') ? 'nullable|string|max:253' : 'required|string|max:253',
                 'tls_settings.allow_insecure' => 'nullable|in:0',
                 'tls_settings.allowInsecure' => 'nullable|in:0',
                 'tls_settings.cert_file' => 'nullable|required_if:tls_settings.cert_mode,file|string',

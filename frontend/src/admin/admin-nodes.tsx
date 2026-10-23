@@ -1,3 +1,5 @@
+import { nodeConfigurationProblems, nodeChangeImpact } from "./node-guidance";
+import { nodeSetupFields, nodeSetupPayload } from "./node-setup";
 import { NodeConnectionEditor, NodeForwarding } from "./NodeConnections";
 import { NodeTopology } from "./NodeTopology";
 import { NodeDictionaryProvider } from "./node-dictionary";
@@ -69,6 +71,7 @@ function NodesContent({
     const [nodeBusy, setNodeBusy] = useState(false);
     const [conversionOpen, setConversionOpen] = useState(false);
     const [savedNodeNotice, setSavedNodeNotice] = useState("");
+    const [preflightShown, setPreflightShown] = useState(false);
 
     const [diagnosticNode, setDiagnosticNode] = useState<Row | null>(null);
     const [credentialNode, setCredentialNode] = useState<Row | null>(null);
@@ -82,7 +85,7 @@ function NodesContent({
     const groups = useData<Row[]>(admin("server/group/fetch"));
     const routes = useData<Row[]>(admin("server/route/fetch"));
     const d = useData<Row[]>(admin("server/manage/getNodes"));
-    const [type, setType] = useState("v2node"),
+    const [type, setType] = useState("v2box"),
         [editing, setEditing] = useState<Row | null>(null);
     const topology = useData<Row>(editing ? admin("server/ddns/fetch") : "");
     const [error, setError] = useState("");
@@ -93,7 +96,7 @@ function NodesContent({
             actionPending.current ||
             (kind === "drop" &&
                 !confirm(
-                    `确认删除节点「${row.name}」？关联的托管 DNS 解析将进入清理队列。`,
+                    `确认删除节点「${row.name}」？节点凭据将撤销，关联的托管 DNS 解析将进入清理队列。服务器程序不会自动卸载；共享服务器请仅移除对应服务配置。`,
                 ))
         )
             return;
@@ -114,6 +117,7 @@ function NodesContent({
     const schema = useData<Row>(query(admin("console/nodeSchema"), { type }));
     useEffect(() => {
         setNodeDirty(false);
+        setPreflightShown(false);
         setConversionOpen(false);
     }, [editing]);
     useEffect(() => {
@@ -318,7 +322,7 @@ function NodesContent({
                     if (value === "nodes") d.reload();
                 }}
                 options={[
-                    { value: "nodes", label: "接入线路" },
+                    { value: "nodes", label: "节点列表" },
                     { value: "services", label: "代理服务" },
                     { value: "forwarding", label: "入口转发" },
                     { value: "ddns", label: "服务器与域名" },
@@ -335,11 +339,11 @@ function NodesContent({
             )}
             {(tab === "nodes" || tab === "services") && (
                 <Panel
-                    title={tab === "services" ? "代理服务" : "接入线路"}
+                    title={tab === "services" ? "代理服务" : "节点列表"}
                     actions={
                         <>
                             <Reload onClick={d.reload} loading={d.loading} />
-                            {tab === "nodes" && <button className="primary" onClick={() => setConnectionNode({ type: "v2box" })}>新增接入线路</button>}
+                            {tab === "nodes" && <button onClick={() => setConnectionNode({ type: "v2box" })}>复用服务新增线路</button>}
                             <button
                                 type="button"
                                 onClick={() => setShowDisplay(true)}
@@ -367,7 +371,7 @@ function NodesContent({
                                     })
                                 }
                             >
-                                新增代理服务
+                                {tab === "services" ? "新增代理服务" : "新增节点"}
                             </button>
                         </>
                     }
@@ -574,6 +578,7 @@ function NodesContent({
                 <NodeDeployment
                     key={`${credentialNode.type}:${credentialNode.id}`}
                     node={credentialNode}
+                    inspect={() => { setDiagnosticNode(credentialNode); setCredentialNode(null); }}
                     onChanged={d.reload}
                     close={() => { setCredentialNode(null); d.reload(); }}
                 />
@@ -587,24 +592,21 @@ function NodesContent({
                     }
                     variant="drawer"
                     wide
-                    className="node-editor-dialog"
+                    className={`node-editor-dialog${editing.id ? "" : " node-editor-create"}`}
                     dismissible={!nodeBusy}
                     close={closeNode}
                 >
                     <div className="pad node-editor-intro">
-                        <p>保存后请核对节点通信与运行状态，确认配置已应用。</p>
-                        <p className="muted">
-                            切换协议可能清除不兼容配置；高级 JSON
-                            中未单列的扩展参数仍会保留。
-                        </p>
+                        <p>{editing.id ? "保存后请核对节点通信与运行状态，确认配置已应用。" : "填写节点信息与连接域名，保存后生成一键部署命令。"}</p>
+                        {editing.id && <p className="muted">切换协议可能清除不兼容配置；高级扩展参数仍会保留。</p>}
                     </div>
                     <div className="pad node-editor-backend">
-                        <strong>
+                        {editing.id && <strong>
                             节点服务：
                             {type === "v2box"
                                 ? "V2Box / sing-box"
                                 : "V2Node / Xray"}
-                        </strong>
+                        </strong>}
                         {editing.id && !conversionOpen ? (
                             <button
                                 type="button"
@@ -633,7 +635,7 @@ function NodesContent({
                                     }}
                                 >
                                     {nodeTypes.map((t) => (
-                                        <option key={t}>{t}</option>
+                                        <option key={t} value={t}>{t === "v2box" ? "V2Box / sing-box" : "V2Node / Xray"}</option>
                                     ))}
                                 </select>
                             </label>
@@ -653,13 +655,14 @@ function NodesContent({
                     )}
                     <State
                         loading={
-                            schema.loading || groups.loading || routes.loading
+                            schema.loading || groups.loading || routes.loading || (!editing.id && topology.loading)
                         }
-                        error={schema.error || groups.error || routes.error}
+                        error={schema.error || groups.error || routes.error || (!editing.id ? topology.error : "")}
                         retry={() => {
                             schema.reload();
                             groups.reload();
                             routes.reload();
+                            topology.reload();
                         }}
                     >
                         <Editor
@@ -671,8 +674,8 @@ function NodesContent({
                                     ? "确认转换并保存"
                                     : "保存节点配置"
                             }
-                            resolveFields={(fields, values) =>
-                                nodeEditorPresentation(
+                            resolveFields={(fields, values) => {
+                                const presented = nodeEditorPresentation(
                                     formPresentation(
                                         nodeFields(
                                             type,
@@ -681,14 +684,32 @@ function NodesContent({
                                         ),
                                         "nodes",
                                     ),
-                                )
-                            }
+                                );
+                                return editing.id ? presented : nodeSetupFields(presented, values, topology.data);
+                            }}
                             preview={values => {
                                 const assignments: Row[] = topology.data?.assignments || [];
                                 const servers: Row[] = topology.data?.servers || [];
-                                const origin = assignments.find(a => a.node_type === type && a.node_id === editing.id);
+                                const automatic = !editing.id && values.setup_mode === "managed";
+                                const root = (topology.data?.credentials || []).find((r: Row) => Number(r.id) === Number(values.setup_credential_id));
+                                const domain = root ? `${values.setup_prefix || "自动生成子域名"}.${root.root_domain}` : "选择根域名后自动建立";
+                                const origin = automatic ? { domain, server_id: Number(values.setup_server_id) } : assignments.find(a => a.node_type === type && a.node_id === editing.id);
+                                const service = automatic && Number(values.tls) === 1 ? { ...values, tls_settings: { ...values.tls_settings, server_name: domain } } : values;
                                 const entry = assignments.find(a => a.id === origin?.entry_id);
-                                return <NodeTopology service={values} origin={origin} entry={entry} server={servers.find(s => s.id === origin?.server_id)} entryServer={servers.find(s => s.id === entry?.server_id)} host={values.host} port={values.port} shared={entry?.connection_count || 0} serviceConnections={nodeRows.filter(n => n.type === type && n.service_id === editing.id).length} />;
+                                const topologyPreview = <NodeTopology service={service} origin={origin} entry={entry} server={servers.find(s => s.id === origin?.server_id) || (automatic ? { name: values.name || "自动创建服务器" } : undefined)} entryServer={servers.find(s => s.id === entry?.server_id)} host={automatic ? domain : values.host} port={automatic ? values.server_port : values.port} shared={entry?.connection_count || 0} serviceConnections={nodeRows.filter(n => n.type === type && n.service_id === editing.id).length} />;
+                                const changes = editing.id ? nodeChangeImpact(nodeSettingsInitial(editing), values) : [];
+                                const affected = nodeRows.filter(n => n.type === editing.type && n.service_id === editing.id).length;
+                                const problems = nodeConfigurationProblems(values, type, topology.data).filter(problem => problem.key.startsWith("setup_") || !!schema.data?.[problem.key.split(".")[0]]);
+                                return <>
+                                    {changes.length > 0 && <aside className="node-config-impact" aria-label="变更影响"><strong>待保存变更：{changes.join("、")}</strong><p>将影响本服务{affected ? `及 ${affected} 条关联线路` : "的默认线路"}。监听、协议或证书调整可能中断连接；请安排维护时间，保存后核对配置应用结果。</p></aside>}
+                                    <div className="node-config-preflight"><button type="button" onClick={() => setPreflightShown(true)}>检查配置</button><span className="muted">保存前检查协议、域名、证书及服务器关联</span></div>
+                                    {preflightShown && <section className="node-config-problems" aria-label="配置预检" aria-live="polite"><strong>{problems.length ? `请处理 ${problems.length} 项配置问题` : "配置预检通过"}</strong>{problems.length > 0 && <ul>{problems.map(problem => <li key={problem.key+problem.message}><button type="button" className="link" onClick={event => { const label = Array.from(event.currentTarget.closest("form")?.querySelectorAll<HTMLElement>("[data-field]") || []).find(item => item.dataset.field === problem.key); label?.scrollIntoView({block:"center",behavior:"smooth"}); label?.querySelector<HTMLElement>("input,select,textarea,button")?.focus(); }}>{problem.message}</button></li>)}</ul>}</section>}
+                                    {editing.id ? topologyPreview : <details className="node-editor-path"><summary><strong>连接路径预览</strong><span>{automatic ? domain : values.host || "待填写连接地址"}:{automatic ? values.server_port : values.port || "—"}</span></summary>{topologyPreview}</details>}
+                                </>;
+                            }}
+                            validate={values => {
+                                const problems = nodeConfigurationProblems(values, type, topology.data).filter(problem => problem.key.startsWith("setup_") || !!schema.data?.[problem.key.split(".")[0]]);
+                                if (problems.length) { setPreflightShown(true); return `配置预检发现 ${problems.length} 项问题，请按提示调整。`; }
                             }}
                             linkValues={linkNode}
                             fields={nodeSettingsFields(
@@ -806,7 +827,7 @@ function NodesContent({
                                     }),
                             )}
                             initial={nodeSettingsInitial(
-                                nodeBackendInitial(editing, type),
+                                { ...nodeBackendInitial(editing, type), ...(!editing.id ? { setup_mode: "managed", setup_credential_id: "", "tls_settings.cert_mode": "http", setup_family: "ipv4", setup_server_id: "", server_port: editing.server_port || 443 } : {}) },
                             )}
                             onSave={async (b) => {
                                 if (
@@ -819,6 +840,11 @@ function NodesContent({
                                     throw new Error(
                                         "已取消转换，配置尚未保存。",
                                     );
+                                const impact = editing.id && type === editing.type ? nodeChangeImpact(nodeSettingsInitial(editing), b) : [];
+                                if (impact.length) {
+                                    const count = nodeRows.filter(n => n.type === type && n.service_id === editing.id).length;
+                                    if (!window.confirm(`将修改${impact.join("、")}，影响本服务${count ? `及 ${count} 条关联线路` : "的默认线路"}，可能中断连接。确认保存？`)) throw new Error("已取消保存，修改仍保留在表单中。");
+                                }
                                 b = nodeSettingsPayload(b);
                                 if (
                                     b.padding_scheme != null &&
@@ -832,6 +858,10 @@ function NodesContent({
                                     if (!k.includes(".") && b[k] !== undefined)
                                         clean[k] = b[k];
                                 });
+                                if (!editing.id) {
+                                    const setup = nodeSetupPayload(b);
+                                    if (setup) clean.deployment_setup = setup;
+                                }
                                 const converting =
                                     editing.id && type !== editing.type;
                                 if (converting) {
@@ -847,7 +877,7 @@ function NodesContent({
                                 );
                                 setNodeDirty(false);
                                 setSavedNodeNotice(
-                                    "节点配置已保存。请检查节点最近通信和运行状态；协议、端口或内核变更可能需要同步部署配置。",
+                                    clean.deployment_setup ? "节点、服务器与域名已一并保存。请生成一键部署命令，在服务器执行。" : "节点配置已保存。请检查节点最近通信和运行状态；协议、端口或内核变更可能需要同步部署配置。",
                                 );
                                 setEditing(null);
                                 d.reload();
@@ -864,6 +894,7 @@ function NodesContent({
                                         setCredentialNode({
                                             ...converted,
                                             _new: !editing.id,
+                                            _domainConfigured: !!clean.deployment_setup,
                                         });
                                 }
                             }}

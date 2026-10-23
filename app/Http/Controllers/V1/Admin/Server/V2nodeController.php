@@ -21,11 +21,31 @@ class V2nodeController extends Controller
 
     public function save(Request $request)
     {
-        return \App\Services\NodeDnsLifecycle::locked(fn()=>$this->saveUnlocked($request));
+        return \App\Services\NodeDnsLifecycle::locked(fn()=>\Illuminate\Support\Facades\DB::transaction(fn()=>$this->saveUnlocked($request)));
     }
 
     protected function saveUnlocked(Request $request)
     {
+        $setup=null;
+        if ($request->has('deployment_setup')) {
+            abort_if($request->input('id') || $request->input('source_id') || $request->input('service_id'),422,'一体化部署配置仅用于新增独立节点');
+            $validated=\Illuminate\Support\Facades\Validator::make($request->all(),['deployment_setup'=>'required|array:credential_id,prefix,family,server_id',
+                'deployment_setup.credential_id'=>'required|integer|min:1','deployment_setup.prefix'=>'nullable|string|max:63',
+                'deployment_setup.family'=>'required|in:ipv4,ipv6,dual','deployment_setup.server_id'=>'nullable|integer|min:1',
+                'server_port'=>'required|integer|between:1,65535'])->validate();
+            $setup=$validated['deployment_setup'];
+            $root=\Illuminate\Support\Facades\DB::table('v2_ddns_credential')->find($setup['credential_id']);
+            abort_unless($root && $root->root_domain,422,'请先在服务器与域名中维护并验证 Cloudflare 根域名');
+            $setup['prefix']=strtolower($setup['prefix']??'') ?: 'n-'.bin2hex(random_bytes(5));
+            $host=\App\Services\NodeDnsLifecycle::name($setup['prefix'],$root->root_domain);
+            $request->merge(['host'=>$host,'port'=>(int)$validated['server_port']]);
+            if ((int)$request->input('tls')===1) {
+                $tls=$request->input('tls_settings',[]);
+                abort_unless(is_array($tls),422,'TLS 配置必须为对象');
+                $tls['server_name']=$host;
+                $request->merge(['tls_settings'=>$tls,'disable_sni'=>0]);
+            }
+        }
         $request->merge(['service_id'=>$request->input('service_id') ?: null]);
         $existing=$request->input('id') ? $this->model::find($request->input('id')) : null;
         $backend=$this->model===\App\Models\ServerV2box::class ? 'v2box':'v2node';
@@ -238,8 +258,10 @@ class V2nodeController extends Controller
                 abort_if(\Illuminate\Support\Facades\DB::table('v2_server_traffic_binding')->where('node_type',$backend)->where('node_id',$server->id)->exists(),422,'请先解除服务器额度绑定，再设置为关联线路');
                 abort_if(\Illuminate\Support\Facades\DB::table('v2_lightsail_server')->where('node_type',$backend)->where('node_id',$server->id)->exists(),422,'请先移除 Lightsail 配置，再设置为关联线路');
             }
+            $server->fill($params);
+            \App\Services\NodeListenerGuard::check($backend,$server);
             try {
-                $server->update($params);
+                $server->save();
             } catch (\Exception $e) {
                 abort(500, '保存失败');
             }
@@ -250,6 +272,11 @@ class V2nodeController extends Controller
 
         if (!$created = $this->model::create($params)) {
             abort(500, '创建失败');
+        }
+        if ($setup) {
+            (new \App\Http\Controllers\V1\Admin\NodeDomainController())->bindWithinLock(Request::create('/','POST',$setup+['node_type'=>$backend,'node_id'=>$created->id]));
+            \App\Services\NodeListenerGuard::check($backend,$created->fresh());
+            if ($backend==='v2box') \App\Services\NodeDeploymentWorkflow::validate($created->fresh());
         }
         return response([
             'data' => ['id'=>$created->id,'type'=>$backend]

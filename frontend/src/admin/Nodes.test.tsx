@@ -1,3 +1,5 @@
+import { nodeConfigurationProblems, nodeChangeImpact, nodeDeploymentStage } from "./node-guidance";
+import { nodeSetupFields, nodeSetupPayload } from "./node-setup";
 import { adminPageFixture } from "./test-support/page-fixtures";
 // @vitest-environment jsdom
 import { afterEach, expect, it, vi } from "vitest";
@@ -79,19 +81,21 @@ it("requires saved configuration and explicit connection confirmation before pub
     expect(screen.getByText("待保存预览")).toBeTruthy();
     expect(api.request.mock.calls.filter(([p])=>String(p).includes("connections/publish"))).toHaveLength(1);
 });
-it("updates deployment authentication automatically and stops once authenticated", async () => {
-    api.request.mockResolvedValue({ data: { keys: [] } });
+it("refreshes deployment state until the current configuration is applied, then stops", async () => {
+    let ready=false;
+    api.request.mockImplementation(async (path:string)=>path.includes("manage/runtime") ? {data:{runtimeStatus:ready?"online":"unknown",applicationState:ready?"applied":"unconfirmed"}} : path.includes("ddns/fetch") ? {data:{assignments:[]}} : {data:{keys:ready?[{status:"active",lastUsedAt:"2026-10-23T00:00:00Z"}]:[]}});
     vi.useFakeTimers();
-    vi.spyOn(document, "visibilityState", "get").mockReturnValue("visible");
-    let view!: ReturnType<typeof render>;
-    await act(async () => { view = render(<NodeDeployment node={{ id: 1, type: "v2box", name: "Node" }} close={() => {}} />); });
+    vi.spyOn(document,"visibilityState","get").mockReturnValue("visible");
+    let view!:ReturnType<typeof render>;
+    await act(async()=>{view=render(<NodeDeployment node={{id:1,type:"v2box",name:"Node"}} close={()=>{}}/>);});
     expect(screen.getByText("独立凭据尚未认证")).toBeTruthy();
-    api.request.mockResolvedValue({ data: { keys: [{ status: "active", lastUsedAt: "2026-10-23T00:00:00Z" }] } });
-    const calls = api.request.mock.calls.length;
-    await act(() => vi.advanceTimersByTimeAsync(15000));
+    ready=true;
+    await act(()=>vi.advanceTimersByTimeAsync(15000));
+    expect(screen.getByText("服务运行正常")).toBeTruthy();
     expect(screen.getByText("独立凭据已认证")).toBeTruthy();
-    await act(() => vi.advanceTimersByTimeAsync(60000));
-    expect(api.request).toHaveBeenCalledTimes(calls + 1);
+    const calls=api.request.mock.calls.length;
+    await act(()=>vi.advanceTimersByTimeAsync(60000));
+    expect(api.request).toHaveBeenCalledTimes(calls);
     view.unmount();
 });
 it("shows a newly generated credential only once without requesting an administrator password", async () => {
@@ -529,7 +533,7 @@ it("opens DDNS inside node management and returns to the node list", async () =>
     fireEvent.click(screen.getByRole("button", { name: "服务器与域名" }));
     expect(await screen.findByText("Cloudflare 凭据")).toBeTruthy();
     expect(screen.queryByLabelText("搜索节点")).toBeNull();
-    fireEvent.click(screen.getByRole("button", { name: "接入线路" }));
+    fireEvent.click(screen.getByRole("button", { name: "节点列表" }));
     expect(await screen.findByLabelText("搜索节点")).toBeTruthy();
 });
 
@@ -549,7 +553,7 @@ it("manages Lightsail and traffic in peer pages without an outer dialog", async 
     ).toBeTruthy();
     expect(screen.queryByText("Lightsail 公网 IP 管理")).toBeNull();
     expect(screen.queryByRole("dialog")).toBeNull();
-    fireEvent.click(screen.getByRole("button", { name: "接入线路" }));
+    fireEvent.click(screen.getByRole("button", { name: "节点列表" }));
     expect(await screen.findByLabelText("搜索节点")).toBeTruthy();
 });
 
@@ -679,4 +683,105 @@ it("filters actionable nodes separately from maintenance and opens unified detai
         await screen.findByRole("dialog", { name: "节点详情 · 异常节点甲" }),
     ).toBeTruthy();
     expect(await screen.findByText("内核配置校验失败")).toBeTruthy();
+});
+
+
+it("creates a direct node and its domain in one save without a separate server form", async () => {
+    let saved = false;
+    api.request.mockImplementation(async (path: string) => {
+        if (path.endsWith("dictionary/fetch")) return adminPageFixture(path);
+        if (path.includes("console/nodeSchema")) return { data: {name:"required",host:"required",port:"required",server_port:"required",protocol:"required|in:vless",tls:"required|in:0,1,2",network:"required|in:tcp",group_id:"nullable|array",rate:"required"} };
+        if (path.endsWith("server/ddns/fetch")) return { data: {credentials:[{id:9,root_domain:"example.test"}],servers:[{id:5,name:"Existing machine",enabled:true,family:"ipv4"}],assignments:[]} };
+        if (path.endsWith("server/manage/getNodes")) return {data:saved ? [{id:99,type:"v2box",name:"Japan",host:"jp.example.test",port:443,protocol:"vless"}] : []};
+        if (path.endsWith("server/v2box/save")) { saved=true;return {data:{id:99,type:"v2box"}}; }
+        if (path.endsWith("server/group/fetch")) return {data:[{id:1,name:"Default group"}]};
+        if (path.endsWith("server/route/fetch")) return {data:[]};
+        if (path.includes("credentials/fetch")) return {data:{keys:[]}};
+        return {data:{}};
+    });
+    render(<Nodes />);
+    fireEvent.click(await screen.findByRole("button",{name:"新增节点"}));
+    await screen.findByRole("combobox",{name:/^根域名/});
+    expect(screen.queryByRole("textbox",{name:"连接主机"})).toBeNull();
+    expect(screen.getAllByRole("spinbutton",{name:"连接端口"})).toHaveLength(1);
+    fireEvent.change(screen.getByRole("textbox",{name:/节点名称/}),{target:{value:"Japan"}});
+    fireEvent.change(screen.getByRole("combobox",{name:/^根域名/}),{target:{value:"9"}});
+    fireEvent.change(screen.getByRole("textbox",{name:/^子域名前缀/}),{target:{value:"jp"}});
+    fireEvent.click(within(screen.getByRole("group",{name:"权限组"})).getByRole("checkbox"));
+    fireEvent.click(screen.getByRole("button",{name:"保存节点配置"}));
+    await waitFor(()=>expect(api.request).toHaveBeenCalledWith("test-admin/server/v2box/save",expect.objectContaining({server_port:443,deployment_setup:{credential_id:9,prefix:"jp",family:"ipv4",server_id:null}})));
+    expect(api.request.mock.calls.some(([path])=>String(path).endsWith("domains/bind") || String(path).endsWith("network/save"))).toBe(false);
+    await screen.findByText("新节点安装");
+    expect(api.request.mock.calls.some(([path])=>String(path).endsWith("credentials/deployment"))).toBe(false);
+});
+
+it("keeps manual addresses and Reality SNI available while offering server reuse", () => {
+    const fields=[{key:"host",label:"连接主机"},{key:"port",label:"连接端口"},{key:"server_port",label:"监听端口"},{key:"tls_settings.server_name",label:"SNI"}];
+    const network={credentials:[{id:1,root_domain:"example.test"}],servers:[{id:5,name:"Shared",enabled:true,family:"ipv4"},{id:6,name:"Wrong family",enabled:true,family:"ipv6"}]};
+    const managed=nodeSetupFields(fields,{setup_mode:"managed",setup_family:"ipv4",tls:1},network);
+    expect(managed.map(f=>f.key)).not.toContain("host");
+    expect(managed.map(f=>f.key)).not.toContain("tls_settings.server_name");
+    expect(managed.find(f=>f.key==="setup_server_id")?.options?.map(o=>o[0])).toEqual(["","5"]);
+    expect(nodeSetupFields(fields,{setup_mode:"managed",tls:2},network).map(f=>f.key)).toContain("tls_settings.server_name");
+    expect(nodeSetupFields(fields,{setup_mode:"manual"},network).map(f=>f.key)).toContain("host");
+    expect(nodeSetupPayload({setup_mode:"manual"})).toBeUndefined();
+    expect(nodeSetupPayload({setup_mode:"managed",setup_credential_id:"1",setup_server_id:"5",setup_family:"ipv4"})).toEqual({credential_id:1,server_id:5,family:"ipv4",prefix:""});
+});
+
+it("collects actionable configuration errors and keeps secret values out of impact summaries",()=>{
+    const problems=nodeConfigurationProblems({name:"",group_id:[],server_port:80,protocol:"anytls",network:"ws",tls:1,setup_mode:"managed",setup_prefix:"bad.prefix","tls_settings.cert_mode":"dns"},"v2box");
+    expect(problems.map(p=>p.key)).toEqual(expect.arrayContaining(["name","group_id","setup_credential_id","setup_prefix","network","tls_settings.provider","tls_settings.dns_env"]));
+    const original={protocol:"vless",server_port:443,route_id:[1],tls:1,tls_settings:{cert_mode:"http",server_name:"node.example.test",dns_env:"secret-before"}};
+    expect(nodeChangeImpact(original,{...original,server_port:"443",route_id:["1"],tls_settings:{...original.tls_settings,allow_insecure:0,fingerprint:"chrome"}})).toEqual([]);
+    const impact=nodeChangeImpact(original,{...original,server_port:9443,tls_settings:{...original.tls_settings,dns_env:"secret-after"}});
+    expect(impact).toEqual(["监听","TLS 与证书"]);
+    expect(JSON.stringify(impact)).not.toContain("secret");
+});
+it("distinguishes configuration errors, DNS progress and confirmed runtime",()=>{
+    const node={id:1,type:"v2box",host:"new.example.test",tls:1};
+    expect(nodeDeploymentStage(node,{applicationState:"failed"},undefined,true)).toMatchObject({title:"配置应用失败",target:"logs",terminal:true});
+    expect(nodeDeploymentStage(node,{runtimeStatus:"online",applicationState:"unconfirmed"},undefined,true).title).toBe("等待配置应用确认");
+    expect(nodeDeploymentStage(node,{runtimeStatus:"online",applicationState:"applied"},undefined,true).title).toBe("服务运行正常");
+    expect(nodeDeploymentStage(node,{}, {enabled:true,managed:true,family:"ipv4",status:"awaiting_report"},false).title).toBe("等待服务器 IP 上报");
+    expect(nodeDeploymentStage(node,{runtimeStatus:"offline"},undefined,true)).toMatchObject({title:"节点通信中断",terminal:true});
+    expect(nodeDeploymentStage(node,{runtimeStatus:"online",applicationState:"applied"},{managed:false,family:"ipv4"},true).title).toBe("服务运行正常");
+    expect(nodeDeploymentStage(node,{runtimeStatus:"online",applicationState:"applied"},{managed:true,enabled:false,family:"ipv4"},true)).toMatchObject({target:"domain",terminal:true});
+    expect(nodeDeploymentStage({...node,type:"v2node"},{runtimeStatus:"online",configurationState:"provided"},undefined,true).title).toBe("节点已接入，待实际验证");
+    expect(nodeDeploymentStage(node,{runtimeStatus:"online",receiptSupported:false},undefined,true).target).toBe("upgrade");
+});
+it("pauses deployment polling after five minutes and stops while hidden",async()=>{
+    api.request.mockImplementation(async(path:string)=>path.includes("manage/runtime")?{data:{runtimeStatus:"unknown",applicationState:"unconfirmed"}}:{data:{keys:[],assignments:[]}});
+    vi.useFakeTimers();
+    const visible=vi.spyOn(document,"visibilityState","get").mockReturnValue("hidden");
+    await act(async()=>{render(<NodeDeployment node={{id:1,type:"v2box",name:"Node"}} close={()=>{}}/>);});
+    const calls=api.request.mock.calls.length;
+    await act(()=>vi.advanceTimersByTimeAsync(30000));
+    expect(api.request).toHaveBeenCalledTimes(calls);
+    visible.mockReturnValue("visible");
+    await act(()=>vi.advanceTimersByTimeAsync(300000));
+    expect(screen.getByText(/已暂停自动检查/)).toBeTruthy();
+    const pausedCalls=api.request.mock.calls.length;
+    await act(()=>vi.advanceTimersByTimeAsync(60000));
+    expect(api.request).toHaveBeenCalledTimes(pausedCalls);
+});
+
+it("keeps sensitive node changes in the form when confirmation is cancelled",async()=>{
+    const confirm=vi.spyOn(window,"confirm").mockReturnValue(false);
+    api.request.mockImplementation(async(path:string)=>{
+        if(path.endsWith("dictionary/fetch")) return adminPageFixture(path);
+        if(path.includes("nodeSchema")) return {data:{name:"required",protocol:"required|in:vless",server_port:"required",tls:"required|in:0,1,2",network:"required|in:tcp"}};
+        if(path.endsWith("getNodes")) return {data:[{id:7,type:"v2box",name:"Primary",protocol:"vless",server_port:443,tls:0,network:"tcp"},{id:8,type:"v2box",service_id:7,name:"Relay",protocol:"vless"}]};
+        if(path.endsWith("group/fetch") || path.endsWith("route/fetch")) return {data:[]};
+        return {data:{servers:[],assignments:[]}};
+    });
+    render(<Nodes/>);
+    fireEvent.click((await screen.findAllByRole("button",{name:"编辑"}))[0]);
+    const port=await screen.findByRole("spinbutton",{name:/服务端口/});
+    fireEvent.change(port,{target:{value:"9443"}});
+    expect(screen.getByLabelText("变更影响").textContent).toContain("1 条关联线路");
+    fireEvent.click(screen.getByRole("button",{name:"保存节点配置"}));
+    await screen.findByText("已取消保存，修改仍保留在表单中。");
+    expect(confirm).toHaveBeenCalledWith(expect.stringContaining("监听"));
+    expect(api.request.mock.calls.some(([path])=>String(path).endsWith("v2box/save"))).toBe(false);
+    expect(port).toHaveProperty("value","9443");
 });

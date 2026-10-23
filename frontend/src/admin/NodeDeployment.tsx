@@ -1,5 +1,6 @@
+import { nodeDeploymentStage } from "./node-guidance";
 import { NodeDomainBinding } from "./NodeDomains";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import "./admin-management.css";
 import { admin, date, query, request, type Row } from "../shared/api";
 import { Modal, State, useData } from "../shared/ui";
@@ -11,13 +12,15 @@ export function NodeDeployment({
     node,
     close,
     onChanged,
+    inspect,
 }: {
     node: Row;
     close: () => void;
     onChanged?: () => void;
+    inspect?: () => void;
 }) {
-    const [tab, setTab] = useState(node._new ? "domain" : "deploy"),
-        [mode, setMode] = useState("new");
+    const [tab, setTab] = useState(node._new && !node._domainConfigured ? "domain" : "deploy"),
+        [mode, setMode] = useState(!node._new && ["online","offline","limited"].includes(node.runtime_status) ? "upgrade" : "new");
     const [busy, setBusy] = useState(false),
         [error, setError] = useState("");
     const [deployment, setDeployment] = useState<Row | null>(null),
@@ -25,6 +28,11 @@ export function NodeDeployment({
     const report = useData<Row>(
         query(admin("server/credentials"), { type: node.type, id: node.id }),
     );
+    const runtime = useData<Row>(tab === "deploy" ? admin(`server/manage/runtime?type=${encodeURIComponent(node.type)}&id=${node.id}`) : "", undefined, false, {refreshOnEvents:false});
+    const network = useData<Row>(tab === "deploy" ? admin("server/ddns/fetch") : "", undefined, false, {refreshOnEvents:false});
+    const deadline = useRef(Date.now()+300000);
+    const [paused,setPaused] = useState(false);
+    const binding = (network.data?.assignments || []).find((a:Row)=>a.node_type===node.type && a.node_id===node.id);
     useEffect(() => {
         if (!deployment) return;
         const timer = setTimeout(
@@ -67,20 +75,22 @@ export function NodeDeployment({
     const authenticated = keys.some(
         (k) => k.status === "active" && !!k.lastUsedAt,
     );
+    const stage = nodeDeploymentStage(node,runtime.data,binding,authenticated);
+    function refreshStatus() {
+        deadline.current=Date.now()+300000;setPaused(false);
+        report.reload();runtime.reload();network.reload();
+    }
     useEffect(() => {
-        if (
-            tab !== "deploy" ||
-            authenticated ||
-            busy ||
-            report.loading ||
-            report.error
-        )
-            return;
-        const timer = window.setInterval(() => {
-            if (document.visibilityState === "visible") report.reload();
-        }, 15000);
-        return () => window.clearInterval(timer);
-    }, [tab, authenticated, busy, report.loading, report.error, report.reload]);
+        if (tab!=="deploy" || busy || paused || stage.terminal || report.loading || runtime.loading || network.loading || report.error || runtime.error || network.error) return;
+        const timer=window.setInterval(()=>{
+            if(Date.now()>=deadline.current) {setPaused(true);return;}
+            if(document.visibilityState!=="visible") return;
+            if(!authenticated) report.reload();
+            runtime.reload();
+            if(binding && !stage.dnsReady) network.reload();
+        },15000);
+        return ()=>window.clearInterval(timer);
+    },[tab,busy,paused,stage.terminal,stage.dnsReady,authenticated,report.loading,runtime.loading,network.loading,report.error,runtime.error,network.error,report.reload,runtime.reload,network.reload,binding]);
     return (
         <Modal
             title={`${node.name} · 部署与接入`}
@@ -134,29 +144,16 @@ export function NodeDeployment({
                         />
                     ) : (
                         <>
-                            <State {...report} retry={report.reload}>
-                                {report.data && (
-                                    <div className="admin-deployment-status">
-                                        <span
-                                            className="admin-deployment-state"
-                                            data-ready={authenticated}
-                                        >
-                                            {authenticated
-                                                ? "独立凭据已认证"
-                                                : "独立凭据尚未认证"}
-                                        </span>
-                                        <button
-                                            disabled={report.loading || busy}
-                                            onClick={report.reload}
-                                        >
-                                            检查接入状态
-                                        </button>
-                                    </div>
-                                )}
-                            </State>
-                            <p className="muted">
-                                凭据认证不代表代理运行正常；部署后还需检查节点列表中的运行状态。
-                            </p>
+                            <section className="node-deployment-progress" aria-label="部署状态">
+                                <div><strong>{runtime.error || network.error ? "状态读取暂不可用" : stage.title}</strong><button disabled={busy || report.loading || runtime.loading || network.loading} onClick={refreshStatus}>刷新部署状态</button></div>
+                                <p>{runtime.error || network.error ? "请刷新状态重试，部署命令仍可按原流程生成。" : stage.description}</p>
+                                <State {...report} retry={report.reload}><small>{authenticated ? "独立凭据已认证" : "独立凭据尚未认证"}</small></State>
+                                {stage.target==="runtime" && inspect && <button disabled={busy} onClick={inspect}>查看运行诊断</button>}
+                                {stage.target==="domain" && <button disabled={busy} onClick={()=>setTab("domain")}>查看域名与解析</button>}
+                                {stage.target==="upgrade" && <button disabled={busy} onClick={()=>setMode("upgrade")}>查看节点升级命令</button>}
+                                {stage.target==="logs" && <details><summary>查看日志与恢复命令</summary><p><code>{node.type === "v2box" ? "v2box status" : "systemctl status v2node"}</code> · <code>{node.type === "v2box" ? "v2box log" : "journalctl -u v2node -n 80 --no-pager"}</code></p>{node.type === "v2box" && <p>未完成的一键部署可执行 <code>sh install-v2box.sh --resume</code>，证书与现有配置会保留。</p>}</details>}
+                                {paused && <p className="muted">已暂停自动检查，点击“刷新部署状态”继续。</p>}
+                            </section>
                             {node.type === "v2box" && (
                                 <div className="admin-deployment-mode">
                                     <AdminChoiceGroup
@@ -332,13 +329,13 @@ export function NodeDeployment({
                                                 <code>v2box log</code> ·{" "}
                                                 <code>v2box version</code>
                                             </dd>
-                                            <dt>卸载节点</dt>
+                                            <dt>卸载整台服务器上的 V2Box</dt>
                                             <dd>
                                                 <code>
                                                     v2box uninstall
                                                     --stop-network
                                                 </code>
-                                                ：确认后停止 V2Box 和本机独立 IP
+                                                ：此操作影响本机所有节点服务。确认无其他服务使用后执行。确认后停止 V2Box 和本机独立 IP
                                                 上报，移除程序，保留配置、证书及
                                                 DNS 记录。共享 IP 上报服务时去掉{" "}
                                                 <code>--stop-network</code>。

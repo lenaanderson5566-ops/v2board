@@ -449,6 +449,9 @@ export function NodeDomainBinding({
                                 });
                             }}
                         >
+                            <details className="admin-deployment-tools">
+                                <summary>服务器复用与中转（可选）</summary>
+                                <div className="node-domain-form">
                             <label>
                                 接入方式
                                 <select
@@ -476,7 +479,7 @@ export function NodeDomainBinding({
                                     }
                                 >
                                     <option value="">
-                                        为此节点新建服务器记录
+                                        自动关联服务器（无需单独配置）
                                     </option>
                                     {servers
                                         .filter((s) => s.enabled)
@@ -529,6 +532,8 @@ export function NodeDomainBinding({
                                     </p>
                                 </>
                             )}
+                                </div>
+                            </details>
                             <label>
                                 根域名
                                 <select

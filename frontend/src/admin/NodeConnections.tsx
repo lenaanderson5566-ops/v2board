@@ -15,6 +15,7 @@ export function NodeConnectionEditor({ node, nodes, groups = [], close, onSaved 
     const services = nodes.filter(n => !n.service_id && n.type === type);
     const [draft, setDraft] = useState<Row>({ name: "", service_id: node.service_id || "", entry_id: "", entry_port: 443, group_id: [], show: 1 });
     const [tagsText, setTagsText] = useState("");
+    const [loadedRevision, setLoadedRevision] = useState<number | null>(null);
     const [dirty, setDirty] = useState(!id), [busy, setBusy] = useState(false), [error, setError] = useState("");
     const [confirmed, setConfirmed] = useState(false), [notice, setNotice] = useState("");
     const pending = useRef(false);
@@ -24,7 +25,7 @@ export function NodeConnectionEditor({ node, nodes, groups = [], close, onSaved 
         window.addEventListener("beforeunload", warn);
         return () => window.removeEventListener("beforeunload", warn);
     }, [dirty]);
-    useEffect(() => { if (existing.data) { setDraft(existing.data.draft); setTagsText((existing.data.draft.tags || []).join(", ")); setDirty(false); setConfirmed(false); } }, [existing.data]);
+    useEffect(() => { if (existing.data) { setDraft(existing.data.draft); setLoadedRevision(existing.data.revision ?? 0); setTagsText((existing.data.draft.tags || []).join(", ")); setDirty(false); setConfirmed(false); } }, [existing.data]);
     const service = services.find(s => Number(s.id) === Number(draft.service_id));
     const assignments: Row[] = network.data?.assignments || [], servers: Row[] = network.data?.servers || [];
     const origin = assignments.find(a => a.node_type === type && a.node_id === Number(draft.service_id));
@@ -53,7 +54,7 @@ export function NodeConnectionEditor({ node, nodes, groups = [], close, onSaved 
         finally { pending.current = false; setBusy(false); }
     }
     return <Modal title={id ? "编辑接入线路" : "新增接入线路"} close={dismiss} wide>
-        <State loading={network.loading || existing.loading} error={network.error || existing.error} retry={() => { network.reload(); existing.reload(); }}>
+        <State loading={network.loading || existing.loading || (!!id && !existing.error && (!existing.data || loadedRevision !== (existing.data.revision ?? 0)))} error={network.error || existing.error} retry={() => { network.reload(); existing.reload(); }}>
             <div className="admin-deployment-card">
                 <div className="node-domain-form">
                     {!id && <label>服务内核<select value={type} disabled={busy} onChange={e => { setType(e.target.value); change("service_id", ""); }}><option value="v2box">V2Box</option><option value="v2node">V2Node</option></select></label>}

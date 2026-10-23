@@ -328,3 +328,33 @@
 .node-topology small { color: var(--muted, #64748b); }
 @media (max-width: 640px) { .node-topology ol { flex-direction: column; } .node-topology li + li::before { content: "↓"; top: -25px; left: 50%; } }
 @container (max-width: 600px) { .node-topology ol { flex-direction: column; } .node-topology li + li::before { content: "↓"; top: -25px; left: 50%; } }
+
+/* Keep creation focused on the form; topology remains available on demand. */
+body[data-console="admin"] .node-editor-create .node-editor-intro { padding: 16px 24px 0; }
+body[data-console="admin"] .node-editor-create .node-editor-backend { padding: 12px 24px 16px; }
+body[data-console="admin"] .node-editor-create .node-editor-backend > label { display: flex; flex-direction: row; align-items: center; gap: 12px; margin: 0; }
+body[data-console="admin"] .node-editor-create .node-editor-backend select { width: auto; min-width: 180px; }
+body[data-console="admin"] .node-editor-path { border: 1px solid var(--border, #dce2ea); border-radius: 8px; margin-bottom: 20px; padding: 12px 16px; }
+body[data-console="admin"] .node-editor-path > summary { cursor: pointer; color: var(--muted); }
+body[data-console="admin"] .node-editor-path > summary strong { color: var(--text); font-size: 13px; margin-right: 12px; }
+body[data-console="admin"] .node-editor-path > summary span { font-size: 13px; overflow-wrap: anywhere; }
+body[data-console="admin"] .node-editor-path .node-topology { border: 0; padding: 8px 0 0; margin: 8px 0 0; }
+body[data-console="admin"] .node-editor-create .field-grid { gap: 16px; }
+body[data-console="admin"] .node-editor-create .field-section { display: block; text-align: left; font-size: 14px; border: 0; margin: 4px 0 0; padding: 12px 0 0; }
+body[data-console="admin"] .node-editor-create .field-section::before,
+body[data-console="admin"] .node-editor-create .field-section::after { display: none; }
+@media(max-width:600px) {
+    body[data-console="admin"] .node-editor-create .node-editor-intro { padding: 12px 16px 0; }
+    body[data-console="admin"] .node-editor-create .node-editor-backend { padding: 12px 16px; }
+    body[data-console="admin"] .node-editor-path > summary span { display: block; margin-top: 6px; }
+}
+
+.node-config-preflight { display:flex; align-items:center; flex-wrap:wrap; gap:12px; margin:0 0 12px; font-size:13px; }
+.node-config-impact,.node-config-problems,.node-deployment-progress { border:1px solid var(--border,#dce2ea); border-radius:8px; padding:14px 16px; margin:0 0 16px; background:var(--bg-soft,#f8fafc); }
+.node-config-impact p,.node-deployment-progress p { margin:8px 0; line-height:1.6; }
+.node-config-problems ul { margin:10px 0 0; padding-left:18px; }
+.node-config-problems li { margin:6px 0; }
+.node-config-problems button.link { text-align:left; white-space:normal; }
+.node-deployment-progress > div { display:flex; justify-content:space-between; align-items:center; gap:12px; flex-wrap:wrap; }
+.node-deployment-progress details { margin-top:12px; }
+.node-deployment-progress small { color:var(--muted); }

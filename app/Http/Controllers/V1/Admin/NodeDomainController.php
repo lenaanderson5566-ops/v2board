@@ -11,8 +11,12 @@ use Illuminate\Support\Facades\DB;
 final class NodeDomainController extends Controller
 {
     public function bind(Request $request) {
+        return NodeDnsLifecycle::locked(fn()=>$this->bindWithinLock($request));
+    }
+    /** Caller holds the DNS lifecycle lock; also used by atomic node creation. */
+    public function bindWithinLock(Request $request) {
         $v=$request->validate(['credential_id'=>'required|integer|min:1','node_type'=>'required|in:v2node,v2box','node_id'=>'required|integer|min:1','prefix'=>'nullable|string|max:63','family'=>'required|in:ipv4,ipv6,dual','server_id'=>'nullable|integer|min:1','entry_id'=>'nullable|integer|min:1','entry_port'=>'nullable|integer|min:1|max:65535']);
-        return NodeDnsLifecycle::locked(fn()=>DB::transaction(function()use($v){
+        return DB::transaction(function()use($v){
             $c=DB::table('v2_ddns_credential')->find($v['credential_id']);
             abort_unless($c && $c->root_domain,422,'请先验证根域名');
             $n=DB::table('v2_server_'.$v['node_type'])->where('id',$v['node_id'])->lockForUpdate()->first();
@@ -53,9 +57,10 @@ final class NodeDomainController extends Controller
             if ($old) DB::table('v2_node_ddns')->where('id',$id)->update($data);
             $serverId=\App\Services\NetworkServer::attach($id,$v['server_id']??null);
             abort_if($entry && $entry->server_id==$serverId,422,'入口和回源应选择不同服务器');
+            \App\Services\NodeListenerGuard::check($v['node_type'],\App\Services\ProxyService::model($v['node_type'])::findOrFail($n->id),$serverId);
             NodeDdnsService::event($id,'configuration_saved');
             return ['data'=>['id'=>$id,'domain'=>$domain]];
-        }));
+        });
     }
     public function activate(Request $request) {
         $v=$request->validate(['id'=>'required|integer|min:1','confirm'=>'required|accepted']);

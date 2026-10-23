@@ -298,3 +298,9 @@ it("allows editing coupon terms without batch generation and restricts new templ
     expect(edit.map(f => f.key)).toContain("value");
     expect(resourceFields("coupons", schema, { type: 2 }).find(f => f.key === "type")?.options).toEqual([["2", "percentage"]]);
 });
+
+it("applies native protocol defaults and clears incompatible server reuse",()=>{
+    expect(linkNode("protocol","anytls",{setup_mode:"managed",tls:0,network:"ws"})).toMatchObject({tls:1,network:"tcp","tls_settings.cert_mode":"http"});
+    expect(linkNode("protocol","shadowsocks",{tls:1,network:"ws"})).toMatchObject({tls:0,network:"tcp"});
+    expect(linkNode("setup_family","ipv6",{setup_server_id:5})).toMatchObject({setup_server_id:"",setup_family:"ipv6"});
+});

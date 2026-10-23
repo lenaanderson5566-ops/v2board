@@ -224,6 +224,7 @@ export function linkNode(key: string, next: unknown, values: Row): Row {
             result.city_code = "";
     }
 
+    if (key === "setup_family") result.setup_server_id = "";
     if (key === "protocol") {
         result.service_id = "";
         if (tlsRequired.includes(String(next))) result.tls = 1;
@@ -234,6 +235,8 @@ export function linkNode(key: string, next: unknown, values: Row): Row {
             )
         )
             result.network = "tcp";
+        if (values.setup_mode === "managed" && tlsRequired.includes(String(next)) && !values["tls_settings.cert_mode"]) result["tls_settings.cert_mode"] = "http";
+        if (next === "shadowsocks") result.tls = 0;
         if (next === "naive") {
             result.disable_sni = 0;
             result.network_settings = {};

@@ -129,8 +129,8 @@ SH,
             $script=str_replace('__NODE_DEPLOY_HELPER__',file_get_contents(resource_path('scripts/node-deploy.py')),file_get_contents(resource_path('scripts/node-deploy.sh')));
             $script=str_replace(['__NODE_PREREQUISITES__','/etc/v2box','/usr/local/lib/v2box','/etc/node-network'],['',$fixture.'/config',$fixture.'/lib',$fixture.'/network'],$script);
             file_put_contents($fixture.'/bootstrap.sh',$script);
-            $run=function($failure=null)use($fixture,$reportFailure,$networkOnly,$serverOnly){
-                $pipes=[];$p=proc_open(['bash',$fixture.'/bootstrap.sh',...($networkOnly && !$serverOnly?['--network-only']:[]),'--api-host','https://panel.example.invalid',...($serverOnly?['--server-id','7']:['--node-id','3']),'--deploy-token',($serverOnly?'ns_':'nd_').str_repeat('d',64)],[['pipe','r'],['pipe','w'],['pipe','w']],$pipes,null,array_merge(getenv(),['PATH'=>$fixture.'/bin:'.getenv('PATH'),'TMPDIR'=>$fixture.'/tmp','DNS_FIXTURE'=>$fixture,'DNS_REPORT_FAILURE'=>(string)($failure??$reportFailure)]));
+            $run=function($failure=null,$nodeId=3)use($fixture,$reportFailure,$networkOnly,$serverOnly){
+                $pipes=[];$p=proc_open(['bash',$fixture.'/bootstrap.sh',...($networkOnly && !$serverOnly?['--network-only']:[]),'--api-host','https://panel.example.invalid',...($serverOnly?['--server-id','7']:['--node-id',(string)$nodeId]),'--deploy-token',($serverOnly?'ns_':'nd_').str_repeat('d',64)],[['pipe','r'],['pipe','w'],['pipe','w']],$pipes,null,array_merge(getenv(),['PATH'=>$fixture.'/bin:'.getenv('PATH'),'TMPDIR'=>$fixture.'/tmp','DNS_FIXTURE'=>$fixture,'DNS_REPORT_FAILURE'=>(string)($failure??$reportFailure)]));
                 fclose($pipes[0]);$output=stream_get_contents($pipes[1]).stream_get_contents($pipes[2]);fclose($pipes[1]);fclose($pipes[2]);return [proc_close($p),$output];
             };
             [$exit,$output]=$run();
@@ -152,11 +152,22 @@ SH,
                 continue;
             }
             $assert(file_get_contents($fixture.'/events')===($reportFailure ? "report\n" : "report\nrestart\n"),'IP reporting must succeed before starting the node');
+            if ($reportFailure) {
+                $assert(!file_exists($fixture.'/config/config.json'),'Failed reporting must not write live node configuration');
+                [$resumed]=$run(0);
+                $assert($resumed===0 && file_get_contents($fixture.'/redemptions')==="redeemed\n",'Failed reporting resumes without consuming another grant');
+            }
             $config=json_decode(file_get_contents($fixture.'/config/config.json'),true);
             $assert($config['Nodes'][0]['ApiKey']===$response['data']['apiKey'] && (fileperms($fixture.'/config/config.json')&0777)===0600,'Deployment atomically installs private node configuration');
             $assert(!str_contains($output,$response['data']['networkReport']['token']) && count(glob($fixture.'/tmp/*'))===0,'Deployment removes temporary reporting secrets');
             $before=hash_file('sha256',$fixture.'/config/config.json');[$exit]=$run();
             $assert($exit===1 && hash_file('sha256',$fixture.'/config/config.json')===$before,'Redeployment preserves existing node config');
+            file_put_contents($fixture.'/lib/v2box',"#!/bin/sh\nexit 0\n");chmod($fixture.'/lib/v2box',0700);
+            $response['data']['nodeId']=4;file_put_contents($fixture.'/response.json',json_encode($response));
+            [$added,$addedOutput]=$run(0,4);
+            $combined=json_decode(file_get_contents($fixture.'/config/config.json'),true);
+            $assert($added===0 && array_column($combined['Nodes'],'NodeID')===[3,4],'Existing installation appends another service: '.$addedOutput);
+            $assert($combined['Nodes'][0]===$config['Nodes'][0],'Appending preserves existing service configuration');
             $lock=fopen($fixture.'/config/.bootstrap.lock','c');flock($lock,LOCK_EX);
             [$exit,$output]=$run();flock($lock,LOCK_UN);fclose($lock);
             $assert($exit===1 && str_contains($output,'Another deployment is running'),'Concurrent installer exits before consuming authorization');
@@ -234,6 +245,55 @@ class WorkflowTests(unittest.TestCase):
         self.deploy.prepare_config()
         self.assertEqual(before,(self.deploy.config.stat().st_ino,self.deploy.config.stat().st_mtime_ns))
         self.assertEqual(json.loads(self.deploy.config.read_text())['Log'],{'Level':'warn'})
+    def test_append_preserves_services_and_settings_and_resume(self):
+        self.deploy.prepare_config()
+        original=json.loads(self.deploy.config.read_text())
+        original['Log']={'Level':'warn'}
+        original['Nodes'][0]['Timeout']=42
+        m.write_private(self.deploy.config,original)
+        self.deploy.data['nodeId']=4
+        self.deploy.prepare_config()
+        result=json.loads(self.deploy.config.read_text())
+        self.assertEqual(result['Log'],original['Log'])
+        self.assertEqual(result['Nodes'][0],original['Nodes'][0])
+        self.assertEqual([n['NodeID'] for n in result['Nodes']],[3,4])
+        backup=self.path.parent/'config.before-add-4.json'
+        self.assertEqual(json.loads(backup.read_text()),original)
+        self.assertEqual(backup.stat().st_mode&0o777,0o600)
+        before=self.deploy.config.stat().st_mtime_ns
+        self.deploy.prepare_config()
+        self.assertEqual(before,self.deploy.config.stat().st_mtime_ns)
+    def test_failed_addition_restores_previous_services(self):
+        self.deploy.prepare_config()
+        original=json.loads(self.deploy.config.read_text())
+        self.deploy.data['nodeId']=4
+        self.deploy.prepare_config()
+        self.deploy.progress=lambda action='status':{'applicationState':'failed','errorCode':'core'}
+        with self.assertRaises(m.DeploymentError):self.deploy.wait_ready()
+        self.assertEqual(json.loads(self.deploy.config.read_text()),original)
+        self.assertIn('restart',self.events)
+        self.assertFalse(self.deploy.state['startAttempted'])
+    def test_rollback_does_not_overwrite_operator_changes(self):
+        self.deploy.prepare_config()
+        self.deploy.data['nodeId']=4
+        self.deploy.prepare_config()
+        changed=json.loads(self.deploy.config.read_text());changed['Log']={'Level':'debug'}
+        m.write_private(self.deploy.config,changed)
+        with self.assertRaises(m.DeploymentError):self.deploy.rollback_addition()
+        self.assertEqual(json.loads(self.deploy.config.read_text()),changed)
+    def test_same_identity_different_key_is_not_overwritten(self):
+        self.deploy.prepare_config()
+        before=self.deploy.config.read_bytes()
+        self.deploy.data['apiKey']='different'
+        with self.assertRaises(m.DeploymentError):self.deploy.prepare_config()
+        self.assertEqual(before,self.deploy.config.read_bytes())
+    def test_dns_failure_does_not_change_live_config(self):
+        self.deploy.prepare_config()
+        before=self.deploy.config.read_bytes()
+        self.deploy.data['nodeId']=4
+        self.deploy.wait_dns=lambda:(_ for _ in ()).throw(m.DeploymentError('DNS not ready'))
+        with self.assertRaises(m.DeploymentError):self.deploy.run()
+        self.assertEqual(before,self.deploy.config.read_bytes())
     def test_service_state_handles_systemd_and_openrc(self):
         for state in ('active','activating','inactive','failed'):
             with patch.object(m.shutil,'which',return_value='/bin/systemctl'), patch.object(m.subprocess,'run',return_value=subprocess.CompletedProcess([],0,state+'\n')):

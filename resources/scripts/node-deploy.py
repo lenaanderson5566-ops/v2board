@@ -137,16 +137,42 @@ class Deployment:
         node={'NodeType':'v2box','ApiHost':self.host,'NodeID':self.data['nodeId'],'ApiKey':self.data['apiKey'],'ApiVersion':'v10','Timeout':15,'RetryCount':1,'LandingPage':{'Enabled':False,'Directory':''}}
         if self.config.is_symlink(): raise DeploymentError('Refusing symlinked node configuration')
         if self.config.exists():
-            previous=json.loads(self.config.read_text()).get('Nodes',[])
+            document=json.loads(self.config.read_text())
+            previous=document.get('Nodes',[])
+            if not isinstance(previous,list) or not previous or not all(isinstance(item,dict) for item in previous):
+                raise DeploymentError('Invalid existing node configuration; preserved without overwrite')
             placeholder=len(previous)==1 and previous[0].get('ApiKey')=='REPLACE_ME' and previous[0].get('ApiHost')=='https://panel.example.com'
-            if not placeholder and previous!=[node]:
-                raise DeploymentError('Existing node configuration changed; preserved without overwrite')
             if not placeholder:
-                # Replacing an identical file wakes the live configuration watcher.
-                # Preserve operator logging settings and avoid a needless reload on resume.
-                os.chmod(self.config,0o600)
+                for item in previous:
+                    if item.get('NodeType')!='v2box' or item.get('ApiHost')!=self.host or not isinstance(item.get('NodeID'),int):
+                        raise DeploymentError('Existing configuration belongs to another panel or backend; preserved without overwrite')
+                matches=[item for item in previous if item['NodeID']==node['NodeID']]
+                if matches:
+                    if len(matches)!=1 or any(matches[0].get(key)!=node[key] for key in ('ApiKey','ApiVersion')):
+                        raise DeploymentError('Existing node credentials changed; preserved without overwrite')
+                    os.chmod(self.config,0o600)
+                    return
+                # Preserve every existing service and operator setting. Keep a private
+                # snapshot before the atomic append; never restore over later edits.
+                backup=self.path.parent/('config.before-add-'+str(node['NodeID'])+'.json')
+                if not backup.exists(): write_private(backup,document)
+                original=json.loads(json.dumps(document))
+                document['Nodes']=previous+[node]
+                self.save(previousConfig=original, appendedConfig=document)
+                write_private(self.config,document)
                 return
         write_private(self.config,{'Log':{'Level':'info'},'Nodes':[node]})
+
+    def rollback_addition(self):
+        original=self.state.get('previousConfig')
+        appended=self.state.get('appendedConfig')
+        if not original or not appended: return
+        if self.config.is_symlink() or json.loads(self.config.read_text())!=appended:
+            raise DeploymentError('Configuration changed after deployment; automatic rollback refused. Inspect the private config.before-add snapshot.')
+        write_private(self.config,original)
+        self.save(startAttempted=False)
+        self.command(['v2box','restart'])
+        print('Failed added service removed; previous services and settings restored. Deployment state retained for retry.',flush=True)
 
     def service_state(self):
         if shutil.which('systemctl'):
@@ -254,6 +280,7 @@ class Deployment:
                 status=self.progress()
                 if status.get('completed'): return
                 if status.get('applicationState')=='failed':
+                    self.rollback_addition()
                     raise DeploymentError('Node configuration failed: '+str(status.get('errorCode'))+'. Inspect journalctl -u v2box. ACME failure guards and certificates were preserved.')
                 if status.get('applicationState')=='applied':
                     self.verify_certificate()
@@ -275,13 +302,14 @@ class Deployment:
         print('Deployment verified. The node connection domain is active.' if self.flow else 'Installation complete. Check node runtime status in the panel.')
 
     def run(self):
-        self.prepare_config()
         self.report()
         if self.flow:
             if self.wait_dns(): self.finish();return
+            self.prepare_config()
             self.ensure_started()
             self.wait_ready()
         else:
+            self.prepare_config()
             self.command(['v2box','restart'])
         self.finish()
 

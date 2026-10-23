@@ -121,19 +121,25 @@ if [[ -e /etc/v2box/deployment-state.json ]]; then
   install_helper
   exec python3 /usr/local/lib/v2box/panel-deploy.py /etc/v2box/deployment-state.json
 fi
+existing_install=false
 if [[ -e /etc/v2box/config.json ]]; then
-  [[ -f /etc/v2box/.deployment-pending ]] && jq -e '.Nodes | length == 1 and .[0].ApiKey == "REPLACE_ME" and .[0].ApiHost == "https://panel.example.com"' /etc/v2box/config.json >/dev/null || {
-    echo 'Existing node configuration preserved. Use the upgrade command or v2box credential.' >&2; exit 1;
-  }
+  if [[ -f /etc/v2box/.deployment-pending ]] && jq -e '.Nodes | length == 1 and .[0].ApiKey == "REPLACE_ME" and .[0].ApiHost == "https://panel.example.com"' /etc/v2box/config.json >/dev/null; then
+    :
+  else
+    [[ -x /usr/local/lib/v2box/v2box && -f /etc/node-network/server-identity ]] || { echo 'Existing installation requires an identified physical server; preserved.' >&2; exit 1; }
+    jq -e --arg host "$panel_url" --argjson id "$requested_id" '.Nodes | length > 0 and all(.[]; .NodeType == "v2box" and .ApiHost == $host and .NodeID != $id)' /etc/v2box/config.json >/dev/null || { echo 'Node already installed or belongs to another panel; use upgrade or credential management.' >&2; exit 1; }
+    existing_install=true
+  fi
 fi
 install -d -m 755 /etc/v2box
-: > /etc/v2box/.deployment-pending
 stage=$(mktemp -d)
 config_stage=''
 trap 'rm -rf -- "$stage"; [[ -z "$config_stage" ]] || rm -f -- "$config_stage"' EXIT
-# Finish package download and verification before consuming the grant.
-curl -fSL --proto '=https' --connect-timeout 10 --max-time 120 https://raw.githubusercontent.com/lenaanderson5566-ops/v2box/v1.0.5/script/install.sh -o "$stage/install.sh"
-V2BOX_BOOTSTRAP_LOCK_HELD=1 bash "$stage/install.sh" v1.0.5 </dev/null 9>&-
+if ! $existing_install; then
+  : > /etc/v2box/.deployment-pending
+  curl -fSL --proto '=https' --connect-timeout 10 --max-time 120 https://raw.githubusercontent.com/lenaanderson5566-ops/v2box/v1.0.5/script/install.sh -o "$stage/install.sh"
+  V2BOX_BOOTSTRAP_LOCK_HELD=1 bash "$stage/install.sh" v1.0.5 </dev/null 9>&-
+fi
 printf 'header = "Authorization: Bearer %s"\n' "$grant" > "$stage/authorization"
 unset grant
 curl -fsS --proto '=https' --connect-timeout 10 --max-time 30 --config "$stage/authorization" --header 'Content-Type: application/json' --data '{}' \

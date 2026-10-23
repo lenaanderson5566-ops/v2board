@@ -14,6 +14,7 @@ final class NetworkServer {
         if ($a->server_id && $id!=$a->server_id && in_array($a->node_type,['v2node','v2box'],true)) ProxyService::assertUnused($a->node_type,(int)$a->node_id);
         if (!$id) {
             $data=['name'=>$a->node_type.' #'.$a->node_id,'family'=>$a->family,'report_hash'=>$a->report_hash];
+            if (in_array($a->node_type,['v2node','v2box'],true)) $data['name']=mb_substr(DB::table('v2_server_'.$a->node_type)->where('id',$a->node_id)->value('name') ?: $data['name'],0,100);
             foreach(['ipv4','ipv6'] as $f) { $data[$f]=$a->$f; $data[$f.'_seen_at']=$a->{$f.'_seen_at'}; }
             $id=DB::table('v2_network_server')->insertGetId($data);
         }

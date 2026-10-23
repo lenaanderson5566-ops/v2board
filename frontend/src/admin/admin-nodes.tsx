@@ -1,3 +1,4 @@
+import { AdminChoiceGroup } from "./AdminChoices";
 import { nodeConfigurationProblems, nodeChangeImpact } from "./node-guidance";
 import { nodeSetupFields, nodeSetupPayload } from "./node-setup";
 import { NodeConnectionEditor, NodeForwarding } from "./NodeConnections";
@@ -62,6 +63,8 @@ function NodesContent({
     initialTab = "nodes",
 }: { initialTab?: "nodes" | "services" | "forwarding" } = {}) {
     const tab = initialTab;
+    const [creationMode,setCreationMode]=useState<"new"|"reuse">("new");
+    const [creationLocked,setCreationLocked]=useState(false);
     const [connectionNode, setConnectionNode] = useState<Row | null>(null);
     const [nodeDirty, setNodeDirty] = useState(false);
     const [nodeBusy, setNodeBusy] = useState(false);
@@ -115,6 +118,8 @@ function NodesContent({
         setNodeDirty(false);
         setPreflightShown(false);
         setConversionOpen(false);
+        setCreationMode("new");
+        setCreationLocked(false);
     }, [editing]);
     useEffect(() => {
         if (!editing || !nodeDirty) return;
@@ -318,7 +323,6 @@ function NodesContent({
                     actions={
                         <>
                             <Reload onClick={d.reload} loading={d.loading} />
-                            {tab === "nodes" && <button onClick={() => setConnectionNode({ type: "v2box" })}>复用服务新增线路</button>}
                             <button
                                 type="button"
                                 onClick={() => setShowDisplay(true)}
@@ -346,7 +350,7 @@ function NodesContent({
                                     })
                                 }
                             >
-                                {tab === "services" ? "新增代理服务" : "新增节点"}
+                                新增节点
                             </button>
                         </>
                     }
@@ -563,7 +567,7 @@ function NodesContent({
                     title={
                         editing.id
                             ? `编辑节点 #${editing.id} · ${editing.name || ""}`
-                            : "添加节点"
+                            : creationLocked ? "节点线路配置" : "新增节点"
                     }
                     variant="drawer"
                     wide
@@ -571,10 +575,21 @@ function NodesContent({
                     dismissible={!nodeBusy}
                     close={closeNode}
                 >
-                    <div className="pad node-editor-intro">
-                        <p>{editing.id ? "保存后请核对节点通信与运行状态，确认配置已应用。" : "填写节点信息与连接域名，保存后生成一键部署命令。"}</p>
-                        {editing.id && <p className="muted">切换协议可能清除不兼容配置；高级扩展参数仍会保留。</p>}
-                    </div>
+                    {!editing.id && <div className="pad node-creation-mode">
+                        <AdminChoiceGroup label="新增方式" value={creationMode} disabled={nodeBusy || creationLocked} options={[{value:"new",label:"新建代理服务"},{value:"reuse",label:"复用已有服务"}]} onChange={mode=>{
+                            if(mode===creationMode || nodeBusy || creationLocked)return;
+                            if(nodeDirty && !window.confirm("切换新增方式将放弃尚未保存的配置，确认切换？"))return;
+                            setNodeDirty(false);setPreflightShown(false);setCreationMode(mode);
+                        }}/>
+                        <p className="muted">{creationMode==="new" ? "新建独立服务，配置协议与域名，保存后部署。" : "为已有服务添加直连或中转线路，共用用户认证与服务器额度，无需重复部署落地服务。"}</p>
+                    </div>}
+                    {!editing.id && creationMode==="reuse" ? <State loading={d.loading || groups.loading} error={d.error || groups.error} retry={()=>{d.reload();groups.reload();}}>
+                        <NodeConnectionEditor embedded node={{type}} nodes={nodeRows} groups={rows(groups.data)} close={closeNode} onSaved={d.reload} onDirty={setNodeDirty} onBusyChange={setNodeBusy} onCreated={()=>setCreationLocked(true)}/>
+                    </State> : <>
+                    {editing.id && <div className="pad node-editor-intro">
+                        <p>保存后请核对节点通信与运行状态，确认配置已应用。</p>
+                        <p className="muted">切换协议可能清除不兼容配置；高级扩展参数仍会保留。</p>
+                    </div>}
                     <div className="pad node-editor-backend">
                         {editing.id && <strong>
                             节点服务：
@@ -875,6 +890,7 @@ function NodesContent({
                             }}
                         />
                     </State>
+                    </>}
                 </Modal>
             )}
         </>

@@ -370,3 +370,7 @@ body[data-console="admin"] .node-editor-create .field-section::after { display: 
 .server-traffic-details dl {display:grid;grid-template-columns:100px minmax(0,1fr);gap:8px 12px;}
 .server-traffic-details dd {margin:0;overflow-wrap:anywhere;}
 @media(max-width:600px){.server-config-form > fieldset {grid-template-columns:minmax(0,1fr);}}
+
+body[data-console="admin"] .node-creation-mode {padding:16px 24px 0;}
+body[data-console="admin"] .node-creation-mode p {margin:10px 0 0;}
+@media(max-width:600px){body[data-console="admin"] .node-creation-mode {padding:12px 16px 0;}}

@@ -784,3 +784,70 @@ it("keeps sensitive node changes in the form when confirmation is cancelled",asy
     expect(api.request.mock.calls.some(([path])=>String(path).endsWith("v2box/save"))).toBe(false);
     expect(port).toHaveProperty("value","9443");
 });
+
+function unifiedCreationFixture(empty=false) {
+    let saved: Record<string, any> | null=null;
+    const services=empty?[]:[{id:1,type:"v2box",name:"Box service",protocol:"anytls",server_port:9443,group_id:[7]},{id:1,type:"v2node",name:"Xray service",protocol:"vless",server_port:8443,group_id:[7]}];
+    api.request.mockImplementation(async(path:string,body?:Record<string, any>)=>{
+        if(path.endsWith("dictionary/fetch"))return adminPageFixture(path);
+        if(path.endsWith("server/manage/getNodes"))return {data:services};
+        if(path.endsWith("server/group/fetch"))return {data:[{id:7,name:"Subscribers"}]};
+        if(path.includes("console/nodeSchema"))return {data:{name:"required",host:"required",port:"required",server_port:"required",protocol:"required|in:vless,anytls",tls:"required|in:0,1",group_id:"nullable|array"}};
+        if(path.endsWith("server/ddns/fetch"))return {data:{servers:[],credentials:[],assignments:[{id:2,node_type:"v2box",node_id:1,domain:"box.example.test"},{id:3,node_type:"v2node",node_id:1,domain:"xray.example.test"}]}};
+        if(path.endsWith("connections/save")){saved=body || {};return {data:{id:99}};}
+        if(path.includes("connections/fetch"))return {data:{id:99,revision:1,draft:saved,plan:{dns_ready:false},published:null}};
+        return {data:[]};
+    });
+}
+it("offers one creation entry with new service selected by default on both node pages",async()=>{
+    unifiedCreationFixture();const view=render(<Nodes/>);
+    expect(screen.queryByRole("button",{name:"复用服务新增线路"})).toBeNull();
+    fireEvent.click(screen.getByRole("button",{name:"新增节点"}));
+    expect(screen.getByRole("button",{name:"新建代理服务"}).getAttribute("aria-pressed")).toBe("true");
+    expect(await screen.findByRole("combobox",{name:"节点类型"})).toBeTruthy();
+    expect(screen.queryByRole("button",{name:"新增代理服务"})).toBeNull();
+    view.unmount();render(<Nodes initialTab="services"/>);
+    expect(screen.getAllByRole("button",{name:"新增节点"})).toHaveLength(1);
+});
+it.each(["v2box","v2node"])("creates a reused %s route in one drawer without deploying another service",async backend=>{
+    unifiedCreationFixture();render(<Nodes/>);
+    await screen.findByText("Box service");
+    fireEvent.click(screen.getByRole("button",{name:"新增节点"}));
+    fireEvent.click(screen.getByRole("button",{name:"复用已有服务"}));
+    const serviceSelect=await screen.findByRole("combobox",{name:"代理服务"});
+    expect(screen.getAllByRole("dialog")).toHaveLength(1);
+    expect(screen.queryByLabelText("节点类型")).toBeNull();expect(screen.queryByLabelText("服务内核")).toBeNull();
+    expect(screen.queryByRole("button",{name:"保存节点配置"})).toBeNull();
+    fireEvent.change(serviceSelect,{target:{value:`${backend}:1`}});
+    fireEvent.change(screen.getByLabelText("线路名称"),{target:{value:"Additional route"}});
+    fireEvent.click(screen.getByRole("button",{name:"保存待发布配置"}));
+    await waitFor(()=>expect(api.request).toHaveBeenCalledWith("test-admin/server/connections/save",expect.objectContaining({type:backend,service_id:1,name:"Additional route",group_id:[7]})));
+    await screen.findByText(/当前发布地址：尚未发布/);
+    expect(screen.getByRole("button",{name:"新建代理服务"})).toHaveProperty("disabled",true);
+    expect(api.request.mock.calls.some(([path])=>String(path).endsWith("server/v2box/save") || String(path).endsWith("server/v2node/save") || String(path).includes("credentials/deployment") || String(path).endsWith("connections/publish"))).toBe(false);
+});
+it("protects the reused route draft when switching creation methods",async()=>{
+    unifiedCreationFixture();const confirm=vi.spyOn(window,"confirm").mockReturnValue(false);render(<Nodes/>);
+    fireEvent.click(screen.getByRole("button",{name:"新增节点"}));fireEvent.click(screen.getByRole("button",{name:"复用已有服务"}));
+    fireEvent.change(await screen.findByLabelText("线路名称"),{target:{value:"Unsaved route"}});
+    fireEvent.click(screen.getByRole("button",{name:"新建代理服务"}));
+    expect(confirm).toHaveBeenCalled();expect(screen.getByLabelText("线路名称")).toHaveProperty("value","Unsaved route");
+    confirm.mockReturnValue(true);fireEvent.click(screen.getByRole("button",{name:"新建代理服务"}));
+    expect(await screen.findByRole("combobox",{name:"节点类型"})).toBeTruthy();expect(screen.queryByLabelText("线路名称")).toBeNull();
+});
+it("explains when no existing service can be reused and keeps saving disabled",async()=>{
+    unifiedCreationFixture(true);render(<Nodes/>);fireEvent.click(screen.getByRole("button",{name:"新增节点"}));fireEvent.click(screen.getByRole("button",{name:"复用已有服务"}));
+    expect(await screen.findByText("暂无可复用的代理服务，请选择“新建代理服务”。")).toBeTruthy();
+    expect(screen.getByRole("button",{name:"保存待发布配置"})).toHaveProperty("disabled",true);
+});
+
+it("does not silently save a direct route when relay has no usable entry",async()=>{
+    unifiedCreationFixture();render(<Nodes/>);await screen.findByText("Box service");
+    fireEvent.click(screen.getByRole("button",{name:"新增节点"}));fireEvent.click(screen.getByRole("button",{name:"复用已有服务"}));
+    fireEvent.change(await screen.findByLabelText("代理服务"),{target:{value:"v2box:1"}});
+    fireEvent.change(screen.getByLabelText("线路名称"),{target:{value:"Relay"}});
+    fireEvent.change(screen.getByLabelText("连接方式"),{target:{value:"relay"}});
+    expect(screen.getByRole("button",{name:"保存待发布配置"})).toHaveProperty("disabled",true);
+    expect(screen.getByText(/中添加可用的入口域名/)).toBeTruthy();
+    expect(api.request.mock.calls.some(([path])=>String(path).endsWith("connections/save"))).toBe(false);
+});

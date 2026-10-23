@@ -6,7 +6,7 @@ import { NodeTopology } from "./NodeTopology";
 import { relayStreamConfig } from "./node-relay";
 import { useNodeCatalog } from "./node-dictionary";
 
-export function NodeConnectionEditor({ node, nodes, groups = [], close, onSaved }: { node: Row; nodes: Row[]; groups?: Row[]; close: () => void; onSaved: () => void }) {
+export function NodeConnectionEditor({ node, nodes, groups = [], close, onSaved, embedded=false, onDirty, onBusyChange, onCreated }: { node: Row; nodes: Row[]; groups?: Row[]; close: () => void; onSaved: () => void; embedded?:boolean; onDirty?:(dirty:boolean)=>void; onBusyChange?:(busy:boolean)=>void; onCreated?:()=>void }) {
     const [id, setId] = useState<number | undefined>(node.id);
     const [type, setType] = useState<string>(node.type || "v2box");
     const catalog = useNodeCatalog();
@@ -16,21 +16,25 @@ export function NodeConnectionEditor({ node, nodes, groups = [], close, onSaved 
     const [draft, setDraft] = useState<Row>({ name: "", service_id: node.service_id || "", entry_id: "", entry_port: 443, group_id: [], show: 1 });
     const [tagsText, setTagsText] = useState("");
     const [loadedRevision, setLoadedRevision] = useState<number | null>(null);
-    const [dirty, setDirty] = useState(!id), [busy, setBusy] = useState(false), [error, setError] = useState("");
+    const [dirty, setDirty] = useState(!id && !embedded), [busy, setBusy] = useState(false), [error, setError] = useState("");
     const [confirmed, setConfirmed] = useState(false), [notice, setNotice] = useState("");
     const pending = useRef(false);
+    useEffect(()=>onDirty?.(dirty),[dirty,onDirty]);
+    useEffect(()=>onBusyChange?.(busy),[busy,onBusyChange]);
     useEffect(() => {
-        if (!dirty) return;
+        if (!dirty || embedded) return;
         const warn = (event: BeforeUnloadEvent) => { event.preventDefault(); event.returnValue = ""; };
         window.addEventListener("beforeunload", warn);
         return () => window.removeEventListener("beforeunload", warn);
-    }, [dirty]);
+    }, [dirty,embedded]);
     useEffect(() => { if (existing.data) { setDraft(existing.data.draft); setLoadedRevision(existing.data.revision ?? 0); setTagsText((existing.data.draft.tags || []).join(", ")); setDirty(false); setConfirmed(false); } }, [existing.data]);
+    const selectableServices=embedded && !id ? nodes.filter(n=>!n.service_id) : services;
     const service = services.find(s => Number(s.id) === Number(draft.service_id));
     const assignments: Row[] = network.data?.assignments || [], servers: Row[] = network.data?.servers || [];
     const origin = assignments.find(a => a.node_type === type && a.node_id === Number(draft.service_id));
     const entries = assignments.filter(a => a.purpose === "entry" && a.enabled);
     const entry = entries.find(a => a.id === Number(draft.entry_id));
+    const validEntry=!draft.entry_id || (!!entry && Number.isInteger(Number(draft.entry_port)) && Number(draft.entry_port)>=1 && Number(draft.entry_port)<=65535);
     const savedPlan = existing.data?.plan;
     const config = savedPlan?.entry_id ? relayStreamConfig({ id: existing.data?.id, scope: "connection", domain: savedPlan.origin_domain, family: savedPlan.origin_family, entry_port: savedPlan.port }, { ...service, server_port: savedPlan.origin_port, protocol: savedPlan.protocol }, { family: savedPlan.entry_family }) : "";
     function change(key: string, value: unknown) {
@@ -45,22 +49,32 @@ export function NodeConnectionEditor({ node, nodes, groups = [], close, onSaved 
         if (pending.current) return;
         pending.current = true; setBusy(true); setError(""); setNotice("");
         try {
+            if(!publish && (!service || !draft.name.trim() || !validEntry))throw new Error("请检查代理服务、线路名称及入口端口配置");
             const body = publish ? { type, id, revision: existing.data?.revision, proof: savedPlan?.proof, confirmed } : { ...draft, type, id, revision: existing.data?.revision || 0, service_id: Number(draft.service_id), entry_id: draft.entry_id ? Number(draft.entry_id) : null, entry_port: draft.entry_id ? Number(draft.entry_port) : null };
             const result = await request<Row>(admin(`server/connections/${publish ? "publish" : "save"}`), body);
-            if (!publish && !id) setId(result.data.id); else existing.reload();
+            if (!publish && !id) {setId(result.data.id);onCreated?.();} else existing.reload();
             setDirty(false); setConfirmed(false); onSaved();
             setNotice(publish ? "线路已发布，订阅将使用新的连接地址。" : "配置已保存，当前发布地址保持不变。请完成连接检查后发布。");
         } catch (e) { setError((e as Error).message); }
         finally { pending.current = false; setBusy(false); }
     }
-    return <Modal title={id ? "编辑接入线路" : "新增接入线路"} close={dismiss} wide>
+    const content=<>
         <State loading={network.loading || existing.loading || (!!id && !existing.error && (!existing.data || loadedRevision !== (existing.data.revision ?? 0)))} error={network.error || existing.error} retry={() => { network.reload(); existing.reload(); }}>
-            <div className="admin-deployment-card">
+            <div className="admin-deployment-card" data-unsaved={dirty || undefined} data-saving={busy || undefined}>
                 <div className="node-domain-form">
-                    {!id && <label>服务内核<select value={type} disabled={busy} onChange={e => { setType(e.target.value); change("service_id", ""); }}><option value="v2box">V2Box</option><option value="v2node">V2Node</option></select></label>}
+                    {!id && !embedded && <label>服务内核<select value={type} disabled={busy} onChange={e => { setType(e.target.value); change("service_id", ""); }}><option value="v2box">V2Box</option><option value="v2node">V2Node</option></select></label>}
                     <label>线路名称<input value={draft.name} disabled={busy} onChange={e => change("name", e.target.value)} /></label>
-                    <label>代理服务<select value={draft.service_id || ""} disabled={busy} onChange={e => change("service_id", e.target.value)}><option value="">选择代理服务</option>{services.map(s => <option key={s.id} value={s.id}>{s.name} · {s.protocol}</option>)}</select></label>
+                    <label>代理服务<select value={embedded && !id ? (draft.service_id ? `${type}:${draft.service_id}` : "") : draft.service_id || ""} disabled={busy} onChange={e => {
+                        if(embedded && !id){
+                            const [backend,identity]=e.target.value.split(":");
+                            const selected=selectableServices.find(s=>s.type===backend && Number(s.id)===Number(identity));
+                            if(selected){setType(backend);setDraft(previous=>({...previous,service_id:selected.id,group_id:selected.group_id || []}));setDirty(true);setConfirmed(false);setNotice("");}
+                            else change("service_id", "");
+                        }else change("service_id", e.target.value);
+                    }}><option value="">选择代理服务</option>{selectableServices.map(s => <option key={`${s.type}:${s.id}`} value={embedded && !id ? `${s.type}:${s.id}` : s.id}>{s.name} · {s.protocol} · {s.type=== "v2box" ? "V2Box" : "V2Node"}</option>)}</select></label>
+                    {!id && !selectableServices.length && <p role="status">暂无可复用的代理服务，请选择“新建代理服务”。</p>}
                     <label>连接方式<select value={draft.entry_id ? "relay" : "direct"} disabled={busy} onChange={e => change("entry_id", e.target.value === "relay" ? entries[0]?.id || "pending" : "")}><option value="direct">直连</option><option value="relay">入口中转</option></select></label>
+                    {!!draft.entry_id && !entry && <p role="status">请先在 <a href="#/servers">服务器管理</a> 中添加可用的入口域名。</p>}
                     {!!draft.entry_id && <><label>入口域名<select value={draft.entry_id} disabled={busy} onChange={e => change("entry_id", e.target.value)}><option value="pending">选择入口</option>{entries.map(e => <option key={e.id} value={e.id}>{e.domain} · {servers.find(s => s.id === e.server_id)?.name}</option>)}</select></label><label>入口端口<input type="number" min={1} max={65535} value={draft.entry_port || ""} disabled={busy} onChange={e => change("entry_port", e.target.value)} /></label></>}
                     <div><span>权限组</span><div className="option-group" role="group" aria-label="权限组">{(service?.group_id || []).map((g: number) => {
                         const selected = (draft.group_id || []).map(Number).includes(Number(g));
@@ -74,8 +88,8 @@ export function NodeConnectionEditor({ node, nodes, groups = [], close, onSaved 
                     <label>线路编号 / 后缀<input value={draft.display_label || ""} disabled={busy} onChange={e => change("display_label", e.target.value || null)} /></label>
                     <label>标签（逗号分隔）<input value={tagsText} disabled={busy} onChange={e => { setTagsText(e.target.value); change("tags", e.target.value.split(/[,，]/).map(value => value.trim()).filter(Boolean)); }} /></label>
                 </div></details>
-                <NodeTopology service={service} origin={origin} entry={draft.entry_id ? entry || {} : undefined} server={servers.find(s => s.id === origin?.server_id)} entryServer={servers.find(s => s.id === entry?.server_id)} port={draft.entry_id ? draft.entry_port : service?.server_port} preview={dirty} shared={entry?.connection_count || 0} />
-                <button className="primary" disabled={busy || !dirty || !service || !draft.name.trim()} onClick={() => act()}>保存待发布配置</button>
+                <NodeTopology service={service} origin={origin} entry={draft.entry_id ? entry || {} : undefined} server={servers.find(s => s.id === origin?.server_id)} entryServer={servers.find(s => s.id === entry?.server_id)} port={draft.entry_id ? draft.entry_port : service?.server_port} preview={dirty || !id} shared={entry?.connection_count || 0} />
+                <button className="primary" disabled={busy || !dirty || !service || !draft.name.trim() || !validEntry} onClick={() => act()}>保存待发布配置</button>
                 {existing.data && <p>当前发布地址：{existing.data.published ? `${existing.data.current.host}:${existing.data.current.port}` : node.id ? `${node.host}:${node.port}` : "尚未发布"}</p>}
                 {!dirty && savedPlan && <section className="admin-deployment-card">
                     <h3>检查与发布</h3>
@@ -88,7 +102,8 @@ export function NodeConnectionEditor({ node, nodes, groups = [], close, onSaved 
                 {existing.data?.error && <p className="alert">{existing.data.error}</p>}{error && <p className="alert" role="alert">{error}</p>}{notice && <p role="status">{notice}</p>}
             </div>
         </State>
-    </Modal>;
+    </>;
+    return embedded ? content : <Modal title={id ? "编辑接入线路" : "新增接入线路"} close={dismiss} wide>{content}</Modal>;
 }
 
 export function NodeForwarding({ nodes, edit }: { nodes: Row[]; edit: (node: Row) => void }) {

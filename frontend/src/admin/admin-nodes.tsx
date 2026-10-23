@@ -563,7 +563,8 @@ function NodesContent({
                 <NodeDeployment
                     key={`${credentialNode.type}:${credentialNode.id}`}
                     node={credentialNode}
-                    close={() => setCredentialNode(null)}
+                    onChanged={d.reload}
+                    close={() => { setCredentialNode(null); d.reload(); }}
                 />
             )}
             {editing && (

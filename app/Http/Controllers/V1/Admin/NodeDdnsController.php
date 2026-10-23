@@ -6,12 +6,17 @@ use App\Services\NodeDnsLifecycle;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Crypt;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Validation\Rule;
 class NodeDdnsController extends Controller {
     public function fetch() {
+        $assignments=DB::table('v2_node_ddns')->select('id','credential_id','node_type','node_id','domain','published_domain','tls_transition_state','tls_transition','managed','family','enabled','ipv4','ipv6','ipv4_seen_at','ipv6_seen_at','last_success','status','next_run')->orderBy('id')->get();
+        $keys=$assignments->where('node_type','v2box')->map(fn($a)=>'V2BOX_CAPABILITIES:'.$a->node_id)->unique()->values()->all();
+        $capabilities=$keys ? Cache::many($keys) : [];
         return ['data'=>[
             'credentials'=>DB::table('v2_ddns_credential')->select('id','name','zone_id','root_domain','status','next_run')->orderBy('id')->get(),
-            'assignments'=>DB::table('v2_node_ddns')->select('id','credential_id','node_type','node_id','domain','published_domain','tls_transition_state','tls_transition','managed','family','enabled','ipv4','ipv6','ipv4_seen_at','ipv6_seen_at','last_success','status','next_run')->orderBy('id')->get()->map(function($a){
+            'assignments'=>$assignments->map(function($a)use($capabilities){
+                $a->certificate_transition_supported=$a->node_type==='v2box' && in_array('certificate-transition-v1',$capabilities['V2BOX_CAPABILITIES:'.$a->node_id]['features']??[],true);
                 if ($a->tls_transition_state==='pending') {
                     try { $p=json_decode(Crypt::decryptString($a->tls_transition),true,512,JSON_THROW_ON_ERROR); if (($p['expires']??0)<=time()) $a->tls_transition_state='failed'; }
                     catch (\Throwable $e) { $a->tls_transition_state='failed'; }

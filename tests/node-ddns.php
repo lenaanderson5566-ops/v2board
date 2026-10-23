@@ -27,6 +27,14 @@ try {
     $node=App\Models\ServerV2box::create($base);
     $binding=['credential_id'=>$cid,'node_type'=>'v2box','node_id'=>$node->id,'domain'=>'node.example.test','family'=>'dual','enabled'=>true];
     $id=$admin->saveAssignment($req($binding))['data']['id'];
+    $projected=$admin->fetch()['data']['assignments']->firstWhere('id',$id);
+    $assert($projected->certificate_transition_supported===false,'Missing node capability is not treated as supported');
+    Illuminate\Support\Facades\Cache::put('V2BOX_CAPABILITIES:'.$node->id,['features'=>['certificate-transition-v1'],'secret'=>'not-for-ui'],60);
+    $projected=$admin->fetch()['data']['assignments']->firstWhere('id',$id);
+    $assert($projected->certificate_transition_supported===true,'Domain status projects reported TLS transition capability');
+    $assert(!str_contains(json_encode($projected),'not-for-ui'),'Capability projection contains no raw cached payload');
+    Illuminate\Support\Facades\Cache::forget('V2BOX_CAPABILITIES:'.$node->id);
+
     $reject(fn()=>$admin->saveAssignment($req($binding)),409);
     $reject(fn()=>$admin->dropCredential($req(['id'=>$cid])),409);
     $token=json_decode($admin->rotate($req(['id'=>$id]))->getContent(),true)['data']['reportToken'];

@@ -102,7 +102,7 @@ class ServerService
             $nodeId = (int) $v['id'];
             $apiHostArg = escapeshellarg((string) $apiHost);
             $scriptUrl = rtrim((string)$apiHost, '/') . '/api/v10/public/node-deployment/bootstrap';
-            $entry = 'wget --https-only -O install-v2box.sh ' . escapeshellarg($scriptUrl) . ' && sh install-v2box.sh --install v1.0.3';
+            $entry = 'wget --https-only -O install-v2box.sh ' . escapeshellarg($scriptUrl) . ' && sh install-v2box.sh --install v1.0.4';
             if ($type === 'v2box') $servers[$k]['upgrade_command'] = $entry;
             $servers[$k]['install_command'] = sprintf(
                 $type === 'v2box'

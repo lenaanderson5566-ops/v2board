@@ -10,9 +10,11 @@ import { nodeDeploymentCommand, nodeUpgradeCommand } from "./node-deployment";
 export function NodeDeployment({
     node,
     close,
+    onChanged,
 }: {
     node: Row;
     close: () => void;
+    onChanged?: () => void;
 }) {
     const [tab, setTab] = useState(node._new ? "domain" : "deploy"),
         [mode, setMode] = useState("new");
@@ -116,6 +118,11 @@ export function NodeDeployment({
                         <NodeDomainBinding
                             node={node}
                             onChanged={() => setDeployment(null)}
+                            onPublished={onChanged}
+                            onUpgrade={() => {
+                                setTab("deploy");
+                                setMode("upgrade");
+                            }}
                         />
                     ) : tab === "credentials" ? (
                         <NodeCredentials

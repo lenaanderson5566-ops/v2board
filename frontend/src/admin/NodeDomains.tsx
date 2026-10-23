@@ -3,6 +3,7 @@ import { admin, request, type Row } from "../shared/api";
 import { Panel, State, Table, useData } from "../shared/ui";
 import { AdminLogTimeZone, logTime } from "./admin-log-time";
 import { NodeNetworkSetup } from "./NodeNetworkSetup";
+import { nodeDomainProgress } from "./node-domain-progress";
 
 export const domainStatus: Record<string, string> = {
     awaiting_report: "等待 IP 上报",
@@ -30,9 +31,13 @@ export const certificateTransitionStatus: Record<string, string> = {
 export function NodeDomainBinding({
     node,
     onChanged,
+    onPublished,
+    onUpgrade,
 }: {
     node: Row;
     onChanged?: () => void;
+    onPublished?: () => void;
+    onUpgrade?: () => void;
 }) {
     const data = useData<Row>(admin("server/ddns/fetch"));
     const roots: Row[] = (data.data?.credentials || []).filter(
@@ -49,6 +54,17 @@ export function NodeDomainBinding({
         [notice, setNotice] = useState("");
     const [adoption, setAdoption] = useState<Row | null>(null);
     const pending = useRef(false);
+    const progress = binding ? nodeDomainProgress(binding, node) : null;
+    const lastPublished = useRef(node.host);
+    useEffect(() => {
+        if (
+            !binding?.published_domain ||
+            binding.published_domain === lastPublished.current
+        )
+            return;
+        lastPublished.current = binding.published_domain;
+        onPublished?.();
+    }, [binding?.published_domain, onPublished]);
     useEffect(() => {
         if (!binding?.enabled || data.loading || data.error || busy || adoption)
             return;
@@ -91,7 +107,9 @@ export function NodeDomainBinding({
             setNotice(
                 path === "bind"
                     ? "域名已保存。新安装会等待解析并验证节点后启用；已有节点请先配置上报，再确认切换。"
-                    : "操作已完成",
+                    : path === "activate"
+                      ? "已提交启用请求，请查看上方进度；验证成功后会自动更新生效域名。"
+                      : "操作已完成",
             );
             return r.data;
         } catch (e) {
@@ -105,97 +123,44 @@ export function NodeDomainBinding({
         <section className="admin-deployment-card">
             <h3>域名与解析</h3>
             <State {...data} retry={data.reload}>
-                {!roots.length ? (
-                    <p>请先在 Cloudflare DDNS 中添加并验证根域名。</p>
-                ) : (
-                    <form
-                        className="node-domain-form"
-                        onSubmit={(e) => {
-                            e.preventDefault();
-                            void act("bind", {
-                                node_type: node.type,
-                                node_id: node.id,
-                                credential_id: Number(root || roots[0]?.id),
-                                prefix,
-                                family,
-                            });
-                        }}
-                    >
-                        <label>
-                            根域名
-                            <select
-                                aria-label="根域名"
-                                disabled={busy}
-                                value={root || roots[0]?.id || ""}
-                                onChange={(e) => setRoot(e.target.value)}
-                            >
-                                {roots.map((c) => (
-                                    <option key={c.id} value={c.id}>
-                                        {c.root_domain}
-                                    </option>
-                                ))}
-                            </select>
-                        </label>
-                        <label>
-                            子域名前缀
-                            <input
-                                aria-label="子域名前缀"
-                                disabled={busy}
-                                value={prefix}
-                                maxLength={63}
-                                pattern="[a-z0-9]([a-z0-9-]*[a-z0-9])?"
-                                placeholder="留空自动生成"
-                                onChange={(e) =>
-                                    setPrefix(e.target.value.toLowerCase())
-                                }
-                            />
-                        </label>
-                        <label>
-                            地址类型
-                            <select
-                                aria-label="地址类型"
-                                disabled={busy}
-                                value={family}
-                                onChange={(e) => setFamily(e.target.value)}
-                            >
-                                <option value="ipv4">IPv4 / A</option>
-                                <option value="ipv6">IPv6 / AAAA</option>
-                                <option value="dual">双栈</option>
-                            </select>
-                        </label>
-                        {prefix && (
-                            <p>
-                                {prefix}.
-                                {
-                                    roots.find(
-                                        (c) =>
-                                            String(c.id) ===
-                                            (root || String(roots[0]?.id)),
-                                    )?.root_domain
-                                }
-                            </p>
-                        )}
-                        <button disabled={busy} className="primary">
-                            保存域名
-                        </button>
-                    </form>
-                )}
                 {binding && (
                     <div>
-                        <p>目标域名：{binding.domain}</p>
-                        {certificateTransitionStatus[
-                            binding.tls_transition_state
-                        ] && (
-                            <p role="status">
-                                {
-                                    certificateTransitionStatus[
-                                        binding.tls_transition_state
-                                    ]
-                                }
-                            </p>
+                        {progress && (
+                            <div className="node-domain-progress">
+                                <ol aria-label="域名启用进度">
+                                    {[
+                                        ["保存域名", true],
+                                        ["IP 上报", progress.reportsReady],
+                                        ["解析同步", progress.dnsReady],
+                                        ["启用域名", progress.active],
+                                    ].map(([label, done], index) => (
+                                        <li
+                                            key={String(label)}
+                                            data-done={done ? "true" : "false"}
+                                        >
+                                            <span>
+                                                {done ? "✓" : index + 1}
+                                            </span>
+                                            {label}
+                                            <small>
+                                                {done
+                                                    ? "已完成"
+                                                    : index === 3 &&
+                                                        progress.pending
+                                                      ? "验证中"
+                                                      : "待完成"}
+                                            </small>
+                                        </li>
+                                    ))}
+                                </ol>
+                                <h4>{progress.title}</h4>
+                                <p>{progress.description}</p>
+                            </div>
                         )}
+                        <p>目标域名：{binding.domain}</p>
                         <p>
-                            当前地址：{binding.published_domain || node.host} ·{" "}
+                            当前生效域名：
+                            {binding.published_domain || node.host} ·{" "}
                             {domainStatus[binding.status] || binding.status}
                         </p>
                         <AdminLogTimeZone />
@@ -231,6 +196,15 @@ export function NodeDomainBinding({
                             </p>
                         )}
                         <div className="actions">
+                            {progress?.needsUpgrade && onUpgrade && (
+                                <button
+                                    className="primary"
+                                    disabled={busy}
+                                    onClick={onUpgrade}
+                                >
+                                    查看节点升级命令
+                                </button>
+                            )}
                             {node.type === "v2box" && (
                                 <NodeNetworkSetup
                                     node={node}
@@ -258,42 +232,122 @@ export function NodeDomainBinding({
                             >
                                 检查解析状态
                             </button>
-                            <button
-                                disabled={busy || !binding.managed}
-                                onClick={() => act("retry", { id: binding.id })}
-                            >
-                                重试同步
-                            </button>
-                            {["ready_to_switch", "healthy"].includes(
-                                binding.status,
-                            ) &&
-                                binding.tls_transition_state !== "pending" && (
-                                    <button
-                                        className="primary"
-                                        disabled={busy}
-                                        onClick={() => {
-                                            if (
-                                                window.confirm(
-                                                    `确认将节点连接地址切换为 ${binding.domain}？普通 TLS 节点将先验证新证书与监听，再同步连接地址、SNI 和证书域名；失败保留原配置。Reality 仅更新连接地址，旧托管解析至少保留 24 小时。`,
-                                                )
+                            {!progress?.dnsReady && !progress?.pending && (
+                                <button
+                                    disabled={
+                                        busy ||
+                                        !binding.managed ||
+                                        !binding.enabled
+                                    }
+                                    onClick={() =>
+                                        act("retry", { id: binding.id })
+                                    }
+                                >
+                                    重试同步
+                                </button>
+                            )}
+                            {progress?.canActivate && (
+                                <button
+                                    className="primary"
+                                    disabled={busy}
+                                    onClick={() => {
+                                        if (
+                                            window.confirm(
+                                                `确认将节点连接地址切换为 ${binding.domain}？普通 TLS 节点将先验证新证书与监听，再同步连接地址、SNI 和证书域名；失败保留原配置。Reality 仅更新连接地址，旧托管解析至少保留 24 小时。`,
                                             )
-                                                void act("activate", {
-                                                    id: binding.id,
-                                                    confirm: true,
-                                                });
-                                        }}
-                                    >
-                                        验证并启用域名
-                                    </button>
-                                )}
+                                        )
+                                            void act("activate", {
+                                                id: binding.id,
+                                                confirm: true,
+                                            });
+                                    }}
+                                >
+                                    验证并启用域名
+                                </button>
+                            )}
                         </div>
                     </div>
                 )}
-                <p className="muted">
-                    解析使用 DNS only。普通 TLS
-                    节点验证通过后同步域名与证书，同址子节点一并更新。Reality
-                    SNI 保持独立。
-                </p>
+                <details className="node-domain-settings" open={!binding}>
+                    <summary>
+                        {binding ? "修改域名设置" : "设置节点域名"}
+                    </summary>
+                    {!roots.length ? (
+                        <p>请先在 Cloudflare DDNS 中添加并验证根域名。</p>
+                    ) : (
+                        <form
+                            className="node-domain-form"
+                            onSubmit={(e) => {
+                                e.preventDefault();
+                                void act("bind", {
+                                    node_type: node.type,
+                                    node_id: node.id,
+                                    credential_id: Number(root || roots[0]?.id),
+                                    prefix,
+                                    family,
+                                });
+                            }}
+                        >
+                            <label>
+                                根域名
+                                <select
+                                    aria-label="根域名"
+                                    disabled={busy}
+                                    value={root || roots[0]?.id || ""}
+                                    onChange={(e) => setRoot(e.target.value)}
+                                >
+                                    {roots.map((c) => (
+                                        <option key={c.id} value={c.id}>
+                                            {c.root_domain}
+                                        </option>
+                                    ))}
+                                </select>
+                            </label>
+                            <label>
+                                子域名前缀
+                                <input
+                                    aria-label="子域名前缀"
+                                    disabled={busy}
+                                    value={prefix}
+                                    maxLength={63}
+                                    pattern="[a-z0-9]([a-z0-9-]*[a-z0-9])?"
+                                    placeholder="留空自动生成"
+                                    onChange={(e) =>
+                                        setPrefix(e.target.value.toLowerCase())
+                                    }
+                                />
+                            </label>
+                            <label>
+                                地址类型
+                                <select
+                                    aria-label="地址类型"
+                                    disabled={busy}
+                                    value={family}
+                                    onChange={(e) => setFamily(e.target.value)}
+                                >
+                                    <option value="ipv4">IPv4 / A</option>
+                                    <option value="ipv6">IPv6 / AAAA</option>
+                                    <option value="dual">双栈</option>
+                                </select>
+                            </label>
+                            {prefix && (
+                                <p>
+                                    {prefix}.
+                                    {
+                                        roots.find(
+                                            (c) =>
+                                                String(c.id) ===
+                                                (root || String(roots[0]?.id)),
+                                        )?.root_domain
+                                    }
+                                </p>
+                            )}
+                            <button disabled={busy} className="primary">
+                                保存域名
+                            </button>
+                        </form>
+                    )}
+                </details>
             </State>
             {adoption && binding && (
                 <div>

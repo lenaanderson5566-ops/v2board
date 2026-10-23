@@ -312,3 +312,15 @@
 .node-domain-form > p { grid-column:1/-1; overflow-wrap:anywhere; }
 .node-domain-form > button { align-self:end; justify-self:start; }
 @media(max-width:600px) { .node-domain-form {grid-template-columns:minmax(0,1fr);} }
+
+.node-domain-progress { padding:16px; margin-bottom:16px; border:1px solid var(--border); border-radius:10px; background:var(--bg-soft,#f8fafc); }
+.node-domain-progress ol { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:12px; margin:0 0 18px; padding:0; list-style:none; }
+.node-domain-progress li { display:flex; flex-wrap:wrap; align-items:center; gap:6px; color:var(--muted); font-size:13px; }
+.node-domain-progress li span { display:inline-grid; place-items:center; width:24px; height:24px; border:1px solid var(--border); border-radius:50%; }
+.node-domain-progress li[data-done="true"] { color:var(--primary,#6366f1); }
+.node-domain-progress li small { width:100%; padding-left:30px; }
+.node-domain-progress h4 { margin:0 0 8px; font-size:15px; }
+.node-domain-progress p { margin:0; line-height:1.7; }
+.node-domain-settings { margin-top:20px; border-top:1px solid var(--border); padding-top:16px; }
+.node-domain-settings summary { cursor:pointer; font-weight:600; }
+@media(max-width:600px) { .node-domain-progress ol {grid-template-columns:repeat(2,minmax(0,1fr));} }

@@ -100,7 +100,10 @@ it("reveals only scoped key after explicit rotation, without putting it in shell
 });
 
 import { NodeDomainBinding, NodeDomainTools } from "./NodeDomains";
-function managedSetup(transitionState = "none") {
+function managedSetup(
+    transitionState = "none",
+    overrides: Record<string, unknown> = {},
+) {
     api.request.mockImplementation(async (path: string) => {
         if (path.endsWith("ddns/fetch"))
             return {
@@ -119,6 +122,11 @@ function managedSetup(transitionState = "none") {
                             enabled: true,
                             status: "ready_to_switch",
                             tls_transition_state: transitionState,
+                            ipv4: "8.8.8.8",
+                            ipv4_seen_at: Math.floor(Date.now() / 1000),
+                            last_success: Math.floor(Date.now() / 1000),
+                            certificate_transition_supported: true,
+                            ...overrides,
                         },
                     ],
                 },
@@ -127,7 +135,7 @@ function managedSetup(transitionState = "none") {
     });
 }
 it("refreshes address reports only while visible and stops after unmount", async () => {
-    managedSetup();
+    managedSetup("none", { ipv4: null, ipv4_seen_at: 0 });
     vi.useFakeTimers();
     let view!: ReturnType<typeof render>;
     await act(async () => {
@@ -215,6 +223,7 @@ it("saves a root and prefix without prematurely activating a node address", asyn
     fireEvent.change(screen.getByLabelText("子域名前缀"), {
         target: { value: "jp-01" },
     });
+    fireEvent.click(screen.getByText("修改域名设置"));
     fireEvent.click(screen.getByRole("button", { name: "保存域名" }));
     await waitFor(() =>
         expect(api.request).toHaveBeenCalledWith(
@@ -330,16 +339,16 @@ it("historical cleanup offers deletion only for reviewed unreferenced candidates
 it("shows pending certificate verification without offering another activation", async () => {
     managedSetup("pending");
     render(<NodeDomainBinding node={{ id: 3, type: "v2box" }} />);
-    await screen.findByText("正在验证证书与节点就绪状态，当前地址继续保留");
+    await screen.findByText("正在验证新域名");
     expect(screen.queryByRole("button", { name: "验证并启用域名" })).toBeNull();
-    expect(screen.getByText(/当前地址：old.example.com/)).toBeTruthy();
+    expect(screen.getByText(/当前生效域名：old.example.com/)).toBeTruthy();
 });
 it("keeps the published address visible and allows retry after certificate failure", async () => {
     managedSetup("failed");
     render(<NodeDomainBinding node={{ id: 3, type: "v2box" }} />);
-    await screen.findByText("切换未完成，已保留原配置。请检查节点日志后重试");
+    await screen.findByText("下一步：检查日志后重新验证");
     expect(screen.getByRole("button", { name: "验证并启用域名" })).toBeTruthy();
-    expect(screen.getByText(/当前地址：old.example.com/)).toBeTruthy();
+    expect(screen.getByText(/当前生效域名：old.example.com/)).toBeTruthy();
 });
 
 it("configures reporting from the domain drawer using a one-use command and expires it", async () => {
@@ -379,4 +388,58 @@ it("configures reporting from the domain drawer using a one-use command and expi
     await act(() => vi.advanceTimersByTimeAsync(600001));
     expect(screen.queryByLabelText("IP 上报一键配置命令")).toBeNull();
     expect(screen.getByRole("alert").textContent).toContain("命令已过期");
+});
+
+it("explains the next step and gates ordinary TLS activation on node capability", async () => {
+    managedSetup("none", { certificate_transition_supported: false });
+    const view = render(
+        <NodeDomainBinding node={{ id: 3, type: "v2box", tls: 1 }} />,
+    );
+    await screen.findByText("下一步：升级 V2Box");
+    expect(screen.queryByRole("button", { name: "验证并启用域名" })).toBeNull();
+    view.unmount();
+    managedSetup();
+    render(<NodeDomainBinding node={{ id: 3, type: "v2box", tls: 1 }} />);
+    await screen.findByText("下一步：验证并启用新域名");
+    expect(screen.getByRole("button", { name: "验证并启用域名" })).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "重试同步" })).toBeNull();
+});
+it("waits for both address families and does not allow stale DNS activation", async () => {
+    managedSetup("none", { family: "dual", ipv6: null, ipv6_seen_at: 0 });
+    const view = render(
+        <NodeDomainBinding node={{ id: 3, type: "v2box", tls: 2 }} />,
+    );
+    await screen.findByText("下一步：检查 IP 上报");
+    expect(screen.queryByRole("button", { name: "验证并启用域名" })).toBeNull();
+    view.unmount();
+    managedSetup("none", { last_success: 1 });
+    render(<NodeDomainBinding node={{ id: 3, type: "v2box", tls: 2 }} />);
+    await screen.findByText("下一步：等待解析同步");
+    expect(screen.queryByRole("button", { name: "验证并启用域名" })).toBeNull();
+});
+it("notifies the list once when polling observes publication, without publishing early", async () => {
+    vi.useFakeTimers();
+    vi.spyOn(document, "visibilityState", "get").mockReturnValue("visible");
+    managedSetup("pending");
+    const onPublished = vi.fn();
+    await act(async () => {
+        render(
+            <NodeDomainBinding
+                node={{ id: 3, type: "v2box", host: "old.example.com", tls: 1 }}
+                onPublished={onPublished}
+            />,
+        );
+    });
+    expect(onPublished).not.toHaveBeenCalled();
+    managedSetup("applied", {
+        published_domain: "hk.example.com",
+        status: "healthy",
+    });
+    await act(() => vi.advanceTimersByTimeAsync(15000));
+    expect(screen.getByText("新域名已生效")).toBeTruthy();
+    expect(screen.getByText(/当前生效域名：hk.example.com/)).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "验证并启用域名" })).toBeNull();
+    expect(onPublished).toHaveBeenCalledTimes(1);
+    await act(() => vi.advanceTimersByTimeAsync(15000));
+    expect(onPublished).toHaveBeenCalledTimes(1);
 });

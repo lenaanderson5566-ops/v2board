@@ -91,7 +91,7 @@ try {
     $reverse=(new V2nodeController())->save($request($base+['source_type'=>'v2box','source_id'=>$targetId]));
     $reverseId=json_decode($reverse->getContent(),true)['data']['id'];
     $assert(!ServerV2box::find($targetId) && ServerV2node::findOrFail($reverseId)->route_id===[], 'Reverse conversion clears source backend rules');
-    $child=ServerV2node::create($base+['parent_id'=>$reverseId]);
+    $child=ServerV2node::create($base+['service_id'=>$reverseId]);
     $reject(fn()=>(new V2boxController())->save($request($base+['source_type'=>'v2node','source_id'=>$reverseId])),'Parent cannot move while children reference it');
     $assert(ServerV2node::find($reverseId)!==null,'Rejected conversion retains original node');
     $reject(fn()=>(new V2boxController())->save($request($base+['source_type'=>'v2node','source_id'=>$reverseId,'id'=>$existingTarget->id])),'Source identity cannot be combined with target update ID');

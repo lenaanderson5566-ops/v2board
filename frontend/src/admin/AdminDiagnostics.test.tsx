@@ -81,7 +81,7 @@ it("distinguishes provided configuration from application confirmation", async (
         />,
     );
     expect(await screen.findByText(/已提供最新配置，待应用确认/)).toBeTruthy();
-    expect(screen.getByText(/子节点沿用父节点 #7/)).toBeTruthy();
+    expect(screen.getByText(/关联线路沿用代理服务 #7/)).toBeTruthy();
     expect(screen.getByText(/没有应用回执/)).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: "刷新配置状态" }));
     expect(api.request.mock.calls[0][0]).toBe(
@@ -180,7 +180,7 @@ it("retains unsaved maintenance on failure and explains inherited parent mainten
                 receiptSupported: true,
                 maintenance: {
                     nodeId: 1,
-                    reason: "父节点维护",
+                    reason: "代理服务维护",
                     endsAt: 2000000000,
                 },
                 ownMaintenance: null,
@@ -194,7 +194,7 @@ it("retains unsaved maintenance on failure and explains inherited parent mainten
         />,
     );
     expect(await screen.findByText("证书准备失败")).toBeTruthy();
-    expect(screen.getByText(/父节点 #1/)).toBeTruthy();
+    expect(screen.getByText(/代理服务 #1/)).toBeTruthy();
     fireEvent.click(screen.getByRole("switch", { name: "此节点启用维护" }));
     fireEvent.change(screen.getByLabelText("维护原因"), {
         target: { value: "准备升级" },

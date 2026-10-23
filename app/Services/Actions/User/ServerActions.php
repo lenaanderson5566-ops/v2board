@@ -18,10 +18,10 @@ class ServerActions
         $maintenance=\App\Services\NodeMaintenance::active();
         foreach (['v2node' => \App\Models\ServerV2node::class, 'v2box' => \App\Models\ServerV2box::class] as $type => $model) {
             // Older V2Box tables may lack optional display metadata. Keep the explicit projection safe.
-            $columns=array_values(array_intersect(['id','parent_id','name','region_code','city_code','display_label','tags','sort'],\Illuminate\Support\Facades\Schema::getColumnListing((new $model)->getTable())));
+            $columns=array_values(array_intersect(['id','service_id','name','region_code','city_code','display_label','tags','sort'],\Illuminate\Support\Facades\Schema::getColumnListing((new $model)->getTable())));
             foreach ($model::where('show', 1)->orderBy('sort')->orderBy('id')->get($columns) as $node) {
-                if (\App\Services\NodeMaintenance::hidden($maintenance,$type,(int)$node->id,$node->parent_id)) continue;
-                $nodes[] = \App\Services\NodeDisplayService::enrich([...\Illuminate\Support\Arr::except($node->toArray(),['parent_id']), 'type' => $type]);
+                if (\App\Services\NodeMaintenance::hidden($maintenance,$type,(int)$node->id,$node->service_id)) continue;
+                $nodes[] = \App\Services\NodeDisplayService::enrich([...\Illuminate\Support\Arr::except($node->toArray(),['service_id']), 'type' => $type]);
             }
         }
         usort($nodes, fn ($a, $b) => ($a['sort'] ?? 0) <=> ($b['sort'] ?? 0));

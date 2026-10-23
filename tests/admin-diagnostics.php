@@ -6,6 +6,9 @@ use App\Services\SystemHealthService;
 use App\Services\Actions\NodeConfiguration;
 use App\Models\ServerV2node;
 use Illuminate\Support\Facades\Cache;
+// Keep synthetic monitoring buckets isolated across repeated test runs.
+// SystemHealthService still probes the configured Redis connection directly.
+Cache::setDefaultDriver('array');
 $checks = 0;
 $assert = function ($ok) use (&$checks) { if (!$ok) throw new RuntimeException('Diagnostics check failed #' . ($checks + 1)); $checks++; };
 $id = 2147483646;
@@ -21,7 +24,7 @@ try {
     $assert(NodeRuntimeService::connection(time() - 400, null, true) === 'offline');
     $servers = Mockery::mock(App\Services\ServerService::class)->makePartial();
     $servers->shouldReceive('getAllV2node')->withNoArgs()->andReturn([
-        ['id' => $id, 'type' => 'v2node', 'parent_id' => null, 'sort' => 0],
+        ['id' => $id, 'type' => 'v2node', 'service_id' => null, 'sort' => 0],
     ]);
     $servers->shouldReceive('getAllV2node')->with('v2box')->andReturn([]);
     Cache::forget($heartbeat);

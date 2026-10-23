@@ -7,7 +7,7 @@ class ServerTrafficBudgetService {
  public static function budgetId(string $type,int $nodeId,bool $lock=false): ?int {
   if(!in_array($type,['v2node','v2box'],true))return null;
   $node=(new ServerService())->getServer($nodeId,$type);
-  $root=$node && $node->parent_id ? (int)$node->parent_id : $nodeId;
+  $root=$node && $node->service_id ? (int)$node->service_id : $nodeId;
   if($lock)DB::table('v2_server_'.$type)->where('id',$root)->lockForUpdate()->first();
   $query=DB::table('v2_server_traffic_binding')->where('node_type',$type)->where('node_id',$root);
   if($lock)$query->lockForUpdate();
@@ -52,7 +52,7 @@ class ServerTrafficBudgetService {
  public static function decorateNodes(array $nodes): array {
   $bindings=DB::table('v2_server_traffic_binding')->get()->keyBy(fn($b)=>$b->node_type.':'.$b->node_id);
   $budgets=DB::table('v2_server_traffic_budget')->get()->keyBy('id');$resources=[];
-  foreach($nodes as &$node){$root=($node['parent_id'] ?? null) ?: $node['id'];$binding=$bindings->get($node['type'].':'.$root);$id=$binding ? $binding->budget_id : null;
+  foreach($nodes as &$node){$root=($node['service_id'] ?? null) ?: $node['id'];$binding=$bindings->get($node['type'].':'.$root);$id=$binding ? $binding->budget_id : null;
    if($id && !isset($resources[$id]) && $budgets->has($id))$resources[$id]=self::resource($budgets->get($id),false);
    $node['traffic_budget']=$resources[$id] ?? null;
   }

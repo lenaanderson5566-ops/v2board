@@ -13,8 +13,8 @@ final class NodeDeploymentWorkflow
     private static function binding($node) { return DB::table('v2_node_ddns')->where('node_type','v2box')->where('node_id',$node->id)->where('enabled',true)->first(); }
     public static function snapshot($node): string {
         $a=self::binding($node);
-        return hash('sha256',json_encode([$node->parent_id,$node->protocol,$node->tls,$node->tls_settings,$node->server_port,$node->listen_ip,$node->network,$node->network_settings,
-            $a?[$a->id,$a->credential_id,$a->domain,$a->family,$a->managed,$a->report_hash]:null]));
+        return hash('sha256',json_encode([$node->service_id,$node->protocol,$node->tls,$node->tls_settings,$node->server_port,$node->listen_ip,$node->network,$node->network_settings,
+            $a?[$a->id,$a->credential_id,$a->domain,$a->family,$a->managed,$a->report_hash,$a->server_id,$a->entry_id,$a->entry_port,NetworkServer::target($a)->domain,DB::table('v2_network_server')->where('id',$a->server_id)->first(['family','report_hash','enabled'])]:null]));
     }
     public static function validate($node): void {
         $a=self::binding($node); $tls=$node->tls_settings?:[];
@@ -23,8 +23,9 @@ final class NodeDeploymentWorkflow
         }
         if (!$a || !$a->managed) return;
         if ((int)$node->tls===1) {
+            NetworkServer::tls($a,$tls);
             abort_unless(in_array($tls['cert_mode']??'',['http','dns','self','remote','file'],true),422,'请选择有效的 TLS 证书模式');
-            abort_unless(($tls['server_name']??'')===$a->domain,422,'一键部署的 TLS 服务器名称须与托管节点域名一致；已运行节点请先使用域名切换验证证书');
+            abort_unless(($tls['server_name']??'')===NetworkServer::target($a)->domain,422,'一键部署的 TLS 服务器名称须与连接域名一致；已运行节点请先使用域名切换验证证书');
             if (in_array($tls['cert_mode']??'',['http','dns'],true)) {
                 abort_unless(preg_match('/^(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,63}$/D',$tls['server_name']),422,'自动申请证书需要有效的单个域名');
                 abort_if(($tls['cert_mode']??'')==='http' && (int)$node->server_port===80,422,'HTTP 证书验证需要独立的 80 端口，请调整节点监听端口');
@@ -40,7 +41,7 @@ final class NodeDeploymentWorkflow
         $data=['nodeId'=>(int)$node->id,'credential'=>$credential,'actor'=>$grant['actor'],'actorProof'=>$grant['actorProof'],
             'proof'=>self::snapshot($node),'expires'=>time()+self::TTL,'startedAt'=>null,'completed'=>false];
         abort_unless(Cache::store('node_deployment')->put('workflow:'.hash('sha256',$token),$data,self::TTL),503);
-        return ['deployment'=>['token'=>$token,'domain'=>$a->domain,'tls'=>(int)$node->tls,'certificateMode'=>$tls['cert_mode']??'',
+        return ['deployment'=>['accessMode'=>$a->entry_id?'relay':'direct','connectionDomain'=>NetworkServer::target($a)->domain,'token'=>$token,'domain'=>$a->domain,'tls'=>(int)$node->tls,'certificateMode'=>$tls['cert_mode']??'',
             'certificateDomain'=>$tls['server_name']??'','certificateFile'=>$tls['cert_file']??'',
             'protocol'=>$node->protocol,'listenPort'=>(int)$node->server_port,'listenAddress'=>$node->listen_ip?:'0.0.0.0']];
     }
@@ -50,10 +51,10 @@ final class NodeDeploymentWorkflow
             $cache=Cache::store('node_deployment');$key='workflow:'.hash('sha256',$token);$w=$cache->get($key);
             abort_unless($w && $w['expires']>time(),401,'部署恢复授权已过期，请在后台重新配置');
             $node=ServerV2box::find($w['nodeId']);$actor=User::find($w['actor']);$cred=DB::table('v2_node_credential')->find($w['credential']);
-            abort_unless($node && !$node->parent_id && $actor && $actor->is_admin && !$actor->banned && hash_equals($w['actorProof'],hash('sha256',(string)$actor->password)) && $cred && !$cred->revoked_at && (!$cred->expires_at || $cred->expires_at>time()),403,'部署授权已撤销');
+            abort_unless($node && !$node->service_id && $actor && $actor->is_admin && !$actor->banned && hash_equals($w['actorProof'],hash('sha256',(string)$actor->password)) && $cred && !$cred->revoked_at && (!$cred->expires_at || $cred->expires_at>time()),403,'部署授权已撤销');
             abort_unless(hash_equals($w['proof'],self::snapshot($node)),409,'节点或域名配置已变化，请核对后重新部署');
             if ($w['completed']) return ['completed'=>true,'dnsReady'=>true,'applicationState'=>'applied','errorCode'=>null,'addresses'=>(object)[]];
-            $a=self::binding($node);$addresses=[];$ready=in_array($a->status,['healthy','ready_to_switch'],true);
+            $a=self::binding($node);$addresses=[];$ready=NetworkServer::ready($a) && NetworkServer::ready(NetworkServer::target($a));
             foreach ($a->family==='dual'?['ipv4','ipv6']:[$a->family] as $family) {
                 $ip=$a->$family;
                 $ready=$ready && $ip && $a->{$family.'_seen_at'}>=time()-900 && DB::table('v2_node_dns_record')->where('assignment_id',$a->id)->where('credential_id',$a->credential_id)->where('domain',$a->domain)->where('type',$family==='ipv4'?'A':'AAAA')->where('content',$ip)->whereNotNull('record_id')->where('status','active')->where('delete_after',0)->exists();
@@ -72,7 +73,7 @@ final class NodeDeploymentWorkflow
                 $w['proof']=self::snapshot($node->fresh());
                 $w['completed']=true;$cache->put($key,$w,$w['expires']-time());
             }
-            return ['completed'=>$w['completed'],'dnsReady'=>(bool)$ready,'addresses'=>(object)$addresses,
+            return ['completed'=>$w['completed'],'dnsReady'=>(bool)$ready,'addresses'=>(object)$addresses,'entryAddresses'=>(object)NetworkServer::addresses(NetworkServer::target($a)),
                 'applicationState'=>$applied?'applied':($runtime['applicationState']==='failed'?'failed':'unconfirmed'),
                 'errorCode'=>$runtime['errorCode'],'dnsStatus'=>$a->status];
         };

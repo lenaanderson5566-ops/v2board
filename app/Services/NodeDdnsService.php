@@ -12,6 +12,7 @@ class NodeDdnsFailure extends \RuntimeException {
 }
 class NodeDdnsService {
     public static function nodeExists($row): bool {
+        if (($row->purpose??'')==='entry') return DB::table('v2_network_server')->where('id',$row->server_id)->exists();
         return in_array($row->node_type,['v2node','v2box'],true) && DB::table('v2_server_'.$row->node_type)->where('id',$row->node_id)->exists();
     }
     public static function publicAddress(string $ip, int $version): bool {
@@ -56,6 +57,7 @@ class NodeDdnsService {
             $credential=DB::table('v2_ddns_credential')->where('id',$initial->credential_id)->lockForUpdate()->first();
             $row=DB::table('v2_node_ddns')->where('id',$id)->lockForUpdate()->first();
             if (!$row || !$credential || $row->credential_id!==$initial->credential_id || !$row->enabled || $row->next_run<0 || $row->next_run>time() || $credential->next_run<0 || $credential->next_run>time()) return;
+            if ($row->server_id && !DB::table('v2_network_server')->where('id',$row->server_id)->where('enabled',true)->exists()) return;
             $code='unchanged'; $http=null; $delay=300; $changed=false;
             try {
                 if (!self::nodeExists($row)) throw new NodeDdnsFailure('node_missing',0,-1);

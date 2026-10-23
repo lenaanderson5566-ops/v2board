@@ -31,6 +31,8 @@ vi.mock("../shared/api", async (importOriginal) => ({
 import { Nodes, ResourcePage, resources } from "./admin";
 import { NodeCredentials } from "./NodeCredentials";
 import { NodeDeployment } from "./NodeDeployment";
+import { NodeConnectionEditor } from "./NodeConnections";
+import { NodeTopology } from "./NodeTopology";
 afterEach(() => {
     cleanup();
     vi.useRealTimers();
@@ -38,6 +40,44 @@ afterEach(() => {
     vi.clearAllMocks();
     vi.unstubAllGlobals();
     localStorage.clear();
+});
+
+it("previews a shared TLS identity independently of the relay hostname", () => {
+    const service={ name: "Japan", protocol:"anytls", server_port:9443, tls:1, tls_settings:{server_name:"identity.example.test"} };
+    const view=render(<NodeTopology service={service} entry={{domain:"entry.example.test"}} origin={{domain:"origin.example.test"}} port={443} shared={3} />);
+    expect(screen.getByText("待保存预览")).toBeTruthy();
+    expect(screen.getByText("entry.example.test:443")).toBeTruthy();
+    expect(screen.getByText("origin.example.test:9443")).toBeTruthy();
+    expect(screen.getByText(/identity.example.test/)).toBeTruthy();
+    expect(screen.getByText(/关联 3 条线路/)).toBeTruthy();
+    view.rerender(<NodeTopology service={service} origin={{domain:"origin.example.test"}} port={9443} />);
+    expect(screen.queryByText("入口转发")).toBeNull();
+    expect(screen.getByText("直连地址")).toBeTruthy();
+});
+
+it("requires saved configuration and explicit connection confirmation before publishing", async () => {
+    const node={id:20,type:"v2box",service_id:1,name:"Relay",host:"old.example.test",port:443};
+    const service={id:1,type:"v2box",name:"Japan",protocol:"anytls",server_port:9443,tls:1,group_id:[1],tls_settings:{server_name:"identity.example.test"}};
+    const draft={name:"Relay",service_id:1,entry_id:3,entry_port:443,group_id:[1],show:1};
+    const plan={entry_id:3,entry_family:"ipv4",origin_family:"ipv4",origin_domain:"origin.example.test",origin_port:9443,protocol:"anytls",port:443,dns_ready:true,proof:"a".repeat(64)};
+    api.request.mockImplementation(async (path:string) => {
+        if(path.includes("ddns/fetch")) return {data:{servers:[],assignments:[{id:2,node_type:"v2box",node_id:1,domain:"origin.example.test"},{id:3,purpose:"entry",enabled:true,domain:"entry.example.test"}]}};
+        if(path.includes("connections/fetch")) return {data:{id:5,revision:2,draft,plan,published:{host:node.host},current:{host:node.host,port:443}}};
+        if(path.includes("connections/publish")) throw new Error("配置或解析状态已变化");
+        return {data:true};
+    });
+    render(<NodeConnectionEditor node={node} nodes={[service,node]} close={()=>{}} onSaved={()=>{}} />);
+    const publish=await screen.findByRole("button",{name:"确认并发布线路"});
+    expect((publish as HTMLButtonElement).disabled).toBe(true);
+    fireEvent.click(screen.getByRole("checkbox", {name:/已使用上述地址/}));
+    expect((publish as HTMLButtonElement).disabled).toBe(false);
+    fireEvent.click(publish);
+    expect(await screen.findByRole("alert")).toHaveProperty("textContent","配置或解析状态已变化");
+    expect(screen.getByText(/当前发布地址：old.example.test:443/)).toBeTruthy();
+    fireEvent.change(screen.getByLabelText("入口端口"),{target:{value:"8443"}});
+    expect(screen.queryByRole("button",{name:"确认并发布线路"})).toBeNull();
+    expect(screen.getByText("待保存预览")).toBeTruthy();
+    expect(api.request.mock.calls.filter(([p])=>String(p).includes("connections/publish"))).toHaveLength(1);
 });
 it("updates deployment authentication automatically and stops once authenticated", async () => {
     api.request.mockResolvedValue({ data: { keys: [] } });
@@ -369,7 +409,10 @@ it("guides deployment to panel-managed DDNS", async () => {
     });
     render(<Nodes />);
     fireEvent.click(await screen.findByRole("button", { name: "部署与接入" }));
-    expect(screen.getByRole("heading", { name: "自动 IP 上报" })).toBeTruthy();
+    expect(screen.queryByRole("heading", { name: "自动 IP 上报" })).toBeNull();
+    expect(screen.getByText("运维命令与说明")).toBeTruthy();
+    expect(screen.getByText("v2box update")).toBeTruthy();
+    expect(screen.getByText("v2box uninstall --stop-network")).toBeTruthy();
     expect(screen.queryByLabelText("查询服务器 IP 命令")).toBeNull();
     fireEvent.click(screen.getByText("高级：手动安装"));
     expect(
@@ -379,8 +422,8 @@ it("guides deployment to panel-managed DDNS", async () => {
             }) as HTMLTextAreaElement
         ).value,
     ).toBe("bash install.sh");
-    fireEvent.click(screen.getByRole("button", { name: "管理域名与 IP 上报" }));
-    expect(await screen.findByText("请先在 Cloudflare DDNS 中添加并验证根域名。")).toBeTruthy();
+    fireEvent.mouseDown(screen.getByRole("tab", { name: "域名与解析" }), {button:0,ctrlKey:false});
+    expect(await screen.findByText("请先在 服务器与域名 中添加并验证根域名。")).toBeTruthy();
     expect(api.request.mock.calls.some(([path]) => path.endsWith("credentials/deployment"))).toBe(false);
 });
 
@@ -483,10 +526,10 @@ it("filters nodes by name, backend and exhausted server budget", async () => {
 
 it("opens DDNS inside node management and returns to the node list", async () => {
     render(<Nodes />);
-    fireEvent.click(screen.getByRole("button", { name: "Cloudflare DDNS" }));
+    fireEvent.click(screen.getByRole("button", { name: "服务器与域名" }));
     expect(await screen.findByText("Cloudflare 凭据")).toBeTruthy();
     expect(screen.queryByLabelText("搜索节点")).toBeNull();
-    fireEvent.click(screen.getByRole("button", { name: "节点列表" }));
+    fireEvent.click(screen.getByRole("button", { name: "接入线路" }));
     expect(await screen.findByLabelText("搜索节点")).toBeTruthy();
 });
 
@@ -506,7 +549,7 @@ it("manages Lightsail and traffic in peer pages without an outer dialog", async 
     ).toBeTruthy();
     expect(screen.queryByText("Lightsail 公网 IP 管理")).toBeNull();
     expect(screen.queryByRole("dialog")).toBeNull();
-    fireEvent.click(screen.getByRole("button", { name: "节点列表" }));
+    fireEvent.click(screen.getByRole("button", { name: "接入线路" }));
     expect(await screen.findByLabelText("搜索节点")).toBeTruthy();
 });
 
@@ -545,12 +588,12 @@ it("keeps deployment retryable on error and groups credentials in the same drawe
 it("routes child deployment to its parent without issuing a child credential", async () => {
     api.request.mockImplementation(async(path:string)=>{
         if(path.endsWith("dictionary/fetch"))return adminPageFixture(path);
-        if(path.endsWith("server/manage/getNodes"))return {data:[{id:1,name:"Parent",type:"v2box",group_id:[]},{id:2,name:"Child",type:"v2box",parent_id:1,group_id:[]}]};
+        if(path.endsWith("server/manage/getNodes"))return {data:[{id:1,name:"Parent",type:"v2box",group_id:[]},{id:2,name:"Child",type:"v2box",service_id:1,group_id:[]}]};
         if(path.includes("server/credentials"))return {data:{keys:[]}};
         return {data:[]};
     });
     render(<Nodes/>);
-    fireEvent.click(await screen.findByRole("button",{name:"父节点接入"}));
+    fireEvent.click(await screen.findByRole("button",{name:"代理服务接入"}));
     expect(await screen.findByText("Parent · 部署与接入")).toBeTruthy();
     expect(api.request.mock.calls.some(([path])=>path.includes("server/credentials") && path.includes("id=1"))).toBe(true);
     expect(screen.queryByRole("button",{name:"安装命令"})).toBeNull();

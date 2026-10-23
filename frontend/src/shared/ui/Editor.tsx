@@ -58,6 +58,7 @@ export function Editor({
     onSave,
     submit = tx("保存"),
     children,
+    preview,
     resolveFields,
     linkValues,
     validate,
@@ -71,6 +72,7 @@ export function Editor({
     onSave: (data: Row) => Promise<void>;
     submit?: string;
     children?: ReactNode;
+    preview?: (values: Row) => ReactNode;
     resolveFields?: (fields: Field[], values: Row) => Field[];
     linkValues?: (key: string, next: unknown, values: Row) => Row;
     validate?: (values: Row) => string | undefined;
@@ -275,6 +277,7 @@ export function Editor({
                     })}
                 </p>
             )}
+            {preview?.(value)}
             <fieldset className="field-grid" disabled={busy}>
                 {activeFields.map((f) => {
                     const extension = renderField?.(

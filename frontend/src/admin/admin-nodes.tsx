@@ -1,3 +1,5 @@
+import { NodeConnectionEditor, NodeForwarding } from "./NodeConnections";
+import { NodeTopology } from "./NodeTopology";
 import { NodeDictionaryProvider } from "./node-dictionary";
 import { NodeDeployment } from "./NodeDeployment";
 import { AdminChoiceGroup } from "./AdminChoices";
@@ -61,7 +63,8 @@ export function Nodes(props: {
 function NodesContent({
     initialTab = "nodes",
 }: { initialTab?: "nodes" | "ddns" | "lightsail" | "traffic" } = {}) {
-    const [tab, setTab] = useState(initialTab);
+    const [tab, setTab] = useState<string>(initialTab);
+    const [connectionNode, setConnectionNode] = useState<Row | null>(null);
     const [nodeDirty, setNodeDirty] = useState(false);
     const [nodeBusy, setNodeBusy] = useState(false);
     const [conversionOpen, setConversionOpen] = useState(false);
@@ -81,6 +84,7 @@ function NodesContent({
     const d = useData<Row[]>(admin("server/manage/getNodes"));
     const [type, setType] = useState("v2node"),
         [editing, setEditing] = useState<Row | null>(null);
+    const topology = useData<Row>(editing ? admin("server/ddns/fetch") : "");
     const [error, setError] = useState("");
     const actionPending = useRef(false);
     const [actionBusy, setActionBusy] = useState(false);
@@ -130,6 +134,7 @@ function NodesContent({
     const nodeRows = rows(d.data);
     const filteredNodes = nodeRows.filter(
         (n) =>
+            (tab !== "services" || !n.service_id) &&
             (!onlyIssues || !!n.issues?.length) &&
             (!onlyMaintenance || !!n.maintenance) &&
             (!backendFilter || n.type === backendFilter) &&
@@ -165,6 +170,7 @@ function NodesContent({
                       : "—",
         ],
         ["type", "类型"],
+        ["service_id", "代理服务", r => r.service_id ? nodeRows.find(n => n.type === r.type && n.id === r.service_id)?.name || `服务 #${r.service_id}` : "本服务（默认线路）"],
         ["protocol", "协议"],
         [
             "runtime_status",
@@ -232,7 +238,7 @@ function NodesContent({
                     )
                     .join(" / "),
         ],
-        ["online", "在线用户"],
+        ["online", "服务在线用户", r => r.service_id ? `${r.online ?? "—"}（共享）` : r.online ?? "—"],
         ["last_push_at", "最近流量上报", (r) => date(r.last_push_at)],
     ];
     const [visibleColumns, setVisibleColumns] = useState<string[] | null>(
@@ -281,16 +287,16 @@ function NodesContent({
                     close={() => setDiagnosticNode(null)}
                     onSaved={d.reload}
                     deploy={() => {
-                        const target = diagnosticNode.parent_id
+                        const target = diagnosticNode.service_id
                             ? nodeRows.find(
                                   (n) =>
                                       n.type === diagnosticNode.type &&
                                       Number(n.id) ===
-                                          Number(diagnosticNode.parent_id),
+                                          Number(diagnosticNode.service_id),
                               )
                             : diagnosticNode;
                         if (!target) {
-                            setError("父节点不可用，请先检查节点配置");
+                            setError("代理服务不可用，请先检查节点配置");
                             return;
                         }
                         setDiagnosticNode(null);
@@ -312,23 +318,28 @@ function NodesContent({
                     if (value === "nodes") d.reload();
                 }}
                 options={[
-                    { value: "nodes", label: "节点列表" },
-                    { value: "ddns", label: "Cloudflare DDNS" },
+                    { value: "nodes", label: "接入线路" },
+                    { value: "services", label: "代理服务" },
+                    { value: "forwarding", label: "入口转发" },
+                    { value: "ddns", label: "服务器与域名" },
                     { value: "lightsail", label: "Lightsail IP" },
                     { value: "traffic", label: "服务器流量" },
                 ]}
             />
+            {connectionNode && <NodeConnectionEditor key={`${connectionNode.type}:${connectionNode.id || "new"}`} node={connectionNode} nodes={nodeRows} groups={rows(groups.data)} close={() => setConnectionNode(null)} onSaved={d.reload} />}
+            {tab === "forwarding" && <NodeForwarding nodes={nodeRows} edit={node => node.service_id ? setConnectionNode(node) : setCredentialNode(node)} />}
             {tab === "ddns" && <AdminDDNS />}
             {tab === "lightsail" && <AdminLightsail nodes={rows(d.data)} />}
             {tab === "traffic" && (
                 <ServerTrafficBudgets nodes={rows(d.data)} onSaved={d.reload} />
             )}
-            {tab === "nodes" && (
+            {(tab === "nodes" || tab === "services") && (
                 <Panel
-                    title="节点管理"
+                    title={tab === "services" ? "代理服务" : "接入线路"}
                     actions={
                         <>
                             <Reload onClick={d.reload} loading={d.loading} />
+                            {tab === "nodes" && <button className="primary" onClick={() => setConnectionNode({ type: "v2box" })}>新增接入线路</button>}
                             <button
                                 type="button"
                                 onClick={() => setShowDisplay(true)}
@@ -356,7 +367,7 @@ function NodesContent({
                                     })
                                 }
                             >
-                                添加节点
+                                新增代理服务
                             </button>
                         </>
                     }
@@ -504,7 +515,7 @@ function NodesContent({
                             }}
                             actions={(r) => (
                                 <>
-                                    {!r.parent_id ? (
+                                    {!r.service_id ? (
                                         <button
                                             onClick={() => setCredentialNode(r)}
                                         >
@@ -519,29 +530,29 @@ function NodesContent({
                                                     (n) =>
                                                         n.type === r.type &&
                                                         Number(n.id) ===
-                                                            Number(r.parent_id),
+                                                            Number(r.service_id),
                                                 );
                                                 if (parent)
                                                     setCredentialNode(parent);
                                                 else
                                                     setError(
-                                                        "父节点不可用，请先检查节点配置",
+                                                        "代理服务不可用，请先检查节点配置",
                                                     );
                                             }}
                                         >
-                                            父节点接入
+                                            代理服务接入
                                         </button>
                                     )}
                                     <button
                                         onClick={() => {
                                             setType(r.type);
-                                            setEditing(r);
+                                            if (r.service_id) setConnectionNode(r); else setEditing(r);
                                         }}
                                     >
                                         编辑
                                     </button>
                                     <button
-                                        disabled={actionBusy || d.loading}
+                                        disabled={actionBusy || d.loading || !!r.service_id}
                                         onClick={() => nodeAction(r, "copy")}
                                     >
                                         复制
@@ -630,14 +641,14 @@ function NodesContent({
                         {conversionOpen && (
                             <p className="alert">
                                 类型转换会分配目标类型节点
-                                ID，并需要重新部署服务；这不是普通协议修改。保存前请重新选择路由与父节点。
+                                ID，并需要重新部署服务。保存前请重新选择路由并核对协议参数。
                             </p>
                         )}
                     </div>
                     {editing.id && type !== editing.type && (
                         <p className="pad muted">
                             保存后会将此节点转换为 {type}，分配目标类型的节点
-                            ID。请重新选择对应路由和父节点，并核对协议参数；保存后需要更换节点服务及安装配置。切换类型会重新载入已保存配置。
+                            ID。请重新选择对应路由并核对协议参数；保存后需要更换节点服务及安装配置。切换类型会重新载入已保存配置。
                         </p>
                     )}
                     <State
@@ -665,69 +676,25 @@ function NodesContent({
                                     formPresentation(
                                         nodeFields(
                                             type,
-                                            fields.map((field) =>
-                                                field.key === "parent_id"
-                                                    ? {
-                                                          ...field,
-                                                          label: "父节点",
-                                                          type: "select",
-                                                          nullable: true,
-                                                          options: [
-                                                              [
-                                                                  "",
-                                                                  "不设置父节点",
-                                                              ],
-                                                              ...rows(d.data)
-                                                                  .filter(
-                                                                      (r) =>
-                                                                          r.type ===
-                                                                              type &&
-                                                                          String(
-                                                                              r.id,
-                                                                          ) !==
-                                                                              String(
-                                                                                  editing.id,
-                                                                              ) &&
-                                                                          (![
-                                                                              "v2node",
-                                                                              "v2box",
-                                                                          ].includes(
-                                                                              type,
-                                                                          ) ||
-                                                                              r.protocol ===
-                                                                                  values.protocol),
-                                                                  )
-                                                                  .map(
-                                                                      (r) =>
-                                                                          [
-                                                                              String(
-                                                                                  r.id,
-                                                                              ),
-                                                                              r.name,
-                                                                          ] as [
-                                                                              string,
-                                                                              string,
-                                                                          ],
-                                                                  ),
-                                                          ] as [
-                                                              string,
-                                                              string,
-                                                          ][],
-                                                          hint: "可选择同类型、同协议的节点。切换协议时会清除当前选择。",
-                                                      }
-                                                    : field,
-                                            ),
+                                            fields,
                                             values,
                                         ),
                                         "nodes",
                                     ),
                                 )
                             }
+                            preview={values => {
+                                const assignments: Row[] = topology.data?.assignments || [];
+                                const servers: Row[] = topology.data?.servers || [];
+                                const origin = assignments.find(a => a.node_type === type && a.node_id === editing.id);
+                                const entry = assignments.find(a => a.id === origin?.entry_id);
+                                return <NodeTopology service={values} origin={origin} entry={entry} server={servers.find(s => s.id === origin?.server_id)} entryServer={servers.find(s => s.id === entry?.server_id)} host={values.host} port={values.port} shared={entry?.connection_count || 0} serviceConnections={nodeRows.filter(n => n.type === type && n.service_id === editing.id).length} />;
+                            }}
                             linkValues={linkNode}
                             fields={nodeSettingsFields(
                                 Object.entries(schema.data || {})
                                     .filter(
-                                        ([k]) => !k.includes(".") && k !== "id",
+                                        ([k]) => !k.includes(".") && k !== "id" && k !== "service_id",
                                     )
                                     .map(([k, rule]) => {
                                         if (
@@ -937,7 +904,7 @@ const nodeLabels: Record<string, string> = {
     region_code: "国家 / 地区",
     city_code: "州 / 省或城市",
     display_label: "线路编号 / 后缀（例如 A）",
-    parent_id: "父节点 ID",
+    service_id: "代理服务 ID",
     protocol: "协议",
     network: "传输方式",
     network_settings: "传输设置",

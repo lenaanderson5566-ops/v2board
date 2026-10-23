@@ -188,7 +188,7 @@ export function NodeDeployment({
                                         IP
                                         上报，等待解析生效并验证节点就绪后启用域名。自动申请证书需选择
                                         HTTP 或 DNS 申请；HTTP 验证需开放 80
-                                        端口。失败后按终端提示恢复。已有配置不会被覆盖。
+                                        端口。安装会自动启动服务，无需另行重启。中断后按终端提示恢复；已运行的服务会继续验证，停止的服务会尝试启动一次。已有配置不会被覆盖。
                                     </p>
                                     <button
                                         className={deployment ? "" : "primary"}
@@ -237,7 +237,7 @@ export function NodeDeployment({
                                         </>
                                     )}
                                     <p className="muted">
-                                        生成不更换密钥。执行后原全局密钥失效，旧独立密钥保留30分钟宽限；正在轮换时需先完成配置。失败后可重新生成授权。
+                                        生成不更换密钥。执行后原全局密钥失效，旧独立密钥保留30分钟宽限；正在轮换时需先完成配置。执行中断后按终端提示恢复，勿重复生成部署命令。
                                     </p>
                                 </section>
                             ) : node.type === "v2box" ? (
@@ -270,26 +270,13 @@ export function NodeDeployment({
                                     独立凭据。
                                 </p>
                             )}
-                            {node.type === "v2box" && (
-                                <section className="admin-deployment-card">
-                                    <h3>自动 IP 上报</h3>
-                                    <p className="muted">
-                                        定时将节点公网 IP
-                                        上报面板，用于更新域名解析。
-                                        新安装时已绑定域名会自动配置；已有节点缺少上报或上报异常时，可单独配置或修复。
-                                    </p>
-                                    <button onClick={() => setTab("domain")}>
-                                        管理域名与 IP 上报
-                                    </button>
-                                </section>
-                            )}
                             <details className="admin-deployment-tools">
                                 <summary>高级：手动安装</summary>
                                 <div>
                                     <p className="muted">
                                         {node.type === "v2box"
                                             ? "手动安装需自行配置节点接入密钥和 IP 上报；通常使用“新安装”中的一键部署即可。"
-                                            : "手动安装后配置节点独立凭据；IP 自动上报可在 Cloudflare DDNS 中绑定节点后配置。"}
+                                            : "手动安装后配置节点独立凭据；IP 自动上报可在 服务器与域名 中绑定节点后配置。"}
                                     </p>
                                     {node.install_command && (
                                         <>
@@ -319,11 +306,54 @@ export function NodeDeployment({
                                 </div>
                             </details>
                             {node.type === "v2box" && (
-                                <div className="admin-deployment-help">
-                                    <span>安装后检查</span>
-                                    <code>v2box status</code>
-                                    <code>v2box log</code>
-                                </div>
+                                <details className="admin-deployment-tools">
+                                    <summary>运维命令与说明</summary>
+                                    <div>
+                                        <p className="muted">
+                                            以下命令在节点服务器执行；同一服务器中的全部
+                                            V2Box 节点会受到重启或卸载影响。
+                                        </p>
+                                        <dl>
+                                            <dt>更新节点</dt>
+                                            <dd>
+                                                <code>v2box update</code>
+                                                ：更新至最新正式版，保留配置与证书。旧版本请使用上方“已有节点升级”命令。
+                                            </dd>
+                                            <dt>恢复部署</dt>
+                                            <dd>
+                                                <code>
+                                                    sh install-v2box.sh --resume
+                                                </code>
+                                                ：继续未完成部署，无需重新生成授权。
+                                            </dd>
+                                            <dt>运行状态与日志</dt>
+                                            <dd>
+                                                <code>v2box status</code> ·{" "}
+                                                <code>v2box log</code> ·{" "}
+                                                <code>v2box version</code>
+                                            </dd>
+                                            <dt>卸载节点</dt>
+                                            <dd>
+                                                <code>
+                                                    v2box uninstall
+                                                    --stop-network
+                                                </code>
+                                                ：确认后停止 V2Box 和本机独立 IP
+                                                上报，移除程序，保留配置、证书及
+                                                DNS 记录。共享 IP 上报服务时去掉{" "}
+                                                <code>--stop-network</code>。
+                                            </dd>
+                                        </dl>
+                                        <p className="muted">
+                                            update / uninstall
+                                            命令需安装包含运维功能的新版节点。卸载后请在面板撤销节点凭据，并按实际使用情况解绑域名；不会自动删除
+                                            Cloudflare 解析。
+                                        </p>
+                                        <p className="muted">
+                                            新版节点证书申请联系邮箱：fastdog.ltd@gmail.com，与站点发信邮箱独立。
+                                        </p>
+                                    </div>
+                                </details>
                             )}
                         </>
                     )}

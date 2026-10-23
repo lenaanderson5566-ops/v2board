@@ -56,11 +56,11 @@ export function NodeNetworkSetup({
     return (
         <>
             <button disabled={disabled} onClick={() => setOpen(true)}>
-                配置 / 修复 IP 上报
+                修复 IP 上报
             </button>
             {open && (
                 <Modal
-                    title="配置自动 IP 上报"
+                    title="修复 IP 上报"
                     close={() => {
                         if (pending.current) return;
                         setOpen(false);
@@ -71,12 +71,14 @@ export function NodeNetworkSetup({
                 >
                     <div className="pad">
                         <p>
-                            在节点 #{node.id} 所在服务器执行命令，自动安装并配置
-                            IP 上报服务，将公网 IP
+                            新节点使用一键部署，无需单独执行本命令。 在节点 #
+                            {node.id} 所在服务器执行命令，自动安装并配置 IP
+                            上报服务，将公网 IP
                             定时提交至面板以更新域名解析，无需输入密钥。
                         </p>
                         <p className="muted">
-                            命令有效期 10
+                            若提示存在未完成部署，请执行 sh install-v2box.sh
+                            --resume，不要删除部署状态或证书。 命令有效期 10
                             分钟，仅可兑换一次。执行时更换此节点的上报密钥，不重装或重启
                             V2Box。
                         </p>

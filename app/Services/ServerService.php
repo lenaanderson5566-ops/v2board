@@ -20,19 +20,25 @@ class ServerService
         $v2node = $model->get()->keyBy('id');
         $maintenance = NodeMaintenance::active();
         foreach ($v2node as $key => $v) {
-            if (NodeMaintenance::hidden($maintenance, $type, (int)$v['id'], $v['parent_id'])) continue;
+            if ($v['service_id']) {
+                $service=$v2node->get($v['service_id']);
+                if (!$service || $service->service_id || !in_array(TrafficCreditService::effectiveGroupId($user),(array)$service->group_id)) continue;
+                foreach (ProxyService::FIELDS as $field) $v[$field]=$service[$field];
+                $v['updated_at']=max($v->getRawOriginal('updated_at'),$service->getRawOriginal('updated_at'));
+            }
+            if (NodeMaintenance::hidden($maintenance, $type, (int)$v['id'], $v['service_id'])) continue;
             if (!$v['show']) continue;
             $v2node[$key]['type'] = $type;
             $v2node[$key]['last_check_at'] = Cache::get(CacheKey::get('SERVER_' . strtoupper($type) . '_LAST_CHECK_AT', $v['id']));
             if (!in_array(TrafficCreditService::effectiveGroupId($user), $v['group_id'])) continue;
-            if (isset($v2node[$v['parent_id']])) {
-                $v2node[$key]['last_check_at'] = Cache::get(CacheKey::get('SERVER_' . strtoupper($type) . '_LAST_CHECK_AT', $v['parent_id']));
-                $v2node[$key]['created_at'] = $v2node[$v['parent_id']]['created_at'];
+            if (isset($v2node[$v['service_id']])) {
+                $v2node[$key]['last_check_at'] = Cache::get(CacheKey::get('SERVER_' . strtoupper($type) . '_LAST_CHECK_AT', $v['service_id']));
+                $v2node[$key]['created_at'] = $v2node[$v['service_id']]['created_at'];
             }
             if (isset($v2node[$key]['tls_settings'])) {
                 $v2node[$key]['tls_settings'] = array_diff_key(
                     $v2node[$key]['tls_settings'],
-                    array_flip(array_filter(['private_key', 'ech_key', 'tls_key'], function($k) use ($v2node, $key) {
+                    array_flip(array_filter(['private_key', 'ech_key', 'tls_key', 'dns_env'], function($k) use ($v2node, $key) {
                         return isset($v2node[$key]['tls_settings'][$k]);
                     }))
                 );
@@ -44,6 +50,7 @@ class ServerService
             }
             $publicNode = $v2node[$key]->toArray();
             unset($publicNode['sing_box']); // Server egress credentials are never subscription data.
+            unset($publicNode['service_id']);
             $servers[] = $publicNode;
         }
         return $servers;
@@ -97,6 +104,7 @@ class ServerService
             if (isset($v['padding_scheme'])) {
                 $servers[$k]['padding_scheme'] = json_encode($v['padding_scheme']);
             }
+            if (!empty($v['service_id'])) continue; // Connections are never deployment targets.
 
             $apiHost = config('v2board.server_api_url', config('v2board.app_url'));
             $nodeId = (int) $v['id'];
@@ -112,6 +120,13 @@ class ServerService
                 $nodeId
             );
         }
+        $services=array_column($servers,null,'id');
+        foreach($servers as &$line) {
+            if (!empty($line['service_id']) && isset($services[$line['service_id']]) && empty($services[$line['service_id']]['service_id'])) {
+                $line=ProxyService::overlay($line,$services[$line['service_id']]);
+            }
+        }
+        unset($line);
         return $servers;
     }
 
@@ -119,9 +134,9 @@ class ServerService
     {
         foreach ($servers as $k => $v) {
             $serverType = strtoupper($v['type']);
-            $servers[$k]['online'] = Cache::get(CacheKey::get("SERVER_{$serverType}_ONLINE_USER", $v['parent_id'] ?? $v['id']));
-            $servers[$k]['last_check_at'] = Cache::get(CacheKey::get("SERVER_{$serverType}_LAST_CHECK_AT", $v['parent_id'] ?? $v['id']));
-            $servers[$k]['last_push_at'] = Cache::get(CacheKey::get("SERVER_{$serverType}_LAST_PUSH_AT", $v['parent_id'] ?? $v['id']));
+            $servers[$k]['online'] = Cache::get(CacheKey::get("SERVER_{$serverType}_ONLINE_USER", $v['service_id'] ?? $v['id']));
+            $servers[$k]['last_check_at'] = Cache::get(CacheKey::get("SERVER_{$serverType}_LAST_CHECK_AT", $v['service_id'] ?? $v['id']));
+            $servers[$k]['last_push_at'] = Cache::get(CacheKey::get("SERVER_{$serverType}_LAST_PUSH_AT", $v['service_id'] ?? $v['id']));
             if ((time() - 300) >= $servers[$k]['last_check_at']) {
                 $servers[$k]['available_status'] = 0;
             } else if ((time() - 300) >= $servers[$k]['last_push_at']) {

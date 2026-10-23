@@ -13,16 +13,21 @@ final class NodeTlsTransition
     public static function affected($a) {
         $table='v2_server_'.$a->node_type;
         $host=DB::table($table)->where('id',$a->node_id)->value('host');
-        return DB::table($table)->where(fn($q)=>$q->where('id',$a->node_id)->orWhere('parent_id',$a->node_id))->where('host',$host)->orderBy('id')->get();
+        return DB::table($table)->where(fn($q)=>$q->where('id',$a->node_id)->orWhere('service_id',$a->node_id))->where('host',$host)
+            ->whereNotIn('id',DB::table('v2_node_connection')->where('node_type',$a->node_type)->select('node_id'))->orderBy('id')->get();
     }
     private static function proof($a): string {
-        return hash('sha256',json_encode([$a->credential_id,$a->domain,$a->published_domain,$a->family,$a->enabled,$a->managed,$a->report_hash,$a->ipv4,$a->ipv6,self::affected($a)]));
+        return hash('sha256',json_encode([$a->credential_id,$a->domain,$a->published_domain,$a->family,$a->enabled,$a->managed,$a->report_hash,$a->server_id,$a->published_origin,$a->ipv4,$a->ipv6,$a->entry_id,$a->entry_port,($a->entry_id ? [NetworkServer::target($a)->domain,NetworkServer::target($a)->server_id,NetworkServer::addresses(NetworkServer::target($a))] : null),self::affected($a)]));
     }
     public static function pending($a): ?array {
         if (!$a || ($a->tls_transition_state??'')!=='pending' || !$a->tls_transition) return null;
-        try { $p=json_decode(Crypt::decryptString($a->tls_transition),true,512,JSON_THROW_ON_ERROR); }
-        catch (\Throwable $e) { return null; }
-        return $p['expires']>time() && hash_equals($p['proof'],self::proof($a)) ? $p : null;
+        try {
+            if (!$a->enabled || ($a->server_id && !DB::table('v2_network_server')->where('id',$a->server_id)->where('enabled',true)->exists())) return null;
+            $target=NetworkServer::target($a);
+            if ($target->server_id && !DB::table('v2_network_server')->where('id',$target->server_id)->where('enabled',true)->exists()) return null;
+            $p=json_decode(Crypt::decryptString($a->tls_transition),true,512,JSON_THROW_ON_ERROR);
+            return $p['expires']>time() && hash_equals($p['proof'],self::proof($a)) ? $p : null;
+        } catch (\Throwable $e) { return null; }
     }
     public static function reconcile($a): void {
         if (($a->tls_transition_state??'')==='pending' && !self::pending($a)) self::fail($a->id);
@@ -55,14 +60,16 @@ final class NodeTlsTransition
         abort_unless($affected->count()<=200,422,'单次最多同步 200 个关联节点');
         if (self::pending($a)) return;
         abort_unless(preg_match('/^(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,63}$/D',$a->domain),422,'证书需要有效域名');
-        $tls['server_name']=$a->domain; unset($tls['server_names'],$tls['pinned_peer_cert_sha256']);
+        $target=NetworkServer::target($a);
+        NetworkServer::tls($a,$tls);
+        $tls['server_name']=$target->domain; unset($tls['server_names'],$tls['pinned_peer_cert_sha256']);
         if (in_array($tls['cert_mode'],['http','dns','self'],true)) {
-            $dir='/etc/v2box/certificates/'.$a->node_id.'/'.substr(hash('sha256',$a->domain),0,32);
+            $dir='/etc/v2box/certificates/'.$a->node_id.'/'.substr(hash('sha256',$target->domain),0,32);
             $tls['cert_file']=$dir.'/certificate.pem'; $tls['key_file']=$dir.'/private.key';
         }
-        if ($tls['cert_mode']==='remote') $tls=array_replace($tls,self::remoteCertificate($a->domain));
+        if ($tls['cert_mode']==='remote') $tls=array_replace($tls,self::remoteCertificate($target->domain));
         $addresses=[];
-        foreach ($a->family==='dual'?['ipv4','ipv6']:[$a->family] as $family) $addresses[$family]=$a->$family;
+        $addresses=NetworkServer::addresses($target);
         $p=['id'=>bin2hex(random_bytes(16)),'expires'=>time()+86400,'proof'=>self::proof($a),'tls'=>$tls,'addresses'=>$addresses];
         DB::table('v2_node_ddns')->where('id',$a->id)->update(['tls_transition'=>Crypt::encryptString(json_encode($p)),'tls_transition_state'=>'pending']);
         NodeDdnsService::event($a->id,'certificate_transition_pending');
@@ -72,14 +79,14 @@ final class NodeTlsTransition
         $p=self::pending($a);
         if (!$p) return [$node,null];
         $candidate=clone $node; $candidate->tls_settings=$p['tls'];
-        return [$candidate,['id'=>$p['id'],'domain'=>$a->domain,'addresses'=>(object)$p['addresses']]];
+        return [$candidate,['id'=>$p['id'],'domain'=>NetworkServer::target($a)->domain,'addresses'=>(object)$p['addresses']]];
     }
     public static function receipt(int $id,array $report): bool {
         $a=DB::table('v2_node_ddns')->where('node_type','v2box')->where('node_id',$id)->first();
         if (!$a) return false;
         return NodeDnsLifecycle::locked(fn()=>DB::transaction(function()use($a,$id,$report){
             $a=DB::table('v2_node_ddns')->where('id',$a->id)->lockForUpdate()->first();
-            DB::table('v2_server_v2box')->where(fn($q)=>$q->where('id',$id)->orWhere('parent_id',$id))->lockForUpdate()->get();
+            DB::table('v2_server_v2box')->where(fn($q)=>$q->where('id',$id)->orWhere('service_id',$id))->lockForUpdate()->get();
             if ($a && $a->tls_transition_state==='applied' && $a->tls_transition) {
                 try { $done=json_decode(Crypt::decryptString($a->tls_transition),true,512,JSON_THROW_ON_ERROR); }
                 catch (\Throwable $e) { return false; }

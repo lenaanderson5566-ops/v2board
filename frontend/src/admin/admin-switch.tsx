@@ -3,10 +3,12 @@ export function AdminSwitch({
     checked,
     label,
     onChange,
+    disabled = false,
 }: {
     checked: boolean;
     label: string;
     onChange: (checked: boolean) => Promise<void>;
+    disabled?: boolean;
 }) {
     const [busy, setBusy] = useState(false),
         [error, setError] = useState("");
@@ -18,7 +20,7 @@ export function AdminSwitch({
                 aria-label={label}
                 aria-checked={checked}
                 className="toggle-control"
-                disabled={busy}
+                disabled={busy || disabled}
                 onClick={async () => {
                     setBusy(true);
                     setError("");

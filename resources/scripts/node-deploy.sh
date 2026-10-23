@@ -17,7 +17,7 @@ if [[ "${1:-}" == --install ]]; then
   stage=$(mktemp -d)
   trap 'rm -rf -- "$stage"' EXIT
   curl -fSL --proto '=https' --connect-timeout 10 --max-time 120 https://raw.githubusercontent.com/lenaanderson5566-ops/v2box/v1.0.5/script/install.sh -o "$stage/install.sh"
-  bash "$stage/install.sh" "$@" 9>&-
+  V2BOX_BOOTSTRAP_LOCK_HELD=1 bash "$stage/install.sh" "$@" 9>&-
   exit
 fi
 # Install the panel-shipped workflow independently of the pinned node binary.
@@ -38,6 +38,7 @@ fi
 requested_id=''
 grant=''
 network_only=false
+server_only=false
 if (($#)); then
   panel_url=''
   while (($#)); do
@@ -46,6 +47,7 @@ if (($#)); then
     case "$1" in
       --api-host) panel_url=$2;;
       --node-id) requested_id=$2;;
+      --server-id) requested_id=$2; server_only=true; network_only=true;;
       --deploy-token) grant=$2;;
       *) echo 'Unknown deployment argument' >&2; exit 1;;
     esac
@@ -59,13 +61,18 @@ else
   IFS= read -r grant
 fi
 [[ $EUID -eq 0 && $(uname -s) == Linux ]] || { echo 'Run as root on Linux' >&2; exit 1; }
-[[ "$panel_url" =~ ^https://[^/?#[:space:]@]+(/[^?#[:space:]]*)?$ && "$grant" =~ ^nd_[a-f0-9]{64}$ ]] || { echo 'Invalid deployment authorization' >&2; exit 1; }
+[[ "$panel_url" =~ ^https://[^/?#[:space:]@]+(/[^?#[:space:]]*)?$ && "$grant" =~ ^n[ds]_[a-f0-9]{64}$ ]] || { echo 'Invalid deployment authorization' >&2; exit 1; }
 if $network_only; then
   # Only configure the independent reporter. Never install/restart V2Box or change its key.
   [[ ! -e /etc/v2box/deployment-state.json ]] || { echo 'Resume the pending node deployment first.' >&2; exit 1; }
+  if ! $server_only; then
   [[ -f /etc/v2box/config.json && ! -L /etc/v2box/config.json ]] || { echo 'Install V2Box on this server before configuring reporting.' >&2; exit 1; }
   jq -e --arg host "$panel_url" --argjson id "$requested_id" '.Nodes | any(.NodeType == "v2box" and .NodeID == $id and .ApiHost == $host)' /etc/v2box/config.json >/dev/null || { echo 'This server configuration does not match the selected panel and node; preserved.' >&2; exit 1; }
+  fi
   [[ ! -L /etc/node-network && ! -L /etc/node-network/enrollment-state.json ]] || { echo 'Refusing symlinked reporting state' >&2; exit 1; }
+  if $server_only && [[ -f /etc/node-network/server-identity && "$(cat /etc/node-network/server-identity)" != "$panel_url/$requested_id" ]]; then
+    echo 'This machine belongs to another physical server. No authorization was consumed.' >&2; exit 1
+  fi
   install -d -m 700 /etc/node-network
   stage=$(mktemp -d)
   trap 'rm -rf -- "$stage"' EXIT
@@ -73,7 +80,7 @@ if $network_only; then
   curl -fsS --proto '=https' --connect-timeout 10 --max-time 120 https://raw.githubusercontent.com/lenaanderson5566-ops/v2box/v1.0.5/script/node-network.py -o "$stage/node-network.py"
   python3 -m py_compile "$stage/node-network.py"
   validate_network_response() {
-    jq -e --arg host "$panel_url" --argjson id "$requested_id" '.data | .purpose == "network" and .nodeType == "v2box" and .nodeId == $id and .apiHost == $host and (has("apiKey") | not) and (.networkReport.token | test("^[a-f0-9]{64}$")) and (.networkReport.family | . == "ipv4" or . == "ipv6" or . == "dual")' "$1" >/dev/null
+    jq -e --arg host "$panel_url" --argjson id "$requested_id" --argjson server "$server_only" '.data | (if $server then .purpose == "server" and .serverId == $id else .purpose == "network" and .nodeType == "v2box" and .nodeId == $id end) and .apiHost == $host and (has("apiKey") | not) and (.networkReport.token | test("^[a-f0-9]{64}$")) and (.networkReport.family | . == "ipv4" or . == "ipv6" or . == "dual")' "$1" >/dev/null
   }
   if [[ -e /etc/node-network/enrollment-state.json ]]; then
     [[ $(stat -c '%a' /etc/node-network/enrollment-state.json) == 600 ]] || { echo 'Reporting state must have mode 600' >&2; exit 1; }
@@ -89,12 +96,20 @@ if $network_only; then
     chmod 600 "$state_stage"
     mv -f -- "$state_stage" /etc/node-network/enrollment-state.json
   fi
+  server_id=$(jq -r '.data.networkReport.serverId // empty' /etc/node-network/enrollment-state.json)
+  identity="$panel_url/$server_id"
+  [[ ! -L /etc/node-network/server-identity ]] || { echo 'Refusing symlinked server identity' >&2; exit 1; }
+  if [[ -f /etc/node-network/server-identity && "$(cat /etc/node-network/server-identity)" != "$identity" ]]; then
+    echo 'This machine is already bound to another physical server. Existing reporting configuration preserved.' >&2; exit 1
+  fi
   jq -r '.data.networkReport.token' /etc/node-network/enrollment-state.json > "$stage/report-key"
   family=$(jq -r '.data.networkReport.family' /etc/node-network/enrollment-state.json)
   if ! python3 "$stage/node-network.py" report-configure --panel-url "$panel_url" --family "$family" --token-file "$stage/report-key"; then
     echo 'IP reporting setup incomplete. Re-run the same command to resume. V2Box was not restarted. If the reporting key was revoked, remove only /etc/node-network/enrollment-state.json and generate a new command.' >&2
     exit 1
   fi
+  printf '%s\n' "$identity" > /etc/node-network/server-identity
+  chmod 600 /etc/node-network/server-identity
   rm -f -- /etc/node-network/enrollment-state.json
   echo 'IP reporting configured and first report accepted. Check DNS synchronization in the panel.'
   exit
@@ -118,7 +133,7 @@ config_stage=''
 trap 'rm -rf -- "$stage"; [[ -z "$config_stage" ]] || rm -f -- "$config_stage"' EXIT
 # Finish package download and verification before consuming the grant.
 curl -fSL --proto '=https' --connect-timeout 10 --max-time 120 https://raw.githubusercontent.com/lenaanderson5566-ops/v2box/v1.0.5/script/install.sh -o "$stage/install.sh"
-bash "$stage/install.sh" v1.0.5 </dev/null 9>&-
+V2BOX_BOOTSTRAP_LOCK_HELD=1 bash "$stage/install.sh" v1.0.5 </dev/null 9>&-
 printf 'header = "Authorization: Bearer %s"\n' "$grant" > "$stage/authorization"
 unset grant
 curl -fsS --proto '=https' --connect-timeout 10 --max-time 30 --config "$stage/authorization" --header 'Content-Type: application/json' --data '{}' \

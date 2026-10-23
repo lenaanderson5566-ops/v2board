@@ -26,13 +26,28 @@ class V2nodeController extends Controller
 
     protected function saveUnlocked(Request $request)
     {
+        $request->merge(['service_id'=>$request->input('service_id') ?: null]);
+        $existing=$request->input('id') ? $this->model::find($request->input('id')) : null;
+        $backend=$this->model===\App\Models\ServerV2box::class ? 'v2box':'v2node';
+        abort_if($existing && (bool)$existing->service_id!==(bool)$request->input('service_id'),422,'代理服务与接入线路不能直接互换，请新增目标对象后迁移线路');
+        abort_if($existing && \Illuminate\Support\Facades\DB::table('v2_node_connection')->where('node_type',$backend)->where('node_id',$existing->id)->exists(),409,'请通过接入线路编辑与发布，避免绕过入口校验');
+        if ($request->input('service_id')) {
+            $service=$this->model::find($request->input('service_id'));
+            \App\Services\ProxyService::validate((object)['id'=>$existing->id??0,'group_id'=>$request->input('group_id',[])],$service);
+            if ($existing) \App\Services\ProxyService::assertUnused($backend,$existing->id);
+            $request->merge(\Illuminate\Support\Arr::except(\App\Services\ProxyService::overlay([],$service->toArray()),['created_at','updated_at','server_key']));
+        } elseif ($existing && !$existing->service_id) {
+            foreach($this->model::where('service_id',$existing->id)->get(['group_id']) as $line) {
+                abort_if(array_diff((array)$line->group_id,(array)$request->input('group_id',[])),422,'权限组仍被关联线路使用，请先调整线路权限');
+            }
+        }
         $request->merge(\App\Services\NodeDisplayService::normalizeInput($request->all()));
         $params = $request->validate([
             'group_id' => 'required',
             'route_id' => 'nullable|array',
             'route_id.*' => 'integer|min:1|distinct',
             'name' => 'required',
-            'parent_id' => 'nullable|integer',
+            'service_id' => 'nullable|integer|min:1',
             'host' => 'required',
             'listen_ip' => 'nullable',
             'port' => 'required',
@@ -218,10 +233,10 @@ class V2nodeController extends Controller
             if (!$server) {
                 abort(500, '服务器不存在');
             }
-            if (!empty($params['parent_id'])) {
-                abort_if(\Illuminate\Support\Facades\DB::table('v2_node_ddns')->where('node_type',$backend)->where('node_id',$server->id)->exists(),422,'请先解除节点域名绑定，再设置为子节点');
-                abort_if(\Illuminate\Support\Facades\DB::table('v2_server_traffic_binding')->where('node_type',$backend)->where('node_id',$server->id)->exists(),422,'请先解除服务器额度绑定，再设置为子节点');
-                abort_if(\Illuminate\Support\Facades\DB::table('v2_lightsail_server')->where('node_type',$backend)->where('node_id',$server->id)->exists(),422,'请先移除 Lightsail 配置，再设置为子节点');
+            if (!empty($params['service_id'])) {
+                abort_if(\Illuminate\Support\Facades\DB::table('v2_node_ddns')->where('node_type',$backend)->where('node_id',$server->id)->exists(),422,'请先解除节点域名绑定，再设置为关联线路');
+                abort_if(\Illuminate\Support\Facades\DB::table('v2_server_traffic_binding')->where('node_type',$backend)->where('node_id',$server->id)->exists(),422,'请先解除服务器额度绑定，再设置为关联线路');
+                abort_if(\Illuminate\Support\Facades\DB::table('v2_lightsail_server')->where('node_type',$backend)->where('node_id',$server->id)->exists(),422,'请先移除 Lightsail 配置，再设置为关联线路');
             }
             try {
                 $server->update($params);
@@ -253,6 +268,8 @@ class V2nodeController extends Controller
             'data' => \App\Services\NodeDnsLifecycle::locked(fn()=>\Illuminate\Support\Facades\DB::transaction(function()use($server){
                 $server=$this->model::whereKey($server->id)->lockForUpdate()->firstOrFail();
                 $type=$this->model===\App\Models\ServerV2box::class ? 'v2box' : 'v2node';
+                \App\Services\ProxyService::assertUnused($type,$server->id);
+                \App\Services\ProxyService::removeConnection($type,$server->id);
                 $cloud=\Illuminate\Support\Facades\DB::table('v2_lightsail_server')->where('node_type',$type)->where('node_id',$server->id)->lockForUpdate()->first();
                 abort_if($cloud,409,'请先移除 Lightsail 配置再删除节点');
                 \App\Services\NodeCredentials::retire($type,(int)$server->id);
@@ -274,6 +291,8 @@ class V2nodeController extends Controller
         if (!$server) {
             abort(500, '该服务器不存在');
         }
+        $backend=$this->model===\App\Models\ServerV2box::class?'v2box':'v2node';
+        abort_if(!empty($params['show']) && \Illuminate\Support\Facades\DB::table('v2_node_connection')->where('node_type',$backend)->where('node_id',$server->id)->whereNull('published')->exists(),409,'请先验证并发布线路');
         try {
             $server->update($params);
         } catch (\Exception $e) {
@@ -290,6 +309,7 @@ class V2nodeController extends Controller
         if (!$server) {
             abort(500, '服务器不存在');
         }
+        abort_if($server->service_id,422,'请通过新增接入线路复用代理服务，避免复制入口监听规则');
         $server->show = 0;
         if (!$this->model::create($server->toArray())) {
             abort(500, '复制失败');

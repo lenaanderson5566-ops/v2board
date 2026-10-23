@@ -262,7 +262,7 @@ export function nodeBackendInitial(initial: Row, backend: string): Row {
     if (!initial.id || initial.type === backend) return initial;
     const result = JSON.parse(JSON.stringify(initial)) as Row;
     result.route_id = [];
-    result.parent_id = null;
+    result.service_id = null;
     delete result.sing_box;
     if (backend === "v2node" && result.protocol === "naive")
         result.protocol = "";
@@ -324,7 +324,7 @@ export function nodeEditorPresentation(fields: Field[]): Field[] {
             ].includes(key)
         )
             return 2;
-        if (["listen_ip", "server_port", "parent_id", "route_id"].includes(key))
+        if (["listen_ip", "server_port", "service_id", "route_id"].includes(key))
             return 3;
         return 4;
     };
@@ -341,7 +341,7 @@ export function nodeEditorPresentation(fields: Field[]): Field[] {
         listen_ip: "节点服务监听的地址；不是客户端连接地址。",
         server_port: "节点服务实际监听端口，请核对防火墙及转发配置。",
         protocol:
-            "切换协议可能清除不兼容参数和父节点选择，请先核对并保存当前配置。",
+            "切换协议可能清除不兼容参数，请先核对并保存当前配置。",
         rate: "计费流量 = 实际使用流量 × 倍率，不改变节点真实传输量。",
     };
     let previous = -1;

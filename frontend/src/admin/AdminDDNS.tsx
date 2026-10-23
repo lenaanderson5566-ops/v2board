@@ -1,3 +1,4 @@
+import { NetworkServers } from "./NetworkServers";
 import { NodeNetworkSetup } from "./NodeNetworkSetup";
 import {
     NodeDomainBinding,
@@ -57,7 +58,7 @@ export function AdminDDNS() {
         ),
     );
     const credentials: Row[] = data.data?.credentials || [],
-        assignments: Row[] = data.data?.assignments || [];
+        assignments: Row[] = (data.data?.assignments || []).filter((a: Row) => a.purpose !== "entry");
     async function action(path: string, payload: Row) {
         if (busy) return;
         setBusy(true);
@@ -83,8 +84,9 @@ export function AdminDDNS() {
     }
     return (
         <>
+            {data.data && <NetworkServers data={data.data} reload={data.reload} />}
             <Panel
-                title="Cloudflare DDNS"
+                title="服务器与域名"
                 actions={
                     <button
                         onClick={() => {
@@ -337,9 +339,9 @@ export function AdminDDNS() {
                                         if (n) setDomainNode(n);
                                     }}
                                 >
-                                    <option value="">选择父节点配置域名</option>
+                                    <option value="">选择代理服务配置域名</option>
                                     {nodes.data
-                                        ?.filter((n) => !n.parent_id)
+                                        ?.filter((n) => !n.service_id)
                                         .map((n) => (
                                             <option
                                                 key={`${n.type}:${n.id}`}

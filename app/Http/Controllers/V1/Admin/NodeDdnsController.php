@@ -10,12 +10,33 @@ use Illuminate\Support\Facades\Cache;
 use Illuminate\Validation\Rule;
 class NodeDdnsController extends Controller {
     public function fetch() {
-        $assignments=DB::table('v2_node_ddns')->select('id','credential_id','node_type','node_id','domain','published_domain','tls_transition_state','tls_transition','managed','family','enabled','ipv4','ipv6','ipv4_seen_at','ipv6_seen_at','last_success','status','next_run')->orderBy('id')->get();
+        $connections=DB::table('v2_node_connection')->select('id','node_type','node_id','entry_id','entry_port','published','revision','verified_at')->get()->map(function($c){$c->published=$c->published?json_decode($c->published,true):null;return $c;});
+        $assignments=DB::table('v2_node_ddns')->select('id','server_id','entry_id','entry_port','purpose','published_origin','published_port','relay_verified_at','credential_id','node_type','node_id','domain','published_domain','tls_transition_state','tls_transition','managed','family','enabled','ipv4','ipv6','ipv4_seen_at','ipv6_seen_at','last_success','status','next_run')->orderBy('id')->get();
         $keys=$assignments->where('node_type','v2box')->map(fn($a)=>'V2BOX_CAPABILITIES:'.$a->node_id)->unique()->values()->all();
         $capabilities=$keys ? Cache::many($keys) : [];
+        $servers=DB::table('v2_network_server')->select('id','name','family','enabled','ipv4','ipv6','ipv4_seen_at','ipv6_seen_at')->orderBy('id')->get();
+        $serverMap=$servers->keyBy('id'); $byId=$assignments->keyBy('id');
+        $entryIds=$assignments->pluck('entry_id')->filter()->unique()->all();
+        $records=$entryIds ? DB::table('v2_node_dns_record')->whereIn('assignment_id',$entryIds)->where('status','active')->where('delete_after',0)->whereNotNull('record_id')->get()->groupBy('assignment_id') : collect();
+        $ready=[];
+        $connectionCounts=[];
+        foreach($connections as $connection) foreach(array_unique(array_filter([$connection->entry_id,$connection->published['entry_id']??null])) as $entryId) $connectionCounts[$entryId]=($connectionCounts[$entryId]??0)+1;
+        foreach($assignments as $assignment) if($assignment->entry_id) $connectionCounts[$assignment->entry_id]=($connectionCounts[$assignment->entry_id]??0)+1;
+        foreach ($entryIds as $id) {
+            $e=$byId->get($id);$ok=$e && $e->enabled && ($serverMap->get($e->server_id)->enabled??false) && in_array($e->status,['healthy','ready_to_switch'],true) && $e->last_success>=time()-900;
+            if ($e) foreach($e->family==='dual'?['ipv4','ipv6']:[$e->family] as $f) $ok=$ok && $e->$f && $e->{$f.'_seen_at'}>=time()-900 && $records->get($id,collect())->contains(fn($r)=>$r->credential_id==$e->credential_id && $r->domain===$e->domain && $r->type===($f==='ipv4'?'A':'AAAA') && $r->content===$e->$f);
+            $ready[$id]=(bool)$ok;
+        }
         return ['data'=>[
+            'connections'=>$connections,
+            'servers'=>$servers,
             'credentials'=>DB::table('v2_ddns_credential')->select('id','name','zone_id','root_domain','status','next_run')->orderBy('id')->get(),
-            'assignments'=>$assignments->map(function($a)use($capabilities){
+            'assignments'=>$assignments->map(function($a)use($capabilities,$byId,$ready,$serverMap,$connectionCounts){
+                $a->connection_count=$connectionCounts[$a->id]??0;
+                $entry=$a->entry_id ? $byId->get($a->entry_id) : null;
+                $a->connection_domain=$entry ? $entry->domain : $a->domain;
+                $a->entry_ready=$a->entry_id ? ($ready[$a->entry_id]??false) : true;
+                $a->server_enabled=$serverMap->get($a->server_id)->enabled??false;
                 $a->certificate_transition_supported=$a->node_type==='v2box' && in_array('certificate-transition-v1',$capabilities['V2BOX_CAPABILITIES:'.$a->node_id]['features']??[],true);
                 if ($a->tls_transition_state==='pending') {
                     try { $p=json_decode(Crypt::decryptString($a->tls_transition),true,512,JSON_THROW_ON_ERROR); if (($p['expires']??0)<=time()) $a->tls_transition_state='failed'; }
@@ -85,6 +106,7 @@ class NodeDdnsController extends Controller {
             if ($old && $old->family!==$v['family']) $v+=['report_hash'=>null,'ipv4'=>null,'ipv6'=>null,'ipv4_seen_at'=>0,'ipv6_seen_at'=>0];
             $id=$old ? $old->id : DB::table('v2_node_ddns')->insertGetId($v);
             if ($old) DB::table('v2_node_ddns')->where('id',$id)->update($v);
+            \App\Services\NetworkServer::attach($id);
             NodeDdnsService::event($id,'configuration_saved');
             return ['data'=>['id'=>$id]];
         });
@@ -92,6 +114,9 @@ class NodeDdnsController extends Controller {
     public function dropAssignment(Request $request) {
         $v=$request->validate(['id'=>'required|integer|min:1']);
         NodeDnsLifecycle::locked(fn()=>DB::transaction(function()use($v){
+            $assignment=DB::table('v2_node_ddns')->find($v['id']);
+            if ($assignment && in_array($assignment->node_type,['v2node','v2box'],true)) \App\Services\ProxyService::assertUnused($assignment->node_type,(int)$assignment->node_id);
+            abort_if((DB::table('v2_node_ddns')->where('entry_id',$v['id'])->exists() || \App\Services\NodeConnection::referencesEntry($v['id'])),409,'入口仍被节点引用，请先解除关联');
             NodeDnsLifecycle::retire($v['id']);
             DB::table('v2_node_ddns')->where('id',$v['id'])->delete();
             NodeDdnsService::event($v['id'],'configuration_removed');
@@ -105,10 +130,10 @@ class NodeDdnsController extends Controller {
         $v=$request->validate(['id'=>'required|integer|min:1']);
         return DB::transaction(function () use ($v) {
             $row=DB::table('v2_node_ddns')->where('id',$v['id'])->lockForUpdate()->first(); abort_unless($row,404);
-            $token=bin2hex(random_bytes(32));
-            DB::table('v2_node_ddns')->where('id',$row->id)->update(['report_hash'=>hash('sha256',$token),'ipv4'=>null,'ipv6'=>null,'ipv4_seen_at'=>0,'ipv6_seen_at'=>0,'next_run'=>0,'status'=>'awaiting_report']);
-            NodeDdnsService::event($row->id,'report_key_rotated');
-            return response()->json(['data'=>['reportToken'=>$token,'family'=>$row->family]],200,['Cache-Control'=>'private, no-store']);
+            $id=\App\Services\NetworkServer::attach($row->id);
+            abort_if(DB::table('v2_node_ddns')->where('server_id',$id)->count()>1,409,'此服务器被多个域名共享，请在服务器管理中重新配置上报');
+            $network=\App\Services\NetworkServer::credential($id,true);
+            return response()->json(['data'=>['reportToken'=>$network['token'],'family'=>$network['family']]],200,['Cache-Control'=>'private, no-store']);
         });
     }
     public function events(Request $request) {

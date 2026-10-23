@@ -140,7 +140,7 @@ export function NodeDiagnostics({
                     </dl>
                     {deploy && (
                         <button disabled={busy || dirty} onClick={deploy}>
-                            {node.parent_id ? "父节点部署与接入" : "部署与接入"}
+                            {node.service_id ? "代理服务部署与接入" : "部署与接入"}
                         </button>
                     )}
                 </section>
@@ -192,7 +192,7 @@ export function NodeDiagnostics({
                                 )}
                                 {data.data.inheritedFrom && (
                                     <p>
-                                        子节点沿用父节点 #
+                                        关联线路沿用代理服务 #
                                         {data.data.inheritedFrom}{" "}
                                         的运行配置与通信状态。
                                     </p>
@@ -224,7 +224,7 @@ export function NodeDiagnostics({
                                         {date(data.data.maintenance.endsAt)}
                                         {data.data.maintenance.nodeId !==
                                         node.id
-                                            ? `（父节点 #${data.data.maintenance.nodeId}）`
+                                            ? `（代理服务 #${data.data.maintenance.nodeId}）`
                                             : ""}
                                     </p>
                                 )}
@@ -379,7 +379,7 @@ function NodeMaintenanceForm({
                     </>
                 )}
                 <p className="muted">
-                    维护期间暂停该节点及其子节点的运行告警，到期自动结束。订阅隐藏不影响现有连接或客户端已保存的配置。
+                    维护期间暂停该节点及其关联线路的运行告警，到期自动结束。订阅隐藏不影响现有连接或客户端已保存的配置。
                 </p>
                 {error && (
                     <p role="alert" className="alert">

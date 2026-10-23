@@ -73,6 +73,40 @@ try {
     $schema->drop('v2_user');
     $roleMigration->up();
     $assert(!$schema->hasTable('v2_user'),'Cleanup before account-table installation is a no-op');
+    // Service associations retain subscription IDs and reject ambiguous hierarchies before DDL.
+    foreach(['v2_server_v2node','v2_server_v2box'] as $table) {
+        $schema->table($table,function(Blueprint $t){
+            $t->integer('parent_id')->nullable(); $t->string('protocol')->default('anytls');
+            $t->integer('tls')->default(1); $t->string('network')->default('tcp');
+            $t->text('group_id')->nullable(); $t->string('host')->default('stable.example.test');
+            $t->text('tls_settings')->nullable();
+            $t->integer('sort')->default(7); $t->string('name')->default('Existing subscription');
+        });
+        $db->table($table)->where('id',42)->update(['group_id'=>'[1,2]','tls_settings'=>'{"server_name":"tls.example.test","dns_env":{"key":"fixture-secret"}}']);
+        $db->table($table)->insert(['id'=>43,'parent_id'=>42,'group_id'=>'[1]','tls_settings'=>'{"server_name":"tls.example.test"}']);
+    }
+    $db->table('v2_server_v2box')->insert(['id'=>44,'parent_id'=>43,'group_id'=>'[1]']);
+    require_once __DIR__.'/../database/migrations/2026_10_23_000004_proxy_service_routes.php';
+    $topologyMigration=new ProxyServiceRoutes();
+    try {$topologyMigration->up();throw new LogicException('Nested services accepted');}
+    catch(RuntimeException $e) {$assert(str_contains($e->getMessage(),'#44'),'Invalid association identifies the affected record');}
+    $assert($schema->hasColumn('v2_server_v2node','parent_id') && !$schema->hasColumn('v2_server_v2node','service_id'),'Preflight checks both backends before changing either schema');
+    $db->table('v2_server_v2box')->where('id',44)->delete();
+    $db->table('v2_server_v2box')->where('id',43)->update(['tls_settings'=>'{"server_name":"different.example.test"}']);
+    try {$topologyMigration->up();throw new LogicException('Different TLS identity silently replaced');}
+    catch(RuntimeException $e) {$assert(str_contains($e->getMessage(),'TLS identity') && !str_contains($e->getMessage(),'fixture-secret'),'Mismatched legacy TLS identities stop migration without disclosing credentials');}
+    $db->table('v2_server_v2box')->where('id',43)->update(['tls_settings'=>'{"server_name":"tls.example.test"}']);
+    $tables[]='v2_node_connection';
+    $topologyMigration->up();$topologyMigration->up();
+    foreach(['v2_server_v2node','v2_server_v2box'] as $table) {
+        $line=$db->table($table)->where('id',43)->first();
+        $assert(!$schema->hasColumn($table,'parent_id') && $schema->hasColumn($table,'service_id'),'Legacy hierarchy column retired');
+        $assert($schema->hasColumn($table,'region_code') && $schema->hasColumn($table,'city_code') && $schema->hasColumn($table,'display_label'),'Both service backends have complete display metadata');
+        $assert($line->service_id===42 && $line->host==='stable.example.test' && $line->sort===7 && $line->group_id==='[1]' && $line->name==='Existing subscription','Migration preserves ID, endpoint, order, permissions and name');
+        $assert($line->tls_settings===null && str_contains($db->table($table)->where('id',42)->value('tls_settings'),'fixture-secret'),'Certificate configuration is retained only by the proxy service');
+    }
+    $assert($schema->hasColumn('v2_node_connection','published') && $schema->hasColumn('v2_node_connection','draft'),'Draft and published connection state stored independently');
+    $assert(!str_contains($sql,'`parent_id`') && str_contains($sql,'`service_id`'),'Fresh installation uses service association only');
 }finally{
     foreach($authServices as $authService)$authService->removeAllSession();
     DB::setDefaultConnection($originalConnection);

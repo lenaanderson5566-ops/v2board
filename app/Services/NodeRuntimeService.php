@@ -49,17 +49,17 @@ class NodeRuntimeService
         $policies=NodeMaintenance::active();
         $keys=[];
         foreach ($nodes as $node) {
-            $root=($node['parent_id'] ?? null) ?: $node['id'];
+            $root=($node['service_id'] ?? null) ?: $node['id'];
             foreach (['NODE_CONFIG_FETCH','NODE_CONFIG_RECEIPT','V2BOX_CAPABILITIES'] as $prefix)
                 $keys[]=$prefix==='V2BOX_CAPABILITIES' ? $prefix.':'.$root : $prefix.':'.$node['type'].':'.$root;
         }
         $cache=$keys ? Cache::many(array_values(array_unique($keys))) : [];
         foreach ($nodes as &$node) {
-            $root=($node['parent_id'] ?? null) ?: $node['id'];$type=$node['type'];
+            $root=($node['service_id'] ?? null) ?: $node['id'];$type=$node['type'];
             $last=$cache["NODE_CONFIG_FETCH:{$type}:{$root}"] ?? null;
             $receipt=$cache["NODE_CONFIG_RECEIPT:{$type}:{$root}"] ?? null;
             $capabilities=$type==='v2box' ? ($cache["V2BOX_CAPABILITIES:{$root}"] ?? []) : [];
-            $node['maintenance']=NodeMaintenance::effective($policies,$type,$node['id'],$node['parent_id'] ?? null);
+            $node['maintenance']=NodeMaintenance::effective($policies,$type,$node['id'],$node['service_id'] ?? null);
             $node['application_state']=self::application($last,$receipt);
             $node['core_version']=$capabilities['coreVersion'] ?? null;
             $node['issues']=[];
@@ -82,7 +82,7 @@ class NodeRuntimeService
             'configuration_unconfirmed'=>'节点配置长时间未确认','quota'=>'节点流量额度不足'];
         $conditions=[];
         foreach ($labels as $issue=>$label) {
-            $affected=array_values(array_filter($nodes,fn($n)=>empty($n['parent_id']) && empty($n['maintenance']) && in_array($issue,$n['issues'] ?? [],true)));
+            $affected=array_values(array_filter($nodes,fn($n)=>empty($n['service_id']) && empty($n['maintenance']) && in_array($issue,$n['issues'] ?? [],true)));
             if (!$affected) continue;
             $names=array_map(fn($n)=>$n['type'].' #'.$n['id'],array_slice($affected,0,5));
             $conditions['nodes:'.$issue]=['label'=>$label,'message'=>count($affected).' 个节点：'.implode('、',$names).'。请在节点管理中筛选异常节点。',
@@ -93,9 +93,9 @@ class NodeRuntimeService
 
     public static function inspect(string $type, $node): array
     {
-        $id = (int) ($node->parent_id ?: $node->id);
-        $root = $node->parent_id ? (new ServerService())->getServer($id, $type) : $node;
-        abort_unless($root, 404, '父节点不存在');
+        $id = (int) ($node->service_id ?: $node->id);
+        $root = $node->service_id ? (new ServerService())->getServer($id, $type) : $node;
+        abort_unless($root, 404, '代理服务不存在');
         $last = Cache::get("NODE_CONFIG_FETCH:{$type}:{$id}");
         $capabilities = $type === 'v2box' ? Cache::get("V2BOX_CAPABILITIES:{$id}") : null;
         $state = 'unknown';
@@ -114,12 +114,12 @@ class NodeRuntimeService
         return ['configurationState' => $state,
             'lastCheckAt'=>$lastCheck,'lastPushAt'=>$lastPush,
             'runtimeStatus'=>self::connection($lastCheck,$lastPush,ServerTrafficBudgetService::blocked($type,$id)),
-            'maintenance'=>NodeMaintenance::effective($maintenance,$type,(int)$node->id,$node->parent_id),
+            'maintenance'=>NodeMaintenance::effective($maintenance,$type,(int)$node->id,$node->service_id),
             'ownMaintenance'=>$maintenance[$type.':'.$node->id] ?? null,
             'receiptAt'=>$receipt['reportedAt'] ?? null,'lastAppliedAt'=>$receipt['lastAppliedAt'] ?? null,
             'errorCode'=>$application==='failed' ? ($receipt['errorCode'] ?? 'core') : null,
             'receiptSupported'=>in_array('configuration-receipt-v1',$capabilities['features'] ?? [],true), 'providedAt' => $last['providedAt'] ?? null,
-            'applicationState' => $application, 'inheritedFrom' => $node->parent_id ? $id : null,
+            'applicationState' => $application, 'inheritedFrom' => $node->service_id ? $id : null,
             'coreVersion' => $capabilities['coreVersion'] ?? null,
             'capabilitiesReportedAt' => $capabilities['reportedAt'] ?? null];
     }

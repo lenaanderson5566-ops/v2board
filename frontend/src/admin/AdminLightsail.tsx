@@ -238,7 +238,7 @@ export function AdminLightsail({
                     {data.data?.length === 0 && (
                         <p className="empty">
                             添加 AWS Lightsail
-                            服务器，并关联主节点即可开始管理。
+                            服务器，并关联代理服务即可开始管理。
                         </p>
                     )}
                 </State>
@@ -322,7 +322,7 @@ export function AdminLightsail({
                                         </label>
                                     ))}
                                     <label>
-                                        关联主节点
+                                        关联代理服务
                                         <select
                                             required
                                             disabled={
@@ -345,7 +345,7 @@ export function AdminLightsail({
                                         >
                                             <option value="">请选择</option>
                                             {nodes
-                                                .filter((n) => !n.parent_id)
+                                                .filter((n) => !n.service_id)
                                                 .map((n) => (
                                                     <option
                                                         key={`${n.type}:${n.id}`}

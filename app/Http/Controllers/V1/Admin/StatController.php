@@ -94,8 +94,8 @@ class StatController extends Controller
     public function getServerLastRank()
     {
         $servers = [
-            'v2box' => ServerV2box::where('parent_id', null)->get()->toArray(),
-            'v2node' => ServerV2node::where('parent_id', null)->get()->toArray()
+            'v2box' => ServerV2box::where('service_id', null)->get()->toArray(),
+            'v2node' => ServerV2node::where('service_id', null)->get()->toArray()
         ];
         $startAt = strtotime('-1 day', strtotime(date('Y-m-d')));
         $endAt = strtotime(date('Y-m-d'));
@@ -130,8 +130,8 @@ class StatController extends Controller
     public function getServerTodayRank()
     {
         $servers = [
-            'v2box' => ServerV2box::where('parent_id', null)->get()->toArray(),
-            'v2node' => ServerV2node::where('parent_id', null)->get()->toArray()
+            'v2box' => ServerV2box::where('service_id', null)->get()->toArray(),
+            'v2node' => ServerV2node::where('service_id', null)->get()->toArray()
         ];
         $startAt = strtotime(date('Y-m-d'));
         $endAt = time();

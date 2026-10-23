@@ -152,7 +152,7 @@ try {
     $r=$call('GET',$root.'/users');$list=json_decode($r->getContent(),true)['data'];
     $assert(count($list)===1 && $list[0]['uuid']===$user->uuid && array_key_exists('speedLimit',$list[0]),'User resource projection');
     $maintenance=App\Services\NodeMaintenance::class;
-    $child=$node->replicate();$child->name='maintenance child';$child->parent_id=$nodeId;$child->save();
+    $child=$node->replicate();$child->name='maintenance child';$child->service_id=$nodeId;$child->save();
     $maintenance::save('v2box',$nodeId,['enabled'=>true,'reason'=>'maintenance-test','endsAt'=>time()+3600,'hideSubscription'=>true]);
     $assert(!collect((new App\Services\ServerService())->getAvailableV2node($user,'v2box'))->contains('id',$nodeId),'Maintenance hides new subscription entry');
     $assert(!collect((new App\Services\ServerService())->getAvailableV2node($user,'v2box'))->contains('id',$child->id),'Parent maintenance hides child subscription');
@@ -536,7 +536,7 @@ try {
     DB::table('v2_node_credential')->where('id',$freshId)->update(['expires_at'=>time()+1800]);
     $assert($redeem($staleToken)->getStatusCode()===409,'Credential policy changes invalidate outstanding deployment');
     DB::table('v2_node_credential')->where('id',$freshId)->update(['expires_at'=>null]);
-    $child=$node->replicate();$child->name='Deployment child';$child->parent_id=$nodeId;$child->save();
+    $child=$node->replicate();$child->name='Deployment child';$child->service_id=$nodeId;$child->save();
     $assert($deploymentCall(array_merge($deployParams,['id'=>(int)$child->id]))->getStatusCode()===422,'Child node cannot issue deployment grant');
     $node->refresh();$node->tls=1;$node->tls_settings=['cert_mode'=>'self','server_name'=>'deployment.example.test'];$node->save();
     $child->tls=0;$child->save();
@@ -556,13 +556,13 @@ try {
     $assert(!isset($networkData['apiKey']) && !isset($networkData['credentialId']) && !isset($networkData['deployment']),'Network grant cannot obtain node credentials or certificate workflow');
     $assert(DB::table('v2_node_credential')->where('node_id',$nodeId)->where('node_type','v2box')->get()->toJson()===$keysBefore,'Network setup never rotates node credentials');
     $networkAfter=DB::table('v2_node_ddns')->find($deploymentBinding);
-    $assert($networkAfter->report_hash===hash('sha256',$networkData['networkReport']['token']) && $networkAfter->ipv4===$networkBefore->ipv4 && $networkAfter->ipv4_seen_at===$networkBefore->ipv4_seen_at && $networkAfter->next_run===$networkBefore->next_run,'Network enrollment changes only reporting key and retains current IP/provider backoff');
+    $assert(DB::table('v2_network_server')->find($networkAfter->server_id)->report_hash===hash('sha256',$networkData['networkReport']['token']) && $networkAfter->ipv4===$networkBefore->ipv4 && $networkAfter->ipv4_seen_at===$networkBefore->ipv4_seen_at && $networkAfter->next_run===$networkBefore->next_run,'Network enrollment changes only reporting key and retains current IP/provider backoff');
     $assert($redeem($networkToken)->getStatusCode()===401,'Network grant can only be redeemed once');
     $newGrant=$deploymentCall($deployParams);preg_match('/nd_[a-f0-9]{64}/',json_decode($newGrant->getContent(),true)['data']['command'],$m);$newToken=$m[0];
     $result=$redeem($newToken);$enrolled=json_decode($result->getContent(),true)['data']??[];
     $assert($result->getStatusCode()===200 && $enrolled['nodeId']===$nodeId && $enrolled['apiHost']==='https://panel.example.invalid','One-use enrollment returns authoritative node identity: '.$result->getStatusCode());
     $assert(str_contains($result->headers->get('Cache-Control'),'no-store'),'Credential enrollment response not cached');
-    $assert(($enrolled['networkReport']['family']??'')==='dual' && preg_match('/^[a-f0-9]{64}$/',$enrolled['networkReport']['token']??'') && DB::table('v2_node_ddns')->find($deploymentBinding)->report_hash===hash('sha256',$enrolled['networkReport']['token']),'Enrollment configures scoped address reporting without Cloudflare secret');
+    $assert(($enrolled['networkReport']['family']??'')==='dual' && preg_match('/^[a-f0-9]{64}$/',$enrolled['networkReport']['token']??'') && DB::table('v2_network_server')->find($enrolled['networkReport']['serverId'])->report_hash===hash('sha256',$enrolled['networkReport']['token']),'Enrollment configures scoped address reporting without Cloudflare secret');
     $workflow=$enrolled['deployment']['token']??'';
     $progress=fn($action,$bearer=null)=>$call('POST',$root.'/enrollments/progress',['action'=>$action],['HTTP_AUTHORIZATION'=>'Bearer '.($bearer??$workflow)]);
     $assert(preg_match('/^dp_[a-f0-9]{64}$/',$workflow),'Managed deployment receives scoped completion token');

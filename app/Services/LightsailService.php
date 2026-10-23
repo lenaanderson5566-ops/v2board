@@ -61,7 +61,7 @@ class LightsailService
                 return;
             }
             $node = (new ServerService())->getServer($row->node_id, $row->node_type);
-            if (!$node || $node->parent_id) {
+            if (!$node || $node->service_id) {
                 throw new \RuntimeException("node_missing");
             }
             $client = $this->client($row);

@@ -299,7 +299,10 @@ CREATE TABLE `v2_server_v2node` (
                                     `group_id` varchar(255) NOT NULL,
                                     `route_id` varchar(255) DEFAULT NULL,
                                     `name` varchar(255) NOT NULL,
-                                    `parent_id` int(11) DEFAULT NULL,
+                                    `service_id` int(11) DEFAULT NULL,
+                                    `region_code` varchar(2) DEFAULT NULL,
+                                    `city_code` varchar(64) DEFAULT NULL,
+                                    `display_label` varchar(64) DEFAULT NULL,
                                     `host` varchar(255) NOT NULL,
                                     `listen_ip` varchar(255) NOT NULL DEFAULT '0.0.0.0',
                                     `port` varchar(11) NOT NULL,
@@ -329,7 +332,7 @@ CREATE TABLE `v2_server_v2node` (
                                     `padding_scheme` text COMMENT 'anytls填充配置',
                                     `created_at` int(11) NOT NULL,
                                     `updated_at` int(11) NOT NULL,
-                                    PRIMARY KEY (`id`)
+                                    PRIMARY KEY (`id`), KEY `proxy_service` (`service_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 DROP TABLE IF EXISTS `v2_stat`;
@@ -837,10 +840,21 @@ CREATE TABLE IF NOT EXISTS `v2_ddns_credential` (
  `id` int unsigned NOT NULL AUTO_INCREMENT PRIMARY KEY, `name` varchar(100) NOT NULL, `zone_id` varchar(32) NOT NULL,
  `secret` text NOT NULL, `root_domain` varchar(253) DEFAULT NULL, `next_run` bigint NOT NULL DEFAULT 0, `status` varchar(40) NOT NULL DEFAULT 'ready'
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+CREATE TABLE IF NOT EXISTS `v2_network_server` (
+ `id` int unsigned NOT NULL AUTO_INCREMENT PRIMARY KEY, `name` varchar(100) NOT NULL, `family` varchar(8) NOT NULL,
+ `enabled` tinyint(1) NOT NULL DEFAULT 1, `report_hash` varchar(64) DEFAULT NULL, `report_secret` text DEFAULT NULL,
+ `ipv4` varchar(45) DEFAULT NULL, `ipv6` varchar(45) DEFAULT NULL,
+ `ipv4_seen_at` bigint NOT NULL DEFAULT 0, `ipv6_seen_at` bigint NOT NULL DEFAULT 0,
+ UNIQUE KEY `network_server_report` (`report_hash`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 CREATE TABLE IF NOT EXISTS `v2_node_ddns` (
  `id` int unsigned NOT NULL AUTO_INCREMENT PRIMARY KEY, `credential_id` int unsigned NOT NULL,
  `node_type` varchar(10) NOT NULL, `node_id` int unsigned NOT NULL, `domain` varchar(253) NOT NULL,
  `family` varchar(8) NOT NULL, `enabled` tinyint(1) NOT NULL DEFAULT 1, `managed` tinyint(1) NOT NULL DEFAULT 0,
+ `server_id` int unsigned DEFAULT NULL, `entry_id` int unsigned DEFAULT NULL, `entry_port` smallint unsigned DEFAULT NULL,
+ `published_origin` varchar(253) DEFAULT NULL, `published_port` smallint unsigned DEFAULT NULL, KEY `ddns_published_origin` (`published_origin`),
+ `purpose` varchar(10) NOT NULL DEFAULT 'node', `relay_verified_at` bigint NOT NULL DEFAULT 0,
+ KEY `ddns_server` (`server_id`), KEY `ddns_entry` (`entry_id`),
  `tls_transition` longtext DEFAULT NULL, `tls_transition_state` varchar(16) NOT NULL DEFAULT 'none',
  `published_domain` varchar(253) DEFAULT NULL, `report_hash` varchar(64) DEFAULT NULL,
  `ipv4` varchar(45) DEFAULT NULL, `ipv6` varchar(45) DEFAULT NULL,
@@ -861,4 +875,13 @@ CREATE TABLE IF NOT EXISTS `v2_node_dns_record` (
  `delete_after` bigint NOT NULL DEFAULT 0, `next_run` bigint NOT NULL DEFAULT 0,
  UNIQUE KEY `node_dns_identity` (`credential_id`,`domain`,`type`), UNIQUE KEY `node_dns_owner` (`owner`),
  KEY `node_dns_assignment` (`assignment_id`), KEY `node_dns_credential` (`credential_id`), KEY `node_dns_delete` (`delete_after`), KEY `node_dns_next` (`next_run`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS `v2_node_connection` (
+ `id` int unsigned NOT NULL AUTO_INCREMENT,
+ `node_type` varchar(10) NOT NULL, `node_id` int unsigned NOT NULL,
+ `entry_id` int unsigned DEFAULT NULL, `entry_port` smallint unsigned DEFAULT NULL,
+ `draft` text NOT NULL, `published` text DEFAULT NULL,
+ `verified_at` bigint NOT NULL DEFAULT 0, `revision` int unsigned NOT NULL DEFAULT 1,
+ PRIMARY KEY (`id`), UNIQUE KEY `connection_node` (`node_type`,`node_id`), KEY `connection_entry` (`entry_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;

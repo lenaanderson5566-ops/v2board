@@ -69,7 +69,7 @@ export function formPresentation(fields: Field[], kind: string): Field[] {
                     "protocol",
                     "tls",
                     "network",
-                    "parent_id",
+                    "service_id",
                     "route_id",
                 ]
               : kind === "coupons"

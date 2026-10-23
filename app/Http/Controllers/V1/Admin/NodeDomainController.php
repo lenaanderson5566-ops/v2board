@@ -11,31 +11,48 @@ use Illuminate\Support\Facades\DB;
 final class NodeDomainController extends Controller
 {
     public function bind(Request $request) {
-        $v=$request->validate(['credential_id'=>'required|integer|min:1','node_type'=>'required|in:v2node,v2box','node_id'=>'required|integer|min:1','prefix'=>'nullable|string|max:63','family'=>'required|in:ipv4,ipv6,dual']);
+        $v=$request->validate(['credential_id'=>'required|integer|min:1','node_type'=>'required|in:v2node,v2box','node_id'=>'required|integer|min:1','prefix'=>'nullable|string|max:63','family'=>'required|in:ipv4,ipv6,dual','server_id'=>'nullable|integer|min:1','entry_id'=>'nullable|integer|min:1','entry_port'=>'nullable|integer|min:1|max:65535']);
         return NodeDnsLifecycle::locked(fn()=>DB::transaction(function()use($v){
             $c=DB::table('v2_ddns_credential')->find($v['credential_id']);
             abort_unless($c && $c->root_domain,422,'请先验证根域名');
             $n=DB::table('v2_server_'.$v['node_type'])->where('id',$v['node_id'])->lockForUpdate()->first();
-            abort_unless($n && !$n->parent_id,422,'请选择有效的父节点');
+            abort_unless($n && !$n->service_id,422,'请选择有效的代理服务');
             $old=DB::table('v2_node_ddns')->where('node_type',$v['node_type'])->where('node_id',$v['node_id'])->first();
+            if ($old && !empty($v['server_id']) && (int)$v['server_id']!==(int)$old->server_id) \App\Services\ProxyService::assertUnused($v['node_type'],(int)$v['node_id']);
             $prefix=strtolower($v['prefix']??'');
             if (!$prefix) $prefix='n-'.bin2hex(random_bytes(5));
             $domain=NodeDnsLifecycle::name($prefix,$c->root_domain);
+            $entry=null;
+            if (!empty($v['entry_id'])) {
+                abort_unless($v['node_type']==='v2box' && !empty($v['entry_port']),422,'中转需要 V2Box 节点和入口端口');
+                $entry=DB::table('v2_node_ddns')->find($v['entry_id']);
+                abort_unless($entry && $entry->purpose==='entry' && $entry->enabled,422,'请选择有效入口域名');
+                $entryIds=DB::table('v2_node_ddns')->where('purpose','entry')->where('server_id',$entry->server_id)->pluck('id');
+                abort_if(DB::table('v2_node_connection')->where(function($q)use($entryIds,$v){
+                    $q->where(fn($q)=>$q->whereIn('entry_id',$entryIds)->where('entry_port',$v['entry_port']))
+                        ->orWhere(fn($q)=>$q->whereIn('published->entry_id',$entryIds)->where('published->port',$v['entry_port']));
+                })->exists(),409,'入口服务器端口已被关联线路占用');
+                abort_if(DB::table('v2_node_ddns')->whereIn('entry_id',DB::table('v2_node_ddns')->where('purpose','entry')->where('server_id',$entry->server_id)->select('id'))->where('entry_port',$v['entry_port'])->where('id','!=',$old->id??0)->exists(),409,'此入口端口已被另一节点使用');
+                abort_if(!empty($v['server_id']) && $entry->server_id==($v['server_id']??$old->server_id??0),422,'入口和回源应选择不同服务器');
+            }
             $tls=json_decode($n->tls_settings??'{}',true)?:[];
+            if ($entry && (int)$n->tls===1) \App\Services\NetworkServer::tls((object)['entry_id'=>$entry->id],$tls);
             if ((int)$n->tls===1 && in_array($tls['cert_mode']??'',['http','dns'],true) && empty($tls['server_name'])) {
-                $tls['server_name']=$domain;
+                $tls['server_name']=$entry ? $entry->domain : $domain;
                 DB::table('v2_server_'.$v['node_type'])->where('id',$n->id)->update(['tls_settings'=>json_encode($tls),'updated_at'=>time()]);
             }
             abort_if(DB::table('v2_node_ddns')->where('domain',$domain)->where('id','!=',$old->id??0)->exists(),409,'域名已绑定其他节点');
             abort_if(DB::table('v2_node_dns_record')->where('domain',$domain)->where('delete_after','>',0)->exists(),409,'此域名仍在历史解析清理中');
             if ($old && ($old->domain!==$domain || $old->credential_id!=$c->id)) {
                 // Retire abandoned preparations, but retain the currently published records until activation.
-                DB::table('v2_node_dns_record')->where('assignment_id',$old->id)->where('domain','!=',$old->published_domain)->where('delete_after',0)->update(['delete_after'=>time()+1,'next_run'=>0,'status'=>'pending_cleanup']);
+                DB::table('v2_node_dns_record')->where('assignment_id',$old->id)->where('domain','!=',$old->published_domain)->when($old->published_origin,fn($q)=>$q->where('domain','!=',$old->published_origin))->where('delete_after',0)->update(['delete_after'=>time()+1,'next_run'=>0,'status'=>'pending_cleanup']);
             }
-            $data=['credential_id'=>$c->id,'node_type'=>$v['node_type'],'node_id'=>$n->id,'domain'=>$domain,'family'=>$v['family'],'enabled'=>true,'managed'=>true,'published_domain'=>$n->host,'next_run'=>0,'status'=>'awaiting_report'];
+            $data=['entry_id'=>$entry?->id,'entry_port'=>$entry ? $v['entry_port'] : null,'relay_verified_at'=>0,'tls_transition'=>null,'tls_transition_state'=>'none','credential_id'=>$c->id,'node_type'=>$v['node_type'],'node_id'=>$n->id,'domain'=>$domain,'family'=>$v['family'],'enabled'=>true,'managed'=>true,'published_domain'=>$n->host,'next_run'=>0,'status'=>'awaiting_report'];
             if ($old && $old->family!==$v['family']) $data+=['report_hash'=>null,'ipv4'=>null,'ipv6'=>null,'ipv4_seen_at'=>0,'ipv6_seen_at'=>0];
             $id=$old?$old->id:DB::table('v2_node_ddns')->insertGetId($data);
             if ($old) DB::table('v2_node_ddns')->where('id',$id)->update($data);
+            $serverId=\App\Services\NetworkServer::attach($id,$v['server_id']??null);
+            abort_if($entry && $entry->server_id==$serverId,422,'入口和回源应选择不同服务器');
             NodeDdnsService::event($id,'configuration_saved');
             return ['data'=>['id'=>$id,'domain'=>$domain]];
         }));
@@ -108,12 +125,13 @@ final class NodeDomainController extends Controller
         abort_if($rows->count()>200,422,'单次最多迁移 200 个节点');
         $plan=[];
         foreach ($rows as $r) {
+            abort_if($r->purpose==='entry' && (DB::table('v2_node_ddns')->where('entry_id',$r->id)->exists() || \App\Services\NodeConnection::referencesEntry($r->id)),409,'共享入口请在新根域名下新建入口，再逐个线路验证切换');
             abort_unless($r->managed && str_ends_with($r->domain,'.'.$a->root_domain),409,'存在未纳入托管的绑定，请先处理');
             abort_unless(NodeDdnsService::nodeExists($r),409,'请先清理已删除节点的绑定');
             $prefix=substr($r->domain,0,-strlen('.'.$a->root_domain));
             $domain=NodeDnsLifecycle::name($prefix,$b->root_domain);
             abort_if(DB::table('v2_node_ddns')->where('domain',$domain)->where('id','!=',$r->id)->exists() || DB::table('v2_node_dns_record')->where('domain',$domain)->where(fn($q)=>$q->where('assignment_id','!=',$r->id)->orWhere('delete_after','>',0))->exists(),409,'目标域名存在冲突或仍在清理中');
-            $plan[]=['id'=>$r->id,'node_type'=>$r->node_type,'node_id'=>$r->node_id,'old'=>$r->domain,'new'=>$domain,'published'=>$r->published_domain,'family'=>$r->family];
+            $plan[]=['id'=>$r->id,'node_type'=>$r->node_type,'node_id'=>$r->node_id,'old'=>$r->domain,'new'=>$domain,'published'=>$r->published_domain,'published_origin'=>$r->published_origin,'family'=>$r->family];
         }
         return ['rows'=>$plan,'proof'=>hash('sha256',json_encode([$from,$to,$plan]))];
     }
@@ -125,7 +143,7 @@ final class NodeDomainController extends Controller
             abort_unless(hash_equals($plan['proof'],$v['proof']),409,'节点绑定已变化，请重新预览');
             DB::transaction(function()use($plan,$v){
                 foreach ($plan['rows'] as $r) {
-                    DB::table('v2_node_dns_record')->where('assignment_id',$r['id'])->where('domain','!=',$r['published'])->where('delete_after',0)->update(['delete_after'=>time()+1,'next_run'=>0,'status'=>'pending_cleanup']);
+                    DB::table('v2_node_dns_record')->where('assignment_id',$r['id'])->where('domain','!=',$r['published'])->when($r['published_origin'],fn($q)=>$q->where('domain','!=',$r['published_origin']))->where('delete_after',0)->update(['delete_after'=>time()+1,'next_run'=>0,'status'=>'pending_cleanup']);
                     DB::table('v2_node_ddns')->where('id',$r['id'])->update(['credential_id'=>$v['to'],'domain'=>$r['new'],'next_run'=>0,'status'=>'awaiting_report']);
                     NodeDdnsService::event($r['id'],'domain_prepared');
                 }
@@ -137,7 +155,7 @@ final class NodeDomainController extends Controller
         $v=$request->validate(['id'=>'nullable|integer|min:1']);
         return NodeDnsLifecycle::locked(function()use($v){
             if (!empty($v['id'])) DB::table('v2_node_dns_record')->where('id',$v['id'])->where('delete_after','>',0)->update(['next_run'=>0]);
-            foreach (DB::table('v2_node_ddns')->get(['id','node_type','node_id']) as $a) {
+            foreach (DB::table('v2_node_ddns')->get(['id','node_type','node_id','purpose','server_id']) as $a) {
                 if (!NodeDdnsService::nodeExists($a)) NodeDnsLifecycle::removeNode($a->node_type,$a->node_id);
             }
             NodeDnsLifecycle::retireOrphans();

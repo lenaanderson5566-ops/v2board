@@ -23,7 +23,7 @@ export function ServerTrafficBudgets({
     const content = (
         <div className="pad server-traffic-content">
             <p>
-                将同一服务器的父节点绑定到同一额度。首次绑定导入已有的近期节点统计；子节点自动沿用父节点。0
+                将同一服务器的代理服务绑定到同一额度。首次绑定导入已有的近期节点统计；关联线路自动沿用代理服务。0
                 表示不限额，达限后停止连接，提高限额后自动恢复。
             </p>
             <State {...d}>
@@ -173,7 +173,7 @@ export function ServerTrafficBudgets({
                     <fieldset>
                         <legend>服务器上的节点</legend>
                         {nodes
-                            .filter((n) => !n.parent_id)
+                            .filter((n) => !n.service_id)
                             .map((n) => {
                                 const selected = draft.nodes.some(
                                     (x: Row) =>

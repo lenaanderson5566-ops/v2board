@@ -52,8 +52,8 @@ class LightsailController extends \App\Http\Controllers\Controller
         $v = $request->validate(['id' => 'nullable|integer|min:1', 'name' => 'required|string|max:100', 'region' => ['required', 'string', 'regex:/^[a-z]{2}(-[a-z]+)+-\d$/'], 'instance' => ['required', 'string', 'max:255', 'regex:/^[A-Za-z0-9][A-Za-z0-9_.-]*$/'], 'node_type' => 'required|in:v2node,v2box', 'node_id' => 'required|integer|min:1', 'accessKey' => 'nullable|string|max:128', 'secretKey' => 'nullable|string|max:256', 'sessionToken' => 'nullable|string|max:8192']);
         DB::transaction(function () use ($v) {
             $node = DB::table('v2_server_' . $v['node_type'])->where('id', $v['node_id'])->lockForUpdate()->first();
-            if (!$node || $node->parent_id) {
-                abort(422, '请选择有效的主节点');
+            if (!$node || $node->service_id) {
+                abort(422, '请选择有效的代理服务');
             }
             $row = isset($v['id']) ? DB::table('v2_lightsail_server')->where('id', $v['id'])->lockForUpdate()->first() : null;
             if (isset($v['id']) && !$row) {
@@ -77,7 +77,7 @@ class LightsailController extends \App\Http\Controllers\Controller
                 $physical->where('id', '!=', $row->id);
             }
             if ($physical->exists()) {
-                abort(409, '实例已经配置，请复用主节点关联');
+                abort(409, '实例已经配置，请复用代理服务关联');
             }
             $data = array_intersect_key($v, array_flip(['name', 'region', 'instance', 'node_type', 'node_id']));
             if (!empty($v['sessionToken']) && (empty($v['accessKey']) || empty($v['secretKey']))) {

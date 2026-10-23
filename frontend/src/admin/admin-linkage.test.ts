@@ -282,9 +282,9 @@ it("selects routes on nodes and edits native rules only in route management", ()
 });
 
 it("clears backend-scoped settings and requires a compatible protocol on conversion", () => {
-    const source = { id: 7, type: "v2node", protocol: "vless", route_id: [1], parent_id: 3, network: "xhttp", encryption: "mlkem768x25519plus", tls_settings: { server_name: "keep.example", ech: "custom", ech_key: "key" } };
+    const source = { id: 7, type: "v2node", protocol: "vless", route_id: [1], service_id: 3, network: "xhttp", encryption: "mlkem768x25519plus", tls_settings: { server_name: "keep.example", ech: "custom", ech_key: "key" } };
     const target = nodeBackendInitial(source, "v2box");
-    expect(target).toMatchObject({ route_id: [], parent_id: null, network: "", tls_settings: { server_name: "keep.example" } });
+    expect(target).toMatchObject({ route_id: [], service_id: null, network: "", tls_settings: { server_name: "keep.example" } });
     expect(target.encryption).toBeUndefined();
     expect(target.tls_settings.ech).toBeUndefined();
     expect(source.route_id).toEqual([1]);

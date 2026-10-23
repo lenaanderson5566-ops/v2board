@@ -82,7 +82,17 @@ class AdminRoute
             $router->post('/server/domains/cleanup', 'V1\\Admin\\NodeDomainController@cleanup')->middleware('throttle:30,1');
             $router->post('/server/domains/inspect', 'V1\\Admin\\NodeDomainController@inspect')->middleware('throttle:30,1');
             $router->post('/server/domains/remove-historical', 'V1\\Admin\\NodeDomainController@removeHistorical')->middleware('throttle:30,1');
+            $router->get('/server/connections/fetch', 'V1\\Admin\\NodeConnectionController@fetch');
+            $router->post('/server/connections/save', 'V1\\Admin\\NodeConnectionController@save');
+            $router->post('/server/connections/publish', 'V1\\Admin\\NodeConnectionController@publish');
             $router->get('/server/ddns/fetch', 'V1\\Admin\\NodeDdnsController@fetch');
+            $router->post('/server/network/save', 'V1\\Admin\\NetworkServerController@save');
+            $router->post('/server/network/drop', 'V1\\Admin\\NetworkServerController@drop');
+            $router->post('/server/network/enroll', 'V1\\Admin\\NetworkServerController@enroll');
+            $router->post('/server/network/reset', 'V1\\Admin\\NetworkServerController@reset');
+            $router->post('/server/network/entry', 'V1\\Admin\\NetworkServerController@entry');
+            $router->post('/server/network/entry-drop', 'V1\\Admin\\NetworkServerController@dropEntry');
+            $router->post('/server/network/confirm-relay', 'V1\\Admin\\NetworkServerController@confirmRelay');
             $router->get('/server/ddns/events', 'V1\\Admin\\NodeDdnsController@events');
             $router->post('/server/ddns/credentials/save', 'V1\\Admin\\NodeDdnsController@saveCredential');
             $router->post('/server/ddns/credentials/drop', 'V1\\Admin\\NodeDdnsController@dropCredential');

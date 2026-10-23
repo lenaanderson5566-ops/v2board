@@ -7,7 +7,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 class ServerTrafficBudgetController extends Controller {
  public function fetch(Request $request){
-  $existing=['v2node'=>\App\Models\ServerV2node::pluck('parent_id','id'),'v2box'=>\App\Models\ServerV2box::pluck('parent_id','id')];
+  $existing=['v2node'=>\App\Models\ServerV2node::pluck('service_id','id'),'v2box'=>\App\Models\ServerV2box::pluck('service_id','id')];
   $bindings=DB::table('v2_server_traffic_binding')->get()->filter(fn($n)=>$existing[$n->node_type]->has($n->node_id) && !$existing[$n->node_type]->get($n->node_id))->groupBy('budget_id');
   $data=DB::table('v2_server_traffic_budget')->orderBy('id')->get()->map(fn($b)=>Budgets::resource($b)+['nodes'=>($bindings->get($b->id) ?? collect())->map(fn($n)=>['type'=>$n->node_type,'id'=>(int)$n->node_id])->values()->all()]);
   return response()->json(['data'=>$data]);
@@ -20,7 +20,7 @@ class ServerTrafficBudgetController extends Controller {
    $id=$v['id'] ?? null;if($id)abort_unless(DB::table('v2_server_traffic_budget')->find($id),404);
    $keys=[];
    usort($v['nodes'],fn($a,$b)=>[$a['type'],$a['id']] <=> [$b['type'],$b['id']]);
-   foreach($v['nodes'] as $n){$key=$n['type'].':'.$n['id'];abort_if(isset($keys[$key]),422,'Duplicate node');$keys[$key]=true;$node=(new ServerService())->getServer($n['id'],$n['type']);abort_unless($node && !$node->parent_id,422,'Select a parent node');DB::table('v2_server_'.$n['type'])->where('id',$n['id'])->lockForUpdate()->first();$binding=DB::table('v2_server_traffic_binding')->where('node_type',$n['type'])->where('node_id',$n['id'])->first();abort_if($binding && $binding->budget_id!=$id,409,'Node already belongs to another server');}
+   foreach($v['nodes'] as $n){$key=$n['type'].':'.$n['id'];abort_if(isset($keys[$key]),422,'Duplicate node');$keys[$key]=true;$node=(new ServerService())->getServer($n['id'],$n['type']);abort_unless($node && !$node->service_id,422,'Select a parent node');DB::table('v2_server_'.$n['type'])->where('id',$n['id'])->lockForUpdate()->first();$binding=DB::table('v2_server_traffic_binding')->where('node_type',$n['type'])->where('node_id',$n['id'])->first();abort_if($binding && $binding->budget_id!=$id,409,'Node already belongs to another server');}
    $fields=['name'=>$v['name'],'limit_bytes'=>$v['limitBytes'],'counting_mode'=>$v['countingMode'],'reset_day'=>$v['resetDay']];
    if($id)DB::table('v2_server_traffic_budget')->where('id',$id)->update($fields);else $id=DB::table('v2_server_traffic_budget')->insertGetId($fields);
    DB::table('v2_server_traffic_binding')->where('budget_id',$id)->delete();

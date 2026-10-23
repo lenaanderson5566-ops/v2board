@@ -225,7 +225,7 @@ export function linkNode(key: string, next: unknown, values: Row): Row {
     }
 
     if (key === "protocol") {
-        result.parent_id = "";
+        result.service_id = "";
         if (tlsRequired.includes(String(next))) result.tls = 1;
         else if (next !== "vless" && Number(values.tls) === 2) result.tls = 1;
         if (

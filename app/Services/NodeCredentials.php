@@ -19,6 +19,10 @@ final class NodeCredentials
         return !self::migrated('global',0);
     }
     public static function authenticate(string $token,string $type,int $id,bool $bearer): void {
+        if (in_array($type,['v2node','v2box'],true)) {
+            $service=self::model($type)::find($id);
+            abort_if($service && $service->service_id,401);
+        }
         if (str_starts_with($token,'nk_')) {
             abort_unless($bearer && preg_match('/^nk_([a-f0-9]{32})\.([a-f0-9]{64})$/D',$token,$m),401);
             $key=DB::table('v2_node_credential')->where('id',$m[1])->first();
@@ -36,7 +40,7 @@ final class NodeCredentials
         abort_unless(self::legacyEnabled() && !self::migrated($type,$id),401);
         if (in_array($type,['v2node','v2box'],true)) {
             $model=self::model($type); $node=$model::find($id);
-            abort_if($node && $node->parent_id && self::migrated($type,(int)$node->parent_id),401);
+            abort_if($node && $node->service_id && self::migrated($type,(int)$node->service_id),401);
         }
     }
     public static function listing(string $type,int $id): array {
@@ -55,9 +59,9 @@ final class NodeCredentials
         $nodes=[];
         foreach(['v2node','v2box'] as $type) {
             $model=self::model($type);
-            foreach($model::get(['id','name','parent_id']) as $node) {
+            foreach($model::get(['id','name','service_id']) as $node) {
                 // Virtual child nodes inherit their parent's connection.
-                if (!$node->parent_id && !isset($states[$type.':'.$node->id]))
+                if (!$node->service_id && !isset($states[$type.':'.$node->id]))
                     $nodes[]=['type'=>$type,'id'=>(int)$node->id,'name'=>$node->name];
             }
         }
@@ -67,7 +71,7 @@ final class NodeCredentials
         abort_if(count(self::legacyNodes())>0,409,'仍有未迁移节点，请先完成独立凭据配置');
         foreach(['v2node','v2box'] as $type) {
             $model=self::model($type);
-            foreach($model::where(function($q){$q->whereNull('parent_id')->orWhere('parent_id',0);})->pluck('id') as $id)
+            foreach($model::where(function($q){$q->whereNull('service_id')->orWhere('service_id',0);})->pluck('id') as $id)
                 abort_unless(self::keys($type,(int)$id)->whereNull('revoked_at')->whereNull('expires_at')->whereNotNull('last_used_at')->exists(),409,'请先确认所有节点已使用有效的新凭据连接');
         }
         DB::table('v2_node_credential_state')->updateOrInsert(['node_type'=>'global','node_id'=>0],['migrated_at'=>time()]);
@@ -77,7 +81,8 @@ final class NodeCredentials
     }
     public static function issue(string $type,int $id,int $actor): array {
         return DB::transaction(function()use($type,$id,$actor){
-            $model=self::model($type); abort_unless($model::whereKey($id)->lockForUpdate()->first(),404);
+            $model=self::model($type); $service=$model::whereKey($id)->lockForUpdate()->first(); abort_unless($service,404);
+            abort_if($service->service_id,422,'接入线路使用关联代理服务的部署凭据');
             $now=time();
             // Only one pending rotation at a time. A second attempt must not silently discard a key.
             abort_if(self::keys($type,$id)->whereNull('revoked_at')->where('expires_at','>',$now)->exists(),409,'请先完成当前轮换或等待宽限期结束');

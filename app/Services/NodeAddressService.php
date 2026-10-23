@@ -19,7 +19,7 @@ class NodeAddressService
     {
         $reports = DB::table('v2_node_ddns')->where('enabled', 1)->get()->keyBy(fn ($r) => $r->node_type.':'.$r->node_id);
         foreach ($nodes as &$node) {
-            $id = ($node['parent_id'] ?? null) ?: $node['id'];
+            $id = ($node['service_id'] ?? null) ?: $node['id'];
             $key = $node['type'].':'.$id;
             $report = $reports->get($key);
             $ips = [];

@@ -14,15 +14,15 @@ final class NodeMaintenance
         ])->all();
     }
 
-    public static function effective(array $policies, string $type, int $id, ?int $parent): ?array
+    public static function effective(array $policies, string $type, int $id, ?int $serviceId): ?array
     {
-        // Parent maintenance covers every child using that process.
-        return ($parent ? ($policies[$type.':'.$parent] ?? null) : null) ?? ($policies[$type.':'.$id] ?? null);
+        // Service maintenance covers all associated connections.
+        return ($serviceId ? ($policies[$type.':'.$serviceId] ?? null) : null) ?? ($policies[$type.':'.$id] ?? null);
     }
 
-    public static function hidden(array $policies, string $type, int $id, ?int $parent): bool
+    public static function hidden(array $policies, string $type, int $id, ?int $serviceId): bool
     {
-        return !empty($policies[$type.':'.$id]['hideSubscription']) || ($parent && !empty($policies[$type.':'.$parent]['hideSubscription']));
+        return !empty($policies[$type.':'.$id]['hideSubscription']) || ($serviceId && !empty($policies[$type.':'.$serviceId]['hideSubscription']));
     }
 
     public static function save(string $type, int $id, array $input): void

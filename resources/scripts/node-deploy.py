@@ -7,6 +7,7 @@ import json
 import os
 from pathlib import Path
 import re
+import shutil
 import socket
 import ssl
 import subprocess
@@ -140,16 +141,59 @@ class Deployment:
             placeholder=len(previous)==1 and previous[0].get('ApiKey')=='REPLACE_ME' and previous[0].get('ApiHost')=='https://panel.example.com'
             if not placeholder and previous!=[node]:
                 raise DeploymentError('Existing node configuration changed; preserved without overwrite')
+            if not placeholder:
+                # Replacing an identical file wakes the live configuration watcher.
+                # Preserve operator logging settings and avoid a needless reload on resume.
+                os.chmod(self.config,0o600)
+                return
         write_private(self.config,{'Log':{'Level':'info'},'Nodes':[node]})
+
+    def service_state(self):
+        if shutil.which('systemctl'):
+            result=subprocess.run(['systemctl','show','v2box','--property=ActiveState','--value'],capture_output=True,text=True,timeout=10)
+            state=result.stdout.strip()
+            if result.returncode==0 and state in ('active','activating','reloading','deactivating','inactive','failed'):
+                return state
+        elif shutil.which('rc-service'):
+            result=subprocess.run(['rc-service','v2box','status'],stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL,timeout=10)
+            if result.returncode==0: return 'active'
+            if result.returncode==3: return 'inactive'
+        raise DeploymentError('Cannot determine V2Box service state. Check v2box status and the service manager before resuming.')
+
+    def ensure_started(self):
+        if not self.state.get('startAttempted'):
+            self.check_http_port();self.progress('start')
+            self.save(startAttempted=True)
+            self.command(['v2box','restart'])
+            return
+        state=self.service_state()
+        if state in ('inactive','failed'):
+            # One explicit resume may start a stopped service once. Never reset ACME
+            # guards or repeatedly restart a process that is applying its configuration.
+            print('The previous start did not leave a running service; starting V2Box once.',flush=True)
+            self.check_http_port();self.progress('start')
+            self.command(['v2box','start'])
+        else:
+            print('V2Box is already '+state+'; continuing readiness checks without restarting.',flush=True)
 
     def report(self):
         report=self.data.get('networkReport')
         if not report or self.state.get('reported'): return
+        identity=None
+        identity_path=Path('/etc/node-network/server-identity')
+        if report.get('serverId'):
+            identity=self.host+'/'+str(report['serverId'])
+            if identity_path.is_symlink() or (identity_path.exists() and identity_path.read_text().strip()!=identity):
+                raise DeploymentError('Reporting belongs to another physical server; existing configuration preserved')
         fd,name=tempfile.mkstemp(prefix='.report-',dir=str(self.path.parent))
         try:
             os.fchmod(fd,0o600)
             with os.fdopen(fd,'w') as out: out.write(report['token'])
             self.command(['python3','/usr/local/lib/v2box/node-network.py','report-configure','--panel-url',self.host,'--family',report['family'],'--token-file',name])
+            if identity:
+                identity_path.parent.mkdir(mode=0o700,parents=True,exist_ok=True)
+                fd_identity=os.open(identity_path,os.O_WRONLY|os.O_CREAT|os.O_TRUNC|os.O_NOFOLLOW,0o600)
+                with os.fdopen(fd_identity,'w') as out: out.write(identity+'\n')
             self.save(reported=True)
         finally:
             os.unlink(name)
@@ -164,7 +208,9 @@ class Deployment:
                 if status.get('dnsStatus') in ('ownership_conflict','host_changed','credential_rejected','configuration_rejected','ambiguous_records'):
                     raise DeploymentError('DNS synchronization requires administrator attention: '+status['dnsStatus'])
                 if status.get('dnsReady') and dns_matches(self.flow['domain'],status['addresses']):
-                    if self.flow['certificateMode']!='http' or self.flow['certificateDomain']==self.flow['domain'] or dns_matches(self.flow['certificateDomain'],status['addresses']):
+                    if self.flow.get('accessMode')=='relay':
+                        if dns_matches(self.flow['connectionDomain'],status.get('entryAddresses',{})): return False
+                    elif self.flow['certificateMode']!='http' or self.flow['certificateDomain']==self.flow['domain'] or dns_matches(self.flow['certificateDomain'],status['addresses']):
                         return False
             except OSError:
                 pass
@@ -185,7 +231,7 @@ class Deployment:
     def verify_certificate(self):
         if self.flow['tls']!=1 or self.flow['certificateMode'] not in ('http','dns'): return
         cert=self.flow['certificateFile'] or '/etc/v2box/'+self.flow['protocol']+str(self.data['nodeId'])+'.cer'
-        cert=cert.replace('{domain}',self.flow['certificateDomain']).replace('{email}','node@v2board.com')
+        cert=cert.replace('{domain}',self.flow['certificateDomain']).replace('{email}','fastdog.ltd@gmail.com')
         for args in (['openssl','x509','-in',cert,'-noout','-checkend','3600'],['openssl','verify','-purpose','sslserver','-verify_hostname',self.flow['certificateDomain'],'-untrusted',cert,cert]):
             result=subprocess.run(args,stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL,timeout=10)
             if result.returncode: raise DeploymentError('Certificate trust, hostname or expiry verification failed; the connection domain was not activated')
@@ -199,7 +245,11 @@ class Deployment:
     def wait_ready(self):
         print('Waiting for the node to confirm the current configuration and certificate (up to 5 minutes).',flush=True)
         deadline=time.monotonic()+300
+        next_notice=0
         while time.monotonic()<deadline:
+            service=self.service_state()
+            if service in ('inactive','failed'):
+                raise DeploymentError('V2Box stopped before becoming ready. Inspect v2box log, fix the startup error, then resume; the resume command will start the stopped service once.')
             try:
                 status=self.progress()
                 if status.get('completed'): return
@@ -211,12 +261,17 @@ class Deployment:
                     return
             except OSError:
                 pass
+            if time.monotonic()>=next_notice:
+                print('Service: '+service+'. Waiting for the panel to confirm configuration and certificate; '+str(max(0,int(deadline-time.monotonic())))+' seconds remaining.',flush=True)
+                next_notice=time.monotonic()+30
             time.sleep(10)
         raise DeploymentError('Node readiness timed out. Inspect journalctl -u v2box; do not repeatedly restart or remove ACME state. The domain was not activated.')
 
     def finish(self):
         self.path.unlink()
         (self.path.parent/'.deployment-pending').unlink(missing_ok=True)
+        if self.flow and self.flow.get('accessMode')=='relay':
+            print('Origin node verified. Configure L4 forwarding on the entry server, test a client connection, then confirm the relay in the panel.'); return
         print('Deployment verified. The node connection domain is active.' if self.flow else 'Installation complete. Check node runtime status in the panel.')
 
     def run(self):
@@ -224,10 +279,7 @@ class Deployment:
         self.report()
         if self.flow:
             if self.wait_dns(): self.finish();return
-            if not self.state.get('startAttempted'):
-                self.check_http_port();self.progress('start')
-                self.save(startAttempted=True)
-                self.command(['v2box','restart'])
+            self.ensure_started()
             self.wait_ready()
         else:
             self.command(['v2box','restart'])

@@ -1,3 +1,4 @@
+import { relayStreamConfig } from "./node-relay";
 import { useEffect, useRef, useState } from "react";
 import { admin, request, type Row } from "../shared/api";
 import { Panel, State, Table, useData } from "../shared/ui";
@@ -46,6 +47,15 @@ export function NodeDomainBinding({
     const binding: Row | undefined = (data.data?.assignments || []).find(
         (a: Row) => a.node_type === node.type && a.node_id === node.id,
     );
+    const servers: Row[] = data.data?.servers || [];
+    const entries: Row[] = (data.data?.assignments || []).filter(
+        (a: Row) => a.purpose === "entry" && a.enabled,
+    );
+    const [serverId, setServerId] = useState("");
+    const [mode, setMode] = useState("direct");
+    const [entryId, setEntryId] = useState("");
+    const [entryPort, setEntryPort] = useState(String(node.port || 443));
+    const entry = entries.find((a) => a.id === binding?.entry_id);
     const [root, setRoot] = useState(""),
         [prefix, setPrefix] = useState(""),
         [family, setFamily] = useState("ipv4");
@@ -55,16 +65,22 @@ export function NodeDomainBinding({
     const [adoption, setAdoption] = useState<Row | null>(null);
     const pending = useRef(false);
     const progress = binding ? nodeDomainProgress(binding, node) : null;
-    const lastPublished = useRef(node.host);
+    const lastPublished = useRef({ domain: node.host, port: node.port });
     useEffect(() => {
         if (
             !binding?.published_domain ||
-            binding.published_domain === lastPublished.current
+            (binding.published_domain === lastPublished.current.domain &&
+                (!binding.published_port ||
+                    Number(binding.published_port) ===
+                        Number(lastPublished.current.port)))
         )
             return;
-        lastPublished.current = binding.published_domain;
+        lastPublished.current = {
+            domain: binding.published_domain,
+            port: binding.published_port || lastPublished.current.port,
+        };
         onPublished?.();
-    }, [binding?.published_domain, onPublished]);
+    }, [binding?.published_domain, binding?.published_port, onPublished]);
     useEffect(() => {
         if (!binding?.enabled || data.loading || data.error || busy || adoption)
             return;
@@ -82,6 +98,10 @@ export function NodeDomainBinding({
     ]);
     useEffect(() => {
         if (binding) {
+            setServerId(String(binding.server_id || ""));
+            setMode(binding.entry_id ? "relay" : "direct");
+            setEntryId(String(binding.entry_id || ""));
+            setEntryPort(String(binding.entry_port || node.port || 443));
             setRoot(String(binding.credential_id));
             setFamily(binding.family);
             const c = (data.data?.credentials || []).find(
@@ -90,7 +110,14 @@ export function NodeDomainBinding({
             if (c?.root_domain && binding.domain.endsWith("." + c.root_domain))
                 setPrefix(binding.domain.slice(0, -c.root_domain.length - 1));
         }
-    }, [binding?.id, binding?.domain, binding?.family]);
+    }, [
+        binding?.id,
+        binding?.domain,
+        binding?.family,
+        binding?.server_id,
+        binding?.entry_id,
+        binding?.entry_port,
+    ]);
     async function act(path: string, payload: Row) {
         if (pending.current) return;
         pending.current = true;
@@ -109,6 +136,8 @@ export function NodeDomainBinding({
                     ? "域名已保存。新安装会等待解析并验证节点后启用；已有节点请先配置上报，再确认切换。"
                     : path === "activate"
                       ? "已提交启用请求，请查看上方进度；验证成功后会自动更新生效域名。"
+                      : path === "retry"
+                        ? "已安排 DNS 同步，将由下一轮后台调度执行。同步使用最近上报的服务器 IP，不会重启节点或切换订阅地址。"
                       : "操作已完成",
             );
             return r.data;
@@ -157,7 +186,105 @@ export function NodeDomainBinding({
                                 <p>{progress.description}</p>
                             </div>
                         )}
-                        <p>目标域名：{binding.domain}</p>
+                        <p>
+                            {binding.entry_id ? "回源域名" : "目标域名"}：
+                            {binding.domain}
+                        </p>
+                        {entry && (
+                            <>
+                                <p>
+                                    连接入口：{entry.domain}:
+                                    {binding.entry_port} ·{" "}
+                                    {domainStatus[entry.status] || entry.status}
+                                </p>
+                                <p>
+                                    入口服务器：
+                                    {servers.find(
+                                        (s) => s.id === entry.server_id,
+                                    )?.name || "—"}{" "}
+                                    · 回源服务器：
+                                    {servers.find(
+                                        (s) => s.id === binding.server_id,
+                                    )?.name || "—"}
+                                </p>
+                                <p>
+                                    已确认回源：
+                                    {binding.published_origin || "尚未确认"}
+                                    {binding.published_origin &&
+                                    binding.published_origin !== binding.domain
+                                        ? " · 请将转发配置更新到新回源域名，完成测试后确认。旧解析继续保留。"
+                                        : ""}
+                                </p>
+                                <p className="muted">
+                                    TLS
+                                    在节点终止。证书覆盖入口域名，回源域名仅用于中转服务器定位节点。请在入口配置四层转发至{" "}
+                                    {binding.domain}:{node.server_port}。
+                                </p>
+                                <details>
+                                    <summary>入口转发配置</summary>
+                                    <p className="muted">
+                                        适用于 Nginx 1.27.3 及以上版本，并需启用
+                                        stream 模块。将以下片段放入已有 stream
+                                        配置，确认监听端口未被占用，再执行 nginx
+                                        -t，检查通过后重载。DNS
+                                        解析变化会自动更新回源地址。
+                                    </p>
+                                    <pre className="admin-network-command">
+                                        {relayStreamConfig(
+                                            binding,
+                                            node,
+                                            entry,
+                                        ) || "请先设置有效的节点监听端口。"}
+                                    </pre>
+                                    <p className="muted">
+                                        入口按节点协议开放 TCP／UDP
+                                        端口。节点防火墙需允许入口服务器访问监听端口；此配置不启用
+                                        PROXY protocol。
+                                    </p>
+                                </details>
+                                <p>
+                                    {binding.relay_verified_at
+                                        ? `转发链路由管理员确认于 ${logTime(binding.relay_verified_at)}`
+                                        : "下一步：配置入口转发，并通过入口进行实际客户端连接测试。节点就绪不代表转发链路已连通。"}
+                                </p>
+                                {progress?.active &&
+                                    !binding.relay_verified_at && (
+                                        <button
+                                            disabled={busy}
+                                            onClick={async () => {
+                                                if (
+                                                    !confirm(
+                                                        "已通过此入口使用客户端完成连接测试？此操作仅记录管理员确认，不执行自动探测。",
+                                                    )
+                                                )
+                                                    return;
+                                                setBusy(true);
+                                                setError("");
+                                                try {
+                                                    await request(
+                                                        admin(
+                                                            "server/network/confirm-relay",
+                                                        ),
+                                                        {
+                                                            id: binding.id,
+                                                            confirm: true,
+                                                        },
+                                                    );
+                                                    data.reload();
+                                                } catch (e) {
+                                                    setError(
+                                                        (e as Error).message,
+                                                    );
+                                                } finally {
+                                                    setBusy(false);
+                                                }
+                                            }}
+                                        >
+                                            确认转发测试完成
+                                        </button>
+                                    )}
+                            </>
+                        )}
                         <p>
                             当前生效域名：
                             {binding.published_domain || node.host} ·{" "}
@@ -191,8 +318,8 @@ export function NodeDomainBinding({
                                 尚未收到独立 IP 上报。节点列表的 IP
                                 也可能来自连接面板时的出口地址。
                                 {node.type === "v2box"
-                                    ? "请使用下方“配置 / 修复 IP 上报”为已有节点配置自动上报。"
-                                    : "请在 Cloudflare DDNS 中配置节点上报。"}
+                                    ? "新节点请执行一键部署；已部署节点可在高级维护中修复上报。若部署尚未完成，请先执行恢复命令。"
+                                    : "请在 服务器与域名 中配置节点上报。"}
                             </p>
                         )}
                         <div className="actions">
@@ -204,12 +331,6 @@ export function NodeDomainBinding({
                                 >
                                     查看节点升级命令
                                 </button>
-                            )}
-                            {node.type === "v2box" && (
-                                <NodeNetworkSetup
-                                    node={node}
-                                    disabled={busy || !binding.enabled}
-                                />
                             )}
                             {binding.managed &&
                                 binding.status === "ownership_conflict" && (
@@ -230,20 +351,21 @@ export function NodeDomainBinding({
                                 disabled={busy || data.loading}
                                 onClick={data.reload}
                             >
-                                检查解析状态
+                                刷新状态
                             </button>
                             {!progress?.dnsReady && !progress?.pending && (
                                 <button
                                     disabled={
                                         busy ||
                                         !binding.managed ||
-                                        !binding.enabled
+                                        !binding.enabled ||
+                                        !progress?.reportsReady
                                     }
                                     onClick={() =>
                                         act("retry", { id: binding.id })
                                     }
                                 >
-                                    重试同步
+                                    重试 DNS 同步
                                 </button>
                             )}
                             {progress?.canActivate && (
@@ -262,10 +384,38 @@ export function NodeDomainBinding({
                                             });
                                     }}
                                 >
-                                    验证并启用域名
+                                    验证并切换地址
                                 </button>
                             )}
                         </div>
+                        <details className="admin-deployment-tools">
+                            <summary>操作说明</summary>
+                            <p>刷新状态：读取面板记录，不执行 DNS 查询或修改配置。页面每 15 秒自动更新。</p>
+                            <p>重试 DNS 同步：按服务器最近上报的 IP 更新 Cloudflare 解析，不重启节点、不切换订阅地址。</p>
+                            <p>验证并切换地址：普通 TLS 服务先验证证书和监听，成功后更新节点列表及订阅地址；Reality 保持原有 SNI。</p>
+                            <p>新安装由一键部署完成上述步骤。终端等待就绪时，请查看服务状态及日志；中断后使用恢复命令继续。</p>
+                        </details>
+                        {node.type === "v2box" &&
+                            !node._new &&
+                            !progress?.pending &&
+                            !progress?.reportsReady && (
+                                <details className="admin-deployment-tools">
+                                    <summary>高级维护</summary>
+                                    <div>
+                                        <p className="muted">
+                                            仅用于已安装节点缺少上报或上报异常。一键部署已包含此步骤；未完成部署请先执行{" "}
+                                            <code>
+                                                sh install-v2box.sh --resume
+                                            </code>
+                                            。
+                                        </p>
+                                        <NodeNetworkSetup
+                                            node={node}
+                                            disabled={busy || !binding.enabled}
+                                        />
+                                    </div>
+                                </details>
+                            )}
                     </div>
                 )}
                 <details className="node-domain-settings" open={!binding}>
@@ -273,7 +423,7 @@ export function NodeDomainBinding({
                         {binding ? "修改域名设置" : "设置节点域名"}
                     </summary>
                     {!roots.length ? (
-                        <p>请先在 Cloudflare DDNS 中添加并验证根域名。</p>
+                        <p>请先在 服务器与域名 中添加并验证根域名。</p>
                     ) : (
                         <form
                             className="node-domain-form"
@@ -285,9 +435,100 @@ export function NodeDomainBinding({
                                     credential_id: Number(root || roots[0]?.id),
                                     prefix,
                                     family,
+                                    server_id: serverId
+                                        ? Number(serverId)
+                                        : null,
+                                    entry_id:
+                                        mode === "relay"
+                                            ? Number(entryId)
+                                            : null,
+                                    entry_port:
+                                        mode === "relay"
+                                            ? Number(entryPort)
+                                            : null,
                                 });
                             }}
                         >
+                            <label>
+                                接入方式
+                                <select
+                                    aria-label="接入方式"
+                                    disabled={busy}
+                                    value={mode}
+                                    onChange={(e) => setMode(e.target.value)}
+                                >
+                                    <option value="direct">直连节点</option>
+                                    {node.type === "v2box" && (
+                                        <option value="relay">
+                                            四层中转 · TLS 在节点终止
+                                        </option>
+                                    )}
+                                </select>
+                            </label>
+                            <label>
+                                {mode === "relay" ? "回源服务器" : "节点服务器"}
+                                <select
+                                    aria-label="节点服务器"
+                                    disabled={busy}
+                                    value={serverId}
+                                    onChange={(e) =>
+                                        setServerId(e.target.value)
+                                    }
+                                >
+                                    <option value="">
+                                        为此节点新建服务器记录
+                                    </option>
+                                    {servers
+                                        .filter((s) => s.enabled)
+                                        .map((s) => (
+                                            <option key={s.id} value={s.id}>
+                                                {s.name}
+                                            </option>
+                                        ))}
+                                </select>
+                            </label>
+                            {mode === "relay" && (
+                                <>
+                                    <label>
+                                        共享入口域名
+                                        <select
+                                            aria-label="共享入口域名"
+                                            required
+                                            disabled={busy}
+                                            value={entryId}
+                                            onChange={(e) =>
+                                                setEntryId(e.target.value)
+                                            }
+                                        >
+                                            <option value="">选择入口</option>
+                                            {entries.map((a) => (
+                                                <option key={a.id} value={a.id}>
+                                                    {a.domain}
+                                                </option>
+                                            ))}
+                                        </select>
+                                    </label>
+                                    <label>
+                                        入口端口
+                                        <input
+                                            aria-label="入口端口"
+                                            type="number"
+                                            min={1}
+                                            max={65535}
+                                            required
+                                            value={entryPort}
+                                            disabled={busy}
+                                            onChange={(e) =>
+                                                setEntryPort(e.target.value)
+                                            }
+                                        />
+                                    </label>
+                                    <p className="muted">
+                                        先在服务器与共享入口中添加入口服务器和域名。下方配置回源域名。自动证书申请须使用
+                                        DNS 验证；节点监听端口保持独立。
+                                    </p>
+                                </>
+                            )}
                             <label>
                                 根域名
                                 <select

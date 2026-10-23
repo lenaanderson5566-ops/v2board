@@ -78,18 +78,21 @@ try {
     // Run the shipped bootstrap with fake downloads/services and a private config directory.
     // No installation, external HTTP, system service changes or real credentials are involved.
     // Opt-in: a disposable Linux root container with bash/jq; regular PHP runs need neither.
-    foreach (getenv('V2BOX_BOOTSTRAP_TEST')==='1' ? [[0,false],[1,false],[0,true],[1,true]] : [] as [$reportFailure,$networkOnly]) {
+    foreach (getenv('V2BOX_BOOTSTRAP_TEST')==='1' ? [[0,false,false],[1,false,false],[0,true,false],[1,true,false],[0,true,true],[1,true,true]] : [] as [$reportFailure,$networkOnly,$serverOnly]) {
         $fixture=sys_get_temp_dir().'/v2box-deploy-test-'.bin2hex(random_bytes(8));
         mkdir($fixture,0700);mkdir($fixture.'/bin',0700);mkdir($fixture.'/tmp',0700);mkdir($fixture.'/lib',0700);
         try {
-            $response=['data'=>['nodeId'=>3,'nodeType'=>'v2box','apiHost'=>'https://panel.example.invalid','apiKey'=>'nk_'.str_repeat('a',32).'.'.str_repeat('b',64),'networkReport'=>['token'=>str_repeat('c',64),'family'=>'ipv4']]];
+            $response=['data'=>['nodeId'=>3,'nodeType'=>'v2box','apiHost'=>'https://panel.example.invalid','apiKey'=>'nk_'.str_repeat('a',32).'.'.str_repeat('b',64),'networkReport'=>['token'=>str_repeat('c',64),'family'=>'ipv4','serverId'=>7]]];
             $originalKey=$response['data']['apiKey'];
             if ($networkOnly) {
+                if (!$serverOnly) {
                 mkdir($fixture.'/config',0700);
                 file_put_contents($fixture.'/config/config.json',json_encode(['Nodes'=>[['NodeType'=>'v2box','NodeID'=>3,'ApiHost'=>'https://panel.example.invalid','ApiKey'=>$originalKey]]]));
                 $originalHash=hash_file('sha256',$fixture.'/config/config.json');
+                }
                 unset($response['data']['apiKey']);$response['data']['purpose']='network';
             }
+            if ($serverOnly) { unset($response['data']['nodeType'],$response['data']['nodeId']); $response['data']['purpose']='server'; $response['data']['serverId']=7; }
             file_put_contents($fixture.'/response.json',json_encode($response));
             $mocks=[
                 'curl'=><<<'SH'
@@ -126,15 +129,15 @@ SH,
             $script=str_replace('__NODE_DEPLOY_HELPER__',file_get_contents(resource_path('scripts/node-deploy.py')),file_get_contents(resource_path('scripts/node-deploy.sh')));
             $script=str_replace(['__NODE_PREREQUISITES__','/etc/v2box','/usr/local/lib/v2box','/etc/node-network'],['',$fixture.'/config',$fixture.'/lib',$fixture.'/network'],$script);
             file_put_contents($fixture.'/bootstrap.sh',$script);
-            $run=function($failure=null)use($fixture,$reportFailure,$networkOnly){
-                $pipes=[];$p=proc_open(['bash',$fixture.'/bootstrap.sh',...($networkOnly?['--network-only']:[]),'--api-host','https://panel.example.invalid','--node-id','3','--deploy-token','nd_'.str_repeat('d',64)],[['pipe','r'],['pipe','w'],['pipe','w']],$pipes,null,array_merge(getenv(),['PATH'=>$fixture.'/bin:'.getenv('PATH'),'TMPDIR'=>$fixture.'/tmp','DNS_FIXTURE'=>$fixture,'DNS_REPORT_FAILURE'=>(string)($failure??$reportFailure)]));
+            $run=function($failure=null)use($fixture,$reportFailure,$networkOnly,$serverOnly){
+                $pipes=[];$p=proc_open(['bash',$fixture.'/bootstrap.sh',...($networkOnly && !$serverOnly?['--network-only']:[]),'--api-host','https://panel.example.invalid',...($serverOnly?['--server-id','7']:['--node-id','3']),'--deploy-token',($serverOnly?'ns_':'nd_').str_repeat('d',64)],[['pipe','r'],['pipe','w'],['pipe','w']],$pipes,null,array_merge(getenv(),['PATH'=>$fixture.'/bin:'.getenv('PATH'),'TMPDIR'=>$fixture.'/tmp','DNS_FIXTURE'=>$fixture,'DNS_REPORT_FAILURE'=>(string)($failure??$reportFailure)]));
                 fclose($pipes[0]);$output=stream_get_contents($pipes[1]).stream_get_contents($pipes[2]);fclose($pipes[1]);fclose($pipes[2]);return [proc_close($p),$output];
             };
             [$exit,$output]=$run();
             $assert($exit===$reportFailure,'Deployment bootstrap reports address setup result: '.$exit.' '.preg_replace('/(?:nk_|nd_)?[a-f0-9.]{64,}/','[redacted]',$output));
             if ($networkOnly) {
                 $assert(file_get_contents($fixture.'/events')==="report\n",'Network-only setup never restarts node');
-                $assert(hash_file('sha256',$fixture.'/config/config.json')===$originalHash,'Network-only setup preserves node configuration and key');
+                $assert($serverOnly ? !file_exists($fixture.'/config/config.json') : hash_file('sha256',$fixture.'/config/config.json')===$originalHash,'Network-only setup preserves node configuration and key');
                 $assert(!str_contains($output,$response['data']['networkReport']['token']) && count(glob($fixture.'/tmp/*'))===0,'Network-only setup cleans temporary secrets');
                 if ($reportFailure) {
                     $assert(is_file($fixture.'/network/enrollment-state.json') && (fileperms($fixture.'/network/enrollment-state.json')&0777)===0600,'Failure retains private state for resume');
@@ -142,7 +145,8 @@ SH,
                     $assert($resumed===0 && file_get_contents($fixture.'/redemptions')==="redeemed\n",'Resume uses private state without redeeming consumed grant');
                 }
                 $assert(!file_exists($fixture.'/network/enrollment-state.json'),'Successful reporting removes enrollment secret');
-                file_put_contents($fixture.'/config/config.json',json_encode(['Nodes'=>[['NodeType'=>'v2box','NodeID'=>999,'ApiHost'=>'https://panel.example.invalid']]]));
+                if ($serverOnly) file_put_contents($fixture.'/network/server-identity',"https://panel.example.invalid/999\n");
+                else file_put_contents($fixture.'/config/config.json',json_encode(['Nodes'=>[['NodeType'=>'v2box','NodeID'=>999,'ApiHost'=>'https://panel.example.invalid']]]));
                 [$wrong]=$run(0);
                 $assert($wrong===1 && file_get_contents($fixture.'/redemptions')==="redeemed\n",'Wrong node rejected before grant consumption');
                 continue;
@@ -175,7 +179,8 @@ class WorkflowTests(unittest.TestCase):
         self.deploy.report=lambda:self.events.append('report')
         self.deploy.wait_dns=lambda:self.events.append('dns') or False
         self.deploy.check_http_port=lambda:self.events.append('port')
-        self.deploy.command=lambda args:self.events.append('restart')
+        self.deploy.command=lambda args:self.events.append(args[-1])
+        self.deploy.service_state=lambda:'active'
         self.deploy.verify_certificate=lambda:self.events.append('certificate')
         self.deploy.progress=lambda action='status':self.events.append(action) or {'applicationState':'applied','completed':action=='complete'}
     def tearDown(self): self.tmp.cleanup()
@@ -195,6 +200,49 @@ class WorkflowTests(unittest.TestCase):
     def test_resume_does_not_repeat_acme_start(self):
         self.deploy.save(startAttempted=True);self.deploy.run()
         self.assertNotIn('restart',self.events);self.assertIn('complete',self.events)
+    def test_resume_starts_stopped_service_once(self):
+        for state in ('inactive','failed'):
+            with self.subTest(state=state):
+                self.events.clear();self.deploy.save(startAttempted=True)
+                self.deploy.service_state=lambda:state
+                self.deploy.ensure_started()
+                self.assertEqual(self.events,['port','start','start'])
+    def test_failed_start_is_recoverable_without_manual_restart(self):
+        self.deploy.command=lambda args:(_ for _ in ()).throw(m.DeploymentError('start failed'))
+        with self.assertRaises(m.DeploymentError):self.deploy.run()
+        self.assertTrue(self.deploy.state['startAttempted'])
+        self.events.clear();states=iter(['inactive','active']);commands=[]
+        self.deploy.service_state=lambda:next(states)
+        self.deploy.command=lambda args:commands.append(args)
+        self.deploy.run()
+        self.assertEqual(commands,[['v2box','start']])
+        self.assertIn('complete',self.events);self.assertFalse(self.path.exists())
+    def test_starting_service_is_not_restarted_on_resume(self):
+        self.deploy.save(startAttempted=True);self.deploy.service_state=lambda:'activating'
+        self.deploy.ensure_started()
+        self.assertEqual(self.events,[])
+    def test_stopped_service_is_reported_without_waiting_five_minutes(self):
+        self.deploy.service_state=lambda:'failed'
+        with self.assertRaisesRegex(m.DeploymentError,'V2Box stopped'):
+            self.deploy.wait_ready()
+        self.assertNotIn('complete',self.events);self.assertTrue(self.path.exists())
+    def test_unchanged_config_does_not_trigger_file_watcher(self):
+        self.deploy.prepare_config()
+        original=json.loads(self.deploy.config.read_text());original['Log']={'Level':'warn'}
+        m.write_private(self.deploy.config,original)
+        before=self.deploy.config.stat().st_ino,self.deploy.config.stat().st_mtime_ns
+        self.deploy.prepare_config()
+        self.assertEqual(before,(self.deploy.config.stat().st_ino,self.deploy.config.stat().st_mtime_ns))
+        self.assertEqual(json.loads(self.deploy.config.read_text())['Log'],{'Level':'warn'})
+    def test_service_state_handles_systemd_and_openrc(self):
+        for state in ('active','activating','inactive','failed'):
+            with patch.object(m.shutil,'which',return_value='/bin/systemctl'), patch.object(m.subprocess,'run',return_value=subprocess.CompletedProcess([],0,state+'\n')):
+                self.assertEqual(m.Deployment.service_state(self.deploy),state)
+        with patch.object(m.shutil,'which',side_effect=lambda name:'/bin/rc-service' if name=='rc-service' else None), patch.object(m.subprocess,'run',return_value=subprocess.CompletedProcess([],3)):
+            self.assertEqual(m.Deployment.service_state(self.deploy),'inactive')
+        with patch.object(m.shutil,'which',return_value='/bin/systemctl'), patch.object(m.subprocess,'run',return_value=subprocess.CompletedProcess([],1,'unknown')):
+            with self.assertRaisesRegex(m.DeploymentError,'Cannot determine'):
+                m.Deployment.service_state(self.deploy)
     def test_certificate_failure_never_publishes(self):
         self.deploy.verify_certificate=lambda:(_ for _ in ()).throw(m.DeploymentError('certificate'))
         with self.assertRaises(m.DeploymentError):self.deploy.run()
@@ -207,6 +255,33 @@ class WorkflowTests(unittest.TestCase):
         with patch.object(m.time,'monotonic',side_effect=[0,1000]):
             with self.assertRaises(m.DeploymentError):self.deploy.wait_ready()
         self.assertNotIn('complete',self.events)
+    def test_certificate_path_uses_independent_acme_contact(self):
+        self.deploy.flow.update(certificateFile='/tmp/{email}/{domain}.cer',protocol='hysteria2')
+        with patch.object(m.subprocess,'run') as run:
+            run.return_value.returncode=0
+            m.Deployment.verify_certificate(self.deploy)
+            expected='/tmp/fastdog.ltd@gmail.com/node.example.test.cer'
+            self.assertEqual(run.call_args_list[0].args[0][3],expected)
+            self.assertEqual(run.call_args_list[1].args[0][-1],expected)
+    def test_relay_checks_origin_and_entry_separately(self):
+        self.deploy.flow.update(accessMode='relay',connectionDomain='entry.example.test',certificateMode='dns',certificateDomain='entry.example.test')
+        self.deploy.progress=lambda action='status':{'dnsReady':True,'addresses':{'ipv4':'8.8.8.8'},'entryAddresses':{'ipv4':'1.1.1.1'}}
+        with patch.object(m,'dns_matches',return_value=True) as check:
+            self.assertFalse(m.Deployment.wait_dns(self.deploy))
+            self.assertEqual(check.call_args_list[0].args,('node.example.test',{'ipv4':'8.8.8.8'}))
+            self.assertEqual(check.call_args_list[1].args,('entry.example.test',{'ipv4':'1.1.1.1'}))
+    def test_relay_entry_dns_wait_keeps_polling_interval(self):
+        self.deploy.flow.update(accessMode='relay',connectionDomain='entry.example.test',certificateMode='dns')
+        self.deploy.progress=lambda action='status':{'dnsReady':True,'addresses':{'ipv4':'8.8.8.8'},'entryAddresses':{'ipv4':'1.1.1.1'}}
+        with patch.object(m,'dns_matches',side_effect=[True,False]), patch.object(m.time,'monotonic',side_effect=[0,0,1000]), patch.object(m.time,'sleep') as sleep:
+            with self.assertRaises(m.DeploymentError): m.Deployment.wait_dns(self.deploy)
+            sleep.assert_called_once_with(15)
+    def test_relay_finish_does_not_claim_entry_connectivity(self):
+        self.deploy.flow['accessMode']='relay'
+        with patch('sys.stdout',new_callable=io.StringIO) as out:
+            self.deploy.finish()
+            self.assertIn('test a client connection',out.getvalue())
+            self.assertNotIn('connection domain is active',out.getvalue())
     def test_dns_stale_ipv6_rejected(self):
         with patch.object(m,'dns_answers',return_value={'ipv4':{'8.8.8.8'},'ipv6':{'2606:4700:4700::1111'}}):
             self.assertFalse(m.dns_matches('node.example.test',{'ipv4':'8.8.8.8'}))

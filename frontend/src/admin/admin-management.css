@@ -182,20 +182,8 @@
 .admin-deployment-tools > div {
     padding: 0 16px 16px;
 }
-.admin-deployment-help {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    gap: 10px;
-    color: var(--muted);
-    font-size: 12px;
-}
-.admin-deployment-help code {
-    padding: 5px 8px;
-    border-radius: 5px;
-    background: #f1f5f9;
-    color: #475569;
-}
+.admin-deployment-tools dt { font-weight: 600; margin-top: 14px; }
+.admin-deployment-tools dd { margin: 6px 0 0; line-height: 1.7; overflow-wrap: anywhere; }
 @media (max-width: 760px) {
     .admin-settings-layout {
         grid-template-columns: 1fr;
@@ -324,3 +312,19 @@
 .node-domain-settings { margin-top:20px; border-top:1px solid var(--border); padding-top:16px; }
 .node-domain-settings summary { cursor:pointer; font-weight:600; }
 @media(max-width:600px) { .node-domain-progress ol {grid-template-columns:repeat(2,minmax(0,1fr));} }
+
+.admin-network-command {
+    max-width:100%; padding:12px; margin:12px 0;
+    border:1px solid var(--border, #e2e8f0); border-radius:8px;
+    background:var(--surface-muted, #f7f9fc); color:var(--text, #334155);
+    font:12px/1.7 ui-monospace, SFMono-Regular, Menlo, monospace;
+    white-space:pre-wrap; overflow-wrap:anywhere;
+}
+.node-topology { container-type: inline-size; border: 1px solid var(--border, #dce2ea); border-radius: 12px; padding: 16px; margin: 16px 0; width: 100%; box-sizing: border-box; }
+.node-topology-heading { display: flex; justify-content: space-between; gap: 12px; }
+.node-topology ol { list-style: none; display: flex; gap: 24px; margin: 16px 0; padding: 0; }
+.node-topology li { position: relative; flex: 1; min-width: 0; border: 1px solid var(--border, #dce2ea); border-radius: 8px; padding: 12px; display: flex; flex-direction: column; gap: 6px; overflow-wrap: anywhere; }
+.node-topology li + li::before { content: "→"; position: absolute; left: -21px; top: 35%; color: var(--muted, #64748b); }
+.node-topology small { color: var(--muted, #64748b); }
+@media (max-width: 640px) { .node-topology ol { flex-direction: column; } .node-topology li + li::before { content: "↓"; top: -25px; left: 50%; } }
+@container (max-width: 600px) { .node-topology ol { flex-direction: column; } .node-topology li + li::before { content: "↓"; top: -25px; left: 50%; } }

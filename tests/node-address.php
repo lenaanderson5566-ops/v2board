@@ -11,7 +11,7 @@ $assert=function($ok)use(&$checks){if(!$ok)throw new RuntimeException('Address a
 Addresses::observe(Request::create('/', 'GET', [], [], [], ['REMOTE_ADDR'=>'8.8.8.8']), 'v2box', 987654);
 Addresses::observe(Request::create('/', 'GET', [], [], [], ['REMOTE_ADDR'=>'1.1.1.1']), 'v2node', 987654);
 Addresses::observe(Request::create('/', 'GET', [], [], [], ['REMOTE_ADDR'=>'127.0.0.1','HTTP_X_FORWARDED_FOR'=>'9.9.9.9']), 'v2box', 987654);
-$nodes=[['type'=>'v2box','id'=>987654],['type'=>'v2node','id'=>987654],['type'=>'v2box','id'=>987655,'parent_id'=>987654],['type'=>'v2box','id'=>987656]];
+$nodes=[['type'=>'v2box','id'=>987654],['type'=>'v2node','id'=>987654],['type'=>'v2box','id'=>987655,'service_id'=>987654],['type'=>'v2box','id'=>987656]];
 $rows=Addresses::forNodes($nodes);
 $assert($rows[0]['current_ip']==='8.8.8.8');
 $assert($rows[1]['current_ip']==='1.1.1.1');

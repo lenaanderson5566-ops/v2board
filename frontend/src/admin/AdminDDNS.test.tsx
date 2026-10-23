@@ -233,6 +233,9 @@ it("saves a root and prefix without prematurely activating a node address", asyn
                 node_id: 3,
                 credential_id: 1,
                 prefix: "jp-01",
+                server_id: null,
+                entry_id: null,
+                entry_port: null,
                 family: "ipv4",
             },
         ),
@@ -246,13 +249,13 @@ it("requires explicit confirmation before activating prepared DNS", async () => 
     vi.spyOn(window, "confirm").mockReturnValue(false);
     render(<NodeDomainBinding node={{ id: 3, type: "v2box" }} />);
     fireEvent.click(
-        await screen.findByRole("button", { name: "验证并启用域名" }),
+        await screen.findByRole("button", { name: "验证并切换地址" }),
     );
     expect(
         api.request.mock.calls.some(([p]) => p.endsWith("domains/activate")),
     ).toBe(false);
     vi.mocked(window.confirm).mockReturnValue(true);
-    fireEvent.click(screen.getByRole("button", { name: "验证并启用域名" }));
+    fireEvent.click(screen.getByRole("button", { name: "验证并切换地址" }));
     await waitFor(() =>
         expect(api.request).toHaveBeenCalledWith(
             "test-admin/server/domains/activate",
@@ -340,26 +343,25 @@ it("shows pending certificate verification without offering another activation",
     managedSetup("pending");
     render(<NodeDomainBinding node={{ id: 3, type: "v2box" }} />);
     await screen.findByText("正在验证新域名");
-    expect(screen.queryByRole("button", { name: "验证并启用域名" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "验证并切换地址" })).toBeNull();
     expect(screen.getByText(/当前生效域名：old.example.com/)).toBeTruthy();
 });
 it("keeps the published address visible and allows retry after certificate failure", async () => {
     managedSetup("failed");
     render(<NodeDomainBinding node={{ id: 3, type: "v2box" }} />);
     await screen.findByText("下一步：检查日志后重新验证");
-    expect(screen.getByRole("button", { name: "验证并启用域名" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "验证并切换地址" })).toBeTruthy();
     expect(screen.getByText(/当前生效域名：old.example.com/)).toBeTruthy();
 });
 
-it("configures reporting from the domain drawer using a one-use command and expires it", async () => {
-    managedSetup();
+it("configures reporting from advanced maintenance using a one-use command and expires it", async () => {
+    managedSetup("none", { ipv4: null, ipv4_seen_at: 0 });
     vi.useFakeTimers();
     await act(async () => {
         render(<NodeDomainBinding node={{ id: 3, type: "v2box" }} />);
     });
-    fireEvent.click(
-        screen.getByRole("button", { name: "配置 / 修复 IP 上报" }),
-    );
+    fireEvent.click(screen.getByText("高级维护"));
+    fireEvent.click(screen.getByRole("button", { name: "修复 IP 上报" }));
     expect(screen.queryByLabelText("独立上报密钥")).toBeNull();
     const original = api.request.getMockImplementation()!;
     api.request.mockImplementation(async (path: string, body: any) =>
@@ -396,13 +398,13 @@ it("explains the next step and gates ordinary TLS activation on node capability"
         <NodeDomainBinding node={{ id: 3, type: "v2box", tls: 1 }} />,
     );
     await screen.findByText("下一步：升级 V2Box");
-    expect(screen.queryByRole("button", { name: "验证并启用域名" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "验证并切换地址" })).toBeNull();
     view.unmount();
     managedSetup();
     render(<NodeDomainBinding node={{ id: 3, type: "v2box", tls: 1 }} />);
-    await screen.findByText("下一步：验证并启用新域名");
-    expect(screen.getByRole("button", { name: "验证并启用域名" })).toBeTruthy();
-    expect(screen.queryByRole("button", { name: "重试同步" })).toBeNull();
+    await screen.findByText("下一步：验证并切换地址");
+    expect(screen.getByRole("button", { name: "验证并切换地址" })).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "重试 DNS 同步" })).toBeNull();
 });
 it("waits for both address families and does not allow stale DNS activation", async () => {
     managedSetup("none", { family: "dual", ipv6: null, ipv6_seen_at: 0 });
@@ -410,12 +412,24 @@ it("waits for both address families and does not allow stale DNS activation", as
         <NodeDomainBinding node={{ id: 3, type: "v2box", tls: 2 }} />,
     );
     await screen.findByText("下一步：检查 IP 上报");
-    expect(screen.queryByRole("button", { name: "验证并启用域名" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "验证并切换地址" })).toBeNull();
+    expect((screen.getByRole("button", { name: "重试 DNS 同步" }) as HTMLButtonElement).disabled).toBe(true);
     view.unmount();
     managedSetup("none", { last_success: 1 });
     render(<NodeDomainBinding node={{ id: 3, type: "v2box", tls: 2 }} />);
     await screen.findByText("下一步：等待解析同步");
-    expect(screen.queryByRole("button", { name: "验证并启用域名" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "验证并切换地址" })).toBeNull();
+});
+it("distinguishes a read-only refresh from queued DNS synchronization", async () => {
+    managedSetup("none", { status: "network_error", last_success: 1 });
+    render(<NodeDomainBinding node={{ id: 3, type: "v2box", tls: 1 }} />);
+    fireEvent.click(await screen.findByRole("button", { name: "刷新状态" }));
+    await waitFor(() => expect(api.request.mock.calls.filter(([path]) => String(path).endsWith("ddns/fetch")).length).toBeGreaterThan(1));
+    expect(api.request.mock.calls.some(([path]) => /domains\/(retry|activate)$/.test(String(path)))).toBe(false);
+    fireEvent.click(screen.getByRole("button", { name: "重试 DNS 同步" }));
+    await screen.findByText(/已安排 DNS 同步，将由下一轮后台调度执行/);
+    expect(api.request).toHaveBeenCalledWith("test-admin/server/domains/retry", { id: 2 });
+    expect(api.request.mock.calls.some(([path]) => String(path).endsWith("domains/activate"))).toBe(false);
 });
 it("notifies the list once when polling observes publication, without publishing early", async () => {
     vi.useFakeTimers();
@@ -438,8 +452,195 @@ it("notifies the list once when polling observes publication, without publishing
     await act(() => vi.advanceTimersByTimeAsync(15000));
     expect(screen.getByText("新域名已生效")).toBeTruthy();
     expect(screen.getByText(/当前生效域名：hk.example.com/)).toBeTruthy();
-    expect(screen.queryByRole("button", { name: "验证并启用域名" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "验证并切换地址" })).toBeNull();
     expect(onPublished).toHaveBeenCalledTimes(1);
     await act(() => vi.advanceTimersByTimeAsync(15000));
     expect(onPublished).toHaveBeenCalledTimes(1);
+});
+
+it.each([
+    ["healthy", "none", {}, false],
+    ["new", "none", { ipv4: null, ipv4_seen_at: 0 }, true],
+    ["pending", "pending", { ipv4: null, ipv4_seen_at: 0 }, false],
+])(
+    "does not offer redundant reporting repair for %s nodes",
+    async (_, transition, overrides, fresh) => {
+        managedSetup(
+            transition as string,
+            overrides as Record<string, unknown>,
+        );
+        render(
+            <NodeDomainBinding node={{ id: 3, type: "v2box", _new: fresh }} />,
+        );
+        await screen.findByText(/目标域名：/);
+        expect(screen.queryByText("高级维护")).toBeNull();
+        expect(
+            screen.queryByRole("button", { name: "修复 IP 上报" }),
+        ).toBeNull();
+    },
+);
+
+import { NetworkServers } from "./NetworkServers";
+import { nodeDomainProgress } from "./node-domain-progress";
+it("generates a physical server enrollment without a node ID", async () => {
+    api.request.mockResolvedValue({
+        data: {
+            command:
+                "sh install-v2box.sh --server-id 10 --deploy-token ns_test",
+        },
+    });
+    render(
+        <NetworkServers
+            reload={vi.fn()}
+            data={{
+                servers: [
+                    { id: 10, name: "入口一", family: "ipv4", enabled: true },
+                ],
+                assignments: [],
+                credentials: [],
+            }}
+        />,
+    );
+    fireEvent.click(screen.getByRole("button", { name: "配置服务器上报" }));
+    await screen.findByText(/sh install-v2box.sh --server-id 10/);
+    expect(api.request).toHaveBeenCalledWith(
+        "test-admin/server/network/enroll",
+        { id: 10 },
+    );
+    expect(screen.getByText(/独立入口服务器只需配置上报/)).toBeTruthy();
+});
+it("submits separate origin server and shared entry settings", async () => {
+    api.request.mockResolvedValue({
+        data: {
+            credentials: [{ id: 1, root_domain: "example.com" }],
+            servers: [
+                { id: 10, name: "入口机", enabled: true },
+                { id: 20, name: "节点机", enabled: true },
+            ],
+            assignments: [
+                {
+                    id: 30,
+                    purpose: "entry",
+                    domain: "entry.example.com",
+                    server_id: 10,
+                    enabled: true,
+                },
+            ],
+        },
+    });
+    render(<NodeDomainBinding node={{ id: 3, type: "v2box", port: 443 }} />);
+    await screen.findByLabelText("接入方式");
+    fireEvent.change(screen.getByLabelText("接入方式"), {
+        target: { value: "relay" },
+    });
+    fireEvent.change(screen.getByLabelText("节点服务器"), {
+        target: { value: "20" },
+    });
+    fireEvent.change(screen.getByLabelText("共享入口域名"), {
+        target: { value: "30" },
+    });
+    fireEvent.change(screen.getByLabelText("入口端口"), {
+        target: { value: "8443" },
+    });
+    fireEvent.change(screen.getByLabelText("子域名前缀"), {
+        target: { value: "origin" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "保存域名" }));
+    await waitFor(() =>
+        expect(api.request).toHaveBeenCalledWith(
+            "test-admin/server/domains/bind",
+            {
+                credential_id: 1,
+                node_type: "v2box",
+                node_id: 3,
+                prefix: "origin",
+                family: "ipv4",
+                server_id: 20,
+                entry_id: 30,
+                entry_port: 8443,
+            },
+        ),
+    );
+    expect(
+        api.request.mock.calls.some((c) =>
+            String(c[0]).endsWith("domains/activate"),
+        ),
+    ).toBe(false);
+});
+it("requires both entry readiness and publication of a changed entry port", () => {
+    const binding = {
+        enabled: true,
+        managed: true,
+        entry_id: 30,
+        entry_port: 8443,
+        published_port: 443,
+        domain: "origin.example.com",
+        connection_domain: "entry.example.com",
+        published_domain: "entry.example.com",
+        family: "ipv4",
+        ipv4: "8.8.8.8",
+        ipv4_seen_at: 1000,
+        last_success: 1000,
+        status: "healthy",
+        entry_ready: false,
+    };
+    expect(nodeDomainProgress(binding, { tls: 2 }, 1000).canActivate).toBe(
+        false,
+    );
+    expect(
+        nodeDomainProgress({ ...binding, entry_ready: true }, { tls: 2 }, 1000)
+            .canActivate,
+    ).toBe(true);
+    expect(
+        nodeDomainProgress(
+            { ...binding, entry_ready: true, published_port: 8443 },
+            { tls: 2 },
+            1000,
+        ).active,
+    ).toBe(true);
+    expect(
+        nodeDomainProgress(
+            { ...binding, entry_ready: true, server_enabled: false },
+            { tls: 2 },
+            1000,
+        ).canActivate,
+    ).toBe(false);
+});
+
+import { relayStreamConfig } from "./node-relay";
+it("produces runtime-resolved L4 configuration with distinct entry and origin ports", () => {
+    const binding = {
+        id: 2,
+        domain: "origin.example.com",
+        entry_port: 8443,
+        family: "ipv4",
+    };
+    const tcp = relayStreamConfig(
+        binding,
+        { protocol: "anytls", server_port: 9443 },
+        { family: "dual" },
+    );
+    expect(tcp).toContain("server origin.example.com:9443 resolve;");
+    expect(tcp).toContain("listen 8443;");
+    expect(tcp).toContain("listen [::]:8443 ipv6only=on;");
+    expect(tcp).toContain("ipv6=off");
+    expect(tcp).not.toContain("proxy_ssl");
+    expect(tcp).not.toContain("proxy_protocol");
+    const connection = relayStreamConfig({ ...binding, scope: "connection" }, { protocol: "anytls", server_port: 9443 }, { family: "dual" });
+    expect(connection).toContain("upstream v2box_connection_2");
+    expect(connection).not.toContain("upstream v2box_origin_2");
+    const udp = relayStreamConfig(
+        binding,
+        { protocol: "tuic", server_port: 9443 },
+        { family: "ipv4" },
+    );
+    expect(udp).toContain("listen 8443 udp reuseport;");
+    expect(udp).not.toContain("listen [::]");
+    expect(
+        relayStreamConfig(
+            { ...binding, domain: "bad; include evil;" },
+            { server_port: 443 },
+            { family: "ipv4" },
+        ),
+    ).toBe("");
 });

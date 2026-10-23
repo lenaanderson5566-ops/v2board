@@ -49,5 +49,53 @@ try{
  $converted=App\Services\Actions\ConvertNodeBackend::run('v2box',$box->id,'v2node',array_merge($base,['name'=>'Converted budget node','route_id'=>[],'up_mbps'=>0,'down_mbps'=>0]));
  $assert(Budgets::forNode('v2node',$converted->id)['id']===$id,'Conversion retains server binding');
  $assert(Budgets::forNode('v2node',$converted->id)['usedBytes']===55,'Conversion retains accumulated usage');
+
+ // Physical server editing owns quota configuration atomically, without resetting usage.
+ $physical=DB::table('v2_network_server')->insertGetId(['name'=>'Quota machine','family'=>'ipv4','enabled'=>true]);
+ foreach([[$converted->id,'v2node'],[$legacy->id,'v2node']] as [$nodeId,$type])DB::table('v2_node_ddns')->insert(['credential_id'=>999999,'node_type'=>$type,'node_id'=>$nodeId,'domain'=>'quota-'.$nodeId.'.example.test','family'=>'ipv4','server_id'=>$physical]);
+ $network=new App\Http\Controllers\V1\Admin\NetworkServerController();
+ $physicalSettings=['id'=>$physical,'name'=>'Renamed machine','family'=>'ipv4','enabled'=>true,'traffic'=>['limitBytes'=>200,'countingMode'=>'download','resetDay'=>1]];
+ $network->save(Request::create('/','POST',$physicalSettings));
+ $assert((int)DB::table('v2_server_traffic_budget')->find($id)->network_server_id===$physical,'Legacy quota adopts explicit physical ownership');
+ $assert(Budgets::forNode('v2node',$converted->id)['usedBytes']===55,'Integrated save preserves accumulated usage');
+ $network->save(Request::create('/','POST',$physicalSettings));
+ $assert(Budgets::forNode('v2node',$converted->id)['usedBytes']===55,'Repeated server save never repeats historical import');
+ $bad=$physicalSettings;$bad['traffic']['nodes']=[];
+ try{$network->save(Request::create('/','POST',$bad));throw new RuntimeException('Client binding injection accepted');}catch(Illuminate\Validation\ValidationException $e){$checks++;}
+ $oldName=DB::table('v2_network_server')->find($physical)->name;
+ $bad=$physicalSettings;$bad['traffic']['resetDay']=29;$bad['name']='Should not save';
+ try{$network->save(Request::create('/','POST',$bad));throw new RuntimeException('Invalid integrated quota accepted');}catch(Illuminate\Validation\ValidationException $e){$checks++;}
+ $assert(DB::table('v2_network_server')->find($physical)->name===$oldName,'Invalid quota does not partially save server metadata');
+ try{$admin->save(Request::create('/','POST',array_merge($settings,['nodes'=>[]])));throw new RuntimeException('Physical bindings detached');}catch(Symfony\Component\HttpKernel\Exception\HttpException $e){$assert($e->getStatusCode()===409,'Legacy editor cannot override automatic membership');}
+ $fresh=App\Models\ServerV2box::create(array_merge($base,['name'=>'Second service','up_mbps'=>0,'down_mbps'=>0]));
+ DB::table('v2_stat_server')->insert(['server_id'=>$fresh->id,'server_type'=>'v2box','u'=>2,'d'=>3,'record_type'=>'d','record_at'=>$day,'created_at'=>time(),'updated_at'=>time()]);
+ $assignment=DB::table('v2_node_ddns')->insertGetId(['credential_id'=>999999,'node_type'=>'v2box','node_id'=>$fresh->id,'domain'=>'fresh.example.test','family'=>'ipv4']);
+ App\Services\NetworkServer::attach($assignment,$physical);
+ $assert(Budgets::forNode('v2box',$fresh->id)['id']===$id && Budgets::forNode('v2box',$fresh->id)['usedBytes']===58,'Same-machine service automatically joins one quota with history imported once');
+ App\Services\NetworkServer::attach($assignment,$physical);
+ $assert(Budgets::forNode('v2box',$fresh->id)['usedBytes']===58,'Repeated attachment does not count history twice');
+ $detail=$network->traffic(Request::create('/','GET',['id'=>$physical]))['data'];
+ $assert(count($detail['nodes'])===3 && count($detail['history'])<=90 && $detail['budget']['usedBytes']===58,'Server detail contains bounded history and shared service usage');
+ DB::enableQueryLog();DB::flushQueryLog();$admin->fetch(Request::create('/'));$queries=DB::getQueryLog();DB::disableQueryLog();
+ $assert(count($queries)<=5,'Quota list uses a fixed number of batched queries');
+ $before=DB::table('v2_server_traffic_budget')->count();
+ $created=$network->save(Request::create('/','POST',['name'=>'Empty machine','family'=>'ipv4','enabled'=>true,'traffic'=>['limitBytes'=>0,'countingMode'=>'both','resetDay'=>1]]))['data']['id'];
+ $assert(DB::table('v2_server_traffic_budget')->count()===$before+1 && DB::table('v2_server_traffic_budget')->where('network_server_id',$created)->value('limit_bytes')===0,'Server with no services can store unlimited quota');
+
+ $elsewhere=DB::table('v2_network_server')->insertGetId(['name'=>'Other machine','family'=>'ipv4','enabled'=>true]);
+ DB::table('v2_node_ddns')->where('id',$assignment)->update(['server_id'=>$elsewhere]);
+ try{$network->save(Request::create('/','POST',['id'=>$elsewhere,'name'=>'Should roll back','family'=>'ipv4','enabled'=>true,'traffic'=>['limitBytes'=>10,'countingMode'=>'both','resetDay'=>1]]));throw new RuntimeException('Foreign server quota adopted');}catch(Symfony\Component\HttpKernel\Exception\HttpException $e){$assert($e->getStatusCode()===409,'Foreign server quota ownership is rejected');}
+ $assert(DB::table('v2_network_server')->find($elsewhere)->name==='Other machine' && (int)DB::table('v2_server_traffic_budget')->find($id)->network_server_id===$physical,'Quota conflict rolls back metadata and preserves the original owner');
+ DB::table('v2_node_ddns')->where('id',$assignment)->update(['server_id'=>$physical]);
+
+ $migrationNode=App\Models\ServerV2box::create(array_merge($base,['name'=>'Legacy migration service','up_mbps'=>0,'down_mbps'=>0]));
+ $oldBudgetResponse=$admin->save(Request::create('/','POST',['name'=>'Legacy account','limitBytes'=>4096,'countingMode'=>'both','resetDay'=>5,'nodes'=>[['type'=>'v2box','id'=>$migrationNode->id]]]));
+ $oldBudget=json_decode($oldBudgetResponse->getContent(),true)['data']['id'];
+ $oldServer=DB::table('v2_network_server')->insertGetId(['name'=>'Legacy machine','family'=>'ipv4','enabled'=>true]);
+ DB::table('v2_node_ddns')->insert(['credential_id'=>999999,'node_type'=>'v2box','node_id'=>$migrationNode->id,'domain'=>'migration.example.test','family'=>'ipv4','server_id'=>$oldServer]);
+ $legacyDetail=$network->traffic(Request::create('/','GET',['id'=>$oldServer]))['data'];
+ $assert($legacyDetail['budget']['limitBytes']===4096 && DB::table('v2_server_traffic_budget')->find($oldBudget)->network_server_id===null,'Read-only details display explicit legacy quota without mutating ownership');
+ $migration=require database_path('migrations/2026_10_24_000001_link_server_traffic_budget.php');$migration->up();$migration->up();
+ $assert((int)DB::table('v2_server_traffic_budget')->find($oldBudget)->network_server_id===$oldServer && (int)DB::table('v2_server_traffic_budget')->find($oldBudget)->limit_bytes===4096,'Idempotent migration associates explicit legacy ownership without altering quota');
  echo "Server traffic budgets: {$checks} checks passed\n";
 }finally{CarbonImmutable::setTestNow();DB::rollBack();}

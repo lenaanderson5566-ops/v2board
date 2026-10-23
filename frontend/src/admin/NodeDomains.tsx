@@ -319,7 +319,7 @@ export function NodeDomainBinding({
                                 也可能来自连接面板时的出口地址。
                                 {node.type === "v2box"
                                     ? "新节点请执行一键部署；已部署节点可在高级维护中修复上报。若部署尚未完成，请先执行恢复命令。"
-                                    : "请在 服务器与域名 中配置节点上报。"}
+                                    : "请在 域名与解析 中配置节点上报。"}
                             </p>
                         )}
                         <div className="actions">
@@ -423,7 +423,7 @@ export function NodeDomainBinding({
                         {binding ? "修改域名设置" : "设置节点域名"}
                     </summary>
                     {!roots.length ? (
-                        <p>请先在 服务器与域名 中添加并验证根域名。</p>
+                        <p>请先在 域名与解析 中添加并验证根域名。</p>
                     ) : (
                         <form
                             className="node-domain-form"

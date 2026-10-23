@@ -20,7 +20,7 @@ export function nodeSetupFields(
                 ["managed", "直连一键部署（推荐）"],
                 ["manual", "手动维护连接地址"],
             ],
-            hint: "自动关联服务器与域名，保存后即可部署。",
+            hint: "自动关联域名与解析，保存后即可部署。",
         },
     ];
     if (managed)
@@ -43,7 +43,7 @@ export function nodeSetupFields(
                 ],
                 hint: roots.length
                     ? "普通 TLS 的 SNI 自动同步。"
-                    : "请先在服务器与域名中维护 Cloudflare 根域名；也可选择手动维护连接地址。",
+                    : "请先在域名与解析中维护 Cloudflare 根域名；也可选择手动维护连接地址。",
             },
             {
                 key: "setup_prefix",

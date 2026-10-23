@@ -79,6 +79,8 @@ const Payments = lazy(() =>
 const Nodes = lazy(() =>
     import("./admin-nodes").then((module) => ({ default: module.Nodes })),
 );
+const Infrastructure = lazy(() => import("./Infrastructure").then(m => ({default:m.Infrastructure})));
+const AdminDDNS = lazy(() => import("./AdminDDNS").then(m => ({default:m.AdminDDNS})));
 const OrdersPage = lazy(() =>
     import("./admin-orders").then((module) => ({ default: module.OrdersPage })),
 );
@@ -155,7 +157,9 @@ function AdminPageBody({ current }: { current: string }) {
         );
     if (current === "mail-logs") return <AdminMailLogs />;
     if (current === "system-log") return <AdminSystemLogs />;
-    if (current === "nodes-ddns") return <Nodes key="nodes-ddns" initialTab="ddns" />;
+    if (current === "node-domains") return <AdminDDNS />;
+    if (["servers", "server-lightsail"].includes(current)) return <Infrastructure section={current} />;
+    if (current === "node-services" || current === "node-forwarding") return <Nodes initialTab={current === "node-services" ? "services" : "forwarding"} />;
     if (current === "client-diagnostics") return <AdminClientDiagnostics />;
     if (current === "client-downloads")
         return <Settings key="client-downloads" section="app" />;

@@ -26,6 +26,7 @@ final class NetworkServer {
             foreach(['ipv4','ipv6'] as $f) { $data[$f]=$s->$f; $data[$f.'_seen_at']=$s->{$f.'_seen_at'}; }
         }
         DB::table('v2_node_ddns')->where('id',$binding)->update($data);
+        if (in_array($a->node_type,['v2node','v2box'],true)) NetworkServerTraffic::sync((int)$id);
         return $id;
     }
     public static function credential(int $id,bool $rotate=false): array {

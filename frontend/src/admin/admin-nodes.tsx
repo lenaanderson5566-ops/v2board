@@ -4,7 +4,6 @@ import { NodeConnectionEditor, NodeForwarding } from "./NodeConnections";
 import { NodeTopology } from "./NodeTopology";
 import { NodeDictionaryProvider } from "./node-dictionary";
 import { NodeDeployment } from "./NodeDeployment";
-import { AdminChoiceGroup } from "./AdminChoices";
 import { AdminDisplaySettings } from "./AdminDisplaySettings";
 import { field } from "./admin-fields";
 import { useEffect, useRef, useState, type ComponentProps } from "react";
@@ -29,14 +28,11 @@ import {
     useData,
     type Field,
 } from "../shared/ui";
-import { AdminDDNS } from "./AdminDDNS";
 import {
     NodeDiagnostics,
     nodeRuntimeLabels,
     nodeIssueLabels,
 } from "./AdminDiagnostics";
-import { AdminLightsail } from "./AdminLightsail";
-import { ServerTrafficBudgets } from "./ServerTrafficBudgets";
 import { sortPayload } from "./admin-actions";
 import { linkNode, nodeFields } from "./admin-linkage";
 import { formPresentation } from "./admin-presentation";
@@ -54,7 +50,7 @@ const nodeTypes = [
     "v2box",
 ] as const satisfies readonly NodeBackendType[];
 export function Nodes(props: {
-    initialTab?: "nodes" | "ddns" | "lightsail" | "traffic";
+    initialTab?: "nodes" | "services" | "forwarding";
 }) {
     return (
         <NodeDictionaryProvider>
@@ -64,8 +60,8 @@ export function Nodes(props: {
 }
 function NodesContent({
     initialTab = "nodes",
-}: { initialTab?: "nodes" | "ddns" | "lightsail" | "traffic" } = {}) {
-    const [tab, setTab] = useState<string>(initialTab);
+}: { initialTab?: "nodes" | "services" | "forwarding" } = {}) {
+    const tab = initialTab;
     const [connectionNode, setConnectionNode] = useState<Row | null>(null);
     const [nodeDirty, setNodeDirty] = useState(false);
     const [nodeBusy, setNodeBusy] = useState(false);
@@ -313,30 +309,9 @@ function NodesContent({
                     {savedNodeNotice}
                 </p>
             )}
-            <AdminChoiceGroup
-                variant="navigation"
-                label="节点管理功能"
-                value={tab}
-                onChange={(value) => {
-                    setTab(value);
-                    if (value === "nodes") d.reload();
-                }}
-                options={[
-                    { value: "nodes", label: "节点列表" },
-                    { value: "services", label: "代理服务" },
-                    { value: "forwarding", label: "入口转发" },
-                    { value: "ddns", label: "服务器与域名" },
-                    { value: "lightsail", label: "Lightsail IP" },
-                    { value: "traffic", label: "服务器流量" },
-                ]}
-            />
+            <p className="pad muted">新增直连节点可自动关联服务器与域名。复用已有代理服务时新增线路；多入口共用服务无需重复部署。 <a href="#/servers">服务器管理</a> · <a href="#/node-domains">域名与解析</a></p>
             {connectionNode && <NodeConnectionEditor key={`${connectionNode.type}:${connectionNode.id || "new"}`} node={connectionNode} nodes={nodeRows} groups={rows(groups.data)} close={() => setConnectionNode(null)} onSaved={d.reload} />}
             {tab === "forwarding" && <NodeForwarding nodes={nodeRows} edit={node => node.service_id ? setConnectionNode(node) : setCredentialNode(node)} />}
-            {tab === "ddns" && <AdminDDNS />}
-            {tab === "lightsail" && <AdminLightsail nodes={rows(d.data)} />}
-            {tab === "traffic" && (
-                <ServerTrafficBudgets nodes={rows(d.data)} onSaved={d.reload} />
-            )}
             {(tab === "nodes" || tab === "services") && (
                 <Panel
                     title={tab === "services" ? "代理服务" : "节点列表"}

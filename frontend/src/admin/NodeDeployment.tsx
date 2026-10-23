@@ -273,7 +273,7 @@ export function NodeDeployment({
                                     <p className="muted">
                                         {node.type === "v2box"
                                             ? "手动安装需自行配置节点接入密钥和 IP 上报；通常使用“新安装”中的一键部署即可。"
-                                            : "手动安装后配置节点独立凭据；IP 自动上报可在 服务器与域名 中绑定节点后配置。"}
+                                            : "手动安装后配置节点独立凭据；IP 自动上报可在 域名与解析 中绑定节点后配置。"}
                                     </p>
                                     {node.install_command && (
                                         <>

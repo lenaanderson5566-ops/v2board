@@ -35,14 +35,20 @@ class ServerTrafficBudgetService {
   if(!$budgetId || ($upload===0 && $download===0))return;
   DB::statement('INSERT INTO v2_server_traffic_day (budget_id,day_at,upload_bytes,download_bytes) VALUES (?,?,?,?) ON DUPLICATE KEY UPDATE upload_bytes=upload_bytes+VALUES(upload_bytes),download_bytes=download_bytes+VALUES(download_bytes)',[$budgetId,$dayAt,$upload,$download]);
  }
- public static function resource($budget,bool $full=true): array {
+ public static function resources($budgets): array {
+  if($budgets->isEmpty())return [];
+  $since=CarbonImmutable::now(config('app.timezone','UTC'))->startOfMonth()->subMonth()->timestamp;
+  $days=DB::table('v2_server_traffic_day')->whereIn('budget_id',$budgets->pluck('id'))->where('day_at','>=',$since)->where('day_at','<',CarbonImmutable::now(config('app.timezone','UTC'))->startOfMonth()->addMonth()->timestamp)->get()->groupBy('budget_id');
+  return $budgets->map(fn($b)=>self::resource($b,true,$days->get($b->id,collect())))->all();
+ }
+ public static function resource($budget,bool $full=true,$days=null): array {
   [$start,$end]=self::period($budget->reset_day);
-  $sum=function(int $from,int $to)use($budget){$r=DB::table('v2_server_traffic_day')->where('budget_id',$budget->id)->where('day_at','>=',$from)->where('day_at','<',$to)->selectRaw('COALESCE(SUM(upload_bytes),0) AS u, COALESCE(SUM(download_bytes),0) AS d')->first();return ['uploadBytes'=>(int)$r->u,'downloadBytes'=>(int)$r->d];};
+  $sum=function(int $from,int $to)use($budget,$days){if($days!==null){$rows=$days->filter(fn($d)=>$d->day_at>=$from && $d->day_at<$to);return ['uploadBytes'=>(int)$rows->sum('upload_bytes'),'downloadBytes'=>(int)$rows->sum('download_bytes')];}$r=DB::table('v2_server_traffic_day')->where('budget_id',$budget->id)->where('day_at','>=',$from)->where('day_at','<',$to)->selectRaw('COALESCE(SUM(upload_bytes),0) AS u, COALESCE(SUM(download_bytes),0) AS d')->first();return ['uploadBytes'=>(int)$r->u,'downloadBytes'=>(int)$r->d];};
   $traffic=$sum($start->timestamp,$end->timestamp);
   $used=($budget->counting_mode==='download' ? 0 : $traffic['uploadBytes'])+($budget->counting_mode==='upload' ? 0 : $traffic['downloadBytes']);
   $month=CarbonImmutable::now(config('app.timezone','UTC'))->startOfMonth();
   $result=['id'=>(int)$budget->id,'name'=>$budget->name,'limitBytes'=>(int)$budget->limit_bytes,'countingMode'=>$budget->counting_mode,'resetDay'=>(int)$budget->reset_day,'usedBytes'=>$used,'blocked'=>$budget->limit_bytes>0 && $used >= $budget->limit_bytes,'periodStart'=>$start->utc()->toIso8601String(),'periodEnd'=>$end->utc()->toIso8601String(),'periodEndUnix'=>$end->timestamp,'traffic'=>$traffic];
-  if($full){$result+=['thisMonth'=>$sum($month->timestamp,$month->addMonth()->timestamp),'last30Days'=>$sum(CarbonImmutable::now(config('app.timezone','UTC'))->startOfDay()->subDays(29)->timestamp,$month->addMonth()->timestamp)];}
+  if($full){$result+=['networkServerId'=>isset($budget->network_server_id)?(int)$budget->network_server_id:null,'thisMonth'=>$sum($month->timestamp,$month->addMonth()->timestamp),'last30Days'=>$sum(CarbonImmutable::now(config('app.timezone','UTC'))->startOfDay()->subDays(29)->timestamp,$month->addMonth()->timestamp)];}
   return $result;
  }
  public static function forNode(string $type,int $nodeId): ?array {

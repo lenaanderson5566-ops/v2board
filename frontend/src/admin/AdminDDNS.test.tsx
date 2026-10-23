@@ -644,3 +644,10 @@ it("produces runtime-resolved L4 configuration with distinct entry and origin po
         ),
     ).toBe("");
 });
+
+it("shows server use and a valid report time when only one address family reported", () => {
+    render(<NetworkServers data={{servers:[{id:7,name:"Shared machine",enabled:true,family:"ipv4",ipv4_seen_at:1792800000}],assignments:[{id:1,server_id:7,node_type:"v2box",node_id:3},{id:2,server_id:7,node_type:"v2box",node_id:3},{id:4,server_id:7,purpose:"entry"}]}} reload={()=>{}} />);
+    expect(screen.getByText("1 个代理服务 · 1 个入口域名")).toBeTruthy();
+    expect(screen.queryByText("尚未上报")).toBeNull();
+    expect(screen.queryByText("Invalid Date")).toBeNull();
+});

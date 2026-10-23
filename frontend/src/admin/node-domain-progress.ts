@@ -39,7 +39,7 @@ export function nodeDomainProgress(
             "所属服务器已停用，请在服务器与共享入口中恢复上报与解析同步。";
     } else if (!binding.enabled) {
         title = "下一步：启用域名绑定";
-        description = "此绑定已停用。请在 服务器与域名 中恢复后继续。";
+        description = "此绑定已停用。请在 域名与解析 中恢复后继续。";
     } else if (!binding.managed) {
         title = "此绑定仅同步 DNS";
         description =
@@ -58,7 +58,7 @@ export function nodeDomainProgress(
     } else if (binding.status === "credential_rejected") {
         title = "下一步：检查 Cloudflare 凭据";
         description =
-            "请在 服务器与域名 中检查 Token 权限与 Zone，再重试 DNS 同步。";
+            "请在 域名与解析 中检查 Token 权限与 Zone，再重试 DNS 同步。";
     } else if (binding.status === "host_changed") {
         title = "下一步：重新确认域名设置";
         description = "节点地址已被修改。请展开域名设置，核对并重新保存绑定。";

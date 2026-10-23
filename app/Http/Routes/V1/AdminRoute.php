@@ -86,6 +86,7 @@ class AdminRoute
             $router->post('/server/connections/save', 'V1\\Admin\\NodeConnectionController@save');
             $router->post('/server/connections/publish', 'V1\\Admin\\NodeConnectionController@publish');
             $router->get('/server/ddns/fetch', 'V1\\Admin\\NodeDdnsController@fetch');
+            $router->get('/server/network/traffic', 'V1\\Admin\\NetworkServerController@traffic');
             $router->post('/server/network/save', 'V1\\Admin\\NetworkServerController@save');
             $router->post('/server/network/drop', 'V1\\Admin\\NetworkServerController@drop');
             $router->post('/server/network/enroll', 'V1\\Admin\\NetworkServerController@enroll');

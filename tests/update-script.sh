@@ -286,5 +286,6 @@ grep -q 'migrate --path=database/migrations/2026_10_23_000001_manage_node_dns.ph
 
 grep -q 'migrate --path=database/migrations/2026_10_23_000002_node_tls_transition.php --force --no-interaction' calls.log
 grep -q 'migrate --path=database/migrations/2026_10_23_000004_proxy_service_routes.php --force --no-interaction' calls.log
+grep -q 'migrate --path=database/migrations/2026_10_24_000001_link_server_traffic_budget.php --force --no-interaction' calls.log
 
 echo 'Updater: 26 isolated scenarios passed'

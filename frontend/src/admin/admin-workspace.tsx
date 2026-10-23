@@ -25,9 +25,7 @@ export default function AdminWorkspace({
                         ? adminWorkspace(current)!.root
                         : current === "invitation-rules"
                           ? "invitations"
-                          : current === "nodes-ddns"
-                            ? "nodes"
-                            : current === "overview-system" || current === "overview-risk"
+                          : current === "overview-system" || current === "overview-risk"
                               ? "overview"
                               : current === "plans-translations"
                                 ? "plans"

@@ -20,6 +20,8 @@ export const legacyAdminMenu = [
     ["notices", "公告管理", "speech", "营销与内容"],
     ["banners", "横幅管理", "picture", "营销与内容"],
     ["nodes", "节点管理", "layers", "节点与接入"],
+    ["servers", "服务器管理", "layers", "节点与接入"],
+    ["node-domains", "域名与解析", "shuffle", "节点与接入"],
     ["groups", "节点权限组", "wrench", "节点与接入"],
     ["routes", "路由管理", "shuffle", "节点与接入"],
     ["client-downloads", "专用客户端下载", "screen-smartphone", "客户端"],

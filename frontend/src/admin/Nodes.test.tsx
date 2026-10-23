@@ -30,6 +30,8 @@ vi.mock("../shared/api", async (importOriginal) => ({
     request: api.request,
     readRequest: api.request,
 }));
+import { Infrastructure } from "./Infrastructure";
+import { AdminDDNS } from "./AdminDDNS";
 import { Nodes, ResourcePage, resources } from "./admin";
 import { NodeCredentials } from "./NodeCredentials";
 import { NodeDeployment } from "./NodeDeployment";
@@ -427,7 +429,7 @@ it("guides deployment to panel-managed DDNS", async () => {
         ).value,
     ).toBe("bash install.sh");
     fireEvent.mouseDown(screen.getByRole("tab", { name: "域名与解析" }), {button:0,ctrlKey:false});
-    expect(await screen.findByText("请先在 服务器与域名 中添加并验证根域名。")).toBeTruthy();
+    expect(await screen.findByText("请先在 域名与解析 中添加并验证根域名。")).toBeTruthy();
     expect(api.request.mock.calls.some(([path]) => path.endsWith("credentials/deployment"))).toBe(false);
 });
 
@@ -528,33 +530,30 @@ it("filters nodes by name, backend and exhausted server budget", async () => {
     expect(screen.queryByText("Budget restricted")).toBeNull();
 });
 
-it("opens DDNS inside node management and returns to the node list", async () => {
+it("keeps infrastructure management separate from the node list", async () => {
     render(<Nodes />);
-    fireEvent.click(screen.getByRole("button", { name: "服务器与域名" }));
-    expect(await screen.findByText("Cloudflare 凭据")).toBeTruthy();
-    expect(screen.queryByLabelText("搜索节点")).toBeNull();
-    fireEvent.click(screen.getByRole("button", { name: "节点列表" }));
     expect(await screen.findByLabelText("搜索节点")).toBeTruthy();
+    expect(screen.getByRole("link", {name:"服务器管理"}).getAttribute("href")).toBe("#/servers");
+    expect(screen.getByRole("link", {name:"域名与解析"}).getAttribute("href")).toBe("#/node-domains");
+    expect(api.request.mock.calls.some(([path])=>String(path).includes("ddns/events"))).toBe(false);
+    expect(screen.queryByText("Cloudflare 凭据")).toBeNull();
 });
-
-it("manages Lightsail and traffic in peer pages without an outer dialog", async () => {
-    render(<Nodes />);
-    fireEvent.click(screen.getByRole("button", { name: "Lightsail IP" }));
+it("loads server pages independently without node-list or domain-event queries", async () => {
+    const view=render(<Infrastructure />);
+    expect(await screen.findByRole("button",{name:"添加服务器"})).toBeTruthy();
+    expect(api.request.mock.calls.some(([path])=>String(path).includes("getNodes") || String(path).includes("ddns/events"))).toBe(false);
+    view.rerender(<Infrastructure section="server-lightsail" />);
     expect(await screen.findByText("Lightsail 公网 IP 管理")).toBeTruthy();
     expect(screen.queryByRole("dialog")).toBeNull();
-    expect(
-        screen
-            .getByRole("button", { name: "Lightsail IP" })
-            .getAttribute("aria-pressed"),
-    ).toBe("true");
-    fireEvent.click(screen.getByRole("button", { name: "服务器流量" }));
-    expect(
-        await screen.findByRole("button", { name: "添加服务器额度" }),
-    ).toBeTruthy();
+    view.rerender(<Infrastructure />);
+    expect(await screen.findByRole("button",{name:"添加服务器"})).toBeTruthy();
+    expect(screen.queryByRole("tab",{name:"流量额度"})).toBeNull();
     expect(screen.queryByText("Lightsail 公网 IP 管理")).toBeNull();
-    expect(screen.queryByRole("dialog")).toBeNull();
-    fireEvent.click(screen.getByRole("button", { name: "节点列表" }));
-    expect(await screen.findByLabelText("搜索节点")).toBeTruthy();
+});
+it("keeps server actions out of domain credential management", async () => {
+    render(<AdminDDNS />);
+    expect(await screen.findByText("Cloudflare 凭据")).toBeTruthy();
+    expect(screen.queryByRole("button",{name:"添加服务器"})).toBeNull();
 });
 
 it("creates one-use deployment without a password and copies no permanent credential", async () => {

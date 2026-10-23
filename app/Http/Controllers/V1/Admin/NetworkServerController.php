@@ -10,22 +10,31 @@ use Illuminate\Support\Facades\DB;
 
 final class NetworkServerController extends Controller {
     public function save(Request $request) {
-        $v=$request->validate(['id'=>'nullable|integer|min:1','name'=>'required|string|max:100','family'=>'required|in:ipv4,ipv6,dual','enabled'=>'required|boolean']);
+        $v=$request->validate(['id'=>'nullable|integer|min:1','name'=>'required|string|max:100','family'=>'required|in:ipv4,ipv6,dual','enabled'=>'required|boolean','traffic'=>'sometimes|array:limitBytes,countingMode,resetDay','traffic.limitBytes'=>'required_with:traffic|integer|min:0|max:9007199254740991','traffic.countingMode'=>'required_with:traffic|in:upload,download,both','traffic.resetDay'=>'required_with:traffic|integer|min:1|max:28']);
         return NodeDnsLifecycle::locked(fn()=>DB::transaction(function()use($v){
             $old=isset($v['id'])?DB::table('v2_network_server')->find($v['id']):null;
             abort_if(isset($v['id']) && !$old,404);
             abort_if(!$old && DB::table('v2_network_server')->count()>=1000,422,'最多维护 1000 台服务器');
             abort_if($old && $old->family!==$v['family'] && DB::table('v2_node_ddns')->where('server_id',$old->id)->exists(),409,'请先调整关联域名，再更改服务器地址类型');
-            unset($v['id']);
+            $traffic=$v['traffic']??null;unset($v['id'],$v['traffic']);
             $id=$old?$old->id:DB::table('v2_network_server')->insertGetId($v);
             if ($old) DB::table('v2_network_server')->where('id',$id)->update($v);
+            if($traffic) \App\Services\NetworkServerTraffic::save((int)$id,$traffic);
             return ['data'=>['id'=>$id]];
         }));
+    }
+    public function traffic(Request $request) {
+        $v=$request->validate(['id'=>'required|integer|min:1']);
+        abort_unless(DB::table('v2_network_server')->where('id',$v['id'])->exists(),404);
+        $b=\App\Services\NetworkServerTraffic::budget((int)$v['id']);
+        $history=$b?DB::table('v2_server_traffic_day')->where('budget_id',$b->id)->where('day_at','>=',time()-90*86400)->orderByDesc('day_at')->limit(90)->get()->map(fn($r)=>['dayAt'=>(int)$r->day_at,'uploadBytes'=>(int)$r->upload_bytes,'downloadBytes'=>(int)$r->download_bytes]):[];
+        return ['data'=>['budget'=>$b?\App\Services\ServerTrafficBudgetService::resource($b):null,'history'=>$history,'nodes'=>array_map(function($n){$node=(new \App\Services\ServerService())->getServer($n['id'],$n['type']);return $n+['name'=>$node?->name,'protocol'=>$node?->protocol,'listenPort'=>(int)($node?->server_port??0)];},\App\Services\NetworkServerTraffic::nodes((int)$v['id']))]];
     }
     public function drop(Request $request) {
         $v=$request->validate(['id'=>'required|integer|min:1']);
         return NodeDnsLifecycle::locked(function()use($v){
             abort_if(DB::table('v2_node_ddns')->where('server_id',$v['id'])->exists(),409,'请先解除此服务器关联的域名');
+            DB::table('v2_server_traffic_budget')->where('network_server_id',$v['id'])->update(['network_server_id'=>null]);
             DB::table('v2_network_server')->where('id',$v['id'])->delete();
             return ['data'=>true];
         });

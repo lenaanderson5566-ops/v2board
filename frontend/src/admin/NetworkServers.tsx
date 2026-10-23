@@ -1,8 +1,11 @@
+import { ServerTrafficFields, trafficDraft, trafficPayload } from "./ServerTrafficFields";
+import { ServerTrafficDetails, quotaState } from "./ServerTrafficDetails";
+import { ServerTrafficBudgets } from "./ServerTrafficBudgets";
 import { domainStatus } from "./NodeDomains";
 import { AdminSwitch } from "./admin-switch";
-import { useRef, useState } from "react";
-import { admin, request, type Row } from "../shared/api";
-import { Modal, Panel, Table } from "../shared/ui";
+import { useMemo, useRef, useState } from "react";
+import { admin, request, rows, bytes, type Row } from "../shared/api";
+import { Modal, Panel, Table, State, useData } from "../shared/ui";
 import { logTime } from "./admin-log-time";
 
 export function NetworkServers({
@@ -13,6 +16,24 @@ export function NetworkServers({
     reload: () => void;
 }) {
     const servers: Row[] = data.servers || [];
+    const budgets=useData<Row[]>(admin("server/traffic-budget/fetch"));
+    const budgetMap=useMemo(()=>{
+        const result=new Map<number,Row>(),owners=new Map<string,number>(),candidates=new Map<number,Row[]>();
+        for(const a of data.assignments || [])if(a.node_type==="v2box" || a.node_type==="v2node")owners.set(`${a.node_type}:${a.node_id}`,Number(a.server_id));
+        for(const b of rows(budgets.data)){
+            if(b.networkServerId){result.set(Number(b.networkServerId),b);continue;}
+            const ids=new Set<number>((b.nodes || []).map((n: Row)=>owners.get(`${n.type}:${n.id}`) || 0));
+            if(ids.size===1 && !ids.has(0)){const id=[...ids][0];candidates.set(id,[...(candidates.get(id)||[]),b]);}
+        }
+        for(const [id,list] of candidates)if(!result.has(id) && list.length===1)result.set(id,list[0]);
+        return result;
+    },[budgets.data,data.assignments]);
+    const budgetFor=(id: number)=>budgetMap.get(Number(id));
+    const [detail,setDetail]=useState<Row | null>(null);
+    const [legacyOpen,setLegacyOpen]=useState(false);
+    const legacyNodes=useData<Row[]>(legacyOpen?admin("server/manage/getNodes"):"");
+    function editServer(server: Row) {if(budgets.loading || budgets.error){setError("请先成功加载流量额度后再编辑服务器");return;}setKind("save");setEditing({...server,...trafficDraft(budgetFor(server.id))});}
+
     const entries: Row[] = (data.assignments || []).filter(
         (a: Row) => a.purpose === "entry",
     );
@@ -34,6 +55,13 @@ export function NetworkServers({
         setError("");
         setNotice("");
         try {
+            if(path==="save") {
+                if(budgets.loading || budgets.error)throw new Error("请先成功加载流量额度后再保存");
+                const traffic=trafficPayload(editing || {});
+                const old=budgetFor(Number(body.id));
+                if(old && (old.resetDay!==traffic.resetDay || old.countingMode!==traffic.countingMode || (traffic.limitBytes>0 && traffic.limitBytes<=Number(old.usedBytes))) && !confirm("此变更会重新计算当前周期用量，或立即限制达到额度的服务。确认保存？"))return;
+                body={...body,traffic};
+            }
             const r = await request<Row>(
                 admin(`server/${domain ? "domains" : "network"}/${path}`),
                 body,
@@ -42,6 +70,7 @@ export function NetworkServers({
                 setAdoption(r.data?.rows ? { ...r.data, id: body.id } : null);
             if (r.data?.command) setCommand(r.data.command);
             reload();
+            if(path==="save")budgets.reload();
             if (path === "retry") setNotice("已安排 DNS 同步，将由下一轮后台调度执行。同步使用服务器最近上报的 IP，不重启节点或切换线路。");
             setEditing(null);
         } catch (e) {
@@ -54,7 +83,7 @@ export function NetworkServers({
     return (
         <>
             <Panel
-                title="服务器与共享入口"
+                title="服务器列表"
                 actions={
                     <div className="actions">
                         <button
@@ -64,6 +93,7 @@ export function NetworkServers({
                                     name: "",
                                     family: "ipv4",
                                     enabled: true,
+                                    ...trafficDraft(),
                                 });
                             }}
                         >
@@ -88,31 +118,34 @@ export function NetworkServers({
             >
                 <div className="pad">
                     <p className="muted">
-                        每台实际服务器维护一条记录。入口服务器上报入口
-                        IP，节点服务器上报回源
-                        IP；同一入口可被不同端口的节点共享。
+                        直连节点可自动创建服务器记录，无需重复添加。独立中转服务器在此配置 IP 上报与共享入口。
+                        {" "}<a href="#/nodes">配置节点</a> · <a href="#/node-domains">管理根域名与解析</a>
                     </p>
                     <Table
                         data={servers}
                         columns={[
-                            ["name", "服务器"],
-                            ["family", "地址类型"],
-                            ["ipv4", "IPv4"],
-                            ["ipv6", "IPv6"],
-                            [
-                                "enabled",
-                                "状态",
-                                (r: Row) => (r.enabled ? "已启用" : "已停用"),
-                            ],
+                            ["name", "服务器", r=><span>{r.name}{!r.enabled && <small className="muted"> · 已停用</small>}</span>],
+                            ["quota", "周期用量 / 额度", (r: Row) => {
+                                const b=budgetFor(r.id);
+                                return budgets.loading ? "加载中" : budgets.error ? "加载失败" : !b ? "未设置" : <span className="server-quota-usage">{bytes(b.usedBytes || 0)} / {Number(b.limitBytes)>0?bytes(b.limitBytes):"不限量"}<small className={b.blocked || quotaState(b)==="接近额度" ? "server-quota-warning" : "muted"}>{quotaState(b)}</small>{Number(b.limitBytes)>0 && <progress aria-label={`${r.name} 额度使用比例`} max={100} value={Math.min(100,Number(b.usedBytes)/Number(b.limitBytes)*100)}/>}</span>;
+                            }],
+                            ["cycle", "周期起始日", (r: Row) => budgetFor(r.id)?`每月 ${budgetFor(r.id)!.resetDay} 日`:"—"],
+                            ["usage", "关联用途", (r: Row) => {
+                                const bindings=(data.assignments || []).filter((a: Row)=>Number(a.server_id)===Number(r.id));
+                                const origins=new Set(bindings.filter((a: Row)=>a.purpose!=="entry").map((a: Row)=>`${a.node_type}:${a.node_id}`)).size;
+                                const entryCount=bindings.filter((a: Row)=>a.purpose==="entry").length;
+                                return [origins ? `${origins} 个代理服务` : "", entryCount ? `${entryCount} 个入口域名` : ""].filter(Boolean).join(" · ") || "尚未关联";
+                            }],
+                            ["address", "IP 地址", r=><span>{r.ipv4 || "—"}{r.ipv6 && <small className="muted" style={{display:"block"}}>{r.ipv6}</small>}</span>],
                             [
                                 "ipv4_seen_at",
                                 "最近上报",
                                 (r: Row) =>
-                                    Math.max(r.ipv4_seen_at, r.ipv6_seen_at)
+                                    Math.max(Number(r.ipv4_seen_at) || 0, Number(r.ipv6_seen_at) || 0)
                                         ? logTime(
                                               Math.max(
-                                                  r.ipv4_seen_at,
-                                                  r.ipv6_seen_at,
+                                                  Number(r.ipv4_seen_at) || 0,
+                                                  Number(r.ipv6_seen_at) || 0,
                                               ),
                                           )
                                         : "尚未上报",
@@ -122,11 +155,11 @@ export function NetworkServers({
                                 "操作",
                                 (r: Row) => (
                                     <div className="actions">
+                                        <button disabled={busy} onClick={()=>setDetail(r)}>详情</button>
                                         <button
                                             disabled={busy}
                                             onClick={() => {
-                                                setKind("save");
-                                                setEditing(r);
+                                                editServer(r);
                                             }}
                                         >
                                             编辑
@@ -255,8 +288,12 @@ export function NetworkServers({
                         已有节点的一键部署会配置所属服务器的上报。独立入口服务器只需配置上报，不安装或重启
                         V2Box。
                     </p>
+                    {budgets.error && <p role="alert">流量额度加载失败，<button onClick={budgets.reload}>重试</button></p>}
+                    {rows(budgets.data).some(b=>!b.networkServerId) && <details><summary>历史未关联额度</summary><p>保留历史用量。整理服务绑定后，编辑对应服务器即可自动关联；不会自动合并不同额度。</p><button onClick={()=>setLegacyOpen(true)}>整理历史额度</button></details>}
                 </div>
             </Panel>
+            {detail && <ServerTrafficDetails server={detail} close={()=>setDetail(null)} edit={()=>{editServer(detail);setDetail(null);}}/>}
+            {legacyOpen && <Modal title="历史未关联额度" close={()=>setLegacyOpen(false)}><State {...legacyNodes} retry={legacyNodes.reload}><ServerTrafficBudgets legacyOnly nodes={rows(legacyNodes.data)} onSaved={()=>{budgets.reload();reload();}}/></State></Modal>}
             {adoption && (
                 <Modal
                     title="接管入口解析"
@@ -310,11 +347,12 @@ export function NetworkServers({
             )}
             {editing && (
                 <Modal
+                    variant="drawer"
                     title={kind === "save" ? "服务器信息" : "入口域名"}
                     close={() => !busy && setEditing(null)}
                 >
                     <form
-                        className="node-domain-form"
+                        className={`node-domain-form ${kind === "save" ? "server-config-form" : ""}`}
                         onSubmit={(e) => {
                             e.preventDefault();
                             act(
@@ -441,7 +479,8 @@ export function NetworkServers({
                                 <option value="dual">双栈</option>
                             </select>
                         </label>
-                        <button className="primary" disabled={busy}>
+                        {kind === "save" && <ServerTrafficFields value={editing} onChange={setEditing}/>}
+                        <button className="primary" disabled={busy || (kind==="save" && (budgets.loading || !!budgets.error))}>
                             保存
                         </button>
                         {kind === "save" && editing.id && (

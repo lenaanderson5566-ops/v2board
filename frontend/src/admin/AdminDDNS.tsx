@@ -1,4 +1,3 @@
-import { NetworkServers } from "./NetworkServers";
 import { NodeNetworkSetup } from "./NodeNetworkSetup";
 import {
     NodeDomainBinding,
@@ -84,9 +83,9 @@ export function AdminDDNS() {
     }
     return (
         <>
-            {data.data && <NetworkServers data={data.data} reload={data.reload} />}
+            <p className="pad muted">维护 Cloudflare 根域名、节点解析与同步记录。共享入口域名在 <a href="#/servers">服务器管理</a> 中配置；节点的域名切换在 <a href="#/nodes">部署与接入</a> 中完成。</p>
             <Panel
-                title="服务器与域名"
+                title="域名与解析"
                 actions={
                     <button
                         onClick={() => {

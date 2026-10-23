@@ -5,7 +5,9 @@ export function ServerTrafficBudgets({
     nodes,
     close,
     onSaved,
+    legacyOnly=false,
 }: {
+    legacyOnly?: boolean;
     nodes: Row[];
     close?: () => void;
     onSaved: () => void;
@@ -28,7 +30,7 @@ export function ServerTrafficBudgets({
             </p>
             <State {...d}>
                 <Table
-                    data={rows(d.data)}
+                    data={rows(d.data).filter(b=>!legacyOnly || !b.networkServerId)}
                     columns={[
                         ["name", "服务器"],
                         ["usedBytes", "本周期", (r) => bytes(r.usedBytes)],
@@ -75,6 +77,7 @@ export function ServerTrafficBudgets({
                     ]}
                 />
             </State>
+            {!legacyOnly && <>
             <button
                 onClick={() =>
                     edit({
@@ -88,6 +91,7 @@ export function ServerTrafficBudgets({
             >
                 添加服务器额度
             </button>
+            </>}
             {draft && (
                 <form
                     onSubmit={async (e) => {

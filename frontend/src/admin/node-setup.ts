@@ -1,4 +1,5 @@
 import type { Row } from "../shared/api";
+import { defaultLineFields } from "./node-line-fields";
 import type { Field } from "../shared/ui";
 
 export function nodeSetupFields(
@@ -6,6 +7,7 @@ export function nodeSetupFields(
     values: Row,
     network: Row | null | undefined,
     backend = "v2box",
+    lineFields?: Field[],
 ): Field[] {
     const roots: Row[] = (network?.credentials || []).filter(
         (root: Row) => root.root_domain,
@@ -23,7 +25,7 @@ export function nodeSetupFields(
     const setup: Field[] = [
         {
             key: "setup_mode",
-            section: "连接与域名",
+            section: "部署",
             label: "配置方式",
             type: "select",
             options: [
@@ -98,13 +100,13 @@ export function nodeSetupFields(
             {
                 key: "setup_prefix",
                 columns: 6,
-                label: "子域名前缀（可选）",
+                label: "子域名前缀",
                 hint: "留空自动生成。",
             },
             {
                 key: "setup_family",
                 columns: 6,
-                label: "服务器地址类型",
+                label: "地址类型",
                 type: "select",
                 options: [
                     ["ipv4", "IPv4"],
@@ -115,7 +117,7 @@ export function nodeSetupFields(
             {
                 key: "setup_server_id",
                 columns: 6,
-                label: relay ? "回源服务器" : "所属服务器",
+                label: relay ? "回源服务器" : "节点服务器",
                 type: "select",
                 options: [
                     ["", "自动创建（与节点同名）"],
@@ -145,42 +147,57 @@ export function nodeSetupFields(
                 hint: "首次部署保持默认；同机新增协议可复用已有服务器。",
             },
         );
-    const primary = fields
-        .filter((field) =>
-            ["name", "protocol", ...(managed ? ["server_port"] : [])].includes(
-                field.key,
-            ),
-        )
-        .map((field, index) => ({
-            ...field,
-            section: index === 0 ? "节点信息" : undefined,
-            columns: field.key === "name" ? 12 : 6,
-            ...(field.key === "protocol" ? { hint: undefined } : {}),
-            ...(field.key === "server_port"
-                ? {
-                      label: relay ? "节点监听端口" : "连接端口",
-                      hint: relay
-                          ? "入口转发到此端口，与入口端口分别配置。"
-                          : "同时用于服务监听。",
-                  }
-                : {}),
+    const line = (
+        lineFields || fields.filter((f) => defaultLineFields.includes(f.key))
+    )
+        .filter((f) => fields.some((source) => source.key === f.key))
+        .map((f, index) => ({
+            ...f,
+            section:
+                index === 0
+                    ? "线路信息"
+                    : f.key === "region_code"
+                      ? "展示信息"
+                      : undefined,
         }));
+    if (!managed)
+        setup.push(
+            ...fields
+                .filter((f) => ["host", "port"].includes(f.key))
+                .map((f) => ({
+                    ...f,
+                    section: undefined,
+                    label: f.key === "host" ? "连接地址" : "连接端口",
+                })),
+        );
     const excluded = [
-        ...primary.map((field) => field.key),
+        ...defaultLineFields,
+        "show",
+        "sort",
+        "host",
+        "port",
         ...(managed
             ? [
-                  "host",
-                  "port",
                   ...(Number(values.tls) === 1
                       ? ["tls_settings.server_name", "disable_sni"]
                       : []),
               ]
             : []),
     ];
-    const remaining = fields.filter((field) => !excluded.includes(field.key));
-    if (remaining[0] && !remaining[0].section)
-        remaining[0] = { ...remaining[0], section: "协议与展示" };
-    return [...primary, ...setup, ...remaining];
+    const service = nodeServiceFields(
+        fields.filter((f) => !excluded.includes(f.key)),
+    ).map((f) => ({
+        ...f,
+        ...(f.key === "server_port"
+            ? {
+                  label: "监听端口",
+                  hint: relay
+                      ? "入口转发到此端口，与入口端口分别配置。"
+                      : "节点服务在此端口接收连接；直连时连接端口同步使用此值。",
+              }
+            : {}),
+    }));
+    return [...line, ...service, ...setup];
 }
 
 export function nodeSetupPayload(values: Row): Row | undefined {
@@ -199,4 +216,16 @@ export function nodeSetupPayload(values: Row): Row | undefined {
             ? Number(values.setup_server_id)
             : null,
     };
+}
+
+export function nodeServiceFields(fields: Field[]): Field[] {
+    return [...fields].sort((a,b)=>{
+        const order=["protocol","listen_ip","server_port","tls","network","route_id"];
+        const rank=(key:string)=>{const index=order.indexOf(key);return index<0?order.length:index;};
+        return rank(a.key)-rank(b.key);
+    }).map((field, index) => ({
+        ...field,
+        section: index === 0 ? "服务配置" : field.section,
+        ...(field.key === "server_port" ? { label: "监听端口" } : {}),
+    }));
 }

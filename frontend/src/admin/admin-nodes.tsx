@@ -1,15 +1,13 @@
 import { AdminRowMenu } from "./AdminRowMenu";
-import {
-    DefaultNodeLineEditor,
-    serviceLineFields,
-} from "./DefaultNodeLineEditor";
+import { DefaultNodeLineEditor } from "./DefaultNodeLineEditor";
+import { serviceLineFields,nodeLineFields } from "./node-line-fields";
 import { NodeSetupGuide } from "./NodeSetupGuide";
 import { AdminChoiceGroup } from "./AdminChoices";
 import { nodeConfigurationProblems, nodeChangeImpact } from "./node-guidance";
-import { nodeSetupFields, nodeSetupPayload } from "./node-setup";
+import { nodeSetupFields, nodeSetupPayload,nodeServiceFields } from "./node-setup";
 import { NodeConnectionEditor, NodeForwarding } from "./NodeConnections";
 import { NodeTopology } from "./NodeTopology";
-import { NodeDictionaryProvider } from "./node-dictionary";
+import { NodeDictionaryProvider,useNodeCatalog } from "./node-dictionary";
 import { NodeDeployment } from "./NodeDeployment";
 import { AdminDisplaySettings } from "./AdminDisplaySettings";
 import { field } from "./admin-fields";
@@ -73,6 +71,7 @@ function NodesContent({
     initialTab = "nodes",
 }: { initialTab?: "nodes" | "forwarding" } = {}) {
     const tab = initialTab;
+    const catalog=useNodeCatalog();
     const serviceFocusFromHash = () => {
         const value =
             new URLSearchParams(location.hash.split("?")[1]).get("service") ||
@@ -844,8 +843,8 @@ function NodesContent({
                             />
                             <p className="muted">
                                 {creationMode === "new"
-                                    ? "新建独立服务，配置协议与域名，保存后部署。"
-                                    : "为已有服务添加直连或中转线路，共用用户认证与服务器额度，无需重复部署落地服务。"}
+                                    ? "依次填写线路信息、服务配置和部署信息，保存后生成安装命令。"
+                                    : "填写线路信息并选择已有服务；共用协议、证书和倍率，无需重复安装。"}
                             </p>
                         </div>
                     )}
@@ -987,17 +986,18 @@ function NodesContent({
                                                 ),
                                             );
                                         return editing.id
-                                            ? presented.filter(
+                                            ? nodeServiceFields(presented.filter(
                                                   (field) =>
                                                       !serviceLineFields.has(
                                                           field.key,
                                                       ),
-                                              )
+                                              ))
                                             : nodeSetupFields(
                                                   presented,
                                                   values,
                                                   topology.data,
                                                   type,
+                                                  nodeLineFields(rows(groups.data),catalog),
                                               );
                                     }}
                                     preview={(values) => {
@@ -1601,10 +1601,10 @@ const nodeLabels: Record<string, string> = {
     name: "节点名称",
     host: "连接主机",
     port: "连接端口",
-    server_port: "服务端口",
+    server_port: "监听端口",
     group_id: "权限组",
     route_id: "路由规则",
-    rate: "流量倍率",
+    rate: "计费倍率",
     tags: "标签数组",
     region_code: "国家 / 地区",
     city_code: "州 / 省或城市",

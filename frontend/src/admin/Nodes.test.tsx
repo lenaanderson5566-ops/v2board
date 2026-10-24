@@ -702,7 +702,7 @@ it("creates a direct node and its domain in one save without a separate server f
     fireEvent.click(await screen.findByRole("button",{name:"新增节点"}));
     await screen.findByRole("combobox",{name:/^根域名/});
     expect(screen.queryByRole("textbox",{name:"连接主机"})).toBeNull();
-    expect(screen.getAllByRole("spinbutton",{name:"连接端口"})).toHaveLength(1);
+    expect(screen.getAllByRole("spinbutton",{name:"监听端口"})).toHaveLength(1);
     fireEvent.change(screen.getByRole("textbox",{name:/节点名称/}),{target:{value:"Japan"}});
     fireEvent.change(screen.getByRole("combobox",{name:/^根域名/}),{target:{value:"9"}});
     fireEvent.change(screen.getByRole("textbox",{name:/^子域名前缀/}),{target:{value:"jp"}});
@@ -732,7 +732,7 @@ it("creates a relay node in one save with separate ingress and origin fields", a
     await screen.findByRole("combobox",{name:/^根域名/});
     expect(screen.queryByRole("textbox",{name:"连接主机"})).toBeNull();
     fireEvent.change(screen.getByRole("combobox",{name:/^接入方式/}),{target:{value:"relay"}});
-    expect(screen.getByRole("spinbutton",{name:/^节点监听端口/})).toBeTruthy();
+    expect(screen.getByRole("spinbutton",{name:/^监听端口/})).toBeTruthy();
     fireEvent.change(screen.getByRole("combobox",{name:/^入口域名/}),{target:{value:"17"}});
     fireEvent.change(screen.getByRole("spinbutton",{name:/^入口端口/}),{target:{value:"8443"}});
     fireEvent.change(screen.getByRole("textbox",{name:/节点名称/}),{target:{value:"Japan"}});
@@ -808,7 +808,7 @@ it("keeps sensitive node changes in the form when confirmation is cancelled",asy
     render(<Nodes/>);
     fireEvent.click((await screen.findAllByRole("button",{name:"编辑"}))[0]);
     fireEvent.click(screen.getByRole("button",{name:"服务配置"}));
-    const port=await screen.findByRole("spinbutton",{name:/服务端口/});
+    const port=await screen.findByRole("spinbutton",{name:/监听端口/});
     fireEvent.change(port,{target:{value:"9443"}});
     expect(screen.getByLabelText("变更影响").textContent).toContain("1 条关联线路");
     fireEvent.click(screen.getByRole("button",{name:"保存节点配置"}));
@@ -853,7 +853,7 @@ it.each(["v2box","v2node"])("creates a reused %s route in one drawer without dep
     expect(screen.queryByLabelText("节点类型")).toBeNull();expect(screen.queryByLabelText("服务内核")).toBeNull();
     expect(screen.queryByRole("button",{name:"保存节点配置"})).toBeNull();
     fireEvent.change(serviceSelect,{target:{value:`${backend}:1`}});
-    fireEvent.change(screen.getByLabelText("线路名称"),{target:{value:"Additional route"}});
+    fireEvent.change(screen.getByLabelText("节点名称"),{target:{value:"Additional route"}});
     fireEvent.click(screen.getByRole("button",{name:"保存待发布配置"}));
     await waitFor(()=>expect(api.request).toHaveBeenCalledWith("test-admin/server/connections/save",expect.objectContaining({type:backend,service_id:1,name:"Additional route",group_id:[7]})));
     await screen.findByText(/当前发布地址：尚未发布/);
@@ -863,11 +863,11 @@ it.each(["v2box","v2node"])("creates a reused %s route in one drawer without dep
 it("protects the reused route draft when switching creation methods",async()=>{
     unifiedCreationFixture();const confirm=vi.spyOn(window,"confirm").mockReturnValue(false);render(<Nodes/>);
     fireEvent.click(screen.getByRole("button",{name:"新增节点"}));fireEvent.click(screen.getByRole("button",{name:"复用已有服务"}));
-    fireEvent.change(await screen.findByLabelText("线路名称"),{target:{value:"Unsaved route"}});
+    fireEvent.change(await screen.findByLabelText("节点名称"),{target:{value:"Unsaved route"}});
     fireEvent.click(screen.getByRole("button",{name:"新建代理服务"}));
-    expect(confirm).toHaveBeenCalled();expect(screen.getByLabelText("线路名称")).toHaveProperty("value","Unsaved route");
+    expect(confirm).toHaveBeenCalled();expect(screen.getByLabelText("节点名称")).toHaveProperty("value","Unsaved route");
     confirm.mockReturnValue(true);fireEvent.click(screen.getByRole("button",{name:"新建代理服务"}));
-    expect(await screen.findByRole("combobox",{name:"节点类型"})).toBeTruthy();expect(screen.queryByLabelText("线路名称")).toBeNull();
+    expect(await screen.findByRole("combobox",{name:"节点类型"})).toBeTruthy();expect(screen.getByLabelText("节点名称")).toHaveProperty("value","");
 });
 it("explains when no existing service can be reused and keeps saving disabled",async()=>{
     unifiedCreationFixture(true);render(<Nodes/>);fireEvent.click(screen.getByRole("button",{name:"新增节点"}));fireEvent.click(screen.getByRole("button",{name:"复用已有服务"}));
@@ -879,7 +879,7 @@ it("does not silently save a direct route when relay has no usable entry",async(
     unifiedCreationFixture();render(<Nodes/>);await screen.findByText("Box service");
     fireEvent.click(screen.getByRole("button",{name:"新增节点"}));fireEvent.click(screen.getByRole("button",{name:"复用已有服务"}));
     fireEvent.change(await screen.findByLabelText("代理服务"),{target:{value:"v2box:1"}});
-    fireEvent.change(screen.getByLabelText("线路名称"),{target:{value:"Relay"}});
+    fireEvent.change(screen.getByLabelText("节点名称"),{target:{value:"Relay"}});
     fireEvent.change(screen.getByLabelText("连接方式"),{target:{value:"relay"}});
     expect(screen.getByRole("button",{name:"保存待发布配置"})).toHaveProperty("disabled",true);
     expect(screen.getByText(/中添加可用的入口域名/)).toBeTruthy();
@@ -986,10 +986,26 @@ it("guards unsaved line and service changes when switching editor sections",asyn
     expect(screen.getByLabelText("节点名称")).toHaveProperty("value","Unsaved line");
     expect(api.request.mock.calls.some(([,body])=>body?.revision)).toBe(false);
     confirm.mockReturnValue(true);fireEvent.click(screen.getByRole("button",{name:"服务配置"}));
-    const port=await screen.findByRole("spinbutton",{name:/服务端口/});
+    const port=await screen.findByRole("spinbutton",{name:/监听端口/});
     fireEvent.change(port,{target:{value:"9444"}});
     confirm.mockReturnValue(false);fireEvent.click(screen.getByRole("button",{name:"线路信息"}));
     expect(port).toHaveProperty("value","9444");
     expect(screen.getAllByRole("dialog")).toHaveLength(1);
     expect(api.request.mock.calls.some(([path])=>String(path).endsWith("v2box/save"))).toBe(false);
+});
+
+import { nodeLineFields } from "./node-line-fields";
+import { nodeServiceFields } from "./node-setup";
+it.each(["managed","manual"])("keeps %s creation fields aligned with the line and service editors",mode=>{
+    const line=nodeLineFields([{id:1,name:"Basic"}],{regions:{JP:{"zh-CN":"日本"}},cities:{},cityRegions:{},locationKinds:{}});
+    const service=[{key:"protocol",label:"协议"},{key:"server_port",label:"old port"},{key:"tls",label:"TLS"}];
+    const source=[...line,...service,{key:"host",label:"old host"},{key:"port",label:"old port"}];
+    const fields=nodeSetupFields(source,{setup_mode:mode,tls:0},{},"v2box",line);
+    expect(fields.slice(0,line.length).map(f=>[f.key,f.label])).toEqual(line.map(f=>[f.key,f.label]));
+    expect(fields.filter(f=>f.key==="server_port")).toHaveLength(1);
+    expect(fields.find(f=>f.key==="server_port")?.label).toBe(nodeServiceFields(service).find(f=>f.key==="server_port")?.label);
+    expect(fields.findIndex(f=>f.section==="线路信息")).toBeLessThan(fields.findIndex(f=>f.section==="服务配置"));
+    expect(fields.findIndex(f=>f.section==="服务配置")).toBeLessThan(fields.findIndex(f=>f.section==="部署"));
+    expect(new Set(fields.map(f=>f.key)).size).toBe(fields.length);
+    expect(fields.some(f=>f.key==="host")).toBe(mode==="manual");
 });

@@ -860,3 +860,7 @@ Typescript 与生产构建、发布目录打包通过。浏览器合成状态预
 统一节点管理复用现有六个前端测试模块，共270项通过，覆盖一个节点列表、编辑内线路/服务/部署切换、同ID不同内核服务定位、共享服务影响提示、未保存保护、旧表单字段保护、PATCH 传输与显示偏好。后端复用 node-ddns、v2box、node-routes、cors-responses 和 browser-session，增加默认线路元数据版本冲突、权限组引用、技术字段注入、旧技术表单覆盖保护，以及真实路由的管理员会话、CSRF 和来源验证。测试使用一次性副本、专用空数据库及独立Redis，未操作共享缓存或生产数据。测试清单仍为111项和12个辅助引用。
 
 本轮隔离后端结果：node-ddns 242项、v2box 33项、node-routes 38项、cors-responses 18项、browser-session 534项，全部通过；专用测试数据库、账号和两个容器已清理。最终节点模块45项复验及前端生产构建通过。
+
+节点新增/编辑一致性继续使用 Nodes、AdminDDNS、admin-workspaces、admin-linkage、ServerTrafficBudgets、shared/api 六个模块，不新增独立测试文件。增加自动/手动配置字段分组及标签一致性检查；字段名更新对应既有交互断言，保留草稿保护、单请求创建、共享服务和部署授权安全断言。272项前端检查及 TypeScript/Vite 生产构建通过。此次仅前端与说明文档调整，无后端测试清单变更。
+
+本轮推送前通过 tests/update-script.sh 的26个隔离升级场景；仅挂载只读源码，在断网一次性容器中运行临时仓库和模拟依赖，无数据库或真实服务器操作。新增共享字段模块及 public/console 构建资源随 Git 发布，无新增迁移。

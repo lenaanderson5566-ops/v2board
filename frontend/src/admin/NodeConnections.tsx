@@ -49,7 +49,7 @@ export function NodeConnectionEditor({ node, nodes, groups = [], close, onSaved,
         if (pending.current) return;
         pending.current = true; setBusy(true); setError(""); setNotice("");
         try {
-            if(!publish && (!service || !draft.name.trim() || !validEntry))throw new Error("请检查代理服务、线路名称及入口端口配置");
+            if(!publish && (!service || !draft.name.trim() || !validEntry))throw new Error("请检查代理服务、节点名称及入口端口配置");
             const body = publish ? { type, id, revision: existing.data?.revision, proof: savedPlan?.proof, confirmed } : { ...draft, type, id, revision: existing.data?.revision || 0, service_id: Number(draft.service_id), entry_id: draft.entry_id ? Number(draft.entry_id) : null, entry_port: draft.entry_id ? Number(draft.entry_port) : null };
             const result = await request<Row>(admin(`server/connections/${publish ? "publish" : "save"}`), body);
             if (!publish && !id) {setId(result.data.id);onCreated?.();} else existing.reload();
@@ -61,9 +61,10 @@ export function NodeConnectionEditor({ node, nodes, groups = [], close, onSaved,
     const content=<>
         <State loading={network.loading || existing.loading || (!!id && !existing.error && (!existing.data || loadedRevision !== (existing.data.revision ?? 0)))} error={network.error || existing.error} retry={() => { network.reload(); existing.reload(); }}>
             <div className="admin-deployment-card" data-unsaved={dirty || undefined} data-saving={busy || undefined}>
+                <div className="field-section">线路信息</div>
                 <div className="node-domain-form">
                     {!id && !embedded && <label>服务内核<select value={type} disabled={busy} onChange={e => { setType(e.target.value); change("service_id", ""); }}><option value="v2box">V2Box</option><option value="v2node">V2Node</option></select></label>}
-                    <label>线路名称<input value={draft.name} disabled={busy} onChange={e => change("name", e.target.value)} /></label>
+                    <label>节点名称<input value={draft.name} disabled={busy} onChange={e => change("name", e.target.value)} /></label>
                     <label>代理服务<select value={embedded && !id ? (draft.service_id ? `${type}:${draft.service_id}` : "") : draft.service_id || ""} disabled={busy} onChange={e => {
                         if(embedded && !id){
                             const [backend,identity]=e.target.value.split(":");
@@ -80,10 +81,11 @@ export function NodeConnectionEditor({ node, nodes, groups = [], close, onSaved,
                         const selected = (draft.group_id || []).map(Number).includes(Number(g));
                         return <button type="button" role="checkbox" aria-checked={selected} disabled={busy} key={g} onClick={() => change("group_id", selected ? draft.group_id.filter((id: number) => Number(id) !== Number(g)) : [...draft.group_id, Number(g)])}><span className="option-check">{selected ? "✓" : ""}</span>{groups.find(group => Number(group.id) === Number(g))?.name || `权限组 #${g}`}</button>;
                     })}</div></div>
+                    {service && <p className="muted">计费倍率：{service.rate ?? 1}，随共享服务设置。协议、监听和证书在保存后通过“服务配置”维护。</p>}
                     <label>发布后展示<AdminSwitch label="发布后展示" checked={!!Number(draft.show)} disabled={busy} onChange={async value => change("show", Number(value))} /></label>
                 </div>
                 <details><summary>线路展示信息</summary><div className="node-domain-form">
-                    <label>国家 / 地区<select value={draft.region_code || ""} disabled={busy} onChange={e => { change("region_code", e.target.value || null); change("city_code", null); }}><option value="">使用线路名称</option>{Object.entries(catalog.regions).map(([code, names]) => <option key={code} value={code}>{names["zh-CN"] || names["en-US"]}</option>)}</select></label>
+                    <label>国家 / 地区<select value={draft.region_code || ""} disabled={busy} onChange={e => { change("region_code", e.target.value || null); change("city_code", null); }}><option value="">使用节点名称</option>{Object.entries(catalog.regions).map(([code, names]) => <option key={code} value={code}>{names["zh-CN"] || names["en-US"]}</option>)}</select></label>
                     <label>州、省或城市<input value={draft.city_code || ""} list="connection-cities" disabled={busy} onChange={e => change("city_code", e.target.value || null)} /><datalist id="connection-cities">{Object.entries(catalog.cities).filter(([code]) => !draft.region_code || catalog.cityRegions[code] === draft.region_code).map(([code, names]) => <option key={code} value={code}>{names["zh-CN"] || names["en-US"]}</option>)}</datalist></label>
                     <label>线路编号 / 后缀<input value={draft.display_label || ""} disabled={busy} onChange={e => change("display_label", e.target.value || null)} /></label>
                     <label>标签（逗号分隔）<input value={tagsText} disabled={busy} onChange={e => { setTagsText(e.target.value); change("tags", e.target.value.split(/[,，]/).map(value => value.trim()).filter(Boolean)); }} /></label>

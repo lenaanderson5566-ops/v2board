@@ -306,8 +306,8 @@ it("applies native protocol defaults and clears incompatible server reuse",()=>{
     expect(linkNode("setup_family","ipv6",{setup_server_id:5})).toMatchObject({setup_server_id:"",setup_family:"ipv6"});
 });
 
-it("defaults new relay TLS to DNS validation and clears origin reuse when ingress changes",()=>{
-    expect(linkNode("setup_access_mode","relay",{"tls_settings.cert_mode":"http"})["tls_settings.cert_mode"]).toBe("dns");
+it("preserves HTTP and file certificate modes when switching to relay",()=>{
+    expect(linkNode("setup_access_mode","relay",{"tls_settings.cert_mode":"http"})["tls_settings.cert_mode"]).toBe("http");
     expect(linkNode("setup_access_mode","relay",{"tls_settings.cert_mode":"file"})["tls_settings.cert_mode"]).toBe("file");
     expect(linkNode("setup_entry_id","5",{setup_server_id:"3"}).setup_server_id).toBe("");
 });
@@ -330,19 +330,20 @@ it("round trips saved certificate references and does not require hidden manual 
  expect(nodeConfigurationProblems(form,"v2box").filter(p=>["tls_settings.provider","tls_settings.dns_env"].includes(p.key))).toEqual([]);
 });
 
-it("matches certificate credentials to the ingress identity, not origin, and retains invalid references", () => {
+it("matches certificate credentials to the independent TLS identity and retains invalid references", () => {
  const network={credentials:[{id:1,name:"入口",root_domain:"example.com",next_run:0},{id:2,name:"回源",root_domain:"origin.net",next_run:0},{id:3,name:"暂停",root_domain:"example.com",next_run:-1}],assignments:[{id:9,purpose:"entry",domain:"hk.example.com"}]};
- const values={setup_mode:"managed",setup_access_mode:"relay",setup_entry_id:9,setup_credential_id:2};
+ const values={setup_mode:"managed",setup_access_mode:"relay",setup_entry_id:9,setup_credential_id:2,"tls_settings.server_name":"tls.example.com"};
  expect(certificateCredentialOptions(values,network).map(x=>x[0])).toEqual(["","1"]);
  expect(certificateCredentialOptions({...values,"tls_settings.dns_credential_id":2},network).at(-1)).toEqual(["2","当前凭据不匹配或不可用，请重新选择"]);
  expect(certificateCredentialOptions({"tls_settings.server_name":"badexample.com"},network)).toHaveLength(1);
- expect(certificateCredentialOptions({...values,setup_access_mode:"direct"},network).map(x=>x[0])).toEqual(["","2"]);
+ expect(certificateCredentialOptions({...values,setup_access_mode:"direct"},network).map(x=>x[0])).toEqual(["","1"]);
 });
 
-it("blocks stale DNS certificate selections after changing the connection domain", () => {
+it("blocks stale DNS certificate selections after changing TLS identity", () => {
  const network={credentials:[{id:1,name:"CF",root_domain:"example.com",next_run:0}], assignments:[{id:9,purpose:"entry",domain:"relay.other.net",enabled:true,server_id:4}],servers:[{id:4,enabled:true}]};
  const form={tls:1,setup_mode:"managed",setup_access_mode:"relay",setup_entry_id:9,setup_entry_port:443,setup_credential_id:1,"tls_settings.cert_mode":"dns","tls_settings.dns_credential_id":1};
- expect(nodeConfigurationProblems(form,"v2box",network).some(p=>p.key==="tls_settings.dns_credential_id")).toBe(true);
+ expect(nodeConfigurationProblems({...form,"tls_settings.server_name":"tls.other.net"},"v2box",network).some(p=>p.key==="tls_settings.dns_credential_id")).toBe(true);
+ expect(nodeConfigurationProblems(form,"v2box",network).some(p=>p.key==="tls_settings.dns_credential_id")).toBe(false);
  expect(nodeConfigurationProblems({...form,setup_access_mode:"direct"},"v2box",network).some(p=>p.key==="tls_settings.dns_credential_id")).toBe(false);
  expect(linkNode("setup_access_mode","direct",form)).toMatchObject({setup_entry_id:"",setup_entry_port:""});
  const paused={...network,credentials:[{...network.credentials[0],next_run:-1}]};

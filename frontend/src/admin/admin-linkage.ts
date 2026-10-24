@@ -227,7 +227,7 @@ export function linkNode(key: string, next: unknown, values: Row): Row {
 
     if (key === "setup_family" || key === "setup_entry_id") result.setup_server_id = "";
     if (key === "setup_access_mode" && next === "direct") { result.setup_entry_id = ""; result.setup_entry_port = ""; }
-    if (key === "setup_access_mode" && next === "relay" && ["http","self",""].includes(String(values["tls_settings.cert_mode"] || ""))) result["tls_settings.cert_mode"] = "dns";
+    if (key === "setup_access_mode" && next === "relay" && ["self",""].includes(String(values["tls_settings.cert_mode"] || ""))) result["tls_settings.cert_mode"] = "dns";
     if (key === "protocol") {
         result.service_id = "";
         if (tlsRequired.includes(String(next))) result.tls = 1;

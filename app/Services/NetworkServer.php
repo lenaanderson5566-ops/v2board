@@ -60,7 +60,7 @@ final class NetworkServer {
     }
     public static function tls($a,array $tls): void {
         if (!$a->entry_id) return;
-        abort_unless(in_array($tls['cert_mode']??'',['dns','file','remote'],true),422,'四层中转请使用 DNS 验证申请证书，或提供已签发的证书');
+        abort_unless(in_array($tls['cert_mode']??'',['http','dns','file','remote'],true),422,'请选择 HTTP、DNS 申请或已签发证书；HTTP 验证须能通过证书域名的公网 80 端口到达代理服务器');
         abort_if(($tls['cert_mode']??'')==='dns' && empty($tls['dns_credential_id']) && (empty($tls['provider']) || empty($tls['dns_env'])),422,'请单独配置证书 DNS 验证凭据');
     }
 }

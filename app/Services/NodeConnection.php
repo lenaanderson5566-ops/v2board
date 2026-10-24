@@ -33,7 +33,7 @@ final class NodeConnection {
         $tls=(array)$service->tls_settings;
         if ((int)$service->tls===1) abort_unless(!empty($tls['server_name']) && !$service->disable_sni,422,'请先为代理服务设置独立的 TLS 身份域名并启用 SNI');
         if ($entry && (int)$service->tls===1) {
-            abort_unless(in_array($tls['cert_mode']??'',['dns','file','remote'],true),422,'中转线路需要 DNS 验证或已有证书');
+            abort_unless(in_array($tls['cert_mode']??'',['http','dns','file','remote'],true),422,'中转线路需要 HTTP、DNS 验证或已有证书');
         }
         $port=(int)($entry ? ($draft['entry_port']??0) : $service->server_port);
         abort_unless($port>=1 && $port<=65535,422,'端口必须为 1–65535');

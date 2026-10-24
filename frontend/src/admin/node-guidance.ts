@@ -47,7 +47,7 @@ export function nodeConfigurationProblems(
         if(entry && values.setup_server_id && Number(entry.server_id)===Number(values.setup_server_id))add("setup_server_id","入口和回源须使用不同服务器");
         const port=Number(values.setup_entry_port);
         if(!Number.isInteger(port) || port<1 || port>65535)add("setup_entry_port","入口端口应为 1–65535 的整数");
-        if(tls===1 && !["dns","file","remote"].includes(cert.cert_mode))add("tls_settings.cert_mode","中转 TLS 请使用 DNS 申请或已签发证书");
+        if(tls===1 && !["http","dns","file","remote"].includes(cert.cert_mode))add("tls_settings.cert_mode","中转 TLS 请使用 HTTP、DNS 申请或已签发证书");
     }
     if (managed) {
         if (!values.setup_credential_id)

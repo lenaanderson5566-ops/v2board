@@ -340,6 +340,15 @@ class WorkflowTests(unittest.TestCase):
         with patch.object(m,'dns_matches',side_effect=[True,False]), patch.object(m.time,'monotonic',side_effect=[0,0,1000]), patch.object(m.time,'sleep') as sleep:
             with self.assertRaises(m.DeploymentError): m.Deployment.wait_dns(self.deploy)
             sleep.assert_called_once_with(15)
+    def test_http_relay_checks_independent_certificate_domain_before_start(self):
+        self.deploy.flow.update(accessMode='relay',connectionDomain='entry.example.test',certificateMode='http',certificateDomain='cert.example.test')
+        self.deploy.progress=lambda action='status':{'dnsReady':True,'addresses':{'ipv4':'8.8.8.8'},'entryAddresses':{'ipv4':'1.1.1.1'}}
+        with patch.object(m,'dns_matches',return_value=True) as check:
+            self.assertFalse(m.Deployment.wait_dns(self.deploy))
+            self.assertEqual([call.args for call in check.call_args_list],[('node.example.test',{'ipv4':'8.8.8.8'}),('cert.example.test',{'ipv4':'8.8.8.8'}),('entry.example.test',{'ipv4':'1.1.1.1'})])
+        with patch.object(m,'dns_matches',side_effect=[True,False]), patch.object(m.time,'monotonic',side_effect=[0,0,1000]), patch.object(m.time,'sleep'):
+            with self.assertRaisesRegex(m.DeploymentError,'point directly to the origin'):m.Deployment.wait_dns(self.deploy)
+        self.assertNotIn('restart',self.events);self.assertNotIn('certificate',self.events)
     def test_dns_wait_reports_missing_family_and_preserves_state(self):
         self.deploy.progress=lambda action='status':{'dnsReady':False,'dnsChecks':[{'role':'entry','reason':'awaiting_report','missingFamilies':['ipv6']}]}
         with patch.object(m.time,'monotonic',side_effect=[0,0,1000]), patch.object(m.time,'sleep'), patch('sys.stdout',new_callable=io.StringIO) as out:

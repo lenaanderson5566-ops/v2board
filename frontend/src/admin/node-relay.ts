@@ -48,6 +48,6 @@ export function relayStreamConfig(binding: Row, node: Row, entry: Row): string {
 export function relayCertificateIssue(node: Row): string {
     if (Number(node.tls) !== 1) return "";
     const mode = node["tls_settings.cert_mode"] ?? node.tls_settings?.cert_mode;
-    if (["dns", "file", "remote"].includes(mode)) return "";
-    return "中转连接需要 DNS 申请或已配置的证书。请先在协议与证书中修改证书模式并保存，再返回配置连接路径。Cloudflare 可用于 DNS 申请。";
+    if (["http", "dns", "file", "remote"].includes(mode)) return "";
+    return "中转连接需要 HTTP、DNS 申请或已配置的证书。请先在协议与证书中修改证书模式并保存，再返回配置连接路径。Cloudflare 可用于 DNS 申请。";
 }

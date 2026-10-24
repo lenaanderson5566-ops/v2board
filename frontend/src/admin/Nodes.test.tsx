@@ -899,7 +899,7 @@ it("does not silently save a direct route when relay has no usable entry",async(
 it("preflights relay TLS, entry availability and separate physical servers",()=>{
     const network={servers:[{id:5,enabled:true,family:"ipv4"}],assignments:[{id:17,purpose:"entry",enabled:true,server_id:5,domain:"entry.example.test"}]};
     const values={setup_mode:"managed",setup_access_mode:"relay",setup_credential_id:1,setup_entry_id:17,setup_entry_port:8443,setup_server_id:5,setup_family:"ipv4",tls:1,"tls_settings.cert_mode":"http"};
-    expect(nodeConfigurationProblems(values,"v2box",network).map(p=>p.key)).toEqual(expect.arrayContaining(["setup_server_id","tls_settings.cert_mode"]));
+    expect(nodeConfigurationProblems(values,"v2box",network).map(p=>p.key)).toEqual(expect.arrayContaining(["setup_server_id"]));
     const fields=nodeSetupFields([],{...values,setup_server_id:""},network);
     expect(fields.find(f=>f.key==="setup_server_id")?.options?.map(([id])=>id)).toEqual([""]);
     expect(nodeSetupPayload({...values,setup_access_mode:"direct"})).not.toHaveProperty("entry_id");
@@ -1064,7 +1064,7 @@ it("keeps managed TLS identity independently editable alongside Reality",async()
     api.request.mockImplementation(async(path:string)=>String(path).includes("dictionary/fetch")?adminPageFixture(path):String(path).includes("getNodes")?{data:[{id:1,type:"v2box",name:"Managed",protocol:"vless",tls:1,network:"tcp",host:"managed.example.test",port:443,server_port:443,group_id:[1],tls_settings:{cert_mode:"http",server_name:"managed.example.test"}}]}:String(path).includes("nodeSchema")?{data:{name:"required",protocol:"required|in:vless",tls:"required|in:0,1,2",network:"required|in:tcp",server_port:"required",tls_settings:"array"}}:String(path).includes("ddns/fetch")?{data:{assignments:[{id:8,node_type:"v2box",node_id:1,managed:true}],servers:[],credentials:[]}}:{data:[]});
     history.replaceState(null,"",`${location.pathname}#/nodes?service=v2box%3A1`);
     render(<Nodes/>);await screen.findByText(/TLS 身份与入口、回源地址分别管理/);
-    expect(await screen.findByRole("combobox",{name:"证书模式"})).toBeTruthy();
+    expect(await screen.findByRole("combobox",{name:/^证书模式/})).toBeTruthy();
     expect(screen.getByLabelText("TLS 身份域名（SNI）")).toBeTruthy();
     fireEvent.change(screen.getByRole("combobox",{name:/^TLS/}),{target:{value:"2"}});
     expect(await screen.findByLabelText("TLS 身份域名（SNI）")).toBeTruthy();

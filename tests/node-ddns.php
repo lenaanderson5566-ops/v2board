@@ -221,11 +221,20 @@ try {
     $relayCreation=array_replace($creation,['name'=>'Atomic relay','tls_settings'=>['cert_mode'=>'dns','provider'=>'cloudflare','dns_env'=>['CF_DNS_API_TOKEN'=>'test-only-acme']],
         'deployment_setup'=>array_replace($setup,['prefix'=>'atomic-origin','entry_id'=>$entrySetup,'entry_port'=>18443])]);
     $beforeRelayNodes=App\Models\ServerV2box::count();$beforeRelayServers=DB::table('v2_network_server')->count();
-    $reject(fn()=>$createController->save($req(array_replace($relayCreation,['tls_settings'=>['cert_mode'=>'http']]))),422);
-    $assert(App\Models\ServerV2box::count()===$beforeRelayNodes && DB::table('v2_network_server')->count()===$beforeRelayServers,'incompatible HTTP validation rolls back relay node and server');
+    $reject(fn()=>$createController->save($req(array_replace($relayCreation,['tls_settings'=>['cert_mode'=>'self']]))),422);
+    $assert(App\Models\ServerV2box::count()===$beforeRelayNodes && DB::table('v2_network_server')->count()===$beforeRelayServers,'unsupported self-signed relay mode rolls back node and server');
     $reject(fn()=>$createController->save($req(array_replace($relayCreation,['deployment_setup'=>array_replace($relayCreation['deployment_setup'],['server_id'=>$entryMachine])]))),422);
     $assert(!DB::table('v2_node_ddns')->where('domain','atomic-origin.example.test')->exists(),'same physical ingress and origin cannot leave partial binding');
     $relayCreated=json_decode($createController->save($req($relayCreation))->getContent(),true)['data']['id'];
+    $httpRelay=array_replace($relayCreation,['name'=>'HTTP origin certificate','tls_settings'=>['cert_mode'=>'http'],'deployment_setup'=>array_replace($relayCreation['deployment_setup'],['prefix'=>'http-relay-origin','entry_port'=>18444])]);
+    $httpRelayId=json_decode($createController->save($req($httpRelay))->getContent(),true)['data']['id'];
+    $httpRelayNode=App\Models\ServerV2box::findOrFail($httpRelayId);
+    $assert($httpRelayNode->tls_settings['server_name']==='http-relay-origin.example.test' && $httpRelayNode->host==='setup-entry.example.test','HTTP relay keeps origin TLS identity separate from connection address');
+    App\Services\NodeDeploymentWorkflow::validate($httpRelayNode);
+    $httpRelayNode->server_port=80;
+    $reject(fn()=>App\Services\NodeDeploymentWorkflow::validate($httpRelayNode),422);
+    $httpServer=DB::table('v2_node_ddns')->where('node_type','v2box')->where('node_id',$httpRelayId)->value('server_id');
+    $createController->drop($req(['id'=>$httpRelayId]));DB::table('v2_network_server')->where('id',$httpServer)->delete();
     $atomicRelay=App\Models\ServerV2box::findOrFail($relayCreated);$atomicBinding=DB::table('v2_node_ddns')->where('node_type','v2box')->where('node_id',$relayCreated)->first();
     $assert($atomicRelay->host==='setup-entry.example.test' && (int)$atomicRelay->port===18443 && (int)$atomicRelay->server_port===9443,'one relay save separates client ingress port from origin listener');
     $assert($atomicRelay->tls_settings['server_name']==='atomic-origin.example.test' && $atomicBinding->domain==='atomic-origin.example.test','relay TLS identity defaults to origin independently of ingress');
@@ -567,7 +576,8 @@ try {
     $relay->tls_settings=array_replace($tls,['cert_mode'=>'http']);$relay->save();
     $reject(fn()=>$domains->activate($req(['id'=>$rid,'confirm'=>true])),409); // capability required before TLS candidate
     Illuminate\Support\Facades\Cache::put('V2BOX_CAPABILITIES:'.$relay->id,['features'=>['certificate-transition-v1']],86400);
-    $reject(fn()=>$domains->activate($req(['id'=>$rid,'confirm'=>true])),422);
+    $domains->activate($req(['id'=>$rid,'confirm'=>true]));
+    $assert($relay->fresh()->tls_settings['cert_mode']==='http','relay activation permits independent origin HTTP certificate');
     $relay->tls_settings=$tls;$relay->save();
     $domains->activate($req(['id'=>$rid,'confirm'=>true]));
     $relayConfig=App\Services\Actions\NodeV10Config::build($relay->fresh());

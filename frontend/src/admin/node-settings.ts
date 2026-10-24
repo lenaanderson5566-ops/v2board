@@ -10,6 +10,7 @@ const nested: Record<string, Field[]> = {
         {
             key: "cert_mode",
             label: "证书模式",
+            hint: "HTTP 申请无需 Cloudflare 凭据，证书域名须解析到代理服务器，公网 TCP 80 须可达且未被其他服务占用；续期时也需保持可达。无法开放 80 时请选择 DNS 申请。",
             type: "select",
             options: [
                 ["self", "自签名"],

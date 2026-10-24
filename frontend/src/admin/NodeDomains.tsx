@@ -512,7 +512,7 @@ export function NodeDomainBinding({
                                     <section className="admin-deployment-card" aria-label="中转连接配置说明">
                                         <strong>客户端 → 入口服务器 → 代理服务器</strong>
                                         <p>入口负责转发，V2Box 安装在代理服务器。入口域名解析到入口 IP，回源域名解析到代理服务器 IP。</p>
-                                        {Number(node.tls) === 1 && <><p>证书由代理服务器申请，匹配“协议与证书”中的 TLS 身份域名。请先在“代理服务”的“TLS 与证书”中选择 DNS 申请，选择覆盖 TLS 身份域名的 Cloudflare 凭据并保存，再配置中转路径。</p><p>Cloudflare：可直接选择“域名与解析”中已有的凭据，无需填写 DNS 环境参数；使用其他凭据时仍可手动填写。</p><p>令牌须有 TLS 身份域名所在区域的 Zone:Read 与 DNS:Edit 权限，将用于代理服务器申请与续期证书。</p></>}
+                                        {Number(node.tls) === 1 && <><p>证书由代理服务器申请，匹配“协议与证书”中的 TLS 身份域名。HTTP 申请要求证书域名指向代理服务器且公网 TCP 80 可达；DNS 申请则选择覆盖 TLS 身份域名的 Cloudflare 凭据。请在“协议与证书”中配置并保存。</p><p>Cloudflare：可直接选择“域名与解析”中已有的凭据，无需填写 DNS 环境参数；使用其他凭据时仍可手动填写。</p><p>令牌须有 TLS 身份域名所在区域的 Zone:Read 与 DNS:Edit 权限，将用于代理服务器申请与续期证书。</p></>}
                                         {Number(node.tls) === 2 && <p>Reality 使用独立的握手配置，无需申请上述 TLS 域名证书。</p>}
                                     </section>
                                     <label>
@@ -546,8 +546,8 @@ export function NodeDomainBinding({
                                         />
                                     </label>
                                     <p className="muted">
-                                        在服务器管理的“管理”中，为独立中转服务器配置 IP 上报并添加入口域名。下方的回源域名指向运行 V2Box 的代理服务器。自动证书申请须使用
-                                        DNS 验证；节点监听端口保持独立。
+                                        在服务器管理的“管理”中，为独立中转服务器配置 IP 上报并添加入口域名。下方的回源域名指向运行 V2Box 的代理服务器。自动证书可使用 HTTP 或
+                                        DNS 验证；HTTP 验证需要证书域名的公网 TCP 80 到达代理服务器，节点监听端口保持独立。
                                     </p>
                                 </>
                             )}

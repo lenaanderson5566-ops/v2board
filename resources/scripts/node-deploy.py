@@ -271,14 +271,14 @@ class Deployment:
                     reason='Origin public DNS: waiting for A/AAAA to match reported IPs on both public resolvers; check stale AAAA and DNS-only mode.'
                     if not dns_matches(self.flow['domain'],status['addresses']):
                         pass
+                    elif self.flow['certificateMode']=='http' and self.flow['certificateDomain']!=self.flow['domain'] and not dns_matches(self.flow['certificateDomain'],status['addresses']):
+                        reason='Certificate HTTP validation domain: A/AAAA must point directly to the origin server. Correct certificate DNS or select DNS validation; entry forwarding does not prove port 80 reachability.'
                     elif self.flow.get('accessMode')=='relay':
                         reason='Entry public DNS: waiting for A/AAAA to match entry server IPs on both public resolvers.'
                         if dns_matches(self.flow['connectionDomain'],status.get('entryAddresses',{})):
                             print('DNS verified: origin and entry. Next: start V2Box and verify certificate.',flush=True);return False
-                    elif self.flow['certificateMode']!='http' or self.flow['certificateDomain']==self.flow['domain'] or dns_matches(self.flow['certificateDomain'],status['addresses']):
-                        print('DNS verified. Next: start V2Box and verify certificate.',flush=True);return False
                     else:
-                        reason='Certificate HTTP validation domain: waiting for public DNS to match origin IPs.'
+                        print('DNS verified. Next: start V2Box and verify certificate.',flush=True);return False
             except OSError:
                 reason+=' Request failed; check HTTPS connectivity to the panel and public DNS resolvers.'
             if reason!=last_reason or polls%4==0:

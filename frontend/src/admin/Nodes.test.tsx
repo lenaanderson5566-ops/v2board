@@ -164,6 +164,11 @@ it("shows group names across numeric/string IDs and remembers selected node colu
         return { data: {} };
     });
     const view = render(<Nodes />);
+    await screen.findByText("Node A");
+    expect(screen.queryByRole("columnheader", { name: "权限组" })).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "显示设置" }));
+    fireEvent.click(within(screen.getByLabelText("可选显示列")).getByRole("button", {name:"权限组"}));
+    fireEvent.click(screen.getByRole("button", { name: "显示设置" }));
     expect(
         await screen.findByText("普通权限组 / 高级权限组 / 未知权限组（99）"),
     ).toBeTruthy();
@@ -190,8 +195,7 @@ it("shows group names across numeric/string IDs and remembers selected node colu
         ).getAttribute("aria-pressed"),
     ).toBe("false");
     fireEvent.click(screen.getByRole("button", { name: "恢复默认展示" }));
-    expect(screen.getByRole("columnheader", { name: "权限组" })).toBeTruthy();
-    expect(screen.getByText("普通权限组 / 高级权限组")).toBeTruthy();
+    expect(screen.queryByRole("columnheader", { name: "权限组" })).toBeNull();
 });
 it.each(["v2node", "v2box"])(
     "opens, edits and saves a persisted %s node on HTTP",
@@ -604,6 +608,9 @@ it("links reused lines to their owning service without offering child deployment
     render(<Nodes/>);await screen.findByRole("button",{name:"Child"});
     expect(screen.queryByRole("button",{name:"代理服务接入"})).toBeNull();
     expect(screen.queryByRole("button",{name:"部署与接入"})).toBeNull();
+    expect(screen.getAllByRole("button",{name:"Parent"})).toHaveLength(1);
+    fireEvent.click(screen.getByRole("button",{name:"显示设置"}));
+    fireEvent.click(within(screen.getByLabelText("可选显示列")).getByRole("button",{name:"共用服务"}));
     expect(screen.getAllByRole("button",{name:"Parent"})).toHaveLength(2);
     expect(api.request.mock.calls.some(([path])=>String(path).includes("server/credentials"))).toBe(false);
 });
@@ -1123,6 +1130,7 @@ it("guards the server-management link while a reused node draft is unsaved",asyn
 it("keeps four editor sections in one drawer and lists all nodes affected by a shared service",async()=>{
  responsibilityFixture();render(<Nodes/>);fireEvent.click((await screen.findAllByRole("button",{name:"编辑"}))[0]);
  for(const name of ["节点信息","连接与域名","协议与证书","部署与状态"])expect(screen.getByRole("button",{name})).toBeTruthy();
+ expect(screen.getByRole("button",{name:"协议与证书"}).querySelector("small")).toBeNull();
  const summary=screen.getByText("代理服务关联节点（2 个）");fireEvent.click(summary);
  expect(summary.closest("details")?.textContent).toContain("Box service（当前节点）");expect(summary.closest("details")?.textContent).toContain("Shared route");
  fireEvent.click(screen.getByRole("button",{name:"连接与域名"}));
@@ -1263,4 +1271,12 @@ it("shows actionable receipt failures without claiming external checks passed",(
     expect(screen.getByText(/证书申请或加载失败/)).toBeTruthy();
     expect(screen.queryByText("已确认")).toBeNull();
     expect(screen.getByText(/服务器安装进程和公共网络结果需另行确认/)).toBeTruthy();
+});
+
+it("accepts dual ingress with IPv4 origin and HTTP origin certificate",()=>{
+ const network={servers:[{id:1,enabled:true,family:"dual"},{id:2,enabled:true,family:"ipv4"}],assignments:[{id:3,purpose:"entry",enabled:true,server_id:1,family:"dual"}]};
+ const values={setup_mode:"managed",setup_access_mode:"relay",setup_entry_id:3,setup_entry_port:8443,setup_server_id:2,setup_family:"ipv4",setup_credential_id:4,tls:1,"tls_settings.cert_mode":"http",server_port:9443};
+ expect(nodeConfigurationProblems(values,"v2box",network)).toEqual([]);
+ expect(nodeSetupPayload(values)).toMatchObject({family:"ipv4",server_id:2,entry_id:3});
+ expect(nodeSetupFields([],values,network).find(f=>f.key==="setup_family")?.label).toBe("回源地址类型");
 });

@@ -115,15 +115,17 @@ final class NodeDomainController extends Controller
         });
     }
     public function adopt(Request $request) {
-        $v=$request->validate(['id'=>'required|integer|min:1','proof'=>'nullable|string|size:64']);
+        $v=$request->validate(['id'=>'required|integer|min:1','proof'=>'nullable|string|size:64','removeUnused'=>'sometimes|boolean']);
         return NodeDnsLifecycle::locked(function()use($v){
             $a=DB::table('v2_node_ddns')->find($v['id']);
             abort_unless($a && $a->managed && NodeDdnsService::nodeExists($a),422,'请选择托管节点绑定');
             $c=DB::table('v2_ddns_credential')->find($a->credential_id);
             abort_unless($c && $c->root_domain && str_ends_with($a->domain,'.'.$c->root_domain),422);
             $rows=[];
+            $required=$a->family==='dual'?['A','AAAA']:[$a->family==='ipv4'?'A':'AAAA'];
+            $removeUnused=(bool)($v['removeUnused']??false);
             try {
-                foreach ($a->family==='dual'?['A','AAAA']:[$a->family==='ipv4'?'A':'AAAA'] as $type) {
+                foreach (['A','AAAA'] as $type) {
                     $body=app(NodeDdnsService::class)->api($c,'GET','',['name'=>$a->domain,'type'=>$type,'per_page'=>100]);
                     $records=$body['result']??null;
                     abort_unless(is_array($records) && count($records)<=1 && ($body['result_info']['total_pages']??1)<=1,409,'同名记录不唯一');
@@ -135,11 +137,34 @@ final class NodeDomainController extends Controller
                     abort_if(!empty($r['comment']) && (!$owned || $r['comment']!=='v2board:'.$owned->owner),409,'记录含其他归属备注，请先在 Cloudflare 核实');
                     $rows[]=$r;
                 }
-                $proof=hash('sha256',json_encode([$a->id,$a->credential_id,$a->domain,$a->family,$rows]));
-                if (empty($v['proof'])) return ['data'=>['rows'=>array_map(fn($r)=>array_intersect_key($r,array_flip(['id','name','type','content'])),$rows),'proof'=>$proof]];
+                $plan=array_map(function($r)use($a,$required,$removeUnused){
+                    $family=$r['type']==='A'?'ipv4':'ipv6';$needed=in_array($r['type'],$required,true);
+                    $target=$needed && $a->{$family.'_seen_at'}>=time()-900 ? $a->$family : null;
+                    return array_intersect_key($r,array_flip(['id','name','type','content']))+['target'=>$target,'unused'=>!$needed,
+                        'action'=>!$needed?($removeUnused?'remove':'keep_unused'):(!$target?'await_report':($r['content']===$target?'adopt':'update'))];
+                },$rows);
+                foreach ($required as $type) if (!in_array($type,array_column($rows,'type'),true)) {
+                    $family=$type==='A'?'ipv4':'ipv6';
+                    $target=$a->{$family.'_seen_at'}>=time()-900?$a->$family:null;
+                    $plan[]=['id'=>null,'name'=>$a->domain,'type'=>$type,'content'=>null,'target'=>$target,'unused'=>false,'action'=>$target?'create':'await_report'];
+                }
+                $proof=hash('sha256',json_encode([$a->id,$a->credential_id,$a->domain,$a->family,$a->server_id,$removeUnused,$rows,$plan]));
+                if (empty($v['proof'])) {
+                    Cache::put('dns-adoption-preview:'.$proof,true,600);
+                    return ['data'=>['rows'=>$plan,'proof'=>$proof,'removeUnused'=>$removeUnused]];
+                }
                 abort_unless(hash_equals($proof,$v['proof']),409,'解析已变化，请重新预览');
+                abort_unless(Cache::get('dns-adoption-preview:'.$proof),409,'预览已过期，请重新核对');
                 foreach ($rows as $r) {
                     $owned=DB::table('v2_node_dns_record')->where('credential_id',$c->id)->where('domain',$a->domain)->where('type',$r['type'])->first();
+                    if (!in_array($r['type'],$required,true)) {
+                        if ($removeUnused) {
+                            app(NodeDdnsService::class)->api($c,'DELETE','/'.$r['id']);
+                            if ($owned) DB::table('v2_node_dns_record')->where('id',$owned->id)->delete();
+                            NodeDdnsService::event($a->id,'unused_dns_removed');
+                        }
+                        continue;
+                    }
                     if (!$owned) {
                         $id=DB::table('v2_node_dns_record')->insertGetId(['credential_id'=>$c->id,'assignment_id'=>$a->id,'domain'=>$a->domain,'type'=>$r['type'],'owner'=>bin2hex(random_bytes(24))]);
                         $owned=DB::table('v2_node_dns_record')->find($id);
@@ -149,6 +174,7 @@ final class NodeDomainController extends Controller
                 }
                 DB::table('v2_node_ddns')->where('id',$a->id)->update(['next_run'=>0,'status'=>'awaiting_report']);
                 NodeDdnsService::event($a->id,'dns_adopted');
+                Cache::forget('dns-adoption-preview:'.$proof);
                 return ['data'=>['adopted'=>count($rows)]];
             } catch (\App\Services\NodeDdnsFailure $e) { abort(422,'Cloudflare 接管失败：'.$e->getMessage()); }
         });

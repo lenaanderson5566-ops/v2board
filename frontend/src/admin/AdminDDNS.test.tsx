@@ -687,6 +687,12 @@ it("produces runtime-resolved L4 configuration with distinct entry and origin po
     );
     expect(udp).toContain("listen 8443 udp reuseport;");
     expect(udp).not.toContain("listen [::]");
+    const dualUdp=relayStreamConfig(binding,{protocol:"tuic",server_port:9443},{family:"dual"});
+    expect(dualUdp).toContain("listen 8443 udp reuseport;");
+    expect(dualUdp).toContain("listen [::]:8443 udp reuseport ipv6only=on;");
+    expect(dualUdp).toContain("ipv6=off");
+    expect(dualUdp).toContain("server origin.example.com:9443 resolve;");
+
     expect(
         relayStreamConfig(
             { ...binding, domain: "bad; include evil;" },
@@ -1131,4 +1137,21 @@ it("jumps between server sections without submitting or discarding changes", asy
     fireEvent.click(within(navigation).getByRole("button",{name:"基本配置"}));
     expect(screen.getByLabelText("服务器名称")).toHaveProperty("value","Unsaved server");
     expect(api.request.mock.calls.some(([path])=>String(path).endsWith("network/save") || String(path).endsWith("network/enroll"))).toBe(false);
+});
+it("previews unused DNS records without deleting them and requires explicit cleanup selection",async()=>{
+ managedSetup("none",{status:"healthy"});
+ const fetch=api.request.getMockImplementation()!;
+ api.request.mockImplementation(async(path:string,body?:any)=>{
+  if(path.endsWith("domains/adopt"))return {data:body?.proof?{adopted:1}:{proof:"a".repeat(64),removeUnused:!!body?.removeUnused,rows:[{id:"old",name:"hk.example.com",type:"AAAA",content:"2606:4700:4700::1111",unused:true,action:body?.removeUnused?"remove":"keep_unused"}]}};
+  return fetch(path,body);
+ });
+ vi.spyOn(window,"confirm").mockReturnValue(true);
+ render(<NodeDomainBinding node={{id:3,type:"v2box",host:"hk.example.com",port:443}}/>);
+ fireEvent.click(await screen.findByRole("button",{name:"核对已有解析"}));
+ expect(await screen.findByText("保留（可能阻塞部署）")).toBeTruthy();
+ expect(api.request.mock.calls.some(([,body])=>(body as any)?.proof)).toBe(false);
+ fireEvent.click(screen.getByRole("checkbox",{name:/同时删除/}));
+ expect(await screen.findByText("删除废弃记录")).toBeTruthy();
+ fireEvent.click(screen.getByRole("button",{name:"确认处理"}));
+ await waitFor(()=>expect(api.request).toHaveBeenCalledWith("test-admin/server/domains/adopt",{id:2,proof:"a".repeat(64),removeUnused:true}));
 });

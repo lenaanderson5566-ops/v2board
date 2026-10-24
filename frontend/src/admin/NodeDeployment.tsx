@@ -375,14 +375,12 @@ export function NodeDeployment({
                                         </p>
                                     )}
 
-                                    <p className="muted">
-                                        复制后在节点以 root
-                                        执行，自动安装依赖并配置密钥；已绑定域名时同时配置
-                                        IP
-                                        上报，等待解析生效并验证节点就绪后启用域名。自动申请证书需选择
-                                        HTTP 或 DNS 申请；HTTP 验证需开放 80
-                                        端口。安装会自动启动服务，无需另行重启。中断后按终端提示恢复；已运行的服务会继续验证，停止的服务会尝试启动一次。已有配置不会被覆盖。
-                                    </p>
+                                    <p className="muted">在代理服务器以 root 执行下方命令，自动安装并启动服务。</p>
+                                    <details className="admin-deployment-tools">
+                                        <summary>安装条件与中断恢复</summary>
+                                        <p>自动安装依赖并配置密钥；已绑定域名时同时配置 IP 上报，等待解析生效并验证节点就绪后启用域名。</p>
+                                        <p>自动申请证书请选择 HTTP 或 DNS 申请。HTTP 验证需保持公网 80 端口可达。已有配置不会被覆盖；中断后按终端提示恢复，无需重复部署。</p>
+                                    </details>
                                     <button
                                         className={deployment ? "" : "primary"}
                                         disabled={

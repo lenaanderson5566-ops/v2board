@@ -24,6 +24,7 @@ export const domainStatus: Record<string, string> = {
     unexpected_record: "解析响应异常，等待重试",
     provider_error: "Cloudflare 服务异常",
     dns_adopted: "已接管现有解析",
+    unused_dns_removed: "已删除确认废弃的解析",
 };
 
 export const certificateTransitionStatus: Record<string, string> = {
@@ -347,8 +348,7 @@ export function NodeDomainBinding({
                                     查看节点升级命令
                                 </button>
                             )}
-                            {binding.managed &&
-                                binding.status === "ownership_conflict" && (
+                            {binding.managed && (
                                     <button
                                         disabled={busy || manualBusy}
                                         onClick={async () => {
@@ -358,7 +358,7 @@ export function NodeDomainBinding({
                                             if (r) setAdoption(r);
                                         }}
                                     >
-                                        预览接管现有解析
+                                        核对已有解析
                                     </button>
                                 )}
 
@@ -547,7 +547,7 @@ export function NodeDomainBinding({
                                     </label>
                                     <p className="muted">
                                         在服务器管理的“管理”中，为独立中转服务器配置 IP 上报并添加入口域名。下方的回源域名指向运行 V2Box 的代理服务器。自动证书可使用 HTTP 或
-                                        DNS 验证；HTTP 验证需要证书域名的公网 TCP 80 到达代理服务器，节点监听端口保持独立。
+                                        DNS 验证；HTTP 验证需要证书域名的公网 TCP 80 到达代理服务器，节点监听端口保持独立。入口与回源的地址类型分别配置，入口双栈不要求回源双栈。
                                     </p>
                                 </>
                             )}
@@ -625,33 +625,40 @@ export function NodeDomainBinding({
             </State>
             {adoption && binding && (
                 <div>
-                    <h4>接管解析预览</h4>
+                    <h4>已有解析与处理预览</h4>
                     <Table
                         data={adoption.rows}
                         columns={[
                             ["name", "域名"],
                             ["type", "类型"],
                             ["content", "当前 IP"],
+                            ["target", "目标 IP", (r: Row) => r.target || "—"],
+                            ["action", "确认后的处理", (r: Row) => ({create:"创建目标解析",remove:"删除废弃记录",keep_unused:"保留（可能阻塞部署）",await_report:"等待有效 IP 上报后同步",adopt:"接管并保留 IP",update:"接管，随后同步目标 IP"} as Record<string,string>)[r.action] || "待核对"],
                         ]}
                     />
-                    <p>接管后按节点上报 IP 更新，删除节点时纳入自动清理。</p>
+                    <p>仅处理当前绑定域名。接管后按服务器上报 IP 同步；不支持自动覆盖其他绑定、归属备注或重复记录。</p>
+                    {adoption.rows?.some((r: Row) => r.unused) && <label><input type="checkbox" checked={!!adoption.removeUnused} disabled={busy} onChange={async e => {
+                        const r = await act("adopt", {id: binding.id, removeUnused: e.target.checked});
+                        setAdoption(r || null);
+                    }}/>同时删除当前地址类型不再使用的 A/AAAA 记录（请确认未用于其他服务）</label>}
                     <button
                         disabled={busy || !adoption.rows?.length}
                         onClick={async () => {
                             if (
                                 !window.confirm(
-                                    "确认将上述解析交由此节点管理？",
+                                    adoption.removeUnused ? "确认接管所需解析，并删除预览中标记的废弃记录？" : "确认将预览中的所需解析交由此节点管理？未勾选的废弃记录将保留。",
                                 )
                             )
                                 return;
                             const r = await act("adopt", {
                                 id: binding.id,
                                 proof: adoption.proof,
+                                removeUnused: !!adoption.removeUnused,
                             });
                             if (r) setAdoption(null);
                         }}
                     >
-                        确认接管
+                        确认处理
                     </button>
                     <button disabled={busy || manualBusy} onClick={() => setAdoption(null)}>
                         取消

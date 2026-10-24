@@ -216,8 +216,8 @@ try {
     $naiveId=json_decode($createController->save($req($naive))->getContent(),true)['data']['id'];
     $assert(App\Models\ServerV2box::findOrFail($naiveId)->tls_settings['server_name']==='naive-managed.example.test','Naive integrated creation derives its SNI before final deployment validation');
     // A new relay service can be saved together with ingress selection, without an intermediate direct configuration.
-    $entryMachine=DB::table('v2_network_server')->insertGetId(['name'=>'Setup ingress','family'=>'ipv4','enabled'=>true]);
-    $entrySetup=(new App\Http\Controllers\V1\Admin\NetworkServerController())->entry($req(['server_id'=>$entryMachine,'credential_id'=>$cid,'prefix'=>'setup-entry','family'=>'ipv4']))['data']['id'];
+    $entryMachine=DB::table('v2_network_server')->insertGetId(['name'=>'Setup ingress','family'=>'dual','enabled'=>true]);
+    $entrySetup=(new App\Http\Controllers\V1\Admin\NetworkServerController())->entry($req(['server_id'=>$entryMachine,'credential_id'=>$cid,'prefix'=>'setup-entry','family'=>'dual']))['data']['id'];
     $relayCreation=array_replace($creation,['name'=>'Atomic relay','tls_settings'=>['cert_mode'=>'dns','provider'=>'cloudflare','dns_env'=>['CF_DNS_API_TOKEN'=>'test-only-acme']],
         'deployment_setup'=>array_replace($setup,['prefix'=>'atomic-origin','entry_id'=>$entrySetup,'entry_port'=>18443])]);
     $beforeRelayNodes=App\Models\ServerV2box::count();$beforeRelayServers=DB::table('v2_network_server')->count();
@@ -231,6 +231,18 @@ try {
     $httpRelayNode=App\Models\ServerV2box::findOrFail($httpRelayId);
     $assert($httpRelayNode->tls_settings['server_name']==='http-relay-origin.example.test' && $httpRelayNode->host==='setup-entry.example.test','HTTP relay keeps origin TLS identity separate from connection address');
     App\Services\NodeDeploymentWorkflow::validate($httpRelayNode);
+    $httpBinding=DB::table('v2_node_ddns')->where('node_type','v2box')->where('node_id',$httpRelayId)->first();
+    $assert($httpBinding->family==='ipv4' && DB::table('v2_network_server')->find($httpBinding->server_id)->family==='ipv4','dual entry does not widen origin server or domain family');
+    $httpReport=App\Services\NetworkServer::credential($httpBinding->server_id);
+    $entryReport=App\Services\NetworkServer::credential($entryMachine);
+    $assert($httpReport['family']==='ipv4' && $entryReport['family']==='dual','reporting installation uses independent server families');
+    $assert($call($httpReport['token'],['ipv4'=>'8.8.8.8'])->getStatusCode()===202,'IPv4-only origin report accepted with dual entry');
+    $assert($call($entryReport['token'],['ipv4'=>'1.1.1.1','ipv6'=>'2606:4700:4700::1111'])->getStatusCode()===202,'entry accepts its own dual-stack report');
+    $service->sync($httpBinding->id);$service->sync($entrySetup);
+    $httpBinding=DB::table('v2_node_ddns')->find($httpBinding->id);
+    $assert(App\Services\NetworkServer::ready($httpBinding) && App\Services\NetworkServer::ready(DB::table('v2_node_ddns')->find($entrySetup)),'IPv4 origin and dual entry independently reach DNS readiness');
+    $assert(!$httpBinding->ipv6 && DB::table('v2_node_dns_record')->where('assignment_id',$httpBinding->id)->where('type','AAAA')->count()===0,'entry IPv6 never creates origin AAAA');
+
     $httpRelayNode->server_port=80;
     $reject(fn()=>App\Services\NodeDeploymentWorkflow::validate($httpRelayNode),422);
     $httpServer=DB::table('v2_node_ddns')->where('node_type','v2box')->where('node_id',$httpRelayId)->value('server_id');
@@ -488,6 +500,22 @@ try {
     $reject(fn()=>$domains->adopt($req(['id'=>$fb,'proof'=>str_repeat('f',64)])),409);
     $domains->adopt($req(['id'=>$fb,'proof'=>$adoption['proof']]));$service->sync($fb);
     $assert($remote[str_repeat('a',32)][$foreignId]['content']==='1.1.1.1' && str_starts_with($remote[str_repeat('a',32)][$foreignId]['comment'],'v2board:'),'explicit adoption enables managed updates');
+    $unusedV6=str_repeat('b',32);$remote[str_repeat('a',32)][$unusedV6]=['id'=>$unusedV6,'name'=>'foreign.example.test','type'=>'AAAA','content'=>'2606:4700:4700::1111','proxied'=>false];
+    $review=$domains->adopt($req(['id'=>$fb]))['data'];
+    $v6=array_values(array_filter($review['rows'],fn($r)=>$r['type']==='AAAA'))[0];
+    $assert($v6['action']==='keep_unused' && !$review['removeUnused'],'unused AAAA is visible and retained by default');
+    $domains->adopt($req(['id'=>$fb,'proof'=>$review['proof']]));
+    $assert(isset($remote[str_repeat('a',32)][$unusedV6]),'adoption alone never deletes an unused address family');
+    $review=$domains->adopt($req(['id'=>$fb,'removeUnused'=>true]))['data'];
+    $assert(array_values(array_filter($review['rows'],fn($r)=>$r['type']==='AAAA'))[0]['action']==='remove','explicit cleanup preview marks unused AAAA');
+    $remote[str_repeat('a',32)][$unusedV6]['content']='2606:4700:4700::1001';
+    $reject(fn()=>$domains->adopt($req(['id'=>$fb,'removeUnused'=>true,'proof'=>$review['proof']])),409);
+    $review=$domains->adopt($req(['id'=>$fb,'removeUnused'=>true]))['data'];
+    Illuminate\Support\Facades\Cache::forget('dns-adoption-preview:'.$review['proof']);
+    $reject(fn()=>$domains->adopt($req(['id'=>$fb,'removeUnused'=>true,'proof'=>$review['proof']])),409);
+    $review=$domains->adopt($req(['id'=>$fb,'removeUnused'=>true]))['data'];
+    $domains->adopt($req(['id'=>$fb,'removeUnused'=>true,'proof'=>$review['proof']]));
+    $assert(!isset($remote[str_repeat('a',32)][$unusedV6]) && isset($remote[str_repeat('a',32)][$foreignId]),'confirmed cleanup deletes only reviewed unused family');
     $foreign->host='manual.example.test';$foreign->save();$domains->retry($req(['id'=>$fb]));$service->sync($fb);
     $assert(DB::table('v2_node_ddns')->find($fb)->status==='host_changed','manual hostname change pauses managed updates');
     $domains->bind($req(array_replace($body,['node_id'=>$foreign->id,'prefix'=>'foreign'])));

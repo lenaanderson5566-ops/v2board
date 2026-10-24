@@ -450,3 +450,11 @@ DNS 使用固定 Google Public DNS HTTPS 查询 A/AAAA；托管域名核对服�
 中转配置允许 HTTP、DNS 或已有证书，不再因选择中转而强制将 HTTP 改为 DNS。HTTP 证书仍在代理服务器申请，TLS 身份默认保留回源域名，与客户端连接的入口域名独立。切换证书模式为 HTTP 时清除 Cloudflare 证书凭据引用。
 
 自动部署要求证书域名的所有公网 A/AAAA 与回源上报 IP 匹配，公网 TCP 80 能到达代理服务器且未被其他服务占用，代理监听端口不能占用 80；续期时仍须保留这些条件。安装前校验公共解析和本地端口，证书申请结果及有效证书验证成功后才继续发布。公共 80 的最终可达性由 ACME 验证确定，本地端口空闲不代表外网可达。证书域名经入口的额外 HTTP 转发不作为此次自动部署支持路径，请改用 DNS 验证或将证书域名直指回源。无需修改 V2Box 二进制。
+
+### 入口双栈与 IPv4 回源
+
+入口服务器及入口域名可以配置为双栈，代理服务器与回源域名单独配置为 IPv4。新增表单在中转模式下将地址类型标为“回源地址类型”；上报完整性按各绑定自身的地址类型检查，不要求两侧一致。Nginx 同时监听 IPv4/IPv6，回源解析使用 ipv6=off；TCP 与 UDP 均保持这个边界。HTTP 证书域名使用落地 A 记录，不能保留无效 AAAA；入口 AAAA 不会复制到回源。
+
+Existing DNS review now checks both A and AAAA regardless of the selected address family. The node domain screen offers “核对已有解析” for every managed binding, showing current/target IP and the proposed action. Unused-family records remain untouched by default; deletion requires an explicit checkbox and confirmation. Changed or expired previews are rejected, and foreign ownership, proxying and duplicate records remain protected. Synchronization continues through the existing DNS lifecycle after adoption.
+
+Node management simplification: default list columns omit internal node/service IDs and permission groups; existing saved column preferences remain respected and all columns remain selectable. The four editing sections use compact text navigation without repeated descriptions. Service configuration explanations and installation prerequisites/recovery instructions are collapsed, while current errors, next actions and shared-service impact remain available. No endpoint or saved configuration semantics changed.

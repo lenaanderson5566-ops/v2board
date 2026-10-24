@@ -118,7 +118,7 @@ class NodeDeploymentCheck
                 foreach ($assignment->family==='dual'?['ipv4','ipv6']:[$assignment->family] as $family)
                     if (!$assignment->$family || $assignment->{$family.'_seen_at'}<time()-900) $fresh=false;
             }
-            $add('report','服务器 IP 上报',$fresh?'pass':'unknown',$fresh?'所需地址类型均有近期上报。':'入口或代理服务器尚未提供完整的近期 IP 上报。',$fresh?'':'在服务器管理中检查对应服务器的上报服务；双栈需同时上报 IPv4 和 IPv6。');
+            $add('report','服务器 IP 上报',$fresh?'pass':'unknown',$fresh?'所需地址类型均有近期上报。':'入口或代理服务器尚未提供完整的近期 IP 上报。',$fresh?'':'分别检查入口和代理服务器的上报服务；仅配置为双栈的一侧需要 IPv4 与 IPv6，IPv4 回源不要求 IPv6。');
         }
         $dns=$origin['dns']==='pass' && (!$relay || ($entryResult['dns'] ?? '')==='pass');
         $add('dns','公网 DNS',$dns?'pass':(($origin['dns']==='fail' || ($entryResult['dns'] ?? '')==='fail')?'fail':'unknown'),$dns?'本次公网查询成功；存在已上报 IP 时，已核对解析地址。':'公网解析未确认或与已上报 IP 不一致。',$dns?'':'检查服务器 IP 上报、A/AAAA 记录及 DNS only 设置，解析传播后重新检查。');

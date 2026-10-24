@@ -349,6 +349,15 @@ class WorkflowTests(unittest.TestCase):
         with patch.object(m,'dns_matches',side_effect=[True,False]), patch.object(m.time,'monotonic',side_effect=[0,0,1000]), patch.object(m.time,'sleep'):
             with self.assertRaisesRegex(m.DeploymentError,'point directly to the origin'):m.Deployment.wait_dns(self.deploy)
         self.assertNotIn('restart',self.events);self.assertNotIn('certificate',self.events)
+    def test_dual_entry_ipv4_origin_http_flow_never_requires_origin_ipv6(self):
+        self.deploy.flow.update(accessMode='relay',connectionDomain='entry.example.test',certificateMode='http',certificateDomain='node.example.test')
+        self.deploy.progress=lambda action='status':{'dnsReady':True,'addresses':{'ipv4':'8.8.8.8'},'entryAddresses':{'ipv4':'1.1.1.1','ipv6':'2606:4700:4700::1111'}}
+        def answers(domain,endpoint):
+            return {'ipv4':{'8.8.8.8'},'ipv6':set()} if domain=='node.example.test' else {'ipv4':{'1.1.1.1'},'ipv6':{'2606:4700:4700::1111'}}
+        with patch.object(m,'dns_answers',side_effect=answers) as resolver:
+            self.assertFalse(m.Deployment.wait_dns(self.deploy))
+            self.assertEqual(resolver.call_count,4)
+        self.assertNotIn('certificate',self.events)
     def test_dns_wait_reports_missing_family_and_preserves_state(self):
         self.deploy.progress=lambda action='status':{'dnsReady':False,'dnsChecks':[{'role':'entry','reason':'awaiting_report','missingFamilies':['ipv6']}]}
         with patch.object(m.time,'monotonic',side_effect=[0,0,1000]), patch.object(m.time,'sleep'), patch('sys.stdout',new_callable=io.StringIO) as out:

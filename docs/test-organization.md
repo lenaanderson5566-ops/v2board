@@ -941,3 +941,11 @@ Nodes、AdminDDNS、admin-linkage 三个现有模块共 129 项测试通过。�
 ### 中转落地 HTTP 证书回归
 
 复用 node-ddns.php 验证中转 HTTP 新建、独立落地身份、启用及监听 80 拒绝（336 项通过）；复用 v2box.php 内嵌 Python 用例验证中转证书域名必须匹配回源 A/AAAA、入口解析仍独立检查、失败不启动申请（无网络 Linux 容器 38 项通过）。Nodes、AdminDDNS 和 admin-linkage 共 141 项测试及 TypeScript/生产构建通过。修正旧关联测试中把入口地址作为证书身份的过时预期，保留不匹配和暂停凭据的安全断言。未执行真实公网 ACME 签发或续期。
+
+### 双栈入口与 IPv4 回源回归
+
+在既有 node-ddns.php 的创建流程使用双栈入口，验证 HTTP 落地仍为 IPv4、上报安装参数独立、入口 IPv6 不污染回源、双方各自到达 DNS 就绪（342 项通过，独立测试库及模拟 Cloudflare）。v2box.php 内嵌 Python 测试通过 39 项，新增实际 dns_matches 路径同时检查入口 A/AAAA 和回源仅 A。前端 142 项测试、TypeScript 与生产构建通过，TCP/UDP 生成配置用 Nginx 1.28.3 执行 nginx -t 成功；未在生产网络验证 IPv6 连通、ACME 签发或实际代理流量。
+
+Existing-record review verification: tests/node-ddns.php passed 348 checks in a disposable project/database, including preserving unused AAAA by default, explicit removal, changed-record rejection and preview expiry. Nodes/AdminDDNS/admin-linkage passed 143 frontend tests, including the cleanup opt-in flow. TypeScript and production build passed. Cloudflare API effects use the existing fake provider; no live zone records were changed and real public DNS propagation was not verified.
+
+Node UI simplification regression: 143 tests passed across Nodes, AdminDDNS and admin-linkage, including revealing optional group/shared-service columns, preserving display preferences and restoring compact defaults. Compact section navigation retains dirty-draft guards and shared-service access. No backend behavior changed in this UI pass.

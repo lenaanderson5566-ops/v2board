@@ -106,7 +106,8 @@ export function nodeSetupFields(
             {
                 key: "setup_family",
                 columns: 6,
-                label: "地址类型",
+                label: relay ? "回源地址类型" : "地址类型",
+                hint: relay ? "仅决定代理服务器的回源解析。入口可使用双栈，回源可仅使用 IPv4。" : undefined,
                 type: "select",
                 options: [
                     ["ipv4", "IPv4"],

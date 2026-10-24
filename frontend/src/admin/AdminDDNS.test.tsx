@@ -227,7 +227,7 @@ it("saves a root and prefix without prematurely activating a node address", asyn
             node={{ id: 3, type: "v2box", host: "old.example.com" }}
         />,
     );
-    await screen.findByText("目标域名：hk.example.com");
+    await screen.findByText("待启用：hk.example.com");
     fireEvent.change(screen.getByLabelText("子域名前缀"), {
         target: { value: "jp-01" },
     });
@@ -352,14 +352,14 @@ it("shows pending certificate verification without offering another activation",
     render(<NodeDomainBinding node={{ id: 3, type: "v2box" }} />);
     await screen.findByText("正在验证新域名");
     expect(screen.queryByRole("button", { name: "验证并切换地址" })).toBeNull();
-    expect(screen.getByText(/当前生效域名：old.example.com/)).toBeTruthy();
+    expect(within(screen.getByRole("region",{name:"地址与证书概览"})).getByText("old.example.com:443")).toBeTruthy();
 });
 it("keeps the published address visible and allows retry after certificate failure", async () => {
     managedSetup("failed");
     render(<NodeDomainBinding node={{ id: 3, type: "v2box" }} />);
     await screen.findByText("下一步：检查日志后重新验证");
     expect(screen.getByRole("button", { name: "验证并切换地址" })).toBeTruthy();
-    expect(screen.getByText(/当前生效域名：old.example.com/)).toBeTruthy();
+    expect(within(screen.getByRole("region",{name:"地址与证书概览"})).getByText("old.example.com:443")).toBeTruthy();
 });
 
 it("configures reporting from advanced maintenance using a one-use command and expires it", async () => {
@@ -482,7 +482,7 @@ it("notifies the list once when polling observes publication, without publishing
     });
     await act(() => vi.advanceTimersByTimeAsync(15000));
     expect(screen.getByText("新域名已生效")).toBeTruthy();
-    expect(screen.getByText(/当前生效域名：hk.example.com/)).toBeTruthy();
+    expect(within(screen.getByRole("region",{name:"地址与证书概览"})).getByText("hk.example.com")).toBeTruthy();
     expect(screen.queryByRole("button", { name: "验证并切换地址" })).toBeNull();
     expect(onPublished).toHaveBeenCalledTimes(1);
     await act(() => vi.advanceTimersByTimeAsync(15000));
@@ -503,7 +503,7 @@ it.each([
         render(
             <NodeDomainBinding node={{ id: 3, type: "v2box", _new: fresh }} />,
         );
-        await screen.findByText(/目标域名：/);
+        await screen.findByText("待启用：hk.example.com");
         expect(screen.queryByText("高级维护")).toBeNull();
         expect(
             screen.queryByRole("button", { name: "修复 IP 上报" }),
@@ -1118,4 +1118,17 @@ it("checks relay certificate modes without treating masked credentials as missin
  expect(relayCertificateIssue({tls:2,tls_settings:{cert_mode:"none"}})).toBe("");
  expect(relayCertificateIssue({tls:0})).toBe("");
  expect(relayCertificateIssue({tls:1,"tls_settings.cert_mode":"dns"})).toBe("");
+});
+
+it("jumps between server sections without submitting or discarding changes", async () => {
+    render(<NetworkServers data={serverEntryFixture()} reload={()=>{}}/>);
+    await waitFor(()=>expect(screen.getByRole("button",{name:"管理"})).toHaveProperty("disabled",false));
+    fireEvent.click(screen.getByRole("button",{name:"管理"}));
+    fireEvent.change(screen.getByLabelText("服务器名称"),{target:{value:"Unsaved server"}});
+    const navigation=screen.getByRole("navigation",{name:"服务器管理分区"});
+    fireEvent.click(within(navigation).getByRole("button",{name:"IP 上报"}));
+    expect(document.activeElement?.tagName).toBe("FIELDSET");
+    fireEvent.click(within(navigation).getByRole("button",{name:"基本配置"}));
+    expect(screen.getByLabelText("服务器名称")).toHaveProperty("value","Unsaved server");
+    expect(api.request.mock.calls.some(([path])=>String(path).endsWith("network/save") || String(path).endsWith("network/enroll"))).toBe(false);
 });

@@ -1087,3 +1087,11 @@ Nodes 与 AdminDDNS 的 104 项 Vitest 检查通过，包含按需发起、禁�
 ### 独立 TLS 身份配置
 
 Nodes 与 AdminDDNS 共 105 项 Vitest 通过，新增跨根域名凭据筛选，覆盖新增默认落地身份与已有托管节点可编辑 TLS 身份。TypeScript 检查和生产构建通过，管理端静态资源已更新。此次使用 jsdom，未执行生产后台浏览器验收。
+
+### 节点管理界面重新组织
+
+使用合成节点与服务器数据，在本地浏览器检查节点域名页、部署分区切换、服务器宽抽屉及 390px iframe 窄视口。确认三种地址分别显示，窄屏导航双列且地址摘要纵向排列；未访问生产节点或修改实际解析。截图位于 ignored storage/app/test-organization/node-redesign-desktop.png 与 node-redesign-mobile.png。
+
+Nodes/AdminDDNS 的组件回归覆盖当前与待启用地址区分、TLS 身份独立展示、集成编辑不出现嵌套标签、凭据入口可返回、服务器分区定位不提交且保留未保存输入。测试沿用已有业务及安全断言。
+
+本轮 108 项组件测试、TypeScript 检查与生产构建通过，已更新 public/console 资源。

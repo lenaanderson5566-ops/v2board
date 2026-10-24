@@ -1,3 +1,4 @@
+import { NodeAddressSummary } from "./NodeAddressSummary";
 import { nodeDeploymentStage } from "./node-guidance";
 import { NodeDomainBinding } from "./NodeDomains";
 import { type ReactNode, useEffect, useRef, useState } from "react";
@@ -190,11 +191,12 @@ export function NodeDeployment({
         >
             {navigation?.(busy, domainDirty)}
             <div className="admin-deployment">
-                <p className="admin-deployment-meta">
+                {!navigation && <p className="admin-deployment-meta">
                     {node.type.toUpperCase()} · 节点 #{node.id} ·{" "}
                     {node.protocol || ""}
-                </p>
-                <AdminTabs
+                </p>}
+                <DeploymentSections
+                    integrated={!!navigation}
                     label={scope === "connection" ? "节点接入" : "部署与接入"}
                     value={tab}
                     onChange={(next) => {
@@ -337,6 +339,7 @@ export function NodeDeployment({
                                     </p>
                                 )}
                             </section>
+                            <NodeAddressSummary node={node} binding={binding} entry={(network.data?.assignments || []).find((a: Row) => a.id === binding?.entry_id)} />
                             <NodeDeploymentCheck node={node} disabled={busy} />
                             {node.type === "v2box" && (
                                 <div className="admin-deployment-mode">
@@ -546,8 +549,8 @@ export function NodeDeployment({
                             )}
                         </>
                     )}
-                </AdminTabs>
-                {scope === "connection" && (
+                </DeploymentSections>
+                {scope === "connection" && !navigation && (
                     <p className="muted">
                         协议、TLS 参数、运行维护及凭据在{" "}
                         <a
@@ -563,4 +566,17 @@ export function NodeDeployment({
             </div>
         </Modal>
     );
+}
+
+function DeploymentSections({ integrated, label, value, onChange, options, children }: {
+    integrated: boolean; label: string; value: string; onChange: (value: string) => void;
+    options: { value: string; label: string; disabled?: boolean }[]; children: ReactNode;
+}) {
+    if (!integrated) return <AdminTabs label={label} value={value} onChange={onChange} options={options}>{children}</AdminTabs>;
+    const destination = value === "credentials" ? "deploy" : "credentials";
+    const action = options.find(option => option.value === destination);
+    return <div className="node-deployment-section">
+        {action && <div className="node-section-tools"><button type="button" disabled={action.disabled} onClick={() => onChange(destination)}>{value === "credentials" ? "返回部署与状态" : "节点凭据管理"}</button></div>}
+        {children}
+    </div>;
 }

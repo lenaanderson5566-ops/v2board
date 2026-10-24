@@ -13,7 +13,7 @@ import {
     entryPayload,
 } from "./ServerEntryDomains";
 import { AdminSwitch } from "./admin-switch";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useId, useMemo, useRef, useState } from "react";
 import { admin, request, rows, bytes, type Row } from "../shared/api";
 import { Modal, Panel, Table, State, useData } from "../shared/ui";
 import { logTime } from "./admin-log-time";
@@ -26,6 +26,13 @@ export function NetworkServers({
     reload: () => void;
 }) {
     const servers: Row[] = data.servers || [];
+    const sectionId = useId();
+    function jumpTo(section: string) {
+        const target = document.getElementById(`${sectionId}-${section}`);
+        target?.scrollIntoView?.({ behavior: "auto", block: "start" });
+        target?.focus({ preventScroll: true });
+    }
+
     const budgets = useData<Row[]>(admin("server/traffic-budget/fetch"));
     const budgetMap = useMemo(() => {
         const result = new Map<number, Row>(),
@@ -422,6 +429,8 @@ export function NetworkServers({
             {editing && (
                 <Modal
                     variant="drawer"
+                    wide
+                    className="server-management-drawer"
                     title={editing.id ? `${editing.name} · 服务器管理` : "添加服务器"}
                     dismissible={!busy && !detailBusy}
                     close={() => {
@@ -435,6 +444,9 @@ export function NetworkServers({
                         }
                     }}
                 >
+                    {editing.id && <nav className="node-management-jumps" aria-label="服务器管理分区">
+                        {[['config','基本配置'],['report','IP 上报'],['entry','入口与转发'],['usage','用量与关联节点']].map(([key,label]) => <button key={key} type="button" onClick={() => jumpTo(key)}>{label}</button>)}
+                    </nav>}
                     {editing.id && <div className="pad server-traffic-details"><p>服务器用途：{serverPurpose(Number(editing.id),data)}</p><ServerStatus server={servers.find(s=>Number(s.id)===Number(editing.id)) || editing}/></div>}
                     <form
                         className="node-domain-form server-config-form"
@@ -450,7 +462,7 @@ export function NetworkServers({
                             });
                         }}
                     >
-                        <h3>基本配置</h3><p className="server-management-guide">配置顺序：保存服务器 → 配置本机 IP 上报 → 中转服务器添加入口域名 → 在节点中选择入口 → 配置并验证转发。</p>
+                        <h3 id={`${sectionId}-config`} tabIndex={-1}>基本配置</h3><p className="server-management-guide">管理本机名称、地址类型与流量额度。节点协议和证书在节点管理中配置。</p>
                         <label>
                             服务器名称
                             <input
@@ -550,7 +562,7 @@ export function NetworkServers({
                             {editing.id ? "保存服务器配置" : "保存"}
                         </button>
                         {editing.id && (
-                            <fieldset>
+                            <fieldset id={`${sectionId}-report`} tabIndex={-1}>
                                 <legend>服务器 IP 上报</legend>
                                 <p className="muted">
                                     代理服务器安装 V2Box 时自动配置上报。独立中转服务器需在本机执行下方命令，不能在代理服务器代为执行。上报成功后自动同步关联域名的解析。
@@ -657,13 +669,13 @@ export function NetworkServers({
                         {notice && <p role="status">{notice}</p>}
                     </form>
                     {editing.id && <div className="pad server-management-sections">
-                        <h3>入口与转发</h3>
+                        <h3 id={`${sectionId}-entry`} tabIndex={-1}>入口与转发</h3><p className="muted">仅中转服务器需要配置。先添加入口域名，再在节点中选择此入口，最后在本机配置并验证转发。</p>
                         {serverDirty && <p className="muted">请先保存服务器配置，再修改入口或转发。</p>}
                         <fieldset disabled={busy || serverDirty}>
                         <ServerEntryDomains key={editing.id} server={servers.find(s=>Number(s.id)===Number(editing.id)) || editing} data={data} reload={reload} onBusy={setDetailBusy} onDirty={setDetailDirty}/>
                         </fieldset>
                         <fieldset disabled={busy || serverDirty || detailBusy || detailDirty}><ServerForwarding server={editing} data={data} reload={reload}/></fieldset>
-                        <ServerTrafficSummary key={`${editing.id}:${summaryRevision}`} server={editing} onNavigate={()=>!busy && !detailBusy && (!(serverDirty || detailDirty) || confirm("配置尚未保存，确认放弃修改并前往节点管理？"))}/>
+                        <div id={`${sectionId}-usage`} tabIndex={-1}><ServerTrafficSummary key={`${editing.id}:${summaryRevision}`} server={editing} onNavigate={()=>!busy && !detailBusy && (!(serverDirty || detailDirty) || confirm("配置尚未保存，确认放弃修改并前往节点管理？"))}/></div>
                     </div>}
                 </Modal>
             )}

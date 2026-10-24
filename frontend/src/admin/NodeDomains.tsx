@@ -1,3 +1,4 @@
+import { NodeAddressSummary } from "./NodeAddressSummary";
 import { ManualNodeAddress } from "./ManualNodeAddress";
 import { relayStreamConfig, relayCertificateIssue } from "./node-relay";
 import { useEffect, useRef, useState } from "react";
@@ -171,7 +172,7 @@ export function NodeDomainBinding({
     }
     return (
         <section className="admin-deployment-card">
-            <h3>域名与解析</h3>
+            <h3>连接与域名</h3>
             <State {...data} retry={data.reload}>
                 {binding && (
                     <div>
@@ -207,17 +208,9 @@ export function NodeDomainBinding({
                                 <p>{progress.description}</p>
                             </div>
                         )}
-                        <p>
-                            {binding.entry_id ? "回源域名" : "目标域名"}：
-                            {binding.domain}
-                        </p>
+                        <NodeAddressSummary node={node} binding={binding} entry={entry} />
                         {entry && (
                             <>
-                                <p>
-                                    连接入口：{entry.domain}:
-                                    {binding.entry_port} ·{" "}
-                                    {domainStatus[entry.status] || entry.status}
-                                </p>
                                 <p>
                                     入口服务器：
                                     {servers.find(
@@ -307,10 +300,10 @@ export function NodeDomainBinding({
                             </>
                         )}
                         <p>
-                            当前生效域名：
-                            {binding.published_domain || node.host} ·{" "}
+                            解析状态：
                             {domainStatus[binding.status] || binding.status}
                         </p>
+                        <details className="node-domain-evidence"><summary>服务器上报与解析记录</summary>
                         <AdminLogTimeZone />
                         {(binding.family === "dual"
                             ? ["ipv4", "ipv6"]
@@ -334,6 +327,7 @@ export function NodeDomainBinding({
                                 ? logTime(binding.last_success)
                                 : "—"}
                         </p>
+                        </details>
                         {!binding.ipv4 && !binding.ipv6 && (
                             <p className="muted">
                                 尚未收到独立 IP 上报。节点列表的 IP

@@ -1,3 +1,4 @@
+import { NodeAddressSummary } from "./NodeAddressSummary";
 import { nodeConfigurationProblems, nodeChangeImpact, nodeDeploymentStage } from "./node-guidance";
 import { certificateCredentialOptions, nodeSetupFields, nodeSetupPayload } from "./node-setup";
 import { adminPageFixture } from "./test-support/page-fixtures";
@@ -942,7 +943,8 @@ it("uses one node list with line, shared service and deployment sections",async(
     expect(screen.getAllByRole("dialog")).toHaveLength(1);
     expect(screen.getByText("节点服务：V2Box / sing-box")).toBeTruthy();
     fireEvent.click(screen.getByRole("button",{name:"部署与状态"}));
-    expect(await screen.findByText(/V2BOX · 节点 #1/)).toBeTruthy();
+    expect(await screen.findByRole("button",{name:"一键检查"})).toBeTruthy();
+    expect(api.request.mock.calls.some(([path])=>String(path).includes("server/credentials?type=v2box&id=1"))).toBe(true);
     expect(api.request.mock.calls.some(([path])=>String(path).includes("server/credentials?type=v2box&id=2"))).toBe(false);
 });
 it("opens backend-specific service configuration from the unified node URL",async()=>{
@@ -1083,7 +1085,7 @@ it("guides a managed listener change to endpoint verification without issuing an
     fireEvent.click(screen.getByRole("button",{name:"保存节点配置"}));
     await screen.findByText(/监听端口已保存。等待节点应用后/);
     expect(await screen.findByText(/监听端口已修改。请确认节点应用新配置/)).toBeTruthy();
-    expect(screen.getByRole("tab",{name:"域名与解析"}).getAttribute("aria-selected")).toBe("true");
+    expect(screen.getByRole("button",{name:"连接与域名"}).getAttribute("aria-pressed")).toBe("true");
     expect(api.request.mock.calls.some(([path])=>String(path).includes("credentials/deployment"))).toBe(false);
 });
 
@@ -1213,4 +1215,25 @@ it("selects certificate credentials by TLS identity rather than ingress domain",
     const values={setup_mode:"managed",setup_credential_id:1,setup_access_mode:"relay",setup_entry_id:3};
     expect(certificateCredentialOptions(values,network).map(x=>x[0])).toEqual(["","1"]);
     expect(certificateCredentialOptions({...values,"tls_settings.server_name":"tls.entry.test"},network).map(x=>x[0])).toEqual(["","2"]);
+});
+
+it("separates published, prepared and TLS addresses in the node overview", () => {
+    render(<NodeAddressSummary node={{host:"old.entry.test",port:443,server_port:9443,tls:1,tls_settings:{server_name:"certificate.test"}}} binding={{entry_id:2,domain:"origin.test",entry_port:20004,published_domain:"old.entry.test",published_port:443,tls_transition_state:"pending"}} entry={{domain:"new.entry.test"}}/>);
+    const overview=screen.getByRole("region",{name:"地址与证书概览"});
+    expect(within(overview).getByText("old.entry.test:443")).toBeTruthy();
+    expect(within(overview).getByText("待启用：new.entry.test:20004")).toBeTruthy();
+    expect(within(overview).getByText("origin.test:9443")).toBeTruthy();
+    expect(within(overview).getByText("certificate.test")).toBeTruthy();
+    expect(within(overview).getByText(/新配置验证中/)).toBeTruthy();
+});
+it("keeps integrated deployment navigation flat and credential management reachable",async()=>{
+    api.request.mockResolvedValue({data:{keys:[],assignments:[],servers:[]}});
+    render(<NodeDeployment node={{type:"v2box",id:7,name:"Manual"}} close={()=>{}} navigation={()=> <p>节点编辑导航</p>} openConnection={()=>{}}/>);
+    await screen.findByRole("button",{name:"节点凭据管理"});
+    expect(screen.queryByRole("tablist")).toBeNull();
+    fireEvent.click(screen.getByRole("button",{name:"节点凭据管理"}));
+    await screen.findByRole("button",{name:"生成 / 手动轮换密钥"});
+    fireEvent.click(screen.getByRole("button",{name:"返回部署与状态"}));
+    expect(await screen.findByRole("button",{name:"一键检查"})).toBeTruthy();
+    expect(api.request.mock.calls.some(([,body])=>body && Object.keys(body).length)).toBe(false);
 });

@@ -927,3 +927,7 @@ Nodes、AdminDDNS、admin-linkage 三个现有模块共 129 项测试通过。�
 ### 连接地址与 TLS 身份分离回归
 
 复用 tests/node-ddns.php，覆盖新建中转默认落地身份、独立证书区域的 Cloudflare 凭据、候选配置下发能力校验、认证回执成功发布/失败保留、Reality 不受影响、中转回直连、Clash 与 sing-box 订阅的连接地址/SNI/证书验证，以及一键检查分别探测入口和回源时使用同一独立身份。测试在临时项目副本及独立 MySQL 数据库运行，DNS/Cloudflare 与探测使用受控测试替身，不接触生产节点或申请公网证书。node-ddns.php 334 项、node-v10.php 295 项、v2box.php 33 项和 update-script.sh 26 个隔离更新场景通过。
+
+### 节点管理界面回归
+
+在既有 Nodes.test.tsx、AdminDDNS.test.tsx 增补地址摘要、单层编辑导航及服务器分区定位测试。旧文案断言调整为对应的当前/待启用地址，保留正确代理服务 ID、未保存保护、禁止提前发布和不触发写请求等行为断言。此次仅调整前端布局，无后端接口、数据库或节点通信变更。

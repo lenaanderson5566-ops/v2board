@@ -213,17 +213,18 @@ function NodesContent({
     ) {
         if (!managedLine) return null;
         return (
-            <div className="pad">
+            <div className="pad node-editor-navigation">
                 <AdminChoiceGroup
                     label="节点编辑"
                     variant="navigation"
+                    className="node-workflow-navigation"
                     value={section}
                     disabled={busy || d.loading}
                     options={[
-                        { value: "line", label: "节点信息" },
-                        { value: "path", label: "连接与域名" },
-                        { value: "service", label: "协议与证书" },
-                        { value: "deploy", label: "部署与状态" },
+                        { value: "line", label: <><strong>节点信息</strong><small aria-hidden="true">名称 · 地区 · 权限</small></> },
+                        { value: "path", label: <><strong>连接与域名</strong><small aria-hidden="true">直连 / 中转 · 连接地址</small></> },
+                        { value: "service", label: <><strong>协议与证书</strong><small aria-hidden="true">监听端口 · TLS 身份</small></> },
+                        { value: "deploy", label: <><strong>部署与状态</strong><small aria-hidden="true">安装 · 检查 · 维护</small></> },
                     ]}
                     onChange={(next) => {
                         if (
@@ -237,11 +238,11 @@ function NodesContent({
                         openSection(managedLine, next);
                     }}
                 />
-                <p className="admin-deployment-card">{{line: "节点信息：设置用户订阅中显示的名称、地区与访问权限。", path: "连接与域名：选择直连或中转，设置用户连接地址。入口 IP 与转发由入口服务器管理，回源地址指向代理服务器。", service: "协议与证书：配置运行 V2Box 的服务器所使用的协议、监听端口与证书。共用此服务的节点会一同受影响。", deploy: "部署与状态：在代理服务器执行安装命令，检查配置与证书是否生效。中转入口的上报与转发请在服务器管理完成。"}[section]}</p>
-                <details className="admin-deployment-tools"><summary>代理服务关联节点（{associatedNodes.length} 个）</summary>
+                <p className="node-section-description">{{line: "节点信息：设置用户订阅中显示的名称、地区与访问权限。", path: "连接与域名：选择直连或中转，设置用户连接地址。入口 IP 与转发由入口服务器管理，回源地址指向代理服务器。", service: "协议与证书：配置运行 V2Box 的服务器所使用的协议、监听端口与证书。共用此服务的节点会一同受影响。", deploy: "部署与状态：在代理服务器执行安装命令，检查配置与证书是否生效。中转入口的上报与转发请在服务器管理完成。"}[section]}</p>
+                {associatedNodes.length > 1 && <details className="admin-deployment-tools"><summary>代理服务关联节点（{associatedNodes.length} 个）</summary>
                     <ul>{associatedNodes.map(n=><li key={`${n.type}:${n.id}`}>{n.name}{Number(n.id)===Number(managedLine.id)?"（当前节点）":""}</li>)}</ul>
                     <p className="muted">修改代理服务的协议、监听、证书或部署会影响以上节点。计费倍率沿用同一服务的统计，暂不按入口分别计费。</p>
-                </details>
+                </details>}
             </div>
         );
     }

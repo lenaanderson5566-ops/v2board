@@ -237,7 +237,7 @@ function NodesContent({
                         openSection(managedLine, next);
                     }}
                 />
-                <p className="muted">节点名称、地区与展示信息独立设置；协议、监听和证书由代理服务统一维护。</p>
+                <p className="admin-deployment-card">{{line: "节点信息：设置用户订阅中显示的名称、地区与访问权限。", path: "接入路径：选择直连或中转，设置用户连接地址。入口 IP 与转发由入口服务器管理，回源地址指向代理服务器。", service: "代理服务：配置运行 V2Box 的服务器所使用的协议、监听端口与证书。共用此服务的节点会一同受影响。", deploy: "部署与诊断：在代理服务器执行安装命令，检查配置与证书是否生效。中转入口的上报与转发请在服务器管理完成。"}[section]}</p>
                 <details className="admin-deployment-tools"><summary>代理服务关联节点（{associatedNodes.length} 个）</summary>
                     <ul>{associatedNodes.map(n=><li key={`${n.type}:${n.id}`}>{n.name}{Number(n.id)===Number(managedLine.id)?"（当前节点）":""}</li>)}</ul>
                     <p className="muted">修改代理服务的协议、监听、证书或部署会影响以上节点。计费倍率沿用同一服务的统计，暂不按入口分别计费。</p>

@@ -236,8 +236,7 @@ export function NodeDomainBinding({
                                         : ""}
                                 </p>
                                 <p className="muted">
-                                    TLS
-                                    在节点终止。证书覆盖入口域名，回源域名仅用于中转服务器定位节点。请在入口配置四层转发至{" "}
+                                    入口服务器只转发 TCP／UDP，不解密 TLS；代理服务器上的 V2Box 负责证书与加密连接。证书须覆盖用户连接的入口域名。请在入口配置转发至{" "}
                                     {binding.domain}:{node.server_port}。
                                 </p>
                                 <details>
@@ -487,7 +486,7 @@ export function NodeDomainBinding({
                                     <option value="direct">直连节点</option>
                                     {node.type === "v2box" && (
                                         <option value="relay">
-                                            四层中转 · TLS 在节点终止
+                                            中转连接（入口转发至代理服务器）
                                         </option>
                                     )}
                                 </select>
@@ -545,7 +544,7 @@ export function NodeDomainBinding({
                                         />
                                     </label>
                                     <p className="muted">
-                                        新建或已有服务器均可在详情中添加入口域名；在服务器管理配置入口 IP 上报。下方配置回源域名。自动证书申请须使用
+                                        在服务器管理的“管理”中，为独立中转服务器配置 IP 上报并添加入口域名。下方的回源域名指向运行 V2Box 的代理服务器。自动证书申请须使用
                                         DNS 验证；节点监听端口保持独立。
                                     </p>
                                 </>

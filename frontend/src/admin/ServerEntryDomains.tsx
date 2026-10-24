@@ -37,6 +37,7 @@ export function ServerEntryDomains({server,data,reload,onBusy,onDirty}:{server:R
     }
     return <section className="server-entry-domains" data-saving={busy || undefined} data-unsaved={!!draft || undefined}>
         <p className="muted">新建和已有服务器均可添加多个入口域名，供不同线路共享。入口负责域名与解析。新增节点时选择该入口，保存后在下方“本机入口转发”配置并验证。</p>
+        {entries.length > 0 && !server.ipv4 && !server.ipv6 && <p role="status">入口 IP 尚未收到。请在上方“服务器 IP 上报”生成命令，在「{server.name}」执行。添加域名或重试解析不会自动安装上报程序。</p>}
         <div className="actions"><h3>入口域名</h3><button type="button" disabled={busy || !server.enabled} onClick={()=>edit()}>添加入口域名</button></div>
         {!server.enabled && <p className="muted">启用服务器后可添加入口域名。</p>}
         <Table data={entries} columns={[["domain","入口域名"],["family","地址类型",r=>({ipv4:"IPv4",ipv6:"IPv6",dual:"双栈"})[r.family as string] || r.family],["status","解析状态",r=>domainStatus[r.status] || r.status],["connection_count","关联线路",r=>references(r)]]} actions={r=><div className="actions"><button disabled={busy || !server.enabled || references(r)>0} title={references(r)>0?"入口正在使用，请新增入口后逐条切换线路":undefined} onClick={()=>edit(r)}>编辑入口</button><button disabled={busy} onClick={()=>act("retry",{id:r.id},true)}>重试解析同步</button>{r.status==="ownership_conflict" && <button disabled={busy} onClick={()=>act("adopt",{id:r.id},true)}>预览现有解析</button>}<button disabled={busy || references(r)>0} title={references(r)>0?"请先解除关联线路":undefined} onClick={()=>{if(confirm(`删除入口域名「${r.domain}」？存在关联线路时将禁止删除。`))act("entry-drop",{id:r.id});}}>删除入口</button></div>}/>

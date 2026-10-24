@@ -377,3 +377,7 @@ body[data-console="admin"] .node-creation-mode p {margin:10px 0 0;}
 
 .server-config-form > h3 {grid-column:1/-1;margin:8px 0 0;}
 .server-management-sections > fieldset {border:0;padding:0;margin:0;min-width:0;}
+
+.server-management-guide, .server-management-quota { grid-column: 1 / -1; }
+.server-management-guide { color: var(--muted); line-height: 1.7; }
+.server-management-quota > summary { cursor: pointer; font-weight: 600; padding: 12px 0; }

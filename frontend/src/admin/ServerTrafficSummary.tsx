@@ -23,3 +23,12 @@ export function ServerTrafficSummary({server,onNavigate}:{server:Row;onNavigate?
 }
 
 export function ServerStatus({server}:{server:Row}) {return <dl><dt>状态</dt><dd>{server.enabled?"已启用":"已停用"}</dd><dt>地址类型</dt><dd>{{ipv4:"IPv4",ipv6:"IPv6",dual:"双栈"}[server.family as string] || server.family}</dd><dt>IPv4</dt><dd>{server.ipv4 || "—"}</dd><dt>IPv6</dt><dd>{server.ipv6 || "—"}</dd><dt>最近上报</dt><dd>{Math.max(Number(server.ipv4_seen_at)||0,Number(server.ipv6_seen_at)||0)?logTime(Math.max(Number(server.ipv4_seen_at)||0,Number(server.ipv6_seen_at)||0)):"尚未上报"}</dd></dl>;}
+
+export function serverReportStatus(server:Row, now=Date.now()/1000):string {
+    if(!server.enabled)return "已停用";
+    const families=server.family === "dual" ? ["ipv4","ipv6"] : [server.family || "ipv4"];
+    const missing=families.filter(f=>!server[f] || !Number(server[`${f}_seen_at`]));
+    if(missing.length)return `待上报 ${missing.map(f=>f==="ipv4"?"IPv4":"IPv6").join("、")}`;
+    if(families.some(f=>Number(server[`${f}_seen_at`]) < now-900))return "上报已过期，请检查本机上报服务";
+    return "IP 上报正常";
+}

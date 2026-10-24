@@ -5,7 +5,7 @@ import {
     trafficDraft,
     trafficPayload,
 } from "./ServerTrafficFields";
-import { ServerTrafficSummary, ServerStatus, quotaState } from "./ServerTrafficSummary";
+import { ServerTrafficSummary, ServerStatus, quotaState, serverReportStatus } from "./ServerTrafficSummary";
 import { ServerTrafficBudgets } from "./ServerTrafficBudgets";
 import {
     ServerEntryDomains,
@@ -82,6 +82,7 @@ export function NetworkServers({
         (a: Row) => a.root_domain,
     );
     const [editing, setEditing] = useState<Row | null>(null);
+    const liveServer = servers.find(s => Number(s.id) === Number(editing?.id)) || editing;
     const [error, setError] = useState("");
     const [notice, setNotice] = useState("");
     const [command, setCommand] = useState("");
@@ -106,6 +107,16 @@ export function NetworkServers({
     }, [command, commandExpires]);
     const [busy, setBusy] = useState(false);
     const pending = useRef(false);
+    const refresh = useRef(reload);
+    refresh.current = reload;
+    useEffect(() => {
+        if (!editing?.id || serverDirty || detailDirty || detailBusy) return;
+        const timer = window.setInterval(() => {
+            if (document.visibilityState === "visible" && !pending.current) refresh.current();
+        }, 15000);
+        return () => window.clearInterval(timer);
+    }, [editing?.id, serverDirty, detailDirty, detailBusy]);
+
     async function act(path: string, body: Row) {
         if (pending.current || detailBusy) return;
         pending.current = true;
@@ -325,6 +336,7 @@ export function NetworkServers({
                                     </span>
                                 ),
                             ],
+                            ["reportStatus", "上报状态", r => serverReportStatus(r)],
                             [
                                 "ipv4_seen_at",
                                 "最近上报",
@@ -438,7 +450,7 @@ export function NetworkServers({
                             });
                         }}
                     >
-                        <h3>基本配置</h3>
+                        <h3>基本配置</h3><p className="server-management-guide">配置顺序：保存服务器 → 配置本机 IP 上报 → 中转服务器添加入口域名 → 在节点中选择入口 → 配置并验证转发。</p>
                         <label>
                             服务器名称
                             <input
@@ -492,7 +504,7 @@ export function NetworkServers({
                                 <option value="dual">双栈</option>
                             </select>
                         </label>
-                        <h3>流量额度</h3>
+                        <details className="server-management-quota"><summary>流量额度与计费周期</summary>
                         <ServerTrafficFields
                             value={editing}
                             onChange={(value) => {
@@ -501,6 +513,7 @@ export function NetworkServers({
                             }}
                         />
 
+                        </details>
                         {!editing.id && (
                             <fieldset>
                                 <legend>服务器用途</legend>
@@ -540,21 +553,23 @@ export function NetworkServers({
                             <fieldset>
                                 <legend>服务器 IP 上报</legend>
                                 <p className="muted">
-                                    节点一键部署已包含上报配置。独立中转服务器或上报异常时，在此生成配置命令并到对应服务器执行。
+                                    代理服务器安装 V2Box 时自动配置上报。独立中转服务器需在本机执行下方命令，不能在代理服务器代为执行。上报成功后自动同步关联域名的解析。
                                 </p>
+                                <p><strong>{liveServer && serverReportStatus(liveServer)}</strong></p>
+                                <p role="status">{!liveServer?.enabled ? "上报已停用，请先启用并保存服务器配置。" : !liveServer?.ipv4 && !liveServer?.ipv6 ? "尚未收到本机 IP：请生成上报命令，并在此服务器执行。" : "已收到服务器 IP。双栈域名需要 IPv4 和 IPv6 均有效。"}</p>
                                 <p>
                                     最近上报：
                                     {Math.max(
-                                        Number(editing.ipv4_seen_at) || 0,
-                                        Number(editing.ipv6_seen_at) || 0,
+                                        Number(liveServer?.ipv4_seen_at) || 0,
+                                        Number(liveServer?.ipv6_seen_at) || 0,
                                     )
                                         ? logTime(
                                               Math.max(
                                                   Number(
-                                                      editing.ipv4_seen_at,
+                                                      liveServer?.ipv4_seen_at,
                                                   ) || 0,
                                                   Number(
-                                                      editing.ipv6_seen_at,
+                                                      liveServer?.ipv6_seen_at,
                                                   ) || 0,
                                               ),
                                           )

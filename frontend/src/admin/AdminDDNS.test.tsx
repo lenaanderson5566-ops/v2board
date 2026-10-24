@@ -630,6 +630,7 @@ it("requires both entry readiness and publication of a changed entry port", () =
         status: "healthy",
         entry_ready: false,
     };
+    expect(nodeDomainProgress(binding, { tls: 2 }, 1000).title).toBe("下一步：检查中转入口服务器");
     expect(nodeDomainProgress(binding, { tls: 2 }, 1000).canActivate).toBe(
         false,
     );

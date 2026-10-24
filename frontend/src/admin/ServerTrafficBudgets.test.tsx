@@ -71,3 +71,30 @@ it("guards unsaved server changes on close and before entering forwarding",async
  fireEvent.click(screen.getByRole("button",{name:"关闭"}));expect(window.confirm).toHaveBeenCalled();expect(screen.getByLabelText("服务器名称")).toHaveProperty("value","Unsaved");
  expect(api.request.mock.calls.some(([path])=>String(path).endsWith("network/save"))).toBe(false);
 });
+
+it("updates live server reports without replacing unsaved configuration",async()=>{
+ integrated();const reload=vi.fn();const view=render(<NetworkServers data={{servers:[machine],assignments:[],credentials:[]}} reload={reload}/>);
+ await screen.findByText("已达额度");fireEvent.click(screen.getByRole("button",{name:"管理"}));
+ fireEvent.change(screen.getByLabelText("服务器名称"),{target:{value:"Unsaved draft"}});
+ view.rerender(<NetworkServers data={{servers:[{...machine,ipv4:"203.0.113.10",ipv4_seen_at:1792800000}],assignments:[],credentials:[]}} reload={reload}/>);
+ expect(screen.getByLabelText("服务器名称")).toHaveProperty("value","Unsaved draft");
+ expect(screen.getByText("已收到服务器 IP。双栈域名需要 IPv4 和 IPv6 均有效。")).toBeTruthy();
+ expect(screen.queryByText("尚未收到本机 IP：请生成上报命令，并在此服务器执行。")).toBeNull();
+});
+
+import {serverReportStatus} from "./ServerTrafficSummary";
+it("distinguishes incomplete dual-stack reports from stale reports and disabled servers",()=>{
+ expect(serverReportStatus({...machine,family:"dual",ipv4:"203.0.113.10",ipv4_seen_at:1000},1000)).toBe("待上报 IPv6");
+ expect(serverReportStatus({...machine,ipv4:"203.0.113.10",ipv4_seen_at:1},1000)).toContain("上报已过期");
+ expect(serverReportStatus({...machine,ipv4:"203.0.113.10",ipv4_seen_at:1000},1000)).toBe("IP 上报正常");
+ expect(serverReportStatus({...machine,enabled:false},1000)).toBe("已停用");
+});
+
+it("polls only an open clean server manager and releases its timer",async()=>{
+ integrated();const reload=vi.fn();const view=render(<NetworkServers data={{servers:[machine],assignments:[],credentials:[]}} reload={reload}/>);
+ await screen.findByText("已达额度");fireEvent.click(screen.getByRole("button",{name:"管理"}));
+ const timer=vi.spyOn(window,"setInterval");const clear=vi.spyOn(window,"clearInterval");
+ fireEvent.change(screen.getByLabelText("服务器名称"),{target:{value:"Draft"}});
+ expect(clear).toHaveBeenCalled();expect(timer).not.toHaveBeenCalled();
+ view.unmount();vi.restoreAllMocks();
+});

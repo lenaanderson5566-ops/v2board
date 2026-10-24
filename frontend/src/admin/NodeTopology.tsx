@@ -14,7 +14,7 @@ export function NodeTopology({ service, entry, origin, server, entryServer, host
     return <section className="node-topology" aria-label="线路拓扑">
         <div className="node-topology-heading"><strong>连接路径</strong><span className="muted">{preview ? "待保存预览" : "已保存配置"}</span></div>
         <ol>{steps.map((step, index) => <li key={index}><strong>{step.title}</strong><span>{step.detail}</span>{step.sub && <small>{step.sub}</small>}</li>)}</ol>
-        {Number(service?.tls) === 1 && <p className="muted">TLS 在代理服务终止 · SNI／证书身份：{tlsName || "待配置"}</p>}
+        {Number(service?.tls) === 1 && <p className="muted">证书与 TLS 加密连接由代理服务器处理 · 证书域名：{tlsName || "待配置"}</p>}
         {Number(service?.tls) === 2 && <p className="muted">Reality 身份由代理服务独立管理：{tlsName || "待配置"}</p>}
         {serviceConnections > 0 && <p className="muted">此代理服务另有关联线路 {serviceConnections} 条。修改协议、监听或证书会影响这些线路。</p>}
         {(server || entryServer) && <details><summary>服务器地址与解析状态</summary>

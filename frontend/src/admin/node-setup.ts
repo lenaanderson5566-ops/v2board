@@ -45,7 +45,7 @@ export function nodeSetupFields(
                 ["direct", "直连"],
                 ["relay", "入口中转"],
             ],
-            hint: "直连连接节点服务器；中转经独立入口服务器转发，TLS 在节点终止。",
+            hint: "直连由客户端连接代理服务器；中转先连接入口服务器，再转发至代理服务器。证书由代理服务器处理。",
         });
     if (managed && relay)
         setup.push(

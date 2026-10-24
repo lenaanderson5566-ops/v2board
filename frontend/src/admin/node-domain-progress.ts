@@ -59,6 +59,9 @@ export function nodeDomainProgress(
     } else if (!reportsReady) {
         title = "下一步：检查 IP 上报";
         description = `尚未收到有效的 ${missing.map((f) => (f === "ipv4" ? "IPv4" : "IPv6")).join("、")} 上报。新节点请执行一键部署；已开始部署请按终端提示恢复，已安装节点可在高级维护中修复上报。仅使用 IPv4 的服务器请选择 IPv4。`;
+    } else if (binding.entry_id && !binding.entry_ready) {
+        title = "下一步：检查中转入口服务器";
+        description = "代理服务器已上报，但中转入口尚未就绪。请在服务器管理中打开入口服务器的“管理”，检查是否启用、IP 上报是否有效及入口域名解析状态。上报命令须在入口服务器执行；反复同步回源域名不能补齐入口上报。";
     } else if (binding.status === "ownership_conflict") {
         title = "下一步：核对现有解析";
         description =

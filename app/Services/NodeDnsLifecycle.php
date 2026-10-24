@@ -122,10 +122,9 @@ final class NodeDnsLifecycle
                 if ((int)$n->tls===1) {
                     $tls=json_decode($n->tls_settings??'{}',true)?:[];
                     $identity=$candidate ?? $tls;
-                    abort_unless(($identity['server_name']??'')===$target->domain && preg_match('/^[a-f0-9]{64}$/D',$fingerprint??''),409,'节点尚未验证目标域名的证书');
-                    foreach (['server_name','cert_mode','cert_file','key_file','tls_cert','tls_key'] as $field) {
-                        unset($tls[$field]); if (isset($identity[$field])) $tls[$field]=$identity[$field];
-                    }
+                    abort_unless(!empty($identity['server_name']) && preg_match('/^[a-f0-9]{64}$/D',$fingerprint??''),409,'节点尚未验证目标域名的证书');
+                    $tls=$identity;
+                    if (!empty($tls['dns_credential_id'])) NodeCertificateCredential::credential($tls);
                     unset($tls['server_names'],$tls['pinned_peer_cert_sha256']);
                     if (in_array($tls['cert_mode'],['self','remote'],true)) $tls['pinned_peer_cert_sha256']=$fingerprint;
                     $update['tls_settings']=json_encode($tls);

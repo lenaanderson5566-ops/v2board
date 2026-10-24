@@ -26,7 +26,7 @@ class V2nodeController extends Controller
 
     protected function saveUnlocked(Request $request)
     {
-        $setup=null;
+        $setup=null; $pendingIdentity=null; $identityBinding=null;
         if ($request->has('deployment_setup')) {
             abort_if($request->input('id') || $request->input('source_id') || $request->input('service_id'),422,'一体化部署配置仅用于新增独立节点');
             $validated=\Illuminate\Support\Facades\Validator::make($request->all(),['deployment_setup'=>'required|array:credential_id,prefix,family,server_id,entry_id,entry_port',
@@ -45,12 +45,13 @@ class V2nodeController extends Controller
                 $entry=\Illuminate\Support\Facades\DB::table('v2_node_ddns')->where('purpose','entry')->where('enabled',true)->find($setup['entry_id']);
                 abort_unless($entry && \Illuminate\Support\Facades\DB::table('v2_network_server')->where('id',$entry->server_id)->where('enabled',true)->exists(),422,'请选择已启用服务器上的有效入口域名');
             }
+            $originDomain=$host;
             $host=$entry ? $entry->domain : $host;
             $request->merge(['host'=>$host,'port'=>(int)($entry ? $setup['entry_port'] : $validated['server_port'])]);
             if ((int)$request->input('tls')===1) {
                 $tls=$request->input('tls_settings',[]);
                 abort_unless(is_array($tls),422,'TLS 配置必须为对象');
-                $tls['server_name']=$host;
+                $tls['server_name']=trim($tls['server_name']??'') ?: $originDomain;
                 $request->merge(['tls_settings'=>$tls,'disable_sni'=>0]);
             }
         }
@@ -84,8 +85,12 @@ class V2nodeController extends Controller
                 $tls=$request->input('tls_settings',[]);
                 abort_unless(is_array($tls),422,'TLS 配置必须为对象');
                 $identity=(int)$serviceSource->tls===1 && !empty($serviceSource->tls_settings['server_name']) ? $serviceSource->tls_settings['server_name'] : $serviceSource->host;
-                abort_if(!empty($tls['server_name']) && $tls['server_name']!==$identity,422,'托管节点的 TLS 身份请通过域名设置和证书验证流程修改');
-                $tls['server_name']=$identity;
+                if (!empty($tls['server_name']) && $tls['server_name']!==$identity) {
+                    abort_unless($backend==='v2box' && $existing && (int)$existing->tls===1,422,'TLS 身份切换需要已有 V2Box TLS 服务');
+                    $identityBinding=$managed;
+                    $pendingIdentity=true;
+                }
+                $tls['server_name']=($tls['server_name']??'') ?: $identity;
                 if($managed->entry_id) \App\Services\NetworkServer::tls($managed,$tls);
                 $request->merge(['tls_settings'=>$tls,'disable_sni'=>0]);
             }
@@ -293,11 +298,19 @@ class V2nodeController extends Controller
                 abort_if(\Illuminate\Support\Facades\DB::table('v2_lightsail_server')->where('node_type',$backend)->where('node_id',$server->id)->exists(),422,'请先移除 Lightsail 配置，再设置为关联线路');
             }
             if(!$server->service_id) $params=\Illuminate\Support\Arr::except($params,\App\Services\Actions\UpdateDefaultNodeLine::PRESERVED_FIELDS);
+            $candidateTls=null;
+            if ($pendingIdentity) { $candidateTls=$params['tls_settings']; $params['tls_settings']=$server->tls_settings; }
             $server->fill($params);
             \App\Services\NodeListenerGuard::check($backend,$server);
             try {
                 $server->save();
+                if ($candidateTls) {
+                    \App\Services\NodeTlsTransition::queue($identityBinding,(object)$server->getAttributes(),\App\Services\NodeTlsTransition::affected($identityBinding),$candidateTls);
+                    \App\Services\NodeRuntimeService::invalidate($backend,(int)$server->id);
+                }
                 if ($server->wasChanged()) \App\Services\NodeRuntimeService::invalidate($backend,(int)($server->service_id ?: $server->id));
+            } catch (\Symfony\Component\HttpKernel\Exception\HttpException $e) {
+                throw $e;
             } catch (\Exception $e) {
                 abort(500, '保存失败');
             }

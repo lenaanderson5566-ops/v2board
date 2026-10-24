@@ -182,7 +182,7 @@ try {
     $createController=new App\Http\Controllers\V1\Admin\Server\V2boxController();
     $setup=['credential_id'=>$cid,'family'=>'ipv4','prefix'=>'simple-direct'];
     $creation=array_replace($base,['name'=>'Simple direct','host'=>'ignored.example.test','port'=>1,'server_port'=>9443,'tls'=>1,
-        'tls_settings'=>['cert_mode'=>'http','server_name'=>'ignored.example.test'],'disable_sni'=>0,'zero_rtt_handshake'=>0,'deployment_setup'=>$setup]);
+        'tls_settings'=>['cert_mode'=>'http'],'disable_sni'=>0,'zero_rtt_handshake'=>0,'deployment_setup'=>$setup]);
     $serverCount=DB::table('v2_network_server')->count();
     $created=json_decode($createController->save($req($creation))->getContent(),true)['data'];
     $createdNode=App\Models\ServerV2box::findOrFail($created['id']);
@@ -228,9 +228,20 @@ try {
     $relayCreated=json_decode($createController->save($req($relayCreation))->getContent(),true)['data']['id'];
     $atomicRelay=App\Models\ServerV2box::findOrFail($relayCreated);$atomicBinding=DB::table('v2_node_ddns')->where('node_type','v2box')->where('node_id',$relayCreated)->first();
     $assert($atomicRelay->host==='setup-entry.example.test' && (int)$atomicRelay->port===18443 && (int)$atomicRelay->server_port===9443,'one relay save separates client ingress port from origin listener');
-    $assert($atomicRelay->tls_settings['server_name']==='setup-entry.example.test' && $atomicBinding->domain==='atomic-origin.example.test','relay TLS identity follows ingress while DNS origin stays separate');
+    $assert($atomicRelay->tls_settings['server_name']==='atomic-origin.example.test' && $atomicBinding->domain==='atomic-origin.example.test','relay TLS identity defaults to origin independently of ingress');
     $assert((int)$atomicBinding->entry_id===$entrySetup && (int)$atomicBinding->server_id!==$entryMachine,'relay creates a separate origin server and binds ingress');
     $assert(!(int)$atomicBinding->relay_verified_at,'atomic creation does not imply forwarding is verified');
+    $independentCredential=DB::table('v2_ddns_credential')->insertGetId(['name'=>'Independent certificate','zone_id'=>str_repeat('f',32),'root_domain'=>'certificate.test','secret'=>Crypt::encryptString('isolated-cert-test'),'status'=>'ready','next_run'=>0]);
+    $independentInput=array_replace($relayCreation,['tls_settings'=>['cert_mode'=>'dns','server_name'=>'tls.certificate.test','dns_credential_id'=>$independentCredential],
+        'deployment_setup'=>array_replace($relayCreation['deployment_setup'],['prefix'=>'independent-origin','entry_port'=>18445])]);
+    $independentId=json_decode($createController->save($req($independentInput))->getContent(),true)['data']['id'];
+    $independentNode=App\Models\ServerV2box::findOrFail($independentId);
+    $assert($independentNode->host==='setup-entry.example.test' && $independentNode->tls_settings['server_name']==='tls.certificate.test','new relay accepts certificate zone independent of ingress and origin');
+    App\Services\NodeDeploymentWorkflow::validate($independentNode);
+    $independentConfig=App\Services\Actions\NodeV10Config::build($independentNode);
+    $assert($independentConfig['tlsSettings']->serverName==='tls.certificate.test','V2Box receives chosen independent certificate identity');
+    $independentServer=DB::table('v2_node_ddns')->where('node_type','v2box')->where('node_id',$independentId)->value('server_id');
+    $createController->drop($req(['id'=>$independentId]));DB::table('v2_network_server')->where('id',$independentServer)->delete();DB::table('v2_ddns_credential')->where('id',$independentCredential)->delete();
     $reject(fn()=>$createController->save($req(array_replace($relayCreation,['deployment_setup'=>array_replace($relayCreation['deployment_setup'],['prefix'=>'duplicate-relay-port'])]))),409);
     $assert(App\Models\ServerV2box::count()===$beforeRelayNodes+1 && !DB::table('v2_node_ddns')->where('domain','duplicate-relay-port.example.test')->exists(),'ingress port conflict rolls back all new objects');
     DB::table('v2_network_server')->where('id',$entryMachine)->update(['enabled'=>false]);
@@ -263,7 +274,7 @@ try {
     $reject(fn()=>$defaultAdmin->updateDefaultLine($req(array_replace($defaultPayload,['rate'=>'1.1234567890123']))),422);
     $sameRevision=$defaultRead()['revision'];
     $oldServiceForm=array_replace($creation,['id'=>$createdNode->id,'name'=>'Stale form name','group_id'=>[],'rate'=>99,'server_port'=>9445,'host'=>'stale-host.example.test','port'=>123]);unset($oldServiceForm['deployment_setup']);$oldServiceForm['tls_settings']['server_name']=$createdNode->fresh()->tls_settings['server_name'];
-    $reject(fn()=>$createController->save($req(array_replace($oldServiceForm,['tls_settings'=>['cert_mode'=>'http','server_name'=>'bypass.example.test']]))),422);
+    $reject(fn()=>$createController->save($req(array_replace($oldServiceForm,['tls_settings'=>['cert_mode'=>'http','server_name'=>'bypass.example.test']]))),409);
     $createController->save($req($oldServiceForm));
     $assert($createdNode->fresh()->name==='Renamed default' && (float)$createdNode->fresh()->rate===1.5 && $createdNode->fresh()->group_id===[999999],'stale service form cannot replace current default line data');
     $assert((int)$createdNode->fresh()->server_port===9445 && $createdNode->fresh()->host===$technicalBefore['host'] && (int)$createdNode->fresh()->port===(int)$technicalBefore['port'],'service save changes listener without overwriting published connection');
@@ -337,7 +348,7 @@ try {
     DB::table('v2_node_ddns')->where('id',$bid)->update(['ipv4'=>'8.8.8.8']);
     $managed->tls=1;$managed->tls_settings=[];$managed->save();
     $reject(fn()=>$domains->activate($req(['id'=>$bid,'confirm'=>true])),422);
-    $managed->tls_settings=['server_name'=>'certificate.example.test','cert_mode'=>'self'];$managed->save();
+    $managed->tls_settings=['server_name'=>'old.example.test','cert_mode'=>'self'];$managed->save();
     $reject(fn()=>$domains->activate($req(['id'=>$bid,'confirm'=>true])),409);
     \Illuminate\Support\Facades\Cache::put('V2BOX_CAPABILITIES:'.$managed->id,['features'=>['certificate-transition-v1']],86400);
     $child=App\Models\ServerV2box::create(array_replace($base,['host'=>$managed->host,'service_id'=>$managed->id,'tls'=>1,'tls_settings'=>$managed->tls_settings]));
@@ -360,7 +371,7 @@ try {
     $assert($sameBind['unchanged'] && $beforeNoop->tls_transition===$afterNoop->tls_transition && $beforeNoop->status===$afterNoop->status && $beforeNoop->last_success===$afterNoop->last_success,'unchanged domain save preserves pending certificate and DNS progress');
     $reject(fn()=>$domains->bind($req($body+['revision'=>str_repeat('f',64)])),409);
 
-    $assert($managed->fresh()->host==='old.example.test' && $managed->fresh()->tls_settings['server_name']==='certificate.example.test','candidate does not publish connection hostname or TLS identity');
+    $assert($managed->fresh()->host==='old.example.test' && $managed->fresh()->tls_settings['server_name']==='old.example.test','candidate does not publish connection hostname or TLS identity');
     $assert($pending['tlsSettings']->serverName==='hk-01.example.test' && $pending['domainTransition']['addresses']->ipv4==='8.8.8.8','node receives synchronized candidate and expected public address');
     $assert(!str_contains(json_encode($admin->fetch()),'tls_transition"') && !str_contains(DB::table('v2_node_ddns')->find($bid)->tls_transition,'certificate.example.test'),'candidate secrets never projected and encrypted at rest');
     $report('applied',null);$report('applied',str_repeat('a',64),str_repeat('0',64));
@@ -400,6 +411,29 @@ try {
     $assert($managed->fresh()->tls_settings['server_name']==='hk-01.example.test' && $managed->fresh()->tls_settings['pinned_peer_cert_sha256']===str_repeat('a',64),'TLS identity and fingerprint published together');
     $assert($child->fresh()->host==='hk-01.example.test' && $child->fresh()->tls_settings['server_name']==='hk-01.example.test','same-address TLS child synchronized');
     $assert($realityChild->fresh()->host==='hk-01.example.test' && $realityChild->fresh()->tls_settings['server_name']==='reality.example.test' && $realityChild->fresh()->tls_settings['private_key']==='test-key','Reality child keeps independent TLS identity and key');
+
+    // An independent TLS identity is applied through the same authenticated V2Box receipt,
+    // while published connection/origin addresses and Reality settings remain unchanged.
+    Illuminate\Support\Facades\Cache::put('V2BOX_CAPABILITIES:'.$managed->id,['features'=>['certificate-transition-v1','configuration-receipt-v1']],86400);
+    $identityInput=array_replace($creation,['id'=>$managed->id,'tls_settings'=>['cert_mode'=>'self','server_name'=>'identity.other.test']]);
+    unset($identityInput['deployment_setup']);
+    $createController->save($req($identityInput));
+    $assert($managed->fresh()->tls_settings['server_name']==='hk-01.example.test','editing TLS identity keeps old subscription until node verifies');
+    $identityConfig=$config();
+    $assert($identityConfig['tlsSettings']->serverName==='identity.other.test' && !isset($identityConfig['domainTransition']),'independent identity is sent without origin/ingress DNS equality requirement');
+    $assert($fetchCandidate('certificate-transition-v1')->getStatusCode()===409,'independent identity requires configuration receipt capability');
+    $assert($fetchCandidate('configuration-receipt-v1')->getStatusCode()===200,'receipt capable V2Box receives independent identity');
+    $identityReport=['coreVersion'=>'test','features'=>['configuration-receipt-v1'],'configuration'=>['hash'=>hash('sha256',json_encode($identityConfig)),'state'=>'failed','errorCode'=>'certificate']];
+    $assert($receiptCall($identityReport)->getStatusCode()===200 && $managed->fresh()->tls_settings['server_name']==='hk-01.example.test','certificate failure retains published TLS');
+    Illuminate\Support\Facades\Cache::put('V2BOX_CAPABILITIES:'.$managed->id,['features'=>['certificate-transition-v1','configuration-receipt-v1']],86400);
+    $createController->save($req($identityInput));
+    $identityReport['configuration']=['hash'=>hash('sha256',json_encode($config())),'state'=>'applied','certificateFingerprint'=>str_repeat('b',64)];
+    $assert($receiptCall($identityReport)->getStatusCode()===200,'independent identity accepts authenticated applied receipt');
+    $assert($managed->fresh()->host==='hk-01.example.test' && $managed->fresh()->tls_settings['server_name']==='identity.other.test','TLS publication never rewrites connection address');
+    $assert($realityChild->fresh()->tls_settings['server_name']==='reality.example.test','independent TLS publication preserves Reality identity');
+    // Restore this fixture before testing the existing direct-domain migration behavior.
+    $managed->tls_settings=['cert_mode'=>'self','server_name'=>'hk-01.example.test'];$managed->save();
+    Illuminate\Support\Facades\Cache::put('V2BOX_CAPABILITIES:'.$managed->id,['features'=>['certificate-transition-v1','configuration-receipt-v1']],86400);
     $remotePair=App\Services\NodeTlsTransition::remoteCertificate('san.example.test');
     $parsed=openssl_x509_parse($remotePair['tls_cert']);
     $assert(($parsed['extensions']['subjectAltName']??'')==='DNS:san.example.test' && openssl_x509_check_private_key($remotePair['tls_cert'],$remotePair['tls_key']),'generated remote certificate has SAN and matching private key');
@@ -421,7 +455,7 @@ try {
     $managed->refresh();$managed->tls_settings=['server_name'=>$ledger->domain];$managed->save();
     $life->cleanup($ledger->id);
     $assert(DB::table('v2_node_dns_record')->find($ledger->id)->status==='still_in_use' && isset($remote[str_repeat('a',32)][$ledger->record_id]),'certificate references prevent old DNS cleanup');
-    $managed->tls_settings=['server_name'=>'certificate.example.test','cert_mode'=>'self'];$managed->save();$domains->cleanup($req(['id'=>$ledger->id]));
+    $managed->tls_settings=['server_name'=>'old.example.test','cert_mode'=>'self'];$managed->save();$domains->cleanup($req(['id'=>$ledger->id]));
     $remote[str_repeat('a',32)][$ledger->record_id]['comment']='changed-owner';
     $life->cleanup($ledger->id);
     $assert(DB::table('v2_node_dns_record')->find($ledger->id)->status==='ownership_conflict','cleanup refuses changed ownership');
@@ -537,15 +571,15 @@ try {
     $relay->tls_settings=$tls;$relay->save();
     $domains->activate($req(['id'=>$rid,'confirm'=>true]));
     $relayConfig=App\Services\Actions\NodeV10Config::build($relay->fresh());
-    $assert($relayConfig['tlsSettings']->serverName===$entry->domain && $relayConfig['domainTransition']['domain']===$entry->domain && $relayConfig['domainTransition']['addresses']->ipv4==='1.1.1.1','relay certificate verifies ingress identity and IP, never origin IP');
+    $assert($relayConfig['tlsSettings']->serverName==='old-cert.example.test' && !isset($relayConfig['domainTransition']),'relay certificate retains independent identity without checking ingress DNS as certificate identity');
     $assert($relay->fresh()->host==='old-relay.example.test','relay candidate leaves subscription endpoint intact');
-    $receipt=['hash'=>hash('sha256',json_encode($relayConfig)),'state'=>'failed','transitionId'=>$relayConfig['domainTransition']['id'],'errorCode'=>'certificate'];
+    $receipt=['hash'=>hash('sha256',json_encode($relayConfig)),'state'=>'failed','errorCode'=>'certificate'];
     App\Services\NodeTlsTransition::receipt($relay->id,$receipt);
     $assert($relay->fresh()->host==='old-relay.example.test' && $relay->fresh()->tls_settings['server_name']==='old-cert.example.test','failed relay certificate retains prior hostname and certificate configuration');
     $domains->activate($req(['id'=>$rid,'confirm'=>true]));$relayConfig=App\Services\Actions\NodeV10Config::build($relay->fresh());
-    $receipt=['hash'=>hash('sha256',json_encode($relayConfig)),'state'=>'applied','transitionId'=>$relayConfig['domainTransition']['id'],'certificateFingerprint'=>str_repeat('a',64)];
+    $receipt=['hash'=>hash('sha256',json_encode($relayConfig)),'state'=>'applied','certificateFingerprint'=>str_repeat('a',64)];
     $assert(App\Services\NodeTlsTransition::receipt($relay->id,$receipt),'verified relay candidate is acknowledged');
-    $assert($relay->fresh()->host===$entry->domain && (int)$relay->fresh()->port===8443 && $relay->fresh()->server_port===9443 && $relay->fresh()->tls_settings['server_name']===$entry->domain,'entry port and TLS identity published without changing origin listener');
+    $assert($relay->fresh()->host===$entry->domain && (int)$relay->fresh()->port===8443 && $relay->fresh()->server_port===9443 && $relay->fresh()->tls_settings['server_name']==='old-cert.example.test','entry port and TLS identity published without changing origin listener');
     $a=DB::table('v2_node_ddns')->find($rid);
     $assert(!$a->relay_verified_at && $a->domain==='origin-a.example.test','origin readiness never falsely confirms end-to-end relay connectivity');
     $net->confirmRelay($req(['id'=>$rid,'confirm'=>true]));
@@ -577,7 +611,7 @@ try {
     $directArgs=array_replace($args,['prefix'=>'origin-new','entry_id'=>null,'entry_port'=>null]);
     $domains->bind($req($directArgs));$service->sync($rid);$domains->activate($req(['id'=>$rid,'confirm'=>true]));
     $direct=App\Services\Actions\NodeV10Config::build($relay->fresh());
-    App\Services\NodeTlsTransition::receipt($relay->id,['hash'=>hash('sha256',json_encode($direct)),'state'=>'applied','transitionId'=>$direct['domainTransition']['id'],'certificateFingerprint'=>str_repeat('b',64)]);
+    App\Services\NodeTlsTransition::receipt($relay->id,['hash'=>hash('sha256',json_encode($direct)),'state'=>'applied','certificateFingerprint'=>str_repeat('b',64)]);
     $assert($relay->fresh()->host==='origin-new.example.test' && (int)$relay->fresh()->port===9443,'switching back to direct restores origin listener port instead of retaining ingress port');
     $reset=json_decode($net->reset($req(['id'=>$ingress,'confirm'=>true,'user'=>['id'=>$user->id]]))->getContent(),true)['data'];
     $assert($call($entryToken,['ipv4'=>'1.1.1.1'])->getStatusCode()===401,'explicit server credential reset revokes all old report keys');
@@ -591,7 +625,7 @@ try {
     $assert(!$line->show && $line->service_id===$relay->id,'new connection stays unpublished and references the service');
     $readLine=fn($id)=>$connections->fetch($req(['type'=>'v2box','id'=>$id]))['data'];
     $firstPlan=$readLine($lineId);
-    $assert($firstPlan['plan']['host']==='entry.example.test' && $firstPlan['plan']['server_name']==='origin-new.example.test','connection domain differs from shared TLS identity');
+    $assert($firstPlan['plan']['host']==='entry.example.test' && $firstPlan['plan']['server_name']==='old-cert.example.test','connection domain differs from shared TLS identity');
     $publishLine=fn($id,$revision,$proof)=>$connections->publish($req(['type'=>'v2box','id'=>$id,'revision'=>$revision,'proof'=>$proof,'confirmed'=>true]));
     $reject(fn()=>$publishLine($lineId,1,$firstPlan['plan']['proof']),409);
     $reject(fn()=>$connections->save($req($routeInput)),409);
@@ -606,10 +640,15 @@ try {
     App\Services\NodeRuntimeService::receipt($relay->id,['hash'=>hash('sha256',json_encode($liveConfig)),'state'=>'applied']);
     $publishLine($lineId,1,$firstPlan['plan']['proof']);
     $assert($line->fresh()->host==='entry.example.test' && (int)$line->fresh()->port===10443 && $line->fresh()->show,'publishing updates only the connection endpoint');
-    $assert($relay->fresh()->tls_settings['server_name']==='origin-new.example.test' && (int)$relay->fresh()->server_port===9443,'publishing another ingress never changes service certificate or listener');
+    $assert($relay->fresh()->tls_settings['server_name']==='old-cert.example.test' && (int)$relay->fresh()->server_port===9443,'publishing another ingress never changes service certificate or listener');
     $viewer=new App\Models\User(['group_id'=>999999]);
     $sub=collect((new App\Services\ServerService())->getAvailableV2node($viewer,'v2box'))->firstWhere('id',$lineId);
-    $assert($sub && $sub['host']==='entry.example.test' && $sub['tls_settings']['server_name']==='origin-new.example.test' && !isset($sub['tls_settings']['dns_env']),'subscription uses shared identity without leaking DNS credentials');
+    $assert($sub && $sub['host']==='entry.example.test' && $sub['tls_settings']['server_name']==='old-cert.example.test' && !isset($sub['tls_settings']['dns_env']),'subscription uses shared identity without leaking DNS credentials');
+    $clash=App\Protocols\ClashMeta::buildAnyTLS('test-password',$sub);
+    $singbox=new class([],[]) extends App\Protocols\Singbox { public function renderNode($server) { return $this->buildAnyTLS('test-password',$server); } };
+    $sing=$singbox->renderNode($sub);
+    $assert($clash['server']==='entry.example.test' && $clash['sni']==='old-cert.example.test' && !$clash['skip-cert-verify'],'Clash subscription connects ingress while verifying landing certificate');
+    $assert($sing['server']==='entry.example.test' && $sing['tls']['server_name']==='old-cert.example.test' && !$sing['tls']['insecure'],'sing-box subscription connects ingress while verifying landing certificate');
     $nextInput=array_replace($routeInput,['id'=>$lineId,'revision'=>2,'entry_port'=>11443,'display_label'=>'B','tags'=>['Relay']]);
     $connections->save($req($nextInput));
     $assert((int)$line->fresh()->port===10443,'saving a new draft keeps published port intact');
@@ -670,9 +709,9 @@ try {
 
     // Deployment checks are read-only and never trust DNS answers as arbitrary probe targets.
     $probe=new class extends App\Services\NodeDeploymentCheck {
-        public array $ips=['8.8.8.8']; public int $connections=0; public array $outcome=['state'=>'pass','code'=>'tls_verified','expiresAt'=>2000000000,'fingerprint'=>'test'];
+        public array $ips=['8.8.8.8']; public array $targets=[]; public int $connections=0; public array $outcome=['state'=>'pass','code'=>'tls_verified','expiresAt'=>2000000000,'fingerprint'=>'test'];
         public function resolve(string $host): array { return $this->ips; }
-        public function connect(string $host,string $ip,int $port,?string $identity): array { $this->connections++; return $this->outcome; }
+        public function connect(string $host,string $ip,int $port,?string $identity): array { $this->connections++; $this->targets[]=[$host,$identity]; return $this->outcome; }
     };
     foreach (['127.0.0.1','10.0.0.1','169.254.169.254','::1','::ffff:127.0.0.1','100.64.0.1','192.0.2.1'] as $unsafe) {
         $probe->ips=['8.8.8.8',$unsafe]; $probe->connections=0;
@@ -712,6 +751,7 @@ try {
     $originId=DB::table('v2_node_ddns')->insertGetId(['credential_id'=>$cid,'node_type'=>'v2box','node_id'=>$checkNode->id,'domain'=>'origin.check.test','family'=>'ipv4','ipv4'=>'8.8.8.8','ipv4_seen_at'=>time(),'enabled'=>true,'managed'=>true,'entry_id'=>$entryId,'entry_port'=>443]);
     $report=$probe->inspect('v2box',$checkNode);$items=array_column($report['items'],null,'key');
     $assert($items['relay']['state']==='pass','relay requires verified entry and origin TLS with matching fingerprints');
+    $assert(in_array(['origin.check.test','check.example.test'],$probe->targets,true) && in_array(['entry.check.test','check.example.test'],$probe->targets,true),'one-click check independently probes origin and ingress using the same TLS identity');
     $mismatch=new class extends App\Services\NodeDeploymentCheck {
         public function resolve(string $host): array { return ['8.8.8.8']; }
         public function connect(string $host,string $ip,int $port,?string $identity): array { return ['state'=>'pass','code'=>'tls_verified','expiresAt'=>2000000000,'fingerprint'=>$host]; }

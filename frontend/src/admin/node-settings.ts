@@ -41,7 +41,7 @@ const nested: Record<string, Field[]> = {
             key: "pinned_peer_cert_sha256",
             label: "证书 SHA256 指纹（留空自动生成）",
         },
-        { key: "server_name", label: "TLS 身份域名（SNI）" },
+        { key: "server_name", label: "TLS 身份域名（SNI）", hint: "客户端使用此域名验证落地证书，可以与连接地址不同；新建时留空默认使用落地域名。" },
         { key: "allow_insecure", label: "跳过证书校验", type: "switch" },
         {
             key: "fingerprint",

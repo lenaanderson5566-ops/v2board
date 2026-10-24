@@ -26,7 +26,7 @@ final class NodeDeploymentWorkflow
         if ((int)$node->tls===1) {
             NetworkServer::tls($a,$tls);
             abort_unless(in_array($tls['cert_mode']??'',['http','dns','self','remote','file'],true),422,'请选择有效的 TLS 证书模式');
-            abort_unless(($tls['server_name']??'')===NetworkServer::target($a)->domain,422,'一键部署的 TLS 服务器名称须与连接域名一致；已运行节点请先使用域名切换验证证书');
+            abort_unless(is_string($tls['server_name']??null) && !empty($tls['server_name']) && !$node->disable_sni,422,'请设置独立 TLS 身份域名并启用 SNI');
             if (in_array($tls['cert_mode']??'',['http','dns'],true)) {
                 abort_unless(preg_match('/^(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,63}$/D',$tls['server_name']),422,'自动申请证书需要有效的单个域名');
                 abort_if(($tls['cert_mode']??'')==='http' && (int)$node->server_port===80,422,'HTTP 证书验证需要独立的 80 端口，请调整节点监听端口');

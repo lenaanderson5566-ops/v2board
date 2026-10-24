@@ -52,26 +52,31 @@ final class NodeTlsTransition
             return ['tls_cert'=>$pem,'tls_key'=>$private];
         } finally { @unlink($path); }
     }
-    public static function queue($a,$node,$affected): void {
+    public static function queue($a,$node,$affected,?array $requested=null): void {
         $tls=json_decode($node->tls_settings??'{}',true)?:[];
         abort_unless((int)$node->tls===1 && in_array($tls['cert_mode']??'',['http','dns','self','remote','file'],true),422,'请先配置有效的 TLS 证书模式');
         $caps=Cache::get('V2BOX_CAPABILITIES:'.$a->node_id,[]);
         abort_unless($a->node_type==='v2box' && in_array('certificate-transition-v1',$caps['features']??[],true),409,'请先升级 V2Box 并等待节点上报证书切换能力');
         abort_unless($affected->count()<=200,422,'单次最多同步 200 个关联节点');
-        if (self::pending($a)) return;
+        if (self::pending($a)) { abort_if($requested!==null,409,'请等待当前证书验证完成后再修改 TLS 身份'); return; }
         abort_unless(preg_match('/^(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,63}$/D',$a->domain),422,'证书需要有效域名');
         $target=NetworkServer::target($a);
+        $previous=$tls['server_name']??'';
+        if ($requested!==null) $tls=$requested;
+        elseif (!$a->entry_id && !$a->published_origin && (!$previous || $previous===$a->published_domain)) $tls['server_name']=$a->domain;
         NetworkServer::tls($a,$tls);
-        $tls['server_name']=$target->domain; unset($tls['server_names'],$tls['pinned_peer_cert_sha256']);
+        $identity=$tls['server_name']??'';
+        abort_unless(is_string($identity) && preg_match('/^(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,63}$/Di',$identity),422,'请设置有效的 TLS 身份域名');
+        $changed=$identity!==$previous;
+        if ($changed) unset($tls['server_names'],$tls['pinned_peer_cert_sha256']);
         if (!empty($tls['dns_credential_id'])) NodeCertificateCredential::credential($tls);
-        if (in_array($tls['cert_mode'],['http','dns','self'],true)) {
-            $dir='/etc/v2box/certificates/'.$a->node_id.'/'.substr(hash('sha256',$target->domain),0,32);
+        if ($changed && in_array($tls['cert_mode'],['http','dns','self'],true)) {
+            $dir='/etc/v2box/certificates/'.$a->node_id.'/'.substr(hash('sha256',$identity),0,32);
             $tls['cert_file']=$dir.'/certificate.pem'; $tls['key_file']=$dir.'/private.key';
         }
-        if ($tls['cert_mode']==='remote') $tls=array_replace($tls,self::remoteCertificate($target->domain));
-        $addresses=[];
+        if ($changed && $tls['cert_mode']==='remote') $tls=array_replace($tls,self::remoteCertificate($identity));
         $addresses=NetworkServer::addresses($target);
-        $p=['id'=>bin2hex(random_bytes(16)),'expires'=>time()+86400,'proof'=>self::proof($a),'tls'=>$tls,'addresses'=>$addresses];
+        $p=['id'=>bin2hex(random_bytes(16)),'expires'=>time()+86400,'proof'=>self::proof($a),'tls'=>$tls,'addresses'=>$addresses,'configurationOnly'=>$requested!==null || $identity!==$target->domain,'identityOnly'=>$requested!==null];
         DB::table('v2_node_ddns')->where('id',$a->id)->update(['tls_transition'=>Crypt::encryptString(json_encode($p)),'tls_transition_state'=>'pending']);
         NodeDdnsService::event($a->id,'certificate_transition_pending');
     }
@@ -80,6 +85,7 @@ final class NodeTlsTransition
         $p=self::pending($a);
         if (!$p) return [$node,null];
         $candidate=clone $node; $candidate->tls_settings=$p['tls'];
+        if (!empty($p['configurationOnly'])) return [$candidate,null];
         return [$candidate,['id'=>$p['id'],'domain'=>NetworkServer::target($a)->domain,'addresses'=>(object)$p['addresses']]];
     }
     public static function receipt(int $id,array $report): bool {
@@ -94,11 +100,16 @@ final class NodeTlsTransition
                 return ($report['state']??'')==='applied' && ($done['id']??null)===($report['transitionId']??null) && hash_equals($done['hash'],$report['hash']);
             }
             $p=self::pending($a); $node=ServerV2box::find($id);
-            if (!$p || !$node || !hash_equals(hash('sha256',json_encode(NodeV10Config::build($node))),$report['hash']) || $p['id']!==($report['transitionId']??null)) return false;
+            if (!$p || !$node || !hash_equals(hash('sha256',json_encode(NodeV10Config::build($node))),$report['hash']) || (empty($p['configurationOnly']) ? $p['id']!==($report['transitionId']??null) : isset($report['transitionId']))) return false;
             if ($report['state']==='failed') { self::fail($a->id); return false; }
             if (!preg_match('/^[a-f0-9]{64}$/D',$report['certificateFingerprint']??'')) return false;
             // Recheck fresh DNS ownership and publication guards before committing any node changes.
-            NodeDnsLifecycle::activateLocked($a->id,true,$p['tls'],$report['certificateFingerprint']);
+            if (!empty($p['identityOnly'])) {
+                $tls=$p['tls'];
+                if (in_array($tls['cert_mode'],['self','remote'],true)) $tls['pinned_peer_cert_sha256']=$report['certificateFingerprint'];
+                foreach (self::affected($a)->where('tls',1) as $affected) DB::table('v2_server_v2box')->where('id',$affected->id)->update(['tls_settings'=>json_encode($tls),'updated_at'=>time()]);
+                DB::table('v2_node_ddns')->where('id',$a->id)->update(['tls_transition_state'=>'applied']);
+            } else NodeDnsLifecycle::activateLocked($a->id,true,$p['tls'],$report['certificateFingerprint']);
             $a=DB::table('v2_node_ddns')->find($a->id);
             DB::table('v2_node_ddns')->where('id',$a->id)->update(['tls_transition'=>Crypt::encryptString(json_encode(['id'=>$p['id'],'hash'=>$report['hash']]))]);
             return true;

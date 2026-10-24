@@ -879,7 +879,7 @@ function NodesContent({
                                     <p>
                                         保存后请核对节点通信与运行状态，确认配置已应用。
                                     </p>
-                                    {managedService && Number(editing.tls)===1 && <p className="muted">TLS 身份域名：{editing.tls_settings?.server_name || editing.host}。普通 TLS 的 SNI 随托管连接域名维护。更换域名请前往“连接与域名”，新证书验证成功后生效；Reality 的 SNI 独立设置。</p>}
+                                    {managedService && Number(editing.tls)===1 && <p className="muted">TLS 身份域名：{editing.tls_settings?.server_name || editing.host}。TLS 身份与入口、回源地址分别管理。更换中转入口保留此身份；修改 TLS 身份需等待节点验证，失败保留原配置。</p>}
                                     <p className="muted">
                                         切换协议可能清除不兼容配置；高级扩展参数仍会保留。
                                     </p>
@@ -994,7 +994,7 @@ function NodesContent({
                                                   (field) =>
                                                       !serviceLineFields.has(
                                                           field.key,
-                                                      ) && !(managedService && Number(values.tls)===1 && ["tls_settings.server_name","disable_sni"].includes(field.key)),
+                                                      ) && !(managedService && Number(values.tls)===1 && ["disable_sni"].includes(field.key)),
                                               ))
                                             : nodeSetupFields(
                                                   presented,
@@ -1059,7 +1059,7 @@ function NodesContent({
                                                       tls_settings: {
                                                           ...values.tls_settings,
                                                           server_name:
-                                                              connectionDomain,
+                                                              values["tls_settings.server_name"] || values.tls_settings?.server_name || domain,
                                                       },
                                                   }
                                                 : values;
@@ -1477,7 +1477,7 @@ function NodesContent({
                                             : {}),
                                     })}
                                     onSave={async (b) => {
-                                        if(editing.id && managedService && Number(b.tls)===1){b["tls_settings.server_name"]=editing.tls_settings?.server_name || editing.host;b.disable_sni=0;}
+                                        if(editing.id && managedService && Number(b.tls)===1){b.disable_sni=0;}
                                         if (
                                             editing.id &&
                                             type !== editing.type &&

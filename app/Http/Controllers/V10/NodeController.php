@@ -48,6 +48,9 @@ class NodeController extends Controller {
         $node = $this->node($request);
         $configuration = NodeV10Config::build($node);
         if (isset($configuration['domainTransition'])) abort_unless(in_array('certificate-transition-v1',explode(',',$request->header('X-Node-Capabilities','')),true),409,'请升级支持证书验证切换的 V2Box');
+        $binding=\Illuminate\Support\Facades\DB::table('v2_node_ddns')->where('node_type','v2box')->where('node_id',$node->id)->where('tls_transition_state','pending')->first();
+        $pending=\App\Services\NodeTlsTransition::pending($binding);
+        if (!empty($pending['configurationOnly'])) abort_unless(in_array('configuration-receipt-v1',explode(',',$request->header('X-Node-Capabilities','')),true),409,'请升级支持配置应用确认的 V2Box');
         if (!empty($configuration['singBox'])) {
             $features = explode(',', $request->header('X-Node-Capabilities', ''));
             abort_unless(in_array('native-routing-v1', $features, true), 409);
@@ -72,6 +75,7 @@ class NodeController extends Controller {
         if (isset($data['configuration'])) {
             \App\Services\NodeRuntimeService::receipt((int)$node->id,$data['configuration']);
             if (in_array('certificate-transition-v1',$data['features'],true) && isset($data['configuration']['transitionId'])) $transitionAccepted=\App\Services\NodeTlsTransition::receipt((int)$node->id,$data['configuration']);
+            if (!isset($data['configuration']['transitionId']) && in_array('configuration-receipt-v1',$data['features'],true)) \App\Services\NodeTlsTransition::receipt((int)$node->id,$data['configuration']);
             unset($data['configuration']);
         }
         $data['reportedAt'] = gmdate('Y-m-d\TH:i:s\Z');

@@ -923,3 +923,7 @@ Nodes、AdminDDNS、admin-linkage 三个现有模块共 129 项测试通过。�
 ### 部署一键检查回归
 
 复用 `tests/node-ddns.php`，在临时项目副本和独立空数据测试库验证 321 项断言。新增覆盖：混合私网/保留地址拒绝、DNS 与上报 IP 不一致、地址探测数量上限、双栈部分失败、UDP 不做 TCP 健康推断、TLS 校验失败、续期不误判、中转证书指纹一致性、请求并发锁释放、匿名权限、无缓存及配置在检查中变化导致结果失效。前端 Nodes/AdminDDNS 104 项测试、TypeScript 和生产构建通过。公共 Cloudflare 服务完成一次真实 TLS 握手，成功读取证书指纹及到期时间；这不是生产节点或真实 ACME 续期验收。未修改生产 DNS、证书或 Nginx 配置。
+
+### 连接地址与 TLS 身份分离回归
+
+复用 tests/node-ddns.php，覆盖新建中转默认落地身份、独立证书区域的 Cloudflare 凭据、候选配置下发能力校验、认证回执成功发布/失败保留、Reality 不受影响、中转回直连、Clash 与 sing-box 订阅的连接地址/SNI/证书验证，以及一键检查分别探测入口和回源时使用同一独立身份。测试在临时项目副本及独立 MySQL 数据库运行，DNS/Cloudflare 与探测使用受控测试替身，不接触生产节点或申请公网证书。node-ddns.php 334 项、node-v10.php 295 项、v2box.php 33 项和 update-script.sh 26 个隔离更新场景通过。

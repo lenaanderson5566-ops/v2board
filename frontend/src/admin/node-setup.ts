@@ -45,7 +45,7 @@ export function nodeSetupFields(
                 ["direct", "直连"],
                 ["relay", "入口中转"],
             ],
-            hint: "直连直接连接代理服务器；中转经入口转发。普通 TLS 中转使用 DNS 申请证书，证书覆盖入口域名。",
+            hint: "直连直接连接代理服务器；中转经入口转发。中转默认使用落地服务的 TLS 身份与证书，入口域名可以不同。",
         });
     if (managed && relay)
         setup.push(
@@ -93,8 +93,8 @@ export function nodeSetupFields(
                 ],
                 hint: roots.length
                     ? relay
-                        ? "回源域名解析到代理服务所在服务器；普通 TLS 的 SNI 使用入口域名。"
-                        : "普通 TLS 的 SNI 自动同步。"
+                        ? "回源域名指向代理服务器；TLS 身份默认使用回源域名，可在协议与证书中独立设置。"
+                        : "TLS 身份未填写时默认使用此域名。"
                     : "请先在域名与解析中维护 Cloudflare 根域名；也可选择手动维护连接地址。",
             },
             {
@@ -179,7 +179,7 @@ export function nodeSetupFields(
         ...(managed
             ? [
                   ...(Number(values.tls) === 1
-                      ? ["tls_settings.server_name", "disable_sni"]
+                      ? ["disable_sni"]
                       : []),
               ]
             : []),
@@ -230,14 +230,12 @@ export function nodeServiceFields(fields: Field[]): Field[] {
     }));
 }
 
-/** Match certificate identity, never the relay origin domain. Keep stale selections visible. */
+/** Match explicit TLS identity, defaulting new managed services to the origin zone. Keep stale selections visible. */
 export function certificateCredentialOptions(values: Row, network?: Row | null, includeUnavailable = true): [string, string][] {
     const credentials: Row[] = network?.credentials || [];
-    const entry = (network?.assignments || []).find((a: Row) => String(a.id) === String(values.setup_entry_id) && a.purpose === "entry");
     const root = credentials.find(c => String(c.id) === String(values.setup_credential_id));
-    const domain = String(values.setup_mode === "managed"
-        ? values.setup_access_mode === "relay" ? entry?.domain || "" : root?.root_domain || ""
-        : values["tls_settings.server_name"] || values.tls_settings?.server_name || "").toLowerCase().replace(/\.$/, "");
+    const explicit = values["tls_settings.server_name"] || values.tls_settings?.server_name;
+    const domain = String(explicit || (values.setup_mode === "managed" ? root?.root_domain || "" : "")).toLowerCase().replace(/\.$/, "");
     const selected = String(values["tls_settings.dns_credential_id"] || values.tls_settings?.dns_credential_id || "");
     const valid = credentials.filter(c => {
         const zone = String(c.root_domain || "").toLowerCase().replace(/\.$/, "");

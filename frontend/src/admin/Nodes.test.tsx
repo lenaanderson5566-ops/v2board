@@ -1,5 +1,5 @@
 import { nodeConfigurationProblems, nodeChangeImpact, nodeDeploymentStage } from "./node-guidance";
-import { nodeSetupFields, nodeSetupPayload } from "./node-setup";
+import { certificateCredentialOptions, nodeSetupFields, nodeSetupPayload } from "./node-setup";
 import { adminPageFixture } from "./test-support/page-fixtures";
 // @vitest-environment jsdom
 import { afterEach, expect, it, vi } from "vitest";
@@ -756,7 +756,7 @@ it("keeps manual addresses and Reality SNI available while offering server reuse
     const network={credentials:[{id:1,root_domain:"example.test",next_run:0}],servers:[{id:5,name:"Shared",enabled:true,family:"ipv4"},{id:6,name:"Wrong family",enabled:true,family:"ipv6"}]};
     const managed=nodeSetupFields(fields,{setup_mode:"managed",setup_family:"ipv4",tls:1},network);
     expect(managed.map(f=>f.key)).not.toContain("host");
-    expect(managed.map(f=>f.key)).not.toContain("tls_settings.server_name");
+    expect(managed.map(f=>f.key)).toContain("tls_settings.server_name");
     expect(managed.find(f=>f.key==="setup_server_id")?.options?.map(o=>o[0])).toEqual(["","5"]);
     expect(nodeSetupFields(fields,{setup_mode:"managed",tls:2},network).map(f=>f.key)).toContain("tls_settings.server_name");
     expect(nodeSetupFields(fields,{setup_mode:"manual"},network).map(f=>f.key)).toContain("host");
@@ -1057,12 +1057,12 @@ it("reports managed direct port drift and rejects automatic ACME for new manual 
     expect(nodeConfigurationProblems({setup_mode:"manual",tls:1,"tls_settings.cert_mode":"http","tls_settings.server_name":"identity.example.test"},"v2box").some(p=>p.key==="setup_mode")).toBe(true);
 });
 
-it("keeps managed TLS identity in domain settings while Reality remains independently editable",async()=>{
+it("keeps managed TLS identity independently editable alongside Reality",async()=>{
     api.request.mockImplementation(async(path:string)=>String(path).includes("dictionary/fetch")?adminPageFixture(path):String(path).includes("getNodes")?{data:[{id:1,type:"v2box",name:"Managed",protocol:"vless",tls:1,network:"tcp",host:"managed.example.test",port:443,server_port:443,group_id:[1],tls_settings:{cert_mode:"http",server_name:"managed.example.test"}}]}:String(path).includes("nodeSchema")?{data:{name:"required",protocol:"required|in:vless",tls:"required|in:0,1,2",network:"required|in:tcp",server_port:"required",tls_settings:"array"}}:String(path).includes("ddns/fetch")?{data:{assignments:[{id:8,node_type:"v2box",node_id:1,managed:true}],servers:[],credentials:[]}}:{data:[]});
     history.replaceState(null,"",`${location.pathname}#/nodes?service=v2box%3A1`);
-    render(<Nodes/>);await screen.findByText(/普通 TLS 的 SNI 随托管连接域名维护/);
+    render(<Nodes/>);await screen.findByText(/TLS 身份与入口、回源地址分别管理/);
     expect(await screen.findByRole("combobox",{name:"证书模式"})).toBeTruthy();
-    expect(screen.queryByLabelText("TLS 身份域名（SNI）")).toBeNull();
+    expect(screen.getByLabelText("TLS 身份域名（SNI）")).toBeTruthy();
     fireEvent.change(screen.getByRole("combobox",{name:/^TLS/}),{target:{value:"2"}});
     expect(await screen.findByLabelText("TLS 身份域名（SNI）")).toBeTruthy();
 });
@@ -1206,4 +1206,11 @@ it("discards old results when switching nodes and allows retry after errors", as
     fireEvent.click(screen.getByRole("button",{name:"一键检查"}));
     expect(await screen.findByRole("alert")).toHaveProperty("textContent",expect.stringContaining("请求超时"));
     expect((screen.getByRole("button",{name:"一键检查"}) as HTMLButtonElement).disabled).toBe(false);
+});
+
+it("selects certificate credentials by TLS identity rather than ingress domain", () => {
+    const network={credentials:[{id:1,name:"Origin",root_domain:"origin.test",next_run:0},{id:2,name:"Entry",root_domain:"entry.test",next_run:0}],assignments:[{id:3,domain:"relay.entry.test"}]};
+    const values={setup_mode:"managed",setup_credential_id:1,setup_access_mode:"relay",setup_entry_id:3};
+    expect(certificateCredentialOptions(values,network).map(x=>x[0])).toEqual(["","1"]);
+    expect(certificateCredentialOptions({...values,"tls_settings.server_name":"tls.entry.test"},network).map(x=>x[0])).toEqual(["","2"]);
 });

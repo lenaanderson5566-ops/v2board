@@ -1083,3 +1083,7 @@ Nodes、AdminDDNS、admin-linkage 三个现有模块共 129 项测试通过。�
 ### 部署检查界面
 
 Nodes 与 AdminDDNS 的 104 项 Vitest 检查通过，包含按需发起、禁用重复点击、异常后的重试、切换节点时丢弃旧请求结果、异常与下一步提示。TypeScript 与生产构建通过，已生成管理端资源。此次使用 jsdom 组件验证，未执行生产后台浏览器验收。
+
+### 独立 TLS 身份配置
+
+Nodes 与 AdminDDNS 共 105 项 Vitest 通过，新增跨根域名凭据筛选，覆盖新增默认落地身份与已有托管节点可编辑 TLS 身份。TypeScript 检查和生产构建通过，管理端静态资源已更新。此次使用 jsdom，未执行生产后台浏览器验收。

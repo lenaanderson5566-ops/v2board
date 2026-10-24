@@ -237,7 +237,7 @@ export function NodeDomainBinding({
                                         : ""}
                                 </p>
                                 <p className="muted">
-                                    入口服务器只转发 TCP／UDP，不解密 TLS；代理服务器上的 V2Box 负责证书与加密连接。证书须覆盖用户连接的入口域名。请在入口配置转发至{" "}
+                                    入口服务器只转发 TCP／UDP，不解密 TLS；代理服务器上的 V2Box 负责证书与加密连接。证书匹配独立 TLS 身份域名，不要求与入口域名相同。请在入口配置转发至{" "}
                                     {binding.domain}:{node.server_port}。
                                 </p>
                                 <details>
@@ -396,7 +396,7 @@ export function NodeDomainBinding({
                                     onClick={() => {
                                         if (
                                             window.confirm(
-                                                `确认将节点连接地址切换为 ${binding.domain}？普通 TLS 节点将先验证新证书与监听，再同步连接地址、SNI 和证书域名；失败保留原配置。Reality 仅更新连接地址，旧托管解析至少保留 24 小时。`,
+                                                `确认将节点连接地址切换为 ${binding.domain}？普通 TLS 节点将先验证新证书与监听，再更新连接地址；中转保留落地 TLS 身份和证书；失败保留原配置。Reality 仅更新连接地址，旧托管解析至少保留 24 小时。`,
                                             )
                                         )
                                             void act("activate", {
@@ -518,7 +518,7 @@ export function NodeDomainBinding({
                                     <section className="admin-deployment-card" aria-label="中转连接配置说明">
                                         <strong>客户端 → 入口服务器 → 代理服务器</strong>
                                         <p>入口负责转发，V2Box 安装在代理服务器。入口域名解析到入口 IP，回源域名解析到代理服务器 IP。</p>
-                                        {Number(node.tls) === 1 && <><p>证书由代理服务器申请，须覆盖入口域名。请先在“代理服务”的“TLS 与证书”中选择 DNS 申请，选择覆盖入口域名的 Cloudflare 凭据并保存，再配置中转路径。</p><p>Cloudflare：可直接选择“域名与解析”中已有的凭据，无需填写 DNS 环境参数；使用其他凭据时仍可手动填写。</p><p>令牌须有入口域名所在区域的 Zone:Read 与 DNS:Edit 权限，将用于代理服务器申请与续期证书。</p></>}
+                                        {Number(node.tls) === 1 && <><p>证书由代理服务器申请，匹配“协议与证书”中的 TLS 身份域名。请先在“代理服务”的“TLS 与证书”中选择 DNS 申请，选择覆盖 TLS 身份域名的 Cloudflare 凭据并保存，再配置中转路径。</p><p>Cloudflare：可直接选择“域名与解析”中已有的凭据，无需填写 DNS 环境参数；使用其他凭据时仍可手动填写。</p><p>令牌须有 TLS 身份域名所在区域的 Zone:Read 与 DNS:Edit 权限，将用于代理服务器申请与续期证书。</p></>}
                                         {Number(node.tls) === 2 && <p>Reality 使用独立的握手配置，无需申请上述 TLS 域名证书。</p>}
                                     </section>
                                     <label>

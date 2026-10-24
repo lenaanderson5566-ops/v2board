@@ -10,7 +10,7 @@
     },
     {
       "mode": "admin",
-      "startupGzipBytes": 376490,
+      "startupGzipBytes": 376496,
       "budget": 460800,
       "totalBytes": 4120591,
       "fileCount": 83

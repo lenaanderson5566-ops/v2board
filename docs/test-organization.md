@@ -852,3 +852,6 @@ Typescript 与生产构建、发布目录打包通过。浏览器合成状态预
 
 
 节点与接入入口收拢复用 AdminDDNS、ServerTrafficBudgets、Nodes、admin-workspaces、admin-linkage 五个现有前端模块，共226项通过；覆盖解析总览只读、共享入口显示与搜索分页、移除额外节点读取、服务器编辑内单层命令显示、未保存变更阻止授权、失败保留编辑器和凭据重置确认。后端及测试清单未改动。
+
+
+直连/中转一体化新增复用现有测试：AdminDDNS、Nodes、admin-linkage、ServerTrafficBudgets、admin-workspaces 共234项前端检查；node-ddns 228项、v2box 32项、server-traffic-budgets 36项隔离后端检查通过。覆盖单请求中转创建、入口与回源端口及域名分离、TLS身份、同机拒绝、端口冲突和证书模式失败回滚；前端覆盖模式选择、证书模式默认值、服务器归属、旧入口切直连时保留显示、流程说明和直接定位接入配置。后端使用一次性副本、空测试数据库和独立Redis，完成后移除专用数据库/账号及容器；未操作共享缓存或生产数据。测试清单仍为111项和12个辅助引用。

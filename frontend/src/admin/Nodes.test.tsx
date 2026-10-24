@@ -714,6 +714,38 @@ it("creates a direct node and its domain in one save without a separate server f
     expect(api.request.mock.calls.some(([path])=>String(path).endsWith("credentials/deployment"))).toBe(false);
 });
 
+it("creates a relay node in one save with separate ingress and origin fields", async () => {
+    let saved = false;
+    api.request.mockImplementation(async (path: string) => {
+        if (path.endsWith("dictionary/fetch")) return adminPageFixture(path);
+        if (path.includes("console/nodeSchema")) return { data: {name:"required",host:"required",port:"required",server_port:"required",protocol:"required|in:vless",tls:"required|in:0,1,2",network:"required|in:tcp",group_id:"nullable|array",rate:"required"} };
+        if (path.endsWith("server/ddns/fetch")) return { data: {credentials:[{id:9,root_domain:"example.test"}],servers:[{id:5,name:"Existing machine",enabled:true,family:"ipv4"}],assignments:[{id:17,purpose:"entry",domain:"entry.example.test",enabled:true,server_id:5}]} };
+        if (path.endsWith("server/manage/getNodes")) return {data:saved ? [{id:99,type:"v2box",name:"Japan",host:"jp.example.test",port:443,protocol:"vless"}] : []};
+        if (path.endsWith("server/v2box/save")) { saved=true;return {data:{id:99,type:"v2box"}}; }
+        if (path.endsWith("server/group/fetch")) return {data:[{id:1,name:"Default group"}]};
+        if (path.endsWith("server/route/fetch")) return {data:[]};
+        if (path.includes("credentials/fetch")) return {data:{keys:[]}};
+        return {data:{}};
+    });
+    render(<Nodes />);
+    fireEvent.click(await screen.findByRole("button",{name:"新增节点"}));
+    await screen.findByRole("combobox",{name:/^根域名/});
+    expect(screen.queryByRole("textbox",{name:"连接主机"})).toBeNull();
+    fireEvent.change(screen.getByRole("combobox",{name:/^接入方式/}),{target:{value:"relay"}});
+    expect(screen.getByRole("spinbutton",{name:/^节点监听端口/})).toBeTruthy();
+    fireEvent.change(screen.getByRole("combobox",{name:/^入口域名/}),{target:{value:"17"}});
+    fireEvent.change(screen.getByRole("spinbutton",{name:/^入口端口/}),{target:{value:"8443"}});
+    fireEvent.change(screen.getByRole("textbox",{name:/节点名称/}),{target:{value:"Japan"}});
+    fireEvent.change(screen.getByRole("combobox",{name:/^回源根域名/}),{target:{value:"9"}});
+    fireEvent.change(screen.getByRole("textbox",{name:/^子域名前缀/}),{target:{value:"jp"}});
+    fireEvent.click(within(screen.getByRole("group",{name:"权限组"})).getByRole("checkbox"));
+    fireEvent.click(screen.getByRole("button",{name:"保存节点配置"}));
+    await waitFor(()=>expect(api.request).toHaveBeenCalledWith("test-admin/server/v2box/save",expect.objectContaining({server_port:443,deployment_setup:{credential_id:9,prefix:"jp",family:"ipv4",server_id:null,entry_id:17,entry_port:8443}})));
+    expect(api.request.mock.calls.some(([path])=>String(path).endsWith("domains/bind") || String(path).endsWith("network/save"))).toBe(false);
+    await screen.findByText("新节点安装");
+    expect(api.request.mock.calls.some(([path])=>String(path).endsWith("credentials/deployment"))).toBe(false);
+});
+
 it("keeps manual addresses and Reality SNI available while offering server reuse", () => {
     const fields=[{key:"host",label:"连接主机"},{key:"port",label:"连接端口"},{key:"server_port",label:"监听端口"},{key:"tls_settings.server_name",label:"SNI"}];
     const network={credentials:[{id:1,root_domain:"example.test"}],servers:[{id:5,name:"Shared",enabled:true,family:"ipv4"},{id:6,name:"Wrong family",enabled:true,family:"ipv6"}]};
@@ -850,4 +882,31 @@ it("does not silently save a direct route when relay has no usable entry",async(
     expect(screen.getByRole("button",{name:"保存待发布配置"})).toHaveProperty("disabled",true);
     expect(screen.getByText(/中添加可用的入口域名/)).toBeTruthy();
     expect(api.request.mock.calls.some(([path])=>String(path).endsWith("connections/save"))).toBe(false);
+});
+
+it("preflights relay TLS, entry availability and separate physical servers",()=>{
+    const network={servers:[{id:5,enabled:true,family:"ipv4"}],assignments:[{id:17,purpose:"entry",enabled:true,server_id:5,domain:"entry.example.test"}]};
+    const values={setup_mode:"managed",setup_access_mode:"relay",setup_credential_id:1,setup_entry_id:17,setup_entry_port:8443,setup_server_id:5,setup_family:"ipv4",tls:1,"tls_settings.cert_mode":"http"};
+    expect(nodeConfigurationProblems(values,"v2box",network).map(p=>p.key)).toEqual(expect.arrayContaining(["setup_server_id","tls_settings.cert_mode"]));
+    const fields=nodeSetupFields([],{...values,setup_server_id:""},network);
+    expect(fields.find(f=>f.key==="setup_server_id")?.options?.map(([id])=>id)).toEqual([""]);
+    expect(nodeSetupPayload({...values,setup_access_mode:"direct"})).not.toHaveProperty("entry_id");
+    expect(nodeConfigurationProblems({...values,setup_entry_id:"",setup_entry_port:70000},"v2box",network).map(p=>p.key)).toEqual(expect.arrayContaining(["setup_entry_id","setup_entry_port"]));
+    expect(nodeSetupFields([],values,network,"v2node").map(f=>f.key)).not.toContain("setup_access_mode");
+});
+
+it("keeps a ready proxy service distinct from an unverified forwarding path",()=>{
+    const now=Date.now()/1000;
+    const binding={managed:true,enabled:true,entry_id:7,entry_ready:true,domain:"origin.example.test",connection_domain:"entry.example.test",published_domain:"entry.example.test",entry_port:443,published_port:443,family:"ipv4",ipv4:"8.8.8.8",ipv4_seen_at:now,last_success:now,status:"healthy"};
+    const stage=nodeDeploymentStage({type:"v2box"},{runtimeStatus:"online",applicationState:"applied"},binding,true);
+    expect(stage.title).toBe("代理服务已就绪，待验证入口转发");expect(stage.target).toBe("domain");
+    expect(nodeDeploymentStage({type:"v2box"},{runtimeStatus:"online",applicationState:"applied"},{...binding,relay_verified_at:now},true).title).toBe("服务运行正常");
+});
+
+it("opens domain and forwarding settings directly from an ingress action",async()=>{
+    api.request.mockResolvedValue({data:{credentials:[],assignments:[],keys:[]}});
+    render(<NodeDeployment node={{id:1,type:"v2box",name:"Relay",_focusDomain:true}} close={()=>{}}/>);
+    expect(await screen.findByText("设置节点域名")).toBeTruthy();
+    expect(screen.queryByRole("button",{name:"生成一键部署命令"})).toBeNull();
+    expect(api.request.mock.calls.some(([path])=>String(path).endsWith("credentials/deployment"))).toBe(false);
 });

@@ -120,5 +120,5 @@ export function NodeForwarding({ nodes, edit }: { nodes: Row[]; edit: (node: Row
         const entry = assignments.find(a => a.id === binding.entry_id);
         records.push({ ...binding, id: `binding-${binding.id}`, name: node?.name || `#${binding.node_id}`, entry: `${entry?.domain || "入口待检查"}:${binding.entry_port}`, active: `${binding.published_domain}:${binding.published_port || node?.port || "—"} → ${binding.published_origin || binding.domain}:${node?.server_port || "—"}`, node });
     }
-    return <Panel title="入口转发"><State {...data} retry={data.reload}><p className="muted">每条监听规则对应一个代理服务；入口配置需在服务器验证并加载后发布线路。</p><Table data={records} columns={[["name", "接入线路"], ["entry", "已保存入口"], ["active", "当前发布路径"]]} actions={r => <button disabled={!r.node} onClick={() => edit(r.node)}>编辑线路</button>} /></State></Panel>;
+    return <Panel title="入口转发"><State {...data} retry={data.reload}><p className="muted">在节点中维护入口与代理服务的对应关系；服务器详情汇总本机转发线路。复制 Nginx 配置到入口服务器，检查并加载后完成连接测试。面板不自动安装转发。</p><Table data={records} columns={[["name", "接入线路"], ["entry", "已保存入口"], ["active", "当前发布路径"]]} actions={r => <button disabled={!r.node} onClick={() => edit(r.node)}>{r.node?.service_id ? "编辑线路" : "配置转发与验证"}</button>} /></State></Panel>;
 }

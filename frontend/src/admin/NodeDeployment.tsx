@@ -19,7 +19,7 @@ export function NodeDeployment({
     onChanged?: () => void;
     inspect?: () => void;
 }) {
-    const [tab, setTab] = useState(node._new && !node._domainConfigured ? "domain" : "deploy"),
+    const [tab, setTab] = useState(node._focusDomain || (node._new && !node._domainConfigured) ? "domain" : "deploy"),
         [mode, setMode] = useState(!node._new && ["online","offline","limited"].includes(node.runtime_status) ? "upgrade" : "new");
     const [busy, setBusy] = useState(false),
         [error, setError] = useState("");
@@ -178,6 +178,7 @@ export function NodeDeployment({
                             {node.type === "v2box" && mode === "new" ? (
                                 <section className="admin-deployment-card">
                                     <h3>新节点安装</h3>
+                                    {binding?.entry_id && <p role="status">执行位置：回源服务器（运行代理服务的机器）。请先完成中转服务器的 IP 上报，等待入口与回源解析就绪。部署完成后仍需在入口服务器加载转发配置，并通过客户端验证。</p>}
 
                                     <p className="muted">
                                         复制后在节点以 root

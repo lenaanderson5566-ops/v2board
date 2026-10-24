@@ -29,16 +29,24 @@ class V2nodeController extends Controller
         $setup=null;
         if ($request->has('deployment_setup')) {
             abort_if($request->input('id') || $request->input('source_id') || $request->input('service_id'),422,'一体化部署配置仅用于新增独立节点');
-            $validated=\Illuminate\Support\Facades\Validator::make($request->all(),['deployment_setup'=>'required|array:credential_id,prefix,family,server_id',
+            $validated=\Illuminate\Support\Facades\Validator::make($request->all(),['deployment_setup'=>'required|array:credential_id,prefix,family,server_id,entry_id,entry_port',
                 'deployment_setup.credential_id'=>'required|integer|min:1','deployment_setup.prefix'=>'nullable|string|max:63',
                 'deployment_setup.family'=>'required|in:ipv4,ipv6,dual','deployment_setup.server_id'=>'nullable|integer|min:1',
+                'deployment_setup.entry_id'=>'required_with:deployment_setup.entry_port|nullable|integer|min:1','deployment_setup.entry_port'=>'required_with:deployment_setup.entry_id|nullable|integer|between:1,65535',
                 'server_port'=>'required|integer|between:1,65535'])->validate();
             $setup=$validated['deployment_setup'];
             $root=\Illuminate\Support\Facades\DB::table('v2_ddns_credential')->find($setup['credential_id']);
-            abort_unless($root && $root->root_domain,422,'请先在服务器与域名中维护并验证 Cloudflare 根域名');
+            abort_unless($root && $root->root_domain,422,'请先在域名与解析中维护并验证 Cloudflare 根域名');
             $setup['prefix']=strtolower($setup['prefix']??'') ?: 'n-'.bin2hex(random_bytes(5));
             $host=\App\Services\NodeDnsLifecycle::name($setup['prefix'],$root->root_domain);
-            $request->merge(['host'=>$host,'port'=>(int)$validated['server_port']]);
+            $entry=null;
+            if (!empty($setup['entry_id'])) {
+                abort_unless($this->model===\App\Models\ServerV2box::class,422,'中转一体化部署仅支持 V2Box');
+                $entry=\Illuminate\Support\Facades\DB::table('v2_node_ddns')->where('purpose','entry')->where('enabled',true)->find($setup['entry_id']);
+                abort_unless($entry && \Illuminate\Support\Facades\DB::table('v2_network_server')->where('id',$entry->server_id)->where('enabled',true)->exists(),422,'请选择已启用服务器上的有效入口域名');
+            }
+            $host=$entry ? $entry->domain : $host;
+            $request->merge(['host'=>$host,'port'=>(int)($entry ? $setup['entry_port'] : $validated['server_port'])]);
             if ((int)$request->input('tls')===1) {
                 $tls=$request->input('tls_settings',[]);
                 abort_unless(is_array($tls),422,'TLS 配置必须为对象');

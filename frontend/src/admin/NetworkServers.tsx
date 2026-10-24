@@ -1,3 +1,4 @@
+import { ServerForwarding } from "./ServerForwarding";
 import {
     ServerTrafficFields,
     trafficDraft,
@@ -428,6 +429,7 @@ export function NetworkServers({
                         onBusy={setDetailBusy}
                         onDirty={setDetailDirty}
                     />
+                    <ServerForwarding server={detail} data={data}/>
                 </ServerTrafficDetails>
             )}
             {legacyOpen && (

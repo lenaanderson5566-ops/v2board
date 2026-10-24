@@ -304,3 +304,9 @@ it("applies native protocol defaults and clears incompatible server reuse",()=>{
     expect(linkNode("protocol","shadowsocks",{tls:1,network:"ws"})).toMatchObject({tls:0,network:"tcp"});
     expect(linkNode("setup_family","ipv6",{setup_server_id:5})).toMatchObject({setup_server_id:"",setup_family:"ipv6"});
 });
+
+it("defaults new relay TLS to DNS validation and clears origin reuse when ingress changes",()=>{
+    expect(linkNode("setup_access_mode","relay",{"tls_settings.cert_mode":"http"})["tls_settings.cert_mode"]).toBe("dns");
+    expect(linkNode("setup_access_mode","relay",{"tls_settings.cert_mode":"file"})["tls_settings.cert_mode"]).toBe("file");
+    expect(linkNode("setup_entry_id","5",{setup_server_id:"3"}).setup_server_id).toBe("");
+});

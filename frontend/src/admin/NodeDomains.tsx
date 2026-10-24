@@ -236,6 +236,7 @@ export function NodeDomainBinding({
                                             entry,
                                         ) || "请先设置有效的节点监听端口。"}
                                     </pre>
+                                    <button type="button" disabled={busy || !relayStreamConfig(binding,node,entry)} onClick={async()=>{try{await navigator.clipboard.writeText(relayStreamConfig(binding,node,entry));setNotice("转发配置已复制，请在入口服务器检查并加载。");}catch{setError("复制失败，请手动复制配置。");}}}>复制转发配置</button>
                                     <p className="muted">
                                         入口按节点协议开放 TCP／UDP
                                         端口。节点防火墙需允许入口服务器访问监听端口；此配置不启用
@@ -449,8 +450,8 @@ export function NodeDomainBinding({
                                 });
                             }}
                         >
-                            <details className="admin-deployment-tools">
-                                <summary>服务器复用与中转（可选）</summary>
+                            <details className="admin-deployment-tools" open={node._new || mode === "relay"}>
+                                <summary>接入方式与服务器</summary>
                                 <div className="node-domain-form">
                             <label>
                                 接入方式
@@ -527,7 +528,7 @@ export function NodeDomainBinding({
                                         />
                                     </label>
                                     <p className="muted">
-                                        先在服务器管理中添加服务器，再在服务器详情中配置入口域名。下方配置回源域名。自动证书申请须使用
+                                        新建或已有服务器均可在详情中添加入口域名；在服务器管理配置入口 IP 上报。下方配置回源域名。自动证书申请须使用
                                         DNS 验证；节点监听端口保持独立。
                                     </p>
                                 </>

@@ -1018,3 +1018,28 @@ it("retains the server editor when report enrollment fails and revokes only afte
         ),
     );
 });
+
+import { serverForwardingRows, ServerForwarding } from "./ServerForwarding";
+import { NodeSetupGuide } from "./NodeSetupGuide";
+it("scopes forwarding to both current and pending ingress servers without losing published references",()=>{
+    const data={assignments:[{id:10,purpose:"entry",server_id:1,domain:"old.example.test"},{id:20,purpose:"entry",server_id:2,domain:"new.example.test"}],connections:[{id:5,node_id:7,node_type:"v2box",entry_id:20,entry_port:8443,published:{entry_id:10,entry_server_id:1,host:"old.example.test",port:443,origin_domain:"origin.example.test",origin_port:9443}}]};
+    expect(serverForwardingRows(1,data)).toHaveLength(1);
+    expect(serverForwardingRows(2,data)).toHaveLength(1);
+    expect(serverForwardingRows(3,data)).toHaveLength(0);
+    expect(serverForwardingRows(1,data)[0].status).toBe("有待发布变更");
+    render(<ServerForwarding server={{id:1}} data={data}/>);fireEvent.click(screen.getByText("本机入口转发（1 条）"));
+    expect(screen.getByRole("link",{name:"配置与发布转发线路"}).getAttribute("href")).toBe("#/node-forwarding");
+    expect(api.request).not.toHaveBeenCalled();
+});
+it("explains existing-server entry creation and separates the two deployment machines",()=>{
+    render(<NodeSetupGuide/>);fireEvent.click(screen.getByText("新增节点与部署流程"));
+    fireEvent.click(screen.getByRole("button",{name:"中转节点"}));
+    expect(screen.getByText(/已有服务器在/)).toBeTruthy();
+    expect(screen.getByText(/面板不会自动安装转发/)).toBeTruthy();
+    expect(screen.getByText(/无需再次安装 V2Box/)).toBeTruthy();
+});
+
+it("keeps the old relay visible on its server while a service is changing to direct access",()=>{
+    const rows=serverForwardingRows(1,{assignments:[{id:1,purpose:"entry",server_id:1,domain:"entry.example.test"},{id:2,purpose:"node",node_type:"v2box",node_id:9,domain:"origin.example.test",entry_id:null,published_domain:"entry.example.test",published_port:443,published_origin:"origin.example.test"}]});
+    expect(rows).toHaveLength(1);expect(rows[0].saved).toBe("直连（待启用）");expect(rows[0].status).toBe("有待启用变更");
+});

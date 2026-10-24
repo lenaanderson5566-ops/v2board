@@ -1,3 +1,4 @@
+import { NodeSetupGuide } from "./NodeSetupGuide";
 import { AdminChoiceGroup } from "./AdminChoices";
 import { nodeConfigurationProblems, nodeChangeImpact } from "./node-guidance";
 import { nodeSetupFields, nodeSetupPayload } from "./node-setup";
@@ -315,8 +316,9 @@ function NodesContent({
                 </p>
             )}
             <p className="pad muted">新增直连节点可自动关联服务器与域名。复用已有代理服务时新增线路；多入口共用服务无需重复部署。 <a href="#/servers">服务器管理</a> · <a href="#/node-domains">域名与解析</a></p>
+            <NodeSetupGuide/>
             {connectionNode && <NodeConnectionEditor key={`${connectionNode.type}:${connectionNode.id || "new"}`} node={connectionNode} nodes={nodeRows} groups={rows(groups.data)} close={() => setConnectionNode(null)} onSaved={d.reload} />}
-            {tab === "forwarding" && <NodeForwarding nodes={nodeRows} edit={node => node.service_id ? setConnectionNode(node) : setCredentialNode(node)} />}
+            {tab === "forwarding" && <NodeForwarding nodes={nodeRows} edit={node => node.service_id ? setConnectionNode(node) : setCredentialNode({...node,_focusDomain:true})} />}
             {(tab === "nodes" || tab === "services") && (
                 <Panel
                     title={tab === "services" ? "代理服务" : "节点列表"}
@@ -675,7 +677,7 @@ function NodesContent({
                                         "nodes",
                                     ),
                                 );
-                                return editing.id ? presented : nodeSetupFields(presented, values, topology.data);
+                                return editing.id ? presented : nodeSetupFields(presented, values, topology.data, type);
                             }}
                             preview={values => {
                                 const assignments: Row[] = topology.data?.assignments || [];
@@ -683,10 +685,12 @@ function NodesContent({
                                 const automatic = !editing.id && values.setup_mode === "managed";
                                 const root = (topology.data?.credentials || []).find((r: Row) => Number(r.id) === Number(values.setup_credential_id));
                                 const domain = root ? `${values.setup_prefix || "自动生成子域名"}.${root.root_domain}` : "选择根域名后自动建立";
-                                const origin = automatic ? { domain, server_id: Number(values.setup_server_id) } : assignments.find(a => a.node_type === type && a.node_id === editing.id);
-                                const service = automatic && Number(values.tls) === 1 ? { ...values, tls_settings: { ...values.tls_settings, server_name: domain } } : values;
+                                const origin = automatic ? { domain, server_id: Number(values.setup_server_id), entry_id: values.setup_access_mode === "relay" ? Number(values.setup_entry_id) : null } : assignments.find(a => a.node_type === type && a.node_id === editing.id);
                                 const entry = assignments.find(a => a.id === origin?.entry_id);
-                                const topologyPreview = <NodeTopology service={service} origin={origin} entry={entry} server={servers.find(s => s.id === origin?.server_id) || (automatic ? { name: values.name || "自动创建服务器" } : undefined)} entryServer={servers.find(s => s.id === entry?.server_id)} host={automatic ? domain : values.host} port={automatic ? values.server_port : values.port} shared={entry?.connection_count || 0} serviceConnections={nodeRows.filter(n => n.type === type && n.service_id === editing.id).length} />;
+                                const connectionDomain = entry?.domain || domain;
+                                const connectionPort = entry ? values.setup_entry_port : values.server_port;
+                                const service = automatic && Number(values.tls) === 1 ? { ...values, tls_settings: { ...values.tls_settings, server_name: connectionDomain } } : values;
+                                const topologyPreview = <NodeTopology service={service} origin={origin} entry={entry} server={servers.find(s => s.id === origin?.server_id) || (automatic ? { name: values.name || "自动创建服务器" } : undefined)} entryServer={servers.find(s => s.id === entry?.server_id)} host={automatic ? connectionDomain : values.host} port={automatic ? connectionPort : values.port} shared={entry?.connection_count || 0} serviceConnections={nodeRows.filter(n => n.type === type && n.service_id === editing.id).length} />;
                                 const changes = editing.id ? nodeChangeImpact(nodeSettingsInitial(editing), values) : [];
                                 const affected = nodeRows.filter(n => n.type === editing.type && n.service_id === editing.id).length;
                                 const problems = nodeConfigurationProblems(values, type, topology.data).filter(problem => problem.key.startsWith("setup_") || !!schema.data?.[problem.key.split(".")[0]]);
@@ -694,7 +698,7 @@ function NodesContent({
                                     {changes.length > 0 && <aside className="node-config-impact" aria-label="变更影响"><strong>待保存变更：{changes.join("、")}</strong><p>将影响本服务{affected ? `及 ${affected} 条关联线路` : "的默认线路"}。监听、协议或证书调整可能中断连接；请安排维护时间，保存后核对配置应用结果。</p></aside>}
                                     <div className="node-config-preflight"><button type="button" onClick={() => setPreflightShown(true)}>检查配置</button><span className="muted">保存前检查协议、域名、证书及服务器关联</span></div>
                                     {preflightShown && <section className="node-config-problems" aria-label="配置预检" aria-live="polite"><strong>{problems.length ? `请处理 ${problems.length} 项配置问题` : "配置预检通过"}</strong>{problems.length > 0 && <ul>{problems.map(problem => <li key={problem.key+problem.message}><button type="button" className="link" onClick={event => { const label = Array.from(event.currentTarget.closest("form")?.querySelectorAll<HTMLElement>("[data-field]") || []).find(item => item.dataset.field === problem.key); label?.scrollIntoView({block:"center",behavior:"smooth"}); label?.querySelector<HTMLElement>("input,select,textarea,button")?.focus(); }}>{problem.message}</button></li>)}</ul>}</section>}
-                                    {editing.id ? topologyPreview : <details className="node-editor-path"><summary><strong>连接路径预览</strong><span>{automatic ? domain : values.host || "待填写连接地址"}:{automatic ? values.server_port : values.port || "—"}</span></summary>{topologyPreview}</details>}
+                                    {editing.id ? topologyPreview : <details className="node-editor-path"><summary><strong>连接路径预览</strong><span>{automatic ? connectionDomain : values.host || "待填写连接地址"}:{automatic ? connectionPort : values.port || "—"}</span></summary>{topologyPreview}</details>}
                                 </>;
                             }}
                             validate={values => {
@@ -817,7 +821,7 @@ function NodesContent({
                                     }),
                             )}
                             initial={nodeSettingsInitial(
-                                { ...nodeBackendInitial(editing, type), ...(!editing.id ? { setup_mode: "managed", setup_credential_id: "", "tls_settings.cert_mode": "http", setup_family: "ipv4", setup_server_id: "", server_port: editing.server_port || 443 } : {}) },
+                                { ...nodeBackendInitial(editing, type), ...(!editing.id ? { setup_mode: "managed", setup_access_mode: "direct", setup_entry_id: "", setup_entry_port: 443, setup_credential_id: "", "tls_settings.cert_mode": "http", setup_family: "ipv4", setup_server_id: "", server_port: editing.server_port || 443 } : {}) },
                             )}
                             onSave={async (b) => {
                                 if (

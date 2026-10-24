@@ -172,6 +172,30 @@ try {
     unset($naive['tls_settings']['server_name']);
     $naiveId=json_decode($createController->save($req($naive))->getContent(),true)['data']['id'];
     $assert(App\Models\ServerV2box::findOrFail($naiveId)->tls_settings['server_name']==='naive-managed.example.test','Naive integrated creation derives its SNI before final deployment validation');
+    // A new relay service can be saved together with ingress selection, without an intermediate direct configuration.
+    $entryMachine=DB::table('v2_network_server')->insertGetId(['name'=>'Setup ingress','family'=>'ipv4','enabled'=>true]);
+    $entrySetup=(new App\Http\Controllers\V1\Admin\NetworkServerController())->entry($req(['server_id'=>$entryMachine,'credential_id'=>$cid,'prefix'=>'setup-entry','family'=>'ipv4']))['data']['id'];
+    $relayCreation=array_replace($creation,['name'=>'Atomic relay','tls_settings'=>['cert_mode'=>'dns','provider'=>'cloudflare','dns_env'=>['CF_DNS_API_TOKEN'=>'test-only-acme']],
+        'deployment_setup'=>array_replace($setup,['prefix'=>'atomic-origin','entry_id'=>$entrySetup,'entry_port'=>18443])]);
+    $beforeRelayNodes=App\Models\ServerV2box::count();$beforeRelayServers=DB::table('v2_network_server')->count();
+    $reject(fn()=>$createController->save($req(array_replace($relayCreation,['tls_settings'=>['cert_mode'=>'http']]))),422);
+    $assert(App\Models\ServerV2box::count()===$beforeRelayNodes && DB::table('v2_network_server')->count()===$beforeRelayServers,'incompatible HTTP validation rolls back relay node and server');
+    $reject(fn()=>$createController->save($req(array_replace($relayCreation,['deployment_setup'=>array_replace($relayCreation['deployment_setup'],['server_id'=>$entryMachine])]))),422);
+    $assert(!DB::table('v2_node_ddns')->where('domain','atomic-origin.example.test')->exists(),'same physical ingress and origin cannot leave partial binding');
+    $relayCreated=json_decode($createController->save($req($relayCreation))->getContent(),true)['data']['id'];
+    $atomicRelay=App\Models\ServerV2box::findOrFail($relayCreated);$atomicBinding=DB::table('v2_node_ddns')->where('node_type','v2box')->where('node_id',$relayCreated)->first();
+    $assert($atomicRelay->host==='setup-entry.example.test' && (int)$atomicRelay->port===18443 && (int)$atomicRelay->server_port===9443,'one relay save separates client ingress port from origin listener');
+    $assert($atomicRelay->tls_settings['server_name']==='setup-entry.example.test' && $atomicBinding->domain==='atomic-origin.example.test','relay TLS identity follows ingress while DNS origin stays separate');
+    $assert((int)$atomicBinding->entry_id===$entrySetup && (int)$atomicBinding->server_id!==$entryMachine,'relay creates a separate origin server and binds ingress');
+    $assert(!(int)$atomicBinding->relay_verified_at,'atomic creation does not imply forwarding is verified');
+    $reject(fn()=>$createController->save($req(array_replace($relayCreation,['deployment_setup'=>array_replace($relayCreation['deployment_setup'],['prefix'=>'duplicate-relay-port'])]))),409);
+    $assert(App\Models\ServerV2box::count()===$beforeRelayNodes+1 && !DB::table('v2_node_ddns')->where('domain','duplicate-relay-port.example.test')->exists(),'ingress port conflict rolls back all new objects');
+    DB::table('v2_network_server')->where('id',$entryMachine)->update(['enabled'=>false]);
+    $reject(fn()=>$createController->save($req(array_replace($relayCreation,['deployment_setup'=>array_replace($relayCreation['deployment_setup'],['prefix'=>'disabled-entry','entry_port'=>18444])]))),422);
+    DB::table('v2_network_server')->where('id',$entryMachine)->update(['enabled'=>true]);
+    $missingPort=$relayCreation;unset($missingPort['deployment_setup']['entry_port']);$reject(fn()=>$createController->save($req($missingPort)),422);
+    $reject(fn()=>$createController->save($req(array_replace($relayCreation,['deployment_setup'=>array_replace($relayCreation['deployment_setup'],['entry_id'=>2147483646])]))),422);
+    $createController->drop($req(['id'=>$relayCreated]));DB::table('v2_network_server')->where('id',$atomicBinding->server_id)->delete();DB::table('v2_node_ddns')->where('id',$entrySetup)->delete();DB::table('v2_network_server')->where('id',$entryMachine)->delete();
     foreach ([$createdNode->id,$second['id'],$udpId,$naiveId] as $createdId) $createController->drop($req(['id'=>$createdId]));
     DB::table('v2_network_server')->where('id',$createdBinding->server_id)->delete();
     $cid2=$admin->saveCredential($req(['name'=>'New root','zone_id'=>str_repeat('c',32),'token'=>'test-target-token','root_domain'=>'new.example.test']))['data']['id'];

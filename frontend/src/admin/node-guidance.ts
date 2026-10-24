@@ -38,6 +38,16 @@ export function nodeConfigurationProblems(
             String(v.host).includes("://"))
     )
         add("host", "连接主机只填写域名或 IP，不包含协议和路径");
+    if (managed && values.setup_access_mode === "relay") {
+        const entry=(network?.assignments || []).find((a:Row)=>Number(a.id)===Number(values.setup_entry_id) && a.purpose==="entry" && a.enabled);
+        if(backend!=="v2box")add("setup_access_mode","中转一体化部署仅支持 V2Box");
+        if(!entry)add("setup_entry_id","请选择已配置的中转入口域名");
+        if(entry && network && !(network.servers || []).some((s:Row)=>Number(s.id)===Number(entry.server_id) && s.enabled))add("setup_entry_id","入口服务器已停用，请先启用服务器");
+        if(entry && values.setup_server_id && Number(entry.server_id)===Number(values.setup_server_id))add("setup_server_id","入口和回源须使用不同服务器");
+        const port=Number(values.setup_entry_port);
+        if(!Number.isInteger(port) || port<1 || port>65535)add("setup_entry_port","入口端口应为 1–65535 的整数");
+        if(tls===1 && !["dns","file","remote"].includes(cert.cert_mode))add("tls_settings.cert_mode","中转 TLS 请使用 DNS 申请或已签发证书");
+    }
     if (managed) {
         if (!values.setup_credential_id)
             add("setup_credential_id", "请选择已验证的根域名");
@@ -202,11 +212,11 @@ export function nodeDeploymentStage(
         return {
             ...base,
             terminal: true,
-            title: "服务运行正常",
+            title: binding?.entry_id && !binding.relay_verified_at ? "代理服务已就绪，待验证入口转发" : "服务运行正常",
             description: binding?.entry_id
                 ? "本机配置已应用。仍需完成入口转发及实际客户端连接检查。"
                 : "节点已确认应用当前配置；建议完成一次实际客户端连接检查。",
-            target: "runtime",
+            target: binding?.entry_id && !binding.relay_verified_at ? "domain" : "runtime",
         };
     if (runtime?.runtimeStatus === "online" && runtime?.configurationState === "provided" && node.type === "v2node") return { ...base, terminal: true, title: "节点已接入，待实际验证", description: "配置已下发；当前内核不提供应用回执，请结合服务日志和客户端连接确认。", target: "logs" };
     if (runtime?.runtimeStatus === "online" && runtime?.receiptSupported === false && authenticated && node.type === "v2box") return { ...base, terminal: true, title: "节点已接入，缺少应用回执", description: "请升级节点以支持配置应用确认，或结合日志检查当前服务。", target: "upgrade" };

@@ -19,7 +19,7 @@ export function nodeDeploymentCommand(node: Row): string {
         );
     return (
         base +
-        " && curl -fSL https://raw.githubusercontent.com/lenaanderson5566-ops/v2box/v1.0.7/script/node-network.py -o node-network.py && python3 node-network.py configure" +
+        " && curl -fSL https://raw.githubusercontent.com/lenaanderson5566-ops/v2box/v1.0.8/script/node-network.py -o node-network.py && python3 node-network.py configure" +
         (domain ? " --domain " + quote(domain) : "") +
         " --family " +
         family
@@ -29,7 +29,7 @@ export function nodeDeploymentCommand(node: Row): string {
 export function nodeReportCommand(family: string): string {
     const f = ["ipv4", "ipv6", "dual"].includes(family) ? family : "ipv4";
     return (
-        "curl -fSL https://raw.githubusercontent.com/lenaanderson5566-ops/v2box/v1.0.7/script/node-network.py -o node-network.py && python3 node-network.py report-configure --family " +
+        "curl -fSL https://raw.githubusercontent.com/lenaanderson5566-ops/v2box/v1.0.8/script/node-network.py -o node-network.py && python3 node-network.py report-configure --family " +
         f
     );
 }

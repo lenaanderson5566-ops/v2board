@@ -464,3 +464,5 @@ Deployment DNS availability: installers validate both A and AAAA using Cloudflar
 V2Box v1.0.6 release integration: panel bootstrap, manual install and IP reporter downloads now pin v1.0.6. Upgrade commands explicitly pass --update to require an existing installation. The release packages include update/uninstall management scripts; uninstall preserves configuration and certificates, with optional explicit shared reporter shutdown. Existing v1.0.5 wrappers should use the panel upgrade command once to install the new management script.
 
 更新与卸载使用固定管理入口 `/usr/local/bin/v2box`。v1.0.7 允许更新未完成部署，保留状态、配置和证书，随后执行 `v2box resume`；活跃部署与维护操作互斥。核心二进制也转交运维命令，避免 PATH 混淆。
+
+节点“部署与状态”展示节点实际上报的 V2Box 与 sing-box 版本及上报时间。复用 capabilities 上报，不提供远程更新操作；旧节点未上报 agentVersion 时显示“未上报”，不使用安装命令中的版本作为运行版本。

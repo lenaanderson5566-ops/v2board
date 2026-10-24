@@ -196,6 +196,13 @@ export function NodeDeployment({
                     {node.type.toUpperCase()} · 节点 #{node.id} ·{" "}
                     {node.protocol || ""}
                 </p>}
+                {node.type === "v2box" && scope === "service" && tab === "deploy" && (
+                    <section className="node-address-summary" aria-label="节点运行版本"><dl>
+                        <div><dt>V2Box 版本</dt><dd>{runtime.data?.agentVersion || "未上报"}</dd></div>
+                        <div><dt>sing-box 内核</dt><dd>{runtime.data?.coreVersion || "未上报"}</dd></div>
+                        <div><dt>版本上报时间</dt><dd>{runtime.data?.capabilitiesReportedAt ? date(runtime.data.capabilitiesReportedAt) : "—"}</dd></div>
+                    </dl></section>
+                )}
                 <DeploymentSections
                     integrated={!!navigation}
                     label={scope === "connection" ? "节点接入" : "部署与接入"}

@@ -65,7 +65,7 @@ class NodeController extends Controller {
     }
     public function capabilities(Request $request) {
         $node = $this->node($request);
-        $data = $request->validate(['coreVersion'=>'required|string|max:80', 'features'=>'present|array|max:32', 'features.*'=>'required|string|max:80|distinct',
+        $data = $request->validate(['agentVersion'=>'sometimes|string|max:80|regex:/^[A-Za-z0-9][A-Za-z0-9._+\-]{0,79}$/', 'coreVersion'=>'required|string|max:80', 'features'=>'present|array|max:32', 'features.*'=>'required|string|max:80|distinct',
             'configuration'=>'sometimes|array:hash,state,errorCode,certificateFingerprint,transitionId','configuration.hash'=>'required_with:configuration|string|regex:/^[a-f0-9]{64}$/',
             'configuration.transitionId'=>'sometimes|string|regex:/^[a-f0-9]{32}$/',
             'configuration.certificateFingerprint'=>'sometimes|string|regex:/^[a-f0-9]{64}$/',

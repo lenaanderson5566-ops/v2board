@@ -127,6 +127,7 @@ class NodeRuntimeService
             'receiptSupported'=>in_array('configuration-receipt-v1',$capabilities['features'] ?? [],true), 'providedAt' => $last['providedAt'] ?? null,
             'applicationState' => $application, 'inheritedFrom' => $node->service_id ? $id : null,
             'coreVersion' => $capabilities['coreVersion'] ?? null,
+            'agentVersion' => $capabilities['agentVersion'] ?? null,
             'capabilitiesReportedAt' => $capabilities['reportedAt'] ?? null];
     }
 }

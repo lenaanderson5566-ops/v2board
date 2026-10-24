@@ -3106,6 +3106,12 @@
     "nodeCapabilities": {
       "type": "object",
       "properties": {
+        "agentVersion": {
+          "type": "string",
+          "maxLength": 80,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._+\\-]{0,79}$",
+          "description": "Running V2Box release version; omitted by older agents."
+        },
         "coreVersion": {
           "type": "string"
         },

@@ -957,3 +957,5 @@ v1.0.6 integration verification: 34 V2Box backend integration checks passed in t
 Release v1.0.6 is published with all six platform archives and six SHA-256 files. Tag CI passed race tests, Reality Vision tests, go vet, shell checks, script tests and all cross-platform builds. Actual published Linux amd64 package smoke passed panel bootstrap --install, bootstrap --update, v2box update (latest resolves to v1.0.6), and uninstall --yes with retained configuration/certificate. Service manager was stubbed in an ephemeral Linux container; no production node was operated. update.sh passed 26 isolated scenarios.
 
 V2Box 生命周期回归覆盖未完成部署更新、保留配置与证书、活跃部署锁、卸载后修复安装及 resume；核心命令转交验证参数原样传递、错误返回和拒绝非法管理脚本。后台命令版本与固定路径由现有 Nodes、node-options 和 v2box 模块验证。
+
+版本观测复用 node-v10 与 Nodes 测试，覆盖旧节点兼容、版本格式校验、运行状态投影及未知版本展示；Go V10 契约测试验证 agentVersion 上报。

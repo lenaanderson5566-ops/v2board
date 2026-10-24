@@ -19,7 +19,7 @@ const nested: Record<string, Field[]> = {
                 ["none", "不使用证书"],
             ],
         },
-        { key: "dns_credential_id", label: "证书 Cloudflare 凭据", type: "select", options: [["", "手动配置其他 DNS 凭据"]], hint: "选择已验证根域名的凭据。Token 将交由代理服务器申请和续期证书，请使用仅授权所需区域的 Token。" },
+        { key: "dns_credential_id", label: "证书 Cloudflare 凭据", type: "select", options: [["", "手动配置其他 DNS 凭据"]], hint: "仅显示匹配证书域名的可用凭据。选定后自动申请和续期，无需填写 DNS 参数；Token 会下发到代理服务器，请仅授权所需区域。" },
         { key: "provider", label: "DNS 提供商", hint: "使用 Cloudflare 时填写 cloudflare；用于证书申请与续期。" },
         {
             key: "dns_env",
@@ -41,7 +41,7 @@ const nested: Record<string, Field[]> = {
             key: "pinned_peer_cert_sha256",
             label: "证书 SHA256 指纹（留空自动生成）",
         },
-        { key: "server_name", label: "TLS 服务器名称（SNI）" },
+        { key: "server_name", label: "TLS 身份域名（SNI）" },
         { key: "allow_insecure", label: "跳过证书校验", type: "switch" },
         {
             key: "fingerprint",
@@ -95,7 +95,7 @@ const nested: Record<string, Field[]> = {
         { key: "ech_config", label: "ECH 配置（留空自动生成）" },
     ],
     tlsSettings: [
-        { key: "serverName", label: "TLS 服务器名称（SNI）" },
+        { key: "serverName", label: "TLS 身份域名（SNI）" },
         { key: "allowInsecure", label: "跳过证书校验", type: "switch" },
         { key: "fingerprint", label: "客户端指纹" },
     ],

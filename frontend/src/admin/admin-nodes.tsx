@@ -4,7 +4,7 @@ import { serviceLineFields,nodeLineFields } from "./node-line-fields";
 import { NodeSetupGuide } from "./NodeSetupGuide";
 import { AdminChoiceGroup } from "./AdminChoices";
 import { nodeConfigurationProblems, nodeChangeImpact } from "./node-guidance";
-import { nodeSetupFields, nodeSetupPayload,nodeServiceFields } from "./node-setup";
+import { nodeSetupFields, nodeSetupPayload,nodeServiceFields,certificateCredentialOptions } from "./node-setup";
 import { NodeConnectionEditor, NodeForwarding } from "./NodeConnections";
 import { NodeTopology } from "./NodeTopology";
 import { NodeDictionaryProvider,useNodeCatalog } from "./node-dictionary";
@@ -221,9 +221,9 @@ function NodesContent({
                     disabled={busy || d.loading}
                     options={[
                         { value: "line", label: "节点信息" },
-                        { value: "path", label: "接入路径" },
-                        { value: "service", label: "代理服务" },
-                        { value: "deploy", label: "部署与诊断" },
+                        { value: "path", label: "连接与域名" },
+                        { value: "service", label: "协议与证书" },
+                        { value: "deploy", label: "部署与状态" },
                     ]}
                     onChange={(next) => {
                         if (
@@ -237,7 +237,7 @@ function NodesContent({
                         openSection(managedLine, next);
                     }}
                 />
-                <p className="admin-deployment-card">{{line: "节点信息：设置用户订阅中显示的名称、地区与访问权限。", path: "接入路径：选择直连或中转，设置用户连接地址。入口 IP 与转发由入口服务器管理，回源地址指向代理服务器。", service: "代理服务：配置运行 V2Box 的服务器所使用的协议、监听端口与证书。共用此服务的节点会一同受影响。", deploy: "部署与诊断：在代理服务器执行安装命令，检查配置与证书是否生效。中转入口的上报与转发请在服务器管理完成。"}[section]}</p>
+                <p className="admin-deployment-card">{{line: "节点信息：设置用户订阅中显示的名称、地区与访问权限。", path: "连接与域名：选择直连或中转，设置用户连接地址。入口 IP 与转发由入口服务器管理，回源地址指向代理服务器。", service: "协议与证书：配置运行 V2Box 的服务器所使用的协议、监听端口与证书。共用此服务的节点会一同受影响。", deploy: "部署与状态：在代理服务器执行安装命令，检查配置与证书是否生效。中转入口的上报与转发请在服务器管理完成。"}[section]}</p>
                 <details className="admin-deployment-tools"><summary>代理服务关联节点（{associatedNodes.length} 个）</summary>
                     <ul>{associatedNodes.map(n=><li key={`${n.type}:${n.id}`}>{n.name}{Number(n.id)===Number(managedLine.id)?"（当前节点）":""}</li>)}</ul>
                     <p className="muted">修改代理服务的协议、监听、证书或部署会影响以上节点。计费倍率沿用同一服务的统计，暂不按入口分别计费。</p>
@@ -774,12 +774,13 @@ function NodesContent({
                 <NodeDeployment
                     key={`${credentialNode.type}:${credentialNode.id}:${credentialNode._editorSection || "deploy"}`}
                     navigation={(busy, dirty) =>
-                        editorNavigation(credentialNode._editorSection === "path" ? "path" : "deploy", busy, dirty)
+                        editorNavigation((credentialNode._editorSection === "path" || credentialNode._focusDomain) ? "path" : "deploy", busy, dirty)
                     }
                     editorName={managedLine?.name}
+                    openConnection={managedLine ? () => openSection(managedLine, "path") : undefined}
                     node={credentialNode}
                     scope={
-                        credentialNode._editorSection === "path" ? "connection" : "service"
+                        (credentialNode._editorSection === "path" || credentialNode._focusDomain) ? "connection" : "service"
                     }
                     inspect={() => {
                         setDiagnosticNode(credentialNode);
@@ -873,12 +874,12 @@ function NodesContent({
                             {editing.id && (
                                 <div className="pad node-editor-intro">
                                     <p>
-                                        此处维护协议、监听和证书。节点名称、权限与展示信息在“节点信息”维护，连接入口在“接入路径”维护。
+                                        此处维护协议、监听和证书。节点名称、权限与展示信息在“节点信息”维护，连接入口在“连接与域名”维护。
                                     </p>
                                     <p>
                                         保存后请核对节点通信与运行状态，确认配置已应用。
                                     </p>
-                                    {managedService && Number(editing.tls)===1 && <p className="muted">TLS 身份域名：{editing.tls_settings?.server_name || editing.host}。普通 TLS 的 SNI 随托管连接域名维护。更换域名请前往“部署 → 域名与解析”，新证书验证成功后生效；Reality 的 SNI 独立设置。</p>}
+                                    {managedService && Number(editing.tls)===1 && <p className="muted">TLS 身份域名：{editing.tls_settings?.server_name || editing.host}。普通 TLS 的 SNI 随托管连接域名维护。更换域名请前往“连接与域名”，新证书验证成功后生效；Reality 的 SNI 独立设置。</p>}
                                     <p className="muted">
                                         切换协议可能清除不兼容配置；高级扩展参数仍会保留。
                                     </p>
@@ -986,7 +987,7 @@ function NodesContent({
                                                 ),
                                             );
                                         for (const field of presented) if (field.key === "tls_settings.dns_credential_id") {
-                                            field.options = [["", "手动配置其他 DNS 凭据"], ...(topology.data?.credentials || []).filter((c:Row)=>c.root_domain && Number(c.next_run)>=0).map((c:Row)=>[String(c.id), `${c.name} · ${c.root_domain}`] as [string,string])];
+                                            field.options = certificateCredentialOptions(values, topology.data);
                                         }
                                         return editing.id
                                             ? nodeServiceFields(presented.filter(
@@ -1305,7 +1306,15 @@ function NodesContent({
                                             return `配置预检发现 ${problems.length} 项问题，请按提示调整。`;
                                         }
                                     }}
-                                    linkValues={linkNode}
+                                    linkValues={(key, next, values) => {
+                                        const linked = linkNode(key, next, values);
+                                        if (!editing.id && ["setup_entry_id", "setup_credential_id", "setup_access_mode", "tls_settings.cert_mode"].includes(key)
+                                            && linked["tls_settings.cert_mode"] === "dns" && !linked["tls_settings.dns_credential_id"] && !linked["tls_settings.dns_env"]) {
+                                            const options = certificateCredentialOptions(linked, topology.data);
+                                            if (options.length === 2) linked["tls_settings.dns_credential_id"] = options[1][0];
+                                        }
+                                        return linked;
+                                    }}
                                     fields={nodeSettingsFields(
                                         Object.entries(schema.data || {})
                                             .filter(

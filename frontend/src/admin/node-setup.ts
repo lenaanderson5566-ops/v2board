@@ -25,14 +25,14 @@ export function nodeSetupFields(
     const setup: Field[] = [
         {
             key: "setup_mode",
-            section: "连接路径与域名",
+            section: "连接与域名",
             label: "配置方式",
             type: "select",
             options: [
                 ["managed", "自动管理服务器与域名（推荐）"],
                 ["manual", "手动维护连接地址"],
             ],
-            hint: "先完成协议与证书配置，再设置下方连接路径；保存后在代理服务器执行部署命令。",
+            hint: "先选择连接路径和域名，再配置协议与证书；保存后在代理服务器执行部署命令。",
         },
     ];
     if (managed && backend === "v2box")
@@ -45,7 +45,7 @@ export function nodeSetupFields(
                 ["direct", "直连"],
                 ["relay", "入口中转"],
             ],
-            hint: "直连直接连接代理服务器；中转经入口转发。普通 TLS 中转请先选择 DNS 申请并配置验证凭据，证书覆盖入口域名。",
+            hint: "直连直接连接代理服务器；中转经入口转发。普通 TLS 中转使用 DNS 申请证书，证书覆盖入口域名。",
         });
     if (managed && relay)
         setup.push(
@@ -197,7 +197,7 @@ export function nodeSetupFields(
               }
             : {}),
     }));
-    return [...line, ...service, ...setup];
+    return [...line, ...setup, ...service];
 }
 
 export function nodeSetupPayload(values: Row): Row | undefined {
@@ -225,7 +225,25 @@ export function nodeServiceFields(fields: Field[]): Field[] {
         return rank(a.key)-rank(b.key);
     }).map((field, index) => ({
         ...field,
-        section: index === 0 ? "代理服务" : field.section,
+        section: index === 0 ? "协议与证书" : field.section,
         ...(field.key === "server_port" ? { label: "监听端口" } : {}),
     }));
+}
+
+/** Match certificate identity, never the relay origin domain. Keep stale selections visible. */
+export function certificateCredentialOptions(values: Row, network?: Row | null): [string, string][] {
+    const credentials: Row[] = network?.credentials || [];
+    const entry = (network?.assignments || []).find((a: Row) => String(a.id) === String(values.setup_entry_id) && a.purpose === "entry");
+    const root = credentials.find(c => String(c.id) === String(values.setup_credential_id));
+    const domain = String(values.setup_mode === "managed"
+        ? values.setup_access_mode === "relay" ? entry?.domain || "" : root?.root_domain || ""
+        : values["tls_settings.server_name"] || values.tls_settings?.server_name || "").toLowerCase().replace(/\.$/, "");
+    const selected = String(values["tls_settings.dns_credential_id"] || "");
+    const valid = credentials.filter(c => {
+        const zone = String(c.root_domain || "").toLowerCase().replace(/\.$/, "");
+        return zone && Number(c.next_run) >= 0 && domain && (domain === zone || domain.endsWith("." + zone));
+    });
+    const options: [string, string][] = [["", "手动配置 DNS 凭据"], ...valid.map(c => [String(c.id), `${c.name} · ${c.root_domain}`] as [string, string])];
+    if (selected && !valid.some(c => String(c.id) === selected)) options.push([selected, "当前凭据不匹配或不可用，请重新选择"]);
+    return options;
 }

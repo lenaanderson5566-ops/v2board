@@ -1,3 +1,4 @@
+import { certificateCredentialOptions } from "./node-setup";
 import { describe, it, expect, vi } from "vitest";
 import type { Field } from "../shared/ui";
 import {
@@ -327,4 +328,13 @@ it("round trips saved certificate references and does not require hidden manual 
  expect(form["tls_settings.dns_credential_id"]).toBe(7);
  expect(nodeSettingsPayload(form).tls_settings).toEqual(original.tls_settings);
  expect(nodeConfigurationProblems(form,"v2box").filter(p=>["tls_settings.provider","tls_settings.dns_env"].includes(p.key))).toEqual([]);
+});
+
+it("matches certificate credentials to the ingress identity, not origin, and retains invalid references", () => {
+ const network={credentials:[{id:1,name:"入口",root_domain:"example.com",next_run:0},{id:2,name:"回源",root_domain:"origin.net",next_run:0},{id:3,name:"暂停",root_domain:"example.com",next_run:-1}],assignments:[{id:9,purpose:"entry",domain:"hk.example.com"}]};
+ const values={setup_mode:"managed",setup_access_mode:"relay",setup_entry_id:9,setup_credential_id:2};
+ expect(certificateCredentialOptions(values,network).map(x=>x[0])).toEqual(["","1"]);
+ expect(certificateCredentialOptions({...values,"tls_settings.dns_credential_id":2},network).at(-1)).toEqual(["2","当前凭据不匹配或不可用，请重新选择"]);
+ expect(certificateCredentialOptions({"tls_settings.server_name":"badexample.com"},network)).toHaveLength(1);
+ expect(certificateCredentialOptions({...values,setup_access_mode:"direct"},network).map(x=>x[0])).toEqual(["","2"]);
 });

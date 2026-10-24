@@ -16,8 +16,10 @@ export function NodeDeployment({
     scope = "service",
     navigation,
     editorName,
+    openConnection,
 }: {
     editorName?: string;
+    openConnection?: () => void;
     navigation?: (busy: boolean, dirty: boolean) => ReactNode;
     node: Row;
     close: () => void;
@@ -217,7 +219,7 @@ export function NodeDeployment({
                         },
                     ].filter(
                         (option) =>
-                            scope !== "connection" || option.value === "domain",
+                            scope === "connection" ? option.value === "domain" : !openConnection || option.value !== "domain",
                     )}
                 >
                     {tab === "domain" ? (
@@ -288,9 +290,9 @@ export function NodeDeployment({
                                 {stage.target === "domain" && (
                                     <button
                                         disabled={busy}
-                                        onClick={() => setTab("domain")}
+                                        onClick={() => openConnection ? openConnection() : setTab("domain")}
                                     >
-                                        查看域名与解析
+                                        检查连接与域名
                                     </button>
                                 )}
                                 {stage.target === "upgrade" && (

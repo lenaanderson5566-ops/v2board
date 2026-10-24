@@ -10146,6 +10146,69 @@
                             }
                           },
                           "additionalProperties": false
+                        },
+                        "dnsChecks": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "required": [
+                              "role",
+                              "domain",
+                              "serverId",
+                              "reason",
+                              "status",
+                              "providerStatus",
+                              "missingFamilies",
+                              "retryAfter"
+                            ],
+                            "properties": {
+                              "role": {
+                                "type": "string",
+                                "enum": [
+                                  "origin",
+                                  "entry"
+                                ]
+                              },
+                              "domain": {
+                                "type": "string"
+                              },
+                              "serverId": {
+                                "type": "integer"
+                              },
+                              "reason": {
+                                "type": "string",
+                                "enum": [
+                                  "ready",
+                                  "dns_pending",
+                                  "disabled",
+                                  "awaiting_report",
+                                  "sync_blocked",
+                                  "provider_backoff"
+                                ]
+                              },
+                              "status": {
+                                "type": "string"
+                              },
+                              "providerStatus": {
+                                "type": "string"
+                              },
+                              "missingFamilies": {
+                                "type": "array",
+                                "items": {
+                                  "type": "string",
+                                  "enum": [
+                                    "ipv4",
+                                    "ipv6"
+                                  ]
+                                }
+                              },
+                              "retryAfter": {
+                                "type": "integer",
+                                "minimum": 0
+                              }
+                            },
+                            "additionalProperties": false
+                          }
                         }
                       },
                       "additionalProperties": false

@@ -340,6 +340,23 @@ class WorkflowTests(unittest.TestCase):
         with patch.object(m,'dns_matches',side_effect=[True,False]), patch.object(m.time,'monotonic',side_effect=[0,0,1000]), patch.object(m.time,'sleep') as sleep:
             with self.assertRaises(m.DeploymentError): m.Deployment.wait_dns(self.deploy)
             sleep.assert_called_once_with(15)
+    def test_dns_wait_reports_missing_family_and_preserves_state(self):
+        self.deploy.progress=lambda action='status':{'dnsReady':False,'dnsChecks':[{'role':'entry','reason':'awaiting_report','missingFamilies':['ipv6']}]}
+        with patch.object(m.time,'monotonic',side_effect=[0,0,1000]), patch.object(m.time,'sleep'), patch('sys.stdout',new_callable=io.StringIO) as out:
+            with self.assertRaisesRegex(m.DeploymentError,'Entry: missing or stale ipv6'):m.Deployment.wait_dns(self.deploy)
+            self.assertIn('Entry: missing or stale ipv6',out.getvalue())
+        self.assertTrue(self.path.exists());self.assertNotIn('restart',self.events)
+    def test_entry_credential_pause_fails_without_certificate_request(self):
+        self.deploy.progress=lambda action='status':{'dnsReady':False,'dnsChecks':[{'role':'entry','reason':'sync_blocked','missingFamilies':[]}]}
+        with self.assertRaisesRegex(m.DeploymentError,'Entry: DNS synchronization paused'):m.Deployment.wait_dns(self.deploy)
+        self.assertNotIn('certificate',self.events)
+    def test_known_conflict_is_actionable_without_echoing_unknown_secrets(self):
+        for detail,expected in [('节点或域名配置已变化，请核对后重新部署','Deployment configuration changed'),('secret-token','Deployment request rejected')]:
+            error=m.urllib.error.HTTPError('https://panel.example.test',409,'Conflict',{},io.BytesIO(json.dumps({'detail':detail}).encode()))
+            with patch.object(m.urllib.request,'build_opener') as build:
+                build.return_value.open.side_effect=error
+                with self.assertRaisesRegex(m.DeploymentError,expected) as caught:m.json_request('https://panel.example.test',body={'action':'status'})
+                self.assertNotIn('secret-token',str(caught.exception))
     def test_relay_finish_does_not_claim_entry_connectivity(self):
         self.deploy.flow['accessMode']='relay'
         with patch('sys.stdout',new_callable=io.StringIO) as out:

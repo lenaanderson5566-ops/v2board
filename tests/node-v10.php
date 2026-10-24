@@ -581,6 +581,28 @@ try {
     $assert($progress('start')->getStatusCode()===409 && $progress('complete')->getStatusCode()===409,'Unresolved DNS cannot start or publish');
     $user->is_admin=0;$user->save();$assert($progress('status')->getStatusCode()===403,'Demotion revokes deployment workflow');$user->is_admin=1;$user->save();
     $originalPort=$node->server_port;$node->server_port=8443;$node->save();$assert($progress('status')->getStatusCode()===409,'Node configuration changes invalidate workflow');$node->server_port=$originalPort;$node->save();
+    $waiting=json_decode($progress('status')->getContent(),true)['data'];
+    $assert($waiting['dnsChecks'][0]['missingFamilies']===['ipv6'] && $waiting['dnsChecks'][0]['role']==='origin','Deployment identifies missing IPv6 and origin separately');
+    DB::table('v2_ddns_credential')->insert(['id'=>999999,'name'=>'Deployment fixture','zone_id'=>str_repeat('a',32),'root_domain'=>'example.test','secret'=>Illuminate\Support\Facades\Crypt::encryptString('fixture-only'),'status'=>'ready','next_run'=>0]);
+    DB::table('v2_node_ddns')->where('id',$deploymentBinding)->update(['next_run'=>0,'ipv6'=>'2606:4700:4700::1111','ipv6_seen_at'=>time()]);
+    Illuminate\Support\Facades\Http::fake(['api.cloudflare.com/*'=>function($request) {
+        if ($request->method()==='GET') return Illuminate\Support\Facades\Http::response(['success'=>true,'result'=>[]]);
+        return Illuminate\Support\Facades\Http::response(['success'=>true,'result'=>array_merge($request->data(),['id'=>bin2hex(random_bytes(16))])]);
+    }]);
+    $synchronized=json_decode($progress('status')->getContent(),true)['data'];
+    $assert($synchronized['dnsReady'] && $synchronized['dnsChecks'][0]['reason']==='ready','Authorized deployment synchronizes DNS without scheduler');
+    $assert(DB::table('v2_node_ddns')->find($deploymentBinding)->last_success>=time()-5,'Deployment sync persists state visible to administration');
+    $requests=Illuminate\Support\Facades\Http::recorded()->count();$progress('status');
+    $assert(Illuminate\Support\Facades\Http::recorded()->count()===$requests,'Progress polling preserves DNS cooldown');
+    DB::table('v2_node_ddns')->where('id',$deploymentBinding)->update(['next_run'=>0,'last_success'=>0]);
+    DB::table('v2_ddns_credential')->where('id',999999)->update(['next_run'=>time()+900]);
+    $paused=json_decode($progress('status')->getContent(),true)['data'];
+    $assert($paused['dnsChecks'][0]['reason']==='provider_backoff' && Illuminate\Support\Facades\Http::recorded()->count()===$requests,'Deployment cannot bypass provider backoff');
+    DB::table('v2_ddns_credential')->where('id',999999)->update(['next_run'=>-1]);
+    $paused=json_decode($progress('status')->getContent(),true)['data'];
+    $assert($paused['dnsChecks'][0]['reason']==='sync_blocked' && Illuminate\Support\Facades\Http::recorded()->count()===$requests,'Deployment explains credential pause without retrying provider');
+    DB::table('v2_node_dns_record')->where('assignment_id',$deploymentBinding)->delete();
+    DB::table('v2_ddns_credential')->where('id',999999)->delete();
     DB::table('v2_node_ddns')->where('id',$deploymentBinding)->update(['status'=>'ready_to_switch','last_success'=>time(),'ipv4'=>'8.8.8.8','ipv6'=>'2606:4700:4700::1111','ipv4_seen_at'=>time(),'ipv6_seen_at'=>time()]);
     foreach(['A'=>'8.8.8.8','AAAA'=>'2606:4700:4700::1111'] as $kind=>$ip) DB::table('v2_node_dns_record')->insert(['assignment_id'=>$deploymentBinding,'credential_id'=>999999,'domain'=>'deployment.example.test','type'=>$kind,'record_id'=>bin2hex(random_bytes(16)),'owner'=>bin2hex(random_bytes(24)),'content'=>$ip,'status'=>'active']);
     $assert($progress('start')->getStatusCode()===200,'Ready DNS permits one start boundary');

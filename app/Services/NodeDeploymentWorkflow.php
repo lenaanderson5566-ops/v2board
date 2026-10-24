@@ -55,7 +55,25 @@ final class NodeDeploymentWorkflow
             abort_unless($node && !$node->service_id && $actor && $actor->is_admin && !$actor->banned && hash_equals($w['actorProof'],hash('sha256',(string)$actor->password)) && $cred && !$cred->revoked_at && (!$cred->expires_at || $cred->expires_at>time()),403,'部署授权已撤销');
             abort_unless(hash_equals($w['proof'],self::snapshot($node)),409,'节点或域名配置已变化，请核对后重新部署');
             if ($w['completed']) return ['completed'=>true,'dnsReady'=>true,'applicationState'=>'applied','errorCode'=>null,'addresses'=>(object)[]];
-            $a=self::binding($node);$addresses=[];$ready=NetworkServer::ready($a) && NetworkServer::ready(NetworkServer::target($a));
+            $a=self::binding($node);
+            // Enrollment is a scoped POST. Progress can advance one due binding even
+            // when cron is unavailable; sync retains the provider pause/backoff and lock.
+            if ($action==='status') {
+                foreach (array_unique([$a->id,NetworkServer::target($a)->id]) as $id) {
+                    $pending=DB::table('v2_node_ddns')->find($id);
+                    if (!$pending) continue;
+                    $provider=DB::table('v2_ddns_credential')->find($pending->credential_id);
+                    if ($pending->next_run>=0 && $pending->next_run<=time() && $provider && $provider->next_run>=0 && $provider->next_run<=time()) {
+                        try { app(NodeDnsLifecycle::class)->sync((int)$id); }
+                        catch (\Symfony\Component\HttpKernel\Exception\HttpException $e) { if ($e->getStatusCode()!==409) throw $e; }
+                        break;
+                    }
+                }
+                $node->refresh();
+                abort_unless(hash_equals($w['proof'],self::snapshot($node)),409,'节点或域名配置已变化，请核对后重新部署');
+                $a=self::binding($node);
+            }
+            $addresses=[];$ready=NetworkServer::ready($a) && NetworkServer::ready(NetworkServer::target($a));
             foreach ($a->family==='dual'?['ipv4','ipv6']:[$a->family] as $family) {
                 $ip=$a->$family;
                 $ready=$ready && $ip && $a->{$family.'_seen_at'}>=time()-900 && DB::table('v2_node_dns_record')->where('assignment_id',$a->id)->where('credential_id',$a->credential_id)->where('domain',$a->domain)->where('type',$family==='ipv4'?'A':'AAAA')->where('content',$ip)->whereNotNull('record_id')->where('status','active')->where('delete_after',0)->exists();
@@ -75,6 +93,7 @@ final class NodeDeploymentWorkflow
                 $w['completed']=true;$cache->put($key,$w,$w['expires']-time());
             }
             return ['completed'=>$w['completed'],'dnsReady'=>(bool)$ready,'addresses'=>(object)$addresses,'entryAddresses'=>(object)NetworkServer::addresses(NetworkServer::target($a)),
+                'dnsChecks'=>array_values(array_filter([self::dnsCheck($a,'origin'),$a->entry_id?self::dnsCheck(NetworkServer::target($a),'entry'):null])),
                 'applicationState'=>$applied?'applied':($runtime['applicationState']==='failed'?'failed':'unconfirmed'),
                 'errorCode'=>$runtime['errorCode'],'dnsStatus'=>$a->status];
         };
@@ -84,5 +103,22 @@ final class NodeDeploymentWorkflow
             if ($e->getStatusCode()===409 && $e->getMessage()==='域名操作正在执行，请稍后重试') abort(503,'部署操作暂忙，请稍后重试');
             throw $e;
         }
+    }
+
+    public static function dnsCheck($a,string $role): array {
+        $server=DB::table('v2_network_server')->find($a->server_id);
+        $provider=DB::table('v2_ddns_credential')->find($a->credential_id);
+        $missing=[];
+        foreach ($a->family==='dual'?['ipv4','ipv6']:[$a->family] as $family) {
+            if (!$a->$family || $a->{$family.'_seen_at'}<time()-900) $missing[]=$family;
+        }
+        $reason=NetworkServer::ready($a)?'ready':'dns_pending';
+        if (!$server || !$server->enabled || !$a->enabled) $reason='disabled';
+        elseif ($missing) $reason='awaiting_report';
+        elseif (!$provider || $provider->next_run<0 || $a->next_run<0) $reason='sync_blocked';
+        elseif ($provider->next_run>time()) $reason='provider_backoff';
+        return ['role'=>$role,'domain'=>$a->domain,'serverId'=>(int)$a->server_id,'reason'=>$reason,
+            'status'=>$a->status,'providerStatus'=>$provider->status??'missing','missingFamilies'=>$missing,
+            'retryAfter'=>max(0,(int)$a->next_run-time(),(int)($provider->next_run??0)-time())];
     }
 }

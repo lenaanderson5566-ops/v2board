@@ -25,7 +25,7 @@ class NoRedirect(urllib.request.HTTPRedirectHandler):
     def redirect_request(self, *args, **kwargs):
         return None
 
-def json_request(url, token=None, body=None):
+def json_request(url, token=None, body=None, timeout=10):
     headers={'User-Agent':'v2box-deployment/1.0 (+https://github.com/lenaanderson5566-ops/v2box)',
              'Accept':'application/dns-json' if body is None else 'application/json'}
     if token:
@@ -34,7 +34,7 @@ def json_request(url, token=None, body=None):
         headers['Content-Type']='application/json'
     request=urllib.request.Request(url,headers=headers,data=None if body is None else json.dumps(body).encode())
     try:
-        with urllib.request.build_opener(NoRedirect()).open(request,timeout=10) as response:
+        with urllib.request.build_opener(NoRedirect()).open(request,timeout=timeout) as response:
             raw=response.read(262145)
             if len(raw)>262144:
                 raise DeploymentError('Response exceeded size limit')
@@ -63,6 +63,15 @@ def json_request(url, token=None, body=None):
         finally:
             e.close()
         if e.code in (401,403,409,422):
+            known = {
+                '节点或域名配置已变化，请核对后重新部署': 'Deployment configuration changed. Finish saving node/domain settings, then generate a new deployment task; the current resume task cannot apply changed settings.',
+                '解析尚未同步': 'DNS changed before service start. Check origin and entry DNS, then resume.',
+                '部署恢复授权已过期，请在后台重新配置': 'Deployment authorization expired. Generate a new deployment task in the panel.',
+                '部署授权已撤销': 'Deployment authorization was revoked. Check node credentials in the panel.',
+            }
+            detail=payload.get('detail',payload.get('message'))
+            if isinstance(detail,str) and detail in known:
+                raise DeploymentError(known[detail]) from None
             raise DeploymentError('Deployment request rejected (%s); check gateway rules, authorization and node settings. Do not delete existing certificates.' % e.code) from None
         raise OSError('HTTP service unavailable') from None
     except (ValueError,UnicodeError):
@@ -122,7 +131,7 @@ class Deployment:
     def progress(self,action='status'):
         for attempt in range(3):
             try:
-                return json_request(self.host+'/api/v10/server/enrollments/progress',self.flow['token'],{'action':action})['data']
+                return json_request(self.host+'/api/v10/server/enrollments/progress',self.flow['token'],{'action':action},timeout=60)['data']
             except OSError:
                 if attempt==2: raise
                 time.sleep(2)
@@ -227,21 +236,56 @@ class Deployment:
     def wait_dns(self):
         print('Waiting for panel synchronization and public A/AAAA propagation (up to 15 minutes).',flush=True)
         deadline=time.monotonic()+900
+        last_reason=None
+        polls=0
+        reason='Waiting for panel response.'
         while time.monotonic()<deadline:
             try:
+                reason='Panel deployment status request'
                 status=self.progress()
                 if status.get('completed'): return True
+                reasons=[]
+                for check in status.get('dnsChecks',[]):
+                    role=check.get('role')
+                    if role not in ('origin','entry'): continue
+                    label='Origin' if role=='origin' else 'Entry'
+                    code=check.get('reason')
+                    missing=', '.join(f for f in check.get('missingFamilies',[]) if f in ('ipv4','ipv6'))
+                    messages={
+                        'ready': 'panel DNS synchronized',
+                        'disabled': 'server or domain disabled; enable it in the panel',
+                        'awaiting_report': 'missing or stale '+missing+' report; check IP reporting on this server and its configured address family',
+                        'sync_blocked': 'DNS synchronization paused; check Cloudflare credentials and record ownership in the panel',
+                        'provider_backoff': 'Cloudflare retry cooldown; wait for the provider retry',
+                        'dns_pending': 'waiting for panel DNS synchronization; check domain status in the panel',
+                    }
+                    if code in messages: reasons.append(label+': '+messages[code])
+                    if code in ('sync_blocked','disabled'):
+                        known_statuses={'ownership_conflict','host_changed','credential_rejected','credential_unreadable','configuration_rejected','ambiguous_records','unexpected_record','provider_rejected'}
+                        states=', '.join(s for s in (check.get('status'),check.get('providerStatus')) if isinstance(s,str) and s in known_statuses)
+                        raise DeploymentError(label+': '+messages[code]+(' ('+states+')' if states else '')+'. No certificate request was started.')
+                reason='; '.join(reasons) or 'Waiting for panel DNS synchronization; check origin/entry IP reporting and Cloudflare status.'
                 if status.get('dnsStatus') in ('ownership_conflict','host_changed','credential_rejected','configuration_rejected','ambiguous_records'):
                     raise DeploymentError('DNS synchronization requires administrator attention: '+status['dnsStatus'])
-                if status.get('dnsReady') and dns_matches(self.flow['domain'],status['addresses']):
-                    if self.flow.get('accessMode')=='relay':
-                        if dns_matches(self.flow['connectionDomain'],status.get('entryAddresses',{})): return False
+                if status.get('dnsReady'):
+                    reason='Origin public DNS: waiting for A/AAAA to match reported IPs on both public resolvers; check stale AAAA and DNS-only mode.'
+                    if not dns_matches(self.flow['domain'],status['addresses']):
+                        pass
+                    elif self.flow.get('accessMode')=='relay':
+                        reason='Entry public DNS: waiting for A/AAAA to match entry server IPs on both public resolvers.'
+                        if dns_matches(self.flow['connectionDomain'],status.get('entryAddresses',{})):
+                            print('DNS verified: origin and entry. Next: start V2Box and verify certificate.',flush=True);return False
                     elif self.flow['certificateMode']!='http' or self.flow['certificateDomain']==self.flow['domain'] or dns_matches(self.flow['certificateDomain'],status['addresses']):
-                        return False
+                        print('DNS verified. Next: start V2Box and verify certificate.',flush=True);return False
+                    else:
+                        reason='Certificate HTTP validation domain: waiting for public DNS to match origin IPs.'
             except OSError:
-                pass
+                reason+=' Request failed; check HTTPS connectivity to the panel and public DNS resolvers.'
+            if reason!=last_reason or polls%4==0:
+                print(reason,flush=True);last_reason=reason
+            polls+=1
             time.sleep(15)
-        raise DeploymentError('DNS wait timed out. Check scheduler, Cloudflare status, both address families and public resolvers. No certificate request was started.')
+        raise DeploymentError('DNS wait timed out. '+reason+' No certificate request was started. Fix the reported issue, then resume.')
 
     def check_http_port(self):
         if self.flow['certificateMode']!='http': return

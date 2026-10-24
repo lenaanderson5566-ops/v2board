@@ -23,6 +23,18 @@ class ManageController extends Controller
         return response(['data' => \App\Services\NodeRuntimeService::inspect($input['type'], $node)]);
     }
 
+    public function checkDeployment(Request $request)
+    {
+        $input=$request->validate(['type'=>'required|in:v2node,v2box','id'=>'required|integer|min:1']);
+        $node=(new ServerService())->getServer($input['id'],$input['type']);
+        abort_unless($node,404,'节点不存在');
+        $lock=\Illuminate\Support\Facades\Cache::lock('deployment-check:'.$input['type'].':'.$input['id'],45);
+        abort_unless($lock->get(),429,'此节点正在检查，请稍后重试');
+        try {
+            return response()->json(['data'=>app(\App\Services\NodeDeploymentCheck::class)->inspect($input['type'],$node)],200,['Cache-Control'=>'private, no-store']);
+        } finally { $lock->release(); }
+    }
+
     public function maintenance(Request $request)
     {
         $input=$request->validate(['type'=>'required|in:v2node,v2box','id'=>'required|integer|min:1',

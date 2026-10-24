@@ -1078,3 +1078,8 @@ Nodes、AdminDDNS、admin-linkage 三个现有模块共 129 项测试通过。�
 ### V2Box 实际应用验证补验完成
 
 使用 Go 1.27.3 Linux 隔离容器运行 `go test -tags with_quic,with_utls ./cmd ./node ./core ./api/v2board`，四个包全部通过。新增真实重载测试覆盖 VLESS/Trojan 数据回显、旧端口关闭、新 TLS 域名握手、直连与本地 TCP 四层中转往返、DNS 模式活动控制器凭据轮换，以及错误证书拒绝后旧服务仍可传输数据。本地证书和模拟面板不等于真实 Cloudflare/公网 ACME 签发或生产 Nginx 部署验证。此补验解决上一轮 Go 工具链未完成的测试限制。
+
+
+### 部署检查界面
+
+Nodes 与 AdminDDNS 的 104 项 Vitest 检查通过，包含按需发起、禁用重复点击、异常后的重试、切换节点时丢弃旧请求结果、异常与下一步提示。TypeScript 与生产构建通过，已生成管理端资源。此次使用 jsdom 组件验证，未执行生产后台浏览器验收。

@@ -667,5 +667,89 @@ try {
     $assert($call(str_repeat('6',64),['ipv4'=>'9.9.9.9'])->getStatusCode()===202 && DB::table('v2_node_ddns')->find($legacy[1])->ipv4==='8.8.8.8','existing report credential survives migration and remains scoped');
     $count=DB::table('v2_network_server')->count();(new NetworkServers)->up();
     $assert(DB::table('v2_network_server')->count()===$count,'migration is idempotent');
+
+    // Deployment checks are read-only and never trust DNS answers as arbitrary probe targets.
+    $probe=new class extends App\Services\NodeDeploymentCheck {
+        public array $ips=['8.8.8.8']; public int $connections=0; public array $outcome=['state'=>'pass','code'=>'tls_verified','expiresAt'=>2000000000,'fingerprint'=>'test'];
+        public function resolve(string $host): array { return $this->ips; }
+        public function connect(string $host,string $ip,int $port,?string $identity): array { $this->connections++; return $this->outcome; }
+    };
+    foreach (['127.0.0.1','10.0.0.1','169.254.169.254','::1','::ffff:127.0.0.1','100.64.0.1','192.0.2.1'] as $unsafe) {
+        $probe->ips=['8.8.8.8',$unsafe]; $probe->connections=0;
+        $assert($probe->endpoint('check.example.test',443,'check.example.test',false)['code']==='unsafe_target' && $probe->connections===0,'mixed DNS answer never probes private/reserved target');
+    }
+    $probe->ips=['8.8.8.8'];$probe->connections=0;
+    $assert($probe->endpoint('check.example.test',443,null,false,['9.9.9.9'])['code']==='dns_mismatch' && $probe->connections===0,'managed DNS mismatch does not connect');
+    $assert($probe->endpoint('check.example.test',443,'check.example.test',true)['code']==='udp_client_required' && $probe->connections===0,'UDP is never declared healthy from TCP');
+    $probe->ips=['8.8.8.8','1.1.1.1','9.9.9.9'];
+    $assert($probe->endpoint('check.example.test',443,null,false)['code']==='too_many_addresses' && $probe->connections===0,'probe fanout is bounded');
+    $probe->ips=['8.8.8.8','2606:4700:4700::1111'];
+    $r=$probe->endpoint('check.example.test',443,'check.example.test',false);
+    $assert($r['state']==='pass' && count($r['addresses'])===2,'both public address families checked');
+    $probe->outcome=['state'=>'fail','code'=>'certificate_invalid'];
+    $assert($probe->endpoint('check.example.test',443,'check.example.test',false)['state']==='fail','certificate validation failure never reported healthy');
+    $probe->ips=[];$assert($probe->endpoint('check.example.test',443,null,false)['dns']==='fail','empty DNS fails');
+    $assert(!(new App\Services\NodeDeploymentCheck())->hostname('example.test/path'),'reject URL paths');
+    $assert((new App\Services\NodeDeploymentCheck())->connect('example.test','127.0.0.1',443,'example.test')['code']==='unsafe_target','socket layer independently enforces public IP');
+    Http::swap(new Illuminate\Http\Client\Factory());
+    Http::fake(['dns.google/*'=>Http::response(['Status'=>0,'Answer'=>[['type'=>5,'data'=>'alias.example.test'],['type'=>1,'data'=>'8.8.8.8'],['type'=>28,'data'=>'2606:4700:4700::1111']]])]);
+    $assert(count((new App\Services\NodeDeploymentCheck())->resolve('check.example.test'))===2,'DNS resolver extracts only requested A/AAAA records');
+    Http::swap(new Illuminate\Http\Client\Factory());
+    Http::fake(['dns.google/*'=>Http::response(['Status'=>2])]);
+    try { (new App\Services\NodeDeploymentCheck())->resolve('check.example.test'); throw new RuntimeException('Expected DNS error'); }
+    catch (RuntimeException $e) { $assert($e->getMessage()==='dns_unavailable','resolver errors are not success'); }
+    $checkNode=App\Models\ServerV2box::create(array_replace($base,['tls'=>1,'tls_settings'=>['server_name'=>'check.example.test','dns_env'=>'never-return-secret']]));
+    $probe->ips=['8.8.8.8'];$probe->outcome=['state'=>'pass','code'=>'tls_verified','expiresAt'=>2000000000,'fingerprint'=>'test'];
+    $beforeCheck=$checkNode->fresh()->toArray();
+    $report=$probe->inspect('v2box',$checkNode);$items=array_column($report['items'],null,'key');
+    $assert($items['certificate']['state']==='pass' && $items['renewal']['state']==='unknown' && $items['relay']['state']==='skip','valid online certificate does not claim automatic renewal or relay');
+    $assert(!str_contains(json_encode($report),'never-return-secret') && $checkNode->fresh()->toArray()===$beforeCheck,'read-only report excludes private settings');
+    $checkNode->protocol='tuic';$checkNode->save();$report=$probe->inspect('v2box',$checkNode);$items=array_column($report['items'],null,'key');
+    $assert($items['certificate']['state']==='unknown' && $items['listener']['state']==='unknown','QUIC remains explicitly unverified');
+
+    $checkNode->protocol='anytls';$checkNode->save();
+    $entryId=DB::table('v2_node_ddns')->insertGetId(['credential_id'=>$cid,'node_type'=>'entry','node_id'=>888888,'purpose'=>'entry','domain'=>'entry.check.test','family'=>'ipv4','ipv4'=>'8.8.8.8','ipv4_seen_at'=>time(),'enabled'=>true,'managed'=>true]);
+    $originId=DB::table('v2_node_ddns')->insertGetId(['credential_id'=>$cid,'node_type'=>'v2box','node_id'=>$checkNode->id,'domain'=>'origin.check.test','family'=>'ipv4','ipv4'=>'8.8.8.8','ipv4_seen_at'=>time(),'enabled'=>true,'managed'=>true,'entry_id'=>$entryId,'entry_port'=>443]);
+    $report=$probe->inspect('v2box',$checkNode);$items=array_column($report['items'],null,'key');
+    $assert($items['relay']['state']==='pass','relay requires verified entry and origin TLS with matching fingerprints');
+    $mismatch=new class extends App\Services\NodeDeploymentCheck {
+        public function resolve(string $host): array { return ['8.8.8.8']; }
+        public function connect(string $host,string $ip,int $port,?string $identity): array { return ['state'=>'pass','code'=>'tls_verified','expiresAt'=>2000000000,'fingerprint'=>$host]; }
+    };
+    $items=array_column($mismatch->inspect('v2box',$checkNode)['items'],null,'key');
+    $assert($items['relay']['state']==='unknown','entry serving a different certificate never confirms relay');
+
+    $partial=new class extends App\Services\NodeDeploymentCheck {
+        public function resolve(string $host): array { return ['8.8.8.8','2606:4700:4700::1111']; }
+        public function connect(string $host,string $ip,int $port,?string $identity): array { return str_contains($ip,':')?['state'=>'unknown','code'=>'unreachable']:['state'=>'pass','code'=>'tcp_connected']; }
+    };
+    $assert($partial->endpoint('check.example.test',443,null,false)['state']==='unknown','IPv4 success cannot hide IPv6 failure');
+    $changing=new class extends App\Services\NodeDeploymentCheck {
+        public int $nodeId;
+        public function resolve(string $host): array { return ['8.8.8.8']; }
+        public function connect(string $host,string $ip,int $port,?string $identity): array {
+            DB::table('v2_server_v2box')->where('id',$this->nodeId)->update(['server_port'=>9555]);
+            return ['state'=>'pass','code'=>'tls_verified','expiresAt'=>2000000000,'fingerprint'=>'test'];
+        }
+    };
+    $changing->nodeId=$checkNode->id;
+    $items=$changing->inspect('v2box',$checkNode)['items'];
+    $assert(!in_array('pass',array_column($items,'state'),true),'configuration changed during probe invalidates success results');
+    $checkNode->refresh();
+    $adminCheck=new App\Http\Controllers\V1\Admin\Server\ManageController();
+    app()->instance(App\Services\NodeDeploymentCheck::class,$probe);
+    $input=$req(['type'=>'v2box','id'=>$checkNode->id]);
+    $response=$adminCheck->checkDeployment($input);
+    $assert(str_contains($response->headers->get('Cache-Control'),'no-store'),'probe result is private and not cached');
+    $lock=Illuminate\Support\Facades\Cache::lock('deployment-check:v2box:'.$checkNode->id,45);$assert($lock->get(),'check releases lock after completion');
+    $reject(fn()=>$adminCheck->checkDeployment($input),429);$lock->release();
+    $reject(fn()=>$adminCheck->checkDeployment($req(['type'=>'v2box','id'=>999999999])),404);
+    $adminPath='/api/v1/'.config('v2board.secure_path',config('v2board.frontend_admin_path',hash('crc32b',config('app.key'))));
+    $unauth=$kernel->handle(Request::create($adminPath.'/server/manage/check-deployment','POST',['type'=>'v2box','id'=>$checkNode->id],[],[],['HTTP_ACCEPT'=>'application/json']));
+    $assert($unauth->getStatusCode()===403,'anonymous cannot trigger network probes');
+    app()->forgetInstance(App\Services\NodeDeploymentCheck::class);
+    DB::table('v2_node_ddns')->whereIn('id',[$entryId,$originId])->delete();
+    $checkNode->delete();
+
     echo "Node DDNS: $checks checks passed\n";
 } finally { DB::rollBack(); }

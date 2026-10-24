@@ -119,6 +119,7 @@ class AdminRoute
             $router->get('/server/traffic-budget/fetch', 'V1\\Admin\\ServerTrafficBudgetController@fetch');
             $router->post('/server/traffic-budget/save', 'V1\\Admin\\ServerTrafficBudgetController@save');
             $router->get('/server/manage/runtime', 'V1\\Admin\\Server\\ManageController@runtime')->middleware('throttle:60,1');
+            $router->post('/server/manage/check-deployment', 'V1\\Admin\\Server\\ManageController@checkDeployment')->middleware('throttle:4,1,deployment-check:');
             $router->get ('/server/manage/getNodes', 'V1\\Admin\\Server\\ManageController@getNodes');
             $router->post('/server/manage/maintenance', 'V1\\Admin\\Server\\ManageController@maintenance')->middleware('throttle:30,1');
             $router->post('/server/manage/sort', 'V1\\Admin\\Server\\ManageController@sort');

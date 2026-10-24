@@ -34,6 +34,7 @@ import { Infrastructure } from "./Infrastructure";
 import { AdminDDNS } from "./AdminDDNS";
 import { Nodes, ResourcePage, resources } from "./admin";
 import { NodeCredentials } from "./NodeCredentials";
+import { NodeDeploymentCheck } from "./NodeDeploymentCheck";
 import { NodeDeployment } from "./NodeDeployment";
 import { NodeConnectionEditor } from "./NodeConnections";
 import { NodeTopology } from "./NodeTopology";
@@ -1173,4 +1174,36 @@ it("does not present old applied status as success while newer settings are pend
   const stage=nodeDeploymentStage({type:"v2box"},{configurationState,applicationState:"applied",runtimeStatus:"online"},undefined,true);
   expect(stage.title).toBe(title);
  }
+});
+
+
+it("checks deployment only on demand and shows evidence with next steps", async () => {
+    api.request.mockResolvedValue({data:{checkedAt:1700000000,items:[
+        {key:"dns",label:"公网 DNS",state:"pass",detail:"公网查询成功",next:""},
+        {key:"certificate",label:"在线证书",state:"fail",detail:"证书校验失败",next:"检查证书域名"},
+        {key:"renewal",label:"自动续期",state:"unknown",detail:"尚未验证续期",next:"关注到期时间"},
+    ],origin:{host:"origin.example.test",port:9443,code:"certificate_invalid"},note:"仅检查"}});
+    render(<NodeDeploymentCheck node={{type:"v2box",id:3}} />);
+    expect(api.request).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole("button",{name:"一键检查"}));
+    await screen.findByText("证书校验失败");
+    expect(api.request).toHaveBeenCalledWith(expect.stringContaining("check-deployment"),{type:"v2box",id:3});
+    expect(screen.getByText("检查异常")).toBeTruthy();
+    expect(screen.getByText("下一步：检查证书域名")).toBeTruthy();
+    expect(screen.getByText("待确认")).toBeTruthy();
+});
+
+it("discards old results when switching nodes and allows retry after errors", async () => {
+    let complete:(value:any)=>void=()=>{};
+    api.request.mockImplementationOnce(()=>new Promise(resolve=>{complete=resolve;}));
+    const view=render(<NodeDeploymentCheck node={{type:"v2box",id:3}} />);
+    fireEvent.click(screen.getByRole("button",{name:"一键检查"}));
+    expect((screen.getByRole("button",{name:"正在检查…"}) as HTMLButtonElement).disabled).toBe(true);
+    view.rerender(<NodeDeploymentCheck node={{type:"v2box",id:4}} />);
+    await act(async()=>complete({data:{items:[{key:"old",label:"旧节点结果",state:"pass"}]}}));
+    expect(screen.queryByText("旧节点结果")).toBeNull();
+    api.request.mockRejectedValueOnce(new Error("请求超时"));
+    fireEvent.click(screen.getByRole("button",{name:"一键检查"}));
+    expect(await screen.findByRole("alert")).toHaveProperty("textContent",expect.stringContaining("请求超时"));
+    expect((screen.getByRole("button",{name:"一键检查"}) as HTMLButtonElement).disabled).toBe(false);
 });

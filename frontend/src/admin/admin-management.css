@@ -383,3 +383,12 @@ body[data-console="admin"] .node-creation-mode p {margin:10px 0 0;}
 .server-management-quota > summary { cursor: pointer; font-weight: 600; padding: 12px 0; }
 
 .node-domain-form > .admin-deployment-card, .node-path-prerequisite { grid-column: 1 / -1; }
+.deployment-check-heading { display:flex; align-items:center; justify-content:space-between; gap:1rem; flex-wrap:wrap; }
+.deployment-check-heading h3 { margin:0; }
+.deployment-check-list { list-style:none; padding:0; margin:1rem 0; display:grid; gap:.75rem; }
+.deployment-check-list > li { border:1px solid var(--border); border-radius:12px; padding:1rem; }
+.deployment-check-list p { margin:.5rem 0 0; }
+.deployment-check-state { font-size:.85rem; color:var(--muted); }
+.deployment-check-state.is-pass { color:var(--success, #15803d); }
+.deployment-check-state.is-fail { color:var(--danger, #b91c1c); }
+.deployment-check-address { display:block; overflow-wrap:anywhere; color:var(--muted); }

@@ -918,3 +918,8 @@ Nodes、AdminDDNS、admin-linkage 三个现有模块共 129 项测试通过。�
 ### V2Box 实际应用验证补验完成
 
 使用 Go 1.27.3 Linux 隔离容器运行 `go test -tags with_quic,with_utls ./cmd ./node ./core ./api/v2board`，四个包全部通过。新增真实重载测试覆盖 VLESS/Trojan 数据回显、旧端口关闭、新 TLS 域名握手、直连与本地 TCP 四层中转往返、DNS 模式活动控制器凭据轮换，以及错误证书拒绝后旧服务仍可传输数据。本地证书和模拟面板不等于真实 Cloudflare/公网 ACME 签发或生产 Nginx 部署验证。此补验解决上一轮 Go 工具链未完成的测试限制。
+
+
+### 部署一键检查回归
+
+复用 `tests/node-ddns.php`，在临时项目副本和独立空数据测试库验证 321 项断言。新增覆盖：混合私网/保留地址拒绝、DNS 与上报 IP 不一致、地址探测数量上限、双栈部分失败、UDP 不做 TCP 健康推断、TLS 校验失败、续期不误判、中转证书指纹一致性、请求并发锁释放、匿名权限、无缓存及配置在检查中变化导致结果失效。前端 Nodes/AdminDDNS 104 项测试、TypeScript 和生产构建通过。公共 Cloudflare 服务完成一次真实 TLS 握手，成功读取证书指纹及到期时间；这不是生产节点或真实 ACME 续期验收。未修改生产 DNS、证书或 Nginx 配置。

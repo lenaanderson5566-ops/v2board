@@ -6,6 +6,7 @@ import { admin, date, query, request, type Row } from "../shared/api";
 import { Modal, State, useData } from "../shared/ui";
 import { AdminChoiceGroup, AdminTabs } from "./AdminChoices";
 import { NodeCredentials } from "./NodeCredentials";
+import { NodeDeploymentCheck } from "./NodeDeploymentCheck";
 import { nodeDeploymentCommand, nodeUpgradeCommand } from "./node-deployment";
 
 export function NodeDeployment({
@@ -336,6 +337,7 @@ export function NodeDeployment({
                                     </p>
                                 )}
                             </section>
+                            <NodeDeploymentCheck node={node} disabled={busy} />
                             {node.type === "v2box" && (
                                 <div className="admin-deployment-mode">
                                     <AdminChoiceGroup

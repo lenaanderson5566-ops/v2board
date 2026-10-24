@@ -70,6 +70,11 @@ class NodeDdnsController extends Controller {
             $id=$old?$old->id:DB::table('v2_ddns_credential')->insertGetId($data);
             if ($old) DB::table('v2_ddns_credential')->where('id',$id)->update($data);
             if (!empty($v['token'])) {
+                foreach (['v2box','v2node'] as $type) {
+                    DB::table('v2_server_'.$type)->where('tls_settings->dns_credential_id',$id)->select('id')->orderBy('id')->chunkById(100,function($nodes)use($type){
+                        foreach ($nodes as $node) \App\Services\NodeRuntimeService::invalidate($type,(int)$node->id);
+                    });
+                }
                 DB::table('v2_node_ddns')->where('credential_id',$id)->update(['next_run'=>0,'status'=>'awaiting_report']);
                 DB::table('v2_node_dns_record')->where('credential_id',$id)->where('delete_after','>',0)->update(['next_run'=>0]);
             }

@@ -10,7 +10,7 @@ export function nodeSetupFields(
     lineFields?: Field[],
 ): Field[] {
     const roots: Row[] = (network?.credentials || []).filter(
-        (root: Row) => root.root_domain,
+        (root: Row) => root.root_domain && Number(root.next_run) >= 0,
     );
     const managed = values.setup_mode === "managed";
     const relay = managed && values.setup_access_mode === "relay";
@@ -125,14 +125,14 @@ export function nodeSetupFields(
                         .filter(
                             (server: Row) =>
                                 server.enabled &&
-                                Number(server.id) !==
+                                (!relay || Number(server.id) !==
                                     Number(
                                         entries.find(
                                             (a) =>
                                                 Number(a.id) ===
                                                 Number(values.setup_entry_id),
                                         )?.server_id,
-                                    ) &&
+                                    )) &&
                                 (server.family === "dual" ||
                                     server.family === values.setup_family),
                         )
@@ -231,19 +231,19 @@ export function nodeServiceFields(fields: Field[]): Field[] {
 }
 
 /** Match certificate identity, never the relay origin domain. Keep stale selections visible. */
-export function certificateCredentialOptions(values: Row, network?: Row | null): [string, string][] {
+export function certificateCredentialOptions(values: Row, network?: Row | null, includeUnavailable = true): [string, string][] {
     const credentials: Row[] = network?.credentials || [];
     const entry = (network?.assignments || []).find((a: Row) => String(a.id) === String(values.setup_entry_id) && a.purpose === "entry");
     const root = credentials.find(c => String(c.id) === String(values.setup_credential_id));
     const domain = String(values.setup_mode === "managed"
         ? values.setup_access_mode === "relay" ? entry?.domain || "" : root?.root_domain || ""
         : values["tls_settings.server_name"] || values.tls_settings?.server_name || "").toLowerCase().replace(/\.$/, "");
-    const selected = String(values["tls_settings.dns_credential_id"] || "");
+    const selected = String(values["tls_settings.dns_credential_id"] || values.tls_settings?.dns_credential_id || "");
     const valid = credentials.filter(c => {
         const zone = String(c.root_domain || "").toLowerCase().replace(/\.$/, "");
         return zone && Number(c.next_run) >= 0 && domain && (domain === zone || domain.endsWith("." + zone));
     });
     const options: [string, string][] = [["", "手动配置 DNS 凭据"], ...valid.map(c => [String(c.id), `${c.name} · ${c.root_domain}`] as [string, string])];
-    if (selected && !valid.some(c => String(c.id) === selected)) options.push([selected, "当前凭据不匹配或不可用，请重新选择"]);
+    if (includeUnavailable && selected && !valid.some(c => String(c.id) === selected)) options.push([selected, "当前凭据不匹配或不可用，请重新选择"]);
     return options;
 }

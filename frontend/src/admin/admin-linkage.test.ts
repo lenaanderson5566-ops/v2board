@@ -338,3 +338,13 @@ it("matches certificate credentials to the ingress identity, not origin, and ret
  expect(certificateCredentialOptions({"tls_settings.server_name":"badexample.com"},network)).toHaveLength(1);
  expect(certificateCredentialOptions({...values,setup_access_mode:"direct"},network).map(x=>x[0])).toEqual(["","2"]);
 });
+
+it("blocks stale DNS certificate selections after changing the connection domain", () => {
+ const network={credentials:[{id:1,name:"CF",root_domain:"example.com",next_run:0}], assignments:[{id:9,purpose:"entry",domain:"relay.other.net",enabled:true,server_id:4}],servers:[{id:4,enabled:true}]};
+ const form={tls:1,setup_mode:"managed",setup_access_mode:"relay",setup_entry_id:9,setup_entry_port:443,setup_credential_id:1,"tls_settings.cert_mode":"dns","tls_settings.dns_credential_id":1};
+ expect(nodeConfigurationProblems(form,"v2box",network).some(p=>p.key==="tls_settings.dns_credential_id")).toBe(true);
+ expect(nodeConfigurationProblems({...form,setup_access_mode:"direct"},"v2box",network).some(p=>p.key==="tls_settings.dns_credential_id")).toBe(false);
+ expect(linkNode("setup_access_mode","direct",form)).toMatchObject({setup_entry_id:"",setup_entry_port:""});
+ const paused={...network,credentials:[{...network.credentials[0],next_run:-1}]};
+ expect(nodeConfigurationProblems({...form,setup_access_mode:"direct"},"v2box",paused).some(p=>p.key==="tls_settings.dns_credential_id")).toBe(true);
+});

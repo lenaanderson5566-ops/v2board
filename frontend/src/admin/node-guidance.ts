@@ -1,3 +1,4 @@
+import { certificateCredentialOptions } from "./node-setup";
 import type { Row } from "../shared/api";
 import { nodeDomainProgress } from "./node-domain-progress";
 import { nodeSettingsPayload } from "./node-settings";
@@ -98,6 +99,11 @@ export function nodeConfigurationProblems(
             add("tls_settings.server_name", "请填写 TLS 身份域名");
         if (cert.cert_mode === "http" && Number(v.server_port) === 80)
             add("server_port", "HTTP 证书验证占用 TCP 80，请使用其他监听端口");
+        if (cert.cert_mode === "dns" && cert.dns_credential_id && network) {
+            const options = certificateCredentialOptions(values, network, false);
+            if (!options.some(([id]) => id === String(cert.dns_credential_id)))
+                add("tls_settings.dns_credential_id", "证书凭据与当前证书域名不匹配或已停用，请重新选择");
+        }
         if (cert.cert_mode === "dns" && !cert.dns_credential_id && !cert.provider)
             add("tls_settings.provider", "DNS 证书申请需要配置 DNS 提供商");
         if (cert.cert_mode === "dns" && !cert.dns_credential_id && !cert.dns_env)
@@ -160,6 +166,10 @@ export function nodeDeploymentStage(
         terminal: false,
         target: "deploy",
     };
+    if (runtime?.configurationState === "invalid")
+        return { ...base, terminal: true, title: "当前配置无法下发", description: "请检查协议与证书中的配置及 Cloudflare 凭据。保存成功不代表节点已应用。", target: "logs" };
+    if (runtime?.configurationState === "pending")
+        return { ...base, title: "设置已保存，等待节点获取", description: "节点尚未获取最新配置。请等待下一次同步；持续未更新时检查节点与面板的通信。", target: "logs" };
     if (runtime?.applicationState === "failed")
         return {
             ...base,

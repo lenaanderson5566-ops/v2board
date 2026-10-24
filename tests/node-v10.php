@@ -95,6 +95,15 @@ try {
     $runtime=App\Services\NodeRuntimeService::inspect('v2box',$node);
     $assert($runtime['applicationState']==='applied' && $runtime['lastAppliedAt']!==null,'Exact served configuration confirmed');
     $lastApplied=$runtime['lastAppliedAt'];
+    App\Services\NodeRuntimeService::invalidate('v2box',$node->id);
+    $assert(App\Services\NodeRuntimeService::inspect('v2box',$node)['applicationState']==='unconfirmed','Saved change cannot reuse a previously served acknowledgement');
+    $listed=App\Services\NodeRuntimeService::decorate([['id'=>$node->id,'type'=>'v2box','show'=>0]]);
+    $assert($listed[0]['application_state']==='unconfirmed','Node list also invalidates the previous applied indicator');
+    $call('POST',$root.'/capabilities',$receipt);
+    $assert(App\Services\NodeRuntimeService::inspect('v2box',$node)['applicationState']==='unconfirmed','Delayed receipt cannot acknowledge a configuration not served after save');
+    $call('GET',$root.'/configuration');
+    $assert(App\Services\NodeRuntimeService::inspect('v2box',$node)['lastAppliedAt']===$lastApplied,'Invalidation retains historical success time');
+
     $failed=$receipt;$failed['configuration']=['hash'=>$hash,'state'=>'failed','errorCode'=>'core'];
     $assert($call('POST',$root.'/capabilities',$failed)->getStatusCode()===200,'Bounded failure receipt accepted');
     $runtime=App\Services\NodeRuntimeService::inspect('v2box',$node);

@@ -694,7 +694,7 @@ it("creates a direct node and its domain in one save without a separate server f
     api.request.mockImplementation(async (path: string) => {
         if (path.endsWith("dictionary/fetch")) return adminPageFixture(path);
         if (path.includes("console/nodeSchema")) return { data: {name:"required",host:"required",port:"required",server_port:"required",protocol:"required|in:vless",tls:"required|in:0,1,2",network:"required|in:tcp",group_id:"nullable|array",rate:"required"} };
-        if (path.endsWith("server/ddns/fetch")) return { data: {credentials:[{id:9,root_domain:"example.test"}],servers:[{id:5,name:"Existing machine",enabled:true,family:"ipv4"}],assignments:[]} };
+        if (path.endsWith("server/ddns/fetch")) return { data: {credentials:[{id:9,root_domain:"example.test",next_run:0}],servers:[{id:5,name:"Existing machine",enabled:true,family:"ipv4"}],assignments:[]} };
         if (path.endsWith("server/manage/getNodes")) return {data:saved ? [{id:99,type:"v2box",name:"Japan",host:"jp.example.test",port:443,protocol:"vless"}] : []};
         if (path.endsWith("server/v2box/save")) { saved=true;return {data:{id:99,type:"v2box"}}; }
         if (path.endsWith("server/group/fetch")) return {data:[{id:1,name:"Default group"}]};
@@ -723,7 +723,7 @@ it("creates a relay node in one save with separate ingress and origin fields", a
     api.request.mockImplementation(async (path: string) => {
         if (path.endsWith("dictionary/fetch")) return adminPageFixture(path);
         if (path.includes("console/nodeSchema")) return { data: {name:"required",host:"required",port:"required",server_port:"required",protocol:"required|in:vless",tls:"required|in:0,1,2",network:"required|in:tcp",group_id:"nullable|array",rate:"required"} };
-        if (path.endsWith("server/ddns/fetch")) return { data: {credentials:[{id:9,root_domain:"example.test"}],servers:[{id:5,name:"Existing machine",enabled:true,family:"ipv4"}],assignments:[{id:17,purpose:"entry",domain:"entry.example.test",enabled:true,server_id:5}]} };
+        if (path.endsWith("server/ddns/fetch")) return { data: {credentials:[{id:9,root_domain:"example.test",next_run:0}],servers:[{id:5,name:"Existing machine",enabled:true,family:"ipv4"}],assignments:[{id:17,purpose:"entry",domain:"entry.example.test",enabled:true,server_id:5}]} };
         if (path.endsWith("server/manage/getNodes")) return {data:saved ? [{id:99,type:"v2box",name:"Japan",host:"jp.example.test",port:443,protocol:"vless"}] : []};
         if (path.endsWith("server/v2box/save")) { saved=true;return {data:{id:99,type:"v2box"}}; }
         if (path.endsWith("server/group/fetch")) return {data:[{id:1,name:"Default group"}]};
@@ -752,7 +752,7 @@ it("creates a relay node in one save with separate ingress and origin fields", a
 
 it("keeps manual addresses and Reality SNI available while offering server reuse", () => {
     const fields=[{key:"host",label:"连接主机"},{key:"port",label:"连接端口"},{key:"server_port",label:"监听端口"},{key:"tls_settings.server_name",label:"SNI"}];
-    const network={credentials:[{id:1,root_domain:"example.test"}],servers:[{id:5,name:"Shared",enabled:true,family:"ipv4"},{id:6,name:"Wrong family",enabled:true,family:"ipv6"}]};
+    const network={credentials:[{id:1,root_domain:"example.test",next_run:0}],servers:[{id:5,name:"Shared",enabled:true,family:"ipv4"},{id:6,name:"Wrong family",enabled:true,family:"ipv6"}]};
     const managed=nodeSetupFields(fields,{setup_mode:"managed",setup_family:"ipv4",tls:1},network);
     expect(managed.map(f=>f.key)).not.toContain("host");
     expect(managed.map(f=>f.key)).not.toContain("tls_settings.server_name");
@@ -1160,4 +1160,17 @@ it.each(["line","path"] as const)("separates shared node %s fields while retaini
  fireEvent.click(screen.getByRole("button",{name:"保存待发布配置"}));
  await waitFor(()=>expect(api.request).toHaveBeenCalledWith("test-admin/server/connections/save",expect.objectContaining({name:view==="line"?"Japan premium":draft.name,service_id:1,entry_id:3,entry_port:view==="path"?8443:443,region_code:"JP",revision:2})));
  expect(api.request.mock.calls.some(([path])=>String(path).endsWith("v2box/save") || String(path).includes("credentials/deployment"))).toBe(false);
+});
+
+it("excludes paused root credentials and ignores stale relay selections in direct server choices", () => {
+ const fields=nodeSetupFields([{key:"protocol",label:"协议"}],{setup_mode:"managed",setup_access_mode:"direct",setup_entry_id:9,setup_family:"ipv4"},{credentials:[{id:1,root_domain:"active.test",next_run:0},{id:2,root_domain:"paused.test",next_run:-1}],assignments:[{id:9,purpose:"entry",enabled:true,server_id:5}],servers:[{id:5,name:"Server",enabled:true,family:"ipv4"}]});
+ expect(fields.find(f=>f.key==="setup_credential_id")?.options?.map(o=>o[0])).toEqual(["","1"]);
+ expect(fields.find(f=>f.key==="setup_server_id")?.options?.map(o=>o[0])).toEqual(["","5"]);
+});
+
+it("does not present old applied status as success while newer settings are pending or invalid",()=>{
+ for(const [configurationState,title] of [["pending","设置已保存，等待节点获取"],["invalid","当前配置无法下发"]]) {
+  const stage=nodeDeploymentStage({type:"v2box"},{configurationState,applicationState:"applied",runtimeStatus:"online"},undefined,true);
+  expect(stage.title).toBe(title);
+ }
 });

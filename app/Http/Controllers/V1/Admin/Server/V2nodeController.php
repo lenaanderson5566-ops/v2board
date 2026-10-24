@@ -297,6 +297,7 @@ class V2nodeController extends Controller
             \App\Services\NodeListenerGuard::check($backend,$server);
             try {
                 $server->save();
+                if ($server->wasChanged()) \App\Services\NodeRuntimeService::invalidate($backend,(int)($server->service_id ?: $server->id));
             } catch (\Exception $e) {
                 abort(500, '保存失败');
             }

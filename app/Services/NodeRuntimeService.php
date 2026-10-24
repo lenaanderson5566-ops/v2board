@@ -20,6 +20,12 @@ class NodeRuntimeService
         ], 86400);
     }
 
+    /** A saved change is not a node acknowledgement. Preserve historical receipts. */
+    public static function invalidate(string $type, int $id): void
+    {
+        Cache::forget("NODE_CONFIG_FETCH:{$type}:{$id}");
+    }
+
     public static function connection(?int $checked, ?int $pushed, bool $blocked): string
     {
         if (!$checked && !$pushed) return 'unknown';

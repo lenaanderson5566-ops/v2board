@@ -83,6 +83,8 @@ class AdminRoute
             $router->post('/server/domains/inspect', 'V1\\Admin\\NodeDomainController@inspect')->middleware('throttle:30,1');
             $router->post('/server/domains/remove-historical', 'V1\\Admin\\NodeDomainController@removeHistorical')->middleware('throttle:30,1');
             $router->get('/server/connections/fetch', 'V1\\Admin\\NodeConnectionController@fetch');
+            $router->get('/server/connections/default', 'V1\\Admin\\NodeConnectionController@defaultLine');
+            $router->patch('/server/connections/default', 'V1\\Admin\\NodeConnectionController@updateDefaultLine');
             $router->post('/server/connections/save', 'V1\\Admin\\NodeConnectionController@save');
             $router->post('/server/connections/publish', 'V1\\Admin\\NodeConnectionController@publish');
             $router->get('/server/ddns/fetch', 'V1\\Admin\\NodeDdnsController@fetch');

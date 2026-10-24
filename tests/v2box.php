@@ -61,8 +61,12 @@ try {
         try { $admin->save(Request::create('/','POST',array_merge($base,$invalid))); throw new RuntimeException('Invalid config accepted'); }
         catch (Illuminate\Validation\ValidationException $e) { $checks++; }
     }
-    $admin->save(Request::create('/','POST',array_merge($base,['id'=>$id,'name'=>'V2Box updated','tls_settings'=>null])));
-    $assert(ServerV2box::find($id)->name==='V2Box updated','V2Box update');
+    $admin->save(Request::create('/','POST',array_merge($base,['id'=>$id,'name'=>'Stale service form','server_port'=>9443,'tls_settings'=>null])));
+    $assert(ServerV2box::find($id)->name==='V2Box test' && (int)ServerV2box::find($id)->server_port===9443,'V2Box service update preserves line name');
+    $lineAdmin=new App\Http\Controllers\V1\Admin\NodeConnectionController();
+    $lineState=$lineAdmin->defaultLine(Request::create('/','GET',['type'=>'v2box','id'=>$id]))['data'];
+    $lineAdmin->updateDefaultLine(Request::create('/','PATCH',['type'=>'v2box','id'=>$id,'revision'=>$lineState['revision'],'name'=>'V2Box updated','group_id'=>[999999],'rate'=>1]));
+    $assert(ServerV2box::find($id)->name==='V2Box updated','Default line update changes only the selected backend');
     $assert(ServerV2node::find($id)->name==='V2Box test','V2Node untouched');
     $admin->copy(Request::create('/','POST',['id'=>$id]));
     $assert(ServerV2box::where('name','V2Box updated')->count()===2,'V2Box copy');

@@ -30,6 +30,8 @@ export const certificateTransitionStatus: Record<string, string> = {
 };
 
 export function NodeDomainBinding({
+    onDirty,
+    onBusyChange,
     node,
     onChanged,
     onPublished,
@@ -37,6 +39,8 @@ export function NodeDomainBinding({
 }: {
     node: Row;
     onChanged?: () => void;
+    onDirty?: (dirty:boolean)=>void;
+    onBusyChange?: (busy:boolean)=>void;
     onPublished?: () => void;
     onUpgrade?: () => void;
 }) {
@@ -62,6 +66,7 @@ export function NodeDomainBinding({
     const [busy, setBusy] = useState(false),
         [error, setError] = useState(""),
         [notice, setNotice] = useState("");
+    useEffect(()=>onBusyChange?.(busy),[busy,onBusyChange]);
     const [adoption, setAdoption] = useState<Row | null>(null);
     const pending = useRef(false);
     const progress = binding ? nodeDomainProgress(binding, node) : null;
@@ -130,6 +135,7 @@ export function NodeDomainBinding({
                 payload,
             );
             data.reload();
+            if(path === "bind") onDirty?.(false);
             onChanged?.();
             setNotice(
                 path === "bind"
@@ -459,7 +465,7 @@ export function NodeDomainBinding({
                                     aria-label="接入方式"
                                     disabled={busy}
                                     value={mode}
-                                    onChange={(e) => setMode(e.target.value)}
+                                    onChange={(e) => {onDirty?.(true);setMode(e.target.value);}}
                                 >
                                     <option value="direct">直连节点</option>
                                     {node.type === "v2box" && (
@@ -475,9 +481,7 @@ export function NodeDomainBinding({
                                     aria-label="节点服务器"
                                     disabled={busy}
                                     value={serverId}
-                                    onChange={(e) =>
-                                        setServerId(e.target.value)
-                                    }
+                                    onChange={(e) => {onDirty?.(true);setServerId(e.target.value);}}
                                 >
                                     <option value="">
                                         自动关联服务器（无需单独配置）
@@ -500,9 +504,7 @@ export function NodeDomainBinding({
                                             required
                                             disabled={busy}
                                             value={entryId}
-                                            onChange={(e) =>
-                                                setEntryId(e.target.value)
-                                            }
+                                            onChange={(e) => {onDirty?.(true);setEntryId(e.target.value);}}
                                         >
                                             <option value="">选择入口</option>
                                             {entries.map((a) => (
@@ -522,9 +524,7 @@ export function NodeDomainBinding({
                                             required
                                             value={entryPort}
                                             disabled={busy}
-                                            onChange={(e) =>
-                                                setEntryPort(e.target.value)
-                                            }
+                                            onChange={(e) => {onDirty?.(true);setEntryPort(e.target.value);}}
                                         />
                                     </label>
                                     <p className="muted">
@@ -541,7 +541,7 @@ export function NodeDomainBinding({
                                     aria-label="根域名"
                                     disabled={busy}
                                     value={root || roots[0]?.id || ""}
-                                    onChange={(e) => setRoot(e.target.value)}
+                                    onChange={(e) => {onDirty?.(true);setRoot(e.target.value);}}
                                 >
                                     {roots.map((c) => (
                                         <option key={c.id} value={c.id}>
@@ -559,9 +559,7 @@ export function NodeDomainBinding({
                                     maxLength={63}
                                     pattern="[a-z0-9]([a-z0-9-]*[a-z0-9])?"
                                     placeholder="留空自动生成"
-                                    onChange={(e) =>
-                                        setPrefix(e.target.value.toLowerCase())
-                                    }
+                                    onChange={(e) => {onDirty?.(true);setPrefix(e.target.value.toLowerCase());}}
                                 />
                             </label>
                             <label>
@@ -570,7 +568,7 @@ export function NodeDomainBinding({
                                     aria-label="地址类型"
                                     disabled={busy}
                                     value={family}
-                                    onChange={(e) => setFamily(e.target.value)}
+                                    onChange={(e) => {onDirty?.(true);setFamily(e.target.value);}}
                                 >
                                     <option value="ipv4">IPv4 / A</option>
                                     <option value="ipv6">IPv6 / AAAA</option>

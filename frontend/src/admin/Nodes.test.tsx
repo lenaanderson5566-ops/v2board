@@ -173,7 +173,7 @@ it("shows group names across numeric/string IDs and remembers selected node colu
     );
     expect(screen.queryByRole("columnheader", { name: "权限组" })).toBeNull();
     expect(screen.queryByText("普通权限组 / 高级权限组")).toBeNull();
-    expect(screen.getAllByRole("button", { name: "接入设置" })).toHaveLength(2);
+    expect(screen.getAllByRole("button", { name: "编辑" })).toHaveLength(2);
     view.unmount();
     render(<Nodes />);
     await screen.findByText("Node A");
@@ -240,9 +240,11 @@ it.each(["v2node", "v2box"])(
             if (path.endsWith(`/server/${backend}/save`)) return { data: true };
             throw new Error(`Unexpected endpoint: ${path}`);
         });
-        render(<Nodes initialTab="services" />);
+        render(<Nodes/>);
         fireEvent.click(await screen.findByRole("button", { name: "编辑" }));
-        const name = await screen.findByDisplayValue("Saved node");
+        fireEvent.click(screen.getByRole("button",{name:"服务配置"}));
+        await screen.findByText(/此处仅维护代理服务配置/);
+        expect(screen.queryByDisplayValue("Saved node")).toBeNull();
         expect(screen.getByDisplayValue("node.example")).toBeTruthy();
         expect(
             screen.getByText(
@@ -254,14 +256,12 @@ it.each(["v2node", "v2box"])(
                 backend === "v2box" ? "Xray only" : "Singbox only",
             ),
         ).toBeNull();
-        fireEvent.change(name, { target: { value: "Updated node" } });
         fireEvent.click(screen.getByRole("button", { name: "保存节点配置" }));
         await waitFor(() =>
             expect(api.request).toHaveBeenCalledWith(
                 `test-admin/server/${backend}/save`,
                 expect.objectContaining({
                     id: 7,
-                    name: "Updated node",
                     route_id: [own],
                     tls_settings: expect.objectContaining({
                         server_name: "node.example",
@@ -364,15 +364,16 @@ it.each(["v2node", "v2box"])(
             }
             throw new Error(`Unexpected endpoint: ${path}`);
         });
-        render(<Nodes initialTab="services" />);
+        render(<Nodes/>);
         fireEvent.click(await screen.findByRole("button", { name: "编辑" }));
-        await screen.findByDisplayValue("Convert node");
+        fireEvent.click(screen.getByRole("button",{name:"服务配置"}));
+        await screen.findByText(/此处仅维护代理服务配置/);
         fireEvent.click(screen.getByRole("button", { name: "转换节点类型…" }));
         vi.spyOn(window, "confirm").mockReturnValue(true);
         fireEvent.change(screen.getByLabelText("节点类型"), {
             target: { value: target },
         });
-        await screen.findByDisplayValue("Convert node");
+        await screen.findByText(/此处仅维护代理服务配置/);
         fireEvent.click(
             await screen.findByRole("button", { name: "确认转换并保存" }),
         );
@@ -414,8 +415,9 @@ it("guides deployment to panel-managed DDNS", async () => {
             };
         return { data: [] };
     });
-    render(<Nodes initialTab="services" />);
-    fireEvent.click(await screen.findByRole("button", { name: "部署与接入" }));
+    render(<Nodes/>);
+    fireEvent.click(await screen.findByRole("button",{name:"编辑"}));
+    fireEvent.click(screen.getByRole("button",{name:"部署"}));
     expect(screen.queryByRole("heading", { name: "自动 IP 上报" })).toBeNull();
     expect(screen.getByText("运维命令与说明")).toBeTruthy();
     expect(screen.getByText("v2box update")).toBeTruthy();
@@ -461,8 +463,9 @@ it("saves an AnyTLS preset through the real node form", async () => {
         if (path.endsWith("server/v2box/save")) return { data: true };
         return { data: [] };
     });
-    render(<Nodes initialTab="services" />);
+    render(<Nodes/>);
     fireEvent.click(await screen.findByRole("button", { name: "编辑" }));
+    fireEvent.click(screen.getByRole("button",{name:"服务配置"}));
     fireEvent.change(
         await screen.findByRole("combobox", { name: /AnyTLS 填充预设/ }),
         { target: { value: "light" } },
@@ -517,15 +520,15 @@ it("filters nodes by name, backend and exhausted server budget", async () => {
               ? {}
               : [],
     }));
-    render(<Nodes initialTab="services" />);
+    render(<Nodes/>);
     await screen.findByText("Budget restricted");
-    fireEvent.change(screen.getByRole("combobox", { name: "筛选服务内核" }), {
+    fireEvent.change(screen.getByRole("combobox", { name: "筛选节点类型" }), {
         target: { value: "v2box" },
     });
     expect(screen.queryByText("Legacy healthy")).toBeNull();
     fireEvent.click(screen.getByLabelText("仅显示额度受限服务"));
     expect(screen.getByText("Budget restricted")).toBeTruthy();
-    fireEvent.change(screen.getByLabelText("搜索代理服务"), {
+    fireEvent.change(screen.getByLabelText("搜索节点"), {
         target: { value: "nomatch" },
     });
     expect(screen.queryByText("Budget restricted")).toBeNull();
@@ -594,7 +597,7 @@ it("links reused lines to their owning service without offering child deployment
     render(<Nodes/>);await screen.findByRole("button",{name:"Child"});
     expect(screen.queryByRole("button",{name:"代理服务接入"})).toBeNull();
     expect(screen.queryByRole("button",{name:"部署与接入"})).toBeNull();
-    expect(screen.getAllByRole("link",{name:/Parent/}).every(a=>a.getAttribute("href")==="#/node-services?service=v2box%3A1")).toBe(true);
+    expect(screen.getAllByRole("button",{name:"Parent"})).toHaveLength(2);
     expect(api.request.mock.calls.some(([path])=>String(path).includes("server/credentials"))).toBe(false);
 });
 
@@ -607,13 +610,13 @@ it("shows runtime dots in services without subscription visibility controls", as
         ]};
         return adminPageFixture(path);
     });
-    render(<Nodes initialTab="services" />);
+    render(<Nodes/>);
     const online = await screen.findByRole("button",{name:"Green：在线，查看运行详情"});
     expect(online.getAttribute("data-state")).toBe("online");
     expect(screen.getByRole("button",{name:"Red：离线，查看运行详情"}).getAttribute("data-state")).toBe("offline");
     expect(screen.getByRole("button",{name:"Unknown：暂无通信记录，查看运行详情"}).getAttribute("data-state")).toBe("unknown");
     expect(screen.queryByRole("button",{name:"切换展示"})).toBeNull();
-    expect(screen.queryByRole("switch",{name:"Green 显示"})).toBeNull();
+    expect(screen.getByRole("switch",{name:"Green 显示"})).toBeTruthy();
     fireEvent.click(online);
     expect(await screen.findByRole("dialog")).toBeTruthy();
 });
@@ -625,8 +628,9 @@ it("prevents duplicate node copies and restores actions after a failed request",
         if (path.includes("getNodes")) return Promise.resolve({data:[{id:1,name:"Test node",type:"v2box",group_id:[],route_id:[]}]});
         return Promise.resolve(adminPageFixture(path));
     });
-    render(<Nodes initialTab="services"/>);
-    const button = await screen.findByRole("button",{name:"复制"});
+    render(<Nodes/>);
+    fireEvent.click(await screen.findByRole("button",{name:"更多操作"}));
+    const button = await screen.findByRole("button",{name:"复制节点"});
     fireEvent.click(button);fireEvent.click(button);
     expect(api.request.mock.calls.filter(([p]) => p.endsWith("/copy"))).toHaveLength(1);
     reject(new Error("复制失败，请重试"));
@@ -668,7 +672,7 @@ it("filters actionable nodes separately from maintenance and opens unified detai
             };
         return { data: [] };
     });
-    render(<Nodes initialTab="services" />);
+    render(<Nodes/>);
     await screen.findByRole("button", { name: "异常节点甲" });
     fireEvent.click(screen.getByLabelText("仅显示异常服务"));
     expect(screen.queryByRole("button", { name: "维护节点乙" })).toBeNull();
@@ -801,8 +805,9 @@ it("keeps sensitive node changes in the form when confirmation is cancelled",asy
         if(path.endsWith("group/fetch") || path.endsWith("route/fetch")) return {data:[]};
         return {data:{servers:[],assignments:[]}};
     });
-    render(<Nodes initialTab="services"/>);
+    render(<Nodes/>);
     fireEvent.click((await screen.findAllByRole("button",{name:"编辑"}))[0]);
+    fireEvent.click(screen.getByRole("button",{name:"服务配置"}));
     const port=await screen.findByRole("spinbutton",{name:/服务端口/});
     fireEvent.change(port,{target:{value:"9443"}});
     expect(screen.getByLabelText("变更影响").textContent).toContain("1 条关联线路");
@@ -834,9 +839,9 @@ it("keeps node creation canonical and links service operations back to it",async
     expect(screen.getByRole("button",{name:"新建代理服务"}).getAttribute("aria-pressed")).toBe("true");
     expect(await screen.findByRole("combobox",{name:"节点类型"})).toBeTruthy();
     expect(screen.queryByRole("button",{name:"新增代理服务"})).toBeNull();
-    view.unmount();render(<Nodes initialTab="services"/>);
-    expect(screen.queryByRole("button",{name:"新增节点"})).toBeNull();
-    expect(screen.getByRole("link",{name:"前往新增节点"}).getAttribute("href")).toBe("#/nodes");
+    view.unmount();render(<Nodes/>);
+    expect(screen.getByRole("button",{name:"新增节点"})).toBeTruthy();
+    expect(screen.queryByRole("link",{name:"前往新增节点"})).toBeNull();
 });
 it.each(["v2box","v2node"])("creates a reused %s route in one drawer without deploying another service",async backend=>{
     unifiedCreationFixture();render(<Nodes/>);
@@ -913,43 +918,78 @@ function responsibilityFixture(){
         {id:1,type:"v2box",name:"Box service",protocol:"anytls",server_port:9443,host:"box.example.test",port:443,show:1,group_id:[1],runtime_status:"online",online:5},
         {id:1,type:"v2node",name:"Xray service",protocol:"vless",server_port:8443,host:"xray.example.test",port:443,show:0,group_id:[1]},
         {id:2,type:"v2box",service_id:1,name:"Shared route",host:"entry.example.test",port:8443,show:1,group_id:[1],runtime_status:"online",online:5}
-    ]}:path.endsWith("server/group/fetch")?{data:[{id:1,name:"Basic"}]}:path.endsWith("dictionary/fetch")?adminPageFixture(path):{data:[]});
+    ]}:String(path).includes("server/credentials")?{data:{keys:[]}}:path.endsWith("server/group/fetch")?{data:[{id:1,name:"Basic"}]}:path.endsWith("dictionary/fetch")?adminPageFixture(path):{data:[]});
 }
-it("keeps subscription controls on nodes and runtime lifecycle actions on services",async()=>{
-    responsibilityFixture();const view=render(<Nodes/>);await screen.findByRole("button",{name:"Shared route"});
+it("uses one node list with line, shared service and deployment sections",async()=>{
+    responsibilityFixture();render(<Nodes/>);await screen.findByRole("button",{name:"Shared route"});
     expect(screen.getAllByRole("switch")).toHaveLength(3);
-    expect(screen.getByRole("button",{name:"编辑线路"})).toBeTruthy();expect(screen.getByRole("button",{name:"删除线路"})).toBeTruthy();
-    for(const name of ["部署与接入","复制","删除服务"])expect(screen.queryByRole("button",{name})).toBeNull();
-    for(const name of ["运行状态","监听端口","服务在线用户"])expect(screen.queryByRole("columnheader",{name})).toBeNull();
-    expect(screen.getByRole("link",{name:"Box service · 复用服务"}).getAttribute("href")).toBe("#/node-services?service=v2box%3A1");
-    view.unmount();render(<Nodes initialTab="services"/>);await screen.findByRole("button",{name:"Box service"});
-    expect(screen.queryByRole("button",{name:"Shared route"})).toBeNull();
-    expect(screen.queryByRole("switch")).toBeNull();expect(screen.queryByRole("button",{name:"新增节点"})).toBeNull();
-    expect(screen.getAllByRole("button",{name:"部署与接入"})).toHaveLength(2);
-    expect(screen.getAllByRole("button",{name:"删除服务"})).toHaveLength(2);
-    expect(screen.getAllByRole("button",{name:"删除服务"})[0]).toHaveProperty("disabled",true);
-    expect(screen.getByText("2 条（含默认线路）")).toBeTruthy();
-    expect(screen.getByRole("columnheader",{name:"监听端口"})).toBeTruthy();
+    expect(screen.getAllByRole("button",{name:"编辑"})).toHaveLength(3);
+    expect(screen.getByRole("columnheader",{name:"运行状态"})).toBeTruthy();
+    fireEvent.click(screen.getAllByRole("button",{name:"更多操作"})[0]);
+    expect(screen.getByRole("button",{name:"删除节点"})).toHaveProperty("disabled",true);
+    fireEvent.click(screen.getAllByRole("button",{name:"编辑"})[2]);
+    expect(screen.getAllByRole("dialog")).toHaveLength(1);
+    fireEvent.click(screen.getByRole("button",{name:"服务配置"}));
+    expect(await screen.findByText(/此线路复用「Box service」/)).toBeTruthy();
+    expect(screen.getAllByRole("dialog")).toHaveLength(1);
+    expect(screen.getByText("节点服务：V2Box / sing-box")).toBeTruthy();
+    fireEvent.click(screen.getByRole("button",{name:"部署"}));
+    expect(await screen.findByText(/V2BOX · 节点 #1/)).toBeTruthy();
+    expect(api.request.mock.calls.some(([path])=>String(path).includes("server/credentials?type=v2box&id=2"))).toBe(false);
 });
-it("locates the correct backend service by deep link and allows showing the complete service list",async()=>{
-    responsibilityFixture();history.replaceState(null,"",`${location.pathname}#/node-services?service=v2node%3A1`);
-    render(<Nodes initialTab="services"/>);expect(await screen.findByRole("button",{name:"Xray service"})).toBeTruthy();
-    expect(screen.queryByRole("button",{name:"Box service"})).toBeNull();
-    fireEvent.click(screen.getByRole("link",{name:"显示全部服务"}));
-    expect(await screen.findByRole("button",{name:"Box service"})).toBeTruthy();
+it("opens backend-specific service configuration from the unified node URL",async()=>{
+    responsibilityFixture();history.replaceState(null,"",`${location.pathname}#/nodes?service=v2node%3A1`);
+    render(<Nodes/>);expect(await screen.findByText("节点服务：V2Node / Xray")).toBeTruthy();
+    expect(screen.getAllByRole("dialog")).toHaveLength(1);
+    expect(screen.getByRole("button",{name:"线路信息"})).toBeTruthy();
 });
-it("stores node and service column choices separately",async()=>{
+it("preserves node column choices in the unified list",async()=>{
     responsibilityFixture();localStorage.setItem("admin.nodes.columns.v1",JSON.stringify(["name","show"]));
-    const view=render(<Nodes/>);await screen.findByRole("button",{name:"Box service"});
+    render(<Nodes/>);await screen.findByRole("button",{name:"Shared route"});
     expect(screen.queryByRole("columnheader",{name:"权限组"})).toBeNull();
-    view.unmount();render(<Nodes initialTab="services"/>);await screen.findByRole("button",{name:"Box service"});
-    expect(screen.getByRole("columnheader",{name:"服务权限组"})).toBeTruthy();
     expect(localStorage.getItem("admin.nodes.columns.v1")).toBe(JSON.stringify(["name","show"]));
 });
 
-it("keeps default-line access settings scoped without fetching service credentials",async()=>{
-    responsibilityFixture();render(<Nodes/>);const buttons=await screen.findAllByRole("button",{name:"接入设置"});fireEvent.click(buttons[0]);
-    expect(await screen.findByRole("dialog",{name:"Box service · 接入设置"})).toBeTruthy();
-    expect(screen.queryByRole("tab",{name:"部署"})).toBeNull();expect(screen.queryByRole("tab",{name:"凭据管理"})).toBeNull();
-    expect(api.request.mock.calls.some(([path])=>String(path).includes("server/credentials"))).toBe(false);
+import { DefaultNodeLineEditor } from "./DefaultNodeLineEditor";
+function defaultEditorFixture(sharedLines=0){
+    api.request.mockImplementation(async(path:string)=>String(path).includes("connections/default")?{data:{values:{name:"Default JP",group_id:[1],rate:1,region_code:null,city_code:null,display_label:null,tags:[]},revision:"a".repeat(64),sharedLines}}:{data:[]});
+}
+it("updates default line metadata through a narrow PATCH without submitting service settings",async()=>{
+    defaultEditorFixture();const close=vi.fn();render(<DefaultNodeLineEditor node={{type:"v2box",id:3,name:"Default JP"}} groups={[{id:1,name:"Basic"}]} close={close} onSaved={()=>{}}/>);
+    fireEvent.change(await screen.findByLabelText("节点名称"),{target:{value:"JP Premium"}});
+    fireEvent.change(screen.getByLabelText(/^计费倍率/),{target:{value:"1.5"}});
+    for(const name of [/TLS/,/协议/,/监听端口/])expect(screen.queryByRole("combobox",{name})).toBeNull();
+    fireEvent.click(screen.getByRole("button",{name:"保存线路信息"}));
+    await waitFor(()=>expect(api.request).toHaveBeenCalledWith("test-admin/server/connections/default",expect.objectContaining({id:3,type:"v2box",name:"JP Premium",rate:1.5,group_id:[1],revision:"a".repeat(64)}),{method:"PATCH"}));
+    const body=api.request.mock.calls.find(([,body])=>body?.revision)?.[1];for(const key of ["protocol","tls_settings","server_port","host","port","service_id"])expect(body).not.toHaveProperty(key);
+    expect(close).toHaveBeenCalled();
+});
+it("keeps default line inputs after stale revision rejection and cancels shared multiplier changes",async()=>{
+    defaultEditorFixture(2);const original=api.request.getMockImplementation()!;
+    api.request.mockImplementation(async(path:string,body?:any)=>body?.revision?Promise.reject(new Error("默认线路已被其他管理员修改")):original(path,body));
+    const confirmation=vi.spyOn(window,"confirm").mockReturnValue(false);
+    render(<DefaultNodeLineEditor node={{type:"v2box",id:3,name:"Default JP"}} groups={[{id:1,name:"Basic"}]} close={()=>{}} onSaved={()=>{}}/>);
+    fireEvent.change(await screen.findByLabelText(/^计费倍率/),{target:{value:"2"}});fireEvent.click(screen.getByRole("button",{name:"保存线路信息"}));
+    await screen.findByText("已取消保存，修改仍保留在表单中。");
+    expect(api.request.mock.calls.some(([,body])=>body?.revision)).toBe(false);
+    confirmation.mockReturnValue(true);fireEvent.click(screen.getByRole("button",{name:"保存线路信息"}));
+    await screen.findByText("默认线路已被其他管理员修改");expect(screen.getByLabelText(/^计费倍率/)).toHaveProperty("value","2");
+});
+
+it("guards unsaved line and service changes when switching editor sections",async()=>{
+    responsibilityFixture();const base=api.request.getMockImplementation()!;
+    api.request.mockImplementation(async(path:string,body?:any)=>String(path).includes("connections/default")?{data:{values:{name:"Box service",group_id:[1],rate:1,tags:[]},revision:"b".repeat(64),sharedLines:1}}:String(path).includes("console/nodeSchema")?{data:{name:"required",protocol:"required|in:anytls",server_port:"required",group_id:"array"}}:base(path,body));
+    const confirm=vi.spyOn(window,"confirm").mockReturnValue(false);
+    render(<Nodes/>);fireEvent.click((await screen.findAllByRole("button",{name:"编辑"}))[0]);
+    fireEvent.change(await screen.findByLabelText("节点名称"),{target:{value:"Unsaved line"}});
+    fireEvent.click(screen.getByRole("button",{name:"服务配置"}));
+    expect(screen.getByLabelText("节点名称")).toHaveProperty("value","Unsaved line");
+    expect(api.request.mock.calls.some(([,body])=>body?.revision)).toBe(false);
+    confirm.mockReturnValue(true);fireEvent.click(screen.getByRole("button",{name:"服务配置"}));
+    const port=await screen.findByRole("spinbutton",{name:/服务端口/});
+    fireEvent.change(port,{target:{value:"9444"}});
+    confirm.mockReturnValue(false);fireEvent.click(screen.getByRole("button",{name:"线路信息"}));
+    expect(port).toHaveProperty("value","9444");
+    expect(screen.getAllByRole("dialog")).toHaveLength(1);
+    expect(api.request.mock.calls.some(([path])=>String(path).endsWith("v2box/save"))).toBe(false);
 });

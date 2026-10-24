@@ -626,7 +626,7 @@ it("groups target logs in diagnostics and loads dashboard analytics only on sele
     await waitFor(() => expect(api.request.mock.calls.some(([path]) => path.includes("analytics/report"))).toBe(true));
 });
 
-it.each(["browser-settings","footer-settings","notification-settings","telegram-settings","account-settings","subscription-settings","ticket-settings","node-settings","client-entrypoints","payment-deposit","invitation-rules","access-blacklist-ua","access-logs-subscriptions","access-logs-connections","access-logs-risk","notification-blocklist","node-services","node-forwarding","server-lightsail"])("opens relocated route %s directly", async current => {
+it.each(["browser-settings","footer-settings","notification-settings","telegram-settings","account-settings","subscription-settings","ticket-settings","node-settings","client-entrypoints","payment-deposit","invitation-rules","access-blacklist-ua","access-logs-subscriptions","access-logs-connections","access-logs-risk","notification-blocklist","node-forwarding","server-lightsail"])("opens relocated route %s directly", async current => {
     const {adminPageFixture} = await import("./test-support/page-fixtures");
     api.request.mockImplementation(async (path:string)=>adminPageFixture(path));
     const view=render(<AdminContent current={current}/>);
@@ -765,7 +765,7 @@ it("provides peer infrastructure workspaces with bookmarkable task tabs", () => 
     for(const key of ["nodes","servers","node-domains"]){
         expect(legacyAdminMenu.find(([route])=>String(route)===key)?.[3]).toBe("节点与接入");
     }
-    expect(adminWorkspace("node-services")?.root).toBe("nodes");
+    expect(adminWorkspace("node-services")).toBeUndefined();
     expect(adminWorkspace("node-forwarding")?.root).toBe("nodes");
     expect(adminWorkspace("server-traffic")).toBeUndefined();
     expect(adminWorkspace("server-lightsail")?.root).toBe("servers");

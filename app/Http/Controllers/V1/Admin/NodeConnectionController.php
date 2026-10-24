@@ -7,6 +7,22 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
 final class NodeConnectionController extends Controller {
+    public function defaultLine(Request $request) {
+        $v=$request->validate(['type'=>'required|in:v2node,v2box','id'=>'required|integer|min:1']);
+        $node=ProxyService::model($v['type'])::find($v['id']);
+        abort_unless($node && !$node->service_id,422,'请选择独立代理服务的默认线路');
+        return ['data'=>\App\Services\Actions\UpdateDefaultNodeLine::resource($node)];
+    }
+    public function updateDefaultLine(Request $request) {
+        $allowed=array_merge(['type','id','revision'],\App\Services\Actions\UpdateDefaultNodeLine::FIELDS);
+        abort_if(array_diff(array_keys($request->except('user')),$allowed),422,'默认线路仅允许修改名称、权限、倍率和展示信息');
+        $request->merge(\App\Services\NodeDisplayService::normalizeInput($request->all()));
+        $v=$request->validate(['type'=>'required|in:v2node,v2box','id'=>'required|integer|min:1','revision'=>'required|string|size:64',
+            'name'=>'required|string|max:100','group_id'=>'present|array|max:100','group_id.*'=>'integer|min:1|distinct',
+            'rate'=>'required|numeric|min:0|max:10000','region_code'=>'nullable|string|size:2|in:'.implode(',',\App\Services\NodeDisplayService::regionCodes()),
+            'city_code'=>'nullable|string|max:64|regex:/^[a-z0-9][a-z0-9-]*$/','display_label'=>'nullable|string|max:64','tags'=>'nullable|array|max:20','tags.*'=>'string|max:64']);
+        return ['data'=>\App\Services\Actions\UpdateDefaultNodeLine::run($v['type'],(int)$v['id'],$v['revision'],$v)];
+    }
     public function fetch(Request $request) {
         $v=$request->validate(['type'=>'required|in:v2node,v2box','id'=>'required|integer|min:1']);
         $line=ProxyService::model($v['type'])::find($v['id']); abort_unless($line,404);

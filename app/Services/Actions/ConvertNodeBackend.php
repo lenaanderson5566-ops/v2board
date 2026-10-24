@@ -18,7 +18,7 @@ class ConvertNodeBackend {
             // Node IDs belong to separate tables. Always allocate a new target identity;
             // never update an unrelated target node with the same numeric ID.
             $target = new $models[$targetType]();
-            $target->fill(array_merge($source->only(['show','sort','tags','region_code','city_code','display_label']), $params));
+            $target->fill(array_merge($params,$source->only(UpdateDefaultNodeLine::PRESERVED_FIELDS)));
             $target->route_id = $params['route_id'] ?? [];
             $target->service_id = $params['service_id'] ?? null;
             if ($target->service_id) {

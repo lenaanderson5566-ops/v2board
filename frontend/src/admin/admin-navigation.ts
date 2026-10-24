@@ -63,7 +63,6 @@ export const adminWorkspaces = [
         label: "节点管理",
         tabs: [
             ["nodes", "节点列表"],
-            ["node-services", "代理服务"],
             ["node-forwarding", "入口转发"],
             ["node-settings", "节点通讯"],
         ],

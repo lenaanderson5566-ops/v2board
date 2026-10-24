@@ -57,6 +57,13 @@ class V2nodeController extends Controller
         $request->merge(['service_id'=>$request->input('service_id') ?: null]);
         $existing=$request->input('id') ? $this->model::find($request->input('id')) : null;
         $backend=$this->model===\App\Models\ServerV2box::class ? 'v2box':'v2node';
+        if($request->has('source_type') || $request->has('source_id')) {
+            $conversion=\Illuminate\Support\Facades\Validator::make($request->all(),['source_type'=>'required|in:v2node,v2box','source_id'=>'required|integer|min:1'])->validate();
+            $source=\App\Services\ProxyService::model($conversion['source_type'])::findOrFail($conversion['source_id']);
+            abort_if($source->service_id,422,'接入线路不能转换为代理服务');
+            $request->merge($source->only(\App\Services\Actions\UpdateDefaultNodeLine::PRESERVED_FIELDS));
+        }
+        if($existing && !$existing->service_id) $request->merge($existing->only(\App\Services\Actions\UpdateDefaultNodeLine::PRESERVED_FIELDS));
         abort_if($existing && (bool)$existing->service_id!==(bool)$request->input('service_id'),422,'代理服务与接入线路不能直接互换，请新增目标对象后迁移线路');
         abort_if($existing && \Illuminate\Support\Facades\DB::table('v2_node_connection')->where('node_type',$backend)->where('node_id',$existing->id)->exists(),409,'请通过接入线路编辑与发布，避免绕过入口校验');
         if ($request->input('service_id')) {
@@ -71,7 +78,8 @@ class V2nodeController extends Controller
         }
         $request->merge(\App\Services\NodeDisplayService::normalizeInput($request->all()));
         $params = $request->validate([
-            'group_id' => 'required',
+            'group_id' => 'present|array|max:100',
+            'group_id.*' => 'integer|min:1|distinct',
             'route_id' => 'nullable|array',
             'route_id.*' => 'integer|min:1|distinct',
             'name' => 'required',
@@ -266,6 +274,7 @@ class V2nodeController extends Controller
                 abort_if(\Illuminate\Support\Facades\DB::table('v2_server_traffic_binding')->where('node_type',$backend)->where('node_id',$server->id)->exists(),422,'请先解除服务器额度绑定，再设置为关联线路');
                 abort_if(\Illuminate\Support\Facades\DB::table('v2_lightsail_server')->where('node_type',$backend)->where('node_id',$server->id)->exists(),422,'请先移除 Lightsail 配置，再设置为关联线路');
             }
+            if(!$server->service_id) $params=\Illuminate\Support\Arr::except($params,\App\Services\Actions\UpdateDefaultNodeLine::PRESERVED_FIELDS);
             $server->fill($params);
             \App\Services\NodeListenerGuard::check($backend,$server);
             try {

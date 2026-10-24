@@ -65,8 +65,8 @@ try {
     $b->sing_box=['outbounds'=>[array_replace($out,['server_port'=>1081])]];
     $reject(fn()=>NodeRouteService::native(collect([$a,$b])),'Conflicting outbound definitions rejected');
     foreach (['v2node'=>[$xray,new V2nodeController()], 'v2box'=>[$box,new V2boxController()]] as $backend=>[$node,$controller]) {
-        $controller->save($request(array_replace($base,['id'=>$node->id,'name'=>'edited '.$backend,'route_id'=>$node->route_id])));
-        $assert($node->fresh()->name==='edited '.$backend,'Persisted node can be edited');
+        $controller->save($request(array_replace($base,['id'=>$node->id,'name'=>'stale name '.$backend,'listen_ip'=>'127.0.0.1','route_id'=>$node->route_id])));
+        $assert($node->fresh()->name==='Route test' && $node->fresh()->listen_ip==='127.0.0.1','Persisted service technical settings can be edited without changing default line name');
     }
     $config=App\Services\Actions\NodeV10Config::build($box->fresh());
     $assert($config['singBox']['route']->rules===$merged['route']['rules'] && $config['routes']===[], 'V10 resolves native catalog rules');

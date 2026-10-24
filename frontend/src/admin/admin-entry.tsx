@@ -159,7 +159,7 @@ function AdminPageBody({ current }: { current: string }) {
     if (current === "system-log") return <AdminSystemLogs />;
     if (current === "node-domains") return <AdminDDNS />;
     if (["servers", "server-lightsail"].includes(current)) return <Infrastructure section={current} />;
-    if (current === "node-services" || current === "node-forwarding") return <Nodes initialTab={current === "node-services" ? "services" : "forwarding"} />;
+    if (current === "node-forwarding") return <Nodes initialTab="forwarding" />;
     if (current === "client-diagnostics") return <AdminClientDiagnostics />;
     if (current === "client-downloads")
         return <Settings key="client-downloads" section="app" />;

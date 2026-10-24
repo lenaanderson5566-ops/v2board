@@ -105,6 +105,17 @@ try {
     $adminDenied=$call('v1/'.$path.'/config/fetch',[],'user');
     $assert(str_contains($adminDenied->headers->get('Cache-Control'),'no-store'),'Legacy admin authentication errors cannot be cached');
     $assert($call('v1/'.$path.'/config/fetch',[],'admin')->getStatusCode()===200,'Admin-scoped Cookie authorizes administrative routes');
+    $line=App\Models\ServerV2box::create(['up_mbps'=>0,'down_mbps'=>0,'name'=>'Line auth test','group_id'=>[],'host'=>'auth.example.test','port'=>'443','server_port'=>443,'protocol'=>'vless','tls'=>0,'network'=>'tcp','rate'=>1]);
+    $linePath='v1/'.$path.'/server/connections/default';
+    $lineState=$data($call($linePath,['type'=>'v2box','id'=>$line->id],'admin'));
+    $lineEdit=['type'=>'v2box','id'=>$line->id,'revision'=>$lineState['revision'],'name'=>'Business only','group_id'=>[],'rate'=>2];
+    $assert($call($linePath,$lineEdit,'admin','PATCH',false)->getStatusCode()===419,'Default line PATCH requires CSRF');
+    $assert($call($linePath,$lineEdit,'user','PATCH')->getStatusCode()===403,'User session cannot modify default line');
+    $assert($call($linePath,$lineEdit,'admin','PATCH',null,'https://evil.example')->getStatusCode()===419,'Default line PATCH requires trusted Origin');
+    $assert($call($linePath,$lineEdit+['protocol'=>'trojan'],'admin','PATCH')->getStatusCode()===422,'Default line PATCH rejects service settings');
+    $assert($call($linePath,$lineEdit,'admin','PATCH')->getStatusCode()===200,'Admin cookie authorizes scoped PATCH');
+    $assert($line->fresh()->name==='Business only' && $line->fresh()->protocol==='vless' && (int)$line->fresh()->server_port===443,'Scoped PATCH does not mutate service identity');
+    $assert($call($linePath,$lineEdit,'admin','PATCH')->getStatusCode()===409,'Default line stale revision rejected through router');
     $user->update(['is_admin'=>0]);
     $assert($call('v1/'.$path.'/config/fetch',[],'admin')->getStatusCode()===403,'Admin permission is rechecked against current account');
     $rejectedAdmin=$call('v1/passport/auth/login',$body,'admin','POST');

@@ -347,3 +347,9 @@ it("loads administrator account identity from the retained V10 account endpoint"
  const send=vi.fn().mockResolvedValue(new Response(JSON.stringify({data:{id:42,email:"admin@example.test"}}),{status:200}));vi.stubGlobal("fetch",send);
  try{await request("user/info");expect(send.mock.calls[0][0]).toBe("/api/v10/me");}finally{window.V2BOARD.mode="user";}
 });
+
+it("uses PATCH for narrow administrative edits while retaining browser session handling",async()=>{
+    const fetchMock=vi.fn().mockResolvedValue(new Response(JSON.stringify({data:true}),{status:200}));vi.stubGlobal("fetch",fetchMock);
+    await request("test-admin/server/connections/default",{id:3,name:"JP"},{method:"PATCH"});
+    expect(fetchMock).toHaveBeenCalledWith(expect.stringContaining("/api/v1/test-admin/server/connections/default"),expect.objectContaining({method:"PATCH",credentials:"include",body:JSON.stringify({id:3,name:"JP"})}));
+});

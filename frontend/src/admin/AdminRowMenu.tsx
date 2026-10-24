@@ -1,7 +1,7 @@
 import { useEffect, useId, useRef, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 
-export function AdminRowMenu({ children, context }: { children: ReactNode; context?: boolean }) {
+export function AdminRowMenu({ children, context, label = "用户更多操作" }: { children: ReactNode; context?: boolean; label?:string }) {
     const id = useId();
     const menu = useRef<HTMLDivElement>(null);
     const trigger = useRef<HTMLButtonElement>(null);
@@ -41,7 +41,7 @@ export function AdminRowMenu({ children, context }: { children: ReactNode; conte
                 setPosition({left: Math.max(8, Math.min(rect.right - 210, window.innerWidth - 218)), top: Math.max(8, Math.min(rect.bottom + 4, window.innerHeight - 330))});
                 setOpen(value => !value);
             }}>更多操作</button>
-        {createPortal(<div id={id} ref={menu} hidden={!open} role="group" aria-label="用户更多操作"
+        {createPortal(<div id={id} ref={menu} hidden={!open} role="group" aria-label={label}
             className="admin-row-popover" style={position}
             onKeyDown={event => {
                 if (!["ArrowDown", "ArrowUp", "Home", "End"].includes(event.key)) return;

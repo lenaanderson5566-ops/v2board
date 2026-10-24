@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { type ReactNode, useEffect, useRef, useState } from "react";
 import { admin, query, request, type Row } from "../shared/api";
 import { Modal, Panel, Table, State, useData } from "../shared/ui";
 import { AdminSwitch } from "./admin-switch";
@@ -6,7 +6,7 @@ import { NodeTopology } from "./NodeTopology";
 import { relayStreamConfig } from "./node-relay";
 import { useNodeCatalog } from "./node-dictionary";
 
-export function NodeConnectionEditor({ node, nodes, groups = [], close, onSaved, embedded=false, onDirty, onBusyChange, onCreated }: { node: Row; nodes: Row[]; groups?: Row[]; close: () => void; onSaved: () => void; embedded?:boolean; onDirty?:(dirty:boolean)=>void; onBusyChange?:(busy:boolean)=>void; onCreated?:()=>void }) {
+export function NodeConnectionEditor({ node, nodes, groups = [], close, onSaved, embedded=false, onDirty, onBusyChange, onCreated, navigation }: { navigation?:(busy:boolean,dirty:boolean)=>ReactNode; node: Row; nodes: Row[]; groups?: Row[]; close: () => void; onSaved: () => void; embedded?:boolean; onDirty?:(dirty:boolean)=>void; onBusyChange?:(busy:boolean)=>void; onCreated?:()=>void }) {
     const [id, setId] = useState<number | undefined>(node.id);
     const [type, setType] = useState<string>(node.type || "v2box");
     const catalog = useNodeCatalog();
@@ -103,7 +103,7 @@ export function NodeConnectionEditor({ node, nodes, groups = [], close, onSaved,
             </div>
         </State>
     </>;
-    return embedded ? content : <Modal title={id ? "编辑接入线路" : "新增接入线路"} close={dismiss} wide>{content}</Modal>;
+    return embedded ? content : <Modal title={id ? `编辑节点 · ${node.name}` : "新增接入线路"} variant="drawer" className="node-editor-dialog" close={dismiss} wide>{navigation?.(busy,dirty)}{content}</Modal>;
 }
 
 export function NodeForwarding({ nodes, edit }: { nodes: Row[]; edit: (node: Row) => void }) {

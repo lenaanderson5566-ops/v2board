@@ -3,17 +3,17 @@
   "modes": [
     {
       "mode": "user",
-      "startupGzipBytes": 274917,
+      "startupGzipBytes": 274916,
       "budget": 307200,
-      "totalBytes": 2841899,
+      "totalBytes": 2841926,
       "fileCount": 316
     },
     {
       "mode": "admin",
-      "startupGzipBytes": 375821,
+      "startupGzipBytes": 375818,
       "budget": 460800,
-      "totalBytes": 4065286,
-      "fileCount": 81
+      "totalBytes": 4070028,
+      "fileCount": 82
     }
   ],
   "warnings": []

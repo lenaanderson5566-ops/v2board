@@ -87,7 +87,7 @@ function NodesContent({
     const [managedLine, setManagedLine] = useState<Row | null>(null);
     const [creationMode, setCreationMode] = useState<"new" | "reuse">("new");
     const [defaultLine, setDefaultLine] = useState<Row | null>(null);
-    const [connectionNode, setConnectionNode] = useState<Row | null>(null);
+    const [connectionNode, setConnectionNode] = useState<(Row & {_editorSection:"line"|"path"}) | null>(null);
     const [nodeDirty, setNodeDirty] = useState(false);
     const [nodeBusy, setNodeBusy] = useState(false);
     const [conversionOpen, setConversionOpen] = useState(false);
@@ -161,7 +161,6 @@ function NodesContent({
         setEditing(null);
     }
     const nodeRows = rows(d.data);
-    const viewRows = nodeRows;
     const serviceMap = useMemo(
         () =>
             new Map(
@@ -180,7 +179,8 @@ function NodesContent({
             }
         return counts;
     }, [d.data]);
-    type EditSection = "line" | "service" | "deploy";
+    const associatedNodes=useMemo(()=>managedLine ? nodeRows.filter(n=>n.type===managedLine.type && Number(n.service_id || n.id)===Number(managedLine.service_id || managedLine.id)) : [],[d.data,managedLine]);
+    type EditSection = "line" | "path" | "service" | "deploy";
     function openSection(line: Row, section: EditSection) {
         const current=nodeRows.find(n=>n.type===line.type && Number(n.id)===Number(line.id));
         if(!current){setError("节点已变化，请重新加载节点列表");return;}
@@ -198,7 +198,9 @@ function NodesContent({
         setCredentialNode(null);
         setEditing(null);
         if (section === "line")
-            line.service_id ? setConnectionNode(line) : setDefaultLine(line);
+            line.service_id ? setConnectionNode({...line,_editorSection:"line"}) : setDefaultLine(line);
+        else if (section === "path")
+            line.service_id ? setConnectionNode({...line,_editorSection:"path"}) : setCredentialNode({...service,_focusDomain:true,_editorSection:"path"});
         else if (section === "service") {
             setType(service.type);
             setEditing(service);
@@ -218,9 +220,10 @@ function NodesContent({
                     value={section}
                     disabled={busy || d.loading}
                     options={[
-                        { value: "line", label: "线路信息" },
-                        { value: "service", label: "服务配置" },
-                        { value: "deploy", label: "部署" },
+                        { value: "line", label: "节点信息" },
+                        { value: "path", label: "接入路径" },
+                        { value: "service", label: "代理服务" },
+                        { value: "deploy", label: "部署与诊断" },
                     ]}
                     onChange={(next) => {
                         if (
@@ -234,17 +237,11 @@ function NodesContent({
                         openSection(managedLine, next);
                     }}
                 />
-                {managedLine.service_id && section !== "line" && (
-                    <p className="muted">
-                        此线路复用「
-                        {
-                            serviceMap.get(
-                                `${managedLine.type}:${managedLine.service_id}`,
-                            )?.name
-                        }
-                        」的服务配置。更改协议、监听或证书将影响共用该服务的全部线路。
-                    </p>
-                )}
+                <p className="muted">节点名称、地区与展示信息独立设置；协议、监听和证书由代理服务统一维护。</p>
+                <details className="admin-deployment-tools"><summary>代理服务关联节点（{associatedNodes.length} 个）</summary>
+                    <ul>{associatedNodes.map(n=><li key={`${n.type}:${n.id}`}>{n.name}{Number(n.id)===Number(managedLine.id)?"（当前节点）":""}</li>)}</ul>
+                    <p className="muted">修改代理服务的协议、监听、证书或部署会影响以上节点。计费倍率沿用同一服务的统计，暂不按入口分别计费。</p>
+                </details>
             </div>
         );
     }
@@ -254,7 +251,7 @@ function NodesContent({
         if (service) openSection(service, "service");
         setServiceFocus("");
     }, [serviceFocus, d.data]);
-    const filteredNodes = viewRows.filter(
+    const filteredNodes = nodeRows.filter(
         (n) =>
             (!onlyIssues || !!n.issues?.length) &&
             (!onlyMaintenance || !!n.maintenance) &&
@@ -304,15 +301,15 @@ function NodesContent({
                             `服务 #${r.service_id}`}
                     </button>
                 ) : (
-                    "独立"
+                    (connectionCounts.get(`${r.type}:${r.id}`) || 0)>0 ? `共用（${1+(connectionCounts.get(`${r.type}:${r.id}`) || 0)} 个节点）` : "独享"
                 ),
         ],
         ["server_port", "监听端口"],
         [
             "connections",
-            "关联线路",
+            "关联节点",
             (r) =>
-                `${1 + (connectionCounts.get(`${r.type}:${r.id}`) || 0)} 条（含默认线路）`,
+                `${1 + (connectionCounts.get(`${r.type}:${r.service_id || r.id}`) || 0)} 个节点`,
         ],
         ["protocol", "协议"],
         [
@@ -493,7 +490,7 @@ function NodesContent({
                 </p>
             )}
             <p className="pad muted">
-                统一管理线路信息、服务配置与部署。复用线路共用协议、监听和证书。{" "}
+                每行对应用户订阅中的一个节点，统一管理节点信息、接入路径、代理服务和部署。{" "}
                 <a href="#/servers">服务器管理</a> ·{" "}
                 <a href="#/node-domains">域名与解析</a>
             </p>
@@ -512,9 +509,10 @@ function NodesContent({
             {connectionNode && (
                 <NodeConnectionEditor
                     navigation={(busy, dirty) =>
-                        editorNavigation("line", busy, dirty)
+                        editorNavigation(connectionNode._editorSection, busy, dirty)
                     }
-                    key={`${connectionNode.type}:${connectionNode.id || "new"}`}
+                    view={connectionNode._editorSection}
+                    key={`${connectionNode.type}:${connectionNode.id || "new"}:${connectionNode._editorSection}`}
                     node={connectionNode}
                     nodes={nodeRows}
                     groups={rows(groups.data)}
@@ -525,7 +523,7 @@ function NodesContent({
             {tab === "forwarding" && (
                 <NodeForwarding
                     nodes={nodeRows}
-                    edit={(node) => openSection(node, "line")}
+                    edit={(node) => openSection(node, "path")}
                 />
             )}
             {tab === "nodes" && (
@@ -588,13 +586,13 @@ function NodesContent({
                         >
                             <div>
                                 <span>{"全部节点"}</span>
-                                <strong>{viewRows.length}</strong>
+                                <strong>{nodeRows.length}</strong>
                             </div>
                             <div>
                                 <span>{"展示中"}</span>
                                 <strong>
                                     {
-                                        viewRows.filter(
+                                        nodeRows.filter(
                                             (n) => Number(n.show) === 1,
                                         ).length
                                     }
@@ -604,7 +602,7 @@ function NodesContent({
                                 <span>{"已隐藏"}</span>
                                 <strong>
                                     {
-                                        viewRows.filter(
+                                        nodeRows.filter(
                                             (n) => Number(n.show) !== 1,
                                         ).length
                                     }
@@ -614,7 +612,7 @@ function NodesContent({
                                 <span>{"复用线路"}</span>
                                 <strong>
                                     {
-                                        viewRows.filter((n) => !!n.service_id)
+                                        nodeRows.filter((n) => !!n.service_id)
                                             .length
                                     }
                                 </strong>
@@ -699,7 +697,7 @@ function NodesContent({
                                 </>
                             }
                             <span className="muted">
-                                显示 {filteredNodes.length} / {viewRows.length}{" "}
+                                显示 {filteredNodes.length} / {nodeRows.length}{" "}
                                 {"个节点"}
                             </span>
                         </div>
@@ -774,14 +772,14 @@ function NodesContent({
             )}
             {credentialNode && (
                 <NodeDeployment
-                    key={`${credentialNode.type}:${credentialNode.id}`}
+                    key={`${credentialNode.type}:${credentialNode.id}:${credentialNode._editorSection || "deploy"}`}
                     navigation={(busy, dirty) =>
-                        editorNavigation("deploy", busy, dirty)
+                        editorNavigation(credentialNode._editorSection === "path" ? "path" : "deploy", busy, dirty)
                     }
                     editorName={managedLine?.name}
                     node={credentialNode}
                     scope={
-                        credentialNode._domainOnly ? "connection" : "service"
+                        credentialNode._editorSection === "path" ? "connection" : "service"
                     }
                     inspect={() => {
                         setDiagnosticNode(credentialNode);
@@ -842,11 +840,11 @@ function NodesContent({
                             />
                             <p className="muted">
                                 {creationMode === "new"
-                                    ? "依次填写线路信息、服务配置和部署信息，保存后生成安装命令。"
-                                    : "填写线路信息并选择已有服务；共用协议、证书和倍率，无需重复安装。"}
+                                    ? "依次填写节点信息、代理服务和部署信息，保存后生成安装命令。"
+                                    : "独立填写节点名称和地区，再选择现有代理服务；共用协议、证书和倍率，无需重复安装。"}
                             </p>
                             </details>
-                            {creationMode === "reuse" && <p role="status">当前为共享服务线路：协议、监听、证书和倍率随原节点维护；不会部署新的代理进程。</p>}
+                            {creationMode === "reuse" && <p role="status">当前节点共用现有代理服务的协议、监听、证书和倍率，无需重复部署。</p>}
                         </div>
                     )}
                     {!editing.id && creationMode === "reuse" ? (
@@ -867,7 +865,7 @@ function NodesContent({
                                 onSaved={d.reload}
                                 onDirty={setNodeDirty}
                                 onBusyChange={setNodeBusy}
-                                onCreated={node=>{setNodeDirty(false);setEditing(null);setManagedLine(node);setConnectionNode(node);}}
+                                onCreated={node=>{setNodeDirty(false);setEditing(null);setManagedLine(node);setConnectionNode({...node,_editorSection:"path"});}}
                             />
                         </State>
                     ) : (
@@ -875,7 +873,7 @@ function NodesContent({
                             {editing.id && (
                                 <div className="pad node-editor-intro">
                                     <p>
-                                        此处仅维护代理服务配置。节点名称、权限、倍率和展示信息请切换到“线路信息”修改。
+                                        此处维护协议、监听和证书。节点名称、权限与展示信息在“节点信息”维护，连接入口在“接入路径”维护。
                                     </p>
                                     <p>
                                         保存后请核对节点通信与运行状态，确认配置已应用。

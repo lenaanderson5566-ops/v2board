@@ -20,7 +20,7 @@ export const serviceLineFields = new Set([
 ]);
 export function nodeLineFields(groups: Row[], catalog: NodeCatalog): Field[] {
     return [
-        { key: "name", label: "节点名称", section: "线路信息", required: true },
+        { key: "name", label: "节点名称", section: "节点信息", required: true },
         {
             key: "group_id",
             label: "权限组",
@@ -44,6 +44,7 @@ export function nodeLineFields(groups: Row[], catalog: NodeCatalog): Field[] {
             section: "展示信息",
             type: "select",
             nullable: true,
+            hint: "表示代理服务的出口位置；中转入口位置在接入路径中单独展示。",
             options: [
                 ["", "使用节点名称"],
                 ...Object.entries(catalog.regions).map(

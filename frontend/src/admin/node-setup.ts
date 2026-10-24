@@ -155,7 +155,7 @@ export function nodeSetupFields(
             ...f,
             section:
                 index === 0
-                    ? "线路信息"
+                    ? "节点信息"
                     : f.key === "region_code"
                       ? "展示信息"
                       : undefined,
@@ -225,7 +225,7 @@ export function nodeServiceFields(fields: Field[]): Field[] {
         return rank(a.key)-rank(b.key);
     }).map((field, index) => ({
         ...field,
-        section: index === 0 ? "服务配置" : field.section,
+        section: index === 0 ? "代理服务" : field.section,
         ...(field.key === "server_port" ? { label: "监听端口" } : {}),
     }));
 }

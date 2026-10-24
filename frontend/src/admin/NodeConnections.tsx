@@ -6,7 +6,7 @@ import { NodeTopology } from "./NodeTopology";
 import { relayStreamConfig } from "./node-relay";
 import { useNodeCatalog } from "./node-dictionary";
 
-export function NodeConnectionEditor({ node, nodes, groups = [], close, onSaved, embedded=false, onDirty, onBusyChange, onCreated, navigation }: { navigation?:(busy:boolean,dirty:boolean)=>ReactNode; node: Row; nodes: Row[]; groups?: Row[]; close: () => void; onSaved: () => void; embedded?:boolean; onDirty?:(dirty:boolean)=>void; onBusyChange?:(busy:boolean)=>void; onCreated?:(node:Row)=>void }) {
+export function NodeConnectionEditor({ node, nodes, groups = [], close, onSaved, embedded=false, onDirty, onBusyChange, onCreated, navigation, view="all" }: { view?:"all"|"line"|"path"; navigation?:(busy:boolean,dirty:boolean)=>ReactNode; node: Row; nodes: Row[]; groups?: Row[]; close: () => void; onSaved: () => void; embedded?:boolean; onDirty?:(dirty:boolean)=>void; onBusyChange?:(busy:boolean)=>void; onCreated?:(node:Row)=>void }) {
     const [id, setId] = useState<number | undefined>(node.id);
     const [type, setType] = useState<string>(node.type || "v2box");
     const catalog = useNodeCatalog();
@@ -19,6 +19,7 @@ export function NodeConnectionEditor({ node, nodes, groups = [], close, onSaved,
     const [dirty, setDirty] = useState(!id && !embedded), [busy, setBusy] = useState(false), [error, setError] = useState("");
     const [confirmed, setConfirmed] = useState(false), [notice, setNotice] = useState("");
     const pending = useRef(false);
+    const regionTouched=useRef(false);
     useEffect(()=>onDirty?.(dirty),[dirty,onDirty]);
     useEffect(()=>onBusyChange?.(busy),[busy,onBusyChange]);
     useEffect(() => {
@@ -43,11 +44,13 @@ export function NodeConnectionEditor({ node, nodes, groups = [], close, onSaved,
     const savedPlan = existing.data?.plan;
     const config = savedPlan?.entry_id ? relayStreamConfig({ id: existing.data?.id, scope: "connection", domain: savedPlan.origin_domain, family: savedPlan.origin_family, entry_port: savedPlan.port }, { ...service, server_port: savedPlan.origin_port, protocol: savedPlan.protocol }, { family: savedPlan.entry_family }) : "";
     function change(key: string, value: unknown) {
-        setDraft(previous => {
-            const next = { ...previous, [key]: value };
-            if (key === "service_id") next.group_id = services.find(s => Number(s.id) === Number(value))?.group_id || [];
-            return next;
-        }); setDirty(true); setConfirmed(false); setNotice("");
+        if(key==="region_code")regionTouched.current=true;
+        setDraft(previous => ({...previous,[key]:value})); setDirty(true); setConfirmed(false); setNotice("");
+    }
+    function selectService(selected:Row | undefined) {
+        if(selected)setType(selected.type);
+        setDraft(previous=>({...previous,service_id:selected?.id || "",group_id:selected?.group_id || [],...(!id && !regionTouched.current && !previous.region_code ? {region_code:selected?.region_code || null,city_code:selected?.city_code || null} : {})}));
+        setDirty(true);setConfirmed(false);setNotice("");
     }
     function dismiss() { if (!busy && (!dirty || window.confirm("线路配置尚未保存，确认放弃修改？"))) close(); }
     async function act(publish = false) {
@@ -66,40 +69,40 @@ export function NodeConnectionEditor({ node, nodes, groups = [], close, onSaved,
     const content=<>
         <State loading={network.loading || existing.loading || (!!id && !existing.error && (!existing.data || loadedRevision !== (existing.data.revision ?? 0)))} error={network.error || existing.error} retry={() => { network.reload(); existing.reload(); }}>
             <div className="admin-deployment-card" data-unsaved={dirty || undefined} data-saving={busy || undefined}>
-                <div className="field-section">线路信息</div>
+                <div className="field-section">{view==="path" ? "接入路径" : "节点信息"}</div>
+                <p className="muted">当前节点独立命名并设置地区、城市和标签。国家／地区表示代理服务的出口位置，中转入口位置单独显示。</p>
                 <div className="node-domain-form">
-                    {!id && !embedded && <label>服务内核<select value={type} disabled={busy} onChange={e => { setType(e.target.value); change("service_id", ""); }}><option value="v2box">V2Box</option><option value="v2node">V2Node</option></select></label>}
-                    <label>节点名称<input value={draft.name} disabled={busy} onChange={e => change("name", e.target.value)} /></label>
-                    <label>代理服务<select value={embedded && !id ? (draft.service_id ? `${type}:${draft.service_id}` : "") : draft.service_id || ""} disabled={busy} onChange={e => {
-                        if(embedded && !id){
-                            const [backend,identity]=e.target.value.split(":");
-                            const selected=selectableServices.find(s=>s.type===backend && Number(s.id)===Number(identity));
-                            if(selected){setType(backend);setDraft(previous=>({...previous,service_id:selected.id,group_id:selected.group_id || []}));setDirty(true);setConfirmed(false);setNotice("");}
-                            else change("service_id", "");
-                        }else change("service_id", e.target.value);
-                    }}><option value="">选择代理服务</option>{selectableServices.map(s => <option key={`${s.type}:${s.id}`} disabled={!canReuse(s)} value={embedded && !id ? `${s.type}:${s.id}` : s.id}>{s.name} · {s.protocol} · {s.type=== "v2box" ? "V2Box" : "V2Node"}{!canReuse(s)?"（需启用服务器和自动域名）":""}</option>)}</select></label>
-                    {service && !canReuse(service) && <p role="status">请先在原节点的部署设置中启用服务器与自动域名管理，再保存或发布复用线路。</p>}
+                    {!id && !embedded && <label>服务内核<select value={type} disabled={busy} onChange={e => { setType(e.target.value); selectService(undefined); }}><option value="v2box">V2Box</option><option value="v2node">V2Node</option></select></label>}
+                    {view!=="path" && <label>节点名称<input value={draft.name} disabled={busy} onChange={e => change("name", e.target.value)} /></label>}
+                    {view!=="line" && <label>代理服务<select value={embedded && !id ? (draft.service_id ? `${type}:${draft.service_id}` : "") : draft.service_id || ""} disabled={busy} onChange={e => {
+                        const selected=embedded && !id
+                            ? selectableServices.find(s=>`${s.type}:${s.id}`===e.target.value)
+                            : services.find(s=>Number(s.id)===Number(e.target.value));
+                        selectService(selected);
+                    }}><option value="">选择代理服务</option>{selectableServices.map(s => <option key={`${s.type}:${s.id}`} disabled={!canReuse(s)} value={embedded && !id ? `${s.type}:${s.id}` : s.id}>{s.name} · {s.protocol} · {s.type=== "v2box" ? "V2Box" : "V2Node"}{!canReuse(s)?"（需启用服务器和自动域名）":""}</option>)}</select></label>}
+                    {service && !canReuse(service) && <p role="status">请先在关联代理服务的部署设置中启用服务器与自动域名管理，再保存或发布节点。</p>}
                     {!id && !selectableServices.length && <p role="status">暂无可共用服务的节点，请选择“独立部署新节点”。</p>}
-                    <label>连接方式<select value={draft.entry_id ? "relay" : "direct"} disabled={busy} onChange={e => change("entry_id", e.target.value === "relay" ? entries[0]?.id || "pending" : "")}><option value="direct">直连</option><option value="relay">入口中转</option></select></label>
+                    {view!=="line" && <><label>连接方式<select value={draft.entry_id ? "relay" : "direct"} disabled={busy} onChange={e => change("entry_id", e.target.value === "relay" ? entries[0]?.id || "pending" : "")}><option value="direct">直连</option><option value="relay">入口中转</option></select></label>
                     {!!draft.entry_id && !entry && <p role="status">请先在 <a href="#/servers" onClick={event=>{if(busy || (dirty && !confirm("离开将放弃未保存的线路配置，确认前往服务器管理？")))event.preventDefault();}}>服务器管理</a> 中添加可用的入口域名。</p>}
                     {!!draft.entry_id && <><label>入口域名<select value={draft.entry_id} disabled={busy} onChange={e => change("entry_id", e.target.value)}><option value="pending">选择入口</option>{entries.map(e => <option key={e.id} value={e.id}>{e.domain} · {servers.find(s => s.id === e.server_id)?.name}</option>)}</select></label><label>入口端口<input type="number" min={1} max={65535} value={draft.entry_port || ""} disabled={busy} onChange={e => change("entry_port", e.target.value)} /></label></>}
-                    <div><span>权限组</span><div className="option-group" role="group" aria-label="权限组">{(service?.group_id || []).map((g: number) => {
+                    </>}
+                    {view!=="path" && <div><span>权限组</span><div className="option-group" role="group" aria-label="权限组">{(service?.group_id || []).map((g: number) => {
                         const selected = (draft.group_id || []).map(Number).includes(Number(g));
                         return <button type="button" role="checkbox" aria-checked={selected} disabled={busy} key={g} onClick={() => change("group_id", selected ? draft.group_id.filter((id: number) => Number(id) !== Number(g)) : [...draft.group_id, Number(g)])}><span className="option-check">{selected ? "✓" : ""}</span>{groups.find(group => Number(group.id) === Number(g))?.name || `权限组 #${g}`}</button>;
-                    })}</div></div>
-                    {service && <p className="muted">计费倍率：{service.rate ?? 1}，随共享服务设置。协议、监听和证书在保存后通过“服务配置”维护。</p>}
-                    <label>发布后展示<AdminSwitch label="发布后展示" checked={!!Number(draft.show)} disabled={busy} onChange={async value => change("show", Number(value))} /></label>
+                    })}</div></div>}
+                    {service && <p className="muted">计费倍率：{service.rate ?? 1}，随共享服务设置。协议、监听和证书在保存后通过“代理服务”维护。</p>}
+                    {view!=="path" && <label>发布后展示<AdminSwitch label="发布后展示" checked={!!Number(draft.show)} disabled={busy} onChange={async value => change("show", Number(value))} /></label>}
                 </div>
-                <details><summary>线路展示信息</summary><div className="node-domain-form">
+                {view!=="path" && <details open={view==="line"}><summary>节点展示信息</summary><div className="node-domain-form">
                     <label>国家 / 地区<select value={draft.region_code || ""} disabled={busy} onChange={e => { change("region_code", e.target.value || null); change("city_code", null); }}><option value="">使用节点名称</option>{Object.entries(catalog.regions).map(([code, names]) => <option key={code} value={code}>{names["zh-CN"] || names["en-US"]}</option>)}</select></label>
-                    <label>州、省或城市<input value={draft.city_code || ""} list="connection-cities" disabled={busy} onChange={e => change("city_code", e.target.value || null)} /><datalist id="connection-cities">{Object.entries(catalog.cities).filter(([code]) => !draft.region_code || catalog.cityRegions[code] === draft.region_code).map(([code, names]) => <option key={code} value={code}>{names["zh-CN"] || names["en-US"]}</option>)}</datalist></label>
+                    <label>州、省或城市<input value={draft.city_code || ""} list="connection-cities" disabled={busy} onChange={e => change("city_code", e.target.value || null)} /></label><datalist id="connection-cities">{Object.entries(catalog.cities).filter(([code]) => !draft.region_code || catalog.cityRegions[code] === draft.region_code).map(([code, names]) => <option key={code} value={code}>{names["zh-CN"] || names["en-US"]}</option>)}</datalist>
                     <label>线路编号 / 后缀<input value={draft.display_label || ""} disabled={busy} onChange={e => change("display_label", e.target.value || null)} /></label>
                     <label>标签（逗号分隔）<input value={tagsText} disabled={busy} onChange={e => { setTagsText(e.target.value); change("tags", e.target.value.split(/[,，]/).map(value => value.trim()).filter(Boolean)); }} /></label>
-                </div></details>
+                </div></details>}
                 <NodeTopology service={service} origin={origin} entry={draft.entry_id ? entry || {} : undefined} server={servers.find(s => s.id === origin?.server_id)} entryServer={servers.find(s => s.id === entry?.server_id)} port={draft.entry_id ? draft.entry_port : service?.server_port} preview={dirty || !id} shared={entry?.connection_count || 0} />
                 <button className="primary" disabled={busy || !dirty || !canReuse(service) || !draft.name.trim() || !validEntry} onClick={() => act()}>保存待发布配置</button>
                 {existing.data && <p>当前发布地址：{existing.data.published ? `${existing.data.current.host}:${existing.data.current.port}` : !existing.data.revision && node.host ? `${node.host}:${node.port}` : "尚未发布"}</p>}
-                {!dirty && savedPlan && <section className="admin-deployment-card">
+                {view!=="line" && !dirty && savedPlan && <section className="admin-deployment-card">
                     <h3>检查与发布</h3>
                     <p>{savedPlan.dns_ready ? "入口与回源解析已就绪。" : "等待服务器 IP 上报和解析同步。"}{savedPlan.transition_pending ? "代理服务证书正在切换，请等待完成。" : ""}</p>
                     {config && <details><summary>入口转发配置</summary><p>将此片段合并到入口服务器 Nginx 的 stream 配置，并替换该线路的旧片段。运行 nginx -t，通过后 reload。要求 Nginx 1.27.3 或更新版本。</p><pre className="admin-network-command">{config}</pre><button disabled={busy} onClick={async () => { try { await navigator.clipboard.writeText(config); setNotice("转发配置已复制。"); } catch { setError("复制失败，请手动复制配置。"); } }}>复制转发配置</button></details>}

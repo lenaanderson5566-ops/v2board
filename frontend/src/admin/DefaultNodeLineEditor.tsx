@@ -59,7 +59,7 @@ export function DefaultNodeLineEditor({
                 {data.data && (
                     <>
                         <p className="pad muted">
-                            仅保存名称、权限、倍率和展示信息。连接地址在“部署”的域名与解析中维护；协议、监听和证书在“服务配置”中维护。
+                            仅保存名称、权限、倍率和展示信息。连接地址在“接入路径”维护；协议、监听和证书在“代理服务”中维护。
                         </p>
                         <Editor
                             key={data.data.revision}
@@ -68,7 +68,7 @@ export function DefaultNodeLineEditor({
                                 ...data.data.values,
                                 tags: data.data.values.tags || [],
                             }}
-                            submit="保存线路信息"
+                            submit="保存节点信息"
                             onDirty={() => setDirty(true)}
                             onBusyChange={setBusy}
                             linkValues={(key, value, values) => ({

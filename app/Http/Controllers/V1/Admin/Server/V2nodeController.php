@@ -129,6 +129,10 @@ class V2nodeController extends Controller
             'show' => 'nullable|in:0,1',
             'sort' => 'nullable'
         ], \App\Services\NodeDisplayService::validationMessages());
+        if (!empty($params['tls_settings']['dns_credential_id'])) {
+            abort_unless((int)$params['tls']===1,422,'证书 DNS 凭据仅用于普通 TLS');
+            $params['tls_settings']=\App\Services\NodeCertificateCredential::normalize($params['tls_settings']);
+        }
         $params = array_merge($params, $this->extraParams($request));
         $backend = $this->model === \App\Models\ServerV2box::class ? 'v2box' : 'v2node';
         if (array_key_exists('route_id', $params)) {

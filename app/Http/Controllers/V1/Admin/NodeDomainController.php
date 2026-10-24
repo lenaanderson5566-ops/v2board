@@ -52,6 +52,7 @@ final class NodeDomainController extends Controller
             if($same && DB::table('v2_network_server')->where('id',$old->server_id)->where('enabled',true)->exists())
                 return ['data'=>['id'=>$old->id,'domain'=>$domain,'unchanged'=>true]];
             $tls=json_decode($n->tls_settings??'{}',true)?:[];
+            if ((int)$n->tls===1 && !empty($tls['dns_credential_id'])) \App\Services\NodeCertificateCredential::credential(array_replace($tls,['server_name'=>$entry ? $entry->domain : $domain]));
             if ($entry && (int)$n->tls===1) \App\Services\NetworkServer::tls((object)['entry_id'=>$entry->id],$tls);
             if ((int)$n->tls===1 && in_array($tls['cert_mode']??'',['http','dns'],true) && empty($tls['server_name'])) {
                 $tls['server_name']=$entry ? $entry->domain : $domain;

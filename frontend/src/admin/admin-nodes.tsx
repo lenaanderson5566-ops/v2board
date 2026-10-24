@@ -985,6 +985,9 @@ function NodesContent({
                                                     "nodes",
                                                 ),
                                             );
+                                        for (const field of presented) if (field.key === "tls_settings.dns_credential_id") {
+                                            field.options = [["", "手动配置其他 DNS 凭据"], ...(topology.data?.credentials || []).filter((c:Row)=>c.root_domain && Number(c.next_run)>=0).map((c:Row)=>[String(c.id), `${c.name} · ${c.root_domain}`] as [string,string])];
+                                        }
                                         return editing.id
                                             ? nodeServiceFields(presented.filter(
                                                   (field) =>

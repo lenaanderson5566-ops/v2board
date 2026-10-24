@@ -98,9 +98,9 @@ export function nodeConfigurationProblems(
             add("tls_settings.server_name", "请填写 TLS 身份域名");
         if (cert.cert_mode === "http" && Number(v.server_port) === 80)
             add("server_port", "HTTP 证书验证占用 TCP 80，请使用其他监听端口");
-        if (cert.cert_mode === "dns" && !cert.provider)
+        if (cert.cert_mode === "dns" && !cert.dns_credential_id && !cert.provider)
             add("tls_settings.provider", "DNS 证书申请需要配置 DNS 提供商");
-        if (cert.cert_mode === "dns" && !cert.dns_env)
+        if (cert.cert_mode === "dns" && !cert.dns_credential_id && !cert.dns_env)
             add("tls_settings.dns_env", "DNS 证书申请需要独立验证凭据");
         if (cert.cert_mode === "file" && (!cert.cert_file || !cert.key_file))
             add("tls_settings.cert_file", "请同时填写证书和私钥文件路径");

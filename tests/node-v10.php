@@ -78,6 +78,7 @@ try {
     $assert($r->getStatusCode()===200,'Capabilities accepted: '.$r->getStatusCode().' '.$r->getContent());
     $assert(Cache::get('V2BOX_CAPABILITIES:'.$node->id)['coreVersion']==='v1.14.3','Capability cache');
     $r=$call('GET',$root.'/configuration');$body=json_decode($r->getContent(),true);
+    $assert(str_contains($r->headers->get('Cache-Control',''),'no-store'),'Node configuration containing credentials must not be cached');
     $assert($r->getStatusCode()===200 && $body['data']['listenPort']===443 && $body['data']['singBox']===$native,'V10 config projection: '.$r->getStatusCode().' '.$r->getContent());
     $assert(!isset($body['data']['server_port']),'No legacy field naming');
     $assert(($body['meta']['configurationHash']??null)===trim($r->headers->get('ETag'),'"'),'Configuration receipt hash survives ETag weakening/removal via explicit metadata');

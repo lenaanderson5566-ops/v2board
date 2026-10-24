@@ -21,6 +21,7 @@ final class NodeDeploymentWorkflow
         if ((int)$node->tls===1 && in_array($tls['cert_mode']??'',['http','dns'],true)) {
             abort_unless($a && $a->managed,422,'自动申请证书的一键部署需要先保存托管节点域名');
         }
+        if (!empty($tls['dns_credential_id'])) NodeCertificateCredential::credential($tls);
         if (!$a || !$a->managed) return;
         if ((int)$node->tls===1) {
             NetworkServer::tls($a,$tls);
@@ -29,7 +30,7 @@ final class NodeDeploymentWorkflow
             if (in_array($tls['cert_mode']??'',['http','dns'],true)) {
                 abort_unless(preg_match('/^(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,63}$/D',$tls['server_name']),422,'自动申请证书需要有效的单个域名');
                 abort_if(($tls['cert_mode']??'')==='http' && (int)$node->server_port===80,422,'HTTP 证书验证需要独立的 80 端口，请调整节点监听端口');
-                abort_if(($tls['cert_mode']??'')==='dns' && (empty($tls['provider']) || empty($tls['dns_env'])),422,'DNS 申请证书需要单独配置 DNS 提供商和验证凭据');
+                abort_if(($tls['cert_mode']??'')==='dns' && empty($tls['dns_credential_id']) && (empty($tls['provider']) || empty($tls['dns_env'])),422,'DNS 申请证书需要单独配置 DNS 提供商和验证凭据');
             }
         }
     }

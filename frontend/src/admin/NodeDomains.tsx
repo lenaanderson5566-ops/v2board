@@ -518,7 +518,7 @@ export function NodeDomainBinding({
                                     <section className="admin-deployment-card" aria-label="中转连接配置说明">
                                         <strong>客户端 → 入口服务器 → 代理服务器</strong>
                                         <p>入口负责转发，V2Box 安装在代理服务器。入口域名解析到入口 IP，回源域名解析到代理服务器 IP。</p>
-                                        {Number(node.tls) === 1 && <><p>证书由代理服务器申请，须覆盖入口域名。请先在“代理服务”的“TLS 与证书”中选择 DNS 申请，填写 DNS 提供商和验证凭据并保存，再配置中转路径。</p><p>Cloudflare：提供商填写 cloudflare，DNS 环境参数填写 CF_DNS_API_TOKEN=你的令牌。域名与解析中的凭据不会自动用于证书申请。</p><p>令牌须有入口域名所在区域的 Zone:Read 与 DNS:Edit 权限，将用于代理服务器申请与续期证书。</p></>}
+                                        {Number(node.tls) === 1 && <><p>证书由代理服务器申请，须覆盖入口域名。请先在“代理服务”的“TLS 与证书”中选择 DNS 申请，选择覆盖入口域名的 Cloudflare 凭据并保存，再配置中转路径。</p><p>Cloudflare：可直接选择“域名与解析”中已有的凭据，无需填写 DNS 环境参数；使用其他凭据时仍可手动填写。</p><p>令牌须有入口域名所在区域的 Zone:Read 与 DNS:Edit 权限，将用于代理服务器申请与续期证书。</p></>}
                                         {Number(node.tls) === 2 && <p>Reality 使用独立的握手配置，无需申请上述 TLS 域名证书。</p>}
                                     </section>
                                     <label>

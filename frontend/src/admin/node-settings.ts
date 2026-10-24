@@ -19,6 +19,7 @@ const nested: Record<string, Field[]> = {
                 ["none", "不使用证书"],
             ],
         },
+        { key: "dns_credential_id", label: "证书 Cloudflare 凭据", type: "select", options: [["", "手动配置其他 DNS 凭据"]], hint: "选择已验证根域名的凭据。Token 将交由代理服务器申请和续期证书，请使用仅授权所需区域的 Token。" },
         { key: "provider", label: "DNS 提供商", hint: "使用 Cloudflare 时填写 cloudflare；用于证书申请与续期。" },
         {
             key: "dns_env",

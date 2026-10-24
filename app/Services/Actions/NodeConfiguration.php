@@ -12,7 +12,7 @@ class NodeConfiguration {
             'trusted_x_forwarded_for'=> $node->trusted_x_forwarded_for,
             'protocol' => $node->protocol,
             'tls' => $node->tls,
-            'tls_settings' => $node->tls_settings,
+            'tls_settings' => (int)$node->tls===1 ? \App\Services\NodeCertificateCredential::resolve($node->tls_settings?:[]) : $node->tls_settings,
             'encryption' => $node->encryption,
             'encryption_settings' => $node->encryption_settings,
             'flow' => $node->flow,

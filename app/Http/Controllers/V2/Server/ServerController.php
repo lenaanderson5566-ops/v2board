@@ -54,9 +54,9 @@ class ServerController extends Controller
 
         // 不使用 abort(304)，避免异常路径
         if ($request->header('If-None-Match') === $eTag) {
-            return response('', 304)->header('ETag', "\"{$eTag}\"");
+            return response('', 304)->header('ETag', "\"{$eTag}\"")->header('Cache-Control', 'private, no-store');
         }
 
-        return response($response)->header('ETag', "\"{$eTag}\"");
+        return response($response)->header('ETag', "\"{$eTag}\"")->header('Cache-Control', 'private, no-store');
     }
 }

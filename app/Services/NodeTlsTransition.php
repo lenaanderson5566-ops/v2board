@@ -63,6 +63,7 @@ final class NodeTlsTransition
         $target=NetworkServer::target($a);
         NetworkServer::tls($a,$tls);
         $tls['server_name']=$target->domain; unset($tls['server_names'],$tls['pinned_peer_cert_sha256']);
+        if (!empty($tls['dns_credential_id'])) NodeCertificateCredential::credential($tls);
         if (in_array($tls['cert_mode'],['http','dns','self'],true)) {
             $dir='/etc/v2box/certificates/'.$a->node_id.'/'.substr(hash('sha256',$target->domain),0,32);
             $tls['cert_file']=$dir.'/certificate.pem'; $tls['key_file']=$dir.'/private.key';

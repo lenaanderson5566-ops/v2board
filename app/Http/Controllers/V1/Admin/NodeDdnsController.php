@@ -53,6 +53,7 @@ class NodeDdnsController extends Controller {
             $old=isset($v['id']) ? DB::table('v2_ddns_credential')->find($v['id']) : null;
             abort_if(isset($v['id']) && !$old,404);
             $zone=strtolower($v['zone_id']);
+            abort_if($old && $old->zone_id!==$zone && \App\Services\NodeCertificateCredential::referenced($old->id),409,'凭据仍用于节点证书，请先修改节点证书配置');
             abort_if($old && $old->zone_id!==$zone && (DB::table('v2_node_ddns')->where('credential_id',$old->id)->exists() || DB::table('v2_node_dns_record')->where('credential_id',$old->id)->exists()),409,'凭据仍关联节点或历史解析，请新增根域名后使用批量迁移');
             abort_if(empty($v['token']) && (!$old || $old->zone_id!==$zone),422,'新增凭据或更换 Zone 时必须填写 Token');
             $data=['name'=>$v['name'],'zone_id'=>$zone];
@@ -83,6 +84,7 @@ class NodeDdnsController extends Controller {
         return DB::transaction(function () use ($v) {
             DB::table('v2_ddns_credential')->where('id',$v['id'])->lockForUpdate()->first();
             abort_if(DB::table('v2_node_dns_record')->where('credential_id',$v['id'])->exists() || DB::table('v2_node_ddns')->where('credential_id',$v['id'])->exists(),409,'请先移除使用此凭据的 DDNS 配置');
+            abort_if(\App\Services\NodeCertificateCredential::referenced($v['id']),409,'凭据仍用于节点证书，请先修改节点证书配置');
             DB::table('v2_ddns_credential')->where('id',$v['id'])->delete();
             return ['data'=>true];
         });

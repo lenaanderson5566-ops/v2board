@@ -214,6 +214,7 @@ export function validateResource(values: Row): string | undefined {
 const tlsRequired = ["trojan", "tuic", "hysteria2", "anytls", "naive"];
 export function linkNode(key: string, next: unknown, values: Row): Row {
     const result = { ...values, [key]: next };
+    if (key === "tls_settings.cert_mode" && next !== "dns") result["tls_settings.dns_credential_id"] = "";
     if (key === "padding_preset") {
         const preset = anytlsPresets.find(p => p.id === next);
         if (preset) result.padding_scheme = preset.scheme;
@@ -283,6 +284,7 @@ export function nodeFields(
                         "cert_mode",
                         "provider",
                         "dns_env",
+                        "dns_credential_id",
                         "cert_file",
                         "key_file",
                         "pinned_peer_cert_sha256",
@@ -291,8 +293,9 @@ export function nodeFields(
                     if (!["v2node", "v2box"].includes(type)) return false;
                     if (tls !== 1) return false;
                     const mode = values[root + ".cert_mode"] || "self";
+                    if (parameter === "dns_credential_id") return mode === "dns";
                     if (["provider", "dns_env"].includes(parameter))
-                        return mode === "dns";
+                        return mode === "dns" && !values[root + ".dns_credential_id"];
                     if (parameter === "pinned_peer_cert_sha256")
                         return mode === "remote";
                     if (["cert_file", "key_file"].includes(parameter))

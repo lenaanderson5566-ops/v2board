@@ -38,7 +38,7 @@ class ServerService
             if (isset($v2node[$key]['tls_settings'])) {
                 $v2node[$key]['tls_settings'] = array_diff_key(
                     $v2node[$key]['tls_settings'],
-                    array_flip(array_filter(['private_key', 'ech_key', 'tls_key', 'dns_env'], function($k) use ($v2node, $key) {
+                    array_flip(array_filter(['private_key', 'ech_key', 'tls_key', 'dns_env', 'dns_credential_id'], function($k) use ($v2node, $key) {
                         return isset($v2node[$key]['tls_settings'][$k]);
                     }))
                 );

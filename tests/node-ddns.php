@@ -24,6 +24,27 @@ try {
     $assert(DB::table('v2_ddns_credential')->find($cid)->secret===$stored->secret,'blank token preserves secret');
     $assert(!str_contains(json_encode($admin->fetch()),'secret-ddns-test') && !str_contains(json_encode($admin->fetch()),'secret"'),'no credential projection');
     $base=['group_id'=>[999999],'name'=>'DDNS test','host'=>'node.example.test','port'=>'443','server_port'=>443,'protocol'=>'vless','tls'=>0,'network'=>'tcp','rate'=>'1','up_mbps'=>0,'down_mbps'=>0];
+    $certId=DB::table('v2_ddns_credential')->insertGetId(['name'=>'Certificate zone','zone_id'=>str_repeat('f',32),'root_domain'=>'cert.example.test','secret'=>Crypt::encryptString('cert-only-test'),'status'=>'ready','next_run'=>0]);
+    $certTls=['cert_mode'=>'dns','dns_credential_id'=>$certId,'server_name'=>'entry.cert.example.test','dns_env'=>'must-not-be-stored'];
+    $normalized=App\Services\NodeCertificateCredential::normalize($certTls);
+    $assert(!isset($normalized['dns_env']) && $normalized['provider']==='cloudflare','selected credential stores reference without plaintext');
+    $resolved=App\Services\NodeCertificateCredential::resolve($normalized);
+    $assert($resolved['dns_env']==='CF_DNS_API_TOKEN=cert-only-test' && !isset($resolved['dns_credential_id']),'node delivery resolves selected credential');
+    foreach(['evilcert.example.test','other.example.test','cert.example.test.evil.test','*.cert.example.test'] as $wrong)
+        $reject(fn()=>App\Services\NodeCertificateCredential::resolve(array_replace($normalized,['server_name'=>$wrong])),422);
+    $reject(fn()=>App\Services\NodeCertificateCredential::normalize(array_replace($certTls,['cert_mode'=>'http'])),422);
+    $reject(fn()=>App\Services\NodeCertificateCredential::resolve(array_replace($normalized,['server_name'=>['entry.cert.example.test']])),422);
+    $reject(fn()=>App\Services\NodeCertificateCredential::resolve(array_replace($normalized,['dns_credential_id'=>999999999])),422);
+    $certNode=App\Models\ServerV2box::create(array_replace($base,['tls'=>1,'tls_settings'=>$normalized]));
+    $assert(!str_contains(json_encode($certNode->fresh()->tls_settings),'cert-only-test'),'node database contains only credential reference');
+    $assert(App\Services\Actions\NodeConfiguration::build($certNode)['tls_settings']['dns_env']==='CF_DNS_API_TOKEN=cert-only-test','node configuration resolves credential');
+    $reject(fn()=>$admin->dropCredential($req(['id'=>$certId])),409);
+    DB::table('v2_ddns_credential')->where('id',$certId)->update(['secret'=>Crypt::encryptString('cert-rotated-test')]);
+    $assert(App\Services\Actions\NodeConfiguration::build($certNode)['tls_settings']['dns_env']==='CF_DNS_API_TOKEN=cert-rotated-test','rotation used on subsequent node fetch');
+    DB::table('v2_ddns_credential')->where('id',$certId)->update(['next_run'=>-1]);
+    $reject(fn()=>App\Services\NodeCertificateCredential::resolve($normalized),422);
+    $assert(!str_contains(json_encode($admin->fetch()),'cert-rotated-test'),'administrator metadata never returns certificate token');
+    $certNode->delete();$admin->dropCredential($req(['id'=>$certId]));
     $addressAdmin=new App\Http\Controllers\V1\Admin\NodeConnectionController();
     $manual=App\Models\ServerV2box::create(array_replace($base,['tls'=>1,'tls_settings'=>['server_name'=>'identity.example.test','tls_key'=>'private-test-material']]));
     $manualRead=fn()=> $addressAdmin->address($req(['type'=>'v2box','id'=>$manual->id]))['data'];

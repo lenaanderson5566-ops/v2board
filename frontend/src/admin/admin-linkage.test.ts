@@ -310,3 +310,21 @@ it("defaults new relay TLS to DNS validation and clears origin reuse when ingres
     expect(linkNode("setup_access_mode","relay",{"tls_settings.cert_mode":"file"})["tls_settings.cert_mode"]).toBe("file");
     expect(linkNode("setup_entry_id","5",{setup_server_id:"3"}).setup_server_id).toBe("");
 });
+
+it("uses a saved DNS credential without exposing manual environment fields",()=>{
+ const source=fields("tls_settings.cert_mode","tls_settings.dns_credential_id","tls_settings.provider","tls_settings.dns_env");
+ const selected=nodeFields("v2box",source,{protocol:"anytls",tls:1,"tls_settings.cert_mode":"dns","tls_settings.dns_credential_id":"7"});
+ expect(selected.map(f=>f.key)).toContain("tls_settings.dns_credential_id");
+ expect(selected.map(f=>f.key)).not.toContain("tls_settings.dns_env");
+ expect(selected.map(f=>f.key)).not.toContain("tls_settings.provider");
+ expect(linkNode("tls_settings.cert_mode","http",{"tls_settings.dns_credential_id":"7"})["tls_settings.dns_credential_id"]).toBe("");
+});
+
+import {nodeConfigurationProblems} from "./node-guidance";
+it("round trips saved certificate references and does not require hidden manual credentials",()=>{
+ const original={tls:1,protocol:"anytls",network:"tcp",tls_settings:{cert_mode:"dns",server_name:"entry.example.test",dns_credential_id:7}};
+ const form=nodeSettingsInitial(original);
+ expect(form["tls_settings.dns_credential_id"]).toBe(7);
+ expect(nodeSettingsPayload(form).tls_settings).toEqual(original.tls_settings);
+ expect(nodeConfigurationProblems(form,"v2box").filter(p=>["tls_settings.provider","tls_settings.dns_env"].includes(p.key))).toEqual([]);
+});

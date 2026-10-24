@@ -16,16 +16,21 @@ class NodeDeploymentCheck
     {
         if (filter_var($host, FILTER_VALIDATE_IP)) return [$host];
         if (!self::hostname($host)) throw new \RuntimeException('invalid_host');
-        $ips = [];
-        foreach (['A'=>1, 'AAAA'=>28] as $type=>$number) {
-            $response = Http::acceptJson()->withoutRedirecting()->connectTimeout(2)->timeout(3)
-                ->withOptions(['proxy'=>''])->get('https://dns.google/resolve', ['name'=>$host, 'type'=>$type]);
-            if (!$response->successful() || $response->json('Status') !== 0) throw new \RuntimeException('dns_unavailable');
-            foreach ($response->json('Answer', []) as $answer) {
-                if (($answer['type'] ?? null) === $number) $ips[] = $answer['data'];
-            }
+        foreach (['https://dns.google/resolve','https://cloudflare-dns.com/dns-query'] as $endpoint) {
+            $ips=[];
+            try {
+                foreach (['A'=>1, 'AAAA'=>28] as $type=>$number) {
+                    $response=Http::withHeaders(['Accept'=>'application/dns-json'])->withoutRedirecting()->connectTimeout(2)->timeout(3)
+                        ->withOptions(['proxy'=>''])->get($endpoint,['name'=>$host,'type'=>$type]);
+                    if (!$response->successful()) throw new \RuntimeException('dns_unavailable');
+                    if ($response->json('Status')===3) return [];
+                    if ($response->json('Status')!==0) throw new \RuntimeException('dns_unavailable');
+                    foreach ($response->json('Answer',[]) as $answer) if (($answer['type']??null)===$number) $ips[]=$answer['data'];
+                }
+                return array_values(array_unique($ips));
+            } catch (\Throwable $e) { continue; }
         }
-        return array_values(array_unique($ips));
+        throw new \RuntimeException('dns_unavailable');
     }
 
     /** Pin the vetted IP: no second DNS lookup, HTTP request, redirect or proxy. */
@@ -121,7 +126,7 @@ class NodeDeploymentCheck
             $add('report','服务器 IP 上报',$fresh?'pass':'unknown',$fresh?'所需地址类型均有近期上报。':'入口或代理服务器尚未提供完整的近期 IP 上报。',$fresh?'':'分别检查入口和代理服务器的上报服务；仅配置为双栈的一侧需要 IPv4 与 IPv6，IPv4 回源不要求 IPv6。');
         }
         $dns=$origin['dns']==='pass' && (!$relay || ($entryResult['dns'] ?? '')==='pass');
-        $add('dns','公网 DNS',$dns?'pass':(($origin['dns']==='fail' || ($entryResult['dns'] ?? '')==='fail')?'fail':'unknown'),$dns?'本次公网查询成功；存在已上报 IP 时，已核对解析地址。':'公网解析未确认或与已上报 IP 不一致。',$dns?'':'检查服务器 IP 上报、A/AAAA 记录及 DNS only 设置，解析传播后重新检查。');
+        $add('dns','公网 DNS',$dns?'pass':(($origin['dns']==='fail' || ($entryResult['dns'] ?? '')==='fail')?'fail':'unknown'),$dns?'本次公网查询成功；存在已上报 IP 时，已核对解析地址。':(($origin['code']==='dns_unavailable' || ($entryResult['code']??'')==='dns_unavailable')?'公共 DNS 查询服务不可达或未返回有效结果；尚不能判断域名解析。':'已查询到的公网解析为空或与已上报 IP 不一致。'),$dns?'':(($origin['code']==='dns_unavailable' || ($entryResult['code']??'')==='dns_unavailable')?'检查面板服务器出站 HTTPS 与 DNS；本结果来自面板，不代表节点网络。':'检查服务器 IP 上报、A/AAAA 记录及 DNS only 设置，解析传播后重新检查。'));
         $listening=(bool)$origin['addresses'] && !array_filter($origin['addresses'],fn($a)=>!($a['connected'] ?? $a['state']==='pass'));
         $add('listener','节点监听',$listening?'pass':'unknown',$listening?'面板已连接代理服务器 TCP 端口；证书结果单独展示。':'面板未确认代理服务器监听端口可达。',$listening?'':'检查监听端口、安全组及防火墙。仅允许入口回源时，此项可能无法从面板验证。');
         $public=$relay ? $entryResult : (ctype_digit((string)$root->port) && (int)$root->port===(int)$root->server_port ? $origin : $this->endpoint($originHost,ctype_digit((string)$root->port)?(int)$root->port:0,$unsupported ? null : $identity,$udp || $unsupported,$originExpected));

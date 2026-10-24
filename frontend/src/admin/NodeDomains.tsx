@@ -1,3 +1,4 @@
+import { NodeDnsObservation } from "./NodeDeploymentCheck";
 import { NodeAddressSummary } from "./NodeAddressSummary";
 import { ManualNodeAddress } from "./ManualNodeAddress";
 import { relayStreamConfig, relayCertificateIssue } from "./node-relay";
@@ -177,6 +178,7 @@ export function NodeDomainBinding({
             <State {...data} retry={data.reload}>
                 {binding && (
                     <div>
+                        <NodeDnsObservation observation={binding.deployment_dns} />
                         {progress && (
                             <div className="node-domain-progress">
                                 <ol aria-label="域名启用进度">

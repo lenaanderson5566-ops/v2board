@@ -92,7 +92,12 @@ def write_private(path, data):
 def dns_answers(domain, endpoint):
     answers={}
     for family,typ,version in [('ipv4',1,4),('ipv6',28,6)]:
-        result=json_request(endpoint+'?'+urllib.parse.urlencode({'name':domain,'type':typ}))
+        try:
+            result=json_request(endpoint+'?'+urllib.parse.urlencode({'name':domain,'type':typ}))
+        except DeploymentError:
+            raise OSError('DNS query service rejected the request') from None
+        if result.get('Status')==3:
+            return {'ipv4':set(),'ipv6':set()}
         if result.get('Status')!=0:
             raise OSError('DNS response is not ready')
         values=set()
@@ -107,10 +112,20 @@ def dns_answers(domain, endpoint):
 
 def dns_matches(domain, addresses):
     expected={family:{str(ipaddress.ip_address(addresses[family]))} if addresses.get(family) else set() for family in ('ipv4','ipv6')}
-    # Check both families: a stale AAAA must not silently route HTTP validation elsewhere.
+    # Every usable answer must match; unreachable providers may be skipped.
+    successful=0
     for endpoint in ('https://cloudflare-dns.com/dns-query','https://dns.google/resolve'):
-        if dns_answers(domain,endpoint)!=expected:
+        try:
+            actual=dns_answers(domain,endpoint)
+        except OSError:
+            continue
+        successful+=1
+        if actual!=expected:
             return False
+    if not successful:
+        raise OSError('All public DNS query services are unavailable')
+    if successful==1:
+        print('DNS verified using the available resolver; the other query service is unavailable.',flush=True)
     return True
 
 class Deployment:
@@ -131,7 +146,7 @@ class Deployment:
     def progress(self,action='status'):
         for attempt in range(3):
             try:
-                return json_request(self.host+'/api/v10/server/enrollments/progress',self.flow['token'],{'action':action},timeout=60)['data']
+                return json_request(self.host+'/api/v10/server/enrollments/progress',self.flow['token'],dict({'action':action}, **getattr(self,'dns_observation',{})),timeout=60)['data']
             except OSError:
                 if attempt==2: raise
                 time.sleep(2)
@@ -233,6 +248,12 @@ class Deployment:
         finally:
             os.unlink(name)
 
+    def verify_dns(self,role,domain,addresses):
+        self.dns_observation={'dnsState':'checking','dnsRole':role}
+        matched=dns_matches(domain,addresses)
+        self.dns_observation['dnsState']='verified' if matched else 'mismatch'
+        return matched
+
     def wait_dns(self):
         print('Waiting for panel synchronization and public A/AAAA propagation (up to 15 minutes).',flush=True)
         deadline=time.monotonic()+900
@@ -268,19 +289,29 @@ class Deployment:
                 if status.get('dnsStatus') in ('ownership_conflict','host_changed','credential_rejected','configuration_rejected','ambiguous_records'):
                     raise DeploymentError('DNS synchronization requires administrator attention: '+status['dnsStatus'])
                 if status.get('dnsReady'):
-                    reason='Origin public DNS: waiting for A/AAAA to match reported IPs on both public resolvers; check stale AAAA and DNS-only mode.'
-                    if not dns_matches(self.flow['domain'],status['addresses']):
-                        pass
-                    elif self.flow['certificateMode']=='http' and self.flow['certificateDomain']!=self.flow['domain'] and not dns_matches(self.flow['certificateDomain'],status['addresses']):
+                    self.dns_observation={'dnsState':'checking','dnsRole':'origin'}
+                    reason='Origin public DNS: waiting for A/AAAA to match reported IPs on available public resolvers; correct A/AAAA, review stale records and use DNS-only mode.'
+                    if not self.verify_dns('origin',self.flow['domain'],status['addresses']):
+                        self.dns_observation['dnsState']='mismatch'
+                    elif self.flow['certificateMode']=='http' and self.flow['certificateDomain']!=self.flow['domain'] and not self.verify_dns('certificate',self.flow['certificateDomain'],status['addresses']):
+                        self.dns_observation={'dnsState':'mismatch','dnsRole':'certificate'}
                         reason='Certificate HTTP validation domain: A/AAAA must point directly to the origin server. Correct certificate DNS or select DNS validation; entry forwarding does not prove port 80 reachability.'
                     elif self.flow.get('accessMode')=='relay':
-                        reason='Entry public DNS: waiting for A/AAAA to match entry server IPs on both public resolvers.'
-                        if dns_matches(self.flow['connectionDomain'],status.get('entryAddresses',{})):
+                        self.dns_observation={'dnsState':'checking','dnsRole':'entry'}
+                        reason='Entry public DNS: waiting for A/AAAA to match entry server IPs on available public resolvers; correct entry A/AAAA records before resuming.'
+                        if self.verify_dns('entry',self.flow['connectionDomain'],status.get('entryAddresses',{})):
+                            self.dns_observation['dnsState']='verified'
                             print('DNS verified: origin and entry. Next: start V2Box and verify certificate.',flush=True);return False
+                        self.dns_observation['dnsState']='mismatch'
                     else:
+                        self.dns_observation['dnsState']='verified'
                         print('DNS verified. Next: start V2Box and verify certificate.',flush=True);return False
             except OSError:
-                reason+=' Request failed; check HTTPS connectivity to the panel and public DNS resolvers.'
+                if reason.startswith('Panel'):
+                    reason='Panel request failed. Check HTTPS connectivity to the panel, then resume.'
+                else:
+                    self.dns_observation['dnsState']='unavailable'
+                    reason='Public DNS query services unavailable; neither provider returned a usable response. Check outbound HTTPS and local DNS, then resume. No certificate request was started.'
             if reason!=last_reason or polls%4==0:
                 print(reason,flush=True);last_reason=reason
             polls+=1

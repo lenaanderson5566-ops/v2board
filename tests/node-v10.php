@@ -579,6 +579,10 @@ try {
     $assert($progress('status','invalid')->getStatusCode()===401 && $progress('status',$enrolled['apiKey'])->getStatusCode()===401,'Progress rejects wrong credential types');
     $assert($progress('delete')->getStatusCode()===422,'Workflow cannot perform unrelated administration');
     $assert($progress('start')->getStatusCode()===409 && $progress('complete')->getStatusCode()===409,'Unresolved DNS cannot start or publish');
+    $observed=$call('POST',$root.'/enrollments/progress',['action'=>'status','dnsState'=>'unavailable','dnsRole'=>'origin'],['HTTP_AUTHORIZATION'=>'Bearer '.$workflow]);
+    $assert($observed->getStatusCode()===200 && Cache::get('NODE_DEPLOY_DNS:'.$nodeId)['state']==='unavailable','Authorized installer reports DNS outage for admin visibility');
+    $assert($call('POST',$root.'/enrollments/progress',['action'=>'status','dnsState'=>'arbitrary','dnsRole'=>'origin'],['HTTP_AUTHORIZATION'=>'Bearer '.$workflow])->getStatusCode()===422,'DNS observation is an enum, not arbitrary log text');
+    $assert($call('POST',$root.'/enrollments/progress',['action'=>'start','dnsState'=>'verified','dnsRole'=>'origin'],['HTTP_AUTHORIZATION'=>'Bearer '.$workflow])->getStatusCode()===409,'Installer observation cannot bypass server readiness');
     $user->is_admin=0;$user->save();$assert($progress('status')->getStatusCode()===403,'Demotion revokes deployment workflow');$user->is_admin=1;$user->save();
     $originalPort=$node->server_port;$node->server_port=8443;$node->save();$assert($progress('status')->getStatusCode()===409,'Node configuration changes invalidate workflow');$node->server_port=$originalPort;$node->save();
     $waiting=json_decode($progress('status')->getContent(),true)['data'];

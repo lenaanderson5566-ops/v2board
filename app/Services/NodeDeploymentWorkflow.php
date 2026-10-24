@@ -46,14 +46,15 @@ final class NodeDeploymentWorkflow
             'certificateDomain'=>$tls['server_name']??'','certificateFile'=>$tls['cert_file']??'',
             'protocol'=>$node->protocol,'listenPort'=>(int)$node->server_port,'listenAddress'=>$node->listen_ip?:'0.0.0.0']];
     }
-    public static function progress(string $token,string $action): array {
+    public static function progress(string $token,string $action,?array $dns=null): array {
         abort_unless(preg_match('/^dp_[a-f0-9]{64}$/D',$token),401);
-        $operation=function()use($token,$action){
+        $operation=function()use($token,$action,$dns){
             $cache=Cache::store('node_deployment');$key='workflow:'.hash('sha256',$token);$w=$cache->get($key);
             abort_unless($w && $w['expires']>time(),401,'部署恢复授权已过期，请在后台重新配置');
             $node=ServerV2box::find($w['nodeId']);$actor=User::find($w['actor']);$cred=DB::table('v2_node_credential')->find($w['credential']);
             abort_unless($node && !$node->service_id && $actor && $actor->is_admin && !$actor->banned && hash_equals($w['actorProof'],hash('sha256',(string)$actor->password)) && $cred && !$cred->revoked_at && (!$cred->expires_at || $cred->expires_at>time()),403,'部署授权已撤销');
             abort_unless(hash_equals($w['proof'],self::snapshot($node)),409,'节点或域名配置已变化，请核对后重新部署');
+            if ($dns) Cache::put('NODE_DEPLOY_DNS:'.$node->id,$dns+['checkedAt'=>time()],180);
             if ($w['completed']) return ['completed'=>true,'dnsReady'=>true,'applicationState'=>'applied','errorCode'=>null,'addresses'=>(object)[]];
             $a=self::binding($node);
             // Enrollment is a scoped POST. Progress can advance one due binding even

@@ -8,7 +8,7 @@ import { admin, date, query, request, type Row } from "../shared/api";
 import { Modal, State, useData } from "../shared/ui";
 import { AdminChoiceGroup, AdminTabs } from "./AdminChoices";
 import { NodeCredentials } from "./NodeCredentials";
-import { NodeDeploymentCheck } from "./NodeDeploymentCheck";
+import { NodeDeploymentCheck, NodeDnsObservation } from "./NodeDeploymentCheck";
 import { nodeDeploymentCommand, nodeUpgradeCommand } from "./node-deployment";
 
 export function NodeDeployment({
@@ -150,7 +150,7 @@ export function NodeDeployment({
             if (document.visibilityState !== "visible") return;
             if (!authenticated) report.reload();
             runtime.reload();
-            if (binding && !stage.dnsReady) network.reload();
+            if (binding) network.reload();
         }, 15000);
         return () => window.clearInterval(timer);
     }, [
@@ -342,6 +342,7 @@ export function NodeDeployment({
                             </section>
                             <NodeAddressSummary node={node} binding={binding} entry={(network.data?.assignments || []).find((a: Row) => a.id === binding?.entry_id)} />
                             {!network.loading && !runtime.loading && !network.error && !runtime.error && <NodeDeploymentProgress binding={binding} network={network.data} runtime={runtime.data} />}
+                            <NodeDnsObservation observation={binding?.deployment_dns} />
                             <NodeDeploymentCheck node={node} disabled={busy} />
                             {node.type === "v2box" && (
                                 <div className="admin-deployment-mode">

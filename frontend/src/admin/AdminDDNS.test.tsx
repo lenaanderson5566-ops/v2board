@@ -1155,3 +1155,10 @@ it("previews unused DNS records without deleting them and requires explicit clea
  fireEvent.click(screen.getByRole("button",{name:"确认处理"}));
  await waitFor(()=>expect(api.request).toHaveBeenCalledWith("test-admin/server/domains/adopt",{id:2,proof:"a".repeat(64),removeUnused:true}));
 });
+
+it("shows installer DNS outages with the next action instead of blaming record propagation",async()=>{
+ managedSetup("none",{deployment_dns:{state:"unavailable",role:"origin",checkedAt:1700000000}});
+ render(<NodeDomainBinding node={{id:3,type:"v2box"}}/>);
+ expect(await screen.findByText(/公共 DNS 查询服务均不可用/)).toBeTruthy();
+ expect(screen.getByText(/无需重装或更换证书凭据/)).toBeTruthy();
+});

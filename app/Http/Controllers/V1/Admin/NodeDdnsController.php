@@ -14,6 +14,8 @@ class NodeDdnsController extends Controller {
         $assignments=DB::table('v2_node_ddns')->select('id','server_id','entry_id','entry_port','purpose','published_origin','published_port','relay_verified_at','credential_id','node_type','node_id','domain','published_domain','tls_transition_state','tls_transition','managed','family','enabled','ipv4','ipv6','ipv4_seen_at','ipv6_seen_at','last_success','status','next_run')->orderBy('id')->get();
         $keys=$assignments->where('node_type','v2box')->map(fn($a)=>'V2BOX_CAPABILITIES:'.$a->node_id)->unique()->values()->all();
         $capabilities=$keys ? Cache::many($keys) : [];
+        $dnsKeys=$assignments->where('node_type','v2box')->map(fn($a)=>'NODE_DEPLOY_DNS:'.$a->node_id)->unique()->values()->all();
+        $dnsObservations=$dnsKeys?Cache::many($dnsKeys):[];
         $servers=DB::table('v2_network_server')->select('id','name','family','enabled','ipv4','ipv6','ipv4_seen_at','ipv6_seen_at')->orderBy('id')->get();
         $serverMap=$servers->keyBy('id'); $byId=$assignments->keyBy('id');
         $entryIds=$assignments->pluck('entry_id')->filter()->unique()->all();
@@ -31,7 +33,9 @@ class NodeDdnsController extends Controller {
             'connections'=>$connections,
             'servers'=>$servers,
             'credentials'=>DB::table('v2_ddns_credential')->select('id','name','zone_id','root_domain','status','next_run')->orderBy('id')->get(),
-            'assignments'=>$assignments->map(function($a)use($capabilities,$byId,$ready,$serverMap,$connectionCounts){
+            'assignments'=>$assignments->map(function($a)use($dnsObservations,$capabilities,$byId,$ready,$serverMap,$connectionCounts){
+                $a->deployment_dns=$a->node_type==='v2box'?($dnsObservations['NODE_DEPLOY_DNS:'.$a->node_id]??null):null;
+                if ($a->deployment_dns) { unset($a->deployment_dns['proof']); }
                 $a->configuration_revision=NodeDomainController::revision($a);
                 $a->connection_count=$connectionCounts[$a->id]??0;
                 $entry=$a->entry_id ? $byId->get($a->entry_id) : null;

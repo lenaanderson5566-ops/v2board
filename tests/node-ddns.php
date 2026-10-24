@@ -772,9 +772,15 @@ try {
     Http::fake(['dns.google/*'=>Http::response(['Status'=>0,'Answer'=>[['type'=>5,'data'=>'alias.example.test'],['type'=>1,'data'=>'8.8.8.8'],['type'=>28,'data'=>'2606:4700:4700::1111']]])]);
     $assert(count((new App\Services\NodeDeploymentCheck())->resolve('check.example.test'))===2,'DNS resolver extracts only requested A/AAAA records');
     Http::swap(new Illuminate\Http\Client\Factory());
-    Http::fake(['dns.google/*'=>Http::response(['Status'=>2])]);
+    Http::fake(['*'=>Http::response(['Status'=>2])]);
     try { (new App\Services\NodeDeploymentCheck())->resolve('check.example.test'); throw new RuntimeException('Expected DNS error'); }
     catch (RuntimeException $e) { $assert($e->getMessage()==='dns_unavailable','resolver errors are not success'); }
+    Http::swap(new Illuminate\Http\Client\Factory());
+    Http::fake(['dns.google/*'=>Http::response([],503),'cloudflare-dns.com/*'=>Http::response(['Status'=>0,'Answer'=>[['type'=>1,'data'=>'8.8.8.8']]])]);
+    $assert((new App\Services\NodeDeploymentCheck())->resolve('check.example.test')===['8.8.8.8'],'panel DNS falls back only on unavailable provider');
+    Http::swap(new Illuminate\Http\Client\Factory());
+    Http::fake(['dns.google/*'=>Http::response(['Status'=>3]),'*'=>Http::response([],503)]);
+    $assert((new App\Services\NodeDeploymentCheck())->resolve('check.example.test')===[],'NXDOMAIN is an observed empty answer, not bypassed');
     $checkNode=App\Models\ServerV2box::create(array_replace($base,['tls'=>1,'tls_settings'=>['server_name'=>'check.example.test','dns_env'=>'never-return-secret']]));
     $probe->ips=['8.8.8.8'];$probe->outcome=['state'=>'pass','code'=>'tls_verified','expiresAt'=>2000000000,'fingerprint'=>'test'];
     $beforeCheck=$checkNode->fresh()->toArray();

@@ -384,9 +384,28 @@ class WorkflowTests(unittest.TestCase):
     def test_dns_stale_ipv6_rejected(self):
         with patch.object(m,'dns_answers',return_value={'ipv4':{'8.8.8.8'},'ipv6':{'2606:4700:4700::1111'}}):
             self.assertFalse(m.dns_matches('node.example.test',{'ipv4':'8.8.8.8'}))
-    def test_dns_requires_both_resolvers(self):
+    def test_dns_does_not_ignore_a_resolver_mismatch(self):
         with patch.object(m,'dns_answers',side_effect=[{'ipv4':{'8.8.8.8'},'ipv6':set()},{'ipv4':{'1.1.1.1'},'ipv6':set()}]) as resolver:
             self.assertFalse(m.dns_matches('node.example.test',{'ipv4':'8.8.8.8'}));self.assertEqual(resolver.call_count,2)
+    def test_dns_unavailable_provider_falls_back(self):
+        good={'ipv4':{'8.8.8.8'},'ipv6':set()}
+        for responses in ([OSError('offline'),good],[good,OSError('offline')]):
+            with patch.object(m,'dns_answers',side_effect=responses):
+                self.assertTrue(m.dns_matches('node.example.test',{'ipv4':'8.8.8.8'}))
+        with patch.object(m,'dns_answers',side_effect=OSError('offline')):
+            with self.assertRaises(OSError):m.dns_matches('node.example.test',{'ipv4':'8.8.8.8'})
+        with patch.object(m,'dns_answers',side_effect=[OSError('offline'),{'ipv4':set(),'ipv6':set()}]):
+            self.assertFalse(m.dns_matches('node.example.test',{'ipv4':'8.8.8.8'}))
+    def test_dns_nxdomain_is_mismatch_not_service_outage(self):
+        with patch.object(m,'json_request',return_value={'Status':3}):
+            self.assertFalse(m.dns_matches('node.example.test',{'ipv4':'8.8.8.8'}))
+    def test_dns_observation_identifies_role_and_never_claims_certificate_success(self):
+        with patch.object(m,'dns_matches',return_value=False):
+            self.assertFalse(self.deploy.verify_dns('certificate','cert.example.test',{'ipv4':'8.8.8.8'}))
+        self.assertEqual(self.deploy.dns_observation,{'dnsState':'mismatch','dnsRole':'certificate'})
+        with patch.object(m,'json_request',return_value={'data':{}}) as request:
+            m.Deployment.progress(self.deploy)
+        self.assertEqual(request.call_args.args[2],{'action':'status','dnsState':'mismatch','dnsRole':'certificate'})
     def test_unchanged_config_only(self):
         m.write_private(self.deploy.config,{'Nodes':[{'ApiKey':'someone-else'}]})
         before=self.deploy.config.read_bytes()

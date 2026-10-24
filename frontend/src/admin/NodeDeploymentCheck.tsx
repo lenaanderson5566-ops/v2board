@@ -3,7 +3,7 @@ import { admin, date, request, type Row } from "../shared/api";
 
 const checkReasons: Record<string, string> = {
     dns_empty: "未查到公网地址",
-    dns_unavailable: "DNS 查询未完成",
+    dns_unavailable: "公共 DNS 查询服务不可用",
     dns_mismatch: "解析与服务器上报 IP 不一致",
     unsafe_target: "非公网目标，未探测",
     invalid_port: "端口不支持单端口检查",
@@ -92,11 +92,10 @@ export function NodeDeploymentCheck({
                 <>
                     <p className="muted">
                         检查时间：{date(result.checkedAt)} ·
-                        连接探测：面板服务器 · DNS 查询：Google Public
-                        DNS。设置变更后请重新检查。
+                        连接探测：面板服务器 · DNS 查询：Google Public DNS，服务不可用时切换 Cloudflare。设置变更后请重新检查。
                     </p>
                     <ul className="deployment-check-list">
-                        {result.items.map((item: Row) => (
+                        {result.items.filter((item: Row) => item.state !== "skip" && item.key !== "renewal").map((item: Row) => (
                             <li key={item.key}>
                                 <div className="deployment-check-heading">
                                     <strong>{item.label}</strong>
@@ -124,6 +123,7 @@ export function NodeDeploymentCheck({
                     </ul>
                     <details>
                         <summary>检查地址与范围</summary>
+                        <p>自动续期由节点执行，本次检查不发起续期。在线证书有效不代表已验证下一次续期。</p>
                         <p>
                             代理监听：{result.origin.host}:{result.origin.port}
                         </p>
@@ -166,4 +166,12 @@ export function NodeDeploymentCheck({
             )}
         </section>
     );
+}
+
+export function NodeDnsObservation({observation}:{observation?:Row | null}) {
+    return <>{observation && <div role="status" className="node-domain-progress">
+                            <strong>节点端 DNS 检查 · {({origin:"回源域名",entry:"入口域名",certificate:"证书域名"} as Record<string,string>)[observation.role]}</strong>
+                            <p>{({checking:"正在查询公网解析。",verified:"节点最近一次公网解析检查已通过。",mismatch:"解析与预期 IP 不一致。请核对 A/AAAA、遗留记录与 DNS only 设置，再恢复部署。",unavailable:"公共 DNS 查询服务均不可用。请检查节点的出站 HTTPS 与本机 DNS，再恢复部署；无需重装或更换证书凭据。"} as Record<string,string>)[observation.state]}</p>
+                            <small>节点上报：{date(observation.checkedAt)} · 此结果不代表证书或部署已完成。</small>
+                        </div>}</>;
 }

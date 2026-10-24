@@ -1249,6 +1249,25 @@
                       "start",
                       "complete"
                     ]
+                  },
+                  "dnsState": {
+                    "type": "string",
+                    "enum": [
+                      "checking",
+                      "verified",
+                      "mismatch",
+                      "unavailable"
+                    ],
+                    "description": "Installer DNS observation only; never grants readiness or bypasses activation checks."
+                  },
+                  "dnsRole": {
+                    "type": "string",
+                    "enum": [
+                      "origin",
+                      "entry",
+                      "certificate"
+                    ],
+                    "description": "Required with dnsState."
                   }
                 },
                 "additionalProperties": false

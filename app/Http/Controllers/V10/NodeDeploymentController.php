@@ -20,8 +20,8 @@ final class NodeDeploymentController extends Controller
     }
     public function progress(Request $request) {
         abort_unless($request->isJson(),415);
-        abort_if(array_diff(array_keys($request->json()->all()),['action']),422);
-        $v=$request->validate(['action'=>'required|in:status,start,complete']);
-        return response()->json(['data'=>\App\Services\NodeDeploymentWorkflow::progress((string)$request->bearerToken(),$v['action'])])->header('Cache-Control','private, no-store');
+        abort_if(array_diff(array_keys($request->json()->all()),['action','dnsState','dnsRole']),422);
+        $v=$request->validate(['action'=>'required|in:status,start,complete','dnsState'=>'sometimes|required|in:checking,verified,mismatch,unavailable','dnsRole'=>'required_with:dnsState|in:origin,entry,certificate']);
+        return response()->json(['data'=>\App\Services\NodeDeploymentWorkflow::progress((string)$request->bearerToken(),$v['action'],isset($v['dnsState'])?['state'=>$v['dnsState'],'role'=>$v['dnsRole']]:null)])->header('Cache-Control','private, no-store');
     }
 }

@@ -1192,7 +1192,8 @@ it("checks deployment only on demand and shows evidence with next steps", async 
     api.request.mockResolvedValue({data:{checkedAt:1700000000,items:[
         {key:"dns",label:"公网 DNS",state:"pass",detail:"公网查询成功",next:""},
         {key:"certificate",label:"在线证书",state:"fail",detail:"证书校验失败",next:"检查证书域名"},
-        {key:"renewal",label:"自动续期",state:"unknown",detail:"尚未验证续期",next:"关注到期时间"},
+        {key:"configuration",label:"配置应用",state:"unknown",detail:"尚未确认配置",next:"检查节点通信"},
+        {key:"relay",label:"中转连接",state:"skip",detail:"直连无需中转",next:""},
     ],origin:{host:"origin.example.test",port:9443,code:"certificate_invalid"},note:"仅检查"}});
     render(<NodeDeploymentCheck node={{type:"v2box",id:3}} />);
     expect(api.request).not.toHaveBeenCalled();
@@ -1201,6 +1202,7 @@ it("checks deployment only on demand and shows evidence with next steps", async 
     expect(api.request).toHaveBeenCalledWith(expect.stringContaining("check-deployment"),{type:"v2box",id:3});
     expect(screen.getByText("检查异常")).toBeTruthy();
     expect(screen.getByText("下一步：检查证书域名")).toBeTruthy();
+    expect(screen.queryByText("直连无需中转")).toBeNull();
     expect(screen.getByText("待确认")).toBeTruthy();
 });
 

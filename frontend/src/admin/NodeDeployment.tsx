@@ -508,13 +508,13 @@ export function NodeDeployment({
                                         <dl>
                                             <dt>更新节点</dt>
                                             <dd>
-                                                <code>v2box update</code>
-                                                ：更新至最新正式版，保留配置与证书。旧版本请使用上方“已有节点升级”命令。
+                                                <code>/usr/local/bin/v2box update</code>
+                                                ：更新至最新正式版，保留配置、证书和未完成部署。旧版本请使用上方“已有节点升级”命令。
                                             </dd>
                                             <dt>恢复部署</dt>
                                             <dd>
                                                 <code>
-                                                    sh install-v2box.sh --resume
+                                                    /usr/local/bin/v2box resume
                                                 </code>
                                                 ：继续未完成部署，无需重新生成授权。
                                             </dd>
@@ -527,7 +527,7 @@ export function NodeDeployment({
                                             <dt>卸载整台服务器上的 V2Box</dt>
                                             <dd>
                                                 <code>
-                                                    v2box uninstall
+                                                    /usr/local/bin/v2box uninstall
                                                     --stop-network
                                                 </code>
                                                 ：此操作影响本机所有节点服务。确认无其他服务使用后执行。确认后停止

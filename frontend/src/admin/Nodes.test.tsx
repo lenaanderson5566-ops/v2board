@@ -430,8 +430,8 @@ it("guides deployment to panel-managed DDNS", async () => {
     fireEvent.click(screen.getByRole("button",{name:"部署与状态"}));
     expect(screen.queryByRole("heading", { name: "自动 IP 上报" })).toBeNull();
     expect(screen.getByText("运维命令与说明")).toBeTruthy();
-    expect(screen.getByText("v2box update")).toBeTruthy();
-    expect(screen.getByText("v2box uninstall --stop-network")).toBeTruthy();
+    expect(screen.getByText("/usr/local/bin/v2box update")).toBeTruthy();
+    expect(screen.getByText("/usr/local/bin/v2box uninstall --stop-network")).toBeTruthy();
     expect(screen.queryByLabelText("查询服务器 IP 命令")).toBeNull();
     fireEvent.click(screen.getByText("高级：手动安装"));
     expect(
@@ -575,7 +575,7 @@ it("creates one-use deployment without a password and copies no permanent creden
     const writeText=vi.fn().mockResolvedValue(undefined);
     Object.defineProperty(navigator,"clipboard",{configurable:true,value:{writeText}});
     api.request.mockImplementation(async (path:string)=> path.endsWith("/deployment") ? {data:{command:"one-use-command",expiresAt:new Date(Date.now()+600000).toISOString()}} : {data:{keys:[],migrated:false}});
-    render(<NodeDeployment node={{id:1,type:"v2box",name:"A",install_command:"manual-install",upgrade_command:"wget install-script && sh install-v2box.sh --install v1.0.6"}} close={()=>{}}/>);
+    render(<NodeDeployment node={{id:1,type:"v2box",name:"A",install_command:"manual-install",upgrade_command:"wget install-script && sh install-v2box.sh --install v1.0.7"}} close={()=>{}}/>);
     const create=await screen.findByRole("button",{name:"生成一键部署命令"});
     await waitFor(()=>expect((create as HTMLButtonElement).disabled).toBe(false));
     expect(api.request.mock.calls.some(([path])=>path.endsWith("/deployment"))).toBe(false);
@@ -587,7 +587,7 @@ it("creates one-use deployment without a password and copies no permanent creden
     await waitFor(()=>expect(writeText).toHaveBeenCalledWith("one-use-command"));
     expect(localStorage.length).toBe(0);
     fireEvent.click(screen.getByRole("button",{name:"已有节点升级"}));
-    expect((screen.getByLabelText("节点升级命令") as HTMLTextAreaElement).value).toContain("v1.0.6");
+    expect((screen.getByLabelText("节点升级命令") as HTMLTextAreaElement).value).toContain("v1.0.7");
     expect(api.request.mock.calls.filter(([path])=>path.endsWith("/deployment"))).toHaveLength(1);
 });
 it("keeps deployment retryable on error and groups credentials in the same drawer", async () => {

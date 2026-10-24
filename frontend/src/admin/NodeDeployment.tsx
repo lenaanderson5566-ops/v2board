@@ -13,20 +13,22 @@ export function NodeDeployment({
     close,
     onChanged,
     inspect,
+    scope = "service",
 }: {
     node: Row;
     close: () => void;
     onChanged?: () => void;
     inspect?: () => void;
+    scope?: "service" | "connection";
 }) {
-    const [tab, setTab] = useState(node._focusDomain || (node._new && !node._domainConfigured) ? "domain" : "deploy"),
+    const [tab, setTab] = useState(scope === "connection" || node._focusDomain || (node._new && !node._domainConfigured) ? "domain" : "deploy"),
         [mode, setMode] = useState(!node._new && ["online","offline","limited"].includes(node.runtime_status) ? "upgrade" : "new");
     const [busy, setBusy] = useState(false),
         [error, setError] = useState("");
     const [deployment, setDeployment] = useState<Row | null>(null),
         [copied, setCopied] = useState("");
     const report = useData<Row>(
-        query(admin("server/credentials"), { type: node.type, id: node.id }),
+        scope === "connection" ? "" : query(admin("server/credentials"), { type: node.type, id: node.id }),
     );
     const runtime = useData<Row>(tab === "deploy" ? admin(`server/manage/runtime?type=${encodeURIComponent(node.type)}&id=${node.id}`) : "", undefined, false, {refreshOnEvents:false});
     const network = useData<Row>(tab === "deploy" ? admin("server/ddns/fetch") : "", undefined, false, {refreshOnEvents:false});
@@ -93,7 +95,7 @@ export function NodeDeployment({
     },[tab,busy,paused,stage.terminal,stage.dnsReady,authenticated,report.loading,runtime.loading,network.loading,report.error,runtime.error,network.error,report.reload,runtime.reload,network.reload,binding]);
     return (
         <Modal
-            title={`${node.name} · 部署与接入`}
+            title={`${node.name} · ${scope === "connection" ? "接入设置" : "部署与接入"}`}
             variant="drawer"
             className="node-deployment-drawer"
             wide
@@ -107,7 +109,7 @@ export function NodeDeployment({
                     {node.protocol || ""}
                 </p>
                 <AdminTabs
-                    label="部署与接入"
+                    label={scope === "connection" ? "节点接入" : "部署与接入"}
                     value={tab}
                     onChange={setTab}
                     options={[
@@ -122,14 +124,14 @@ export function NodeDeployment({
                             label: "凭据管理",
                             disabled: busy,
                         },
-                    ]}
+                    ].filter(option => scope !== "connection" || option.value === "domain")}
                 >
                     {tab === "domain" ? (
                         <NodeDomainBinding
                             node={node}
                             onChanged={() => setDeployment(null)}
                             onPublished={onChanged}
-                            onUpgrade={() => {
+                            onUpgrade={scope === "connection" ? undefined : () => {
                                 setTab("deploy");
                                 setMode("upgrade");
                             }}
@@ -356,6 +358,7 @@ export function NodeDeployment({
                         </>
                     )}
                 </AdminTabs>
+                {scope === "connection" && <p className="muted">协议、TLS 参数、运行维护及凭据在 <a href={`#/node-services?service=${encodeURIComponent(`${node.type}:${node.id}`)}`}>代理服务</a> 中管理。默认线路基础信息与服务共用。</p>}
                 {tab === "deploy" && copied && <p role="status">{copied}</p>}
                 {tab === "deploy" && error && <p role="alert">{error}</p>}
             </div>

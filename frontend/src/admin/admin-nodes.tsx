@@ -8,7 +8,7 @@ import { NodeDictionaryProvider } from "./node-dictionary";
 import { NodeDeployment } from "./NodeDeployment";
 import { AdminDisplaySettings } from "./AdminDisplaySettings";
 import { field } from "./admin-fields";
-import { useEffect, useRef, useState, type ComponentProps } from "react";
+import { useEffect, useMemo, useRef, useState, type ComponentProps } from "react";
 import nodeLocations from "../../../resources/client/node-countries.json";
 import {
     admin,
@@ -56,7 +56,7 @@ export function Nodes(props: {
 }) {
     return (
         <NodeDictionaryProvider>
-            <NodesContent {...props} />
+            <NodesContent key={props.initialTab || "nodes"} {...props} />
         </NodeDictionaryProvider>
     );
 }
@@ -64,6 +64,13 @@ function NodesContent({
     initialTab = "nodes",
 }: { initialTab?: "nodes" | "services" | "forwarding" } = {}) {
     const tab = initialTab;
+    const serviceView=tab==="services";
+    const serviceFocusFromHash=()=>{
+        const value=new URLSearchParams(location.hash.split("?")[1]).get("service") || "";
+        return /^(v2box|v2node):[1-9][0-9]*$/.test(value)?value:"";
+    };
+    const [serviceFocus,setServiceFocus]=useState(serviceFocusFromHash);
+    useEffect(()=>{const update=()=>setServiceFocus(serviceFocusFromHash());window.addEventListener("hashchange",update);return ()=>window.removeEventListener("hashchange",update);},[]);
     const [creationMode,setCreationMode]=useState<"new"|"reuse">("new");
     const [creationLocked,setCreationLocked]=useState(false);
     const [connectionNode, setConnectionNode] = useState<Row | null>(null);
@@ -96,7 +103,7 @@ function NodesContent({
             actionPending.current ||
             (kind === "drop" &&
                 !confirm(
-                    `确认删除节点「${row.name}」？节点凭据将撤销，关联的托管 DNS 解析将进入清理队列。服务器程序不会自动卸载；共享服务器请仅移除对应服务配置。`,
+                    row.service_id ? `确认删除接入线路「${row.name}」？共享代理服务和服务器程序继续保留。` : `确认删除代理服务「${row.name}」及其默认线路？存在关联线路时将禁止删除。服务凭据将撤销，托管 DNS 解析将进入清理队列；服务器程序不会自动卸载。`,
                 ))
         )
             return;
@@ -138,9 +145,12 @@ function NodesContent({
         setEditing(null);
     }
     const nodeRows = rows(d.data);
-    const filteredNodes = nodeRows.filter(
+    const viewRows=serviceView?nodeRows.filter(n=>!n.service_id):nodeRows;
+    const serviceMap=useMemo(()=>new Map(nodeRows.filter(n=>!n.service_id).map(n=>[`${n.type}:${n.id}`,n])),[d.data]);
+    const connectionCounts=useMemo(()=>{const counts=new Map<string,number>();for(const n of nodeRows)if(n.service_id){const key=`${n.type}:${n.service_id}`;counts.set(key,(counts.get(key)||0)+1);}return counts;},[d.data]);
+    const filteredNodes = viewRows.filter(
         (n) =>
-            (tab !== "services" || !n.service_id) &&
+            (!serviceView || !serviceFocus || `${n.type}:${n.id}`===serviceFocus) &&
             (!onlyIssues || !!n.issues?.length) &&
             (!onlyMaintenance || !!n.maintenance) &&
             (!backendFilter || n.type === backendFilter) &&
@@ -152,7 +162,7 @@ function NodesContent({
                 .includes(nodeSearch.trim().toLowerCase()),
     );
 
-    const columns: ComponentProps<typeof Table>["columns"] = [
+    const allColumns: ComponentProps<typeof Table>["columns"] = [
         ["id", "ID"],
         [
             "name",
@@ -176,7 +186,9 @@ function NodesContent({
                       : "—",
         ],
         ["type", "类型"],
-        ["service_id", "代理服务", r => r.service_id ? nodeRows.find(n => n.type === r.type && n.id === r.service_id)?.name || `服务 #${r.service_id}` : "本服务（默认线路）"],
+        ["service_id", "代理服务", r => <a href={`#/node-services?service=${encodeURIComponent(`${r.type}:${r.service_id || r.id}`)}`}>{serviceMap.get(`${r.type}:${r.service_id || r.id}`)?.name || `服务 #${r.service_id || r.id}`}{r.service_id?" · 复用服务":" · 默认服务"}</a>],
+        ["server_port","监听端口"],
+        ["connections","关联线路",r=>`${1+(connectionCounts.get(`${r.type}:${r.id}`)||0)} 条（含默认线路）`],
         ["protocol", "协议"],
         [
             "runtime_status",
@@ -247,15 +259,18 @@ function NodesContent({
         ["online", "服务在线用户", r => r.service_id ? `${r.online ?? "—"}（共享）` : r.online ?? "—"],
         ["last_push_at", "最近流量上报", (r) => date(r.last_push_at)],
     ];
+    const viewColumnKeys=serviceView?["id","name","type","protocol","server_port","runtime_status","management","current_ip","traffic_budget","group_id","connections","online","last_push_at"]:["id","name","service_id","host","port","rate","show","group_id"];
+    const columns=allColumns.filter(([key])=>viewColumnKeys.includes(key)).map(([key,label,...rest])=>[key,serviceView && key==="group_id"?"服务权限组":serviceView && key==="name"?"服务名称":key==="host"?"连接地址":key==="port"?"连接端口":label,...rest] as (typeof allColumns)[number]);
+    const columnStorageKey=serviceView?"admin.services.columns.v1":"admin.nodes.columns.v1";
     const [visibleColumns, setVisibleColumns] = useState<string[] | null>(
         () => {
             try {
                 const saved = JSON.parse(
-                    localStorage.getItem("admin.nodes.columns.v1") || "null",
+                    localStorage.getItem(columnStorageKey) || "null",
                 );
                 return Array.isArray(saved) &&
                     saved.every((key) => typeof key === "string")
-                    ? saved
+                    ? saved.length && !saved.some(key=>columns.some(([available])=>available===key)) ? null : saved.filter(key=>columns.some(([available])=>available===key))
                     : null;
             } catch {
                 return null;
@@ -265,13 +280,13 @@ function NodesContent({
     useEffect(() => {
         try {
             localStorage.setItem(
-                "admin.nodes.columns.v1",
+                columnStorageKey,
                 JSON.stringify(visibleColumns),
             );
         } catch {
             /* Storage may be disabled. */
         }
-    }, [visibleColumns]);
+    }, [visibleColumns,columnStorageKey]);
     const selectedColumns = visibleColumns ?? columns.map(([key]) => key);
     const [showDisplay, setShowDisplay] = useState(false);
 
@@ -279,7 +294,7 @@ function NodesContent({
         <>
             {showDisplay && (
                 <AdminDisplaySettings
-                    title="节点显示设置"
+                    title={serviceView?"代理服务显示设置":"节点显示设置"}
                     columns={columns}
                     selected={selectedColumns}
                     onChange={setVisibleColumns}
@@ -315,8 +330,8 @@ function NodesContent({
                     {savedNodeNotice}
                 </p>
             )}
-            <p className="pad muted">新增直连节点可自动关联服务器与域名。复用已有代理服务时新增线路；多入口共用服务无需重复部署。 <a href="#/servers">服务器管理</a> · <a href="#/node-domains">域名与解析</a></p>
-            <NodeSetupGuide/>
+            <p className="pad muted">{serviceView?"代理服务负责协议、监听、证书、路由与部署维护。默认线路和关联线路的展示与排序在节点列表管理。":"节点列表管理用户接入地址、权限、倍率和展示顺序。协议、证书、运行状态及部署维护请进入对应代理服务。默认线路的名称、权限和倍率与服务共用，在服务配置中维护。"} <a href="#/servers">服务器管理</a> · <a href="#/node-domains">域名与解析</a></p>
+            {tab==="nodes" && <NodeSetupGuide/>}
             {connectionNode && <NodeConnectionEditor key={`${connectionNode.type}:${connectionNode.id || "new"}`} node={connectionNode} nodes={nodeRows} groups={rows(groups.data)} close={() => setConnectionNode(null)} onSaved={d.reload} />}
             {tab === "forwarding" && <NodeForwarding nodes={nodeRows} edit={node => node.service_id ? setConnectionNode(node) : setCredentialNode({...node,_focusDomain:true})} />}
             {(tab === "nodes" || tab === "services") && (
@@ -331,13 +346,13 @@ function NodesContent({
                             >
                                 显示设置
                             </button>
-                            <SortButton
+                            {!serviceView && <SortButton
                                 path={admin("server/manage/sort")}
                                 kind="nodes"
                                 items={rows(d.data)}
                                 onSaved={d.reload}
-                            />
-                            <button
+                            />}
+                            {!serviceView && <button
                                 className="primary"
                                 onClick={() =>
                                     setEditing({
@@ -353,7 +368,8 @@ function NodesContent({
                                 }
                             >
                                 新增节点
-                            </button>
+                            </button>}
+                            {serviceView && <a href="#/nodes">前往新增节点</a>}
                         </>
                     }
                 >
@@ -373,41 +389,42 @@ function NodesContent({
                             aria-label="节点概况"
                         >
                             <div>
-                                <span>全部节点</span>
-                                <strong>{nodeRows.length}</strong>
+                                <span>{serviceView?"全部服务":"全部节点"}</span>
+                                <strong>{viewRows.length}</strong>
                             </div>
                             <div>
-                                <span>异常节点</span>
+                                <span>{serviceView?"异常服务":"展示中"}</span>
                                 <strong>
                                     {
-                                        nodeRows.filter((n) => n.issues?.length)
+                                        viewRows.filter((n) => serviceView?n.issues?.length:Number(n.show)===1)
                                             .length
                                     }
                                 </strong>
                             </div>
                             <div>
-                                <span>维护中</span>
+                                <span>{serviceView?"维护中":"已隐藏"}</span>
                                 <strong>
                                     {
-                                        nodeRows.filter((n) => n.maintenance)
+                                        viewRows.filter((n) => serviceView?n.maintenance:Number(n.show)!==1)
                                             .length
                                     }
                                 </strong>
                             </div>
                             <div>
-                                <span>额度受限</span>
+                                <span>{serviceView?"额度受限":"复用线路"}</span>
                                 <strong>
                                     {
-                                        nodeRows.filter(
-                                            (n) => n.traffic_budget?.blocked,
+                                        viewRows.filter(
+                                            (n) => serviceView?n.traffic_budget?.blocked:!!n.service_id,
                                         ).length
                                     }
                                 </strong>
                             </div>
                         </div>
                         <div className="node-management-tools">
+                            {serviceView && serviceFocus && <span className="muted">已定位服务 {serviceFocus} <a href="#/node-services" onClick={()=>setServiceFocus("")}>显示全部服务</a></span>}
                             <label>
-                                搜索节点
+                                {serviceView?"搜索代理服务":"搜索节点"}
                                 <input
                                     placeholder="ID、名称、域名、IP 或协议"
                                     value={nodeSearch}
@@ -417,7 +434,7 @@ function NodesContent({
                                 />
                             </label>
                             <label>
-                                筛选节点类型
+                                {serviceView?"筛选服务内核":"筛选节点类型"}
                                 <select
                                     value={backendFilter}
                                     onChange={(e) =>
@@ -429,7 +446,7 @@ function NodesContent({
                                     <option value="v2box">V2Box</option>
                                 </select>
                             </label>
-                            <label>
+                            {serviceView && <><label>
                                 筛选运行状态
                                 <select
                                     value={statusFilter}
@@ -455,7 +472,7 @@ function NodesContent({
                                         setQuotaFilter(e.target.checked)
                                     }
                                 />
-                                仅显示额度受限节点
+                                仅显示额度受限服务
                             </label>
                             <label className="node-quota-filter">
                                 <input
@@ -465,7 +482,7 @@ function NodesContent({
                                         setOnlyIssues(e.target.checked)
                                     }
                                 />
-                                仅显示异常节点
+                                仅显示异常服务
                             </label>
                             <label className="node-quota-filter">
                                 <input
@@ -475,11 +492,11 @@ function NodesContent({
                                         setOnlyMaintenance(e.target.checked)
                                     }
                                 />
-                                仅显示维护中节点
-                            </label>
+                                仅显示维护中服务
+                            </label></>}
                             <span className="muted">
-                                显示 {filteredNodes.length} / {nodeRows.length}{" "}
-                                个节点
+                                显示 {filteredNodes.length} / {viewRows.length}{" "}
+                                {serviceView?"个代理服务":"个节点"}
                             </span>
                         </div>
                         <Table
@@ -487,7 +504,7 @@ function NodesContent({
                             columns={columns.filter(([key]) =>
                                 selectedColumns.includes(key),
                             )}
-                            onReorder={async (items) => {
+                            onReorder={serviceView?undefined:async (items) => {
                                 try {
                                     await request(
                                         admin("server/manage/sort"),
@@ -498,59 +515,16 @@ function NodesContent({
                                     setError((e as Error).message);
                                 }
                             }}
-                            actions={(r) => (
-                                <>
-                                    {!r.service_id ? (
-                                        <button
-                                            onClick={() => setCredentialNode(r)}
-                                        >
-                                            部署与接入
-                                        </button>
-                                    ) : (
-                                        <button
-                                            onClick={() => {
-                                                const parent = (
-                                                    d.data || []
-                                                ).find(
-                                                    (n) =>
-                                                        n.type === r.type &&
-                                                        Number(n.id) ===
-                                                            Number(r.service_id),
-                                                );
-                                                if (parent)
-                                                    setCredentialNode(parent);
-                                                else
-                                                    setError(
-                                                        "代理服务不可用，请先检查节点配置",
-                                                    );
-                                            }}
-                                        >
-                                            代理服务接入
-                                        </button>
-                                    )}
-                                    <button
-                                        onClick={() => {
-                                            setType(r.type);
-                                            if (r.service_id) setConnectionNode(r); else setEditing(r);
-                                        }}
-                                    >
-                                        编辑
-                                    </button>
-                                    <button
-                                        disabled={actionBusy || d.loading || !!r.service_id}
-                                        onClick={() => nodeAction(r, "copy")}
-                                    >
-                                        复制
-                                    </button>
-                                    <button
-                                        className="danger"
-                                        disabled={actionBusy || d.loading}
-                                        onClick={() => nodeAction(r, "drop")}
-                                    >
-                                        删除
-                                    </button>
-                                </>
-                            )}
+                            actions={(r) => serviceView ? <>
+                                <button onClick={()=>setCredentialNode(r)}>部署与接入</button>
+                                <button onClick={()=>{setType(r.type);setEditing(r);}}>编辑</button>
+                                <button disabled={actionBusy || d.loading} onClick={()=>nodeAction(r,"copy")}>复制</button>
+                                <button className="danger" disabled={actionBusy || d.loading || (connectionCounts.get(`${r.type}:${r.id}`)||0)>0} title={(connectionCounts.get(`${r.type}:${r.id}`)||0)>0?"请先删除或迁移关联线路":undefined} onClick={()=>nodeAction(r,"drop")}>删除服务</button>
+                            </> : r.service_id ? <>
+                                <button onClick={()=>setConnectionNode(r)}>编辑线路</button>
+                                <button className="danger" disabled={actionBusy || d.loading} onClick={()=>nodeAction(r,"drop")}>删除线路</button>
+                            </> : <button onClick={()=>setCredentialNode({...r,_focusDomain:true,_domainOnly:true})}>接入设置</button>}
+
                         />
                     </State>
                 </Panel>
@@ -559,6 +533,7 @@ function NodesContent({
                 <NodeDeployment
                     key={`${credentialNode.type}:${credentialNode.id}`}
                     node={credentialNode}
+                    scope={credentialNode._domainOnly ? "connection" : "service"}
                     inspect={() => { setDiagnosticNode(credentialNode); setCredentialNode(null); }}
                     onChanged={d.reload}
                     close={() => { setCredentialNode(null); d.reload(); }}
@@ -568,7 +543,7 @@ function NodesContent({
                 <Modal
                     title={
                         editing.id
-                            ? `编辑节点 #${editing.id} · ${editing.name || ""}`
+                            ? `编辑代理服务 #${editing.id} · ${editing.name || ""}`
                             : creationLocked ? "节点线路配置" : "新增节点"
                     }
                     variant="drawer"

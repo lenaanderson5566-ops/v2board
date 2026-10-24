@@ -195,7 +195,7 @@ export function AdminDDNS() {
                         <p className="muted">
                             节点域名在 <a href="#/nodes">节点管理</a>{" "}
                             的“部署与接入”中配置；共享入口在{" "}
-                            <a href="#/servers">服务器详情</a> 中管理。
+                            <a href="#/servers">服务器管理</a> 中管理。
                         </p>
                         <label>
                             搜索域名

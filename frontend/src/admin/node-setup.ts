@@ -55,7 +55,7 @@ export function nodeSetupFields(
                 type: "select",
                 required: true,
                 options: [
-                    ["", "选择服务器详情内已配置的入口"],
+                    ["", "选择服务器管理内已配置的入口"],
                     ...entries.map(
                         (a: Row) =>
                             [String(a.id), a.domain] as [string, string],
@@ -63,7 +63,7 @@ export function nodeSetupFields(
                 ],
                 hint: entries.length
                     ? "入口域名解析到中转服务器，不能与回源使用同一台服务器。"
-                    : "请先到服务器管理，在新建或已有服务器详情中配置入口域名。",
+                    : "请先到服务器管理，在新建或已有服务器管理中配置入口域名。",
             },
             {
                 key: "setup_entry_port",

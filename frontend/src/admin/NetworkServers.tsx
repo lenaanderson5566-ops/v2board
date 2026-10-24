@@ -1,10 +1,11 @@
+import { AdminRowMenu } from "./AdminRowMenu";
 import { ServerForwarding, serverPurpose } from "./ServerForwarding";
 import {
     ServerTrafficFields,
     trafficDraft,
     trafficPayload,
 } from "./ServerTrafficFields";
-import { ServerTrafficDetails, quotaState } from "./ServerTrafficDetails";
+import { ServerTrafficSummary, ServerStatus, quotaState } from "./ServerTrafficSummary";
 import { ServerTrafficBudgets } from "./ServerTrafficBudgets";
 import {
     ServerEntryDomains,
@@ -53,10 +54,15 @@ export function NetworkServers({
         return result;
     }, [budgets.data, data.assignments]);
     const budgetFor = (id: number) => budgetMap.get(Number(id));
-    const [detail, setDetail] = useState<Row | null>(null);
     const [detailBusy, setDetailBusy] = useState(false),
         [detailDirty, setDetailDirty] = useState(false),
         [serverDirty, setServerDirty] = useState(false);
+    useEffect(()=>{
+        if(!serverDirty && !detailDirty)return;
+        const warn=(event:BeforeUnloadEvent)=>{event.preventDefault();event.returnValue="";};
+        window.addEventListener("beforeunload",warn);return ()=>window.removeEventListener("beforeunload",warn);
+    },[serverDirty,detailDirty]);
+    const [summaryRevision,setSummaryRevision]=useState(0);
     const [legacyOpen, setLegacyOpen] = useState(false);
     const legacyNodes = useData<Row[]>(
         legacyOpen ? admin("server/manage/getNodes") : "",
@@ -67,7 +73,7 @@ export function NetworkServers({
             setError("请先成功加载流量额度后再编辑服务器");
             return false;
         }
-        setServerDirty(false);
+        setServerDirty(false);setDetailDirty(false);setDetailBusy(false);
         setEditing({ ...server, ...trafficDraft(budgetFor(server.id)) });
         return true;
     }
@@ -101,7 +107,7 @@ export function NetworkServers({
     const [busy, setBusy] = useState(false);
     const pending = useRef(false);
     async function act(path: string, body: Row) {
-        if (pending.current) return;
+        if (pending.current || detailBusy) return;
         pending.current = true;
         setBusy(true);
         setError("");
@@ -117,7 +123,7 @@ export function NetworkServers({
                     old &&
                     (old.resetDay !== traffic.resetDay ||
                         old.countingMode !== traffic.countingMode ||
-                        (traffic.limitBytes > 0 &&
+                        (Number(old.limitBytes) !== traffic.limitBytes && traffic.limitBytes > 0 &&
                             traffic.limitBytes <= Number(old.usedBytes))) &&
                     !confirm(
                         "此变更会重新计算当前周期用量，或立即限制达到额度的服务。确认保存？",
@@ -138,16 +144,16 @@ export function NetworkServers({
                 setCommandExpires(r.data.expiresAt || "");
             }
             reload();
-            if (path === "save") budgets.reload();
+            if (path === "save") {budgets.reload();setSummaryRevision(v=>v+1);}
             if (path === "save")
                 setNotice(
                     r.data?.entryId
                         ? "服务器与入口域名已保存，请配置服务器 IP 上报并等待解析同步。"
-                        : "服务器已保存。IP 上报可在编辑服务器中配置。",
+                        : "服务器已保存，可继续在当前管理界面配置 IP 上报。",
                 );
             if (path === "save" || path === "drop") {
                 setServerDirty(false);
-                setEditing(null);
+                if(path==="drop" || !body.id)setEditing(null);
             }
         } catch (e) {
             setError((e as Error).message);
@@ -197,7 +203,7 @@ export function NetworkServers({
                                 "服务器",
                                 (r) => (
                                     <span>
-                                        {r.name}
+                                        <button className="link" disabled={busy || budgets.loading || !!budgets.error} onClick={()=>editServer(r)}>{r.name}</button>
                                         {!r.enabled && (
                                             <small className="muted">
                                                 {" "}
@@ -340,27 +346,8 @@ export function NetworkServers({
                                 "操作",
                                 (r: Row) => (
                                     <div className="actions">
-                                        <button
-                                            disabled={busy}
-                                            onClick={() => {
-                                                setDetail(r);
-                                                setDetailDirty(false);
-                                            }}
-                                        >
-                                            详情
-                                        </button>
-                                        <button
-                                            disabled={
-                                                busy ||
-                                                budgets.loading ||
-                                                !!budgets.error
-                                            }
-                                            onClick={() => {
-                                                editServer(r);
-                                            }}
-                                        >
-                                            编辑
-                                        </button>
+                                        <button disabled={busy || budgets.loading || !!budgets.error} onClick={()=>editServer(r)}>管理</button>
+                                        <AdminRowMenu label={`${r.name} 更多操作`}>
                                         <button
                                             disabled={busy}
                                             onClick={() => {
@@ -372,8 +359,9 @@ export function NetworkServers({
                                                     act("drop", { id: r.id });
                                             }}
                                         >
-                                            删除
+                                            删除服务器
                                         </button>
+                                        </AdminRowMenu>
                                     </div>
                                 ),
                             ],
@@ -402,40 +390,6 @@ export function NetworkServers({
                     )}
                 </div>
             </Panel>
-            {detail && (
-                <ServerTrafficDetails
-                    server={detail}
-                    busy={detailBusy}
-                    close={() => {
-                        if (
-                            !detailBusy &&
-                            (!detailDirty ||
-                                confirm("入口域名尚未保存，确认放弃修改？"))
-                        )
-                            setDetail(null);
-                    }}
-                    edit={() => {
-                        if (
-                            !detailBusy &&
-                            (!detailDirty ||
-                                confirm("入口域名尚未保存，确认放弃修改？")) &&
-                            editServer(detail)
-                        )
-                            setDetail(null);
-                    }}
-                >
-                    <ServerEntryDomains
-                        key={detail.id}
-                        server={detail}
-                        data={data}
-                        reload={reload}
-                        onBusy={setDetailBusy}
-                        onDirty={setDetailDirty}
-                    />
-                    <p>服务器用途：{serverPurpose(Number(detail.id),data)}</p>
-                    <ServerForwarding server={detail} data={data} reload={reload}/>
-                </ServerTrafficDetails>
-            )}
             {legacyOpen && (
                 <Modal
                     title="历史未关联额度"
@@ -456,19 +410,20 @@ export function NetworkServers({
             {editing && (
                 <Modal
                     variant="drawer"
-                    title="服务器信息"
-                    dismissible={!busy}
+                    title={editing.id ? `${editing.name} · 服务器管理` : "添加服务器"}
+                    dismissible={!busy && !detailBusy}
                     close={() => {
                         if (
-                            !busy &&
-                            (!serverDirty ||
-                                confirm("服务器配置尚未保存，确认放弃修改？"))
+                            !busy && !detailBusy &&
+                            (!(serverDirty || detailDirty) ||
+                                confirm("服务器或入口配置尚未保存，确认放弃修改？"))
                         ) {
                             setEditing(null);
                             setCommand("");
                         }
                     }}
                 >
+                    {editing.id && <div className="pad server-traffic-details"><p>服务器用途：{serverPurpose(Number(editing.id),data)}</p><ServerStatus server={servers.find(s=>Number(s.id)===Number(editing.id)) || editing}/></div>}
                     <form
                         className="node-domain-form server-config-form"
                         data-unsaved={serverDirty || undefined}
@@ -483,6 +438,7 @@ export function NetworkServers({
                             });
                         }}
                     >
+                        <h3>基本配置</h3>
                         <label>
                             服务器名称
                             <input
@@ -536,6 +492,7 @@ export function NetworkServers({
                                 <option value="dual">双栈</option>
                             </select>
                         </label>
+                        <h3>流量额度</h3>
                         <ServerTrafficFields
                             value={editing}
                             onChange={(value) => {
@@ -543,7 +500,7 @@ export function NetworkServers({
                                 setServerDirty(true);
                             }}
                         />
-                        {editing.id && <section><p>服务器用途：{serverPurpose(Number(editing.id),data)}</p><p className="muted">用途随关联代理服务和入口域名自动显示，同一服务器可以承担两种用途。</p><button type="button" disabled={busy} onClick={()=>{if(serverDirty && !confirm("服务器配置尚未保存，确认放弃修改并管理入口与转发？"))return;setEditing(null);setCommand("");setServerDirty(false);setDetail(editing);setDetailDirty(false);}}>管理入口域名与转发</button></section>}
+
                         {!editing.id && (
                             <fieldset>
                                 <legend>服务器用途</legend>
@@ -571,13 +528,13 @@ export function NetworkServers({
                         <button
                             className="primary"
                             disabled={
-                                busy ||
+                                busy || detailBusy ||
                                 budgets.loading ||
                                 !!budgets.error ||
                                 (!!editing.configureEntry && !roots.length)
                             }
                         >
-                            保存
+                            {editing.id ? "保存服务器配置" : "保存"}
                         </button>
                         {editing.id && (
                             <fieldset>
@@ -682,11 +639,21 @@ export function NetworkServers({
                             </section>
                         )}
                         {error && <p role="alert">{error}</p>}
+                        {notice && <p role="status">{notice}</p>}
                     </form>
+                    {editing.id && <div className="pad server-management-sections">
+                        <h3>入口与转发</h3>
+                        {serverDirty && <p className="muted">请先保存服务器配置，再修改入口或转发。</p>}
+                        <fieldset disabled={busy || serverDirty}>
+                        <ServerEntryDomains key={editing.id} server={servers.find(s=>Number(s.id)===Number(editing.id)) || editing} data={data} reload={reload} onBusy={setDetailBusy} onDirty={setDetailDirty}/>
+                        </fieldset>
+                        <fieldset disabled={busy || serverDirty || detailBusy || detailDirty}><ServerForwarding server={editing} data={data} reload={reload}/></fieldset>
+                        <ServerTrafficSummary key={`${editing.id}:${summaryRevision}`} server={editing} onNavigate={()=>!busy && !detailBusy && (!(serverDirty || detailDirty) || confirm("配置尚未保存，确认放弃修改并前往节点管理？"))}/>
+                    </div>}
                 </Modal>
             )}
             {error && !editing && <p role="alert">{error}</p>}
-            {notice && <p role="status">{notice}</p>}
+            {notice && !editing && <p role="status">{notice}</p>}
         </>
     );
 }

@@ -878,3 +878,6 @@ Typescript 与生产构建、发布目录打包通过。浏览器合成状态预
 
 节点编辑迭代清理复用上述六个模块，补充手动清空地区后切换服务及取消选择时清理权限而保留名称的断言；保留旧入口已退役的路由回归测试，不将其作为兼容入口恢复。未新增后端契约和迁移。
 最终清理后六个模块290项检查及 TypeScript/Vite 构建通过，public/console 已重新打包。
+
+服务器编辑与详情合并继续复用 AdminDDNS、ServerTrafficBudgets、Nodes、admin-workspaces、admin-linkage、shared/api 六个模块。保留额度与入口的全部既有业务断言，更新管理入口交互，增加单抽屉、保存不关闭、名称修改不误触额度确认及关闭保护检查。
+最终相关六模块合计292项检查通过（入口模块39项单独复验通过）；TypeScript/Vite 生产构建通过并打包 public/console。无真实服务器或数据库操作。

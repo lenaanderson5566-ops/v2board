@@ -97,8 +97,8 @@ it("keeps DNS inventory read-only and directs configuration to its owning pages"
         screen.getByRole("link", { name: "节点管理" }).getAttribute("href"),
     ).toBe("#/nodes");
     expect(
-        screen.getByRole("link", { name: "服务器详情" }).getAttribute("href"),
-    ).toBe("#/servers");
+        screen.getAllByRole("link", { name: "服务器管理" }).every(link=>link.getAttribute("href")==="#/servers"),
+    ).toBe(true);
     expect(
         api.request.mock.calls.some(([path]) =>
             String(path).includes("getNodes"),
@@ -534,12 +534,13 @@ it("generates a physical server enrollment without a node ID", async () => {
     );
     expect(screen.queryByRole("button", { name: "配置服务器上报" })).toBeNull();
     await waitFor(() =>
-        expect(screen.getByRole("button", { name: "编辑" })).toHaveProperty(
+        expect(screen.getByRole("button", { name: "管理" })).toHaveProperty(
             "disabled",
             false,
         ),
     );
-    fireEvent.click(screen.getByRole("button", { name: "编辑" }));
+    await waitFor(()=>expect(screen.getByRole("button",{name:"管理"})).toHaveProperty("disabled",false));
+    fireEvent.click(screen.getByRole("button", { name: "管理" }));
     await waitFor(() =>
         expect(
             screen.getByRole("button", { name: "配置服务器上报" }),
@@ -552,7 +553,7 @@ it("generates a physical server enrollment without a node ID", async () => {
         { id: 10 },
     );
     expect(screen.getAllByRole("dialog")).toHaveLength(1);
-    expect(screen.getByRole("button", { name: "保存" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "保存服务器配置" })).toBeTruthy();
 });
 it("submits separate origin server and shared entry settings", async () => {
     api.request.mockResolvedValue({
@@ -799,7 +800,8 @@ it("scopes existing entry management to the server details without another serve
     const data = serverEntryFixture();
     render(<NetworkServers data={data} reload={() => {}} />);
     expect(screen.queryByText("old.example.test")).toBeNull();
-    fireEvent.click(screen.getByRole("button", { name: "详情" }));
+    await waitFor(()=>expect(screen.getByRole("button",{name:"管理"})).toHaveProperty("disabled",false));
+    fireEvent.click(screen.getByRole("button", { name: "管理" }));
     expect(await screen.findByText("old.example.test")).toBeTruthy();
     expect(screen.queryByText("other.example.test")).toBeNull();
     fireEvent.click(screen.getByRole("button", { name: "添加入口域名" }));
@@ -874,7 +876,8 @@ it("retains entry input on server save failure and allows opting out without an 
 it("protects referenced entries and keeps edit errors within the server detail", async () => {
     const data = serverEntryFixture();
     render(<NetworkServers data={data} reload={() => {}} />);
-    fireEvent.click(screen.getByRole("button", { name: "详情" }));
+    await waitFor(()=>expect(screen.getByRole("button",{name:"管理"})).toHaveProperty("disabled",false));
+    fireEvent.click(screen.getByRole("button", { name: "管理" }));
     expect(
         await screen.findByRole("button", { name: "编辑入口" }),
     ).toHaveProperty("disabled", true);
@@ -897,7 +900,8 @@ it("edits an unused entry in its original server and retains input if a concurre
             : original(path, ...args),
     );
     render(<NetworkServers data={data} reload={() => {}} />);
-    fireEvent.click(screen.getByRole("button", { name: "详情" }));
+    await waitFor(()=>expect(screen.getByRole("button",{name:"管理"})).toHaveProperty("disabled",false));
+    fireEvent.click(screen.getByRole("button", { name: "管理" }));
     fireEvent.click(await screen.findByRole("button", { name: "编辑入口" }));
     expect(screen.getByLabelText("入口子域名前缀")).toHaveProperty(
         "value",
@@ -928,12 +932,13 @@ it("requires saving server edits before generating or resetting report authoriza
     const data = serverEntryFixture();
     render(<NetworkServers data={data} reload={() => {}} />);
     await waitFor(() =>
-        expect(screen.getByRole("button", { name: "编辑" })).toHaveProperty(
+        expect(screen.getByRole("button", { name: "管理" })).toHaveProperty(
             "disabled",
             false,
         ),
     );
-    fireEvent.click(screen.getByRole("button", { name: "编辑" }));
+    await waitFor(()=>expect(screen.getByRole("button",{name:"管理"})).toHaveProperty("disabled",false));
+    fireEvent.click(screen.getByRole("button", { name: "管理" }));
     await waitFor(() =>
         expect(
             screen.getByRole("button", { name: "配置服务器上报" }),
@@ -990,12 +995,13 @@ it("retains the server editor when report enrollment fails and revokes only afte
     );
     render(<NetworkServers data={data} reload={() => {}} />);
     await waitFor(() =>
-        expect(screen.getByRole("button", { name: "编辑" })).toHaveProperty(
+        expect(screen.getByRole("button", { name: "管理" })).toHaveProperty(
             "disabled",
             false,
         ),
     );
-    fireEvent.click(screen.getByRole("button", { name: "编辑" }));
+    await waitFor(()=>expect(screen.getByRole("button",{name:"管理"})).toHaveProperty("disabled",false));
+    fireEvent.click(screen.getByRole("button", { name: "管理" }));
     fireEvent.click(screen.getByRole("button", { name: "配置服务器上报" }));
     expect(await screen.findByText("授权生成失败")).toBeTruthy();
     expect(screen.getByLabelText("服务器名称")).toHaveProperty(

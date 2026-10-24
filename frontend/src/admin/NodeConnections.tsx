@@ -131,5 +131,5 @@ export function NodeForwarding({ nodes, edit }: { nodes: Row[]; edit: (node: Row
         const entry = assignments.find(a => a.id === binding.entry_id);
         records.push({ ...binding, id: `binding-${binding.id}`, name: node?.name || `#${binding.node_id}`, entry: `${entry?.domain || "入口待检查"}:${binding.entry_port}`, active: `${binding.published_domain}:${binding.published_port || node?.port || "—"} → ${binding.published_origin || binding.domain}:${node?.server_port || "—"}`, node });
     }
-    return <Panel title="入口转发"><State {...data} retry={data.reload}><p className="muted">此处汇总所有服务器的转发线路；单台服务器请在“服务器列表 → 详情 → 本机入口转发”集中配置。与节点编辑共用相同的接入关系。复制 Nginx 配置到入口服务器，检查并加载后完成连接测试。面板不自动安装转发。</p><Table data={records} columns={[["name", "接入线路"], ["entry", "已保存入口"], ["active", "当前发布路径"]]} actions={r => <button disabled={!r.node} onClick={() => edit(r.node)}>{r.node?.service_id ? "编辑线路" : "配置转发与验证"}</button>} /></State></Panel>;
+    return <Panel title="入口转发"><State {...data} retry={data.reload}><p className="muted">此处汇总所有服务器的转发线路；单台服务器请在“服务器列表 → 管理 → 本机入口转发”集中配置。与节点编辑共用相同的接入关系。复制 Nginx 配置到入口服务器，检查并加载后完成连接测试。面板不自动安装转发。</p><Table data={records} columns={[["name", "接入线路"], ["entry", "已保存入口"], ["active", "当前发布路径"]]} actions={r => <button disabled={!r.node} onClick={() => edit(r.node)}>{r.node?.service_id ? "编辑线路" : "配置转发与验证"}</button>} /></State></Panel>;
 }

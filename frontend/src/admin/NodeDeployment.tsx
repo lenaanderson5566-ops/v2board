@@ -1,4 +1,5 @@
 import { NodeAddressSummary } from "./NodeAddressSummary";
+import { NodeDeploymentProgress } from "./NodeDeploymentProgress";
 import { nodeDeploymentStage } from "./node-guidance";
 import { NodeDomainBinding } from "./NodeDomains";
 import { type ReactNode, useEffect, useRef, useState } from "react";
@@ -67,7 +68,7 @@ export function NodeDeployment({
         false,
         { refreshOnEvents: false },
     );
-    const deadline = useRef(Date.now() + 300000);
+    const deadline = useRef(Date.now() + 900000);
     const [paused, setPaused] = useState(false);
     const binding = (network.data?.assignments || []).find(
         (a: Row) => a.node_type === node.type && a.node_id === node.id && a.status !== "manual",
@@ -121,7 +122,7 @@ export function NodeDeployment({
         authenticated,
     );
     function refreshStatus() {
-        deadline.current = Date.now() + 300000;
+        deadline.current = Date.now() + 900000;
         setPaused(false);
         report.reload();
         runtime.reload();
@@ -340,6 +341,7 @@ export function NodeDeployment({
                                 )}
                             </section>
                             <NodeAddressSummary node={node} binding={binding} entry={(network.data?.assignments || []).find((a: Row) => a.id === binding?.entry_id)} />
+                            {!network.loading && !runtime.loading && !network.error && !runtime.error && <NodeDeploymentProgress binding={binding} network={network.data} runtime={runtime.data} />}
                             <NodeDeploymentCheck node={node} disabled={busy} />
                             {node.type === "v2box" && (
                                 <div className="admin-deployment-mode">

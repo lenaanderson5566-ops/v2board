@@ -1,4 +1,5 @@
 import { NodeAddressSummary } from "./NodeAddressSummary";
+import { NodeDeploymentProgress, deploymentDnsSteps } from "./NodeDeploymentProgress";
 import { nodeConfigurationProblems, nodeChangeImpact, nodeDeploymentStage } from "./node-guidance";
 import { certificateCredentialOptions, nodeSetupFields, nodeSetupPayload } from "./node-setup";
 import { adminPageFixture } from "./test-support/page-fixtures";
@@ -786,7 +787,7 @@ it("distinguishes configuration errors, DNS progress and confirmed runtime",()=>
     expect(nodeDeploymentStage({...node,type:"v2node"},{runtimeStatus:"online",configurationState:"provided"},undefined,true).title).toBe("节点已接入，待实际验证");
     expect(nodeDeploymentStage(node,{runtimeStatus:"online",receiptSupported:false},undefined,true).target).toBe("upgrade");
 });
-it("pauses deployment polling after five minutes and stops while hidden",async()=>{
+it("pauses deployment polling after fifteen minutes and stops while hidden",async()=>{
     api.request.mockImplementation(async(path:string)=>path.includes("manage/runtime")?{data:{runtimeStatus:"unknown",applicationState:"unconfirmed"}}:{data:{keys:[],assignments:[]}});
     vi.useFakeTimers();
     const visible=vi.spyOn(document,"visibilityState","get").mockReturnValue("hidden");
@@ -795,7 +796,7 @@ it("pauses deployment polling after five minutes and stops while hidden",async()
     await act(()=>vi.advanceTimersByTimeAsync(30000));
     expect(api.request).toHaveBeenCalledTimes(calls);
     visible.mockReturnValue("visible");
-    await act(()=>vi.advanceTimersByTimeAsync(300000));
+    await act(()=>vi.advanceTimersByTimeAsync(900000));
     expect(screen.getByText(/已暂停自动检查/)).toBeTruthy();
     const pausedCalls=api.request.mock.calls.length;
     await act(()=>vi.advanceTimersByTimeAsync(60000));
@@ -1236,4 +1237,30 @@ it("keeps integrated deployment navigation flat and credential management reacha
     fireEvent.click(screen.getByRole("button",{name:"返回部署与状态"}));
     expect(await screen.findByRole("button",{name:"一键检查"})).toBeTruthy();
     expect(api.request.mock.calls.some(([,body])=>body && Object.keys(body).length)).toBe(false);
+});
+
+
+it("identifies entry IPv6 report separately from synchronized origin",()=>{
+    const origin={id:1,server_id:10,credential_id:20,entry_id:2,enabled:true,managed:true,family:"ipv4",domain:"origin.example.test",ipv4:"8.8.8.8",ipv4_seen_at:10000,status:"healthy",last_success:10000};
+    const entry={...origin,id:2,server_id:11,entry_id:null,family:"dual",domain:"entry.example.test",ipv6:null};
+    const network={assignments:[origin,entry],servers:[{id:10,name:"Origin",enabled:true},{id:11,name:"Entry",enabled:true}],credentials:[{id:20,status:"ready",next_run:0}]};
+    const steps=deploymentDnsSteps(origin,network,10000);
+    expect(steps[0].state).toBe("pass");
+    expect(steps[1]).toMatchObject({label:"入口 IP 与解析",state:"unknown"});
+    expect(steps[1].detail).toContain("IPv6");
+    expect(steps[1].next).toContain("代理服务器上报不能代替入口");
+    network.credentials[0]={id:20,status:"credential_rejected",next_run:-1};
+    expect(deploymentDnsSteps(origin,network,10000)[0].detail).toContain("Cloudflare 拒绝凭据");
+    network.credentials[0]={id:20,status:"rate_limited",next_run:10600};
+    expect(deploymentDnsSteps(origin,network,10000)[0].detail).toContain("10 分钟");
+});
+it("does not confuse DNS wait with pending node configuration",()=>{
+    const stage=nodeDeploymentStage({type:"v2box"},{configurationState:"pending"},{managed:true,enabled:true,family:"dual",status:"awaiting_report"},false);
+    expect(stage.title).toBe("等待服务器 IP 上报");
+});
+it("shows actionable receipt failures without claiming external checks passed",()=>{
+    render(<NodeDeploymentProgress runtime={{applicationState:"failed",errorCode:"certificate"}}/>);
+    expect(screen.getByText(/证书申请或加载失败/)).toBeTruthy();
+    expect(screen.queryByText("已确认")).toBeNull();
+    expect(screen.getByText(/服务器安装进程和公共网络结果需另行确认/)).toBeTruthy();
 });

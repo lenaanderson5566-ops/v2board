@@ -168,7 +168,7 @@ export function nodeDeploymentStage(
     };
     if (runtime?.configurationState === "invalid")
         return { ...base, terminal: true, title: "当前配置无法下发", description: "请检查协议与证书中的配置及 Cloudflare 凭据。保存成功不代表节点已应用。", target: "logs" };
-    if (runtime?.configurationState === "pending")
+    if (runtime?.configurationState === "pending" && base.dnsReady)
         return { ...base, title: "设置已保存，等待节点获取", description: "节点尚未获取最新配置。请等待下一次同步；持续未更新时检查节点与面板的通信。", target: "logs" };
     if (runtime?.applicationState === "failed")
         return {

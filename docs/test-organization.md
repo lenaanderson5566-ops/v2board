@@ -935,3 +935,5 @@ Nodes、AdminDDNS、admin-linkage 三个现有模块共 129 项测试通过。�
 ### 部署解析等待回归
 
 复用 tests/node-v10.php 验证有效部署无需调度器即可推进自身到期 DNS、状态落库、IPv6 缺失诊断，以及轮询不绕过同步冷却和 Cloudflare 凭据暂停。复用 tests/v2box.php 内嵌 Python 测试，覆盖入口缺失、凭据阻塞、公共 DNS 等待、409 可操作提示和任意错误正文不泄露。Python 用例在无网络 Linux 容器中执行，后端在临时项目和独立空数据测试库中执行，Cloudflare 使用受控替身；未修改生产 DNS 或申请真实证书。
+
+后台部署步骤显示复用 Nodes.test.tsx，覆盖入口 IPv6 缺失与回源成功独立显示、Cloudflare 拒绝和退避、证书失败提示、DNS 阶段优先于配置待获取，以及 15 分钟轮询上限与隐藏页面停止请求。Nodes/AdminDDNS 共 111 项测试通过。

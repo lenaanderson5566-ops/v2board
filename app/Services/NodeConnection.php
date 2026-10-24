@@ -11,11 +11,22 @@ final class NodeConnection {
     public static function inUse(string $domain): bool {
         return DB::table('v2_node_connection')->where('published->origin_domain',$domain)->orWhere('published->entry_domain',$domain)->exists();
     }
+    /** Keep the currently configured endpoint when an existing line first gains a draft. */
+    public static function currentEndpoint(string $type,$line): array {
+        $service=ProxyService::model($type)::find($line->service_id);
+        $origin=DB::table('v2_node_ddns')->where('node_type',$type)->where('node_id',$line->service_id)->first();
+        $entry=$origin?->entry_id ? DB::table('v2_node_ddns')->find($origin->entry_id) : null;
+        if($entry && ($entry->domain!==$line->host || (int)$origin->entry_port!==(int)$line->port))$entry=null;
+        return ['host'=>$line->host,'port'=>$line->port,'service_id'=>$line->service_id,
+            'origin_domain'=>$origin->domain??$service?->host,'origin_port'=>$service?->server_port,'origin_server_id'=>$origin?->server_id,
+            'entry_id'=>$entry?->id,'entry_server_id'=>$entry?->server_id];
+    }
     public static function plan(string $type,array $draft): array {
         $service=ProxyService::model($type)::find($draft['service_id']);
         abort_unless($service && !$service->service_id,422,'代理服务不存在或不是独立服务');
         $origin=DB::table('v2_node_ddns')->where('node_type',$type)->where('node_id',$service->id)->first();
         abort_unless($origin && $origin->purpose==='node' && $origin->server_id,422,'请先为代理服务配置服务器与回源域名');
+        abort_unless($origin->enabled && $origin->managed && $origin->status!=='manual',422,'请先启用原节点的自动域名管理，再新增或发布复用线路');
         $entry=empty($draft['entry_id']) ? null : DB::table('v2_node_ddns')->find($draft['entry_id']);
         abort_if(!empty($draft['entry_id']) && (!$entry || $entry->purpose!=='entry' || !$entry->enabled),422,'请选择有效的入口域名');
         abort_if($entry && $entry->server_id===$origin->server_id,422,'入口和代理服务不能使用同一台服务器');

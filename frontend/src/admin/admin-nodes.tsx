@@ -86,7 +86,6 @@ function NodesContent({
     }, []);
     const [managedLine, setManagedLine] = useState<Row | null>(null);
     const [creationMode, setCreationMode] = useState<"new" | "reuse">("new");
-    const [creationLocked, setCreationLocked] = useState(false);
     const [defaultLine, setDefaultLine] = useState<Row | null>(null);
     const [connectionNode, setConnectionNode] = useState<Row | null>(null);
     const [nodeDirty, setNodeDirty] = useState(false);
@@ -110,6 +109,7 @@ function NodesContent({
     const [type, setType] = useState("v2box"),
         [editing, setEditing] = useState<Row | null>(null);
     const topology = useData<Row>(editing ? admin("server/ddns/fetch") : "");
+    const managedService=!!editing?.id && !!topology.data?.assignments?.some((a:Row)=>a.node_type===editing.type && Number(a.node_id)===Number(editing.id) && a.managed);
     const [error, setError] = useState("");
     const actionPending = useRef(false);
     const [actionBusy, setActionBusy] = useState(false);
@@ -144,7 +144,6 @@ function NodesContent({
         setPreflightShown(false);
         setConversionOpen(false);
         setCreationMode("new");
-        setCreationLocked(false);
     }, [editing]);
     useEffect(() => {
         if (!editing || !nodeDirty) return;
@@ -800,9 +799,7 @@ function NodesContent({
                     title={
                         editing.id
                             ? `编辑节点 · ${managedLine?.name || editing.name || ""}`
-                            : creationLocked
-                              ? "节点线路配置"
-                              : "新增节点"
+                            : "新增节点"
                     }
                     variant="drawer"
                     wide
@@ -814,19 +811,21 @@ function NodesContent({
                         editorNavigation("service", nodeBusy, nodeDirty)}
                     {!editing.id && (
                         <div className="pad node-creation-mode">
+                            <p className="muted">新增直连或中转节点，保存后继续部署。中转节点可直接选择已配置的入口服务器，无需共享其他节点。</p>
+                            <details>
+                            <summary>高级：共用现有节点的服务</summary>
                             <AdminChoiceGroup
                                 label="新增方式"
                                 value={creationMode}
-                                disabled={nodeBusy || creationLocked}
+                                disabled={nodeBusy}
                                 options={[
-                                    { value: "new", label: "新建代理服务" },
-                                    { value: "reuse", label: "复用已有服务" },
+                                    { value: "new", label: "独立部署新节点" },
+                                    { value: "reuse", label: "为现有节点添加连接线路" },
                                 ]}
                                 onChange={(mode) => {
                                     if (
                                         mode === creationMode ||
-                                        nodeBusy ||
-                                        creationLocked
+                                        nodeBusy
                                     )
                                         return;
                                     if (
@@ -846,6 +845,8 @@ function NodesContent({
                                     ? "依次填写线路信息、服务配置和部署信息，保存后生成安装命令。"
                                     : "填写线路信息并选择已有服务；共用协议、证书和倍率，无需重复安装。"}
                             </p>
+                            </details>
+                            {creationMode === "reuse" && <p role="status">当前为共享服务线路：协议、监听、证书和倍率随原节点维护；不会部署新的代理进程。</p>}
                         </div>
                     )}
                     {!editing.id && creationMode === "reuse" ? (
@@ -866,7 +867,7 @@ function NodesContent({
                                 onSaved={d.reload}
                                 onDirty={setNodeDirty}
                                 onBusyChange={setNodeBusy}
-                                onCreated={() => setCreationLocked(true)}
+                                onCreated={node=>{setNodeDirty(false);setEditing(null);setManagedLine(node);setConnectionNode(node);}}
                             />
                         </State>
                     ) : (
@@ -879,6 +880,7 @@ function NodesContent({
                                     <p>
                                         保存后请核对节点通信与运行状态，确认配置已应用。
                                     </p>
+                                    {managedService && Number(editing.tls)===1 && <p className="muted">TLS 身份域名：{editing.tls_settings?.server_name || editing.host}。普通 TLS 的 SNI 随托管连接域名维护。更换域名请前往“部署 → 域名与解析”，新证书验证成功后生效；Reality 的 SNI 独立设置。</p>}
                                     <p className="muted">
                                         切换协议可能清除不兼容配置；高级扩展参数仍会保留。
                                     </p>
@@ -949,13 +951,13 @@ function NodesContent({
                                     schema.loading ||
                                     groups.loading ||
                                     routes.loading ||
-                                    (!editing.id && topology.loading)
+                                    topology.loading
                                 }
                                 error={
                                     schema.error ||
                                     groups.error ||
                                     routes.error ||
-                                    (!editing.id ? topology.error : "")
+                                    topology.error
                                 }
                                 retry={() => {
                                     schema.reload();
@@ -990,7 +992,7 @@ function NodesContent({
                                                   (field) =>
                                                       !serviceLineFields.has(
                                                           field.key,
-                                                      ),
+                                                      ) && !(managedService && Number(values.tls)===1 && ["tls_settings.server_name","disable_sni"].includes(field.key)),
                                               ))
                                             : nodeSetupFields(
                                                   presented,
@@ -1465,6 +1467,7 @@ function NodesContent({
                                             : {}),
                                     })}
                                     onSave={async (b) => {
+                                        if(editing.id && managedService && Number(b.tls)===1){b["tls_settings.server_name"]=editing.tls_settings?.server_name || editing.host;b.disable_sni=0;}
                                         if (
                                             editing.id &&
                                             type !== editing.type &&
@@ -1548,6 +1551,10 @@ function NodesContent({
                                         );
                                         setEditing(null);
                                         d.reload();
+                                        if(!converting && editing.id && managedService && Number(b.server_port)!==Number(editing.server_port)){
+                                            setSavedNodeNotice("监听端口已保存。等待节点应用后，请验证并同步连接端口；复用线路需检查后重新发布。");
+                                            setCredentialNode({...editing,...b,type:editing.type,id:editing.id,_focusDomain:true});
+                                        }
                                         if (converting || !editing.id) {
                                             const updated = await request<
                                                 Row[]

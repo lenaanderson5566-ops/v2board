@@ -22,10 +22,18 @@ export function nodeDomainProgress(
     const pending = binding.tls_transition_state === "pending";
     const failed = binding.tls_transition_state === "failed";
     const published = binding.published_domain || node.host;
+    const expectedPort = binding.entry_id
+        ? binding.entry_port
+        : node.server_port;
+    const portReady =
+        !Number(expectedPort) ||
+        Number(binding.published_port || node.port) === Number(expectedPort);
     const active =
+        Number(binding.published_port)>0 &&
         published === (binding.connection_domain || binding.domain) &&
         (!binding.entry_id ||
             Number(binding.published_port) === Number(binding.entry_port)) &&
+        portReady &&
         !pending &&
         !failed;
     const unsupported =
@@ -71,8 +79,8 @@ export function nodeDomainProgress(
         description =
             "节点列表和新订阅使用当前生效域名。已有客户端请更新订阅。";
     } else if (dnsReady && unsupported) {
-        title = "下一步：升级 V2Box";
-        description =
+        title = node._new ? "下一步：执行一键安装" : "下一步：升级 V2Box";
+        description = node._new ? "请返回部署页面执行新节点安装，等待节点确认配置与证书后自动启用地址。无需重新保存域名。" :
             "解析已就绪，但节点尚未上报证书切换能力。请升级至 v1.0.5 或更新版本，等待节点重新连接后继续。仅更新面板不会完成此步骤。";
     } else if (dnsReady) {
         title = failed
@@ -80,7 +88,9 @@ export function nodeDomainProgress(
             : "下一步：验证并切换地址";
         description = failed
             ? "上次验证未完成，当前域名仍然生效。请检查 v2box log，处理证书或监听错误后重试。"
-            : "IP 上报和解析同步已完成。点击“验证并切换地址”，验证成功后才更新节点列表与订阅地址。无需再次保存域名或配置 IP 上报。";
+            : !portReady
+              ? "监听端口已修改。请确认节点应用新配置，再点击“验证并切换地址”同步订阅端口；无需重新保存域名或安装节点。"
+              : "IP 上报和解析同步已完成。点击“验证并切换地址”，验证成功后才更新节点列表与订阅地址。无需再次保存域名或配置 IP 上报。";
     } else if (binding.status === "rate_limited") {
         description =
             "Cloudflare 正在限流，系统会退避重试。无需重复保存或配置上报。";
@@ -94,6 +104,7 @@ export function nodeDomainProgress(
         active,
         needsUpgrade:
             !!binding.enabled &&
+            !node._new &&
             binding.server_enabled !== false &&
             !!binding.managed &&
             dnsReady &&

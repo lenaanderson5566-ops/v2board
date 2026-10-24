@@ -111,10 +111,14 @@ final class NodeDnsLifecycle
             if (!$verified && $affected->contains(fn($n)=>(int)$n->tls===1)) {
                 NodeTlsTransition::queue($a,$node,$affected); return;
             }
-            $connectionPort=$a->entry_id ? $a->entry_port : ($a->published_origin ? $node->server_port : $node->port);
+            $connectionPort=$a->entry_id ? $a->entry_port : $node->server_port;
+            if(!$verified && !$a->entry_id && $node->host===$target->domain && (int)$node->port!==(int)$connectionPort){
+                $runtime=NodeRuntimeService::inspect($a->node_type,ProxyService::model($a->node_type)::findOrFail($node->id));
+                abort_unless(($runtime['applicationState']==='applied' || ($a->node_type==='v2node' && $runtime['configurationState']==='provided')) && $runtime['runtimeStatus']==='online',409,'请等待节点应用新的监听端口后再切换连接端口');
+            }
             foreach ($affected as $n) {
                 $update=['host'=>$target->domain,'updated_at'=>time()];
-                if ($a->entry_id || $a->published_origin) $update['port']=$connectionPort;
+                if($a->entry_id || $a->published_origin || (int)$n->id===(int)$node->id || (string)$n->port===(string)$node->port) $update['port']=$connectionPort;
                 if ((int)$n->tls===1) {
                     $tls=json_decode($n->tls_settings??'{}',true)?:[];
                     $identity=$candidate ?? $tls;

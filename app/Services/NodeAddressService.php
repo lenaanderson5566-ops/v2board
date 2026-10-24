@@ -17,7 +17,7 @@ class NodeAddressService
 
     public static function forNodes(array $nodes): array
     {
-        $reports = DB::table('v2_node_ddns')->where('enabled', 1)->get()->keyBy(fn ($r) => $r->node_type.':'.$r->node_id);
+        $reports = DB::table('v2_node_ddns')->where(fn($q)=>$q->where('enabled',1)->orWhere('status','manual'))->get()->keyBy(fn ($r) => $r->node_type.':'.$r->node_id);
         foreach ($nodes as &$node) {
             $id = ($node['service_id'] ?? null) ?: $node['id'];
             $key = $node['type'].':'.$id;

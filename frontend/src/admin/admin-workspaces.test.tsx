@@ -766,7 +766,7 @@ it("provides peer infrastructure workspaces with bookmarkable task tabs", () => 
         expect(legacyAdminMenu.find(([route])=>String(route)===key)?.[3]).toBe("节点与接入");
     }
     expect(adminWorkspace("node-services")).toBeUndefined();
-    expect(adminWorkspace("node-forwarding")?.root).toBe("nodes");
+    expect(adminWorkspace("node-forwarding")?.root).toBe("servers");
     expect(adminWorkspace("server-traffic")).toBeUndefined();
     expect(adminWorkspace("server-lightsail")?.root).toBe("servers");
 });

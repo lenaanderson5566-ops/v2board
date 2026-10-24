@@ -124,6 +124,7 @@ function managedSetup(
                             node_id: 3,
                             domain: "hk.example.com",
                             published_domain: "old.example.com",
+                            published_port:443,
                             family: "ipv4",
                             managed: true,
                             enabled: true,
@@ -469,7 +470,7 @@ it("notifies the list once when polling observes publication, without publishing
     await act(async () => {
         render(
             <NodeDomainBinding
-                node={{ id: 3, type: "v2box", host: "old.example.com", tls: 1 }}
+                node={{ id: 3, type: "v2box", host: "old.example.com", port:443, tls: 1 }}
                 onPublished={onPublished}
             />,
         );
@@ -764,7 +765,7 @@ it("offers optional relay configuration only inside server creation and submits 
     fireEvent.change(screen.getByLabelText("服务器名称"), {
         target: { value: "New entry" },
     });
-    fireEvent.click(screen.getByRole("switch", { name: "配置中转入口" }));
+    fireEvent.change(screen.getByRole("combobox", { name: "预设用途" }),{target:{value:"entry"}});
     fireEvent.change(screen.getByLabelText("入口根域名"), {
         target: { value: "1" },
     });
@@ -836,7 +837,7 @@ it("retains entry input on server save failure and allows opting out without an 
     fireEvent.change(screen.getByLabelText("服务器名称"), {
         target: { value: "New" },
     });
-    fireEvent.click(screen.getByRole("switch", { name: "配置中转入口" }));
+    fireEvent.change(screen.getByRole("combobox", { name: "预设用途" }),{target:{value:"entry"}});
     fireEvent.change(screen.getByLabelText("入口根域名"), {
         target: { value: "1" },
     });
@@ -855,7 +856,7 @@ it("retains entry input on server save failure and allows opting out without an 
         "value",
         "keep",
     );
-    fireEvent.click(screen.getByRole("switch", { name: "配置中转入口" }));
+    fireEvent.change(screen.getByRole("combobox", { name: "预设用途" }),{target:{value:"proxy"}});
     fireEvent.click(screen.getByRole("button", { name: "保存" }));
     await waitFor(() =>
         expect(
@@ -1019,7 +1020,7 @@ it("retains the server editor when report enrollment fails and revokes only afte
     );
 });
 
-import { serverForwardingRows, ServerForwarding } from "./ServerForwarding";
+import { serverForwardingRows, ServerForwarding, serverPurpose } from "./ServerForwarding";
 import { NodeSetupGuide } from "./NodeSetupGuide";
 it("scopes forwarding to both current and pending ingress servers without losing published references",()=>{
     const data={assignments:[{id:10,purpose:"entry",server_id:1,domain:"old.example.test"},{id:20,purpose:"entry",server_id:2,domain:"new.example.test"}],connections:[{id:5,node_id:7,node_type:"v2box",entry_id:20,entry_port:8443,published:{entry_id:10,entry_server_id:1,host:"old.example.test",port:443,origin_domain:"origin.example.test",origin_port:9443}}]};
@@ -1028,7 +1029,7 @@ it("scopes forwarding to both current and pending ingress servers without losing
     expect(serverForwardingRows(3,data)).toHaveLength(0);
     expect(serverForwardingRows(1,data)[0].status).toBe("有待发布变更");
     render(<ServerForwarding server={{id:1}} data={data}/>);fireEvent.click(screen.getByText("本机入口转发（1 条）"));
-    expect(screen.getByRole("link",{name:"配置与发布转发线路"}).getAttribute("href")).toBe("#/node-forwarding");
+    expect(screen.getByRole("link",{name:"新增或选择节点"}).getAttribute("href")).toBe("#/nodes");
     expect(api.request).not.toHaveBeenCalled();
 });
 it("explains existing-server entry creation and separates the two deployment machines",()=>{
@@ -1042,4 +1043,63 @@ it("explains existing-server entry creation and separates the two deployment mac
 it("keeps the old relay visible on its server while a service is changing to direct access",()=>{
     const rows=serverForwardingRows(1,{assignments:[{id:1,purpose:"entry",server_id:1,domain:"entry.example.test"},{id:2,purpose:"node",node_type:"v2box",node_id:9,domain:"origin.example.test",entry_id:null,published_domain:"entry.example.test",published_port:443,published_origin:"origin.example.test"}]});
     expect(rows).toHaveLength(1);expect(rows[0].saved).toBe("直连（待启用）");expect(rows[0].status).toBe("有待启用变更");
+});
+
+it("preserves a dirty domain draft and its revision during status polling",async()=>{
+    vi.useFakeTimers();let changed=false;
+    api.request.mockImplementation(async(path:string)=>{
+        if(path.endsWith("domains/bind"))throw new Error("域名配置已被其他管理员修改");
+        return {data:{credentials:[{id:1,root_domain:"example.com"}],servers:[],assignments:[{id:2,node_type:"v2box",node_id:3,credential_id:1,domain:changed?"other.example.com":"hk.example.com",family:"ipv4",enabled:true,managed:true,status:"healthy",ipv4:"8.8.8.8",ipv4_seen_at:Date.now()/1000,last_success:Date.now()/1000,configuration_revision:(changed?"b":"a").repeat(64)}]}};
+    });
+    await act(async()=>{render(<NodeDomainBinding node={{id:3,type:"v2box",host:"hk.example.com",port:443}}/>);});
+    fireEvent.click(screen.getByText("修改域名设置"));
+    fireEvent.change(screen.getByLabelText("子域名前缀"),{target:{value:"unsaved"}});
+    changed=true;await act(()=>vi.advanceTimersByTimeAsync(15000));
+    expect(screen.getByLabelText("子域名前缀")).toHaveProperty("value","unsaved");
+    await act(async()=>{fireEvent.click(screen.getByRole("button",{name:"保存域名"}));});
+    expect(api.request).toHaveBeenCalledWith("test-admin/server/domains/bind",expect.objectContaining({prefix:"unsaved",revision:"a".repeat(64)}));
+    expect(screen.getByText("域名配置已被其他管理员修改")).toBeTruthy();
+    expect(screen.getByLabelText("子域名前缀")).toHaveProperty("value","unsaved");
+});
+
+it("switches between managed and manual configuration without rebuilding the physical server",async()=>{
+    let manual=false;
+    api.request.mockImplementation(async(path:string)=>{
+        if(path.endsWith("domains/manual")){manual=true;return {data:true};}
+        if(path.includes("connections/address"))return {data:{values:{host:"hk.example.com",port:443},managed:false,revision:"c".repeat(64)}};
+        return {data:{credentials:[{id:1,root_domain:"example.com"}],servers:[{id:9,name:"Existing",enabled:true,family:"ipv4"}],assignments:[{id:2,node_type:"v2box",node_id:3,server_id:9,credential_id:1,domain:"hk.example.com",family:"ipv4",enabled:!manual,managed:!manual,status:manual?"manual":"healthy",configuration_revision:(manual?"b":"a").repeat(64)}]}};
+    });
+    vi.spyOn(window,"confirm").mockReturnValue(true);
+    render(<NodeDomainBinding node={{id:3,type:"v2box",host:"hk.example.com",port:443}}/>);
+    fireEvent.click(await screen.findByText("修改域名设置"));
+    await waitFor(()=>expect(screen.getByRole("button",{name:"改为手动维护"})).toHaveProperty("disabled",false));
+    fireEvent.click(screen.getByRole("button",{name:"改为手动维护"}));
+    await waitFor(()=>expect(api.request).toHaveBeenCalledWith("test-admin/server/domains/manual",{id:2,revision:"a".repeat(64),confirm:true}));
+    expect(await screen.findByRole("button",{name:"保存连接地址"})).toBeTruthy();
+    expect(screen.queryByText("修改域名设置")).toBeNull();
+    fireEvent.click(screen.getByText("设置节点域名"));
+    expect(screen.getByLabelText("子域名前缀")).toHaveProperty("value","hk");
+    expect(screen.getByLabelText("节点服务器")).toHaveProperty("value","9");
+    expect(api.request.mock.calls.some(([path])=>String(path).includes("network/save"))).toBe(false);
+});
+
+it("derives server purpose from actual entry and proxy ownership without persisting a conflicting role",()=>{
+ const data={assignments:[{server_id:1,purpose:"entry"},{server_id:2,purpose:"node"},{server_id:3,purpose:"entry"},{server_id:3,purpose:"node"}]};
+ expect(serverPurpose(1,data)).toBe("中转入口服务器");expect(serverPurpose(2,data)).toBe("代理服务器");expect(serverPurpose(3,data)).toBe("混合用途（入口与代理）");expect(serverPurpose(4,data)).toBe("待配置用途");
+});
+it("opens the existing forwarding editor lazily from its owning server and handles missing nodes",async()=>{
+ api.request.mockResolvedValue({data:[]});
+ render(<ServerForwarding server={{id:1}} data={{assignments:[{id:10,purpose:"entry",server_id:1,domain:"entry.test"}],connections:[{id:5,node_type:"v2box",node_id:7,entry_id:10,entry_port:443}]}}/>);
+ expect(api.request).not.toHaveBeenCalled();fireEvent.click(screen.getByText("本机入口转发（1 条）"));fireEvent.click(screen.getByRole("button",{name:"配置转发与验证"}));
+ expect(await screen.findByText("节点不可用，请刷新服务器列表后重试。")).toBeTruthy();
+ expect(api.request.mock.calls.every(([,body])=>!body)).toBe(true);
+});
+
+it("uses the matching backend and opens forwarding without issuing a deployment grant",async()=>{
+ api.request.mockImplementation(async(path:string)=>String(path).endsWith("manage/getNodes") ? {data:[{id:7,type:"v2node",name:"Wrong backend"},{id:7,type:"v2box",name:"Selected relay",server_port:9443}]} : String(path).endsWith("ddns/fetch") ? {data:{servers:[],assignments:[],credentials:[]}} : String(path).includes("connections/address") ? {data:{values:{host:"origin.test",port:"443"},revision:"a".repeat(64),managed:false}} : {data:[]});
+ render(<ServerForwarding server={{id:1}} data={{assignments:[{id:10,purpose:"entry",server_id:1,domain:"entry.test"},{id:20,purpose:"node",server_id:2,node_type:"v2box",node_id:7,entry_id:10,entry_port:443}]}}/>);
+ fireEvent.click(screen.getByText("本机入口转发（1 条）"));fireEvent.click(screen.getByRole("button",{name:"配置转发与验证"}));
+ expect(await screen.findByRole("dialog",{name:"Selected relay · 接入设置"})).toBeTruthy();
+ expect(screen.queryByText("Wrong backend · 接入设置")).toBeNull();
+ expect(api.request.mock.calls.every(([path,body])=>!body && !String(path).includes("credentials/deployment"))).toBe(true);
 });

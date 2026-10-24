@@ -1,3 +1,4 @@
+import { ManualNodeAddress } from "./ManualNodeAddress";
 import { relayStreamConfig } from "./node-relay";
 import { useEffect, useRef, useState } from "react";
 import { admin, request, type Row } from "../shared/api";
@@ -7,6 +8,7 @@ import { NodeNetworkSetup } from "./NodeNetworkSetup";
 import { nodeDomainProgress } from "./node-domain-progress";
 
 export const domainStatus: Record<string, string> = {
+    manual: "手动维护",
     awaiting_report: "等待 IP 上报",
     healthy: "解析正常",
     ready_to_switch: "解析就绪，待切换地址",
@@ -48,13 +50,15 @@ export function NodeDomainBinding({
     const roots: Row[] = (data.data?.credentials || []).filter(
         (c: Row) => c.root_domain,
     );
-    const binding: Row | undefined = (data.data?.assignments || []).find(
+    const configuredBinding: Row | undefined = (data.data?.assignments || []).find(
         (a: Row) => a.node_type === node.type && a.node_id === node.id,
     );
+    const binding=configuredBinding?.status==="manual" ? undefined : configuredBinding;
     const servers: Row[] = data.data?.servers || [];
     const entries: Row[] = (data.data?.assignments || []).filter(
         (a: Row) => a.purpose === "entry" && a.enabled,
     );
+    const [draftRevision,setDraftRevision]=useState<string | undefined>();
     const [serverId, setServerId] = useState("");
     const [mode, setMode] = useState("direct");
     const [entryId, setEntryId] = useState("");
@@ -63,10 +67,17 @@ export function NodeDomainBinding({
     const [root, setRoot] = useState(""),
         [prefix, setPrefix] = useState(""),
         [family, setFamily] = useState("ipv4");
+    const [manualDirty,setManualDirty]=useState(false),[formDirty,setFormDirty]=useState(false),[manualBusy,setManualBusy]=useState(false);
     const [busy, setBusy] = useState(false),
         [error, setError] = useState(""),
         [notice, setNotice] = useState("");
-    useEffect(()=>onBusyChange?.(busy),[busy,onBusyChange]);
+    useEffect(()=>onBusyChange?.(busy || manualBusy),[busy,manualBusy,onBusyChange]);
+    useEffect(()=>onDirty?.(manualDirty || formDirty),[manualDirty,formDirty,onDirty]);
+    useEffect(()=>{
+        if(!formDirty)return;
+        const warn=(event:BeforeUnloadEvent)=>{event.preventDefault();event.returnValue="";};
+        window.addEventListener("beforeunload",warn);return ()=>window.removeEventListener("beforeunload",warn);
+    },[formDirty]);
     const [adoption, setAdoption] = useState<Row | null>(null);
     const pending = useRef(false);
     const progress = binding ? nodeDomainProgress(binding, node) : null;
@@ -102,26 +113,29 @@ export function NodeDomainBinding({
         adoption,
     ]);
     useEffect(() => {
-        if (binding) {
-            setServerId(String(binding.server_id || ""));
-            setMode(binding.entry_id ? "relay" : "direct");
-            setEntryId(String(binding.entry_id || ""));
-            setEntryPort(String(binding.entry_port || node.port || 443));
-            setRoot(String(binding.credential_id));
-            setFamily(binding.family);
+        if (configuredBinding && !formDirty) {
+            setDraftRevision(configuredBinding.configuration_revision);
+            setServerId(String(configuredBinding.server_id || ""));
+            setMode(configuredBinding.entry_id ? "relay" : "direct");
+            setEntryId(String(configuredBinding.entry_id || ""));
+            setEntryPort(String(configuredBinding.entry_port || node.port || 443));
+            setRoot(String(configuredBinding.credential_id));
+            setFamily(configuredBinding.family);
             const c = (data.data?.credentials || []).find(
-                (r: Row) => r.id === binding.credential_id,
+                (r: Row) => r.id === configuredBinding.credential_id,
             );
-            if (c?.root_domain && binding.domain.endsWith("." + c.root_domain))
-                setPrefix(binding.domain.slice(0, -c.root_domain.length - 1));
+            if (c?.root_domain && configuredBinding.domain.endsWith("." + c.root_domain))
+                setPrefix(configuredBinding.domain.slice(0, -c.root_domain.length - 1));
         }
     }, [
-        binding?.id,
-        binding?.domain,
-        binding?.family,
-        binding?.server_id,
-        binding?.entry_id,
-        binding?.entry_port,
+        formDirty,
+        configuredBinding?.configuration_revision,
+        configuredBinding?.id,
+        configuredBinding?.domain,
+        configuredBinding?.family,
+        configuredBinding?.server_id,
+        configuredBinding?.entry_id,
+        configuredBinding?.entry_port,
     ]);
     async function act(path: string, payload: Row) {
         if (pending.current) return;
@@ -135,16 +149,16 @@ export function NodeDomainBinding({
                 payload,
             );
             data.reload();
-            if(path === "bind") onDirty?.(false);
+            if(path === "bind" || path === "manual") setFormDirty(false);
             onChanged?.();
             setNotice(
                 path === "bind"
-                    ? "域名已保存。新安装会等待解析并验证节点后启用；已有节点请先配置上报，再确认切换。"
+                    ? r.data.unchanged ? "域名配置未变化，现有解析、证书验证和转发确认状态已保留。" : "域名已保存。新安装会等待解析并验证节点后启用；已有节点请先配置上报，再确认切换。"
                     : path === "activate"
                       ? "已提交启用请求，请查看上方进度；验证成功后会自动更新生效域名。"
                       : path === "retry"
                         ? "已安排 DNS 同步，将由下一轮后台调度执行。同步使用最近上报的服务器 IP，不会重启节点或切换订阅地址。"
-                      : "操作已完成",
+                      : path === "manual" ? "已改为手动维护。现有解析、服务器关联和节点证书保持不变，DNS 不再自动更新。" : "操作已完成",
             );
             return r.data;
         } catch (e) {
@@ -257,7 +271,7 @@ export function NodeDomainBinding({
                                 {progress?.active &&
                                     !binding.relay_verified_at && (
                                         <button
-                                            disabled={busy}
+                                            disabled={busy || manualBusy}
                                             onClick={async () => {
                                                 if (
                                                     !confirm(
@@ -333,7 +347,7 @@ export function NodeDomainBinding({
                             {progress?.needsUpgrade && onUpgrade && (
                                 <button
                                     className="primary"
-                                    disabled={busy}
+                                    disabled={busy || manualBusy}
                                     onClick={onUpgrade}
                                 >
                                     查看节点升级命令
@@ -342,7 +356,7 @@ export function NodeDomainBinding({
                             {binding.managed &&
                                 binding.status === "ownership_conflict" && (
                                     <button
-                                        disabled={busy}
+                                        disabled={busy || manualBusy}
                                         onClick={async () => {
                                             const r = await act("adopt", {
                                                 id: binding.id,
@@ -378,7 +392,7 @@ export function NodeDomainBinding({
                             {progress?.canActivate && (
                                 <button
                                     className="primary"
-                                    disabled={busy}
+                                    disabled={busy || manualBusy}
                                     onClick={() => {
                                         if (
                                             window.confirm(
@@ -425,7 +439,9 @@ export function NodeDomainBinding({
                             )}
                     </div>
                 )}
-                <details className="node-domain-settings" open={!binding}>
+                {configuredBinding?.status==="manual" && <p className="muted">节点服务器：{servers.find(s=>Number(s.id)===Number(configuredBinding.server_id))?.name || "未关联"}；现有生效解析保留，自动同步已暂停。</p>}
+                {!binding && <ManualNodeAddress disabled={busy} node={node} onChanged={onPublished} onDirty={setManualDirty} onBusyChange={setManualBusy}/> }
+                <details className="node-domain-settings" open={false}>
                     <summary>
                         {binding ? "修改域名设置" : "设置节点域名"}
                     </summary>
@@ -437,6 +453,7 @@ export function NodeDomainBinding({
                             onSubmit={(e) => {
                                 e.preventDefault();
                                 void act("bind", {
+                                    ...(draftRevision ? {revision:draftRevision}:{}),
                                     node_type: node.type,
                                     node_id: node.id,
                                     credential_id: Number(root || roots[0]?.id),
@@ -463,9 +480,9 @@ export function NodeDomainBinding({
                                 接入方式
                                 <select
                                     aria-label="接入方式"
-                                    disabled={busy}
+                                    disabled={busy || manualBusy}
                                     value={mode}
-                                    onChange={(e) => {onDirty?.(true);setMode(e.target.value);}}
+                                    onChange={(e) => {setFormDirty(true);setMode(e.target.value);}}
                                 >
                                     <option value="direct">直连节点</option>
                                     {node.type === "v2box" && (
@@ -479,9 +496,9 @@ export function NodeDomainBinding({
                                 {mode === "relay" ? "回源服务器" : "节点服务器"}
                                 <select
                                     aria-label="节点服务器"
-                                    disabled={busy}
+                                    disabled={busy || manualBusy}
                                     value={serverId}
-                                    onChange={(e) => {onDirty?.(true);setServerId(e.target.value);}}
+                                    onChange={(e) => {setFormDirty(true);setServerId(e.target.value);}}
                                 >
                                     <option value="">
                                         自动关联服务器（无需单独配置）
@@ -502,9 +519,9 @@ export function NodeDomainBinding({
                                         <select
                                             aria-label="共享入口域名"
                                             required
-                                            disabled={busy}
+                                            disabled={busy || manualBusy}
                                             value={entryId}
-                                            onChange={(e) => {onDirty?.(true);setEntryId(e.target.value);}}
+                                            onChange={(e) => {setFormDirty(true);setEntryId(e.target.value);}}
                                         >
                                             <option value="">选择入口</option>
                                             {entries.map((a) => (
@@ -523,8 +540,8 @@ export function NodeDomainBinding({
                                             max={65535}
                                             required
                                             value={entryPort}
-                                            disabled={busy}
-                                            onChange={(e) => {onDirty?.(true);setEntryPort(e.target.value);}}
+                                            disabled={busy || manualBusy}
+                                            onChange={(e) => {setFormDirty(true);setEntryPort(e.target.value);}}
                                         />
                                     </label>
                                     <p className="muted">
@@ -539,9 +556,9 @@ export function NodeDomainBinding({
                                 根域名
                                 <select
                                     aria-label="根域名"
-                                    disabled={busy}
+                                    disabled={busy || manualBusy}
                                     value={root || roots[0]?.id || ""}
-                                    onChange={(e) => {onDirty?.(true);setRoot(e.target.value);}}
+                                    onChange={(e) => {setFormDirty(true);setRoot(e.target.value);}}
                                 >
                                     {roots.map((c) => (
                                         <option key={c.id} value={c.id}>
@@ -554,21 +571,21 @@ export function NodeDomainBinding({
                                 子域名前缀
                                 <input
                                     aria-label="子域名前缀"
-                                    disabled={busy}
+                                    disabled={busy || manualBusy}
                                     value={prefix}
                                     maxLength={63}
                                     pattern="[a-z0-9]([a-z0-9-]*[a-z0-9])?"
                                     placeholder="留空自动生成"
-                                    onChange={(e) => {onDirty?.(true);setPrefix(e.target.value.toLowerCase());}}
+                                    onChange={(e) => {setFormDirty(true);setPrefix(e.target.value.toLowerCase());}}
                                 />
                             </label>
                             <label>
                                 地址类型
                                 <select
                                     aria-label="地址类型"
-                                    disabled={busy}
+                                    disabled={busy || manualBusy}
                                     value={family}
-                                    onChange={(e) => {onDirty?.(true);setFamily(e.target.value);}}
+                                    onChange={(e) => {setFormDirty(true);setFamily(e.target.value);}}
                                 >
                                     <option value="ipv4">IPv4 / A</option>
                                     <option value="ipv6">IPv6 / AAAA</option>
@@ -587,9 +604,19 @@ export function NodeDomainBinding({
                                     }
                                 </p>
                             )}
-                            <button disabled={busy} className="primary">
+                            <button disabled={busy || manualBusy} className="primary">
                                 保存域名
                             </button>
+                            <button type="button" disabled={busy || manualBusy} onClick={()=>{
+                                if(formDirty && !confirm("重新载入将放弃尚未保存的域名设置，确认继续？"))return;
+                                setFormDirty(false);
+                                if(!binding){setServerId("");setMode("direct");setEntryId("");setEntryPort(String(node.port || 443));setRoot("");setPrefix("");setFamily("ipv4");setDraftRevision(undefined);}
+                                data.reload();
+                            }}>重新载入域名设置</button>
+                            {binding?.managed && <button type="button" title={binding.tls_transition_state==="pending"?"请先完成证书验证":binding.entry_id || binding.published_origin?"中转节点请先切换直连并验证":undefined} disabled={busy || manualBusy || data.loading || !draftRevision || binding.tls_transition_state==="pending" || !!binding.entry_id || !!binding.published_origin} onClick={()=>{
+                                if(!confirm("确认改为手动维护并放弃未保存的域名设置？现有解析和服务器关联保留，DNS 不再自动更新；复用线路或证书验证未完成时禁止切换。"))return;
+                                void act("manual",{id:binding.id,revision:draftRevision,confirm:true});
+                            }}>改为手动维护</button>}
                         </form>
                     )}
                 </details>
@@ -624,7 +651,7 @@ export function NodeDomainBinding({
                     >
                         确认接管
                     </button>
-                    <button disabled={busy} onClick={() => setAdoption(null)}>
+                    <button disabled={busy || manualBusy} onClick={() => setAdoption(null)}>
                         取消
                     </button>
                 </div>

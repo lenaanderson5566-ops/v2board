@@ -76,6 +76,20 @@ class V2nodeController extends Controller
                 abort_if(array_diff((array)$line->group_id,(array)$request->input('group_id',[])),422,'权限组仍被关联线路使用，请先调整线路权限');
             }
         }
+        $serviceSource=$source??$existing;
+        $serviceBackend=isset($source)?$conversion['source_type']:$backend;
+        if($serviceSource && !$serviceSource->service_id && (int)$request->input('tls')===1){
+            $managed=\Illuminate\Support\Facades\DB::table('v2_node_ddns')->where('node_type',$serviceBackend)->where('node_id',$serviceSource->id)->where('managed',true)->first();
+            if($managed){
+                $tls=$request->input('tls_settings',[]);
+                abort_unless(is_array($tls),422,'TLS 配置必须为对象');
+                $identity=(int)$serviceSource->tls===1 && !empty($serviceSource->tls_settings['server_name']) ? $serviceSource->tls_settings['server_name'] : $serviceSource->host;
+                abort_if(!empty($tls['server_name']) && $tls['server_name']!==$identity,422,'托管节点的 TLS 身份请通过域名设置和证书验证流程修改');
+                $tls['server_name']=$identity;
+                if($managed->entry_id) \App\Services\NetworkServer::tls($managed,$tls);
+                $request->merge(['tls_settings'=>$tls,'disable_sni'=>0]);
+            }
+        }
         $request->merge(\App\Services\NodeDisplayService::normalizeInput($request->all()));
         $params = $request->validate([
             'group_id' => 'present|array|max:100',

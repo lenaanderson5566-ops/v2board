@@ -63,14 +63,13 @@ export const adminWorkspaces = [
         label: "节点管理",
         tabs: [
             ["nodes", "节点列表"],
-            ["node-forwarding", "入口转发"],
             ["node-settings", "节点通讯"],
         ],
     },
     {
         root: "servers",
         label: "服务器管理",
-        tabs: [["servers", "服务器列表"], ["server-lightsail", "Lightsail IP"]],
+        tabs: [["servers", "服务器列表"], ["node-forwarding", "入口转发"], ["server-lightsail", "Lightsail IP"]],
     },
     {
         root: "access-blacklist",

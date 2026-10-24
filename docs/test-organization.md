@@ -864,3 +864,11 @@ Typescript 与生产构建、发布目录打包通过。浏览器合成状态预
 节点新增/编辑一致性继续使用 Nodes、AdminDDNS、admin-workspaces、admin-linkage、ServerTrafficBudgets、shared/api 六个模块，不新增独立测试文件。增加自动/手动配置字段分组及标签一致性检查；字段名更新对应既有交互断言，保留草稿保护、单请求创建、共享服务和部署授权安全断言。272项前端检查及 TypeScript/Vite 生产构建通过。此次仅前端与说明文档调整，无后端测试清单变更。
 
 本轮推送前通过 tests/update-script.sh 的26个隔离升级场景；仅挂载只读源码，在断网一次性容器中运行临时仓库和模拟依赖，无数据库或真实服务器操作。新增共享字段模块及 public/console 构建资源随 Git 发布，无新增迁移。
+
+节点全流程复查继续在既有前端六个模块及 node-ddns、node-address、node-display、node-backends、node-v10、v2box、node-routes、cors-responses、browser-session 中添加 / 复用断言，不创建新的独立测试脚本。覆盖地址与模式接口的管理员会话、CSRF、来源及字段注入防护；保留现有端点、服务器 IP 上报、域名重存幂等、待发布版本、证书身份和监听应用回执保护；校验标签、权限数组和倍率的持久化容量。所有实际后端检查在只复制表结构的专用库、独立 Redis 和一次性项目副本运行。字典测试额外应用既有字典迁移；不改变本轮部署迁移清单。
+
+本轮最终结果：前端六个模块283项及生产构建通过；node-ddns 277项、node-address 8项、node-display 5700项、node-backends 832项、node-v10 290项、v2box 33项、node-routes 38项、cors-responses 20项、browser-session 544项通过。升级脚本26个隔离场景通过，测试清单111项及12个辅助引用有效。专用容器、数据库及账号已清理。未连接真实 Cloudflare、申请公网证书或部署生产节点。
+
+服务器用途与转发入口调整继续复用 Nodes、AdminDDNS、admin-workspaces、admin-linkage、ServerTrafficBudgets、shared/api 六个模块。新增用途推导、按服务器隔离待发布/已发布路径、按需打开转发编辑器、同 ID 不同内核定位及只读打开不签发部署授权的检查；保留原有入口保存回滚与未保存保护断言。新增入口预设仍使用原有原子保存接口，不增加迁移和独立角色数据。
+
+最终六个前端模块共286项通过；TypeScript/Vite 生产构建通过。前述隔离后端回归与升级脚本26个场景结果继续适用，本次新增界面未改变后端契约、迁移、依赖或 update.sh。

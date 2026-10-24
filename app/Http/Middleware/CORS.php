@@ -13,7 +13,7 @@ class CORS
         $v10 = $request->is('api/v10','api/v10/*');
         $response = $request->is('api/*') && $request->isMethod('OPTIONS') ? response('', 204) : $next($request);
         if ($allowed) $response->headers->set('Access-Control-Allow-Origin', $origin);
-        $response->headers->set('Access-Control-Allow-Methods', $v10 ? 'GET,POST,PATCH,DELETE,OPTIONS,HEAD' : ($request->is('api/v1/*/server/connections/default') ? 'GET,PATCH,OPTIONS,HEAD' : 'GET,POST,OPTIONS,HEAD'));
+        $response->headers->set('Access-Control-Allow-Methods', $v10 ? 'GET,POST,PATCH,DELETE,OPTIONS,HEAD' : ($request->is('api/v1/*/server/connections/default','api/v1/*/server/connections/address') ? 'GET,PATCH,OPTIONS,HEAD' : 'GET,POST,OPTIONS,HEAD'));
         $response->headers->set('Access-Control-Allow-Headers', $v10 ? 'Origin,Content-Type,Accept,Authorization,Accept-Language,X-Request-ID,If-None-Match,X-Requested-With,X-Browser-Client,X-CSRF-Token' : 'Origin,Content-Type,Accept,Authorization,Accept-Language,Content-Language,X-Requested-With,X-Request-With,X-Browser-Client,X-CSRF-Token');
         if ($allowed) $response->headers->set('Access-Control-Allow-Credentials', 'true');
         if ($request->attributes->has('browser.session')) $response->headers->set('Cache-Control', 'private, no-store');

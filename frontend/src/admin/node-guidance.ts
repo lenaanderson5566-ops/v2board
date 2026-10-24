@@ -87,6 +87,7 @@ export function nodeConfigurationProblems(
     )
         add("network", "当前内核与协议使用原生传输，请选择 TCP 配置项");
     if (tls === 1) {
+        if (backend === "v2box" && values.setup_mode === "manual" && ["http","dns"].includes(cert.cert_mode)) add("setup_mode","自动申请证书需要自动管理服务器与域名；手动地址请使用已有证书或自签名证书");
         if ("tls_settings.cert_mode" in values && !cert.cert_mode)
             add("tls_settings.cert_mode", "请选择证书模式");
         if (
@@ -205,6 +206,8 @@ export function nodeDeploymentStage(
             description: "保留当前连接，等待验证结果。请勿重复部署。",
             target: "logs",
         };
+    if(managed && binding && dns && !dns.active && runtime?.runtimeStatus==="online" && runtime?.applicationState==="applied")
+        return {...base,title:"服务已就绪，待启用连接地址",description:dns.description,target:"domain"};
     if (
         runtime?.runtimeStatus === "online" &&
         runtime?.applicationState === "applied"

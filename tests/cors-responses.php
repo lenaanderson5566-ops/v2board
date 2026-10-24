@@ -23,8 +23,8 @@ foreach ([['Origin'=>'https://example.com'], ['Referer'=>'https://example.com/ap
         $n++;
     }
 }
-foreach(['https://example.com','https://untrusted.example'] as $origin){
-    $request=Request::create('/api/v1/test-admin/server/connections/default','OPTIONS');$request->headers->set('Origin',$origin);
+foreach(['default','address'] as $resource) foreach(['https://example.com','https://untrusted.example'] as $origin){
+    $request=Request::create('/api/v1/test-admin/server/connections/'.$resource,'OPTIONS');$request->headers->set('Origin',$origin);
     $result=(new CORS)->handle($request,fn()=>new Response());
     if(!str_contains($result->headers->get('Access-Control-Allow-Methods'),'PATCH') || ($result->headers->has('Access-Control-Allow-Origin')!==($origin==='https://example.com')))throw new RuntimeException('Default line PATCH CORS regression');
     $n++;

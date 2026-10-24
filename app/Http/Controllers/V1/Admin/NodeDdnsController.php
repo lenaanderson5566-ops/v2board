@@ -32,6 +32,7 @@ class NodeDdnsController extends Controller {
             'servers'=>$servers,
             'credentials'=>DB::table('v2_ddns_credential')->select('id','name','zone_id','root_domain','status','next_run')->orderBy('id')->get(),
             'assignments'=>$assignments->map(function($a)use($capabilities,$byId,$ready,$serverMap,$connectionCounts){
+                $a->configuration_revision=NodeDomainController::revision($a);
                 $a->connection_count=$connectionCounts[$a->id]??0;
                 $entry=$a->entry_id ? $byId->get($a->entry_id) : null;
                 $a->connection_domain=$entry ? $entry->domain : $a->domain;

@@ -33,6 +33,14 @@ final class NodeDisplayService
     public static function normalizeInput(array $input): array
     {
         $normalized = [];
+        foreach(['tags'=>'标签内容过长，请精简后保存','group_id'=>'权限组选择过多，请减少后保存'] as $key=>$message){
+            if(isset($input[$key]) && is_array($input[$key])){
+                $encoded=json_encode($input[$key]);
+                if($encoded===false || strlen($encoded)>255) throw \Illuminate\Validation\ValidationException::withMessages([$key=>$message]);
+            }
+        }
+        if(isset($input['rate']) && is_scalar($input['rate']) && strlen((string)$input['rate'])>11)
+            throw \Illuminate\Validation\ValidationException::withMessages(['rate'=>'计费倍率精度过长，请简化数值']);
         if (isset($input['region_code']) && is_string($input['region_code'])) {
             $normalized['region_code'] = strtoupper(trim($input['region_code']));
         }

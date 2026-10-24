@@ -18,6 +18,7 @@ const labels: Record<string, string> = {
     dns_removed: "托管解析已清理",
     historical_dns_removed: "历史解析已清理",
     ready: "可用",
+    manual_address_enabled: "已改为手动维护",
     awaiting_report: "等待有效 IP 上报",
     healthy: "正常",
     credential_rejected: "Token 无效或权限不足，已暂停",

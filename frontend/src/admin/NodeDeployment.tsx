@@ -26,11 +26,7 @@ export function NodeDeployment({
     scope?: "service" | "connection";
 }) {
     const [tab, setTab] = useState(
-            scope === "connection" ||
-                node._focusDomain ||
-                (node._new && !node._domainConfigured)
-                ? "domain"
-                : "deploy",
+            scope === "connection" || node._focusDomain ? "domain" : "deploy",
         ),
         [mode, setMode] = useState(
             !node._new &&
@@ -70,7 +66,7 @@ export function NodeDeployment({
     const deadline = useRef(Date.now() + 300000);
     const [paused, setPaused] = useState(false);
     const binding = (network.data?.assignments || []).find(
-        (a: Row) => a.node_type === node.type && a.node_id === node.id,
+        (a: Row) => a.node_type === node.type && a.node_id === node.id && a.status !== "manual",
     );
     useEffect(() => {
         if (!deployment) return;

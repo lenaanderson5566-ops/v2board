@@ -1,4 +1,4 @@
-import { ServerForwarding } from "./ServerForwarding";
+import { ServerForwarding, serverPurpose } from "./ServerForwarding";
 import {
     ServerTrafficFields,
     trafficDraft,
@@ -206,6 +206,9 @@ export function NetworkServers({
                                         )}
                                     </span>
                                 ),
+                            ],
+                            [
+                                "purpose", "服务器用途", r=>serverPurpose(Number(r.id),data),
                             ],
                             [
                                 "quota",
@@ -429,7 +432,8 @@ export function NetworkServers({
                         onBusy={setDetailBusy}
                         onDirty={setDetailDirty}
                     />
-                    <ServerForwarding server={detail} data={data}/>
+                    <p>服务器用途：{serverPurpose(Number(detail.id),data)}</p>
+                    <ServerForwarding server={detail} data={data} reload={reload}/>
                 </ServerTrafficDetails>
             )}
             {legacyOpen && (
@@ -539,24 +543,12 @@ export function NetworkServers({
                                 setServerDirty(true);
                             }}
                         />
+                        {editing.id && <section><p>服务器用途：{serverPurpose(Number(editing.id),data)}</p><p className="muted">用途随关联代理服务和入口域名自动显示，同一服务器可以承担两种用途。</p><button type="button" disabled={busy} onClick={()=>{if(serverDirty && !confirm("服务器配置尚未保存，确认放弃修改并管理入口与转发？"))return;setEditing(null);setCommand("");setServerDirty(false);setDetail(editing);setDetailDirty(false);}}>管理入口域名与转发</button></section>}
                         {!editing.id && (
                             <fieldset>
-                                <legend>中转入口（可选）</legend>
-                                <label>
-                                    配置中转入口
-                                    <AdminSwitch
-                                        label="配置中转入口"
-                                        disabled={!editing.enabled || busy}
-                                        checked={!!editing.configureEntry}
-                                        onChange={async (enabled) => {
-                                            setEditing({
-                                                ...editing,
-                                                configureEntry: enabled,
-                                            });
-                                            setServerDirty(true);
-                                        }}
-                                    />
-                                </label>
+                                <legend>服务器用途</legend>
+                                <p className="muted">代理服务器运行 V2Box；中转入口服务器配置入口域名与四层转发。用途根据实际关联自动更新，支持混合使用。</p>
+                                <label>预设用途<select aria-label="预设用途" disabled={!editing.enabled || busy} value={editing.configureEntry ? "entry" : "proxy"} onChange={e=>{setEditing({...editing,configureEntry:e.target.value==="entry"});setServerDirty(true);}}><option value="proxy">代理服务器</option><option value="entry">中转入口服务器</option></select></label>
                                 {editing.configureEntry && (
                                     <ServerEntryFields
                                         value={editing}

@@ -10,18 +10,24 @@ use Illuminate\Support\Facades\DB;
 
 final class NodeDomainController extends Controller
 {
+    public static function revision($a): string {
+        $values=[];$data=(array)$a;
+        foreach(['credential_id','domain','family','server_id','entry_id','entry_port','enabled','managed'] as $key)$values[$key]=$data[$key]??null;
+        return hash('sha256',json_encode($values));
+    }
     public function bind(Request $request) {
         return NodeDnsLifecycle::locked(fn()=>$this->bindWithinLock($request));
     }
     /** Caller holds the DNS lifecycle lock; also used by atomic node creation. */
     public function bindWithinLock(Request $request) {
-        $v=$request->validate(['credential_id'=>'required|integer|min:1','node_type'=>'required|in:v2node,v2box','node_id'=>'required|integer|min:1','prefix'=>'nullable|string|max:63','family'=>'required|in:ipv4,ipv6,dual','server_id'=>'nullable|integer|min:1','entry_id'=>'nullable|integer|min:1','entry_port'=>'nullable|integer|min:1|max:65535']);
+        $v=$request->validate(['credential_id'=>'required|integer|min:1','node_type'=>'required|in:v2node,v2box','node_id'=>'required|integer|min:1','prefix'=>'nullable|string|max:63','family'=>'required|in:ipv4,ipv6,dual','server_id'=>'nullable|integer|min:1','entry_id'=>'nullable|integer|min:1','entry_port'=>'nullable|integer|min:1|max:65535','revision'=>'nullable|string|size:64']);
         return DB::transaction(function()use($v){
             $c=DB::table('v2_ddns_credential')->find($v['credential_id']);
             abort_unless($c && $c->root_domain,422,'请先验证根域名');
             $n=DB::table('v2_server_'.$v['node_type'])->where('id',$v['node_id'])->lockForUpdate()->first();
             abort_unless($n && !$n->service_id,422,'请选择有效的代理服务');
             $old=DB::table('v2_node_ddns')->where('node_type',$v['node_type'])->where('node_id',$v['node_id'])->first();
+            if(isset($v['revision'])) abort_unless($old && hash_equals(self::revision($old),$v['revision']),409,'域名配置已被其他管理员修改，请重新载入后保存');
             if ($old && !empty($v['server_id']) && (int)$v['server_id']!==(int)$old->server_id) \App\Services\ProxyService::assertUnused($v['node_type'],(int)$v['node_id']);
             $prefix=strtolower($v['prefix']??'');
             if (!$prefix) $prefix='n-'.bin2hex(random_bytes(5));
@@ -39,6 +45,12 @@ final class NodeDomainController extends Controller
                 abort_if(DB::table('v2_node_ddns')->whereIn('entry_id',DB::table('v2_node_ddns')->where('purpose','entry')->where('server_id',$entry->server_id)->select('id'))->where('entry_port',$v['entry_port'])->where('id','!=',$old->id??0)->exists(),409,'此入口端口已被另一节点使用');
                 abort_if(!empty($v['server_id']) && $entry->server_id==($v['server_id']??$old->server_id??0),422,'入口和回源应选择不同服务器');
             }
+            $same=$old && $old->enabled && $old->managed && $old->status!=='host_changed' && ($n->host===$old->published_domain || $n->host===($entry->domain??$domain)) && $old->domain===$domain && (int)$old->credential_id===(int)$c->id
+                && $old->family===$v['family'] && (int)$old->entry_id===(int)($entry->id??0)
+                && (int)$old->entry_port===(int)($entry ? $v['entry_port'] : 0)
+                && (empty($v['server_id']) || (int)$old->server_id===(int)$v['server_id']);
+            if($same && DB::table('v2_network_server')->where('id',$old->server_id)->where('enabled',true)->exists())
+                return ['data'=>['id'=>$old->id,'domain'=>$domain,'unchanged'=>true]];
             $tls=json_decode($n->tls_settings??'{}',true)?:[];
             if ($entry && (int)$n->tls===1) \App\Services\NetworkServer::tls((object)['entry_id'=>$entry->id],$tls);
             if ((int)$n->tls===1 && in_array($tls['cert_mode']??'',['http','dns'],true) && empty($tls['server_name'])) {
@@ -61,6 +73,24 @@ final class NodeDomainController extends Controller
             NodeDdnsService::event($id,'configuration_saved');
             return ['data'=>['id'=>$id,'domain'=>$domain]];
         });
+    }
+    public function manual(Request $request) {
+        $v=$request->validate(['id'=>'required|integer|min:1','revision'=>'required|string|size:64','confirm'=>'required|accepted']);
+        return NodeDnsLifecycle::locked(fn()=>DB::transaction(function()use($v){
+            $a=DB::table('v2_node_ddns')->where('id',$v['id'])->lockForUpdate()->first();
+            abort_unless($a && in_array($a->node_type,['v2box','v2node'],true) && $a->purpose!=='entry',422,'请选择有效的节点域名');
+            abort_unless(hash_equals(self::revision($a),$v['revision']),409,'域名配置已变化，请重新载入后操作');
+            $node=\App\Services\ProxyService::model($a->node_type)::find($a->node_id);
+            abort_unless($node && !$node->service_id,422,'请选择有效的独立节点');
+            abort_if($a->entry_id || $a->published_origin,409,'中转节点请先切换为直连并完成验证，再改为手动维护');
+            \App\Services\ProxyService::assertUnused($a->node_type,(int)$a->node_id);
+            \App\Services\NodeTlsTransition::reconcile($a);$a=DB::table('v2_node_ddns')->find($a->id);
+            abort_if($a->tls_transition_state==='pending',409,'请先完成正在进行的证书验证');
+            // Keep the physical server association and owned DNS records. No provider mutation.
+            DB::table('v2_node_ddns')->where('id',$a->id)->update(['enabled'=>false,'managed'=>false,'status'=>'manual','next_run'=>-1,'tls_transition'=>null,'tls_transition_state'=>'none']);
+            NodeDdnsService::event($a->id,'manual_address_enabled');
+            return ['data'=>true];
+        }));
     }
     public function activate(Request $request) {
         $v=$request->validate(['id'=>'required|integer|min:1','confirm'=>'required|accepted']);

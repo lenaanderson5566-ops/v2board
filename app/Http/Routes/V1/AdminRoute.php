@@ -74,6 +74,7 @@ class AdminRoute
             $router->post('/ops/i18n/plan/generate', 'V1\Admin\PlanI18nController@generate')->middleware('throttle:10,1');
             // Server
             $router->post('/server/domains/bind', 'V1\\Admin\\NodeDomainController@bind')->middleware('throttle:30,1');
+            $router->post('/server/domains/manual', 'V1\\Admin\\NodeDomainController@manual')->middleware('throttle:30,1');
             $router->post('/server/domains/adopt', 'V1\\Admin\\NodeDomainController@adopt')->middleware('throttle:10,1,node-domain-adopt:');
             $router->post('/server/domains/activate', 'V1\\Admin\\NodeDomainController@activate')->middleware('throttle:30,1');
             $router->post('/server/domains/activate-batch', 'V1\\Admin\\NodeDomainController@activateBatch')->middleware('throttle:5,1,node-domain-batch:');
@@ -83,6 +84,8 @@ class AdminRoute
             $router->post('/server/domains/inspect', 'V1\\Admin\\NodeDomainController@inspect')->middleware('throttle:30,1');
             $router->post('/server/domains/remove-historical', 'V1\\Admin\\NodeDomainController@removeHistorical')->middleware('throttle:30,1');
             $router->get('/server/connections/fetch', 'V1\\Admin\\NodeConnectionController@fetch');
+            $router->get('/server/connections/address', 'V1\\Admin\\NodeConnectionController@address');
+            $router->patch('/server/connections/address', 'V1\\Admin\\NodeConnectionController@updateAddress');
             $router->get('/server/connections/default', 'V1\\Admin\\NodeConnectionController@defaultLine');
             $router->patch('/server/connections/default', 'V1\\Admin\\NodeConnectionController@updateDefaultLine');
             $router->post('/server/connections/save', 'V1\\Admin\\NodeConnectionController@save');

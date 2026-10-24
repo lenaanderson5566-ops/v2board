@@ -1,4 +1,4 @@
-import { type ReactNode, useEffect, useRef, useState } from "react";
+import { type ReactNode, useMemo, useEffect, useRef, useState } from "react";
 import { admin, query, request, type Row } from "../shared/api";
 import { Modal, Panel, Table, State, useData } from "../shared/ui";
 import { AdminSwitch } from "./admin-switch";
@@ -6,7 +6,7 @@ import { NodeTopology } from "./NodeTopology";
 import { relayStreamConfig } from "./node-relay";
 import { useNodeCatalog } from "./node-dictionary";
 
-export function NodeConnectionEditor({ node, nodes, groups = [], close, onSaved, embedded=false, onDirty, onBusyChange, onCreated, navigation }: { navigation?:(busy:boolean,dirty:boolean)=>ReactNode; node: Row; nodes: Row[]; groups?: Row[]; close: () => void; onSaved: () => void; embedded?:boolean; onDirty?:(dirty:boolean)=>void; onBusyChange?:(busy:boolean)=>void; onCreated?:()=>void }) {
+export function NodeConnectionEditor({ node, nodes, groups = [], close, onSaved, embedded=false, onDirty, onBusyChange, onCreated, navigation }: { navigation?:(busy:boolean,dirty:boolean)=>ReactNode; node: Row; nodes: Row[]; groups?: Row[]; close: () => void; onSaved: () => void; embedded?:boolean; onDirty?:(dirty:boolean)=>void; onBusyChange?:(busy:boolean)=>void; onCreated?:(node:Row)=>void }) {
     const [id, setId] = useState<number | undefined>(node.id);
     const [type, setType] = useState<string>(node.type || "v2box");
     const catalog = useNodeCatalog();
@@ -32,6 +32,11 @@ export function NodeConnectionEditor({ node, nodes, groups = [], close, onSaved,
     const service = services.find(s => Number(s.id) === Number(draft.service_id));
     const assignments: Row[] = network.data?.assignments || [], servers: Row[] = network.data?.servers || [];
     const origin = assignments.find(a => a.node_type === type && a.node_id === Number(draft.service_id));
+    const reusable=useMemo(()=>{
+        const physical=new Map((network.data?.servers || []).map((s:Row)=>[String(s.id),s]));
+        return new Set((network.data?.assignments || []).filter((a:Row)=>a.purpose!=="entry" && a.status!=="manual" && a.enabled!==false && a.enabled!==0 && a.managed!==false && a.managed!==0 && a.server_id!==null && (physical.get(String(a.server_id)) as Row | undefined)?.enabled!==false && (physical.get(String(a.server_id)) as Row | undefined)?.enabled!==0).map((a:Row)=>`${a.node_type}:${a.node_id}`));
+    },[network.data]);
+    const canReuse=(s:Row | undefined)=>!!s && reusable.has(`${s.type}:${s.id}`);
     const entries = assignments.filter(a => a.purpose === "entry" && a.enabled);
     const entry = entries.find(a => a.id === Number(draft.entry_id));
     const validEntry=!draft.entry_id || (!!entry && Number.isInteger(Number(draft.entry_port)) && Number(draft.entry_port)>=1 && Number(draft.entry_port)<=65535);
@@ -49,10 +54,10 @@ export function NodeConnectionEditor({ node, nodes, groups = [], close, onSaved,
         if (pending.current) return;
         pending.current = true; setBusy(true); setError(""); setNotice("");
         try {
-            if(!publish && (!service || !draft.name.trim() || !validEntry))throw new Error("请检查代理服务、节点名称及入口端口配置");
+            if(!publish && (!canReuse(service) || !draft.name.trim() || !validEntry))throw new Error("请检查代理服务、节点名称及入口端口配置");
             const body = publish ? { type, id, revision: existing.data?.revision, proof: savedPlan?.proof, confirmed } : { ...draft, type, id, revision: existing.data?.revision || 0, service_id: Number(draft.service_id), entry_id: draft.entry_id ? Number(draft.entry_id) : null, entry_port: draft.entry_id ? Number(draft.entry_port) : null };
             const result = await request<Row>(admin(`server/connections/${publish ? "publish" : "save"}`), body);
-            if (!publish && !id) {setId(result.data.id);onCreated?.();} else existing.reload();
+            if (!publish && !id) {setId(result.data.id);onCreated?.({id:result.data.id,type,service_id:Number(draft.service_id),name:draft.name});} else existing.reload();
             setDirty(false); setConfirmed(false); onSaved();
             setNotice(publish ? "线路已发布，订阅将使用新的连接地址。" : "配置已保存，当前发布地址保持不变。请完成连接检查后发布。");
         } catch (e) { setError((e as Error).message); }
@@ -72,10 +77,11 @@ export function NodeConnectionEditor({ node, nodes, groups = [], close, onSaved,
                             if(selected){setType(backend);setDraft(previous=>({...previous,service_id:selected.id,group_id:selected.group_id || []}));setDirty(true);setConfirmed(false);setNotice("");}
                             else change("service_id", "");
                         }else change("service_id", e.target.value);
-                    }}><option value="">选择代理服务</option>{selectableServices.map(s => <option key={`${s.type}:${s.id}`} value={embedded && !id ? `${s.type}:${s.id}` : s.id}>{s.name} · {s.protocol} · {s.type=== "v2box" ? "V2Box" : "V2Node"}</option>)}</select></label>
-                    {!id && !selectableServices.length && <p role="status">暂无可复用的代理服务，请选择“新建代理服务”。</p>}
+                    }}><option value="">选择代理服务</option>{selectableServices.map(s => <option key={`${s.type}:${s.id}`} disabled={!canReuse(s)} value={embedded && !id ? `${s.type}:${s.id}` : s.id}>{s.name} · {s.protocol} · {s.type=== "v2box" ? "V2Box" : "V2Node"}{!canReuse(s)?"（需启用服务器和自动域名）":""}</option>)}</select></label>
+                    {service && !canReuse(service) && <p role="status">请先在原节点的部署设置中启用服务器与自动域名管理，再保存或发布复用线路。</p>}
+                    {!id && !selectableServices.length && <p role="status">暂无可共用服务的节点，请选择“独立部署新节点”。</p>}
                     <label>连接方式<select value={draft.entry_id ? "relay" : "direct"} disabled={busy} onChange={e => change("entry_id", e.target.value === "relay" ? entries[0]?.id || "pending" : "")}><option value="direct">直连</option><option value="relay">入口中转</option></select></label>
-                    {!!draft.entry_id && !entry && <p role="status">请先在 <a href="#/servers">服务器管理</a> 中添加可用的入口域名。</p>}
+                    {!!draft.entry_id && !entry && <p role="status">请先在 <a href="#/servers" onClick={event=>{if(busy || (dirty && !confirm("离开将放弃未保存的线路配置，确认前往服务器管理？")))event.preventDefault();}}>服务器管理</a> 中添加可用的入口域名。</p>}
                     {!!draft.entry_id && <><label>入口域名<select value={draft.entry_id} disabled={busy} onChange={e => change("entry_id", e.target.value)}><option value="pending">选择入口</option>{entries.map(e => <option key={e.id} value={e.id}>{e.domain} · {servers.find(s => s.id === e.server_id)?.name}</option>)}</select></label><label>入口端口<input type="number" min={1} max={65535} value={draft.entry_port || ""} disabled={busy} onChange={e => change("entry_port", e.target.value)} /></label></>}
                     <div><span>权限组</span><div className="option-group" role="group" aria-label="权限组">{(service?.group_id || []).map((g: number) => {
                         const selected = (draft.group_id || []).map(Number).includes(Number(g));
@@ -91,8 +97,8 @@ export function NodeConnectionEditor({ node, nodes, groups = [], close, onSaved,
                     <label>标签（逗号分隔）<input value={tagsText} disabled={busy} onChange={e => { setTagsText(e.target.value); change("tags", e.target.value.split(/[,，]/).map(value => value.trim()).filter(Boolean)); }} /></label>
                 </div></details>
                 <NodeTopology service={service} origin={origin} entry={draft.entry_id ? entry || {} : undefined} server={servers.find(s => s.id === origin?.server_id)} entryServer={servers.find(s => s.id === entry?.server_id)} port={draft.entry_id ? draft.entry_port : service?.server_port} preview={dirty || !id} shared={entry?.connection_count || 0} />
-                <button className="primary" disabled={busy || !dirty || !service || !draft.name.trim() || !validEntry} onClick={() => act()}>保存待发布配置</button>
-                {existing.data && <p>当前发布地址：{existing.data.published ? `${existing.data.current.host}:${existing.data.current.port}` : node.id ? `${node.host}:${node.port}` : "尚未发布"}</p>}
+                <button className="primary" disabled={busy || !dirty || !canReuse(service) || !draft.name.trim() || !validEntry} onClick={() => act()}>保存待发布配置</button>
+                {existing.data && <p>当前发布地址：{existing.data.published ? `${existing.data.current.host}:${existing.data.current.port}` : !existing.data.revision && node.host ? `${node.host}:${node.port}` : "尚未发布"}</p>}
                 {!dirty && savedPlan && <section className="admin-deployment-card">
                     <h3>检查与发布</h3>
                     <p>{savedPlan.dns_ready ? "入口与回源解析已就绪。" : "等待服务器 IP 上报和解析同步。"}{savedPlan.transition_pending ? "代理服务证书正在切换，请等待完成。" : ""}</p>
@@ -122,5 +128,5 @@ export function NodeForwarding({ nodes, edit }: { nodes: Row[]; edit: (node: Row
         const entry = assignments.find(a => a.id === binding.entry_id);
         records.push({ ...binding, id: `binding-${binding.id}`, name: node?.name || `#${binding.node_id}`, entry: `${entry?.domain || "入口待检查"}:${binding.entry_port}`, active: `${binding.published_domain}:${binding.published_port || node?.port || "—"} → ${binding.published_origin || binding.domain}:${node?.server_port || "—"}`, node });
     }
-    return <Panel title="入口转发"><State {...data} retry={data.reload}><p className="muted">在节点中维护入口与代理服务的对应关系；服务器详情汇总本机转发线路。复制 Nginx 配置到入口服务器，检查并加载后完成连接测试。面板不自动安装转发。</p><Table data={records} columns={[["name", "接入线路"], ["entry", "已保存入口"], ["active", "当前发布路径"]]} actions={r => <button disabled={!r.node} onClick={() => edit(r.node)}>{r.node?.service_id ? "编辑线路" : "配置转发与验证"}</button>} /></State></Panel>;
+    return <Panel title="入口转发"><State {...data} retry={data.reload}><p className="muted">此处汇总所有服务器的转发线路；单台服务器请在“服务器列表 → 详情 → 本机入口转发”集中配置。与节点编辑共用相同的接入关系。复制 Nginx 配置到入口服务器，检查并加载后完成连接测试。面板不自动安装转发。</p><Table data={records} columns={[["name", "接入线路"], ["entry", "已保存入口"], ["active", "当前发布路径"]]} actions={r => <button disabled={!r.node} onClick={() => edit(r.node)}>{r.node?.service_id ? "编辑线路" : "配置转发与验证"}</button>} /></State></Panel>;
 }

@@ -1,5 +1,5 @@
 import { ManualNodeAddress } from "./ManualNodeAddress";
-import { relayStreamConfig } from "./node-relay";
+import { relayStreamConfig, relayCertificateIssue } from "./node-relay";
 import { useEffect, useRef, useState } from "react";
 import { admin, request, type Row } from "../shared/api";
 import { Panel, State, Table, useData } from "../shared/ui";
@@ -61,6 +61,7 @@ export function NodeDomainBinding({
     const [draftRevision,setDraftRevision]=useState<string | undefined>();
     const [serverId, setServerId] = useState("");
     const [mode, setMode] = useState("direct");
+    const certificateIssue = mode === "relay" ? relayCertificateIssue(node) : "";
     const [entryId, setEntryId] = useState("");
     const [entryPort, setEntryPort] = useState(String(node.port || 443));
     const entry = entries.find((a) => a.id === binding?.entry_id);
@@ -440,7 +441,7 @@ export function NodeDomainBinding({
                 )}
                 {configuredBinding?.status==="manual" && <p className="muted">节点服务器：{servers.find(s=>Number(s.id)===Number(configuredBinding.server_id))?.name || "未关联"}；现有生效解析保留，自动同步已暂停。</p>}
                 {!binding && <ManualNodeAddress disabled={busy} node={node} onChanged={onPublished} onDirty={setManualDirty} onBusyChange={setManualBusy}/> }
-                <details className="node-domain-settings" open={false}>
+                <details className="node-domain-settings" open={!binding}>
                     <summary>
                         {binding ? "修改域名设置" : "设置节点域名"}
                     </summary>
@@ -451,6 +452,7 @@ export function NodeDomainBinding({
                             className="node-domain-form"
                             onSubmit={(e) => {
                                 e.preventDefault();
+                                if (certificateIssue) { setError(certificateIssue); return; }
                                 void act("bind", {
                                     ...(draftRevision ? {revision:draftRevision}:{}),
                                     node_type: node.type,
@@ -473,7 +475,7 @@ export function NodeDomainBinding({
                             }}
                         >
                             <details className="admin-deployment-tools" open={node._new || mode === "relay"}>
-                                <summary>接入方式与服务器</summary>
+                                <summary>连接路径：直连或中转</summary>
                                 <div className="node-domain-form">
                             <label>
                                 接入方式
@@ -483,7 +485,7 @@ export function NodeDomainBinding({
                                     value={mode}
                                     onChange={(e) => {setFormDirty(true);setMode(e.target.value);}}
                                 >
-                                    <option value="direct">直连节点</option>
+                                    <option value="direct">直连（客户端直接连接代理服务器）</option>
                                     {node.type === "v2box" && (
                                         <option value="relay">
                                             中转连接（入口转发至代理服务器）
@@ -492,7 +494,7 @@ export function NodeDomainBinding({
                                 </select>
                             </label>
                             <label>
-                                {mode === "relay" ? "回源服务器" : "节点服务器"}
+                                代理服务器（运行 V2Box）
                                 <select
                                     aria-label="节点服务器"
                                     disabled={busy || manualBusy}
@@ -513,8 +515,14 @@ export function NodeDomainBinding({
                             </label>
                             {mode === "relay" && (
                                 <>
+                                    <section className="admin-deployment-card" aria-label="中转连接配置说明">
+                                        <strong>客户端 → 入口服务器 → 代理服务器</strong>
+                                        <p>入口负责转发，V2Box 安装在代理服务器。入口域名解析到入口 IP，回源域名解析到代理服务器 IP。</p>
+                                        {Number(node.tls) === 1 && <><p>证书由代理服务器申请，须覆盖入口域名。请先在“代理服务”的“TLS 与证书”中选择 DNS 申请，填写 DNS 提供商和验证凭据并保存，再配置中转路径。</p><p>Cloudflare：提供商填写 cloudflare，DNS 环境参数填写 CF_DNS_API_TOKEN=你的令牌。域名与解析中的凭据不会自动用于证书申请。</p><p>令牌须有入口域名所在区域的 Zone:Read 与 DNS:Edit 权限，将用于代理服务器申请与续期证书。</p></>}
+                                        {Number(node.tls) === 2 && <p>Reality 使用独立的握手配置，无需申请上述 TLS 域名证书。</p>}
+                                    </section>
                                     <label>
-                                        共享入口域名
+                                        入口域名（客户端连接地址）
                                         <select
                                             aria-label="共享入口域名"
                                             required
@@ -531,7 +539,7 @@ export function NodeDomainBinding({
                                         </select>
                                     </label>
                                     <label>
-                                        入口端口
+                                        入口端口（客户端连接端口）
                                         <input
                                             aria-label="入口端口"
                                             type="number"
@@ -552,7 +560,7 @@ export function NodeDomainBinding({
                                 </div>
                             </details>
                             <label>
-                                根域名
+                                {mode === "relay" ? "回源根域名（指向代理服务器）" : "连接根域名（指向代理服务器）"}
                                 <select
                                     aria-label="根域名"
                                     disabled={busy || manualBusy}
@@ -603,7 +611,8 @@ export function NodeDomainBinding({
                                     }
                                 </p>
                             )}
-                            <button disabled={busy || manualBusy} className="primary">
+                            {certificateIssue && <p role="alert" className="node-path-prerequisite">{certificateIssue}</p>}
+                            <button disabled={busy || manualBusy || !!certificateIssue} className="primary">
                                 保存域名
                             </button>
                             <button type="button" disabled={busy || manualBusy} onClick={()=>{

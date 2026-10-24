@@ -1110,3 +1110,12 @@ it("uses the matching backend and opens forwarding without issuing a deployment 
  expect(screen.queryByText("Wrong backend · 接入设置")).toBeNull();
  expect(api.request.mock.calls.every(([path,body])=>!body && !String(path).includes("credentials/deployment"))).toBe(true);
 });
+
+import {relayCertificateIssue} from "./node-relay";
+it("checks relay certificate modes without treating masked credentials as missing",()=>{
+ for (const mode of ["http","self","none",undefined]) expect(relayCertificateIssue({tls:1,tls_settings:{cert_mode:mode}})).toContain("TLS 与证书");
+ for (const mode of ["dns","remote","file"]) expect(relayCertificateIssue({tls:1,tls_settings:{cert_mode:mode}})).toBe("");
+ expect(relayCertificateIssue({tls:2,tls_settings:{cert_mode:"none"}})).toBe("");
+ expect(relayCertificateIssue({tls:0})).toBe("");
+ expect(relayCertificateIssue({tls:1,"tls_settings.cert_mode":"dns"})).toBe("");
+});

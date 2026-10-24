@@ -1011,7 +1011,7 @@ it.each(["managed","manual"])("keeps %s creation fields aligned with the line an
     expect(fields.filter(f=>f.key==="server_port")).toHaveLength(1);
     expect(fields.find(f=>f.key==="server_port")?.label).toBe(nodeServiceFields(service).find(f=>f.key==="server_port")?.label);
     expect(fields.findIndex(f=>f.section==="节点信息")).toBeLessThan(fields.findIndex(f=>f.section==="代理服务"));
-    expect(fields.findIndex(f=>f.section==="代理服务")).toBeLessThan(fields.findIndex(f=>f.section==="部署"));
+    expect(fields.findIndex(f=>f.section==="代理服务")).toBeLessThan(fields.findIndex(f=>f.section==="连接路径与域名"));
     expect(new Set(fields.map(f=>f.key)).size).toBe(fields.length);
     expect(fields.some(f=>f.key==="host")).toBe(mode==="manual");
 });

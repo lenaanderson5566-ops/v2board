@@ -381,3 +381,5 @@ body[data-console="admin"] .node-creation-mode p {margin:10px 0 0;}
 .server-management-guide, .server-management-quota { grid-column: 1 / -1; }
 .server-management-guide { color: var(--muted); line-height: 1.7; }
 .server-management-quota > summary { cursor: pointer; font-weight: 600; padding: 12px 0; }
+
+.node-domain-form > .admin-deployment-card, .node-path-prerequisite { grid-column: 1 / -1; }

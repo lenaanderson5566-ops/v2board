@@ -14,17 +14,17 @@ const nested: Record<string, Field[]> = {
             options: [
                 ["self", "自签名"],
                 ["http", "HTTP 申请"],
-                ["dns", "DNS 申请"],
+                ["dns", "DNS 申请（适用于直连与中转）"],
                 ["remote", "面板生成并下发"],
                 ["none", "不使用证书"],
             ],
         },
-        { key: "provider", label: "DNS 提供商", hint: "例如 cloudflare。" },
+        { key: "provider", label: "DNS 提供商", hint: "使用 Cloudflare 时填写 cloudflare；用于证书申请与续期。" },
         {
             key: "dns_env",
             label: "DNS 环境参数",
             type: "password",
-            hint: "例如 CF_DNS_API_TOKEN=xxx；多条用逗号分隔。",
+            hint: "Cloudflare 填写 CF_DNS_API_TOKEN=你的令牌，需具备证书域名所在区域的 Zone:Read 与 DNS:Edit 权限。独立于面板解析凭据；多条用逗号分隔。",
         },
         {
             key: "cert_file",
@@ -309,11 +309,10 @@ export function nodeEditorPresentation(fields: Field[]): Field[] {
                 key,
             ) ||
             key.startsWith("network_settings.") ||
-            key.startsWith("networkSettings.") ||
-            key.startsWith("tls_settings.") ||
-            key.startsWith("tlsSettings.")
+            key.startsWith("networkSettings.")
         )
             return 1;
+        if (key.startsWith("tls_settings.") || key.startsWith("tlsSettings.")) return 2;
         if (
             [
                 "group_id",
@@ -323,14 +322,15 @@ export function nodeEditorPresentation(fields: Field[]): Field[] {
                 "device_limit",
             ].includes(key)
         )
-            return 2;
-        if (["listen_ip", "server_port", "service_id", "route_id"].includes(key))
             return 3;
-        return 4;
+        if (["listen_ip", "server_port", "service_id", "route_id"].includes(key))
+            return 4;
+        return 5;
     };
     const titles = [
         "基本信息",
-        "接入与协议",
+        "连接与协议",
+        "TLS 与证书",
         "访问与计费",
         "服务端设置",
         "高级与扩展参数",

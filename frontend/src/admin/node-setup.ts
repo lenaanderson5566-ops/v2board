@@ -25,14 +25,14 @@ export function nodeSetupFields(
     const setup: Field[] = [
         {
             key: "setup_mode",
-            section: "部署",
+            section: "连接路径与域名",
             label: "配置方式",
             type: "select",
             options: [
                 ["managed", "自动管理服务器与域名（推荐）"],
                 ["manual", "手动维护连接地址"],
             ],
-            hint: "自动关联域名与解析，保存后即可部署。",
+            hint: "先完成协议与证书配置，再设置下方连接路径；保存后在代理服务器执行部署命令。",
         },
     ];
     if (managed && backend === "v2box")
@@ -45,7 +45,7 @@ export function nodeSetupFields(
                 ["direct", "直连"],
                 ["relay", "入口中转"],
             ],
-            hint: "直连由客户端连接代理服务器；中转先连接入口服务器，再转发至代理服务器。证书由代理服务器处理。",
+            hint: "直连直接连接代理服务器；中转经入口转发。普通 TLS 中转请先选择 DNS 申请并配置验证凭据，证书覆盖入口域名。",
         });
     if (managed && relay)
         setup.push(

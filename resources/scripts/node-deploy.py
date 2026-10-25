@@ -307,7 +307,7 @@ class Deployment:
                     reason='Origin public DNS: waiting for A/AAAA to match reported IPs on available public resolvers; correct A/AAAA, review stale records and use DNS-only mode.'
                     if not self.verify_dns('origin',self.flow['domain'],status['addresses']):
                         self.dns_observation['dnsState']='mismatch'
-                    elif self.flow['certificateMode']=='http' and self.flow['certificateDomain']!=self.flow['domain'] and not self.verify_dns('certificate',self.flow['certificateDomain'],status['addresses']):
+                    elif self.flow['tls']==1 and self.flow['certificateMode']=='http' and self.flow['certificateDomain']!=self.flow['domain'] and not self.verify_dns('certificate',self.flow['certificateDomain'],status['addresses']):
                         self.dns_observation={'dnsState':'mismatch','dnsRole':'certificate'}
                         reason='Certificate HTTP validation domain: A/AAAA must point directly to the origin server. Correct certificate DNS or select DNS validation; entry forwarding does not prove port 80 reachability.'
                     elif self.flow.get('accessMode')=='relay':
@@ -333,7 +333,7 @@ class Deployment:
         raise DeploymentError('DNS wait timed out. '+reason+' No certificate request was started. Fix the reported issue, then resume.')
 
     def check_http_port(self):
-        if self.flow['certificateMode']!='http': return
+        if self.flow['tls']!=1 or self.flow['certificateMode']!='http': return
         for family,address in ((socket.AF_INET,'0.0.0.0'),(socket.AF_INET6,'::')):
             try:
                 with socket.socket(family) as probe:

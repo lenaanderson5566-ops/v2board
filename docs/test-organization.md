@@ -979,3 +979,9 @@ Node UI tests assert that overview count cards and manual inspection buttons are
 迭代清理：移除已退出实际页面的前端 `NodeDeploymentCheck` 组件及其五个孤立展示测试，保留 `tests/node-ddns.php` 的后端探测、安全边界与自动发布验证。节点端 DNS 观测独立为 `NodeDnsObservation`，继续由现有节点测试覆盖；移除旧部署说明组件与对应文案测试，保留中转转发和独立 TLS 身份的功能断言。
 
 节点活动刷新复用 `Nodes.test.tsx` 验证单请求轮询、隐藏页暂停、恢复、退避及卸载清理；`tests/node-ddns.php` 覆盖共享服务取数、内核 ID 隔离、零值、过期值、丢失服务、一次轻量数据库查询及共享缓存命中时零查询及管理接口权限。
+
+运行状态自动刷新继续复用节点现有测试：验证服务与共享线路在线→离线→恢复、仅流量或仅心跳有效、无通信记录、不同内核同编号隔离、状态筛选及已知额度限制保留。轻量接口仍断言单 SQL 查询及短缓存命中时零查询。
+
+节点合并配置复用 `Nodes.test.tsx` 与 `AdminDDNS.test.tsx`，覆盖三个编辑入口、直连域名和协议同屏、共享线路接入与监听同屏、分区保存保护、保存后保留抽屉及不出现嵌套导航。沿用原有证书凭据、敏感保存确认、新增转换和部署授权断言。
+
+完整部署审查复用 node-ddns、v2box、node-v10、node-address、node-backends、node-routes、admin-diagnostics 七个现有模块，在一次性项目及数据库运行。部署 Python 用例沿用 tests/v2box.php 内嵌测试原文，在可销毁 Linux 容器实际执行；节点 script/lifecycle_test.py、node_network_test.py、node_credentials_test.py 使用临时路径、模拟下载与模拟服务运行，不访问生产节点。新增覆盖残留 HTTP 配置对非 TLS/Reality 的影响、共享服务切换的在途回执、未保存表单保护和错误所属服务保存拦截。真实 Cloudflare ACME 签发及生产 Nginx 中转不在模拟测试范围内。

@@ -21,7 +21,7 @@ final class NodeDeploymentWorkflow
         if ((int)$node->tls===1 && in_array($tls['cert_mode']??'',['http','dns'],true)) {
             abort_unless($a && $a->managed,422,'自动申请证书的一键部署需要先保存托管节点域名');
         }
-        if (!empty($tls['dns_credential_id'])) NodeCertificateCredential::credential($tls);
+        if ((int)$node->tls===1 && !empty($tls['dns_credential_id'])) NodeCertificateCredential::credential($tls);
         if (!$a || !$a->managed) return;
         if ((int)$node->tls===1) {
             NetworkServer::tls($a,$tls);
@@ -38,7 +38,7 @@ final class NodeDeploymentWorkflow
         $a=self::binding($node);
         if (!$a || !$a->managed) return [];
         self::validate($node);
-        $token='dp_'.bin2hex(random_bytes(32));$tls=$node->tls_settings?:[];
+        $token='dp_'.bin2hex(random_bytes(32));$tls=(int)$node->tls===1 ? ($node->tls_settings?:[]):[];
         $data=['nodeId'=>(int)$node->id,'credential'=>$credential,'actor'=>$grant['actor'],'actorProof'=>$grant['actorProof'],
             'proof'=>self::snapshot($node),'expires'=>time()+self::TTL,'startedAt'=>null,'completed'=>false];
         abort_unless(Cache::store('node_deployment')->put('workflow:'.hash('sha256',$token),$data,self::TTL),503);

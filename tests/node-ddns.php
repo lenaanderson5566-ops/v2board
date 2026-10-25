@@ -902,7 +902,20 @@ try {
     $cache::put(App\Utils\CacheKey::get('SERVER_V2BOX_ONLINE_USER',90001),0,3600);
     $cache::put(App\Utils\CacheKey::get('SERVER_V2BOX_LAST_PUSH_AT',90001),time(),3600);
     $assert($activityService->activity($activityNodes)[1]['online']===0,'a fresh empty report clears a previous online count');
-    $cache::forget('ADMIN_NODE_ACTIVITY:v1');
+    $assert($activityService->activity($activityNodes)[1]['runtime_status']==='online','shared connection follows service online state');
+    $cache::put(App\Utils\CacheKey::get('SERVER_V2BOX_LAST_CHECK_AT',90001),time()-301,3600);
+    $assert($activityService->activity($activityNodes)[0]['runtime_status']==='online','fresh traffic reports keep service online even when configuration polling is old');
+    $cache::put(App\Utils\CacheKey::get('SERVER_V2BOX_LAST_PUSH_AT',90001),time()-301,3600);
+    $offline=$activityService->activity($activityNodes);
+    $assert($offline[0]['runtime_status']==='offline' && $offline[1]['runtime_status']==='offline' && $offline[2]['runtime_status']==='offline','stale service heartbeat and traffic make every shared connection offline');
+    $assert($offline[3]['runtime_status']==='online','matching node IDs from another backend do not inherit offline state');
+    $cache::put(App\Utils\CacheKey::get('SERVER_V2BOX_LAST_CHECK_AT',90001),time(),3600);
+    $assert($activityService->activity($activityNodes)[1]['runtime_status']==='online','new heartbeat restores shared service online without a traffic report');
+    $cache::forget(App\Utils\CacheKey::get('SERVER_V2BOX_LAST_CHECK_AT',90001));
+    $cache::forget(App\Utils\CacheKey::get('SERVER_V2BOX_LAST_PUSH_AT',90001));
+    $unknown=$activityService->activity($activityNodes);
+    $assert($unknown[0]['runtime_status']==='unknown' && $unknown[1]['runtime_status']==='unknown' && $unknown[4]['runtime_status']==='unknown','missing heartbeat and missing service show unknown rather than invented online state');
+    $cache::forget('ADMIN_NODE_ACTIVITY:v2');
     DB::enableQueryLog();DB::flushQueryLog();
     $activityResponse=$adminCheck->activity();$queries=DB::getQueryLog();DB::disableQueryLog();
     $assert(count($queries)===1,'lightweight poll uses one ID-only union query independent of shared line count');
@@ -910,7 +923,7 @@ try {
     $assert(count($warmQueries)===0 && $warmResponse->getContent()===$activityResponse->getContent(),'concurrent administrators reuse the brief cached snapshot without SQL');
     $assert(str_contains($activityResponse->headers->get('Cache-Control'),'no-store'),'activity responses cannot be cached by gateways');
     $activityPayload=json_decode($activityResponse->getContent(),true)['data'];
-    foreach($activityPayload as $row) $assert(!array_diff(array_keys($row),['id','type','service_id','online','online_stale','last_check_at','last_push_at','available_status']),'activity never returns service configuration or credentials');
+    foreach($activityPayload as $row) $assert(!array_diff(array_keys($row),['id','type','service_id','online','online_stale','last_check_at','last_push_at','runtime_status','available_status']),'activity never returns service configuration or credentials');
     $unauth=$kernel->handle(Request::create($adminPath.'/server/manage/activity','GET',[],[],[],['HTTP_ACCEPT'=>'application/json']));
     $assert($unauth->getStatusCode()===403,'anonymous cannot read runtime counters');
 

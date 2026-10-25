@@ -7,7 +7,7 @@ import { NodeTopology } from "./NodeTopology";
 import { relayStreamConfig } from "./node-relay";
 import { useNodeCatalog } from "./node-dictionary";
 
-export function NodeConnectionEditor({ node, nodes, groups = [], close, onSaved, embedded=false, onDirty, onBusyChange, onCreated, navigation, view="all" }: { view?:"all"|"line"|"path"; navigation?:(busy:boolean,dirty:boolean)=>ReactNode; node: Row; nodes: Row[]; groups?: Row[]; close: () => void; onSaved: () => void; embedded?:boolean; onDirty?:(dirty:boolean)=>void; onBusyChange?:(busy:boolean)=>void; onCreated?:(node:Row)=>void }) {
+export function NodeConnectionEditor({ node, nodes, groups = [], close, onSaved, onPublished, embedded=false, onDirty, onBusyChange, onCreated, navigation, pauseRefresh=false, view="all" }: { pauseRefresh?:boolean; view?:"all"|"line"|"path"; navigation?:(busy:boolean,dirty:boolean)=>ReactNode; node: Row; nodes: Row[]; groups?: Row[]; close: () => void; onSaved: () => void; onPublished?:()=>void; embedded?:boolean; onDirty?:(dirty:boolean)=>void; onBusyChange?:(busy:boolean)=>void; onCreated?:(node:Row)=>void }) {
     const [id, setId] = useState<number | undefined>(node.id);
     const [type, setType] = useState<string>(node.type || "v2box");
     const catalog = useNodeCatalog();
@@ -42,13 +42,23 @@ export function NodeConnectionEditor({ node, nodes, groups = [], close, onSaved,
     const entries = assignments.filter(a => a.purpose === "entry" && a.enabled);
     const entry = entries.find(a => a.id === Number(draft.entry_id));
     const validEntry=!draft.entry_id || (!!entry && Number.isInteger(Number(draft.entry_port)) && Number(draft.entry_port)>=1 && Number(draft.entry_port)<=65535);
+    const publishedSignature=useRef<string | null>(null);
+    useEffect(()=>{
+        const value=existing.data;
+        if(!value?.published)return;
+        const published=value.published;
+        const identity=JSON.stringify([published.service_id,value.current?.host,value.current?.port,published.proof]);
+        const changed=publishedSignature.current!==null ? publishedSignature.current!==identity : Number(published.service_id)!==Number(node.service_id) || (value.current?.host && value.current.host!==node.host) || (value.current?.port && Number(value.current.port)!==Number(node.port));
+        publishedSignature.current=identity;
+        if(changed)onPublished?.();
+    },[existing.data,node.service_id,node.host,node.port,onPublished]);
     const savedPlan = existing.data?.plan;
     const manualPublish = !!savedPlan?.entry_id || type!=="v2box" || ["hysteria","hysteria2","tuic"].includes(savedPlan?.protocol) || ["manual_required","configuration_blocked"].includes(existing.data?.automatic_status);
     useEffect(()=>{
-        if (!id || dirty || busy) return;
-        const timer=window.setInterval(()=>{if(document.visibilityState!=="hidden") existing.reload();},15000);
+        if (!id || dirty || busy || pauseRefresh || existing.loading) return;
+        const timer=window.setInterval(()=>{if(document.visibilityState!=="hidden") existing.reload();},existing.error ? 60000 : 15000);
         return ()=>window.clearInterval(timer);
-    },[id,dirty,busy,existing.reload]);
+    },[id,dirty,busy,pauseRefresh,existing.loading,existing.error,existing.reload]);
     const config = savedPlan?.entry_id ? relayStreamConfig({ id: existing.data?.id, scope: "connection", domain: savedPlan.origin_domain, family: savedPlan.origin_family, entry_port: savedPlan.port }, { ...service, server_port: savedPlan.origin_port, protocol: savedPlan.protocol }, { family: savedPlan.entry_family }) : "";
     function change(key: string, value: unknown) {
         if(key==="region_code")regionTouched.current=true;

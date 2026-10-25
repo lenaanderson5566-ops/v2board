@@ -35,6 +35,7 @@ export const certificateTransitionStatus: Record<string, string> = {
 };
 
 export function NodeDomainBinding({
+    pauseRefresh = false,
     onDirty,
     onBusyChange,
     node,
@@ -43,6 +44,7 @@ export function NodeDomainBinding({
     onUpgrade,
 }: {
     node: Row;
+    pauseRefresh?: boolean;
     onChanged?: () => void;
     onDirty?: (dirty:boolean)=>void;
     onBusyChange?: (busy:boolean)=>void;
@@ -102,7 +104,7 @@ export function NodeDomainBinding({
         onPublished?.();
     }, [binding?.published_domain, binding?.published_port, onPublished]);
     useEffect(() => {
-        if (!binding?.enabled || data.loading || data.error || busy || adoption)
+        if (pauseRefresh || !binding?.enabled || data.loading || data.error || busy || adoption)
             return;
         const timer = window.setInterval(() => {
             if (document.visibilityState === "visible") data.reload();
@@ -110,6 +112,7 @@ export function NodeDomainBinding({
         return () => window.clearInterval(timer);
     }, [
         binding?.enabled,
+        pauseRefresh,
         data.loading,
         data.error,
         data.reload,
@@ -508,7 +511,7 @@ export function NodeDomainBinding({
                                     <section className="admin-deployment-card" aria-label="中转连接配置说明">
                                         <strong>客户端 → 入口服务器 → 代理服务器</strong>
                                         <p>入口负责转发，V2Box 安装在代理服务器。入口域名解析到入口 IP，回源域名解析到代理服务器 IP。</p>
-                                        {Number(node.tls) === 1 && <p>证书使用独立 TLS 身份域名，参数在“协议与证书”中维护。</p>}
+                                        {Number(node.tls) === 1 && <p>证书使用独立 TLS 身份域名，参数在节点编辑的“连接与协议 → 协议与证书”中维护。</p>}
                                         {Number(node.tls) === 2 && <p>Reality 使用独立的握手配置，无需申请上述 TLS 域名证书。</p>}
                                     </section>
                                     <label>

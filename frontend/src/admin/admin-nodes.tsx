@@ -5,6 +5,7 @@ import { AdminChoiceGroup } from "./AdminChoices";
 import { nodeConfigurationProblems, nodeChangeImpact } from "./node-guidance";
 import { nodeSetupFields, nodeSetupPayload,nodeServiceFields,certificateCredentialOptions } from "./node-setup";
 import { NodeConnectionEditor, NodeForwarding } from "./NodeConnections";
+import { NodeDomainBinding } from "./NodeDomains";
 import { NodeTopology } from "./NodeTopology";
 import { NodeDictionaryProvider,useNodeCatalog } from "./node-dictionary";
 import { NodeDeployment } from "./NodeDeployment";
@@ -92,7 +93,12 @@ function useNodeActivity(nodes: Row[] | null, enabled: boolean) {
         const activity=new Map(snapshot.data.map(row=>[`${row.type}:${row.id}`,row]));
         return rows(nodes).map(node=>{
             const current=activity.get(`${node.type}:${node.id}`);
-            return current && Number(current.service_id||0)===Number(node.service_id||0) ? {...node,...current}:{...node,online:null,online_stale:true};
+            if (!current || Number(current.service_id||0)!==Number(node.service_id||0))
+                return {...node,online:null,online_stale:true,runtime_status:"unknown"};
+            const runtime=current.runtime_status==="online" && node.traffic_budget?.blocked ? "limited" : current.runtime_status || "unknown";
+            const issues=(node.issues || []).filter((issue:string)=>issue!=="offline");
+            if(runtime==="offline" && !node.maintenance)issues.push("offline");
+            return {...node,...current,runtime_status:runtime,issues};
         });
     },[nodes,snapshot]);
     return {data,unavailable};
@@ -129,9 +135,12 @@ function NodesContent({
     const [managedLine, setManagedLine] = useState<Row | null>(null);
     const [creationMode, setCreationMode] = useState<"new" | "reuse">("new");
     const [defaultLine, setDefaultLine] = useState<Row | null>(null);
-    const [connectionNode, setConnectionNode] = useState<(Row & {_editorSection:"line"|"path"}) | null>(null);
+    const [connectionNode, setConnectionNode] = useState<Row | null>(null);
     const [nodeDirty, setNodeDirty] = useState(false);
     const [nodeBusy, setNodeBusy] = useState(false);
+    const [connectionDirty,setConnectionDirty]=useState(false),[connectionBusy,setConnectionBusy]=useState(false);
+    const [configurationVersion,setConfigurationVersion]=useState(0);
+    const reloadConfigurationSource=useRef<Row[] | null | undefined>(undefined);
     const [conversionOpen, setConversionOpen] = useState(false);
     const [savedNodeNotice, setSavedNodeNotice] = useState("");
     const [preflightShown, setPreflightShown] = useState(false);
@@ -197,8 +206,8 @@ function NodesContent({
         return () => window.removeEventListener("beforeunload", warn);
     }, [editing, nodeDirty]);
     function closeNode() {
-        if (nodeBusy) return;
-        if (nodeDirty && !window.confirm("节点配置尚未保存，确认放弃修改？"))
+        if (nodeBusy || connectionBusy) return;
+        if ((nodeDirty || connectionDirty) && !window.confirm("节点配置尚未保存，确认放弃修改？"))
             return;
         setEditing(null);
     }
@@ -223,7 +232,23 @@ function NodesContent({
         return counts;
     }, [d.data]);
     const associatedNodes=useMemo(()=>managedLine ? nodeRows.filter(n=>n.type===managedLine.type && Number(n.service_id || n.id)===Number(managedLine.service_id || managedLine.id)) : [],[nodeRows,managedLine]);
-    type EditSection = "line" | "path" | "service" | "deploy";
+    const currentManagedLine=managedLine ? nodeRows.find(n=>n.type===managedLine.type && Number(n.id)===Number(managedLine.id)):undefined;
+    const serviceChanged=!!editing?.id && !!currentManagedLine && Number(currentManagedLine.service_id || currentManagedLine.id)!==Number(editing.id);
+    const reloadConfiguration=()=>{reloadConfigurationSource.current=d.data;d.reload();topology.reload();};
+    useEffect(()=>{
+        if(!editing?.id || nodeDirty || nodeBusy || connectionBusy)return;
+        const line=rows(d.data).find(n=>n.type===managedLine?.type && n.id===managedLine?.id);
+        const owner=line ? Number(line.service_id || line.id):editing.id;
+        const current=rows(d.data).find(n=>n.type===editing.type && Number(n.id)===owner);
+        if(current && owner!==Number(editing.id)){
+            setManagedLine(line!);setType(current.type);setEditing(current);setConfigurationVersion(version=>version+1);
+            reloadConfigurationSource.current=undefined;return;
+        }
+        if(reloadConfigurationSource.current===undefined || d.data===reloadConfigurationSource.current)return;
+        if(current){setEditing(current);setConfigurationVersion(version=>version+1);}
+        reloadConfigurationSource.current=undefined;
+    },[d.data,nodeDirty,nodeBusy,connectionBusy,editing?.id,managedLine?.id,managedLine?.type]);
+    type EditSection = "line" | "service" | "deploy";
     function openSection(line: Row, section: EditSection) {
         const current=nodeRows.find(n=>n.type===line.type && Number(n.id)===Number(line.id));
         if(!current){setError("节点已变化，请重新加载节点列表");return;}
@@ -240,10 +265,9 @@ function NodesContent({
         setConnectionNode(null);
         setCredentialNode(null);
         setEditing(null);
+        setConnectionDirty(false);setConnectionBusy(false);reloadConfigurationSource.current=undefined;
         if (section === "line")
-            line.service_id ? setConnectionNode({...line,_editorSection:"line"}) : setDefaultLine(line);
-        else if (section === "path")
-            line.service_id ? setConnectionNode({...line,_editorSection:"path"}) : setCredentialNode({...service,_focusDomain:true,_editorSection:"path"});
+            line.service_id ? setConnectionNode(line) : setDefaultLine(line);
         else if (section === "service") {
             setType(service.type);
             setEditing(service);
@@ -265,8 +289,7 @@ function NodesContent({
                     disabled={busy || d.loading}
                     options={[
                         { value: "line", label: "节点信息" },
-                        { value: "path", label: "连接与域名" },
-                        { value: "service", label: "协议与证书" },
+                        { value: "service", label: "连接与协议" },
                         { value: "deploy", label: "部署与状态" },
                     ]}
                     onChange={(next) => {
@@ -364,7 +387,7 @@ function NodesContent({
                     className="node-runtime-indicator"
                     data-state={r.runtime_status || "unknown"}
                     aria-label={`${r.name}：${nodeRuntimeLabels[r.runtime_status] || nodeRuntimeLabels.unknown}，查看运行详情`}
-                    title={`${nodeRuntimeLabels[r.runtime_status] || nodeRuntimeLabels.unknown} · 最近通信：${date(Math.max(Number(r.last_check_at || 0), Number(r.last_push_at || 0)))}`}
+                    title={`${r.service_id ? "共用代理服务状态，不代表中转链路已验证 · " : ""}${nodeRuntimeLabels[r.runtime_status] || nodeRuntimeLabels.unknown} · 最近通信：${date(Math.max(Number(r.last_check_at || 0), Number(r.last_push_at || 0)))}`}
                     onClick={() => setDiagnosticNode(r)}
                 >
                     <span aria-hidden="true" />
@@ -534,7 +557,7 @@ function NodesContent({
                     }}
                 />
             )}
-            {tab==="nodes" && activity.unavailable && <p className="pad muted" role="status">在线人数与上报时间暂未更新，系统将自动重试。</p>}
+            {tab==="nodes" && activity.unavailable && <p className="pad muted" role="status">运行状态、在线人数与上报时间暂未更新，系统将自动重试。</p>}
             {savedNodeNotice && (
                 <p className="pad success-message" role="status">
                     {savedNodeNotice}
@@ -559,10 +582,10 @@ function NodesContent({
             {connectionNode && (
                 <NodeConnectionEditor
                     navigation={(busy, dirty) =>
-                        editorNavigation(connectionNode._editorSection, busy, dirty)
+                        editorNavigation("line", busy, dirty)
                     }
-                    view={connectionNode._editorSection}
-                    key={`${connectionNode.type}:${connectionNode.id || "new"}:${connectionNode._editorSection}`}
+                    view="line"
+                    key={`${connectionNode.type}:${connectionNode.id || "new"}`}
                     node={connectionNode}
                     nodes={nodeRows}
                     groups={rows(groups.data)}
@@ -573,7 +596,7 @@ function NodesContent({
             {tab === "forwarding" && (
                 <NodeForwarding
                     nodes={nodeRows}
-                    edit={(node) => openSection(node, "path")}
+                    edit={(node) => openSection(node, "service")}
                 />
             )}
             {tab === "nodes" && (
@@ -784,16 +807,14 @@ function NodesContent({
             )}
             {credentialNode && (
                 <NodeDeployment
-                    key={`${credentialNode.type}:${credentialNode.id}:${credentialNode._editorSection || "deploy"}`}
+                    key={`${credentialNode.type}:${credentialNode.id}:deploy`}
                     navigation={(busy, dirty) =>
-                        editorNavigation((credentialNode._editorSection === "path" || credentialNode._focusDomain) ? "path" : "deploy", busy, dirty)
+                        editorNavigation("deploy", busy, dirty)
                     }
                     editorName={managedLine?.name}
-                    openConnection={managedLine ? () => openSection(managedLine, "path") : undefined}
+                    openConnection={managedLine ? () => openSection(managedLine, "service") : undefined}
                     node={credentialNode}
-                    scope={
-                        (credentialNode._editorSection === "path" || credentialNode._focusDomain) ? "connection" : "service"
-                    }
+                    scope="service"
                     inspect={() => {
                         setDiagnosticNode(credentialNode);
                         setCredentialNode(null);
@@ -815,11 +836,20 @@ function NodesContent({
                     variant="drawer"
                     wide
                     className={`node-editor-dialog${editing.id ? "" : " node-editor-create"}`}
-                    dismissible={!nodeBusy}
+                    dismissible={!nodeBusy && !connectionBusy}
                     close={closeNode}
                 >
                     {editing.id &&
-                        editorNavigation("service", nodeBusy, nodeDirty)}
+                        editorNavigation("service", nodeBusy || connectionBusy, nodeDirty || connectionDirty)}
+                    {editing.id && type===editing.type && <section className="node-config-section" aria-label="连接与域名">
+                        <fieldset disabled={nodeBusy}>
+                            {managedLine?.service_id ? <NodeConnectionEditor key={`${managedLine.type}:${managedLine.id}`} embedded onPublished={reloadConfiguration} pauseRefresh={nodeDirty || nodeBusy} view="path" node={managedLine} nodes={nodeRows} groups={rows(groups.data)} close={()=>{}} onSaved={d.reload} onDirty={setConnectionDirty} onBusyChange={setConnectionBusy}/> :
+                                <NodeDomainBinding key={`${editing.type}:${editing.id}`} pauseRefresh={nodeDirty || nodeBusy} node={editing} onChanged={reloadConfiguration} onPublished={reloadConfiguration} onDirty={setConnectionDirty} onBusyChange={setConnectionBusy}/>}
+                        </fieldset>
+                    </section>}
+                    {serviceChanged && <div className="pad alert" role="alert">此节点的所属代理服务已变更，请重新载入后再保存协议配置。<button type="button" disabled={nodeBusy || connectionBusy} onClick={()=>{if((nodeDirty || connectionDirty) && !confirm("重新载入将放弃当前草稿，确认继续？"))return;if(managedLine)openSection(managedLine,"service");}}>重新载入所属服务</button></div>}
+                    <fieldset className="node-config-section" disabled={connectionBusy || serviceChanged}>
+                    {editing.id && <legend>协议与证书</legend>}
                     {!editing.id && (
                         <div className="pad node-creation-mode">
                             <details>
@@ -873,7 +903,7 @@ function NodesContent({
                                 onSaved={d.reload}
                                 onDirty={setNodeDirty}
                                 onBusyChange={setNodeBusy}
-                                onCreated={node=>{setNodeDirty(false);setEditing(null);setManagedLine(node);setConnectionNode({...node,_editorSection:"path"});}}
+                                onCreated={node=>{const service=serviceMap.get(`${node.type}:${node.service_id}`);setNodeDirty(false);setManagedLine(node);setConnectionNode(null);if(service){setType(service.type);setEditing(service);}else setEditing(null);}}
                             />
                         </State>
                     ) : (
@@ -915,12 +945,13 @@ function NodesContent({
                                             disabled={nodeBusy}
                                             onChange={(event) => {
                                                 if (
-                                                    nodeDirty &&
+                                                    (nodeDirty || connectionDirty) &&
                                                     !window.confirm(
                                                         "切换节点类型将重新载入已保存配置，未保存修改会丢失，是否继续？",
                                                     )
                                                 )
                                                     return;
+                                                setConnectionDirty(false);
                                                 setType(event.target.value);
                                                 setNodeDirty(true);
                                             }}
@@ -950,6 +981,7 @@ function NodesContent({
                                 </p>
                             )}
                             <State
+                                data={schema.data && groups.data && routes.data && topology.data ? true : null}
                                 loading={
                                     schema.loading ||
                                     groups.loading ||
@@ -970,7 +1002,7 @@ function NodesContent({
                                 }}
                             >
                                 <Editor
-                                    key={`${type}:${editing.id || "new"}`}
+                                    key={`${type}:${editing.id || "new"}:${configurationVersion}`}
                                     onDirty={() => setNodeDirty(true)}
                                     onBusyChange={setNodeBusy}
                                     submit={
@@ -1433,6 +1465,8 @@ function NodesContent({
                                             : {}),
                                     })}
                                     onSave={async (b) => {
+                                        if(serviceChanged)throw new Error("节点所属代理服务已变更，请重新载入后再保存。");
+                                        if(connectionBusy)throw new Error("连接与域名正在保存，请稍后再保存协议与证书。");
                                         if(editing.id && managedService && Number(b.tls)===1){b.disable_sni=0;}
                                         if (
                                             editing.id &&
@@ -1509,17 +1543,18 @@ function NodesContent({
                                             admin(`server/${type}/save`),
                                             clean,
                                         );
+                                        if(!converting && editing.id)reloadConfigurationSource.current=d.data;
                                         setNodeDirty(false);
                                         setSavedNodeNotice(
                                             clean.deployment_setup
                                                 ? "节点、服务器与域名已一并保存。请生成一键部署命令，在服务器执行。"
                                                 : "节点配置已保存。请检查节点最近通信和运行状态；协议、端口或内核变更可能需要同步部署配置。",
                                         );
-                                        setEditing(null);
+                                        setEditing(converting || !editing.id ? null : {...editing,...b});
                                         d.reload();
                                         if(!converting && editing.id && managedService && Number(b.server_port)!==Number(editing.server_port)){
-                                            setSavedNodeNotice("监听端口已保存。等待节点应用后，请验证并同步连接端口；复用线路需检查后重新发布。");
-                                            setCredentialNode({...editing,...b,type:editing.type,id:editing.id,_focusDomain:true});
+                                            setSavedNodeNotice("监听端口已保存。等待节点应用后将自动验证并同步连接端口；中转线路请确认转发配置。");
+                                            setEditing({...editing,...b,type:editing.type,id:editing.id});
                                         }
                                         if (converting || !editing.id) {
                                             const updated = await request<
@@ -1547,6 +1582,7 @@ function NodesContent({
                             </State>
                         </>
                     )}
+                    </fieldset>
                 </Modal>
             )}
         </>

@@ -422,7 +422,7 @@ export function NodeDeployment({
                                         disabled={busy}
                                         onClick={() => openConnection ? openConnection() : setTab("domain")}
                                     >
-                                        修改连接与域名
+                                        修改连接与协议
                                     </button>
                                 )}
                                 {stage.target === "upgrade" && (

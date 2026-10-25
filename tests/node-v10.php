@@ -639,6 +639,14 @@ try {
     $assert($deploymentCall($deployParams)->getStatusCode()===409,'Deployment refuses unfinished rotation');
     $bootstrap=$call('GET','/api/v10/public/node-deployment/bootstrap',[],['HTTP_AUTHORIZATION'=>'']);
     $assert($bootstrap->getStatusCode()===200 && str_starts_with($bootstrap->getContent(),'#!/bin/sh') && str_contains($bootstrap->getContent(),'ca-certificates curl bash jq unzip coreutils') && !str_contains($bootstrap->getContent(),'__NODE_PREREQUISITES__') && str_contains($bootstrap->getContent(),'--install'),'Public bootstrap is static shell, no credentials');
+    foreach([0,2] as $inactiveTls){
+        $inactive=clone $node->fresh();$inactive->tls=$inactiveTls;
+        $inactive->tls_settings=['cert_mode'=>'http','server_name'=>'old.invalid','dns_credential_id'=>999999999];
+        App\Services\NodeDeploymentWorkflow::validate($inactive);
+        $metadata=App\Services\NodeDeploymentWorkflow::issue($inactive,(string)$enrolled['credentialId'],['actor'=>$user->id,'actorProof'=>hash('sha256',(string)$user->password)])['deployment'];
+        $assert($metadata['tls']===$inactiveTls && $metadata['certificateMode']==='' && $metadata['certificateDomain']==='' && $metadata['certificateFile']==='','Non-TLS and Reality deployment ignore leftover certificate fields and inactive credentials');
+        $repo->forget('workflow:'.hash('sha256',$metadata['token']));
+    }
     $auth->removeAllSession();
     echo "PASS: $checks V10 node checks\n";
 } finally {

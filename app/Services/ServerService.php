@@ -153,6 +153,7 @@ class ServerService
             $result[]=['id'=>$server['id'],'type'=>$server['type'],'service_id'=>$server['service_id']??null,
                 'online'=>$stale || $online===null ? null : max(0,(int)$online), 'online_stale'=>$stale,
                 'last_check_at'=>$checked,'last_push_at'=>$pushed,
+                'runtime_status'=>NodeRuntimeService::connection($checked,$pushed,false),
                 'available_status'=>!$checked || $checked<=$now-300 ? 0 : ($stale?1:2)];
         }
         return $result;
@@ -161,7 +162,7 @@ class ServerService
     public function getNodeActivity(): array
     {
         // Briefly share results across administrators without caching service configuration.
-        return Cache::remember('ADMIN_NODE_ACTIVITY:v1',5,function(){
+        return Cache::remember('ADMIN_NODE_ACTIVITY:v2',5,function(){
             $nodes=\Illuminate\Support\Facades\DB::table('v2_server_v2node')->select('id','service_id')->selectRaw("'v2node' as type")
                 ->unionAll(\Illuminate\Support\Facades\DB::table('v2_server_v2box')->select('id','service_id')->selectRaw("'v2box' as type"))->get();
             return $this->activity($nodes->map(fn($node)=>(array)$node)->all());

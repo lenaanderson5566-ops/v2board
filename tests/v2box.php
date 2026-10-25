@@ -566,6 +566,16 @@ class WorkflowTests(unittest.TestCase):
                 with self.assertRaisesRegex(m.DeploymentError,'Deployment request rejected'):
                     m.json_request('https://panel.example.test',body={'action':'status'})
                 self.assertTrue(stream.closed)
+    def test_inactive_tls_ignores_leftover_http_certificate_settings(self):
+        for tls in (0,2):
+            self.deploy.flow['tls']=tls
+            self.deploy.flow['certificateDomain']='stale.example.test'
+            with patch.object(m.socket,'socket',side_effect=AssertionError('HTTP port must not be probed')):
+                m.Deployment.check_http_port(self.deploy)
+            self.deploy.progress=lambda action='status':{'dnsReady':True,'addresses':{'ipv4':'8.8.8.8'}}
+            with patch.object(m,'dns_matches',return_value=True) as dns:
+                self.assertFalse(m.Deployment.wait_dns(self.deploy))
+                dns.assert_called_once_with('node.example.test',{'ipv4':'8.8.8.8'})
     def test_port_conflict_never_starts_certificate_request(self):
         with patch.object(m.socket,'socket',side_effect=OSError(m.errno.EADDRINUSE,'in use')):
             with self.assertRaises(m.DeploymentError):m.Deployment.check_http_port(self.deploy)

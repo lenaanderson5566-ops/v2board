@@ -392,7 +392,7 @@ body[data-console="admin"] .node-creation-mode p {margin:10px 0 0;}
 .deployment-check-state.is-fail { color:var(--danger, #b91c1c); }
 
 /* Shared node-management hierarchy: navigation, saved endpoints, then task controls. */
-.node-workflow-navigation { display:grid !important; grid-template-columns:repeat(4,minmax(0,1fr)); gap:8px; border:0 !important; padding:0 !important; }
+.node-workflow-navigation { display:grid !important; grid-template-columns:repeat(3,minmax(0,1fr)); gap:8px; border:0 !important; padding:0 !important; }
 .node-workflow-navigation > button { display:flex; flex-direction:column; align-items:flex-start; gap:6px; padding:8px 12px !important; min-width:0; white-space:normal; border:1px solid var(--border) !important; border-radius:10px !important; text-align:left; }
 .node-workflow-navigation > button small { color:var(--muted); font-size:12px; font-weight:400; }
 .node-workflow-navigation > button[aria-pressed="true"] { border-color:var(--primary,#6757ff) !important; background:var(--bg-soft,#f8fafc); }
@@ -412,7 +412,7 @@ body[data-console="admin"] .node-creation-mode p {margin:10px 0 0;}
 .server-config-form > fieldset { border-top:1px solid var(--border); padding-top:20px; margin-top:8px; }
 .server-management-sections > h3 { padding-top:20px; border-top:1px solid var(--border); }
 @media(max-width:720px) {
-    .node-workflow-navigation { grid-template-columns:repeat(2,minmax(0,1fr)); }
+    .node-workflow-navigation { grid-template-columns:repeat(3,minmax(0,1fr)); }
     .node-address-summary dl { grid-template-columns:minmax(0,1fr); }
     .node-address-summary dl > div + div { border-top:1px solid var(--border); padding-top:12px; }
     .node-management-jumps > button { flex:1 1 40%; }
@@ -440,6 +440,12 @@ body[data-console="admin"] .node-editor-dialog .admin-command-input { width:100%
 body[data-console="admin"] .node-editor-dialog .form-bottom { gap:12px; border-top:1px solid var(--border); padding-top:16px; margin-top:24px; }
 @media(max-width:600px) {
  body[data-console="admin"] .node-editor-dialog .node-editor-navigation { padding:12px 16px; }
- body[data-console="admin"] .node-editor-dialog .node-workflow-navigation { grid-template-columns:repeat(2,minmax(0,1fr)); }
+ body[data-console="admin"] .node-editor-dialog .node-workflow-navigation { grid-template-columns:repeat(3,minmax(0,1fr)); }
  body[data-console="admin"] .node-editor-dialog .admin-deployment-card > button { min-height:44px; }
 }
+
+.node-config-section {min-width:0;border:0;margin:0;padding:0;}
+section.node-config-section {padding:16px 24px;}
+.node-config-section > fieldset {min-width:0;border:0;margin:0;padding:0;}
+.node-config-section > legend {font-weight:600;padding:16px 24px 0;}
+@media(max-width:600px){section.node-config-section {padding:12px 16px;}.node-config-section > legend {padding:12px 16px 0;}}

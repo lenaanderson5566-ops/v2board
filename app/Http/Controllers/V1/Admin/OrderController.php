@@ -73,15 +73,11 @@ class OrderController extends Controller
         $res = $orderModel->forPage($current, $pageSize)
             ->get();
         \App\Services\AdminUserIdentity::append($res);
-        $plan = Plan::get();
+        $plans = Plan::whereIn('id', $res->pluck('plan_id')->filter())->pluck('name', 'id');
         $payments = \App\Models\Payment::whereIn('id', $res->pluck('payment_id')->filter())->get()->keyBy('id');
         for ($i = 0; $i < count($res); $i++) {
             $res[$i]['payment_display'] = \App\Services\OrderPaymentHistory::display($res[$i], $payments->get($res[$i]->payment_id));
-            for ($k = 0; $k < count($plan); $k++) {
-                if ($plan[$k]['id'] == $res[$i]['plan_id']) {
-                    $res[$i]['plan_name'] = $plan[$k]['name'];
-                }
-            }
+            if ($plans->has($res[$i]['plan_id'])) $res[$i]['plan_name'] = $plans->get($res[$i]['plan_id']);
         }
         return response([
             'data' => $res,

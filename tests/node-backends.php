@@ -42,6 +42,12 @@ try{
     $manage=new App\Http\Controllers\V1\Admin\Server\ManageController();
     $manage->sort(Request::create('/','POST',['v2node'=>[$node->id=>2],'v2box'=>[$box->id=>1]]));
     $assert((int)$node->fresh()->sort===2 && (int)$box->fresh()->sort===1,'Sorting both types works');
+    DB::enableQueryLog(); DB::flushQueryLog();
+    $groups=json_decode((new App\Http\Controllers\V1\Admin\Server\GroupController())->fetch(Request::create('/','GET'))->getContent(),true)['data'];
+    $queries=DB::getQueryLog(); DB::disableQueryLog();
+    $listed=collect($groups)->firstWhere('id',$group->id);
+    $assert($listed['server_count']===2,'Group counts include both backends');
+    $assert(count(array_filter($queries,fn($q)=>str_contains($q['query'],'v2_user')))===1 && count($queries)===4,'Group listing uses a fixed set of aggregate/projection queries');
     try{(new App\Http\Controllers\V1\Admin\Server\GroupController())->drop(Request::create('/','POST',['id'=>$group->id]));throw new RuntimeException('In-use group deleted');}
     catch(Symfony\Component\HttpKernel\Exception\HttpException $e){$assert($e->getMessage()==='该组已被节点所使用，无法删除','Active backend group protected');}
     foreach(['shadowsocks','v2node','v2box'] as $type) App\Models\StatServer::create(['server_id'=>($type==='v2box'?$box->id:$node->id),'server_type'=>$type,'u'=>1024,'d'=>2048,'record_type'=>'d','record_at'=>strtotime(date('Y-m-d'))]);

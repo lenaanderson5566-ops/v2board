@@ -7,7 +7,6 @@ use App\Http\Requests\Admin\KnowledgeSave;
 use App\Http\Requests\Admin\KnowledgeSort;
 use App\Models\Knowledge;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
 
 class KnowledgeController extends Controller
 {
@@ -30,7 +29,7 @@ class KnowledgeController extends Controller
     public function getCategory(Request $request)
     {
         return response([
-            'data' => array_keys(Knowledge::get()->groupBy('category')->toArray())
+            'data' => Knowledge::query()->distinct()->pluck('category')->all()
         ]);
     }
 
@@ -76,18 +75,7 @@ class KnowledgeController extends Controller
 
     public function sort(KnowledgeSort $request)
     {
-        DB::beginTransaction();
-        try {
-            foreach ($request->input('knowledge_ids') as $k => $v) {
-                $knowledge = Knowledge::find($v);
-                $knowledge->timestamps = false;
-                $knowledge->update(['sort' => $k + 1]);
-            }
-        } catch (\Exception $e) {
-            DB::rollBack();
-            abort(500, '保存失败');
-        }
-        DB::commit();
+        \App\Services\AdminSortOrder::apply(Knowledge::class, $request->input('knowledge_ids'), false);
         return response([
             'data' => true
         ]);

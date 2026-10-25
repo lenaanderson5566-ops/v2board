@@ -991,3 +991,10 @@ Node UI tests assert that overview count cards and manual inspection buttons are
 异常恢复补测继续复用既有生命周期模块，覆盖更新脚本缺失、卸载缺失上报组件的 systemd 停用回退、非交互卸载确认、错误 JSON 响应及过期授权的下一步提示。
 
 V2Box v1.0.10 发布验证：节点脚本 45 项、部署 Python 55 项、启用 shell 夹具的 V2Box 集成 81 项、V10 节点 309 项、升级脚本 26 个隔离场景及后台命令显示 90 项通过；前端重新构建。测试使用一次性数据库，未访问生产 Cloudflare 或 ACME。
+
+后台代码审查复用 console-smoke、backend-security、audit-security-regression、api-route-audit、browser-session、admin-user-activity-columns、node-backends：覆盖缺失/重复排序记录的完整回滚及事务释放、权限组输入与固定查询数、用户部分编辑保留权限、邀请人有效性、数组字段拒绝、配置原子替换失败保留与权限、批量在线缓存读取及损坏缓存容错。排序复用 AdminSortOrder，移除三处重复事务代码和无用导入；保留仍被路由和外部节点调用的兼容逻辑。
+依赖审查升级 DOMPurify 至 3.4.17、测试工具链 undici 至 7.30.1，并重新构建前端；npm 全依赖及 Composer 生产依赖审计未报告已知漏洞。测试项目排除 .env、站点配置和 bootstrap 缓存，使用独立临时数据库账号与干净测试配置。
+
+后台审查验证结果：451 个应用 PHP 文件语法通过，392 条路由的 2886 项路由/权限断言通过；backend-security 102 项、audit-security-regression 60 项、browser-session 544 项、node-backends 838 项及用户活动/分页测试通过。控制台节点编辑回归改用当前连接地址和默认线路 PATCH 接口，保持真实保存断言。
+控制台完整操作回归最终 242 项通过，包含配置替换失败模拟、三类排序回滚、用户权限保留、节点当前编辑接口和页面渲染。
+后台审查发布前再次执行 tests/update-script.sh，26 个隔离升级场景全部通过；本轮不新增数据库迁移，生产前端资源随提交发布。

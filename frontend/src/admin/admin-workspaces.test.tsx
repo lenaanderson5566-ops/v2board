@@ -770,3 +770,11 @@ it("provides peer infrastructure workspaces with bookmarkable task tabs", () => 
     expect(adminWorkspace("server-traffic")).toBeUndefined();
     expect(adminWorkspace("server-lightsail")?.root).toBe("servers");
 });
+
+it("keeps Telegram settings usable when member records are absent", async () => {
+    const { AdminTelegramCommunity } = await import("./AdminTelegramCommunity");
+    api.request.mockResolvedValue({data:{enabled:false}});
+    render(<AdminTelegramCommunity disabled={false}/>);
+    expect(await screen.findByRole("table")).toBeTruthy();
+    expect(screen.getByRole("button",{name:"加入资格检查队列"})).toBeTruthy();
+});

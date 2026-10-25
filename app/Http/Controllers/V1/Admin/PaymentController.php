@@ -7,9 +7,7 @@ use App\Models\Payment;
 use App\Services\PaymentService;
 use App\Utils\Helper;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
 
-use function PHPUnit\Framework\stringContains;
 
 class PaymentController extends Controller
 {
@@ -72,9 +70,9 @@ class PaymentController extends Controller
         }
         $params = $request->validate([
             'currency' => 'sometimes|required|in:CNY,USD',
-            'name' => 'required',
+            'name' => 'required|string|max:255',
             'icon' => 'nullable',
-            'payment' => ['required', 'string', \Illuminate\Validation\Rule::notIn(PaymentService::RETIRED_METHODS)],
+            'payment' => ['required', 'string', \Illuminate\Validation\Rule::in(array_map(fn($file)=>pathinfo($file, PATHINFO_FILENAME), glob(app_path('Payments/*.php')))), \Illuminate\Validation\Rule::notIn(PaymentService::RETIRED_METHODS)],
             'config' => 'required|array',
             'notify_domain' => 'nullable|url',
             'handling_fee_fixed' => 'nullable|integer|min:0',
@@ -97,7 +95,7 @@ class PaymentController extends Controller
             try {
                 $payment->update($params);
             } catch (\Exception $e) {
-                abort(500, $e->getMessage());
+                abort(500, '保存失败');
             }
             return response([
                 'data' => true
@@ -125,19 +123,13 @@ class PaymentController extends Controller
     public function sort(Request $request)
     {
         $request->validate([
-            'ids' => 'required|array'
+            'ids' => 'required|array|max:1000',
+            'ids.*' => 'required|integer|min:1|distinct'
         ], [
             'ids.required' => '参数有误',
             'ids.array' => '参数有误'
         ]);
-        DB::beginTransaction();
-        foreach ($request->input('ids') as $k => $v) {
-            if (!Payment::find($v)->update(['sort' => $k + 1])) {
-                DB::rollBack();
-                abort(500, '保存失败');
-            }
-        }
-        DB::commit();
+        \App\Services\AdminSortOrder::apply(Payment::class, $request->input('ids'), true);
         return response([
             'data' => true
         ]);

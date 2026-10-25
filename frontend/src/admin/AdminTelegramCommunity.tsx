@@ -97,7 +97,7 @@ export function AdminTelegramCommunity({ disabled }: { disabled: boolean }) {
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    {d.data.members.map((m: any) => (
+                                    {(d.data.members || []).map((m: any) => (
                                         <tr key={m.telegram_id}>
                                             <td>{m.telegram_id}</td>
                                             <td>{m.status}</td>

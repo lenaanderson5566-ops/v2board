@@ -54,8 +54,8 @@ class UserController extends Controller
 
     public function resetSecret(Request $request)
     {
-        $user = User::find($request->input('id'));
-        if (!$user) abort(500, '用户不存在');
+        $request->validate(['id'=>'required|integer|min:1']);
+        $user = User::findOrFail($request->input('id'));
         $user->token = Helper::guid();
         $user->uuid = Helper::guid(true);
         return response([
@@ -94,22 +94,21 @@ class UserController extends Controller
             $row['last_subscribe_at'] = (int) $lastSubscriptions->get($row->id) ?: null;
             $row['last_connected_at'] = max((int) $row->t, (int) $lastConnections->get($row->id)) ?: null;
         }
-        $plan = Plan::get();
+        $plans = Plan::whereIn('id', $res->pluck('plan_id')->filter())->pluck('name', 'id');
+        $aliveKeys = $res->map(fn($user)=>'ALIVE_IP_USER_'.$user->id)->all();
+        $alive = $aliveKeys ? Cache::many($aliveKeys) : [];
         for ($i = 0; $i < count($res); $i++) {
-            for ($k = 0; $k < count($plan); $k++) {
-                if ($plan[$k]['id'] == $res[$i]['plan_id']) {
-                    $res[$i]['plan_name'] = $plan[$k]['name'];
-                }
-            }
+            if ($plans->has($res[$i]['plan_id'])) $res[$i]['plan_name'] = $plans->get($res[$i]['plan_id']);
             //统计在线设备
             $countalive = 0;
             $ips = [];
-            $ips_array = Cache::get('ALIVE_IP_USER_'. $res[$i]['id']);
-            if ($ips_array) {
-                $countalive = $ips_array['alive_ip'];
+            $ips_array = $alive['ALIVE_IP_USER_'.$res[$i]['id']] ?? null;
+            if (is_array($ips_array)) {
+                $countalive = max(0, (int)($ips_array['alive_ip'] ?? 0));
                 foreach($ips_array as $nodetypeid => $data) {
-                    if (!is_int($data) && isset($data['aliveips'])) {
+                    if (is_array($data) && isset($data['aliveips']) && is_array($data['aliveips'])) {
                         foreach($data['aliveips'] as $ip_NodeId) {
+                            if (!is_string($ip_NodeId)) continue;
                             $ip = explode("_", $ip_NodeId)[0];
                             $ips[] = $ip . '_' . $nodetypeid;
                         }
@@ -158,24 +157,24 @@ class UserController extends Controller
         } else {
             unset($params['password']);
         }
-        if (isset($params['plan_id'])) {
+        if (array_key_exists('plan_id', $params) && $params['plan_id'] !== null) {
             $plan = Plan::find($params['plan_id']);
             if (!$plan) {
                 abort(500, '订阅计划不存在');
             }
             $params['group_id'] = $plan->group_id;
-        } else {
+        } elseif (array_key_exists('plan_id', $params)) {
             $params['group_id'] = null;
         }
         if ($request->has('invite_user_email') && $request->input('invite_user_email')) {
             $inviteUser = User::where('email', $request->input('invite_user_email'))->first();
-            if ($inviteUser) {
-                $params['invite_user_id'] = $inviteUser->id;
-            }
+            abort_unless($inviteUser && (int)$inviteUser->id !== (int)$user->id, 422, '请选择有效的其他用户作为邀请人');
+            $params['invite_user_id'] = $inviteUser->id;
         } elseif ($request->has('invite_user_email')) {
             $params['invite_user_id'] = null;
         }
 
+        unset($params['id'], $params['invite_user_email']);
         $revoke = isset($params['password']) || $user->email !== $params['email']
             || (int)($params['banned'] ?? 0) === 1;
 

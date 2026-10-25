@@ -26,6 +26,15 @@ foreach (['month_price','quarter_price','half_year_price','year_price','two_year
         $assert($valid===($price!==-1),'Admin price validation: '.$field.' '.var_export($price,true));
     }
 }
+$orderRules=(new App\Http\Requests\Admin\OrderFetch())->rules();
+foreach ([[['key'=>'status','condition'=>'=','value'=>[1,2]]],array_fill(0,21,['key'=>'status','condition'=>'=','value'=>1]),[['key'=>'status','condition'=>'=','value'=>str_repeat('x',501)]], 'invalid'] as $filters) {
+    $assert(validator(['filter'=>$filters],$orderRules)->fails(),'Order filters reject oversized and nonscalar input');
+}
+$assert(validator(['filter'=>[['key'=>'invite_user_id','condition'=>'=','value'=>null]]],$orderRules)->passes(),'Order filters preserve explicit null matching');
+foreach (['name'=>['bad'],'group_id'=>['bad'],'transfer_enable'=>['bad'],'content'=>['bad']] as $field=>$value) {
+    $assert(validator([$field=>$value],[$field=>$rules[$field]])->fails(),'Plan fields reject arrays: '.$field);
+}
+$assert(validator(['transfer_enable'=>-1],['transfer_enable'=>$rules['transfer_enable']])->fails(),'Plan quota cannot be negative');
 // Legacy failures must remain safe regardless of Accept or APP_DEBUG.
 config(['app.debug'=>true]);
 foreach (['application/json','text/html'] as $accept) {

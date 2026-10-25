@@ -9,8 +9,8 @@ $securePath = config('v2board.secure_path', config('v2board.frontend_admin_path'
 $opsPath = config('v2board.ops_api_path', 'ops');
 $checks = 0;
 $assert = \Tests\Support\Assertions::counter($checks);
-$call = function (string $path, ?array $body = null, ?string $token = null, ?string $language = null, string $accept = 'application/json') use ($kernel) {
-    $request = Illuminate\Http\Request::create($path, $body === null ? 'GET' : 'POST', $body ?? []);
+$call = function (string $path, ?array $body = null, ?string $token = null, ?string $language = null, string $accept = 'application/json', ?string $method = null) use ($kernel) {
+    $request = Illuminate\Http\Request::create($path, $method ?? ($body === null ? 'GET' : 'POST'), $body ?? []);
     $request->headers->set('Accept', $accept);
     if ($token) $request->headers->set('Authorization', $token);
     if ($language) $request->headers->set('Content-Language', $language);
@@ -68,6 +68,15 @@ try {
     $assert($response->getStatusCode() === 200 && $subject->refresh()->invite_user_id === null, 'Explicit inviter removal failed');
     $response = $call('/api/v1/' . $securePath . '/user/update', $editUser + ['invite_user_email' => $user->email], $token);
     $assert($response->getStatusCode() === 200 && $subject->refresh()->invite_user_id == $user->id, 'Inviter email assignment failed');
+    $originalGroup=$subject->group_id;
+    $subject->group_id=98765;$subject->save();
+    $response=$call('/api/v1/'.$securePath.'/user/update',$editUser,$token);
+    $assert($response->getStatusCode()===200 && $subject->fresh()->group_id===98765,'Unrelated edits preserve access group without an explicit plan change');
+    foreach ([$subject->email,'missing-inviter@example.invalid'] as $email) {
+        $response=$call('/api/v1/'.$securePath.'/user/update',$editUser+['invite_user_email'=>$email],$token);
+        $assert($response->getStatusCode()===422 && $subject->fresh()->invite_user_id===$user->id,'Invalid inviter edits preserve the current inviter');
+    }
+    $subject->group_id=$originalGroup;$subject->save();
     // Disposable users and orders remain inside the surrounding rollback transaction.
     $scope = [['key' => 'id', 'condition' => '=', 'value' => $subject->id]];
     $subject->device_limit = 7;
@@ -165,12 +174,19 @@ try {
     $updated['host'] = 'updated.example.invalid';
     $response = $call('/api/v1/' . $securePath . '/server/v2node/save', $updated, $token);
     $assert($response->getStatusCode() === 200, 'Updated address and location save failed');
+    $assert($node->fresh()->host==='example.invalid','Protocol editing preserves the independent connection address');
+    $address=json_decode($call('/api/v1/'.$securePath.'/server/connections/address?type=v2node&id='.$node->id,null,$token)->getContent(),true)['data'];
+    $response=$call('/api/v1/'.$securePath.'/server/connections/address',['type'=>'v2node','id'=>$node->id,'revision'=>$address['revision'],'host'=>'updated.example.invalid','port'=>'443','confirm'=>true],$token,null,'application/json','PATCH');
+    $assert($response->getStatusCode()===200 && $node->fresh()->host==='updated.example.invalid','Dedicated address editing persists the connection address');
+    $line=json_decode($call('/api/v1/'.$securePath.'/server/connections/default?type=v2node&id='.$node->id,null,$token)->getContent(),true)['data'];
+    $values=array_merge($line['values'],['type'=>'v2node','id'=>$node->id,'revision'=>$line['revision'],'region_code'=>'us','city_code'=>'San Jose','display_label'=>'A']);
+    $response=$call('/api/v1/'.$securePath.'/server/connections/default',$values,$token,null,'application/json','PATCH');
     $node->refresh();
-    $assert($node->host === 'updated.example.invalid' && $node->region_code === 'US' && $node->city_code === 'san-jose' && $node->display_label === 'A', 'Successful response must persist address and normalized location');
-    $updated['city_code'] = 'California';
-    $response = $call('/api/v1/' . $securePath . '/server/v2node/save', $updated, $token);
-    $node->refresh();
-    $assert($response->getStatusCode() === 200 && $node->city_code === 'california', 'State name normalizes and persists');
+    $assert($response->getStatusCode()===200 && $node->region_code==='US' && $node->city_code==='san-jose' && $node->display_label==='A','Line editing persists normalized location independently');
+    $values['revision']=json_decode($response->getContent(),true)['data']['revision'];
+    $values['city_code']='California';
+    $response=$call('/api/v1/'.$securePath.'/server/connections/default',$values,$token,null,'application/json','PATCH');
+    $assert($response->getStatusCode()===200 && $node->fresh()->city_code==='california','Line location normalization persists');
     $nodeVariants = [
         'vmess' => ['tls' => 1, 'network' => 'ws'],
         'vless' => ['tls' => 1, 'network' => 'tcp'],
@@ -206,7 +222,17 @@ try {
     $payment = App\Models\Payment::where('name', 'console-smoke-payment')->first();
     $response = $call('/api/v1/' . $securePath . '/payment/getPaymentForm', ['payment' => 'Paytaro', 'id' => $payment->id], $token);
     $assert((json_decode($response->getContent(), true)['data']['key']['value'] ?? '') === 'test-only', 'Saved gateway value did not reload');
+    $configMode=fileperms($configPath)&0777;
     $response = $call('/api/v1/' . $securePath . '/config/save', ['show_subscribe_expire' => 0], $token);
+    $assert((fileperms($configPath)&0777)===$configMode,'Atomic configuration save preserves permissions');
+    $beforeFailure=file_get_contents($configPath);
+    $writer=Illuminate\Support\Facades\File::getFacadeRoot();
+    Illuminate\Support\Facades\File::partialMock()->shouldReceive('replace')->once()->andThrow(new RuntimeException('simulated storage failure'));
+    try {
+        $failedSave=$call('/api/v1/'.$securePath.'/config/save',['show_subscribe_expire'=>1],$token);
+        $assert($failedSave->getStatusCode()===500 && file_get_contents($configPath)===$beforeFailure,'Failed configuration replacement preserves the last valid file');
+    } finally { Illuminate\Support\Facades\File::swap($writer); }
+
     $assert($response->getStatusCode() === 422, 'Zero subscription interval should be rejected');
     $nodeParams['id'] = $node->id;
     $nodeParams['tls'] = 2;
@@ -261,8 +287,25 @@ try {
     $assert($response->getStatusCode() === 200 && $notice->refresh()->show == 1, 'Notice visibility failed');
     $response = $call('/api/v1/' . $securePath . '/notice/drop', ['id' => $notice->id], $token);
     $assert($response->getStatusCode() === 200 && !App\Models\Notice::find($notice->id), 'Notice deletion failed');
+    // Invalid management input must not mutate records or leak an open transaction.
+    foreach (['save','drop'] as $operation) {
+        $invalid=$call('/api/v1/'.$securePath.'/server/group/'.$operation,[], $token);
+        $assert($invalid->getStatusCode()===422,'Missing group input is a validation error');
+    }
+    $invalid=$call('/api/v1/'.$securePath.'/server/group/save',['id'=>2147483647,'name'=>'missing'],$token);
+    $assert($invalid->getStatusCode()===404,'Missing group edit is not a null-object failure');
+    $assert($call('/api/v1/'.$securePath.'/plan/drop',[],$token)->getStatusCode()===422,'Missing plan delete ID is rejected');
+    $invalid=$call('/api/v1/'.$securePath.'/payment/save',['name'=>'invalid','payment'=>'UnknownProvider','config'=>['key'=>'fixture']],$token);
+    $assert($invalid->getStatusCode()===422,'Unknown payment implementation cannot be saved');
     // Whole-console button regression: temporary records only, no external delivery.
     $plan2 = App\Models\Plan::create(['name' => 'console-sort-plan', 'group_id' => $group->id, 'transfer_enable' => 5, 'month_price' => 500]);
+    $beforeSort = $plan2->fresh()->sort;
+    $beforeLevel = Illuminate\Support\Facades\DB::transactionLevel();
+    foreach ([[$plan2->id,2147483647],[$plan2->id,$plan2->id],['bad-id']] as $ids) {
+        $invalid = $call('/api/v1/'.$securePath.'/plan/sort', ['plan_ids'=>$ids], $token);
+        $assert($invalid->getStatusCode()===422 && $plan2->fresh()->sort===$beforeSort, 'Invalid plan/sort preserves the entire previous order');
+        $assert(Illuminate\Support\Facades\DB::transactionLevel()===$beforeLevel, 'Invalid plan/sort releases its transaction');
+    }
     $response = $call('/api/v1/' . $securePath . '/plan/sort', ['plan_ids' => [$plan2->id, $plan->id]], $token);
     $assert($response->getStatusCode() === 200 && $plan2->refresh()->sort == 1 && $plan->refresh()->sort == 2, 'Plan order did not persist');
     foreach (['show', 'renew'] as $field) {
@@ -277,6 +320,13 @@ try {
     $response = $call('/api/v1/' . $securePath . '/plan/save', ['id' => $plan2->id, 'name' => $plan2->name, 'group_id' => $group->id, 'transfer_enable' => 9, 'device_limit' => 3, 'speed_limit' => 50, 'force_update' => 1], $token);
     $assert($response->getStatusCode() === 200 && $subscriber->refresh()->transfer_enable == 9 * 1073741824 && $subscriber->device_limit == 3 && $subscriber->speed_limit == 50, 'Force-update subscribers failed');
     $payment2 = App\Models\Payment::create(['name' => 'console-sort-payment', 'payment' => 'Paytaro', 'uuid' => App\Utils\Helper::guid(), 'config' => [], 'enable' => 0]);
+    $beforeSort = $payment2->fresh()->sort;
+    $beforeLevel = Illuminate\Support\Facades\DB::transactionLevel();
+    foreach ([[$payment2->id,2147483647],[$payment2->id,$payment2->id],['bad-id']] as $ids) {
+        $invalid = $call('/api/v1/'.$securePath.'/payment/sort', ['ids'=>$ids], $token);
+        $assert($invalid->getStatusCode()===422 && $payment2->fresh()->sort===$beforeSort, 'Invalid payment/sort preserves the entire previous order');
+        $assert(Illuminate\Support\Facades\DB::transactionLevel()===$beforeLevel, 'Invalid payment/sort releases its transaction');
+    }
     $response = $call('/api/v1/' . $securePath . '/payment/sort', ['ids' => [$payment2->id, $payment->id]], $token);
     $assert($response->getStatusCode() === 200 && $payment2->refresh()->sort == 1 && $payment->refresh()->sort == 2, 'Payment order failed');
     $response = $call('/api/v1/' . $securePath . '/payment/show', ['id' => $payment2->id], $token);
@@ -309,6 +359,13 @@ try {
     $assert($response->getStatusCode() === 200 && $payload['body'] === '<p>complete body</p>' && $payload['language'] === 'ja-JP', 'Knowledge edit detail lost body/language');
     $response = $call('/api/v1/' . $securePath . '/knowledge/getCategory', null, $token);
     $assert(in_array('console-category', json_decode($response->getContent(), true)['data']), 'Knowledge category suggestions missing');
+    $beforeSort = $knowledge[1]->fresh()->sort;
+    $beforeLevel = Illuminate\Support\Facades\DB::transactionLevel();
+    foreach ([[$knowledge[1]->id,2147483647],[$knowledge[1]->id,$knowledge[1]->id],['bad-id']] as $ids) {
+        $invalid = $call('/api/v1/'.$securePath.'/knowledge/sort', ['knowledge_ids'=>$ids], $token);
+        $assert($invalid->getStatusCode()===422 && $knowledge[1]->fresh()->sort===$beforeSort, 'Invalid knowledge/sort preserves the entire previous order');
+        $assert(Illuminate\Support\Facades\DB::transactionLevel()===$beforeLevel, 'Invalid knowledge/sort releases its transaction');
+    }
     $response = $call('/api/v1/' . $securePath . '/knowledge/sort', ['knowledge_ids' => [$knowledge[1]->id, $knowledge[0]->id]], $token);
     $assert($response->getStatusCode() === 200 && $knowledge[1]->refresh()->sort == 1 && $knowledge[0]->refresh()->sort == 2, 'Knowledge ordering failed');
     $response = $call('/api/v1/' . $securePath . '/knowledge/show', ['id' => $knowledge[0]->id], $token);

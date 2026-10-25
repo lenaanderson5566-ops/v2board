@@ -14,7 +14,8 @@ class PlanSort extends FormRequest
     public function rules()
     {
         return [
-            'plan_ids' => 'required|array'
+            'plan_ids' => 'required|array|max:1000',
+            'plan_ids.*' => 'required|integer|min:1|distinct'
         ];
     }
 

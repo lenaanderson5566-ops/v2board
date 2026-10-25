@@ -324,10 +324,6 @@ class ConfigController extends Controller
             unset($config[$legacyKey]);
         }
         foreach (ConfigSave::allRules() as $k => $v) {
-            if (!in_array($k, array_keys(ConfigSave::allRules()))) {
-                unset($config[$k]);
-                continue;
-            }
             if (array_key_exists($k, $data)) {
                 $config[$k] = $data[$k];
             }
@@ -335,7 +331,11 @@ class ConfigController extends Controller
         foreach (['email_password_encrypted','email_announcement_password_encrypted'] as $flag) if (isset($data[$flag])) $config[$flag]=$data[$flag];
         if (isset($data['fastai_entrypoints'])) $config['fastai_entrypoints_version'] = max((int)($config['fastai_entrypoints_version'] ?? 1)+1,(int)floor(microtime(true)*1000));
         $data = var_export($config, 1);
-        if (!File::put(base_path() . '/config/v2board.php', "<?php\n return $data ;")) {
+        $configPath = base_path('config/v2board.php');
+        $mode = is_file($configPath) ? fileperms($configPath) & 0777 : 0640;
+        try {
+            File::replace($configPath, "<?php\n return $data ;", $mode);
+        } catch (\Throwable $error) {
             abort(500, '修改失败');
         }
         if (function_exists('opcache_get_status') && opcache_get_status(false) !== false) {

@@ -14,8 +14,10 @@ class UserUpdate extends FormRequest
     public function rules()
     {
         return [
+            'id' => 'required|integer|min:1',
+            'invite_user_email' => 'nullable|email:rfc|max:254',
             'email' => 'required|email:strict',
-            'password' => 'nullable|min:8',
+            'password' => 'nullable|string|min:8|max:1024',
             'transfer_enable' => 'numeric',
             'device_limit' => 'nullable|integer',
             'expired_at' => 'nullable|integer',

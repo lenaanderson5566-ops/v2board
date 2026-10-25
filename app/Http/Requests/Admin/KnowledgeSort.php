@@ -14,7 +14,8 @@ class KnowledgeSort extends FormRequest
     public function rules()
     {
         return [
-            'knowledge_ids' => 'required|array'
+            'knowledge_ids' => 'required|array|max:1000',
+            'knowledge_ids.*' => 'required|integer|min:1|distinct'
         ];
     }
 

@@ -15,6 +15,11 @@ class ManageController extends Controller
         return response(['data' => (new ServerService())->getAllServers()]);
     }
 
+    public function activity()
+    {
+        return response()->json(['data'=>(new ServerService())->getNodeActivity()],200,['Cache-Control'=>'private, no-store']);
+    }
+
     public function runtime(Request $request)
     {
         $input = $request->validate(['type' => 'required|in:v2node,v2box', 'id' => 'required|integer|min:1']);

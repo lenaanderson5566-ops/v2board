@@ -228,10 +228,11 @@ it("saves a root and prefix without prematurely activating a node address", asyn
         />,
     );
     await screen.findByText("待启用：hk.example.com");
+    fireEvent.click(screen.getByText("修改域名设置"));
+    await waitFor(()=>expect(screen.getByLabelText("子域名前缀")).toHaveProperty("value","hk"));
     fireEvent.change(screen.getByLabelText("子域名前缀"), {
         target: { value: "jp-01" },
     });
-    fireEvent.click(screen.getByText("修改域名设置"));
     fireEvent.click(screen.getByRole("button", { name: "保存域名" }));
     await waitFor(() =>
         expect(api.request).toHaveBeenCalledWith(

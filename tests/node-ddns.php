@@ -881,5 +881,38 @@ try {
     DB::table('v2_node_ddns')->whereIn('id',[$entryId,$originId])->delete();
     $checkNode->delete();
 
+    // Runtime counters share the physical service identity, never the connection ID.
+    $activityService=new App\Services\ServerService();$cache=Illuminate\Support\Facades\Cache::class;
+    $activityNodes=[['id'=>90001,'type'=>'v2box','service_id'=>null],['id'=>90002,'type'=>'v2box','service_id'=>90001],
+        ['id'=>90003,'type'=>'v2box','service_id'=>90001],['id'=>90001,'type'=>'v2node','service_id'=>null],
+        ['id'=>90004,'type'=>'v2box','service_id'=>90099]];
+    foreach (['v2box'=>7,'v2node'=>0] as $backend=>$count) {
+        $cache::put(App\Utils\CacheKey::get('SERVER_'.strtoupper($backend).'_ONLINE_USER',90001),$count,3600);
+        $cache::put(App\Utils\CacheKey::get('SERVER_'.strtoupper($backend).'_LAST_PUSH_AT',90001),time(),3600);
+        $cache::put(App\Utils\CacheKey::get('SERVER_'.strtoupper($backend).'_LAST_CHECK_AT',90001),time(),3600);
+    }
+    $cache::put(App\Utils\CacheKey::get('SERVER_V2BOX_ONLINE_USER',90002),999,3600);
+    $activity=$activityService->activity($activityNodes);
+    $assert($activity[0]['online']===7 && $activity[1]['online']===7 && $activity[2]['online']===7,'all shared lines read service counter, not their own cache or a sum');
+    $assert($activity[3]['online']===0,'zero online is preserved and matching IDs on different backends remain isolated');
+    $assert($activity[4]['online']===null,'missing service never falls back to an unrelated line counter');
+    $cache::put(App\Utils\CacheKey::get('SERVER_V2BOX_LAST_PUSH_AT',90001),time()-301,3600);
+    $stale=$activityService->activity($activityNodes);
+    $assert($stale[0]['online']===null && $stale[1]['online_stale'] && $stale[0]['last_push_at']===time()-301,'expired counters are unknown while the real last report is retained');
+    $cache::put(App\Utils\CacheKey::get('SERVER_V2BOX_ONLINE_USER',90001),0,3600);
+    $cache::put(App\Utils\CacheKey::get('SERVER_V2BOX_LAST_PUSH_AT',90001),time(),3600);
+    $assert($activityService->activity($activityNodes)[1]['online']===0,'a fresh empty report clears a previous online count');
+    $cache::forget('ADMIN_NODE_ACTIVITY:v1');
+    DB::enableQueryLog();DB::flushQueryLog();
+    $activityResponse=$adminCheck->activity();$queries=DB::getQueryLog();DB::disableQueryLog();
+    $assert(count($queries)===1,'lightweight poll uses one ID-only union query independent of shared line count');
+    DB::enableQueryLog();DB::flushQueryLog();$warmResponse=$adminCheck->activity();$warmQueries=DB::getQueryLog();DB::disableQueryLog();
+    $assert(count($warmQueries)===0 && $warmResponse->getContent()===$activityResponse->getContent(),'concurrent administrators reuse the brief cached snapshot without SQL');
+    $assert(str_contains($activityResponse->headers->get('Cache-Control'),'no-store'),'activity responses cannot be cached by gateways');
+    $activityPayload=json_decode($activityResponse->getContent(),true)['data'];
+    foreach($activityPayload as $row) $assert(!array_diff(array_keys($row),['id','type','service_id','online','online_stale','last_check_at','last_push_at','available_status']),'activity never returns service configuration or credentials');
+    $unauth=$kernel->handle(Request::create($adminPath.'/server/manage/activity','GET',[],[],[],['HTTP_ACCEPT'=>'application/json']));
+    $assert($unauth->getStatusCode()===403,'anonymous cannot read runtime counters');
+
     echo "Node DDNS: $checks checks passed\n";
 } finally { DB::rollBack(); }

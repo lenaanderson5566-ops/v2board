@@ -55,6 +55,49 @@ import {
     nodeSettingsInitial,
     nodeSettingsPayload,
 } from "./node-settings";
+// Refresh counters only: completion-based scheduling prevents overlapping requests.
+function useNodeActivity(nodes: Row[] | null, enabled: boolean) {
+    const [snapshot,setSnapshot]=useState<{source:Row[]; data:Row[]} | null>(null);
+    const [unavailable,setUnavailable]=useState(false);
+    useEffect(()=>{
+        if (!enabled || !nodes?.length) return;
+        let live=true, pending=false, failures=0, lastAttempt=Date.now();
+        const interval=60000;
+        let timer:ReturnType<typeof setTimeout>;
+        const schedule=(delay=interval)=>{clearTimeout(timer);if(live && document.visibilityState!=="hidden" && navigator.onLine!==false)timer=setTimeout(update,delay);};
+        const update=async()=>{
+            if(!live || pending)return;
+            if(document.visibilityState==="hidden" || navigator.onLine===false)return;
+            pending=true;lastAttempt=Date.now();
+            try {
+                const result=await request<Row[]>(admin("server/manage/activity"));
+                if(live){setSnapshot({source:nodes,data:result.data});setUnavailable(false);failures=0;}
+            } catch {if(live){setUnavailable(true);failures++;}}
+            finally {pending=false;schedule(Math.min(300000,interval*2**failures));}
+        };
+        const resume=()=>{
+            clearTimeout(timer);
+            if(pending || document.visibilityState==="hidden" || navigator.onLine===false)return;
+            const remaining=Math.min(300000,interval*2**failures)-(Date.now()-lastAttempt);
+            if(remaining<=0)void update();else schedule(remaining);
+        };
+        document.addEventListener("visibilitychange",resume);
+        window.addEventListener("online",resume);
+        window.addEventListener("offline",resume);
+        schedule();
+        return ()=>{live=false;clearTimeout(timer);document.removeEventListener("visibilitychange",resume);window.removeEventListener("online",resume);window.removeEventListener("offline",resume);};
+    },[nodes,enabled]);
+    const data=useMemo<Row[]>(()=>{
+        if(snapshot?.source!==nodes)return rows(nodes);
+        const activity=new Map(snapshot.data.map(row=>[`${row.type}:${row.id}`,row]));
+        return rows(nodes).map(node=>{
+            const current=activity.get(`${node.type}:${node.id}`);
+            return current && Number(current.service_id||0)===Number(node.service_id||0) ? {...node,...current}:{...node,online:null,online_stale:true};
+        });
+    },[nodes,snapshot]);
+    return {data,unavailable};
+}
+
 const nodeTypes = [
     "v2node",
     "v2box",
@@ -159,7 +202,8 @@ function NodesContent({
             return;
         setEditing(null);
     }
-    const nodeRows = rows(d.data);
+    const activity=useNodeActivity(d.data,tab==="nodes" && !editing && !defaultLine && !connectionNode && !credentialNode && !diagnosticNode && !nodeBusy && !actionBusy);
+    const nodeRows = activity.data;
     const serviceMap = useMemo(
         () =>
             new Map(
@@ -167,7 +211,7 @@ function NodesContent({
                     .filter((n) => !n.service_id)
                     .map((n) => [`${n.type}:${n.id}`, n]),
             ),
-        [d.data],
+        [nodeRows],
     );
     const connectionCounts = useMemo(() => {
         const counts = new Map<string, number>();
@@ -178,7 +222,7 @@ function NodesContent({
             }
         return counts;
     }, [d.data]);
-    const associatedNodes=useMemo(()=>managedLine ? nodeRows.filter(n=>n.type===managedLine.type && Number(n.service_id || n.id)===Number(managedLine.service_id || managedLine.id)) : [],[d.data,managedLine]);
+    const associatedNodes=useMemo(()=>managedLine ? nodeRows.filter(n=>n.type===managedLine.type && Number(n.service_id || n.id)===Number(managedLine.service_id || managedLine.id)) : [],[nodeRows,managedLine]);
     type EditSection = "line" | "path" | "service" | "deploy";
     function openSection(line: Row, section: EditSection) {
         const current=nodeRows.find(n=>n.type===line.type && Number(n.id)===Number(line.id));
@@ -380,8 +424,9 @@ function NodesContent({
         [
             "online",
             "服务在线用户",
-            (r) =>
-                r.service_id ? `${r.online ?? "—"}（共享）` : (r.online ?? "—"),
+            (r) => <span title={r.online_stale ? "上报已过期，当前在线人数未知" : r.service_id ? "所属代理服务的总人数，各共享线路不能相加；按最近流量上报周期统计活跃用户" : "按最近流量上报周期统计活跃用户"}>
+                {r.service_id ? `${r.online ?? "—"}（共享）` : (r.online ?? "—")}
+            </span>,
         ],
         ["last_push_at", "最近流量上报", (r) => date(r.last_push_at)],
     ];
@@ -489,6 +534,7 @@ function NodesContent({
                     }}
                 />
             )}
+            {tab==="nodes" && activity.unavailable && <p className="pad muted" role="status">在线人数与上报时间暂未更新，系统将自动重试。</p>}
             {savedNodeNotice && (
                 <p className="pad success-message" role="status">
                     {savedNodeNotice}

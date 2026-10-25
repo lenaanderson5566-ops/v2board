@@ -1298,3 +1298,45 @@ it("respects subsequent choices to hide the restored operational columns",async(
     expect(screen.queryByRole("columnheader",{name:"服务在线用户"})).toBeNull();
     expect(screen.queryByRole("columnheader",{name:"最近流量上报"})).toBeNull();
 });
+
+it("polls lightweight activity without refetching configurations or changing shared identities",async()=>{
+    responsibilityFixture();let finish:(value:any)=>void=()=>{};
+    const base=api.request.getMockImplementation()!;
+    api.request.mockImplementation((path:string,...args:any[])=>path.endsWith("manage/activity") ? new Promise(resolve=>{finish=resolve;}) : base(path,...args));
+    vi.useFakeTimers();await act(async()=>{render(<Nodes/>);});
+    const shared=screen.getByRole("button",{name:"Shared route"});
+    await act(async()=>{await vi.advanceTimersByTimeAsync(60000);});
+    expect(api.request.mock.calls.filter(([p])=>p.endsWith("manage/activity"))).toHaveLength(1);
+    await act(async()=>{await vi.advanceTimersByTimeAsync(90000);});
+    expect(api.request.mock.calls.filter(([p])=>p.endsWith("manage/activity"))).toHaveLength(1);
+    await act(async()=>finish({data:[{type:"v2box",id:2,service_id:1,online:12,last_push_at:1893456000},{type:"v2box",id:1,service_id:null,online:12,last_push_at:1893456000}]}));
+    expect(within(shared.closest("tr")!).getByText("12（共享）")).toBeTruthy();
+    expect(within(shared.closest("tr")!).getByText(/2030/)).toBeTruthy();
+    expect(api.request.mock.calls.filter(([p])=>p.endsWith("manage/getNodes"))).toHaveLength(1);
+    cleanup();await act(async()=>{await vi.advanceTimersByTimeAsync(60000);});
+    expect(api.request.mock.calls.filter(([p])=>p.endsWith("manage/activity"))).toHaveLength(1);
+});
+it("pauses activity in hidden tabs and resumes with retry backoff",async()=>{
+    responsibilityFixture();const base=api.request.getMockImplementation()!;
+    api.request.mockImplementation((path:string,...args:any[])=>path.endsWith("manage/activity") ? Promise.reject(new Error("temporary")) : base(path,...args));
+    vi.useFakeTimers();await act(async()=>{render(<Nodes/>);});
+    vi.spyOn(document,"visibilityState","get").mockReturnValue("hidden");
+    await act(async()=>{await vi.advanceTimersByTimeAsync(90000);});
+    expect(api.request.mock.calls.filter(([p])=>p.endsWith("manage/activity"))).toHaveLength(0);
+    vi.spyOn(document,"visibilityState","get").mockReturnValue("visible");
+    await act(async()=>document.dispatchEvent(new Event("visibilitychange")));
+    expect(api.request.mock.calls.filter(([p])=>p.endsWith("manage/activity"))).toHaveLength(1);
+    expect(screen.getByText(/在线人数与上报时间暂未更新/)).toBeTruthy();
+    await act(async()=>{await vi.advanceTimersByTimeAsync(60000);document.dispatchEvent(new Event("visibilitychange"));});
+    expect(api.request.mock.calls.filter(([p])=>p.endsWith("manage/activity"))).toHaveLength(1);
+    await act(async()=>{await vi.advanceTimersByTimeAsync(60000);});
+    expect(api.request.mock.calls.filter(([p])=>p.endsWith("manage/activity"))).toHaveLength(2);
+});
+
+it("pauses list activity while editing so an unsaved form is not replaced",async()=>{
+    responsibilityFixture();vi.useFakeTimers();await act(async()=>{render(<Nodes/>);});
+    fireEvent.click(screen.getAllByRole("button",{name:"编辑"})[0]);
+    await act(async()=>{await vi.advanceTimersByTimeAsync(90000);});
+    expect(api.request.mock.calls.filter(([p])=>p.endsWith("manage/activity"))).toHaveLength(0);
+    expect(screen.getByRole("dialog")).toBeTruthy();
+});

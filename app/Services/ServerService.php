@@ -130,21 +130,47 @@ class ServerService
         return $servers;
     }
 
+    /** Only service-level cached counters; no per-user scans or provider calls. */
+    public function activity(array $servers): array
+    {
+        $roots=[];$keys=[];$now=time();
+        foreach ($servers as $server) {
+            if (!empty($server['service_id'])) continue;
+            $identity=$server['type'].':'.$server['id'];
+            if (isset($roots[$identity])) continue;
+            $roots[$identity]=true;$type=strtoupper($server['type']);
+            foreach (['ONLINE_USER','LAST_CHECK_AT','LAST_PUSH_AT'] as $suffix) $keys[]=CacheKey::get("SERVER_{$type}_{$suffix}",$server['id']);
+        }
+        $cache=$keys?Cache::many($keys):[];
+        $result=[];
+        foreach ($servers as $server) {
+            $root=($server['service_id']??null) ?: $server['id'];$type=strtoupper($server['type']);
+            $valid=isset($roots[$server['type'].':'.$root]);
+            $checked=$valid ? ($cache[CacheKey::get("SERVER_{$type}_LAST_CHECK_AT",$root)]??null):null;
+            $pushed=$valid ? ($cache[CacheKey::get("SERVER_{$type}_LAST_PUSH_AT",$root)]??null):null;
+            $online=$valid ? ($cache[CacheKey::get("SERVER_{$type}_ONLINE_USER",$root)]??null):null;
+            $stale=!$pushed || $pushed<=$now-300;
+            $result[]=['id'=>$server['id'],'type'=>$server['type'],'service_id'=>$server['service_id']??null,
+                'online'=>$stale || $online===null ? null : max(0,(int)$online), 'online_stale'=>$stale,
+                'last_check_at'=>$checked,'last_push_at'=>$pushed,
+                'available_status'=>!$checked || $checked<=$now-300 ? 0 : ($stale?1:2)];
+        }
+        return $result;
+    }
+
+    public function getNodeActivity(): array
+    {
+        // Briefly share results across administrators without caching service configuration.
+        return Cache::remember('ADMIN_NODE_ACTIVITY:v1',5,function(){
+            $nodes=\Illuminate\Support\Facades\DB::table('v2_server_v2node')->select('id','service_id')->selectRaw("'v2node' as type")
+                ->unionAll(\Illuminate\Support\Facades\DB::table('v2_server_v2box')->select('id','service_id')->selectRaw("'v2box' as type"))->get();
+            return $this->activity($nodes->map(fn($node)=>(array)$node)->all());
+        });
+    }
+
     private function mergeData(&$servers)
     {
-        foreach ($servers as $k => $v) {
-            $serverType = strtoupper($v['type']);
-            $servers[$k]['online'] = Cache::get(CacheKey::get("SERVER_{$serverType}_ONLINE_USER", $v['service_id'] ?? $v['id']));
-            $servers[$k]['last_check_at'] = Cache::get(CacheKey::get("SERVER_{$serverType}_LAST_CHECK_AT", $v['service_id'] ?? $v['id']));
-            $servers[$k]['last_push_at'] = Cache::get(CacheKey::get("SERVER_{$serverType}_LAST_PUSH_AT", $v['service_id'] ?? $v['id']));
-            if ((time() - 300) >= $servers[$k]['last_check_at']) {
-                $servers[$k]['available_status'] = 0;
-            } else if ((time() - 300) >= $servers[$k]['last_push_at']) {
-                $servers[$k]['available_status'] = 1;
-            } else {
-                $servers[$k]['available_status'] = 2;
-            }
-        }
+        foreach ($this->activity($servers) as $index=>$activity) $servers[$index]=array_replace($servers[$index],$activity);
     }
 
     public function getAllServers()

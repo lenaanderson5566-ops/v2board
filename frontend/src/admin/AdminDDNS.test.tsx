@@ -1034,7 +1034,6 @@ it("retains the server editor when report enrollment fails and revokes only afte
 });
 
 import { serverForwardingRows, ServerForwarding, serverPurpose } from "./ServerForwarding";
-import { NodeSetupGuide } from "./NodeSetupGuide";
 it("scopes forwarding to both current and pending ingress servers without losing published references",()=>{
     const data={assignments:[{id:10,purpose:"entry",server_id:1,domain:"old.example.test"},{id:20,purpose:"entry",server_id:2,domain:"new.example.test"}],connections:[{id:5,node_id:7,node_type:"v2box",entry_id:20,entry_port:8443,published:{entry_id:10,entry_server_id:1,host:"old.example.test",port:443,origin_domain:"origin.example.test",origin_port:9443}}]};
     expect(serverForwardingRows(1,data)).toHaveLength(1);
@@ -1044,13 +1043,6 @@ it("scopes forwarding to both current and pending ingress servers without losing
     render(<ServerForwarding server={{id:1}} data={data}/>);fireEvent.click(screen.getByText("本机入口转发（1 条）"));
     expect(screen.getByRole("link",{name:"新增或选择节点"}).getAttribute("href")).toBe("#/nodes");
     expect(api.request).not.toHaveBeenCalled();
-});
-it("explains existing-server entry creation and separates the two deployment machines",()=>{
-    render(<NodeSetupGuide/>);fireEvent.click(screen.getByText("新增节点与部署流程"));
-    fireEvent.click(screen.getByRole("button",{name:"中转节点"}));
-    expect(screen.getByText(/已有服务器在/)).toBeTruthy();
-    expect(screen.getByText(/面板不会自动安装转发/)).toBeTruthy();
-    expect(screen.getByText(/无需再次安装 V2Box/)).toBeTruthy();
 });
 
 it("keeps the old relay visible on its server while a service is changing to direct access",()=>{

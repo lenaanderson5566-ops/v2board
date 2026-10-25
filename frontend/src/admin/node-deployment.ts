@@ -25,11 +25,3 @@ export function nodeDeploymentCommand(node: Row): string {
         family
     );
 }
-
-export function nodeReportCommand(family: string): string {
-    const f = ["ipv4", "ipv6", "dual"].includes(family) ? family : "ipv4";
-    return (
-        "curl -fSL https://raw.githubusercontent.com/lenaanderson5566-ops/v2box/v1.0.9/script/node-network.py -o node-network.py && python3 node-network.py report-configure --family " +
-        f
-    );
-}

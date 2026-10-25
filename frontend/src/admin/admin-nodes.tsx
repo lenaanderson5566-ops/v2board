@@ -1,7 +1,6 @@
 import { AdminRowMenu } from "./AdminRowMenu";
 import { DefaultNodeLineEditor } from "./DefaultNodeLineEditor";
 import { serviceLineFields,nodeLineFields } from "./node-line-fields";
-import { NodeSetupGuide } from "./NodeSetupGuide";
 import { AdminChoiceGroup } from "./AdminChoices";
 import { nodeConfigurationProblems, nodeChangeImpact } from "./node-guidance";
 import { nodeSetupFields, nodeSetupPayload,nodeServiceFields,certificateCredentialOptions } from "./node-setup";
@@ -394,6 +393,8 @@ function NodesContent({
         "port",
         "protocol",
         "runtime_status",
+        "online",
+        "last_push_at",
         "rate",
         "show",
         "group_id",
@@ -412,13 +413,17 @@ function NodesContent({
                     ...rest,
                 ] as (typeof allColumns)[number],
         );
-    const columnStorageKey = "admin.nodes.columns.v1";
+    const columnStorageKey = "admin.nodes.columns.v2";
     const [visibleColumns, setVisibleColumns] = useState<string[] | null>(
         () => {
             try {
-                const saved = JSON.parse(
-                    localStorage.getItem(columnStorageKey) || "null",
-                );
+                const current = localStorage.getItem(columnStorageKey);
+                const previous = localStorage.getItem("admin.nodes.columns.v1");
+                let saved = JSON.parse(current ?? previous ?? "null");
+                // Restore the removed operational columns once, preserving other choices.
+                if (current === null && Array.isArray(saved) && saved.every(key => typeof key === "string")) {
+                    saved = [...new Set([...saved, "online", "last_push_at"])];
+                }
                 return Array.isArray(saved) &&
                     saved.every((key) => typeof key === "string")
                     ? saved.length &&
@@ -494,7 +499,6 @@ function NodesContent({
                 <a href="#/servers">服务器管理</a> ·{" "}
                 <a href="#/node-domains">域名与解析</a>
             </p>
-            {tab === "nodes" && <NodeSetupGuide />}
             {defaultLine && (
                 <DefaultNodeLineEditor
                     navigation={(busy, dirty) =>

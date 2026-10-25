@@ -349,8 +349,8 @@ body[data-console="admin"] .node-editor-dialog .field-section::after { display: 
     body[data-console="admin"] .node-editor-path > summary span { display: block; margin-top: 6px; }
 }
 
-.node-config-impact,.node-config-problems,.node-deployment-progress { border:1px solid var(--border,#dce2ea); border-radius:8px; padding:14px 16px; margin:0 0 16px; background:var(--bg-soft,#f8fafc); }
-.node-config-impact p,.node-deployment-progress p { margin:8px 0; line-height:1.6; }
+.node-config-problems,.node-deployment-progress { border:1px solid var(--border,#dce2ea); border-radius:8px; padding:14px 16px; margin:0 0 16px; background:var(--bg-soft,#f8fafc); }
+.node-deployment-progress p { margin:8px 0; line-height:1.6; }
 .node-config-problems ul { margin:10px 0 0; padding-left:18px; }
 .node-config-problems li { margin:6px 0; }
 .node-config-problems button.link { text-align:left; white-space:normal; }
@@ -390,7 +390,6 @@ body[data-console="admin"] .node-creation-mode p {margin:10px 0 0;}
 .deployment-check-state { font-size:.85rem; color:var(--muted); }
 .deployment-check-state.is-pass { color:var(--success, #15803d); }
 .deployment-check-state.is-fail { color:var(--danger, #b91c1c); }
-.deployment-check-address { display:block; overflow-wrap:anywhere; color:var(--muted); }
 
 /* Shared node-management hierarchy: navigation, saved endpoints, then task controls. */
 .node-workflow-navigation { display:grid !important; grid-template-columns:repeat(4,minmax(0,1fr)); gap:8px; border:0 !important; padding:0 !important; }

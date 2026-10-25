@@ -1,4 +1,4 @@
-import { NodeDnsObservation } from "./NodeDeploymentCheck";
+import { NodeDnsObservation } from "./NodeDnsObservation";
 import { NodeAddressSummary } from "./NodeAddressSummary";
 import { ManualNodeAddress } from "./ManualNodeAddress";
 import { relayStreamConfig, relayCertificateIssue } from "./node-relay";

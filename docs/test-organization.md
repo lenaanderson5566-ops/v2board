@@ -975,3 +975,5 @@ Lifecycle review adds targeted redeployment credential replacement with preserve
 Node UI tests assert that overview count cards and manual inspection buttons are absent and deployment command controls precede status details.
 
 节点域名自动生效回归复用 `tests/node-ddns.php`：验证在线配置回执、公共解析匹配、探测期间 IP 变更、重复执行、TLS 候选/失败保留、共用服务直连发布及外部中转人工边界。测试使用一次性数据库与模拟公网探测，不连接真实 Cloudflare 或申请真实证书。前端复用 `Nodes.test.tsx`、`AdminDDNS.test.tsx`，覆盖自动状态、异常入口及编辑配置对应关系；升级仍运行 `tests/update-script.sh`。
+
+迭代清理：移除已退出实际页面的前端 `NodeDeploymentCheck` 组件及其五个孤立展示测试，保留 `tests/node-ddns.php` 的后端探测、安全边界与自动发布验证。节点端 DNS 观测独立为 `NodeDnsObservation`，继续由现有节点测试覆盖；移除旧部署说明组件与对应文案测试，保留中转转发和独立 TLS 身份的功能断言。

@@ -36,7 +36,7 @@ import { Infrastructure } from "./Infrastructure";
 import { AdminDDNS } from "./AdminDDNS";
 import { Nodes, ResourcePage, resources } from "./admin";
 import { NodeCredentials } from "./NodeCredentials";
-import { NodeDeploymentCheck, NodeDnsObservation } from "./NodeDeploymentCheck";
+import { NodeDnsObservation } from "./NodeDnsObservation";
 import { NodeDeployment } from "./NodeDeployment";
 import { NodeConnectionEditor } from "./NodeConnections";
 import { NodeTopology } from "./NodeTopology";
@@ -932,9 +932,9 @@ it("opens domain and forwarding settings directly from an ingress action",async(
 
 function responsibilityFixture(){
     api.request.mockImplementation(async(path:string)=>path.endsWith("server/manage/getNodes")?{data:[
-        {id:1,type:"v2box",name:"Box service",protocol:"anytls",server_port:9443,host:"box.example.test",port:443,show:1,group_id:[1],runtime_status:"online",online:5},
+        {id:1,type:"v2box",name:"Box service",protocol:"anytls",server_port:9443,host:"box.example.test",port:443,show:1,group_id:[1],runtime_status:"online",online:5,last_push_at:1761350400},
         {id:1,type:"v2node",name:"Xray service",protocol:"vless",server_port:8443,host:"xray.example.test",port:443,show:0,group_id:[1]},
-        {id:2,type:"v2box",service_id:1,name:"Shared route",host:"entry.example.test",port:8443,show:1,group_id:[1],runtime_status:"online",online:5}
+        {id:2,type:"v2box",service_id:1,name:"Shared route",host:"entry.example.test",port:8443,show:1,group_id:[1],runtime_status:"online",online:5,last_push_at:1761350400}
     ]}:String(path).includes("server/credentials")?{data:{keys:[]}}:path.endsWith("server/group/fetch")?{data:[{id:1,name:"Basic"}]}:path.endsWith("dictionary/fetch")?adminPageFixture(path):{data:[]});
 }
 it("uses one node list with line, shared service and deployment sections",async()=>{
@@ -967,6 +967,9 @@ it("preserves node column choices in the unified list",async()=>{
     render(<Nodes/>);await screen.findByRole("button",{name:"Shared route"});
     expect(screen.queryByRole("columnheader",{name:"权限组"})).toBeNull();
     expect(localStorage.getItem("admin.nodes.columns.v1")).toBe(JSON.stringify(["name","show"]));
+    expect(screen.getByRole("columnheader",{name:"服务在线用户"})).toBeTruthy();
+    expect(screen.getByRole("columnheader",{name:"最近流量上报"})).toBeTruthy();
+    expect(JSON.parse(localStorage.getItem("admin.nodes.columns.v2")!)).toEqual(["name","show","online","last_push_at"]);
 });
 
 import { DefaultNodeLineEditor } from "./DefaultNodeLineEditor";
@@ -1189,39 +1192,6 @@ it("does not present old applied status as success while newer settings are pend
 });
 
 
-it("checks deployment only on demand and shows evidence with next steps", async () => {
-    api.request.mockResolvedValue({data:{checkedAt:1700000000,items:[
-        {key:"dns",label:"公网 DNS",state:"pass",detail:"公网查询成功",next:""},
-        {key:"certificate",label:"在线证书",state:"fail",detail:"证书校验失败",next:"检查证书域名"},
-        {key:"configuration",label:"配置应用",state:"unknown",detail:"尚未确认配置",next:"检查节点通信"},
-        {key:"relay",label:"中转连接",state:"skip",detail:"直连无需中转",next:""},
-    ],origin:{host:"origin.example.test",port:9443,code:"certificate_invalid"},note:"仅检查"}});
-    render(<NodeDeploymentCheck node={{type:"v2box",id:3}} />);
-    expect(api.request).not.toHaveBeenCalled();
-    fireEvent.click(screen.getByRole("button",{name:"一键检查"}));
-    await screen.findByText("证书校验失败");
-    expect(api.request).toHaveBeenCalledWith(expect.stringContaining("check-deployment"),{type:"v2box",id:3});
-    expect(screen.getByText("检查异常")).toBeTruthy();
-    expect(screen.getByText("下一步：检查证书域名")).toBeTruthy();
-    expect(screen.queryByText("直连无需中转")).toBeNull();
-    expect(screen.getByText("待确认")).toBeTruthy();
-});
-
-it("discards old results when switching nodes and allows retry after errors", async () => {
-    let complete:(value:any)=>void=()=>{};
-    api.request.mockImplementationOnce(()=>new Promise(resolve=>{complete=resolve;}));
-    const view=render(<NodeDeploymentCheck node={{type:"v2box",id:3}} />);
-    fireEvent.click(screen.getByRole("button",{name:"一键检查"}));
-    expect((screen.getByRole("button",{name:"正在检查…"}) as HTMLButtonElement).disabled).toBe(true);
-    view.rerender(<NodeDeploymentCheck node={{type:"v2box",id:4}} />);
-    await act(async()=>complete({data:{items:[{key:"old",label:"旧节点结果",state:"pass"}]}}));
-    expect(screen.queryByText("旧节点结果")).toBeNull();
-    api.request.mockRejectedValueOnce(new Error("请求超时"));
-    fireEvent.click(screen.getByRole("button",{name:"一键检查"}));
-    expect(await screen.findByRole("alert")).toHaveProperty("textContent",expect.stringContaining("请求超时"));
-    expect((screen.getByRole("button",{name:"一键检查"}) as HTMLButtonElement).disabled).toBe(false);
-});
-
 it("selects certificate credentials by TLS identity rather than ingress domain", () => {
     const network={credentials:[{id:1,name:"Origin",root_domain:"origin.test",next_run:0},{id:2,name:"Entry",root_domain:"entry.test",next_run:0}],assignments:[{id:3,domain:"relay.entry.test"}]};
     const values={setup_mode:"managed",setup_credential_id:1,setup_access_mode:"relay",setup_entry_id:3};
@@ -1298,42 +1268,11 @@ it("does not infer an old node version from its installation command", async () 
     expect((await screen.findByLabelText("节点运行版本")).textContent).toContain("未上报");
 });
 
-it("collapses successful checks and keeps actionable failures expanded", async () => {
-    api.request.mockResolvedValue({data:{checkedAt:1700000000,items:[
-        {key:"dns",label:"公网 DNS",state:"pass",detail:"DNS 正常"},
-        {key:"certificate",label:"在线证书",state:"fail",detail:"证书不匹配",next:"核对 TLS 身份"},
-        {key:"renewal",label:"自动续期",state:"unknown",detail:"不能确认续期"}
-    ],origin:{host:"same.test",port:443,code:"tls_verified"},connection:{host:"same.test",port:443,code:"tls_verified"}}});
-    render(<NodeDeploymentCheck node={{type:"v2box",id:3}}/>);
-    fireEvent.click(screen.getByRole("button",{name:"一键检查"}));
-    expect((await screen.findByText("已通过（1）")).closest("details")?.open).toBe(false);
-    expect(screen.getByText("需要确认（1）").closest("details")?.open).toBe(true);
-    expect(screen.queryByText("不能确认续期")).toBeNull();
-    expect(screen.getAllByText(/TLS 握手与证书校验通过/)).toHaveLength(1);
-});
-it("consolidates unsupported protocol checks without hiding DNS failures", async () => {
-    api.request.mockResolvedValue({data:{items:[
-        {key:"dns",label:"公网 DNS",state:"fail",detail:"解析不匹配"},
-        ...["listener","certificate","relay"].map(key=>({key,label:key,state:"unknown",detail:"使用客户端验证",next:"检查客户端连接"}))
-    ],origin:{host:"origin.test",port:443,code:"udp_client_required"}}});
-    render(<NodeDeploymentCheck node={{type:"v2box",id:3}}/>);
-    fireEvent.click(screen.getByRole("button",{name:"一键检查"}));
-    expect(await screen.findByText("客户端验证")).toBeTruthy();
-    expect(screen.getAllByText("使用客户端验证")).toHaveLength(1);
-    expect(screen.getByText("解析不匹配")).toBeTruthy();
-});
 it("keeps DNS problems visible without repeating successful deployment observations", () => {
     const view=render(<NodeDnsObservation observation={{state:"verified",role:"origin",checkedAt:1700000000}}/>);
     expect(screen.queryByRole("status")).toBeNull();
     view.rerender(<NodeDnsObservation observation={{state:"mismatch",role:"origin",checkedAt:1700000000}}/>);
     expect(screen.getByRole("status").textContent).toContain("解析与预期 IP 不一致");
-});
-
-it("keeps certificate renewal-window advice expanded even after a successful handshake", async () => {
-    api.request.mockResolvedValue({data:{items:[{key:"certificate",label:"在线证书",state:"pass",detail:"证书有效",next:"证书进入续期窗口"}],origin:{host:"origin.test",port:443}}});
-    render(<NodeDeploymentCheck node={{type:"v2box",id:3}}/>);
-    fireEvent.click(screen.getByRole("button",{name:"一键检查"}));
-    expect((await screen.findByText("下一步：证书进入续期窗口")).closest("details")?.open).toBe(true);
 });
 
 it("removes completed deployment steps and keeps configuration failures actionable", () => {
@@ -1343,4 +1282,19 @@ it("removes completed deployment steps and keeps configuration failures actionab
     expect(screen.getByText("待处理的部署事项")).toBeTruthy();
     expect(screen.getByText(/证书申请或加载失败/)).toBeTruthy();
     expect(screen.queryByText(/未读取到托管域名绑定/)).toBeNull();
+});
+
+it("shows operational columns by default with shared service counts",async()=>{
+    responsibilityFixture();render(<Nodes/>);
+    const shared=await screen.findByRole("button",{name:"Shared route"});
+    expect(screen.getByRole("columnheader",{name:"服务在线用户"})).toBeTruthy();
+    expect(screen.getByRole("columnheader",{name:"最近流量上报"})).toBeTruthy();
+    expect(within(shared.closest("tr")!).getByText("5（共享）")).toBeTruthy();
+    expect(within(shared.closest("tr")!).getByText(/2025/)).toBeTruthy();
+});
+it("respects subsequent choices to hide the restored operational columns",async()=>{
+    responsibilityFixture();localStorage.setItem("admin.nodes.columns.v2",JSON.stringify(["name","show"]));
+    render(<Nodes/>);await screen.findByRole("button",{name:"Shared route"});
+    expect(screen.queryByRole("columnheader",{name:"服务在线用户"})).toBeNull();
+    expect(screen.queryByRole("columnheader",{name:"最近流量上报"})).toBeNull();
 });

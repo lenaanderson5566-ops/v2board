@@ -470,3 +470,6 @@ V2Box v1.0.6 release integration: panel bootstrap, manual install and IP reporte
 节点检查精简：保存时自动执行配置预检，移除重复的手动预检按钮。连接排查保留手动触发，默认展开异常，成功项折叠；UDP/Reality 的普通连接检查合并为客户端验证提示。正常 DNS 上报不再单独占用提示卡片，异常与处理中状态保留。解析一致性、证书切换与危险操作校验不变。
 
 进一步精简：服务端不再返回无法验证的自动续期项、直连中转项和无 TLS 证书项；UDP/Reality 统一返回客户端验证事项。部署步骤只显示未完成或异常项，手动域名不再提示缺少托管绑定。
+
+### Deployment enrollment configuration
+The bootstrap helper writes the redeemed panel URL, node ID and credential atomically with mode 0600 before IP reporting or DNS waits on a fresh installation. Resuming a completed panel workflow still validates the local configuration. A leftover example is stopped and replaced; existing services are appended only after DNS checks. Configuration and certificates are retained on failure.

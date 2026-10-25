@@ -204,6 +204,25 @@ class WorkflowTests(unittest.TestCase):
         self.deploy.run()
         self.assertEqual(self.events,['report','dns','port','start','restart','status','certificate','complete'])
         self.assertFalse(self.path.exists());self.assertEqual(self.deploy.config.stat().st_mode&0o777,0o600)
+    def test_placeholder_replaced_before_dns_failure(self):
+        m.write_private(self.deploy.config,{'Nodes':[{'ApiHost':'https://panel.example.com','ApiKey':'REPLACE_ME'}]})
+        def fail_dns():
+            node=json.loads(self.deploy.config.read_text())['Nodes'][0]
+            self.assertEqual((node['ApiHost'],node['NodeID'],node['ApiKey']),(self.data['apiHost'],3,self.data['apiKey']))
+            raise m.DeploymentError('dns unavailable')
+        self.deploy.wait_dns=fail_dns
+        with self.assertRaises(m.DeploymentError): self.deploy.run()
+        self.assertNotIn('restart',self.events)
+        self.assertIn('stop',self.events)
+        self.assertTrue(self.path.exists())
+    def test_completed_panel_repairs_local_placeholder(self):
+        m.write_private(self.deploy.config,{'Nodes':[{'ApiHost':'https://panel.example.com','ApiKey':'REPLACE_ME'}]})
+        self.deploy.save(startAttempted=True)
+        self.deploy.wait_dns=lambda:True
+        self.deploy.run()
+        self.assertEqual(json.loads(self.deploy.config.read_text())['Nodes'][0]['ApiHost'],self.data['apiHost'])
+        self.assertIn('restart',self.events)
+        self.assertFalse(self.path.exists())
     def test_report_failure_never_starts(self):
         self.deploy.report=lambda:(_ for _ in ()).throw(m.DeploymentError('report'))
         with self.assertRaises(m.DeploymentError):self.deploy.run()
@@ -214,6 +233,7 @@ class WorkflowTests(unittest.TestCase):
             with self.assertRaises(m.DeploymentError):self.deploy.run()
         self.assertNotIn('restart',self.events);self.assertFalse(self.deploy.state.get('startAttempted'))
     def test_resume_does_not_repeat_acme_start(self):
+        self.deploy.prepare_config()
         self.deploy.save(startAttempted=True);self.deploy.run()
         self.assertNotIn('restart',self.events);self.assertIn('complete',self.events)
     def test_resume_starts_stopped_service_once(self):
@@ -423,6 +443,7 @@ class WorkflowTests(unittest.TestCase):
         with self.assertRaises(m.DeploymentError):m.Deployment.report(self.deploy)
         self.assertFalse(list(self.path.parent.glob('.report-*')));self.assertFalse(self.deploy.state.get('reported'))
     def test_lost_completion_response_resumes_without_restart(self):
+        self.deploy.prepare_config();self.deploy.save(startAttempted=True)
         self.deploy.wait_dns=lambda:True;self.deploy.run()
         self.assertNotIn('restart',self.events);self.assertFalse(self.path.exists())
     def test_real_certificate_trust_and_name_verification(self):

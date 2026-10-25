@@ -139,6 +139,8 @@ class Deployment:
         parsed=urllib.parse.urlsplit(self.host)
         if parsed.scheme!='https' or not parsed.hostname or parsed.username or parsed.password or parsed.query or parsed.fragment:
             raise DeploymentError('Invalid HTTPS panel address')
+        if parsed.hostname.lower().rstrip('.') == 'panel.example.com' or type(self.data.get('nodeId')) is not int or self.data['nodeId'] <= 0 or not isinstance(self.data.get('apiKey'), str) or not self.data['apiKey'].strip() or self.data['apiKey'] == 'REPLACE_ME':
+            raise DeploymentError('Invalid enrollment identity; obtain a deployment command from the panel. Example configuration cannot start.')
 
     def save(self,**values):
         self.state.update(values);write_private(self.path,self.state)
@@ -377,9 +379,25 @@ class Deployment:
         print('Deployment verified. The node connection domain is active.' if self.flow else 'Installation complete. Check node runtime status in the panel.')
 
     def run(self):
+        # Write enrollment identity before DNS waits, but never append a live
+        # service before those checks (the config watcher would start it).
+        initial = not self.config.exists()
+        if self.config.exists() and not self.config.is_symlink():
+            nodes = json.loads(self.config.read_text()).get('Nodes', [])
+            initial = isinstance(nodes, list) and len(nodes) == 1 and isinstance(nodes[0], dict) and nodes[0].get('ApiHost') == 'https://panel.example.com' and nodes[0].get('ApiKey') == 'REPLACE_ME'
+        if initial:
+            if self.config.exists():
+                self.command(['v2box','stop'])
+            self.prepare_config()
+            self.save(startAttempted=False)
+            print('Panel address, node ID and credentials saved. Waiting for deployment checks before starting V2Box.', flush=True)
         self.report()
         if self.flow:
-            if self.wait_dns(): self.finish();return
+            if self.wait_dns():
+                # Panel completion does not prove local files survived reinstall.
+                self.prepare_config()
+                self.ensure_started()
+                self.finish();return
             self.prepare_config()
             self.ensure_started()
             self.wait_ready()

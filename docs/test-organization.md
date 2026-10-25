@@ -963,3 +963,5 @@ V2Box 生命周期回归覆盖未完成部署更新、保留配置与证书、�
 节点检查展示回归复用 Nodes：验证成功项折叠、异常默认展开、不适用项隐藏、UDP/Reality 提示合并、DNS 异常保留及重复端点去重。
 
 node-ddns 回归覆盖按协议省略不适用检查项、客户端验证提示及保留 DNS/SSRF 防护；Nodes 覆盖正常部署步骤隐藏、失败步骤继续显示。
+
+Deployment regression coverage in tests/v2box.php includes replacing the installer example before a DNS failure and repairing local example configuration when the panel workflow already completed. Run its embedded Python workflow suite on Linux in addition to the disposable backend suite.

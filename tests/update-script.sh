@@ -147,7 +147,7 @@ grep -q 'artisan console:verify' calls.log
 [[ $(stat -c %a public/console/.vite/manifest.json) == 644 ]]
 [[ $(stat -c %a composer.json) == 644 && $(stat -c %a composer.lock) == 644 ]]
 ! grep -Eq 'v2board:update|cache:clear|optimize:clear|artisan up' calls.log
-find "$TMP/backups" -name site.tar.gz -exec tar -tzf {} \; | grep -q './vendor/original'
+find "$TMP/backups" -name site.tar.gz -exec tar -tzf {} \; | grep './vendor/original' > /dev/null
 new_site failure
 export FAIL_INSTALL=1; reject --jobs-stopped; unset FAIL_INSTALL
 [[ -e storage/framework/down ]]

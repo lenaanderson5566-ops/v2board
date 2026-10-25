@@ -77,10 +77,10 @@ try {
     $r=$call('POST',$root.'/capabilities',['coreVersion'=>'v1.14.3','features'=>['native-routing-v1']]);
     $assert($r->getStatusCode()===200,'Capabilities accepted: '.$r->getStatusCode().' '.$r->getContent());
     $assert(Cache::get('V2BOX_CAPABILITIES:'.$node->id)['coreVersion']==='v1.14.3','Capability cache');
-    $r=$call('POST',$root.'/capabilities',['agentVersion'=>'v1.0.10','coreVersion'=>'v1.14.3','features'=>[]]);
-    $assert($r->getStatusCode()===200 && Cache::get('V2BOX_CAPABILITIES:'.$node->id)['agentVersion']==='v1.0.10','Running agent release cached separately from core');
+    $r=$call('POST',$root.'/capabilities',['agentVersion'=>'v1.0.11','coreVersion'=>'v1.14.3','features'=>[]]);
+    $assert($r->getStatusCode()===200 && Cache::get('V2BOX_CAPABILITIES:'.$node->id)['agentVersion']==='v1.0.11','Running agent release cached separately from core');
     $runtime=App\Services\NodeRuntimeService::inspect('v2box',$node);
-    $assert($runtime['agentVersion']==='v1.0.10' && $runtime['coreVersion']==='v1.14.3' && !empty($runtime['capabilitiesReportedAt']),'Admin runtime exposes actual versions and observation time');
+    $assert($runtime['agentVersion']==='v1.0.11' && $runtime['coreVersion']==='v1.14.3' && !empty($runtime['capabilitiesReportedAt']),'Admin runtime exposes actual versions and observation time');
     $r=$call('POST',$root.'/capabilities',['agentVersion'=>'<invalid>','coreVersion'=>'v1.14.3','features'=>[]]);
     $assert($r->getStatusCode()===422,'Invalid agent version rejected');
     $r=$call('GET',$root.'/configuration');$body=json_decode($r->getContent(),true);
@@ -503,7 +503,7 @@ try {
     try {$credentials::disableLegacy((int)$user->id);$assert(false,'Unconfirmed migration cannot disable legacy');}
     catch(Symfony\Component\HttpKernel\Exception\HttpException $e){$assert($e->getStatusCode()===409,'Unconfirmed migration cannot disable legacy');}
     $install=(new App\Services\ServerService())->getAllServers();
-    foreach ($install as $server) if ($server['type']==='v2box') $assert(str_starts_with($server['install_command'],'wget --https-only -O install-v2box.sh ') && str_contains($server['install_command'],'&& sh install-v2box.sh --install v1.0.10') && str_contains($server['upgrade_command'],'--install v1.0.10'),'Manual install and upgrade use short wget/script commands');
+    foreach ($install as $server) if ($server['type']==='v2box') $assert(str_starts_with($server['install_command'],'wget --https-only -O install-v2box.sh ') && str_contains($server['install_command'],'&& sh install-v2box.sh --install v1.0.11') && str_contains($server['upgrade_command'],'--install v1.0.11'),'Manual install and upgrade use short wget/script commands');
     $assert(!str_contains(json_encode($install),'node-v10-test-secret'),'Install commands never expose global token');
     $freshSecret=json_decode($issued->getContent(),true)['data']['secret'];
     $assert($call('GET',$root.'/users',[],['HTTP_AUTHORIZATION'=>'Bearer '.$freshSecret])->getStatusCode()===200,'Replacement confirmed before global retirement');

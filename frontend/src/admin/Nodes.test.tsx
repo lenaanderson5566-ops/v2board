@@ -574,7 +574,7 @@ it("creates one-use deployment without a password and copies no permanent creden
     const writeText=vi.fn().mockResolvedValue(undefined);
     Object.defineProperty(navigator,"clipboard",{configurable:true,value:{writeText}});
     api.request.mockImplementation(async (path:string)=> path.endsWith("/deployment") ? {data:{command:"one-use-command",expiresAt:new Date(Date.now()+600000).toISOString()}} : {data:{keys:[],migrated:false}});
-    render(<NodeDeployment node={{id:1,type:"v2box",name:"A",install_command:"manual-install",upgrade_command:"wget install-script && sh install-v2box.sh --install v1.0.10"}} close={()=>{}}/>);
+    render(<NodeDeployment node={{id:1,type:"v2box",name:"A",install_command:"manual-install",upgrade_command:"wget install-script && sh install-v2box.sh --install v1.0.11"}} close={()=>{}}/>);
     const create=await screen.findByRole("button",{name:"生成一键部署命令"});
     await waitFor(()=>expect((create as HTMLButtonElement).disabled).toBe(false));
     expect(api.request.mock.calls.some(([path])=>path.endsWith("/deployment"))).toBe(false);
@@ -586,7 +586,7 @@ it("creates one-use deployment without a password and copies no permanent creden
     await waitFor(()=>expect(writeText).toHaveBeenCalledWith("one-use-command"));
     expect(localStorage.length).toBe(0);
     fireEvent.click(screen.getByRole("button",{name:"已有节点升级"}));
-    expect((screen.getByLabelText("节点升级命令") as HTMLTextAreaElement).value).toContain("v1.0.10");
+    expect((screen.getByLabelText("节点升级命令") as HTMLTextAreaElement).value).toContain("v1.0.11");
     expect(api.request.mock.calls.filter(([path])=>path.endsWith("/deployment"))).toHaveLength(1);
 });
 it("keeps deployment retryable on error and groups credentials in the same drawer", async () => {
@@ -1256,15 +1256,15 @@ it("accepts dual ingress with IPv4 origin and HTTP origin certificate",()=>{
 });
 
 it("shows reported agent and core versions independently", async () => {
-    api.request.mockImplementation(async (path:string) => path.includes("manage/runtime") ? {data:{agentVersion:"v1.0.10",coreVersion:"v1.14.3",capabilitiesReportedAt:"2026-10-24T00:00:00Z"}} : {data:{keys:[]}});
+    api.request.mockImplementation(async (path:string) => path.includes("manage/runtime") ? {data:{agentVersion:"v1.0.11",coreVersion:"v1.14.3",capabilitiesReportedAt:"2026-10-24T00:00:00Z"}} : {data:{keys:[]}});
     render(<NodeDeployment node={{id:1,type:"v2box",name:"A"}} close={()=>{}}/>);
-    expect(await screen.findByText("v1.0.10")).toBeTruthy();
+    expect(await screen.findByText("v1.0.11")).toBeTruthy();
     expect(screen.getByText("v1.14.3")).toBeTruthy();
     expect(screen.getByText("版本上报时间")).toBeTruthy();
 });
 it("does not infer an old node version from its installation command", async () => {
     api.request.mockResolvedValue({data:{keys:[]}});
-    render(<NodeDeployment node={{id:1,type:"v2box",name:"A",install_command:"v1.0.10"}} close={()=>{}}/>);
+    render(<NodeDeployment node={{id:1,type:"v2box",name:"A",install_command:"v1.0.11"}} close={()=>{}}/>);
     expect((await screen.findByLabelText("节点运行版本")).textContent).toContain("未上报");
 });
 

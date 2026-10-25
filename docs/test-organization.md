@@ -959,3 +959,7 @@ Release v1.0.6 is published with all six platform archives and six SHA-256 files
 V2Box 生命周期回归覆盖未完成部署更新、保留配置与证书、活跃部署锁、卸载后修复安装及 resume；核心命令转交验证参数原样传递、错误返回和拒绝非法管理脚本。后台命令版本与固定路径由现有 Nodes、node-options 和 v2box 模块验证。
 
 版本观测复用 node-v10 与 Nodes 测试，覆盖旧节点兼容、版本格式校验、运行状态投影及未知版本展示；Go V10 契约测试验证 agentVersion 上报。
+
+节点检查展示回归复用 Nodes：验证成功项折叠、异常默认展开、不适用项隐藏、UDP/Reality 提示合并、DNS 异常保留及重复端点去重。
+
+node-ddns 回归覆盖按协议省略不适用检查项、客户端验证提示及保留 DNS/SSRF 防护；Nodes 覆盖正常部署步骤隐藏、失败步骤继续显示。

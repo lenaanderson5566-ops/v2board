@@ -785,10 +785,10 @@ try {
     $probe->ips=['8.8.8.8'];$probe->outcome=['state'=>'pass','code'=>'tls_verified','expiresAt'=>2000000000,'fingerprint'=>'test'];
     $beforeCheck=$checkNode->fresh()->toArray();
     $report=$probe->inspect('v2box',$checkNode);$items=array_column($report['items'],null,'key');
-    $assert($items['certificate']['state']==='pass' && $items['renewal']['state']==='unknown' && $items['relay']['state']==='skip','valid online certificate does not claim automatic renewal or relay');
+    $assert($items['certificate']['state']==='pass' && !isset($items['renewal']) && !isset($items['relay']) && !isset($items['listener']),'valid online certificate does not claim automatic renewal or relay');
     $assert(!str_contains(json_encode($report),'never-return-secret') && $checkNode->fresh()->toArray()===$beforeCheck,'read-only report excludes private settings');
     $checkNode->protocol='tuic';$checkNode->save();$report=$probe->inspect('v2box',$checkNode);$items=array_column($report['items'],null,'key');
-    $assert($items['certificate']['state']==='unknown' && $items['listener']['state']==='unknown','QUIC remains explicitly unverified');
+    $assert($items['client']['state']==='unknown' && !isset($items['certificate']) && !isset($items['listener']) && !isset($items['relay']),'QUIC remains explicitly unverified');
 
     $checkNode->protocol='anytls';$checkNode->save();
     $entryId=DB::table('v2_node_ddns')->insertGetId(['credential_id'=>$cid,'node_type'=>'entry','node_id'=>888888,'purpose'=>'entry','domain'=>'entry.check.test','family'=>'ipv4','ipv4'=>'8.8.8.8','ipv4_seen_at'=>time(),'enabled'=>true,'managed'=>true]);

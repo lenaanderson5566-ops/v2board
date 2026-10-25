@@ -1163,31 +1163,14 @@ function NodesContent({
                                                         </p>
                                                     </aside>
                                                 )}
-                                                <div className="node-config-preflight">
-                                                    <button
-                                                        type="button"
-                                                        onClick={() =>
-                                                            setPreflightShown(
-                                                                true,
-                                                            )
-                                                        }
-                                                    >
-                                                        检查配置
-                                                    </button>
-                                                    <span className="muted">
-                                                        保存前检查协议、域名、证书及服务器关联
-                                                    </span>
-                                                </div>
-                                                {preflightShown && (
+                                                {preflightShown && problems.length > 0 && (
                                                     <section
                                                         className="node-config-problems"
                                                         aria-label="配置预检"
                                                         aria-live="polite"
                                                     >
                                                         <strong>
-                                                            {problems.length
-                                                                ? `请处理 ${problems.length} 项配置问题`
-                                                                : "配置预检通过"}
+                                                            {`请处理 ${problems.length} 项配置问题`}
                                                         </strong>
                                                         {problems.length >
                                                             0 && (

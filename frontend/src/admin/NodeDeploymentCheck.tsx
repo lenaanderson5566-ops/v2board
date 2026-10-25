@@ -61,6 +61,15 @@ export function NodeDeploymentCheck({
             }
         }
     }
+    const checks = (result?.items || []).filter((item: Row) => item.state !== "skip" && item.key !== "renewal");
+    const clientOnly = result?.origin?.code === "udp_client_required";
+    const protocolChecks = checks.filter((item: Row) => ["listener", "certificate", "relay"].includes(item.key));
+    const visibleChecks = clientOnly && protocolChecks.length && protocolChecks.every((item: Row) => item.state === "unknown")
+        ? [...checks.filter((item: Row) => !["listener", "certificate", "relay"].includes(item.key)),
+           {...protocolChecks[0], key: "client", label: "客户端验证"}]
+        : checks;
+    const issues = visibleChecks.filter((item: Row) => item.state !== "pass" || !!item.next);
+    const passed = visibleChecks.filter((item: Row) => item.state === "pass" && !item.next);
     return (
         <section
             className="admin-deployment-card"
@@ -68,7 +77,7 @@ export function NodeDeploymentCheck({
             aria-busy={busy}
         >
             <div className="deployment-check-heading">
-                <h3>部署检查</h3>
+                <h3>连接排查</h3>
                 <button
                     className="primary"
                     disabled={disabled || busy}
@@ -78,8 +87,7 @@ export function NodeDeploymentCheck({
                 </button>
             </div>
             <p className="muted">
-                检查公网
-                DNS、在线证书、节点端口及中转入口。仅检查，不会重启服务或修改配置。
+                连接异常时检查 DNS、端口和证书；不会修改配置或重启服务。
             </p>
             {busy && (
                 <p role="status">
@@ -94,8 +102,12 @@ export function NodeDeploymentCheck({
                         检查时间：{date(result.checkedAt)} ·
                         连接探测：面板服务器 · DNS 查询：Google Public DNS，服务不可用时切换 Cloudflare。设置变更后请重新检查。
                     </p>
+                    {issues.length === 0 && passed.length > 0 && <p role="status">本次可检查项目均已通过。</p>}
+                    {[{label: "需要确认", items: issues, expanded: true}, {label: "已通过", items: passed, expanded: false}].filter(group => group.items.length > 0).map(group => (
+                    <details key={group.label} open={group.expanded}>
+                    <summary>{group.label}（{group.items.length}）</summary>
                     <ul className="deployment-check-list">
-                        {result.items.filter((item: Row) => item.state !== "skip" && item.key !== "renewal").map((item: Row) => (
+                        {group.items.map((item: Row) => (
                             <li key={item.key}>
                                 <div className="deployment-check-heading">
                                     <strong>{item.label}</strong>
@@ -121,6 +133,8 @@ export function NodeDeploymentCheck({
                             </li>
                         ))}
                     </ul>
+                    </details>
+                    ))}
                     <details>
                         <summary>检查地址与范围</summary>
                         <p>自动续期由节点执行，本次检查不发起续期。在线证书有效不代表已验证下一次续期。</p>
@@ -140,7 +154,7 @@ export function NodeDeploymentCheck({
                             </p>
                         )}
                         {[result.origin, result.entry, result.connection]
-                            .filter(Boolean)
+                            .filter((endpoint: Row | null, index: number, endpoints: (Row | null)[]) => endpoint && endpoints.findIndex(other => other?.host === endpoint.host && other?.port === endpoint.port) === index)
                             .map((endpoint: Row, index: number) => (
                                 <p key={index}>
                                     {endpoint.host}:{endpoint.port} ·{" "}
@@ -169,7 +183,7 @@ export function NodeDeploymentCheck({
 }
 
 export function NodeDnsObservation({observation}:{observation?:Row | null}) {
-    return <>{observation && <div role="status" className="node-domain-progress">
+    return <>{observation && observation.state !== "verified" && <div role="status" className="node-domain-progress">
                             <strong>节点端 DNS 检查 · {({origin:"回源域名",entry:"入口域名",certificate:"证书域名"} as Record<string,string>)[observation.role]}</strong>
                             <p>{({checking:"正在查询公网解析。",verified:"节点最近一次公网解析检查已通过。",mismatch:"解析与预期 IP 不一致。请核对 A/AAAA、遗留记录与 DNS only 设置，再恢复部署。",unavailable:"公共 DNS 查询服务均不可用。请检查节点的出站 HTTPS 与本机 DNS，再恢复部署；无需重装或更换证书凭据。"} as Record<string,string>)[observation.state]}</p>
                             <small>节点上报：{date(observation.checkedAt)} · 此结果不代表证书或部署已完成。</small>

@@ -36,7 +36,7 @@ import { Infrastructure } from "./Infrastructure";
 import { AdminDDNS } from "./AdminDDNS";
 import { Nodes, ResourcePage, resources } from "./admin";
 import { NodeCredentials } from "./NodeCredentials";
-import { NodeDeploymentCheck } from "./NodeDeploymentCheck";
+import { NodeDeploymentCheck, NodeDnsObservation } from "./NodeDeploymentCheck";
 import { NodeDeployment } from "./NodeDeployment";
 import { NodeConnectionEditor } from "./NodeConnections";
 import { NodeTopology } from "./NodeTopology";
@@ -717,6 +717,7 @@ it("creates a direct node and its domain in one save without a separate server f
     await screen.findByRole("combobox",{name:/^根域名/});
     expect(screen.queryByRole("textbox",{name:"连接主机"})).toBeNull();
     expect(screen.getAllByRole("spinbutton",{name:"监听端口"})).toHaveLength(1);
+    expect(screen.queryByRole("button",{name:"检查配置"})).toBeNull();
     fireEvent.change(screen.getByRole("textbox",{name:/节点名称/}),{target:{value:"Japan"}});
     fireEvent.change(screen.getByRole("combobox",{name:/^根域名/}),{target:{value:"9"}});
     fireEvent.change(screen.getByRole("textbox",{name:/^子域名前缀/}),{target:{value:"jp"}});
@@ -1272,7 +1273,7 @@ it("shows actionable receipt failures without claiming external checks passed",(
     render(<NodeDeploymentProgress runtime={{applicationState:"failed",errorCode:"certificate"}}/>);
     expect(screen.getByText(/证书申请或加载失败/)).toBeTruthy();
     expect(screen.queryByText("已确认")).toBeNull();
-    expect(screen.getByText(/服务器安装进程和公共网络结果需另行确认/)).toBeTruthy();
+    expect(screen.getByText(/修正上述原因后等待节点重新应用配置/)).toBeTruthy();
 });
 
 it("accepts dual ingress with IPv4 origin and HTTP origin certificate",()=>{
@@ -1294,4 +1295,51 @@ it("does not infer an old node version from its installation command", async () 
     api.request.mockResolvedValue({data:{keys:[]}});
     render(<NodeDeployment node={{id:1,type:"v2box",name:"A",install_command:"v1.0.8"}} close={()=>{}}/>);
     expect((await screen.findByLabelText("节点运行版本")).textContent).toContain("未上报");
+});
+
+it("collapses successful checks and keeps actionable failures expanded", async () => {
+    api.request.mockResolvedValue({data:{checkedAt:1700000000,items:[
+        {key:"dns",label:"公网 DNS",state:"pass",detail:"DNS 正常"},
+        {key:"certificate",label:"在线证书",state:"fail",detail:"证书不匹配",next:"核对 TLS 身份"},
+        {key:"renewal",label:"自动续期",state:"unknown",detail:"不能确认续期"}
+    ],origin:{host:"same.test",port:443,code:"tls_verified"},connection:{host:"same.test",port:443,code:"tls_verified"}}});
+    render(<NodeDeploymentCheck node={{type:"v2box",id:3}}/>);
+    fireEvent.click(screen.getByRole("button",{name:"一键检查"}));
+    expect((await screen.findByText("已通过（1）")).closest("details")?.open).toBe(false);
+    expect(screen.getByText("需要确认（1）").closest("details")?.open).toBe(true);
+    expect(screen.queryByText("不能确认续期")).toBeNull();
+    expect(screen.getAllByText(/TLS 握手与证书校验通过/)).toHaveLength(1);
+});
+it("consolidates unsupported protocol checks without hiding DNS failures", async () => {
+    api.request.mockResolvedValue({data:{items:[
+        {key:"dns",label:"公网 DNS",state:"fail",detail:"解析不匹配"},
+        ...["listener","certificate","relay"].map(key=>({key,label:key,state:"unknown",detail:"使用客户端验证",next:"检查客户端连接"}))
+    ],origin:{host:"origin.test",port:443,code:"udp_client_required"}}});
+    render(<NodeDeploymentCheck node={{type:"v2box",id:3}}/>);
+    fireEvent.click(screen.getByRole("button",{name:"一键检查"}));
+    expect(await screen.findByText("客户端验证")).toBeTruthy();
+    expect(screen.getAllByText("使用客户端验证")).toHaveLength(1);
+    expect(screen.getByText("解析不匹配")).toBeTruthy();
+});
+it("keeps DNS problems visible without repeating successful deployment observations", () => {
+    const view=render(<NodeDnsObservation observation={{state:"verified",role:"origin",checkedAt:1700000000}}/>);
+    expect(screen.queryByRole("status")).toBeNull();
+    view.rerender(<NodeDnsObservation observation={{state:"mismatch",role:"origin",checkedAt:1700000000}}/>);
+    expect(screen.getByRole("status").textContent).toContain("解析与预期 IP 不一致");
+});
+
+it("keeps certificate renewal-window advice expanded even after a successful handshake", async () => {
+    api.request.mockResolvedValue({data:{items:[{key:"certificate",label:"在线证书",state:"pass",detail:"证书有效",next:"证书进入续期窗口"}],origin:{host:"origin.test",port:443}}});
+    render(<NodeDeploymentCheck node={{type:"v2box",id:3}}/>);
+    fireEvent.click(screen.getByRole("button",{name:"一键检查"}));
+    expect((await screen.findByText("下一步：证书进入续期窗口")).closest("details")?.open).toBe(true);
+});
+
+it("removes completed deployment steps and keeps configuration failures actionable", () => {
+    const view=render(<NodeDeploymentProgress runtime={{applicationState:"applied",runtimeStatus:"online"}}/>);
+    expect(screen.queryByLabelText("部署步骤与处理建议")).toBeNull();
+    view.rerender(<NodeDeploymentProgress runtime={{applicationState:"failed",errorCode:"certificate"}}/>);
+    expect(screen.getByText("待处理的部署事项")).toBeTruthy();
+    expect(screen.getByText(/证书申请或加载失败/)).toBeTruthy();
+    expect(screen.queryByText(/未读取到托管域名绑定/)).toBeNull();
 });

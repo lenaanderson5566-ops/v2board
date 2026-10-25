@@ -138,12 +138,16 @@ class NodeDeploymentCheck
         $entryPrints=array_unique(array_column($entryResult['addresses'] ?? [],'fingerprint'));
         $relayPass=$relay && $certPass && $origin['state']==='pass' && count($originPrints)===1 && count($entryPrints)===1 && reset($originPrints)===reset($entryPrints);
         $add('relay','中转连接',!$relay?'skip':($relayPass?'pass':'unknown'),!$relay?'直连节点无需中转。':($relayPass?'入口与回源 TLS 握手成功，在线证书指纹一致；尚未验证代理协议鉴权与数据传输。':'尚未确认入口与回源的 TLS 连通性及证书一致性。'),!$relay?'':($relayPass?'使用实际客户端完成一次连接。':'检查 Nginx stream 的上游与端口。仅允许入口访问回源时，需从入口服务器或实际客户端进一步验证。'));
-        if ($udp || $unsupported) foreach ($items as &$item) if (in_array($item['key'],['listener','certificate','relay'],true) && $item['state']!=='skip') {
-            $item['detail']=$udp?'当前协议使用 UDP/QUIC，TCP 探测不能证明服务正常。':'当前 TLS 身份或 Reality 模式不支持普通 TLS 探测。';
-            $item['next']='使用支持此协议的客户端验证，并结合节点日志检查；不会将端口无响应判为服务故障。';
+        // Report only checks this protocol can actually perform. A certificate
+        // handshake cannot establish future renewal or validate a QUIC/Reality session.
+        $items=array_values(array_filter($items,fn($item)=>$item['state']!=='skip'
+            && !($certPass && $public===$origin && $item['key']==='listener')));
+        if ($udp || $unsupported) {
+            $items=array_values(array_filter($items,fn($item)=>!in_array($item['key'],['listener','certificate','relay'],true)));
+            $add('client','客户端验证','unknown',
+                $udp?'当前协议使用 UDP/QUIC，TCP 探测不能证明服务正常。':'当前 TLS 身份或 Reality 模式不支持普通 TLS 探测。',
+                '使用支持此协议的客户端验证连接，并结合节点日志排查。');
         }
-        unset($item);
-        $add('renewal','自动续期',(int)$root->tls===1?'unknown':'skip',(int)$root->tls===1?'在线证书有效不代表已验证下一次续期；本检查不会发起证书申请。':'当前模式不使用普通 TLS 证书续期。',(int)$root->tls===1?'自动申请模式由 V2Box 定期检查续期；续期后重新检查证书到期时间。文件证书需由证书维护方更新。':'');
         $latestBinding=DB::table('v2_node_ddns')->where('node_type',$type)->where('node_id',$root->id)->first();
         $latestEntry=($latestBinding->entry_id ?? null)?DB::table('v2_node_ddns')->find($latestBinding->entry_id):null;
         $changed=$snapshot!==hash('sha256',json_encode([$root->fresh()?->getAttributes(),$latestBinding,$latestEntry]));

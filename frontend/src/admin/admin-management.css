@@ -349,7 +349,6 @@ body[data-console="admin"] .node-editor-create .field-section::after { display: 
     body[data-console="admin"] .node-editor-path > summary span { display: block; margin-top: 6px; }
 }
 
-.node-config-preflight { display:flex; align-items:center; flex-wrap:wrap; gap:12px; margin:0 0 12px; font-size:13px; }
 .node-config-impact,.node-config-problems,.node-deployment-progress { border:1px solid var(--border,#dce2ea); border-radius:8px; padding:14px 16px; margin:0 0 16px; background:var(--bg-soft,#f8fafc); }
 .node-config-impact p,.node-deployment-progress p { margin:8px 0; line-height:1.6; }
 .node-config-problems ul { margin:10px 0 0; padding-left:18px; }

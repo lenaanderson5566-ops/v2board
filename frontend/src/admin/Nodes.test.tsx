@@ -430,6 +430,11 @@ it("guides deployment to panel-managed DDNS", async () => {
     fireEvent.click(await screen.findByRole("button",{name:"编辑"}));
     fireEvent.click(screen.getByRole("button",{name:"部署与状态"}));
     expect(screen.queryByRole("heading", { name: "自动 IP 上报" })).toBeNull();
+    expect(screen.queryByLabelText("节点概况")).toBeNull();
+    expect(screen.queryByRole("button",{name:"一键检查"})).toBeNull();
+    expect(screen.getByRole("button",{name:"新安装"}).compareDocumentPosition(screen.getByLabelText("部署状态")) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(screen.getByRole("heading",{name:"安装与重新部署"})).toBeTruthy();
+    expect(screen.queryByText(/勿重复生成部署命令/)).toBeNull();
     expect(screen.getByText("运维命令与说明")).toBeTruthy();
     expect(screen.getByText("/usr/local/bin/v2box update")).toBeTruthy();
     expect(screen.getByText("/usr/local/bin/v2box uninstall --stop-network")).toBeTruthy();
@@ -719,7 +724,7 @@ it("creates a direct node and its domain in one save without a separate server f
     fireEvent.click(screen.getByRole("button",{name:"保存节点配置"}));
     await waitFor(()=>expect(api.request).toHaveBeenCalledWith("test-admin/server/v2box/save",expect.objectContaining({server_port:443,deployment_setup:{credential_id:9,prefix:"jp",family:"ipv4",server_id:null}})));
     expect(api.request.mock.calls.some(([path])=>String(path).endsWith("domains/bind") || String(path).endsWith("network/save"))).toBe(false);
-    await screen.findByText("新节点安装");
+    await screen.findByText("安装与重新部署");
     expect(api.request.mock.calls.some(([path])=>String(path).endsWith("credentials/deployment"))).toBe(false);
 });
 
@@ -751,7 +756,7 @@ it("creates a relay node in one save with separate ingress and origin fields", a
     fireEvent.click(screen.getByRole("button",{name:"保存节点配置"}));
     await waitFor(()=>expect(api.request).toHaveBeenCalledWith("test-admin/server/v2box/save",expect.objectContaining({server_port:443,deployment_setup:{credential_id:9,prefix:"jp",family:"ipv4",server_id:null,entry_id:17,entry_port:8443}})));
     expect(api.request.mock.calls.some(([path])=>String(path).endsWith("domains/bind") || String(path).endsWith("network/save"))).toBe(false);
-    await screen.findByText("新节点安装");
+    await screen.findByText("安装与重新部署");
     expect(api.request.mock.calls.some(([path])=>String(path).endsWith("credentials/deployment"))).toBe(false);
 });
 
@@ -946,7 +951,8 @@ it("uses one node list with line, shared service and deployment sections",async(
     expect(screen.getAllByRole("dialog")).toHaveLength(1);
     expect(screen.getByText("节点服务：V2Box / sing-box")).toBeTruthy();
     fireEvent.click(screen.getByRole("button",{name:"部署与状态"}));
-    expect(await screen.findByRole("button",{name:"一键检查"})).toBeTruthy();
+    expect(screen.queryByRole("button",{name:"一键检查"})).toBeNull();
+    expect(screen.getByRole("button",{name:"新安装"})).toBeTruthy();
     expect(api.request.mock.calls.some(([path])=>String(path).includes("server/credentials?type=v2box&id=1"))).toBe(true);
     expect(api.request.mock.calls.some(([path])=>String(path).includes("server/credentials?type=v2box&id=2"))).toBe(false);
 });
@@ -1050,7 +1056,7 @@ it("retains manual address input after conflicts and cancellation",async()=>{
 it("opens deployment immediately for a saved manual node without forcing domain configuration",async()=>{
     api.request.mockResolvedValue({data:{keys:[],assignments:[],servers:[]}});
     render(<NodeDeployment node={{type:"v2box",id:7,name:"Manual",_new:true,_domainConfigured:false}} close={()=>{}}/>);
-    expect(await screen.findByText("新节点安装")).toBeTruthy();
+    expect(await screen.findByText("安装与重新部署")).toBeTruthy();
     expect(screen.queryByText("设置节点域名")).toBeNull();
     expect(api.request.mock.calls.some(([path])=>String(path).includes("connections/address"))).toBe(false);
 });
@@ -1240,7 +1246,8 @@ it("keeps integrated deployment navigation flat and credential management reacha
     summary.closest("details")!.open=true; fireEvent(summary.closest("details")!,new Event("toggle"));
     await screen.findByRole("button",{name:"生成 / 手动轮换密钥"});
     summary.closest("details")!.open=false; fireEvent(summary.closest("details")!,new Event("toggle"));
-    expect(await screen.findByRole("button",{name:"一键检查"})).toBeTruthy();
+    expect(screen.queryByRole("button",{name:"一键检查"})).toBeNull();
+    expect(screen.getByRole("button",{name:"新安装"})).toBeTruthy();
     expect(api.request.mock.calls.some(([,body])=>body && Object.keys(body).length)).toBe(false);
 });
 

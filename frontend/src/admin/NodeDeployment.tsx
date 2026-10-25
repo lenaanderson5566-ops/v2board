@@ -8,7 +8,7 @@ import { admin, date, query, request, type Row } from "../shared/api";
 import { Modal, State, useData } from "../shared/ui";
 import { AdminChoiceGroup, AdminTabs } from "./AdminChoices";
 import { NodeCredentials } from "./NodeCredentials";
-import { NodeDeploymentCheck, NodeDnsObservation } from "./NodeDeploymentCheck";
+import { NodeDnsObservation } from "./NodeDeploymentCheck";
 import { nodeDeploymentCommand, nodeUpgradeCommand } from "./node-deployment";
 
 export function NodeDeployment({
@@ -180,7 +180,7 @@ export function NodeDeployment({
                     : `${node.name} · ${scope === "connection" ? "接入设置" : "部署与接入"}`
             }
             variant="drawer"
-            className="node-deployment-drawer"
+            className="node-editor-dialog node-deployment-drawer"
             wide
             close={() => {
                 if (
@@ -260,98 +260,6 @@ export function NodeDeployment({
                         />
                     ) : (
                         <>
-                            <section
-                                className="node-deployment-progress"
-                                aria-label="部署状态"
-                            >
-                                <div>
-                                    <strong>
-                                        {runtime.error || network.error
-                                            ? "状态读取暂不可用"
-                                            : stage.title}
-                                    </strong>
-                                    <button
-                                        disabled={
-                                            busy ||
-                                            report.loading ||
-                                            runtime.loading ||
-                                            network.loading
-                                        }
-                                        onClick={refreshStatus}
-                                    >
-                                        刷新部署状态
-                                    </button>
-                                </div>
-                                <p>
-                                    {runtime.error || network.error
-                                        ? "请刷新状态重试，部署命令仍可按原流程生成。"
-                                        : stage.description}
-                                </p>
-                                <State {...report} retry={report.reload}>
-                                    <small>
-                                        {authenticated
-                                            ? "独立凭据已认证"
-                                            : "独立凭据尚未认证"}
-                                    </small>
-                                </State>
-                                {stage.target === "runtime" && inspect && (
-                                    <button disabled={busy} onClick={inspect}>
-                                        查看运行诊断
-                                    </button>
-                                )}
-                                {stage.target === "domain" && (
-                                    <button
-                                        disabled={busy}
-                                        onClick={() => openConnection ? openConnection() : setTab("domain")}
-                                    >
-                                        检查连接与域名
-                                    </button>
-                                )}
-                                {stage.target === "upgrade" && (
-                                    <button
-                                        disabled={busy}
-                                        onClick={() => setMode("upgrade")}
-                                    >
-                                        查看节点升级命令
-                                    </button>
-                                )}
-                                {stage.target === "logs" && (
-                                    <details>
-                                        <summary>查看日志与恢复命令</summary>
-                                        <p>
-                                            <code>
-                                                {node.type === "v2box"
-                                                    ? "v2box status"
-                                                    : "systemctl status v2node"}
-                                            </code>{" "}
-                                            ·{" "}
-                                            <code>
-                                                {node.type === "v2box"
-                                                    ? "v2box log"
-                                                    : "journalctl -u v2node -n 80 --no-pager"}
-                                            </code>
-                                        </p>
-                                        {node.type === "v2box" && (
-                                            <p>
-                                                未完成的一键部署可执行{" "}
-                                                <code>
-                                                    sh install-v2box.sh --resume
-                                                </code>
-                                                ，证书与现有配置会保留。
-                                            </p>
-                                        )}
-                                    </details>
-                                )}
-                                {paused && (
-                                    <p className="muted">
-                                        已暂停自动检查，点击“刷新部署状态”继续。
-                                    </p>
-                                )}
-                            </section>
-                            <NodeAddressSummary node={node} binding={binding} entry={(network.data?.assignments || []).find((a: Row) => a.id === binding?.entry_id)} />
-                            {!network.loading && !runtime.loading && !network.error && !runtime.error && <NodeDeploymentProgress binding={binding} network={network.data} runtime={runtime.data} />}
-                            <NodeDnsObservation observation={binding?.deployment_dns} />
-                            <NodeDeploymentCheck node={node} disabled={busy} />
                             {node.type === "v2box" && (
                                 <div className="admin-deployment-mode">
                                     <AdminChoiceGroup
@@ -375,7 +283,7 @@ export function NodeDeployment({
                             )}
                             {node.type === "v2box" && mode === "new" ? (
                                 <section className="admin-deployment-card">
-                                    <h3>新节点安装</h3>
+                                    <h3>安装与重新部署</h3>
                                     {binding?.entry_id && (
                                         <p role="status">
                                             执行位置：回源服务器（运行代理服务的机器）。请先完成中转服务器的
@@ -388,7 +296,7 @@ export function NodeDeployment({
                                     <details className="admin-deployment-tools">
                                         <summary>安装条件与中断恢复</summary>
                                         <p>自动安装依赖并配置密钥；已绑定域名时同时配置 IP 上报，等待解析生效并验证节点就绪后启用域名。</p>
-                                        <p>自动申请证书请选择 HTTP 或 DNS 申请。HTTP 验证需保持公网 80 端口可达。已有配置不会被覆盖；中断后按终端提示恢复，无需重复部署。</p>
+                                        <p>自动申请证书请选择 HTTP 或 DNS 申请。HTTP 验证需保持公网 80 端口可达。保留证书及其他节点配置；重新部署会更新当前节点凭据。中断后使用 --resume，授权过期时重新生成部署命令。</p>
                                     </details>
                                     <button
                                         className={deployment ? "" : "primary"}
@@ -436,15 +344,14 @@ export function NodeDeployment({
                                             </button>
                                         </>
                                     )}
-                                    <p className="muted">
-                                        生成不更换密钥。执行后原全局密钥失效，旧独立密钥保留30分钟宽限；正在轮换时需先完成配置。执行中断后按终端提示恢复，勿重复生成部署命令。
-                                    </p>
+                                    {keys.some(k => k.status === "retiring") && <p role="status">节点凭据正在轮换。请在“高级：节点凭据”完成轮换后生成部署命令。</p>}
+                                    <details className="admin-deployment-tools"><summary>重新部署的影响</summary><p>生成命令不会更换密钥。执行后更新当前节点凭据，旧独立密钥保留 30 分钟宽限，原全局密钥失效。证书及其他节点配置保留。</p></details>
                                 </section>
                             ) : node.type === "v2box" ? (
                                 <section className="admin-deployment-card">
                                     <h3>升级现有节点</h3>
                                     <p>
-                                        保留现有配置和密钥，安装新版后重启节点。
+                                        保留配置、证书和密钥。运行中的服务升级后重启；已停止的服务保持停止。
                                     </p>
                                     <textarea
                                         className="admin-command-input"
@@ -470,6 +377,99 @@ export function NodeDeployment({
                                     独立凭据。
                                 </p>
                             )}
+                            {copied && <p role="status">{copied}</p>}
+                            {error && <p role="alert">{error}</p>}
+                            <section
+                                className="node-deployment-progress"
+                                aria-label="部署状态"
+                            >
+                                <div>
+                                    <strong>
+                                        {runtime.error || network.error
+                                            ? "状态读取暂不可用"
+                                            : stage.title}
+                                    </strong>
+                                    <button
+                                        disabled={
+                                            busy ||
+                                            report.loading ||
+                                            runtime.loading ||
+                                            network.loading
+                                        }
+                                        onClick={refreshStatus}
+                                    >
+                                        刷新部署状态
+                                    </button>
+                                </div>
+                                <p>
+                                    {runtime.error || network.error
+                                        ? "请刷新状态重试，部署命令仍可按原流程生成。"
+                                        : stage.description}
+                                </p>
+                                <State {...report} retry={report.reload}>
+                                    <small>
+                                        {authenticated
+                                            ? "独立凭据已认证"
+                                            : "独立凭据尚未认证"}
+                                    </small>
+                                </State>
+                                {stage.target === "runtime" && inspect && (
+                                    <button disabled={busy} onClick={inspect}>
+                                        查看运行诊断
+                                    </button>
+                                )}
+                                {stage.target === "domain" && (
+                                    <button
+                                        disabled={busy}
+                                        onClick={() => openConnection ? openConnection() : setTab("domain")}
+                                    >
+                                        修改连接与域名
+                                    </button>
+                                )}
+                                {stage.target === "upgrade" && (
+                                    <button
+                                        disabled={busy}
+                                        onClick={() => setMode("upgrade")}
+                                    >
+                                        查看节点升级命令
+                                    </button>
+                                )}
+                                {stage.target === "logs" && (
+                                    <details>
+                                        <summary>查看日志与恢复命令</summary>
+                                        <p>
+                                            <code>
+                                                {node.type === "v2box"
+                                                    ? "v2box status"
+                                                    : "systemctl status v2node"}
+                                            </code>{" "}
+                                            ·{" "}
+                                            <code>
+                                                {node.type === "v2box"
+                                                    ? "v2box log"
+                                                    : "journalctl -u v2node -n 80 --no-pager"}
+                                            </code>
+                                        </p>
+                                        {node.type === "v2box" && (
+                                            <p>
+                                                未完成的一键部署可执行{" "}
+                                                <code>
+                                                    sh install-v2box.sh --resume
+                                                </code>
+                                                ，证书与现有配置会保留。
+                                            </p>
+                                        )}
+                                    </details>
+                                )}
+                                {paused && (
+                                    <p className="muted">
+                                        已暂停自动检查，点击“刷新部署状态”继续。
+                                    </p>
+                                )}
+                            </section>
+                            <NodeAddressSummary node={node} binding={binding} entry={(network.data?.assignments || []).find((a: Row) => a.id === binding?.entry_id)} />
+                            {!network.loading && !runtime.loading && !network.error && !runtime.error && <NodeDeploymentProgress binding={binding} network={network.data} runtime={runtime.data} />}
+                            <NodeDnsObservation observation={binding?.deployment_dns} />
                             {node.type !== "v2box" && <details className="admin-deployment-tools">
                                 <summary>高级：手动安装</summary>
                                 <div>
@@ -574,8 +574,6 @@ export function NodeDeployment({
                         中管理。名称、权限和倍率请在节点列表编辑默认线路。
                     </p>
                 )}
-                {tab === "deploy" && copied && <p role="status">{copied}</p>}
-                {tab === "deploy" && error && <p role="alert">{error}</p>}
             </div>
         </Modal>
     );

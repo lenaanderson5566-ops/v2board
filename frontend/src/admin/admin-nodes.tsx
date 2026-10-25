@@ -580,44 +580,6 @@ function NodesContent({
                     )}
                     <State {...d} retry={d.reload}>
                         {error && <div className="alert">{error}</div>}
-                        <div
-                            className="node-management-summary"
-                            aria-label="节点概况"
-                        >
-                            <div>
-                                <span>{"全部节点"}</span>
-                                <strong>{nodeRows.length}</strong>
-                            </div>
-                            <div>
-                                <span>{"展示中"}</span>
-                                <strong>
-                                    {
-                                        nodeRows.filter(
-                                            (n) => Number(n.show) === 1,
-                                        ).length
-                                    }
-                                </strong>
-                            </div>
-                            <div>
-                                <span>{"已隐藏"}</span>
-                                <strong>
-                                    {
-                                        nodeRows.filter(
-                                            (n) => Number(n.show) !== 1,
-                                        ).length
-                                    }
-                                </strong>
-                            </div>
-                            <div>
-                                <span>{"复用线路"}</span>
-                                <strong>
-                                    {
-                                        nodeRows.filter((n) => !!n.service_id)
-                                            .length
-                                    }
-                                </strong>
-                            </div>
-                        </div>
                         <div className="node-management-tools">
                             <label>
                                 {"搜索节点"}
@@ -810,7 +772,6 @@ function NodesContent({
                         editorNavigation("service", nodeBusy, nodeDirty)}
                     {!editing.id && (
                         <div className="pad node-creation-mode">
-                            <p className="muted">填写节点信息、连接方式与协议，保存后部署。</p>
                             <details>
                             <summary>高级：共用现有节点的服务</summary>
                             <AdminChoiceGroup
@@ -839,11 +800,7 @@ function NodesContent({
                                     setCreationMode(mode);
                                 }}
                             />
-                            <p className="muted">
-                                {creationMode === "new"
-                                    ? "依次填写节点信息、代理服务和部署信息，保存后生成安装命令。"
-                                    : "独立填写节点名称和地区，再选择现有代理服务；共用协议、证书和倍率，无需重复安装。"}
-                            </p>
+
                             </details>
                             {creationMode === "reuse" && <p role="status">当前节点共用现有代理服务的协议、监听、证书和倍率，无需重复部署。</p>}
                         </div>

@@ -339,10 +339,10 @@ body[data-console="admin"] .node-editor-path > summary { cursor: pointer; color:
 body[data-console="admin"] .node-editor-path > summary strong { color: var(--text); font-size: 13px; margin-right: 12px; }
 body[data-console="admin"] .node-editor-path > summary span { font-size: 13px; overflow-wrap: anywhere; }
 body[data-console="admin"] .node-editor-path .node-topology { border: 0; padding: 8px 0 0; margin: 8px 0 0; }
-body[data-console="admin"] .node-editor-create .field-grid { gap: 16px; }
-body[data-console="admin"] .node-editor-create .field-section { display: block; text-align: left; font-size: 14px; border: 0; margin: 4px 0 0; padding: 12px 0 0; }
-body[data-console="admin"] .node-editor-create .field-section::before,
-body[data-console="admin"] .node-editor-create .field-section::after { display: none; }
+body[data-console="admin"] .node-editor-dialog .field-grid { gap: 16px; }
+body[data-console="admin"] .node-editor-dialog .field-section { display: block; text-align: left; font-size: 14px; border: 0; margin: 4px 0 0; padding: 12px 0 0; }
+body[data-console="admin"] .node-editor-dialog .field-section::before,
+body[data-console="admin"] .node-editor-dialog .field-section::after { display: none; }
 @media(max-width:600px) {
     body[data-console="admin"] .node-editor-create .node-editor-intro { padding: 12px 16px 0; }
     body[data-console="admin"] .node-editor-create .node-editor-backend { padding: 12px 16px; }
@@ -426,3 +426,21 @@ body[data-console="admin"] .node-creation-mode p {margin:10px 0 0;}
 
 .server-management-drawer .server-traffic-details dl { grid-template-columns:repeat(3,auto minmax(0,1fr)); gap:12px 16px; }
 @media(max-width:720px) { .server-management-drawer .server-traffic-details dl { grid-template-columns:90px minmax(0,1fr); } }
+
+/* One hierarchy across node information, connection, service and deployment. */
+body[data-console="admin"] .node-editor-dialog .node-editor-navigation { padding:16px 24px; border-bottom:1px solid var(--border); margin-bottom:8px; }
+body[data-console="admin"] .node-editor-dialog .node-workflow-navigation { gap:4px; }
+body[data-console="admin"] .node-editor-dialog .node-workflow-navigation > button { align-items:center; justify-content:center; min-height:44px; border-color:transparent !important; background:transparent; font-size:13px; }
+body[data-console="admin"] .node-editor-dialog .node-workflow-navigation > button[aria-pressed="true"] { color:var(--primary,#6757ff); border-color:var(--border) !important; background:var(--bg-soft,#f8fafc); font-weight:600; }
+body[data-console="admin"] .node-editor-dialog .field-section { color:var(--text); border-top:1px solid var(--border); padding-top:20px; margin-top:8px; font-weight:600; }
+body[data-console="admin"] .node-editor-dialog .admin-deployment-card h3,
+body[data-console="admin"] .node-editor-dialog .node-deployment-progress h3 { margin:0 0 12px; font-size:15px; line-height:1.5; }
+body[data-console="admin"] .node-editor-dialog .admin-deployment-tools { border-top:1px solid var(--border); padding-top:12px; margin-top:16px; }
+body[data-console="admin"] .node-editor-dialog .admin-deployment-tools > summary { color:var(--muted); font-size:13px; cursor:pointer; padding:4px 0; }
+body[data-console="admin"] .node-editor-dialog .admin-command-input { width:100%; box-sizing:border-box; min-height:88px; font-family:ui-monospace,monospace; line-height:1.6; overflow-wrap:anywhere; }
+body[data-console="admin"] .node-editor-dialog .form-bottom { gap:12px; border-top:1px solid var(--border); padding-top:16px; margin-top:24px; }
+@media(max-width:600px) {
+ body[data-console="admin"] .node-editor-dialog .node-editor-navigation { padding:12px 16px; }
+ body[data-console="admin"] .node-editor-dialog .node-workflow-navigation { grid-template-columns:repeat(2,minmax(0,1fr)); }
+ body[data-console="admin"] .node-editor-dialog .admin-deployment-card > button { min-height:44px; }
+}

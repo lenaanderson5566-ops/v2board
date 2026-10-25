@@ -480,3 +480,9 @@ Pending deployment recovery now restores missing V2Box programs before invoking 
 
 Deployment command reuse is tracked by a local SHA-256 grant fingerprint (never the plaintext grant). The same command resumes its state; a freshly generated authorization replaces the workflow only after successful redemption. Existing same-panel node configuration may be redeployed; only the authorized node credential is updated, preserving other nodes, custom settings and certificates with a private pre-redeploy backup. Legacy states use --resume to continue.
 Integrated node deployment now keeps credentials in a lazily loaded advanced disclosure, and hides V2Box manual-install commands in favor of enrollment-based installation.
+
+Node list removes the overview count cards and generic creation instructions. Deployment prioritizes install/upgrade command controls before observed status. The repeated one-click inspection entry is removed from this workflow; DNS/certificate guards remain in deployment scripts, with automatic progress and actionable errors preserved.
+
+Deployment copy and errors now appear immediately beside the command workflow. Reinstallation explicitly distinguishes valid-task resume from expired authorization renewal; upgrade copy states that stopped services remain stopped. Credential rotation explains why command generation is disabled, and credential replacement details are collapsed.
+
+Node editing drawers share the same navigation, left-aligned section titles, form spacing, advanced disclosure styling and command typography. The service editor uses the same section hierarchy as creation; deployment uses the shared editor scope. Narrow screens use a two-column navigation. Removed overview-card CSS is deleted.

@@ -971,3 +971,5 @@ V2Box v1.0.9 release validation covers generated install/upgrade commands (PHP a
 The embedded deployment suite now has 47 cases, including actual shell restoration with a stub installer, preservation of config/certificate/state, reconfiguration of previously reported IP schedules and actionable missing-program errors.
 
 Lifecycle review adds targeted redeployment credential replacement with preserved peer nodes and private backup. The embedded deployment suite contains 49 cases; V2Box lifecycle scripts cover update rollback, pending deployment repair, uninstall, OpenRC and retained configuration. Frontend regression coverage follows the inline credentials disclosure and absence of V2Box manual-install duplicates.
+
+Node UI tests assert that overview count cards and manual inspection buttons are absent and deployment command controls precede status details.

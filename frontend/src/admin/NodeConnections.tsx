@@ -2,6 +2,7 @@ import { type ReactNode, useMemo, useEffect, useRef, useState } from "react";
 import { admin, query, request, type Row } from "../shared/api";
 import { Modal, Panel, Table, State, useData } from "../shared/ui";
 import { AdminSwitch } from "./admin-switch";
+import { automaticDomainMessages } from "./node-domain-progress";
 import { NodeTopology } from "./NodeTopology";
 import { relayStreamConfig } from "./node-relay";
 import { useNodeCatalog } from "./node-dictionary";
@@ -28,7 +29,7 @@ export function NodeConnectionEditor({ node, nodes, groups = [], close, onSaved,
         window.addEventListener("beforeunload", warn);
         return () => window.removeEventListener("beforeunload", warn);
     }, [dirty,embedded]);
-    useEffect(() => { if (existing.data) { setDraft(existing.data.draft); setLoadedRevision(existing.data.revision ?? 0); setTagsText((existing.data.draft.tags || []).join(", ")); setDirty(false); setConfirmed(false); } }, [existing.data]);
+    useEffect(() => { if (existing.data && !dirty && !busy && loadedRevision !== (existing.data.revision ?? 0)) { setDraft(existing.data.draft); setLoadedRevision(existing.data.revision ?? 0); setTagsText((existing.data.draft.tags || []).join(", ")); setDirty(false); setConfirmed(false); } }, [existing.data,busy,dirty,loadedRevision]);
     const selectableServices=embedded && !id ? nodes.filter(n=>!n.service_id) : services;
     const service = services.find(s => Number(s.id) === Number(draft.service_id));
     const assignments: Row[] = network.data?.assignments || [], servers: Row[] = network.data?.servers || [];
@@ -42,6 +43,12 @@ export function NodeConnectionEditor({ node, nodes, groups = [], close, onSaved,
     const entry = entries.find(a => a.id === Number(draft.entry_id));
     const validEntry=!draft.entry_id || (!!entry && Number.isInteger(Number(draft.entry_port)) && Number(draft.entry_port)>=1 && Number(draft.entry_port)<=65535);
     const savedPlan = existing.data?.plan;
+    const manualPublish = !!savedPlan?.entry_id || type!=="v2box" || ["hysteria","hysteria2","tuic"].includes(savedPlan?.protocol) || ["manual_required","configuration_blocked"].includes(existing.data?.automatic_status);
+    useEffect(()=>{
+        if (!id || dirty || busy) return;
+        const timer=window.setInterval(()=>{if(document.visibilityState!=="hidden") existing.reload();},15000);
+        return ()=>window.clearInterval(timer);
+    },[id,dirty,busy,existing.reload]);
     const config = savedPlan?.entry_id ? relayStreamConfig({ id: existing.data?.id, scope: "connection", domain: savedPlan.origin_domain, family: savedPlan.origin_family, entry_port: savedPlan.port }, { ...service, server_port: savedPlan.origin_port, protocol: savedPlan.protocol }, { family: savedPlan.entry_family }) : "";
     function change(key: string, value: unknown) {
         if(key==="region_code")regionTouched.current=true;
@@ -62,7 +69,7 @@ export function NodeConnectionEditor({ node, nodes, groups = [], close, onSaved,
             const result = await request<Row>(admin(`server/connections/${publish ? "publish" : "save"}`), body);
             if (!publish && !id) {setId(result.data.id);onCreated?.({id:result.data.id,type,service_id:Number(draft.service_id),name:draft.name});} else existing.reload();
             setDirty(false); setConfirmed(false); onSaved();
-            setNotice(publish ? "线路已发布，订阅将使用新的连接地址。" : "配置已保存，当前发布地址保持不变。请完成连接检查后发布。");
+            setNotice(publish ? "线路已发布，订阅将使用新的连接地址。" : "配置已保存。可自动验证的连接将自动发布；中转转发需确认后发布。");
         } catch (e) { setError((e as Error).message); }
         finally { pending.current = false; setBusy(false); }
     }
@@ -103,12 +110,13 @@ export function NodeConnectionEditor({ node, nodes, groups = [], close, onSaved,
                 <button className="primary" disabled={busy || !dirty || !canReuse(service) || !draft.name.trim() || !validEntry} onClick={() => act()}>保存待发布配置</button>
                 {existing.data && <p>当前发布地址：{existing.data.published ? `${existing.data.current.host}:${existing.data.current.port}` : !existing.data.revision && node.host ? `${node.host}:${node.port}` : "尚未发布"}</p>}
                 {view!=="line" && !dirty && savedPlan && <section className="admin-deployment-card">
-                    <h3>检查与发布</h3>
+                    <h3>生效状态</h3>
                     <p>{savedPlan.dns_ready ? "入口与回源解析已就绪。" : "等待服务器 IP 上报和解析同步。"}{savedPlan.transition_pending ? "代理服务证书正在切换，请等待完成。" : ""}</p>
                     {config && <details><summary>入口转发配置</summary><p>将此片段合并到入口服务器 Nginx 的 stream 配置，并替换该线路的旧片段。运行 nginx -t，通过后 reload。要求 Nginx 1.27.3 或更新版本。</p><pre className="admin-network-command">{config}</pre><button disabled={busy} onClick={async () => { try { await navigator.clipboard.writeText(config); setNotice("转发配置已复制。"); } catch { setError("复制失败，请手动复制配置。"); } }}>复制转发配置</button></details>}
-                    <label className="node-quota-filter"><input type="checkbox" checked={confirmed} disabled={busy} onChange={e => setConfirmed(e.target.checked)} />已使用上述地址和代理服务身份完成客户端连接检查{config ? "，并确认入口转发配置已生效" : ""}</label>
+                    <p>{automaticDomainMessages[existing.data?.automatic_status] || (manualPublish ? "请验证实际连接后确认发布。" : "系统将自动验证并发布，失败保留当前地址。")}</p>
+                    {manualPublish && <><label className="node-quota-filter"><input type="checkbox" checked={confirmed} disabled={busy} onChange={e => setConfirmed(e.target.checked)} />已使用上述地址和代理服务身份完成客户端连接检查{config ? "，并确认入口转发配置已生效" : ""}</label>
                     <p className="muted">发布前再次检查服务配置回执。此确认记录为管理员验证，不代表系统已执行端到端探测。</p>
-                    <button disabled={busy} onClick={() => { existing.reload(); network.reload(); }}>检查最新状态</button>{" "}<button className="primary" disabled={busy || !confirmed || !savedPlan.dns_ready || savedPlan.transition_pending} onClick={() => act(true)}>确认并发布线路</button>
+                    <button disabled={busy} onClick={() => { existing.reload(); network.reload(); }}>检查最新状态</button>{" "}<button className="primary" disabled={busy || !confirmed || !savedPlan.dns_ready || savedPlan.transition_pending} onClick={() => act(true)}>确认并发布线路</button></>}
                 </section>}
                 {existing.data?.error && <p className="alert">{existing.data.error}</p>}{error && <p className="alert" role="alert">{error}</p>}{notice && <p role="status">{notice}</p>}
             </div>

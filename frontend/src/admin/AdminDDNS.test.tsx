@@ -252,8 +252,8 @@ it("saves a root and prefix without prematurely activating a node address", asyn
         api.request.mock.calls.some(([p]) => p.endsWith("domains/activate")),
     ).toBe(false);
 });
-it("requires explicit confirmation before activating prepared DNS", async () => {
-    managedSetup();
+it("requires explicit confirmation when retrying a failed verification", async () => {
+    managedSetup("failed");
     vi.spyOn(window, "confirm").mockReturnValue(false);
     render(<NodeDomainBinding node={{ id: 3, type: "v2box" }} />);
     fireEvent.click(
@@ -410,8 +410,8 @@ it("explains the next step and gates ordinary TLS activation on node capability"
     view.unmount();
     managedSetup();
     render(<NodeDomainBinding node={{ id: 3, type: "v2box", tls: 1 }} />);
-    await screen.findByText("下一步：验证并切换地址");
-    expect(screen.getByRole("button", { name: "验证并切换地址" })).toBeTruthy();
+    await screen.findByText("等待自动验证并生效");
+    expect(screen.queryByRole("button", { name: "验证并切换地址" })).toBeNull();
     expect(screen.queryByRole("button", { name: "重试 DNS 同步" })).toBeNull();
 });
 it("waits for both address families and does not allow stale DNS activation", async () => {
@@ -1161,4 +1161,18 @@ it("shows installer DNS outages with the next action instead of blaming record p
  render(<NodeDomainBinding node={{id:3,type:"v2box"}}/>);
  expect(await screen.findByText(/公共 DNS 查询服务均不可用/)).toBeTruthy();
  expect(screen.getByText(/无需重装或更换证书凭据/)).toBeTruthy();
+});
+
+it("reports automatic DNS mismatches without allowing publication", async () => {
+    managedSetup("none", { automatic_status: "dns_mismatch" });
+    render(<NodeDomainBinding node={{ id: 3, type: "v2box", tls: 1 }} />);
+    await screen.findByText(/公共解析与上报 IP 不一致/);
+    expect(screen.queryByRole("button", { name: "验证并切换地址" })).toBeNull();
+    expect(api.request.mock.calls.some(([p]) => p.endsWith("domains/activate"))).toBe(false);
+});
+it("allows explicit intervention for an unverifiable connection", async () => {
+    managedSetup("none", { automatic_status: "manual_required" });
+    render(<NodeDomainBinding node={{ id: 3, type: "v2box" }} />);
+    await screen.findByText(/此连接无法自动验证/);
+    expect(screen.getByRole("button", { name: "验证并切换地址" })).toBeTruthy();
 });

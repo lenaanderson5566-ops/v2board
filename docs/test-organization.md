@@ -973,3 +973,5 @@ The embedded deployment suite now has 47 cases, including actual shell restorati
 Lifecycle review adds targeted redeployment credential replacement with preserved peer nodes and private backup. The embedded deployment suite contains 49 cases; V2Box lifecycle scripts cover update rollback, pending deployment repair, uninstall, OpenRC and retained configuration. Frontend regression coverage follows the inline credentials disclosure and absence of V2Box manual-install duplicates.
 
 Node UI tests assert that overview count cards and manual inspection buttons are absent and deployment command controls precede status details.
+
+节点域名自动生效回归复用 `tests/node-ddns.php`：验证在线配置回执、公共解析匹配、探测期间 IP 变更、重复执行、TLS 候选/失败保留、共用服务直连发布及外部中转人工边界。测试使用一次性数据库与模拟公网探测，不连接真实 Cloudflare 或申请真实证书。前端复用 `Nodes.test.tsx`、`AdminDDNS.test.tsx`，覆盖自动状态、异常入口及编辑配置对应关系；升级仍运行 `tests/update-script.sh`。

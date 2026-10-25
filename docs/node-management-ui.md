@@ -486,3 +486,13 @@ Node list removes the overview count cards and generic creation instructions. De
 Deployment copy and errors now appear immediately beside the command workflow. Reinstallation explicitly distinguishes valid-task resume from expired authorization renewal; upgrade copy states that stopped services remain stopped. Credential rotation explains why command generation is disabled, and credential replacement details are collapsed.
 
 Node editing drawers share the same navigation, left-aligned section titles, form spacing, advanced disclosure styling and command typography. The service editor uses the same section hierarchy as creation; deployment uses the shared editor scope. Narrow screens use a two-column navigation. Removed overview-card CSS is deleted.
+
+Editor ownership: connection/domain keeps address relationships and DNS controls; protocol/certificate keeps editable service parameters; deployment keeps commands, progress and recovery. Removed duplicate endpoint summaries from deployment, topology from existing service editing, and repeated certificate/setup tutorials from domain configuration. Creation still retains its optional topology preview.
+
+### 自动生效与人工边界
+
+“连接与域名”保存后复用 `nodes:sync-ddns` 定时任务：同步解析，核对公共 DNS 和近期配置应用回执，再发布直连地址与端口。TLS 域名切换先下发候选配置，只有 V2Box 验证证书和监听并返回有效回执后才发布；失败保留原地址与证书，停止该次切换并允许管理员修复后重试。公共查询失败会重试，解析不匹配不会发布。检查期间配置或 IP 改变时丢弃结果。
+
+共用服务的直连线路使用相同发布事务与版本校验。外部 Nginx 中转仍须人工确认实际转发；UDP 等无法从面板完成的连接验证保留确认入口。页面读取状态不触发写操作，正常直连不再要求重复点击检查和发布。编辑过程中暂停轮询回填，避免覆盖未保存内容。
+
+依赖既有 Laravel 调度器持续运行。任务每分钟调度、DNS 按现有约五分钟同步节奏退避；每轮有时间预算，线路采用分批轮询，已生效配置不重复探测。不新增订阅请求中的网络查询。自动检查结果短期缓存且不包含凭据。

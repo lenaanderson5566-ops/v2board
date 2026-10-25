@@ -16,6 +16,8 @@ class NodeDdnsController extends Controller {
         $capabilities=$keys ? Cache::many($keys) : [];
         $dnsKeys=$assignments->where('node_type','v2box')->map(fn($a)=>'NODE_DEPLOY_DNS:'.$a->node_id)->unique()->values()->all();
         $dnsObservations=$dnsKeys?Cache::many($dnsKeys):[];
+        $autoKeys=$assignments->map(fn($a)=>'domain-auto-state:'.$a->id)->all();
+        $automatic=$autoKeys?Cache::many($autoKeys):[];
         $servers=DB::table('v2_network_server')->select('id','name','family','enabled','ipv4','ipv6','ipv4_seen_at','ipv6_seen_at')->orderBy('id')->get();
         $serverMap=$servers->keyBy('id'); $byId=$assignments->keyBy('id');
         $entryIds=$assignments->pluck('entry_id')->filter()->unique()->all();
@@ -33,10 +35,12 @@ class NodeDdnsController extends Controller {
             'connections'=>$connections,
             'servers'=>$servers,
             'credentials'=>DB::table('v2_ddns_credential')->select('id','name','zone_id','root_domain','status','next_run')->orderBy('id')->get(),
-            'assignments'=>$assignments->map(function($a)use($dnsObservations,$capabilities,$byId,$ready,$serverMap,$connectionCounts){
+            'assignments'=>$assignments->map(function($a)use($automatic,$dnsObservations,$capabilities,$byId,$ready,$serverMap,$connectionCounts){
                 $a->deployment_dns=$a->node_type==='v2box'?($dnsObservations['NODE_DEPLOY_DNS:'.$a->node_id]??null):null;
                 if ($a->deployment_dns) { unset($a->deployment_dns['proof']); }
                 $a->configuration_revision=NodeDomainController::revision($a);
+                $state=$automatic['domain-auto-state:'.$a->id]??null;
+                $a->automatic_status=$state && ($state['revision']??null)===$a->configuration_revision ? $state['code'] : null;
                 $a->connection_count=$connectionCounts[$a->id]??0;
                 $entry=$a->entry_id ? $byId->get($a->entry_id) : null;
                 $a->connection_domain=$entry ? $entry->domain : $a->domain;

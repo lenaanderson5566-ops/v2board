@@ -329,7 +329,32 @@ try {
     Illuminate\Support\Facades\Cache::put(App\Utils\CacheKey::get('SERVER_V2BOX_LAST_CHECK_AT',$portNode->id),time()-301,3600);
     $reject(fn()=>$domains->activate($req(['id'=>$portBind,'confirm'=>true])),409);
     App\Services\NodeRuntimeService::record('v2box',$portNode->id,$portConfig,'v10');
-    $domains->activate($req(['id'=>$portBind,'confirm'=>true]));
+    $automation=app(App\Services\NodeDomainAutomation::class);
+    $autoProbe=new class extends App\Services\NodeDeploymentCheck {
+        public array $ips=['1.1.1.1']; public bool $unavailable=false; public $during=null;
+        public function resolve(string $host): array { if($this->unavailable)throw new RuntimeException('unavailable');return $this->ips; }
+        public function connect(string $host,string $ip,int $port,?string $identity): array { if($this->during)($this->during)();return ['state'=>'pass','code'=>'tcp_connected']; }
+    };
+    app()->instance(App\Services\NodeDeploymentCheck::class,$autoProbe);
+    $advance=function($id)use($automation){ Illuminate\Support\Facades\Cache::forget('domain-auto-attempt:'.$id);$automation->advance($id); };
+    Illuminate\Support\Facades\Cache::put(App\Utils\CacheKey::get('SERVER_V2BOX_LAST_CHECK_AT',$portNode->id),time()-301,3600);
+    $advance($portBind);
+    $assert((int)$portNode->fresh()->port===443,'offline nodes never automatically publish');
+    App\Services\NodeRuntimeService::record('v2box',$portNode->id,$portConfig,'v10');
+    $advance($portBind);
+    $assert($admin->fetch()['data']['assignments']->firstWhere('id',$portBind)->automatic_status==='dns_mismatch','DNS mismatch is visible and not treated as manual verification');
+    $assert((int)$portNode->fresh()->port===443,'automatic DNS mismatch retains published port');
+    $autoProbe->ips=['8.8.8.8'];$autoProbe->unavailable=true;$advance($portBind);
+    $assert((int)$portNode->fresh()->port===443,'unavailable public DNS cannot publish');
+    $autoProbe->unavailable=false;
+    $autoProbe->during=function()use($portBind){DB::table('v2_node_ddns')->where('id',$portBind)->update(['ipv4'=>'1.1.1.1']);};
+    $advance($portBind);
+    $assert((int)$portNode->fresh()->port===443,'IP report changing during probe cannot publish stale evidence');
+    DB::table('v2_node_ddns')->where('id',$portBind)->update(['ipv4'=>'8.8.8.8']);$autoProbe->during=null;
+    $advance($portBind);
+    $assert((int)$portNode->fresh()->port===9443,'matching public DNS and applied online listener automatically publish');
+    $publishedOnce=DB::table('v2_node_ddns')->find($portBind);$advance($portBind);
+    $assert(DB::table('v2_node_ddns')->find($portBind)==$publishedOnce,'automatic publication is idempotent');
     $assert((int)$portNode->fresh()->port===9443 && (int)$defaultAlias->fresh()->port===9443 && (int)$customAlias->fresh()->port===8443,'managed direct port synchronizes default endpoint while preserving explicit alias ports');
     $manualModeRow=DB::table('v2_node_ddns')->find($portBind);$modeInput=['id'=>$portBind,'revision'=>App\Http\Controllers\V1\Admin\NodeDomainController::revision($manualModeRow),'confirm'=>true];
     $reject(fn()=>$domains->manual($req($modeInput)),409);
@@ -382,7 +407,10 @@ try {
         if($fp!==null)$r['certificateFingerprint']=$fp;
         App\Services\NodeTlsTransition::receipt($managed->id,$r);
     };
-    $domains->activate($req(['id'=>$bid,'confirm'=>true]));
+    $currentConfig=$config();App\Services\NodeRuntimeService::record('v2box',$managed->id,$currentConfig,'v10');
+    App\Services\NodeRuntimeService::receipt($managed->id,['hash'=>hash('sha256',json_encode($currentConfig)),'state'=>'applied']);
+    $advance($bid);
+    $assert(DB::table('v2_node_ddns')->find($bid)->tls_transition_state==='pending' && $managed->fresh()->host==='old.example.test','automatic TLS activation stages certificate without publishing before receipt');
     $pending=$config();
     $beforeNoop=DB::table('v2_node_ddns')->find($bid);
     $projectedRevision=$admin->fetch()['data']['assignments']->firstWhere('id',$bid)->configuration_revision;
@@ -398,6 +426,8 @@ try {
     $report('applied',null);$report('applied',str_repeat('a',64),str_repeat('0',64));
     $assert($managed->fresh()->host==='old.example.test','missing fingerprint and stale receipts cannot publish');
     $report('failed');
+    $advance($bid);
+    $assert(DB::table('v2_node_ddns')->find($bid)->tls_transition_state==='failed' && $managed->fresh()->host==='old.example.test','failed certificate attempt stops automation and retains published endpoint');
     $assert(!isset($config()['domainTransition']) && DB::table('v2_node_ddns')->find($bid)->tls_transition_state==='failed','certificate failure restores old node configuration');
     $domains->activate($req(['id'=>$bid,'confirm'=>true]));
     $a=DB::table('v2_node_ddns')->find($bid);$expired=json_decode(Crypt::decryptString($a->tls_transition),true);$expired['expires']=time()-1;
@@ -701,6 +731,22 @@ try {
     $relay->update(['tls_settings'=>$tlsBefore]);
     $reject(fn()=>$connections->save($req(array_replace($nextInput,['revision'=>2]))),409);
     $directLine=$connections->save($req(array_replace($routeInput,['entry_id'=>null,'entry_port'=>null,'name'=>'Direct path'])))['data']['id'];
+    $reject(fn()=>(new App\Http\Controllers\V1\Admin\Server\V2boxController())->update($req(['id'=>$directLine,'show'=>1])),409);
+    $directRow=DB::table('v2_node_connection')->where('node_id',$directLine)->where('node_type','v2box')->first();
+    $liveConfig=App\Services\Actions\NodeV10Config::build($relay->fresh());
+    App\Services\NodeRuntimeService::record('v2box',$relay->id,$liveConfig,'v10');
+    App\Services\NodeRuntimeService::receipt($relay->id,['hash'=>hash('sha256',json_encode($liveConfig)),'state'=>'applied']);
+    $originForAuto=DB::table('v2_node_ddns')->find($rid);$autoProbe->ips=array_values(App\Services\NetworkServer::addresses($originForAuto));
+    DB::table('v2_node_ddns')->where('id',$rid)->update(['tls_transition_state'=>'failed']);
+    $automation->connection($directRow->id);
+    $assert($readLine($directLine)['published']===null,'failed service certificate transition prevents automatic shared-line publication');
+    DB::table('v2_node_ddns')->where('id',$rid)->update(['tls_transition_state'=>$originForAuto->tls_transition_state]);
+    Illuminate\Support\Facades\Cache::forget('connection-auto-attempt:'.$directRow->id);
+    $automation->connection($directRow->id);
+    $assert($readLine($directLine)['published']!==null,'shared-service direct connection publishes after actual endpoint probe');
+    $relayRow=DB::table('v2_node_connection')->where('node_id',$lineId)->first();
+    $relayRevision=$relayRow->revision;$automation->connection($relayRow->id);
+    $assert(DB::table('v2_node_connection')->find($relayRow->id)->revision===$relayRevision,'external relay never automatically claims forwarded traffic was verified');
     $directPlan=$readLine($directLine);
     $assert($directPlan['plan']['host']==='origin-new.example.test' && $directPlan['plan']['port']===9443,'direct path uses origin DNS and listener alongside ingress paths');
     $otherServiceLine=$connections->save($req(array_replace($routeInput,['service_id'=>$relay2->id,'entry_port'=>12443,'name'=>'Shared entry to another service'])))['data']['id'];
@@ -712,7 +758,6 @@ try {
     $alias=$net->entry($req(['server_id'=>$ingress,'credential_id'=>$cid,'prefix'=>'entry-alias','family'=>'ipv4']))['data']['id'];
     $reject(fn()=>$connections->save($req(array_replace($routeInput,['entry_id'=>$alias]))),409);
     $reject(fn()=>$net->entry($req(['id'=>$anotherEntry,'server_id'=>$anotherServer,'credential_id'=>$cid,'prefix'=>'entry-changed','family'=>'ipv4'])),409);
-    $reject(fn()=>(new App\Http\Controllers\V1\Admin\Server\V2boxController())->update($req(['id'=>$directLine,'show'=>1])),409);
     $assert(App\Services\NodeDnsLifecycle::inUse('origin-new.example.test'),'published forwarding protects origin records');
     $publishLine($lineId,3,$readLine($lineId)['plan']['proof']);
     $assert((int)$line->fresh()->port===11443,'validated new port replaces prior endpoint');
@@ -745,6 +790,7 @@ try {
     $count=DB::table('v2_network_server')->count();(new NetworkServers)->up();
     $assert(DB::table('v2_network_server')->count()===$count,'migration is idempotent');
 
+    app()->forgetInstance(App\Services\NodeDeploymentCheck::class);
     // Deployment checks are read-only and never trust DNS answers as arbitrary probe targets.
     $probe=new class extends App\Services\NodeDeploymentCheck {
         public array $ips=['8.8.8.8']; public array $targets=[]; public int $connections=0; public array $outcome=['state'=>'pass','code'=>'tls_verified','expiresAt'=>2000000000,'fingerprint'=>'test'];

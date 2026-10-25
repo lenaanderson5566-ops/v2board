@@ -157,7 +157,7 @@ export function NodeDomainBinding({
             onChanged?.();
             setNotice(
                 path === "bind"
-                    ? r.data.unchanged ? "域名配置未变化，现有解析、证书验证和转发确认状态已保留。" : "域名已保存。新安装会等待解析并验证节点后启用；已有节点请先配置上报，再确认切换。"
+                    ? r.data.unchanged ? "域名配置未变化，现有解析、证书验证和转发确认状态已保留。" : "域名已保存。新安装会等待解析并验证节点后启用；已有直连节点将在条件满足后自动验证并生效；中转需确认转发。"
                     : path === "activate"
                       ? "已提交启用请求，请查看上方进度；验证成功后会自动更新生效域名。"
                       : path === "retry"
@@ -385,7 +385,7 @@ export function NodeDomainBinding({
                                     重试 DNS 同步
                                 </button>
                             )}
-                            {progress?.canActivate && (
+                            {progress?.canActivate && (binding.entry_id || binding.tls_transition_state === "failed" || ["manual_required","configuration_blocked"].includes(binding.automatic_status) || node.type !== "v2box" || ["hysteria","hysteria2","tuic"].includes(node.protocol) && Number(node.tls)!==1) && (
                                 <button
                                     className="primary"
                                     disabled={busy || manualBusy}
@@ -405,13 +405,7 @@ export function NodeDomainBinding({
                                 </button>
                             )}
                         </div>
-                        <details className="admin-deployment-tools">
-                            <summary>操作说明</summary>
-                            <p>刷新状态：读取面板记录，不执行 DNS 查询或修改配置。页面每 15 秒自动更新。</p>
-                            <p>重试 DNS 同步：按服务器最近上报的 IP 更新 Cloudflare 解析，不重启节点、不切换订阅地址。</p>
-                            <p>验证并切换地址：普通 TLS 服务先验证证书和监听，成功后更新节点列表及订阅地址；Reality 保持原有 SNI。</p>
-                            <p>新安装由一键部署完成上述步骤。终端等待就绪时，请查看服务状态及日志；中断后使用恢复命令继续。</p>
-                        </details>
+
                         {node.type === "v2box" &&
                             !node._new &&
                             !progress?.pending &&
@@ -514,7 +508,7 @@ export function NodeDomainBinding({
                                     <section className="admin-deployment-card" aria-label="中转连接配置说明">
                                         <strong>客户端 → 入口服务器 → 代理服务器</strong>
                                         <p>入口负责转发，V2Box 安装在代理服务器。入口域名解析到入口 IP，回源域名解析到代理服务器 IP。</p>
-                                        {Number(node.tls) === 1 && <><p>证书由代理服务器申请，匹配“协议与证书”中的 TLS 身份域名。HTTP 申请要求证书域名指向代理服务器且公网 TCP 80 可达；DNS 申请则选择覆盖 TLS 身份域名的 Cloudflare 凭据。请在“协议与证书”中配置并保存。</p><p>Cloudflare：可直接选择“域名与解析”中已有的凭据，无需填写 DNS 环境参数；使用其他凭据时仍可手动填写。</p><p>令牌须有 TLS 身份域名所在区域的 Zone:Read 与 DNS:Edit 权限，将用于代理服务器申请与续期证书。</p></>}
+                                        {Number(node.tls) === 1 && <p>证书使用独立 TLS 身份域名，参数在“协议与证书”中维护。</p>}
                                         {Number(node.tls) === 2 && <p>Reality 使用独立的握手配置，无需申请上述 TLS 域名证书。</p>}
                                     </section>
                                     <label>
@@ -548,8 +542,7 @@ export function NodeDomainBinding({
                                         />
                                     </label>
                                     <p className="muted">
-                                        在服务器管理的“管理”中，为独立中转服务器配置 IP 上报并添加入口域名。下方的回源域名指向运行 V2Box 的代理服务器。自动证书可使用 HTTP 或
-                                        DNS 验证；HTTP 验证需要证书域名的公网 TCP 80 到达代理服务器，节点监听端口保持独立。入口与回源的地址类型分别配置，入口双栈不要求回源双栈。
+                                        入口域名指向中转服务器，回源域名指向代理服务器。入口与回源可使用不同地址类型。
                                     </p>
                                 </>
                             )}

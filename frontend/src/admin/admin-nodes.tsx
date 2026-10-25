@@ -831,12 +831,9 @@ function NodesContent({
                             {editing.id && (
                                 <details className="pad node-editor-intro"><summary>配置说明与变更影响</summary>
                                     <p>
-                                        此处维护协议、监听和证书。节点名称、权限与展示信息在“节点信息”维护，连接入口在“连接与域名”维护。
+                                        此处维护协议、监听和证书。
                                     </p>
-                                    <p>
-                                        保存后请核对节点通信与运行状态，确认配置已应用。
-                                    </p>
-                                    {managedService && Number(editing.tls)===1 && <p className="muted">TLS 身份域名：{editing.tls_settings?.server_name || editing.host}。TLS 身份与入口、回源地址分别管理。更换中转入口保留此身份；修改 TLS 身份需等待节点验证，失败保留原配置。</p>}
+
                                     <p className="muted">
                                         切换协议可能清除不兼容配置；高级扩展参数仍会保留。
                                     </p>
@@ -1067,17 +1064,6 @@ function NodesContent({
                                                 }
                                             />
                                         );
-                                        const changes = editing.id
-                                            ? nodeChangeImpact(
-                                                  nodeSettingsInitial(editing),
-                                                  values,
-                                              )
-                                            : [];
-                                        const affected = nodeRows.filter(
-                                            (n) =>
-                                                n.type === editing.type &&
-                                                n.service_id === editing.id,
-                                        ).length;
                                         const problems =
                                             nodeConfigurationProblems(
                                                 values,
@@ -1102,24 +1088,6 @@ function NodesContent({
                                             );
                                         return (
                                             <>
-                                                {changes.length > 0 && (
-                                                    <aside
-                                                        className="node-config-impact"
-                                                        aria-label="变更影响"
-                                                    >
-                                                        <strong>
-                                                            待保存变更：
-                                                            {changes.join("、")}
-                                                        </strong>
-                                                        <p>
-                                                            将影响本服务
-                                                            {affected
-                                                                ? `及 ${affected} 条关联线路`
-                                                                : "的默认线路"}
-                                                            。监听、协议或证书调整可能中断连接；请安排维护时间，保存后核对配置应用结果。
-                                                        </p>
-                                                    </aside>
-                                                )}
                                                 {preflightShown && problems.length > 0 && (
                                                     <section
                                                         className="node-config-problems"
@@ -1192,9 +1160,7 @@ function NodesContent({
                                                         )}
                                                     </section>
                                                 )}
-                                                {editing.id ? (
-                                                    topologyPreview
-                                                ) : (
+                                                {!editing.id && (
                                                     <details className="node-editor-path">
                                                         <summary>
                                                             <strong>

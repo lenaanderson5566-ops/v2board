@@ -824,7 +824,7 @@ it("keeps sensitive node changes in the form when confirmation is cancelled",asy
     fireEvent.click(screen.getByRole("button",{name:"协议与证书"}));
     const port=await screen.findByRole("spinbutton",{name:/监听端口/});
     fireEvent.change(port,{target:{value:"9443"}});
-    expect(screen.getByLabelText("变更影响").textContent).toContain("1 条关联线路");
+    expect(screen.queryByLabelText("变更影响")).toBeNull();
     fireEvent.click(screen.getByRole("button",{name:"保存节点配置"}));
     await screen.findByText("已取消保存，修改仍保留在表单中。");
     expect(confirm).toHaveBeenCalledWith(expect.stringContaining("监听"));
@@ -1071,7 +1071,7 @@ it("reports managed direct port drift and rejects automatic ACME for new manual 
 it("keeps managed TLS identity independently editable alongside Reality",async()=>{
     api.request.mockImplementation(async(path:string)=>String(path).includes("dictionary/fetch")?adminPageFixture(path):String(path).includes("getNodes")?{data:[{id:1,type:"v2box",name:"Managed",protocol:"vless",tls:1,network:"tcp",host:"managed.example.test",port:443,server_port:443,group_id:[1],tls_settings:{cert_mode:"http",server_name:"managed.example.test"}}]}:String(path).includes("nodeSchema")?{data:{name:"required",protocol:"required|in:vless",tls:"required|in:0,1,2",network:"required|in:tcp",server_port:"required",tls_settings:"array"}}:String(path).includes("ddns/fetch")?{data:{assignments:[{id:8,node_type:"v2box",node_id:1,managed:true}],servers:[],credentials:[]}}:{data:[]});
     history.replaceState(null,"",`${location.pathname}#/nodes?service=v2box%3A1`);
-    render(<Nodes/>);await screen.findByText(/TLS 身份与入口、回源地址分别管理/);
+    render(<Nodes/>);await screen.findByLabelText("TLS 身份域名（SNI）");
     expect(await screen.findByRole("combobox",{name:/^证书模式/})).toBeTruthy();
     expect(screen.getByLabelText("TLS 身份域名（SNI）")).toBeTruthy();
     fireEvent.change(screen.getByRole("combobox",{name:/^TLS/}),{target:{value:"2"}});
@@ -1093,7 +1093,7 @@ it("guides a managed listener change to endpoint verification without issuing an
     render(<Nodes/>);fireEvent.change(await screen.findByRole("spinbutton",{name:/监听端口/}),{target:{value:"9443"}});
     fireEvent.click(screen.getByRole("button",{name:"保存节点配置"}));
     await screen.findByText(/监听端口已保存。等待节点应用后/);
-    expect(await screen.findByText(/监听端口已修改。请确认节点应用新配置/)).toBeTruthy();
+    expect(await screen.findByText(/监听端口已修改。系统等待节点应用新配置/)).toBeTruthy();
     expect(screen.getByRole("button",{name:"连接与域名"}).getAttribute("aria-pressed")).toBe("true");
     expect(api.request.mock.calls.some(([path])=>String(path).includes("credentials/deployment"))).toBe(false);
 });

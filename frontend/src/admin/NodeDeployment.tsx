@@ -1,4 +1,3 @@
-import { NodeAddressSummary } from "./NodeAddressSummary";
 import { NodeDeploymentProgress } from "./NodeDeploymentProgress";
 import { nodeDeploymentStage } from "./node-guidance";
 import { NodeDomainBinding } from "./NodeDomains";
@@ -467,7 +466,6 @@ export function NodeDeployment({
                                     </p>
                                 )}
                             </section>
-                            <NodeAddressSummary node={node} binding={binding} entry={(network.data?.assignments || []).find((a: Row) => a.id === binding?.entry_id)} />
                             {!network.loading && !runtime.loading && !network.error && !runtime.error && <NodeDeploymentProgress binding={binding} network={network.data} runtime={runtime.data} />}
                             <NodeDnsObservation observation={binding?.deployment_dns} />
                             {node.type !== "v2box" && <details className="admin-deployment-tools">

@@ -1,5 +1,14 @@
 import type { Row } from "../shared/api";
 
+export const automaticDomainMessages: Record<string,string> = {
+    runtime_pending: "等待 V2Box 上报当前配置已应用。请确认节点运行正常且未处于维护状态。",
+    dns_unavailable: "公共 DNS 查询暂不可用，系统将自动重试；请检查面板服务器的外网连接。",
+    dns_mismatch: "公共解析与上报 IP 不一致，系统将自动重试；请检查残留解析及 DNS only 设置。",
+    connection_failed: "连接验证未通过，原配置保持生效。请检查节点监听、防火墙和证书，系统将自动重试。",
+    manual_required: "此连接无法自动验证。请完成客户端连接测试后确认发布。",
+    configuration_blocked: "配置校验未通过，原配置保持生效。请核对协议、域名和证书配置后重试。",
+};
+
 export function nodeDomainProgress(
     binding: Row,
     node: Row,
@@ -85,15 +94,18 @@ export function nodeDomainProgress(
         title = node._new ? "下一步：执行一键安装" : "下一步：升级 V2Box";
         description = node._new ? "请返回部署页面执行新节点安装，等待节点确认配置与证书后自动启用地址。无需重新保存域名。" :
             "解析已就绪，但节点尚未上报证书切换能力。请升级至 v1.0.5 或更新版本，等待节点重新连接后继续。仅更新面板不会完成此步骤。";
+    } else if (dnsReady && !failed && !binding.entry_id && automaticDomainMessages[binding.automatic_status]) {
+        title = "等待自动生效";
+        description = automaticDomainMessages[binding.automatic_status];
     } else if (dnsReady) {
         title = failed
             ? "下一步：检查日志后重新验证"
-            : "下一步：验证并切换地址";
+            : binding.entry_id ? "下一步：确认中转转发" : "等待自动验证并生效";
         description = failed
             ? "上次验证未完成，当前域名仍然生效。请检查 v2box log，处理证书或监听错误后重试。"
             : !portReady
-              ? "监听端口已修改。请确认节点应用新配置，再点击“验证并切换地址”同步订阅端口；无需重新保存域名或安装节点。"
-              : "IP 上报和解析同步已完成。点击“验证并切换地址”，验证成功后才更新节点列表与订阅地址。无需再次保存域名或配置 IP 上报。";
+              ? "监听端口已修改。系统等待节点应用新配置，验证通过后自动同步订阅端口。"
+              : "IP 上报和解析同步已完成。直连节点将自动验证并发布；中转或无法自动验证的连接需确认实际连通后发布，失败保留原配置。";
     } else if (binding.status === "rate_limited") {
         description =
             "Cloudflare 正在限流，系统会退避重试。无需重复保存或配置上报。";

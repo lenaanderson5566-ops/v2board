@@ -156,8 +156,11 @@ class Deployment:
     def command(self,args):
         try:
             subprocess.run(args,check=True,timeout=180)
+        except FileNotFoundError:
+            raise DeploymentError('Required program is missing. Download the current panel deployment script and run --resume to restore programs without deleting configuration or certificates.') from None
         except (subprocess.CalledProcessError,subprocess.TimeoutExpired):
-            raise DeploymentError('Deployment command failed; inspect node logs before resuming') from None
+            step = 'IP reporting configuration' if 'report-configure' in args else 'V2Box service command'
+            raise DeploymentError(step+' failed. Review the command error above; fix it, then resume. Configuration and certificates retained.') from None
 
     def prepare_config(self):
         node={'NodeType':'v2box','ApiHost':self.host,'NodeID':self.data['nodeId'],'ApiKey':self.data['apiKey'],'ApiVersion':'v10','Timeout':15,'RetryCount':1,'LandingPage':{'Enabled':False,'Directory':''}}
@@ -230,7 +233,8 @@ class Deployment:
 
     def report(self):
         report=self.data.get('networkReport')
-        if not report or self.state.get('reported'): return
+        if not report: return
+        print('Deployment recovery: configuring IP reporting and restoring its schedule.',flush=True)
         identity=None
         identity_path=Path('/etc/node-network/server-identity')
         if report.get('serverId'):

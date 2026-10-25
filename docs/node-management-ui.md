@@ -475,3 +475,5 @@ V2Box v1.0.6 release integration: panel bootstrap, manual install and IP reporte
 The bootstrap helper writes the redeemed panel URL, node ID and credential atomically with mode 0600 before IP reporting or DNS waits on a fresh installation. Resuming a completed panel workflow still validates the local configuration. A leftover example is stopped and replaced; existing services are appended only after DNS checks. Configuration and certificates are retained on failure.
 
 Installation and upgrade commands are pinned to V2Box v1.0.9, which rejects example enrollment configuration. Upgrade retains existing configuration and certificates; pending deployments use the refreshed panel bootstrap with --resume.
+
+Pending deployment recovery now restores missing V2Box programs before invoking the workflow, including after uninstall. Both the original deployment command and --resume use the repair path. IP reporting is reconfigured on resume to re-enable schedules disabled by uninstall. Configuration, certificates and enrollment state are retained on failures; download, install, reporting and service errors identify the failed step.

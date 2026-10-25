@@ -223,6 +223,31 @@ class WorkflowTests(unittest.TestCase):
         self.assertEqual(json.loads(self.deploy.config.read_text())['Nodes'][0]['ApiHost'],self.data['apiHost'])
         self.assertIn('restart',self.events)
         self.assertFalse(self.path.exists())
+    def test_uninstalled_resume_restores_programs_and_preserves_files(self):
+        root=Path(self.tmp.name);binpath=root/'bin';binpath.mkdir()
+        cert=root/'saved.cer';cert.write_text('existing certificate')
+        self.deploy.prepare_config();before=self.deploy.config.read_bytes()
+        curl=binpath/'curl'
+        curl.write_text("#!/bin/bash\nwhile (($#)); do if [[ \"$1\" == -o ]]; then shift; out=$1; fi; shift; done\nprintf '#!/bin/bash\\necho restored > PLACEHOLDER\\n' > \"$out\"\n".replace("PLACEHOLDER",str(root/"restored")))
+        curl.chmod(0o700)
+        script=Path(sys.argv[1]).with_suffix('.sh').read_text()
+        function=script.split('restore_programs() {',1)[1].split('\nif [[ "${1:-}" == --resume ]]',1)[0]
+        function=('restore_programs() {'+function).replace('/etc/v2box',str(root)).replace('/usr/local/lib/v2box',str(root/'lib')).replace('/usr/local/bin/v2box',str(root/'manager'))
+        result=subprocess.run(['bash','-c',function+'\nrestore_programs'],env=dict(os.environ,PATH=str(binpath)+':'+os.environ['PATH']),capture_output=True,text=True)
+        self.assertEqual(result.returncode,0,result.stderr)
+        self.assertTrue((root/'restored').exists())
+        self.assertEqual(self.deploy.config.read_bytes(),before)
+        self.assertEqual(cert.read_text(),'existing certificate')
+        self.assertTrue(self.path.exists())
+    def test_missing_program_has_actionable_error(self):
+        with patch.object(m.subprocess,'run',side_effect=FileNotFoundError()):
+            with self.assertRaisesRegex(m.DeploymentError,'Required program is missing'):
+                m.Deployment.command(self.deploy,['v2box','restart'])
+    def test_reported_state_restores_reporting_schedule(self):
+        self.deploy.save(reported=True)
+        m.Deployment.report(self.deploy)
+        self.assertTrue(self.deploy.state['reported'])
+        self.assertEqual(len(self.events),1)
     def test_report_failure_never_starts(self):
         self.deploy.report=lambda:(_ for _ in ()).throw(m.DeploymentError('report'))
         with self.assertRaises(m.DeploymentError):self.deploy.run()

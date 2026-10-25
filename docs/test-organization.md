@@ -967,3 +967,5 @@ node-ddns 回归覆盖按协议省略不适用检查项、客户端验证提示�
 Deployment regression coverage in tests/v2box.php includes replacing the installer example before a DNS failure and repairing local example configuration when the panel workflow already completed. Run its embedded Python workflow suite on Linux in addition to the disposable backend suite.
 
 V2Box v1.0.9 release validation covers generated install/upgrade commands (PHP and frontend), production asset build, and published Linux archive installation, upgrade from v1.0.5 with pending deployment state, retained config/certificates, uninstall, runtime version reporting and rejection of the example configuration. Service management is stubbed in the isolated archive smoke test.
+
+The embedded deployment suite now has 47 cases, including actual shell restoration with a stub installer, preservation of config/certificate/state, reconfiguration of previously reported IP schedules and actionable missing-program errors.

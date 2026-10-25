@@ -29,8 +29,22 @@ V2BOARD_DEPLOY_PY
   chmod 755 "$helper_stage"
   mv -f -- "$helper_stage" /usr/local/lib/v2box/panel-deploy.py
 }
+# Resume can follow uninstall: restore programs before invoking the helper.
+restore_programs() {
+  [[ -f /etc/v2box/deployment-state.json && ! -L /etc/v2box/deployment-state.json ]] || { echo 'No private deployment state found. Generate a deployment command in the panel.' >&2; exit 1; }
+  if [[ ! -x /usr/local/lib/v2box/v2box || ! -f /usr/local/lib/v2box/manager.sh || ! -f /usr/local/lib/v2box/node-network.py || ! -x /usr/local/bin/v2box ]]; then
+    echo 'Deployment recovery: restoring missing V2Box programs; configuration and certificates are retained.'
+    stage=$(mktemp -d)
+    trap 'rm -rf -- "$stage"' EXIT
+    curl -fSL --proto '=https' --connect-timeout 10 --max-time 120 https://raw.githubusercontent.com/lenaanderson5566-ops/v2box/v1.0.9/script/install.sh -o "$stage/install.sh" || { echo 'Program download failed. Check HTTPS access to GitHub, then run this script with --resume.' >&2; exit 1; }
+    V2BOX_BOOTSTRAP_LOCK_HELD=1 bash "$stage/install.sh" v1.0.9 </dev/null 9>&- || { echo 'Program restoration failed. Configuration and certificates retained; fix the installer error above, then --resume.' >&2; exit 1; }
+    rm -rf -- "$stage"
+    trap - EXIT
+  fi
+}
 if [[ "${1:-}" == --resume ]]; then
   [[ $# -eq 1 ]] || { echo 'Use --resume without other arguments' >&2; exit 1; }
+  restore_programs
   install_helper
   exec python3 /usr/local/lib/v2box/panel-deploy.py /etc/v2box/deployment-state.json
 fi
@@ -117,6 +131,7 @@ fi
 if [[ -e /etc/v2box/deployment-state.json ]]; then
   [[ ! -L /etc/v2box/deployment-state.json ]] || exit 1
   jq -e --arg host "$panel_url" --arg id "$requested_id" '.data.apiHost == $host and (.data.nodeId | tostring) == $id' /etc/v2box/deployment-state.json >/dev/null || { echo 'Pending deployment belongs to another node; preserved.' >&2; exit 1; }
+  restore_programs
   install_helper
   exec python3 /usr/local/lib/v2box/panel-deploy.py /etc/v2box/deployment-state.json
 fi

@@ -473,3 +473,5 @@ V2Box v1.0.6 release integration: panel bootstrap, manual install and IP reporte
 
 ### Deployment enrollment configuration
 The bootstrap helper writes the redeemed panel URL, node ID and credential atomically with mode 0600 before IP reporting or DNS waits on a fresh installation. Resuming a completed panel workflow still validates the local configuration. A leftover example is stopped and replaced; existing services are appended only after DNS checks. Configuration and certificates are retained on failure.
+
+Installation and upgrade commands are pinned to V2Box v1.0.9, which rejects example enrollment configuration. Upgrade retains existing configuration and certificates; pending deployments use the refreshed panel bootstrap with --resume.

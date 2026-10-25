@@ -39,6 +39,7 @@ export function NodeDeployment({
                 ? "upgrade"
                 : "new",
         );
+    const [credentialsOpen, setCredentialsOpen] = useState(false);
     const [domainDirty, setDomainDirty] = useState(false);
     const [busy, setBusy] = useState(false),
         [error, setError] = useState("");
@@ -230,7 +231,7 @@ export function NodeDeployment({
                         },
                     ].filter(
                         (option) =>
-                            scope === "connection" ? option.value === "domain" : !openConnection || option.value !== "domain",
+                            scope === "connection" ? option.value === "domain" : (!navigation || option.value !== "credentials") && (!openConnection || option.value !== "domain"),
                     )}
                 >
                     {tab === "domain" ? (
@@ -469,7 +470,7 @@ export function NodeDeployment({
                                     独立凭据。
                                 </p>
                             )}
-                            <details className="admin-deployment-tools">
+                            {node.type !== "v2box" && <details className="admin-deployment-tools">
                                 <summary>高级：手动安装</summary>
                                 <div>
                                     <p className="muted">
@@ -503,7 +504,7 @@ export function NodeDeployment({
                                         </>
                                     )}
                                 </div>
-                            </details>
+                            </details>}
                             {node.type === "v2box" && (
                                 <details className="admin-deployment-tools">
                                     <summary>运维命令与说明</summary>
@@ -523,7 +524,7 @@ export function NodeDeployment({
                                                 <code>
                                                     /usr/local/bin/v2box resume
                                                 </code>
-                                                ：继续未完成部署，无需重新生成授权。
+                                                ：继续有效期内的未完成部署。卸载后请重新下载后台部署脚本并使用 --resume；授权过期时重新生成部署命令。
                                             </dd>
                                             <dt>运行状态与日志</dt>
                                             <dd>
@@ -558,6 +559,10 @@ export function NodeDeployment({
                         </>
                     )}
                 </DeploymentSections>
+                {navigation && scope === "service" && tab === "deploy" && <details className="admin-deployment-tools" onToggle={event => setCredentialsOpen(event.currentTarget.open)}>
+                    <summary>高级：节点凭据</summary>
+                    {credentialsOpen && <NodeCredentials node={node} close={close} embedded onBusyChange={setBusy} onChanged={report.reload}/>}
+                </details>}
                 {scope === "connection" && !navigation && (
                     <p className="muted">
                         协议、TLS 参数、运行维护及凭据在{" "}

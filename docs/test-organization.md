@@ -969,3 +969,5 @@ Deployment regression coverage in tests/v2box.php includes replacing the install
 V2Box v1.0.9 release validation covers generated install/upgrade commands (PHP and frontend), production asset build, and published Linux archive installation, upgrade from v1.0.5 with pending deployment state, retained config/certificates, uninstall, runtime version reporting and rejection of the example configuration. Service management is stubbed in the isolated archive smoke test.
 
 The embedded deployment suite now has 47 cases, including actual shell restoration with a stub installer, preservation of config/certificate/state, reconfiguration of previously reported IP schedules and actionable missing-program errors.
+
+Lifecycle review adds targeted redeployment credential replacement with preserved peer nodes and private backup. The embedded deployment suite contains 49 cases; V2Box lifecycle scripts cover update rollback, pending deployment repair, uninstall, OpenRC and retained configuration. Frontend regression coverage follows the inline credentials disclosure and absence of V2Box manual-install duplicates.

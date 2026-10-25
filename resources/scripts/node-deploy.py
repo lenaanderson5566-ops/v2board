@@ -177,8 +177,16 @@ class Deployment:
                         raise DeploymentError('Existing configuration belongs to another panel or backend; preserved without overwrite')
                 matches=[item for item in previous if item['NodeID']==node['NodeID']]
                 if matches:
-                    if len(matches)!=1 or any(matches[0].get(key)!=node[key] for key in ('ApiKey','ApiVersion')):
-                        raise DeploymentError('Existing node credentials changed; preserved without overwrite')
+                    if len(matches)!=1:
+                        raise DeploymentError('Duplicate node identity; existing configuration preserved')
+                    if any(matches[0].get(key)!=node[key] for key in ('ApiKey','ApiVersion')):
+                        if not self.state.get('replaceCredential'):
+                            raise DeploymentError('Existing node credentials changed; preserved without overwrite')
+                        backup=self.path.parent/('config.before-redeploy-'+str(node['NodeID'])+'.json')
+                        if not backup.exists(): write_private(backup,document)
+                        # Only a newly redeemed scoped grant may replace this identity.
+                        matches[0].update({key:node[key] for key in ('ApiKey','ApiVersion')})
+                        write_private(self.config,document)
                     os.chmod(self.config,0o600)
                     return
                 # Preserve every existing service and operator setting. Keep a private

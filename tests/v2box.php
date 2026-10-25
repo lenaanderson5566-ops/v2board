@@ -239,6 +239,46 @@ class WorkflowTests(unittest.TestCase):
         self.assertEqual(self.deploy.config.read_bytes(),before)
         self.assertEqual(cert.read_text(),'existing certificate')
         self.assertTrue(self.path.exists())
+    def test_fresh_authorization_replaces_only_target_credential(self):
+        self.deploy.prepare_config()
+        original=json.loads(self.deploy.config.read_text())
+        original['Nodes'][0]['Timeout']=42
+        original['Nodes'].append(dict(original['Nodes'][0],NodeID=4))
+        m.write_private(self.deploy.config,original)
+        self.deploy.data['apiKey']='new-scoped-key'
+        with self.assertRaises(m.DeploymentError): self.deploy.prepare_config()
+        self.deploy.save(replaceCredential=True)
+        self.deploy.prepare_config()
+        current=json.loads(self.deploy.config.read_text())
+        self.assertEqual(current['Nodes'][0]['ApiKey'],'new-scoped-key')
+        self.assertEqual(current['Nodes'][0]['Timeout'],42)
+        self.assertEqual(current['Nodes'][1],original['Nodes'][1])
+        self.assertEqual(json.loads((self.path.parent/'config.before-redeploy-3.json').read_text()),original)
+    @unittest.skipUnless(__import__('shutil').which('jq'),'jq required')
+    def test_fresh_grant_replaces_stale_state_and_same_grant_resumes(self):
+        root=Path(self.tmp.name);binpath=root/'bin';binpath.mkdir();lib=root/'lib';lib.mkdir()
+        for name in ('v2box','manager.sh','node-network.py'):
+            (lib/name).write_text('#!/bin/sh\nexit 0\n');(lib/name).chmod(0o700)
+        manager=root/'manager';manager.write_text('#!/bin/sh\nexit 0\n');manager.chmod(0o700)
+        for name,body in {'python3':'exit 0','curl':'while (($#)); do if [[ "$1" == -o ]]; then shift; out=$1; fi; shift; done\n[ ! -f "'+str(root/'fail')+'" ] || exit 22\necho redeemed >> "'+str(root/'redeemed')+'"\ncp "'+str(root/'response.json')+'" "$out"'}.items():
+            f=binpath/name;f.write_text('#!/bin/bash\n'+body+'\n');f.chmod(0o700)
+        self.deploy.prepare_config()
+        response={'data':dict(self.data,nodeType='v2box',apiKey='nk_'+'a'*32+'.'+'b'*64)}
+        (root/'response.json').write_text(json.dumps(response))
+        script=Path(sys.argv[1]).with_suffix('.sh').read_text().replace('__NODE_PREREQUISITES__','').replace('__NODE_DEPLOY_HELPER__','pass')
+        script=script.replace('/etc/v2box',str(root)).replace('/usr/local/lib/v2box',str(lib)).replace('/usr/local/bin/v2box',str(manager)).replace('/etc/node-network',str(root/'network'))
+        bootstrap=root/'bootstrap.sh';bootstrap.write_text(script)
+        def run(grant):
+            return subprocess.run(['bash',str(bootstrap),'--api-host',self.data['apiHost'],'--node-id','3','--deploy-token',grant],env=dict(os.environ,PATH=str(binpath)+':'+os.environ['PATH']),capture_output=True,text=True)
+        grant='nd_'+'d'*64
+        result=run(grant);self.assertEqual(result.returncode,0,result.stderr)
+        saved=self.path.read_bytes();self.assertTrue(json.loads(saved)['replaceCredential'])
+        result=run(grant);self.assertEqual(result.returncode,0,result.stderr)
+        self.assertEqual((root/'redeemed').read_text(),'redeemed\n')
+        (root/'fail').touch()
+        result=run('nd_'+'e'*64);self.assertNotEqual(result.returncode,0)
+        self.assertEqual(self.path.read_bytes(),saved)
+        self.assertIn('Authorization redemption failed',result.stderr)
     def test_missing_program_has_actionable_error(self):
         with patch.object(m.subprocess,'run',side_effect=FileNotFoundError()):
             with self.assertRaisesRegex(m.DeploymentError,'Required program is missing'):

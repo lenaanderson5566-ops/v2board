@@ -128,20 +128,23 @@ if $network_only; then
   exit
 fi
 [[ ! -L /etc/v2box && ! -L /etc/v2box/config.json && ! -L /etc/v2box/.deployment-pending ]] || { echo 'Refusing symlinked configuration' >&2; exit 1; }
+grant_hash=$(printf '%s' "$grant" | sha256sum | cut -d ' ' -f 1)
 if [[ -e /etc/v2box/deployment-state.json ]]; then
   [[ ! -L /etc/v2box/deployment-state.json ]] || exit 1
   jq -e --arg host "$panel_url" --arg id "$requested_id" '.data.apiHost == $host and (.data.nodeId | tostring) == $id' /etc/v2box/deployment-state.json >/dev/null || { echo 'Pending deployment belongs to another node; preserved.' >&2; exit 1; }
-  restore_programs
-  install_helper
-  exec python3 /usr/local/lib/v2box/panel-deploy.py /etc/v2box/deployment-state.json
+  if jq -e --arg hash "$grant_hash" '.grantHash == $hash' /etc/v2box/deployment-state.json >/dev/null; then
+    restore_programs
+    install_helper
+    exec python3 /usr/local/lib/v2box/panel-deploy.py /etc/v2box/deployment-state.json
+  fi
+  echo 'New deployment authorization supplied; previous state retained until redemption succeeds.'
 fi
 existing_install=false
 if [[ -e /etc/v2box/config.json ]]; then
   if [[ -f /etc/v2box/.deployment-pending ]] && jq -e '.Nodes | length == 1 and .[0].ApiKey == "REPLACE_ME" and .[0].ApiHost == "https://panel.example.com"' /etc/v2box/config.json >/dev/null; then
     :
   else
-    [[ -x /usr/local/lib/v2box/v2box && -f /etc/node-network/server-identity ]] || { echo 'Existing installation requires an identified physical server; preserved.' >&2; exit 1; }
-    jq -e --arg host "$panel_url" --argjson id "$requested_id" '.Nodes | length > 0 and all(.[]; .NodeType == "v2box" and .ApiHost == $host and .NodeID != $id)' /etc/v2box/config.json >/dev/null || { echo 'Node already installed or belongs to another panel; use upgrade or credential management.' >&2; exit 1; }
+    jq -e --arg host "$panel_url" --argjson id "$requested_id" '.Nodes | length > 0 and all(.[]; .NodeType == "v2box" and .ApiHost == $host)' /etc/v2box/config.json >/dev/null || { echo 'Existing configuration belongs to another panel or backend; preserved.' >&2; exit 1; }
     existing_install=true
   fi
 fi
@@ -149,7 +152,7 @@ install -d -m 755 /etc/v2box
 stage=$(mktemp -d)
 config_stage=''
 trap 'rm -rf -- "$stage"; [[ -z "$config_stage" ]] || rm -f -- "$config_stage"' EXIT
-if ! $existing_install; then
+if ! $existing_install || [[ ! -x /usr/local/lib/v2box/v2box ]]; then
   : > /etc/v2box/.deployment-pending
   curl -fSL --proto '=https' --connect-timeout 10 --max-time 120 https://raw.githubusercontent.com/lenaanderson5566-ops/v2box/v1.0.9/script/install.sh -o "$stage/install.sh"
   V2BOX_BOOTSTRAP_LOCK_HELD=1 bash "$stage/install.sh" v1.0.9 </dev/null 9>&-
@@ -157,12 +160,12 @@ fi
 printf 'header = "Authorization: Bearer %s"\n' "$grant" > "$stage/authorization"
 unset grant
 curl -fsS --proto '=https' --connect-timeout 10 --max-time 30 --config "$stage/authorization" --header 'Content-Type: application/json' --data '{}' \
-  "$panel_url/api/v10/server/enrollments/redeem" -o "$stage/response.json"
+  "$panel_url/api/v10/server/enrollments/redeem" -o "$stage/response.json" || { echo 'Authorization redemption failed. Existing deployment state and configuration were retained. For an expired or used grant, generate a new command in the panel; use --resume only for the existing valid task. Check HTTPS/gateway access if the request cannot reach the panel.' >&2; exit 1; }
 jq -e --arg host "$panel_url" --arg expected "$requested_id" '.data | ($expected == "" or (.nodeId | tostring) == $expected) and .nodeType == "v2box" and .apiHost == $host and (.nodeId | type == "number" and . > 0 and floor == .) and (.apiKey | test("^nk_[a-f0-9]{32}\\.[a-f0-9]{64}$"))' "$stage/response.json" >/dev/null || { echo 'Invalid deployment response' >&2; exit 1; }
 # Preserve enrollment only in a private local file so a consumed grant can be resumed.
 [[ ! -L /etc/v2box/deployment-state.json ]] || exit 1
 config_stage=$(mktemp /etc/v2box/.deployment-state.XXXXXXXX)
-cp "$stage/response.json" "$config_stage"
+jq --arg hash "$grant_hash" '. + {grantHash:$hash, replaceCredential:true}' "$stage/response.json" > "$config_stage"
 chmod 600 "$config_stage"
 mv -f -- "$config_stage" /etc/v2box/deployment-state.json
 config_stage=''

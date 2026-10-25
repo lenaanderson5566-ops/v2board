@@ -401,7 +401,8 @@ it.each(["v2node", "v2box"])(
             path.endsWith(`/server/${target}/save`),
         )![1];
         expect(body.id).toBeUndefined();
-        expect(await screen.findByText("install-new-node")).toBeTruthy();
+        if (target === "v2box") expect(screen.queryByText("install-new-node")).toBeNull();
+        else expect(await screen.findByText("install-new-node")).toBeTruthy();
     },
 );
 
@@ -433,14 +434,7 @@ it("guides deployment to panel-managed DDNS", async () => {
     expect(screen.getByText("/usr/local/bin/v2box update")).toBeTruthy();
     expect(screen.getByText("/usr/local/bin/v2box uninstall --stop-network")).toBeTruthy();
     expect(screen.queryByLabelText("查询服务器 IP 命令")).toBeNull();
-    fireEvent.click(screen.getByText("高级：手动安装"));
-    expect(
-        (
-            screen.getByRole("textbox", {
-                name: "节点安装命令",
-            }) as HTMLTextAreaElement
-        ).value,
-    ).toBe("bash install.sh");
+    expect(screen.queryByLabelText("节点安装命令")).toBeNull();
     expect(screen.queryByRole("tab", { name: "域名与解析" })).toBeNull();
     fireEvent.click(screen.getByRole("button", { name: "连接与域名" }));
     expect(await screen.findByText("请先在 域名与解析 中添加并验证根域名。")).toBeTruthy();
@@ -1241,11 +1235,11 @@ it("separates published, prepared and TLS addresses in the node overview", () =>
 it("keeps integrated deployment navigation flat and credential management reachable",async()=>{
     api.request.mockResolvedValue({data:{keys:[],assignments:[],servers:[]}});
     render(<NodeDeployment node={{type:"v2box",id:7,name:"Manual"}} close={()=>{}} navigation={()=> <p>节点编辑导航</p>} openConnection={()=>{}}/>);
-    await screen.findByRole("button",{name:"节点凭据管理"});
+    const summary=await screen.findByText("高级：节点凭据");
     expect(screen.queryByRole("tablist")).toBeNull();
-    fireEvent.click(screen.getByRole("button",{name:"节点凭据管理"}));
+    summary.closest("details")!.open=true; fireEvent(summary.closest("details")!,new Event("toggle"));
     await screen.findByRole("button",{name:"生成 / 手动轮换密钥"});
-    fireEvent.click(screen.getByRole("button",{name:"返回部署与状态"}));
+    summary.closest("details")!.open=false; fireEvent(summary.closest("details")!,new Event("toggle"));
     expect(await screen.findByRole("button",{name:"一键检查"})).toBeTruthy();
     expect(api.request.mock.calls.some(([,body])=>body && Object.keys(body).length)).toBe(false);
 });

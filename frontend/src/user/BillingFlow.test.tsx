@@ -298,6 +298,7 @@ it("keeps payment status checking available if a previous payment method was rem
     expect(view.reload).toHaveBeenCalled();
     expect(mocks.request).toHaveBeenCalledWith(
         "user/order/check?trade_no=test-order",
+        undefined, expect.objectContaining({signal:expect.any(AbortSignal)}),
     );
 });
 it("uses the fee locked in an issued order even when provider settings change", async () => {
@@ -417,6 +418,7 @@ it("does not claim completion on payment acknowledgement and polls the authorita
     });
     expect(mocks.request).toHaveBeenCalledWith(
         "user/order/check?trade_no=test-order",
+        undefined, expect.objectContaining({signal:expect.any(AbortSignal)}),
     );
     expect(view.reload).toHaveBeenCalled();
     view.unmount();

@@ -1,3 +1,4 @@
+import { ticketOrderReference } from "./user-navigation";
 import { useAnalyticsPage } from "./product-analytics";
 import { ActivityCenter, MyCoupons } from "./CouponCenter";
 import { FastaiDownload } from "./FastaiDownload";
@@ -48,11 +49,7 @@ function UserBody({ current, path }: { current: string; path: string }) {
         <Knowledge />
     ) : current === "ticket" ? (
         <Tickets
-            orderTradeNo={
-                path.split("/")[1] === "order"
-                    ? decodeURIComponent(path.split("/")[2] || "")
-                    : undefined
-            }
+            orderTradeNo={ticketOrderReference(path)}
         />
     ) : current === "invite" ? (
         <Invite />

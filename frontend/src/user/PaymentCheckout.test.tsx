@@ -48,7 +48,7 @@ it.each(["NETWORK_ERROR", "REQUEST_TIMEOUT"])("checks status without resubmittin
     renderCheckout({ trade_no: "uncertain" }, reload);
     fireEvent.click(await screen.findByRole("button", { name: "确认支付" }));
     await screen.findByText("未能确认支付请求结果，正在检查订单状态，请勿重复付款。");
-    await waitFor(() => expect(mock.request).toHaveBeenCalledWith("user/order/check"));
+    await waitFor(() => expect(mock.request).toHaveBeenCalledWith("user/order/check", undefined, expect.objectContaining({signal:expect.any(AbortSignal)})));
     expect(screen.queryByText("Load failed")).toBeNull();
     expect(screen.getByRole("radio", { name: "Alipay" }).closest("fieldset")?.disabled).toBe(true);
     fireEvent.click(screen.getByRole("button", { name: "检查支付结果" }));

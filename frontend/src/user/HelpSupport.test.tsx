@@ -11,6 +11,7 @@ vi.mock("../shared/credit-copy", () => ({
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
     cleanup,
+    act,
     fireEvent,
     render,
     screen,
@@ -36,14 +37,14 @@ vi.mock("../shared/api", () => ({
 }));
 vi.mock("../shared/ui", async (importOriginal) => ({
     ...(await importOriginal<typeof import("../shared/ui")>()),
-    useData: (path: string) => ({
+    useData: vi.fn((path: string) => ({
         data: path === "user/info" ? { ticket_creation: mocks.policy } : path.includes("id=")
             ? (mocks.detail || { subject: "现有工单", status: 1, message: [] })
             : mocks.tickets,
         loading: false,
         error: "",
         reload: vi.fn(),
-    }),
+    })),
     Panel: ({
         children,
         actions,
@@ -151,4 +152,27 @@ it("acknowledges a displayed reply once even when ticket data refreshes",async()
  mocks.detail={...mocks.detail};view.rerender(<Tickets/>);
  expect(mocks.request.mock.calls.filter(([path])=>path==="user/notice/readTicket")).toHaveLength(1);
  mocks.detail=null;location.hash="";
+});
+
+it("does not preload ticket detail until a ticket is opened",async()=>{
+    location.hash="#/ticket";
+    const {useData}=await import("../shared/ui");vi.mocked(useData).mockClear();
+    render(<Tickets/>);
+    expect(useData).toHaveBeenCalledWith("");
+});
+it("debounces knowledge searches and skips the unused category request",async()=>{
+    vi.useFakeTimers();
+    try {
+        const {Knowledge}=await import("./user");
+        const {useData}=await import("../shared/ui");vi.mocked(useData).mockClear();
+        render(<Knowledge/>);
+        const input=screen.getByLabelText("搜索文档");
+        fireEvent.change(input,{target:{value:"h"}});fireEvent.change(input,{target:{value:"help"}});
+        let paths=vi.mocked(useData).mock.calls.map(([path])=>path);
+        expect(paths.some(path=>path.includes("keyword=h"))).toBe(false);
+        await act(async()=>{await vi.advanceTimersByTimeAsync(300);});
+        paths=vi.mocked(useData).mock.calls.map(([path])=>path);
+        expect(paths.some(path=>path.includes("keyword=help"))).toBe(true);
+        expect(paths.some(path=>path.includes("getCategory"))).toBe(false);
+    } finally {vi.useRealTimers();}
 });

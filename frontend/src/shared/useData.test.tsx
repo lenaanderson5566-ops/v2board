@@ -108,3 +108,15 @@ it("keeps reload stable across requests and parent renders", async () => {
     await waitFor(() => expect(read).toHaveBeenCalledTimes(2));
     expect(result.current.reload).toBe(reload);
 });
+
+it("coalesces focus and visibility resume events without suppressing data changes",async()=>{
+    read.mockResolvedValue({data:[]});
+    const {result}=renderHook(()=>useData("user/order/fetch"));
+    await waitFor(()=>expect(result.current.loading).toBe(false));
+    act(()=>document.dispatchEvent(new Event("visibilitychange")));
+    await waitFor(()=>expect(read).toHaveBeenCalledTimes(2));
+    act(()=>window.dispatchEvent(new Event("focus")));
+    expect(read).toHaveBeenCalledTimes(2);
+    act(()=>window.dispatchEvent(new Event("data-changed")));
+    await waitFor(()=>expect(read).toHaveBeenCalledTimes(3));
+});

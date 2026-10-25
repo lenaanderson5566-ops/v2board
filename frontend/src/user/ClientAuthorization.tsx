@@ -33,12 +33,16 @@ export function clientCallback(value: string): string {
 }
 
 export default function ClientAuthorization({ user }: { user: Row }) {
-    const [id] = useState(
-        () =>
-            new URLSearchParams(location.hash.split("?")[1]).get(
-                "authorizationId",
-            ) || "",
-    );
+    const readId = () => new URLSearchParams(location.hash.split("?")[1]).get("authorizationId") || "";
+    const [id, setId] = useState(readId);
+    const currentId = useRef(id);
+    const mounted = useRef(true);
+    useEffect(() => {
+        mounted.current = true;
+        const changed = () => { currentId.current = readId(); setId(currentId.current); };
+        window.addEventListener("hashchange", changed);
+        return () => { mounted.current = false; window.removeEventListener("hashchange", changed); };
+    }, []);
     const [details, setDetails] =
         useState<V10ClientAuthorizationDetails | null>(null);
     const [error, setError] = useState("");
@@ -47,6 +51,9 @@ export default function ClientAuthorization({ user }: { user: Row }) {
     const submitting = useRef(false);
     useEffect(() => {
         let active = true;
+        setDetails(null);
+        setError("");
+        setCallback("");
         if (!/^[a-f0-9]{64}$/.test(id)) {
             setError(tx("授权已过期，请返回 App 重新登录。"));
             return;
@@ -81,6 +88,7 @@ export default function ClientAuthorization({ user }: { user: Row }) {
                 "user/client-authorization/approve",
                 { authorization_id: id },
             );
+            if (!mounted.current || currentId.current !== id) return;
             const target = clientCallback(data.callbackUrl || "");
             setCallback(target);
             history.replaceState(
@@ -90,10 +98,10 @@ export default function ClientAuthorization({ user }: { user: Row }) {
             );
             location.assign(target);
         } catch {
-            setError(tx("授权未完成，请返回 App 重试。"));
+            if (mounted.current && currentId.current === id) setError(tx("授权未完成，请返回 App 重试。"));
         } finally {
             submitting.current = false;
-            setBusy(false);
+            if (mounted.current) setBusy(false);
         }
     }
     return (

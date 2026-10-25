@@ -12,16 +12,41 @@ export const browserSessionKey = () =>
     `${window.V2BOARD?.mode ?? "guest"}:${accountId ?? "guest"}`;
 let pending: Promise<void> | undefined;
 export const hasBrowserSession = () => authenticated;
-function signalSessionChange() {
-    localPreferences.setItem(
-        `v2board.${mode()}.sessionRevision`,
-        `${Date.now()}:${Math.random()}`,
-    );
-}
-export function forgetBrowserSession() {
+const revisionKey = () => `v2board.${mode()}.sessionRevision`;
+let observedRevision: string | null = null;
+let invalidated = false;
+let observing = false;
+function changedSession(): never {
+    invalidated = true;
     authenticated = false;
     accountId = null;
-    signalSessionChange();
+    pending = undefined;
+    window.dispatchEvent(new Event("auth-expired"));
+    window.location.reload();
+    throw Object.assign(new Error(tx("登录已过期")), { code: "SESSION_CHANGED" });
+}
+function observeSession() {
+    if (observing) return;
+    observing = true;
+    window.addEventListener("storage", (event) => {
+        if ((event.key === revisionKey() || event.key === null) &&
+            localPreferences.getItem(revisionKey()) !== observedRevision) {
+            // Storage events are external to this tab. Block old forms until reload.
+            try { changedSession(); } catch { /* The active request also checks invalidation. */ }
+        }
+    });
+}
+function signalSessionChange() {
+    if (invalidated) return;
+    const revision = `${Date.now()}:${Math.random()}`;
+    observedRevision = localPreferences.setItem(revisionKey(), revision)
+        ? revision : localPreferences.getItem(revisionKey());
+}
+export function forgetBrowserSession() {
+    const changed = authenticated || accountId !== null;
+    authenticated = false;
+    accountId = null;
+    if (changed) signalSessionChange();
 }
 export function queueBrowserLogout() {
     const persisted = localPreferences.setItem(`${legacyKey()}.pendingLogout`, "1");
@@ -42,6 +67,8 @@ async function sessionFetch(url: string, options: RequestInit) {
     } finally { clearTimeout(timer); }
 }
 async function bootstrap() {
+    observeSession();
+    observedRevision = localPreferences.getItem(revisionKey());
     const response = await sessionFetch(apiUrl("/api/v10/auth/browser-session"), {
         credentials: "include",
         headers: { Accept: "application/json", "X-Browser-Client": mode() },
@@ -51,9 +78,15 @@ async function bootstrap() {
             tx("服务响应异常 ({{value0}})", { value0: response.status }),
         );
     const result = await response.json();
-    csrfToken = result.data.csrfToken;
-    authenticated = result.data.authenticated;
-    accountId = result.data.accountId;
+    if (invalidated) changedSession();
+    const metadata = result?.data;
+    if (!metadata || typeof metadata.csrfToken !== "string" || !metadata.csrfToken ||
+        typeof metadata.authenticated !== "boolean" ||
+        (metadata.authenticated && (!Number.isSafeInteger(metadata.accountId) || metadata.accountId < 1)))
+        throw new Error(tx("服务响应异常 ({{value0}})", { value0: response.status }));
+    csrfToken = metadata.csrfToken;
+    authenticated = metadata.authenticated;
+    accountId = authenticated ? metadata.accountId : null;
     if (localPreferences.getItem(`${legacyKey()}.pendingLogout`)) {
         authenticated = false;
         accountId = null;
@@ -80,6 +113,7 @@ async function bootstrap() {
     try { localStorage.removeItem(legacyKey()); } catch { /* Storage may be blocked. */ }
 }
 export async function initializeBrowserSession() {
+    if (invalidated) throw Object.assign(new Error(tx("登录已过期")), { code: "SESSION_CHANGED" });
     if (!pending)
         pending = bootstrap().catch((error) => {
             pending = undefined;
@@ -91,6 +125,7 @@ export async function initializeBrowserSession() {
 }
 export async function browserHeaders() {
     await initializeBrowserSession();
+    if (invalidated || localPreferences.getItem(revisionKey()) !== observedRevision) changedSession();
     return { "X-Browser-Client": mode(), "X-CSRF-Token": csrfToken };
 }
 export async function browserFetch(url: string, options: RequestInit = {}) {
@@ -100,6 +135,7 @@ export async function browserFetch(url: string, options: RequestInit = {}) {
         return headers;
     };
     const headers = await browserHeaders();
+    const identity = browserSessionKey();
     let response = await fetch(url, {
         ...options,
         credentials: "include",
@@ -110,6 +146,9 @@ export async function browserFetch(url: string, options: RequestInit = {}) {
     if (response.status === 419) {
         pending = undefined;
         const fresh = await browserHeaders();
+        if (browserSessionKey() !== identity) {
+            changedSession();
+        }
         response = await fetch(url, {
             ...options,
             credentials: "include",

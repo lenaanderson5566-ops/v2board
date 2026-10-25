@@ -2,6 +2,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
     cleanup,
+    act,
     fireEvent,
     render,
     screen,
@@ -95,4 +96,25 @@ describe("client browser authorization", () => {
         ).toBe(true);
         expect(mocks.request).toHaveBeenCalledTimes(1);
     });
+});
+
+it("loads a new authorization when the hash changes without reusing old consent",async()=>{
+    const next="c".repeat(64);
+    mocks.request.mockResolvedValue({data:{platform:"windows"}});
+    render(<ClientAuthorization user={{email:"user@example.test"}}/>);
+    await waitFor(()=>expect(screen.getByRole("button",{name:"确认登录"})).toHaveProperty("disabled",false));
+    act(()=>{location.hash="#/client-authorize?authorizationId="+next;window.dispatchEvent(new Event("hashchange"));});
+    await waitFor(()=>expect(mocks.request).toHaveBeenCalledWith("user/client-authorization?authorization_id="+next));
+    expect(mocks.request.mock.calls.filter(([path])=>path.endsWith("/approve"))).toHaveLength(0);
+});
+it("ignores an old approval callback when a new authorization is opened",async()=>{
+    let finish!:(value:any)=>void;
+    mocks.request.mockResolvedValueOnce({data:{platform:"windows"}}).mockImplementationOnce(()=>new Promise(resolve=>{finish=resolve;})).mockResolvedValue({data:{platform:"ios"}});
+    render(<ClientAuthorization user={{email:"user@example.test"}}/>);
+    await waitFor(()=>expect(screen.getByRole("button",{name:"确认登录"})).toHaveProperty("disabled",false));
+    fireEvent.click(screen.getByRole("button",{name:"确认登录"}));
+    act(()=>{location.hash="#/client-authorize?authorizationId="+"c".repeat(64);window.dispatchEvent(new Event("hashchange"));});
+    await act(async()=>finish({data:{callbackUrl:`http://127.0.0.1:48321/fastai-auth/callback?code=${code}&state=${state}`}}));
+    expect(location.assign).not.toHaveBeenCalled();
+    expect(screen.queryByRole("link",{name:"返回 FastAI"})).toBeNull();
 });

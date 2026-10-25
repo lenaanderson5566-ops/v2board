@@ -256,14 +256,19 @@ function StripeCard({
 export function Knowledge() {
     const [language, setLanguage] = useState(locale()),
         [keyword, setKeyword] = useState(""),
+        [search, setSearch] = useState(""),
         [id, setId] = useState<number | null>(null);
     const interfaceLanguage = locale();
     useEffect(() => setLanguage(interfaceLanguage), [interfaceLanguage]);
-    const d = useData(query("user/knowledge/fetch", { language, keyword })),
+    useEffect(() => {
+        const timer = window.setTimeout(() => setSearch(keyword.trim()), 300);
+        return () => window.clearTimeout(timer);
+    }, [keyword]);
+    const d = useData(query("user/knowledge/fetch", { language, keyword: search })),
         article = useData(
             id
                 ? query("user/knowledge/fetch", { id })
-                : "user/knowledge/getCategory",
+                : "",
         );
     return (
         <>

@@ -121,9 +121,11 @@ export function PaymentCheckout({
         setPollStopped(false);
         let live = true,
             checks = 0,
-            checking = false;
+            checking = false,
+            observedChange = false;
+        const controller = new AbortController();
         async function check() {
-            if (!live || checking || document.visibilityState === "hidden")
+            if (!live || checking || observedChange || document.visibilityState === "hidden")
                 return;
             if (checks >= 60) {
                 setPollStopped(true);
@@ -134,10 +136,13 @@ export function PaymentCheckout({
             try {
                 const result = await request<number>(
                     query("user/order/check", { trade_no: order.trade_no }),
+                    undefined,
+                    { signal: controller.signal },
                 );
                 if (!live) return;
                 setPollError("");
                 if (Number(result.data) !== status) {
+                    observedChange = true;
                     refresh.current();
                     window.dispatchEvent(new Event("data-changed"));
                 }
@@ -149,7 +154,9 @@ export function PaymentCheckout({
         }
         void check();
         const timer = setInterval(() => {
-            if (checks >= 60 && !checking) {
+            if (observedChange) {
+                clearInterval(timer);
+            } else if (checks >= 60 && !checking) {
                 setPollStopped(true);
                 clearInterval(timer);
             } else void check();
@@ -161,6 +168,7 @@ export function PaymentCheckout({
         window.addEventListener("focus", visible);
         return () => {
             live = false;
+            controller.abort();
             clearInterval(timer);
             document.removeEventListener("visibilitychange", visible);
             window.removeEventListener("focus", visible);

@@ -185,6 +185,7 @@ function UserApp() {
         };
     }, [open]);
     useEffect(() => {
+        let active = true;
         const fn = () => {
             const current = location.hash.slice(2).split("?")[0];
             if (!["login", "register", "forget"].includes(current))
@@ -210,6 +211,9 @@ function UserApp() {
             setOpen(false);
         };
         const expire = () => {
+            active = false;
+            setLoading(false);
+            clearReadCache();
             setUser(null);
             if (location.hash.startsWith("#/client-authorize?")) {
                 setPath("client-authorize");
@@ -241,7 +245,7 @@ function UserApp() {
         if (!boot.landing)
             initializeBrowserSession()
                 .then(async () => {
-                    if (!verification && !hasBrowserSession()) return null;
+                    if (!active || (!verification && !hasBrowserSession())) return null;
                     if (verification) {
                         await request("passport/auth/token2Login", {
                             verify: verification,
@@ -254,8 +258,9 @@ function UserApp() {
                     );
                 })
                 .then(async (r) => {
-                    if (!r) return;
+                    if (!r || !active) return;
                     await applyAccountLanguage(r.data.language);
+                    if (!active) return;
                     setUser(r.data);
                     if (verification) {
                         setPath("dashboard");
@@ -263,12 +268,14 @@ function UserApp() {
                     }
                 })
                 .catch((e) => {
+                    if (!active) return;
                     setError(e.message);
                     forgetBrowserSession();
                 })
-                .finally(() => setLoading(false));
+                .finally(() => { if (active) setLoading(false); });
         else setLoading(false);
         return () => {
+            active = false;
             window.removeEventListener("hashchange", fn);
             window.removeEventListener("auth-expired", expire);
         };

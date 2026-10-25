@@ -1,5 +1,5 @@
 // The state comes from Laravel AccountStatusService, not a client expiry guess.
-export function userNavigation(state?: string, _hasActivities = true) {
+export function userNavigation(state?: string) {
     if (state === "banned") return [];
     return [
         {
@@ -17,4 +17,13 @@ export function userNavigation(state?: string, _hasActivities = true) {
         { key: "order", label: "账单", group: "工作空间" },
         { key: "knowledge", label: "帮助中心", group: "帮助" },
     ];
+}
+
+export function ticketOrderReference(path: string): string | undefined {
+    const parts = path.split("/");
+    if (parts[0] !== "ticket" || parts[1] !== "order" || parts.length !== 3) return;
+    try {
+        const value = decodeURIComponent(parts[2]);
+        return /^[a-zA-Z0-9_-]{1,64}$/.test(value) ? value : undefined;
+    } catch { return undefined; }
 }

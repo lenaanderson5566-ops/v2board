@@ -1,8 +1,9 @@
 import { beforeEach, describe, it, expect, vi } from "vitest";
 
-const session = vi.hoisted(() => ({ active: true, forgotten: vi.fn() }));
+const session = vi.hoisted(() => ({ active: true, identity: "user:42", forgotten: vi.fn() }));
 vi.mock("./browser-session", () => ({
     queueBrowserLogout: vi.fn(),
+    browserSessionKey: () => session.identity,
     browserFetch: (url: string, options: RequestInit = {}) => fetch(url, { ...options, credentials: "include", headers: { ...options.headers, "X-Browser-Client": "user", "X-CSRF-Token": "csrf-test" } }),
     hasBrowserSession: () => session.active,
     forgetBrowserSession: () => { session.active = false; session.forgotten(); },
@@ -352,4 +353,18 @@ it("uses PATCH for narrow administrative edits while retaining browser session h
     const fetchMock=vi.fn().mockResolvedValue(new Response(JSON.stringify({data:true}),{status:200}));vi.stubGlobal("fetch",fetchMock);
     await request("test-admin/server/connections/default",{id:3,name:"JP"},{method:"PATCH"});
     expect(fetchMock).toHaveBeenCalledWith(expect.stringContaining("/api/v1/test-admin/server/connections/default"),expect.objectContaining({method:"PATCH",credentials:"include",body:JSON.stringify({id:3,name:"JP"})}));
+});
+
+it("separates in-memory account reads even when Web Storage cannot persist a revision",async()=>{
+    const {readRequest,clearReadCache}=await import("./api");
+    clearReadCache();
+    const fetcher=vi.fn().mockImplementation(async()=>new Response(JSON.stringify({data:{id:session.identity,email:session.identity}})));
+    vi.stubGlobal("fetch",fetcher);
+    session.identity="user:42";
+    const first=await readRequest("user/info");
+    session.identity="user:99";
+    const second=await readRequest("user/info");
+    expect(fetcher).toHaveBeenCalledTimes(2);
+    expect(first.data.email).not.toBe(second.data.email);
+    session.identity="user:42";clearReadCache();
 });

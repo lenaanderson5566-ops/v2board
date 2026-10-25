@@ -55,7 +55,7 @@ export function Tickets({
         detail = useData(
             id
                 ? query(`${prefix}/ticket/fetch`, { id })
-                : `${prefix}/ticket/fetch`,
+                : "",
         );
     useEffect(()=>{
         if(isAdmin) return;

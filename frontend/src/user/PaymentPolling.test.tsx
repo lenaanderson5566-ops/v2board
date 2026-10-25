@@ -8,7 +8,7 @@ vi.mock("./PurchaseSteps",()=>({PurchaseSteps:()=>null}));
 vi.mock("./OrderReceipt",()=>({OrderReceipt:()=>null}));
 import i18n from "../shared/i18n";
 import {PaymentCheckout} from "./PaymentCheckout";
-afterEach(()=>{cleanup();vi.useRealTimers();request.mockClear();});
+afterEach(()=>{cleanup();vi.useRealTimers();request.mockReset();request.mockResolvedValue({data:1});});
 it("pauses after 60 checks and allows restarting",async()=>{
  await i18n.changeLanguage("zh-CN");
  vi.useFakeTimers();
@@ -19,4 +19,19 @@ it("pauses after 60 checks and allows restarting",async()=>{
  await act(async()=>{fireEvent.click(screen.getByRole("button",{name:"继续检查"}));});
  expect(request).toHaveBeenCalledTimes(61);
  expect(screen.queryByText(/自动检查已暂停/)).toBeNull();
+});
+
+it("stops old-status checks after observing a transition while detail refresh is pending",async()=>{
+    vi.useFakeTimers();request.mockResolvedValue({data:3});
+    const reload=vi.fn();
+    render(<PaymentCheckout order={{status:1,trade_no:"transition",plan_id:1}} reload={reload} renderCard={()=>null}/>);
+    await act(async()=>{await vi.advanceTimersByTimeAsync(35000);});
+    expect(reload).toHaveBeenCalledTimes(1);
+    expect(request).toHaveBeenCalledTimes(1);
+});
+it("aborts its active status check when leaving the order page",async()=>{
+    request.mockImplementation(()=>new Promise(()=>{}));
+    const view=render(<PaymentCheckout order={{status:1,trade_no:"leave",plan_id:1}} reload={()=>{}} renderCard={()=>null}/>);
+    const signal=request.mock.calls[0][2].signal;
+    expect(signal.aborted).toBe(false);view.unmount();expect(signal.aborted).toBe(true);
 });

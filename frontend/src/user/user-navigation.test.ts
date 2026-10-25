@@ -1,5 +1,5 @@
 import { expect, it } from "vitest";
-import { userNavigation } from "./user-navigation";
+import { userNavigation, ticketOrderReference } from "./user-navigation";
 it("prioritizes setup and usage during a valid subscription", () => {
     expect(userNavigation("active").map((item) => item.label)).toEqual([
         "使用情况",
@@ -19,3 +19,9 @@ it("prioritizes purchase or renewal without exposing setup to inactive users", (
     ).toBe(false);
     expect(userNavigation("banned")).toEqual([]);
 });
+
+it.each(["ticket/order/%E0%A4%A","ticket/order/%","ticket/order/%2Fprivate","ticket/order/"+"a".repeat(65),"ticket/order/valid/extra"])("ignores malformed order references without crashing: %s",path=>{
+    expect(()=>ticketOrderReference(path)).not.toThrow();
+    expect(ticketOrderReference(path)).toBeUndefined();
+});
+it("preserves valid order references",()=>expect(ticketOrderReference("ticket/order/ORDER_123-abc")).toBe("ORDER_123-abc"));

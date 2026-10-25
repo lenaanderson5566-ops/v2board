@@ -83,15 +83,23 @@ export function useData<T = Row>(
     useEffect(() => {
         if (boot.mode !== "user" || !path || !refreshOnEvents) return;
         const refresh = () => setVersion((v) => v + 1);
+        let lastResume: number | undefined;
+        const resume = () => {
+            if (document.visibilityState === "hidden") return;
+            const now = Date.now();
+            if (lastResume !== undefined && now - lastResume < 1000) return;
+            lastResume = now;
+            refresh();
+        };
         const visible = () => {
-            if (document.visibilityState === "visible") refresh();
+            if (document.visibilityState === "visible") resume();
         };
         window.addEventListener("data-changed", refresh);
-        window.addEventListener("focus", refresh);
+        window.addEventListener("focus", resume);
         document.addEventListener("visibilitychange", visible);
         return () => {
             window.removeEventListener("data-changed", refresh);
-            window.removeEventListener("focus", refresh);
+            window.removeEventListener("focus", resume);
             document.removeEventListener("visibilitychange", visible);
         };
     }, [path, refreshOnEvents]);

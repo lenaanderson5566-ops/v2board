@@ -998,3 +998,7 @@ V2Box v1.0.10 发布验证：节点脚本 45 项、部署 Python 55 项、启用
 后台审查验证结果：451 个应用 PHP 文件语法通过，392 条路由的 2886 项路由/权限断言通过；backend-security 102 项、audit-security-regression 60 项、browser-session 544 项、node-backends 838 项及用户活动/分页测试通过。控制台节点编辑回归改用当前连接地址和默认线路 PATCH 接口，保持真实保存断言。
 控制台完整操作回归最终 242 项通过，包含配置替换失败模拟、三类排序回滚、用户权限保留、节点当前编辑接口和页面渲染。
 后台审查发布前再次执行 tests/update-script.sh，26 个隔离升级场景全部通过；本轮不新增数据库迁移，生产前端资源随提交发布。
+
+用户前端审查复用 browser-session、api、useData、HelpSupport、user-navigation、PaymentPolling、BillingFlow、PaymentCheckout 和 ClientAuthorization 测试；新增 app.test.tsx 覆盖入口初始请求在失效或卸载后的迟到响应。覆盖跨标签账号变更阻止旧请求、CSRF 刷新身份校验、禁用存储兼容与匿名广播去重、内存读缓存的账号隔离、焦点/可见事件去重、支付轮询取消和状态变化后停止旧轮询、授权请求切换及旧回调拦截、损坏路由容错、知识搜索防抖和按需加载。保留防重复付款及回调白名单断言，移除无效预加载和过时导航参数。
+用户前端最终验证：114 个测试文件、1051 项测试全部通过；TypeScript 检查和生产构建通过，357 项构建清单资源存在性检查通过，npm 全依赖审计未报告已知漏洞。
+用户前端审查发布前再次验证 tests/update-script.sh：26 个隔离升级场景全部通过；本轮只更新前端、测试及文档，无新增数据库迁移或 PHP 依赖变更。

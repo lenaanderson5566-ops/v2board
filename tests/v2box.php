@@ -53,7 +53,7 @@ try {
     $assert(count($nodes)===2,'Both types listed with same id');
     foreach ($nodes as $node) if ($node['type']==='v2box') {
         $assert(strpos($node['install_command'],'--node-type v2box')!==false,'Installer selects V2Box');
-        $assert(str_contains($node['install_command'],'--install v1.0.9'),'Installer uses published version, not legacy main');
+        $assert(str_contains($node['install_command'],'--install v1.0.10'),'Installer uses published version, not legacy main');
         $assert(str_ends_with($node['upgrade_command'],'--update'),'Upgrade requires existing installation and preserves configuration');
         $assert(strpos($node['install_command'],'--prompt-api-key')!==false,'Installer keeps credential input interactive');
     }
@@ -112,10 +112,20 @@ while (($#)); do
   esac
   shift
 done
-if $response; then echo redeemed >> "$DNS_FIXTURE/redemptions"; cp "$DNS_FIXTURE/response.json" "$out"; else printf '#!/bin/bash\nexit 0\n' > "$out"; fi
+if $response; then echo redeemed >> "$DNS_FIXTURE/redemptions"; cp "$DNS_FIXTURE/response.json" "$out"; else cat > "$out" <<'INSTALL'
+#!/bin/bash
+set -eu
+mkdir -p "$DNS_FIXTURE/lib"
+for file in v2box manager.sh install.sh node-network.py node-credentials.py; do
+  printf '#!/bin/bash\nexit 0\n' > "$DNS_FIXTURE/lib/$file"
+  chmod 700 "$DNS_FIXTURE/lib/$file"
+done
+INSTALL
+fi
 SH,
                 'v2box'=><<<'SH'
 #!/bin/bash
+[[ "$1" != stop ]] || exit 0
 [[ "$1" == restart ]] || exit 1
 echo restart >> "$DNS_FIXTURE/events"
 SH,
@@ -132,12 +142,16 @@ SH,
             ];
             foreach ($mocks as $name=>$script) {file_put_contents($fixture.'/bin/'.$name,$script."\n");chmod($fixture.'/bin/'.$name,0700);}
             $script=str_replace('__NODE_DEPLOY_HELPER__',file_get_contents(resource_path('scripts/node-deploy.py')),file_get_contents(resource_path('scripts/node-deploy.sh')));
-            $script=str_replace(['__NODE_PREREQUISITES__','/etc/v2box','/usr/local/lib/v2box','/etc/node-network'],['',$fixture.'/config',$fixture.'/lib',$fixture.'/network'],$script);
+            $script=str_replace(['__NODE_PREREQUISITES__','/etc/v2box','/usr/local/lib/v2box','/etc/node-network','/usr/local/bin/v2box'],['',$fixture.'/config',$fixture.'/lib',$fixture.'/network',$fixture.'/bin/v2box'],$script);
             file_put_contents($fixture.'/bootstrap.sh',$script);
             $run=function($failure=null,$nodeId=3)use($fixture,$reportFailure,$networkOnly,$serverOnly){
                 $pipes=[];$p=proc_open(['bash',$fixture.'/bootstrap.sh',...($networkOnly && !$serverOnly?['--network-only']:[]),'--api-host','https://panel.example.invalid',...($serverOnly?['--server-id','7']:['--node-id',(string)$nodeId]),'--deploy-token',($serverOnly?'ns_':'nd_').str_repeat('d',64)],[['pipe','r'],['pipe','w'],['pipe','w']],$pipes,null,array_merge(getenv(),['PATH'=>$fixture.'/bin:'.getenv('PATH'),'TMPDIR'=>$fixture.'/tmp','DNS_FIXTURE'=>$fixture,'DNS_REPORT_FAILURE'=>(string)($failure??$reportFailure)]));
                 fclose($pipes[0]);$output=stream_get_contents($pipes[1]).stream_get_contents($pipes[2]);fclose($pipes[1]);fclose($pipes[2]);return [proc_close($p),$output];
             };
+            if (!$networkOnly && !$reportFailure) {
+                mkdir($fixture.'/config',0700);
+                file_put_contents($fixture.'/config/config.json',json_encode(['Nodes'=>[['ApiHost'=>'https://panel.example.com','ApiKey'=>'REPLACE_ME']]]));
+            }
             [$exit,$output]=$run();
             $assert($exit===$reportFailure,'Deployment bootstrap reports address setup result: '.$exit.' '.preg_replace('/(?:nk_|nd_)?[a-f0-9.]{64,}/','[redacted]',$output));
             if ($networkOnly) {
@@ -158,15 +172,15 @@ SH,
             }
             $assert(file_get_contents($fixture.'/events')===($reportFailure ? "report\n" : "report\nrestart\n"),'IP reporting must succeed before starting the node');
             if ($reportFailure) {
-                $assert(!file_exists($fixture.'/config/config.json'),'Failed reporting must not write live node configuration');
+                $assert(json_decode(file_get_contents($fixture.'/config/config.json'),true)['Nodes'][0]['ApiHost']===$response['data']['apiHost'],'Failed reporting retains the correct panel configuration without starting V2Box');
                 [$resumed]=$run(0);
                 $assert($resumed===0 && file_get_contents($fixture.'/redemptions')==="redeemed\n",'Failed reporting resumes without consuming another grant');
             }
             $config=json_decode(file_get_contents($fixture.'/config/config.json'),true);
             $assert($config['Nodes'][0]['ApiKey']===$response['data']['apiKey'] && (fileperms($fixture.'/config/config.json')&0777)===0600,'Deployment atomically installs private node configuration');
             $assert(!str_contains($output,$response['data']['networkReport']['token']) && count(glob($fixture.'/tmp/*'))===0,'Deployment removes temporary reporting secrets');
-            $before=hash_file('sha256',$fixture.'/config/config.json');[$exit]=$run();
-            $assert($exit===1 && hash_file('sha256',$fixture.'/config/config.json')===$before,'Redeployment preserves existing node config');
+            $before=hash_file('sha256',$fixture.'/config/config.json');[$exit]=$run(0);
+            $assert($exit===0 && hash_file('sha256',$fixture.'/config/config.json')===$before,'Redeployment preserves existing node config');
             file_put_contents($fixture.'/lib/v2box',"#!/bin/sh\nexit 0\n");chmod($fixture.'/lib/v2box',0700);
             $response['data']['nodeId']=4;file_put_contents($fixture.'/response.json',json_encode($response));
             [$added,$addedOutput]=$run(0,4);
@@ -200,6 +214,38 @@ class WorkflowTests(unittest.TestCase):
         self.deploy.verify_certificate=lambda:self.events.append('certificate')
         self.deploy.progress=lambda action='status':self.events.append(action) or {'applicationState':'applied','completed':action=='complete'}
     def tearDown(self): self.tmp.cleanup()
+    def test_nonobject_response_is_rejected_safely(self):
+        class Response:
+            def __enter__(self):return self
+            def __exit__(self,*args):pass
+            def read(self,*args):return b'[]'
+        with patch.object(m.urllib.request,'build_opener') as opener:
+            opener.return_value.open.return_value=Response()
+            with self.assertRaisesRegex(OSError,'JSON object'):
+                m.json_request('https://panel.example.test')
+
+    def test_expired_authorization_guides_new_command_not_resume(self):
+        with patch.object(m,'Deployment',side_effect=m.DeploymentError('Deployment authorization expired. Generate a new deployment task in the panel.')), patch.object(m.sys,'argv',['deploy',str(self.path)]), patch.object(m.sys,'stderr',io.StringIO()) as output:
+            self.assertEqual(m.main(),1)
+            self.assertIn('generate a new deployment command',output.getvalue())
+            self.assertNotIn('run: sh install-v2box.sh --resume',output.getvalue())
+            self.assertTrue(self.path.exists())
+
+    def test_invalid_saved_state_is_actionable_and_retained(self):
+        for value in ('{', '[]', '{"data":null}', '{"data":{"apiHost":3}}'):
+            self.path.write_text(value);self.path.chmod(0o600)
+            with self.assertRaises(m.DeploymentError): m.Deployment(self.path)
+            self.assertEqual(self.path.read_text(),value)
+    def test_corrupt_existing_config_is_not_overwritten(self):
+        self.deploy.config.write_text('[]')
+        with self.assertRaisesRegex(m.DeploymentError,'Existing node configuration'):
+            self.deploy.run()
+        self.assertEqual(self.deploy.config.read_text(),'[]')
+        self.assertTrue(self.path.exists())
+    def test_service_command_timeout_is_actionable(self):
+        with patch.object(m.subprocess,'run',side_effect=m.subprocess.TimeoutExpired(['v2box','restart'],180)):
+            with self.assertRaisesRegex(m.DeploymentError,'timed out after 180'):
+                m.Deployment.command(self.deploy,['v2box','restart'])
     def test_order_and_private_config(self):
         self.deploy.run()
         self.assertEqual(self.events,['report','dns','port','start','restart','status','certificate','complete'])
@@ -228,17 +274,25 @@ class WorkflowTests(unittest.TestCase):
         cert=root/'saved.cer';cert.write_text('existing certificate')
         self.deploy.prepare_config();before=self.deploy.config.read_bytes()
         curl=binpath/'curl'
-        curl.write_text("#!/bin/bash\nwhile (($#)); do if [[ \"$1\" == -o ]]; then shift; out=$1; fi; shift; done\nprintf '#!/bin/bash\\necho restored > PLACEHOLDER\\n' > \"$out\"\n".replace("PLACEHOLDER",str(root/"restored")))
+        curl.write_text("#!/bin/bash\nwhile (($#)); do if [[ \"$1\" == -o ]]; then shift; out=$1; fi; shift; done\nprintf '#!/bin/bash\\necho restored > PLACEHOLDER\\nmkdir -p RESTORE_LIB\\nfor file in v2box manager.sh install.sh node-network.py node-credentials.py; do echo repaired > RESTORE_LIB/$file; chmod 700 RESTORE_LIB/$file; done\\necho repaired > RESTORE_MANAGER\\nchmod 700 RESTORE_MANAGER\\n' > \"$out\"\n".replace("PLACEHOLDER",str(root/"restored")).replace("RESTORE_LIB",str(root/"lib")).replace("RESTORE_MANAGER",str(root/"manager")))
         curl.chmod(0o700)
         script=Path(sys.argv[1]).with_suffix('.sh').read_text()
         function=script.split('restore_programs() {',1)[1].split('\nif [[ "${1:-}" == --resume ]]',1)[0]
-        function=('restore_programs() {'+function).replace('/etc/v2box',str(root)).replace('/usr/local/lib/v2box',str(root/'lib')).replace('/usr/local/bin/v2box',str(root/'manager'))
+        programs='programs_ready() {'+script.split('programs_ready() {',1)[1].split('\n# Resume can follow uninstall:',1)[0]
+        function=(programs+'\nrestore_programs() {'+function).replace('/etc/v2box',str(root)).replace('/usr/local/lib/v2box',str(root/'lib')).replace('/usr/local/bin/v2box',str(root/'manager'))
         result=subprocess.run(['bash','-c',function+'\nrestore_programs'],env=dict(os.environ,PATH=str(binpath)+':'+os.environ['PATH']),capture_output=True,text=True)
         self.assertEqual(result.returncode,0,result.stderr)
         self.assertTrue((root/'restored').exists())
         self.assertEqual(self.deploy.config.read_bytes(),before)
         self.assertEqual(cert.read_text(),'existing certificate')
         self.assertTrue(self.path.exists())
+        for missing in ['manager.sh','install.sh','node-network.py','node-credentials.py','wrapper']:
+            path=root/'manager' if missing=='wrapper' else root/'lib'/missing
+            path.unlink();(root/'restored').unlink()
+            result=subprocess.run(['bash','-c',function+'\nrestore_programs'],env=dict(os.environ,PATH=str(binpath)+':'+os.environ['PATH']),capture_output=True,text=True,timeout=10)
+            self.assertEqual(result.returncode,0,result.stderr)
+            self.assertTrue(path.exists());self.assertTrue((root/'restored').exists())
+            self.assertEqual(self.deploy.config.read_bytes(),before);self.assertEqual(cert.read_text(),'existing certificate')
     def test_fresh_authorization_replaces_only_target_credential(self):
         self.deploy.prepare_config()
         original=json.loads(self.deploy.config.read_text())
@@ -257,7 +311,7 @@ class WorkflowTests(unittest.TestCase):
     @unittest.skipUnless(__import__('shutil').which('jq'),'jq required')
     def test_fresh_grant_replaces_stale_state_and_same_grant_resumes(self):
         root=Path(self.tmp.name);binpath=root/'bin';binpath.mkdir();lib=root/'lib';lib.mkdir()
-        for name in ('v2box','manager.sh','node-network.py'):
+        for name in ('v2box','manager.sh','install.sh','node-network.py','node-credentials.py'):
             (lib/name).write_text('#!/bin/sh\nexit 0\n');(lib/name).chmod(0o700)
         manager=root/'manager';manager.write_text('#!/bin/sh\nexit 0\n');manager.chmod(0o700)
         for name,body in {'python3':'exit 0','curl':'while (($#)); do if [[ "$1" == -o ]]; then shift; out=$1; fi; shift; done\n[ ! -f "'+str(root/'fail')+'" ] || exit 22\necho redeemed >> "'+str(root/'redeemed')+'"\ncp "'+str(root/'response.json')+'" "$out"'}.items():

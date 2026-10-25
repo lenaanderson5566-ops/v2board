@@ -985,3 +985,9 @@ Node UI tests assert that overview count cards and manual inspection buttons are
 节点合并配置复用 `Nodes.test.tsx` 与 `AdminDDNS.test.tsx`，覆盖三个编辑入口、直连域名和协议同屏、共享线路接入与监听同屏、分区保存保护、保存后保留抽屉及不出现嵌套导航。沿用原有证书凭据、敏感保存确认、新增转换和部署授权断言。
 
 完整部署审查复用 node-ddns、v2box、node-v10、node-address、node-backends、node-routes、admin-diagnostics 七个现有模块，在一次性项目及数据库运行。部署 Python 用例沿用 tests/v2box.php 内嵌测试原文，在可销毁 Linux 容器实际执行；节点 script/lifecycle_test.py、node_network_test.py、node_credentials_test.py 使用临时路径、模拟下载与模拟服务运行，不访问生产节点。新增覆盖残留 HTTP 配置对非 TLS/Reality 的影响、共享服务切换的在途回执、未保存表单保护和错误所属服务保存拦截。真实 Cloudflare ACME 签发及生产 Nginx 中转不在模拟测试范围内。
+
+安装生命周期审查沿用 tests/v2box.php 内嵌 Python 与可选 V2BOX_BOOTSTRAP_TEST=1 shell 集成，覆盖卸载后缺失组件修复、示例配置替换、损坏状态、授权恢复和服务超时。V2Box script/lifecycle_test.py 增加慢启动、损坏发布包、下载中断、锁释放和回滚失败保留备份测试。所有服务和下载均为临时夹具，不操作生产服务。
+
+异常恢复补测继续复用既有生命周期模块，覆盖更新脚本缺失、卸载缺失上报组件的 systemd 停用回退、非交互卸载确认、错误 JSON 响应及过期授权的下一步提示。
+
+V2Box v1.0.10 发布验证：节点脚本 45 项、部署 Python 55 项、启用 shell 夹具的 V2Box 集成 81 项、V10 节点 309 项、升级脚本 26 个隔离场景及后台命令显示 90 项通过；前端重新构建。测试使用一次性数据库，未访问生产 Cloudflare 或 ACME。

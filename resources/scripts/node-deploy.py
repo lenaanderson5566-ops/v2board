@@ -38,7 +38,9 @@ def json_request(url, token=None, body=None, timeout=10):
             raw=response.read(262145)
             if len(raw)>262144:
                 raise DeploymentError('Response exceeded size limit')
-            return json.loads(raw)
+            payload=json.loads(raw)
+            if not isinstance(payload,dict): raise OSError('Expected a JSON object response')
+            return payload
     except urllib.error.HTTPError as e:
         # A proxy rejection is not evidence that the panel revoked deployment
         # authority. Never print arbitrary upstream bodies or reflected secrets.
@@ -76,6 +78,15 @@ def json_request(url, token=None, body=None, timeout=10):
         raise OSError('HTTP service unavailable') from None
     except (ValueError,UnicodeError):
         raise OSError('Invalid response') from None
+
+def read_object(path, label):
+    try:
+        document=json.loads(path.read_text())
+    except (ValueError,UnicodeError):
+        raise DeploymentError(label+' is not valid JSON. The file was retained; correct it or use a newly generated panel deployment command.') from None
+    if not isinstance(document,dict):
+        raise DeploymentError(label+' must be a JSON object. The original file was retained.')
+    return document
 
 def write_private(path, data):
     if path.is_symlink():
@@ -133,8 +144,12 @@ class Deployment:
         self.path=Path(path)
         if self.path.is_symlink() or not self.path.is_file() or self.path.stat().st_mode & 0o077:
             raise DeploymentError('Deployment state must be a private regular file')
-        self.state=json.loads(self.path.read_text());self.data=self.state['data']
+        self.state=read_object(self.path,'Saved deployment state');self.data=self.state.get('data')
+        if not isinstance(self.data,dict) or not isinstance(self.data.get('apiHost'),str):
+            raise DeploymentError('Saved deployment identity is invalid. Generate a new deployment command in the panel; configuration and certificates were retained.')
         self.flow=self.data.get('deployment');self.config=self.path.parent/'config.json'
+        if self.flow is not None and (not isinstance(self.flow,dict) or type(self.flow.get('tls')) is not int or self.flow['tls'] not in (0,1,2) or not isinstance(self.flow.get('token'),str)):
+            raise DeploymentError('Saved deployment workflow is invalid. Generate a new command in the panel; do not remove configuration or certificates.')
         self.host=self.data['apiHost'].rstrip('/')
         parsed=urllib.parse.urlsplit(self.host)
         if parsed.scheme!='https' or not parsed.hostname or parsed.username or parsed.password or parsed.query or parsed.fragment:
@@ -158,7 +173,10 @@ class Deployment:
             subprocess.run(args,check=True,timeout=180)
         except FileNotFoundError:
             raise DeploymentError('Required program is missing. Download the current panel deployment script and run --resume to restore programs without deleting configuration or certificates.') from None
-        except (subprocess.CalledProcessError,subprocess.TimeoutExpired):
+        except subprocess.TimeoutExpired:
+            step = 'IP reporting configuration' if 'report-configure' in args else 'V2Box service command'
+            raise DeploymentError(step+' timed out after 180 seconds. Check the service manager and logs, then resume; configuration and certificates were retained.') from None
+        except subprocess.CalledProcessError:
             step = 'IP reporting configuration' if 'report-configure' in args else 'V2Box service command'
             raise DeploymentError(step+' failed. Review the command error above; fix it, then resume. Configuration and certificates retained.') from None
 
@@ -166,7 +184,7 @@ class Deployment:
         node={'NodeType':'v2box','ApiHost':self.host,'NodeID':self.data['nodeId'],'ApiKey':self.data['apiKey'],'ApiVersion':'v10','Timeout':15,'RetryCount':1,'LandingPage':{'Enabled':False,'Directory':''}}
         if self.config.is_symlink(): raise DeploymentError('Refusing symlinked node configuration')
         if self.config.exists():
-            document=json.loads(self.config.read_text())
+            document=read_object(self.config,'Existing node configuration')
             previous=document.get('Nodes',[])
             if not isinstance(previous,list) or not previous or not all(isinstance(item,dict) for item in previous):
                 raise DeploymentError('Invalid existing node configuration; preserved without overwrite')
@@ -395,7 +413,7 @@ class Deployment:
         # service before those checks (the config watcher would start it).
         initial = not self.config.exists()
         if self.config.exists() and not self.config.is_symlink():
-            nodes = json.loads(self.config.read_text()).get('Nodes', [])
+            nodes = read_object(self.config,'Existing node configuration').get('Nodes', [])
             initial = isinstance(nodes, list) and len(nodes) == 1 and isinstance(nodes[0], dict) and nodes[0].get('ApiHost') == 'https://panel.example.com' and nodes[0].get('ApiKey') == 'REPLACE_ME'
         if initial:
             if self.config.exists():
@@ -426,9 +444,17 @@ def main():
         with os.fdopen(fd,'w') as handle:
             fcntl.flock(handle,fcntl.LOCK_EX|fcntl.LOCK_NB)
             Deployment(path).run()
-    except (DeploymentError,OSError,ValueError,KeyError,subprocess.TimeoutExpired) as error:
-        print(str(error) if isinstance(error,DeploymentError) else 'Deployment could not complete; inspect connectivity, configuration and file permissions.',file=sys.stderr)
-        print('State retained. After fixing the cause, run: sh install-v2box.sh --resume (authorization valid for 24 hours).',file=sys.stderr)
+    except (DeploymentError,OSError,ValueError,KeyError,TypeError,subprocess.TimeoutExpired) as error:
+        if isinstance(error,DeploymentError): reason=str(error)
+        elif isinstance(error,BlockingIOError): reason='Another deployment is already running. Wait for that command to finish or stop it before resuming.'
+        elif isinstance(error,PermissionError): reason='Deployment files could not be read or written. Check ownership, permissions and available disk space; configuration and certificates were retained.'
+        elif isinstance(error,subprocess.TimeoutExpired): reason='Service status query timed out. Check the service manager and v2box log, then resume.'
+        else: reason='Deployment could not complete; inspect connectivity, configuration and file permissions.'
+        print(reason,file=sys.stderr)
+        if any(marker in reason for marker in ('authorization expired', 'authorization was revoked', 'configuration changed', 'Saved deployment')):
+            print('State, configuration and certificates retained. Save the intended settings and generate a new deployment command in the panel; repeating --resume cannot repair this authorization or state.',file=sys.stderr)
+        else:
+            print('State retained. After fixing the cause, run: sh install-v2box.sh --resume (authorization valid for 24 hours).',file=sys.stderr)
         return 1
     return 0
 

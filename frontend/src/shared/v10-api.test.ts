@@ -8,8 +8,8 @@ import { subscriptionUrl } from './import-links';
 
 describe('V10 wire contracts', () => {
   it('preserves all mapping notes around both generated tables', () => {
-    const notes = readFileSync(new URL('../../../api/v10/mapping-notes.md', import.meta.url), 'utf8');
-    const published = readFileSync(new URL('../../../docs/api-v10/mapping.md', import.meta.url), 'utf8');
+    const notes = readFileSync(new URL('../../../api/v10/mapping-notes.md', import.meta.url), 'utf8').replace(/\r\n/g, '\n');
+    const published = readFileSync(new URL('../../../docs/api-v10/mapping.md', import.meta.url), 'utf8').replace(/\r\n/g, '\n');
     expect(notes.match(/<!-- (?:operation|node)-table -->/g)).toHaveLength(2);
     for (const section of notes.split(/<!-- (?:operation|node)-table -->/)) {
       expect(published).toContain(section.trim());

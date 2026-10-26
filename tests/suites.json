@@ -126,6 +126,7 @@
   "tests/support/Assertions.php",
   "tests/support/autoload.php",
   "tests/support/run-script.php",
-  "tests/support/v2box-panels.py"
+  "tests/support/v2box-panels.py",
+  "tests/support/v2box-deployment.py"
 ]
 }

@@ -1007,3 +1007,11 @@ V2Box v1.0.11 发布联动：同步一键安装、缺失程序恢复、升级命
 
 
 V2Box 独立后台联调：`tests/v2box.php` 复用受登记的 `tests/support/v2box-panels.py` 作为进程夹具。普通运行保留部署、迁移及回滚单元检查；在 Linux amd64 的一次性容器中开启 `TEST_DISPOSABLE_WORKSPACE=1 V2BOX_BOOTSTRAP_TEST=1 V2BOX_INDEPENDENT_DATABASE_SMOKE=1` 并提供 `V2BOX_NETWORK_SCRIPT` 后，现有 runner 自动创建两个独立 MySQL schema 和两个 HTTPS Laravel 后台，使用校验过摘要的已发布 v1.0.12 程序验证同 ID 多后台一键追加、证书/密钥保留、配置与封禁/离线隔离、IP 上报隔离，以及附加的同后台域名迁移和本机回滚。服务管理器与公共 IP 发现源为夹具，节点进程、TLS 代理流、数据库、后台鉴权和上报接口均真实执行；不访问真实 Cloudflare 或 ACME，不在普通后台环境运行该夹具。私有凭据留在容器内，验证摘要写入忽略的 storage/app/test-organization。测试 runner 保留异常非零退出、每模块独立缓存前缀及临时配置初始化，避免夹具失败被误报为通过。
+
+## 多后台部署与可维护性复核
+
+API 域名迁移入口、路由和专用脚本已移除，保留单实例对接多个独立后台。一键部署通过 runtime-ready-v1 等待新的配置应用回执；端口冲突只撤回新增条目。异常进度响应有限重试，注销标记独立撤销节点、仅网络和独立服务器部署授权，拒绝时不轮换已有凭据。
+
+77 项 Python 工作流测试已从 PHP 字符串移至登记辅助文件 tests/support/v2box-deployment.py，仍经 tests/v2box.php 执行；逐项 AST 核对断言未变。管理员授权、回执新鲜度、示例配置判断、配置备份和激活流程复用，缓存键、恢复状态字段、接口与命令格式保持兼容。
+
+最终验证：后台 111/111、前端 114 文件/1051 项及类型检查构建、节点脚本 63 项、合同生成器 12 项通过。真实两个独立 MySQL 后台和发布的 v1.0.12 验证同 ID 追加、端口冲突回滚、下载/兑换 503 后重试、长连接/证书/IP 上报保留，无全局服务重启。节点证书回调竞争通过局部 fswatch 适配修复，五轮 race 和正式参数全量 race/Vision/vet/build 通过；该二进制修复仍需发布新版并升级。DNS/ACME/服务管理和故障为隔离夹具，不修改真实第三方服务。运行证据留在忽略的 storage/app/test-organization 目录。

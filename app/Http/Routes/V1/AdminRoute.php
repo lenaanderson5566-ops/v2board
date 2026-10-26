@@ -12,7 +12,6 @@ class AdminRoute
             'middleware' => ['admin', 'log'],
         ], function ($router) {
             $router->get('/server/credentials', 'V1\\Admin\\NodeCredentialController@index');
-            $router->post('/server/credentials/migrate-api', 'V1\\Admin\\NodeCredentialController@migrateApi')->middleware('throttle:5,1,node-api-migration:');
             $router->post('/server/credentials/deployment', 'V1\\Admin\\NodeCredentialController@deployment')->middleware('throttle:5,1,node-deployment:');
             $router->post('/server/credentials/issue', 'V1\\Admin\\NodeCredentialController@issue')->middleware('throttle:5,1,node-credentials:');
             $router->post('/server/credentials/revoke', 'V1\\Admin\\NodeCredentialController@revoke')->middleware('throttle:5,1,node-credentials:');
@@ -96,7 +95,6 @@ class AdminRoute
             $router->post('/server/network/save', 'V1\\Admin\\NetworkServerController@save');
             $router->post('/server/network/drop', 'V1\\Admin\\NetworkServerController@drop');
             $router->post('/server/network/enroll', 'V1\\Admin\\NetworkServerController@enroll');
-            $router->post('/server/network/migrate-api', 'V1\\Admin\\NetworkServerController@migrateApi')->middleware('throttle:5,1,server-api-migration:');
             $router->post('/server/network/reset', 'V1\\Admin\\NetworkServerController@reset');
             $router->post('/server/network/entry', 'V1\\Admin\\NetworkServerController@entry');
             $router->post('/server/network/entry-drop', 'V1\\Admin\\NetworkServerController@dropEntry');

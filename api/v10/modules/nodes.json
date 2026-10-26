@@ -888,7 +888,7 @@
           "V2Box node communication"
         ],
         "security": [],
-        "description": "Static Linux sh entry point for pinned V2Box v1.0.12 installation, configuration-preserving upgrade, scoped enrollment and transactional --migrate-api. Migration keeps credentials, certificates, other backends and IP reporting targets; failed or interrupted changes retain a private rollback journal.",
+        "description": "Static Linux sh entry point for pinned V2Box v1.0.12 installation, configuration-preserving upgrade and scoped enrollment into multiple independent backends. Existing nodes, certificates and IP reporting targets are retained.",
         "responses": {
           "200": {
             "description": "Bash bootstrap script",
@@ -1057,7 +1057,8 @@
                                   "type": "string",
                                   "enum": [
                                     "direct",
-                                    "relay"
+                                    "relay",
+                                    "unmanaged"
                                   ]
                                 },
                                 "connectionDomain": {
@@ -1065,7 +1066,7 @@
                                 }
                               },
                               "additionalProperties": false,
-                              "description": "Optional managed-domain workflow. Scoped token expires after 24 hours; store privately only for resume. No Cloudflare token."
+                              "description": "Scoped deployment readiness workflow. Managed modes verify DNS and certificates; unmanaged mode waits for fresh node application acknowledgement without DNS activation. Token expires after 24 hours and is stored privately for resume."
                             }
                           },
                           "additionalProperties": false
@@ -1216,7 +1217,18 @@
           "422": {
             "$ref": "#/components/responses/NodeAPIProblem"
           }
-        }
+        },
+        "parameters": [
+          {
+            "in": "header",
+            "name": "X-Deployment-Capabilities",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Comma-separated bootstrap features. runtime-ready-v1 also requests fresh applied-receipt verification for nodes without managed DNS; older clients keep their existing response."
+          }
+        ]
       },
       "x-node-path": true
     },
@@ -1420,139 +1432,6 @@
             "$ref": "#/components/responses/NodeAPIProblem"
           },
           "409": {
-            "$ref": "#/components/responses/NodeAPIProblem"
-          },
-          "422": {
-            "$ref": "#/components/responses/NodeAPIProblem"
-          },
-          "429": {
-            "$ref": "#/components/responses/NodeAPIProblem"
-          }
-        }
-      }
-    },
-    "/server/api-migrations/progress": {
-      "x-node-path": true,
-      "post": {
-        "operationId": "progressNodeApiMigration",
-        "tags": [
-          "V2Box node communication"
-        ],
-        "security": [
-          {
-            "nodeApiMigrationBearer": []
-          }
-        ],
-        "description": "Verify both authorized API origins, start a migration boundary and await fresh configuration receipts received through the new HTTP host. Does not rotate any credential or change DNS. probe requires a random challenge. Only selected unchanged nodes are accessible. Report-only server authorities require an empty nodeIds array and return serverId; they cannot authorize node changes.",
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "object",
-                "required": [
-                  "action",
-                  "nodeIds"
-                ],
-                "properties": {
-                  "action": {
-                    "type": "string",
-                    "enum": [
-                      "probe",
-                      "start",
-                      "status"
-                    ]
-                  },
-                  "nodeIds": {
-                    "type": "array",
-                    "minItems": 0,
-                    "maxItems": 64,
-                    "uniqueItems": true,
-                    "items": {
-                      "type": "integer",
-                      "minimum": 1
-                    }
-                  },
-                  "challenge": {
-                    "type": "string",
-                    "pattern": "^[a-f0-9]{64}$"
-                  }
-                },
-                "additionalProperties": false
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "Private origin migration verification",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "required": [
-                    "data"
-                  ],
-                  "additionalProperties": false,
-                  "properties": {
-                    "data": {
-                      "type": "object",
-                      "required": [
-                        "fromApiHost",
-                        "toApiHost",
-                        "nodeIds"
-                      ],
-                      "additionalProperties": false,
-                      "properties": {
-                        "fromApiHost": {
-                          "type": "string",
-                          "format": "uri"
-                        },
-                        "toApiHost": {
-                          "type": "string",
-                          "format": "uri"
-                        },
-                        "nodeIds": {
-                          "type": "array",
-                          "minItems": 0,
-                          "maxItems": 64,
-                          "uniqueItems": true,
-                          "items": {
-                            "type": "integer",
-                            "minimum": 1
-                          }
-                        },
-                        "proof": {
-                          "type": "string",
-                          "pattern": "^[a-f0-9]{64}$"
-                        },
-                        "ready": {
-                          "type": "boolean"
-                        },
-                        "failed": {
-                          "type": "boolean"
-                        },
-                        "serverId": {
-                          "type": "integer",
-                          "minimum": 1
-                        }
-                      }
-                    }
-                  }
-                }
-              }
-            }
-          },
-          "401": {
-            "$ref": "#/components/responses/NodeAPIProblem"
-          },
-          "403": {
-            "$ref": "#/components/responses/NodeAPIProblem"
-          },
-          "409": {
-            "$ref": "#/components/responses/NodeAPIProblem"
-          },
-          "415": {
             "$ref": "#/components/responses/NodeAPIProblem"
           },
           "422": {

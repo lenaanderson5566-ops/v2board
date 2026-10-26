@@ -165,6 +165,6 @@ def main():
         if changed: parser.exit(1, 'Generated V10 files differ; run python scripts/generate-v10.py:\n' + '\n'.join(changed) + '\n')
         print(f'V10 contract: {len(outputs)} generated files are current')
     else:
-        for n in changed: (ROOT / n).write_text(outputs[n], encoding='utf-8')
+        for n in changed: (ROOT / n).write_bytes(outputs[n].encode('utf-8'))
         print(f'V10 contract: updated {len(changed)} of {len(outputs)} generated files')
 if __name__ == '__main__': main()

@@ -184,7 +184,6 @@ export type V10NodeAddressesInput = V10NodeAddressReport;
 export type V10NodeTargetStatisticsInput = { "version": string; "batchId": string; "dropped": number; "records": Array<V10NodeTargetRecord> };
 export type V10RedeemNodeDeploymentInput = {  };
 export type V10ProgressNodeDeploymentInput = { "action": "status" | "start" | "complete"; "dnsState"?: "checking" | "verified" | "mismatch" | "unavailable"; "dnsRole"?: "origin" | "entry" | "certificate" };
-export type V10ProgressNodeApiMigrationInput = { "action": "probe" | "start" | "status"; "nodeIds": Array<number>; "challenge"?: string };
 export type MfaMethod = V10MfaChallenge["methods"][number];
 export type V10MfaPurpose = V10PostMeMfaChallengesInput["purpose"];
 export type V10LoginResult = V10Authentication | V10MfaChallenge;

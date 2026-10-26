@@ -110,7 +110,7 @@ def run(manifest):
                 def do_POST(self):self.relay()
                 def relay(self):
                     if self.path=='/fixture-ip':data=b'8.8.8.8';status=200;headers={'Content-Type':'text/plain'}
-                    elif not self.panel['online']:data=b'{}';status=503;headers={'Content-Type':'application/json'}
+                    elif not self.panel['online'] or (self.panel.get('redeemUnavailable') and self.path=='/api/v10/server/enrollments/redeem'):data=b'{}';status=503;headers={'Content-Type':'application/json'}
                     else:
                         connection=http.client.HTTPConnection('127.0.0.1',self.panel['httpPort'],timeout=20)
                         try:
@@ -164,6 +164,27 @@ def run(manifest):
                 except ConnectionError:pass
         echo=socketserver.ThreadingTCPServer(('127.0.0.1',0),Echo);echo.daemon_threads=True;servers.append(echo);threading.Thread(target=echo.serve_forever,daemon=True).start()
         stream_a=connect(a,a['port'],echo.server_address[1],context);streams.append(stream_a)
+        # A port collision must fail readiness and remove only the newly added panel.
+        php(b,'Illuminate\\Support\\Facades\\DB::table("v2_server_v2box")->where("id",3)->update(["server_port"=>'+str(a['port'])+']); echo "true";')
+        bad_grant=php(b,'echo json_encode(App\\Services\\NodeDeployment::create(3,'+str(b['actorId'])+'));')
+        rejected=subprocess.run(bad_grant['command'],shell=True,cwd=root,env=env,capture_output=True,text=True,timeout=100)
+        assert rejected.returncode!=0 and json.loads(config.read_text())==configuration,'Port collision was reported as a successful deployment or changed another panel'
+        ping(stream_a)
+        php(b,'Illuminate\\Support\\Facades\\DB::table("v2_server_v2box")->where("id",3)->update(["server_port"=>'+str(b['port'])+']); echo "true";')
+        b['command']=php(b,'echo json_encode(App\\Services\\NodeDeployment::create(3,'+str(b['actorId'])+'));')['command']
+        # Bootstrap and redemption outages must not consume the grant or touch panel A.
+        saved_reports=network.CONFIG.read_bytes();saved_config=config.read_bytes()
+        b['online']=False
+        offline=subprocess.run(b['command'],shell=True,cwd=root,env=env,capture_output=True,timeout=35)
+        b['online']=True
+        assert offline.returncode!=0 and config.read_bytes()==saved_config and network.CONFIG.read_bytes()==saved_reports,'Bootstrap outage changed an existing deployment'
+        ping(stream_a)
+        b['redeemUnavailable']=True
+        unavailable=subprocess.run(b['command'],shell=True,cwd=root,env=env,capture_output=True,timeout=45)
+        b['redeemUnavailable']=False
+        assert unavailable.returncode!=0 and config.read_bytes()==saved_config and network.CONFIG.read_bytes()==saved_reports,'Redemption outage changed an existing deployment'
+        assert cert_before=={p.name:hashlib.sha256(p.read_bytes()).hexdigest() for p in node_root.glob('operator-*.pem')}
+        ping(stream_a)
         # The normal panel-B command must append even though its database/key differ.
         command=subprocess.run(b['command'],shell=True,cwd=root,env=env,capture_output=True,text=True,timeout=100)
         if command.returncode:raise AssertionError('Second independent panel deployment failed: '+re.sub(r'(?:nk_|nd_|am_)[a-f0-9.]+','[redacted]',(command.stdout+command.stderr)[-2400:]))
@@ -205,29 +226,8 @@ def run(manifest):
         repeat=subprocess.run(b['command'],shell=True,cwd=root,env=env,capture_output=True,timeout=40);assert repeat.returncode==0,'Completed independent deployment was not idempotent'
         assert json.loads(config.read_text())==after and node.poll() is None
         assert not events.exists(),'Independent panel operations restarted or stopped the shared service'
-        # The separate same-backend domain migration must also retain independent B.
-        alias='https://panel-a-new.test:9445'
-        alias_server=ThreadingHTTPServer(('127.0.0.1',9445),servers[0].RequestHandlerClass)
-        tls=ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER);tls.load_cert_chain(leaf,leaf_key);alias_server.socket=tls.wrap_socket(alias_server.socket,server_side=True)
-        servers.append(alias_server);threading.Thread(target=alias_server.serve_forever,daemon=True).start()
-        php(a,'$c=require "config/v2board.php"; $c["server_api_url"]='+json.dumps(alias)+'; file_put_contents("config/v2board.php","<?php return ".var_export($c,true).";"); echo "true";')
-        grant=php(a,'echo json_encode(App\\Services\\NodeApiMigration::create(3,'+str(a['actorId'])+','+json.dumps(a['origin'])+'));')
-        # Keep discovery deterministic while using the shipped reporting implementation.
-        installed=Path('/usr/local/lib/node-network/node-network.py')
-        source=installed.read_text();source=re.sub(r'IP_SERVICES = \{.*?\n\}',"IP_SERVICES = {'A': ["+repr(a['origin']+'/fixture-ip')+"], 'AAAA': []}",source,count=1,flags=re.S);installed.write_text(source)
-        migration=subprocess.run(grant['command'],shell=True,cwd=root,env=env,capture_output=True,text=True,timeout=220)
-        if migration.returncode:raise AssertionError('Same-backend migration failed: '+re.sub(r'(?:nk_|nd_|am_)[a-f0-9.]+','[redacted]',(migration.stdout+migration.stderr)[-1800:]))
-        migrated=json.loads(config.read_text());assert migrated['Nodes'][0]['ApiHost']==alias and migrated['Nodes'][0]['ApiKey']==entry['ApiKey'] and migrated['Nodes'][1]==after['Nodes'][1]
-        assert cert_before=={p.name:hashlib.sha256(p.read_bytes()).hexdigest() for p in node_root.glob('operator-*.pem')};ping(stream_b)
-        moved_targets=network.targets(json.loads(network.CONFIG.read_text()));assert target_b in moved_targets and direct in moved_targets
-        moved_a=[t for t in moved_targets if t.get('panel_url')==alias][0];assert moved_a['token']==report_a['token']
-        rolled_back=time.time()
-        rollback=subprocess.run(['python3',str(program/'api-migrate.py'),'--rollback'],env=env,capture_output=True,text=True,timeout=45)
-        assert rollback.returncode==0,'Offline local rollback did not restore the original API configuration'
-        assert json.loads(config.read_text())==after and network.targets(json.loads(network.CONFIG.read_text()))==targets
-        wait(lambda:(php(a,'echo json_encode(Illuminate\\Support\\Facades\\Cache::store("node_deployment")->get("api-origin-receipt:".hash("sha256",'+json.dumps(a['origin'])+').":3"));') or {}).get('at',0)>rolled_back,'Original API domain was not applied after rollback')
-        ping(stream_b);assert node.poll() is None and not events.exists()
-        result={'independent_databases':2,'different_application_keys':True,'published_program':'v1.0.12','same_node_id':3,'same_server_id':7,'same_user_id':True,'one_click_append':True,'cross_panel_credentials_rejected':True,'existing_tls_stream_and_certificate_preserved':True,'configuration_change_isolated':True,'backend_outage_isolated':True,'ip_reporting_isolated':True,'other_database_user_ban_isolated':True,'direct_dns_and_legacy_reporting_preserved':True,'repeat_command_idempotent':True,'same_backend_domain_migration_and_rollback':True,'independent_panel_stream_survives_domain_rotation':True,'service_restarts':0,'service_manager':'fixture; real V2Box process and HTTPS Laravel backends'}
+        result={'independent_databases':2,'different_application_keys':True,'published_program':'v1.0.12','same_node_id':3,'same_server_id':7,'same_user_id':True,'one_click_append':True,'cross_panel_credentials_rejected':True,'existing_tls_stream_and_certificate_preserved':True,'configuration_change_isolated':True,'backend_outage_isolated':True,'ip_reporting_isolated':True,'other_database_user_ban_isolated':True,'direct_dns_and_legacy_reporting_preserved':True,'repeat_command_idempotent':True,'service_restarts':0,'service_manager':'fixture; real V2Box process and HTTPS Laravel backends'}
+        result.update({'port_conflict_rejected_and_scoped_rollback':True,'runtime_readiness_confirmed_without_managed_dns':True,'bootstrap_outage_preserves_existing_services':True,'redemption_outage_then_same_grant_retry':True})
         Path('/tmp/v2box-independent-result.json').write_text(json.dumps(result,indent=2));print(json.dumps(result))
     finally:
         for stream in streams:

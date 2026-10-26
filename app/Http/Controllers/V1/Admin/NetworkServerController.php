@@ -9,13 +9,6 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
 final class NetworkServerController extends Controller {
-    public function migrateApi(Request $request) {
-        abort_unless($request->isJson(),415);
-        $actor=\App\Models\User::findOrFail($request->input('user.id'));
-        abort_unless($actor->is_admin && !$actor->banned,403);
-        $v=$request->validate(['id'=>'required|integer|min:1','fromApiHost'=>'required|string|max:2048']);
-        return response()->json(['data'=>\App\Services\NodeApiMigration::create((int)$v['id'],(int)$actor->id,$v['fromApiHost'],true)],201)->header('Cache-Control','private, no-store');
-    }
     public function save(Request $request) {
         $v=$request->validate(['id'=>'nullable|integer|min:1','name'=>'required|string|max:100','family'=>'required|in:ipv4,ipv6,dual','enabled'=>'required|boolean','traffic'=>'sometimes|array:limitBytes,countingMode,resetDay','traffic.limitBytes'=>'required_with:traffic|integer|min:0|max:9007199254740991','traffic.countingMode'=>'required_with:traffic|in:upload,download,both','traffic.resetDay'=>'required_with:traffic|integer|min:1|max:28','entry'=>'sometimes|array:credential_id,prefix,family|required_array_keys:credential_id,prefix,family','entry.credential_id'=>'required_with:entry|integer|min:1','entry.prefix'=>'required_with:entry|string|max:63','entry.family'=>'required_with:entry|in:ipv4,ipv6,dual']);
         return NodeDnsLifecycle::locked(fn()=>DB::transaction(function()use($v){

@@ -1,4 +1,3 @@
-import { NodeApiMigration } from "./NodeApiMigration";
 import { NodeDeploymentProgress } from "./NodeDeploymentProgress";
 import { nodeDeploymentStage } from "./node-guidance";
 import { NodeDomainBinding } from "./NodeDomains";
@@ -370,7 +369,6 @@ export function NodeDeployment({
                                     >
                                         复制升级命令
                                     </button>
-                                    <NodeApiMigration node={node} />
                                 </section>
                             ) : (
                                 <p>

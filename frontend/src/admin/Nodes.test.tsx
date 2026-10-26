@@ -38,7 +38,6 @@ import { Nodes, ResourcePage, resources } from "./admin";
 import { NodeCredentials } from "./NodeCredentials";
 import { NodeDnsObservation } from "./NodeDnsObservation";
 import { NodeDeployment } from "./NodeDeployment";
-import { NodeApiMigration } from "./NodeApiMigration";
 import { NodeConnectionEditor } from "./NodeConnections";
 import { NodeTopology } from "./NodeTopology";
 afterEach(() => {
@@ -602,31 +601,6 @@ it("keeps deployment retryable on error and groups credentials in the same drawe
     expect(screen.queryByLabelText("凭据操作管理员密码")).toBeNull();
     expect(screen.getAllByRole("dialog")).toHaveLength(1);
 });
-it("generates scoped API address migration and local rollback commands without credentials", async () => {
-    api.request.mockImplementation(async(path:string)=>path.endsWith('/migrate-api')?{data:{command:'migrate-origin-command',rollbackCommand:'python3 /usr/local/lib/v2box/api-migrate.py --rollback',fromApiHost:'https://old.example.test',toApiHost:'https://new.example.test',expiresAt:new Date(Date.now()+3600000).toISOString()}}:{data:{keys:[],migrated:true}});
-    render(<NodeDeployment node={{id:1,type:'v2box',name:'A',upgrade_command:'upgrade'}} close={()=>{}}/>);
-    fireEvent.click(await screen.findByRole('button',{name:'已有节点升级'}));
-    fireEvent.click(screen.getByText('迁移节点 API 地址'));
-    const generate=screen.getByRole('button',{name:'生成地址迁移命令'});
-    expect((generate as HTMLButtonElement).disabled).toBe(true);
-    fireEvent.change(screen.getByLabelText('原节点 API 地址'),{target:{value:'https://old.example.test'}});
-    fireEvent.click(generate);
-    expect(await screen.findByLabelText('节点 API 地址迁移命令')).toHaveProperty('value','migrate-origin-command');
-    expect(api.request).toHaveBeenCalledWith(expect.stringContaining('/migrate-api'),{type:'v2box',id:1,fromApiHost:'https://old.example.test'});
-    expect(screen.getByLabelText('节点 API 地址回滚命令')).toHaveProperty('value','python3 /usr/local/lib/v2box/api-migrate.py --rollback');
-    fireEvent.change(screen.getByLabelText('原节点 API 地址'),{target:{value:'https://different.example.test'}});
-    expect(screen.queryByLabelText('节点 API 地址迁移命令')).toBeNull();
-});
-it("uses server-scoped API migration for an independent IP reporter", async () => {
-    api.request.mockResolvedValue({data:{command:'report-only-migration',rollbackCommand:'local-rollback',fromApiHost:'https://old.example.test',toApiHost:'https://new.example.test',expiresAt:new Date(Date.now()+3600000).toISOString()}});
-    render(<NodeApiMigration serverId={7}/>);
-    fireEvent.click(screen.getByText('迁移 IP 上报 API 地址'));
-    fireEvent.change(screen.getByLabelText('原节点 API 地址'),{target:{value:'https://old.example.test'}});
-    fireEvent.click(screen.getByRole('button',{name:'生成地址迁移命令'}));
-    expect(await screen.findByLabelText('节点 API 地址迁移命令')).toHaveProperty('value','report-only-migration');
-    expect(api.request).toHaveBeenCalledWith(expect.stringContaining('server/network/migrate-api'),{id:7,fromApiHost:'https://old.example.test'});
-});
-
 it("links reused lines to their owning service without offering child deployment", async () => {
     api.request.mockImplementation(async(path:string)=>path.endsWith("dictionary/fetch")?adminPageFixture(path):path.endsWith("server/manage/getNodes")?{data:[{id:1,name:"Parent",type:"v2box",group_id:[]},{id:2,name:"Child",type:"v2box",service_id:1,group_id:[]}]}:{data:[]});
     render(<Nodes/>);await screen.findByRole("button",{name:"Child"});

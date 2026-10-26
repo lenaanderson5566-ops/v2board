@@ -11,18 +11,6 @@ umask 077
 install -d -m 755 /etc/v2box
 exec 9>/etc/v2box/.bootstrap.lock
 flock -n 9 || { echo 'Another deployment is running; wait for it to finish.' >&2; exit 1; }
-if [[ "${1:-}" == --migrate-api ]]; then
-  migration_helper=$(mktemp)
-  trap 'rm -f -- "$migration_helper"' EXIT
-  cat > "$migration_helper" <<'V2BOARD_API_MIGRATION_PY'
-__NODE_API_MIGRATION_HELPER__
-V2BOARD_API_MIGRATION_PY
-  install -d -m 755 /usr/local/lib/v2box
-  [[ ! -L /usr/local/lib/v2box/api-migrate.py ]] || { echo 'Refusing symlinked migration helper' >&2; exit 1; }
-  install -m 700 "$migration_helper" /usr/local/lib/v2box/api-migrate.py
-  V2BOX_API_MIGRATION_LOCK_HELD=1 python3 /usr/local/lib/v2box/api-migrate.py "$@"
-  exit
-fi
 if [[ "${1:-}" == --install ]]; then
   shift
   stage=$(mktemp -d)
@@ -210,7 +198,7 @@ if [[ -n "$requested_id" ]] && python3 /usr/local/lib/v2box/panel-deploy.py --co
 fi
 printf 'header = "Authorization: Bearer %s"\n' "$grant" > "$stage/authorization"
 unset grant
-curl -fsS --proto '=https' --connect-timeout 10 --max-time 30 --config "$stage/authorization" --header 'Content-Type: application/json' --data '{}' \
+curl -fsS --proto '=https' --connect-timeout 10 --max-time 30 --config "$stage/authorization" --header 'Content-Type: application/json' --header 'X-Deployment-Capabilities: runtime-ready-v1' --data '{}' \
   "$panel_url/api/v10/server/enrollments/redeem" -o "$stage/response.json" || { echo 'Authorization redemption failed. Existing deployment state and configuration were retained. For an expired or used grant, generate a new command in the panel; use --resume only for the existing valid task. Check HTTPS/gateway access if the request cannot reach the panel.' >&2; exit 1; }
 jq -e --arg host "$panel_url" --arg expected "$requested_id" '.data | ($expected == "" or (.nodeId | tostring) == $expected) and .nodeType == "v2box" and .apiHost == $host and (.nodeId | type == "number" and . > 0 and floor == .) and (.apiKey | test("^nk_[a-f0-9]{32}\\.[a-f0-9]{64}$"))' "$stage/response.json" >/dev/null || { echo 'Invalid deployment response' >&2; exit 1; }
 if [[ -z "$requested_id" ]]; then

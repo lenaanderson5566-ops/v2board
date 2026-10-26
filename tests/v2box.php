@@ -53,7 +53,7 @@ try {
     $assert(count($nodes)===2,'Both types listed with same id');
     foreach ($nodes as $node) if ($node['type']==='v2box') {
         $assert(strpos($node['install_command'],'--node-type v2box')!==false,'Installer selects V2Box');
-        $assert(str_contains($node['install_command'],'--install v1.0.11'),'Installer uses published version, not legacy main');
+        $assert(str_contains($node['install_command'],'--install v1.0.12'),'Installer pins the multi-panel-capable release, not legacy main');
         $assert(str_ends_with($node['upgrade_command'],'--update'),'Upgrade requires existing installation and preserves configuration');
         $assert(strpos($node['install_command'],'--prompt-api-key')!==false,'Installer keeps credential input interactive');
     }
@@ -104,20 +104,30 @@ try {
 #!/bin/bash
 set -eu
 out=''
+authorization=''
 response=false
 while (($#)); do
   case "$1" in
     -o) out=$2; shift;;
+    --config) authorization=$2; shift;;
     */enrollments/redeem) response=true;;
   esac
   shift
 done
-if $response; then echo redeemed >> "$DNS_FIXTURE/redemptions"; cp "$DNS_FIXTURE/response.json" "$out"; else cat > "$out" <<'INSTALL'
+if $response; then
+  fingerprint=$(sha256sum "$authorization" | cut -d ' ' -f 1)
+  if [[ -f "$DNS_FIXTURE/consumed" ]] && grep -Fxq "$fingerprint" "$DNS_FIXTURE/consumed"; then exit 22; fi
+  echo "$fingerprint" >> "$DNS_FIXTURE/consumed"
+  echo redeemed >> "$DNS_FIXTURE/redemptions"; cp "$DNS_FIXTURE/response.json" "$out"
+else cat > "$out" <<'INSTALL'
 #!/bin/bash
 set -eu
 mkdir -p "$DNS_FIXTURE/lib"
 for file in v2box manager.sh install.sh node-network.py node-credentials.py; do
-  printf '#!/bin/bash\nexit 0\n' > "$DNS_FIXTURE/lib/$file"
+  cat > "$DNS_FIXTURE/lib/$file" <<'PROGRAM'
+#!/bin/sh
+echo '{"features":["multi-panel-v1","reload-signal-v1"]}'
+PROGRAM
   chmod 700 "$DNS_FIXTURE/lib/$file"
 done
 INSTALL
@@ -126,15 +136,18 @@ SH,
                 'v2box'=><<<'SH'
 #!/bin/bash
 [[ "$1" != stop ]] || exit 0
-[[ "$1" == restart ]] || exit 1
-echo restart >> "$DNS_FIXTURE/events"
+[[ "$1" != check-runtime ]] || exit 0
+[[ "$1" == start || "$1" == reload ]] || exit 1
+echo "$1" >> "$DNS_FIXTURE/events"
 SH,
+                'systemctl'=>"#!/bin/sh\necho active\n",
                 'python3'=><<<'SH'
 #!/bin/bash
 set -eu
 if [[ "$1" == -m && "$2" == py_compile ]]; then exit 0; fi
+if [[ "${2:-}" == capabilities ]]; then echo '{"features":["report-multi-target-v1"]}'; exit 0; fi
 if [[ "$1" == */panel-deploy.py ]]; then exec /usr/bin/python3 "$@"; fi
-[[ "$1" == */node-network.py && "$2" == report-configure && "$3" == --panel-url && "$4" == https://panel.example.invalid && "$5" == --family && "$6" == ipv4 && "$7" == --token-file ]] || exit 2
+[[ "$1" == */node-network.py && "$2" == report-configure && "$3" == --panel-url && ( "$4" == https://panel.example.invalid || "$4" == https://another.example.invalid ) && "$5" == --family && "$6" == ipv4 && "$7" == --token-file ]] || exit 2
 [[ "$(stat -c %a "$8")" == 600 && "$(cat "$8")" =~ ^c{64}$ ]] || exit 3
 echo report >> "$DNS_FIXTURE/events"
 exit "$DNS_REPORT_FAILURE"
@@ -144,8 +157,8 @@ SH,
             $script=str_replace('__NODE_DEPLOY_HELPER__',file_get_contents(resource_path('scripts/node-deploy.py')),file_get_contents(resource_path('scripts/node-deploy.sh')));
             $script=str_replace(['__NODE_PREREQUISITES__','/etc/v2box','/usr/local/lib/v2box','/etc/node-network','/usr/local/bin/v2box'],['',$fixture.'/config',$fixture.'/lib',$fixture.'/network',$fixture.'/bin/v2box'],$script);
             file_put_contents($fixture.'/bootstrap.sh',$script);
-            $run=function($failure=null,$nodeId=3)use($fixture,$reportFailure,$networkOnly,$serverOnly){
-                $pipes=[];$p=proc_open(['bash',$fixture.'/bootstrap.sh',...($networkOnly && !$serverOnly?['--network-only']:[]),'--api-host','https://panel.example.invalid',...($serverOnly?['--server-id','7']:['--node-id',(string)$nodeId]),'--deploy-token',($serverOnly?'ns_':'nd_').str_repeat('d',64)],[['pipe','r'],['pipe','w'],['pipe','w']],$pipes,null,array_merge(getenv(),['PATH'=>$fixture.'/bin:'.getenv('PATH'),'TMPDIR'=>$fixture.'/tmp','DNS_FIXTURE'=>$fixture,'DNS_REPORT_FAILURE'=>(string)($failure??$reportFailure)]));
+            $run=function($failure=null,$nodeId=3,$panelHost='https://panel.example.invalid')use($fixture,$reportFailure,$networkOnly,$serverOnly){
+                $pipes=[];$p=proc_open(['bash',$fixture.'/bootstrap.sh',...($networkOnly && !$serverOnly?['--network-only']:[]),'--api-host',$panelHost,...($serverOnly?['--server-id','7']:['--node-id',(string)$nodeId]),'--deploy-token',($serverOnly?'ns_':'nd_').hash('sha256',$panelHost.'|'.$nodeId)],[['pipe','r'],['pipe','w'],['pipe','w']],$pipes,null,array_merge(getenv(),['PATH'=>$fixture.'/bin:'.getenv('PATH'),'TMPDIR'=>$fixture.'/tmp','DNS_FIXTURE'=>$fixture,'DNS_REPORT_FAILURE'=>(string)($failure??$reportFailure)]));
                 fclose($pipes[0]);$output=stream_get_contents($pipes[1]).stream_get_contents($pipes[2]);fclose($pipes[1]);fclose($pipes[2]);return [proc_close($p),$output];
             };
             if (!$networkOnly && !$reportFailure) {
@@ -159,20 +172,29 @@ SH,
                 $assert($serverOnly ? !file_exists($fixture.'/config/config.json') : hash_file('sha256',$fixture.'/config/config.json')===$originalHash,'Network-only setup preserves node configuration and key');
                 $assert(!str_contains($output,$response['data']['networkReport']['token']) && count(glob($fixture.'/tmp/*'))===0,'Network-only setup cleans temporary secrets');
                 if ($reportFailure) {
-                    $assert(is_file($fixture.'/network/enrollment-state.json') && (fileperms($fixture.'/network/enrollment-state.json')&0777)===0600,'Failure retains private state for resume');
+                    $assert(count(glob($fixture.'/network/enrollment-state*.json'))===1 && (fileperms(glob($fixture.'/network/enrollment-state*.json')[0])&0777)===0600,'Failure retains private state for resume');
                     [$resumed]=$run(0);
                     $assert($resumed===0 && file_get_contents($fixture.'/redemptions')==="redeemed\n",'Resume uses private state without redeeming consumed grant');
                 }
-                $assert(!file_exists($fixture.'/network/enrollment-state.json'),'Successful reporting removes enrollment secret');
+                $assert(count(glob($fixture.'/network/enrollment-state*.json'))===0,'Successful reporting removes enrollment secret');
                 if ($serverOnly) file_put_contents($fixture.'/network/server-identity',"https://panel.example.invalid/999\n");
                 else file_put_contents($fixture.'/config/config.json',json_encode(['Nodes'=>[['NodeType'=>'v2box','NodeID'=>999,'ApiHost'=>'https://panel.example.invalid']]]));
                 [$wrong]=$run(0);
                 $assert($wrong===1 && file_get_contents($fixture.'/redemptions')==="redeemed\n",'Wrong node rejected before grant consumption');
+                if ($serverOnly) {
+                    $legacy=file_get_contents($fixture.'/network/server-identity');
+                    $response['data']['apiHost']='https://another.example.invalid';
+                    file_put_contents($fixture.'/response.json',json_encode($response));
+                    [$other,$otherOutput]=$run(0,3,'https://another.example.invalid');
+                    $assert($other===0,'Another panel may bind the same machine: '.$otherOutput);
+                    $assert(file_get_contents($fixture.'/network/server-identity')===$legacy,'Another panel never overwrites legacy binding');
+                    $assert(count(glob($fixture.'/network/identities/*.json'))===2,'Reporting identities scoped by panel');
+                }
                 continue;
             }
-            $assert(file_get_contents($fixture.'/events')===($reportFailure ? "report\n" : "report\nrestart\n"),'IP reporting must succeed before starting the node');
+            $assert(file_get_contents($fixture.'/events')===($reportFailure ? "report\n" : "report\nreload\n"),'IP reporting must succeed before starting the node');
             if ($reportFailure) {
-                $assert(json_decode(file_get_contents($fixture.'/config/config.json'),true)['Nodes'][0]['ApiHost']===$response['data']['apiHost'],'Failed reporting retains the correct panel configuration without starting V2Box');
+                $assert(count(glob($fixture.'/config/deployment-state*.json'))===1,'Failed reporting retains scoped private enrollment without activating the node');
                 [$resumed]=$run(0);
                 $assert($resumed===0 && file_get_contents($fixture.'/redemptions')==="redeemed\n",'Failed reporting resumes without consuming another grant');
             }
@@ -181,12 +203,27 @@ SH,
             $assert(!str_contains($output,$response['data']['networkReport']['token']) && count(glob($fixture.'/tmp/*'))===0,'Deployment removes temporary reporting secrets');
             $before=hash_file('sha256',$fixture.'/config/config.json');[$exit]=$run(0);
             $assert($exit===0 && hash_file('sha256',$fixture.'/config/config.json')===$before,'Redeployment preserves existing node config');
-            file_put_contents($fixture.'/lib/v2box',"#!/bin/sh\nexit 0\n");chmod($fixture.'/lib/v2box',0700);
+            file_put_contents($fixture.'/lib/v2box',"#!/bin/sh\necho '{\"features\":[\"multi-panel-v1\",\"reload-signal-v1\"]}'\n");chmod($fixture.'/lib/v2box',0700);
             $response['data']['nodeId']=4;file_put_contents($fixture.'/response.json',json_encode($response));
             [$added,$addedOutput]=$run(0,4);
             $combined=json_decode(file_get_contents($fixture.'/config/config.json'),true);
             $assert($added===0 && array_column($combined['Nodes'],'NodeID')===[3,4],'Existing installation appends another service: '.$addedOutput);
             $assert($combined['Nodes'][0]===$config['Nodes'][0],'Appending preserves existing service configuration');
+            $certificate=$fixture.'/saved.cer';file_put_contents($certificate,'existing-certificate');
+            $response['data']['apiHost']='https://another.example.invalid';$response['data']['nodeId']=3;
+            file_put_contents($fixture.'/response.json',json_encode($response));
+            [$other,$otherOutput]=$run(0,3,'https://another.example.invalid');
+            $multi=json_decode(file_get_contents($fixture.'/config/config.json'),true);
+            $assert($other===0 && count($multi['Nodes'])===3,'Different panel with same node ID appends: '.$otherOutput);
+            $assert(array_slice($multi['Nodes'],0,2)===$combined['Nodes'] && file_get_contents($certificate)==='existing-certificate','Cross-panel deployment preserves nodes and certificates');
+            $before=hash_file('sha256',$fixture.'/config/config.json');[$again]=$run(0,3,'https://another.example.invalid');
+            $assert($again===0 && hash_file('sha256',$fixture.'/config/config.json')===$before,'Cross-panel repeat is idempotent');
+            $assert(!str_contains(file_get_contents($fixture.'/events'),'restart'),'Adding panels never restarts existing nodes');
+            $redemptions=file_get_contents($fixture.'/redemptions');
+            file_put_contents($fixture.'/lib/v2box',"#!/bin/sh\necho old-version\n");chmod($fixture.'/lib/v2box',0700);
+            [$unsupported,$message]=$run(0,3,'https://another.example.invalid');
+            $assert($unsupported!==0 && str_contains($message,'does not support') && file_get_contents($fixture.'/redemptions')===$redemptions,'Unsupported binary refused before grant consumption');
+            $assert(hash_file('sha256',$fixture.'/config/config.json')===$before,'Unsupported binary preserves config');
             $lock=fopen($fixture.'/config/.bootstrap.lock','c');flock($lock,LOCK_EX);
             [$exit,$output]=$run();flock($lock,LOCK_UN);fclose($lock);
             $assert($exit===1 && str_contains($output,'Another deployment is running'),'Concurrent installer exits before consuming authorization');
@@ -246,28 +283,108 @@ class WorkflowTests(unittest.TestCase):
         with patch.object(m.subprocess,'run',side_effect=m.subprocess.TimeoutExpired(['v2box','restart'],180)):
             with self.assertRaisesRegex(m.DeploymentError,'timed out after 180'):
                 m.Deployment.command(self.deploy,['v2box','restart'])
+    def test_default_certificate_check_uses_panel_namespace(self):
+        import hashlib
+        self.deploy.flow.update(protocol='hysteria2')
+        expected='/etc/v2box/panels/'+hashlib.sha256(self.deploy.host.encode()).hexdigest()[:16]+'/v2box-3/hysteria2.cer'
+        with patch.object(m.Path,'exists',return_value=False),patch.object(m.subprocess,'run',return_value=subprocess.CompletedProcess([],0)) as run:
+            m.Deployment.verify_certificate(self.deploy)
+        self.assertEqual(run.call_args_list[0].args[0][3],expected)
+    def test_certificate_check_respects_operator_directory(self):
+        self.deploy.prepare_config()
+        document=json.loads(self.deploy.config.read_text())
+        document['Nodes'][0]['CertificateDirectory']=str(self.path.parent/'operator-certs')
+        m.write_private(self.deploy.config,document)
+        self.deploy.flow.update(protocol='hysteria2')
+        with patch.object(m.subprocess,'run',return_value=subprocess.CompletedProcess([],0)) as run:
+            m.Deployment.verify_certificate(self.deploy)
+        self.assertEqual(run.call_args_list[0].args[0][3],str(self.path.parent/'operator-certs'/'hysteria2.cer'))
+    def second_panel(self):
+        document=json.loads(json.dumps({'data':self.data}))
+        document['data']['apiHost']='https://other.example.invalid'
+        document['data']['apiKey']='other-scoped-key'
+        path=self.path.parent/'deployment-state-other.json';m.write_private(path,document)
+        return m.Deployment(path)
+    def test_cross_panel_same_node_id_preserves_settings_and_files(self):
+        self.deploy.prepare_config()
+        document=json.loads(self.deploy.config.read_text());document['OutboundAllowCIDRs']=['10.20.30.40/32']
+        document['Nodes'][0].update(Timeout=42,CertificateDirectory='/operator/certs')
+        m.write_private(self.deploy.config,document)
+        cert=self.path.parent/'saved.cer';cert.write_text('keep certificate')
+        second=self.second_panel();second.prepare_config()
+        result=json.loads(self.deploy.config.read_text())
+        self.assertEqual(result['Nodes'][0],document['Nodes'][0]);self.assertEqual(result['OutboundAllowCIDRs'],document['OutboundAllowCIDRs'])
+        self.assertEqual([item['NodeID'] for item in result['Nodes']],[3,3]);self.assertNotEqual(result['Nodes'][0]['ApiHost'],result['Nodes'][1]['ApiHost'])
+        self.assertEqual(cert.read_text(),'keep certificate')
+        before=self.deploy.config.stat().st_mtime_ns;second.prepare_config();self.assertEqual(before,self.deploy.config.stat().st_mtime_ns)
+    def test_cross_panel_credential_replacement_is_scoped(self):
+        self.deploy.prepare_config();second=self.second_panel();second.prepare_config()
+        before=json.loads(self.deploy.config.read_text());second.data['apiKey']='rotated-key';second.save(replaceCredential=True);second.prepare_config()
+        after=json.loads(self.deploy.config.read_text());self.assertEqual(after['Nodes'][0],before['Nodes'][0]);self.assertEqual(after['Nodes'][1]['ApiKey'],'rotated-key')
+    def test_duplicate_alias_identity_is_refused(self):
+        self.deploy.prepare_config();document=json.loads(self.deploy.config.read_text())
+        document['Nodes'].append(dict(document['Nodes'][0],ApiHost=self.deploy.host.upper().replace('HTTPS:','https:')+'/'))
+        m.write_private(self.deploy.config,document);before=self.deploy.config.read_bytes()
+        with self.assertRaises(m.DeploymentError):self.deploy.prepare_config()
+        self.assertEqual(before,self.deploy.config.read_bytes())
+    def test_activation_is_authorized_before_writing_live_node(self):
+        self.deploy.prepare_config();self.deploy.data['nodeId']=4
+        def progress(action='status'):
+            if action=='start':self.assertEqual(len(json.loads(self.deploy.config.read_text())['Nodes']),1)
+            return {'applicationState':'applied','completed':action=='complete'}
+        self.deploy.progress=progress;self.deploy.run()
+        self.assertIn('reload',self.events);self.assertNotIn('restart',self.events)
+    @unittest.skipUnless(os.environ.get('V2BOX_NETWORK_SCRIPT'),'network helper fixture required')
+    def test_reporting_merge_preserves_other_panel_dns_and_backoff(self):
+        spec=importlib.util.spec_from_file_location('network_fixture',os.environ['V2BOX_NETWORK_SCRIPT']);network=importlib.util.module_from_spec(spec);spec.loader.exec_module(network)
+        root=self.path.parent/'network';root.mkdir();network.CONFIG=root/'config.json';network.STATE=root/'state.json'
+        dns={'zone_id':'a'*32,'token':'dns-key','domain':'saved.example.test','family':'ipv4'};network.write_private(network.CONFIG,dns)
+        network.write_private(network.STATE,{'paused':True,'next_run':1234})
+        def mapped(value):
+            text=str(value)
+            return root/text[len('/etc/node-network/'): ] if text.startswith('/etc/node-network/') else (root if text=='/etc/node-network' else Path(value))
+        def command(args):
+            token=Path(args[args.index('--token-file')+1]);self.assertEqual(token.stat().st_mode&0o777,0o600)
+            network.save_target({'mode':'panel','panel_url':args[args.index('--panel-url')+1],'token':token.read_text(),'family':'ipv4','server_id':int(args[args.index('--server-id')+1])})
+        with patch.object(m,'Path',side_effect=mapped):
+            for host,token in [('https://a.example.test','b'*64),('https://b.example.test','c'*64)]:
+                m.configure_reporting(host,{'token':token,'family':'ipv4','serverId':7},self.path.parent,command)
+            before=network.CONFIG.read_bytes()
+            with self.assertRaises(m.DeploymentError):m.configure_reporting('https://a.example.test',{'token':'d'*64,'family':'ipv4','serverId':8},self.path.parent,command)
+        self.assertEqual(network.CONFIG.read_bytes(),before)
+        self.assertEqual(len(network.targets(json.loads(before))),3)
+        state=json.loads(network.STATE.read_text())['targets'][network.target_key(dns)];self.assertTrue(state['paused']);self.assertEqual(state['next_run'],1234)
+        self.assertEqual(len(list((root/'identities').glob('*.json'))),2);self.assertFalse(list(self.path.parent.glob('.report-*')))
+    def test_completed_command_receipt_is_private_scoped_and_has_no_key(self):
+        self.deploy.save(grantHash='a'*64);self.deploy.prepare_config();self.deploy.finish()
+        receipt=self.path.with_name('deployment-completed.json')
+        self.assertEqual(receipt.stat().st_mode&0o777,0o600);self.assertNotIn(self.data['apiKey'],receipt.read_text())
+        self.assertTrue(m.completed_enrollment(receipt,self.deploy.config,self.deploy.host,3,'a'*64))
+        self.assertFalse(m.completed_enrollment(receipt,self.deploy.config,'https://other.example.test',3,'a'*64))
+        document=json.loads(self.deploy.config.read_text());document['Nodes'][0]['ApiKey']='rotated';m.write_private(self.deploy.config,document)
+        self.assertFalse(m.completed_enrollment(receipt,self.deploy.config,self.deploy.host,3,'a'*64))
     def test_order_and_private_config(self):
         self.deploy.run()
-        self.assertEqual(self.events,['report','dns','port','start','restart','status','certificate','complete'])
+        self.assertEqual(self.events,['report','dns','port','start','reload','status','certificate','complete'])
         self.assertFalse(self.path.exists());self.assertEqual(self.deploy.config.stat().st_mode&0o777,0o600)
-    def test_placeholder_replaced_before_dns_failure(self):
-        m.write_private(self.deploy.config,{'Nodes':[{'ApiHost':'https://panel.example.com','ApiKey':'REPLACE_ME'}]})
+    def test_placeholder_retained_until_dns_ready(self):
+        placeholder={'Nodes':[{'ApiHost':'https://panel.example.com','ApiKey':'REPLACE_ME'}]}
+        m.write_private(self.deploy.config,placeholder)
         def fail_dns():
-            node=json.loads(self.deploy.config.read_text())['Nodes'][0]
-            self.assertEqual((node['ApiHost'],node['NodeID'],node['ApiKey']),(self.data['apiHost'],3,self.data['apiKey']))
+            self.assertEqual(json.loads(self.deploy.config.read_text()),placeholder)
+            self.assertEqual(self.deploy.data['apiKey'],self.data['apiKey'])
             raise m.DeploymentError('dns unavailable')
         self.deploy.wait_dns=fail_dns
-        with self.assertRaises(m.DeploymentError): self.deploy.run()
-        self.assertNotIn('restart',self.events)
-        self.assertIn('stop',self.events)
-        self.assertTrue(self.path.exists())
+        with self.assertRaises(m.DeploymentError):self.deploy.run()
+        self.assertEqual(json.loads(self.deploy.config.read_text()),placeholder)
+        self.assertIn('stop',self.events);self.assertNotIn('reload',self.events);self.assertTrue(self.path.exists())
     def test_completed_panel_repairs_local_placeholder(self):
         m.write_private(self.deploy.config,{'Nodes':[{'ApiHost':'https://panel.example.com','ApiKey':'REPLACE_ME'}]})
         self.deploy.save(startAttempted=True)
         self.deploy.wait_dns=lambda:True
         self.deploy.run()
         self.assertEqual(json.loads(self.deploy.config.read_text())['Nodes'][0]['ApiHost'],self.data['apiHost'])
-        self.assertIn('restart',self.events)
+        self.assertIn('reload',self.events)
         self.assertFalse(self.path.exists())
     def test_uninstalled_resume_restores_programs_and_preserves_files(self):
         root=Path(self.tmp.name);binpath=root/'bin';binpath.mkdir()
@@ -307,14 +424,15 @@ class WorkflowTests(unittest.TestCase):
         self.assertEqual(current['Nodes'][0]['ApiKey'],'new-scoped-key')
         self.assertEqual(current['Nodes'][0]['Timeout'],42)
         self.assertEqual(current['Nodes'][1],original['Nodes'][1])
-        self.assertEqual(json.loads((self.path.parent/'config.before-redeploy-3.json').read_text()),original)
+        self.assertEqual(json.loads(self.deploy.backup_path('redeploy').read_text()),original)
     @unittest.skipUnless(__import__('shutil').which('jq'),'jq required')
     def test_fresh_grant_replaces_stale_state_and_same_grant_resumes(self):
         root=Path(self.tmp.name);binpath=root/'bin';binpath.mkdir();lib=root/'lib';lib.mkdir()
         for name in ('v2box','manager.sh','install.sh','node-network.py','node-credentials.py'):
             (lib/name).write_text('#!/bin/sh\nexit 0\n');(lib/name).chmod(0o700)
         manager=root/'manager';manager.write_text('#!/bin/sh\nexit 0\n');manager.chmod(0o700)
-        for name,body in {'python3':'exit 0','curl':'while (($#)); do if [[ "$1" == -o ]]; then shift; out=$1; fi; shift; done\n[ ! -f "'+str(root/'fail')+'" ] || exit 22\necho redeemed >> "'+str(root/'redeemed')+'"\ncp "'+str(root/'response.json')+'" "$out"'}.items():
+        (lib/'v2box').write_text("#!/bin/sh\necho '{\"features\":[\"multi-panel-v1\",\"reload-signal-v1\"]}'\n")
+        for name,body in {'python3':"if [[ \"${2:-}\" == --completed ]]; then exit 1; fi\necho '{\"features\":[\"report-multi-target-v1\"]}'",'curl':'while (($#)); do if [[ "$1" == -o ]]; then shift; out=$1; fi; shift; done\n[ ! -f "'+str(root/'fail')+'" ] || exit 22\necho redeemed >> "'+str(root/'redeemed')+'"\ncp "'+str(root/'response.json')+'" "$out"'}.items():
             f=binpath/name;f.write_text('#!/bin/bash\n'+body+'\n');f.chmod(0o700)
         self.deploy.prepare_config()
         response={'data':dict(self.data,nodeType='v2box',apiKey='nk_'+'a'*32+'.'+'b'*64)}
@@ -322,8 +440,9 @@ class WorkflowTests(unittest.TestCase):
         script=Path(sys.argv[1]).with_suffix('.sh').read_text().replace('__NODE_PREREQUISITES__','').replace('__NODE_DEPLOY_HELPER__','pass')
         script=script.replace('/etc/v2box',str(root)).replace('/usr/local/lib/v2box',str(lib)).replace('/usr/local/bin/v2box',str(manager)).replace('/etc/node-network',str(root/'network'))
         bootstrap=root/'bootstrap.sh';bootstrap.write_text(script)
-        def run(grant):
-            return subprocess.run(['bash',str(bootstrap),'--api-host',self.data['apiHost'],'--node-id','3','--deploy-token',grant],env=dict(os.environ,PATH=str(binpath)+':'+os.environ['PATH']),capture_output=True,text=True)
+        def run(grant,legacy=False):
+            arguments=['bash',str(bootstrap)] if legacy else ['bash',str(bootstrap),'--api-host',self.data['apiHost'],'--node-id','3','--deploy-token',grant]
+            return subprocess.run(arguments,input=(self.data['apiHost']+'\n'+grant+'\n') if legacy else None,env=dict(os.environ,PATH=str(binpath)+':'+os.environ['PATH']),capture_output=True,text=True)
         grant='nd_'+'d'*64
         result=run(grant);self.assertEqual(result.returncode,0,result.stderr)
         saved=self.path.read_bytes();self.assertTrue(json.loads(saved)['replaceCredential'])
@@ -333,9 +452,12 @@ class WorkflowTests(unittest.TestCase):
         result=run('nd_'+'e'*64);self.assertNotEqual(result.returncode,0)
         self.assertEqual(self.path.read_bytes(),saved)
         self.assertIn('Authorization redemption failed',result.stderr)
+        (root/'fail').unlink()
+        result=run('nd_'+'f'*64,legacy=True);self.assertEqual(result.returncode,0,result.stderr)
+        self.assertTrue(json.loads(self.path.read_text())['replaceCredential'])
     def test_missing_program_has_actionable_error(self):
         with patch.object(m.subprocess,'run',side_effect=FileNotFoundError()):
-            with self.assertRaisesRegex(m.DeploymentError,'Required program is missing'):
+            with self.assertRaisesRegex(m.DeploymentError,'program is missing'):
                 m.Deployment.command(self.deploy,['v2box','restart'])
     def test_reported_state_restores_reporting_schedule(self):
         self.deploy.save(reported=True)
@@ -401,7 +523,7 @@ class WorkflowTests(unittest.TestCase):
         self.assertEqual(result['Log'],original['Log'])
         self.assertEqual(result['Nodes'][0],original['Nodes'][0])
         self.assertEqual([n['NodeID'] for n in result['Nodes']],[3,4])
-        backup=self.path.parent/'config.before-add-4.json'
+        backup=self.deploy.backup_path('add')
         self.assertEqual(json.loads(backup.read_text()),original)
         self.assertEqual(backup.stat().st_mode&0o777,0o600)
         before=self.deploy.config.stat().st_mtime_ns
@@ -415,13 +537,23 @@ class WorkflowTests(unittest.TestCase):
         self.deploy.progress=lambda action='status':{'applicationState':'failed','errorCode':'core'}
         with self.assertRaises(m.DeploymentError):self.deploy.wait_ready()
         self.assertEqual(json.loads(self.deploy.config.read_text()),original)
-        self.assertIn('restart',self.events)
+        self.assertIn('reload',self.events)
         self.assertFalse(self.deploy.state['startAttempted'])
-    def test_rollback_does_not_overwrite_operator_changes(self):
+    def test_rollback_preserves_other_nodes_and_operator_changes(self):
         self.deploy.prepare_config()
         self.deploy.data['nodeId']=4
         self.deploy.prepare_config()
         changed=json.loads(self.deploy.config.read_text());changed['Log']={'Level':'debug'}
+        another=dict(changed['Nodes'][0],ApiHost='https://another.example.test')
+        changed['Nodes'].append(another)
+        m.write_private(self.deploy.config,changed)
+        self.deploy.rollback_addition()
+        result=json.loads(self.deploy.config.read_text())
+        self.assertEqual(result['Log'],changed['Log'])
+        self.assertEqual(result['Nodes'],[changed['Nodes'][0],another])
+    def test_rollback_refuses_edits_to_the_added_node(self):
+        self.deploy.prepare_config();self.deploy.data['nodeId']=4;self.deploy.prepare_config()
+        changed=json.loads(self.deploy.config.read_text());changed['Nodes'][1]['Timeout']=77
         m.write_private(self.deploy.config,changed)
         with self.assertRaises(m.DeploymentError):self.deploy.rollback_addition()
         self.assertEqual(json.loads(self.deploy.config.read_text()),changed)

@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Resumable panel deployment. Standard library only; never bypass ACME failure guards."""
 import fcntl
+import hashlib
 import errno
 import ipaddress
 import json
@@ -139,6 +140,80 @@ def dns_matches(domain, addresses):
         print('DNS verified using the available resolver; the other query service is unavailable.',flush=True)
     return True
 
+def panel_identity(host):
+    if not isinstance(host,str):raise DeploymentError('Invalid HTTPS panel identity')
+    parsed=urllib.parse.urlsplit(host)
+    if parsed.scheme!='https' or not parsed.hostname or parsed.username or parsed.password or parsed.query or parsed.fragment:
+        raise DeploymentError('Invalid HTTPS panel identity')
+    return urllib.parse.urlunsplit((parsed.scheme,parsed.netloc.lower(),parsed.path.rstrip('/'),'',''))
+
+
+def node_identity(node):
+    if not isinstance(node,dict) or type(node.get('NodeID')) is not int or node['NodeID']<=0 or node.get('NodeType','v2node') not in ('v2box','v2node'):
+        raise DeploymentError('Invalid existing node identity; original configuration retained')
+    return panel_identity(node.get('ApiHost','')),node.get('NodeType','v2node'),node['NodeID']
+
+
+def reporting_identity(host,server_id):
+    if type(server_id) is not int or server_id<=0:
+        raise DeploymentError('Invalid reporting server identity')
+    host=panel_identity(host)
+    root=Path('/etc/node-network')
+    directory=root/'identities'
+    if root.is_symlink() or directory.is_symlink(): raise DeploymentError('Refusing symlinked reporting identity directory')
+    path=directory/(hashlib.sha256(host.encode()).hexdigest()[:24]+'.json')
+    if path.is_symlink(): raise DeploymentError('Refusing symlinked reporting identity')
+    if path.exists():
+        current=read_object(path,'Reporting identity')
+        if current.get('panelUrl')!=host or current.get('serverId')!=server_id:
+            raise DeploymentError('This panel is already bound to another physical server; existing reporting configuration preserved')
+    legacy=root/'server-identity'
+    if legacy.is_symlink(): raise DeploymentError('Refusing symlinked reporting identity')
+    if legacy.exists():
+        origin,_,identity=legacy.read_text().strip().rpartition('/')
+        if panel_identity(origin)==host and identity!=str(server_id):
+            raise DeploymentError('This panel is already bound to another physical server; existing reporting configuration preserved')
+    return path,{'panelUrl':host,'serverId':server_id}
+
+
+def completed_enrollment(path,config,host,node_id,grant_hash):
+    if path.is_symlink() or not path.is_file() or path.stat().st_mode & 0o077 or config.is_symlink() or not config.is_file():return False
+    receipt=read_object(path,'Completed deployment receipt')
+    if receipt.get('grantHash')!=grant_hash or receipt.get('apiHost')!=panel_identity(host) or receipt.get('nodeId')!=node_id:return False
+    nodes=read_object(config,'Existing node configuration').get('Nodes',[])
+    matches=[item for item in nodes if node_identity(item)==(panel_identity(host),'v2box',node_id)]
+    return len(matches)==1 and isinstance(matches[0].get('ApiKey'),str) and hashlib.sha256(matches[0]['ApiKey'].encode()).hexdigest()==receipt.get('credentialFingerprint')
+
+
+def run_command(args):
+    try:
+        subprocess.run(args,check=True,timeout=180)
+    except (FileNotFoundError,subprocess.TimeoutExpired,subprocess.CalledProcessError) as error:
+        step='IP reporting configuration' if 'report-configure' in args else 'V2Box service command'
+        reason='timed out after 180 seconds' if isinstance(error,subprocess.TimeoutExpired) else ('program is missing' if isinstance(error,FileNotFoundError) else 'failed')
+        raise DeploymentError(step+' '+reason+'. Review the service manager and logs, then resume; configuration and certificates were retained.') from None
+
+
+def configure_reporting(host,report,directory,command=run_command):
+    if not isinstance(report,dict) or not re.fullmatch(r'[a-f0-9]{64}',report.get('token','')) or report.get('family') not in ('ipv4','ipv6','dual'):
+        raise DeploymentError('Invalid reporting setup; existing settings preserved')
+    binding=None
+    if report.get('serverId') is not None: binding=reporting_identity(host,report['serverId'])
+    fd,name=tempfile.mkstemp(prefix='.report-',dir=str(directory))
+    try:
+        os.fchmod(fd,0o600)
+        with os.fdopen(fd,'w') as out: out.write(report['token'])
+        args=['python3','/usr/local/lib/v2box/node-network.py','report-configure','--panel-url',host,'--family',report['family'],'--token-file',name]
+        if binding: args+=['--server-id',str(report['serverId'])]
+        command(args)
+        if binding:
+            path,identity=binding
+            path.parent.mkdir(mode=0o700,parents=True,exist_ok=True)
+            write_private(path,identity)
+    finally:
+        os.unlink(name)
+
+
 class Deployment:
     def __init__(self,path):
         self.path=Path(path)
@@ -169,16 +244,11 @@ class Deployment:
                 time.sleep(2)
 
     def command(self,args):
-        try:
-            subprocess.run(args,check=True,timeout=180)
-        except FileNotFoundError:
-            raise DeploymentError('Required program is missing. Download the current panel deployment script and run --resume to restore programs without deleting configuration or certificates.') from None
-        except subprocess.TimeoutExpired:
-            step = 'IP reporting configuration' if 'report-configure' in args else 'V2Box service command'
-            raise DeploymentError(step+' timed out after 180 seconds. Check the service manager and logs, then resume; configuration and certificates were retained.') from None
-        except subprocess.CalledProcessError:
-            step = 'IP reporting configuration' if 'report-configure' in args else 'V2Box service command'
-            raise DeploymentError(step+' failed. Review the command error above; fix it, then resume. Configuration and certificates retained.') from None
+        run_command(args)
+
+    def backup_path(self,action):
+        namespace=hashlib.sha256(panel_identity(self.host).encode()).hexdigest()[:16]
+        return self.path.parent/('config.before-'+action+'-'+namespace+'-'+str(self.data['nodeId'])+'.json')
 
     def prepare_config(self):
         node={'NodeType':'v2box','ApiHost':self.host,'NodeID':self.data['nodeId'],'ApiKey':self.data['apiKey'],'ApiVersion':'v10','Timeout':15,'RetryCount':1,'LandingPage':{'Enabled':False,'Directory':''}}
@@ -190,17 +260,17 @@ class Deployment:
                 raise DeploymentError('Invalid existing node configuration; preserved without overwrite')
             placeholder=len(previous)==1 and previous[0].get('ApiKey')=='REPLACE_ME' and previous[0].get('ApiHost')=='https://panel.example.com'
             if not placeholder:
-                for item in previous:
-                    if item.get('NodeType')!='v2box' or item.get('ApiHost')!=self.host or not isinstance(item.get('NodeID'),int):
-                        raise DeploymentError('Existing configuration belongs to another panel or backend; preserved without overwrite')
-                matches=[item for item in previous if item['NodeID']==node['NodeID']]
+                identities=[node_identity(item) for item in previous]
+                if len(identities)!=len(set(identities)):
+                    raise DeploymentError('Duplicate node identity; existing configuration preserved')
+                matches=[item for item in previous if node_identity(item)==node_identity(node)]
                 if matches:
                     if len(matches)!=1:
                         raise DeploymentError('Duplicate node identity; existing configuration preserved')
                     if any(matches[0].get(key)!=node[key] for key in ('ApiKey','ApiVersion')):
                         if not self.state.get('replaceCredential'):
                             raise DeploymentError('Existing node credentials changed; preserved without overwrite')
-                        backup=self.path.parent/('config.before-redeploy-'+str(node['NodeID'])+'.json')
+                        backup=self.backup_path('redeploy')
                         if not backup.exists(): write_private(backup,document)
                         # Only a newly redeemed scoped grant may replace this identity.
                         matches[0].update({key:node[key] for key in ('ApiKey','ApiVersion')})
@@ -209,7 +279,7 @@ class Deployment:
                     return
                 # Preserve every existing service and operator setting. Keep a private
                 # snapshot before the atomic append; never restore over later edits.
-                backup=self.path.parent/('config.before-add-'+str(node['NodeID'])+'.json')
+                backup=self.backup_path('add')
                 if not backup.exists(): write_private(backup,document)
                 original=json.loads(json.dumps(document))
                 document['Nodes']=previous+[node]
@@ -219,15 +289,20 @@ class Deployment:
         write_private(self.config,{'Log':{'Level':'info'},'Nodes':[node]})
 
     def rollback_addition(self):
-        original=self.state.get('previousConfig')
-        appended=self.state.get('appendedConfig')
+        original=self.state.get('previousConfig');appended=self.state.get('appendedConfig')
         if not original or not appended: return
-        if self.config.is_symlink() or json.loads(self.config.read_text())!=appended:
-            raise DeploymentError('Configuration changed after deployment; automatic rollback refused. Inspect the private config.before-add snapshot.')
-        write_private(self.config,original)
-        self.save(startAttempted=False)
-        self.command(['v2box','restart'])
-        print('Failed added service removed; previous services and settings restored. Deployment state retained for retry.',flush=True)
+        if self.config.is_symlink(): raise DeploymentError('Refusing symlinked configuration')
+        current=read_object(self.config,'Existing node configuration')
+        identity=(panel_identity(self.host),'v2box',self.data['nodeId'])
+        expected=[item for item in appended['Nodes'] if node_identity(item)==identity]
+        matches=[item for item in current.get('Nodes',[]) if node_identity(item)==identity]
+        if len(expected)!=1 or matches!=expected:
+            raise DeploymentError('Added node configuration changed; automatic rollback refused. Inspect the private config.before-add snapshot.')
+        current['Nodes']=[item for item in current['Nodes'] if node_identity(item)!=identity]
+        write_private(self.config,current)
+        self.save(startAttempted=False,activationAuthorized=False)
+        self.apply_service()
+        print('Failed added node removed; other panels, operator settings and reporting targets retained. Deployment state saved for retry.',flush=True)
 
     def service_state(self):
         if shutil.which('systemctl'):
@@ -241,16 +316,28 @@ class Deployment:
             if result.returncode==3: return 'inactive'
         raise DeploymentError('Cannot determine V2Box service state. Check v2box status and the service manager before resuming.')
 
-    def ensure_started(self):
-        if not self.state.get('startAttempted'):
+    def apply_service(self):
+        state=self.service_state()
+        if state in ('inactive','failed'):
+            self.command(['v2box','start'])
+        elif state in ('active','activating','reloading'):
+            self.command(['v2box','reload'])
+        else:
+            raise DeploymentError('V2Box is stopping; wait for it to stop, then resume. Other nodes were not restarted.')
+
+    def authorize_start(self):
+        if not self.state.get('startAttempted') or self.state.get('applyPending'):
             self.check_http_port();self.progress('start')
-            self.save(startAttempted=True)
-            self.command(['v2box','restart'])
+            self.save(startAttempted=True,applyPending=True,activationAuthorized=True)
+
+    def ensure_started(self):
+        if not self.state.get('startAttempted') or self.state.get('applyPending'):
+            if not self.state.get('activationAuthorized'):self.authorize_start()
+            self.apply_service()
+            self.save(applyPending=False)
             return
         state=self.service_state()
         if state in ('inactive','failed'):
-            # One explicit resume may start a stopped service once. Never reset ACME
-            # guards or repeatedly restart a process that is applying its configuration.
             print('The previous start did not leave a running service; starting V2Box once.',flush=True)
             self.check_http_port();self.progress('start')
             self.command(['v2box','start'])
@@ -259,26 +346,10 @@ class Deployment:
 
     def report(self):
         report=self.data.get('networkReport')
-        if not report: return
-        print('Deployment recovery: configuring IP reporting and restoring its schedule.',flush=True)
-        identity=None
-        identity_path=Path('/etc/node-network/server-identity')
-        if report.get('serverId'):
-            identity=self.host+'/'+str(report['serverId'])
-            if identity_path.is_symlink() or (identity_path.exists() and identity_path.read_text().strip()!=identity):
-                raise DeploymentError('Reporting belongs to another physical server; existing configuration preserved')
-        fd,name=tempfile.mkstemp(prefix='.report-',dir=str(self.path.parent))
-        try:
-            os.fchmod(fd,0o600)
-            with os.fdopen(fd,'w') as out: out.write(report['token'])
-            self.command(['python3','/usr/local/lib/v2box/node-network.py','report-configure','--panel-url',self.host,'--family',report['family'],'--token-file',name])
-            if identity:
-                identity_path.parent.mkdir(mode=0o700,parents=True,exist_ok=True)
-                fd_identity=os.open(identity_path,os.O_WRONLY|os.O_CREAT|os.O_TRUNC|os.O_NOFOLLOW,0o600)
-                with os.fdopen(fd_identity,'w') as out: out.write(identity+'\n')
-            self.save(reported=True)
-        finally:
-            os.unlink(name)
+        if not report:return
+        print('Deployment recovery: adding this panel IP reporting target.',flush=True)
+        configure_reporting(self.host,report,self.path.parent,self.command)
+        self.save(reported=True)
 
     def verify_dns(self,role,domain,addresses):
         self.dns_observation={'dnsState':'checking','dnsRole':role}
@@ -363,7 +434,18 @@ class Deployment:
 
     def verify_certificate(self):
         if self.flow['tls']!=1 or self.flow['certificateMode'] not in ('http','dns'): return
-        cert=self.flow['certificateFile'] or '/etc/v2box/'+self.flow['protocol']+str(self.data['nodeId'])+'.cer'
+        cert=self.flow['certificateFile']
+        if not cert:
+            host=urllib.parse.urlsplit(self.host)
+            canonical=urllib.parse.urlunsplit((host.scheme,host.netloc.lower(),host.path.rstrip('/'),'', ''))
+            namespace=hashlib.sha256(canonical.encode()).hexdigest()[:16]
+            cert=str(Path('/etc/v2box/panels')/namespace/('v2box-'+str(self.data['nodeId']))/(self.flow['protocol']+'.cer'))
+            if self.config.exists():
+                for item in read_object(self.config,'Existing node configuration').get('Nodes',[]):
+                    if item.get('ApiHost','').rstrip('/')==self.host and item.get('NodeID')==self.data['nodeId'] and item.get('CertificateDirectory'):
+                        cert=str(Path(item['CertificateDirectory'])/(self.flow['protocol']+'.cer'))
+            legacy='/etc/v2box/'+self.flow['protocol']+str(self.data['nodeId'])+'.cer'
+            if not Path(cert).exists() and Path(legacy).exists(): cert=legacy
         cert=cert.replace('{domain}',self.flow['certificateDomain']).replace('{email}','fastdog.ltd@gmail.com')
         for args in (['openssl','x509','-in',cert,'-noout','-checkend','3600'],['openssl','verify','-purpose','sslserver','-verify_hostname',self.flow['certificateDomain'],'-untrusted',cert,cert]):
             result=subprocess.run(args,stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL,timeout=10)
@@ -402,8 +484,12 @@ class Deployment:
         raise DeploymentError('Node readiness timed out. Inspect journalctl -u v2box; do not repeatedly restart or remove ACME state. The domain was not activated.')
 
     def finish(self):
+        if self.state.get('grantHash'):
+            receipt=self.path.with_name(self.path.name.replace('deployment-state','deployment-completed',1))
+            write_private(receipt,{'grantHash':self.state['grantHash'],'apiHost':panel_identity(self.host),'nodeId':self.data['nodeId'],'credentialFingerprint':hashlib.sha256(self.data['apiKey'].encode()).hexdigest()})
         self.path.unlink()
-        (self.path.parent/'.deployment-pending').unlink(missing_ok=True)
+        if not list(self.path.parent.glob('deployment-state*.json')):
+            (self.path.parent/'.deployment-pending').unlink(missing_ok=True)
         if self.flow and self.flow.get('accessMode')=='relay':
             print('Origin node verified. Configure L4 forwarding on the entry server, test a client connection, then confirm the relay in the panel.'); return
         print('Deployment verified. The node connection domain is active.' if self.flow else 'Installation complete. Check node runtime status in the panel.')
@@ -416,29 +502,40 @@ class Deployment:
             nodes = read_object(self.config,'Existing node configuration').get('Nodes', [])
             initial = isinstance(nodes, list) and len(nodes) == 1 and isinstance(nodes[0], dict) and nodes[0].get('ApiHost') == 'https://panel.example.com' and nodes[0].get('ApiKey') == 'REPLACE_ME'
         if initial:
-            if self.config.exists():
-                self.command(['v2box','stop'])
-            self.prepare_config()
-            self.save(startAttempted=False)
-            print('Panel address, node ID and credentials saved. Waiting for deployment checks before starting V2Box.', flush=True)
+            if self.config.exists():self.command(['v2box','stop'])
+            self.save(startAttempted=False,activationAuthorized=False)
+            print('Enrollment saved privately. Node configuration remains unchanged until deployment checks pass.',flush=True)
         self.report()
         if self.flow:
             if self.wait_dns():
                 # Panel completion does not prove local files survived reinstall.
+                self.authorize_start()
                 self.prepare_config()
                 self.ensure_started()
                 self.finish();return
+            self.authorize_start()
             self.prepare_config()
             self.ensure_started()
             self.wait_ready()
         else:
             self.prepare_config()
-            self.command(['v2box','restart'])
+            self.apply_service()
         self.finish()
 
 def main():
     try:
-        if os.geteuid()!=0 or len(sys.argv)!=2: raise DeploymentError('Run as root with a deployment state file')
+        if os.geteuid()!=0: raise DeploymentError('Run as root')
+        if len(sys.argv)==7 and sys.argv[1]=='--completed':
+            return 0 if completed_enrollment(Path(sys.argv[2]),Path(sys.argv[3]),sys.argv[4],int(sys.argv[5]),sys.argv[6]) else 1
+        if len(sys.argv)==4 and sys.argv[1]=='--check-report-identity':
+            reporting_identity(sys.argv[2],int(sys.argv[3]));return 0
+        if len(sys.argv)==3 and sys.argv[1]=='--configure-report':
+            path=Path(sys.argv[2])
+            if path.is_symlink() or not path.is_file() or path.stat().st_mode & 0o077:raise DeploymentError('Reporting state must be private')
+            data=read_object(path,'Reporting state')['data']
+            configure_reporting(panel_identity(data['apiHost']),data['networkReport'],path.parent)
+            return 0
+        if len(sys.argv)!=2: raise DeploymentError('Run with a deployment state file')
         path=Path(sys.argv[1]);lock=path.parent/'.deployment.lock'
         fd=os.open(lock,os.O_CREAT|os.O_RDWR|os.O_NOFOLLOW,0o600)
         with os.fdopen(fd,'w') as handle:

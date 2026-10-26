@@ -389,6 +389,11 @@ class Deployment:
             )
         self.flow = self.data.get("deployment")
         self.config = self.path.parent / "config.json"
+        self.shared_listener = self.state.get("sharedListener", "")
+        if not isinstance(self.shared_listener, str) or (self.shared_listener and not re.fullmatch(r"[a-zA-Z0-9][a-zA-Z0-9_.-]{0,63}", self.shared_listener)):
+            raise DeploymentError("Invalid shared listener group; configuration preserved")
+        if self.shared_listener and (not isinstance(self.flow, dict) or self.flow.get("protocol") not in ("anytls", "vless", "vmess", "trojan", "shadowsocks", "hysteria2", "tuic", "naive") or (self.flow.get("tls") == 1 and self.flow.get("certificateMode") not in ("file", "remote"))):
+            raise DeploymentError("Shared listener requires a supported protocol and compatible file or remote TLS certificate; configuration preserved")
         if self.flow is not None and (
             not isinstance(self.flow, dict)
             or type(self.flow.get("tls")) is not int
@@ -469,6 +474,8 @@ class Deployment:
             "RetryCount": 1,
             "LandingPage": {"Enabled": False, "Directory": ""},
         }
+        if self.shared_listener:
+            node["SharedListener"] = self.shared_listener
         if self.config.is_symlink():
             raise DeploymentError("Refusing symlinked node configuration")
         if self.config.exists():
@@ -511,6 +518,8 @@ class Deployment:
             write_private(backup, document)
 
     def update_existing_node(self, document, existing, requested):
+        if self.shared_listener and existing.get("SharedListener", "") != self.shared_listener:
+            raise DeploymentError("Existing shared listener selection differs; use v2box share-listener explicitly, credentials preserved")
         if any(existing.get(key) != requested[key] for key in ("ApiKey", "ApiVersion")):
             if not self.state.get("replaceCredential"):
                 raise DeploymentError(
@@ -947,7 +956,7 @@ class Deployment:
             (self.path.parent / ".deployment-pending").unlink(missing_ok=True)
         if self.flow and self.flow.get("accessMode") == "relay":
             print(
-                "Origin node verified. Configure L4 forwarding on the entry server, test a client connection, then confirm the relay in the panel."
+                "Origin node verified. Configure L4 forwarding on the entry server, test a client connection. No forwarding confirmation is required in the panel."
             )
             return
         if self.flow and self.flow.get("accessMode") == "unmanaged":

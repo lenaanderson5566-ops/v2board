@@ -51,6 +51,54 @@ class WorkflowTests(unittest.TestCase):
             "completed": action == "complete",
         }
 
+    def test_shared_anytls_append_preserves_peers_and_rollback(self):
+        state = json.loads(self.path.read_text())
+        state["sharedListener"] = "public-443"
+        state["data"]["deployment"].update(protocol="anytls", certificateMode="file")
+        m.write_private(self.path, state)
+        deploy = m.Deployment(self.path)
+        peer = {"NodeType": "v2box", "ApiHost": "https://other.example.test", "NodeID": 3, "ApiKey": "keep", "SharedListener": "public-443", "CertificateDirectory": "/keep/certs"}
+        original = {"Log": {"Level": "warn"}, "Nodes": [peer]}
+        m.write_private(deploy.config, original)
+        deploy.prepare_config()
+        current = json.loads(deploy.config.read_text())
+        self.assertEqual(current["Nodes"][0], peer)
+        self.assertEqual(current["Nodes"][1]["SharedListener"], "public-443")
+        self.assertEqual(current["Log"], original["Log"])
+        deploy.apply_service = lambda: None
+        deploy.rollback_addition()
+        self.assertEqual(json.loads(deploy.config.read_text()), original)
+
+    def test_shared_listener_protocol_and_certificate_matrix(self):
+        for protocol, tls, mode in [(p, 1, "file") for p in ("anytls", "vless", "vmess", "trojan", "shadowsocks", "hysteria2", "tuic", "naive")] + [("vless", 0, "none"), ("vmess", 0, "none"), ("shadowsocks", 0, "none"), ("vless", 2, "none")]:
+            with self.subTest(protocol=protocol, tls=tls):
+                state = {"data": json.loads(json.dumps(self.data)), "sharedListener": "shared"}
+                state["data"]["deployment"].update(protocol=protocol, tls=tls, certificateMode=mode)
+                m.write_private(self.path, state)
+                deploy = m.Deployment(self.path)
+                self.assertEqual(deploy.shared_listener, "shared")
+        for protocol in ("unsupported", "", "http"):
+            state["data"]["deployment"].update(protocol=protocol)
+            m.write_private(self.path, state)
+            with self.assertRaises(m.DeploymentError):
+                m.Deployment(self.path)
+
+    def test_shared_listener_refuses_unsupported_protocol_and_existing_selection(self):
+        state = json.loads(self.path.read_text())
+        state["sharedListener"] = "public-443"
+        m.write_private(self.path, state)
+        with self.assertRaises(m.DeploymentError):
+            m.Deployment(self.path)
+        state["data"]["deployment"].update(protocol="anytls", certificateMode="file")
+        m.write_private(self.path, state)
+        deploy = m.Deployment(self.path)
+        existing = {"NodeType": "v2box", "ApiHost": self.data["apiHost"], "NodeID": 3, "ApiKey": "keep", "ApiVersion": "v10", "SharedListener": "different"}
+        m.write_private(deploy.config, {"Nodes": [existing]})
+        before = deploy.config.read_bytes()
+        with self.assertRaises(m.DeploymentError):
+            deploy.prepare_config()
+        self.assertEqual(deploy.config.read_bytes(), before)
+
     def tearDown(self):
         self.tmp.cleanup()
 

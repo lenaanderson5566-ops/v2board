@@ -45,7 +45,12 @@ require_support() {
   timeout -k 2 10 python3 /usr/local/lib/v2box/node-network.py capabilities | jq -e '.features | index("report-multi-target-v1") != null' >/dev/null || {
     echo 'IP reporting helper does not support multiple targets. Upgrade the node scripts first; existing settings were preserved.' >&2; exit 1;
   }
-  /usr/local/bin/v2box check-runtime
+  local sharing="${shared_listener:-}"
+  if [[ -z "$sharing" && -n "${deployment_state:-}" && -f "$deployment_state" ]]; then sharing=$(jq -r '.sharedListener // ""' "$deployment_state"); fi
+  if [[ -n "$sharing" ]]; then
+    timeout -k 2 10 /usr/local/lib/v2box/v2box capabilities | jq -e '.features | index("shared-listener-v1") != null' >/dev/null || { echo 'Shared listeners requires a newer node program; authorization preserved.' >&2; exit 1; }
+    /usr/local/bin/v2box check-runtime shared-listener-v1 | grep -qx shared-listener-v1 || { echo 'Running program or management script lacks shared listeners support; upgrade first.' >&2; exit 1; }
+  else /usr/local/bin/v2box check-runtime; fi
 }
 select_resume_state() {
   shopt -s nullglob
@@ -78,6 +83,7 @@ if [[ "${1:-}" == --resume ]]; then
   exec python3 /usr/local/lib/v2box/panel-deploy.py "$deployment_state"
 fi
 requested_id=''
+shared_listener=''
 grant=''
 network_only=false
 server_only=false
@@ -89,6 +95,7 @@ if (($#)); then
     case "$1" in
       --api-host) panel_url=$2;;
       --node-id) requested_id=$2;;
+      --shared-listener) shared_listener=$2;;
       --server-id) requested_id=$2; server_only=true; network_only=true;;
       --deploy-token) grant=$2;;
       *) echo 'Unknown deployment argument' >&2; exit 1;;
@@ -102,6 +109,8 @@ else
   IFS= read -r panel_url
   IFS= read -r grant
 fi
+[[ -z "$shared_listener" || "$shared_listener" =~ ^[a-zA-Z0-9][a-zA-Z0-9_.-]{0,63}$ ]] || { echo 'Invalid shared listener group' >&2; exit 1; }
+if $network_only && [[ -n "$shared_listener" ]]; then echo 'Shared listener is only supported for node deployment.' >&2; exit 1; fi
 [[ $EUID -eq 0 && $(uname -s) == Linux ]] || { echo 'Run as root on Linux' >&2; exit 1; }
 [[ "$panel_url" =~ ^https://[^/?#[:space:]@]+(/[^?#[:space:]]*)?$ && "$grant" =~ ^n[ds]_[a-f0-9]{64}$ ]] || { echo 'Invalid deployment authorization' >&2; exit 1; }
 if $network_only; then
@@ -160,6 +169,7 @@ grant_hash=$(printf '%s' "$grant" | sha256sum | cut -d ' ' -f 1)
 if [[ -e "$deployment_state" ]]; then
   [[ ! -L "$deployment_state" ]] || exit 1
   jq -e --arg host "$panel_url" --arg id "$requested_id" '.data.apiHost == $host and ($id == "" or (.data.nodeId | tostring) == $id)' "$deployment_state" >/dev/null || { echo 'Pending deployment belongs to another node; preserved.' >&2; exit 1; }
+  if [[ -n "$shared_listener" ]] && ! jq -e --arg shared "$shared_listener" '.sharedListener == $shared' "$deployment_state" >/dev/null; then echo 'Pending deployment has a different sharing selection; preserved.' >&2; exit 1; fi
   if jq -e --arg hash "$grant_hash" '.grantHash == $hash' "$deployment_state" >/dev/null; then
     restore_programs
     require_support
@@ -193,6 +203,9 @@ require_support
 install_helper
 completed_state=${deployment_state/deployment-state/deployment-completed}
 if [[ -n "$requested_id" ]] && python3 /usr/local/lib/v2box/panel-deploy.py --completed "$completed_state" /etc/v2box/config.json "$panel_url" "$requested_id" "$grant_hash"; then
+  if [[ -n "$shared_listener" ]] && ! jq -e --arg host "$panel_url" --argjson id "$requested_id" --arg shared "$shared_listener" '.Nodes | any(.ApiHost == $host and .NodeID == $id and .SharedListener == $shared)' /etc/v2box/config.json >/dev/null; then
+    echo 'Enrollment already completed. Use v2box share-listener to change existing local selections; credentials preserved.' >&2; exit 1
+  fi
   echo 'This deployment command already completed for the configured node. Existing nodes, certificates and reporting settings were not changed.'
   exit
 fi
@@ -210,7 +223,7 @@ fi
 # Preserve enrollment only in a private local file so a consumed grant can be resumed.
 [[ ! -L "$deployment_state" ]] || exit 1
 config_stage=$(mktemp /etc/v2box/.deployment-state.XXXXXXXX)
-jq --arg hash "$grant_hash" '. + {grantHash:$hash, replaceCredential:true}' "$stage/response.json" > "$config_stage"
+jq --arg hash "$grant_hash" --arg shared "$shared_listener" '. + {grantHash:$hash, replaceCredential:true, sharedListener:$shared}' "$stage/response.json" > "$config_stage"
 chmod 600 "$config_stage"
 mv -f -- "$config_stage" "$deployment_state"
 config_stage=''

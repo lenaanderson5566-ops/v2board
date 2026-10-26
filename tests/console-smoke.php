@@ -234,6 +234,35 @@ try {
     } finally { Illuminate\Support\Facades\File::swap($writer); }
 
     $assert($response->getStatusCode() === 422, 'Zero subscription interval should be rejected');
+    $nodeStateBeforeAddressChange = App\Models\ServerV2box::orderBy('id')->get()->toArray();
+    config(['v2board.app_url'=>'https://site.example.test']);
+    foreach (['https://api-old.example.test/', 'https://api-new.example.test:8443/', null] as $nodeApiUrl) {
+        $assert(App\Services\AuthService::decryptAuthData($token)!==false, 'Settings test administrator session remains valid before saving '.($nodeApiUrl ?? 'fallback'));
+        $saved = $call('/api/v1/'.$securePath.'/config/save', ['server_api_url'=>$nodeApiUrl], $token);
+        // config:cache boots a separate application; keep this transaction's test container.
+        Illuminate\Container\Container::setInstance($app);
+        Illuminate\Support\Facades\Facade::setFacadeApplication($app);
+        Illuminate\Support\Facades\Facade::clearResolvedInstances();
+        Illuminate\Database\Eloquent\Model::setConnectionResolver($app['db']);
+        Illuminate\Database\Eloquent\Model::setEventDispatcher($app['events']);
+        $assert($saved->getStatusCode()===200, 'Administrator can change or clear the node API address '.($nodeApiUrl ?? 'fallback').': '.$saved->getStatusCode().' '.$saved->getContent());
+        $persisted = require $configPath;
+        $expectedHost = rtrim((string)($nodeApiUrl ?: $persisted['app_url']), '/');
+        $pipes=[];
+        $probe=proc_open([PHP_BINARY,'-r','require "tests/support/autoload.php"; $app=require "bootstrap/app.php"; $app->make(Illuminate\\Contracts\\Console\\Kernel::class)->bootstrap(); echo App\\Services\\NodeDeployment::host();'], [['pipe','r'],['pipe','w'],['pipe','w']], $pipes, base_path());
+        fclose($pipes[0]);$freshHost=stream_get_contents($pipes[1]);stream_get_contents($pipes[2]);fclose($pipes[1]);fclose($pipes[2]);
+        $assert(proc_close($probe)===0 && $freshHost===$expectedHost, 'A fresh application process immediately uses the saved node API address');
+        config(['v2board.server_api_url'=>$persisted['server_api_url']]);
+        foreach ((new App\Services\ServerService())->getAllV2node('v2box') as $deploymentNode) {
+            if (!empty($deploymentNode['service_id'])) continue;
+            foreach (['install_command','upgrade_command'] as $commandField) {
+                $command=$deploymentNode[$commandField];
+                $assert(str_contains($command, "'".$expectedHost.'/api/v10/public/node-deployment/bootstrap'."'") && str_contains($command,'--install v1.0.12') && !str_contains($command,'//api/'), 'Install and upgrade commands use the current saved API address and pinned release');
+            }
+            $assert(str_ends_with($deploymentNode['upgrade_command'],'--update'), 'Changing API address preserves the existing-installation upgrade mode');
+        }
+    }
+    $assert(App\Models\ServerV2box::orderBy('id')->get()->toArray()===$nodeStateBeforeAddressChange, 'Saving node API settings leaves existing nodes and certificate fields unchanged');
     $nodeParams['id'] = $node->id;
     $nodeParams['tls'] = 2;
     $nodeParams['network'] = 'grpc';

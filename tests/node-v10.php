@@ -647,6 +647,25 @@ try {
         $assert($metadata['tls']===$inactiveTls && $metadata['certificateMode']==='' && $metadata['certificateDomain']==='' && $metadata['certificateFile']==='','Non-TLS and Reality deployment ignore leftover certificate fields and inactive credentials');
         $repo->forget('workflow:'.hash('sha256',$metadata['token']));
     }
+    // Address changes affect newly generated commands, never existing credentials or reports.
+    $existingNodeBefore=$node->fresh()->getAttributes();
+    $existingCredentialsBefore=DB::table('v2_node_credential')->where('node_type','v2box')->where('node_id',$nodeId)->orderBy('id')->get()->toJson();
+    $existingReportsBefore=DB::table('v2_node_ddns')->orderBy('id')->get()->toJson();
+    $existingServersBefore=DB::table('v2_network_server')->orderBy('id')->get()->toJson();
+    $addressNode=$node->replicate();$addressNode->name='API address change fixture';$addressNode->tls=0;$addressNode->tls_settings=[];$addressNode->service_id=null;$addressNode->save();
+    $oldHost=App\Services\NodeDeployment::host();
+    $oldAddressGrant=App\Services\NodeDeployment::create((int)$addressNode->id,(int)$user->id);
+    preg_match('/nd_[a-f0-9]{64}/',$oldAddressGrant['command'],$oldAddressToken);
+    config(['v2board.server_api_url'=>'https://new-node-api.example.test:8443/']);
+    $addressRedeem=fn($secret)=>$call('POST',$root.'/enrollments/redeem',[],['HTTP_AUTHORIZATION'=>'Bearer '.$secret,'HTTP_X_NODE_ID'=>(string)$addressNode->id]);
+    $assert($addressRedeem($oldAddressToken[0])->getStatusCode()===409,'Changing API address rejects stale deployment authorization without rotating credentials');
+    $newAddressGrant=App\Services\NodeDeployment::create((int)$addressNode->id,(int)$user->id);
+    $assert(str_contains($newAddressGrant['command'],"'https://new-node-api.example.test:8443/api/v10/public/node-deployment/bootstrap'") && str_contains($newAddressGrant['command'],"--api-host 'https://new-node-api.example.test:8443'") && !str_contains($newAddressGrant['command'],$oldHost),'Regenerated one-click command uses only the updated API address');
+    preg_match('/nd_[a-f0-9]{64}/',$newAddressGrant['command'],$newAddressToken);
+    $addressResponse=$addressRedeem($newAddressToken[0]);$addressData=json_decode($addressResponse->getContent(),true)['data']??[];
+    $assert($addressResponse->getStatusCode()===200 && ($addressData['apiHost']??'')==='https://new-node-api.example.test:8443','New address deployment authorization redeems successfully with the updated API host');
+    $assert($node->fresh()->getAttributes()===$existingNodeBefore && DB::table('v2_node_credential')->where('node_type','v2box')->where('node_id',$nodeId)->orderBy('id')->get()->toJson()===$existingCredentialsBefore,'Address change and new deployment preserve existing node configuration, certificate and credentials');
+    $assert(DB::table('v2_node_ddns')->orderBy('id')->get()->toJson()===$existingReportsBefore && DB::table('v2_network_server')->orderBy('id')->get()->toJson()===$existingServersBefore,'Address change and new deployment preserve IP report bindings, tokens and server state');
     $auth->removeAllSession();
     echo "PASS: $checks V10 node checks\n";
 } finally {

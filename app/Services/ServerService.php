@@ -106,7 +106,7 @@ class ServerService
             }
             if (!empty($v['service_id'])) continue; // Connections are never deployment targets.
 
-            $apiHost = config('v2board.server_api_url', config('v2board.app_url'));
+            $apiHost = rtrim((string)(config('v2board.server_api_url') ?: config('v2board.app_url')), '/');
             $nodeId = (int) $v['id'];
             $apiHostArg = escapeshellarg((string) $apiHost);
             $scriptUrl = rtrim((string)$apiHost, '/') . '/api/v10/public/node-deployment/bootstrap';

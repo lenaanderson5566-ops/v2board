@@ -432,8 +432,8 @@ it("guides deployment to panel-managed DDNS", async () => {
     expect(screen.queryByRole("heading", { name: "自动 IP 上报" })).toBeNull();
     expect(screen.queryByLabelText("节点概况")).toBeNull();
     expect(screen.queryByRole("button",{name:"一键检查"})).toBeNull();
-    expect(screen.getByRole("button",{name:"新安装"}).compareDocumentPosition(screen.getByLabelText("部署状态")) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
-    expect(screen.getByRole("heading",{name:"安装与重新部署"})).toBeTruthy();
+    expect(screen.getByLabelText("部署状态").compareDocumentPosition(screen.getByRole("button",{name:"安装 / 接入面板"})) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(screen.getByRole("heading",{name:"安装与接入"})).toBeTruthy();
     expect(screen.queryByText(/勿重复生成部署命令/)).toBeNull();
     expect(screen.getByText("运维命令与说明")).toBeTruthy();
     expect(screen.getByText("/usr/local/bin/v2box update")).toBeTruthy();
@@ -581,13 +581,17 @@ it("creates one-use deployment without a password and copies no permanent creden
     fireEvent.click(create);
     expect(await screen.findByLabelText("一键部署命令")).toHaveProperty("value","one-use-command");
     expect(screen.queryByLabelText("部署操作管理员密码")).toBeNull();
+    expect(screen.getByText(/有效至/).textContent).not.toContain("—");
     expect(api.request).toHaveBeenCalledWith(expect.stringContaining("/deployment"),{type:"v2box",id:1});
     fireEvent.click(screen.getByRole("button",{name:"复制部署命令"}));
     await waitFor(()=>expect(writeText).toHaveBeenCalledWith("one-use-command"));
     expect(localStorage.length).toBe(0);
-    fireEvent.click(screen.getByRole("button",{name:"已有节点升级"}));
+    fireEvent.click(screen.getByRole("button",{name:"升级节点程序"}));
     expect((screen.getByLabelText("节点升级命令") as HTMLTextAreaElement).value).toContain("v1.0.11");
     expect(api.request.mock.calls.filter(([path])=>path.endsWith("/deployment"))).toHaveLength(1);
+    expect(screen.getByText(/升级会重启本机运行中的全部 V2Box 节点/)).toBeTruthy();
+    fireEvent.click(screen.getByRole("button",{name:"安装 / 接入面板"}));
+    expect(screen.getByText(/已有兼容的 V2Box 会追加当前面板节点/)).toBeTruthy();
 });
 it("keeps deployment retryable on error and groups credentials in the same drawer", async () => {
     api.request.mockImplementation(async(path:string)=>{if(path.endsWith("/deployment"))throw new Error("授权失败");return {data:{keys:[],legacyEnabled:false}};});
@@ -723,7 +727,7 @@ it("creates a direct node and its domain in one save without a separate server f
     fireEvent.click(screen.getByRole("button",{name:"保存节点配置"}));
     await waitFor(()=>expect(api.request).toHaveBeenCalledWith("test-admin/server/v2box/save",expect.objectContaining({server_port:443,deployment_setup:{credential_id:9,prefix:"jp",family:"ipv4",server_id:null}})));
     expect(api.request.mock.calls.some(([path])=>String(path).endsWith("domains/bind") || String(path).endsWith("network/save"))).toBe(false);
-    await screen.findByText("安装与重新部署");
+    await screen.findByText("安装与接入");
     expect(api.request.mock.calls.some(([path])=>String(path).endsWith("credentials/deployment"))).toBe(false);
 });
 
@@ -755,7 +759,7 @@ it("creates a relay node in one save with separate ingress and origin fields", a
     fireEvent.click(screen.getByRole("button",{name:"保存节点配置"}));
     await waitFor(()=>expect(api.request).toHaveBeenCalledWith("test-admin/server/v2box/save",expect.objectContaining({server_port:443,deployment_setup:{credential_id:9,prefix:"jp",family:"ipv4",server_id:null,entry_id:17,entry_port:8443}})));
     expect(api.request.mock.calls.some(([path])=>String(path).endsWith("domains/bind") || String(path).endsWith("network/save"))).toBe(false);
-    await screen.findByText("安装与重新部署");
+    await screen.findByText("安装与接入");
     expect(api.request.mock.calls.some(([path])=>String(path).endsWith("credentials/deployment"))).toBe(false);
 });
 
@@ -951,7 +955,7 @@ it("uses one node list with line, shared service and deployment sections",async(
     expect(screen.getByText("节点服务：V2Box / sing-box")).toBeTruthy();
     fireEvent.click(screen.getByRole("button",{name:"部署与状态"}));
     expect(screen.queryByRole("button",{name:"一键检查"})).toBeNull();
-    expect(screen.getByRole("button",{name:"新安装"})).toBeTruthy();
+    expect(screen.getByRole("button",{name:"安装 / 接入面板"})).toBeTruthy();
     expect(api.request.mock.calls.some(([path])=>String(path).includes("server/credentials?type=v2box&id=1"))).toBe(true);
     expect(api.request.mock.calls.some(([path])=>String(path).includes("server/credentials?type=v2box&id=2"))).toBe(false);
 });
@@ -1058,7 +1062,7 @@ it("retains manual address input after conflicts and cancellation",async()=>{
 it("opens deployment immediately for a saved manual node without forcing domain configuration",async()=>{
     api.request.mockResolvedValue({data:{keys:[],assignments:[],servers:[]}});
     render(<NodeDeployment node={{type:"v2box",id:7,name:"Manual",_new:true,_domainConfigured:false}} close={()=>{}}/>);
-    expect(await screen.findByText("安装与重新部署")).toBeTruthy();
+    expect(await screen.findByText("安装与接入")).toBeTruthy();
     expect(screen.queryByText("设置节点域名")).toBeNull();
     expect(api.request.mock.calls.some(([path])=>String(path).includes("connections/address"))).toBe(false);
 });
@@ -1216,7 +1220,7 @@ it("keeps integrated deployment navigation flat and credential management reacha
     await screen.findByRole("button",{name:"生成 / 手动轮换密钥"});
     summary.closest("details")!.open=false; fireEvent(summary.closest("details")!,new Event("toggle"));
     expect(screen.queryByRole("button",{name:"一键检查"})).toBeNull();
-    expect(screen.getByRole("button",{name:"新安装"})).toBeTruthy();
+    expect(screen.getByRole("button",{name:"安装 / 接入面板"})).toBeTruthy();
     expect(api.request.mock.calls.some(([,body])=>body && Object.keys(body).length)).toBe(false);
 });
 
@@ -1260,6 +1264,7 @@ it("shows reported agent and core versions independently", async () => {
     expect(await screen.findByText("v1.0.11")).toBeTruthy();
     expect(screen.getByText("v1.14.3")).toBeTruthy();
     expect(screen.getByText("版本上报时间")).toBeTruthy();
+    expect(screen.getByText("版本上报时间").nextElementSibling?.textContent).toContain("2026");
 });
 it("does not infer an old node version from its installation command", async () => {
     api.request.mockResolvedValue({data:{keys:[]}});

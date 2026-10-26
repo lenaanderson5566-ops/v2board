@@ -3,8 +3,9 @@ import { nodeDeploymentStage } from "./node-guidance";
 import { NodeDomainBinding } from "./NodeDomains";
 import { type ReactNode, useEffect, useRef, useState } from "react";
 import "./admin-management.css";
-import { admin, date, query, request, type Row } from "../shared/api";
+import { admin, query, request, type Row } from "../shared/api";
 import { Modal, State, useData } from "../shared/ui";
+import { formatInstant } from "../shared/timezone";
 import { AdminChoiceGroup, AdminTabs } from "./AdminChoices";
 import { NodeCredentials } from "./NodeCredentials";
 import { NodeDnsObservation } from "./NodeDnsObservation";
@@ -196,13 +197,6 @@ export function NodeDeployment({
                     {node.type.toUpperCase()} · 节点 #{node.id} ·{" "}
                     {node.protocol || ""}
                 </p>}
-                {node.type === "v2box" && scope === "service" && tab === "deploy" && (
-                    <section className="node-address-summary" aria-label="节点运行版本"><dl>
-                        <div><dt>V2Box 版本</dt><dd>{runtime.data?.agentVersion || "未上报"}</dd></div>
-                        <div><dt>sing-box 内核</dt><dd>{runtime.data?.coreVersion || "未上报"}</dd></div>
-                        <div><dt>版本上报时间</dt><dd>{runtime.data?.capabilitiesReportedAt ? date(runtime.data.capabilitiesReportedAt) : "—"}</dd></div>
-                    </dl></section>
-                )}
                 <DeploymentSections
                     integrated={!!navigation}
                     label={scope === "connection" ? "节点接入" : "部署与接入"}
@@ -259,128 +253,10 @@ export function NodeDeployment({
                         />
                     ) : (
                         <>
-                            {node.type === "v2box" && (
-                                <div className="admin-deployment-mode">
-                                    <AdminChoiceGroup
-                                        label="部署场景"
-                                        value={mode}
-                                        disabled={busy}
-                                        options={[
-                                            { value: "new", label: "新安装" },
-                                            {
-                                                value: "upgrade",
-                                                label: "已有节点升级",
-                                            },
-                                        ]}
-                                        onChange={(value) => {
-                                            setMode(value);
-                                            setCopied("");
-                                            setError("");
-                                        }}
-                                    />
-                                </div>
-                            )}
-                            {node.type === "v2box" && mode === "new" ? (
-                                <section className="admin-deployment-card">
-                                    <h3>安装与重新部署</h3>
-                                    {binding?.entry_id && (
-                                        <p role="status">
-                                            执行位置：回源服务器（运行代理服务的机器）。请先完成中转服务器的
-                                            IP
-                                            上报，等待入口与回源解析就绪。部署完成后仍需在入口服务器加载转发配置，并通过客户端验证。
-                                        </p>
-                                    )}
-
-                                    <p className="muted">在代理服务器以 root 执行下方命令，自动安装并启动服务。</p>
-                                    <details className="admin-deployment-tools">
-                                        <summary>安装条件与中断恢复</summary>
-                                        <p>自动安装依赖并配置密钥；已绑定域名时同时配置 IP 上报，等待解析生效并验证节点就绪后启用域名。</p>
-                                        <p>自动申请证书请选择 HTTP 或 DNS 申请。HTTP 验证需保持公网 80 端口可达。保留证书及其他节点配置；重新部署会更新当前节点凭据。中断后使用 --resume，授权过期时重新生成部署命令。</p>
-                                    </details>
-                                    <button
-                                        className={deployment ? "" : "primary"}
-                                        disabled={
-                                            busy ||
-                                            report.loading ||
-                                            keys.some(
-                                                (k) => k.status === "retiring",
-                                            )
-                                        }
-                                        onClick={generate}
-                                    >
-                                        {busy
-                                            ? "正在生成…"
-                                            : "生成一键部署命令"}
-                                    </button>
-                                    {deployment && (
-                                        <>
-                                            <p
-                                                role="status"
-                                                className="admin-deployment-expiry"
-                                            >
-                                                有效至{" "}
-                                                {date(deployment.expiresAt)}
-                                                ，仅可使用一次。新命令会使旧命令失效。
-                                            </p>
-                                            <textarea
-                                                className="admin-command-input"
-                                                aria-label="一键部署命令"
-                                                readOnly
-                                                rows={4}
-                                                spellCheck={false}
-                                                value={deployment.command}
-                                            />
-                                            <button
-                                                className="primary"
-                                                onClick={() =>
-                                                    copy(
-                                                        deployment.command,
-                                                        "部署命令已复制",
-                                                    )
-                                                }
-                                            >
-                                                复制部署命令
-                                            </button>
-                                        </>
-                                    )}
-                                    {keys.some(k => k.status === "retiring") && <p role="status">节点凭据正在轮换。请在“高级：节点凭据”完成轮换后生成部署命令。</p>}
-                                    <details className="admin-deployment-tools"><summary>重新部署的影响</summary><p>生成命令不会更换密钥。执行后更新当前节点凭据，旧独立密钥保留 30 分钟宽限，原全局密钥失效。证书及其他节点配置保留。</p></details>
-                                </section>
-                            ) : node.type === "v2box" ? (
-                                <section className="admin-deployment-card">
-                                    <h3>升级现有节点</h3>
-                                    <p>
-                                        保留配置、证书和密钥。运行中的服务升级后重启；已停止的服务保持停止。
-                                    </p>
-                                    <textarea
-                                        className="admin-command-input"
-                                        aria-label="节点升级命令"
-                                        readOnly
-                                        rows={3}
-                                        value={nodeUpgradeCommand(node)}
-                                    />
-                                    <button
-                                        onClick={() =>
-                                            copy(
-                                                nodeUpgradeCommand(node),
-                                                "升级命令已复制",
-                                            )
-                                        }
-                                    >
-                                        复制升级命令
-                                    </button>
-                                </section>
-                            ) : (
-                                <p>
-                                    V2Node 沿用手动部署，请先确认版本支持 Bearer
-                                    独立凭据。
-                                </p>
-                            )}
-                            {copied && <p role="status">{copied}</p>}
-                            {error && <p role="alert">{error}</p>}
                             <section
                                 className="node-deployment-progress"
                                 aria-label="部署状态"
+                                data-ready={stage.target === "runtime" && !runtime.error && !network.error}
                             >
                                 <div>
                                     <strong>
@@ -405,6 +281,15 @@ export function NodeDeployment({
                                         ? "请刷新状态重试，部署命令仍可按原流程生成。"
                                         : stage.description}
                                 </p>
+                                {node.type === "v2box" && scope === "service" && (
+                                    <section className="node-runtime-versions" aria-label="节点运行版本">
+                                        <dl>
+                                            <div><dt>V2Box 版本</dt><dd>{runtime.data?.agentVersion || "未上报"}</dd></div>
+                                            <div><dt>sing-box 内核</dt><dd>{runtime.data?.coreVersion || "未上报"}</dd></div>
+                                            <div><dt>版本上报时间</dt><dd>{runtime.data?.capabilitiesReportedAt ? formatInstant(runtime.data.capabilitiesReportedAt, { timeZoneName: undefined }) : "—"}</dd></div>
+                                        </dl>
+                                    </section>
+                                )}
                                 <State {...report} retry={report.reload}>
                                     <small>
                                         {authenticated
@@ -466,6 +351,126 @@ export function NodeDeployment({
                                     </p>
                                 )}
                             </section>
+                            {node.type === "v2box" && (
+                                <div className="admin-deployment-mode">
+                                    <AdminChoiceGroup
+                                        label="部署场景"
+                                        value={mode}
+                                        disabled={busy}
+                                        options={[
+                                            { value: "new", label: "安装 / 接入面板" },
+                                            {
+                                                value: "upgrade",
+                                                label: "升级节点程序",
+                                            },
+                                        ]}
+                                        onChange={(value) => {
+                                            setMode(value);
+                                            setCopied("");
+                                            setError("");
+                                        }}
+                                    />
+                                </div>
+                            )}
+                            {node.type === "v2box" && mode === "new" ? (
+                                <section className="admin-deployment-card">
+                                    <h3>安装与接入</h3>
+                                    {binding?.entry_id && (
+                                        <p role="status">
+                                            执行位置：回源服务器（运行代理服务的机器）。请先完成中转服务器的
+                                            IP
+                                            上报，等待入口与回源解析就绪。部署完成后仍需在入口服务器加载转发配置，并通过客户端验证。
+                                        </p>
+                                    )}
+
+                                    <p className="muted">在代理服务器以 root 执行。首次使用自动安装；已有兼容的 V2Box 会追加当前面板节点，保留其他面板配置。</p>
+                                    <details className="admin-deployment-tools">
+                                        <summary>安装条件与中断恢复</summary>
+                                        <p>自动安装依赖并配置密钥；已绑定域名时同时配置 IP 上报，等待解析生效并验证节点就绪后启用域名。</p>
+                                        <p>自动申请证书请选择 HTTP 或 DNS 申请。HTTP 验证需保持公网 80 端口可达。保留证书及其他节点配置；重新部署会更新当前节点凭据。中断后使用 --resume，授权过期时重新生成部署命令。</p>
+                                    </details>
+                                    <button
+                                        className={deployment ? "" : "primary"}
+                                        disabled={
+                                            busy ||
+                                            report.loading ||
+                                            keys.some(
+                                                (k) => k.status === "retiring",
+                                            )
+                                        }
+                                        onClick={generate}
+                                    >
+                                        {busy
+                                            ? "正在生成…"
+                                            : "生成一键部署命令"}
+                                    </button>
+                                    {deployment && (
+                                        <>
+                                            <p
+                                                role="status"
+                                                className="admin-deployment-expiry"
+                                            >
+                                                有效至{" "}
+                                                {formatInstant(deployment.expiresAt, { timeZoneName: undefined })}
+                                                ，仅可使用一次。新命令会使旧命令失效。
+                                            </p>
+                                            <textarea
+                                                className="admin-command-input"
+                                                aria-label="一键部署命令"
+                                                readOnly
+                                                rows={3}
+                                                spellCheck={false}
+                                                value={deployment.command}
+                                            />
+                                            <button
+                                                className="primary"
+                                                onClick={() =>
+                                                    copy(
+                                                        deployment.command,
+                                                        "部署命令已复制",
+                                                    )
+                                                }
+                                            >
+                                                复制部署命令
+                                            </button>
+                                        </>
+                                    )}
+                                    {keys.some(k => k.status === "retiring") && <p role="status">节点凭据正在轮换。请在“高级：节点凭据”完成轮换后生成部署命令。</p>}
+                                    <details className="admin-deployment-tools"><summary>重新部署的影响</summary><p>生成命令不会更换密钥。执行后更新当前节点凭据，旧独立密钥保留 30 分钟宽限，原全局密钥失效。证书及其他节点配置保留。</p></details>
+                                </section>
+                            ) : node.type === "v2box" ? (
+                                <section className="admin-deployment-card">
+                                    <h3>升级节点程序</h3>
+                                    <p>
+                                        保留节点配置、证书、密钥和 IP 上报。升级会重启本机运行中的全部 V2Box 节点；已停止的服务保持停止。
+                                    </p>
+                                    <textarea
+                                        className="admin-command-input"
+                                        aria-label="节点升级命令"
+                                        readOnly
+                                        rows={3}
+                                        value={nodeUpgradeCommand(node)}
+                                    />
+                                    <button
+                                        className="primary"
+                                        onClick={() =>
+                                            copy(
+                                                nodeUpgradeCommand(node),
+                                                "升级命令已复制",
+                                            )
+                                        }
+                                    >
+                                        复制升级命令
+                                    </button>
+                                </section>
+                            ) : (
+                                <p>
+                                    V2Node 沿用手动部署，请先确认版本支持 Bearer
+                                    独立凭据。
+                                </p>
+                            )}
+                            {copied && <p role="status">{copied}</p>}
+                            {error && <p role="alert">{error}</p>}
                             {!network.loading && !runtime.loading && !network.error && !runtime.error && <NodeDeploymentProgress binding={binding} network={network.data} runtime={runtime.data} />}
                             <NodeDnsObservation observation={binding?.deployment_dns} />
                             {node.type !== "v2box" && <details className="admin-deployment-tools">
@@ -515,7 +520,7 @@ export function NodeDeployment({
                                             <dt>更新节点</dt>
                                             <dd>
                                                 <code>/usr/local/bin/v2box update</code>
-                                                ：更新至最新正式版，保留配置、证书和未完成部署。旧版本请使用上方“已有节点升级”命令。
+                                                ：更新至最新正式版，保留配置、证书和未完成部署。旧版本请使用上方“升级节点程序”命令。
                                             </dd>
                                             <dt>恢复部署</dt>
                                             <dd>

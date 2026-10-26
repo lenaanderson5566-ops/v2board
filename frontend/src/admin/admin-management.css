@@ -449,3 +449,35 @@ section.node-config-section {padding:16px 24px;}
 .node-config-section > fieldset {min-width:0;border:0;margin:0;padding:0;}
 .node-config-section > legend {font-weight:600;padding:16px 24px 0;}
 @media(max-width:600px){section.node-config-section {padding:12px 16px;}.node-config-section > legend {padding:12px 16px 0;}}
+
+/* Deployment drawer: status first, one spacing rhythm, compact runtime facts. */
+.node-deployment-drawer .admin-deployment { align-content:start; gap:16px; }
+.node-deployment-drawer .node-deployment-section,
+.node-deployment-drawer .admin-workspace-tabs > [role="tabpanel"] { display:grid; gap:16px; min-width:0; }
+.node-deployment-drawer .node-deployment-section > .admin-deployment-mode,
+.node-deployment-drawer .admin-workspace-tabs > [role="tabpanel"] > .admin-deployment-mode { margin:0; }
+.node-deployment-drawer .node-deployment-progress { margin:0; padding:16px; background:var(--bg-soft,#f8fafc); }
+.node-deployment-drawer .node-deployment-progress > div:first-child > strong { display:flex; align-items:center; gap:8px; }
+.node-deployment-drawer .node-deployment-progress[data-ready="true"] > div:first-child > strong::before { content:""; width:8px; height:8px; border-radius:50%; background:var(--success,#15803d); flex-shrink:0; }
+.node-deployment-drawer .node-deployment-progress > p { font-size:13px; color:var(--muted); margin:8px 0 12px; }
+.node-deployment-drawer .node-runtime-versions { padding:12px 0; margin:0 0 10px; border-block:1px solid var(--border); }
+.node-runtime-versions dl { display:grid; grid-template-columns:1fr 1fr 1.4fr; gap:12px; margin:0; }
+.node-runtime-versions dt { font-size:12px; color:var(--muted); }
+.node-runtime-versions dd { margin:4px 0 0; font-size:13px; font-weight:600; overflow-wrap:anywhere; }
+.node-deployment-drawer .node-deployment-progress > button { margin-top:10px; }
+.node-deployment-drawer .admin-deployment-card { margin:0; padding:16px; border-radius:10px; }
+.node-deployment-drawer .admin-deployment-card > p { margin:8px 0 12px; font-size:13px; }
+.node-deployment-drawer .admin-deployment-card textarea.admin-command-input { min-height:76px; margin:12px 0; font-size:12px; line-height:1.65; }
+body[data-console="admin"] .node-deployment-drawer .admin-deployment-tools { margin:0; padding:0; border:0; border-top:1px solid var(--border); border-radius:0; }
+body[data-console="admin"] .node-deployment-drawer .admin-deployment-tools > summary { padding:12px 0; }
+.node-deployment-drawer .admin-deployment-tools > div { padding:0 0 12px; }
+.node-deployment-drawer .admin-deployment-card > .admin-deployment-tools { margin:12px 0; }
+@media(max-width:600px) {
+ .node-deployment-drawer .admin-deployment { gap:12px; }
+ .node-deployment-drawer .node-deployment-section,
+ .node-deployment-drawer .admin-workspace-tabs > [role="tabpanel"] { gap:12px; }
+ .node-runtime-versions dl { grid-template-columns:repeat(2,minmax(0,1fr)); }
+ .node-runtime-versions dl > div:last-child { grid-column:1 / -1; }
+ .node-deployment-drawer .admin-deployment-mode .admin-choice-group { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); }
+ .node-deployment-drawer .admin-deployment-mode button { white-space:normal; min-height:44px; }
+}

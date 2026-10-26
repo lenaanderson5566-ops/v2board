@@ -37,4 +37,10 @@ final class NodeCredentialController extends Controller {
         NodeCredentials::disableLegacy($this->verify($r));
         return response()->json(['data'=>true]);
     }
+    public function migrateApi(Request $r) {
+        $p=$this->identity($r);$actor=$this->verify($r);
+        abort_unless($p['type']==='v2box',422,'地址迁移仅支持 V2Box');
+        $v=$r->validate(['fromApiHost'=>'required|string|max:2048']);
+        return response()->json(['data'=>\App\Services\NodeApiMigration::create((int)$p['id'],$actor,$v['fromApiHost'])],201)->header('Cache-Control','private, no-store');
+    }
 }

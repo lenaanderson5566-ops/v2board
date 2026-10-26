@@ -137,6 +137,11 @@
         "type": "http",
         "scheme": "bearer",
         "description": "24-hour dp_ token restricted to one deployment; revoked by administrator, credential, node or binding changes."
+      },
+      "nodeApiMigrationBearer": {
+        "type": "http",
+        "scheme": "bearer",
+        "description": "One-hour am_ authority bound to the administrator, old/new HTTPS origins and unchanged nodes. Never issues node or reporting keys."
       }
     },
     "headers": {

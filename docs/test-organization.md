@@ -1004,3 +1004,6 @@ V2Box v1.0.10 发布验证：节点脚本 45 项、部署 Python 55 项、启用
 用户前端审查发布前再次验证 tests/update-script.sh：26 个隔离升级场景全部通过；本轮只更新前端、测试及文档，无新增数据库迁移或 PHP 依赖变更。
 
 V2Box v1.0.11 发布联动：同步一键安装、缺失程序恢复、升级命令和前端 IP 上报工具到 v1.0.11；复用既有节点前端 90 项、V2Box shell 集成 81 项、部署 Python 55 项、V10 节点 309 项及 update.sh 26 个隔离场景，前端重新构建。后端验证使用本轮新建的独立 MySQL/Redis 容器和不含生产配置的源码副本。升级脚本夹具读取备份 tar 列表时完整消费输出，避免 grep 提前关闭管道导致 SIGPIPE 假失败。发布包另行验证六架构 SHA-256、安装脚本一致性，以及旧版升级、默认更新、新安装、卸载时配置与证书保留。
+
+
+V2Box 独立后台联调：`tests/v2box.php` 复用受登记的 `tests/support/v2box-panels.py` 作为进程夹具。普通运行保留部署、迁移及回滚单元检查；在 Linux amd64 的一次性容器中开启 `TEST_DISPOSABLE_WORKSPACE=1 V2BOX_BOOTSTRAP_TEST=1 V2BOX_INDEPENDENT_DATABASE_SMOKE=1` 并提供 `V2BOX_NETWORK_SCRIPT` 后，现有 runner 自动创建两个独立 MySQL schema 和两个 HTTPS Laravel 后台，使用校验过摘要的已发布 v1.0.12 程序验证同 ID 多后台一键追加、证书/密钥保留、配置与封禁/离线隔离、IP 上报隔离，以及附加的同后台域名迁移和本机回滚。服务管理器与公共 IP 发现源为夹具，节点进程、TLS 代理流、数据库、后台鉴权和上报接口均真实执行；不访问真实 Cloudflare 或 ACME，不在普通后台环境运行该夹具。私有凭据留在容器内，验证摘要写入忽略的 storage/app/test-organization。测试 runner 保留异常非零退出、每模块独立缓存前缀及临时配置初始化，避免夹具失败被误报为通过。

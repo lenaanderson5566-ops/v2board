@@ -3,6 +3,7 @@
 require __DIR__.'/support/autoload.php';
 $app = require __DIR__.'/../bootstrap/app.php';
 $app->make(Illuminate\Contracts\Console\Kernel::class)->bootstrap();
+set_exception_handler(static function(Throwable $error) { fwrite(STDERR, get_class($error).': '.$error->getMessage().PHP_EOL); exit(1); });
 $manifest = json_decode(file_get_contents(__DIR__.'/suites.json'), true, 512, JSON_THROW_ON_ERROR);
 $manifest['tests'] = array_map(fn($entry) => $entry + ['type'=>'php', 'profile'=>'full'], $manifest['tests']);
 $options = getopt('', ['list', 'validate', 'suite:', 'only:', 'results:']);
@@ -30,6 +31,9 @@ if (!$entries) throw new RuntimeException('No matching tests');
 if (!app()->environment(['local', 'testing']) || getenv('TEST_DISPOSABLE_WORKSPACE') !== '1') {
     throw new RuntimeException('Run in a disposable project copy with TEST_DISPOSABLE_WORKSPACE=1; scripts may modify configuration files');
 }
+foreach (['.env'=>"# Disposable test workspace\n", 'config/v2board.php'=>"<?php return [];\n"] as $path=>$fixture) {
+    if (!is_file(base_path($path))) file_put_contents(base_path($path), $fixture);
+}
 $mysql = config('database.connections.mysql');
 $admin = new PDO('mysql:host='.$mysql['host'].';port='.$mysql['port'].';charset=utf8mb4', $mysql['username'], $mysql['password'], [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]);
 $token = bin2hex(random_bytes(4));
@@ -51,11 +55,12 @@ $run = function(array $command, array $environment) {
 foreach ($entries as $entry) {
     $database = ($entry['profile'] === 'notification' ? 'notification_test_' : ($entry['profile'] === 'mail-install' ? 'notification_install_' : 'commerce_test_')).($entry['profile'] === 'full' ? $token : bin2hex(random_bytes(4)));
     $started = microtime(true);
+    $cacheToken = $token.'_'.str_replace('-', '_', $entry['id']);
     $environment = array_merge(getenv(), [
         'DB_DATABASE'=>$database, 'COMMERCE_TEST_DATABASE'=>$database,
         'NOTIFICATION_TEST_DATABASE'=>$database, 'NOTIFICATION_INSTALL_DATABASE'=>$database,
-        'CACHE_DRIVER'=>'redis', 'CACHE_PREFIX'=>'test_suite_'.$token,
-        'REDIS_DB'=>'14', 'REDIS_CACHE_DB'=>'15', 'REDIS_PREFIX'=>'test_suite_'.$token.':',
+        'CACHE_DRIVER'=>'redis', 'CACHE_PREFIX'=>'test_suite_'.$cacheToken,
+        'REDIS_DB'=>'14', 'REDIS_CACHE_DB'=>'15', 'REDIS_PREFIX'=>'test_suite_'.$cacheToken.':',
         'QUEUE_CONNECTION'=>'sync', 'LOG_CHANNEL'=>'stderr', 'LOG_LEVEL'=>'error',
         'APP_CONFIG_CACHE'=>base_path('bootstrap/cache/test-'.$token.'.php'),
     ]);
@@ -83,7 +88,7 @@ foreach ($entries as $entry) {
             Illuminate\Support\Facades\DB::table('v2_plan')->insert(['name'=>'Test fixture', 'group_id'=>1, 'transfer_enable'=>10, 'month_price'=>1000, 'show'=>1, 'renew'=>1, 'created_at'=>time(), 'updated_at'=>time()]);
         }
         if (in_array($entry['profile'], ['notification', 'mail-install'], true)) unset($environment['COMMERCE_TEST_DATABASE']);
-        $command = $entry['type'] === 'shell' ? ['bash', $entry['file']] : [PHP_BINARY, '-d', 'auto_prepend_file='.$autoloadPath, $entry['type'] === 'phpunit' ? 'vendor/bin/phpunit' : $entry['file']];
+        $command = $entry['type'] === 'shell' ? ['bash', $entry['file']] : [PHP_BINARY, '-d', 'auto_prepend_file='.$autoloadPath, 'tests/support/run-script.php', $entry['type'] === 'phpunit' ? 'vendor/bin/phpunit' : $entry['file']];
         $result = $run(array_merge($command, $entry['args'] ?? []), $environment);
     } catch (Throwable $error) {
         $result = ['exitCode'=>1, 'output'=>get_class($error).': '.$error->getMessage()];

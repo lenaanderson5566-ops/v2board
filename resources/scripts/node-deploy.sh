@@ -11,6 +11,18 @@ umask 077
 install -d -m 755 /etc/v2box
 exec 9>/etc/v2box/.bootstrap.lock
 flock -n 9 || { echo 'Another deployment is running; wait for it to finish.' >&2; exit 1; }
+if [[ "${1:-}" == --migrate-api ]]; then
+  migration_helper=$(mktemp)
+  trap 'rm -f -- "$migration_helper"' EXIT
+  cat > "$migration_helper" <<'V2BOARD_API_MIGRATION_PY'
+__NODE_API_MIGRATION_HELPER__
+V2BOARD_API_MIGRATION_PY
+  install -d -m 755 /usr/local/lib/v2box
+  [[ ! -L /usr/local/lib/v2box/api-migrate.py ]] || { echo 'Refusing symlinked migration helper' >&2; exit 1; }
+  install -m 700 "$migration_helper" /usr/local/lib/v2box/api-migrate.py
+  V2BOX_API_MIGRATION_LOCK_HELD=1 python3 /usr/local/lib/v2box/api-migrate.py "$@"
+  exit
+fi
 if [[ "${1:-}" == --install ]]; then
   shift
   stage=$(mktemp -d)

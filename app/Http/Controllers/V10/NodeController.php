@@ -73,6 +73,7 @@ class NodeController extends Controller {
         ]);
         $transitionAccepted=null;
         if (isset($data['configuration'])) {
+            \App\Services\NodeApiMigration::record($request,(int)$node->id,$data['configuration']);
             \App\Services\NodeRuntimeService::receipt((int)$node->id,$data['configuration']);
             if (in_array('certificate-transition-v1',$data['features'],true) && isset($data['configuration']['transitionId'])) $transitionAccepted=\App\Services\NodeTlsTransition::receipt((int)$node->id,$data['configuration']);
             if (!isset($data['configuration']['transitionId']) && in_array('configuration-receipt-v1',$data['features'],true)) \App\Services\NodeTlsTransition::receipt((int)$node->id,$data['configuration']);

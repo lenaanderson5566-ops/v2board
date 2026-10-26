@@ -8,7 +8,7 @@ use Illuminate\Http\Request;
 final class NodeDeploymentController extends Controller
 {
     public function bootstrap() {
-        $script=str_replace(['__NODE_PREREQUISITES__','__NODE_DEPLOY_HELPER__'],[file_get_contents(resource_path('scripts/node-prerequisites.sh')),file_get_contents(resource_path('scripts/node-deploy.py'))],file_get_contents(resource_path('scripts/node-deploy.sh')));
+        $script=str_replace(['__NODE_PREREQUISITES__','__NODE_DEPLOY_HELPER__','__NODE_API_MIGRATION_HELPER__'],[file_get_contents(resource_path('scripts/node-prerequisites.sh')),file_get_contents(resource_path('scripts/node-deploy.py')),file_get_contents(resource_path('scripts/node-api-migrate.py'))],file_get_contents(resource_path('scripts/node-deploy.sh')));
         return response(str_replace("\r\n","\n",$script),200,
             ['Content-Type'=>'text/x-shellscript; charset=utf-8','Cache-Control'=>'no-store','X-Content-Type-Options'=>'nosniff']);
     }
@@ -17,6 +17,15 @@ final class NodeDeploymentController extends Controller
         abort_unless($request->json()->all()===[],422,'Deployment request body must be empty');
         return response()->json(['data'=>NodeDeployment::redeem((string)$request->bearerToken())])
             ->header('Cache-Control','private, no-store');
+    }
+    public function migrateApi(Request $request) {
+        abort_unless(preg_match('/^am_[a-f0-9]{64}$/D',(string)$request->bearerToken()),401);
+        abort_unless($request->isJson(),415);
+        abort_if(array_diff(array_keys($request->json()->all()),['action','nodeIds','challenge']),422);
+        $v=$request->validate(['action'=>'required|in:probe,start,status','nodeIds'=>'present|array|max:64','nodeIds.*'=>'required|integer|min:1|distinct',
+            'challenge'=>'required_if:action,probe|string|regex:/^[a-f0-9]{64}$/D']);
+        $v['nodeIds']=array_map('intval',$v['nodeIds']);
+        return response()->json(['data'=>\App\Services\NodeApiMigration::progress((string)$request->bearerToken(),$v)])->header('Cache-Control','private, no-store');
     }
     public function progress(Request $request) {
         abort_unless($request->isJson(),415);

@@ -8,6 +8,24 @@ use App\Models\ServerV2box;
 use App\Models\ServerV2node;
 use App\Services\ServerService;
 use App\Utils\CacheKey;
+// Private worker fixture for the opt-in, two-real-database process smoke below.
+if (getenv('V2BOX_INDEPENDENT_PANEL_SEED')==='1') {
+    if (getenv('TEST_DISPOSABLE_WORKSPACE')!=='1' || !str_starts_with(DB::getDatabaseName(),'v2box_multi_')) throw new RuntimeException('Independent panel fixture requires its disposable schema');
+    $label=getenv('V2BOX_PANEL_LABEL');$port=(int)getenv('V2BOX_PANEL_PORT');
+    $group=new App\Models\ServerGroup();$group->name='Independent '.$label;$group->save();
+    $admin=App\Models\User::create(['email'=>'admin-'.$label.'@example.test','password'=>password_hash(bin2hex(random_bytes(16)),PASSWORD_DEFAULT),'uuid'=>App\Utils\Helper::guid(true),'token'=>App\Utils\Helper::guid(),'is_admin'=>1]);
+    $user=App\Models\User::create(['email'=>'proxy-'.$label.'@example.test','password'=>password_hash(bin2hex(random_bytes(16)),PASSWORD_DEFAULT),'uuid'=>App\Utils\Helper::guid(true),'token'=>App\Utils\Helper::guid(),'group_id'=>$group->id,'transfer_enable'=>1073741824,'expired_at'=>time()+86400]);
+    $node=new ServerV2box(['name'=>'Independent '.$label,'group_id'=>[$group->id],'host'=>'node-'.$label.'.example.test','port'=>(string)$port,'server_port'=>$port,'listen_ip'=>'127.0.0.1','protocol'=>'vless','tls'=>$label==='a'?1:0,'network'=>'tcp','rate'=>1,'show'=>1,'disable_sni'=>0,'zero_rtt_handshake'=>0,'up_mbps'=>0,'down_mbps'=>0,'tls_settings'=>$label==='a'?['cert_mode'=>'file','server_name'=>'node-a.example.test','cert_file'=>'/etc/v2box/operator-cert.pem','key_file'=>'/etc/v2box/operator-key.pem']:[]]);
+    $node->id=3;$node->save();
+    DB::table('v2_network_server')->insert(['id'=>7,'name'=>'Physical '.$label,'family'=>'ipv4','enabled'=>true]);
+    $report=App\Services\NetworkServer::credential(7);
+    DB::table('v2_node_ddns')->insert(['credential_id'=>0,'node_type'=>'v2box','node_id'=>3,'domain'=>'node-'.$label.'.example.test','family'=>'ipv4','managed'=>false,'enabled'=>true,'server_id'=>7]);
+    $key=$label==='a'?App\Services\NodeCredentials::issue('v2box',3,(int)$admin->id):null;
+    $grant=$label==='b'?App\Services\NodeDeployment::create(3,(int)$admin->id):null;
+    $data=['origin'=>config('v2board.server_api_url'),'uuid'=>$user->uuid,'userId'=>$user->id,'actorId'=>$admin->id,'nodeId'=>3,'serverId'=>7,'nodeKey'=>$key['secret']??null,'command'=>$grant['command']??null,'report'=>$report,'port'=>$port,'database'=>DB::getDatabaseName()];
+    file_put_contents(getenv('V2BOX_PANEL_PRIVATE'),json_encode($data));chmod(getenv('V2BOX_PANEL_PRIVATE'),0600);
+    echo "Independent panel fixture prepared\n";return;
+}
 config(['v2board.server_token'=>'v2box-local-test']);
 $checks=0;
 $assert = \Tests\Support\Assertions::counter($checks);
@@ -765,6 +783,157 @@ class WorkflowTests(unittest.TestCase):
     def test_port_conflict_never_starts_certificate_request(self):
         with patch.object(m.socket,'socket',side_effect=OSError(m.errno.EADDRINUSE,'in use')):
             with self.assertRaises(m.DeploymentError):m.Deployment.check_http_port(self.deploy)
+class ApiOriginMigrationTest(unittest.TestCase):
+    def setUp(self):
+        spec=importlib.util.spec_from_file_location('api_migration',Path(sys.argv[1]).with_name('node-api-migrate.py'))
+        self.a=importlib.util.module_from_spec(spec);spec.loader.exec_module(self.a)
+        self.temp=tempfile.TemporaryDirectory();self.root=Path(self.temp.name)
+        self.a.ROOT=self.root/'v2box';self.a.NETWORK=self.root/'network';self.a.NETWORK_STATE=self.root/'network-state';self.a.JOURNAL=self.a.ROOT/'api-migration.json'
+        for d in (self.a.ROOT,self.a.NETWORK,self.a.NETWORK_STATE):d.mkdir()
+        self.old='https://old.example.test';self.new='https://new.example.test:8443'
+        self.document={'OperatorSetting':{'keep':True},'Nodes':[{'ApiHost':self.old,'ApiKey':'existing-node-key','NodeID':3,'NodeType':'v2box','ApiVersion':'v10','CertificateDirectory':'/existing/certificates','TrafficSpoolDirectory':str(self.root/'traffic')},{'ApiHost':'https://another.example.test','ApiKey':'another-key','NodeID':3,'NodeType':'v2box','CertificateDirectory':'/another/certificates'}]}
+        self.a.private(self.a.ROOT/'config.json',json.dumps(self.document).encode())
+        self.before=(self.a.ROOT/'config.json').read_bytes()
+        self.old_spool=self.root/'traffic'/self.a.hashlib.sha256((self.old+':3').encode()).hexdigest();self.old_spool.mkdir(parents=True)
+        (self.old_spool/'pending.json').write_text('pending-traffic-batch')
+        self.requests=[]
+        def request(url,token,body=None,node_id=None):
+            self.requests.append((url,token,body,node_id))
+            if node_id is not None:return {'protocol':'vless','listenPort':443}
+            if body['action']=='probe':return {'fromApiHost':self.old,'toApiHost':self.new,'nodeIds':[3],'proof':'same-backend-proof'}
+            return {'ready':body['action']=='status','failed':False}
+        self.request=patch.object(self.a,'request',side_effect=request);self.request.start();self.addCleanup(self.request.stop)
+        self.state=patch.object(self.a,'service_state',return_value=False);self.state_mock=self.state.start();self.addCleanup(self.state.stop)
+        self.reload=patch.object(self.a,'reload_service');self.reload_mock=self.reload.start();self.addCleanup(self.reload.stop)
+        self.addCleanup(self.temp.cleanup)
+    def migration(self):return self.a.Migration(self.old,self.new,'am_'+'a'*64,3)
+    def test_stopped_migration_preserves_key_certificate_other_panel_and_pending_traffic(self):
+        self.migration().run()
+        after=json.loads((self.a.ROOT/'config.json').read_text())
+        self.assertEqual(after['Nodes'][0],dict(self.document['Nodes'][0],ApiHost=self.new))
+        self.assertEqual(after['Nodes'][1],self.document['Nodes'][1]);self.assertEqual(after['OperatorSetting'],self.document['OperatorSetting'])
+        new_spool=self.root/'traffic'/self.a.hashlib.sha256((self.new+':3').encode()).hexdigest()
+        self.assertEqual((new_spool/'pending.json').read_text(),'pending-traffic-batch')
+        self.reload_mock.assert_not_called();self.assertEqual(self.a.JOURNAL.stat().st_mode&0o777,0o600)
+        self.a.rollback(self.a.read(self.a.JOURNAL))
+        self.assertEqual((self.a.ROOT/'config.json').read_bytes(),self.before)
+        self.assertFalse(new_spool.is_symlink());self.assertTrue((self.old_spool/'pending.json').exists())
+    def test_default_certificate_namespace_is_pinned_to_old_origin(self):
+        self.document['Nodes'][0].pop('CertificateDirectory')
+        self.a.private(self.a.ROOT/'config.json',json.dumps(self.document).encode());self.migration().run()
+        node=self.a.read(self.a.ROOT/'config.json')['Nodes'][0]
+        self.assertIn(self.a.hashlib.sha256(self.old.encode()).hexdigest()[:16],node['CertificateDirectory'])
+    def test_completed_command_is_idempotent_without_reusing_authority(self):
+        self.migration().run();calls=len(self.requests);before=(self.a.ROOT/'config.json').read_bytes()
+        self.migration().run()
+        self.assertEqual(len(self.requests),calls);self.assertEqual((self.a.ROOT/'config.json').read_bytes(),before)
+    def test_default_https_port_and_unrelated_panel_path_are_preserved(self):
+        self.assertEqual(self.a.origin('https://OLD.example.test:443/'),self.old)
+        self.document['Nodes'][1]['ApiHost']='https://another.example.test/panel'
+        self.a.private(self.a.ROOT/'config.json',json.dumps(self.document).encode());self.migration().run()
+        self.assertEqual(self.a.read(self.a.ROOT/'config.json')['Nodes'][1],self.document['Nodes'][1])
+    def test_wrong_backend_proof_never_receives_existing_node_key(self):
+        original=self.a.request
+        def wrong(url,*args,**kwargs):
+            result=original(url,*args,**kwargs)
+            return dict(result,proof='wrong-backend') if url.startswith(self.new) else result
+        with patch.object(self.a,'request',side_effect=wrong):
+            with self.assertRaises(self.a.MigrationError):self.migration().run()
+        self.assertFalse(any(item[3] is not None for item in self.requests))
+        self.assertEqual((self.a.ROOT/'config.json').read_bytes(),self.before)
+    def test_duplicate_destination_preserves_both_panels(self):
+        self.document['Nodes'].append(dict(self.document['Nodes'][0],ApiHost=self.new))
+        self.a.private(self.a.ROOT/'config.json',json.dumps(self.document).encode());before=(self.a.ROOT/'config.json').read_bytes()
+        with self.assertRaises(self.a.MigrationError):self.migration().run()
+        self.assertEqual((self.a.ROOT/'config.json').read_bytes(),before)
+    def test_interrupted_partial_write_rolls_back_from_private_journal(self):
+        migration=self.migration();migration.prepare()
+        journal={'files':migration.files,'active':False,'nodeIds':[3],'status':'prepared'}
+        self.a.private(self.a.JOURNAL,json.dumps(journal).encode())
+        self.a.install(migration.files[0],'after')
+        self.a.rollback(self.a.read(self.a.JOURNAL))
+        self.assertEqual((self.a.ROOT/'config.json').read_bytes(),self.before)
+    def test_rollback_conflict_preserves_later_operator_edit(self):
+        self.migration().run();journal=self.a.read(self.a.JOURNAL)
+        changed=json.loads((self.a.ROOT/'config.json').read_text());changed['operator']='later-edit'
+        self.a.private(self.a.ROOT/'config.json',json.dumps(changed).encode())
+        with self.assertRaisesRegex(self.a.MigrationError,'Rollback conflict'):self.a.rollback(journal)
+        self.assertEqual(self.a.read(self.a.ROOT/'config.json'),changed)
+    @unittest.skipUnless(os.environ.get('V2BOX_NETWORK_SCRIPT'),'real network helper required')
+    def test_reporting_targets_tokens_backoff_and_identity_migrate_and_rollback(self):
+        spec=importlib.util.spec_from_file_location('migration_network',os.environ['V2BOX_NETWORK_SCRIPT']);network=importlib.util.module_from_spec(spec);spec.loader.exec_module(network)
+        old={'mode':'panel','panel_url':self.old,'token':'c'*64,'family':'ipv4','server_id':7}
+        other={'mode':'panel','panel_url':'https://another.example.test','token':'d'*64,'family':'dual','server_id':7}
+        dns={'zone_id':'a'*32,'domain':'direct.example.test','token':'dns-token','family':'ipv4'}
+        config={'mode':'multi','targets':[old,other,dns]};state={'targets':{network.target_key(old):{'paused':True,'next_run':123},network.target_key(other):{'paused':True,'next_run':456}}}
+        self.a.private(self.a.NETWORK/'cloudflare.json',json.dumps(config).encode());self.a.private(self.a.NETWORK_STATE/'state.json',json.dumps(state).encode())
+        old_identity=self.a.NETWORK/'identities'/(self.a.hashlib.sha256(self.old.encode()).hexdigest()[:24]+'.json')
+        self.a.private(old_identity,json.dumps({'panelUrl':self.old,'serverId':7}).encode())
+        self.a.private(self.a.NETWORK/'server-identity',(self.old+'/7\n').encode())
+        before={p:p.read_bytes() for p in (self.a.NETWORK/'cloudflare.json',self.a.NETWORK_STATE/'state.json',old_identity,self.a.NETWORK/'server-identity')}
+        migration=self.migration();migration.network=network
+        with patch.object(network,'report') as report:
+            migration.run()
+            migrated=self.a.read(self.a.NETWORK/'cloudflare.json')['targets']
+            self.assertEqual(migrated,[dict(old,panel_url=self.new),other,dns]);report.assert_called_once()
+            migrated_state=self.a.read(self.a.NETWORK_STATE/'state.json')['targets']
+            self.assertEqual(migrated_state[network.target_key(other)],state['targets'][network.target_key(other)])
+            self.assertNotIn('next_run',migrated_state[network.target_key(migrated[0])])
+            self.assertNotIn('paused',migrated_state[network.target_key(migrated[0])])
+            self.assertEqual((self.a.NETWORK/'server-identity').read_text(),self.new+'/7\n')
+            self.a.rollback(self.a.read(self.a.JOURNAL))
+        for path,raw in before.items():self.assertEqual(path.read_bytes(),raw)
+    @unittest.skipUnless(os.environ.get('V2BOX_NETWORK_SCRIPT'),'real network helper required')
+    def test_independent_report_server_migrates_without_node_configuration_or_service(self):
+        spec=importlib.util.spec_from_file_location('report_only_network',os.environ['V2BOX_NETWORK_SCRIPT']);network=importlib.util.module_from_spec(spec);spec.loader.exec_module(network)
+        (self.a.ROOT/'config.json').unlink()
+        old={'mode':'panel','panel_url':self.old,'token':'c'*64,'family':'ipv4','server_id':7}
+        self.a.private(self.a.NETWORK/'cloudflare.json',json.dumps(old).encode())
+        migration=self.a.Migration(self.old,self.new,'am_'+'a'*64,None,7);migration.network=network
+        def probe(url,token,body=None,**kwargs):return {'fromApiHost':self.old,'toApiHost':self.new,'nodeIds':[],'serverId':7,'proof':'same-backend-proof'}
+        with patch.object(self.a,'request',side_effect=probe),patch.object(network,'report') as report:
+            migration.run()
+        self.assertEqual(self.a.read(self.a.NETWORK/'cloudflare.json'),dict(old,panel_url=self.new))
+        self.assertFalse((self.a.ROOT/'config.json').exists());report.assert_called_once();self.state_mock.assert_not_called()
+        self.reload_mock.assert_not_called()
+    @unittest.skipUnless(os.environ.get('V2BOX_NETWORK_SCRIPT'),'real network helper required')
+    def test_ip_report_failure_restores_nodes_reporting_token_and_address(self):
+        spec=importlib.util.spec_from_file_location('failed_report_network',os.environ['V2BOX_NETWORK_SCRIPT']);network=importlib.util.module_from_spec(spec);spec.loader.exec_module(network)
+        old={'mode':'panel','panel_url':self.old,'token':'c'*64,'family':'ipv4','server_id':7}
+        self.a.private(self.a.NETWORK/'cloudflare.json',json.dumps(old).encode());before=(self.a.NETWORK/'cloudflare.json').read_bytes()
+        migration=self.migration();migration.network=network
+        with patch.object(network,'report',side_effect=network.NetworkError('report rejected')):
+            with self.assertRaises(network.NetworkError):migration.run()
+        self.assertEqual((self.a.ROOT/'config.json').read_bytes(),self.before)
+        self.assertEqual((self.a.NETWORK/'cloudflare.json').read_bytes(),before)
+        self.assertEqual(self.a.read(self.a.JOURNAL)['status'],'rolledBack')
+    def test_reload_failure_automatically_restores_original_configuration(self):
+        with patch.object(self.a,'service_state',return_value=True),patch.object(self.a.subprocess,'run',return_value=subprocess.CompletedProcess([],0,'{"features":["multi-panel-v1","reload-signal-v1"]}','')),patch.object(self.a,'reload_service',side_effect=[self.a.MigrationError('reload failed'),None]):
+            with self.assertRaisesRegex(self.a.MigrationError,'reload failed'):self.migration().run()
+        self.assertEqual((self.a.ROOT/'config.json').read_bytes(),self.before)
+        self.assertEqual(self.a.read(self.a.JOURNAL)['status'],'rolledBack')
+    def test_failed_new_origin_receipt_rolls_back_without_restart(self):
+        original=self.a.request
+        def failed(url,token,body=None,**kwargs):
+            return {'ready':False,'failed':True} if body and body['action']=='status' else original(url,token,body,**kwargs)
+        with patch.object(self.a,'service_state',return_value=True),patch.object(self.a.subprocess,'run',return_value=subprocess.CompletedProcess([],0,'{"features":["multi-panel-v1","reload-signal-v1"]}','')),patch.object(self.a,'request',side_effect=failed):
+            with self.assertRaisesRegex(self.a.MigrationError,'rejected'):self.migration().run()
+        self.assertEqual(self.reload_mock.call_count,2);self.assertEqual((self.a.ROOT/'config.json').read_bytes(),self.before)
+    def test_missing_new_origin_receipt_times_out_and_restores_original_files(self):
+        with patch.object(self.a,'service_state',return_value=True),patch.object(self.a.subprocess,'run',return_value=subprocess.CompletedProcess([],0,'{"features":["multi-panel-v1","reload-signal-v1"]}','')),patch.object(self.a.time,'monotonic',side_effect=[0,181]):
+            with self.assertRaisesRegex(self.a.MigrationError,'timed out'):self.migration().run()
+        self.assertEqual((self.a.ROOT/'config.json').read_bytes(),self.before);self.assertEqual(self.reload_mock.call_count,2)
+    def test_rollback_reload_failure_is_retained_as_needing_recovery(self):
+        self.migration().run();journal=self.a.read(self.a.JOURNAL);journal['active']=True
+        with patch.object(self.a,'reload_service',side_effect=subprocess.CalledProcessError(1,['v2box','reload'])):
+            with self.assertRaisesRegex(self.a.MigrationError,'Original files restored'):self.a.rollback(journal)
+        self.assertEqual((self.a.ROOT/'config.json').read_bytes(),self.before)
+        self.assertEqual(self.a.read(self.a.JOURNAL)['status'],'rollbackNeedsReload')
+    def test_symlinked_node_configuration_is_rejected_without_mutation(self):
+        config=self.a.ROOT/'config.json';target=self.root/'original-config';config.rename(target);config.symlink_to(target)
+        with self.assertRaises(self.a.MigrationError):self.migration().run()
+        self.assertEqual(target.read_bytes(),self.before)
+
 unittest.main(argv=['deployment-tests'])
 PY;
         $pipes=[];$process=proc_open(['python3','-',resource_path('scripts/node-deploy.py')],[['pipe','r'],['pipe','w'],['pipe','w']],$pipes);
@@ -776,4 +945,31 @@ PY;
 } finally {
     DB::rollBack();
     foreach ($cacheKeys as $key) Cache::forget($key);
+}
+if (getenv('V2BOX_INDEPENDENT_DATABASE_SMOKE')==='1') {
+    if (PHP_OS_FAMILY!=='Linux' || getenv('TEST_DISPOSABLE_WORKSPACE')!=='1' || !str_starts_with(DB::getDatabaseName(),'commerce_test_')) throw new RuntimeException('Real multi-panel smoke requires the disposable Linux runner');
+    $fixture='/tmp/v2box-independent-'.bin2hex(random_bytes(6));mkdir($fixture,0700);
+    $schemas=[];$panels=[];$source=DB::getDatabaseName();
+    try {
+        foreach(['a','b'] as $offset=>$label) {
+            $database='v2box_multi_'.$label.'_'.bin2hex(random_bytes(4));$schemas[]=$database;
+            DB::statement('CREATE DATABASE `'.$database.'` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci');
+            foreach(DB::select('SHOW TABLES') as $table) {$name=array_values((array)$table)[0];if(!preg_match('/^[a-zA-Z0-9_]+$/',$name))throw new RuntimeException('Unexpected fixture table');DB::statement('CREATE TABLE `'.$database.'`.`'.$name.'` LIKE `'.$source.'`.`'.$name.'`');}
+            $directory=$fixture.'/panel-'.$label;mkdir($directory,0700);
+            $copy='tar --exclude=vendor --exclude=frontend/node_modules --exclude=bootstrap/cache --exclude=storage -cf - . | tar -xf - -C '.escapeshellarg($directory);
+            $p=proc_open(['bash','-o','pipefail','-c',$copy],[['file','/dev/null','r'],['file','/dev/null','w'],['file','/dev/null','w']],$pipes,base_path());
+            if(proc_close($p)!==0)throw new RuntimeException('Could not copy independent panel fixture');
+            symlink(base_path('vendor'),$directory.'/vendor');
+            foreach(['storage/app','storage/logs','storage/framework/cache/data','storage/framework/views','storage/framework/sessions','bootstrap/cache'] as $sub)mkdir($directory.'/'.$sub,0700,true);
+            $origin='https://panel-'.$label.'.test:'.(9443+$offset);$port=38081+$offset;
+            $config=['app_url'=>$origin,'server_api_url'=>$origin,'server_token'=>bin2hex(random_bytes(32)),'secure_path'=>'admin','server_pull_interval'=>1,'server_push_interval'=>1];
+            file_put_contents($directory.'/config/v2board.php','<?php return '.var_export($config,true).';');
+            $environment=array_merge(getenv(),['DB_DATABASE'=>$database,'APP_KEY'=>'base64:'.base64_encode(random_bytes(32)),'APP_CONFIG_CACHE'=>$directory.'/bootstrap/cache/independent.php','CACHE_PREFIX'=>'independent_'.$label,'REDIS_PREFIX'=>'independent_'.$label.':','REDIS_DB'=>'8','REDIS_CACHE_DB'=>'9','V2BOX_INDEPENDENT_PANEL_SEED'=>'1','V2BOX_PANEL_LABEL'=>$label,'V2BOX_PANEL_PORT'=>(string)$port,'V2BOX_PANEL_PRIVATE'=>$directory.'/private.json']);
+            $p=proc_open([PHP_BINARY,'tests/support/run-script.php','tests/v2box.php'],[['file','/dev/null','r'],['pipe','w'],['redirect',1]],$pipes,$directory,$environment);$output=stream_get_contents($pipes[1]);fclose($pipes[1]);if(proc_close($p)!==0 || !is_file($directory.'/private.json'))throw new RuntimeException('Independent panel seed failed: '.explode('(Connection:',strtok($output,"\n"))[0]);
+            $panels[]=array_merge(json_decode(file_get_contents($directory.'/private.json'),true),['root'=>$directory,'environment'=>$environment,'httpPort'=>8081+$offset]);
+        }
+        $manifest=$fixture.'/private.json';file_put_contents($manifest,json_encode(['panels'=>$panels,'root'=>$fixture]));chmod($manifest,0600);
+        $p=proc_open(['python3',base_path('tests/support/v2box-panels.py'),$manifest],[['file','/dev/null','r'],['pipe','w'],['redirect',1]],$pipes,base_path());$output=stream_get_contents($pipes[1]);fclose($pipes[1]);$exit=proc_close($p);
+        $assert($exit===0,'Independent-database V2Box process smoke: '.$output);echo $output;
+    } finally {foreach($schemas as $database)DB::statement('DROP DATABASE IF EXISTS `'.$database.'`');}
 }

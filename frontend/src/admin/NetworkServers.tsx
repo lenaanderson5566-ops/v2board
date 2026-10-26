@@ -1,4 +1,5 @@
 import { AdminRowMenu } from "./AdminRowMenu";
+import { NodeApiMigration } from "./NodeApiMigration";
 import { ServerForwarding, serverPurpose } from "./ServerForwarding";
 import {
     ServerTrafficFields,
@@ -603,6 +604,7 @@ export function NetworkServers({
                                 >
                                     配置服务器上报
                                 </button>
+                                <NodeApiMigration serverId={Number(editing.id)} />
                                 <details>
                                     <summary>凭据维护</summary>
                                     <p className="muted">

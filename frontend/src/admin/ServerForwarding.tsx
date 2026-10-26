@@ -73,9 +73,7 @@ export function serverForwardingRows(serverId: number, data: Row): Row[] {
                 (a.entry_id &&
                     Number(a.published_port) !== Number(a.entry_port))
                     ? "有待启用变更"
-                    : a.relay_verified_at
-                      ? "管理员已确认转发测试"
-                      : "待配置入口转发并完成连接测试",
+                    : "连接地址已生效，请自行测试转发",
         });
     }
     return result;

@@ -650,8 +650,8 @@ try {
     $assert($relay->fresh()->host===$entry->domain && (int)$relay->fresh()->port===8443 && $relay->fresh()->server_port===9443 && $relay->fresh()->tls_settings['server_name']==='old-cert.example.test','entry port and TLS identity published without changing origin listener');
     $a=DB::table('v2_node_ddns')->find($rid);
     $assert(!$a->relay_verified_at && $a->domain==='origin-a.example.test','origin readiness never falsely confirms end-to-end relay connectivity');
-    $net->confirmRelay($req(['id'=>$rid,'confirm'=>true]));
-    $assert(DB::table('v2_node_ddns')->find($rid)->relay_verified_at>0,'explicit administrator confirmation recorded separately');
+    $emptyCleanup=json_decode($net->originCleanupPreview($req(['id'=>$rid]))->getContent(),true)['data'];
+    $assert($emptyCleanup['rows']===[] && !DB::table('v2_node_ddns')->find($rid)->relay_verified_at,'ready relay does not require a manual forwarding confirmation');
     $call($entryToken,['ipv4'=>'9.9.9.9']);
     $assert(!DB::table('v2_node_ddns')->find($rid)->relay_verified_at && DB::table('v2_node_ddns')->find($rid)->ipv4==='8.8.8.8','changed ingress IP resets relay confirmation without modifying origin IP');
     $net->save($req(['id'=>$ingress,'name'=>'Shared ingress','family'=>'ipv4','enabled'=>false]));
@@ -669,13 +669,43 @@ try {
     $assert($enrolled['purpose']==='server' && $enrolled['serverId']===$ingress && !isset($enrolled['apiKey']) && $enrolled['networkReport']['token']===$entryToken,'server-only enrollment neither issues node keys nor rotates a shared reporter');
     $reject(fn()=>App\Services\NodeDeployment::redeem($m[0]),401);
     $assert(!str_contains(json_encode($admin->fetch()),$entryToken) && !str_contains(json_encode($admin->fetch()),'test-only-acme'),'server and certificate credentials never appear in administrative lists');
-    // A changed origin remains protected until the administrator confirms the forwarding change.
+    // Origin cleanup is independent from service readiness and requires an exact preview.
     $call($entryToken,['ipv4'=>'1.1.1.1']);DB::table('v2_node_ddns')->where('id',$eid)->update(['next_run'=>0]);$service->sync($eid);
     $oldOriginRecord=DB::table('v2_node_dns_record')->where('assignment_id',$rid)->where('domain','origin-a.example.test')->first();
     $domains->bind($req(array_replace($args,['prefix'=>'origin-new'])));$service->sync($rid);
     $assert(DB::table('v2_node_dns_record')->find($oldOriginRecord->id)->delete_after===0 && App\Services\NodeDnsLifecycle::inUse('origin-a.example.test'),'editing origin preserves published forwarding destination');
-    $net->confirmRelay($req(['id'=>$rid,'confirm'=>true]));
-    $assert(DB::table('v2_node_ddns')->find($rid)->published_origin==='origin-new.example.test' && DB::table('v2_node_dns_record')->find($oldOriginRecord->id)->delete_after>=time()+86390,'confirmed forwarding change retires old origin with grace period');
+    $cleanupPreview=fn()=>json_decode($net->originCleanupPreview($req(['id'=>$rid]))->getContent(),true)['data'];
+    $plan=$cleanupPreview();
+    $assert(count($plan['rows'])===1 && $plan['rows'][0]['domain']==='origin-a.example.test' && $plan['rows'][0]['action']==='schedule','preview identifies only the old origin record');
+    $assert(DB::table('v2_node_dns_record')->find($oldOriginRecord->id)->delete_after===0,'preview cannot schedule deletion');
+    $reject(fn()=>$net->cleanupOrigin($req(['id'=>$rid,'confirm'=>true])),422);
+    $reject(fn()=>$net->cleanupOrigin($req(['id'=>$rid,'proof'=>str_repeat('0',64),'confirm'=>true])),409);
+    DB::table('v2_node_dns_record')->where('id',$oldOriginRecord->id)->update(['content'=>'9.9.9.9']);
+    $reject(fn()=>$net->cleanupOrigin($req(['id'=>$rid,'proof'=>$plan['proof'],'confirm'=>true])),409);
+    DB::table('v2_node_dns_record')->where('id',$oldOriginRecord->id)->update(['content'=>$oldOriginRecord->content]);
+    $plan=$cleanupPreview();Illuminate\Support\Facades\Cache::forget('origin-cleanup-preview:'.$plan['proof']);
+    $reject(fn()=>$net->cleanupOrigin($req(['id'=>$rid,'proof'=>$plan['proof'],'confirm'=>true])),409);
+    $otherOrigin=DB::table('v2_node_ddns')->find($rid2)->published_origin;
+    DB::table('v2_node_ddns')->where('id',$rid2)->update(['published_origin'=>'origin-a.example.test']);
+    $blocked=$cleanupPreview();
+    $assert($blocked['rows'][0]['action']==='blocked','another binding protects its forwarding origin');
+    $reject(fn()=>$net->cleanupOrigin($req(['id'=>$rid,'proof'=>$blocked['proof'],'confirm'=>true])),409);
+    DB::table('v2_node_ddns')->where('id',$rid2)->update(['published_origin'=>$otherOrigin]);
+    $originalTls=$relay2->fresh()->tls_settings;$relay2->tls_settings=['server_name'=>'origin-a.example.test','cert_mode'=>'self'];$relay2->save();
+    $assert($cleanupPreview()['rows'][0]['action']==='blocked','certificate references cannot be scheduled for cleanup');
+    $relay2->tls_settings=$originalTls;$relay2->save();
+    $plan=$cleanupPreview();
+    $result=$net->cleanupOrigin($req(['id'=>$rid,'proof'=>$plan['proof'],'confirm'=>true]))['data'];
+    $assert($result['scheduled']===1 && DB::table('v2_node_ddns')->find($rid)->published_origin==='origin-new.example.test' && DB::table('v2_node_dns_record')->find($oldOriginRecord->id)->delete_after>=time()+86390,'explicit cleanup retains the 24 hour grace period');
+    $assert(!DB::table('v2_node_ddns')->find($rid)->relay_verified_at && $relay->fresh()->tls_settings['server_name']==='old-cert.example.test','cleanup neither claims relay verification nor changes certificate identity');
+    $reject(fn()=>$net->cleanupOrigin($req(['id'=>$rid,'proof'=>$plan['proof'],'confirm'=>true])),409);
+    $cleanupRoute=substr($serverRoute,0,-strlen('enroll')).'origin-cleanup';
+    foreach(['GET','POST'] as $method) {
+        $response=$kernel->handle(Request::create($cleanupRoute.'?id='.$rid,$method,[],[],[],['HTTP_ACCEPT'=>'application/json']));
+        $assert($response->getStatusCode()===403,'origin cleanup requires an administrator');
+    }
+    $retired=$kernel->handle(Request::create(substr($serverRoute,0,-strlen('enroll')).'confirm-relay','POST',[],[],[],['HTTP_ACCEPT'=>'application/json','HTTP_AUTHORIZATION'=>$auth]));
+    $assert($retired->getStatusCode()===404,'manual relay confirmation route stays retired');
     $directArgs=array_replace($args,['prefix'=>'origin-new','entry_id'=>null,'entry_port'=>null]);
     $domains->bind($req($directArgs));$service->sync($rid);$domains->activate($req(['id'=>$rid,'confirm'=>true]));
     $direct=App\Services\Actions\NodeV10Config::build($relay->fresh());

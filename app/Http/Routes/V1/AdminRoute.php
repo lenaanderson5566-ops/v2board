@@ -98,7 +98,8 @@ class AdminRoute
             $router->post('/server/network/reset', 'V1\\Admin\\NetworkServerController@reset');
             $router->post('/server/network/entry', 'V1\\Admin\\NetworkServerController@entry');
             $router->post('/server/network/entry-drop', 'V1\\Admin\\NetworkServerController@dropEntry');
-            $router->post('/server/network/confirm-relay', 'V1\\Admin\\NetworkServerController@confirmRelay');
+            $router->get('/server/network/origin-cleanup', 'V1\\Admin\\NetworkServerController@originCleanupPreview');
+            $router->post('/server/network/origin-cleanup', 'V1\\Admin\\NetworkServerController@cleanupOrigin');
             $router->get('/server/ddns/events', 'V1\\Admin\\NodeDdnsController@events');
             $router->post('/server/ddns/credentials/save', 'V1\\Admin\\NodeDdnsController@saveCredential');
             $router->post('/server/ddns/credentials/drop', 'V1\\Admin\\NodeDdnsController@dropCredential');

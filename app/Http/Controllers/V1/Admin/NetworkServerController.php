@@ -81,14 +81,12 @@ final class NetworkServerController extends Controller {
         abort_unless(DB::table('v2_node_ddns')->where('id',$v['id'])->where('purpose','entry')->exists(),404);
         return app(NodeDdnsController::class)->dropAssignment($request);
     }
-    public function confirmRelay(Request $request) {
-        $v=$request->validate(['id'=>'required|integer|min:1','confirm'=>'required|accepted']);
-        return NodeDnsLifecycle::locked(function()use($v){
-            $a=DB::table('v2_node_ddns')->find($v['id']);
-            abort_unless($a && $a->entry_id && NetworkServer::ready($a) && NetworkServer::ready(NetworkServer::target($a)) && $a->published_domain===NetworkServer::target($a)->domain && (int)$a->published_port===(int)$a->entry_port && $a->tls_transition_state!=='pending',409,'请先完成域名与节点证书验证');
-            DB::table('v2_node_ddns')->where('id',$a->id)->update(['relay_verified_at'=>time(),'published_origin'=>$a->domain]);
-            DB::table('v2_node_dns_record')->where('assignment_id',$a->id)->where('domain','!=',$a->domain)->where('delete_after',0)->update(['delete_after'=>time()+86400,'next_run'=>0,'status'=>'pending_cleanup']);
-            return ['data'=>true];
-        });
+    public function originCleanupPreview(Request $request) {
+        $v=$request->validate(['id'=>'required|integer|min:1']);
+        return response()->json(['data'=>NodeDnsLifecycle::previewOriginCleanup($v['id'])],200,['Cache-Control'=>'private, no-store']);
+    }
+    public function cleanupOrigin(Request $request) {
+        $v=$request->validate(['id'=>'required|integer|min:1','proof'=>'required|string|size:64','confirm'=>'required|accepted']);
+        return ['data'=>NodeDnsLifecycle::scheduleOriginCleanup($v['id'],$v['proof'])];
     }
 }

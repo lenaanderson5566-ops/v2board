@@ -36,12 +36,15 @@ final class NodeDnsLifecycle
         DB::table('v2_node_dns_record')->where('delete_after',0)->whereNotIn('assignment_id',DB::table('v2_node_ddns')->select('id'))
             ->update(['delete_after'=>time()+1,'next_run'=>0,'status'=>'pending_cleanup']);
     }
-    public static function inUse(string $domain): bool {
+    public static function inUse(string $domain, ?int $ignorePublishedOrigin = null): bool {
         if (NodeConnection::inUse($domain)) return true;
         foreach (['v2node','v2box'] as $type) {
             if (DB::table('v2_server_'.$type)->where(fn($q)=>$q->where('host',$domain)->orWhere('tls_settings->server_name',$domain))->exists()) return true;
         }
-        return DB::table('v2_node_ddns')->where('domain',$domain)->orWhere('published_origin',$domain)->exists();
+        return DB::table('v2_node_ddns')->where('domain',$domain)->orWhere(function($q)use($domain,$ignorePublishedOrigin){
+            $q->where('published_origin',$domain);
+            if($ignorePublishedOrigin!==null) $q->where('id','!=',$ignorePublishedOrigin);
+        })->exists();
     }
     private function ensure($c,$a,string $type,string $ip): void {
         $r=DB::table('v2_node_dns_record')->where('credential_id',$c->id)->where('domain',$a->domain)->where('type',$type)->first();
@@ -131,10 +134,46 @@ final class NodeDnsLifecycle
                 }
                 DB::table($table)->where('id',$n->id)->update($update);
             }
-            DB::table('v2_node_dns_record')->where('assignment_id',$id)->where('delete_after',0)->where('domain','!=',$a->domain)->when($a->entry_id && $a->published_origin,fn($q)=>$q->where('domain','!=',$a->published_origin))->update(['delete_after'=>time()+86400,'next_run'=>0,'status'=>'pending_cleanup']);
+            // Relay origin records are retired only through an explicit cleanup preview.
+            if (!$a->entry_id) DB::table('v2_node_dns_record')->where('assignment_id',$id)->where('delete_after',0)->where('domain','!=',$a->domain)->update(['delete_after'=>time()+86400,'next_run'=>0,'status'=>'pending_cleanup']);
             DB::table('v2_node_ddns')->where('id',$id)->update(['published_domain'=>$target->domain,'published_port'=>$connectionPort,'published_origin'=>$a->entry_id?($a->published_origin?:$a->domain):null,'relay_verified_at'=>0,'status'=>'healthy','tls_transition'=>null,'tls_transition_state'=>$verified?'applied':'none']);
             NodeDdnsService::event($id,'domain_activated');
         });
+    }
+    /** Caller holds the lifecycle lock. Preview never changes DNS or node configuration. */
+    public static function originCleanupPlan(int $id): array {
+        $a=DB::table('v2_node_ddns')->find($id);
+        abort_unless($a && $a->managed && $a->entry_id && NetworkServer::ready($a) && NetworkServer::ready(NetworkServer::target($a)) && $a->published_domain===NetworkServer::target($a)->domain && (int)$a->published_port===(int)$a->entry_port && $a->tls_transition_state!=='pending',409,'请先完成当前域名与节点证书验证');
+        $records=DB::table('v2_node_dns_record')->where('assignment_id',$id)->where('domain','!=',$a->domain)->where('delete_after',0)->orderBy('id')->get();
+        $rows=$records->map(function($r)use($id){
+            $blocked=self::inUse($r->domain,$id);
+            return ['id'=>(int)$r->id,'domain'=>$r->domain,'type'=>$r->type,'ip'=>$r->content,'action'=>$blocked?'blocked':'schedule','reason'=>$blocked?'仍被节点、证书或其他域名绑定引用':'确认后保留 24 小时，再由后台安全清理'];
+        })->all();
+        $identity=array_intersect_key((array)$a,array_flip(['id','entry_id','domain','published_origin','published_domain','published_port','entry_port','credential_id','node_type','node_id','server_id','family','tls_transition_state']));
+        return ['rows'=>$rows,'proof'=>hash('sha256',json_encode([$identity,$records,$rows]))];
+    }
+    public static function previewOriginCleanup(int $id): array {
+        return self::locked(function()use($id){
+            $plan=self::originCleanupPlan($id);
+            Cache::put('origin-cleanup-preview:'.$plan['proof'],true,600);
+            return $plan;
+        });
+    }
+    public static function scheduleOriginCleanup(int $id,string $proof): array {
+        return self::locked(fn()=>DB::transaction(function()use($id,$proof){
+            $plan=self::originCleanupPlan($id);
+            abort_unless(hash_equals($plan['proof'],$proof) && Cache::get('origin-cleanup-preview:'.$proof),409,'预览已过期或域名记录已变化，请重新预览');
+            $ids=array_column(array_filter($plan['rows'],fn($r)=>$r['action']==='schedule'),'id');
+            abort_unless($ids,409,'没有可清理的旧回源解析');
+            $a=DB::table('v2_node_ddns')->find($id);
+            $domains=array_column(array_filter($plan['rows'],fn($r)=>in_array($r['id'],$ids,true)),'domain');
+            if(in_array($a->published_origin,$domains,true)) DB::table('v2_node_ddns')->where('id',$id)->update(['published_origin'=>$a->domain]);
+            $after=time()+86400;
+            DB::table('v2_node_dns_record')->where('assignment_id',$id)->whereIn('id',$ids)->where('delete_after',0)->update(['delete_after'=>$after,'next_run'=>0,'status'=>'pending_cleanup']);
+            NodeDdnsService::event($id,'origin_cleanup_scheduled');
+            Cache::forget('origin-cleanup-preview:'.$proof);
+            return ['scheduled'=>count($ids),'deleteAfter'=>$after];
+        }));
     }
     public function cleanup(int $id): void {
         self::locked(function()use($id){

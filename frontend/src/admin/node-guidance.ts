@@ -225,11 +225,11 @@ export function nodeDeploymentStage(
         return {
             ...base,
             terminal: true,
-            title: binding?.entry_id && !binding.relay_verified_at ? "代理服务已就绪，待验证入口转发" : "服务运行正常",
+            title: binding?.entry_id ? "代理服务运行正常" : "服务运行正常",
             description: binding?.entry_id
-                ? "本机配置已应用。仍需完成入口转发及实际客户端连接检查。"
+                ? "节点配置已应用。请通过入口进行实际客户端连接测试；面板不自动确认转发链路。"
                 : "节点已确认应用当前配置；建议完成一次实际客户端连接检查。",
-            target: binding?.entry_id && !binding.relay_verified_at ? "domain" : "runtime",
+            target: "runtime",
         };
     if (runtime?.runtimeStatus === "online" && runtime?.configurationState === "provided" && node.type === "v2node") return { ...base, terminal: true, title: "节点已接入，待实际验证", description: "配置已下发；当前内核不提供应用回执，请结合服务日志和客户端连接确认。", target: "logs" };
     if (runtime?.runtimeStatus === "online" && runtime?.receiptSupported === false && authenticated && node.type === "v2box") return { ...base, terminal: true, title: "节点已接入，缺少应用回执", description: "请升级节点以支持配置应用确认，或结合日志检查当前服务。", target: "upgrade" };

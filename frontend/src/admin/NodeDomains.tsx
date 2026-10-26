@@ -3,7 +3,7 @@ import { NodeAddressSummary } from "./NodeAddressSummary";
 import { ManualNodeAddress } from "./ManualNodeAddress";
 import { relayStreamConfig, relayCertificateIssue } from "./node-relay";
 import { useEffect, useRef, useState } from "react";
-import { admin, request, type Row } from "../shared/api";
+import { admin, query, request, type Row } from "../shared/api";
 import { Panel, State, Table, useData } from "../shared/ui";
 import { AdminLogTimeZone, logTime } from "./admin-log-time";
 import { NodeNetworkSetup } from "./NodeNetworkSetup";
@@ -85,6 +85,8 @@ export function NodeDomainBinding({
         window.addEventListener("beforeunload",warn);return ()=>window.removeEventListener("beforeunload",warn);
     },[formDirty]);
     const [adoption, setAdoption] = useState<Row | null>(null);
+    const [originCleanup, setOriginCleanup] = useState<Row | null>(null);
+    useEffect(()=>setOriginCleanup(null),[configuredBinding?.configuration_revision]);
     const pending = useRef(false);
     const progress = binding ? nodeDomainProgress(binding, node) : null;
     const lastPublished = useRef({ domain: node.host, port: node.port });
@@ -104,7 +106,7 @@ export function NodeDomainBinding({
         onPublished?.();
     }, [binding?.published_domain, binding?.published_port, onPublished]);
     useEffect(() => {
-        if (pauseRefresh || !binding?.enabled || data.loading || data.error || busy || adoption)
+        if (pauseRefresh || !binding?.enabled || data.loading || data.error || busy || adoption || originCleanup)
             return;
         const timer = window.setInterval(() => {
             if (document.visibilityState === "visible") data.reload();
@@ -118,6 +120,7 @@ export function NodeDomainBinding({
         data.reload,
         busy,
         adoption,
+        originCleanup,
     ]);
     useEffect(() => {
         if (configuredBinding && !formDirty) {
@@ -160,7 +163,7 @@ export function NodeDomainBinding({
             onChanged?.();
             setNotice(
                 path === "bind"
-                    ? r.data.unchanged ? "域名配置未变化，现有解析、证书验证和转发确认状态已保留。" : "域名已保存。新安装会等待解析并验证节点后启用；已有直连节点将在条件满足后自动验证并生效；中转需确认转发。"
+                    ? r.data.unchanged ? "域名配置未变化，现有解析和证书验证状态已保留。" : "域名已保存。新安装会等待解析并验证节点后启用；已有直连节点将在条件满足后自动验证并生效；中转请配置入口转发并进行客户端连接测试，无需在面板确认测试。"
                     : path === "activate"
                       ? "已提交启用请求，请查看上方进度；验证成功后会自动更新生效域名。"
                       : path === "retry"
@@ -174,6 +177,25 @@ export function NodeDomainBinding({
             pending.current = false;
             setBusy(false);
         }
+    }
+    async function reviewOriginCleanup(confirmCleanup = false) {
+        if (pending.current || !binding) return;
+        if (confirmCleanup && (!originCleanup || !window.confirm("确认安排清理预览中可清理的旧回源解析？24 小时后才会删除，仍被节点或证书引用的记录会保留。请先验证入口转发及客户端连接正常。"))) return;
+        pending.current = true;
+        setBusy(true); setError(""); setNotice("");
+        if (!confirmCleanup) setOriginCleanup(null);
+        try {
+            const path=admin("server/network/origin-cleanup");
+            const result=confirmCleanup
+                ? await request<Row>(path,{id:binding.id,proof:originCleanup!.proof,confirm:true})
+                : await request<Row>(query(path,{id:binding.id}));
+            if (confirmCleanup) {
+                setOriginCleanup(null);
+                setNotice(`已安排 ${result.data.scheduled} 条旧回源解析在 24 小时后清理，其他解析、节点和证书保持不变。`);
+                data.reload();
+            } else setOriginCleanup(result.data);
+        } catch(e) { setOriginCleanup(null); setError((e as Error).message); }
+        finally { pending.current=false; setBusy(false); }
     }
     return (
         <section className="admin-deployment-card">
@@ -228,11 +250,11 @@ export function NodeDomainBinding({
                                     )?.name || "—"}
                                 </p>
                                 <p>
-                                    已确认回源：
+                                    此前保留的回源：
                                     {binding.published_origin || "尚未确认"}
                                     {binding.published_origin &&
                                     binding.published_origin !== binding.domain
-                                        ? " · 请将转发配置更新到新回源域名，完成测试后确认。旧解析继续保留。"
+                                        ? " · 请将转发配置更新到新回源域名，测试通过后可在高级维护中清理旧回源解析。旧解析不会因部署完成而自动删除。"
                                         : ""}
                                 </p>
                                 <p className="muted">
@@ -262,47 +284,21 @@ export function NodeDomainBinding({
                                         PROXY protocol。
                                     </p>
                                 </details>
-                                <p>
-                                    {binding.relay_verified_at
-                                        ? `转发链路由管理员确认于 ${logTime(binding.relay_verified_at)}`
-                                        : "下一步：配置入口转发，并通过入口进行实际客户端连接测试。节点就绪不代表转发链路已连通。"}
-                                </p>
-                                {progress?.active &&
-                                    !binding.relay_verified_at && (
-                                        <button
-                                            disabled={busy || manualBusy}
-                                            onClick={async () => {
-                                                if (
-                                                    !confirm(
-                                                        "已通过此入口使用客户端完成连接测试？此操作仅记录管理员确认，不执行自动探测。",
-                                                    )
-                                                )
-                                                    return;
-                                                setBusy(true);
-                                                setError("");
-                                                try {
-                                                    await request(
-                                                        admin(
-                                                            "server/network/confirm-relay",
-                                                        ),
-                                                        {
-                                                            id: binding.id,
-                                                            confirm: true,
-                                                        },
-                                                    );
-                                                    data.reload();
-                                                } catch (e) {
-                                                    setError(
-                                                        (e as Error).message,
-                                                    );
-                                                } finally {
-                                                    setBusy(false);
-                                                }
-                                            }}
-                                        >
-                                            确认转发测试完成
-                                        </button>
-                                    )}
+                                <p>请配置入口转发，并通过入口进行实际客户端连接测试。节点就绪不代表转发链路已连通，无需在面板确认测试完成。</p>
+                                <details className="admin-deployment-tools">
+                                    <summary>高级维护：旧回源解析</summary>
+                                    <p className="muted">仅在更换回源域名后使用。先确认入口转发已使用当前回源，且客户端连接正常；预览不会改动任何解析。确认清理后仍保留 24 小时，不会重启节点或更改证书。</p>
+                                    <button disabled={busy || manualBusy || formDirty || manualDirty} onClick={()=>void reviewOriginCleanup()}>预览旧回源解析</button>
+                                    {originCleanup && <>
+                                        <Table data={originCleanup.rows || []} columns={[
+                                            ["domain","旧域名"],["type","类型"],["ip","当前 IP"],
+                                            ["reason","处理说明"],
+                                        ]}/>
+                                        {!originCleanup.rows?.length && <p>没有需要清理的旧回源解析。</p>}
+                                        <button disabled={busy || manualBusy || formDirty || manualDirty || !originCleanup.rows?.some((r:Row)=>r.action==="schedule")} onClick={()=>void reviewOriginCleanup(true)}>确认延迟清理</button>
+                                        <button disabled={busy} onClick={()=>setOriginCleanup(null)}>取消预览</button>
+                                    </>}
+                                </details>
                             </>
                         )}
                         <p>

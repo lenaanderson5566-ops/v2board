@@ -100,12 +100,12 @@ export function nodeDomainProgress(
     } else if (dnsReady) {
         title = failed
             ? "下一步：检查日志后重新验证"
-            : binding.entry_id ? "下一步：确认中转转发" : "等待自动验证并生效";
+            : binding.entry_id ? "下一步：配置中转入口" : "等待自动验证并生效";
         description = failed
             ? "上次验证未完成，当前域名仍然生效。请检查 v2box log，处理证书或监听错误后重试。"
             : !portReady
               ? "监听端口已修改。系统等待节点应用新配置，验证通过后自动同步订阅端口。"
-              : "IP 上报和解析同步已完成。直连节点将自动验证并发布；中转或无法自动验证的连接需确认实际连通后发布，失败保留原配置。";
+              : "IP 上报和解析同步已完成。请在入口配置转发；节点与证书验证通过后启用连接地址，失败保留原配置。";
     } else if (binding.status === "rate_limited") {
         description =
             "Cloudflare 正在限流，系统会退避重试。无需重复保存或配置上报。";

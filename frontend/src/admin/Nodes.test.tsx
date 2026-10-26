@@ -1,3 +1,5 @@
+import { serverForwardingRows } from "./ServerForwarding";
+import { NodeDomainBinding } from "./NodeDomains";
 import { NodeAddressSummary } from "./NodeAddressSummary";
 import { NodeDeploymentProgress, deploymentDnsSteps } from "./NodeDeploymentProgress";
 import { nodeConfigurationProblems, nodeChangeImpact, nodeDeploymentStage } from "./node-guidance";
@@ -917,12 +919,13 @@ it("preflights relay TLS, entry availability and separate physical servers",()=>
     expect(nodeSetupFields([],values,network,"v2node").map(f=>f.key)).not.toContain("setup_access_mode");
 });
 
-it("keeps a ready proxy service distinct from an unverified forwarding path",()=>{
+it("keeps a ready proxy service usable without claiming forwarding verification",()=>{
     const now=Date.now()/1000;
     const binding={managed:true,enabled:true,entry_id:7,entry_ready:true,domain:"origin.example.test",connection_domain:"entry.example.test",published_domain:"entry.example.test",entry_port:443,published_port:443,family:"ipv4",ipv4:"8.8.8.8",ipv4_seen_at:now,last_success:now,status:"healthy"};
     const stage=nodeDeploymentStage({type:"v2box"},{runtimeStatus:"online",applicationState:"applied"},binding,true);
-    expect(stage.title).toBe("代理服务已就绪，待验证入口转发");expect(stage.target).toBe("domain");
-    expect(nodeDeploymentStage({type:"v2box"},{runtimeStatus:"online",applicationState:"applied"},{...binding,relay_verified_at:now},true).title).toBe("服务运行正常");
+    expect(stage.title).toBe("代理服务运行正常");expect(stage.target).toBe("runtime");expect(stage.terminal).toBe(true);
+    expect(stage.description).toContain("面板不自动确认转发链路");
+    expect(nodeDeploymentStage({type:"v2box"},{runtimeStatus:"online",applicationState:"applied"},{...binding,relay_verified_at:now},true).title).toBe("代理服务运行正常");
 });
 
 it("opens domain and forwarding settings directly from an ingress action",async()=>{
@@ -1466,4 +1469,38 @@ it.each([false,true])("tracks automatic shared-service publication without savin
     confirm.mockReturnValue(true);fireEvent.change(screen.getByRole("spinbutton",{name:/监听端口/}),{target:{value:"9666"}});
     fireEvent.click(screen.getByRole("button",{name:"保存节点配置"}));await act(async()=>{});
     expect(api.request).toHaveBeenCalledWith("test-admin/server/v2box/save",expect.objectContaining({id:3,server_port:9666}));
+});
+
+it("separates optional old-origin cleanup from relay deployment and requires a reviewed plan",async()=>{
+ const now=Date.now()/1000;
+ const binding={id:8,node_type:"v2box",node_id:1,managed:true,enabled:true,entry_id:7,entry_ready:true,server_id:5,credential_id:1,domain:"origin-new.example.test",published_origin:"origin-old.example.test",connection_domain:"entry.example.test",published_domain:"entry.example.test",published_port:443,entry_port:443,family:"ipv4",ipv4:"8.8.8.8",ipv4_seen_at:now,last_success:now,status:"healthy",configuration_revision:"r1"};
+ api.request.mockImplementation(async(path:string,body?:any)=>{
+  if(path.includes("network/origin-cleanup"))return body?{data:{scheduled:1}}:{data:{proof:"review-proof",rows:[{id:1,domain:"origin-old.example.test",type:"A",ip:"8.8.8.8",action:"schedule",reason:"确认后保留 24 小时"},{id:2,domain:"certificate.example.test",type:"A",ip:"1.1.1.1",action:"blocked",reason:"仍被证书引用"}]}};
+  return {data:{credentials:[{id:1,root_domain:"example.test"}],servers:[{id:5,name:"Origin",enabled:true}],assignments:[binding,{id:7,purpose:"entry",enabled:true,domain:"entry.example.test"}]}};
+ });
+ const confirm=vi.spyOn(window,"confirm").mockReturnValue(false);
+ render(<NodeDomainBinding node={{id:1,type:"v2box",host:"entry.example.test",port:443,server_port:9443}}/>);
+ await screen.findByText("高级维护：旧回源解析");
+ expect(screen.queryByRole("button",{name:"确认转发测试完成"})).toBeNull();
+ expect(screen.queryByRole("button",{name:"验证并切换地址"})).toBeNull();
+ expect(api.request.mock.calls.some(([path])=>String(path).includes("origin-cleanup"))).toBe(false);
+ fireEvent.click(screen.getByText("高级维护：旧回源解析"));
+ fireEvent.click(screen.getByRole("button",{name:"预览旧回源解析"}));
+ await screen.findByText("仍被证书引用");
+ expect(api.request.mock.calls.filter(([path,body])=>String(path).includes("origin-cleanup")&&body)).toHaveLength(0);
+ fireEvent.click(screen.getByRole("button",{name:"确认延迟清理"}));
+ expect(api.request.mock.calls.filter(([path,body])=>String(path).includes("origin-cleanup")&&body)).toHaveLength(0);
+ confirm.mockReturnValue(true);
+ fireEvent.click(screen.getByRole("button",{name:"确认延迟清理"}));
+ await screen.findByText(/已安排 1 条旧回源解析在 24 小时后清理/);
+ expect(api.request).toHaveBeenCalledWith("test-admin/server/network/origin-cleanup",{id:8,proof:"review-proof",confirm:true});
+ expect(api.request.mock.calls.some(([path])=>String(path).includes("confirm-relay"))).toBe(false);
+});
+
+it("keeps server forwarding status independent of obsolete manual verification flags",()=>{
+ const entry={id:7,purpose:"entry",domain:"entry.example.test",server_id:5};
+ const binding={id:8,purpose:"node",node_type:"v2box",node_id:1,entry_id:7,entry_port:443,published_port:443,published_domain:entry.domain,domain:"origin.example.test"};
+ const status=(flag:number)=>serverForwardingRows(5,{assignments:[entry,{...binding,relay_verified_at:flag}]} )[0].status;
+ expect(status(0)).toBe("连接地址已生效，请自行测试转发");
+ expect(status(123)).toBe(status(0));
 });

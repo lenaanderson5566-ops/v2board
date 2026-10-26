@@ -92,7 +92,8 @@ try {
   $assert($response->getStatusCode()===201,'Binding options created: '.$response->getContent());$setup=$body['data'];
   $assert($setup['publicKey']['authenticatorSelection']['userVerification']==='required' && $setup['publicKey']['authenticatorSelection']['residentKey']==='required','Discoverable credential and UV required');
   $private=openssl_pkey_new(['private_key_type'=>OPENSSL_KEYTYPE_EC,'curve_name'=>'prime256v1']);$details=openssl_pkey_get_details($private);
-  $raw=random_bytes(32);$cose="\xa5\x01\x02\x03\x26\x20\x01\x21".$bytes($details['ec']['x'])."\x22".$bytes($details['ec']['y']);
+  // OpenSSL may omit a leading zero; COSE P-256 coordinates are fixed-width.
+  $raw=random_bytes(32);$cose="\xa5\x01\x02\x03\x26\x20\x01\x21".$bytes(str_pad($details['ec']['x'],32,"\0",STR_PAD_LEFT))."\x22".$bytes(str_pad($details['ec']['y'],32,"\0",STR_PAD_LEFT));
   $registration=function($options,$flags=0x45,$origin='https://mfa.example.test')use($encode,$raw,$cose,$bytes){
    $client=json_encode(['type'=>'webauthn.create','challenge'=>$options['publicKey']['challenge'],'origin'=>$origin,'crossOrigin'=>false]);
    $auth=hash('sha256','mfa.example.test',true).chr($flags).pack('N',0).str_repeat("\0",16).pack('n',strlen($raw)).$raw.$cose;

@@ -2416,7 +2416,7 @@
           "V2Box node communication"
         ],
         "security": [],
-        "description": "Static Linux sh entry point for pinned V2Box v1.0.12 installation, configuration-preserving upgrade and scoped enrollment into multiple independent backends. Existing nodes, certificates and IP reporting targets are retained.",
+        "description": "Static Linux sh entry point for pinned V2Box v1.0.13 installation, configuration-preserving upgrade and scoped enrollment into multiple independent backends. Existing nodes, certificates and IP reporting targets are retained.",
         "responses": {
           "200": {
             "description": "Bash bootstrap script",

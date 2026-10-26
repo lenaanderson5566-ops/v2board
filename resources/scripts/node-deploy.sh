@@ -15,7 +15,7 @@ if [[ "${1:-}" == --install ]]; then
   shift
   stage=$(mktemp -d)
   trap 'rm -rf -- "$stage"' EXIT
-  curl -fSL --proto '=https' --connect-timeout 10 --max-time 120 https://raw.githubusercontent.com/lenaanderson5566-ops/v2box/v1.0.12/script/install.sh -o "$stage/install.sh"
+  curl -fSL --proto '=https' --connect-timeout 10 --max-time 120 https://raw.githubusercontent.com/lenaanderson5566-ops/v2box/v1.0.13/script/install.sh -o "$stage/install.sh"
   V2BOX_BOOTSTRAP_LOCK_HELD=1 bash "$stage/install.sh" "$@" 9>&-
   exit
 fi
@@ -62,8 +62,8 @@ restore_programs() {
     echo 'Deployment recovery: restoring missing V2Box programs; configuration and certificates are retained.'
     stage=$(mktemp -d)
     trap 'rm -rf -- "$stage"' EXIT
-    curl -fSL --proto '=https' --connect-timeout 10 --max-time 120 https://raw.githubusercontent.com/lenaanderson5566-ops/v2box/v1.0.12/script/install.sh -o "$stage/install.sh" || { echo 'Program download failed. Check HTTPS access to GitHub, then run this script with --resume.' >&2; exit 1; }
-    V2BOX_BOOTSTRAP_LOCK_HELD=1 bash "$stage/install.sh" v1.0.12 </dev/null 9>&- || { echo 'Program restoration failed. Configuration and certificates retained; fix the installer error above, then --resume.' >&2; exit 1; }
+    curl -fSL --proto '=https' --connect-timeout 10 --max-time 120 https://raw.githubusercontent.com/lenaanderson5566-ops/v2box/v1.0.13/script/install.sh -o "$stage/install.sh" || { echo 'Program download failed. Check HTTPS access to GitHub, then run this script with --resume.' >&2; exit 1; }
+    V2BOX_BOOTSTRAP_LOCK_HELD=1 bash "$stage/install.sh" v1.0.13 </dev/null 9>&- || { echo 'Program restoration failed. Configuration and certificates retained; fix the installer error above, then --resume.' >&2; exit 1; }
     programs_ready || { echo 'Program restoration is incomplete. Check disk space, permissions and release files, then run --resume; do not remove configuration or certificates.' >&2; exit 1; }
     rm -rf -- "$stage"
     trap - EXIT
@@ -115,7 +115,7 @@ if $network_only; then
   stage=$(mktemp -d)
   trap 'rm -rf -- "$stage"' EXIT
   # Download and validate prerequisites before consuming the one-use grant.
-  curl -fsS --proto '=https' --connect-timeout 10 --max-time 120 https://raw.githubusercontent.com/lenaanderson5566-ops/v2box/v1.0.12/script/node-network.py -o "$stage/node-network.py"
+  curl -fsS --proto '=https' --connect-timeout 10 --max-time 120 https://raw.githubusercontent.com/lenaanderson5566-ops/v2box/v1.0.13/script/node-network.py -o "$stage/node-network.py"
   python3 -m py_compile "$stage/node-network.py"
   python3 "$stage/node-network.py" capabilities | jq -e '.features | index("report-multi-target-v1") != null' >/dev/null || { echo 'Downloaded reporting helper lacks multi-target support; no authorization was consumed.' >&2; exit 1; }
   install_helper
@@ -185,8 +185,8 @@ if ! $existing_install || ! programs_ready; then
   if $existing_install; then refuse_live_repair; fi
   echo 'Checking installation: installing or repairing V2Box program files; existing configuration and certificates are retained.'
   : > /etc/v2box/.deployment-pending
-  curl -fSL --proto '=https' --connect-timeout 10 --max-time 120 https://raw.githubusercontent.com/lenaanderson5566-ops/v2box/v1.0.12/script/install.sh -o "$stage/install.sh"
-  V2BOX_BOOTSTRAP_LOCK_HELD=1 bash "$stage/install.sh" v1.0.12 </dev/null 9>&-
+  curl -fSL --proto '=https' --connect-timeout 10 --max-time 120 https://raw.githubusercontent.com/lenaanderson5566-ops/v2box/v1.0.13/script/install.sh -o "$stage/install.sh"
+  V2BOX_BOOTSTRAP_LOCK_HELD=1 bash "$stage/install.sh" v1.0.13 </dev/null 9>&-
   programs_ready || { echo 'Installation is incomplete. Check disk space, permissions and release files, then rerun this command. Deployment authorization has not been consumed.' >&2; exit 1; }
 fi
 require_support

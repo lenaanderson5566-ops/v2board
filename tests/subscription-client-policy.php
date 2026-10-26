@@ -58,15 +58,45 @@ try {
  $assert($service->accessDenial('mihomo','FlClash/0.8.0 mihomo/1.20.0')===null,'Known compatible kernel accepted');
  $type='test-'.bin2hex(random_bytes(4));
  foreach([[time()-30,'success'],[time()-60,'failed'],[time()-86460,'success']] as [$at,$status]) SubscribeLog::create(['user_id'=>$user->id,'client_type'=>$type,'status'=>$status,'user_agent'=>'Test/1.0','created_at'=>$at,'updated_at'=>$at]);
- $m=new ReflectionMethod(App\Http\Controllers\V1\Risk\LogController::class,'appendClientSubscribeStats');$m->setAccessible(true);
- $row=$m->invoke(new App\Http\Controllers\V1\Risk\LogController(),[['client_type'=>$type]])->first();
+ $statistics=app(App\Services\RiskStatisticsService::class);
+ $row=$statistics->clientSubscriptionStats([['client_type'=>$type]])->first();
  $assert($row['subscribe_flag_count_24h']===2,'24 hour success and failure count');
  $assert($row['subscribe_flag_count_30d']===3,'30 day count');
  foreach (['flclash','fastai'] as $storedType) SubscribeLog::create(['user_id'=>$user->id,'client_type'=>$storedType,'status'=>'success','user_agent'=>'FastAI/89.77.66','created_at'=>time(),'updated_at'=>time()]);
- $stats=$m->invoke(new App\Http\Controllers\V1\Risk\LogController(),[['client_type'=>'fastai'],['client_type'=>'flclash']])->keyBy('client_type');
+ $stats=$statistics->clientSubscriptionStats([['client_type'=>'fastai'],['client_type'=>'flclash']])->keyBy('client_type');
  $sample=collect($stats['fastai']['raw_ua_stats'])->firstWhere('ua','FastAI/89.77.66');
  $assert($sample && $sample['count_24h']===2 && $sample['version']==='89.77.66','Current and historical FastAI UA counts merge into FastAI');
  $assert(!in_array('FastAI/89.77.66',$stats['flclash']['raw_ua_list']),'FastAI UA observations no longer appear in FlClash');
+ $edgeType='edge-'.bin2hex(random_bytes(4));$edgeNow=time();
+ foreach([[-100,$edgeType,'First/1.0'],[-200,$edgeType,'First/1.0'],[-2*86400,$edgeType,'Second/2.0'],[-10*86400,$edgeType,''],[-12*86400,$edgeType,null],[-40*86400,$edgeType,'Expired/1.0'],[-100,strtoupper(' '.$edgeType.' '),'First/1.0']] as [$offset,$storedType,$ua]) {
+  SubscribeLog::create(['user_id'=>$user->id,'client_type'=>$storedType,'user_agent'=>$ua,'status'=>'failed','created_at'=>$edgeNow+$offset,'updated_at'=>$edgeNow+$offset]);
+ }
+ DB::enableQueryLog();DB::flushQueryLog();
+ try {
+  $edge=$statistics->clientSubscriptionStats([['client_type'=>$edgeType]])->first();
+  $statsReads=count(array_filter(DB::getQueryLog(),fn($q)=>str_contains($q['query'],'v2_subscribe_log')));
+ } finally {DB::disableQueryLog();}
+ $assert($edge['subscribe_flag_count_24h']===3 && $edge['subscribe_flag_count_30d']===6,'Flag totals retain missing UAs and normalized client labels');
+ $assert($edge['subscribe_ua_unique_count_24h']===1 && $edge['subscribe_ua_unique_count_30d']===2,'Unique UA windows exclude missing values and preserve distinct grouping');
+ $assert($edge['top_raw_ua']==='First/1.0' && $edge['top_raw_ua_count']===3 && $edge['raw_ua_list']===['First/1.0','Second/2.0'],'Raw UA ranking and ordering are unchanged');
+ $assert($edge['raw_ua_stats'][1]['count_24h']===0 && $edge['raw_ua_stats'][1]['count_30d']===1,'Older observations do not count as current requests');
+ echo "Client statistics queries: $statsReads\n";
+ // SQL collation, empty input and unobserved strategies must retain the old statistics semantics.
+ $caseType='case-'.bin2hex(random_bytes(4));
+ foreach ([['Example/1.0',-2*86400],['example/1.0',-100]] as [$ua,$offset]) {
+  SubscribeLog::create(['user_id'=>$user->id,'client_type'=>$caseType,'user_agent'=>$ua,'status'=>'success','created_at'=>$edgeNow+$offset,'updated_at'=>$edgeNow+$offset]);
+ }
+ $case=$statistics->clientSubscriptionStats([['client_type'=>$caseType]])->first();
+ $assert($case['subscribe_flag_count_24h']===1 && $case['subscribe_flag_count_30d']===2,'Collated UA groups retain request windows');
+ $assert($case['subscribe_ua_unique_count_24h']===1 && $case['subscribe_ua_unique_count_30d']===1 && count($case['raw_ua_stats'])===1,'UA distinct counts use SQL collation');
+ $assert($case['raw_ua_stats'][0]['count_24h']===1 && $case['raw_ua_stats'][0]['count_30d']===2,'Current and older collated UA requests merge');
+ $missing=$statistics->clientSubscriptionStats([['client_type'=>'missing-'.bin2hex(random_bytes(4))]])->first();
+ $assert($missing['subscribe_flag_count_24h']===0 && $missing['subscribe_ua_unique_count_30d']===0 && $missing['raw_ua_stats']===[] && $missing['ua_last_seen_at']===null && $missing['ua_version_coverage_24h']==='暂无请求','Unobserved strategies have complete zero defaults');
+ DB::enableQueryLog();DB::flushQueryLog();
+ try {
+  $assert($statistics->clientSubscriptionStats([])->isEmpty() && DB::getQueryLog()===[],'Empty strategy lists do not scan logs');
+ } finally {DB::disableQueryLog();}
+
  $assert($call('FastAI/1.0.0','fastai')->getStatusCode()===422,'FastAI format cannot bypass native session authentication');
  $assert($call('FlClash/0.8.0','FlClash/0.8.0')->getStatusCode()===422,'Explicit format is not a UA');
  $assert($call('Throne/1.3.2','throne')->getStatusCode()===403,'New client is denied before opt-in');
@@ -78,5 +108,6 @@ try {
  $assert($limited->getStatusCode()===429 && (int)$limited->headers->get('Retry-After')>0,'HTTP rate limit and retry header');
  $assert(json_decode($limited->getContent(),true)['code']==='RATE_LIMITED','Rate limit problem schema');
  $assert($call('FlClash/0.8.0','flclash','/application-version')->getStatusCode()===429,'Account rate shared by version endpoint');
+ $assert($statsReads<=2,'Client statistics use at most two log scans');
  echo "Subscription policy integration: {$n} checks passed\n";
 } finally {DB::rollBack();}

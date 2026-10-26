@@ -14,8 +14,8 @@ use App\Models\ServerGroup;
 use App\Models\UserConnectionLog;
 use App\Models\UserOnlineSnapshot;
 use App\Models\RiskSetting;
-use App\Models\StatServer;
 use App\Services\RiskLogService;
+use App\Services\RiskStatisticsService;
 use App\Services\ClientStrategyService;
 use App\Services\RiskBlacklistService;
 use App\Services\GeoIpService;
@@ -28,227 +28,13 @@ class LogController extends Controller
     public function getSummary(Request $request)
     {
         $params = $request->validate(['window' => 'nullable|in:today,7d,30d']);
-        $days = ['today' => 1, '7d' => 7, '30d' => 30][$params['window'] ?? 'today'];
-        $since = time() - $days * 86400;
-        $query = RiskRuleHit::query()->where('hit_at', '>=', $since);
-        $total = (clone $query)->count();
-        $blocked = (clone $query)->whereIn('status', ['blocked', 'block', 'deny', 'rejected'])->count();
-        $definitions = collect((new RiskLogService())->getRuleDefinitions())->keyBy('rule_key');
-        $ranking = (clone $query)->select('rule_key')->selectRaw('COUNT(*) as hits')
-            ->groupBy('rule_key')->orderByDesc('hits')->limit(10)->get()->map(function ($row) use ($definitions) {
-                return ['rule_key' => $row->rule_key, 'name' => RiskLogService::ruleName($row->rule_key), 'hits' => (int) $row->hits];
-            });
-        $recent = (clone $query)->orderByDesc('hit_at')->limit(20)
-            ->get(['id', 'rule_key', 'risk_level', 'scene', 'user_id', 'email', 'ip', 'status', 'hit_at'])->map(function ($row) use ($definitions) {
-                $row->name = RiskLogService::ruleName($row->rule_key);
-                return $row;
-            });
-        // Fixed epoch buckets avoid loading all hit records into PHP memory.
-        $bucket = $days === 1 ? 3600 : 86400;
-        $counts = (clone $query)->selectRaw('FLOOR(hit_at / ' . $bucket . ') as bucket, COUNT(*) as hits')
-            ->groupBy('bucket')->pluck('hits', 'bucket');
-        $trend = [];
-        for ($i = (int) floor($since / $bucket); $i <= (int) floor(time() / $bucket); $i++) {
-            $trend[] = ['at' => $i * $bucket, 'hits' => (int) ($counts[$i] ?? 0)];
-        }
-        return response(['data' => [
-            'total' => $total, 'blocked' => $blocked,
-            'users' => (clone $query)->whereNotNull('user_id')->distinct()->count('user_id'),
-            'high' => (clone $query)->where('risk_level', 'high')->count(),
-            'enabled_rules' => $definitions->where('enabled', 1)->count(),
-            'total_rules' => $definitions->count(),
-            'ranking' => $ranking, 'recent' => $recent, 'trend' => $trend,
-        ]]);
+
+        return response(['data' => app(RiskStatisticsService::class)->summary($params['window'] ?? 'today')]);
     }
 
     public function getOverview(Request $request)
     {
-        $now = time();
-        $windows = [
-            'today' => ['label' => '当日', 'seconds' => 86400],
-            '7d' => ['label' => '近7天', 'seconds' => 7 * 86400],
-            '30d' => ['label' => '近30天', 'seconds' => 30 * 86400],
-        ];
-
-        $overview = [];
-        foreach ($windows as $key => $item) {
-            $cutoff = $now - $item['seconds'];
-
-            $activeBuilder = SubscribeLog::query()->where('created_at', '>=', $cutoff);
-            $activeUsers = (clone $activeBuilder)->distinct('user_id')->count('user_id');
-            $activeHits = (clone $activeBuilder)->count();
-
-            $trafficRecordAtStart = strtotime(date('Y-m-d', $cutoff));
-            $trafficBuilder = StatServer::query()
-                ->where('record_type', 'd')
-                ->where('record_at', '>=', $trafficRecordAtStart);
-            $trafficUp = (int) (clone $trafficBuilder)->sum('u');
-            $trafficDown = (int) (clone $trafficBuilder)->sum('d');
-
-            $topUa = SubscribeLog::query()
-                ->selectRaw('user_agent, COUNT(*) as hits')
-                ->where('created_at', '>=', $cutoff)
-                ->whereNotNull('user_agent')
-                ->where('user_agent', '<>', '')
-                ->groupBy('user_agent')
-                ->orderByDesc('hits')
-                ->get();
-
-            $topFlags = SubscribeLog::query()
-                ->selectRaw('client_type as flag, COUNT(*) as hits')
-                ->where('created_at', '>=', $cutoff)
-                ->whereNotNull('client_type')
-                ->where('client_type', '<>', '')
-                ->groupBy('client_type')
-                ->orderByDesc('hits')
-                ->get();
-
-            $ruleHitBuilder = RiskRuleHit::query()->where('hit_at', '>=', $cutoff);
-            $blockedBuilder = (clone $ruleHitBuilder)->whereIn('status', ['blocked', 'block', 'deny', 'rejected']);
-            $blockedHits = (clone $blockedBuilder)->count();
-            $totalRuleHits = (clone $ruleHitBuilder)->count();
-            $totalRuleUsers = (clone $ruleHitBuilder)->distinct('user_id')->count('user_id');
-            $blockedUsers = (clone $blockedBuilder)->distinct('user_id')->count('user_id');
-
-            $overview[$key] = [
-                'label' => $item['label'],
-                'active_users' => [
-                    'users' => $activeUsers,
-                    'hits' => $activeHits,
-                ],
-                'traffic' => [
-                    'up_bytes' => $trafficUp,
-                    'down_bytes' => $trafficDown,
-                    'total_bytes' => $trafficUp + $trafficDown,
-                ],
-                'ua_top' => $topUa,
-                'flag_top' => $topFlags,
-                'risk_result' => [
-                    'blocked_hits' => $blockedHits,
-                    'blocked_users' => $blockedUsers,
-                    'pass_hits' => max($totalRuleHits - $blockedHits, 0),
-                    'pass_users' => max($totalRuleUsers - $blockedUsers, 0),
-                    'blocked_rate' => $this->percent($totalRuleHits, $blockedHits),
-                ],
-            ];
-        }
-
-
-        $cutoff24h = $now - 86400;
-        $cutoff30d = $now - (30 * 86400);
-
-        $strategyMap = collect((new ClientStrategyService())->getStrategies())
-            ->mapWithKeys(function ($item) {
-                $row = is_array($item) ? $item : $item->toArray();
-                $type = strtolower(trim((string) ($row['client_type'] ?? '')));
-                if (!$type) {
-                    return [];
-                }
-                $name = trim((string) ($row['client_name'] ?? ''));
-                return [$type => ($name ?: $type)];
-            })->toArray();
-
-        $flag24hMap = SubscribeLog::query()
-            ->selectRaw('LOWER(TRIM(client_type)) as client_type, COUNT(*) as hits_24h')
-            ->where('created_at', '>=', $cutoff24h)
-            ->whereNotNull('client_type')
-            ->where('client_type', '<>', '')
-            ->groupBy(DB::raw('LOWER(TRIM(client_type))'))
-            ->pluck('hits_24h', 'client_type')
-            ->toArray();
-
-        $flag30dRows = SubscribeLog::query()
-            ->selectRaw('LOWER(TRIM(client_type)) as client_type, COUNT(*) as hits_30d')
-            ->where('created_at', '>=', $cutoff30d)
-            ->whereNotNull('client_type')
-            ->where('client_type', '<>', '')
-            ->groupBy(DB::raw('LOWER(TRIM(client_type))'))
-            ->orderByDesc('hits_30d')
-            ->get();
-
-        $flagClientRanking = $flag30dRows->map(function ($row) use ($flag24hMap, $strategyMap) {
-            $type = strtolower(trim((string) $row->client_type));
-            $displayType = urldecode($type);
-            $displayName = $strategyMap[$type] ?? ucfirst($displayType);
-            return [
-                'client_type' => $displayType,
-                'client_name' => $displayName,
-                'hits_24h' => (int) ($flag24hMap[$type] ?? 0),
-                'hits_30d' => (int) ($row->hits_30d ?? 0),
-            ];
-        })->values();
-
-        $ua24hMap = SubscribeLog::query()
-            ->selectRaw('LOWER(TRIM(client_type)) as client_type, user_agent, COUNT(*) as hits_24h')
-            ->where('created_at', '>=', $cutoff24h)
-            ->whereNotNull('client_type')
-            ->where('client_type', '<>', '')
-            ->whereNotNull('user_agent')
-            ->where('user_agent', '<>', '')
-            ->groupBy(DB::raw('LOWER(TRIM(client_type))'), 'user_agent')
-            ->get()
-            ->mapWithKeys(function ($row) {
-                $key = strtolower(trim((string) $row->client_type)) . '||' . trim((string) $row->user_agent);
-                return [$key => (int) ($row->hits_24h ?? 0)];
-            })
-            ->toArray();
-
-        $ua30dRows = SubscribeLog::query()
-            ->selectRaw('LOWER(TRIM(client_type)) as client_type, user_agent, COUNT(*) as hits_30d')
-            ->where('created_at', '>=', $cutoff30d)
-            ->whereNotNull('client_type')
-            ->where('client_type', '<>', '')
-            ->whereNotNull('user_agent')
-            ->where('user_agent', '<>', '')
-            ->groupBy(DB::raw('LOWER(TRIM(client_type))'), 'user_agent')
-            ->orderBy(DB::raw('LOWER(TRIM(client_type))'))
-            ->orderByDesc('hits_30d')
-            ->get();
-
-        $uaRawDetails30d = [];
-        foreach ($ua30dRows as $row) {
-            $type = strtolower(trim((string) $row->client_type));
-            if (!isset($uaRawDetails30d[$type])) {
-                $uaRawDetails30d[$type] = [
-                    'client_type' => urldecode($type),
-                    'client_name' => $strategyMap[$type] ?? ucfirst(urldecode($type)),
-                    'ua_rows' => [],
-                ];
-            }
-            $ua = trim((string) $row->user_agent);
-            $k = $type . '||' . $ua;
-            $uaRawDetails30d[$type]['ua_rows'][] = [
-                'user_agent' => $ua,
-                'hits_24h' => (int) ($ua24hMap[$k] ?? 0),
-                'hits_30d' => (int) ($row->hits_30d ?? 0),
-            ];
-        }
-        $uaRawDetails30d = array_values($uaRawDetails30d);
-
-        return response([
-            'data' => [
-                'windows' => $overview,
-                'metrics' => [
-                    'active_users' => [
-                        'today' => $overview['today']['active_users'] ?? ['users' => 0, 'hits' => 0],
-                        '7d' => $overview['7d']['active_users'] ?? ['users' => 0, 'hits' => 0],
-                        '30d' => $overview['30d']['active_users'] ?? ['users' => 0, 'hits' => 0],
-                    ],
-                    'traffic' => [
-                        'today' => $overview['today']['traffic'] ?? ['up_bytes' => 0, 'down_bytes' => 0, 'total_bytes' => 0],
-                        '7d' => $overview['7d']['traffic'] ?? ['up_bytes' => 0, 'down_bytes' => 0, 'total_bytes' => 0],
-                        '30d' => $overview['30d']['traffic'] ?? ['up_bytes' => 0, 'down_bytes' => 0, 'total_bytes' => 0],
-                    ],
-                    'risk_result' => [
-                        'today' => $overview['today']['risk_result'] ?? [],
-                        '7d' => $overview['7d']['risk_result'] ?? [],
-                        '30d' => $overview['30d']['risk_result'] ?? [],
-                    ],
-                ],
-                'flag_client_ranking' => $flagClientRanking,
-                'ua_raw_details_30d' => $uaRawDetails30d,
-            ]
-        ]);
+        return response(['data' => app(RiskStatisticsService::class)->overview()]);
     }
 
     public function getRules(Request $request)
@@ -266,7 +52,6 @@ class LogController extends Controller
             'data' => $rules
         ]);
     }
-
 
     public function updateRule(Request $request)
     {
@@ -350,7 +135,6 @@ class LogController extends Controller
     }
 
 
-
     public function resetRule(Request $request)
     {
         $definitions = RiskLogService::defaultRuleDefinitions();
@@ -376,7 +160,7 @@ class LogController extends Controller
         $strategies = (new ClientStrategyService())->getStrategies();
 
         return response([
-            'data' => $this->appendClientSubscribeStats($strategies)
+            'data' => app(RiskStatisticsService::class)->clientSubscriptionStats($strategies)
         ]);
     }
 
@@ -422,10 +206,9 @@ class LogController extends Controller
         $strategies = (new ClientStrategyService())->updateStrategies($items);
 
         return response([
-            'data' => $this->appendClientSubscribeStats($strategies)
+            'data' => app(RiskStatisticsService::class)->clientSubscriptionStats($strategies)
         ]);
     }
-
 
     public function deleteClientStrategy(Request $request)
     {
@@ -439,159 +222,10 @@ class LogController extends Controller
         $strategies = (new ClientStrategyService())->getStrategies();
 
         return response([
-            'data' => $this->appendClientSubscribeStats($strategies)
+            'data' => app(RiskStatisticsService::class)->clientSubscriptionStats($strategies)
         ]);
     }
 
-
-    private function appendClientSubscribeStats($strategies)
-    {
-        $items = collect($strategies)->map(function ($item) {
-            return is_array($item) ? $item : $item->toArray();
-        });
-
-        if ($items->isEmpty()) {
-            return $items;
-        }
-
-        $clientTypeExpression = "CASE WHEN LOWER(TRIM(user_agent)) REGEXP '^fastai([/ _-]|$)' THEN 'fastai' ELSE LOWER(TRIM(client_type)) END";
-        $now = time();
-        $cutoff24h = $now - 86400;
-        $cutoff30d = $now - (30 * 86400);
-
-        $clientTypes = $items->pluck('client_type')
-            ->map(function ($type) {
-                return strtolower(trim((string) $type));
-            })
-            ->filter()
-            ->unique()
-            ->values()
-            ->toArray();
-
-        $flag24hRows = SubscribeLog::query()
-            ->selectRaw($clientTypeExpression . ' as normalized_client_type, COUNT(*) as hit_count')
-            ->whereNotNull('client_type')
-            ->where('client_type', '<>', '')
-            ->where('created_at', '>=', $cutoff24h)
-            ->whereIn(DB::raw($clientTypeExpression), $clientTypes)
-            ->groupBy(DB::raw($clientTypeExpression))
-            ->get();
-
-        $flag30dRows = SubscribeLog::query()
-            ->selectRaw($clientTypeExpression . ' as normalized_client_type, COUNT(*) as hit_count')
-            ->whereNotNull('client_type')
-            ->where('client_type', '<>', '')
-            ->where('created_at', '>=', $cutoff30d)
-            ->whereIn(DB::raw($clientTypeExpression), $clientTypes)
-            ->groupBy(DB::raw($clientTypeExpression))
-            ->get();
-
-        $ua24hRows = SubscribeLog::query()
-            ->selectRaw($clientTypeExpression . ' as normalized_client_type, COUNT(DISTINCT user_agent) as ua_count')
-            ->whereNotNull('client_type')
-            ->where('client_type', '<>', '')
-            ->whereNotNull('user_agent')
-            ->where('user_agent', '<>', '')
-            ->where('created_at', '>=', $cutoff24h)
-            ->whereIn(DB::raw($clientTypeExpression), $clientTypes)
-            ->groupBy(DB::raw($clientTypeExpression))
-            ->get();
-
-        $ua30dRows = SubscribeLog::query()
-            ->selectRaw($clientTypeExpression . ' as normalized_client_type, COUNT(DISTINCT user_agent) as ua_count')
-            ->whereNotNull('client_type')
-            ->where('client_type', '<>', '')
-            ->whereNotNull('user_agent')
-            ->where('user_agent', '<>', '')
-            ->where('created_at', '>=', $cutoff30d)
-            ->whereIn(DB::raw($clientTypeExpression), $clientTypes)
-            ->groupBy(DB::raw($clientTypeExpression))
-            ->get();
-
-        $uaStatRows = SubscribeLog::query()
-            ->selectRaw($clientTypeExpression . ' as normalized_client_type, user_agent, SUM(CASE WHEN created_at >= ? THEN 1 ELSE 0 END) as count_24h, COUNT(*) as count_30d, MAX(created_at) as last_seen', [$cutoff24h])
-            ->whereNotNull('client_type')
-            ->where('client_type', '<>', '')
-            ->whereNotNull('user_agent')
-            ->where('user_agent', '<>', '')
-            ->where('created_at', '>=', $cutoff30d)
-            ->whereIn(DB::raw($clientTypeExpression), $clientTypes)
-            ->groupBy(DB::raw($clientTypeExpression), 'user_agent')
-            ->orderBy('count_30d', 'desc')
-            ->orderBy('count_24h', 'desc')
-            ->get();
-
-        $flag24hMap = [];
-        foreach ($flag24hRows as $row) {
-            $flag24hMap[(string) $row->normalized_client_type] = (int) $row->hit_count;
-        }
-
-        $flag30dMap = [];
-        foreach ($flag30dRows as $row) {
-            $flag30dMap[(string) $row->normalized_client_type] = (int) $row->hit_count;
-        }
-
-        $ua24hMap = [];
-        foreach ($ua24hRows as $row) {
-            $ua24hMap[(string) $row->normalized_client_type] = (int) $row->ua_count;
-        }
-
-        $ua30dMap = [];
-        foreach ($ua30dRows as $row) {
-            $ua30dMap[(string) $row->normalized_client_type] = (int) $row->ua_count;
-        }
-
-        $uaTopMap = [];
-        foreach ($uaStatRows as $row) {
-            $type = (string) $row->normalized_client_type;
-            if (!isset($uaTopMap[$type]) || (int) $row->count_30d > $uaTopMap[$type]['count']) {
-                $uaTopMap[$type] = [
-                    'ua' => (string) $row->user_agent,
-                    'count' => (int) $row->count_30d,
-                ];
-            }
-        }
-
-        $uaStatMap = [];
-        foreach ($uaStatRows as $row) {
-            $type = (string) $row->normalized_client_type;
-            $ua = trim((string) $row->user_agent);
-            if (!$ua) {
-                continue;
-            }
-            if (!isset($uaStatMap[$type])) {
-                $uaStatMap[$type] = [];
-            }
-            $uaStatMap[$type][] = [
-                'ua' => $ua,
-                'count_24h' => (int) $row->count_24h,
-                'count_30d' => (int) $row->count_30d,
-                'last_seen' => (int) $row->last_seen,
-                'version' => \App\Services\ClientIdentity::identify($ua) === $type ? \App\Services\ClientIdentity::version($type, $ua) : null,
-            ];
-        }
-
-        return $items->map(function ($item) use ($flag24hMap, $flag30dMap, $ua24hMap, $ua30dMap, $uaTopMap, $uaStatMap) {
-            $type = strtolower(trim((string) ($item['client_type'] ?? '')));
-            $item['subscribe_flag_count_24h'] = $flag24hMap[$type] ?? 0;
-            $item['subscribe_flag_count_30d'] = $flag30dMap[$type] ?? 0;
-            $item['subscribe_ua_unique_count_24h'] = $ua24hMap[$type] ?? 0;
-            $item['subscribe_ua_unique_count_30d'] = $ua30dMap[$type] ?? 0;
-            $item['top_raw_ua'] = $uaTopMap[$type]['ua'] ?? '';
-            $item['top_raw_ua_count'] = $uaTopMap[$type]['count'] ?? 0;
-            $item['raw_ua_stats'] = $uaStatMap[$type] ?? [];
-            $item['raw_ua_list'] = array_column($item['raw_ua_stats'], 'ua');
-            $observations = $item['raw_ua_stats'];
-            $lastSeen = $observations ? max(array_column($observations, 'last_seen')) : null;
-            $recognized = array_sum(array_map(fn ($row) => $row['version'] !== null ? $row['count_24h'] : 0, $observations));
-            $total = $item['subscribe_flag_count_24h'];
-            $item['ua_observation'] = $lastSeen ? '近30天已观测（不证明真实性）' : '近30天未观测';
-            $item['ua_last_seen_at'] = $lastSeen;
-            $item['ua_version_recognized_24h'] = $recognized;
-            $item['ua_version_coverage_24h'] = $total ? round($recognized * 100 / $total, 1) . '%（' . $recognized . '/' . $total . '）' : '暂无请求';
-            return $item;
-        });
-    }
 
 
     public function getIpBlacklists(Request $request)
@@ -630,8 +264,8 @@ class LogController extends Controller
 
     private function fetchBlacklistsByType(string $type)
     {
-        $rows = (new RiskBlacklistService())->fetch();
-        return collect($rows)->where('type', $type)->values();
+        $rows = (new RiskBlacklistService())->fetch($type);
+        return collect($rows)->values();
     }
 
     private function handleBlacklistUpdate(Request $request, string $forceType)
@@ -700,16 +334,9 @@ class LogController extends Controller
 
     public function reviewRuleHit(Request $request)
     {
-        $p=$request->validate(['id'=>'required|integer|min:1','state'=>'required|in:pending,confirmed,false_positive,ignored','note'=>'nullable|string|max:1000']);
-        DB::transaction(function() use($p,$request) {
-            $hit=RiskRuleHit::query()->lockForUpdate()->findOrFail($p['id']);
-            $payload=$hit->payload ?? [];
-            $review=['state'=>$p['state'],'note'=>$p['note']??'', 'admin_id'=>$request->user['id']??null,'at'=>time()];
-            $payload['review']=$review;
-            $payload['review_history']=array_merge($payload['review_history']??[],[$review]);
-            $hit->payload=$payload;$hit->save();
-        });
-        return response(['data'=>true]);
+        $p = $request->validate(['id' => 'required|integer|min:1','state' => 'required|in:pending,confirmed,false_positive,ignored','note' => 'nullable|string|max:1000']);
+        app(RiskLogService::class)->reviewHit($p, $request->user['id'] ?? null);
+        return response(['data' => true]);
     }
 
     public function getRuleHits(Request $request)
@@ -742,11 +369,13 @@ class LogController extends Controller
                 ->selectRaw('MAX(id) as id, COUNT(*) as hit_count, MIN(hit_at) as first_hit_at, MAX(hit_at) as hit_at, FLOOR(hit_at / 600) as time_bucket')
                 ->groupBy('user_id', 'email', 'rule_key', 'ip', 'status', 'risk_level', 'scene', 'time_bucket');
             $total = DB::query()->fromSub(clone $grouped, 'events')->count();
-            $data=$grouped->orderByDesc('hit_at')->orderByDesc('id')->forPage($current, $pageSize)->get();
-            $events=RiskRuleHit::query()->whereIn('id',$data->pluck('id'))->get()->keyBy('id');
-            foreach($data as $row) $row->payload=$events->get($row->id)->payload ?? [];
+            $data = $grouped->orderByDesc('hit_at')->orderByDesc('id')->forPage($current, $pageSize)->get();
+            $events = RiskRuleHit::query()->whereIn('id', $data->pluck('id'))->get()->keyBy('id');
+            foreach ($data as $row) {
+                $row->payload = $events->get($row->id)->payload ?? [];
+            }
             $this->decorateLogRows($data);
-            return response(['data'=>$data,'total'=>$total]);
+            return response(['data' => $data,'total' => $total]);
         }
         $total = $builder->count();
         $data = $builder->orderBy('id', 'desc')
@@ -760,7 +389,6 @@ class LogController extends Controller
         ]);
     }
 
-
     public function getOnlineUsers(Request $request)
     {
         $since = time() - 600;
@@ -768,7 +396,9 @@ class LogController extends Controller
             ->where('t', '>=', $since)
             ->select(['id', 'email', 't'])
             ->orderBy('t', 'desc')
-            ->when($request->filled('email'), function ($q) use ($request) { $q->where('email', 'like', '%' . $request->input('email') . '%'); })
+            ->when($request->filled('email'), function ($q) use ($request) {
+                $q->where('email', 'like', '%' . $request->input('email') . '%');
+            })
             ->cursor();
 
         $geoIpService = new GeoIpService();
@@ -904,7 +534,9 @@ class LogController extends Controller
                     ->whereColumn('newer.user_id', 'v2_user_online_snapshot.user_id')
                     ->where(function ($q) {
                         $q->whereColumn('newer.online_at', '>', 'v2_user_online_snapshot.online_at')
-                          ->orWhere(function ($tie) { $tie->whereColumn('newer.online_at', 'v2_user_online_snapshot.online_at')->whereColumn('newer.id', '>', 'v2_user_online_snapshot.id'); });
+                          ->orWhere(function ($tie) {
+                              $tie->whereColumn('newer.online_at', 'v2_user_online_snapshot.online_at')->whereColumn('newer.id', '>', 'v2_user_online_snapshot.id');
+                          });
                     });
             })
             ->get(['user_id', 'online_at', 'ip', 'node'])
@@ -956,10 +588,16 @@ class LogController extends Controller
             $row->ip = $ip;
             $location = $cache[$ip] ??= $geo->lookup($ip);
             foreach ($location as $key => $value) {
-                if (empty($row->$key)) $row->$key = $value;
+                if (empty($row->$key)) {
+                    $row->$key = $value;
+                }
             }
-            if (!empty($row->user_agent)) $row->recognized_client = app(\App\Services\ClientRecognition::class)->identify((string)$row->user_agent);
-            if ($row->rule_key) $row->rule_name = RiskLogService::ruleName($row->rule_key);
+            if (!empty($row->user_agent)) {
+                $row->recognized_client = app(\App\Services\ClientRecognition::class)->identify((string)$row->user_agent);
+            }
+            if ($row->rule_key) {
+                $row->rule_name = RiskLogService::ruleName($row->rule_key);
+            }
         }
     }
 
@@ -970,16 +608,28 @@ class LogController extends Controller
             'from' => 'nullable|integer|min:0',
             'to' => 'nullable|integer|min:0',
         ]);
-        if (isset($params['from'], $params['to']) && $params['to'] < $params['from']) abort(422, '结束时间不能早于开始时间');
+        if (isset($params['from'], $params['to']) && $params['to'] < $params['from']) {
+            abort(422, '结束时间不能早于开始时间');
+        }
         foreach (['from' => '>=', 'to' => '<='] as $key => $operator) {
-            if (isset($params[$key])) $builder->where($timeColumn, $operator, $params[$key]);
+            if (isset($params[$key])) {
+                $builder->where($timeColumn, $operator, $params[$key]);
+            }
         }
         $keyword = trim($params['keyword'] ?? '');
-        if ($keyword === '') return;
+        if ($keyword === '') {
+            return;
+        }
         $builder->where(function ($query) use ($keyword, $columns, $relatedEmail) {
-            foreach ($columns as $column) $query->orWhere($column, 'like', '%' . $keyword . '%');
-            if (ctype_digit($keyword)) $query->orWhere('user_id', (int) $keyword);
-            if ($relatedEmail) $query->orWhereIn('user_id', User::query()->select('id')->where('email', 'like', '%' . $keyword . '%'));
+            foreach ($columns as $column) {
+                $query->orWhere($column, 'like', '%' . $keyword . '%');
+            }
+            if (ctype_digit($keyword)) {
+                $query->orWhere('user_id', (int) $keyword);
+            }
+            if ($relatedEmail) {
+                $query->orWhereIn('user_id', User::query()->select('id')->where('email', 'like', '%' . $keyword . '%'));
+            }
         });
     }
 
@@ -1091,18 +741,30 @@ class LogController extends Controller
         foreach ([[LoginLog::class, 'created_at', '登录'], [SubscribeLog::class, 'created_at', '订阅'],
             [UserConnectionLog::class, 'connected_at', '连接'], [RiskRuleHit::class, 'hit_at', '风控']] as [$model, $time, $kind]) {
             $columns = ['id', 'user_id', 'ip', $time];
-            if ($kind === '风控') $columns = array_merge($columns, ['rule_key', 'risk_level', 'status', 'payload', 'reason']);
-            if ($kind === '登录') $columns = array_merge($columns, ['is_success', 'reason', 'user_agent']);
-            if ($kind === '订阅') $columns = array_merge($columns, ['client_type', 'status', 'reason', 'user_agent', 'traffic_u', 'traffic_d']);
-            if ($kind === '连接') $columns[] = 'node';
+            if ($kind === '风控') {
+                $columns = array_merge($columns, ['rule_key', 'risk_level', 'status', 'payload', 'reason']);
+            }
+            if ($kind === '登录') {
+                $columns = array_merge($columns, ['is_success', 'reason', 'user_agent']);
+            }
+            if ($kind === '订阅') {
+                $columns = array_merge($columns, ['client_type', 'status', 'reason', 'user_agent', 'traffic_u', 'traffic_d']);
+            }
+            if ($kind === '连接') {
+                $columns[] = 'node';
+            }
             foreach ($model::query()->where('user_id', $id)->orderByDesc($time)->orderByDesc('id')->limit(50)->get($columns) as $row) {
                 $event = $row->toArray();
                 $event['at'] = (int) $row->getRawOriginal($time);
                 $event['kind'] = $kind;
                 $event['ip'] = $this->formatIp($row->ip);
                 $event = array_merge($event, (new GeoIpService())->lookup($event['ip']));
-                if (isset($event['rule_key'])) $event['rule_name'] = RiskLogService::ruleName($event['rule_key']);
-                if (!empty($event['user_agent'])) $event['recognized_client'] = app(\App\Services\ClientRecognition::class)->identify($event['user_agent']);
+                if (isset($event['rule_key'])) {
+                    $event['rule_name'] = RiskLogService::ruleName($event['rule_key']);
+                }
+                if (!empty($event['user_agent'])) {
+                    $event['recognized_client'] = app(\App\Services\ClientRecognition::class)->identify($event['user_agent']);
+                }
                 $events->push($event);
             }
         }
@@ -1137,14 +799,14 @@ class LogController extends Controller
         }
 
         DB::transaction(function () use ($interval, $retentionDays) {
-        RiskSetting::query()->updateOrCreate(
-            ['key' => 'connection_log_interval'],
-            ['value' => (string) $interval]
-        );
-        RiskSetting::query()->updateOrCreate(
-            ['key' => 'connection_log_retention_days'],
-            ['value' => (string) $retentionDays]
-        );
+            RiskSetting::query()->updateOrCreate(
+                ['key' => 'connection_log_interval'],
+                ['value' => (string) $interval]
+            );
+            RiskSetting::query()->updateOrCreate(
+                ['key' => 'connection_log_retention_days'],
+                ['value' => (string) $retentionDays]
+            );
         });
         Cache::forget('RISK_CONNECTION_LOG_INTERVAL');
         Cache::forget('RISK_CONNECTION_LOG_RETENTION_DAYS');
@@ -1156,7 +818,6 @@ class LogController extends Controller
             ]
         ]);
     }
-
 
 
     private function normalizeRuleThresholds(array $defaultThresholds, array $thresholds): array
@@ -1201,14 +862,6 @@ class LogController extends Controller
         });
     }
 
-    private function percent(int $total, int $sub): string
-    {
-        if ($total <= 0) {
-            return '0%';
-        }
-
-        return round(($sub / $total) * 100, 2) . '%';
-    }
 
     private function formatIp($ip): ?string
     {

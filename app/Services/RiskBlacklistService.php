@@ -7,34 +7,40 @@ use App\Models\RiskBlacklistUaHash;
 
 class RiskBlacklistService
 {
-    public function fetch()
+    public function fetch(?string $type = null)
     {
         $rows = [];
 
-        foreach (RiskBlacklistIp::query()->orderBy('id', 'desc')->get() as $row) {
-            $rows[] = [
-                'id' => 'ip:' . $row->id,
-                'type' => 'ip',
-                'value' => $row->value,
-                'ua_raw' => null,
-                'remark' => $row->remark,
-                'is_enabled' => (bool) $row->is_enabled,
-                'created_at' => $row->created_at,
-                'updated_at' => $row->updated_at,
-            ];
+        if ($type === null || $type === 'ip') {
+            foreach (RiskBlacklistIp::query()->orderBy('id', 'desc')->get() as $row) {
+                $rows[] = [
+                    'id' => 'ip:' . $row->id,
+                    'type' => 'ip',
+                    'value' => $row->value,
+                    'ua_raw' => null,
+                    'remark' => $row->remark,
+                    'is_enabled' => (bool) $row->is_enabled,
+                    'created_at' => $row->created_at,
+                    'updated_at' => $row->updated_at,
+                ];
+            }
+
         }
 
-        foreach (RiskBlacklistUaHash::query()->orderBy('id', 'desc')->get() as $row) {
-            $rows[] = [
-                'id' => 'ua_hash:' . $row->id,
-                'type' => 'ua_hash',
-                'value' => $row->value,
-                'ua_raw' => $row->ua_raw,
-                'remark' => $row->remark,
-                'is_enabled' => (bool) $row->is_enabled,
-                'created_at' => $row->created_at,
-                'updated_at' => $row->updated_at,
-            ];
+        if ($type === null || $type === 'ua_hash') {
+            foreach (RiskBlacklistUaHash::query()->orderBy('id', 'desc')->get() as $row) {
+                $rows[] = [
+                    'id' => 'ua_hash:' . $row->id,
+                    'type' => 'ua_hash',
+                    'value' => $row->value,
+                    'ua_raw' => $row->ua_raw,
+                    'remark' => $row->remark,
+                    'is_enabled' => (bool) $row->is_enabled,
+                    'created_at' => $row->created_at,
+                    'updated_at' => $row->updated_at,
+                ];
+            }
+
         }
 
         usort($rows, function ($a, $b) {
@@ -84,10 +90,14 @@ class RiskBlacklistService
         $id = trim($id);
         if (strpos($id, 'ip:') === 0) {
             $rid = (int) substr($id, 3);
-            if ($rid > 0) RiskBlacklistIp::query()->where('id', $rid)->delete();
+            if ($rid > 0) {
+                RiskBlacklistIp::query()->where('id', $rid)->delete();
+            }
         } elseif (strpos($id, 'ua_hash:') === 0) {
             $rid = (int) substr($id, 8);
-            if ($rid > 0) RiskBlacklistUaHash::query()->where('id', $rid)->delete();
+            if ($rid > 0) {
+                RiskBlacklistUaHash::query()->where('id', $rid)->delete();
+            }
         } else {
             abort(422, 'invalid id');
         }

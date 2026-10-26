@@ -7,11 +7,30 @@ use App\Models\RiskRuleConfig;
 use App\Models\RiskRuleHit;
 use App\Models\SubscribeLog;
 use App\Services\RiskBlacklistService;
+use Illuminate\Support\Facades\DB;
 
 class RiskLogService
 {
     private static $ruleConfigMap = null;
     private const MAX_REASON_LENGTH = 190;
+
+    public function reviewHit(array $params, $adminId): void
+    {
+        DB::transaction(function () use ($params, $adminId) {
+            $hit = RiskRuleHit::query()->lockForUpdate()->findOrFail($params['id']);
+            $payload = $hit->payload ?? [];
+            $review = [
+                'state' => $params['state'],
+                'note' => $params['note'] ?? '',
+                'admin_id' => $adminId,
+                'at' => time(),
+            ];
+            $payload['review'] = $review;
+            $payload['review_history'] = array_merge($payload['review_history'] ?? [], [$review]);
+            $hit->payload = $payload;
+            $hit->save();
+        });
+    }
 
     public static function clearRuleCache(): void
     {

@@ -49,9 +49,7 @@ try {
     foreach ([['FlClash/0.8.0',$now-10],['FlClash',$now-20],['FlClash/0.7.0',$now-90000]] as [$ua,$at]) {
         SubscribeLog::create(['user_id'=>1,'client_type'=>'flclash','user_agent'=>$ua,'status'=>'success','created_at'=>$at,'updated_at'=>$at]);
     }
-    $method = new ReflectionMethod(App\Http\Controllers\V1\Risk\LogController::class, 'appendClientSubscribeStats');
-    $method->setAccessible(true);
-    $row = $method->invoke(new App\Http\Controllers\V1\Risk\LogController(), $service->getStrategies())->keyBy('client_type')['flclash'];
+    $row = app(App\Services\RiskStatisticsService::class)->clientSubscriptionStats($service->getStrategies())->keyBy('client_type')['flclash'];
     $assert($row['ua_version_recognized_24h'] === 1 && str_starts_with($row['ua_version_coverage_24h'],'50%'), 'Version recognition weighted over 24h requests');
     $assert($row['ua_last_seen_at'] === $now-10, 'Last seen comes from logs');
     $assert(str_contains($row['ua_observation'],'不证明真实性'), 'Observation never authenticates clients');

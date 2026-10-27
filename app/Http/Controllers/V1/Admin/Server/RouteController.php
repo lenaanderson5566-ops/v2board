@@ -15,12 +15,13 @@ class RouteController extends Controller {
         $query = ServerRoute::where('backend', 'v2box')->orderBy('id');
         $routes = $query->get();
         $usage=[];
-        foreach (ServerV2box::whereNull('service_id')->get(['id','route_id']) as $node) {
-            foreach (array_unique($node->route_id ?? []) as $id) $usage[$id]=($usage[$id]??0)+1;
+        foreach (ServerV2box::whereNull('service_id')->get(['id','name','route_id']) as $node) {
+            foreach (array_unique($node->route_id ?? []) as $id) $usage[$id][]=['id'=>$node->id,'name'=>$node->name];
         }
         foreach ($routes as $route) {
             $route->match = json_decode($route->match, true) ?? [];
-            $route->setAttribute('node_count',$usage[$route->id]??0);
+            $route->setAttribute('node_count',count($usage[$route->id]??[]));
+            $route->setAttribute('used_by',$usage[$route->id]??[]);
         }
         return ['data'=>$routes];
     }

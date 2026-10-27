@@ -49,6 +49,7 @@ try {
         $routes=$admin->fetch(Request::create('/','GET',['backend'=>$backend]))['data'];
         $assert($routes->every(fn($r)=>$r->backend===$backend),'Catalog filtered by backend');
         $assert($routes->firstWhere('id',$nativeId)->node_count===1,'Catalog counts service references');
+        $assert($routes->firstWhere('id',$nativeId)->used_by===[['id'=>$box->id,'name'=>'Route test']],'Catalog identifies referenced services without extra queries');
         $assert($routes->firstWhere('id',$clone->id)->node_count===1,'Legacy V2Box references remain visible');
     }
     $reject(fn()=>(new V2boxController())->save($request($base+['id'=>$box->id,'route_id'=>[$old->id]])),'V2Box rejects Xray reference');

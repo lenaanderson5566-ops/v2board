@@ -50,6 +50,8 @@ import { QueueDetails, SortButton } from "./admin-tools";
 import { adminUserLabel } from "./admin-user-label";
 import { readListView, saveListView } from "./list-view-state";
 import { nodeRoutePresets, routeSummary } from "./node-route-presets";
+import { RouteRuleEditor } from "./RouteRuleEditor";
+import { readRouteForm, routeActionLabel, routeDetails } from "./route-form";
 const toggle = (key: string, label: string): Field => ({
     key,
     label,
@@ -201,16 +203,13 @@ export const resources: Record<string, Resource> = {
             [
                 "match",
                 "配置内容",
-                routeSummary,
+                r => <div className="route-rule-summary"><span>{routeDetails(r)}</span><small className="muted">{routeSummary(r)}</small></div>,
             ],
-            ["node_count", "引用服务", r => `${r.node_count || 0} 个`],
+            ["node_count", "引用服务", r => r.used_by?.length ? <details><summary>{r.node_count || 0} 个服务</summary><ul>{r.used_by.map((node: Row) => <li key={node.id}>{node.name}（#{node.id}）</li>)}</ul></details> : `${r.node_count || 0} 个`],
             [
                 "action",
                 "格式 / 动作",
-                (r) =>
-                    r.action === "sing_box"
-                        ? "sing-box 原生"
-                        : `兼容格式 / ${r.action}`,
+                routeActionLabel,
             ],
         ],
         fields: [
@@ -1038,6 +1037,9 @@ export function ResourcePage({
         ),
         [editing, setEditing] = useState<Row | null>(null),
         [error, setError] = useState("");
+    const [routeUsage, setRouteUsage] = useState("");
+    const [routeFilter, setRouteFilter] = useState("");
+    const [routeEditorState, setRouteEditorState] = useState({ busy: false, dirty: false });
     useEffect(() => {
         saveListView(viewKey, {
             context: JSON.stringify(queryParams),
@@ -1127,13 +1129,22 @@ export function ResourcePage({
                 disabled={actionBusy || d.loading || (resource === resources.orders && r.status !== 0)}
                 onClick={() => action(path, r, extra)}>{label}</button>
         ))}
-        {resource.drop && <button className="danger" disabled={actionBusy || d.loading} onClick={() => action(resource.drop!, r)}>删除</button>}
+        {resource.drop && <button className="danger" disabled={actionBusy || d.loading || resource === resources.routes && Number(r.node_count) > 0} title={resource === resources.routes && Number(r.node_count) > 0 ? "请先解除服务引用" : undefined} onClick={() => action(resource.drop!, r)}>删除</button>}
     </>;
-    const list = (d.data || []).filter(
+    const list = (d.data || []).filter(r => {
+        if (resource !== resources.routes) return true;
+        if (routeUsage === "used" && !r.node_count || routeUsage === "unused" && r.node_count) return false;
+        if (!routeFilter) return true;
+        if (routeFilter === "legacy") return r.action !== "sing_box";
+        const form = r.action === "sing_box" ? readRouteForm(r.sing_box || {}) : undefined;
+        if (routeFilter === "advanced") return r.action === "sing_box" && !form;
+        return form && (form.kind === "dns" || form.kind === "default" ? form.kind === routeFilter : form.action === routeFilter);
+    }).filter(
         (r) =>
             Boolean(logKind) ||
             resource.serverSearch ||
             !search ||
+            resource === resources.routes && JSON.stringify(r).toLowerCase().includes(search.toLowerCase()) ||
             Object.values(r).some((v) =>
                 String(v ?? "")
                     .toLowerCase()
@@ -1157,7 +1168,7 @@ export function ResourcePage({
                                 <Search size={16} />
                                 <input
                                     placeholder={
-                                        resource === resources.online ||
+                                        resource === resources.routes ? "备注、域名、IP、端口或出口…" : resource === resources.online ||
                                         resource.title.includes("日志")
                                             ? "搜索邮箱…"
                                             : "搜索当前列表…"
@@ -1219,8 +1230,14 @@ export function ResourcePage({
                 {toolbar}
                 {resource === resources.routes && (
                     <div className="pad">
+                        <div className="actions">
+                            <label>规则筛选<select value={routeFilter} onChange={e => setRouteFilter(e.target.value)}><option value="">全部规则</option><option value="reject">阻断</option><option value="route">直连 / 代理转发</option><option value="dns">DNS 分流</option><option value="default">默认出口</option><option value="advanced">高级配置</option><option value="legacy">旧格式兼容</option></select></label>
+                            <label>引用筛选<select value={routeUsage} onChange={e => setRouteUsage(e.target.value)}><option value="">全部引用状态</option><option value="used">已引用</option><option value="unused">未引用</option></select></label>
+                            <button onClick={d.reload}>刷新规则</button>
+                            <span className="muted">{list.length} / {(d.data || []).length} 条规则</span>
+                        </div>
                         <p className="muted">
-                            修改规则会应用到选择它的节点；正在使用的规则不能删除。
+                            常用规则直接填写匹配内容和处理方式；复杂组合使用高级 JSON。修改会同步影响引用它的服务，正在使用的规则不能删除，可先复制再调整。
                         </p>
                     </div>
                 )}
@@ -1470,6 +1487,7 @@ export function ResourcePage({
                                                   </button>
                                               )}
                                           {resource !== resources.users || !extraActions ? secondaryActions(r) : null}
+                                          {resource === resources.routes && r.action === "sing_box" && <button onClick={() => setEditing({ ...r, id: undefined, copiedFrom: r.id, remarks: `${r.remarks} · 副本`, node_count: 0, used_by: [] })}>复制</button>}
                                           {extraActions?.(r, context, resource === resources.users ? secondaryActions(r) : undefined)}
                                       </>
                                   )
@@ -1506,14 +1524,17 @@ export function ResourcePage({
                     }
                     wide={
                         resource === resources.knowledge ||
-                        resource === resources.notices
+                        resource === resources.notices || resource === resources.routes
                     }
                     title={
                         editing[key]
                             ? `编辑 · ${resource.title}`
                             : `新建 · ${resource.title}`
                     }
-                    close={() => setEditing(null)}
+                    close={() => {
+                        if (resource === resources.routes && (routeEditorState.busy || routeEditorState.dirty && !confirm("路由修改尚未保存，确认放弃？"))) return;
+                        setEditing(null);
+                    }}
                 >
                     {resource === resources.coupons && editing.id && (
                         <p className="alert" role="note">
@@ -1538,6 +1559,8 @@ export function ResourcePage({
                                     setEditing(null);
                                 }}
                             />
+                        ) : resource === resources.routes && editing.action === "sing_box" ? (
+                            <RouteRuleEditor initial={editing} onStateChange={setRouteEditorState} onSave={async body => { await request(resource.save!, body); d.reload(); setEditing(null); }} />
                         ) : (
                             <Editor
                                 fields={formPresentation(

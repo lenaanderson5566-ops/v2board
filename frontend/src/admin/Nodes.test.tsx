@@ -44,6 +44,8 @@ import { NodeConnectionEditor } from "./NodeConnections";
 import { NodeTopology } from "./NodeTopology";
 import { EditorFieldContext } from "../shared/ui";
 import { adminEditorField } from "./admin-editor-fields";
+import { buildRouteConfig, defaultRouteForm, readRouteForm } from "./route-form";
+import { nodeRoutePresets } from "./node-route-presets";
 afterEach(() => {
     cleanup();
     vi.useRealTimers();
@@ -51,6 +53,7 @@ afterEach(() => {
     vi.clearAllMocks();
     vi.unstubAllGlobals();
     localStorage.clear();
+    sessionStorage.clear();
     history.replaceState(null,"",location.pathname);
 });
 
@@ -348,14 +351,75 @@ it("creates native routing rules without a backend selector", async () => {
     fireEvent.click(screen.getByRole("button", { name: "新建" }));
     expect(screen.queryByLabelText("适用内核")).toBeNull();
     expect(screen.queryByRole("combobox", { name: "动作" })).toBeNull();
-    expect(screen.getByRole("combobox", { name: /^配置模板/ })).toBeTruthy();
+    expect(screen.getByRole("combobox", { name: "规则用途" })).toBeTruthy();
     fireEvent.change(screen.getByLabelText("备注"), { target: { value: "New native rule" } });
-    fireEvent.change(screen.getByRole("combobox", { name: /^配置模板/ }), { target: { value: "domain-block" } });
+    fireEvent.change(screen.getByLabelText("匹配内容"), { target: { value: "example.com" } });
     fireEvent.click(screen.getByRole("button", { name: "保存" }));
     await waitFor(() => expect(api.request).toHaveBeenCalledWith("test-admin/server/route/save", expect.objectContaining({
         backend: "v2box", action: "sing_box", remarks: "New native rule", sing_box: { route: { rules: [{action:"sniff"},{domain_suffix:["example.com"],action:"reject"}] } },
     })));
     expect(api.request.mock.calls.filter(([path])=>path.endsWith("server/route/save")).every(([,body])=>!Object.prototype.hasOwnProperty.call(body,"route_template"))).toBe(true);
+});
+it("edits common proxy rules through fields and preserves their full configuration", async () => {
+    const config = buildRouteConfig({ ...defaultRouteForm, values: "one.test", action: "route", outbound: "proxy", server: "proxy.test", port: 1080, username: "alice", password: "test-only" });
+    api.request.mockImplementation(async (path: string) => path.includes("route/fetch") ? { data: [{ id: 9, remarks: "Proxy", action: "sing_box", sing_box: config }] } : { data: true });
+    render(<ResourcePage resource={resources.routes} />);
+    fireEvent.click(await screen.findByRole("button", { name: "编辑" }));
+    expect(screen.getByLabelText("代理服务器")).toHaveProperty("value", "proxy.test");
+    expect(screen.getByLabelText("代理密码")).toHaveProperty("type", "password");
+    fireEvent.change(screen.getByLabelText("匹配内容"), { target: { value: "one.test\ntwo.test\none.test" } });
+    fireEvent.click(screen.getByRole("button", { name: "保存" }));
+    await waitFor(() => expect(api.request).toHaveBeenCalledWith("test-admin/server/route/save", expect.objectContaining({ id: 9, sing_box: { ...config, route: { rules: [{ action: "sniff" }, { domain_suffix: ["one.test", "two.test"], action: "route", outbound: "proxy" }] } } })));
+});
+it("searches nested route conditions, filters usage and protects assigned rules", async () => {
+    const config = buildRouteConfig({ ...defaultRouteForm, values: "one.test\ntwo.test\nthree.test\nfour.test" });
+    api.request.mockImplementation(async (path: string) => path.includes("route/fetch") ? { data: [
+        { id: 1, remarks: "Used rule", action: "sing_box", sing_box: config, node_count: 1, used_by: [{ id: 12, name: "Japan service" }] },
+        { id: 2, remarks: "Unused rule", action: "sing_box", sing_box: config, node_count: 0 },
+    ] } : { data: [] });
+    render(<ResourcePage resource={resources.routes} />);
+    await screen.findByText("Used rule");
+    fireEvent.change(screen.getByLabelText("引用筛选"), { target: { value: "used" } });
+    expect(screen.queryByText("Unused rule")).toBeNull();
+    expect(screen.getByRole("button", { name: "删除" })).toHaveProperty("disabled", true);
+    fireEvent.click(screen.getByText("1 个服务")); expect(screen.getByText("Japan service（#12）")).toBeTruthy();
+    fireEvent.change(screen.getByLabelText("搜索列表"), { target: { value: "four.test" } });
+    expect(screen.getByText("Used rule")).toBeTruthy();
+});
+it("copies complex native JSON without silently replacing it with a visual rule", async () => {
+    const config = { route: { rules: [{ type: "logical", mode: "and", rules: [{ domain_suffix: ["example.test"] }, { network: "tcp" }], action: "reject" }] } };
+    api.request.mockImplementation(async (path: string) => path.includes("route/fetch") ? { data: [{ id: 22, remarks: "Complex", action: "sing_box", sing_box: config }] } : { data: true });
+    render(<ResourcePage resource={resources.routes} />);
+    fireEvent.click(await screen.findByRole("button", { name: "复制" }));
+    expect(screen.getByText("此规则含复杂或自定义配置，已完整保留在高级 JSON 中。")).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "可视化配置" }));
+    expect((await screen.findByRole("alert")).textContent).toContain("原配置已保留");
+    fireEvent.click(screen.getByRole("button", { name: "保存" }));
+    await waitFor(() => expect(api.request).toHaveBeenCalledWith("test-admin/server/route/save", { remarks: "Complex · 副本", action: "sing_box", backend: "v2box", sing_box: config }));
+});
+it("opens advanced JSON from an empty new rule and preserves an unsaved visual draft on close", async () => {
+    api.request.mockResolvedValue({ data: [] });
+    const confirm = vi.spyOn(window, "confirm").mockReturnValue(false);
+    render(<ResourcePage resource={resources.routes} />);
+    fireEvent.click(screen.getByRole("button", { name: "新建" }));
+    fireEvent.click(screen.getByRole("button", { name: "高级 JSON" }));
+    expect(screen.queryByLabelText("匹配内容")).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "可视化配置" }));
+    fireEvent.change(screen.getByLabelText("匹配内容"), { target: { value: "unsaved.test" } });
+    fireEvent.keyDown(document, { key: "Escape" });
+    expect(confirm).toHaveBeenCalledWith("路由修改尚未保存，确认放弃？");
+    expect(screen.getByLabelText("匹配内容")).toHaveProperty("value", "unsaved.test");
+});
+it("round-trips supported presets, validates basic conditions and refuses lossy conversions", () => {
+    for (const preset of nodeRoutePresets.filter(preset => preset.id !== "custom")) {
+        const form = readRouteForm(preset.config);
+        expect(form, preset.id).toBeTruthy(); expect(buildRouteConfig(form!)).toEqual(preset.config);
+    }
+    const ip = buildRouteConfig({ ...defaultRouteForm, match: "ip_cidr", values: "192.0.2.1\n2001:db8::1" });
+    expect(ip.route.rules[1].ip_cidr).toEqual(["192.0.2.1/32", "2001:db8::1/128"]);
+    for (const [match, values] of [["port", "0"], ["port_range", "9000:8000"], ["ip_cidr", "300.0.0.1/24"], ["domain_suffix", "https://example.test/path"]]) expect(() => buildRouteConfig({ ...defaultRouteForm, match, values })).toThrow();
+    expect(readRouteForm({ route: { rules: [{ domain_suffix: ["one.test"], invert: true, action: "reject" }] } })).toBeUndefined();
+    expect(readRouteForm({ route: { rules: [{ domain_suffix: ["one.test"], port: [443], action: "reject" }] } })).toBeUndefined();
 });
 
 

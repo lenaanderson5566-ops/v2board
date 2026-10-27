@@ -14,7 +14,14 @@ class LightsailService
         $operations = ['GetInstance'=>'instance', 'GetStaticIps'=>'list', 'GetStaticIp'=>'get', 'AllocateStaticIp'=>'allocate', 'AttachStaticIp'=>'attach', 'DetachStaticIp'=>'detach', 'ReleaseStaticIp'=>'release'];
         $operation = $operations[$error->getCommand()->getName()] ?? 'request';
         $known = ['AccessDenied','AccessDeniedException','UnauthorizedException','UnauthorizedOperation','UnauthenticatedException','InvalidClientTokenId','UnrecognizedClientException','SignatureDoesNotMatch','InvalidSignatureException','ExpiredToken','ExpiredTokenException','RequestExpired','RequestTimeTooSkewed','Throttling','ThrottlingException','TooManyRequestsException','RequestLimitExceeded','ServiceQuotaExceededException','LimitExceededException','ResourceLimitExceededException','InvalidInputException','NotFoundException','OperationFailureException','ServiceException','InternalError','InternalFailure','ServiceUnavailableException','AccountSetupInProgressException','RegionSetupInProgressException'];
+        $known = array_merge($known, ['MissingAuthenticationTokenException','IncompleteSignature','IncompleteSignatureException','InvalidAccessKeyId','AuthFailure','RequestTimeout','RequestTimeoutException','ValidationException','OptInRequired']);
         $provider = $error->isConnectionError() ? 'NetworkError' : (in_array($error->getAwsErrorCode(),$known,true) ? $error->getAwsErrorCode() : 'UnknownError');
+        $previous = $error->getPrevious();
+        $context = $previous instanceof \GuzzleHttp\Exception\RequestException || $previous instanceof \GuzzleHttp\Exception\ConnectException ? $previous->getHandlerContext() : [];
+        // Keep only numeric transport diagnostics; exception text and bodies can contain secrets.
+        $curl = (int)($context['errno'] ?? 0);
+        if (in_array($curl, [5,6,7,28,35,51,60,77], true)) $provider = 'Curl'.$curl;
+        if ($provider === 'UnknownError' && ($status = $error->getStatusCode()) >= 400 && $status <= 599) $provider = 'Http'.$status;
         // Never persist provider messages: they may include signed URLs or credentials.
         $quota = $operation === 'allocate' && in_array($provider,['InvalidInputException','OperationFailureException'],true)
             && preg_match('/quota|limit\s+exceeded|maximum\s+number|too\s+many|exceeds?.*limit/i',(string)$error->getAwsErrorMessage());

@@ -69,6 +69,12 @@ it.each([
     ["aws:allocate:ThrottlingException", "AWS 请求被限流", "等待限流窗口"],
     ["aws:allocate:ExpiredTokenException", "AWS 临时凭据或请求已过期", "Session Token"],
     ["aws:allocate:NetworkError", "无法连接 AWS API", "HTTPS"],
+    ["aws:get:Curl60", "证书验证失败", "不要关闭 TLS 验证"],
+    ["aws:get:Curl6", "无法解析", "DNS"],
+    ["aws:get:Curl28", "超时", "代理"],
+    ["aws:get:Http403", "HTTP 403", "不能单独确定"],
+    ["aws:get:Http404", "HTTP 404", "不要把未识别的 404"],
+    ["aws:get:UnknownError", "未取得可识别的错误码", "当前信息不足"],
     ["aws:allocate:RequestTimeTooSkewed", "服务器时间与 AWS 偏差过大", "同步"],
     ["aws_request_failed", "旧记录没有保留具体原因", "继续操作"],
 ])("explains %s without guessing the original cause", (code, title, advice) => {

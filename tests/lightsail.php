@@ -49,7 +49,8 @@ try {
         $state->calls[] = $name;
         if ($state->fail === $name) {
             if (isset($state->awsCode)) {
-                throw new Aws\Exception\AwsException('simulated_secret_must_not_be_logged', $command, ['code' => $state->awsCode, 'message' => $state->awsMessage ?? 'simulated_secret_must_not_be_logged', 'connection_error' => $state->awsCode === 'NetworkError']);
+                $previous = isset($state->curl) ? new GuzzleHttp\Exception\ConnectException('simulated_secret_must_not_be_logged', new GuzzleHttp\Psr7\Request('POST', 'https://example.test'), null, ['errno' => $state->curl]) : null;
+                throw new Aws\Exception\AwsException('simulated_secret_must_not_be_logged', $command, ['code' => $state->awsCode, 'message' => $state->awsMessage ?? 'simulated_secret_must_not_be_logged', 'connection_error' => $state->awsCode === 'NetworkError', 'response' => isset($state->http) ? new GuzzleHttp\Psr7\Response($state->http, [], 'simulated_secret_must_not_be_logged') : null], $previous);
             }
             throw new RuntimeException('simulated_secret_must_not_be_logged');
         }
@@ -134,6 +135,16 @@ try {
     DB::table('v2_lightsail_server')->where('id', $row->id)->update(['status' => 'queued']);
     $service->run($row->id);
     $assert(DB::table('v2_lightsail_server')->find($row->id)->error_code === 'aws:get:AccessDeniedException', 'Read permission failure distinguished from allocation');
+    foreach ([['http',403,'Http403'], ['http',404,'Http404'], ['http',502,'Http502'], ['curl',60,'Curl60'], ['curl',28,'Curl28'], ['curl',6,'Curl6']] as [$kind,$value,$expected]) {
+        $state->awsCode = 'UnrecognizedSensitiveProviderCode';
+        $state->{$kind} = $value;
+        $state->calls = [];
+        DB::table('v2_lightsail_server')->where('id',$row->id)->update(['status'=>'queued']);
+        $service->run($row->id);
+        $assert(DB::table('v2_lightsail_server')->find($row->id)->error_code === 'aws:get:'.$expected, 'Safe transport diagnostic '.$expected);
+        $assert($state->ips['old']['isAttached'] && !in_array('AllocateStaticIp',$state->calls,true) && !in_array('DetachStaticIp',$state->calls,true), 'Unrecognized read failure cannot authorize allocation '.$expected);
+        unset($state->{$kind});
+    }
     unset($state->awsCode, $state->awsMessage);
     $state->fail = null;
     $state->calls = [];

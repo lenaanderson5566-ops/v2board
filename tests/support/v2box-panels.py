@@ -79,8 +79,8 @@ def run(manifest):
     try:
         # Use the published program/scripts, checking the release digest before execution.
         asset=root/'v2box-linux-amd64.zip'
-        subprocess.run(['curl','-fsSL','--max-time','120','https://github.com/lenaanderson5566-ops/v2box/releases/download/v1.0.14/v2box-linux-amd64.zip','-o',str(asset)],check=True,timeout=130)
-        assert hashlib.sha256(asset.read_bytes()).hexdigest()=='fb5353695e84952af1d8bad9ad221d6f3e9b14ef3c48b4ee2cb45450df828c7c','Published release digest changed'
+        subprocess.run(['curl','-fsSL','--max-time','120','https://github.com/lenaanderson5566-ops/v2box/releases/download/v1.0.15/v2box-linux-amd64.zip','-o',str(asset)],check=True,timeout=130)
+        assert hashlib.sha256(asset.read_bytes()).hexdigest()=='e0fb2a72981df9582e97218626b18da4e3e37412363e0ea83630d41d5bce4b96','Published release digest changed'
         program=Path('/usr/local/lib/v2box');program.mkdir(parents=True,exist_ok=True)
         with zipfile.ZipFile(asset) as archive:
             for name in ['v2box','v2box.sh','install.sh','node-network.py','node-credentials.py']:
@@ -234,27 +234,27 @@ def run(manifest):
         repeat=subprocess.run(b['command'],shell=True,cwd=root,env=env,capture_output=True,timeout=40);assert repeat.returncode==0,'Completed independent deployment was not idempotent'
         assert json.loads(config.read_text())==after and node.poll() is None
         assert not events.exists(),'Independent panel operations restarted or stopped the shared service'
-        # Validate the real panel-generated upgrade command against an existing v1.0.13 binary.
+        # Validate the real panel-generated upgrade command against an existing v1.0.14 binary.
         # Stop the fixture first so the installer must preserve the stopped service state.
         for stream in streams:stream.close()
         os.killpg(node.pid,signal.SIGTERM);node.wait(timeout=15);pid_file.unlink()
         preserved={path:path.read_bytes() for path in [config,network.CONFIG,network.STATE,*node_root.glob('operator-*.pem')]}
         new_binary_hash=hashlib.sha256((program/'v2box').read_bytes()).hexdigest()
-        old_asset=root/'v2box-v1.0.13-linux-amd64.zip'
-        subprocess.run(['curl','-fsSL','--max-time','120','https://github.com/lenaanderson5566-ops/v2box/releases/download/v1.0.13/v2box-linux-amd64.zip','-o',str(old_asset)],check=True,capture_output=True,timeout=130)
-        assert hashlib.sha256(old_asset.read_bytes()).hexdigest()=='66e201f14e22babe6584956716d722dea17de757b95a5a060197e29208ee1008','Previous release digest changed'
+        old_asset=root/'v2box-v1.0.14-linux-amd64.zip'
+        subprocess.run(['curl','-fsSL','--max-time','120','https://github.com/lenaanderson5566-ops/v2box/releases/download/v1.0.14/v2box-linux-amd64.zip','-o',str(old_asset)],check=True,capture_output=True,timeout=130)
+        assert hashlib.sha256(old_asset.read_bytes()).hexdigest()=='fb5353695e84952af1d8bad9ad221d6f3e9b14ef3c48b4ee2cb45450df828c7c','Previous release digest changed'
         with zipfile.ZipFile(old_asset) as archive:
             binary=[name for name in archive.namelist() if Path(name).name=='v2box'];assert len(binary)==1
             (program/'v2box').write_bytes(archive.read(binary[0]));(program/'v2box').chmod(0o755)
         previous_hash=hashlib.sha256((program/'v2box').read_bytes()).hexdigest()
         version=subprocess.run([str(program/'v2box'),'version'],capture_output=True,text=True,check=True,timeout=10)
-        assert 'v1.0.13' in version.stdout,'Upgrade fixture is not the real previous release'
+        assert 'v1.0.14' in version.stdout,'Upgrade fixture is not the real previous release'
         upgrade_command=php(b,'echo json_encode((new App\\Services\\ServerService())->getAllV2node("v2box")[0]["upgrade_command"]);')
-        assert '--install v1.0.14' in upgrade_command and upgrade_command.endswith('--update')
+        assert '--install v1.0.15' in upgrade_command and upgrade_command.endswith('--update')
         upgraded=subprocess.run(upgrade_command,shell=True,cwd=root,env=env,capture_output=True,text=True,timeout=220)
         if upgraded.returncode:raise AssertionError('Published release upgrade failed: '+re.sub(r'(?:nk_|nd_|ns_)[a-f0-9.]+','[redacted]',(upgraded.stdout+upgraded.stderr)[-1600:]))
         version=subprocess.run([str(program/'v2box'),'version'],capture_output=True,text=True,check=True,timeout=10)
-        assert 'v1.0.14' in version.stdout and hashlib.sha256((program/'v2box').read_bytes()).hexdigest()==new_binary_hash,'Upgraded binary does not match the published release'
+        assert 'v1.0.15' in version.stdout and hashlib.sha256((program/'v2box').read_bytes()).hexdigest()==new_binary_hash,'Upgraded binary does not match the published release'
         assert hashlib.sha256((program/'v2box.previous').read_bytes()).hexdigest()==previous_hash,'Upgrade did not preserve the previous binary'
         assert not pid_file.exists() and not events.exists(),'Upgrade started the previously stopped shared service'
         for path,content in preserved.items():assert path.read_bytes()==content,'Upgrade changed retained node/certificate/reporting files'
@@ -270,12 +270,15 @@ def run(manifest):
         candidate_program=os.environ.get('V2BOX_CANDIDATE_BINARY')
         if candidate_program:
             shutil.copy2(candidate_program,program/'v2box');(program/'v2box').chmod(0o755)
-            capabilities=json.loads(subprocess.check_output([str(program/'v2box'),'capabilities'],text=True))
-            assert 'shared-acme-v1' in capabilities['features'],'Candidate lacks shared ACME support'
+        capabilities=json.loads(subprocess.check_output([str(program/'v2box'),'capabilities'],text=True))
+        shared_acme='shared-acme-v1' in capabilities['features']
+        if candidate_program:
+            assert shared_acme,'Candidate lacks shared ACME support'
+        if shared_acme:
             php(a,'$node=App\\Models\\ServerV2box::findOrFail(3); $tls=$node->tls_settings; $tls["cert_mode"]="http"; $node->tls_settings=$tls; $node->save(); echo "true";')
         shared_fields=php(a,'echo json_encode(App\\Models\\ServerV2box::findOrFail(3)->only(["server_port","listen_ip","protocol","tls","network","tls_settings"]));')
         php(b,'$node=App\\Models\\ServerV2box::findOrFail(3); $node->fill(json_decode('+json.dumps(json.dumps(shared_fields))+',true)); $node->save(); echo "true";')
-        if candidate_program:
+        if shared_acme:
             php(b,'$node=App\\Models\\ServerV2box::findOrFail(3); $tls=$node->tls_settings; unset($tls["cert_file"],$tls["key_file"]); $node->tls_settings=$tls; $node->save(); echo "true";')
         config.write_text(json.dumps(configuration));config.chmod(0o600)
         log=open(root/'before-shared-node.log','wb');logs.append(log)
@@ -290,7 +293,7 @@ def run(manifest):
         (program/'node-network.py').chmod(0o755)
         # Complete the earlier fixture's credential rotation before a new enrollment.
         php(b,'foreach (Illuminate\\Support\\Facades\\DB::table("v2_node_credential")->where("node_type","v2box")->where("node_id",3)->whereNotNull("expires_at")->whereNull("revoked_at")->pluck("id") as $key) App\\Services\\NodeCredentials::revoke("v2box",3,$key,'+str(b['actorId'])+'); echo "true";')
-        if candidate_program:
+        if shared_acme:
             # A real managed binding/active record is required by the production
             # workflow. Only public DNS discovery is replaced by the local proxy.
             php(b,'$db=Illuminate\\Support\\Facades\\DB::class; $cid=$db::table("v2_ddns_credential")->insertGetId(["name"=>"Managed test DNS","zone_id"=>str_repeat("f",32),"root_domain"=>"example.test","secret"=>Illuminate\\Support\\Facades\\Crypt::encryptString("fixture-only"),"status"=>"ready","next_run"=>time()+3600]); $binding=$db::table("v2_node_ddns")->where("node_type","v2box")->where("node_id",3)->first(); $db::table("v2_node_ddns")->where("id",$binding->id)->update(["managed"=>true,"credential_id"=>$cid,"status"=>"healthy","last_success"=>time(),"next_run"=>time()+3600,"ipv4"=>"8.8.8.8","ipv4_seen_at"=>time(),"published_domain"=>$binding->domain]); $db::table("v2_node_dns_record")->insert(["assignment_id"=>$binding->id,"credential_id"=>$cid,"domain"=>$binding->domain,"type"=>"A","record_id"=>bin2hex(random_bytes(16)),"owner"=>bin2hex(random_bytes(24)),"content"=>"8.8.8.8","status"=>"active","delete_after"=>0]); echo "true";')
@@ -304,7 +307,7 @@ def run(manifest):
         assert len(shared_nodes)==2 and shared_nodes[0]['SharedListener']==shared_nodes[1]['SharedListener'],'Automatic deployment did not select one shared group'
         assert shared_nodes[0]['ApiKey']==entry['ApiKey'] and shared_nodes[0]['CertificateDirectory']==entry['CertificateDirectory']
         assert cert_before=={p.name:hashlib.sha256(p.read_bytes()).hexdigest() for p in node_root.glob('operator-*.pem')}
-        if candidate_program:
+        if shared_acme:
             binding=shared_nodes[1]['SharedCertificate']
             assert binding['CertFile']==str(node_root/'operator-cert.pem') and binding['KeyFile']==str(node_root/'operator-key.pem'),'Automatic ACME binding did not preserve the original pair'
             wait(lambda:(root/'shared-node.log').read_text().count('Start renew cert')==2,'Both panel controllers did not retain automatic renewal')
@@ -317,9 +320,9 @@ def run(manifest):
         shared_before=config.read_bytes()
         repeated_shared=subprocess.run(command_shared,shell=True,cwd=root,env=env,capture_output=True,timeout=40)
         assert repeated_shared.returncode==0 and config.read_bytes()==shared_before and len(events.read_text().splitlines())==1,'Repeated shared deployment changed configuration or restarted again'
-        result={'independent_databases':2,'different_application_keys':True,'published_program':'v1.0.14','same_node_id':3,'same_server_id':7,'same_user_id':True,'one_click_append':True,'cross_panel_credentials_rejected':True,'existing_tls_stream_and_certificate_preserved':True,'configuration_change_isolated':True,'backend_outage_isolated':True,'ip_reporting_isolated':True,'other_database_user_ban_isolated':True,'direct_dns_and_legacy_reporting_preserved':True,'repeat_command_idempotent':True,'service_restarts':1,'service_manager':'fixture; real V2Box process and HTTPS Laravel backends'}
+        result={'independent_databases':2,'different_application_keys':True,'published_program':'v1.0.15','same_node_id':3,'same_server_id':7,'same_user_id':True,'one_click_append':True,'cross_panel_credentials_rejected':True,'existing_tls_stream_and_certificate_preserved':True,'configuration_change_isolated':True,'backend_outage_isolated':True,'ip_reporting_isolated':True,'other_database_user_ban_isolated':True,'direct_dns_and_legacy_reporting_preserved':True,'repeat_command_idempotent':True,'service_restarts':1,'service_manager':'fixture; real V2Box process and HTTPS Laravel backends'}
         result.update({'automatic_same_port_without_suffix':True,'automatic_group_selection':True,'automatic_conversion_restarts_once':True,'shared_two_panel_tls_connections':True,'port_conflict_rejected_and_scoped_rollback':True,'runtime_readiness_confirmed_without_managed_dns':True,'bootstrap_outage_preserves_existing_services':True,'redemption_outage_then_same_grant_retry':True,'real_previous_release_upgrade':True,'stopped_upgrade_stays_stopped':True,'upgrade_preserves_nodes_certificates_and_reporting':True,'previous_binary_backup_preserved':True,'upgraded_binary_serves_retained_nodes':True})
-        result.update({'shared_http_automatic_renewal':bool(candidate_program),'existing_acme_pair_reused':bool(candidate_program)})
+        result.update({'shared_http_automatic_renewal':bool(shared_acme),'existing_acme_pair_reused':bool(shared_acme)})
         Path('/tmp/v2box-independent-result.json').write_text(json.dumps(result,indent=2));print(json.dumps(result))
     finally:
         for stream in streams:

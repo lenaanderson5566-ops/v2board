@@ -2,7 +2,7 @@ import type { Row } from "../shared/api";
 
 export const routeMatchLabels: Record<string, string> = { domain_suffix: "域名后缀", domain: "完整域名", domain_keyword: "域名关键字", domain_regex: "域名正则", ip_cidr: "IP / CIDR", port: "目标端口", port_range: "端口范围", protocol: "协议" };
 export const defaultRouteForm: Row = { kind: "match", match: "domain_suffix", values: "", action: "reject", outbound: "direct", proxyType: "socks", server: "", port: 1080, username: "", password: "", outboundTag: "proxy", dnsType: "https", dnsServer: "", dnsPort: 443, dnsPath: "/dns-query", dnsSni: "", dnsTag: "resolver", url: "", format: "binary", setTag: "remote-rules" };
-export const routeValues = (text: string): string[] => [...new Set(text.split(/[\n,，]+/).map(value => value.trim()).filter(Boolean))];
+export const routeValues = (text: string, regex = false): string[] => [...new Set(text.split(regex ? /\r?\n/ : /[\n,，]+/).map(value => value.trim()).filter(Boolean))];
 const ordered = (value: unknown): unknown => Array.isArray(value) ? value.map(ordered) : value && typeof value === "object" ? Object.fromEntries(Object.entries(value).sort(([a], [b]) => a.localeCompare(b)).map(([key, value]) => [key, ordered(value)])) : value;
 const same = (a: unknown, b: unknown) => JSON.stringify(ordered(a)) === JSON.stringify(ordered(b));
 const portNumber = (value: unknown) => Number.isInteger(Number(value)) && Number(value) >= 1 && Number(value) <= 65535;
@@ -17,7 +17,7 @@ function cidr(value: string): string {
 }
 
 export function buildRouteConfig(form: Row): Row {
-    let values = routeValues(String(form.values || ""));
+    let values = routeValues(String(form.values || ""), form.match === "domain_regex");
     if (["match", "dns"].includes(form.kind) && !values.length) throw new Error("请填写至少一个匹配条件");
     if (["match", "dns"].includes(form.kind) && form.match.startsWith("domain") && form.match !== "domain_regex" && values.some(value => /[\s/]/.test(value))) throw new Error("域名匹配内容不应包含协议、路径或空格");
     if (form.kind === "match" && form.match === "port" && values.some(value => !portNumber(value))) throw new Error("目标端口须为 1–65535 的整数");
@@ -99,7 +99,7 @@ export function routeDetails(row: Row): string {
     if (form) {
         if (form.kind === "default") return form.outbound === "proxy" ? `${form.proxyType.toUpperCase()} ${form.server}:${form.port}` : "默认直连";
         if (form.kind === "ruleset") return form.url;
-        const values = routeValues(form.values);
+        const values = routeValues(form.values, form.match === "domain_regex");
         return `${routeMatchLabels[form.match]}：${values.slice(0, 3).join("、")}${values.length > 3 ? ` 等 ${values.length} 项` : ""}${form.kind === "dns" ? ` → ${form.dnsServer}` : form.outbound === "proxy" && form.action === "route" ? ` → ${form.server}:${form.port}` : ""}`;
     }
     if (Array.isArray(row.match) && row.match.length) return row.match.slice(0, 3).join("、");

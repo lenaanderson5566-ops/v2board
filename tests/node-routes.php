@@ -10,6 +10,7 @@ use App\Http\Controllers\V1\Admin\Server\RouteController;
 use App\Http\Controllers\V1\Admin\Server\V2boxController;
 set_exception_handler(function($e) { fwrite(STDERR, $e->getMessage()."\n".$e->getTraceAsString()."\n"); exit(1); });
 $checks=0;
+config(['v2board.server_token'=>'routing-test-secret', 'cache.default'=>'array']);
 $assert = \Tests\Support\Assertions::counter($checks);
 $reject=function($fn,$label) use ($assert) {
     try { $fn(); } catch (Illuminate\Validation\ValidationException $e) { $assert(true,$label); return; }
@@ -83,6 +84,22 @@ try {
     }
     $config=App\Services\Actions\NodeV10Config::build($box->fresh());
     $assert($config['singBox']['route']->rules===$merged['route']['rules'] && $config['routes']===[], 'V10 resolves native catalog rules');
+    $legacyConfig=App\Services\Actions\NodeConfiguration::build($box->fresh());
+    $assert(json_encode($legacyConfig['sing_box'])===json_encode($config['singBox']),'Both communication APIs deliver identical native routing');
+    $legacyApi=(new App\Http\Controllers\V2\Server\ServerController())->config(Request::create('/','GET',['node_type'=>'v2box','node_id'=>$box->id,'token'=>config('v2board.server_token')]));
+    $legacyBody=json_decode($legacyApi->getContent(),true);
+    $assert(($legacyBody['sing_box']['route']['rules']??null)===$merged['route']['rules'],'Authenticated legacy HTTP config contains native rules');
+    $beforeHash=$legacyApi->headers->get('ETag');
+    $second->update(['sing_box'=>['route'=>['rules'=>[['ip_cidr'=>['192.0.2.0/24'],'action'=>'reject']],'final'=>'direct']]]);
+    $updatedApi=(new App\Http\Controllers\V2\Server\ServerController())->config(Request::create('/','GET',['node_type'=>'v2box','node_id'=>$box->id,'token'=>config('v2board.server_token')]));
+    $assert($updatedApi->headers->get('ETag')!==$beforeHash,'Native rule edits change legacy configuration version');
+    $cachedRequest=Request::create('/','GET',['node_type'=>'v2box','node_id'=>$box->id,'token'=>config('v2board.server_token')]);
+    $cachedRequest->headers->set('If-None-Match',$updatedApi->headers->get('ETag'));
+    $assert((new App\Http\Controllers\V2\Server\ServerController())->config($cachedRequest)->getStatusCode()===304,'Unchanged legacy configuration accepts the quoted version sent by V2Box');
+    $second->update(['sing_box'=>['route'=>['rules'=>[['ip_cidr'=>['10.0.0.0/8'],'action'=>'reject']],'final'=>'direct']]]);
+    if ($fixture=getenv('NODE_ROUTING_FIXTURE')) {
+        file_put_contents($fixture,json_encode(['legacy'=>json_decode($legacyApi->getContent(),true),'v10'=>['data'=>$config,'meta'=>['configurationHash'=>hash('sha256',json_encode($config))]]],JSON_THROW_ON_ERROR));
+    }
     $old->update(['match'=>'["changed.test"]']);
     $assert($clone->fresh()->match!==$old->fresh()->match,'Xray edit does not affect migrated V2Box rules');
 

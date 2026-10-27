@@ -1,6 +1,6 @@
 # Lightsail 静态 IP 管理
 
-节点管理 → Lightsail IP。配置 AWS 区域、实例名称、关联主节点和 AWS 凭据；编辑时凭据留空保留原值，凭据使用 APP_KEY 加密，列表及操作日志不返回原始凭据。
+节点管理 → Lightsail IP。配置 AWS 区域、实例名称、关联主节点，并选择共享 AWS 密钥；同一密钥可以绑定多个服务器。密钥管理中编辑时凭据留空保留原值，凭据使用 APP_KEY 加密，列表及操作日志不返回原始凭据。
 
 更换公网地址属于管理员主动操作，需要输入实例名称确认。任务进入独立 infrastructure 队列，按实例加锁。先查询当前静态 IP、申请新静态 IP，确认申请成功后解绑旧地址并绑定新地址；确认新绑定、更新关联的 Cloudflare A 记录后才释放旧静态 IP。AWS 不保证分配到某个特定地址，也不保证释放后能够重新找回旧地址。必须有可用静态 IP 配额。
 
@@ -9,6 +9,10 @@
 失败不会无限重试。任务持久保存阶段与新旧 IP 名称；“继续操作”先核对 AWS 实际状态，再继续同一操作，不重复申请地址。“恢复旧 IP”仅在旧地址尚未释放时有效。旧地址可能临时处于未绑定状态并产生费用，应及时完成或恢复。队列任务超过六分钟未完成时开放继续入口；操作仍受实例锁保护。
 
 AWS 最小动作权限：lightsail:GetInstance、lightsail:GetStaticIp、lightsail:GetStaticIps、lightsail:AllocateStaticIp、lightsail:DetachStaticIp、lightsail:AttachStaticIp、lightsail:ReleaseStaticIp。凭据必须针对配置的区域和实例；不要使用 AWS 根账户密钥。支持填写临时 session token，过期后需更新。实际权限范围按 AWS IAM 对每项动作支持的资源类型配置。
+
+AllocateStaticIp 和 GetStaticIps 不支持资源级授权，需要单独授予 Resource: "*"；仅授权实例 ARN 不足以申请新静态 IP。参考 [AWS Lightsail IAM 动作表](https://docs.aws.amazon.com/service-authorization/latest/reference/list_lightsail.html)。换 IP 要在保留旧地址的同时额外申请一个地址，必须有剩余区域配额；不要为腾配额自动释放正在使用的旧地址。
+
+失败卡片显示具体 AWS 动作和经过白名单过滤的错误码，并区分权限、凭据过期、配额、限流、网络及时间偏差。数据库仅保存短错误码，不保存可能带签名或凭据的 AWS 原始异常文本。allocate 阶段包含查询候选静态 IP 和申请新静态 IP，两种失败分别显示。历史 aws_request_failed 记录无法追溯已丢失的错误原因；部署更新并重启 infrastructure 队列后，管理员通过“继续操作”重新核对当前资源，新的失败会保存具体原因。此操作会继续原换 IP 流程，成功时也会继续绑定新地址。
 
 部署须运行 update.sh：安装 AWS PHP SDK，执行 2026_10_11_000010_create_lightsail_servers.php，更新 Horizon 配置并重启队列。独立连接 redis-infrastructure 的 retry_after=360，大于任务 timeout=180；生产须运行 Horizon。
 

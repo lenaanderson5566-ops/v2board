@@ -50,6 +50,8 @@ class NodeConfiguration {
         if ($node['route_id']) {
             $response['routes'] = (new ServerService())->getRoutes($node['route_id'], 'v2box');
         }
+        $response['sing_box'] = \App\Services\NodeRouteService::forNode($node);
+        if (isset($response['sing_box']['route'])) $response['sing_box']['route'] = (object)$response['sing_box']['route'];
 
         return $response;
     }

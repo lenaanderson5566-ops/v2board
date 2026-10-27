@@ -1132,3 +1132,7 @@ Lightsail 管理修复复用 `tests/lightsail.php` 与 `AdminLightsail.test.tsx`
 ## 路由可视化管理
 
 路由可视化管理复用 `Nodes.test.tsx` 与 `node-routes`、`console-smoke`，覆盖常用表单保存、代理参数保留、现有模板无损还原、非法条件拒绝、复杂 JSON 复制与转换保护、嵌套条件搜索、引用筛选和明细、删除保护及未保存修改保护。新界面继续保存原生配置，后端引用和合并校验保持生效，不增加平行验证入口。
+
+路由下发与生效验证复用 `node-routes`、`node-v10`、`v2box` 和现有 Go `core/native_test.go`、`api/v2board/v10_test.go`、`node/reload_retry_test.go`。`NODE_ROUTING_FIXTURE` 可在一次性面板测试副本导出兼容/V10 配置响应，节点以 `V2BOX_ROUTING_FIXTURE` 读取并验证两个接口解码一致及条件请求；这些仅为测试数据，不能使用生产响应。核心真实连接回归覆盖八类阻断匹配、HTTP 代理及默认出口、DNS 命中/回退、受信任测试证书的 HTTPS 规则集，并与出站安全保护同时执行。测试仅连接本地回环服务。
+
+Lightsail 申请失败诊断复用 tests/lightsail.php：59 项断言通过，覆盖权限、过期凭据、限流、网络、配额及未知错误的白名单过滤，区分查询与申请，并确认 allocate 失败不解绑或释放旧 IP。console-smoke 312 项通过，均在临时项目与一次性数据库执行。结果位于 storage/app/test-organization/v2box-only/lightsail-allocation-backend.json。

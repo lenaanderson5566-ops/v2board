@@ -9,6 +9,17 @@ use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\Cache;
 class LightsailService
 {
+    private static function awsFailure(AwsException $error): string
+    {
+        $operations = ['GetInstance'=>'instance', 'GetStaticIps'=>'list', 'GetStaticIp'=>'get', 'AllocateStaticIp'=>'allocate', 'AttachStaticIp'=>'attach', 'DetachStaticIp'=>'detach', 'ReleaseStaticIp'=>'release'];
+        $operation = $operations[$error->getCommand()->getName()] ?? 'request';
+        $known = ['AccessDenied','AccessDeniedException','UnauthorizedException','UnauthorizedOperation','UnauthenticatedException','InvalidClientTokenId','UnrecognizedClientException','SignatureDoesNotMatch','InvalidSignatureException','ExpiredToken','ExpiredTokenException','RequestExpired','RequestTimeTooSkewed','Throttling','ThrottlingException','TooManyRequestsException','RequestLimitExceeded','ServiceQuotaExceededException','LimitExceededException','ResourceLimitExceededException','InvalidInputException','NotFoundException','OperationFailureException','ServiceException','InternalError','InternalFailure','ServiceUnavailableException','AccountSetupInProgressException','RegionSetupInProgressException'];
+        $provider = $error->isConnectionError() ? 'NetworkError' : (in_array($error->getAwsErrorCode(),$known,true) ? $error->getAwsErrorCode() : 'UnknownError');
+        // Never persist provider messages: they may include signed URLs or credentials.
+        $quota = $operation === 'allocate' && in_array($provider,['InvalidInputException','OperationFailureException'],true)
+            && preg_match('/quota|limit\s+exceeded|maximum\s+number|too\s+many|exceeds?.*limit/i',(string)$error->getAwsErrorMessage());
+        return 'aws:'.$operation.':'.$provider.($quota ? ':quota' : '');
+    }
     public static function operationLock($row)
     {
         return Cache::lock('lightsail:' . hash('sha256', $row->region . ':' . $row->instance), 300);
@@ -176,7 +187,7 @@ class LightsailService
                 $update(['phase' => 'complete', 'status' => 'completed']);
             }
         } catch (\Throwable $e) {
-            $code = $e instanceof AwsException ? 'aws_request_failed' : (in_array($e->getMessage(), ['operation_pending', 'old_ip_unavailable', 'static_ip_required', 'static_ip_not_found', 'new_ip_missing', 'old_ip_in_use', 'new_ip_in_use', 'node_missing', 'ddns_requires_ipv4', 'dns_update_failed', 'dns_not_ready'], true) ? $e->getMessage() : 'operation_failed');
+            $code = $e instanceof AwsException ? self::awsFailure($e) : (in_array($e->getMessage(), ['operation_pending', 'old_ip_unavailable', 'static_ip_required', 'static_ip_not_found', 'new_ip_missing', 'old_ip_in_use', 'new_ip_in_use', 'node_missing', 'credential_missing', 'invalid_operation_state', 'ddns_requires_ipv4', 'dns_update_failed', 'dns_not_ready'], true) ? $e->getMessage() : 'operation_failed');
             $failure = ['status' => 'failed', 'error_code' => $code];
             if ($code === 'old_ip_unavailable' && ($row->operation ?? null) === 'restore' && $row->phase !== 'restored') {
                 $failure['operation'] = 'rotate';

@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { admin, request, type Row } from "../shared/api";
 import { Modal, Panel, State, useData } from "../shared/ui";
+import { lightsailFailure } from "./lightsail-status";
 const labels: Record<string, string> = {
     ready: "待操作",
     queued: "等待队列",
@@ -195,13 +196,15 @@ export function AdminLightsail({
                                         </dd>
                                     </div>
                                 </dl>
-                                {row.error_code && (
-                                    <p className="muted">
-                                        操作未完成：{row.error_code} · 阶段{" "}
-                                        {row.phase}。检查 AWS 权限、队列及 DDNS
-                                        状态后继续。
-                                    </p>
-                                )}
+                                {row.error_code && (() => {
+                                    const failure = lightsailFailure(row);
+                                    return <div className="infrastructure-notice" role="status">
+                                        <strong>{failure.title}</strong>
+                                        <p>{failure.advice}</p>
+                                        <small>{failure.operation && `${failure.operation} · `}阶段 {row.phase} · {row.error_code}</small>
+                                        {row.phase === "allocate" && row.status === "failed" && row.operation !== "restore" && <p>申请阶段不会主动解绑旧 IP；如在 AWS 控制台手动操作过，请以实际绑定为准。</p>}
+                                    </div>;
+                                })()}
                                 <div className="actions">
                                     <button
                                         disabled={busy}

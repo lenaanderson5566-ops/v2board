@@ -417,6 +417,9 @@ it("round-trips supported presets, validates basic conditions and refuses lossy 
     }
     const ip = buildRouteConfig({ ...defaultRouteForm, match: "ip_cidr", values: "192.0.2.1\n2001:db8::1" });
     expect(ip.route.rules[1].ip_cidr).toEqual(["192.0.2.1/32", "2001:db8::1/128"]);
+    const regex = buildRouteConfig({ ...defaultRouteForm, match: "domain_regex", values: "^b[a-z]{1,7}\\.example$\n^other\\.example$" });
+    expect(regex.route.rules[1].domain_regex).toEqual(["^b[a-z]{1,7}\\.example$", "^other\\.example$"]);
+    expect(buildRouteConfig(readRouteForm(regex)!)).toEqual(regex);
     for (const [match, values] of [["port", "0"], ["port_range", "9000:8000"], ["ip_cidr", "300.0.0.1/24"], ["domain_suffix", "https://example.test/path"]]) expect(() => buildRouteConfig({ ...defaultRouteForm, match, values })).toThrow();
     expect(readRouteForm({ route: { rules: [{ domain_suffix: ["one.test"], invert: true, action: "reject" }] } })).toBeUndefined();
     expect(readRouteForm({ route: { rules: [{ domain_suffix: ["one.test"], port: [443], action: "reject" }] } })).toBeUndefined();

@@ -53,7 +53,8 @@ class ServerController extends Controller
         $eTag = sha1($rsp);
 
         // 不使用 abort(304)，避免异常路径
-        if ($request->header('If-None-Match') === $eTag) {
+        $matches = array_map(fn($value)=>trim(preg_replace('/^W\//', '', trim($value)), '"'), explode(',', (string)$request->header('If-None-Match', '')));
+        if (in_array($eTag, $matches, true) || in_array('*', $matches, true)) {
             return response('', 304)->header('ETag', "\"{$eTag}\"")->header('Cache-Control', 'private, no-store');
         }
 

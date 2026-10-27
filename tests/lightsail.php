@@ -48,6 +48,9 @@ try {
         $name = $command->getName();
         $state->calls[] = $name;
         if ($state->fail === $name) {
+            if (isset($state->awsCode)) {
+                throw new Aws\Exception\AwsException('simulated_secret_must_not_be_logged', $command, ['code' => $state->awsCode, 'message' => $state->awsMessage ?? 'simulated_secret_must_not_be_logged', 'connection_error' => $state->awsCode === 'NetworkError']);
+            }
             throw new RuntimeException('simulated_secret_must_not_be_logged');
         }
         $ipName = $command['staticIpName'] ?? '';
@@ -114,6 +117,24 @@ try {
     $assert($state->ips['old']['isAttached'] && !in_array('DetachStaticIp', $state->calls, true), 'Allocate failure preserves attached old IP');
     $failed = DB::table('v2_lightsail_server')->find($row->id);
     $assert($failed->status === 'failed' && !str_contains($failed->error_code, 'secret'), 'Safe failure state');
+    foreach (['AccessDeniedException', 'ExpiredTokenException', 'ThrottlingException', 'NetworkError', 'InvalidInputException', 'UnrecognizedSensitiveProviderCode'] as $awsCode) {
+        $state->awsCode = $awsCode;
+        $state->awsMessage = 'Static IP quota limit exceeded simulated_secret_must_not_be_logged';
+        $state->calls = [];
+        DB::table('v2_lightsail_server')->where('id', $row->id)->update(['status' => 'queued']);
+        $service->run($row->id);
+        $failed = DB::table('v2_lightsail_server')->find($row->id);
+        $expected = $awsCode === 'UnrecognizedSensitiveProviderCode' ? 'UnknownError' : $awsCode;
+        $expected = 'aws:allocate:'.$expected.($awsCode === 'InvalidInputException' ? ':quota' : '');
+        $assert($failed->error_code === $expected && strlen($expected) <= 50, 'Safe actionable AWS failure '.$awsCode);
+        $assert($failed->phase === 'allocate' && $state->ips['old']['isAttached'] && !in_array('DetachStaticIp', $state->calls, true) && !in_array('ReleaseStaticIp', $state->calls, true), 'AWS allocation failure preserves old IP '.$awsCode);
+    }
+    $state->fail = 'GetStaticIp';
+    $state->awsCode = 'AccessDeniedException';
+    DB::table('v2_lightsail_server')->where('id', $row->id)->update(['status' => 'queued']);
+    $service->run($row->id);
+    $assert(DB::table('v2_lightsail_server')->find($row->id)->error_code === 'aws:get:AccessDeniedException', 'Read permission failure distinguished from allocation');
+    unset($state->awsCode, $state->awsMessage);
     $state->fail = null;
     $state->calls = [];
     $state->timeoutAfterAttach = true;

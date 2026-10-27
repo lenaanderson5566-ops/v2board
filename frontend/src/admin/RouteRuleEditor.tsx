@@ -67,8 +67,8 @@ export function RouteRuleEditor({ initial, onSave, onStateChange }: { initial: R
                 {select("kind", "规则用途", [["match", "按条件匹配"], ["dns", "DNS 分流"], ["ruleset", "远程规则集"], ["default", "默认出口"]])}
                 {["match", "dns"].includes(form.kind) && <>
                     {select("match", "匹配方式", Object.entries(routeMatchLabels).filter(([key]) => form.kind !== "dns" || key.startsWith("domain")))}
-                    <label>匹配内容 *<textarea aria-label="匹配内容" required rows={5} placeholder={form.match === "port_range" ? "8000:9000\n10000:20000" : form.match === "ip_cidr" ? "192.0.2.0/24\n2001:db8::/32" : "每行一项，也可用逗号分隔"} value={form.values} onChange={e => change("values", e.target.value)} /></label>
-                    <p className="muted">多项条件按“任一匹配”生效。域名不填写 https:// 或路径；域名后缀包含子域名。需要组合不同条件时使用高级 JSON。</p>
+                    <label>匹配内容 *<textarea aria-label="匹配内容" required rows={5} placeholder={form.match === "domain_regex" ? "每行一个正则表达式，保留表达式中的逗号" : form.match === "port_range" ? "8000:9000\n10000:20000" : form.match === "ip_cidr" ? "192.0.2.0/24\n2001:db8::/32" : "每行一项，也可用逗号分隔"} value={form.values} onChange={e => change("values", e.target.value)} /></label>
+                    <p className="muted">{form.match === "domain_regex" ? "正则表达式每行一项，表达式中的逗号会保留。" : "多项条件按“任一匹配”生效，可逐行或用逗号分隔。域名不填写 https:// 或路径；域名后缀包含子域名。"}需要组合不同条件时使用高级 JSON。</p>
                     {form.match === "protocol" && <p className="muted">识别协议填写 tls、http、quic、dns 等。TCP/UDP 网络类型请在高级 JSON 中设置 network。</p>}
                 </>}
                 {form.kind === "ruleset" && <>{text("url", "HTTPS 规则集地址", "url")}{select("format", "规则集格式", [["binary", "二进制 .srs"], ["source", "JSON 源文件"]])}</>}

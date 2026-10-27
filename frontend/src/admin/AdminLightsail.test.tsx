@@ -35,6 +35,7 @@ vi.mock("../shared/ui", () => ({
     ),
 }));
 import { AdminLightsail } from "./AdminLightsail";
+import { lightsailFailure } from "./lightsail-status";
 const row = {
     id: 1,
     name: "Singapore",
@@ -61,6 +62,28 @@ const show = () =>
             close={vi.fn()}
         />,
     );
+it.each([
+    ["aws:allocate:AccessDeniedException", "AWS 权限不足", "lightsail:AllocateStaticIp"],
+    ["aws:get:AccessDeniedException", "AWS 权限不足", "lightsail:GetStaticIp"],
+    ["aws:allocate:InvalidInputException:quota", "静态 IP 配额不足", "不要释放仍在使用的旧 IP"],
+    ["aws:allocate:ThrottlingException", "AWS 请求被限流", "等待限流窗口"],
+    ["aws:allocate:ExpiredTokenException", "AWS 临时凭据或请求已过期", "Session Token"],
+    ["aws:allocate:NetworkError", "无法连接 AWS API", "HTTPS"],
+    ["aws:allocate:RequestTimeTooSkewed", "服务器时间与 AWS 偏差过大", "同步"],
+    ["aws_request_failed", "旧记录没有保留具体原因", "继续操作"],
+])("explains %s without guessing the original cause", (code, title, advice) => {
+    const failure = lightsailFailure({ ...row, phase: "allocate", error_code: code });
+    expect(failure.title).toContain(title);
+    expect(failure.advice).toContain(advice);
+});
+it("shows the AWS action and error while preserving recovery controls", () => {
+    mocks.rows = [{ ...row, status: "failed", phase: "allocate", operation: "rotate", recoverable: true, error_code: "aws:allocate:AccessDeniedException" }];
+    show();
+    expect(screen.getByRole("status").textContent).toContain("lightsail:AllocateStaticIp");
+    expect(screen.getByRole("status").textContent).toContain("aws:allocate:AccessDeniedException");
+    expect(screen.getByRole("button", { name: "继续操作" })).toBeTruthy();
+    expect(mocks.request).not.toHaveBeenCalled();
+});
 it("requires exact instance confirmation before submitting an IP change", async () => {
     show();
     fireEvent.click(

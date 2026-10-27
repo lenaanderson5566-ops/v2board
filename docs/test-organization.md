@@ -1092,3 +1092,11 @@ v1.0.15 正式发布验证：节点从 6d2aa4d 发布，正式标签流水线的
 隔离后台全量 111/111、103 项部署工作流、99 项节点集成通过；前端 114 文件/1053 项和正式构建通过。使用正式 v1.0.15 Linux 包在两个独立数据库的真实 HTTPS 后台执行普通一键部署，验证 HTTP 自动证书绑定、SNI 连接、两个续签任务和 IP 上报保留；再以真实 v1.0.14 程序执行后台生成的 v1.0.15 升级命令，验证原停止状态、Nodes、证书/私钥、IP 上报配置和状态及旧二进制备份均保留。发布 Linux amd64 包 SHA-256 为 e0fb2a72981df9582e97218626b18da4e3e37412363e0ea83630d41d5bce4b96。
 
 已对授权的既有 HTTP 节点完成 v1.0.14 至 v1.0.15 实际升级：新程序与正式包一致，11 项受保护文件摘要不变，旧程序及完整私有备份保留，VLESS 认证、证书校验、外部 HTTP 200 和公网 TLS 1.3 通过，用户/流量/在线上报正常且无异常重启，IP 上报主动验证被接受、定时器保持启用。续签任务已启动，两公共解析器指向本机且本机 80 端口可用；证书尚余约 89 天，未强制触发公共 CA 重签。节点地址、凭据、备份位置等仅存本地忽略目录，线上后台更新需要其独立部署入口，不能由节点升级代替。结果见 storage/app/test-organization/v2box-v1.0.15。
+
+
+### Managed node deployment recovery
+
+- Panel enrollment and resume hand off private recovery state to the transient `v2box-deployment.service` on systemd hosts. SSH disconnect does not terminate the worker; no credentials are included in the unit command.
+- The worker retains bootstrap/deployment serialization, existing certificate guards and scoped rollback. Managed DNS waits poll for up to 24 hours; foreground fallback retains the 15-minute wait and explicitly asks operators to keep SSH open. This is SSH-disconnect survival, not automatic recovery after a server reboot.
+- Deployment status/logs use `systemctl status v2box-deployment --no-pager` and `journalctl -u v2box-deployment -f`; runtime node logs remain separate. Updated managers add `deploy-status` and `deploy-log`; older managers can use these system commands.
+- Existing `tests/support/v2box-deployment.py` now includes managed handoff, credential exclusion, failed-handoff preservation, non-systemd fallback and late-DNS regression checks. The disposable Linux workflow suite passed 107 tests and all 72 node script tests passed; bootstrap and manager shell syntax passed. Real systemd/SSH-disconnect verification remains required on a test server; the disposable container has no systemd PID 1.

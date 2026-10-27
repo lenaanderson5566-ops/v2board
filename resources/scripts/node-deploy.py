@@ -370,6 +370,22 @@ def configure_reporting(host, report, directory, command=run_command):
         os.unlink(name)
 
 
+def launch_managed(path):
+    Deployment(path)
+    if not Path("/run/systemd/system").is_dir() or not shutil.which("systemd-run"):
+        print("No systemd: deployment runs in foreground. Keep SSH open.", flush=True)
+        return False
+    subprocess.run([
+        "systemd-run", "--unit=v2box-deployment", "--collect",
+        "--description=V2Box panel deployment", "--property=Type=exec",
+        "--property=UMask=0077", "--property=TimeoutStartSec=infinity",
+        sys.executable, "-u", str(Path(__file__).resolve()), "--worker", str(Path(path).resolve()),
+    ], check=True, timeout=30)
+    print("Deployment continues after SSH closes. Status: systemctl status v2box-deployment --no-pager", flush=True)
+    print("Logs: journalctl -u v2box-deployment -f (Ctrl+C closes only the log view).", flush=True)
+    return True
+
+
 class Deployment:
     """Resume one enrollment without changing its persisted recovery-state schema."""
 
@@ -904,10 +920,10 @@ class Deployment:
         if self.flow.get("accessMode") == "unmanaged":
             return False
         print(
-            "Waiting for panel synchronization and public A/AAAA propagation (up to 15 minutes).",
+            "Waiting for panel synchronization and public A/AAAA propagation (up to 24 hours when managed; 15 minutes in foreground).",
             flush=True,
         )
-        deadline = time.monotonic() + 900
+        deadline = time.monotonic() + (86400 if getattr(self, "managed", False) else 900)
         last_reason = None
         polls = 0
         reason = "Waiting for panel response."
@@ -1278,14 +1294,29 @@ def main():
                 panel_identity(data["apiHost"]), data["networkReport"], path.parent
             )
             return 0
+        managed = len(sys.argv) == 3 and sys.argv[1] == "--worker"
+        if len(sys.argv) == 2 or (len(sys.argv) == 3 and sys.argv[1] == "--managed"):
+            recovery_path = sys.argv[-1]
+            if launch_managed(recovery_path):
+                return 0
+            sys.argv = [sys.argv[0], recovery_path]
+        if managed:
+            sys.argv = [sys.argv[0], sys.argv[2]]
         if len(sys.argv) != 2:
             raise DeploymentError("Run with a deployment state file")
         path = Path(sys.argv[1])
+        bootstrap_handle = None
+        if managed:
+            bootstrap_fd = os.open(path.parent / ".bootstrap.lock", os.O_CREAT | os.O_RDWR | os.O_NOFOLLOW, 0o600)
+            bootstrap_handle = os.fdopen(bootstrap_fd, "w")
+            fcntl.flock(bootstrap_handle, fcntl.LOCK_EX)
         lock = path.parent / ".deployment.lock"
         fd = os.open(lock, os.O_CREAT | os.O_RDWR | os.O_NOFOLLOW, 0o600)
         with os.fdopen(fd, "w") as handle:
             fcntl.flock(handle, fcntl.LOCK_EX | fcntl.LOCK_NB)
-            Deployment(path).run()
+            deployment = Deployment(path)
+            deployment.managed = managed
+            deployment.run()
     except (
         DeploymentError,
         OSError,
@@ -1293,11 +1324,14 @@ def main():
         KeyError,
         TypeError,
         subprocess.TimeoutExpired,
+        subprocess.CalledProcessError,
     ) as error:
         if isinstance(error, DeploymentError):
             reason = str(error)
         elif isinstance(error, BlockingIOError):
             reason = "Another deployment is already running. Wait for that command to finish or stop it before resuming."
+        elif isinstance(error, subprocess.CalledProcessError):
+            reason = "Managed deployment did not start. Check systemctl status v2box-deployment and its journal; another task may still be running."
         elif isinstance(error, PermissionError):
             reason = "Deployment files could not be read or written. Check ownership, permissions and available disk space; configuration and certificates were retained."
         elif isinstance(error, subprocess.TimeoutExpired):

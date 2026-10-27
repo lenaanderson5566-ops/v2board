@@ -51,6 +51,35 @@ class WorkflowTests(unittest.TestCase):
             "completed": action == "complete",
         }
 
+    def test_managed_launch_uses_private_state_without_credentials_in_unit(self):
+        with patch.object(m.Path, "is_dir", return_value=True), patch.object(m.shutil, "which", return_value="/usr/bin/systemd-run"), patch.object(m.subprocess, "run") as run:
+            self.assertTrue(m.launch_managed(self.path))
+        args = run.call_args.args[0]
+        self.assertIn("--unit=v2box-deployment", args)
+        self.assertIn("--worker", args)
+        self.assertIn(str(self.path.resolve()), args)
+        self.assertNotIn(self.data["apiKey"], " ".join(args))
+        self.assertNotIn(self.data["deployment"]["token"], " ".join(args))
+        self.assertTrue(run.call_args.kwargs["check"])
+
+    def test_managed_launch_failure_does_not_fall_back_to_duplicate_foreground(self):
+        with patch.object(m.Path, "is_dir", return_value=True), patch.object(m.shutil, "which", return_value="/usr/bin/systemd-run"), patch.object(m.subprocess, "run", side_effect=subprocess.CalledProcessError(1, "systemd-run")):
+            with self.assertRaises(subprocess.CalledProcessError):
+                m.launch_managed(self.path)
+        self.assertTrue(self.path.exists())
+        self.assertFalse(self.deploy.config.exists())
+
+    def test_no_systemd_keeps_foreground_recovery(self):
+        with patch.object(m.Path, "is_dir", return_value=False), patch.object(m.subprocess, "run") as run:
+            self.assertFalse(m.launch_managed(self.path))
+            run.assert_not_called()
+
+    def test_managed_dns_recovers_after_foreground_deadline(self):
+        self.deploy.managed = True
+        self.deploy.progress = lambda: {"dnsReady": True, "addresses": {"ipv4": "192.0.2.1"}}
+        with patch.object(m.time, "monotonic", side_effect=[0, 1000]), patch.object(self.deploy, "verify_dns", return_value=True):
+            self.assertFalse(m.Deployment.wait_dns(self.deploy))
+
     def test_shared_anytls_append_preserves_peers_and_rollback(self):
         state = json.loads(self.path.read_text())
         state["sharedListener"] = "public-443"

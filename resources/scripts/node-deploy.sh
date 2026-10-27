@@ -80,7 +80,7 @@ if [[ "${1:-}" == --resume ]]; then
   restore_programs
   require_support
   install_helper
-  exec python3 /usr/local/lib/v2box/panel-deploy.py "$deployment_state"
+  exec python3 /usr/local/lib/v2box/panel-deploy.py --managed "$deployment_state"
 fi
 requested_id=''
 shared_listener=''
@@ -174,7 +174,7 @@ if [[ -e "$deployment_state" ]]; then
     restore_programs
     require_support
     install_helper
-    exec python3 /usr/local/lib/v2box/panel-deploy.py "$deployment_state"
+    exec python3 /usr/local/lib/v2box/panel-deploy.py --managed "$deployment_state"
   fi
   echo 'New deployment authorization supplied; previous state retained until redemption succeeds.'
 fi
@@ -228,4 +228,4 @@ chmod 600 "$config_stage"
 mv -f -- "$config_stage" "$deployment_state"
 config_stage=''
 install_helper
-python3 /usr/local/lib/v2box/panel-deploy.py "$deployment_state"
+python3 /usr/local/lib/v2box/panel-deploy.py --managed "$deployment_state"

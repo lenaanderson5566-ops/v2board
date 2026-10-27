@@ -30,13 +30,15 @@ class NoRedirect(urllib.request.HTTPRedirectHandler):
         return None
 
 
-def json_request(url, token=None, body=None, timeout=10):
+def json_request(url, token=None, body=None, timeout=10, extra_headers=None):
     headers = {
         "User-Agent": "v2box-deployment/1.0 (+https://github.com/lenaanderson5566-ops/v2box)",
         "Accept": "application/dns-json" if body is None else "application/json",
     }
     if token:
         headers["Authorization"] = "Bearer " + token
+    if extra_headers:
+        headers.update(extra_headers)
     if body is not None:
         headers["Content-Type"] = "application/json"
     request = urllib.request.Request(
@@ -535,9 +537,145 @@ class Deployment:
         # Persist recovery metadata before publishing a new live service.
         self.save_config_backup("add", document)
         original = json.loads(json.dumps(document))
+        # Legacy enrollment responses have no readiness/rollback workflow. Keep
+        # their independent append semantics rather than converting live peers.
+        if self.shared_listener or (self.state.get("autoShare") and self.flow):
+            self.prepare_shared_members(document, node)
         document["Nodes"] = document["Nodes"] + [node]
-        self.save(previousConfig=original, appendedConfig=document)
+        converted = any(
+            before.get("SharedListener", "") != after.get("SharedListener", "")
+            for before, after in zip(original["Nodes"], document["Nodes"])
+        )
+        self.save(previousConfig=original, appendedConfig=document, sharedRestartRequired=converted)
         write_private(self.config, document)
+
+    def shared_resource(self, node, resource):
+        # Each panel keeps its own bearer credential; never follow redirects or
+        # send credentials to a URL supplied by a configuration response.
+        host = panel_identity(node.get("ApiHost", ""))
+        if not host.startswith("https://") or node.get("NodeType") != "v2box" or node.get("ApiVersion", "v10") != "v10":
+            raise DeploymentError("Automatic sharing requires HTTPS V10 panel nodes; configuration preserved")
+        result = json_request(
+            host + "/api/v10/server/" + resource,
+            node["ApiKey"],
+            extra_headers={"Accept": "application/json", "X-Node-Type": "v2box", "X-Node-ID": str(node["NodeID"]),
+                           "X-Node-Capabilities": "native-routing-v1,configuration-receipt-v1,certificate-transition-v1"},
+        )
+        return result.get("data")
+
+    def shared_configuration(self, node):
+        config = self.shared_resource(node, "configuration")
+        if not isinstance(config, dict) or type(config.get("listenPort")) is not int or not 1 <= config["listenPort"] <= 65535 or not config.get("protocol"):
+            raise DeploymentError("Invalid sharing configuration response; configuration preserved")
+        # Intervals and accounting capabilities belong to each independent panel.
+        return {k: v for k, v in config.items() if k not in ("intervals", "trafficBatchDedup", "trafficBudgetSupported")}
+
+    @staticmethod
+    def check_shared_certificate(config):
+        if config.get("domainTransition"):
+            raise DeploymentError("Finish the pending certificate transition before sharing; configuration preserved")
+        if config.get("tls") == 1:
+            tls = config.get("tlsSettings", {})
+            mode = tls.get("certMode")
+            fields = ("certFile", "keyFile") if mode == "file" else ("tlsCert", "tlsKey")
+            if mode not in ("file", "remote") or not all(isinstance(tls.get(k), str) and tls[k] for k in fields):
+                raise DeploymentError("Sharing requires explicit file paths or remote certificates; existing certificate settings preserved")
+            if mode == "file" and not all(os.path.isabs(tls[k]) for k in fields):
+                raise DeploymentError("Shared certificate paths must be absolute; configuration preserved")
+
+    def shared_credentials(self, node, config):
+        users = self.shared_resource(node, "users")
+        if not isinstance(users, list):
+            raise DeploymentError("Invalid sharing user response; configuration preserved")
+        credentials = set()
+        for user in users:
+            value = user.get("uuid") if isinstance(user, dict) else None
+            if not isinstance(value, str) or not value:
+                raise DeploymentError("Invalid sharing user credential; configuration preserved")
+            if config["protocol"] in ("vless", "vmess", "tuic"):
+                value = value.lower()
+            elif config["protocol"] == "shadowsocks" and str(config.get("cipher", "")).startswith("2022-"):
+                value = value[:16 if config["cipher"] == "2022-blake3-aes-128-gcm" else 32]
+            if value in credentials:
+                raise DeploymentError("Shared listener credential conflict; configuration preserved")
+            credentials.add(value)
+        return credentials
+
+    @staticmethod
+    def listeners_overlap(left, right):
+        if left["listenPort"] != right["listenPort"]:
+            return False
+        def transports(config):
+            if config["protocol"] in ("tuic", "hysteria2"):
+                return {"udp"}
+            return {"tcp", "udp"} if config["protocol"] == "shadowsocks" else {"tcp"}
+        if not transports(left) & transports(right):
+            return False
+        first = left.get("listenAddress") or "0.0.0.0"
+        second = right.get("listenAddress") or "0.0.0.0"
+        return first == second or first in ("0.0.0.0", "::") or second in ("0.0.0.0", "::")
+
+    def require_shared_runtime(self):
+        installed = subprocess.run(["/usr/local/lib/v2box/v2box", "capabilities"],
+                                   capture_output=True, text=True, timeout=15)
+        try:
+            capabilities = json.loads(installed.stdout)
+        except ValueError:
+            capabilities = {}
+        features = capabilities.get("features") if isinstance(capabilities, dict) else None
+        if installed.returncode or not isinstance(features, list) or "shared-listener-v1" not in features:
+            raise DeploymentError("Installed V2Box lacks shared listener support; configuration preserved")
+        result = subprocess.run(["v2box", "check-runtime", "shared-listener-v1"],
+                                capture_output=True, text=True, timeout=15)
+        if result.returncode or result.stdout.strip() != "shared-listener-v1":
+            raise DeploymentError("Port sharing requires an upgraded V2Box program and manager; configuration preserved")
+
+    def prepare_shared_members(self, document, requested):
+        config = self.shared_configuration(requested)
+        candidates = []
+        for peer in document["Nodes"]:
+            other = self.shared_configuration(peer)
+            same_group = bool(self.shared_listener) and peer.get("SharedListener") == self.shared_listener
+            explicit_port = bool(self.shared_listener) and other["listenPort"] == config["listenPort"]
+            if self.listeners_overlap(config, other) or same_group or explicit_port:
+                candidates.append((peer, other))
+        if not candidates and not self.shared_listener:
+            return
+        self.check_shared_certificate(config)
+        if config["protocol"] not in ("anytls", "vless", "vmess", "trojan", "shadowsocks", "hysteria2", "tuic", "naive"):
+            raise DeploymentError("Unsupported shared listener protocol; configuration preserved")
+        groups = {peer["SharedListener"] for peer, _ in candidates if peer.get("SharedListener")}
+        if self.shared_listener:
+            groups.add(self.shared_listener)
+        if len(groups) > 1:
+            raise DeploymentError("Conflicting existing shared groups; configuration preserved")
+        group = next(iter(groups), None)
+        if group is None:
+            digest = hashlib.sha256(json.dumps(config, sort_keys=True).encode()).hexdigest()[:16]
+            group = "auto-" + str(config["listenPort"]) + "-" + digest
+        if not isinstance(group, str) or not re.fullmatch(r"[a-zA-Z0-9][a-zA-Z0-9_.-]{0,63}", group):
+            raise DeploymentError("Invalid existing shared group name; configuration preserved")
+        # Never reuse a generated name already owned by an unrelated listener.
+        if any(peer.get("SharedListener") == group and not any(peer is member for member, _ in candidates)
+               for peer in document["Nodes"]):
+            raise DeploymentError("Shared listener group name conflict; configuration preserved")
+        credentials = self.shared_credentials(requested, config)
+        for peer, other in candidates:
+            self.check_shared_certificate(other)
+            landing = peer.get("LandingPage") or {}
+            if other != config or landing.get("Enabled", False) or landing.get("Directory", ""):
+                raise DeploymentError("Shared listener configuration conflict; align protocol, port, TLS, transport and routing in both panels. Existing configuration preserved")
+            peer_credentials = self.shared_credentials(peer, other)
+            if credentials & peer_credentials:
+                raise DeploymentError("Shared listener credential conflict between panels; configuration preserved")
+            credentials.update(peer_credentials)
+        if self.state.get("autoShare"):
+            self.require_shared_runtime()
+        self.shared_listener = group
+        self.save(sharedListener=group)
+        requested["SharedListener"] = group
+        for peer, _ in candidates:
+            peer["SharedListener"] = group
 
     def rollback_addition(self):
         original = self.state.get("previousConfig")
@@ -558,11 +696,26 @@ class Deployment:
             raise DeploymentError(
                 "Added node configuration changed; automatic rollback refused. Inspect the private config.before-add snapshot."
             )
+        # Restore only group selections changed by this deployment. Keep operator
+        # edits to unrelated fields, but refuse to overwrite a changed selection.
+        converted = False
+        for before in original["Nodes"]:
+            after = next((n for n in appended["Nodes"] if node_identity(n) == node_identity(before)), None)
+            if after is None or before.get("SharedListener", "") == after.get("SharedListener", ""):
+                continue
+            converted = True
+            peers = [n for n in current["Nodes"] if node_identity(n) == node_identity(before)]
+            if len(peers) != 1 or peers[0].get("SharedListener", "") != after.get("SharedListener", ""):
+                raise DeploymentError("Shared listener selection changed; automatic rollback refused. Inspect the private config.before-add snapshot")
+            if "SharedListener" in before:
+                peers[0]["SharedListener"] = before["SharedListener"]
+            else:
+                peers[0].pop("SharedListener", None)
         current["Nodes"] = [
             item for item in current["Nodes"] if node_identity(item) != identity
         ]
         write_private(self.config, current)
-        self.save(startAttempted=False, activationAuthorized=False)
+        self.save(startAttempted=False, activationAuthorized=False, previousConfig=None, appendedConfig=None, sharedRestartRequired=converted)
         self.apply_service()
         print(
             "Failed added node removed; other panels, operator settings and reporting targets retained. Deployment state saved for retry.",
@@ -607,11 +760,17 @@ class Deployment:
         if state in ("inactive", "failed"):
             self.command(["v2box", "start"])
         elif state in ("active", "activating", "reloading"):
-            self.command(["v2box", "reload"])
+            if self.state.get("sharedRestartRequired"):
+                print("Converting an existing listener to a shared group: restarting V2Box once; active connections will reconnect.", flush=True)
+                self.command(["v2box", "restart"])
+            else:
+                self.command(["v2box", "reload"])
         else:
             raise DeploymentError(
                 "V2Box is stopping; wait for it to stop, then resume. Other nodes were not restarted."
             )
+        if self.state.get("sharedRestartRequired"):
+            self.save(sharedRestartRequired=False)
 
     def authorize_start(self):
         if not self.state.get("startAttempted") or self.state.get("applyPending"):
@@ -993,9 +1152,14 @@ class Deployment:
             already_completed = self.wait_dns()
             self.authorize_start()
             self.prepare_config()
-            self.ensure_started()
-            if not already_completed:
-                self.wait_ready()
+            try:
+                self.ensure_started()
+                if not already_completed:
+                    self.wait_ready()
+            except (DeploymentError, OSError, subprocess.TimeoutExpired):
+                if self.shared_listener:
+                    self.rollback_addition()
+                raise
         else:
             self.prepare_config()
             self.apply_service()

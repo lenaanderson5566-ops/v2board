@@ -60,6 +60,7 @@ class WorkflowTests(unittest.TestCase):
         peer = {"NodeType": "v2box", "ApiHost": "https://other.example.test", "NodeID": 3, "ApiKey": "keep", "SharedListener": "public-443", "CertificateDirectory": "/keep/certs"}
         original = {"Log": {"Level": "warn"}, "Nodes": [peer]}
         m.write_private(deploy.config, original)
+        self.mock_shared_resources(deploy)
         deploy.prepare_config()
         current = json.loads(deploy.config.read_text())
         self.assertEqual(current["Nodes"][0], peer)
@@ -68,6 +69,224 @@ class WorkflowTests(unittest.TestCase):
         deploy.apply_service = lambda: None
         deploy.rollback_addition()
         self.assertEqual(json.loads(deploy.config.read_text()), original)
+
+    def mock_shared_resources(self, deploy, mismatch=None, collision=False):
+        def resource(node, name):
+            peer = node["ApiHost"] != self.data["apiHost"]
+            if name == "users":
+                return [{"id": 1, "uuid": "new" if collision or not peer else "old"}]
+            config = {"protocol": "anytls", "listenPort": 443, "listenAddress": "0.0.0.0", "tls": 1,
+                      "tlsSettings": {"certMode": "file", "certFile": "/keep/cert.pem", "keyFile": "/keep/key.pem"}}
+            if peer and mismatch:
+                config.update(mismatch)
+            return config
+        deploy.shared_resource = resource
+
+    def shared_fixture(self):
+        state = json.loads(self.path.read_text())
+        state["sharedListener"] = "public-443"
+        state["data"]["deployment"].update(protocol="anytls", certificateMode="file")
+        m.write_private(self.path, state)
+        deploy = m.Deployment(self.path)
+        peer = {"NodeType": "v2box", "ApiHost": "https://other.example.test", "NodeID": 3,
+                "ApiKey": "keep", "CertificateDirectory": "/keep/certs"}
+        original = {"Log": {"Level": "warn"}, "Nodes": [peer]}
+        m.write_private(deploy.config, original)
+        self.mock_shared_resources(deploy)
+        deploy.apply_service = lambda: None
+        return deploy, original
+
+    def test_shared_install_automatically_groups_original_and_rolls_back(self):
+        deploy, original = self.shared_fixture()
+        deploy.prepare_config()
+        current = json.loads(deploy.config.read_text())
+        self.assertEqual([n["SharedListener"] for n in current["Nodes"]], ["public-443"] * 2)
+        self.assertEqual(current["Nodes"][0]["ApiKey"], "keep")
+        # An operator edit to another setting survives targeted rollback.
+        current["Nodes"][0]["Timeout"] = 30
+        m.write_private(deploy.config, current)
+        deploy.rollback_addition()
+        original["Nodes"][0]["Timeout"] = 30
+        self.assertEqual(json.loads(deploy.config.read_text()), original)
+
+    def test_shared_conflicts_leave_original_bytes_unchanged(self):
+        for mismatch, collision in [({"protocol": "tuic"}, False), ({"routes": [{"id": 7}]}, False),
+                                    ({"tlsSettings": {"certMode": "http"}}, False), (None, True)]:
+            with self.subTest(mismatch=mismatch, collision=collision):
+                deploy, _ = self.shared_fixture()
+                before = deploy.config.read_bytes()
+                self.mock_shared_resources(deploy, mismatch, collision)
+                with self.assertRaises(m.DeploymentError):
+                    deploy.prepare_config()
+                self.assertEqual(deploy.config.read_bytes(), before)
+
+    def test_shared_offline_panel_preserves_configuration(self):
+        deploy, _ = self.shared_fixture()
+        before = deploy.config.read_bytes()
+        deploy.shared_resource = lambda *args: (_ for _ in ()).throw(OSError("offline"))
+        with self.assertRaises(OSError):
+            deploy.prepare_config()
+        self.assertEqual(deploy.config.read_bytes(), before)
+
+    def test_shared_rollback_refuses_changed_operator_selection(self):
+        deploy, _ = self.shared_fixture()
+        deploy.prepare_config()
+        current = json.loads(deploy.config.read_text())
+        current["Nodes"][0]["SharedListener"] = "operator-group"
+        m.write_private(deploy.config, current)
+        before = deploy.config.read_bytes()
+        with self.assertRaisesRegex(m.DeploymentError, "selection changed"):
+            deploy.rollback_addition()
+        self.assertEqual(deploy.config.read_bytes(), before)
+
+    def test_shared_different_port_keeps_original_ungrouped(self):
+        deploy, original = self.shared_fixture()
+        self.mock_shared_resources(deploy, {"listenPort": 8443, "tlsSettings": {"certMode": "http"}})
+        deploy.prepare_config()
+        self.assertEqual(json.loads(deploy.config.read_text())["Nodes"][0], original["Nodes"][0])
+
+    def test_shared_repeat_command_does_not_rewrite_config(self):
+        deploy, _ = self.shared_fixture()
+        deploy.prepare_config()
+        before = deploy.config.stat().st_mtime_ns
+        deploy.prepare_config()
+        self.assertEqual(deploy.config.stat().st_mtime_ns, before)
+
+    def test_shared_start_failure_and_timeout_restore_original_group(self):
+        for failing_step in ("ensure_started", "wait_ready"):
+            with self.subTest(step=failing_step):
+                deploy, original = self.shared_fixture()
+                deploy.report = lambda: None
+                deploy.wait_dns = lambda: False
+                deploy.authorize_start = lambda: None
+                deploy.ensure_started = lambda: None
+                deploy.wait_ready = lambda: None
+                def fail():
+                    raise m.DeploymentError("simulated failure")
+                setattr(deploy, failing_step, fail)
+                with self.assertRaisesRegex(m.DeploymentError, "simulated failure"):
+                    deploy.run()
+                self.assertEqual(json.loads(deploy.config.read_text()), original)
+                # A second rollback must be harmless; resume can retry the add.
+                deploy.rollback_addition()
+                deploy.prepare_config()
+                self.assertEqual(len(json.loads(deploy.config.read_text())["Nodes"]), 2)
+
+    def test_shared_conversion_restarts_once_then_reloads(self):
+        deploy, _ = self.shared_fixture()
+        deploy.prepare_config()
+        commands = []
+        deploy.command = lambda args: commands.append(args)
+        deploy.service_state = lambda: "active"
+        m.Deployment.apply_service(deploy)
+        m.Deployment.apply_service(deploy)
+        self.assertEqual(commands, [["v2box", "restart"], ["v2box", "reload"]])
+
+    def automatic_fixture(self, port=443):
+        deploy, original = self.shared_fixture()
+        deploy.shared_listener = ""
+        deploy.save(sharedListener="", autoShare=True)
+        self.mock_shared_resources(deploy, {"listenPort": port})
+        resource = deploy.shared_resource
+        def for_port(node, name):
+            result = resource(node, name)
+            if name == "configuration":
+                result["listenPort"] = port
+            return result
+        deploy.shared_resource = for_port
+        deploy.require_shared_runtime = lambda: None
+        return deploy, original
+
+    def test_automatic_legacy_response_keeps_independent_append(self):
+        deploy, original = self.automatic_fixture()
+        deploy.flow = None
+        def unexpected(*args):
+            self.fail("Legacy enrollment must not query sharing APIs")
+        deploy.shared_resource = unexpected
+        deploy.prepare_config()
+        nodes = json.loads(deploy.config.read_text())["Nodes"]
+        self.assertEqual(nodes[0], original["Nodes"][0])
+        self.assertNotIn("SharedListener", nodes[1])
+
+    def test_automatic_sharing_needs_no_argument_on_any_port(self):
+        for port in (443, 8443, 20001):
+            with self.subTest(port=port):
+                deploy, _ = self.automatic_fixture(port)
+                deploy.prepare_config()
+                nodes = json.loads(deploy.config.read_text())["Nodes"]
+                self.assertTrue(nodes[0]["SharedListener"].startswith("auto-" + str(port) + "-"))
+                self.assertEqual(nodes[0]["SharedListener"], nodes[1]["SharedListener"])
+                before = deploy.config.stat().st_mtime_ns
+                deploy.prepare_config()
+                self.assertEqual(deploy.config.stat().st_mtime_ns, before)
+
+    def test_automatic_sharing_reuses_existing_group(self):
+        deploy, original = self.automatic_fixture(8443)
+        original["Nodes"][0]["SharedListener"] = "operator-existing"
+        m.write_private(deploy.config, original)
+        deploy.prepare_config()
+        nodes = json.loads(deploy.config.read_text())["Nodes"]
+        self.assertEqual([n["SharedListener"] for n in nodes], ["operator-existing"] * 2)
+        self.assertFalse(deploy.state["sharedRestartRequired"])
+
+    def test_automatic_different_port_remains_independent(self):
+        deploy, original = self.automatic_fixture()
+        self.mock_shared_resources(deploy, {"listenPort": 8443, "tlsSettings": {"certMode": "http"}})
+        deploy.prepare_config()
+        nodes = json.loads(deploy.config.read_text())["Nodes"]
+        self.assertEqual(nodes[0], original["Nodes"][0])
+        self.assertNotIn("SharedListener", nodes[1])
+
+    def test_automatic_incompatible_configuration_does_not_change_files(self):
+        for mismatch, collision in [({"paddingScheme": ["different"]}, False), (None, True)]:
+            with self.subTest(mismatch=mismatch):
+                deploy, _ = self.automatic_fixture()
+                before = deploy.config.read_bytes()
+                self.mock_shared_resources(deploy, mismatch, collision)
+                with self.assertRaises(m.DeploymentError):
+                    deploy.prepare_config()
+                self.assertEqual(deploy.config.read_bytes(), before)
+
+    def test_automatic_shared_runtime_failure_preserves_original(self):
+        deploy, _ = self.automatic_fixture()
+        before = deploy.config.read_bytes()
+        def unsupported():
+            raise m.DeploymentError("unsupported runtime")
+        deploy.require_shared_runtime = unsupported
+        with self.assertRaisesRegex(m.DeploymentError, "unsupported runtime"):
+            deploy.prepare_config()
+        self.assertEqual(deploy.config.read_bytes(), before)
+
+    def test_shared_capability_checks_installed_and_running_program(self):
+        deploy, _ = self.automatic_fixture()
+        completed = m.subprocess.CompletedProcess
+        with patch.object(m.subprocess, "run", return_value=completed([], 0, '{"features": []}', "")) as run:
+            with self.assertRaisesRegex(m.DeploymentError, "Installed V2Box"):
+                m.Deployment.require_shared_runtime(deploy)
+            self.assertEqual(run.call_count, 1)
+        installed = completed([], 0, '{"features": ["shared-listener-v1"]}', "")
+        with patch.object(m.subprocess, "run", side_effect=[installed, completed([], 1, "", "")]):
+            with self.assertRaisesRegex(m.DeploymentError, "upgraded V2Box"):
+                m.Deployment.require_shared_runtime(deploy)
+        with patch.object(m.subprocess, "run", side_effect=[installed, completed([], 0, "shared-listener-v1\n", "")]):
+            m.Deployment.require_shared_runtime(deploy)
+
+    def test_socket_overlap_respects_tcp_udp_and_bind_address(self):
+        tcp = {"protocol": "anytls", "listenPort": 8443, "listenAddress": "127.0.0.1"}
+        udp = dict(tcp, protocol="tuic")
+        self.assertFalse(m.Deployment.listeners_overlap(tcp, udp))
+        self.assertFalse(m.Deployment.listeners_overlap(tcp, dict(tcp, listenAddress="127.0.0.2")))
+        self.assertTrue(m.Deployment.listeners_overlap(tcp, dict(tcp, listenAddress="0.0.0.0")))
+        self.assertTrue(m.Deployment.listeners_overlap(udp, dict(udp, protocol="hysteria2")))
+
+    def test_shared_resource_uses_own_https_identity_headers(self):
+        deploy, original = self.shared_fixture()
+        with patch.object(m, "json_request", return_value={"data": {}}) as request:
+            m.Deployment.shared_resource(deploy, original["Nodes"][0], "configuration")
+        args, kwargs = request.call_args
+        self.assertEqual(args, ("https://other.example.test/api/v10/server/configuration", "keep"))
+        self.assertEqual(kwargs["extra_headers"]["X-Node-ID"], "3")
+        self.assertNotIn("keep", args[0])
 
     def test_shared_listener_protocol_and_certificate_matrix(self):
         for protocol, tls, mode in [(p, 1, "file") for p in ("anytls", "vless", "vmess", "trojan", "shadowsocks", "hysteria2", "tuic", "naive")] + [("vless", 0, "none"), ("vmess", 0, "none"), ("shadowsocks", 0, "none"), ("vless", 2, "none")]:

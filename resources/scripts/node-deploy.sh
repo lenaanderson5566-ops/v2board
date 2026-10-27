@@ -223,7 +223,7 @@ fi
 # Preserve enrollment only in a private local file so a consumed grant can be resumed.
 [[ ! -L "$deployment_state" ]] || exit 1
 config_stage=$(mktemp /etc/v2box/.deployment-state.XXXXXXXX)
-jq --arg hash "$grant_hash" --arg shared "$shared_listener" '. + {grantHash:$hash, replaceCredential:true, sharedListener:$shared}' "$stage/response.json" > "$config_stage"
+jq --arg hash "$grant_hash" --arg shared "$shared_listener" '. + {grantHash:$hash, replaceCredential:true, autoShare:true, sharedListener:$shared}' "$stage/response.json" > "$config_stage"
 chmod 600 "$config_stage"
 mv -f -- "$config_stage" "$deployment_state"
 config_stage=''

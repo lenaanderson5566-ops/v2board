@@ -40,7 +40,7 @@ def listening(port):
 def php(panel, code):
     program='require "tests/support/autoload.php"; $app=require "bootstrap/app.php"; $app->make(Illuminate\\Contracts\\Console\\Kernel::class)->bootstrap(); '+code
     p=subprocess.run(['php','-r',program],cwd=panel['root'],env=panel['environment'],capture_output=True,text=True,timeout=30)
-    if p.returncode: raise AssertionError('Independent panel control failed: '+re.sub(r'(?:nk_|nd_|am_)[a-f0-9.]+','[redacted]',p.stderr[-1000:]))
+    if p.returncode: raise AssertionError('Independent panel control failed: '+re.sub(r'(?:nk_|nd_|am_)[a-f0-9.]+','[redacted]',(p.stderr or p.stdout)[-1000:]))
     return json.loads(p.stdout)
 
 def exact(stream,length):
@@ -53,7 +53,7 @@ def exact(stream,length):
 
 def connect(panel, port, echo, context):
     stream=socket.create_connection(('127.0.0.1',port),5)
-    if panel['origin'].startswith('https://panel-a.'):
+    if panel.get('proxyTls', panel['origin'].startswith('https://panel-a.')):
         stream=context.wrap_socket(stream,server_hostname='node-a.example.test')
     stream.settimeout(5)
     stream.sendall(b'\x00'+uuid.UUID(panel['uuid']).bytes+bytes([0,1])+echo.to_bytes(2,'big')+bytes([1,127,0,0,1])+b'x')
@@ -255,14 +255,57 @@ def run(manifest):
         node=subprocess.Popen([str(program/'v2box'),'server','--config',str(config),'--watch=false'],env=env,stdout=log,stderr=log,start_new_session=True);pid_file.write_text(str(node.pid))
         wait(lambda:listening(new_b),'Upgraded program did not serve the retained panel configuration')
         upgraded_stream=connect(b,new_b,echo.server_address[1],context);streams.append(upgraded_stream);ping(upgraded_stream)
-        result={'independent_databases':2,'different_application_keys':True,'published_program':'v1.0.14','same_node_id':3,'same_server_id':7,'same_user_id':True,'one_click_append':True,'cross_panel_credentials_rejected':True,'existing_tls_stream_and_certificate_preserved':True,'configuration_change_isolated':True,'backend_outage_isolated':True,'ip_reporting_isolated':True,'other_database_user_ban_isolated':True,'direct_dns_and_legacy_reporting_preserved':True,'repeat_command_idempotent':True,'service_restarts':0,'service_manager':'fixture; real V2Box process and HTTPS Laravel backends'}
-        result.update({'port_conflict_rejected_and_scoped_rollback':True,'runtime_readiness_confirmed_without_managed_dns':True,'bootstrap_outage_preserves_existing_services':True,'redemption_outage_then_same_grant_retry':True,'real_previous_release_upgrade':True,'stopped_upgrade_stays_stopped':True,'upgrade_preserves_nodes_certificates_and_reporting':True,'previous_binary_backup_preserved':True,'upgraded_binary_serves_retained_nodes':True})
+        # Exercise the ordinary panel command converting an ungrouped listener,
+        # using the published binary and the two real independent databases.
+        upgraded_stream.close()
+        os.killpg(node.pid,signal.SIGTERM);node.wait(timeout=15);pid_file.unlink()
+        php(a,'Illuminate\\Support\\Facades\\DB::table("v2_user")->where("id",'+str(a['userId'])+')->update(["banned"=>0]); echo "true";')
+        shared_fields=php(a,'echo json_encode(App\\Models\\ServerV2box::findOrFail(3)->only(["server_port","listen_ip","protocol","tls","network","tls_settings"]));')
+        php(b,'$node=App\\Models\\ServerV2box::findOrFail(3); $node->fill(json_decode('+json.dumps(json.dumps(shared_fields))+',true)); $node->save(); echo "true";')
+        config.write_text(json.dumps(configuration));config.chmod(0o600)
+        log=open(root/'before-shared-node.log','wb');logs.append(log)
+        node=subprocess.Popen([str(program/'v2box'),'server','--config',str(config),'--watch=false'],env=env,stdout=log,stderr=log,start_new_session=True);pid_file.write_text(str(node.pid))
+        wait(lambda:listening(a['port']),'Ungrouped node did not restart for automatic sharing fixture')
+        # Only this disposable service fixture may perform a real process restart.
+        service_source=systemctl.read_text()
+        restart_handler="elif a and a[0]==\"restart\":\n import subprocess,time,socket\n os.killpg(pid,signal.SIGTERM)\n time.sleep(.5)\n with open("+repr(str(events))+",\"a\") as f:f.write(json.dumps(a)+\"\\n\")\n log=open("+repr(str(root/'shared-node.log'))+",\"ab\")\n child=subprocess.Popen(["+repr(str(program/'v2box'))+",\"server\",\"--config\","+repr(str(config))+",\"--watch=false\"],stdout=log,stderr=log,start_new_session=True)\n p.write_text(str(child.pid))\n"
+        systemctl.write_text(service_source.replace('elif "v2box" in a',restart_handler+'elif "v2box" in a'))
+        # The real upgrade restores the shipped helper; reinstate controlled IP discovery.
+        (program/'node-network.py').write_text('#!/usr/bin/env python3\nimport importlib.util,sys\ns=importlib.util.spec_from_file_location("network",'+repr(str(real_network))+');m=importlib.util.module_from_spec(s);s.loader.exec_module(m)\nm.IP_SERVICES={"A":['+repr(a['origin']+'/fixture-ip')+'],"AAAA":[]}\ntry:m.main()\nexcept m.NetworkError:sys.exit(1)\n')
+        (program/'node-network.py').chmod(0o755)
+        # Complete the earlier fixture's credential rotation before a new enrollment.
+        php(b,'foreach (Illuminate\\Support\\Facades\\DB::table("v2_node_credential")->where("node_type","v2box")->where("node_id",3)->whereNotNull("expires_at")->whereNull("revoked_at")->pluck("id") as $key) App\\Services\\NodeCredentials::revoke("v2box",3,$key,'+str(b['actorId'])+'); echo "true";')
+        command_shared=php(b,'echo json_encode(App\\Services\\NodeDeployment::create(3,'+str(b['actorId'])+'));')['command']
+        assert '--shared-listener' not in command_shared,'Ordinary panel command required a sharing suffix'
+        shared_reports=network.CONFIG.read_bytes()
+        applied=subprocess.run(command_shared,shell=True,cwd=root,env=env,capture_output=True,text=True,timeout=110)
+        if applied.returncode:raise AssertionError('Automatic same-port deployment failed: '+re.sub(r'(?:nk_|nd_|am_)[a-f0-9.]+','[redacted]',(applied.stdout+applied.stderr)[-2400:]))
+        shared_nodes=json.loads(config.read_text())['Nodes']
+        assert len(shared_nodes)==2 and shared_nodes[0]['SharedListener']==shared_nodes[1]['SharedListener'],'Automatic deployment did not select one shared group'
+        assert shared_nodes[0]['ApiKey']==entry['ApiKey'] and shared_nodes[0]['CertificateDirectory']==entry['CertificateDirectory']
+        assert cert_before=={p.name:hashlib.sha256(p.read_bytes()).hexdigest() for p in node_root.glob('operator-*.pem')}
+        assert network.CONFIG.read_bytes()==shared_reports,'Shared conversion changed existing reporting settings'
+        b['proxyTls']=True
+        shared_a=connect(a,a['port'],echo.server_address[1],context);streams.append(shared_a)
+        shared_b=connect(b,a['port'],echo.server_address[1],context);streams.append(shared_b)
+        ping(shared_a,b'A'*65536);ping(shared_b,b'B'*131072)
+        assert len(events.read_text().splitlines())==1,'Initial shared conversion did not restart exactly once'
+        shared_before=config.read_bytes()
+        repeated_shared=subprocess.run(command_shared,shell=True,cwd=root,env=env,capture_output=True,timeout=40)
+        assert repeated_shared.returncode==0 and config.read_bytes()==shared_before and len(events.read_text().splitlines())==1,'Repeated shared deployment changed configuration or restarted again'
+        result={'independent_databases':2,'different_application_keys':True,'published_program':'v1.0.14','same_node_id':3,'same_server_id':7,'same_user_id':True,'one_click_append':True,'cross_panel_credentials_rejected':True,'existing_tls_stream_and_certificate_preserved':True,'configuration_change_isolated':True,'backend_outage_isolated':True,'ip_reporting_isolated':True,'other_database_user_ban_isolated':True,'direct_dns_and_legacy_reporting_preserved':True,'repeat_command_idempotent':True,'service_restarts':1,'service_manager':'fixture; real V2Box process and HTTPS Laravel backends'}
+        result.update({'automatic_same_port_without_suffix':True,'automatic_group_selection':True,'automatic_conversion_restarts_once':True,'shared_two_panel_tls_connections':True,'port_conflict_rejected_and_scoped_rollback':True,'runtime_readiness_confirmed_without_managed_dns':True,'bootstrap_outage_preserves_existing_services':True,'redemption_outage_then_same_grant_retry':True,'real_previous_release_upgrade':True,'stopped_upgrade_stays_stopped':True,'upgrade_preserves_nodes_certificates_and_reporting':True,'previous_binary_backup_preserved':True,'upgraded_binary_serves_retained_nodes':True})
         Path('/tmp/v2box-independent-result.json').write_text(json.dumps(result,indent=2));print(json.dumps(result))
     finally:
         for stream in streams:
             try:stream.close()
             except OSError:pass
         if node and node.poll() is None:os.killpg(node.pid,signal.SIGTERM);node.wait(timeout=15)
+        if 'pid_file' in locals() and pid_file.exists():
+            remaining=int(pid_file.read_text())
+            if not node or remaining!=node.pid:
+                try:os.killpg(remaining,signal.SIGTERM)
+                except ProcessLookupError:pass
         for server in servers:server.shutdown();server.server_close()
         for process in workers:
             if process.poll() is None:os.killpg(process.pid,signal.SIGTERM);process.wait(timeout=15)

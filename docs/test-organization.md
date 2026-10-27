@@ -1107,3 +1107,11 @@ v1.0.15 正式发布验证：节点从 6d2aa4d 发布，正式标签流水线的
 - IPv4/IPv6 physical servers may widen to dual without rotating reporting credentials or changing domain address choices; narrowing is rejected when a bound domain still requires the removed family.
 - Deleting a server retires unused entry domains and their managed DNS ledger records transactionally, including entries awaiting their first report. Origin bindings and referenced entry domains remain protected.
 - Regression cases were added to `tests/node-ddns.php`. The server management frontend suite passed 11 tests and the TypeScript/Vite production build passed. The isolated MySQL node-ddns and server-traffic-budgets integration suites passed after the disposable Docker environment recovered; no existing application database or Docker service was restarted.
+
+
+### Panel management script delivery
+
+- Public bootstrap embeds `node-manager.sh` and `node-install.sh`. Normal installs, resume and panel upgrade commands refresh these scripts independently of the pinned core release; reporting-only flows retain their existing scope.
+- `--refresh-scripts` updates only management/installer/deployment helpers, with shell syntax validation and symlink checks. It preserves binary bytes, Nodes and service state. Subsequent upgrades of legacy release archives use the installed panel overlays; releases with the corresponding script capability markers keep their own scripts.
+- All 75 node script tests passed, including legacy archive upgrades twice, native script precedence and invalid overlay preservation. The isolated MySQL `v2box` integration module passed with all bootstrap fixtures and 108 workflow checks, including script refresh preservation and bundle/source equality. The live local public bootstrap returned HTTP 200 with manager-v2 and refresh support, no unresolved placeholders, and passed bash syntax verification.
+- No Go core change or new Release was required. Existing servers must run the updated panel bootstrap; pushing panel code cannot change an already-installed remote manager by itself.

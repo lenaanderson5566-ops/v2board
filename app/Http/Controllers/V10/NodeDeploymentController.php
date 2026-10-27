@@ -8,7 +8,7 @@ use Illuminate\Http\Request;
 final class NodeDeploymentController extends Controller
 {
     public function bootstrap() {
-        $script=str_replace(['__NODE_PREREQUISITES__','__NODE_DEPLOY_HELPER__'],[file_get_contents(resource_path('scripts/node-prerequisites.sh')),file_get_contents(resource_path('scripts/node-deploy.py'))],file_get_contents(resource_path('scripts/node-deploy.sh')));
+        $script=str_replace(['__NODE_PREREQUISITES__','__NODE_DEPLOY_HELPER__','__NODE_MANAGER__','__NODE_INSTALLER__'],[file_get_contents(resource_path('scripts/node-prerequisites.sh')),file_get_contents(resource_path('scripts/node-deploy.py')),file_get_contents(resource_path('scripts/node-manager.sh')),file_get_contents(resource_path('scripts/node-install.sh'))],file_get_contents(resource_path('scripts/node-deploy.sh')));
         return response(str_replace("\r\n","\n",$script),200,
             ['Content-Type'=>'text/x-shellscript; charset=utf-8','Cache-Control'=>'no-store','X-Content-Type-Options'=>'nosniff']);
     }

@@ -11,17 +11,32 @@ umask 077
 install -d -m 755 /etc/v2box
 exec 9>/etc/v2box/.bootstrap.lock
 flock -n 9 || { echo 'Another deployment is running; wait for it to finish.' >&2; exit 1; }
-if [[ "${1:-}" == --install ]]; then
-  shift
-  stage=$(mktemp -d)
-  trap 'rm -rf -- "$stage"' EXIT
-  curl -fSL --proto '=https' --connect-timeout 10 --max-time 120 https://raw.githubusercontent.com/lenaanderson5566-ops/v2box/v1.0.15/script/install.sh -o "$stage/install.sh"
-  V2BOX_BOOTSTRAP_LOCK_HELD=1 bash "$stage/install.sh" "$@" 9>&-
-  exit
-fi
 # Install the panel-shipped workflow independently of the pinned node binary.
 install_helper() {
   install -d -m 755 /usr/local/lib/v2box
+  if [[ "${network_only:-false}" != true ]]; then
+  manager_stage=$(mktemp /usr/local/lib/v2box/.panel-manager.XXXXXXXX)
+  installer_stage=$(mktemp /usr/local/lib/v2box/.panel-install.XXXXXXXX)
+  cat > "$manager_stage" <<'V2BOARD_NODE_MANAGER'
+__NODE_MANAGER__
+V2BOARD_NODE_MANAGER
+  cat > "$installer_stage" <<'V2BOARD_NODE_INSTALLER'
+__NODE_INSTALLER__
+V2BOARD_NODE_INSTALLER
+  bash -n "$manager_stage" && bash -n "$installer_stage" || { rm -f -- "$manager_stage" "$installer_stage"; echo 'Invalid panel management scripts; installed programs unchanged.' >&2; exit 1; }
+  for target in /usr/local/lib/v2box/panel-manager.sh /usr/local/lib/v2box/panel-install.sh /usr/local/lib/v2box/manager.sh /usr/local/lib/v2box/install.sh /usr/local/bin/v2box; do
+    [[ ! -L "$target" ]] || { echo 'Refusing symlinked management script' >&2; exit 1; }
+  done
+  chmod 755 "$manager_stage" "$installer_stage"
+  mv -f -- "$manager_stage" /usr/local/lib/v2box/panel-manager.sh
+  mv -f -- "$installer_stage" /usr/local/lib/v2box/panel-install.sh
+  for target in /usr/local/lib/v2box/manager.sh /usr/local/bin/v2box; do
+    install -m 755 /usr/local/lib/v2box/panel-manager.sh "$target.new"
+    mv -f -- "$target.new" "$target"
+  done
+  install -m 755 /usr/local/lib/v2box/panel-install.sh /usr/local/lib/v2box/install.sh.new
+  mv -f -- /usr/local/lib/v2box/install.sh.new /usr/local/lib/v2box/install.sh
+  fi
   helper_stage=$(mktemp /usr/local/lib/v2box/.panel-deploy.XXXXXXXX)
   cat > "$helper_stage" <<'V2BOARD_DEPLOY_PY'
 __NODE_DEPLOY_HELPER__
@@ -29,6 +44,15 @@ V2BOARD_DEPLOY_PY
   chmod 755 "$helper_stage"
   mv -f -- "$helper_stage" /usr/local/lib/v2box/panel-deploy.py
 }
+if [[ "${1:-}" == --install ]]; then
+  shift
+  stage=$(mktemp -d)
+  trap 'rm -rf -- "$stage"' EXIT
+  curl -fSL --proto '=https' --connect-timeout 10 --max-time 120 https://raw.githubusercontent.com/lenaanderson5566-ops/v2box/v1.0.15/script/install.sh -o "$stage/install.sh"
+  V2BOX_BOOTSTRAP_LOCK_HELD=1 bash "$stage/install.sh" "$@" 9>&-
+  install_helper
+  exit
+fi
 programs_ready() {
   [[ -x /usr/local/lib/v2box/v2box && -s /usr/local/lib/v2box/manager.sh && -s /usr/local/lib/v2box/install.sh && -s /usr/local/lib/v2box/node-network.py && -s /usr/local/lib/v2box/node-credentials.py && -x /usr/local/bin/v2box ]]
 }
@@ -74,6 +98,13 @@ restore_programs() {
     trap - EXIT
   fi
 }
+if [[ "${1:-}" == --refresh-scripts ]]; then
+  [[ $# -eq 1 ]] || { echo 'Use --refresh-scripts without other arguments' >&2; exit 1; }
+  programs_ready || { echo 'Existing program files are incomplete. Use the panel installation command to repair them.' >&2; exit 1; }
+  install_helper
+  echo 'Management and deployment scripts refreshed. Node binary, service state, configuration, certificates and IP reporting settings were not changed.'
+  exit
+fi
 if [[ "${1:-}" == --resume ]]; then
   [[ $# -eq 1 ]] || { echo 'Use --resume without other arguments' >&2; exit 1; }
   select_resume_state

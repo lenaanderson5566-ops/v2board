@@ -80,6 +80,15 @@ class WorkflowTests(unittest.TestCase):
         with patch.object(m.time, "monotonic", side_effect=[0, 1000]), patch.object(self.deploy, "verify_dns", return_value=True):
             self.assertFalse(m.Deployment.wait_dns(self.deploy))
 
+    def test_panel_script_bundles_match_node_sources(self):
+        network = os.environ.get("V2BOX_NETWORK_SCRIPT")
+        if not network:
+            self.skipTest("node source not mounted")
+        scripts = Path(network).parent
+        resources = Path(sys.argv[1]).parent
+        self.assertEqual((resources / "node-manager.sh").read_bytes(), (scripts / "v2box.sh").read_bytes())
+        self.assertEqual((resources / "node-install.sh").read_bytes(), (scripts / "install.sh").read_bytes())
+
     def test_shared_anytls_append_preserves_peers_and_rollback(self):
         state = json.loads(self.path.read_text())
         state["sharedListener"] = "public-443"
@@ -885,6 +894,8 @@ class WorkflowTests(unittest.TestCase):
             .read_text()
             .replace("__NODE_PREREQUISITES__", "")
             .replace("__NODE_DEPLOY_HELPER__", "pass")
+            .replace("__NODE_MANAGER__", "#!/bin/bash\nexit 0")
+            .replace("__NODE_INSTALLER__", "#!/bin/bash\nexit 0")
         )
         script = (
             script.replace("/etc/v2box", str(root))
@@ -922,6 +933,16 @@ class WorkflowTests(unittest.TestCase):
         result = run(grant)
         self.assertEqual(result.returncode, 0, result.stderr)
         saved = self.path.read_bytes()
+        original_binary = (lib / "v2box").read_bytes()
+        original_config = self.deploy.config.read_bytes()
+        refreshed = subprocess.run(["bash", str(bootstrap), "--refresh-scripts"], env=dict(os.environ, PATH=str(binpath) + ":" + os.environ["PATH"]), capture_output=True, text=True)
+        self.assertEqual(refreshed.returncode, 0, refreshed.stderr)
+        self.assertIn("scripts refreshed", refreshed.stdout)
+        self.assertEqual((lib / "v2box").read_bytes(), original_binary)
+        self.assertEqual(self.deploy.config.read_bytes(), original_config)
+        self.assertEqual(self.path.read_bytes(), saved)
+        self.assertEqual((lib / "panel-manager.sh").read_text(), (lib / "manager.sh").read_text())
+        self.assertEqual((lib / "panel-install.sh").read_text(), (lib / "install.sh").read_text())
         self.assertTrue(json.loads(saved)["replaceCredential"])
         result = run(grant)
         self.assertEqual(result.returncode, 0, result.stderr)

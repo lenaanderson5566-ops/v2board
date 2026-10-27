@@ -73,4 +73,40 @@ $legacyJob->handle();
 $assert($commands['telegram:notify']->run(new Symfony\Component\Console\Input\ArrayInput([]), new Symfony\Component\Console\Output\BufferedOutput) === 0, 'External legacy cron compatibility lost');
 $assert($sentRequests === 0, 'Retired notification sent a message');
 
+// Queue limits must load without warnings or response output.
+$original = Illuminate\Support\Env::get('HORIZON_MAX_PROCESSES');
+$repository = Illuminate\Support\Env::getRepository();
+set_error_handler(function ($severity, $message, $file, $line) { throw new ErrorException($message, 0, $severity, $file, $line); });
+try {
+    foreach ([null => 6, '12' => 12, '0' => 1, '-2' => 1, 'invalid' => 1] as $input => $expected) {
+        if ($input === '') $repository->clear('HORIZON_MAX_PROCESSES');
+        else $repository->set('HORIZON_MAX_PROCESSES', $input);
+        ob_start();
+        try { $config = require __DIR__ . '/../config/horizon.php'; }
+        finally { $output = ob_get_clean(); }
+        $assert($output === '', 'Configuration emitted response output');
+        $assert($config['environments']['*']['V2board']['maxProcesses'] === $expected, 'Incorrect queue worker limit');
+    }
+} finally {
+    try {
+        if ($original === null) $repository->clear('HORIZON_MAX_PROCESSES');
+        else $repository->set('HORIZON_MAX_PROCESSES', $original);
+    } finally { restore_error_handler(); }
+}
+
+// Preserve upgrade-baseline and pending-migration detection.
+$files = [];
+foreach (glob(__DIR__.'/../database/migrations/*.php') as $file) $files[basename($file, '.php')] = $file;
+$modern = array_values(array_filter(array_keys($files), fn($name) => str_starts_with($name, '2026_10')));
+$assert(count(array_diff(array_keys($files), $modern)) === 20, 'Expected legacy upgrade reproduction');
+$assert(App\Services\MigrationHealthService::pending($files, $modern, true) === [], 'Completed upgrade must be healthy');
+$withoutBaseline = array_values(array_diff($modern, ['2026_10_11_000000_ensure_operations_schema']));
+$assert(count(App\Services\MigrationHealthService::pending($files, $withoutBaseline, true)) === 20, 'Missing baseline must stay pending');
+$missing = '2026_10_11_000010_create_lightsail_servers';
+$assert(App\Services\MigrationHealthService::pending($files, array_diff($modern, [$missing]), true) === [$missing], 'Missing modern migration must stay pending');
+$assert(App\Services\MigrationHealthService::pending($files, $modern, false) === ['2019_08_19_000000_create_failed_jobs_table'], 'Missing failed jobs table must stay pending');
+$files['2027_01_01_000001_future'] = 'future.php';
+$assert(App\Services\MigrationHealthService::pending($files, $modern, true) === ['2027_01_01_000001_future'], 'Future migrations must stay pending');
+$assert(count(App\Services\MigrationHealthService::pending($files, [], false)) === count($files), 'Uninitialized repository must stay pending');
+
 echo "Laravel 13: $checks checks passed; no real mail sent.\n";

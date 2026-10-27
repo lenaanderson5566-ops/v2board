@@ -8,7 +8,7 @@
 
 ## 当前说明与历史记录
 
-日常部署以 [安装升级流程](update-script.md)、[浏览器会话](browser-sessions.md) 和 [多币种计费](billing-currencies-coupons.md) 为入口。Laravel 9–12 的过渡升级说明已移除，历史内容通过 Git 查阅；当前框架要求见 [Laravel 13](laravel13-upgrade.md)，无需逐版重做旧升级。测试/安全记录中的旧日期章节仅记录当时结果，不能作为当前部署命令。当前路由与字段以生成契约和代码为准。
+日常部署以 [安装升级流程](update-script.md)、[浏览器会话](browser-sessions.md) 和 [多币种计费](billing-currencies-coupons.md) 为入口。Laravel 9–12 的过渡升级说明已移除，历史内容通过 Git 查阅；当前框架要求见 [Laravel 13](laravel13-upgrade.md)，无需逐版重做旧升级。验证文档只维护当前入口与验收边界；逐轮结果通过 Git 和忽略的测试日志查阅，不能作为当前部署命令。当前路由与字段以生成契约和代码为准。
 
 核对文档时优先查看实际执行源：浏览器认证为 `app/Http/Middleware/{BrowserSession,BrowserOrigins,CORS}.php` 与 `config/browser.php`；计费为 `app/Services/{BillingCurrency,PaymentQuote,ExchangeRate}.php`；安装为 `app/Console/Commands/V2boardInstall.php` 和 `database/install.sql`；升级顺序及恢复访问规则为根目录 `update.sh`。通用框架配置文件或历史报告不能替代这些实际入口。
 

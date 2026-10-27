@@ -26,7 +26,6 @@ import {
     query,
     request,
     rows,
-    type NodeBackendType,
     type Row,
 } from "../shared/api";
 import {
@@ -50,7 +49,6 @@ import { formPresentation } from "./admin-presentation";
 import { AdminSwitch } from "./admin-switch";
 import { SortButton } from "./admin-tools";
 import {
-    nodeBackendInitial,
     nodeEditorPresentation,
     nodeSettingsFields,
     nodeSettingsInitial,
@@ -104,10 +102,6 @@ function useNodeActivity(nodes: Row[] | null, enabled: boolean) {
     return {data,unavailable};
 }
 
-const nodeTypes = [
-    "v2node",
-    "v2box",
-] as const satisfies readonly NodeBackendType[];
 export function Nodes(props: { initialTab?: "nodes" | "forwarding" }) {
     return (
         <NodeDictionaryProvider>
@@ -124,7 +118,7 @@ function NodesContent({
         const value =
             new URLSearchParams(location.hash.split("?")[1]).get("service") ||
             "";
-        return /^(v2box|v2node):[1-9][0-9]*$/.test(value) ? value : "";
+        return /^v2box:[1-9][0-9]*$/.test(value) ? value : "";
     };
     const [serviceFocus, setServiceFocus] = useState(serviceFocusFromHash);
     useEffect(() => {
@@ -141,7 +135,6 @@ function NodesContent({
     const [connectionDirty,setConnectionDirty]=useState(false),[connectionBusy,setConnectionBusy]=useState(false);
     const [configurationVersion,setConfigurationVersion]=useState(0);
     const reloadConfigurationSource=useRef<Row[] | null | undefined>(undefined);
-    const [conversionOpen, setConversionOpen] = useState(false);
     const [savedNodeNotice, setSavedNodeNotice] = useState("");
     const [preflightShown, setPreflightShown] = useState(false);
 
@@ -149,7 +142,6 @@ function NodesContent({
     const [credentialNode, setCredentialNode] = useState<Row | null>(null);
     const [statusFilter, setStatusFilter] = useState("");
     const [nodeSearch, setNodeSearch] = useState("");
-    const [backendFilter, setBackendFilter] = useState("");
     const [onlyIssues, setOnlyIssues] = useState(false);
     const [onlyMaintenance, setOnlyMaintenance] = useState(false);
     const [quotaFilter, setQuotaFilter] = useState(false);
@@ -193,7 +185,6 @@ function NodesContent({
     useEffect(() => {
         setNodeDirty(false);
         setPreflightShown(false);
-        setConversionOpen(false);
         setCreationMode("new");
     }, [editing]);
     useEffect(() => {
@@ -321,7 +312,6 @@ function NodesContent({
         (n) =>
             (!onlyIssues || !!n.issues?.length) &&
             (!onlyMaintenance || !!n.maintenance) &&
-            (!backendFilter || n.type === backendFilter) &&
             (!statusFilter ||
                 (n.runtime_status || "unknown") === statusFilter) &&
             (!quotaFilter || n.traffic_budget?.blocked) &&
@@ -664,19 +654,6 @@ function NodesContent({
                                     }
                                 />
                             </label>
-                            <label>
-                                {"筛选节点类型"}
-                                <select
-                                    value={backendFilter}
-                                    onChange={(e) =>
-                                        setBackendFilter(e.target.value)
-                                    }
-                                >
-                                    <option value="">全部类型</option>
-                                    <option value="v2node">V2Node</option>
-                                    <option value="v2box">V2Box</option>
-                                </select>
-                            </label>
                             {
                                 <>
                                     <label>
@@ -919,67 +896,7 @@ function NodesContent({
                                     </p>
                                 </details>
                             )}
-                            <div className="pad node-editor-backend">
-                                {editing.id && (
-                                    <strong>
-                                        节点服务：
-                                        {type === "v2box"
-                                            ? "V2Box / sing-box"
-                                            : "V2Node / Xray"}
-                                    </strong>
-                                )}
-                                {editing.id && !conversionOpen ? (
-                                    <button
-                                        type="button"
-                                        disabled={nodeBusy}
-                                        onClick={() => setConversionOpen(true)}
-                                    >
-                                        转换节点类型…
-                                    </button>
-                                ) : (
-                                    <label>
-                                        节点类型
-                                        <select
-                                            aria-label="节点类型"
-                                            value={type}
-                                            disabled={nodeBusy}
-                                            onChange={(event) => {
-                                                if (
-                                                    (nodeDirty || connectionDirty) &&
-                                                    !window.confirm(
-                                                        "切换节点类型将重新载入已保存配置，未保存修改会丢失，是否继续？",
-                                                    )
-                                                )
-                                                    return;
-                                                setConnectionDirty(false);
-                                                setType(event.target.value);
-                                                setNodeDirty(true);
-                                            }}
-                                        >
-                                            {nodeTypes.map((t) => (
-                                                <option key={t} value={t}>
-                                                    {t === "v2box"
-                                                        ? "V2Box / sing-box"
-                                                        : "V2Node / Xray"}
-                                                </option>
-                                            ))}
-                                        </select>
-                                    </label>
-                                )}
-                                {conversionOpen && (
-                                    <p className="alert">
-                                        类型转换会分配目标类型节点
-                                        ID，并需要重新部署服务。保存前请重新选择路由并核对协议参数。
-                                    </p>
-                                )}
-                            </div>
-                            {editing.id && type !== editing.type && (
-                                <p className="pad muted">
-                                    保存后会将此节点转换为 {type}
-                                    ，分配目标类型的节点
-                                    ID。请重新选择对应路由并核对协议参数；保存后需要更换节点服务及安装配置。切换类型会重新载入已保存配置。
-                                </p>
-                            )}
+                            <div className="pad node-editor-backend"><strong>节点服务：V2Box / sing-box</strong></div>
                             <State
                                 data={schema.data && groups.data && routes.data && topology.data ? true : null}
                                 loading={
@@ -1005,11 +922,7 @@ function NodesContent({
                                     key={`${type}:${editing.id || "new"}:${configurationVersion}`}
                                     onDirty={() => setNodeDirty(true)}
                                     onBusyChange={setNodeBusy}
-                                    submit={
-                                        editing.id && type !== editing.type
-                                            ? "确认转换并保存"
-                                            : "保存节点配置"
-                                    }
+                                    submit="保存节点配置"
                                     resolveFields={(fields, values) => {
                                         const presented =
                                             nodeEditorPresentation(
@@ -1036,7 +949,6 @@ function NodesContent({
                                                   presented,
                                                   values,
                                                   topology.data,
-                                                  type,
                                                   nodeLineFields(rows(groups.data),catalog),
                                               );
                                     }}
@@ -1320,10 +1232,7 @@ function NodesContent({
                                                         key: k,
                                                         label:
                                                             k === "route_id"
-                                                                ? type ===
-                                                                  "v2box"
-                                                                    ? "sing-box 路由规则"
-                                                                    : "Xray 路由规则"
+                                                                ? "sing-box 路由规则"
                                                                 : nodeLabels[
                                                                       k
                                                                   ] || k,
@@ -1344,7 +1253,7 @@ function NodesContent({
                                                                     k !==
                                                                         "route_id" ||
                                                                     (r.backend ||
-                                                                        "v2node") ===
+                                                                        "v2box") ===
                                                                         type,
                                                             )
                                                             .map((r) => [
@@ -1446,7 +1355,7 @@ function NodesContent({
                                             }),
                                     )}
                                     initial={nodeSettingsInitial({
-                                        ...nodeBackendInitial(editing, type),
+                                        ...editing,
                                         ...(!editing.id
                                             ? {
                                                   setup_mode: "managed",
@@ -1468,16 +1377,6 @@ function NodesContent({
                                         if(serviceChanged)throw new Error("节点所属代理服务已变更，请重新载入后再保存。");
                                         if(connectionBusy)throw new Error("连接与域名正在保存，请稍后再保存协议与证书。");
                                         if(editing.id && managedService && Number(b.tls)===1){b.disable_sni=0;}
-                                        if (
-                                            editing.id &&
-                                            type !== editing.type &&
-                                            !window.confirm(
-                                                "确认转换节点类型并保存？此操作会更换节点 ID，之后需要更新节点服务和安装配置。",
-                                            )
-                                        )
-                                            throw new Error(
-                                                "已取消转换，配置尚未保存。",
-                                            );
                                         const impact =
                                             editing.id && type === editing.type
                                                 ? nodeChangeImpact(
@@ -1529,34 +1428,27 @@ function NodesContent({
                                             if (setup)
                                                 clean.deployment_setup = setup;
                                         }
-                                        const converting =
-                                            editing.id && type !== editing.type;
-                                        if (converting) {
-                                            clean.source_type = editing.type;
-                                            clean.source_id = editing.id;
-                                        } else if (editing.id)
-                                            clean.id = editing.id;
-                                        if (["v2node", "v2box"].includes(type))
-                                            clean.zero_rtt_handshake ??=
+                                        if (editing.id) clean.id = editing.id;
+                                        clean.zero_rtt_handshake ??=
                                                 editing.zero_rtt_handshake ?? 0;
                                         const saved = await request(
                                             admin(`server/${type}/save`),
                                             clean,
                                         );
-                                        if(!converting && editing.id)reloadConfigurationSource.current=d.data;
+                                        if(editing.id)reloadConfigurationSource.current=d.data;
                                         setNodeDirty(false);
                                         setSavedNodeNotice(
                                             clean.deployment_setup
                                                 ? "节点、服务器与域名已一并保存。请生成一键部署命令，在服务器执行。"
                                                 : "节点配置已保存。请检查节点最近通信和运行状态；协议、端口或内核变更可能需要同步部署配置。",
                                         );
-                                        setEditing(converting || !editing.id ? null : {...editing,...b});
+                                        setEditing(!editing.id ? null : {...editing,...b});
                                         d.reload();
-                                        if(!converting && editing.id && managedService && Number(b.server_port)!==Number(editing.server_port)){
+                                        if(editing.id && managedService && Number(b.server_port)!==Number(editing.server_port)){
                                             setSavedNodeNotice("监听端口已保存。等待节点应用后将自动验证并同步连接端口；中转线路请确认转发配置。");
                                             setEditing({...editing,...b,type:editing.type,id:editing.id});
                                         }
-                                        if (converting || !editing.id) {
+                                        if (!editing.id) {
                                             const updated = await request<
                                                 Row[]
                                             >(admin("server/manage/getNodes"));

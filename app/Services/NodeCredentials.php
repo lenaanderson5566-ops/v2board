@@ -6,8 +6,8 @@ use Illuminate\Support\Facades\DB;
 final class NodeCredentials
 {
     private static function model(string $type): string {
-        abort_unless(in_array($type,['v2node','v2box'],true),422);
-        return $type==='v2box' ? \App\Models\ServerV2box::class : \App\Models\ServerV2node::class;
+        abort_unless(in_array($type,['v2box'],true),422);
+        return \App\Models\ServerV2box::class;
     }
     private static function keys(string $type,int $id) {
         return DB::table('v2_node_credential')->where('node_type',$type)->where('node_id',$id);
@@ -19,7 +19,7 @@ final class NodeCredentials
         return !self::migrated('global',0);
     }
     public static function authenticate(string $token,string $type,int $id,bool $bearer): void {
-        if (in_array($type,['v2node','v2box'],true)) {
+        if (in_array($type,['v2box'],true)) {
             $service=self::model($type)::find($id);
             abort_if($service && $service->service_id,401);
         }
@@ -38,7 +38,7 @@ final class NodeCredentials
         $global=(string)config('v2board.server_token');
         abort_unless($global!=='' && hash_equals($global,$token),401);
         abort_unless(self::legacyEnabled() && !self::migrated($type,$id),401);
-        if (in_array($type,['v2node','v2box'],true)) {
+        if (in_array($type,['v2box'],true)) {
             $model=self::model($type); $node=$model::find($id);
             abort_if($node && $node->service_id && self::migrated($type,(int)$node->service_id),401);
         }
@@ -57,7 +57,7 @@ final class NodeCredentials
     public static function legacyNodes(): array {
         $states=DB::table('v2_node_credential_state')->get()->keyBy(fn($s)=>$s->node_type.':'.$s->node_id);
         $nodes=[];
-        foreach(['v2node','v2box'] as $type) {
+        foreach(['v2box'] as $type) {
             $model=self::model($type);
             foreach($model::get(['id','name','service_id']) as $node) {
                 // Virtual child nodes inherit their parent's connection.
@@ -69,7 +69,7 @@ final class NodeCredentials
     }
     public static function disableLegacy(int $actor): void {
         abort_if(count(self::legacyNodes())>0,409,'仍有未迁移节点，请先完成独立凭据配置');
-        foreach(['v2node','v2box'] as $type) {
+        foreach(['v2box'] as $type) {
             $model=self::model($type);
             foreach($model::where(function($q){$q->whereNull('service_id')->orWhere('service_id',0);})->pluck('id') as $id)
                 abort_unless(self::keys($type,(int)$id)->whereNull('revoked_at')->whereNull('expires_at')->whereNotNull('last_used_at')->exists(),409,'请先确认所有节点已使用有效的新凭据连接');

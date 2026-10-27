@@ -37,7 +37,7 @@
 
 ## 节点通信
 
-仅支持 `node_type=v2node` 和 `node_type=v2box`。节点通信保留原 API 版本，使用显式路由。
+仅支持 `node_type=v2box`。节点通信保留原 API 版本，使用显式路由。
 
 | 方法 | 路径 |
 |---|---|
@@ -47,7 +47,7 @@
 | POST | `/api/v1/server/UniProxy/alive` |
 | GET | `/api/v2/server/config` |
 
-V2 配置接口未填写 node_type 时默认 v2node。旧 Deepbwork、Tidalab、UniProxy/config 与动态控制器分发已移除。
+V2 配置接口未填写 node_type 时默认 v2box。旧 Deepbwork、Tidalab、UniProxy/config 与动态控制器分发已移除。
 
 ## 其他保留入口
 
@@ -64,4 +64,4 @@ V2 配置接口未填写 node_type 时默认 v2node。旧 Deepbwork、Tidalab、
 - 旧用户业务 API（包括 `invite/save`）已移除；使用 V10。
 - 支付新订单与后台展示统一使用 V10 回调，旧支付回调兼容此前订单；两者保持原验签和应答。Telegram 保持已有兼容规则。
 - 不再注册旧用户业务中的 GET 写操作。
-- 节点管理、订阅、排序及当前节点排行仅使用 V2Node/V2Box；旧节点配置表通过定向迁移删除；共享账务记录保留。
+- 节点管理、订阅、排序及当前节点排行仅使用 V2Box；旧节点配置表通过定向迁移删除；共享账务记录保留。

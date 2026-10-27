@@ -5,7 +5,6 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Cache;
 use App\Models\ServerV2box;
-use App\Models\ServerV2node;
 use App\Services\ServerService;
 use App\Utils\CacheKey;
 // Private worker fixture for the opt-in, two-real-database process smoke below.
@@ -32,17 +31,17 @@ $assert = \Tests\Support\Assertions::counter($checks);
 DB::beginTransaction();
 $cacheKeys=[];
 try {
-    $id=max((int) ServerV2node::max('id'), (int) ServerV2box::max('id'))+100;
+    $id=(int) ServerV2box::max('id')+100;
     $base=['group_id'=>[999999], 'name'=>'V2Box test', 'host'=>'example.test', 'port'=>'443', 'server_port'=>443, 'listen_ip'=>'0.0.0.0', 'protocol'=>'vless', 'tls'=>0, 'network'=>'tcp', 'disable_sni'=>0, 'zero_rtt_handshake'=>0, 'rate'=>'1', 'show'=>1, 'up_mbps'=>0, 'down_mbps'=>0, 'tls_settings'=>['private_key'=>'secret','ech_key'=>'secret','tls_key'=>'secret']];
-    foreach ([ServerV2node::class, ServerV2box::class] as $class) {
+    foreach ([ServerV2box::class] as $class) {
         $node=new $class($base); $node->id=$id; $node->save();
     }
     $svc=new ServerService();
     $assert($svc->getServer($id,'v2box') instanceof ServerV2box, 'V2Box lookup');
-    $assert(get_class($svc->getServer($id,'v2node'))===ServerV2node::class, 'V2Node lookup isolated');
+    $assert($svc->getServer($id,'v2node')===null, 'Retired backend lookup rejected');
     $user=new App\Models\User(['group_id'=>999999]);
-    foreach (['v2node','v2box'] as $type) {
-        $nodes=$svc->getAvailableV2node($user,$type);
+    foreach (['v2box'] as $type) {
+        $nodes=$svc->getAvailableV2box($user,$type);
         $node=array_values(array_filter($nodes,fn($n)=>$n['id']==$id))[0];
         $assert($node['type']===$type, 'Subscription type preserved');
         $assert(!isset($node['tls_settings']['private_key'],$node['tls_settings']['ech_key'],$node['tls_settings']['tls_key']), 'Secrets stripped');
@@ -65,10 +64,9 @@ try {
     $assert(Illuminate\Support\Facades\Queue::pushed(App\Jobs\TrafficFetchJob::class)->count()===1, 'Traffic job queued');
     foreach (['ONLINE_USER','LAST_PUSH_AT'] as $suffix) $cacheKeys[]=CacheKey::get('SERVER_V2BOX_'.$suffix,$id);
     $assert((int) Cache::get(CacheKey::get('SERVER_V2BOX_ONLINE_USER',$id))===1,'Traffic report updates V2Box status');
-    $assert(!Cache::has(CacheKey::get('SERVER_V2NODE_ONLINE_USER',$id)),'Traffic report leaves V2Node status unchanged');
     $all=$svc->getAllServers();
-    $nodes=array_values(array_filter($all,fn($n)=>$n['id']==$id && in_array($n['type'],['v2node','v2box'])));
-    $assert(count($nodes)===2,'Both types listed with same id');
+    $nodes=array_values(array_filter($all,fn($n)=>$n['id']==$id && in_array($n['type'],['v2box'])));
+    $assert(count($nodes)===1,'Only V2Box listed');
     foreach ($nodes as $node) if ($node['type']==='v2box') {
         $assert(strpos($node['install_command'],'--node-type v2box')!==false,'Installer selects V2Box');
         $assert(str_contains($node['install_command'],'--install v1.0.16'),'Installer pins the multi-panel-capable release, not legacy main');
@@ -86,7 +84,6 @@ try {
     $lineState=$lineAdmin->defaultLine(Request::create('/','GET',['type'=>'v2box','id'=>$id]))['data'];
     $lineAdmin->updateDefaultLine(Request::create('/','PATCH',['type'=>'v2box','id'=>$id,'revision'=>$lineState['revision'],'name'=>'V2Box updated','group_id'=>[999999],'rate'=>1]));
     $assert(ServerV2box::find($id)->name==='V2Box updated','Default line update changes only the selected backend');
-    $assert(ServerV2node::find($id)->name==='V2Box test','V2Node untouched');
     $admin->copy(Request::create('/','POST',['id'=>$id]));
     $assert(ServerV2box::where('name','V2Box updated')->count()===2,'V2Box copy');
     $certificateNode=ServerV2box::find($id);$certificateNode->tls=1;$certificateNode->tls_settings=['cert_mode'=>'http','server_name'=>'node.example.test'];
@@ -95,9 +92,11 @@ try {
     $credential=App\Services\NodeCredentials::issue('v2box',$id,1);
     $admin->drop(Request::create('/','POST',['id'=>$id]));
     $assert(DB::table('v2_node_credential')->where('id',$credential['id'])->value('revoked_at')!==null,'Deleted node credentials revoked');
-    $assert(!ServerV2box::find($id) && ServerV2node::find($id),'V2Box delete isolated');
+    $assert(!ServerV2box::find($id),'V2Box delete isolated');
     $schema=json_decode((new App\Http\Controllers\V1\Admin\ConsoleController())->nodeSchema(Request::create('/','GET',['type'=>'v2box']))->getContent(),true)['data'];
     $assert(isset($schema['protocol'],$schema['region_code']) && $schema['network']==='required|in:tcp,ws,grpc,httpupgrade','Admin schema');
+    $assert(!array_intersect(array_keys($schema),['encryption','encryption_settings','trusted_x_forwarded_for']),'Admin schema omits retired core settings');
+    $assert(str_contains($schema['region_code'],'US') && str_contains($schema['protocol'],'naive'),'Admin schema publishes the same supported regions and protocols as save validation');
     // Run the shipped bootstrap with fake downloads/services and a private config directory.
     // No installation, external HTTP, system service changes or real credentials are involved.
     // Opt-in: a disposable Linux root container with bash/jq; regular PHP runs need neither.

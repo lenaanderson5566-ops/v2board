@@ -9,7 +9,7 @@ use Illuminate\Support\Facades\DB;
 final class NetworkServerTraffic {
  public static function nodes(int $server): array {
   $result=[];
-  foreach(DB::table('v2_node_ddns')->where('server_id',$server)->whereIn('node_type',['v2box','v2node'])->get(['node_type','node_id']) as $a){
+  foreach(DB::table('v2_node_ddns')->where('server_id',$server)->whereIn('node_type',['v2box'])->get(['node_type','node_id']) as $a){
    $node=DB::table('v2_server_'.$a->node_type)->find($a->node_id);
    if($node && !$node->service_id)$result[$a->node_type.':'.$a->node_id]=['type'=>$a->node_type,'id'=>(int)$a->node_id];
   }

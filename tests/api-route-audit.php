@@ -84,7 +84,7 @@ foreach (app('router')->getRoutes() as $route) {
     if (preg_match('#^api/v[12]/server/#',$uri)) {
         foreach (array_diff($route->methods(), ['HEAD','OPTIONS']) as $httpMethod) {
             foreach ([null, ['is_admin'=>'1'], 'invalid-node-token'] as $credential) {
-                $probe=Illuminate\Http\Request::create('/'.$uri,$httpMethod,['token'=>$credential,'node_type'=>'v2node','node_id'=>1],[],[],['HTTP_ACCEPT'=>'application/json']);
+                $probe=Illuminate\Http\Request::create('/'.$uri,$httpMethod,['token'=>$credential,'node_type'=>'v2box','node_id'=>1],[],[],['HTTP_ACCEPT'=>'application/json']);
                 $response=$app->make(Illuminate\Contracts\Http\Kernel::class)->handle($probe);
                 $payload=json_decode($response->getContent(),true)??[];
                 $assert(!isset($payload['users']) && ($response->getStatusCode()>=400 || ($payload['status']??null)==='fail'),'Legacy node route rejects malformed credentials before returning configuration or user data: '.$uri);
@@ -150,12 +150,12 @@ if (in_array('--write-inventory',$argv,true)) {
         foreach ($rows as $row) $doc.='| '.$row['method'].' | `'.$row['path'].'` | '.$row['new']." |\n";
         $doc.="\n";
     }
-    $doc.="## 节点通信\n\n仅支持 `node_type=v2node` 和 `node_type=v2box`。节点通信保留原 API 版本，使用显式路由。\n\n| 方法 | 路径 |\n|---|---|\n";
+    $doc.="## 节点通信\n\n仅支持 `node_type=v2box`。节点通信保留原 API 版本，使用显式路由。\n\n| 方法 | 路径 |\n|---|---|\n";
     foreach (app('router')->getRoutes() as $route) {
         if (!preg_match('#^api/v[12]/server/#', $route->uri())) continue;
         $doc.='| '.implode('/', array_diff($route->methods(), ['HEAD'])).' | `/'.$route->uri()."` |\n";
     }
-    $doc.="\nV2 配置接口未填写 node_type 时默认 v2node。旧 Deepbwork、Tidalab、UniProxy/config 与动态控制器分发已移除。\n\n## 其他保留入口\n\n| 方法 | 路径 | 用途与条件 |\n|---|---|---|\n| GET/HEAD | 管理员配置的 `subscribe_path` | 自定义订阅路径，使用原 token 规则；与 V10 同时可用；旧默认路径已移除 |\n| GET/HEAD | `/api/v10/public/client-installers/{installerId}/content` | 镜像下载新版入口；原 `/client-mirrors/{id}` 已移除 |\n\n`/` 与 `/app` 是网页入口而非 API，也继续保留。后台安全路径和运营路径不在本清单范围内；未完成的 `/api/v1/staff/*` 接口已全部退役，返回 404。\n\n## 兼容说明\n\n- 上表旧用户/登录/公共/客户端路由共 {$count} 条；前端用户业务已通过集中传输层使用 V10，仅保留后台依赖、历史回调及订阅入口。\n- 旧用户业务 API（包括 `invite/save`）已移除；使用 V10。\n- 支付新订单与后台展示统一使用 V10 回调，旧支付回调兼容此前订单；两者保持原验签和应答。Telegram 保持已有兼容规则。\n- 不再注册旧用户业务中的 GET 写操作。\n- 节点管理、订阅、排序及当前节点排行仅使用 V2Node/V2Box；旧节点配置表通过定向迁移删除；共享账务记录保留。\n";
+    $doc.="\nV2 配置接口未填写 node_type 时默认 v2box。旧 Deepbwork、Tidalab、UniProxy/config 与动态控制器分发已移除。\n\n## 其他保留入口\n\n| 方法 | 路径 | 用途与条件 |\n|---|---|---|\n| GET/HEAD | 管理员配置的 `subscribe_path` | 自定义订阅路径，使用原 token 规则；与 V10 同时可用；旧默认路径已移除 |\n| GET/HEAD | `/api/v10/public/client-installers/{installerId}/content` | 镜像下载新版入口；原 `/client-mirrors/{id}` 已移除 |\n\n`/` 与 `/app` 是网页入口而非 API，也继续保留。后台安全路径和运营路径不在本清单范围内；未完成的 `/api/v1/staff/*` 接口已全部退役，返回 404。\n\n## 兼容说明\n\n- 上表旧用户/登录/公共/客户端路由共 {$count} 条；前端用户业务已通过集中传输层使用 V10，仅保留后台依赖、历史回调及订阅入口。\n- 旧用户业务 API（包括 `invite/save`）已移除；使用 V10。\n- 支付新订单与后台展示统一使用 V10 回调，旧支付回调兼容此前订单；两者保持原验签和应答。Telegram 保持已有兼容规则。\n- 不再注册旧用户业务中的 GET 写操作。\n- 节点管理、订阅、排序及当前节点排行仅使用 V2Box；旧节点配置表通过定向迁移删除；共享账务记录保留。\n";
     file_put_contents(base_path('docs/api-v10/retained-endpoints.md'),$doc);
 }
 echo "Route audit: {$routeCount} registered routes, {$protectedCount} V10 authentication checks, {$legacyProtectedCount} legacy protected routes / {$legacyProbe} rejection probes, {$checks} checks passed\n";

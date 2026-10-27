@@ -27,7 +27,7 @@ try {
  $assert($call($reportedFlclash,'clash-verge')->getStatusCode()===200,'Reported FlClash UA accepts compatible Mihomo format');
  $assert($call($reportedFlclash,'sing-box')->getStatusCode()===422,'Reported FlClash UA cannot import sing-box JSON');
  App\Models\ClientStrategy::where('client_type','sing-box')->update(['is_enabled'=>1,'min_version'=>'1.14.3']);
- App\Models\ServerV2node::create([
+ App\Models\ServerV2box::create([
   'group_id'=>[98765], 'name'=>'Policy test node', 'rate'=>'1',
   'host'=>'node.example.test', 'port'=>'443', 'server_port'=>443,
   'cipher'=>'aes-128-gcm', 'show'=>1, 'protocol'=>'shadowsocks',

@@ -133,13 +133,9 @@ try {
     $log=DB::table('v2_log')->orderByDesc('id')->first();
     $assert($log && !str_contains(json_encode($log),'secret-log'),'no secrets in system log');
     $assert(str_contains($log->context,'ddns-log-test') && $log->data==='[]','safe log metadata retained');
-    $converted=App\Services\Actions\ConvertNodeBackend::run('v2box',$node->id,'v2node',$base+['route_id'=>[]]);
-    $after=DB::table('v2_node_ddns')->find($id);
-    $assert($after->node_type==='v2node' && $after->node_id===$converted->id,'DDNS follows backend conversion');
-    $token=json_decode($admin->rotate($req(['id'=>$id]))->getContent(),true)['data']['reportToken'];
-    $assert($call($token,['ipv4'=>'8.8.8.8'])->getStatusCode()===202,'V2Node reporter supported');
+
     $assert($call($token,['ipv6'=>'2606:4700:4700::1111'])->getStatusCode()===202,'server dual stack is independent of a domain IPv4 policy');
-    $converted->delete();
+    $node->delete();
     $assert($call($token,['ipv4'=>'8.8.8.8'])->getStatusCode()===202,'node deletion does not revoke shared physical server reporting');
     $user=App\Models\User::create(['email'=>'ddns-admin-'.bin2hex(random_bytes(5)).'@example.test','password'=>password_hash('test-only',PASSWORD_DEFAULT),'uuid'=>App\Utils\Helper::guid(true),'token'=>App\Utils\Helper::guid(),'is_admin'=>1]);
     $auth=(new App\Services\AuthService($user))->generateAuthData(Request::create('/'))['auth_data'];
@@ -756,7 +752,7 @@ try {
     $assert($line->fresh()->host==='entry.example.test' && (int)$line->fresh()->port===10443 && $line->fresh()->show,'publishing updates only the connection endpoint');
     $assert($relay->fresh()->tls_settings['server_name']==='old-cert.example.test' && (int)$relay->fresh()->server_port===9443,'publishing another ingress never changes service certificate or listener');
     $viewer=new App\Models\User(['group_id'=>999999]);
-    $sub=collect((new App\Services\ServerService())->getAvailableV2node($viewer,'v2box'))->firstWhere('id',$lineId);
+    $sub=collect((new App\Services\ServerService())->getAvailableV2box($viewer,'v2box'))->firstWhere('id',$lineId);
     $assert($sub && $sub['host']==='entry.example.test' && $sub['tls_settings']['server_name']==='old-cert.example.test' && !isset($sub['tls_settings']['dns_env']),'subscription uses shared identity without leaking DNS credentials');
     $clash=App\Protocols\ClashMeta::buildAnyTLS('test-password',$sub);
     $singbox=new class([],[]) extends App\Protocols\Singbox { public function renderNode($server) { return $this->buildAnyTLS('test-password',$server); } };
@@ -930,17 +926,18 @@ try {
     // Runtime counters share the physical service identity, never the connection ID.
     $activityService=new App\Services\ServerService();$cache=Illuminate\Support\Facades\Cache::class;
     $activityNodes=[['id'=>90001,'type'=>'v2box','service_id'=>null],['id'=>90002,'type'=>'v2box','service_id'=>90001],
-        ['id'=>90003,'type'=>'v2box','service_id'=>90001],['id'=>90001,'type'=>'v2node','service_id'=>null],
-        ['id'=>90004,'type'=>'v2box','service_id'=>90099]];
-    foreach (['v2box'=>7,'v2node'=>0] as $backend=>$count) {
+        ['id'=>90003,'type'=>'v2box','service_id'=>90001],['id'=>90004,'type'=>'v2box','service_id'=>null],
+        ['id'=>90005,'type'=>'v2box','service_id'=>90099]];
+    foreach (['v2box'=>7] as $backend=>$count) {
         $cache::put(App\Utils\CacheKey::get('SERVER_'.strtoupper($backend).'_ONLINE_USER',90001),$count,3600);
         $cache::put(App\Utils\CacheKey::get('SERVER_'.strtoupper($backend).'_LAST_PUSH_AT',90001),time(),3600);
         $cache::put(App\Utils\CacheKey::get('SERVER_'.strtoupper($backend).'_LAST_CHECK_AT',90001),time(),3600);
     }
     $cache::put(App\Utils\CacheKey::get('SERVER_V2BOX_ONLINE_USER',90002),999,3600);
+    foreach (['ONLINE_USER','LAST_PUSH_AT','LAST_CHECK_AT'] as $suffix) $cache::put(App\Utils\CacheKey::get('SERVER_V2BOX_'.$suffix,90004),$suffix==='ONLINE_USER'?0:time(),3600);
     $activity=$activityService->activity($activityNodes);
     $assert($activity[0]['online']===7 && $activity[1]['online']===7 && $activity[2]['online']===7,'all shared lines read service counter, not their own cache or a sum');
-    $assert($activity[3]['online']===0,'zero online is preserved and matching IDs on different backends remain isolated');
+    $assert($activity[3]['online']===0,'zero online is preserved for a different service');
     $assert($activity[4]['online']===null,'missing service never falls back to an unrelated line counter');
     $cache::put(App\Utils\CacheKey::get('SERVER_V2BOX_LAST_PUSH_AT',90001),time()-301,3600);
     $stale=$activityService->activity($activityNodes);

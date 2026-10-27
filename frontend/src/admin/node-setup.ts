@@ -6,7 +6,6 @@ export function nodeSetupFields(
     fields: Field[],
     values: Row,
     network: Row | null | undefined,
-    backend = "v2box",
     lineFields?: Field[],
 ): Field[] {
     const roots: Row[] = (network?.credentials || []).filter(
@@ -35,7 +34,7 @@ export function nodeSetupFields(
             hint: "先选择连接路径和域名，再配置协议与证书；保存后在代理服务器执行部署命令。",
         },
     ];
-    if (managed && backend === "v2box")
+    if (managed)
         setup.push({
             key: "setup_access_mode",
             section: "接入方式",

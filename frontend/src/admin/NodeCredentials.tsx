@@ -55,13 +55,6 @@ export function NodeCredentials({
             <p className="muted">
                 凭据仅授权此节点。生成后完整密钥只显示一次，请保存到节点配置；遗失请重新生成。此处不会自动轮换。
             </p>
-            {node.type === "v2node" && (
-                <p role="note">
-                    V2Node 必须先确认所用版本支持 Authorization: Bearer
-                    独立密钥。仅支持查询参数 token
-                    的旧版本不能迁移；请先升级兼容内核。
-                </p>
-            )}
             <State {...report} retry={report.reload}>
                 {report.data && (
                     <>

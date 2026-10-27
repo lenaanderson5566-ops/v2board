@@ -18,7 +18,7 @@ class UniProxyController extends Controller
         $request->validate(['node_id'=>'required|integer|min:1','token'=>'sometimes|string']);
         $token = $request->bearerToken() ?? $request->input('token','');
         $this->nodeType = $request->input('node_type');
-        abort_unless(in_array($this->nodeType, ['v2node', 'v2box'], true), 422, 'Unsupported node type');
+        abort_unless(in_array($this->nodeType, ['v2box'], true), 422, 'Unsupported node type');
         $this->nodeId = (int)$request->input('node_id');
         \App\Services\NodeCredentials::authenticate((string)$token,$this->nodeType,(int)$this->nodeId,$request->bearerToken()!==null);
         $this->serverService = new ServerService();

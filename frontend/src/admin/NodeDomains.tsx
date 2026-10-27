@@ -334,9 +334,7 @@ export function NodeDomainBinding({
                             <p className="muted">
                                 尚未收到独立 IP 上报。节点列表的 IP
                                 也可能来自连接面板时的出口地址。
-                                {node.type === "v2box"
-                                    ? "新节点请执行一键部署；已部署节点可在高级维护中修复上报。若部署尚未完成，请先执行恢复命令。"
-                                    : "请在服务器管理中编辑所属服务器，配置 IP 上报。"}
+                                新节点请执行一键部署；已部署节点可在高级维护中修复上报。若部署尚未完成，请先执行恢复命令。
                             </p>
                         )}
                         <div className="actions">
@@ -384,7 +382,7 @@ export function NodeDomainBinding({
                                     重试 DNS 同步
                                 </button>
                             )}
-                            {progress?.canActivate && (binding.entry_id || binding.tls_transition_state === "failed" || ["manual_required","configuration_blocked"].includes(binding.automatic_status) || node.type !== "v2box" || ["hysteria","hysteria2","tuic"].includes(node.protocol) && Number(node.tls)!==1) && (
+                            {progress?.canActivate && (binding.entry_id || binding.tls_transition_state === "failed" || ["manual_required","configuration_blocked"].includes(binding.automatic_status) || ["hysteria2","tuic"].includes(node.protocol) && Number(node.tls)!==1) && (
                                 <button
                                     className="primary"
                                     disabled={busy || manualBusy}

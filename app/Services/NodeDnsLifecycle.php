@@ -38,7 +38,7 @@ final class NodeDnsLifecycle
     }
     public static function inUse(string $domain, ?int $ignorePublishedOrigin = null): bool {
         if (NodeConnection::inUse($domain)) return true;
-        foreach (['v2node','v2box'] as $type) {
+        foreach (['v2box'] as $type) {
             if (DB::table('v2_server_'.$type)->where(fn($q)=>$q->where('host',$domain)->orWhere('tls_settings->server_name',$domain))->exists()) return true;
         }
         return DB::table('v2_node_ddns')->where('domain',$domain)->orWhere(function($q)use($domain,$ignorePublishedOrigin){
@@ -117,7 +117,7 @@ final class NodeDnsLifecycle
             $connectionPort=$a->entry_id ? $a->entry_port : $node->server_port;
             if(!$verified && !$a->entry_id && $node->host===$target->domain && (int)$node->port!==(int)$connectionPort){
                 $runtime=NodeRuntimeService::inspect($a->node_type,ProxyService::model($a->node_type)::findOrFail($node->id));
-                abort_unless(($runtime['applicationState']==='applied' || ($a->node_type==='v2node' && $runtime['configurationState']==='provided')) && $runtime['runtimeStatus']==='online',409,'请等待节点应用新的监听端口后再切换连接端口');
+                abort_unless(($runtime['applicationState']==='applied') && $runtime['runtimeStatus']==='online',409,'请等待节点应用新的监听端口后再切换连接端口');
             }
             foreach ($affected as $n) {
                 $update=['host'=>$target->domain,'updated_at'=>time()];

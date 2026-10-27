@@ -78,7 +78,7 @@ class NodeDdnsController extends Controller {
             $id=$old?$old->id:DB::table('v2_ddns_credential')->insertGetId($data);
             if ($old) DB::table('v2_ddns_credential')->where('id',$id)->update($data);
             if (!empty($v['token'])) {
-                foreach (['v2box','v2node'] as $type) {
+                foreach (['v2box'] as $type) {
                     DB::table('v2_server_'.$type)->where('tls_settings->dns_credential_id',$id)->select('id')->orderBy('id')->chunkById(100,function($nodes)use($type){
                         foreach ($nodes as $node) \App\Services\NodeRuntimeService::invalidate($type,(int)$node->id);
                     });
@@ -106,7 +106,7 @@ class NodeDdnsController extends Controller {
         return NodeDnsLifecycle::locked(fn()=>$this->saveAssignmentUnlocked($request));
     }
     private function saveAssignmentUnlocked(Request $request) {
-        $v=$request->validate(['id'=>'nullable|integer|min:1','credential_id'=>'required|integer|min:1','node_type'=>['required',Rule::in(['v2node','v2box'])],'node_id'=>'required|integer|min:1','domain'=>['required','string','max:253','regex:/^(?:[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?\.)+[a-zA-Z]{2,63}$/'],'family'=>['required',Rule::in(['ipv4','ipv6','dual'])],'enabled'=>'required|boolean']);
+        $v=$request->validate(['id'=>'nullable|integer|min:1','credential_id'=>'required|integer|min:1','node_type'=>['required',Rule::in(['v2box'])],'node_id'=>'required|integer|min:1','domain'=>['required','string','max:253','regex:/^(?:[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?\.)+[a-zA-Z]{2,63}$/'],'family'=>['required',Rule::in(['ipv4','ipv6','dual'])],'enabled'=>'required|boolean']);
         $v['domain']=strtolower($v['domain']);
         return DB::transaction(function () use ($v) {
             abort_unless(DB::table('v2_ddns_credential')->where('id',$v['credential_id'])->lockForUpdate()->first(),422,'请选择有效凭据');
@@ -131,7 +131,7 @@ class NodeDdnsController extends Controller {
         $v=$request->validate(['id'=>'required|integer|min:1']);
         NodeDnsLifecycle::locked(fn()=>DB::transaction(function()use($v){
             $assignment=DB::table('v2_node_ddns')->find($v['id']);
-            if ($assignment && in_array($assignment->node_type,['v2node','v2box'],true)) \App\Services\ProxyService::assertUnused($assignment->node_type,(int)$assignment->node_id);
+            if ($assignment && in_array($assignment->node_type,['v2box'],true)) \App\Services\ProxyService::assertUnused($assignment->node_type,(int)$assignment->node_id);
             abort_if((DB::table('v2_node_ddns')->where('entry_id',$v['id'])->exists() || \App\Services\NodeConnection::referencesEntry($v['id'])),409,'入口仍被节点引用，请先解除关联');
             NodeDnsLifecycle::retire($v['id']);
             DB::table('v2_node_ddns')->where('id',$v['id'])->delete();

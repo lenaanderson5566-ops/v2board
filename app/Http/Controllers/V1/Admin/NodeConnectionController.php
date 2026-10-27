@@ -8,14 +8,14 @@ use Illuminate\Support\Facades\DB;
 
 final class NodeConnectionController extends Controller {
     public function address(Request $request) {
-        $v=$request->validate(['type'=>'required|in:v2node,v2box','id'=>'required|integer|min:1']);
+        $v=$request->validate(['type'=>'required|in:v2box','id'=>'required|integer|min:1']);
         $node=ProxyService::model($v['type'])::find($v['id']);
         abort_unless($node && !$node->service_id,422,'请选择独立节点');
         return ['data'=>\App\Services\Actions\UpdateManualNodeAddress::resource($v['type'],$node)];
     }
     public function updateAddress(Request $request) {
         abort_if(array_diff(array_keys($request->except('user')),['type','id','revision','host','port','confirm']),422,'仅允许修改手动连接地址和端口');
-        $v=$request->validate(['type'=>'required|in:v2node,v2box','id'=>'required|integer|min:1','revision'=>'required|string|size:64',
+        $v=$request->validate(['type'=>'required|in:v2box','id'=>'required|integer|min:1','revision'=>'required|string|size:64',
             'host'=>['required','string','max:253',function($attribute,$value,$fail){
                 if(!filter_var($value,FILTER_VALIDATE_IP) && !preg_match('/^(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?)(?:\.[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?)*\.?$/Di',$value))$fail('请输入有效域名或 IP 地址');
             }],
@@ -26,7 +26,7 @@ final class NodeConnectionController extends Controller {
         return ['data'=>\App\Services\Actions\UpdateManualNodeAddress::run($v['type'],(int)$v['id'],$v['revision'],$v)];
     }
     public function defaultLine(Request $request) {
-        $v=$request->validate(['type'=>'required|in:v2node,v2box','id'=>'required|integer|min:1']);
+        $v=$request->validate(['type'=>'required|in:v2box','id'=>'required|integer|min:1']);
         $node=ProxyService::model($v['type'])::find($v['id']);
         abort_unless($node && !$node->service_id,422,'请选择独立代理服务的默认线路');
         return ['data'=>\App\Services\Actions\UpdateDefaultNodeLine::resource($node)];
@@ -35,14 +35,14 @@ final class NodeConnectionController extends Controller {
         $allowed=array_merge(['type','id','revision'],\App\Services\Actions\UpdateDefaultNodeLine::FIELDS);
         abort_if(array_diff(array_keys($request->except('user')),$allowed),422,'默认线路仅允许修改名称、权限、倍率和展示信息');
         $request->merge(\App\Services\NodeDisplayService::normalizeInput($request->all()));
-        $v=$request->validate(['type'=>'required|in:v2node,v2box','id'=>'required|integer|min:1','revision'=>'required|string|size:64',
+        $v=$request->validate(['type'=>'required|in:v2box','id'=>'required|integer|min:1','revision'=>'required|string|size:64',
             'name'=>'required|string|max:100','group_id'=>'present|array|max:100','group_id.*'=>'integer|min:1|distinct',
             'rate'=>'required|numeric|min:0|max:10000','region_code'=>'nullable|string|size:2|in:'.implode(',',\App\Services\NodeDisplayService::regionCodes()),
             'city_code'=>'nullable|string|max:64|regex:/^[a-z0-9][a-z0-9-]*$/','display_label'=>'nullable|string|max:64','tags'=>'nullable|array|max:20','tags.*'=>'string|max:64']);
         return ['data'=>\App\Services\Actions\UpdateDefaultNodeLine::run($v['type'],(int)$v['id'],$v['revision'],$v)];
     }
     public function fetch(Request $request) {
-        $v=$request->validate(['type'=>'required|in:v2node,v2box','id'=>'required|integer|min:1']);
+        $v=$request->validate(['type'=>'required|in:v2box','id'=>'required|integer|min:1']);
         $line=ProxyService::model($v['type'])::find($v['id']); abort_unless($line,404);
         $row=DB::table('v2_node_connection')->where('node_type',$v['type'])->where('node_id',$line->id)->first();
         $draft=$row ? json_decode($row->draft,true) : ['service_id'=>$line->service_id?:$line->id,'entry_id'=>null,'entry_port'=>443,'name'=>$line->name,'group_id'=>$line->group_id,'show'=>(int)$line->show];
@@ -57,7 +57,7 @@ final class NodeConnectionController extends Controller {
     }
     public function save(Request $request) {
         $request->merge(\App\Services\NodeDisplayService::normalizeInput($request->all()));
-        $v=$request->validate(['type'=>'required|in:v2node,v2box','id'=>'nullable|integer|min:1','revision'=>'required|integer|min:0',
+        $v=$request->validate(['type'=>'required|in:v2box','id'=>'nullable|integer|min:1','revision'=>'required|integer|min:0',
             'service_id'=>'required|integer|min:1','entry_id'=>'nullable|integer|min:1','entry_port'=>'nullable|integer|between:1,65535',
             'name'=>'required|string|max:100','group_id'=>'required|array|min:1|max:100','group_id.*'=>'integer|min:1|distinct','show'=>'required|boolean',
             'region_code'=>'nullable|string|size:2|in:'.implode(',',\App\Services\NodeDisplayService::regionCodes()),
@@ -88,7 +88,7 @@ final class NodeConnectionController extends Controller {
         }));
     }
     public function publish(Request $request) {
-        $v=$request->validate(['type'=>'required|in:v2node,v2box','id'=>'required|integer|min:1','revision'=>'required|integer|min:1','proof'=>'required|string|size:64','confirmed'=>'required|accepted']);
+        $v=$request->validate(['type'=>'required|in:v2box','id'=>'required|integer|min:1','revision'=>'required|integer|min:1','proof'=>'required|string|size:64','confirmed'=>'required|accepted']);
         return \App\Services\Actions\PublishNodeConnection::run($v);
     }
 }

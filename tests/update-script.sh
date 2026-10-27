@@ -24,6 +24,7 @@ mkdir -p public/console/.vite database/migrations
 cp -- "$SOURCE" update.sh
 echo '{}' > public/console/.vite/manifest.json
 echo '<?php // fixture' > database/migrations/2026_10_11_000000_ensure_operations_schema.php
+echo '<?php // fixture' > database/migrations/2026_10_27_000001_retire_v2node.php
 echo '<?php // fixture' > database/migrations/2026_10_01_000001_add_trusted_x_forwarded_for_to_v2node.php
 echo '<?php // fixture' > database/migrations/2026_10_02_000001_create_email_invitations.php
 echo '<?php // fixture' > database/migrations/2026_10_02_000002_add_language_to_users.php

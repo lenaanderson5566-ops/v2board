@@ -48,7 +48,7 @@ class NodeConfiguration {
         ];
 
         if ($node['route_id']) {
-            $response['routes'] = (new ServerService())->getRoutes($node['route_id'], $node instanceof \App\Models\ServerV2box ? 'v2box' : 'v2node');
+            $response['routes'] = (new ServerService())->getRoutes($node['route_id'], 'v2box');
         }
 
         return $response;

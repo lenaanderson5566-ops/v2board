@@ -33,11 +33,11 @@ try {
     $legacy=$make(['transfer_enable'=>0,'expired_at'=>null,'credit_migrated_at'=>time()]);
     $assert($has($basic,$legacy) && Credits::effectiveGroupId($legacy)===$basic, 'Migrated credits bypassed policy');
     $nodeFields=['name'=>'Credit node test','host'=>'example.invalid','port'=>'443','server_port'=>443,'rate'=>1,'show'=>1,'tls'=>0,'network'=>'tcp','protocol'=>'vmess','up_mbps'=>0,'down_mbps'=>0];
-    $basicNode=App\Models\ServerV2node::create($nodeFields+['group_id'=>[$basic]]);
-    $premiumNode=App\Models\ServerV2node::create($nodeFields+['group_id'=>[$premium]]);
-    $visible=array_column($server->getAvailableV2node($standalone),'id');
+    $basicNode=App\Models\ServerV2box::create($nodeFields+['group_id'=>[$basic]]);
+    $premiumNode=App\Models\ServerV2box::create($nodeFields+['group_id'=>[$premium]]);
+    $visible=array_column($server->getAvailableV2box($standalone),'id');
     $assert(in_array($basicNode->id,$visible) && !in_array($premiumNode->id,$visible),'Client node list exposes premium nodes to credits');
-    $visible=array_column($server->getAvailableV2node($active),'id');
+    $visible=array_column($server->getAvailableV2box($active),'id');
     $assert(in_array($premiumNode->id,$visible) && !in_array($basicNode->id,$visible),'Active subscriber node list lost premium');
     $banned=$make(['banned'=>1,'expired_at'=>time()-1]);
     $assert(!$has($basic,$banned) && !$has($premium,$banned),'Banned user authorized');

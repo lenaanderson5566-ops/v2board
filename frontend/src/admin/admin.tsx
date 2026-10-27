@@ -198,14 +198,6 @@ export const resources: Record<string, Resource> = {
             ["id", "ID"],
             ["remarks", "备注"],
             [
-                "backend",
-                "适用内核",
-                (r) =>
-                    r.backend === "v2box"
-                        ? "V2Box / sing-box"
-                        : "V2Node / Xray",
-            ],
-            [
                 "match",
                 "规则数量",
                 (r) =>
@@ -222,20 +214,11 @@ export const resources: Record<string, Resource> = {
                 (r) =>
                     r.action === "sing_box"
                         ? "sing-box 原生"
-                        : `${r.backend === "v2box" ? "兼容格式 / " : ""}${r.action}`,
+                        : `兼容格式 / ${r.action}`,
             ],
         ],
         fields: [
             field("remarks", "备注", "text", true),
-            {
-                key: "backend",
-                label: "适用内核",
-                type: "select",
-                options: [
-                    ["v2node", "V2Node / Xray"],
-                    ["v2box", "V2Box / sing-box"],
-                ],
-            },
             field("match", "匹配条件", "json", true),
             {
                 key: "action",
@@ -263,9 +246,9 @@ export const resources: Record<string, Resource> = {
             },
         ],
         defaults: {
-            backend: "v2node",
+            backend: "v2box",
             match: [],
-            action: "block",
+            action: "sing_box",
             sing_box: { route: { rules: [] } },
         },
     },
@@ -935,7 +918,15 @@ export function ResourcePage({
     const [showDisplay, setShowDisplay] = useState(false);
     const [columnViews, setColumnViews] = useState<Record<string, string[]>>({});
     let storedColumns: string[] | undefined;
-    try { const saved = JSON.parse(localStorage.getItem(columnStorageKey) || "null"); if (Array.isArray(saved)) storedColumns = saved.filter(value => typeof value === "string"); } catch { /* Optional browser preference. */ }
+    try {
+        const saved = JSON.parse(localStorage.getItem(columnStorageKey) || "null");
+        if (Array.isArray(saved)) {
+            const available = new Set(resource.columns.map(([key]) => key));
+            const valid = saved.filter(value => typeof value === "string" && available.has(value));
+            // A preference containing only retired columns falls back to the current defaults.
+            if (valid.length || saved.length === 0) storedColumns = valid;
+        }
+    } catch { /* Optional browser preference. */ }
     const selectedColumns = columnViews[columnStorageKey] ?? storedColumns ?? resource.columns.map(([key]) => key);
     const updateColumns = (columns: string[]) => {
         setColumnViews(previous => ({ ...previous, [columnStorageKey]: columns }));
@@ -954,9 +945,6 @@ export function ResourcePage({
         savedView.logFilters && typeof savedView.logFilters === "object"
             ? savedView.logFilters
             : {},
-    );
-    const [routeBackend, setRouteBackend] = useState(
-        savedView.routeBackend === "v2box" ? "v2box" : "v2node",
     );
     const groups = useData<Row[]>(
         resource.fields.some((f) => f.key === "group_id") ||
@@ -1055,7 +1043,6 @@ export function ResourcePage({
             page,
             search,
             logFilters,
-            routeBackend,
         });
     }, [
         viewKey,
@@ -1064,7 +1051,6 @@ export function ResourcePage({
         page,
         search,
         logFilters,
-        routeBackend,
     ]);
     const d = useData<Row[]>(
         query(resource.fetch, {
@@ -1082,7 +1068,7 @@ export function ResourcePage({
                     : undefined,
             ...logFilters,
             ...queryParams,
-            ...(resource === resources.routes ? { backend: routeBackend } : {}),
+            ...(resource === resources.routes ? { backend: "v2box" } : {}),
         }),
     );
     useEffect(() => {
@@ -1195,15 +1181,6 @@ export function ResourcePage({
                                 onClick={() =>
                                     setEditing({
                                         ...resource.defaults,
-                                        ...(resource === resources.routes
-                                            ? {
-                                                  backend: routeBackend,
-                                                  action:
-                                                      routeBackend === "v2box"
-                                                          ? "sing_box"
-                                                          : "block",
-                                              }
-                                            : {}),
                                     })
                                 }
                             >
@@ -1240,22 +1217,8 @@ export function ResourcePage({
                 {toolbar}
                 {resource === resources.routes && (
                     <div className="pad">
-                        <label>
-                            适用内核{" "}
-                            <select
-                                aria-label="路由内核"
-                                value={routeBackend}
-                                onChange={(e) => {
-                                    setRouteBackend(e.target.value);
-                                    setPage(1);
-                                }}
-                            >
-                                <option value="v2node">V2Node / Xray</option>
-                                <option value="v2box">V2Box / sing-box</option>
-                            </select>
-                        </label>
                         <p className="muted">
-                            两类规则独立维护。修改规则会应用到选择它的节点；正在使用的规则不能删除。
+                            修改规则会应用到选择它的节点；正在使用的规则不能删除。
                         </p>
                     </div>
                 )}
@@ -1631,12 +1594,7 @@ export function ResourcePage({
                                                     );
                                             },
                                         );
-                                    if (
-                                        resource === resources.routes &&
-                                        editing.id
-                                    )
-                                        clean.backend =
-                                            editing.backend || "v2node";
+                                    if (resource === resources.routes) clean.backend = "v2box";
                                     if (resource.defaults)
                                         Object.entries(
                                             resource.defaults,

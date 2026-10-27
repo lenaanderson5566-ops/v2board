@@ -1,3 +1,5 @@
+> 当前节点管理仅支持 V2Box；下方旧测试及发布记录属于历史验证，不表示仍支持退役后端。
+
 ## 节点部署入口与更新卸载（2026-10-23）
 
 精简重复上报入口，修复操作收在域名页高级维护；已有健康上报、新节点和证书验证中不展示修复按钮。部署页增加更新、恢复、状态日志和卸载命令说明。V2Box 更新器保留配置/证书/自定义服务文件，安装失败恢复旧程序；停止状态保持停止，卸载需确认并保留配置证书，独立上报服务须显式选择停用。证书联系邮箱改为独立邮箱，新申请不再使用原 V2Board 邮箱。
@@ -1045,18 +1047,6 @@ UUID 大小写及 SS2022 派生密钥碰撞检查拒绝等效凭据；协议、�
 UDP 统计测试保留会话至统计断言完成，避免提前关闭清理目标缓存造成时序误报；完整统计断言保留。节点全量竞态、Reality/Vision（独立和共享）、go vet、Linux 构建及脚本语法检查均通过，最终结果保存在忽略目录 storage/app/test-organization/shared-protocols。没有修改真实 DNS、申请真实 CA 证书或升级现有节点。
 
 
-### 原版 V2Node 双后台端口运行实测
-
-使用工作区 wyx2685/v2node 的 cf513e1f0ba5f22eef6b40e65c22e3e9856d86b2 原样编译并实际运行，构建元数据 vcs.modified=false，实际依赖 wyx2685/xray-core e087e74a1bf25b46f2776d1a3b53a68f6018d654。测试环境为 Linux x86_64 / WSL2 6.18.54.1；没有修改该参考仓库或 V2Box 的业务代码。
-
-两个后台为独立监听地址、状态及凭据的模拟面板 HTTP API，并非两套完整 PHP/数据库部署；节点实际拉取配置和用户，向两套 API 分别上报流量。两边均使用节点 ID 1、用户 ID 42，主实验凭据不同。每组每后台 60 次真实 TCP 代理连接，每次上传 32768 字节并校验等量回显；先完成 A 流量阶段并排空上报，再执行 B。TLS 场景共用相同本地可信测试证书，不向真实 CA 申请证书。原内核默认阻止本地目标，使用面板正常支持的 default_out/freedom finalRules 仅放行测试回显 IP 和端口，没有修改内核保护逻辑。
-
-最终主实验保留 8 组、960 次连接：不同端口的三组对照均 120/120；VLESS/VLESS 同端口无 TLS 为 65/120，TLS 为 67/120；Trojan/Trojan 同端口 TLS 为 72/120；VLESS/Trojan 同端口 TLS 为 55/120，Trojan 先创建的反向顺序为 62/120。每组同端口均观察到两个独立监听文件描述符；节点日志记录 invalid request user id 或 invalid protocol or invalid user。成功的主实验连接，上传、下载均与成功次数乘以有效载荷完全一致，另一后台在对应阶段增量为零。
-
-另做相同凭据诊断 120 次，连接全部成功，但在仅使用 A 配置的 60 次连接阶段，A/B 各收到 983040 字节/方向；仅使用 B 配置的阶段，A 收到 851968、B 收到 1114112 字节/方向。两套后台合计流量准确，但凭据相同且入口相同无法表达预期后台，不能保证按操作员预期独立归属。
-
-结论限定为该提交、该 Linux 环境的 VLESS/Trojan TCP 场景：端口复用允许绑定，不提供可靠的按后台用户或不同协议自动分流。使用不同端口连接正常且统计独立；独立凭据同端口不能稳定连接；复制凭据能掩盖连接失败，却不能保证后台归属。本次没有外推为全部协议或全部操作系统的运行结论，QUIC/UDP 不在此次实测范围。复现探针、构建模块信息、完整 JSON、监听和节点日志位于忽略目录 storage/app/test-organization/v2node-port-runtime。
-
 
 ### V2Box 共享监听推送前复核
 
@@ -1122,3 +1112,9 @@ v1.0.15 正式发布验证：节点从 6d2aa4d 发布，正式标签流水线的
 - Management and installer scripts are delivered with v1.0.16 Release. The temporary panel-embedded script copies and legacy overlay scheme were removed at the user's request. Panel new-install, upgrade, recovery and frontend helper references now pin v1.0.16; existing servers obtain fixes by upgrading the node package.
 - Formal tag workflow 40492671701 passed the complete Go race suite, Vision checks, go vet, 72 script tests, all six platform builds and publication. Release is latest with six ZIPs and six SHA256 files. Linux amd64 SHA256: 7b1df828da5bbdd262d3ca63caeb7e7986c8155a6e5f736c9b336e4fc69ea765; all four packaged scripts match the tagged source.
 - Backend v2box, node-v10 and console-smoke modules passed in a disposable MySQL workspace; the five frontend version/command tests and production build passed. Runtime release metadata and verification summaries are under storage/app/test-organization/v2box-v1.0.16. Real two-panel deployment and upgrade verification passed using the formal package: two independent databases, same-port TLS connections and panel isolation; upgrading the real v1.0.15 binary plus all old scripts replaces the manager with the exact v1.0.16 packaged bytes while preserving Nodes, certificates/keys, reporting files and the stopped state.
+
+## V2Box 单后端回归
+
+复用 node-backends、v2box、node-routes、node-ddns、node-v10、retired-node-tables 和 server-traffic-budgets，覆盖旧类型与转换请求拒绝、单后端订阅/排序/统计、凭据与域名、共享服务额度以及幂等退役迁移。retired-node-tables 在随机前缀的隔离表上验证旧配置清理、V2Box 同号身份及共享账务历史保留。旧内核双后端测试已移除；历史迁移与拒绝用例保留旧类型字面量。
+
+后台节点表单元数据改为与保存接口共用明确规则，移除控制器源码正则解析；保留完整 TLS/传输配置和旧类型拒绝校验。现有 v2box 用例验证元数据不提供旧核心字段且地区/协议枚举与保存规则一致，Nodes 验证新增原生规则不出现内核选择以及旧列偏好恢复；后台路由与部署相关 9 个测试脚本在临时数据库通过。

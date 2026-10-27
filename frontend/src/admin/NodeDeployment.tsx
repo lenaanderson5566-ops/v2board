@@ -9,7 +9,7 @@ import { formatInstant } from "../shared/timezone";
 import { AdminChoiceGroup, AdminTabs } from "./AdminChoices";
 import { NodeCredentials } from "./NodeCredentials";
 import { NodeDnsObservation } from "./NodeDnsObservation";
-import { nodeDeploymentCommand, nodeUpgradeCommand } from "./node-deployment";
+import { nodeUpgradeCommand } from "./node-deployment";
 
 export function NodeDeployment({
     node,
@@ -323,15 +323,11 @@ export function NodeDeployment({
                                         <summary>查看日志与恢复命令</summary>
                                         <p>
                                             <code>
-                                                {node.type === "v2box"
-                                                    ? "v2box status"
-                                                    : "systemctl status v2node"}
+                                                v2box status
                                             </code>{" "}
                                             ·{" "}
                                             <code>
-                                                {node.type === "v2box"
-                                                    ? "v2box log"
-                                                    : "journalctl -u v2node -n 80 --no-pager"}
+                                                v2box log
                                             </code>
                                         </p>
                                         {node.type === "v2box" && (
@@ -438,7 +434,7 @@ export function NodeDeployment({
                                     {keys.some(k => k.status === "retiring") && <p role="status">节点凭据正在轮换。请在“高级：节点凭据”完成轮换后生成部署命令。</p>}
                                     <details className="admin-deployment-tools"><summary>重新部署的影响</summary><p>生成命令不会更换密钥。执行后更新当前节点凭据，旧独立密钥保留 30 分钟宽限，原全局密钥失效。证书及其他节点配置保留。</p></details>
                                 </section>
-                            ) : node.type === "v2box" ? (
+                            ) : (
                                 <section className="admin-deployment-card">
                                     <h3>升级节点程序</h3>
                                     <p>
@@ -463,51 +459,11 @@ export function NodeDeployment({
                                         复制升级命令
                                     </button>
                                 </section>
-                            ) : (
-                                <p>
-                                    V2Node 沿用手动部署，请先确认版本支持 Bearer
-                                    独立凭据。
-                                </p>
                             )}
                             {copied && <p role="status">{copied}</p>}
                             {error && <p role="alert">{error}</p>}
                             {!network.loading && !runtime.loading && !network.error && !runtime.error && <NodeDeploymentProgress binding={binding} network={network.data} runtime={runtime.data} />}
                             <NodeDnsObservation observation={binding?.deployment_dns} />
-                            {node.type !== "v2box" && <details className="admin-deployment-tools">
-                                <summary>高级：手动安装</summary>
-                                <div>
-                                    <p className="muted">
-                                        {node.type === "v2box"
-                                            ? "手动安装需自行配置节点接入密钥和 IP 上报；通常使用“新安装”中的一键部署即可。"
-                                            : "手动安装后配置节点独立凭据；IP 自动上报可在 域名与解析 中绑定节点后配置。"}
-                                    </p>
-                                    {node.install_command && (
-                                        <>
-                                            <textarea
-                                                className="admin-command-input"
-                                                aria-label="节点安装命令"
-                                                readOnly
-                                                rows={3}
-                                                value={nodeDeploymentCommand(
-                                                    node,
-                                                )}
-                                            />
-                                            <button
-                                                onClick={() =>
-                                                    copy(
-                                                        nodeDeploymentCommand(
-                                                            node,
-                                                        ),
-                                                        "手动安装命令已复制",
-                                                    )
-                                                }
-                                            >
-                                                复制手动安装命令
-                                            </button>
-                                        </>
-                                    )}
-                                </div>
-                            </details>}
                             {node.type === "v2box" && (
                                 <details className="admin-deployment-tools">
                                     <summary>运维命令与说明</summary>

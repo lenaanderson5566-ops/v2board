@@ -64,16 +64,6 @@ const nested: Record<string, Field[]> = {
         { key: "short_id", label: "Reality Short ID（留空自动生成）" },
         { key: "dest", label: "Reality 目标地址" },
         {
-            key: "xver",
-            label: "Reality Proxy Protocol 版本",
-            type: "select",
-            options: [
-                ["0", "关闭"],
-                ["1", "v1"],
-                ["2", "v2"],
-            ],
-        },
-        {
             key: "server_port",
             label: "Reality 目标端口",
             type: "number",
@@ -81,19 +71,6 @@ const nested: Record<string, Field[]> = {
             max: 65535,
             step: 1,
         },
-        {
-            key: "ech",
-            label: "ECH 模式",
-            type: "select",
-            options: [
-                ["", "关闭"],
-                ["cloudflare", "Cloudflare"],
-                ["custom", "自定义"],
-            ],
-        },
-        { key: "ech_server_name", label: "ECH 外层服务器名称" },
-        { key: "ech_key", label: "ECH 密钥（留空自动生成）", type: "password" },
-        { key: "ech_config", label: "ECH 配置（留空自动生成）" },
     ],
     tlsSettings: [
         { key: "serverName", label: "TLS 身份域名（SNI）" },
@@ -101,26 +78,9 @@ const nested: Record<string, Field[]> = {
         { key: "fingerprint", label: "客户端指纹" },
     ],
     network_settings: [
-        {
-            key: "acceptProxyProtocol",
-            label: "接收 Proxy Protocol",
-            type: "switch",
-        },
         { key: "path", label: "传输路径" },
         { key: "headers.Host", label: "传输 Host" },
         { key: "serviceName", label: "gRPC 服务名称" },
-        { key: "host", label: "XHTTP Host" },
-        {
-            key: "mode",
-            label: "XHTTP 模式",
-            type: "select",
-            options: [
-                ["auto", "自动"],
-                ["packet-up", "packet-up"],
-                ["stream-up", "stream-up"],
-                ["stream-one", "stream-one"],
-            ],
-        },
     ],
     networkSettings: [
         {
@@ -134,15 +94,6 @@ const nested: Record<string, Field[]> = {
         { key: "path", label: "传输路径" },
         { key: "headers.Host", label: "传输 Host" },
         { key: "serviceName", label: "gRPC 服务名称" },
-        { key: "host", label: "XHTTP Host" },
-        {
-            key: "mode",
-            label: "XHTTP 模式",
-            type: "select",
-            options: ["auto", "packet-up", "stream-up", "stream-one"].map(
-                (v) => [v, v],
-            ),
-        },
     ],
     obfs_settings: [
         { key: "host", label: "混淆 Host" },
@@ -256,41 +207,6 @@ export function nodeSettingsPayload(values: Row): Row {
         }
     }
     return applyPaddingPreset(result);
-}
-
-// Start a backend conversion from the saved record; routes and parents are scoped
-// to the original backend and must be selected again for the target backend.
-export function nodeBackendInitial(initial: Row, backend: string): Row {
-    if (!initial.id || initial.type === backend) return initial;
-    const result = JSON.parse(JSON.stringify(initial)) as Row;
-    result.route_id = [];
-    result.service_id = null;
-    delete result.sing_box;
-    if (backend === "v2node" && result.protocol === "naive")
-        result.protocol = "";
-    if (backend === "v2box") {
-        delete result.encryption;
-        delete result.encryption_settings;
-        delete result.trusted_x_forwarded_for;
-        for (const key of [
-            "ech",
-            "ech_key",
-            "ech_config",
-            "ech_server_name",
-            "xver",
-            "reject_unknown_sni",
-            "mldsa65Seed",
-            "server_names",
-        ])
-            if (result.tls_settings) delete result.tls_settings[key];
-        if (!["tcp", "ws", "grpc", "httpupgrade"].includes(result.network)) {
-            result.network = "";
-            result.network_settings = {};
-        }
-        if (result.network_settings)
-            delete result.network_settings.acceptProxyProtocol;
-    }
-    return result;
 }
 
 // Organize only the visible fields; never drop extension settings for presentation.

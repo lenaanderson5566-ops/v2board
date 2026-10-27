@@ -53,7 +53,7 @@ export function NodeConnectionEditor({ node, nodes, groups = [], close, onSaved,
         if(changed)onPublished?.();
     },[existing.data,node.service_id,node.host,node.port,onPublished]);
     const savedPlan = existing.data?.plan;
-    const manualPublish = !!savedPlan?.entry_id || type!=="v2box" || ["hysteria","hysteria2","tuic"].includes(savedPlan?.protocol) || ["manual_required","configuration_blocked"].includes(existing.data?.automatic_status);
+    const manualPublish = !!savedPlan?.entry_id || ["hysteria2","tuic"].includes(savedPlan?.protocol) || ["manual_required","configuration_blocked"].includes(existing.data?.automatic_status);
     useEffect(()=>{
         if (!id || dirty || busy || pauseRefresh || existing.loading) return;
         const timer=window.setInterval(()=>{if(document.visibilityState!=="hidden") existing.reload();},existing.error ? 60000 : 15000);
@@ -89,14 +89,13 @@ export function NodeConnectionEditor({ node, nodes, groups = [], close, onSaved,
                 <div className="field-section">{view==="path" ? "接入路径" : "节点信息"}</div>
                 <p className="muted">当前节点独立命名并设置地区、城市和标签。国家／地区表示代理服务的出口位置，中转入口位置单独显示。</p>
                 <div className="node-domain-form">
-                    {!id && !embedded && <label>服务内核<select value={type} disabled={busy} onChange={e => { setType(e.target.value); selectService(undefined); }}><option value="v2box">V2Box</option><option value="v2node">V2Node</option></select></label>}
                     {view!=="path" && <label>节点名称<input value={draft.name} disabled={busy} onChange={e => change("name", e.target.value)} /></label>}
                     {view!=="line" && <label>代理服务<select value={embedded && !id ? (draft.service_id ? `${type}:${draft.service_id}` : "") : draft.service_id || ""} disabled={busy} onChange={e => {
                         const selected=embedded && !id
                             ? selectableServices.find(s=>`${s.type}:${s.id}`===e.target.value)
                             : services.find(s=>Number(s.id)===Number(e.target.value));
                         selectService(selected);
-                    }}><option value="">选择代理服务</option>{selectableServices.map(s => <option key={`${s.type}:${s.id}`} disabled={!canReuse(s)} value={embedded && !id ? `${s.type}:${s.id}` : s.id}>{s.name} · {s.protocol} · {s.type=== "v2box" ? "V2Box" : "V2Node"}{!canReuse(s)?"（需启用服务器和自动域名）":""}</option>)}</select></label>}
+                    }}><option value="">选择代理服务</option>{selectableServices.map(s => <option key={`${s.type}:${s.id}`} disabled={!canReuse(s)} value={embedded && !id ? `${s.type}:${s.id}` : s.id}>{s.name} · {s.protocol}{!canReuse(s)?"（需启用服务器和自动域名）":""}</option>)}</select></label>}
                     {service && !canReuse(service) && <p role="status">请先在关联代理服务的部署设置中启用服务器与自动域名管理，再保存或发布节点。</p>}
                     {!id && !selectableServices.length && <p role="status">暂无可共用服务的节点，请选择“独立部署新节点”。</p>}
                     {view!=="line" && <><label>连接方式<select value={draft.entry_id ? "relay" : "direct"} disabled={busy} onChange={e => change("entry_id", e.target.value === "relay" ? entries[0]?.id || "pending" : "")}><option value="direct">直连</option><option value="relay">入口中转</option></select></label>

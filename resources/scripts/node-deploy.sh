@@ -183,7 +183,7 @@ if [[ -e /etc/v2box/config.json ]]; then
   if jq -e '.Nodes | length == 1 and .[0].ApiKey == "REPLACE_ME" and .[0].ApiHost == "https://panel.example.com"' /etc/v2box/config.json >/dev/null; then
     :
   else
-    jq -e '.Nodes | type == "array" and length > 0 and all(.[]; type == "object" and ((.NodeType // "v2node") == "v2box" or (.NodeType // "v2node") == "v2node") and (.ApiHost | type == "string" and test("^https://")) and (.NodeID | type == "number" and . > 0 and floor == .))' /etc/v2box/config.json >/dev/null || { echo 'Existing node configuration is invalid; preserved.' >&2; exit 1; }
+    jq -e '.Nodes | type == "array" and length > 0 and all(.[]; type == "object" and ((.NodeType // "v2box") == "v2box") and (.ApiHost | type == "string" and test("^https://")) and (.NodeID | type == "number" and . > 0 and floor == .))' /etc/v2box/config.json >/dev/null || { echo 'Existing node configuration is invalid; preserved.' >&2; exit 1; }
     existing_install=true
   fi
 fi

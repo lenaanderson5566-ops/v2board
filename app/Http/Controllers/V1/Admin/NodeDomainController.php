@@ -20,7 +20,7 @@ final class NodeDomainController extends Controller
     }
     /** Caller holds the DNS lifecycle lock; also used by atomic node creation. */
     public function bindWithinLock(Request $request) {
-        $v=$request->validate(['credential_id'=>'required|integer|min:1','node_type'=>'required|in:v2node,v2box','node_id'=>'required|integer|min:1','prefix'=>'nullable|string|max:63','family'=>'required|in:ipv4,ipv6,dual','server_id'=>'nullable|integer|min:1','entry_id'=>'nullable|integer|min:1','entry_port'=>'nullable|integer|min:1|max:65535','revision'=>'nullable|string|size:64']);
+        $v=$request->validate(['credential_id'=>'required|integer|min:1','node_type'=>'required|in:v2box','node_id'=>'required|integer|min:1','prefix'=>'nullable|string|max:63','family'=>'required|in:ipv4,ipv6,dual','server_id'=>'nullable|integer|min:1','entry_id'=>'nullable|integer|min:1','entry_port'=>'nullable|integer|min:1|max:65535','revision'=>'nullable|string|size:64']);
         return DB::transaction(function()use($v){
             $c=DB::table('v2_ddns_credential')->find($v['credential_id']);
             abort_unless($c && $c->root_domain,422,'请先验证根域名');
@@ -79,7 +79,7 @@ final class NodeDomainController extends Controller
         $v=$request->validate(['id'=>'required|integer|min:1','revision'=>'required|string|size:64','confirm'=>'required|accepted']);
         return NodeDnsLifecycle::locked(fn()=>DB::transaction(function()use($v){
             $a=DB::table('v2_node_ddns')->where('id',$v['id'])->lockForUpdate()->first();
-            abort_unless($a && in_array($a->node_type,['v2box','v2node'],true) && $a->purpose!=='entry',422,'请选择有效的节点域名');
+            abort_unless($a && in_array($a->node_type,['v2box'],true) && $a->purpose!=='entry',422,'请选择有效的节点域名');
             abort_unless(hash_equals(self::revision($a),$v['revision']),409,'域名配置已变化，请重新载入后操作');
             $node=\App\Services\ProxyService::model($a->node_type)::find($a->node_id);
             abort_unless($node && !$node->service_id,422,'请选择有效的独立节点');

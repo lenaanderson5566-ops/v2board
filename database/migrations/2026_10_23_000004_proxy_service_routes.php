@@ -6,8 +6,8 @@ use Illuminate\Support\Facades\Schema;
 
 class ProxyServiceRoutes extends Migration {
     public function up() {
-        // Validate both tables before changing either one. Never silently discard a line.
-        foreach (['v2_server_v2node','v2_server_v2box'] as $table) {
+        // Validate service associations before changing the schema. Never silently discard a line.
+        foreach (['v2_server_v2box'] as $table) {
             if (!Schema::hasColumn($table,'parent_id')) continue;
             $column='parent_id';
             $records=DB::table($table)->get()->keyBy('id');
@@ -28,9 +28,9 @@ class ProxyServiceRoutes extends Migration {
         }
         // Preserve published IDs. A service owns its default connection; other connections
         // reference that service directly. Nested associations are never supported.
-        foreach (['v2_server_v2node','v2_server_v2box'] as $table) {
+        foreach (['v2_server_v2box'] as $table) {
             // Fresh installs previously created V2Box before the display migration,
-            // leaving its metadata columns absent even though V2Node had them.
+            // leaving its metadata columns absent.
             foreach (['region_code'=>2,'city_code'=>64,'display_label'=>64] as $field=>$length) {
                 if (!Schema::hasColumn($table,$field)) Schema::table($table,fn(Blueprint $t)=>$t->string($field,$length)->nullable());
             }

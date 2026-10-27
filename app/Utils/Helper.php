@@ -176,7 +176,7 @@ class Helper
 
     public static function buildUri($uuid, $server)
     {
-        if (in_array($server['type'], ['v2node', 'v2box'], true)) {
+        if (in_array($server['type'], ['v2box'], true)) {
             $server['type'] = $server['protocol'];
         } 
         $method = "build" . ucfirst($server['type']) . "Uri";
@@ -292,12 +292,6 @@ class Helper
                 $config['host'] = $networkSettings['host'] ?? null;
                 break;
             
-            case 'xhttp':
-                $config['path'] = $networkSettings['path'] ?? null;
-                $config['host'] = $networkSettings['host'] ?? null;
-                $config['mode'] = $networkSettings['mode'] ?? 'auto';
-                $config['extra'] = isset($networkSettings['extra']) ? json_encode($networkSettings['extra'], JSON_UNESCAPED_SLASHES) : null;
-                break;
         }
 
         return "vmess://" . base64_encode(json_encode($config)) . "\r\n";
@@ -337,15 +331,6 @@ class Helper
             } elseif ($tlsSettings['ech'] === 'custom' && !empty($tlsSettings['ech_config'])) {
                 $config['ech'] = is_array($tlsSettings['ech_config']) ? $tlsSettings['ech_config'][0] : $tlsSettings['ech_config'];
             }
-        }
-        if (isset($server['encryption']) && $server['encryption'] == 'mlkem768x25519plus') {
-            $encSettings = $server['encryption_settings'];
-            $enc = 'mlkem768x25519plus.' . ($encSettings['mode'] ?? 'native') . '.' . ($encSettings['rtt'] ?? '1rtt');
-            if (isset($encSettings['client_padding']) && !empty($encSettings['client_padding'])) {
-                $enc .= '.' . $encSettings['client_padding'];
-            }
-            $enc .= '.' . ($encSettings['password'] ?? '');
-            $config['encryption'] = $enc;
         }
 
         self::configureNetworkSettings($server, $config);
@@ -483,51 +468,6 @@ class Helper
         return "anytls://{$password}@{$remote}:{$port}/?{$query}#{$name}\r\n";
     }
 
-    /**
-     * Generate ECH (Encrypted Client Hello) key pair for sing-box.
-     * Produces ech_key (MarshalECHKeys format, for server inbound)
-     * and ech_config (ECHConfigList, for client outbound).
-     *
-     * @param string $outerSni The cover/front domain for the outer ClientHello SNI (public_name).
-     *                         This is the FAKE domain visible to network observers.
-     *                         The real server_name is encrypted in the inner ClientHello.
-     */
-    public static function generateEchKeyPair($outerSni)
-    {
-        $privateKey = random_bytes(32);
-        $publicKey = sodium_crypto_scalarmult_base($privateKey);
-
-        $configId = random_int(0, 255);
-
-        // ECHConfig contents per draft-ietf-tls-esni
-        $configData = pack('C', $configId);              // config_id
-        $configData .= pack('n', 0x0020);                // kem_id: DHKEM(X25519, HKDF-SHA256)
-        $configData .= pack('n', 32) . $publicKey;       // public_key with length prefix
-        // cipher suites: {HKDF-SHA256, AES-128-GCM}, {HKDF-SHA256, AES-256-GCM}, {HKDF-SHA256, ChaCha20-Poly1305}
-        $suites = pack('nnnnnn', 0x0001, 0x0001, 0x0001, 0x0002, 0x0001, 0x0003);
-        $configData .= pack('n', strlen($suites)) . $suites;
-        $configData .= pack('C', 0);                     // maximum_name_length
-        $configData .= pack('C', strlen($outerSni)) . $outerSni; // public_name (cover domain, NOT real SNI)
-        $configData .= pack('n', 0);                     // extensions (empty)
-
-        // ECHConfig = version(0xfe0d) + length + data
-        $echConfig = pack('n', 0xfe0d) . pack('n', strlen($configData)) . $configData;
-
-        // ECHConfigList for client (no outer length prefix, per Go crypto/tls)
-        $echConfigList = $echConfig;
-
-        // MarshalECHKeys for server: length-prefixed configs + key entries
-        $echKeys = pack('n', strlen($echConfig)) . $echConfig;
-        $echKeys .= pack('n', 1);                        // num_keys = 1
-        $echKeys .= pack('C', $configId);                // config_id
-        $echKeys .= pack('n', 32) . $privateKey;         // private key with length prefix
-
-        return [
-            'ech_key' => base64_encode($echKeys),
-            'ech_config' => base64_encode($echConfigList),
-        ];
-    }
-
     public static function configureNetworkSettings($server, &$config)
     {
         $network = $server['network'];
@@ -548,9 +488,6 @@ class Helper
                 break;
             case 'httpupgrade':
                 self::configureHttpupgradeSettings($settings, $config);
-                break;
-            case 'xhttp':
-                self::configureXhttpSettings($settings, $config);
                 break;
         }
     }
@@ -590,11 +527,4 @@ class Helper
         $config['host'] = $settings['host'] ?? '';
     }
 
-    public static function configureXhttpSettings($settings, &$config)
-    {
-        $config['path'] = $settings['path'] ?? '';
-        $config['host'] = $settings['host'] ?? '';
-        $config['mode'] = $settings['mode'] ?? 'auto';
-        $config['extra'] = isset($settings['extra']) ? json_encode($settings['extra'], JSON_UNESCAPED_SLASHES) : null;
-    }
 }

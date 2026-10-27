@@ -5,7 +5,6 @@ namespace App\Http\Controllers\V1\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\CommissionLog;
 use App\Models\Order;
-use App\Models\ServerV2node;
 use App\Models\ServerV2box;
 use App\Models\Stat;
 use App\Models\StatServer;
@@ -94,12 +93,11 @@ class StatController extends Controller
     public function getServerLastRank()
     {
         $servers = [
-            'v2box' => ServerV2box::where('service_id', null)->get()->toArray(),
-            'v2node' => ServerV2node::where('service_id', null)->get()->toArray()
+            'v2box' => ServerV2box::where('service_id', null)->get()->toArray()
         ];
         $startAt = strtotime('-1 day', strtotime(date('Y-m-d')));
         $endAt = strtotime(date('Y-m-d'));
-        $statistics = StatServer::whereIn('server_type', ['v2node', 'v2box'])->select([
+        $statistics = StatServer::whereIn('server_type', ['v2box'])->select([
             'server_id',
             'server_type',
             'u',
@@ -130,12 +128,11 @@ class StatController extends Controller
     public function getServerTodayRank()
     {
         $servers = [
-            'v2box' => ServerV2box::where('service_id', null)->get()->toArray(),
-            'v2node' => ServerV2node::where('service_id', null)->get()->toArray()
+            'v2box' => ServerV2box::where('service_id', null)->get()->toArray()
         ];
         $startAt = strtotime(date('Y-m-d'));
         $endAt = time();
-        $statistics = StatServer::whereIn('server_type', ['v2node', 'v2box'])->select([
+        $statistics = StatServer::whereIn('server_type', ['v2box'])->select([
             'server_id',
             'server_type',
             'u',

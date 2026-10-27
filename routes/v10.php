@@ -80,7 +80,7 @@
 \Illuminate\Support\Facades\Route::match(['DELETE'], 'auth/browser-session', [\App\Http\Controllers\V10\PassportBrowserSessionController::class, 'deleteAuthBrowserSession'])->middleware(['throttle:30,1'])->name('v10.deleteAuthBrowserSession');
 \Illuminate\Support\Facades\Route::match(['GET', 'HEAD'], 'public/fastai/entrypoints', [\App\Http\Controllers\V10\GuestFastaiController::class, 'getPublicFastaiEntrypoints'])->middleware(['throttle:60,1'])->name('v10.getPublicFastaiEntrypoints');
 
-// Node machine API: independent bearer authentication; legacy V2Node remains supported.
+// Node machine API: independent bearer authentication; V2Box is the only supported node backend.
 \Illuminate\Support\Facades\Route::get('server/target-statistics/policy', [\App\Http\Controllers\V10\NodeController::class, 'targetStatisticsPolicy'])->middleware(\App\Http\Middleware\NodeV10::class)->name('v10.server.targetStatisticsPolicy');
 \Illuminate\Support\Facades\Route::post('server/target-statistics', [\App\Http\Controllers\V10\NodeController::class, 'targetStatistics'])->middleware([\App\Http\Middleware\NodeV10::class,\App\Http\Middleware\NodeTargetStatistics::class])->name('v10.server.targetStatistics');
 \Illuminate\Support\Facades\Route::get('server/configuration', [\App\Http\Controllers\V10\NodeController::class, 'configuration'])->middleware(\App\Http\Middleware\NodeV10::class)->name('v10.server.configuration');

@@ -30,7 +30,10 @@ $plain = array_merge($base, ['tls'=>0]);
 $assert(isset(App\Protocols\ClashVerge::buildVless($user['uuid'],$plain)['flow']), 'Verge keeps flow outside TLS branch');
 $assert(!isset(App\Protocols\ClashNyanpasu::buildVless($user['uuid'],$plain)['flow']), 'Nyanpasu keeps historical TLS-specific flow');
 $encrypted = array_merge($base, ['encryption'=>'mlkem768x25519plus','encryption_settings'=>['mode'=>'native','rtt'=>'1rtt','password'=>'example']]);
-$assert(isset(App\Protocols\ClashNyanpasu::buildVmess($user['uuid'],$encrypted)['encryption']), 'Nyanpasu VMess extension preserved');
-$nyan = Symfony\Component\Yaml\Yaml::parse((new App\Protocols\ClashNyanpasu($user, [array_merge($encrypted,['type'=>'vmess'])]))->handle());
-$assert(isset($nyan['proxies'][0]['encryption']), 'Shared handle dispatches client-specific builder');
+foreach ([App\Protocols\ClashMeta::class, App\Protocols\ClashNyanpasu::class] as $renderer) {
+ $assert(!isset($renderer::buildVless($user['uuid'],$encrypted)['encryption']), 'Retired VLESS encryption is not exported');
+ $assert(!isset($renderer::buildVmess($user['uuid'],$encrypted)['encryption']), 'Retired VMess encryption extension is not exported');
+}
+$nyan = Symfony\Component\Yaml\Yaml::parse((new App\Protocols\ClashNyanpasu($user, [array_merge($plain,['type'=>'vless'])]))->handle());
+$assert(!isset($nyan['proxies'][0]['flow']), 'Shared handle dispatches the Nyanpasu TLS-specific flow builder');
 echo "Protocol compatibility: {$n} checks passed\n";

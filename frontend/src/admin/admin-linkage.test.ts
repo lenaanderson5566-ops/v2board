@@ -15,7 +15,6 @@ import {
 import {
     nodeSettingsFields,
     nodeSettingsInitial,
-    nodeBackendInitial,
     nodeSettingsPayload,
 } from "./node-settings";
 const fields = (...keys: string[]): Field[] =>
@@ -183,7 +182,7 @@ describe("admin dependency behavior", () => {
             }),
         ).toMatchObject({ tls: 1, network: "tcp", flow: "" });
         expect(
-            nodeFields("v2node", fields("tls", "network", "flow", "cipher"), {
+            nodeFields("v2box", fields("tls", "network", "flow", "cipher"), {
                 protocol: "tuic",
                 tls: 1,
             }).map((f) => f.key),
@@ -240,13 +239,13 @@ describe("admin dependency behavior", () => {
     });
 });
 
-it("offers V2Box alongside V2Node with compatible transports", () => {
+it("offers only V2Box-compatible transports", () => {
     const list = fields("protocol", "network", "encryption", "trusted_x_forwarded_for", "tls");
     const box = nodeFields("v2box", list, { protocol: "vless", tls: 2 });
     expect(box.find(f => f.key === "network")?.options?.map(o => o[0])).toEqual(["tcp", "ws", "grpc", "httpupgrade"]);
     expect(box.some(f => f.key === "encryption")).toBe(false);
     expect(box.some(f => f.key === "trusted_x_forwarded_for")).toBe(false);
-    expect(nodeFields("v2node", list, { protocol: "vless" }).find(f => f.key === "network")?.options?.map(o => o[0])).toContain("xhttp");
+    expect(nodeFields("v2box", list, { protocol: "vless" }).find(f => f.key === "network")?.options?.map(o => o[0])).not.toContain("xhttp");
     expect(nodeFields("v2box", list, { protocol: "hysteria2" }).find(f => f.key === "network")?.options?.map(o => o[0])).toEqual(["tcp"]);
 });
 
@@ -279,18 +278,9 @@ it("selects routes on nodes and edits native rules only in route management", ()
     expect(nodeFields("v2box", fields("sing_box", "route_id"), { protocol: "vless" }).map(f => f.key)).toEqual(["route_id"]);
     const list = resourceFields("routes", fields("backend", "match", "action_value", "sing_box"), { id: 1, backend: "v2box", action: "sing_box" });
     expect(list.map(f => f.key)).toEqual(["sing_box"]);
-    expect(linkResource("routes", [], "backend", "v2box", {}).action).toBe("sing_box");
+    expect(resourceFields("routes", fields("backend", "match", "action_value", "sing_box"), { action: "sing_box" }).map(f => f.key)).toEqual(["sing_box"]);
 });
 
-it("clears backend-scoped settings and requires a compatible protocol on conversion", () => {
-    const source = { id: 7, type: "v2node", protocol: "vless", route_id: [1], service_id: 3, network: "xhttp", encryption: "mlkem768x25519plus", tls_settings: { server_name: "keep.example", ech: "custom", ech_key: "key" } };
-    const target = nodeBackendInitial(source, "v2box");
-    expect(target).toMatchObject({ route_id: [], service_id: null, network: "", tls_settings: { server_name: "keep.example" } });
-    expect(target.encryption).toBeUndefined();
-    expect(target.tls_settings.ech).toBeUndefined();
-    expect(source.route_id).toEqual([1]);
-    expect(nodeBackendInitial({ id: 8, type: "v2box", protocol: "naive" }, "v2node").protocol).toBe("");
-});
 
 it("allows editing coupon terms without batch generation and restricts new templates to percentage", () => {
     const schema = [...fields("generate_count", "name", "value"), { key: "type", label: "type", options: [["1", "fixed"], ["2", "percentage"]] } as any];

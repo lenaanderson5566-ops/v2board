@@ -126,14 +126,6 @@ class AdminRoute
             $router->post('/server/manage/maintenance', 'V1\\Admin\\Server\\ManageController@maintenance')->middleware('throttle:30,1');
             $router->post('/server/manage/sort', 'V1\\Admin\\Server\\ManageController@sort');
             $router->group([
-                'prefix' => 'server/v2node'
-            ], function ($router) {
-                $router->post('save', 'V1\\Admin\\Server\\V2nodeController@save');
-                $router->post('drop', 'V1\\Admin\\Server\\V2nodeController@drop');
-                $router->post('update', 'V1\\Admin\\Server\\V2nodeController@update');
-                $router->post('copy', 'V1\\Admin\\Server\\V2nodeController@copy');
-            });
-            $router->group([
                 'prefix' => 'server/v2box'
             ], function ($router) {
                 $router->post('save', 'V1\\Admin\\Server\\V2boxController@save');

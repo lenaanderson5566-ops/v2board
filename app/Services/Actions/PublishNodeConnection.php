@@ -12,7 +12,7 @@ final class PublishNodeConnection {
             NodeConnection::assertPort($plan,$row->id);
             $model=ProxyService::model($v['type']); $service=$model::findOrFail($draft['service_id']);
             $runtime=NodeRuntimeService::inspect($v['type'],$service);
-            $applied=$runtime['applicationState']==='applied' || ($v['type']==='v2node' && $runtime['configurationState']==='provided');
+            $applied=$runtime['applicationState']==='applied';
             abort_unless($runtime['runtimeStatus']==='online' && $applied && !$runtime['maintenance'],409,'请先完成代理服务的配置应用与运行验证');
             $line=$model::findOrFail($row->node_id);
             abort_unless($line->service_id,409,'线路已转换为代理服务');

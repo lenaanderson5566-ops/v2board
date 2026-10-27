@@ -1,6 +1,6 @@
 # V2Box 流量批次去重
 
-仅 V2Box V10 流量接口增加可选 UUID `batchId`。V2Node 和没有批次 ID 的旧 V2Box 保持现有路径。新版配置返回 `trafficBatchDedup: true` 后，节点才使用持久化批次；旧面板不会获得错误的去重保证。
+仅 V2Box V10 流量接口增加可选 UUID `batchId`。没有批次 ID 的旧 V2Box 保持现有路径。新版配置返回 `trafficBatchDedup: true` 后，节点才使用持久化批次；旧面板不会获得错误的去重保证。
 
 面板先把批次内容和哈希写入数据库，再返回 202。唯一键由节点类型、节点 ID 和批次 ID 组成。相同批次重试返回成功；同一 ID 对应不同流量返回 409 `CONFLICT`。记录顺序不影响身份校验。
 

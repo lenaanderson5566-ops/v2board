@@ -9,14 +9,14 @@
 - 哈希相同：已提供最新配置，待应用确认。
 - 无法生成配置：配置生成异常。
 
-成功响应或 304 都不能证明代理核心应用成功。支持 configuration-receipt-v1 的 V2Box 通过既有 capabilities 接口附带配置 ETag 哈希、applied/failed 状态和固定错误码；只有与最近提供配置相符的回执才被采用。详情还比较当前生成配置，配置已变更时不显示旧回执为已生效。V2Node 与旧版 V2Box 没有回执时保持 unconfirmed。V2Box 的核心版本来自现有能力上报；子节点沿用父节点配置与通信数据。
+成功响应或 304 都不能证明代理核心应用成功。支持 configuration-receipt-v1 的 V2Box 通过既有 capabilities 接口附带配置 ETag 哈希、applied/failed 状态和固定错误码；只有与最近提供配置相符的回执才被采用。详情还比较当前生成配置，配置已变更时不显示旧回执为已生效。旧版 V2Box 没有回执时保持 unconfirmed。V2Box 的核心版本来自现有能力上报；子节点沿用父节点配置与通信数据。
 
 系统监控增加只读健康检查，分别检查数据库连接、Redis、缓存读取、定时任务执行心跳、Horizon 主进程与未执行迁移。失败输出固定提示，不输出异常正文、连接字符串或服务器路径。检查不写业务数据、不执行迁移、不重启进程。Horizon 正常不代表每个任务成功；缓存检查只验证读取，不证明写入能力。
 
 定时任务心跳从加载任务定义时写入改为每分钟任务实际执行时写入，避免 `route:list` 等仅加载调度定义的操作产生虚假心跳。升级后应确保 `schedule:work` 使用新代码；旧常驻进程需要按现有部署流程重启。
 
 新增管理员 GET 接口（沿用 admin/log 中间件）：
-- `/api/v1/{adminPath}/server/manage/runtime?type=v2node|v2box&id=123`，60 次/分钟。
+- `/api/v1/{adminPath}/server/manage/runtime?type=v2box&id=123`，60 次/分钟。
 - `/api/v1/{adminPath}/system/health`，20 次/分钟。
 
 不改变节点配置响应正文或 ETag，不增加用户 API，不要求节点升级；没有应用回执的限制在界面明确提示。

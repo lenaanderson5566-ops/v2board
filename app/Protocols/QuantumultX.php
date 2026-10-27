@@ -29,7 +29,7 @@ class QuantumultX
         header("subscription-userinfo: upload={$upload}; download={$download}; total={$total}; expire={$expire}");
 
         foreach ($servers as $item) {
-            if (in_array(($item['type'] ?? null), ['v2node', 'v2box'], true) && isset($item['protocol'])) {
+            if (in_array(($item['type'] ?? null), ['v2box'], true) && isset($item['protocol'])) {
                 $item['type'] = $item['protocol'];
             }
 
@@ -63,7 +63,7 @@ class QuantumultX
 
     public static function buildShadowsocks($password, $server)
     {
-        // Standardization v2_server_shadowsocks -> v2node format
+        // Standardization v2_server_shadowsocks -> V2Box format
         if (isset($server['obfs']) && !empty($server['obfs'])) {
             $server['network'] = $server['obfs'];
             $server['network_settings'] = $server['network_settings'] ?? [];
@@ -120,7 +120,7 @@ class QuantumultX
 
     public static function buildVmess($uuid, $server)
     {
-        // Standardization v2_server_vmess -> v2node format
+        // Standardization v2_server_vmess -> V2Box format
         if (isset($server['networkSettings'])) {
             $legacy = is_array($server['networkSettings']) ? $server['networkSettings'] : [];
             $current = $server['network_settings'] ?? [];
@@ -314,7 +314,7 @@ class QuantumultX
 
     public static function buildTrojan($password, $server)
     {
-        // Standardization v2_server_trojan -> v2node format
+        // Standardization v2_server_trojan -> V2Box format
         $server['tls_settings'] = $server['tls_settings'] ?? [];
 
         // v2_server_trojan 表：将外层列字段映射到 tls_settings

@@ -4,7 +4,7 @@ if (!app()->environment('local')) throw new RuntimeException('Local only');
 use App\Services\NodeRuntimeService;
 use App\Services\SystemHealthService;
 use App\Services\Actions\NodeConfiguration;
-use App\Models\ServerV2node;
+use App\Models\ServerV2box;
 use Illuminate\Support\Facades\Cache;
 // Keep synthetic monitoring buckets isolated across repeated test runs.
 // SystemHealthService still probes the configured Redis connection directly.
@@ -12,10 +12,10 @@ Cache::setDefaultDriver('array');
 $checks = 0;
 $assert = function ($ok) use (&$checks) { if (!$ok) throw new RuntimeException('Diagnostics check failed #' . ($checks + 1)); $checks++; };
 $id = 2147483646;
-$key = "NODE_CONFIG_FETCH:v2node:{$id}";
-$heartbeat = App\Utils\CacheKey::get('SERVER_V2NODE_LAST_CHECK_AT', $id);
+$key = "NODE_CONFIG_FETCH:v2box:{$id}";
+$heartbeat = App\Utils\CacheKey::get('SERVER_V2BOX_LAST_CHECK_AT', $id);
 try {
-    $node = new ServerV2node(['id' => $id, 'protocol' => 'vless', 'server_port' => 443, 'route_id' => []]);
+    $node = new ServerV2box(['id' => $id, 'protocol' => 'vless', 'server_port' => 443, 'route_id' => []]);
     $node->id = $id;
     $assert(NodeRuntimeService::connection(null, null, false) === 'unknown');
     $assert(NodeRuntimeService::connection(time() - 400, time() - 400, false) === 'offline');
@@ -23,25 +23,24 @@ try {
     $assert(NodeRuntimeService::connection(time(), null, true) === 'limited');
     $assert(NodeRuntimeService::connection(time() - 400, null, true) === 'offline');
     $servers = Mockery::mock(App\Services\ServerService::class)->makePartial();
-    $servers->shouldReceive('getAllV2node')->withNoArgs()->andReturn([
-        ['id' => $id, 'type' => 'v2node', 'service_id' => null, 'sort' => 0],
+    $servers->shouldReceive('getAllV2box')->withNoArgs()->andReturn([
+        ['id' => $id, 'type' => 'v2box', 'service_id' => null, 'sort' => 0],
     ]);
-    $servers->shouldReceive('getAllV2node')->with('v2box')->andReturn([]);
     Cache::forget($heartbeat);
     $assert($servers->getAllServers()[0]['runtime_status'] === 'unknown');
     Cache::put($heartbeat, time(), 3600);
     $assert($servers->getAllServers()[0]['runtime_status'] === 'online');
     Cache::put($heartbeat, time() - 400, 3600);
     $assert($servers->getAllServers()[0]['runtime_status'] === 'offline');
-    $assert(NodeRuntimeService::inspect('v2node', $node)['configurationState'] === 'unknown');
-    NodeRuntimeService::record('v2node', $id, NodeConfiguration::build($node), 'v2');
-    $state = NodeRuntimeService::inspect('v2node', $node);
+    $assert(NodeRuntimeService::inspect('v2box', $node)['configurationState'] === 'unknown');
+    NodeRuntimeService::record('v2box', $id, NodeConfiguration::build($node), 'v2');
+    $state = NodeRuntimeService::inspect('v2box', $node);
     $assert($state['configurationState'] === 'provided' && $state['applicationState'] === 'unconfirmed');
     $assert(count(Cache::get($key)) === 4 && !isset($state['hash']));
     $node->server_port = 8443;
-    $assert(NodeRuntimeService::inspect('v2node', $node)['configurationState'] === 'pending');
-    NodeRuntimeService::record('v2node', $id, NodeConfiguration::build($node), 'v2');
-    $assert(NodeRuntimeService::inspect('v2node', $node)['configurationState'] === 'provided');
+    $assert(NodeRuntimeService::inspect('v2box', $node)['configurationState'] === 'pending');
+    NodeRuntimeService::record('v2box', $id, NodeConfiguration::build($node), 'v2');
+    $assert(NodeRuntimeService::inspect('v2box', $node)['configurationState'] === 'provided');
     $health = (new SystemHealthService())->inspect();
     $assert(count($health['checks']) === 6);
     $assert(collect($health['checks'])->firstWhere('key', 'database')['status'] === 'healthy');
@@ -73,21 +72,21 @@ try {
     try {
         $settings->save(App\Services\ObservabilitySettings::DEFAULTS);
         $maintenance=App\Services\NodeMaintenance::class;
-        $maintenance::save('v2node',$id,['enabled'=>true,'reason'=>'Test maintenance','endsAt'=>time()+3600,'hideSubscription'=>true]);
+        $maintenance::save('v2box',$id,['enabled'=>true,'reason'=>'Test maintenance','endsAt'=>time()+3600,'hideSubscription'=>true]);
         $policies=$maintenance::active();
-        $assert($maintenance::hidden($policies,'v2node',$id,null));
-        $assert($maintenance::hidden($policies,'v2node',$id-1,$id));
-        $assert(!$maintenance::hidden($policies,'v2box',$id,null));
+        $assert($maintenance::hidden($policies,'v2box',$id,null));
+        $assert($maintenance::hidden($policies,'v2box',$id-1,$id));
+        $assert(!$maintenance::hidden($policies,'v2box',$id-2,null));
         $assert($servers->getAllServers()[0]['maintenance']['reason']==='Test maintenance');
         $assert($servers->getAllServers()[0]['issues']===[]);
         $assert(NodeRuntimeService::alertConditions($servers->getAllServers())===[]);
         Illuminate\Support\Facades\DB::table('v2_node_maintenance')->where('node_id',$id)->update(['ends_at'=>time()-1]);
-        $assert(!$maintenance::hidden($maintenance::active(),'v2node',$id,null));
+        $assert(!$maintenance::hidden($maintenance::active(),'v2box',$id,null));
         Cache::put($heartbeat,time()-400,3600);
         $assert(isset(NodeRuntimeService::alertConditions($servers->getAllServers())['nodes:offline']));
-        $maintenance::save('v2node',$id,['enabled'=>false]);
+        $maintenance::save('v2box',$id,['enabled'=>false]);
         $assert(!Illuminate\Support\Facades\DB::table('v2_node_maintenance')->where('node_id',$id)->exists());
-        try {$maintenance::save('v2node',$id,['enabled'=>true,'endsAt'=>time()-1]);$assert(false);}
+        try {$maintenance::save('v2box',$id,['enabled'=>true,'endsAt'=>time()-1]);$assert(false);}
         catch (Symfony\Component\HttpKernel\Exception\HttpException $e) {$assert($e->getStatusCode()===422);}
 
         try {$settings->save(['sample_percent'=>101]);$assert(false);}

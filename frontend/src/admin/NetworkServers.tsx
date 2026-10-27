@@ -39,7 +39,7 @@ export function NetworkServers({
             owners = new Map<string, number>(),
             candidates = new Map<number, Row[]>();
         for (const a of data.assignments || [])
-            if (a.node_type === "v2box" || a.node_type === "v2node")
+            if (a.node_type === "v2box")
                 owners.set(`${a.node_type}:${a.node_id}`, Number(a.server_id));
         for (const b of rows(budgets.data)) {
             if (b.networkServerId) {

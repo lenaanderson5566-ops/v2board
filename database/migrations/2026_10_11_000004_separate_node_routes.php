@@ -6,6 +6,8 @@ use Illuminate\Support\Facades\Schema;
 return new class extends Migration {
     public function up(): void {
         if (!Schema::hasColumn('v2_server_route', 'backend')) Schema::table('v2_server_route', function (Blueprint $table) {
+            // Classify pre-separation rules before copying those referenced by V2Box.
+            // Retirement later removes unreferenced legacy rules and changes the default.
             $table->string('backend', 16)->default('v2node')->index();
             $table->mediumText('sing_box')->nullable();
         });

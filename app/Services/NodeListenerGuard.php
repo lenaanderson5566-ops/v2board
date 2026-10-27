@@ -14,7 +14,7 @@ final class NodeListenerGuard {
         if (!$server) return; // An unmanaged address is not evidence of physical ownership.
         $protocols=self::transports($node->protocol);
         $address=$node->listen_ip ?: '0.0.0.0';
-        foreach (['v2node','v2box'] as $backend) {
+        foreach (['v2box'] as $backend) {
             $ids=DB::table('v2_node_ddns')->where('server_id',$server)->where('node_type',$backend)->pluck('node_id');
             $query=ProxyService::model($backend)::whereIn('id',$ids)->whereNull('service_id')->where('server_port',$node->server_port);
             if ($backend===$type) $query->where('id','!=',$node->id);

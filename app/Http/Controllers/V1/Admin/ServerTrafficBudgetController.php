@@ -7,13 +7,13 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 class ServerTrafficBudgetController extends Controller {
  public function fetch(Request $request){
-  $existing=['v2node'=>\App\Models\ServerV2node::pluck('service_id','id'),'v2box'=>\App\Models\ServerV2box::pluck('service_id','id')];
+  $existing=['v2box'=>\App\Models\ServerV2box::pluck('service_id','id')];
   $bindings=DB::table('v2_server_traffic_binding')->get()->filter(fn($n)=>$existing[$n->node_type]->has($n->node_id) && !$existing[$n->node_type]->get($n->node_id))->groupBy('budget_id');
   $data=collect(Budgets::resources(DB::table('v2_server_traffic_budget')->orderBy('id')->get()))->map(fn($b)=>$b+['nodes'=>($bindings->get($b['id']) ?? collect())->map(fn($n)=>['type'=>$n->node_type,'id'=>(int)$n->node_id])->values()->all()]);
   return response()->json(['data'=>$data]);
  }
  public function save(Request $request){
-  $v=$request->validate(['id'=>'nullable|integer|min:1','name'=>'required|string|max:100','limitBytes'=>'required|integer|min:0|max:9007199254740991','countingMode'=>'required|in:upload,download,both','resetDay'=>'required|integer|min:1|max:28','nodes'=>'present|array|max:1000','nodes.*.type'=>'required|in:v2node,v2box','nodes.*.id'=>'required|integer|min:1']);
+  $v=$request->validate(['id'=>'nullable|integer|min:1','name'=>'required|string|max:100','limitBytes'=>'required|integer|min:0|max:9007199254740991','countingMode'=>'required|in:upload,download,both','resetDay'=>'required|integer|min:1|max:28','nodes'=>'present|array|max:1000','nodes.*.type'=>'required|in:v2box','nodes.*.id'=>'required|integer|min:1']);
   return DB::transaction(function()use($v){
    // Serialize binding changes; one physical node cannot belong to two server budgets.
    DB::table('v2_server_traffic_budget')->orderBy('id')->lockForUpdate()->get();

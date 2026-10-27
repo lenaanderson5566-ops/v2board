@@ -32,7 +32,7 @@ class Shadowrocket
         foreach ($this->servers as $server) {
             // Naive is exported through URI clients/sing-box until this format is adapted.
             if (($server['protocol'] ?? $server['type']) === 'naive') continue;
-            if ($server['type'] === 'vmess' || (in_array($server['type'], ['v2node', 'v2box'], true) && $server['protocol'] === 'vmess')) {
+            if ($server['type'] === 'vmess' || (in_array($server['type'], ['v2box'], true) && $server['protocol'] === 'vmess')) {
                 $uri .= self::buildVmess($user['uuid'], $server);
             } else {
                 $uri .= Helper::buildUri($this->user['uuid'], $server);

@@ -70,16 +70,6 @@ class ClashNyanpasu extends ClashMeta
             }
         }
 
-        if (isset($server['encryption']) && !empty($server['encryption']) && isset($server['encryption_settings']) && !empty($server['encryption_settings'])) {
-            $encryptionSettings = $server['encryption_settings'];
-            $array['encryption'] = $server['encryption'] ?? 'mlkem768x25519plus';
-            $array['encryption'] .= '.' . $encryptionSettings['mode'] ?? 'native';
-            $array['encryption'] .= '.' . $encryptionSettings['rtt'] ?? '1rtt';
-            if (isset($encryptionSettings['client_padding']) && !empty($encryptionSettings['client_padding'])) {
-                $array['encryption'] .= '.' . $encryptionSettings['client_padding'];
-            }
-            $array['encryption'] .= '.' . $encryptionSettings['password'] ?? '';
-        }
 
         return $array;
     }
@@ -152,34 +142,6 @@ class ClashNyanpasu extends ClashMeta
                 $array['grpc-opts'] = [];
                 if (isset($grpcSettings['serviceName'])) $array['grpc-opts']['grpc-service-name'] = $grpcSettings['serviceName'];
             }
-        }
-        if ($server['network'] === 'xhttp') {
-            $array['network'] = 'xhttp';
-            if ($server['network_settings']) {
-                $xhttpSettings = $server['network_settings'];
-                $array['xhttp-opts'] = [];
-                if (isset($xhttpSettings['path'])) $array['xhttp-opts']['path'] = $xhttpSettings['path'];
-                if (isset($xhttpSettings['host'])) $array['xhttp-opts']['host'] = $xhttpSettings['host'];
-                if (isset($xhttpSettings['mode'])) $array['xhttp-opts']['mode'] = $xhttpSettings['mode'];
-                // 暂不支持extra
-                //if (isset($xhttpSettings['extra'])) {
-                    //$array['xhttp-opts']['headers'] = $xhttpSettings['extra']['headers'] ?? [];
-                    //if (isset($xhttpSettings['extra']['xmux'])) {
-                    //    $array['xhttp-opts']['sc-max-concurrent-posts'] = $xhttpSettings['extra']['xmux']['maxConcurrency'] ?? [];
-                    //}
-
-                //}
-            }
-        }
-        if (isset($server['encryption']) && !empty($server['encryption']) && isset($server['encryption_settings']) && !empty($server['encryption_settings'])) {
-            $encryptionSettings = $server['encryption_settings'];
-            $array['encryption'] = $server['encryption'] ?? 'mlkem768x25519plus';
-            $array['encryption'] .= '.' . $encryptionSettings['mode'] ?? 'native';
-            $array['encryption'] .= '.' . $encryptionSettings['rtt'] ?? '1rtt';
-            if (isset($encryptionSettings['client_padding']) && !empty($encryptionSettings['client_padding'])) {
-                $array['encryption'] .= '.' . $encryptionSettings['client_padding'];
-            }
-            $array['encryption'] .= '.' . $encryptionSettings['password'] ?? '';
         }
 
         return $array;

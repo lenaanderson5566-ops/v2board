@@ -62,7 +62,7 @@ $assert($normalize(['city_code'=>'圣何塞'])['city_code']==='san-jose', 'Catal
 $assert($normalize(['region_code'=>' us '])['region_code']==='US', 'Country code normalized');
 $assert($normalize([])===[], 'Omitted fields stay omitted');
 $assert($normalize(['city_code'=>['invalid']])===[], 'Invalid types retained for validator rejection');
-foreach (['v2node','v2box'] as $protocol) {
+foreach (['v2box'] as $protocol) {
     $response = app(App\Http\Controllers\V1\Admin\ConsoleController::class)->nodeSchema(Illuminate\Http\Request::create('/', 'GET', ['type'=>$protocol]));
     $schema = json_decode($response->getContent(), true)['data'];
     $assert(isset($schema['city_code'], $schema['region_code'], $schema['rate']), $protocol.' schema retained');
@@ -126,7 +126,7 @@ try {
  $yaml=Symfony\Component\Yaml\Yaml::parse($native->handle());
  $assert(count(array_unique(array_column($yaml['proxies'],'name')))===2,'Duplicate display names keep distinct identities');
  $assert(count($native->nodes())===2,'Duplicate metadata preserved');
- $rules = app(App\Http\Controllers\V1\Admin\ConsoleController::class)->nodeSchema(Illuminate\Http\Request::create('/', 'GET', ['type'=>'v2node']));
+ $rules = app(App\Http\Controllers\V1\Admin\ConsoleController::class)->nodeSchema(Illuminate\Http\Request::create('/', 'GET', ['type'=>'v2box']));
  $schema = json_decode($rules->getContent(), true)['data'];
  $assert(isset($schema['region_code'], $schema['city_code'], $schema['display_label'], $schema['rate']), 'Admin dynamic schema retains all node fields');
  $validation = Illuminate\Support\Facades\Validator::make(['region_code'=>'ZZ'], ['region_code'=>'nullable|in:'.implode(',',App\Services\NodeDisplayService::regionCodes())]);

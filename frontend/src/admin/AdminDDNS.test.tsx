@@ -42,7 +42,7 @@ function setup() {
                         {
                             id: 2,
                             credential_id: 1,
-                            node_type: "v2node",
+                            node_type: "v2box",
                             node_id: 3,
                             domain: "node.example.com",
                             family: "ipv4",
@@ -54,7 +54,7 @@ function setup() {
             };
         if (path.includes("ddns/events")) return { data: [], total: 0 };
         if (path.endsWith("getNodes"))
-            return { data: [{ id: 3, type: "v2node", name: "Node" }] };
+            return { data: [{ id: 3, type: "v2box", name: "Node" }] };
         if (path.endsWith("assignments/rotate"))
             return { data: { reportToken: "b".repeat(64), family: "ipv4" } };
         return { data: { id: 1 } };
@@ -1102,11 +1102,11 @@ it("opens the existing forwarding editor lazily from its owning server and handl
 });
 
 it("uses the matching backend and opens forwarding without issuing a deployment grant",async()=>{
- api.request.mockImplementation(async(path:string)=>String(path).endsWith("manage/getNodes") ? {data:[{id:7,type:"v2node",name:"Wrong backend"},{id:7,type:"v2box",name:"Selected relay",server_port:9443}]} : String(path).endsWith("ddns/fetch") ? {data:{servers:[],assignments:[],credentials:[]}} : String(path).includes("connections/address") ? {data:{values:{host:"origin.test",port:"443"},revision:"a".repeat(64),managed:false}} : {data:[]});
+ api.request.mockImplementation(async(path:string)=>String(path).endsWith("manage/getNodes") ? {data:[{id:8,type:"v2box",name:"Other service"},{id:7,type:"v2box",name:"Selected relay",server_port:9443}]} : String(path).endsWith("ddns/fetch") ? {data:{servers:[],assignments:[],credentials:[]}} : String(path).includes("connections/address") ? {data:{values:{host:"origin.test",port:"443"},revision:"a".repeat(64),managed:false}} : {data:[]});
  render(<ServerForwarding server={{id:1}} data={{assignments:[{id:10,purpose:"entry",server_id:1,domain:"entry.test"},{id:20,purpose:"node",server_id:2,node_type:"v2box",node_id:7,entry_id:10,entry_port:443}]}}/>);
  fireEvent.click(screen.getByText("本机入口转发（1 条）"));fireEvent.click(screen.getByRole("button",{name:"配置转发与验证"}));
  expect(await screen.findByRole("dialog",{name:"Selected relay · 接入设置"})).toBeTruthy();
- expect(screen.queryByText("Wrong backend · 接入设置")).toBeNull();
+ expect(screen.queryByText("Other service · 接入设置")).toBeNull();
  expect(api.request.mock.calls.every(([path,body])=>!body && !String(path).includes("credentials/deployment"))).toBe(true);
 });
 

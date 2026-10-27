@@ -12,8 +12,8 @@ final class ProxyService {
         'sing_box','disable_sni','udp_relay_mode','rate','created_at'];
 
     public static function model(string $type): string {
-        abort_unless(in_array($type,['v2node','v2box'],true),422);
-        return $type==='v2box' ? \App\Models\ServerV2box::class : \App\Models\ServerV2node::class;
+        abort_unless(in_array($type,['v2box'],true),422);
+        return \App\Models\ServerV2box::class;
     }
     public static function overlay(array $line,array $service): array {
         foreach(self::FIELDS as $key) if (array_key_exists($key,$service)) $line[$key]=$service[$key];

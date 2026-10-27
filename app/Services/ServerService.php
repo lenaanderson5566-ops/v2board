@@ -3,7 +3,6 @@
 namespace App\Services;
 
 use App\Models\ServerRoute;
-use App\Models\ServerV2node;
 use App\Models\ServerV2box;
 use App\Models\User;
 use App\Utils\CacheKey;
@@ -11,44 +10,44 @@ use Illuminate\Support\Facades\Cache;
 
 class ServerService
 {
-    public function getAvailableV2node(User $user, string $type = 'v2node')
+    public function getAvailableV2box(User $user, string $type = 'v2box')
     {
         $servers = [];
-        if (!in_array($type, ['v2node', 'v2box'], true)) throw new \InvalidArgumentException('Unsupported node type');
-        $modelClass = $type === 'v2box' ? ServerV2box::class : ServerV2node::class;
+        if (!in_array($type, ['v2box'], true)) throw new \InvalidArgumentException('Unsupported node type');
+        $modelClass = ServerV2box::class;
         $model = $modelClass::orderBy('sort', 'ASC');
-        $v2node = $model->get()->keyBy('id');
+        $nodes = $model->get()->keyBy('id');
         $maintenance = NodeMaintenance::active();
-        foreach ($v2node as $key => $v) {
+        foreach ($nodes as $key => $v) {
             if ($v['service_id']) {
-                $service=$v2node->get($v['service_id']);
+                $service=$nodes->get($v['service_id']);
                 if (!$service || $service->service_id || !in_array(TrafficCreditService::effectiveGroupId($user),(array)$service->group_id)) continue;
                 foreach (ProxyService::FIELDS as $field) $v[$field]=$service[$field];
                 $v['updated_at']=max($v->getRawOriginal('updated_at'),$service->getRawOriginal('updated_at'));
             }
             if (NodeMaintenance::hidden($maintenance, $type, (int)$v['id'], $v['service_id'])) continue;
             if (!$v['show']) continue;
-            $v2node[$key]['type'] = $type;
-            $v2node[$key]['last_check_at'] = Cache::get(CacheKey::get('SERVER_' . strtoupper($type) . '_LAST_CHECK_AT', $v['id']));
+            $nodes[$key]['type'] = $type;
+            $nodes[$key]['last_check_at'] = Cache::get(CacheKey::get('SERVER_' . strtoupper($type) . '_LAST_CHECK_AT', $v['id']));
             if (!in_array(TrafficCreditService::effectiveGroupId($user), $v['group_id'])) continue;
-            if (isset($v2node[$v['service_id']])) {
-                $v2node[$key]['last_check_at'] = Cache::get(CacheKey::get('SERVER_' . strtoupper($type) . '_LAST_CHECK_AT', $v['service_id']));
-                $v2node[$key]['created_at'] = $v2node[$v['service_id']]['created_at'];
+            if (isset($nodes[$v['service_id']])) {
+                $nodes[$key]['last_check_at'] = Cache::get(CacheKey::get('SERVER_' . strtoupper($type) . '_LAST_CHECK_AT', $v['service_id']));
+                $nodes[$key]['created_at'] = $nodes[$v['service_id']]['created_at'];
             }
-            if (isset($v2node[$key]['tls_settings'])) {
-                $v2node[$key]['tls_settings'] = array_diff_key(
-                    $v2node[$key]['tls_settings'],
-                    array_flip(array_filter(['private_key', 'ech_key', 'tls_key', 'dns_env', 'dns_credential_id'], function($k) use ($v2node, $key) {
-                        return isset($v2node[$key]['tls_settings'][$k]);
+            if (isset($nodes[$key]['tls_settings'])) {
+                $nodes[$key]['tls_settings'] = array_diff_key(
+                    $nodes[$key]['tls_settings'],
+                    array_flip(array_filter(['private_key', 'ech_key', 'tls_key', 'dns_env', 'dns_credential_id'], function($k) use ($nodes, $key) {
+                        return isset($nodes[$key]['tls_settings'][$k]);
                     }))
                 );
             }
-            if (isset($v2node[$key]['encryption_settings'])) {
-                if (isset($v2node[$key]['encryption_settings']['private_key'])) {
-                    $v2node[$key]['encryption_settings'] = array_diff_key($v2node[$key]['encryption_settings'], array('private_key' => ''));
+            if (isset($nodes[$key]['encryption_settings'])) {
+                if (isset($nodes[$key]['encryption_settings']['private_key'])) {
+                    $nodes[$key]['encryption_settings'] = array_diff_key($nodes[$key]['encryption_settings'], array('private_key' => ''));
                 }
             }
-            $publicNode = $v2node[$key]->toArray();
+            $publicNode = $nodes[$key]->toArray();
             unset($publicNode['sing_box']); // Server egress credentials are never subscription data.
             unset($publicNode['service_id']);
             $servers[] = $publicNode;
@@ -58,10 +57,7 @@ class ServerService
 
     public function getAvailableServers(User $user)
     {
-        $servers = array_merge(
-            $this->getAvailableV2node($user),
-            $this->getAvailableV2node($user, 'v2box')
-        );
+        $servers = $this->getAvailableV2box($user);
         foreach ($servers as &$server) {
             $server['runtime_status'] = NodeRuntimeService::connection($server['last_check_at'] ?? null, $server['last_push_at'] ?? null, (bool) ($server['traffic_budget']['blocked'] ?? false));
         }
@@ -92,10 +88,10 @@ class ServerService
             ->get();
     }
 
-    public function getAllV2node(string $type = 'v2node')
+    public function getAllV2box(string $type = 'v2box')
     {
-        if (!in_array($type, ['v2node', 'v2box'], true)) throw new \InvalidArgumentException('Unsupported node type');
-        $modelClass = $type === 'v2box' ? ServerV2box::class : ServerV2node::class;
+        if (!in_array($type, ['v2box'], true)) throw new \InvalidArgumentException('Unsupported node type');
+        $modelClass = ServerV2box::class;
         $servers = $modelClass::orderBy('sort', 'ASC')
             ->get()
             ->toArray();
@@ -111,11 +107,9 @@ class ServerService
             $apiHostArg = escapeshellarg((string) $apiHost);
             $scriptUrl = rtrim((string)$apiHost, '/') . '/api/v10/public/node-deployment/bootstrap';
             $entry = 'wget --https-only -O install-v2box.sh ' . escapeshellarg($scriptUrl) . ' && sh install-v2box.sh --install v1.0.16';
-            if ($type === 'v2box') $servers[$k]['upgrade_command'] = $entry . ' --update';
+            $servers[$k]['upgrade_command'] = $entry . ' --update';
             $servers[$k]['install_command'] = sprintf(
-                $type === 'v2box'
-                    ? $entry . ' --node-type v2box --api-host %s --node-id %d --prompt-api-key'
-                    : 'wget -N https://raw.githubusercontent.com/wyx2685/v2node/master/script/install.sh && bash install.sh --api-host %s --node-id %d',
+                $entry . ' --node-type v2box --api-host %s --node-id %d --prompt-api-key',
                 $apiHostArg,
                 $nodeId
             );
@@ -162,9 +156,8 @@ class ServerService
     public function getNodeActivity(): array
     {
         // Briefly share results across administrators without caching service configuration.
-        return Cache::remember('ADMIN_NODE_ACTIVITY:v2',5,function(){
-            $nodes=\Illuminate\Support\Facades\DB::table('v2_server_v2node')->select('id','service_id')->selectRaw("'v2node' as type")
-                ->unionAll(\Illuminate\Support\Facades\DB::table('v2_server_v2box')->select('id','service_id')->selectRaw("'v2box' as type"))->get();
+        return Cache::remember('ADMIN_NODE_ACTIVITY:v3',5,function(){
+            $nodes=\Illuminate\Support\Facades\DB::table('v2_server_v2box')->select('id','service_id')->selectRaw("'v2box' as type")->get();
             return $this->activity($nodes->map(fn($node)=>(array)$node)->all());
         });
     }
@@ -176,10 +169,7 @@ class ServerService
 
     public function getAllServers()
     {
-        $servers = array_merge(
-            $this->getAllV2node(),
-            $this->getAllV2node('v2box')
-        );
+        $servers = $this->getAllV2box();
         $this->mergeData($servers);
         $servers = NodeAddressService::forNodes($servers);
         $servers = ServerTrafficBudgetService::decorateNodes($servers);
@@ -193,7 +183,7 @@ class ServerService
         return $servers;
     }
 
-    public function getRoutes(array $routeIds, string $backend = 'v2node')
+    public function getRoutes(array $routeIds, string $backend = 'v2box')
     {
         if (!$routeIds) return collect();
         $routeIds = array_map('intval', $routeIds);
@@ -215,8 +205,6 @@ class ServerService
         switch ($serverType) {
             case 'v2box':
                 return ServerV2box::find($serverId);
-            case 'v2node':
-                return ServerV2node::find($serverId);
         }
     }
 }

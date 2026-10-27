@@ -229,7 +229,7 @@ export function ServerTrafficBudgets({
                     </fieldset>
                     <p>
                         上传/下载按节点代理的方向统计。本月、近30天显示双向总量；周期用量按所选计费方向计算。V2Box
-                        本地限制需升级节点，V2Node 通过用户列表同步限制。
+                        本地限制需升级 V2Box 节点。
                     </p>
                     {error && (
                         <div role="alert" className="alert">

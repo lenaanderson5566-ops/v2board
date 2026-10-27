@@ -232,14 +232,14 @@ def node_identity(node):
         not isinstance(node, dict)
         or type(node.get("NodeID")) is not int
         or node["NodeID"] <= 0
-        or node.get("NodeType", "v2node") not in ("v2box", "v2node")
+        or node.get("NodeType", "v2box") not in ("v2box",)
     ):
         raise DeploymentError(
             "Invalid existing node identity; original configuration retained"
         )
     return (
         panel_identity(node.get("ApiHost", "")),
-        node.get("NodeType", "v2node"),
+        node.get("NodeType", "v2box"),
         node["NodeID"],
     )
 

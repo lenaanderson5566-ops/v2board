@@ -106,7 +106,7 @@ export function resourceFields(
         .filter(
             (f) =>
                 kind !== "routes" ||
-                ((f.key !== "backend" || !values.id) &&
+                (f.key !== "backend" &&
                     (f.key !== "sing_box" || values.action === "sing_box") &&
                     (!["match", "action_value"].includes(f.key) || values.action !== "sing_box") &&
                     (f.key !== "match" || values.action !== "default_out") &&
@@ -123,7 +123,6 @@ export function resourceFields(
         )
         .map((f) => {
             if (kind === "coupons" && f.key === "type") return { ...f, options: (f.options || []).filter(([key]) => key === "2" || Boolean(values.id)) };
-            if (kind === "routes" && f.key === "action") return { ...f, options: (f.options || []).filter(([key]) => key !== "sing_box" || values.backend === "v2box") };
             if (kind === "routes" && f.key === "action_value")
                 return {
                     ...f,
@@ -133,7 +132,7 @@ export function resourceFields(
                             : values.action === "default_out"
                               ? "默认出口参数"
                               : "动作参数",
-                    hint: values.backend === "v2box" ? "旧格式兼容规则：路由出口参数使用 sing-box outbound JSON；新规则建议选择 sing-box 原生规则。" : "Xray 路由出口参数使用 Xray outbound JSON；DNS 动作填写 DNS 地址。",
+                    hint: "旧格式兼容规则：路由出口参数使用 sing-box outbound JSON；新规则建议选择 sing-box 原生规则。",
                 };
             if (kind === "giftcards" && f.key === "value")
                 return {
@@ -179,12 +178,6 @@ export function linkResource(
     values: Row,
 ): Row {
     const result = { ...values, [key]: next };
-    if (kind === "routes" && key === "backend") {
-        result.action = next === "v2box" ? "sing_box" : "block";
-        result.match = [];
-        result.action_value = "";
-        result.sing_box = { route: { rules: [] } };
-    }
     if (
         ["giftcards", "coupons"].includes(kind) &&
         key === "type" &&
@@ -263,18 +256,18 @@ export function nodeFields(
     values: Row,
 ): Field[] {
     const protocol =
-        ["v2node", "v2box"].includes(type) ? String(values.protocol || "shadowsocks") : type;
+        type === "v2box" ? String(values.protocol || "shadowsocks") : type;
     const tls = Number(values.tls || 0),
         network = values.network || "tcp";
     return fields
         .filter((f) => {
             if (f.key === "sing_box") return false;
-            if (type === "v2box" && (
+            if (
                 ["encryption", "encryption_settings", "trusted_x_forwarded_for"].includes(f.key) ||
                 f.key.startsWith("encryption_settings.") ||
                 f.key.startsWith("tls_settings.ech") ||
                 ["tls_settings.xver", "tls_settings.reject_unknown_sni", "tls_settings.mldsa65Seed", "network_settings.acceptProxyProtocol"].includes(f.key)
-            )) return false;
+            ) return false;
             if (protocol === "naive" && ["disable_sni", "tls_settings.allow_insecure", "tls_settings.fingerprint", "tls_settings.pinned_peer_cert_sha256"].includes(f.key)) return false;
             const [root, ...parts] = f.key.split(".");
             const parameter = parts.join(".");
@@ -291,7 +284,7 @@ export function nodeFields(
                         "pinned_peer_cert_sha256",
                     ].includes(parameter)
                 ) {
-                    if (!["v2node", "v2box"].includes(type)) return false;
+                    if (type !== "v2box") return false;
                     if (tls !== 1) return false;
                     const mode = values[root + ".cert_mode"] || "self";
                     if (parameter === "dns_credential_id") return mode === "dns";
@@ -313,19 +306,13 @@ export function nodeFields(
                     ].includes(parameter)
                 )
                     return tls === 2;
-                if (parameter.startsWith("ech"))
-                    return (
-                        tls === 1 &&
-                        (parameter === "ech" ||
-                            values[root + ".ech"] === "custom")
-                    );
             }
             if (
                 ["network_settings", "networkSettings"].includes(root) &&
                 parameter
             ) {
                 if (
-                    ["v2node", "v2box"].includes(type) &&
+                    type === "v2box" &&
                     ["shadowsocks", "tuic", "hysteria2", "anytls", "naive"].includes(
                         protocol,
                     )
@@ -333,13 +320,13 @@ export function nodeFields(
                     return false;
                 if (parameter === "serviceName") return network === "grpc";
                 if (parameter === "headers.Host")
-                    return ["ws", "http", "httpupgrade"].includes(network);
+                    return ["ws", "httpupgrade"].includes(network);
                 if (parameter === "path")
-                    return ["ws", "http", "httpupgrade", "xhttp"].includes(
+                    return ["ws", "httpupgrade"].includes(
                         network,
                     );
                 if (["mode", "host"].includes(parameter))
-                    return network === "xhttp";
+                    return false;
             }
             if (root === "obfs_settings" && parameter)
                 return Boolean(values.obfs);
@@ -351,7 +338,7 @@ export function nodeFields(
             if (["tls_settings", "tlsSettings"].includes(f.key)) return tls > 0;
             if (["network_settings", "networkSettings"].includes(f.key))
                 return (
-                    !["v2node", "v2box"].includes(type) ||
+                    type !== "v2box" ||
                     !["shadowsocks", "tuic", "hysteria2", "anytls", "naive"].includes(
                         protocol,
                     )
@@ -360,17 +347,11 @@ export function nodeFields(
                 return (
                     protocol === "vless" &&
                     tls > 0 &&
-                    (network === "tcp" ||
-                        values.encryption === "mlkem768x25519plus")
-                );
-            if (f.key === "encryption_settings")
-                return (
-                    protocol === "vless" &&
-                    values.encryption === "mlkem768x25519plus"
+                    network === "tcp"
                 );
             if (["obfs_settings", "obfs_password"].includes(f.key))
                 return Boolean(values.obfs);
-            if (["v2node", "v2box"].includes(type)) {
+            if (type === "v2box") {
                 if (["cipher"].includes(f.key))
                     return protocol === "shadowsocks";
                 if (
@@ -389,13 +370,11 @@ export function nodeFields(
                     return protocol === "tuic";
                 if (f.key === "padding_preset") return protocol === "anytls";
                 if (f.key === "padding_scheme") return protocol === "anytls" && (!values.padding_preset || values.padding_preset === "custom");
-                if (["encryption", "encryption_settings"].includes(f.key))
-                    return protocol === "vless";
             }
             return true;
         })
         .map((f) => {
-            if (f.key === "protocol" && values.protocol === "") return { ...f, options: [["", "请选择目标内核支持的协议"], ...(f.options || [])] as [string, string][] };
+            if (f.key === "protocol" && values.protocol === "") return { ...f, options: [["", "请选择协议"], ...(f.options || [])] as [string, string][] };
             if (protocol === "naive" && f.key === "tls_settings.cert_mode") return { ...f, required: true, options: [["http", "HTTP 申请"], ["dns", "DNS 申请"], ["file", "已有证书文件"]] as [string, string][], hint: "Naive 需要客户端信任的有效证书。" };
             if (protocol === "naive" && f.key === "tls_settings.server_name") return { ...f, required: true };
             if (f.key === "tls_settings.server_name" && tls === 2)
@@ -404,11 +383,6 @@ export function nodeFields(
                     required: true,
                     hint: "Reality 必须与服务端 SNI 一致。",
                 };
-            if (
-                f.key === "tls_settings.ech_server_name" &&
-                values["tls_settings.ech"] === "custom"
-            )
-                return { ...f, required: true };
             if (f.key === "tls")
                 return {
                     ...f,
@@ -437,16 +411,6 @@ export function nodeFields(
                     ],
                 };
             if (f.key === "show") return { ...f, type: "switch" };
-            if (f.key === "encryption")
-                return {
-                    ...f,
-                    type: "select",
-                    nullable: true,
-                    options: [
-                        ["", "不启用"],
-                        ["mlkem768x25519plus", "MLKEM768X25519PLUS"],
-                    ],
-                };
             if (f.key === "udp_relay_mode")
                 return {
                     ...f,
@@ -495,7 +459,7 @@ export function nodeFields(
                 return { ...f, type: "number", min: 0 };
             if (f.key === "server_port")
                 return { ...f, type: "number", min: 1, max: 65535, step: 1 };
-            if (f.key === "cipher" && ["v2node", "v2box"].includes(type))
+            if (f.key === "cipher" && type === "v2box")
                 return {
                     ...f,
                     type: "select",
@@ -521,18 +485,18 @@ export function nodeFields(
                 };
             if (
                 f.key === "network" &&
-                (!f.options?.length || ["v2node", "v2box"].includes(type))
+                (!f.options?.length || type === "v2box")
             )
                 return {
                     ...f,
                     type: "select",
-                    options: (["v2node", "v2box"].includes(type) &&
+                    options: (type === "v2box" &&
                     ["shadowsocks", "tuic", "hysteria2", "anytls", "naive"].includes(
                         protocol,
                     )
                         ? ["tcp"]
-                        : type === "v2box" ? ["tcp", "ws", "grpc", "httpupgrade"] : ["tcp", "ws", "grpc", "http", "httpupgrade", "xhttp"]
-                    ).map((v) => [v, v]).concat(values.network === "" ? [["", "请选择目标内核支持的传输"]] : []) as [string, string][],
+                        : ["tcp", "ws", "grpc", "httpupgrade"]
+                    ).map((v) => [v, v]).concat(values.network === "" ? [["", "请选择传输方式"]] : []) as [string, string][],
                 };
             if (["disable_sni", "zero_rtt_handshake"].includes(f.key))
                 return { ...f, type: "switch" };

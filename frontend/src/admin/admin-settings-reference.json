@@ -437,7 +437,7 @@
   "server": {
     "server_api_url": {
       "label": "节点对接API地址",
-      "hint": "V2Box / V2Node 节点与后台通信的 HTTPS 地址。变更后，在节点部署页或服务器详情生成地址迁移命令；全部迁移确认前保留旧域名。",
+      "hint": "V2Box 节点与后台通信的 HTTPS 地址。变更后，在节点部署页或服务器详情生成地址迁移命令；全部迁移确认前保留旧域名。",
       "placeholder": "请输入",
       "child": false,
       "line": 6235

@@ -50,7 +50,7 @@ describe("critical configuration regression", () => {
             tls: 1,
         });
         expect(
-            nodeFields("v2node", fields("tls"), {
+            nodeFields("v2box", fields("tls"), {
                 protocol: "vmess",
             })[0].options?.map((o) => o[0]),
         ).toEqual(["0", "1"]);
@@ -69,7 +69,7 @@ describe("critical configuration regression", () => {
     it("shows certificate provider only for DNS mode and excludes it from Reality", () => {
         const list = nodeSettingsFields(fields("tls_settings"));
         const keys = (values: Record<string, unknown>) =>
-            nodeFields("v2node", list, { protocol: "vless", ...values }).map(
+            nodeFields("v2box", list, { protocol: "vless", ...values }).map(
                 (f) => f.key,
             );
         expect(keys({ tls: 1, "tls_settings.cert_mode": "dns" })).toContain(
@@ -81,13 +81,13 @@ describe("critical configuration regression", () => {
         expect(keys({ tls: 2 })).not.toContain("tls_settings.cert_mode");
         expect(keys({ tls: 2 })).toContain("tls_settings.dest");
     });
-    it("shows XHTTP parameters and JSON padding input and hides inactive flow", () => {
+    it("hides retired XHTTP controls, preserves JSON padding input and hides inactive flow", () => {
         const vmess = nodeFields(
             "vmess",
             nodeSettingsFields(fields("networkSettings")),
             { network: "xhttp" },
         ).map((f) => f.key);
-        expect(vmess).toContain("networkSettings.mode");
+        expect(vmess).not.toContain("networkSettings.mode");
         expect(vmess).toContain("networkSettings.security");
         expect(nodeFields("anytls", fields("padding_scheme"), {})[0].type).toBe(
             "json",

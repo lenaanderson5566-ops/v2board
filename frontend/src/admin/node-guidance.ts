@@ -231,7 +231,6 @@ export function nodeDeploymentStage(
                 : "节点已确认应用当前配置；建议完成一次实际客户端连接检查。",
             target: "runtime",
         };
-    if (runtime?.runtimeStatus === "online" && runtime?.configurationState === "provided" && node.type === "v2node") return { ...base, terminal: true, title: "节点已接入，待实际验证", description: "配置已下发；当前内核不提供应用回执，请结合服务日志和客户端连接确认。", target: "logs" };
     if (runtime?.runtimeStatus === "online" && runtime?.receiptSupported === false && authenticated && node.type === "v2box") return { ...base, terminal: true, title: "节点已接入，缺少应用回执", description: "请升级节点以支持配置应用确认，或结合日志检查当前服务。", target: "upgrade" };
     if (!authenticated)
         return {

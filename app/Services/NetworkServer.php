@@ -11,10 +11,10 @@ final class NetworkServer {
         abort_unless($a,404);
         abort_if(DB::table('v2_node_ddns')->where('server_id',$server ?: $a->server_id)->where('id','!=',$binding)->count()>=100,422,'一台服务器最多关联 100 个域名');
         $id=$server ?: ($a->server_id??null);
-        if ($a->server_id && $id!=$a->server_id && in_array($a->node_type,['v2node','v2box'],true)) ProxyService::assertUnused($a->node_type,(int)$a->node_id);
+        if ($a->server_id && $id!=$a->server_id && in_array($a->node_type,['v2box'],true)) ProxyService::assertUnused($a->node_type,(int)$a->node_id);
         if (!$id) {
             $data=['name'=>$a->node_type.' #'.$a->node_id,'family'=>$a->family,'report_hash'=>$a->report_hash];
-            if (in_array($a->node_type,['v2node','v2box'],true)) $data['name']=mb_substr(DB::table('v2_server_'.$a->node_type)->where('id',$a->node_id)->value('name') ?: $data['name'],0,100);
+            if (in_array($a->node_type,['v2box'],true)) $data['name']=mb_substr(DB::table('v2_server_'.$a->node_type)->where('id',$a->node_id)->value('name') ?: $data['name'],0,100);
             foreach(['ipv4','ipv6'] as $f) { $data[$f]=$a->$f; $data[$f.'_seen_at']=$a->{$f.'_seen_at'}; }
             $id=DB::table('v2_network_server')->insertGetId($data);
         }
@@ -26,7 +26,7 @@ final class NetworkServer {
             foreach(['ipv4','ipv6'] as $f) { $data[$f]=$s->$f; $data[$f.'_seen_at']=$s->{$f.'_seen_at'}; }
         }
         DB::table('v2_node_ddns')->where('id',$binding)->update($data);
-        if (in_array($a->node_type,['v2node','v2box'],true)) NetworkServerTraffic::sync((int)$id);
+        if (in_array($a->node_type,['v2box'],true)) NetworkServerTraffic::sync((int)$id);
         return $id;
     }
     public static function credential(int $id,bool $rotate=false): array {

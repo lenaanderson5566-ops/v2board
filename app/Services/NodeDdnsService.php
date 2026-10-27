@@ -13,7 +13,7 @@ class NodeDdnsFailure extends \RuntimeException {
 class NodeDdnsService {
     public static function nodeExists($row): bool {
         if (($row->purpose??'')==='entry') return DB::table('v2_network_server')->where('id',$row->server_id)->exists();
-        return in_array($row->node_type,['v2node','v2box'],true) && DB::table('v2_server_'.$row->node_type)->where('id',$row->node_id)->exists();
+        return in_array($row->node_type,['v2box'],true) && DB::table('v2_server_'.$row->node_type)->where('id',$row->node_id)->exists();
     }
     public static function publicAddress(string $ip, int $version): bool {
         $flag=($version===4 ? FILTER_FLAG_IPV4 : FILTER_FLAG_IPV6) | FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE;

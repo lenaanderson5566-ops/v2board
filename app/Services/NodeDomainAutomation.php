@@ -47,7 +47,7 @@ final class NodeDomainAutomation
         NodeDnsLifecycle::locked(function()use($id,$node,$proof,$report,$addresses){
             $node->refresh();$current=DB::table('v2_node_ddns')->find($id);
             if (!$current || NetworkServer::addresses($current)!==$addresses || $current->entry_id || !hash_equals($proof,NodeDeploymentWorkflow::snapshot($node))) return;
-            $runtime=NodeRuntimeService::inspect($node->getTable()==='v2_server_v2box'?'v2box':'v2node',$node);
+            $runtime=NodeRuntimeService::inspect('v2box',$node);
             if ($runtime['runtimeStatus']!=='online' || $runtime['maintenance'] || $runtime['applicationState']!=='applied') return;
             try { NodeDnsLifecycle::activateLocked($id); Cache::forget('domain-auto-state:'.$id); }
             catch (\Symfony\Component\HttpKernel\Exception\HttpException $e) {

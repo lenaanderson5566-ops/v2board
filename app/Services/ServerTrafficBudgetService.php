@@ -5,7 +5,7 @@ use Illuminate\Support\Facades\DB;
 
 class ServerTrafficBudgetService {
  public static function budgetId(string $type,int $nodeId,bool $lock=false): ?int {
-  if(!in_array($type,['v2node','v2box'],true))return null;
+  if(!in_array($type,['v2box'],true))return null;
   $node=(new ServerService())->getServer($nodeId,$type);
   $root=$node && $node->service_id ? (int)$node->service_id : $nodeId;
   if($lock)DB::table('v2_server_'.$type)->where('id',$root)->lockForUpdate()->first();

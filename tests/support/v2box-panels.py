@@ -252,7 +252,7 @@ def run(manifest):
         previous_hash=hashlib.sha256((program/'v2box').read_bytes()).hexdigest()
         version=subprocess.run([str(program/'v2box'),'version'],capture_output=True,text=True,check=True,timeout=10)
         assert 'v1.0.15' in version.stdout,'Upgrade fixture is not the real previous release'
-        upgrade_command=php(b,'echo json_encode((new App\\Services\\ServerService())->getAllV2node("v2box")[0]["upgrade_command"]);')
+        upgrade_command=php(b,'echo json_encode((new App\\Services\\ServerService())->getAllV2box("v2box")[0]["upgrade_command"]);')
         assert '--install v1.0.16' in upgrade_command and upgrade_command.endswith('--update')
         upgraded=subprocess.run(upgrade_command,shell=True,cwd=root,env=env,capture_output=True,text=True,timeout=220)
         if upgraded.returncode:raise AssertionError('Published release upgrade failed: '+re.sub(r'(?:nk_|nd_|ns_)[a-f0-9.]+','[redacted]',(upgraded.stdout+upgraded.stderr)[-1600:]))

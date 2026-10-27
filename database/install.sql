@@ -283,6 +283,8 @@ CREATE TABLE `v2_server_group` (
 DROP TABLE IF EXISTS `v2_server_route`;
 CREATE TABLE `v2_server_route` (
                                    `id` int(11) NOT NULL AUTO_INCREMENT,
+                                   `backend` varchar(16) NOT NULL DEFAULT 'v2box',
+                                   `sing_box` mediumtext DEFAULT NULL,
                                    `remarks` varchar(255) NOT NULL,
                                    `match` text NOT NULL,
                                    `action` varchar(11) NOT NULL,
@@ -293,8 +295,8 @@ CREATE TABLE `v2_server_route` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 
-DROP TABLE IF EXISTS `v2_server_v2node`;
-CREATE TABLE `v2_server_v2node` (
+DROP TABLE IF EXISTS `v2_server_v2box`;
+CREATE TABLE `v2_server_v2box` (
                                     `id` int(11) NOT NULL AUTO_INCREMENT,
                                     `group_id` varchar(255) NOT NULL,
                                     `route_id` varchar(255) DEFAULT NULL,
@@ -549,8 +551,6 @@ CREATE TABLE IF NOT EXISTS `v2_traffic_credit_log` (
 
 ALTER TABLE `v2_order` ADD COLUMN `payment_snapshot` json NULL;
 
-/* Independent V2Box nodes share the V2Node schema. */
-CREATE TABLE IF NOT EXISTS `v2_server_v2box` LIKE `v2_server_v2node`;
 
 /* Default exact-match UA blacklist. Hex strings keep UA semicolons compatible with the installer SQL splitter. */
 CREATE TABLE IF NOT EXISTS `v2_risk_blacklist_ua_hash` (

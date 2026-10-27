@@ -24,7 +24,7 @@ class Loon
         header("Subscription-Userinfo: upload={$user['u']}; download={$user['d']}; total={$user['transfer_enable']}; expire={$user['expired_at']}");
 
         foreach ($servers as $item) {
-            if (in_array(($item['type'] ?? null), ['v2node', 'v2box'], true) && isset($item['protocol'])) {
+            if (in_array(($item['type'] ?? null), ['v2box'], true) && isset($item['protocol'])) {
                 $item['type'] = $item['protocol'];
             }
             if ($item['type'] === 'shadowsocks') {

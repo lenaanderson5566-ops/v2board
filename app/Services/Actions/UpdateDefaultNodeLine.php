@@ -10,7 +10,7 @@ final class UpdateDefaultNodeLine {
     public static function resource($node): array {
         $values=$node->only(self::FIELDS);
         return ['values'=>$values,'revision'=>hash('sha256',json_encode($values)),
-            'sharedLines'=>ProxyService::model($node->getTable()==='v2_server_v2box'?'v2box':'v2node')::where('service_id',$node->id)->count()];
+            'sharedLines'=>ProxyService::model('v2box')::where('service_id',$node->id)->count()];
     }
     public static function run(string $type,int $id,string $revision,array $values): array {
         return NodeDnsLifecycle::locked(fn()=>DB::transaction(function()use($type,$id,$revision,$values){

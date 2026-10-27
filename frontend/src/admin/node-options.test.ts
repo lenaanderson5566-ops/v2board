@@ -26,15 +26,8 @@ it("keeps DDNS opt-in and quotes generated shell arguments", () => {
     expect(nodeDeploymentCommand(row)).toBe(row.install_command);
     expect(nodeDeploymentCommand({...row,ddns:true,ddns_domain:"node.example.com",ddns_family:"dual"})).toBe("bash install.sh --ddns --ddns-domain 'node.example.com' --ddns-family dual");
     expect(nodeDeploymentCommand({...row,ddns:true,ddns_domain:"a'b"})).toContain("'a'\\''b'");
-    expect(nodeDeploymentCommand({...row,type:"v2node",ddns:true})).toContain("python3 node-network.py configure");
 });
 
-it("uses versioned network helpers included in the released backend", () => {
- for(const command of [nodeDeploymentCommand({type:"v2node",install_command:"install",ddns:true})]) {
-  expect(command).toContain("/v2box/v1.0.16/script/node-network.py");
-  expect(command).not.toContain("/v2box/main/");
- }
-});
 
 it("uses the short server-provided upgrade command", () => {
  const command="wget --https-only -O install-v2box.sh 'https://panel.example/api/v10/public/node-deployment/bootstrap' && sh install-v2box.sh --install v1.0.16";

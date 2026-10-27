@@ -17,7 +17,7 @@ import { apiUrl } from "./runtime-config";
 import { v10Request } from "./v10-api";
 import { createReadCache } from "./read-cache";
 import { tx, locale } from "./i18n";
-export type NodeBackendType = "v2node" | "v2box";
+export type NodeBackendType = "v2box";
 export type Row = Record<string, any>;
 export interface Envelope<T> {
     data: T;

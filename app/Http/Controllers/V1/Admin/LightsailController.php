@@ -49,7 +49,7 @@ class LightsailController extends \App\Http\Controllers\Controller
     }
     public function save(Request $request)
     {
-        $v = $request->validate(['id' => 'nullable|integer|min:1', 'name' => 'required|string|max:100', 'region' => ['required', 'string', 'regex:/^[a-z]{2}(-[a-z]+)+-\d$/'], 'instance' => ['required', 'string', 'max:255', 'regex:/^[A-Za-z0-9][A-Za-z0-9_.-]*$/'], 'node_type' => 'required|in:v2node,v2box', 'node_id' => 'required|integer|min:1', 'accessKey' => 'nullable|string|max:128', 'secretKey' => 'nullable|string|max:256', 'sessionToken' => 'nullable|string|max:8192']);
+        $v = $request->validate(['id' => 'nullable|integer|min:1', 'name' => 'required|string|max:100', 'region' => ['required', 'string', 'regex:/^[a-z]{2}(-[a-z]+)+-\d$/'], 'instance' => ['required', 'string', 'max:255', 'regex:/^[A-Za-z0-9][A-Za-z0-9_.-]*$/'], 'node_type' => 'required|in:v2box', 'node_id' => 'required|integer|min:1', 'accessKey' => 'nullable|string|max:128', 'secretKey' => 'nullable|string|max:256', 'sessionToken' => 'nullable|string|max:8192']);
         DB::transaction(function () use ($v) {
             $node = DB::table('v2_server_' . $v['node_type'])->where('id', $v['node_id'])->lockForUpdate()->first();
             if (!$node || $node->service_id) {

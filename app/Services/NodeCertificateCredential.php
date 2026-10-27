@@ -38,7 +38,7 @@ final class NodeCertificateCredential {
         return $tls;
     }
     public static function referenced(int $id): bool {
-        foreach (['v2_server_v2box','v2_server_v2node'] as $table)
+        foreach (['v2_server_v2box'] as $table)
             if (DB::table($table)->where('tls_settings->dns_credential_id',$id)->exists()) return true;
         return false;
     }

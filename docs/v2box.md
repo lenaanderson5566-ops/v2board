@@ -1,10 +1,10 @@
 # V2Box 节点接入
 
-后台节点管理新增 `v2box`，与 `v2node` 并列。两类节点使用独立表、ID、状态缓存和流量统计类型；同一数字 ID 不会指向同一条节点。支持新增、编辑、复制、删除、排序、父节点、地域显示和一键安装命令。
+后台节点管理仅支持 V2Box，使用独立表 `v2_server_v2box`、V2Box 状态缓存及流量统计类型。模型、管理控制器、订阅、路由、部署、凭据、域名和额度绑定均统一为 `v2box`。
 
-升级面板时，`update.sh` 定向执行 `2026_10_11_000001_create_v2box_nodes.php`。此迁移只复制 V2Node 表结构，不迁移节点或流量历史。全新安装也会创建该表。
+新安装直接创建 V2Box 表，不依赖旧表。历史迁移文件名为升级账本保留；V2Box 建表迁移使用独立结构。升级脚本执行 `2026_10_27_000001_retire_v2node.php`，删除旧 V2Node 配置表及其操作绑定、凭据和路由规则，保留 V2Box 数据和共享统计/账务历史。此清理不修改服务器上的服务或云资源。
 
-节点侧需要使用包含 `NodeType` 支持的新版 V2Box。Nodes 中配置 `"NodeType": "v2box"`，并填入后台 V2Box 节点的 `NodeID`。一键安装命令传入 `--node-type v2box`。安装器保留已有配置；已有机器需要手动核对 NodeType 和 NodeID。未填写 NodeType 的旧配置继续使用 v2node。
+Nodes 中配置 `"NodeType": "v2box"` 并填入后台 V2Box 的 `NodeID`；省略 NodeType 时也默认 V2Box。显式 `v2node` 将被拒绝，不映射到任何 V2Box 编号。安装器只接受 `--node-type v2box`。
 
 通信沿用 `/api/v2/server/config` 与 `/api/v1/server/UniProxy/{user,alivelist,push,alive}`，参数为 `node_type=v2box`。管理接口沿用管理员前缀下的 `server/v2box/{save,update,copy,drop}`。用户订阅仍走 V10，按底层协议生成；原生节点稳定标识使用 `node_v2box_ID`。
 
@@ -22,44 +22,41 @@ V2Box 支持 Shadowsocks、VMess、VLESS、Trojan、TUIC、Hysteria2、AnyTLS、
 
 测试：`php tests/naive.php`、前端 admin-linkage 测试、节点 `GOEXPERIMENT=jsonv2 go test -race -tags with_quic,with_utls ./core -run Naive`。协议测试使用独立 HTTP2/Naive padding 测试客户端，覆盖实际 TLS 连接、流量计数、撤销/重加和并发更新；不替代目标 Chromium 客户端部署验收。
 
-部署顺序：先发布包含 NodeType 支持的 V2Box Release，再升级面板并创建 V2Box 节点，最后使用后台安装命令部署。不要让旧 V2Node 与新 V2Box 同时监听同一端口。
+部署顺序：先发布包含 NodeType 支持的 V2Box Release，再升级面板并创建 V2Box 节点，最后使用后台安装命令部署。节点与面板须使用匹配的 V2Box 配置。
 
 验证：`php tests/v2box.php`（仅本地环境，事务回滚测试数据），前端 `npm test -- src/admin/admin-linkage.test.ts src/shared/critical-config.test.ts`，节点仓库 `go test ./api/v2board ./conf`。
 
 ## 节点类型收敛
 
-节点管理现仅保留 V2Node 和 V2Box。旧独立 VMess、VLESS、Shadowsocks、Trojan、Hysteria、TUIC、AnyTLS 节点入口与后台 CRUD、旧节点通信已移除，旧记录不再进入订阅、排序、权限组节点计数及节点排行。底层协议仍可在 V2Node/V2Box 中选择。升级迁移 `2026_10_11_000002_drop_retired_node_tables.php` 删除七张旧节点配置表及其中数据，不自动转换。共享账务、流量历史、权限组和路由表保留。升级前应把仍在使用的旧节点重新配置为 V2Node/V2Box，并更新对应服务。删表无法通过回滚恢复数据，只能从数据库备份恢复。新安装不再创建这些表。
+节点管理现仅保留 V2Box。旧独立 VMess、VLESS、Shadowsocks、Trojan、Hysteria、TUIC、AnyTLS 节点入口与后台 CRUD、旧节点通信已移除，旧记录不再进入订阅、排序、权限组节点计数及节点排行。底层协议仍可在 V2Box 中选择。升级迁移 `2026_10_11_000002_drop_retired_node_tables.php` 删除七张旧节点配置表及其中数据，不自动转换。共享账务、流量历史、权限组和路由表保留。升级前应把仍在使用的旧节点重新配置为 V2Box，并更新对应服务。删表无法通过回滚恢复数据，只能从数据库备份恢复。新安装不再创建这些表。
 
 ## V10 节点通信与 sing-box 原生配置
 
-升级面板时执行完整 [update.sh 升级流程](update-script.md)（按批准清单定向迁移，勿执行全量 migrate），依次完成原生配置及独立路由迁移；V2Node 表不变。新版 V2Box 配置 `NodeType=v2box` 默认走 V10，`ApiVersion=legacy` 可显式保留旧接口。V10 不接受查询参数 token，使用 Authorization Bearer；用户表为空时返回 `data: []`，304 才代表无变化。
+升级面板时执行完整 [update.sh 升级流程](update-script.md)（按批准清单定向迁移，勿执行全量 migrate），依次完成原生配置、独立路由和退役清理。新版 V2Box 配置 `NodeType=v2box` 默认走 V10，`ApiVersion=legacy` 可显式保留旧接口。V10 不接受查询参数 token，使用 Authorization Bearer；用户表为空时返回 `data: []`，304 才代表无变化。
 
-管理端“路由管理”按 V2Node / Xray、V2Box / sing-box 分开维护。V2Box 原生规则在这里编辑 JSON，节点编辑页只选择当前内核可用的规则。开放 dns、route、outbounds，支持 HTTPS DNS、DNS 分流、inline/HTTPS remote 规则集及代理出口。保留直连出口 direct。不能覆盖入站用户、计费、服务、本机证书路径，也不能配置 auth_user 或本机 rule-set 文件。原生配置字段随节点固定的 sing-box 1.14.3 校验，错误配置先预检再重载。
+管理端“路由管理”统一维护 V2Box / sing-box 规则。V2Box 原生规则在这里编辑 JSON，节点编辑页只选择当前内核可用的规则。开放 dns、route、outbounds，支持 HTTPS DNS、DNS 分流、inline/HTTPS remote 规则集及代理出口。保留直连出口 direct。不能覆盖入站用户、计费、服务、本机证书路径，也不能配置 auth_user 或本机 rule-set 文件。原生配置字段随节点固定的 sing-box 1.14.3 校验，错误配置先预检再重载。
 
 节点通过 POST capabilities 上报 coreVersion 和 features，缓存 24 小时，随配置轮询更新；原生配置下发要求 X-Node-Capabilities 包含 native-routing-v1。节点能力不进入用户订阅。详细接口契约见 [node-api.json](api-v10/node-api.json)。旧节点通信仍调用相同的共享业务动作，流量上报暂未增加批次去重，202 仅表示已接受入队。
 
 ACME 申请失败保护在节点本地实现，不通过面板清除；修复后按节点 README 恢复，重启不会绕过暂停状态。
 
-V10 节点身份通过 `X-Node-Type: v2box` 和 `X-Node-ID: 节点编号` 请求头传递；URL 统一为 `/api/v10/server/...`。当前仅接受 v2box 类型，V2Node 继续使用旧接口。类型或编号缺失、非法时返回 422；未知节点返回 404。旧 `/api/v10/nodes/v2box/{id}/...` 路径已移除，面板与节点应同步升级。
+V10 节点身份通过 `X-Node-Type: v2box` 和 `X-Node-ID: 节点编号` 请求头传递；URL 统一为 `/api/v10/server/...`。当前仅接受 v2box 类型。类型或编号缺失、非法时返回 422；未知节点返回 404。旧 `/api/v10/nodes/v2box/{id}/...` 路径已移除，面板与节点应同步升级。
 
 
 ## 独立路由规则升级
 
-`2026_10_11_000004_separate_node_routes.php` 为路由记录增加 `backend` 和 `sing_box`。现有规则归 V2Node；V2Box 引用的旧格式规则自动复制为独立记录并重新关联。节点内已有的原生配置迁移成一条 V2Box 路由记录，清空旧内联配置，并保持原生配置原先覆盖旧规则的行为。迁移不会修改 V2Node 的规则引用。旧 `sing_box` 列暂留兼容数据库升级，但节点保存接口不再接受非空内联配置。
+`2026_10_11_000004_separate_node_routes.php` 为路由记录增加 `backend` 和 `sing_box`。历史其他内核规则如仍被 V2Box 引用，先复制为 V2Box 记录并重新关联。新规则默认归 V2Box。节点内已有的原生配置迁移成一条 V2Box 路由记录，清空旧内联配置，并保持原生配置原先覆盖旧规则的行为。退役迁移随后清理旧内核规则。旧 `sing_box` 列暂留兼容数据库升级，但节点保存接口不再接受非空内联配置。
 
 V2Box 可选择多条原生规则：`route.rules`、`dns.rules` 按选择顺序追加；相同定义的出口、DNS 和规则集标签复用，不同定义的同名标签及相互冲突的默认设置拒绝保存。旧格式兼容规则不能与原生规则混选，防止静默忽略旧规则。旧规则仍可独立编辑；转换为原生格式时，应同时检查使用该规则的节点。正在被节点引用的规则不能删除，须先解除选择。
 
-节点通信格式不变：V10 的 `singBox` 返回所选原生规则的合并结果，`routes` 仅用于旧格式兼容规则；V2Node 继续获得自己的 Xray 规则。升级后配置 ETag 随规则内容变化。路由修改会同步影响选择该规则的节点，但不跨内核传播。
+节点通信格式不变：V10 的 `singBox` 返回所选原生规则的合并结果，`routes` 仅用于旧格式兼容规则。升级后配置 ETag 随规则内容变化。路由修改会同步影响选择该规则的节点，并在配置轮询时下发。
 
 部署前备份数据库，执行完整 [update.sh 升级流程](update-script.md)（按批准清单定向迁移，勿执行全量 migrate），并发布新的后台资源。独立规则和引用不支持自动折叠回旧共享结构；需要回退时恢复数据库备份。验证：`php tests/node-routes.php`、`php tests/node-v10.php` 及前端 `Nodes.test.tsx`。
 
 
-## 已保存节点切换内核
+## 单一节点后端
 
-在节点编辑窗口更改“节点类型”，核对目标内核支持的协议和参数，重新选择路由及父节点后保存。保存接口通过 `source_type`、`source_id` 标识来源，不能同时传入目标更新 `id`。后端先执行目标内核校验，再在事务中创建目标节点并删除来源记录；目标 ID 独立分配，不覆盖另一张表中的同号节点。保留展示信息、标签及创建时间（Shadowsocks 2022 密钥派生依据）。历史流量记录保留原类型与 ID。
-
-仍被子节点引用的父节点不能直接转换，须先解除子节点关联。Naive 转 V2Node 时必须另选受支持协议；Xray 专有参数不会自动带入 V2Box。切换表单类型会重新载入已保存配置。转换完成后面板展示新安装命令，需在节点服务器更换对应服务及节点 ID；仅修改面板不会自动替换服务器上的内核。
-
+仅支持 V2Box。节点编辑不再提供内核切换，保存接口拒绝 `source_type` 和 `source_id`。旧管理路由、模型、控制器、缓存键及安装入口均已移除；旧类型请求不会重定向或映射为 V2Box。
 
 ## AnyTLS 填充预设
 
@@ -69,12 +66,12 @@ AnyTLS 节点编辑可选“上游默认（推荐）”“低开销”“随机�
 
 ## 公网 IP 查询与 Cloudflare DDNS
 
-节点安装窗口提供公网 IPv4/IPv6 查询命令。查询在节点服务器执行，不会使用面板服务器或浏览器的 IP。后台“节点管理 → Cloudflare DDNS”统一管理凭据与节点绑定，支持 V2Node 和 V2Box，默认不启用。
+节点安装窗口提供公网 IPv4/IPv6 查询命令。查询在节点服务器执行，不会使用面板服务器或浏览器的 IP。后台“节点管理 → Cloudflare DDNS”统一管理凭据与节点绑定，支持 V2Box，默认不启用。
 
 1. 执行完整 [update.sh 升级流程](update-script.md)（按批准清单定向迁移，勿执行全量 migrate），确保原有 Laravel scheduler 正常运行。
 2. 后台新增凭据：名称、根域名、Cloudflare Zone ID、仅限该区域 DNS 编辑及 Zone 读取权限的 API Token。保存时验证域名与已激活的 Zone 一致。Token 使用 APP_KEY 加密保存，读取接口不返回原值，编辑留空保留旧值。备份/迁移面板时须保留 APP_KEY。
 3. 新增节点后进入“部署与接入 → 域名与解析”，选择根域名、子域名前缀（留空自动生成）、IPv4 / IPv6 / 双栈。保存绑定暂不改变连接地址。
-4. 新安装 V2Box：先保存域名，再生成一次性部署命令，复制到节点执行。脚本自动安装依赖、部署节点、配置独立 IP 上报，不需输入 Cloudflare Token。已有节点或 V2Node 使用“配置节点上报”生成独立密钥并执行辅助命令；改地址类型后也需重新配置上报。
+4. 新安装 V2Box：先保存域名，再生成一次性部署命令，复制到节点执行。脚本自动安装依赖、部署节点、配置独立 IP 上报，不需输入 Cloudflare Token。已有 V2Box 使用“配置 / 修复 IP 上报”生成一次性配置命令；改地址类型后也需重新配置上报。
 5. 新安装会等待公网解析、启动证书申请并验证节点后自动启用域名，失败可按终端提示恢复。已有节点迁移仍在就绪后手动确认。同地址的直接子节点一并更新；证书名称、Reality SNI 或传输 Host 不随迁移替换。详细顺序、恢复与验证边界见 [自动证书部署](node-management-ui.md#自动证书部署2026-10-23)。
 
 需 Python 3.8+ 和 systemd，或 OpenRC + crontab/crond。独立脚本支持两种节点程序：
@@ -119,7 +116,7 @@ DDNS 日志默认保留 30 天，可在系统日志页面调整，由统一日�
 
 V2Box 首次安装命令使用 --prompt-api-key，通过终端隐藏输入，不把密钥放入复制命令、URL 或 jq 参数。已有配置不会被安装器覆盖；升级节点后运行 `v2box credential`（需 python3），选择节点并隐藏输入新密钥，工具原子替换配置、设置 0600、不保存旧密钥备份，然后手动 `v2box restart`。多节点配置只修改选择项。命令不自动轮换或自动重启。
 
-旧 V2Node 若只支持查询参数 token，应继续保留未迁移状态，先升级支持 Bearer 的内核；后台明确提示兼容要求，不能直接把独立密钥当作旧 query token 使用。V2Box 的 legacy 模式已支持独立凭据通过认证头发送。节点安装列表不再返回含全局密钥的命令。
+V2Box 的 legacy 模式已支持独立凭据通过认证头发送。节点安装列表不再返回含全局密钥的命令。
 
 后台列出尚未迁移的主节点。全部主节点迁移且每个节点当前有效凭据至少认证成功一次后，才能关闭全局密钥认证；关闭后新节点也必须生成独立凭据，界面不提供恢复全局认证入口。删除节点撤销该节点全部凭据；转换内核撤销原凭据并保留禁止全局回退的状态，需要为新身份重新生成凭据。复制节点不会复制密钥。
 
@@ -153,6 +150,8 @@ v2box version
 
 此流程会重建监听，既有连接可能断开，客户端需更新订阅以使用新域名/SNI/指纹；不是无中断迁移。网络故障造成确认响应丢失时，节点有限次重试；仍无法确认则恢复旧监听，后续配置拉取与面板的已提交状态重新一致。公有 DNS 或 CA 服务不可用时在后台检查状态和节点日志后重试，ACME 原有限流保护不被重试绕过。
 
-部署必须同时升级面板和 V2Box：`update.sh` 已纳入 `2026_10_23_000002_node_tls_transition.php`，新安装 SQL 也包含候选字段。仅有 `configuration-receipt-v1` 的旧节点不支持此流程，后台会拒绝直接切换普通 TLS 域名。v1.0.4 引入该能力，v1.0.5 修复代理响应头导致的配置哈希错误；面板安装及升级入口统一固定到 v1.0.5。先更新面板、升级旧节点并等待能力上报，再启用目标域名。V2Node 不支持此验证协议，需要迁移到新版 V2Box 后使用。
+部署必须同时升级面板和 V2Box：`update.sh` 已纳入 `2026_10_23_000002_node_tls_transition.php`，新安装 SQL 也包含候选字段。仅有 `configuration-receipt-v1` 的旧节点不支持此流程，后台会拒绝直接切换普通 TLS 域名。v1.0.4 引入该能力，v1.0.5 修复代理响应头导致的配置哈希错误；面板安装及升级入口统一固定到 v1.0.5。先更新面板、升级旧节点并等待能力上报，再启用目标域名。
 
 出现 `invalid configuration hash` 时，v1.0.4 可能因配置 ETag 被弱化或移除，在新监听启动后无法提交回执而回退。新版面板在响应正文提供 `meta.configurationHash`，哈希仍只针对原配置数据，回执与候选发布校验不变；v1.0.5 优先读取该字段，兼容旧面板的强、弱 ETag。缺失或无效版本在准备证书及停止旧监听前拒绝，不缓存失败响应。升级后仍有效的候选会再次处理；已超时或被撤回时，在后台重新验证。不要通过关闭证书验证或直接改订阅地址绕过此流程。
+
+后台路由管理不再显示适用内核列或内核选择控件，新规则默认使用 sing-box 原生格式，兼容格式规则仍可编辑。节点编辑元数据与保存接口共用明确的验证规则；后台不解析控制器源码，也不向表单提供旧内核专有字段。类型字段仍用于接口身份校验，拒绝将退役类型映射到同号 V2Box 节点。

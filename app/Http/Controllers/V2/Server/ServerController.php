@@ -27,8 +27,8 @@ class ServerController extends Controller
 
         $this->nodeId = (int)$request->input('node_id');
         $this->serverService = new ServerService();
-        $nodeType = $request->input('node_type', 'v2node');
-        abort_unless(in_array($nodeType, ['v2node', 'v2box'], true), 422, 'Unsupported node type');
+        $nodeType = $request->input('node_type', 'v2box');
+        abort_unless(in_array($nodeType, ['v2box'], true), 422, 'Unsupported node type');
         \App\Services\NodeCredentials::authenticate((string)$token,$nodeType,(int)$this->nodeId,$request->bearerToken()!==null);
         $this->nodeInfo = $this->serverService->getServer($this->nodeId, $nodeType);
 
@@ -48,7 +48,7 @@ class ServerController extends Controller
         if ($error = $this->initialize($request)) return $error;
         $response = \App\Services\Actions\NodeConfiguration::build($this->nodeInfo);
 
-        \App\Services\NodeRuntimeService::record($request->input('node_type', 'v2node'), (int) $this->nodeInfo->id, $response, 'v2');
+        \App\Services\NodeRuntimeService::record($request->input('node_type', 'v2box'), (int) $this->nodeInfo->id, $response, 'v2');
         $rsp = json_encode($response);
         $eTag = sha1($rsp);
 

@@ -7,7 +7,7 @@ use Illuminate\Support\Facades\Schema;
 return new class extends Migration {
     public function up(): void
     {
-        if (!Schema::hasColumn('v2_server_v2node', 'trusted_x_forwarded_for')) {
+        if (Schema::hasTable('v2_server_v2node') && !Schema::hasColumn('v2_server_v2node', 'trusted_x_forwarded_for')) {
             Schema::table('v2_server_v2node', function (Blueprint $table) {
                 $table->string('trusted_x_forwarded_for')->nullable()->after('network_settings');
             });

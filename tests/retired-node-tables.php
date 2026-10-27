@@ -14,7 +14,7 @@ $connection['prefix']='test_retired_'.bin2hex(random_bytes(4)).'_';
 config(['database.connections.retired_node_test'=>$connection]);
 $db=DB::connection('retired_node_test');
 $schema=$db->getSchemaBuilder();
-$protected=['v2_server_v2node','v2_server_v2box','v2_server_group','v2_server_route','v2_stat_server','v2_order','v2_user'];
+$protected=['v2_server_v2box','v2_server_group','v2_server_route','v2_stat_server','v2_order','v2_user'];
 $tables=array_merge($migration::TABLES,$protected);
 $authServices=[];
 try {
@@ -32,10 +32,10 @@ try {
     catch(LogicException $e){$checks++;}
     $sql=file_get_contents(__DIR__.'/../database/install.sql');
     foreach($migration::TABLES as $table)$assert(!str_contains($sql,'`'.$table.'`'),'Fresh install excludes '.$table);
-    $assert(str_contains($sql,'CREATE TABLE `v2_server_v2node`') && str_contains($sql,'CREATE TABLE IF NOT EXISTS `v2_server_v2box`'),'Fresh install retains both backends');
+    $assert(!str_contains($sql,'`v2_server_v2node`') && str_contains($sql,'CREATE TABLE `v2_server_v2box`'),'Fresh install contains only V2Box');
     $metadata=require __DIR__.'/../database/migrations/2026_10_06_000001_add_node_display_metadata.php';
     $metadata->up();
-    $assert($schema->hasColumn('v2_server_v2node','region_code'),'Metadata migration tolerates deleted tables');
+    $assert($schema->hasColumn('v2_server_v2box','region_code'),'Metadata migration tolerates deleted tables');
     // Upgrade an existing account table without affecting identity or credentials.
     $schema->table('v2_user',function(Blueprint $table){
         $table->string('email')->nullable(); $table->string('password')->nullable();
@@ -74,7 +74,7 @@ try {
     $roleMigration->up();
     $assert(!$schema->hasTable('v2_user'),'Cleanup before account-table installation is a no-op');
     // Service associations retain subscription IDs and reject ambiguous hierarchies before DDL.
-    foreach(['v2_server_v2node','v2_server_v2box'] as $table) {
+    foreach(['v2_server_v2box'] as $table) {
         $schema->table($table,function(Blueprint $t){
             $t->integer('parent_id')->nullable(); $t->string('protocol')->default('anytls');
             $t->integer('tls')->default(1); $t->string('network')->default('tcp');
@@ -90,7 +90,7 @@ try {
     $topologyMigration=new ProxyServiceRoutes();
     try {$topologyMigration->up();throw new LogicException('Nested services accepted');}
     catch(RuntimeException $e) {$assert(str_contains($e->getMessage(),'#44'),'Invalid association identifies the affected record');}
-    $assert($schema->hasColumn('v2_server_v2node','parent_id') && !$schema->hasColumn('v2_server_v2node','service_id'),'Preflight checks both backends before changing either schema');
+    $assert($schema->hasColumn('v2_server_v2box','parent_id') && !$schema->hasColumn('v2_server_v2box','service_id'),'Preflight checks both backends before changing either schema');
     $db->table('v2_server_v2box')->where('id',44)->delete();
     $db->table('v2_server_v2box')->where('id',43)->update(['tls_settings'=>'{"server_name":"different.example.test"}']);
     try {$topologyMigration->up();throw new LogicException('Different TLS identity silently replaced');}
@@ -98,7 +98,7 @@ try {
     $db->table('v2_server_v2box')->where('id',43)->update(['tls_settings'=>'{"server_name":"tls.example.test"}']);
     $tables[]='v2_node_connection';
     $topologyMigration->up();$topologyMigration->up();
-    foreach(['v2_server_v2node','v2_server_v2box'] as $table) {
+    foreach(['v2_server_v2box'] as $table) {
         $line=$db->table($table)->where('id',43)->first();
         $assert(!$schema->hasColumn($table,'parent_id') && $schema->hasColumn($table,'service_id'),'Legacy hierarchy column retired');
         $assert($schema->hasColumn($table,'region_code') && $schema->hasColumn($table,'city_code') && $schema->hasColumn($table,'display_label'),'Both service backends have complete display metadata');
@@ -107,6 +107,27 @@ try {
     }
     $assert($schema->hasColumn('v2_node_connection','published') && $schema->hasColumn('v2_node_connection','draft'),'Draft and published connection state stored independently');
     $assert(!str_contains($sql,'`parent_id`') && str_contains($sql,'`service_id`'),'Fresh installation uses service association only');
+    $retire=require __DIR__.'/../database/migrations/2026_10_27_000001_retire_v2node.php';
+    $schema->create('v2_server_v2node',fn(Blueprint $t)=>$t->integer('id'));
+    $tables[]='v2_server_v2node';
+    $db->table('v2_server_v2node')->insert(['id'=>42]);
+    foreach ($retire::REFERENCES as $table=>$column) {
+        $schema->dropIfExists($table);
+        $schema->create($table, function(Blueprint $t)use($column){$t->integer('id');$t->string($column,16)->default('v2node');});
+        $tables[]=$table;
+        $db->table($table)->insert([['id'=>10,$column=>'v2node'],['id'=>11,$column=>'v2box']]);
+    }
+    $retire->up();$retire->up();
+    $assert(!$schema->hasTable('v2_server_v2node'),'Retired node table removed idempotently');
+    foreach ($retire::REFERENCES as $table=>$column) {
+        $assert(!$db->table($table)->where($column,'v2node')->exists() && $db->table($table)->where($column,'v2box')->count()===1,'Only retired configuration removed from '.$table);
+    }
+    $assert((int)$db->table('v2_server_v2box')->where('id',42)->value('id')===42,'V2Box identity survives retirement');
+    $assert((int)$db->table('v2_stat_server')->value('id')===42,'Shared accounting history survives retirement');
+    $db->table('v2_server_route')->insert(['id'=>12]);
+    $assert($db->table('v2_server_route')->where('id',12)->value('backend')==='v2box','Upgrade defaults routes to V2Box');
+    try{$retire->down();throw new RuntimeException('Retirement rollback would fabricate lost records');}
+    catch(LogicException $e){$checks++;}
 }finally{
     foreach($authServices as $authService)$authService->removeAllSession();
     DB::setDefaultConnection($originalConnection);

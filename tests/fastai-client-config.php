@@ -24,7 +24,7 @@ try {
         'uuid'=>(string)Illuminate\Support\Str::uuid(), 'token'=>Illuminate\Support\Str::random(32),
         'plan_id'=>1, 'group_id'=>98765, 'transfer_enable'=>1073741824, 'expired_at'=>time()+86400, 'credit_balance'=>1073741824,
     ]);
-    App\Models\ServerV2node::create([
+    App\Models\ServerV2box::create([
         'group_id'=>[98765], 'name'=>'FastAI test node', 'rate'=>'1',
         'host'=>'node.example.com', 'port'=>'443', 'server_port'=>443,
         'cipher'=>'aes-128-gcm', 'show'=>1, 'sort'=>1, 'protocol'=>'shadowsocks', 'tls'=>0, 'network'=>'tcp', 'up_mbps'=>0, 'down_mbps'=>0,
@@ -106,10 +106,10 @@ try {
     foreach ($previews as $item) {
         $assert(count(array_diff(array_keys($item), ['nodeId','proxyName','name','regionCode','cityCode','displayLabel','tags','displayNames']))===0, 'Preview exposes only display fields');
     }
-    App\Models\ServerV2node::where('name', 'FastAI test node')->update(['show'=>0]);
+    App\Models\ServerV2box::where('name', 'FastAI test node')->update(['show'=>0]);
     $hiddenPreview = $call('/api/v10/me/node-previews', $token, 'GET', 'application/json');
     $assert(!in_array('FastAI test node', array_column(json_decode($hiddenPreview->getContent(), true)['data'], 'name')), 'Hidden nodes never appear in previews');
-    App\Models\ServerV2node::where('name', 'FastAI test node')->update(['show'=>1]);
+    App\Models\ServerV2box::where('name', 'FastAI test node')->update(['show'=>1]);
     $assert($call('/api/v10/me/node-previews')->getStatusCode()===401, 'Preview requires a session');
 
     $failedLog=App\Models\Log::where('title','Client configuration request')->latest('id')->first();

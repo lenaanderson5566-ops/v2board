@@ -5,7 +5,7 @@ use App\Services\NodeCredentials;
 use Illuminate\Http\Request;
 final class NodeCredentialController extends Controller {
     private function identity(Request $r): array {
-        return $r->validate(['type'=>'required|in:v2node,v2box','id'=>'required|integer|min:1']);
+        return $r->validate(['type'=>'required|in:v2box','id'=>'required|integer|min:1']);
     }
     private function verify(Request $r): int {
         abort_unless($r->isJson(),415);

@@ -152,7 +152,7 @@ it("shows group names across numeric/string IDs and remembers selected node colu
                     {
                         id: 1,
                         name: "Node A",
-                        type: "v2node",
+                        type: "v2box",
                         group_id: ["1", 2, 99],
                     },
                     {
@@ -199,7 +199,7 @@ it("shows group names across numeric/string IDs and remembers selected node colu
     fireEvent.click(screen.getByRole("button", { name: "恢复默认展示" }));
     expect(screen.queryByRole("columnheader", { name: "权限组" })).toBeNull();
 });
-it.each(["v2node", "v2box"])(
+it.each(["v2box"])(
     "opens, edits and saves a persisted %s node on HTTP",
     async (backend) => {
         vi.stubGlobal("structuredClone", undefined);
@@ -258,12 +258,12 @@ it.each(["v2node", "v2box"])(
         expect(screen.getByDisplayValue("node.example")).toBeTruthy();
         expect(
             screen.getByText(
-                backend === "v2box" ? "Singbox only" : "Xray only",
+                "Singbox only",
             ),
         ).toBeTruthy();
         expect(
             screen.queryByText(
-                backend === "v2box" ? "Xray only" : "Singbox only",
+                "Xray only",
             ),
         ).toBeNull();
         fireEvent.click(screen.getByRole("button", { name: "保存节点配置" }));
@@ -282,6 +282,7 @@ it.each(["v2node", "v2box"])(
     },
 );
 it("filters the catalog and preserves sing-box ownership when editing", async () => {
+    localStorage.setItem(`admin.columns.${resources.routes.fetch}`, JSON.stringify(["backend"]));
     api.request.mockImplementation(async (path: string) => {
         if(path.endsWith("dictionary/fetch")) return adminPageFixture(path);
         if(path.endsWith("server/ddns/fetch")) return {data:{assignments:[],servers:[],credentials:[]}};
@@ -313,10 +314,11 @@ it("filters the catalog and preserves sing-box ownership when editing", async ()
         throw new Error(`Unexpected endpoint: ${path}`);
     });
     render(<ResourcePage resource={resources.routes} />);
-    fireEvent.change(screen.getByLabelText("路由内核"), {
-        target: { value: "v2box" },
-    });
+    expect(await screen.findByRole("columnheader", { name: "备注" })).toBeTruthy();
+    expect(screen.queryByLabelText("路由内核")).toBeNull();
+    expect(screen.queryByRole("columnheader", { name: "适用内核" })).toBeNull();
     fireEvent.click(await screen.findByRole("button", { name: "编辑" }));
+    expect(screen.queryByLabelText("适用内核")).toBeNull();
     fireEvent.change(await screen.findByDisplayValue("Native rule"), {
         target: { value: "Edited native rule" },
     });
@@ -334,79 +336,23 @@ it("filters the catalog and preserves sing-box ownership when editing", async ()
     );
 });
 
-it.each(["v2node", "v2box"])(
-    "converts saved %s through the target save endpoint",
-    async (source) => {
-        const target = source === "v2node" ? "v2box" : "v2node";
-        let converted = false;
-        api.request.mockImplementation(async (path: string) => {
-        if(path.endsWith("dictionary/fetch")) return adminPageFixture(path);
-        if(path.endsWith("server/ddns/fetch")) return {data:{assignments:[],servers:[],credentials:[]}};
-            if (path.includes("console/nodeSchema"))
-                return {
-                    data: {
-                        name: "required",
-                        protocol: "required|in:vless",
-                        route_id: "nullable|array",
-                        group_id: "required|array",
-                    },
-                };
-            if (path.endsWith("server/group/fetch"))
-                return { data: [{ id: 1, name: "Group" }] };
-            if (path.endsWith("server/route/fetch")) return { data: [] };
-            if (path.endsWith("server/manage/getNodes"))
-                return {
-                    data: [
-                        {
-                            id: converted ? 41 : 7,
-                            name: "Convert node",
-                            type: converted ? target : source,
-                            protocol: "vless",
-                            group_id: [1],
-                            route_id: [],
-                            install_command: converted
-                                ? "install-new-node"
-                                : undefined,
-                        },
-                    ],
-                };
-            if (path.endsWith(`/server/${target}/save`)) {
-                converted = true;
-                return { data: { id: 41, type: target } };
-            }
-            throw new Error(`Unexpected endpoint: ${path}`);
-        });
-        render(<Nodes/>);
-        fireEvent.click(await screen.findByRole("button", { name: "编辑" }));
-        fireEvent.click(screen.getByRole("button",{name:"连接与协议"}));
-        await screen.findByText(/此处维护协议、监听和证书/);
-        fireEvent.click(screen.getByRole("button", { name: "转换节点类型…" }));
-        vi.spyOn(window, "confirm").mockReturnValue(true);
-        fireEvent.change(screen.getByLabelText("节点类型"), {
-            target: { value: target },
-        });
-        await screen.findByText(/此处维护协议、监听和证书/);
-        fireEvent.click(
-            await screen.findByRole("button", { name: "确认转换并保存" }),
-        );
-        await waitFor(() =>
-            expect(api.request).toHaveBeenCalledWith(
-                `test-admin/server/${target}/save`,
-                expect.objectContaining({
-                    source_type: source,
-                    source_id: 7,
-                    route_id: [],
-                }),
-            ),
-        );
-        const body = api.request.mock.calls.find(([path]) =>
-            path.endsWith(`/server/${target}/save`),
-        )![1];
-        expect(body.id).toBeUndefined();
-        if (target === "v2box") expect(screen.queryByText("install-new-node")).toBeNull();
-        else expect(await screen.findByText("install-new-node")).toBeTruthy();
-    },
-);
+it("creates native routing rules without a backend selector", async () => {
+    api.request.mockImplementation(async (path: string) => {
+        if (path.includes("server/route/fetch")) return { data: [] };
+        if (path.endsWith("server/route/save")) return { data: true };
+        return { data: [] };
+    });
+    render(<ResourcePage resource={resources.routes} />);
+    fireEvent.click(screen.getByRole("button", { name: "新建" }));
+    expect(screen.queryByLabelText("适用内核")).toBeNull();
+    expect(screen.getByRole("combobox", { name: "动作" })).toHaveProperty("value", "sing_box");
+    fireEvent.change(screen.getByLabelText("备注"), { target: { value: "New native rule" } });
+    fireEvent.click(screen.getByRole("button", { name: "保存" }));
+    await waitFor(() => expect(api.request).toHaveBeenCalledWith("test-admin/server/route/save", expect.objectContaining({
+        backend: "v2box", action: "sing_box", remarks: "New native rule", sing_box: { route: { rules: [] } },
+    })));
+});
+
 
 it("guides deployment to panel-managed DDNS", async () => {
     api.request.mockImplementation(async (path: string) => {
@@ -504,7 +450,7 @@ it("saves an AnyTLS preset through the real node form", async () => {
     expect(saved.padding_preset).toBeUndefined();
 });
 
-it("filters nodes by name, backend and exhausted server budget", async () => {
+it("filters nodes by name and exhausted server budget", async () => {
     api.request.mockImplementation(async (path: string) => ({
         data: path.endsWith("server/manage/getNodes")
             ? [
@@ -523,7 +469,7 @@ it("filters nodes by name, backend and exhausted server budget", async () => {
                   {
                       id: 32,
                       name: "Legacy healthy",
-                      type: "v2node",
+                      type: "v2box",
                       host: "healthy.example",
                       group_id: [],
                   },
@@ -534,10 +480,7 @@ it("filters nodes by name, backend and exhausted server budget", async () => {
     }));
     render(<Nodes/>);
     await screen.findByText("Budget restricted");
-    fireEvent.change(screen.getByRole("combobox", { name: "筛选节点类型" }), {
-        target: { value: "v2box" },
-    });
-    expect(screen.queryByText("Legacy healthy")).toBeNull();
+    expect(screen.getByText("Legacy healthy")).toBeTruthy();
     fireEvent.click(screen.getByLabelText("仅显示额度受限服务"));
     expect(screen.getByText("Budget restricted")).toBeTruthy();
     fireEvent.change(screen.getByLabelText("搜索节点"), {
@@ -796,7 +739,6 @@ it("distinguishes configuration errors, DNS progress and confirmed runtime",()=>
     expect(nodeDeploymentStage(node,{runtimeStatus:"offline"},undefined,true)).toMatchObject({title:"节点通信中断",terminal:true});
     expect(nodeDeploymentStage(node,{runtimeStatus:"online",applicationState:"applied"},{managed:false,family:"ipv4"},true).title).toBe("服务运行正常");
     expect(nodeDeploymentStage(node,{runtimeStatus:"online",applicationState:"applied"},{managed:true,enabled:false,family:"ipv4"},true)).toMatchObject({target:"domain",terminal:true});
-    expect(nodeDeploymentStage({...node,type:"v2node"},{runtimeStatus:"online",configurationState:"provided"},undefined,true).title).toBe("节点已接入，待实际验证");
     expect(nodeDeploymentStage(node,{runtimeStatus:"online",receiptSupported:false},undefined,true).target).toBe("upgrade");
 });
 it("pauses deployment polling after fifteen minutes and stops while hidden",async()=>{
@@ -839,13 +781,13 @@ it("keeps sensitive node changes in the form when confirmation is cancelled",asy
 
 function unifiedCreationFixture(empty=false) {
     let saved: Record<string, any> | null=null;
-    const services=empty?[]:[{id:1,type:"v2box",name:"Box service",protocol:"anytls",server_port:9443,group_id:[7]},{id:1,type:"v2node",name:"Xray service",protocol:"vless",server_port:8443,group_id:[7]}];
+    const services=empty?[]:[{id:1,type:"v2box",name:"Box service",protocol:"anytls",server_port:9443,group_id:[7]},{id:4,type:"v2box",name:"Other existing service",protocol:"vless",server_port:8443,group_id:[7]}];
     api.request.mockImplementation(async(path:string,body?:Record<string, any>)=>{
         if(path.endsWith("dictionary/fetch"))return adminPageFixture(path);
         if(path.endsWith("server/manage/getNodes"))return {data:[...services,...(saved?[{id:99,type:saved.type,service_id:saved.service_id,name:saved.name,group_id:saved.group_id}]:[])]};
         if(path.endsWith("server/group/fetch"))return {data:[{id:7,name:"Subscribers"}]};
         if(path.includes("console/nodeSchema"))return {data:{name:"required",host:"required",port:"required",server_port:"required",protocol:"required|in:vless,anytls",tls:"required|in:0,1",group_id:"nullable|array"}};
-        if(path.endsWith("server/ddns/fetch"))return {data:{servers:[],credentials:[],assignments:[{id:2,node_type:"v2box",node_id:1,domain:"box.example.test"},{id:3,node_type:"v2node",node_id:1,domain:"xray.example.test"}]}};
+        if(path.endsWith("server/ddns/fetch"))return {data:{servers:[],credentials:[],assignments:[{id:2,node_type:"v2box",node_id:1,domain:"box.example.test"},{id:3,node_type:"v2box",node_id:3,domain:"other.example.test"}]}};
         if(path.endsWith("connections/save")){saved=body || {};return {data:{id:99}};}
         if(path.includes("connections/fetch"))return {data:{id:99,revision:1,draft:saved,plan:{dns_ready:false},published:null}};
         return {data:[]};
@@ -857,13 +799,13 @@ it("keeps node creation canonical and links service operations back to it",async
     fireEvent.click(screen.getByRole("button",{name:"新增节点"}));
     expect(screen.getByRole("button",{name:"为现有节点添加连接线路"}).closest("details")?.open).toBe(false);
     expect(screen.getByText("高级：共用现有节点的服务").closest("details")?.open).toBe(false);
-    expect(await screen.findByRole("combobox",{name:"节点类型"})).toBeTruthy();
+    expect(screen.queryByRole("combobox",{name:"节点类型"})).toBeNull();
     expect(screen.queryByRole("button",{name:"新增代理服务"})).toBeNull();
     view.unmount();render(<Nodes/>);
     expect(screen.getByRole("button",{name:"新增节点"})).toBeTruthy();
     expect(screen.queryByRole("link",{name:"前往新增节点"})).toBeNull();
 });
-it.each(["v2box","v2node"])("creates a reused %s route in one drawer without deploying another service",async backend=>{
+it.each(["v2box"])("creates a reused %s route in one drawer without deploying another service",async backend=>{
     unifiedCreationFixture();render(<Nodes/>);
     await screen.findByText("Box service");
     fireEvent.click(screen.getByRole("button",{name:"新增节点"}));
@@ -889,7 +831,7 @@ it("protects the reused route draft when switching creation methods",async()=>{
     fireEvent.click(screen.getByRole("button",{name:"独立部署新节点"}));
     expect(confirm).toHaveBeenCalled();expect(screen.getByLabelText("节点名称")).toHaveProperty("value","Unsaved route");
     confirm.mockReturnValue(true);fireEvent.click(screen.getByRole("button",{name:"独立部署新节点"}));
-    expect(await screen.findByRole("combobox",{name:"节点类型"})).toBeTruthy();expect(screen.getByLabelText("节点名称")).toHaveProperty("value","");
+    expect(screen.queryByRole("combobox",{name:"节点类型"})).toBeNull();expect(screen.getByLabelText("节点名称")).toHaveProperty("value","");
 });
 it("explains when no existing service can be reused and keeps saving disabled",async()=>{
     unifiedCreationFixture(true);render(<Nodes/>);fireEvent.click(screen.getByRole("button",{name:"新增节点"}));fireEvent.click(screen.getByText("高级：共用现有节点的服务"));fireEvent.click(screen.getByRole("button",{name:"为现有节点添加连接线路"}));
@@ -916,7 +858,6 @@ it("preflights relay TLS, entry availability and separate physical servers",()=>
     expect(fields.find(f=>f.key==="setup_server_id")?.options?.map(([id])=>id)).toEqual([""]);
     expect(nodeSetupPayload({...values,setup_access_mode:"direct"})).not.toHaveProperty("entry_id");
     expect(nodeConfigurationProblems({...values,setup_entry_id:"",setup_entry_port:70000},"v2box",network).map(p=>p.key)).toEqual(expect.arrayContaining(["setup_entry_id","setup_entry_port"]));
-    expect(nodeSetupFields([],values,network,"v2node").map(f=>f.key)).not.toContain("setup_access_mode");
 });
 
 it("keeps a ready proxy service usable without claiming forwarding verification",()=>{
@@ -939,7 +880,7 @@ it("opens domain and forwarding settings directly from an ingress action",async(
 function responsibilityFixture(){
     api.request.mockImplementation(async(path:string)=>path.endsWith("server/manage/getNodes")?{data:[
         {id:1,type:"v2box",name:"Box service",protocol:"anytls",server_port:9443,host:"box.example.test",port:443,show:1,group_id:[1],runtime_status:"online",online:5,last_push_at:1761350400},
-        {id:1,type:"v2node",name:"Xray service",protocol:"vless",server_port:8443,host:"xray.example.test",port:443,show:0,group_id:[1]},
+        {id:4,type:"v2box",name:"Other existing service",protocol:"vless",server_port:8443,host:"other.example.test",port:443,show:0,group_id:[1]},
         {id:2,type:"v2box",service_id:1,name:"Shared route",host:"entry.example.test",port:8443,show:1,group_id:[1],runtime_status:"online",online:5,last_push_at:1761350400}
     ]}:String(path).includes("connections/fetch")?{data:{revision:1,draft:{service_id:1,entry_id:null,entry_port:443,name:"Shared route",group_id:[1],show:1},plan:{dns_ready:false}}}:String(path).includes("server/credentials")?{data:{keys:[]}}:path.endsWith("server/group/fetch")?{data:[{id:1,name:"Basic"}]}:path.endsWith("dictionary/fetch")?adminPageFixture(path):{data:[]});
 }
@@ -963,8 +904,8 @@ it("uses one node list with line, shared service and deployment sections",async(
     expect(api.request.mock.calls.some(([path])=>String(path).includes("server/credentials?type=v2box&id=2"))).toBe(false);
 });
 it("opens backend-specific service configuration from the unified node URL",async()=>{
-    responsibilityFixture();history.replaceState(null,"",`${location.pathname}#/nodes?service=v2node%3A1`);
-    render(<Nodes/>);expect(await screen.findByText("节点服务：V2Node / Xray")).toBeTruthy();
+    responsibilityFixture();history.replaceState(null,"",`${location.pathname}#/nodes?service=v2box%3A4`);
+    render(<Nodes/>);expect(await screen.findByText("节点服务：V2Box / sing-box")).toBeTruthy();
     expect(screen.getAllByRole("dialog")).toHaveLength(1);
     expect(screen.getByRole("button",{name:"节点信息"})).toBeTruthy();
 });
@@ -1028,7 +969,7 @@ it.each(["managed","manual"])("keeps %s creation fields aligned with the line an
     const line=nodeLineFields([{id:1,name:"Basic"}],{regions:{JP:{"zh-CN":"日本"}},cities:{},cityRegions:{},locationKinds:{}});
     const service=[{key:"protocol",label:"协议"},{key:"server_port",label:"old port"},{key:"tls",label:"TLS"}];
     const source=[...line,...service,{key:"host",label:"old host"},{key:"port",label:"old port"}];
-    const fields=nodeSetupFields(source,{setup_mode:mode,tls:0},{},"v2box",line);
+    const fields=nodeSetupFields(source,{setup_mode:mode,tls:0},{},line);
     expect(fields.slice(0,line.length).map(f=>[f.key,f.label])).toEqual(line.map(f=>[f.key,f.label]));
     expect(fields.filter(f=>f.key==="server_port")).toHaveLength(1);
     expect(fields.find(f=>f.key==="server_port")?.label).toBe(nodeServiceFields(service).find(f=>f.key==="server_port")?.label);
@@ -1156,7 +1097,7 @@ it("defaults a new shared-service node to the exit region while preserving its i
  expect(screen.getByLabelText("国家 / 地区")).toHaveProperty("value","JP");expect(screen.getByLabelText(/^州、省或城市/)).toHaveProperty("value","JP-13");
  expect(screen.getByLabelText("节点名称")).toHaveProperty("value","Japan via Hong Kong");
  fireEvent.change(screen.getByLabelText("国家 / 地区"),{target:{value:"US"}});
- fireEvent.change(screen.getByLabelText("代理服务"),{target:{value:"v2node:1"}});
+ fireEvent.change(screen.getByLabelText("代理服务"),{target:{value:"v2box:4"}});
  expect(screen.getByLabelText("国家 / 地区")).toHaveProperty("value","US");expect(screen.getByLabelText("节点名称")).toHaveProperty("value","Japan via Hong Kong");
  fireEvent.change(screen.getByLabelText("国家 / 地区"),{target:{value:""}});
  fireEvent.change(screen.getByLabelText("代理服务"),{target:{value:"v2box:1"}});

@@ -20,6 +20,7 @@ Illuminate\Support\Facades\DB::beginTransaction();
 $auth = null;
 $failure = null;
 try {
+    config(['v2board.app_url'=>'https://site.example.test']);
     $user = App\Models\User::create([
         'email' => 'console-smoke-' . bin2hex(random_bytes(5)) . '@example.com',
         'password' => password_hash(bin2hex(random_bytes(16)), PASSWORD_DEFAULT),
@@ -156,8 +157,8 @@ try {
     $rules = json_decode($response->getContent(), true)['data'] ?? [];
     $assert($response->getStatusCode() === 200 && ($rules['email_verify'] ?? '') === 'in:0,1' && ($rules['reset_traffic_method'] ?? '') === 'in:0,1,2,3,4', 'Configuration control schema failed');
     $assert(($rules['passkey_enable'] ?? '') === 'in:0,1' && !isset($rules['recaptcha_enable'],$rules['recaptcha_key'],$rules['recaptcha_site_key']), 'Passkey replaces retired CAPTCHA settings');
-    $assert($call('/api/v1/' . $securePath . '/console/nodeSchema?type=v2node')->getStatusCode() === 403, 'Node schema must require admin authentication');
-    foreach (['v2node', 'v2box'] as $type) {
+    $assert($call('/api/v1/' . $securePath . '/console/nodeSchema?type=v2box')->getStatusCode() === 403, 'Node schema must require admin authentication');
+    foreach (['v2box'] as $type) {
         $response = $call('/api/v1/' . $securePath . '/console/nodeSchema?type=' . $type, null, $token);
         $rules = json_decode($response->getContent(), true)['data'] ?? [];
         $assert($response->getStatusCode() === 200 && isset($rules['host'], $rules['name'], $rules['group_id']), 'Node schema failed: ' . $type);
@@ -166,20 +167,20 @@ try {
     $group->name = 'console-smoke-group';
     $group->save();
     $nodeParams = ['name' => 'console-smoke-node', 'group_id' => [$group->id], 'host' => 'example.invalid', 'port' => '443', 'server_port' => 443, 'rate' => 1, 'protocol' => 'vless', 'tls' => 1, 'network' => 'ws', 'disable_sni' => 0, 'zero_rtt_handshake' => 0, 'show' => 0, 'tls_settings' => ['server_name' => 'example.invalid', 'allow_insecure' => 0], 'network_settings' => ['path' => '/test', 'headers' => ['Host' => 'example.invalid']]];
-    $response = $call('/api/v1/' . $securePath . '/server/v2node/save', $nodeParams, $token);
+    $response = $call('/api/v1/' . $securePath . '/server/v2box/save', $nodeParams, $token);
     $assert($response->getStatusCode() === 200, 'Structured node save failed: ' . $response->getContent());
-    $node = App\Models\ServerV2node::where('name', 'console-smoke-node')->first();
+    $node = App\Models\ServerV2box::where('name', 'console-smoke-node')->first();
     $assert($node && $node->tls_settings['server_name'] === 'example.invalid' && $node->network_settings['headers']['Host'] === 'example.invalid', 'Structured node values did not persist');
     $updated = $nodeParams + ['id' => $node->id, 'region_code' => 'us', 'city_code' => 'San Jose', 'display_label' => 'A'];
     $updated['host'] = 'updated.example.invalid';
-    $response = $call('/api/v1/' . $securePath . '/server/v2node/save', $updated, $token);
+    $response = $call('/api/v1/' . $securePath . '/server/v2box/save', $updated, $token);
     $assert($response->getStatusCode() === 200, 'Updated address and location save failed');
     $assert($node->fresh()->host==='example.invalid','Protocol editing preserves the independent connection address');
-    $address=json_decode($call('/api/v1/'.$securePath.'/server/connections/address?type=v2node&id='.$node->id,null,$token)->getContent(),true)['data'];
-    $response=$call('/api/v1/'.$securePath.'/server/connections/address',['type'=>'v2node','id'=>$node->id,'revision'=>$address['revision'],'host'=>'updated.example.invalid','port'=>'443','confirm'=>true],$token,null,'application/json','PATCH');
+    $address=json_decode($call('/api/v1/'.$securePath.'/server/connections/address?type=v2box&id='.$node->id,null,$token)->getContent(),true)['data'];
+    $response=$call('/api/v1/'.$securePath.'/server/connections/address',['type'=>'v2box','id'=>$node->id,'revision'=>$address['revision'],'host'=>'updated.example.invalid','port'=>'443','confirm'=>true],$token,null,'application/json','PATCH');
     $assert($response->getStatusCode()===200 && $node->fresh()->host==='updated.example.invalid','Dedicated address editing persists the connection address');
-    $line=json_decode($call('/api/v1/'.$securePath.'/server/connections/default?type=v2node&id='.$node->id,null,$token)->getContent(),true)['data'];
-    $values=array_merge($line['values'],['type'=>'v2node','id'=>$node->id,'revision'=>$line['revision'],'region_code'=>'us','city_code'=>'San Jose','display_label'=>'A']);
+    $line=json_decode($call('/api/v1/'.$securePath.'/server/connections/default?type=v2box&id='.$node->id,null,$token)->getContent(),true)['data'];
+    $values=array_merge($line['values'],['type'=>'v2box','id'=>$node->id,'revision'=>$line['revision'],'region_code'=>'us','city_code'=>'San Jose','display_label'=>'A']);
     $response=$call('/api/v1/'.$securePath.'/server/connections/default',$values,$token,null,'application/json','PATCH');
     $node->refresh();
     $assert($response->getStatusCode()===200 && $node->region_code==='US' && $node->city_code==='san-jose' && $node->display_label==='A','Line editing persists normalized location independently');
@@ -196,16 +197,16 @@ try {
         'tuic' => ['udp_relay_mode' => 'quic', 'congestion_control' => 'bbr'],
         'anytls' => ['padding_scheme' => '["stop=8","0=30-30"]'],
     ];
-    foreach (['v2node', 'v2box'] as $backend) foreach ($nodeVariants as $kind => $variant) {
+    foreach (['v2box'] as $backend) foreach ($nodeVariants as $kind => $variant) {
         $body = array_merge(['name' => 'console-smoke-' . $backend . '-' . $kind, 'protocol' => $kind, 'group_id' => [$group->id], 'route_id' => [], 'host' => 'example.invalid', 'port' => '443', 'server_port' => 443, 'rate' => 1, 'show' => 0, 'tls' => 1, 'network' => 'tcp', 'disable_sni' => 0, 'zero_rtt_handshake' => 0], $variant);
         $response = $call('/api/v1/' . $securePath . '/server/' . $backend . '/save', $body, $token);
         $assert($response->getStatusCode() === 200, 'Node variant save failed: ' . $backend . '/' . $kind . ': ' . $response->getContent());
     }
-    $assert(App\Models\ServerV2node::where('name', 'console-smoke-v2node-anytls')->first()->padding_scheme === ['stop=8', '0=30-30'], 'AnyTLS padding JSON failed to round-trip');
+    $assert(App\Models\ServerV2box::where('name', 'console-smoke-v2box-anytls')->first()->padding_scheme === ['stop=8', '0=30-30'], 'AnyTLS padding JSON failed to round-trip');
     $assert(App\Models\ServerV2box::where('name', 'console-smoke-v2box-tuic')->first()->congestion_control === 'bbr', 'TUIC option did not persist');
     $response = $call('/api/v1/' . $securePath . '/server/manage/getNodes', null, $token);
     $savedNodes = json_decode($response->getContent(), true)['data'] ?? [];
-    foreach (['v2node', 'v2box'] as $kind) {
+    foreach (['v2box'] as $kind) {
         $matches = array_filter($savedNodes, function ($item) use ($kind) { return $item['type'] === $kind && strpos($item['name'], 'console-smoke-') === 0; });
         $assert($response->getStatusCode() === 200 && count($matches) > 0, 'Saved node did not reload: ' . $kind);
     }
@@ -253,7 +254,7 @@ try {
         fclose($pipes[0]);$freshHost=stream_get_contents($pipes[1]);stream_get_contents($pipes[2]);fclose($pipes[1]);fclose($pipes[2]);
         $assert(proc_close($probe)===0 && $freshHost===$expectedHost, 'A fresh application process immediately uses the saved node API address');
         config(['v2board.server_api_url'=>$persisted['server_api_url']]);
-        foreach ((new App\Services\ServerService())->getAllV2node('v2box') as $deploymentNode) {
+        foreach ((new App\Services\ServerService())->getAllV2box('v2box') as $deploymentNode) {
             if (!empty($deploymentNode['service_id'])) continue;
             foreach (['install_command','upgrade_command'] as $commandField) {
                 $command=$deploymentNode[$commandField];
@@ -268,7 +269,7 @@ try {
     $nodeParams['network'] = 'grpc';
     $nodeParams['tls_settings'] = ['server_name' => 'example.invalid'];
     $nodeParams['network_settings'] = ['serviceName' => 'test-service'];
-    $response = $call('/api/v1/' . $securePath . '/server/v2node/save', $nodeParams, $token);
+    $response = $call('/api/v1/' . $securePath . '/server/v2box/save', $nodeParams, $token);
     $node->refresh();
     $assert($response->getStatusCode() === 200 && !empty($node->tls_settings['public_key']) && !empty($node->tls_settings['private_key']) && $node->network_settings['serviceName'] === 'test-service', 'Reality/gRPC mode transition failed');
     foreach (['coupon' => ['type' => 2, 'value' => 20, 'limit_plan_ids' => [], 'limit_period' => ['month_price']], 'giftcard' => ['type' => 4]] as $kind => $params) {
@@ -277,9 +278,9 @@ try {
         $payload = json_decode($response->getContent(), true);
         $assert($response->getStatusCode() === 200 && ($payload['generated_count'] ?? 0) === 2 && ($payload['data'] ?? null) === true, 'Batch JSON generation failed: ' . $kind);
     }
-    foreach (['v2node', 'v2box'] as $nodeType) {
+    foreach (['v2box'] as $nodeType) {
         $model = 'App\\Models\\Server' . ucfirst($nodeType);
-        $originalNode = $model::where('name', $nodeType === 'v2node' ? 'console-smoke-node' : 'console-smoke-' . $nodeType . '-vless')->first();
+        $originalNode = $model::where('name', 'console-smoke-' . $nodeType . '-vless')->first();
         $response = $call('/api/v1/' . $securePath . '/server/' . $nodeType . '/update', ['id' => $originalNode->id, 'show' => 1], $token);
         $assert($response->getStatusCode() === 200 && $originalNode->refresh()->show == 1, 'Node visibility failed: ' . $nodeType);
         $beforeIds = $model::pluck('id')->all();
@@ -363,7 +364,7 @@ try {
     $response = $call('/api/v1/' . $securePath . '/payment/drop', ['id' => $payment2->id], $token);
     $assert($response->getStatusCode() === 200 && !App\Models\Payment::find($payment2->id), 'Payment deletion failed');
     $vmess = App\Models\ServerV2box::where('name', 'console-smoke-v2box-vmess')->first();
-    $response = $call('/api/v1/' . $securePath . '/server/manage/sort', ['v2node' => [$node->id => 2], 'v2box' => [$vmess->id => 1]], $token);
+    $response = $call('/api/v1/' . $securePath . '/server/manage/sort', ['v2box' => [$node->id => 2, $vmess->id => 1]], $token);
     $assert($response->getStatusCode() === 200 && $node->refresh()->sort == 2 && $vmess->refresh()->sort == 1, 'Cross-backend node order failed: ' . $response->getContent());
     $maintenanceUrl='/api/v1/'.$securePath.'/server/manage/maintenance';
     $maintenanceInput=['type'=>'v2box','id'=>$vmess->id,'enabled'=>true,'reason'=>'升级维护','endsAt'=>time()+3600,'hideSubscription'=>true];

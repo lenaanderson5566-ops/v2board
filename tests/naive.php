@@ -19,9 +19,7 @@ try {
         try{$admin->save(Request::create('/','POST',array_replace_recursive($base,$invalid,['id'=>$node->id])));throw new RuntimeException('Invalid Naive settings accepted');}
         catch(Illuminate\Validation\ValidationException $e){$checks++;}
     }
-    try{(new App\Http\Controllers\V1\Admin\Server\V2nodeController())->save(Request::create('/','POST',$base));throw new RuntimeException('V2Node accepted Naive');}
-    catch(Illuminate\Validation\ValidationException $e){$checks++;}
-    foreach (['v2node','v2box'] as $backend) {
+    foreach (['v2box'] as $backend) {
         $schema=json_decode((new App\Http\Controllers\V1\Admin\ConsoleController())->nodeSchema(Request::create('/','GET',['type'=>$backend]))->getContent(),true)['data'];
         $assert(str_contains($schema['protocol'],'naive')===($backend==='v2box'),'Naive offered only for V2Box');
     }

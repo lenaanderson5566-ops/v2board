@@ -6,6 +6,9 @@ import { automaticDomainMessages } from "./node-domain-progress";
 import { NodeTopology } from "./NodeTopology";
 import { relayStreamConfig } from "./node-relay";
 import { useNodeCatalog } from "./node-dictionary";
+import { NodeIdentityFields } from "./NodeIdentityFields";
+import { linkNodeLocation } from "./node-line-fields";
+import { AdminMultiSelect } from "./admin-multiselect";
 
 export function NodeConnectionEditor({ node, nodes, groups = [], close, onSaved, onPublished, embedded=false, onDirty, onBusyChange, onCreated, navigation, pauseRefresh=false, view="all" }: { pauseRefresh?:boolean; view?:"all"|"line"|"path"; navigation?:(busy:boolean,dirty:boolean)=>ReactNode; node: Row; nodes: Row[]; groups?: Row[]; close: () => void; onSaved: () => void; onPublished?:()=>void; embedded?:boolean; onDirty?:(dirty:boolean)=>void; onBusyChange?:(busy:boolean)=>void; onCreated?:(node:Row)=>void }) {
     const [id, setId] = useState<number | undefined>(node.id);
@@ -15,7 +18,6 @@ export function NodeConnectionEditor({ node, nodes, groups = [], close, onSaved,
     const network = useData<Row>(admin("server/ddns/fetch"), undefined, false, { refreshOnEvents: false });
     const services = nodes.filter(n => !n.service_id && n.type === type);
     const [draft, setDraft] = useState<Row>({ name: "", service_id: node.service_id || "", entry_id: "", entry_port: 443, group_id: [], show: 1 });
-    const [tagsText, setTagsText] = useState("");
     const [loadedRevision, setLoadedRevision] = useState<number | null>(null);
     const [dirty, setDirty] = useState(!id && !embedded), [busy, setBusy] = useState(false), [error, setError] = useState("");
     const [confirmed, setConfirmed] = useState(false), [notice, setNotice] = useState("");
@@ -29,7 +31,7 @@ export function NodeConnectionEditor({ node, nodes, groups = [], close, onSaved,
         window.addEventListener("beforeunload", warn);
         return () => window.removeEventListener("beforeunload", warn);
     }, [dirty,embedded]);
-    useEffect(() => { if (existing.data && !dirty && !busy && loadedRevision !== (existing.data.revision ?? 0)) { setDraft(existing.data.draft); setLoadedRevision(existing.data.revision ?? 0); setTagsText((existing.data.draft.tags || []).join(", ")); setDirty(false); setConfirmed(false); } }, [existing.data,busy,dirty,loadedRevision]);
+    useEffect(() => { if (existing.data && !dirty && !busy && loadedRevision !== (existing.data.revision ?? 0)) { setDraft(existing.data.draft); setLoadedRevision(existing.data.revision ?? 0); setDirty(false); setConfirmed(false); } }, [existing.data,busy,dirty,loadedRevision]);
     const selectableServices=embedded && !id ? nodes.filter(n=>!n.service_id) : services;
     const service = services.find(s => Number(s.id) === Number(draft.service_id));
     const assignments: Row[] = network.data?.assignments || [], servers: Row[] = network.data?.servers || [];
@@ -61,12 +63,12 @@ export function NodeConnectionEditor({ node, nodes, groups = [], close, onSaved,
     },[id,dirty,busy,pauseRefresh,existing.loading,existing.error,existing.reload]);
     const config = savedPlan?.entry_id ? relayStreamConfig({ id: existing.data?.id, scope: "connection", domain: savedPlan.origin_domain, family: savedPlan.origin_family, entry_port: savedPlan.port }, { ...service, server_port: savedPlan.origin_port, protocol: savedPlan.protocol }, { family: savedPlan.entry_family }) : "";
     function change(key: string, value: unknown) {
-        if(key==="region_code")regionTouched.current=true;
-        setDraft(previous => ({...previous,[key]:value})); setDirty(true); setConfirmed(false); setNotice("");
+        if(["region_code","city_code"].includes(key))regionTouched.current=true;
+        setDraft(previous => linkNodeLocation(previous,key,value,catalog)); setDirty(true); setConfirmed(false); setNotice("");
     }
     function selectService(selected:Row | undefined) {
         if(selected)setType(selected.type);
-        setDraft(previous=>({...previous,service_id:selected?.id || "",group_id:selected?.group_id || [],...(!id && !regionTouched.current && !previous.region_code ? {region_code:selected?.region_code || null,city_code:selected?.city_code || null} : {})}));
+        setDraft(previous=>({...previous,service_id:selected?.id || "",group_id:selected?.group_id || [],...(!id && !regionTouched.current ? {region_code:selected?.region_code || null,city_code:selected?.city_code || null} : {})}));
         setDirty(true);setConfirmed(false);setNotice("");
     }
     function dismiss() { if (!busy && (!dirty || window.confirm("线路配置尚未保存，确认放弃修改？"))) close(); }
@@ -88,8 +90,8 @@ export function NodeConnectionEditor({ node, nodes, groups = [], close, onSaved,
             <div className="admin-deployment-card" data-unsaved={dirty || undefined} data-saving={busy || undefined}>
                 <div className="field-section">{view==="path" ? "接入路径" : "节点信息"}</div>
                 <p className="muted">当前节点独立命名并设置地区、城市和标签。国家／地区表示代理服务的出口位置，中转入口位置单独显示。</p>
+                {view!=="path" && <NodeIdentityFields values={draft} onChange={change} keys={["name"]} disabled={busy} />}
                 <div className="node-domain-form">
-                    {view!=="path" && <label>节点名称<input value={draft.name} disabled={busy} onChange={e => change("name", e.target.value)} /></label>}
                     {view!=="line" && <label>代理服务<select value={embedded && !id ? (draft.service_id ? `${type}:${draft.service_id}` : "") : draft.service_id || ""} disabled={busy} onChange={e => {
                         const selected=embedded && !id
                             ? selectableServices.find(s=>`${s.type}:${s.id}`===e.target.value)
@@ -102,19 +104,11 @@ export function NodeConnectionEditor({ node, nodes, groups = [], close, onSaved,
                     {!!draft.entry_id && !entry && <p role="status">请先在 <a href="#/servers" onClick={event=>{if(busy || (dirty && !confirm("离开将放弃未保存的线路配置，确认前往服务器管理？")))event.preventDefault();}}>服务器管理</a> 中添加可用的入口域名。</p>}
                     {!!draft.entry_id && <><label>入口域名<select value={draft.entry_id} disabled={busy} onChange={e => change("entry_id", e.target.value)}><option value="pending">选择入口</option>{entries.map(e => <option key={e.id} value={e.id}>{e.domain} · {servers.find(s => s.id === e.server_id)?.name}</option>)}</select></label><label>入口端口<input type="number" min={1} max={65535} value={draft.entry_port || ""} disabled={busy} onChange={e => change("entry_port", e.target.value)} /></label></>}
                     </>}
-                    {view!=="path" && <div><span>权限组</span><div className="option-group" role="group" aria-label="权限组">{(service?.group_id || []).map((g: number) => {
-                        const selected = (draft.group_id || []).map(Number).includes(Number(g));
-                        return <button type="button" role="checkbox" aria-checked={selected} disabled={busy} key={g} onClick={() => change("group_id", selected ? draft.group_id.filter((id: number) => Number(id) !== Number(g)) : [...draft.group_id, Number(g)])}><span className="option-check">{selected ? "✓" : ""}</span>{groups.find(group => Number(group.id) === Number(g))?.name || `权限组 #${g}`}</button>;
-                    })}</div></div>}
+                    {view!=="path" && <div role="group" aria-label="权限组"><span>权限组</span><div inert={busy}><AdminMultiSelect label="权限组" options={(service?.group_id || []).map((g: number) => [String(g), groups.find(group => Number(group.id) === Number(g))?.name || `权限组 #${g}`])} value={draft.group_id} onChange={value => change("group_id", value)} /></div><small className="muted">仅可选择关联代理服务开放的权限组；未选择权限组时，用户无法获取此线路。</small></div>}
                     {service && <p className="muted">计费倍率：{service.rate ?? 1}，随共享服务设置。协议、监听和证书在保存后通过“代理服务”维护。</p>}
                     {view!=="path" && <label>发布后展示<AdminSwitch label="发布后展示" checked={!!Number(draft.show)} disabled={busy} onChange={async value => change("show", Number(value))} /></label>}
                 </div>
-                {view!=="path" && <details open={view==="line"}><summary>节点展示信息</summary><div className="node-domain-form">
-                    <label>国家 / 地区<select value={draft.region_code || ""} disabled={busy} onChange={e => { change("region_code", e.target.value || null); change("city_code", null); }}><option value="">使用节点名称</option>{Object.entries(catalog.regions).map(([code, names]) => <option key={code} value={code}>{names["zh-CN"] || names["en-US"]}</option>)}</select></label>
-                    <label>州、省或城市<input value={draft.city_code || ""} list="connection-cities" disabled={busy} onChange={e => change("city_code", e.target.value || null)} /></label><datalist id="connection-cities">{Object.entries(catalog.cities).filter(([code]) => !draft.region_code || catalog.cityRegions[code] === draft.region_code).map(([code, names]) => <option key={code} value={code}>{names["zh-CN"] || names["en-US"]}</option>)}</datalist>
-                    <label>线路编号 / 后缀<input value={draft.display_label || ""} disabled={busy} onChange={e => change("display_label", e.target.value || null)} /></label>
-                    <label>标签（逗号分隔）<input value={tagsText} disabled={busy} onChange={e => { setTagsText(e.target.value); change("tags", e.target.value.split(/[,，]/).map(value => value.trim()).filter(Boolean)); }} /></label>
-                </div></details>}
+                {view!=="path" && <><div className="field-section">展示信息</div><NodeIdentityFields values={draft} onChange={change} keys={["region_code", "city_code", "display_label", "tags"]} disabled={busy} /></>}
                 <NodeTopology service={service} origin={origin} entry={draft.entry_id ? entry || {} : undefined} server={servers.find(s => s.id === origin?.server_id)} entryServer={servers.find(s => s.id === entry?.server_id)} port={draft.entry_id ? draft.entry_port : service?.server_port} preview={dirty || !id} shared={entry?.connection_count || 0} />
                 <button className="primary" disabled={busy || !dirty || !canReuse(service) || !draft.name.trim() || !validEntry} onClick={() => act()}>保存待发布配置</button>
                 {existing.data && <p>当前发布地址：{existing.data.published ? `${existing.data.current.host}:${existing.data.current.port}` : !existing.data.revision && node.host ? `${node.host}:${node.port}` : "尚未发布"}</p>}

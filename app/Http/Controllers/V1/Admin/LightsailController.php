@@ -7,14 +7,76 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Str;
 use App\Jobs\RotateLightsailIpJob;
+use App\Services\LightsailService;
 class LightsailController extends \App\Http\Controllers\Controller
 {
+    public function credentials()
+    {
+        $usage = DB::table('v2_lightsail_server')->selectRaw("credential_id, COUNT(*) AS server_count, SUM(status IN ('queued','running')) AS active_count")->groupBy('credential_id')->get()->keyBy('credential_id');
+        return response(['data' => DB::table('v2_lightsail_credential')->select('id', 'name')->orderBy('id')->get()->map(function ($row) use ($usage) {
+            $row->server_count = (int) ($usage[$row->id]->server_count ?? 0);
+            $row->active_count = (int) ($usage[$row->id]->active_count ?? 0);
+            return $row;
+        })]);
+    }
+    public function saveCredential(Request $request)
+    {
+        $v = $request->validate(['id'=>'nullable|integer|min:1', 'name'=>'required|string|max:100', 'accessKey'=>'nullable|string|max:128', 'secretKey'=>'nullable|string|max:256', 'sessionToken'=>'nullable|string|max:8192', 'confirmSharedUpdate'=>'sometimes|boolean']);
+        $id = DB::transaction(function () use ($v) {
+            $row = !empty($v['id']) ? DB::table('v2_lightsail_credential')->where('id', $v['id'])->lockForUpdate()->first() : null;
+            if (!empty($v['id']) && !$row) abort(404, 'AWS 密钥不存在');
+            $secret = $this->encryptCredential($v, !$row);
+            $data = ['name'=>$v['name']];
+            $locks = [];
+            try {
+                if ($secret !== null) {
+                    $servers = $row ? DB::table('v2_lightsail_server')->where('credential_id', $row->id)->get() : collect();
+                    if ($servers->count() > 1 && empty($v['confirmSharedUpdate'])) abort(409, '此密钥被多台服务器共用，请确认同步更新全部绑定服务器');
+                    foreach ($servers as $server) {
+                        if (in_array($server->status, ['queued','running'], true)) abort(409, '绑定服务器正在执行 IP 操作，请稍后更新密钥');
+                        $lock = LightsailService::operationLock($server);
+                        if (!$lock->get()) abort(409, '绑定服务器的 IP 操作仍在执行，请稍后重试');
+                        $locks[] = $lock;
+                    }
+                    $data['credentials'] = $secret;
+                }
+                if (!$row) return DB::table('v2_lightsail_credential')->insertGetId($data);
+                DB::table('v2_lightsail_credential')->where('id', $row->id)->update($data);
+                return $row->id;
+            } finally { foreach ($locks as $lock) $lock->release(); }
+        }, 3);
+        return response(['data'=>['id'=>$id]]);
+    }
+    public function dropCredential(Request $request)
+    {
+        $v = $request->validate(['id'=>'required|integer|min:1']);
+        DB::transaction(function () use ($v) {
+            $row = DB::table('v2_lightsail_credential')->where('id', $v['id'])->lockForUpdate()->first();
+            if (!$row) abort(404, 'AWS 密钥不存在');
+            if (DB::table('v2_lightsail_server')->where('credential_id', $row->id)->exists()) abort(409, '密钥仍被服务器使用，请先更换或移除绑定');
+            DB::table('v2_lightsail_credential')->where('id', $row->id)->delete();
+        }, 3);
+        return response(['data'=>true]);
+    }
+    private function encryptCredential(array $v, bool $required = false): ?string
+    {
+        if (!empty($v['sessionToken']) && (empty($v['accessKey']) || empty($v['secretKey']))) abort(422, '更新 Session Token 时请同时填写 Access Key 和 Secret Key');
+        if (empty($v['accessKey']) && empty($v['secretKey'])) {
+            if ($required) abort(422, '请填写 AWS 凭据');
+            return null;
+        }
+        if (empty($v['accessKey']) || empty($v['secretKey'])) abort(422, 'Access Key 和 Secret Key 必须同时填写');
+        $credentials = ['key'=>$v['accessKey'], 'secret'=>$v['secretKey']];
+        if (!empty($v['sessionToken'])) $credentials['token'] = $v['sessionToken'];
+        return Crypt::encryptString(json_encode($credentials, JSON_THROW_ON_ERROR));
+    }
     public function fetch()
     {
-        return response(['data' => DB::table('v2_lightsail_server')->select('id', 'name', 'region', 'instance', 'node_type', 'node_id', 'status', 'phase', 'current_ip', 'error_code', 'operation_at', 'old_name')->orderBy('id')->get()->map(function ($r) {
+        return response(['data' => DB::table('v2_lightsail_server')->select('id', 'name', 'region', 'instance', 'node_type', 'node_id', 'credential_id', 'status', 'phase', 'current_ip', 'error_code', 'operation_at', 'old_name', 'new_name')->orderBy('id')->get()->map(function ($r) {
             $r->canRestore = (bool) $r->old_name;
             $r->recoverable = $r->status === 'failed' || in_array($r->status, ['queued', 'running'], true) && $r->operation_at < time() - 360;
-            unset($r->operation_at, $r->old_name);
+            $r->staticIpNames = array_values(array_unique(array_filter([$r->old_name, $r->new_name])));
+            unset($r->operation_at, $r->old_name, $r->new_name);
             return $r;
         })]);
     }
@@ -34,22 +96,30 @@ class LightsailController extends \App\Http\Controllers\Controller
     }
     public function drop(Request $request)
     {
-        $v = $request->validate(['id' => 'required|integer|min:1']);
+        $v = $request->validate(['id' => 'required|integer|min:1', 'abandonOperation' => 'sometimes|boolean']);
         DB::transaction(function () use ($v) {
             $row = DB::table('v2_lightsail_server')->where('id', $v['id'])->lockForUpdate()->first();
             if (!$row) {
                 abort(404, '配置不存在');
             }
-            if (!in_array($row->status, ['ready', 'completed', 'restored'], true) && !($row->status === 'failed' && $row->phase === 'idle')) {
-                abort(409, '请先完成或恢复 IP 操作');
+            if (!in_array($row->status, ['ready', 'completed', 'restored', 'failed'], true)) {
+                abort(409, 'IP 操作正在进行，请等待完成或失败后再移除配置');
             }
-            DB::table('v2_lightsail_server')->where('id', $row->id)->delete();
+            if ($row->status === 'failed' && empty($v['abandonOperation'])) abort(409, '请确认放弃未完成操作，AWS 实例和新旧静态 IP 将保留，需要自行核对');
+            $lock = LightsailService::operationLock($row);
+            if (!$lock->get()) abort(409, 'IP 操作仍在执行，请稍后重试');
+            try {
+                DB::table('v2_lightsail_server')->where('id', $row->id)->delete();
+            } finally {
+                $lock->release();
+            }
         }, 3);
         return response(['data' => true]);
     }
     public function save(Request $request)
     {
         $v = $request->validate(['id' => 'nullable|integer|min:1', 'name' => 'required|string|max:100', 'region' => ['required', 'string', 'regex:/^[a-z]{2}(-[a-z]+)+-\d$/'], 'instance' => ['required', 'string', 'max:255', 'regex:/^[A-Za-z0-9][A-Za-z0-9_.-]*$/'], 'node_type' => 'required|in:v2box', 'node_id' => 'required|integer|min:1', 'accessKey' => 'nullable|string|max:128', 'secretKey' => 'nullable|string|max:256', 'sessionToken' => 'nullable|string|max:8192']);
+        $v += $request->validate(['abandonOperation' => 'sometimes|boolean', 'credential_id'=>'nullable|integer|min:1']);
         DB::transaction(function () use ($v) {
             $node = DB::table('v2_server_' . $v['node_type'])->where('id', $v['node_id'])->lockForUpdate()->first();
             if (!$node || $node->service_id) {
@@ -62,9 +132,9 @@ class LightsailController extends \App\Http\Controllers\Controller
             if ($row && in_array($row->status, ['queued', 'running'], true)) {
                 abort(409, 'IP 操作正在进行');
             }
-            if ($row && $row->status === 'failed' && ($row->region !== $v['region'] || $row->instance !== $v['instance'] || $row->node_type !== $v['node_type'] || (int) $row->node_id !== (int) $v['node_id'])) {
-                abort(409, '失败操作只能更新名称和凭据，实例与节点关联需要保持不变');
-            }
+            $targetChanged = $row && ($row->region !== $v['region'] || $row->instance !== $v['instance'] || $row->node_type !== $v['node_type'] || (int) $row->node_id !== (int) $v['node_id'] || isset($v['credential_id']) && (int)$row->credential_id !== (int)$v['credential_id']);
+            $abandon = $row && $row->status === 'failed' && !empty($v['abandonOperation']);
+            if ($row && $row->status === 'failed' && $targetChanged && !$abandon) abort(409, '修改关联前请确认放弃未完成操作；也可只修改名称和凭据后继续操作');
             $duplicate = DB::table('v2_lightsail_server')->where('node_type', $v['node_type'])->where('node_id', $v['node_id']);
             if ($row) {
                 $duplicate->where('id', '!=', $row->id);
@@ -80,23 +150,27 @@ class LightsailController extends \App\Http\Controllers\Controller
                 abort(409, '实例已经配置，请复用代理服务关联');
             }
             $data = array_intersect_key($v, array_flip(['name', 'region', 'instance', 'node_type', 'node_id']));
-            if (!empty($v['sessionToken']) && (empty($v['accessKey']) || empty($v['secretKey']))) {
-                abort(422, '更新 Session Token 时请同时填写 Access Key 和 Secret Key');
+            if ($targetChanged || $abandon) {
+                $data += ['status' => 'ready', 'phase' => 'idle', 'operation' => 'rotate', 'old_name' => null, 'new_name' => null, 'current_ip' => null, 'error_code' => null, 'operation_at' => 0];
             }
-            if (!empty($v['accessKey']) || !empty($v['secretKey'])) {
-                if (empty($v['accessKey']) || empty($v['secretKey'])) {
-                    abort(422, 'Access Key 和 Secret Key 必须同时填写');
-                }
-                $credentials = ['key' => $v['accessKey'], 'secret' => $v['secretKey']];
-                if (!empty($v['sessionToken'])) {
-                    $credentials['token'] = $v['sessionToken'];
-                }
-                $data['credentials'] = Crypt::encryptString(json_encode($credentials, JSON_THROW_ON_ERROR));
-            } elseif (!$row) {
-                abort(422, '请填写 AWS 凭据');
+            $credentialId = $v['credential_id'] ?? $row->credential_id ?? null;
+            $credential = $credentialId ? DB::table('v2_lightsail_credential')->where('id', $credentialId)->lockForUpdate()->first() : null;
+            if ($credentialId && !$credential) abort(422, '请选择有效的 AWS 密钥');
+            $secret = $this->encryptCredential($v, !$credential);
+            if ($secret !== null) {
+                if ($credential && ((!$row || (int)$row->credential_id !== (int)$credentialId) || DB::table('v2_lightsail_server')->where('credential_id', $credentialId)->count() > 1)) abort(409, '共用密钥请在 AWS 密钥管理中更新');
+                if ($credential) DB::table('v2_lightsail_credential')->where('id', $credentialId)->update(['credentials'=>$secret]);
+                else $credentialId = DB::table('v2_lightsail_credential')->insertGetId(['name'=>mb_substr($v['name'].' AWS',0,100), 'credentials'=>$secret]);
             }
+            $data['credential_id'] = $credentialId;
             if ($row) {
-                DB::table('v2_lightsail_server')->where('id', $row->id)->update($data);
+                $lock = LightsailService::operationLock($row);
+                if (!$lock->get()) abort(409, 'IP 操作仍在执行，请稍后重试');
+                try {
+                    DB::table('v2_lightsail_server')->where('id', $row->id)->update($data);
+                } finally {
+                    $lock->release();
+                }
             } else {
                 DB::table('v2_lightsail_server')->insert($data);
             }

@@ -1,7 +1,7 @@
 import { type ReactNode, useEffect, useState } from "react";
 import { admin, query, request, type Row } from "../shared/api";
 import { Editor, Modal, State, useData } from "../shared/ui";
-import { defaultLineFields, nodeLineFields } from "./node-line-fields";
+import { defaultLineFields, nodeLineFields, linkNodeLocation } from "./node-line-fields";
 import { useNodeCatalog } from "./node-dictionary";
 
 export function DefaultNodeLineEditor({
@@ -71,13 +71,7 @@ export function DefaultNodeLineEditor({
                             submit="保存节点信息"
                             onDirty={() => setDirty(true)}
                             onBusyChange={setBusy}
-                            linkValues={(key, value, values) => ({
-                                ...values,
-                                [key]: value,
-                                ...(key === "region_code"
-                                    ? { city_code: null }
-                                    : {}),
-                            })}
+                            linkValues={(key, value, values) => linkNodeLocation(values, key, value, catalog)}
                             onSave={async (values) => {
                                 if (
                                     Number(values.rate) !==

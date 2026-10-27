@@ -49,6 +49,7 @@ import { AdminSwitch } from "./admin-switch";
 import { QueueDetails, SortButton } from "./admin-tools";
 import { adminUserLabel } from "./admin-user-label";
 import { readListView, saveListView } from "./list-view-state";
+import { nodeRoutePresets, routeSummary } from "./node-route-presets";
 const toggle = (key: string, label: string): Field => ({
     key,
     label,
@@ -199,15 +200,10 @@ export const resources: Record<string, Resource> = {
             ["remarks", "备注"],
             [
                 "match",
-                "规则数量",
-                (r) =>
-                    r.action === "sing_box"
-                        ? (r.sing_box?.route?.rules?.length || 0) +
-                          (r.sing_box?.dns?.rules?.length || 0)
-                        : Array.isArray(r.match)
-                          ? r.match.length
-                          : 0,
+                "配置内容",
+                routeSummary,
             ],
+            ["node_count", "引用服务", r => `${r.node_count || 0} 个`],
             [
                 "action",
                 "格式 / 动作",
@@ -219,6 +215,11 @@ export const resources: Record<string, Resource> = {
         ],
         fields: [
             field("remarks", "备注", "text", true),
+            {
+                key: "route_template", label: "配置模板", type: "select",
+                options: [["", "选择模板（保留当前配置）"], ...nodeRoutePresets.map(p => [p.id, p.label] as [string, string])],
+                hint: "选择模板会替换当前 JSON。请修改示例域名、服务器和规则集地址后保存。",
+            },
             field("match", "匹配条件", "json", true),
             {
                 key: "action",
@@ -242,11 +243,12 @@ export const resources: Record<string, Resource> = {
                 label: "sing-box 规则配置",
                 type: "json",
                 required: true,
-                hint: '支持 route、dns、outbounds。节点按选择顺序合并规则；相同标签或默认设置冲突时会拒绝保存。direct 出口自动保留。示例：{"route":{"rules":[{"domain_suffix":["example.com"],"action":"reject"}]}}',
+                hint: "适配 sing-box 1.14.3：支持 route、typed DNS、outbounds 和 HTTPS 规则集。direct 出口自动保留。多条规则按选择顺序合并，节点保存时检查标签引用与设置冲突。",
             },
         ],
         defaults: {
             backend: "v2box",
+            route_template: "",
             match: [],
             action: "sing_box",
             sing_box: { route: { rules: [] } },
@@ -1601,6 +1603,7 @@ export function ResourcePage({
                                         ).forEach(([k, v]) => {
                                             if (!(k in clean)) clean[k] = v;
                                         });
+                                    if (resource === resources.routes) delete clean.route_template;
                                     if (
                                         ["coupons", "giftcards"].some(
                                             (k) => resources[k] === resource,

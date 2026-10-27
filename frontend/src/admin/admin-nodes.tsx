@@ -1,6 +1,6 @@
 import { AdminRowMenu } from "./AdminRowMenu";
 import { DefaultNodeLineEditor } from "./DefaultNodeLineEditor";
-import { serviceLineFields,nodeLineFields } from "./node-line-fields";
+import { serviceLineFields,nodeLineFields,linkNodeLocation } from "./node-line-fields";
 import { AdminChoiceGroup } from "./AdminChoices";
 import { nodeConfigurationProblems, nodeChangeImpact } from "./node-guidance";
 import { nodeSetupFields, nodeSetupPayload,nodeServiceFields,certificateCredentialOptions } from "./node-setup";
@@ -18,7 +18,6 @@ import {
     useState,
     type ComponentProps,
 } from "react";
-import nodeLocations from "../../../resources/client/node-countries.json";
 import {
     admin,
     bytes,
@@ -1207,7 +1206,7 @@ function NodesContent({
                                         }
                                     }}
                                     linkValues={(key, next, values) => {
-                                        const linked = linkNode(key, next, values);
+                                        const linked = key === "region_code" ? linkNodeLocation(values, key, next, catalog) : linkNode(key, next, values);
                                         if (!editing.id && ["setup_entry_id", "setup_credential_id", "setup_access_mode", "tls_settings.cert_mode"].includes(key)
                                             && linked["tls_settings.cert_mode"] === "dns" && !linked["tls_settings.dns_credential_id"] && !linked["tls_settings.dns_env"]) {
                                             const options = certificateCredentialOptions(linked, topology.data);
@@ -1283,29 +1282,7 @@ function NodesContent({
                                                         ],
                                                     } as Field;
                                                 if (k === "region_code")
-                                                    return {
-                                                        key: k,
-                                                        label: nodeLabels[k],
-                                                        type: "select",
-                                                        nullable: true,
-                                                        options: [
-                                                            [
-                                                                "",
-                                                                "保留原节点名称",
-                                                            ],
-                                                            ...Object.entries(
-                                                                nodeLocations,
-                                                            ).map(
-                                                                ([
-                                                                    code,
-                                                                    names,
-                                                                ]) => [
-                                                                    code,
-                                                                    `${names["zh-CN"]} (${code})`,
-                                                                ],
-                                                            ),
-                                                        ],
-                                                    } as Field;
+                                                    return nodeLineFields(rows(groups.data), catalog).find(field => field.key === k)!;
                                                 const enumRule =
                                                     str.match(
                                                         /(?:^|\|)in:([^|]+)/,

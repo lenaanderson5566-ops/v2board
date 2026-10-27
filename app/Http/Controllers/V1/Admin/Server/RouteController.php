@@ -14,7 +14,14 @@ class RouteController extends Controller {
         $request->validate(['backend'=>'nullable|in:v2box']);
         $query = ServerRoute::where('backend', 'v2box')->orderBy('id');
         $routes = $query->get();
-        foreach ($routes as $route) $route->match = json_decode($route->match, true) ?? [];
+        $usage=[];
+        foreach (ServerV2box::whereNull('service_id')->get(['id','route_id']) as $node) {
+            foreach (array_unique($node->route_id ?? []) as $id) $usage[$id]=($usage[$id]??0)+1;
+        }
+        foreach ($routes as $route) {
+            $route->match = json_decode($route->match, true) ?? [];
+            $route->setAttribute('node_count',$usage[$route->id]??0);
+        }
         return ['data'=>$routes];
     }
     public function save(Request $request) {
@@ -25,6 +32,7 @@ class RouteController extends Controller {
             'backend'=>'required|in:v2box', 'remarks'=>'required|string|max:255',
             'action'=>'required|in:block,block_ip,block_port,protocol,dns,route,route_ip,default_out,sing_box',
         ]);
+        abort_if(!$route->exists && $params['action'] !== 'sing_box', 422, '新增路由请使用 sing-box 原生规则；旧格式仅保留已有规则编辑');
         abort_if($route->exists && $route->backend !== $backend, 422, '已保存规则不能更换内核，请新建对应内核的规则');
         if ($params['action'] === 'sing_box') {
             $params += $request->validate(['sing_box'=>'required|array:dns,route,outbounds']);

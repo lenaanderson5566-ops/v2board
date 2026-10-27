@@ -9,9 +9,15 @@ use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\Cache;
 class LightsailService
 {
+    public static function operationLock($row)
+    {
+        return Cache::lock('lightsail:' . hash('sha256', $row->region . ':' . $row->instance), 300);
+    }
     public function client($row): LightsailClient
     {
-        return new LightsailClient(['version' => 'latest', 'region' => $row->region, 'credentials' => json_decode(Crypt::decryptString($row->credentials), true, 512, JSON_THROW_ON_ERROR), 'http' => ['connect_timeout' => 5, 'timeout' => 15], 'retries' => 0]);
+        $credential = DB::table('v2_lightsail_credential')->find($row->credential_id);
+        if (!$credential) throw new \RuntimeException('credential_missing');
+        return new LightsailClient(['version' => 'latest', 'region' => $row->region, 'credentials' => json_decode(Crypt::decryptString($credential->credentials), true, 512, JSON_THROW_ON_ERROR), 'http' => ['connect_timeout' => 5, 'timeout' => 15], 'retries' => 0]);
     }
     public function staticIp($client, string $name): ?array
     {
@@ -51,13 +57,13 @@ class LightsailService
         if (!$row) {
             return;
         }
-        $lock = Cache::lock('lightsail:' . hash('sha256', $row->region . ':' . $row->instance), 300);
+        $lock = self::operationLock($row);
         if (!$lock->get()) {
             throw new \RuntimeException('instance_busy');
         }
         try {
             $row = DB::table('v2_lightsail_server')->find($id);
-            if (!in_array($row->status, ['queued', 'running'], true)) {
+            if (!$row || !in_array($row->status, ['queued', 'running'], true)) {
                 return;
             }
             $node = (new ServerService())->getServer($row->node_id, $row->node_type);

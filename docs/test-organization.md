@@ -1118,3 +1118,13 @@ v1.0.15 正式发布验证：节点从 6d2aa4d 发布，正式标签流水线的
 复用 node-backends、v2box、node-routes、node-ddns、node-v10、retired-node-tables 和 server-traffic-budgets，覆盖旧类型与转换请求拒绝、单后端订阅/排序/统计、凭据与域名、共享服务额度以及幂等退役迁移。retired-node-tables 在随机前缀的隔离表上验证旧配置清理、V2Box 同号身份及共享账务历史保留。旧内核双后端测试已移除；历史迁移与拒绝用例保留旧类型字面量。
 
 后台节点表单元数据改为与保存接口共用明确规则，移除控制器源码正则解析；保留完整 TLS/传输配置和旧类型拒绝校验。现有 v2box 用例验证元数据不提供旧核心字段且地区/协议枚举与保存规则一致，Nodes 验证新增原生规则不出现内核选择以及旧列偏好恢复；后台路由与部署相关 9 个测试脚本在临时数据库通过。
+
+## 原生路由、节点展示字段与 Lightsail 管理
+
+原生路由回归复用 `node-routes`、`console-smoke`、`Nodes.test.tsx` 与 `admin-linkage.test.ts`：覆盖原生创建、兼容规则编辑、模板隔离、引用服务数、合并后跨片段标签检查及失败回滚。面板模板来自 `resources/client/node-route-presets.json`；V2Box 的 `core/testdata/panel-routing-presets.json` 是同内容测试快照，更新模板时同步，并运行 `TestPanelRoutingPresets` 验证固定核心解析。
+
+Lightsail 共用凭据继续复用 `lightsail`、`retired-node-tables`、`update-script`、`migration-health`、`api-route-audit` 和 `AdminLightsail.test.tsx`。覆盖跨区域多服务器引用同一凭据、全体绑定密钥更新确认、运行状态和 worker 锁保护、绑定删除保护、旧密文合并及解密失败回滚、嵌套新建密钥后保留服务器草稿。凭据读取及轮换测试仅使用模拟 SDK 和测试凭据，不访问真实 AWS。
+
+新增节点表单的展示字段复用验证保留在 `Nodes.test.tsx`、`admin-location-select.test.tsx`、`admin-linkage.test.ts` 和共享字段上下文测试中。覆盖两种新增方式的真实搜索控件、名称预览、稳定地区/城市代码及标签提交、共享服务位置继承和手动修改保护，继续保留部署、线路发布、权限和未保存修改断言，不增加独立验证脚本。
+
+Lightsail 管理修复复用 `tests/lightsail.php` 与 `AdminLightsail.test.tsx`，覆盖失败阶段移除确认、凭据修复、明确放弃后重新关联、任务锁、执行中禁止修改、取消确认及未保存草稿不改变移除目标。后端使用模拟 AWS，并断言管理配置修改及延迟任务不操作云资源，不执行真实静态 IP 切换。

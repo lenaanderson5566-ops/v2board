@@ -21,7 +21,7 @@ class NodeRouteService {
         if ($native->count() !== $routes->count()) self::fail('sing-box 原生规则不能与旧格式兼容规则混选，请先在路由管理中转换旧规则');
         $result = [];
         foreach ($native as $route) $result = self::merge($result, $route->sing_box ?? []);
-        V2boxFeatures::validate($result);
+        V2boxFeatures::validate($result, true);
         return $result ?: null;
     }
     private static function merge(array $left, array $right, string $path = ''): array {

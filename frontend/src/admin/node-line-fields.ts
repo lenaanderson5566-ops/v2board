@@ -2,6 +2,15 @@ import type { Row } from "../shared/api";
 import type { Field } from "../shared/ui";
 import type { NodeCatalog } from "./node-dictionary";
 
+export function linkNodeLocation(values: Row, key: string, value: unknown, catalog: Pick<NodeCatalog, "cityRegions">): Row {
+    const next = { ...values, [key]: value };
+    if (key === "region_code") {
+        const city = String(values.city_code ?? "");
+        if (!value || catalog.cityRegions[city] && catalog.cityRegions[city] !== String(value).toUpperCase()) next.city_code = "";
+    }
+    return next;
+}
+
 export const defaultLineFields = [
     "name",
     "group_id",
@@ -58,6 +67,6 @@ export function nodeLineFields(groups: Row[], catalog: NodeCatalog): Field[] {
         },
         { key: "city_code", label: "州、省或城市", nullable: true },
         { key: "display_label", label: "线路编号 / 后缀", nullable: true },
-        { key: "tags", label: "标签（逗号分隔）", arrayText: true },
+        { key: "tags", label: "标签", arrayText: true, hint: "输入标签后按 Enter 添加，可选择多个。" },
     ];
 }

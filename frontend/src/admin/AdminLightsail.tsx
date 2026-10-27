@@ -17,6 +17,8 @@ export function AdminLightsail({
     close?: () => void;
 }) {
     const data = useData<Row[]>(admin("server/lightsail/fetch"));
+    const credentials = useData<Row[]>(admin("server/lightsail/credentials"));
+    const [credentialEditing, setCredentialEditing] = useState<Row | null>(null);
     const [editing, setEditing] = useState<Row | null>(null),
         [operation, setOperation] = useState<Row | null>(null),
         [confirmation, setConfirmation] = useState(""),
@@ -45,12 +47,12 @@ export function AdminLightsail({
         ["queued", "running"].includes(r.status),
     );
     useEffect(() => {
-        if (!active || data.loading || data.error || busy || editing || operation) return;
+        if (!active || data.loading || data.error || busy || editing || operation || credentialEditing) return;
         const timer = window.setInterval(() => {
             if (document.visibilityState === "visible") data.reload();
         }, 5000);
         return () => window.clearInterval(timer);
-    }, [active, data.loading, data.error, data.reload, busy, editing, operation]);
+    }, [active, data.loading, data.error, data.reload, busy, editing, operation, credentialEditing]);
     async function send(path: string, body: Row) {
         if (busy) return;
         setBusy(true);
@@ -61,10 +63,35 @@ export function AdminLightsail({
             setOperation(null);
             setObserved({});
             data.reload();
+            credentials.reload();
         } catch (e) {
             setError((e as Error).message);
         } finally {
             setBusy(false);
+        }
+    }
+    async function manageCredential(path: string, body: Row) {
+        if (busy) return;
+        setBusy(true); setError("");
+        try {
+            const result = await request<Row>(admin(`server/lightsail/credentials/${path}`), body);
+            if (path === "save" && !body.id && editing) setEditing({ ...editing, credential_id: result.data.id });
+            setCredentialEditing(null);
+            credentials.reload();
+        } catch (e) { setError((e as Error).message); }
+        finally { setBusy(false); }
+    }
+    function editCredential(row?: Row) {
+        setError("");
+        setCredentialEditing({ ...row, name: row?.name || "", accessKey: "", secretKey: "", sessionToken: "", confirmSharedUpdate: false });
+    }
+    function remove(row: Row) {
+        if (busy) return;
+        const saved = (data.data || []).find(item => item.id === row.id) || row;
+        const pending = saved.status === "failed";
+        const resources = (saved.staticIpNames || []).join("、") || "请在 AWS 控制台核对";
+        if (window.confirm(`移除 ${saved.name} 的管理配置？\n实例：${saved.instance}（${saved.region}）\n只删除面板配置，不删除 AWS 实例、不解绑或释放静态 IP。${pending ? `\n将放弃未完成操作，不能再从面板继续或恢复。新旧静态 IP 可能仍产生费用，请自行核对和清理：${resources}` : ""}`)) {
+            send("drop", { id: saved.id, ...(pending ? { abandonOperation: true } : {}) });
         }
     }
     const content = (
@@ -98,6 +125,7 @@ export function AdminLightsail({
                                 instance: "",
                                 node_type: "v2box",
                                 node_id: "",
+                                credential_id: "",
                             })
                         }
                     >
@@ -105,6 +133,19 @@ export function AdminLightsail({
                     </button>
                     <button onClick={data.reload}>刷新状态</button>
                 </div>
+                <details className="admin-deployment-card">
+                    <summary>AWS 密钥管理</summary>
+                    <p className="muted">同一份 AWS 密钥可绑定多台 Lightsail 服务器；服务器分别选择区域和实例。修改密钥后，全部绑定服务器共用新凭据。</p>
+                    <button disabled={busy} onClick={() => editCredential()}>添加 AWS 密钥</button>
+                    <State {...credentials} retry={credentials.reload}>
+                        {(credentials.data || []).map(row => <div className="actions" key={row.id}>
+                            <span>{row.name} · {row.server_count || 0} 台服务器</span>
+                            <button disabled={busy} onClick={() => editCredential(row)} aria-label={`编辑密钥 ${row.name}`}>编辑密钥</button>
+                            <button disabled={busy || row.server_count > 0} onClick={() => { if (window.confirm(`移除未绑定的 AWS 密钥“${row.name}”？仅删除面板凭据，不操作 AWS 资源。`)) manageCredential("drop", { id: row.id }); }} aria-label={`移除密钥 ${row.name}`}>移除密钥</button>
+                        </div>)}
+                        {!credentials.data?.length && <p className="muted">先添加 AWS 密钥，再为服务器选择该密钥。</p>}
+                    </State>
+                </details>
                 <State {...data} retry={data.reload}>
                     <div className="infrastructure-grid">
                         {(data.data || []).map((row) => (
@@ -133,6 +174,7 @@ export function AdminLightsail({
                                         <dt>区域</dt>
                                         <dd>{row.region}</dd>
                                     </div>
+                                    <div><dt>AWS 密钥</dt><dd>{credentials.data?.find(item => item.id === row.credential_id)?.name || `#${row.credential_id}`}</dd></div>
                                     <div>
                                         <dt>当前 IP</dt>
                                         <dd>
@@ -177,13 +219,18 @@ export function AdminLightsail({
                                         onClick={() =>
                                             setEditing({
                                                 ...row,
-                                                accessKey: "",
-                                                secretKey: "",
-                                                sessionToken: "",
+                                                abandonOperation: false,
                                             })
                                         }
                                     >
                                         编辑配置
+                                    </button>
+                                    <button
+                                        className="danger"
+                                        disabled={busy || ["queued", "running"].includes(row.status)}
+                                        onClick={() => remove(row)}
+                                    >
+                                        移除配置
                                     </button>
                                     {[
                                         "ready",
@@ -268,16 +315,21 @@ export function AdminLightsail({
                                     disabled={busy}
                                     className="infrastructure-form"
                                 >
+                                    {editing.status === "failed" && (
+                                        <div className="infrastructure-notice">
+                                            <p>本次 IP 操作未完成。可修改名称或在 AWS 密钥管理中修复原凭据后继续；更换密钥、区域、实例或关联服务前，需要放弃本次操作。</p>
+                                            <label>
+                                                <input type="checkbox" checked={Boolean(editing.abandonOperation)} onChange={e => setEditing({ ...editing, abandonOperation: e.target.checked })} />
+                                                放弃未完成操作并解锁关联配置
+                                            </label>
+                                            <p>勾选后保存会清除本次操作进度，无法再继续或恢复。AWS 实例和新旧静态 IP 保留，可能仍产生费用，请自行核对和清理。</p>
+                                            {editing.staticIpNames?.length > 0 && <p>需核对的静态 IP 名称：{editing.staticIpNames.join("、")}</p>}
+                                        </div>
+                                    )}
                                     {[
                                         ["name", "显示名称"],
                                         ["region", "AWS 区域"],
                                         ["instance", "Lightsail 实例名称"],
-                                        ["accessKey", "AWS Access Key ID"],
-                                        ["secretKey", "AWS Secret Access Key"],
-                                        [
-                                            "sessionToken",
-                                            "Session Token（临时凭据时填写）",
-                                        ],
                                     ].map(([key, label]) => (
                                         <label key={key}>
                                             {label}
@@ -292,8 +344,7 @@ export function AdminLightsail({
                                                 }
                                                 autoComplete="off"
                                                 disabled={
-                                                    editing.status ===
-                                                        "failed" &&
+                                                    editing.status === "failed" && !editing.abandonOperation &&
                                                     [
                                                         "region",
                                                         "instance",
@@ -321,12 +372,20 @@ export function AdminLightsail({
                                             />
                                         </label>
                                     ))}
+                                    <label>AWS 密钥<select required disabled={editing.status === "failed" && !editing.abandonOperation} value={editing.credential_id || ""} onChange={e => setEditing({ ...editing, credential_id: Number(e.target.value) || "" })}>
+                                        <option value="">请选择 AWS 密钥</option>
+                                        {(credentials.data || []).map(row => <option key={row.id} value={row.id}>{row.name} · {row.server_count || 0} 台服务器</option>)}
+                                    </select></label>
+                                    <div className="actions">
+                                        <button type="button" onClick={() => editCredential()}>添加 AWS 密钥</button>
+                                        {!!editing.credential_id && <button type="button" onClick={() => editCredential(credentials.data?.find(row => row.id === Number(editing.credential_id)))}>编辑所选密钥</button>}
+                                    </div>
                                     <label>
                                         关联代理服务
                                         <select
                                             required
                                             disabled={
-                                                editing.status === "failed"
+                                                editing.status === "failed" && !editing.abandonOperation
                                             }
                                             value={
                                                 editing.node_id
@@ -357,7 +416,7 @@ export function AdminLightsail({
                                         </select>
                                     </label>
                                     <p className="muted">
-                                        凭据加密保存，编辑时留空保留原凭据。仅授予
+                                        密钥在 AWS 密钥管理中加密保存，多台服务器可选择同一密钥。仅授予
                                         Lightsail
                                         查询、申请、绑定、解绑和释放静态 IP
                                         权限。
@@ -370,17 +429,8 @@ export function AdminLightsail({
                             {editing.id && (
                                 <button
                                     className="danger"
-                                    disabled={
-                                        busy || editing.status === "failed"
-                                    }
-                                    onClick={() => {
-                                        if (
-                                            window.confirm(
-                                                "移除管理配置？这只删除面板保存的配置，不操作 AWS 静态 IP。",
-                                            )
-                                        )
-                                            send("drop", { id: editing.id });
-                                    }}
+                                    disabled={busy}
+                                    onClick={() => remove(editing)}
                                 >
                                     移除配置
                                 </button>
@@ -388,6 +438,19 @@ export function AdminLightsail({
                         </div>
                     </Modal>
                 )}
+                {credentialEditing && <Modal title={credentialEditing.id ? "编辑 AWS 密钥" : "添加 AWS 密钥"} close={() => { if (!busy) setCredentialEditing(null); }} dismissible={!busy} className="lightsail-dialog">
+                    {error && <p role="alert" className="alert">{error}</p>}
+                    <form onSubmit={e => { e.preventDefault(); manageCredential("save", credentialEditing); }}>
+                        <fieldset disabled={busy} className="infrastructure-form">
+                            <label>密钥名称<input required maxLength={100} value={credentialEditing.name} onChange={e => setCredentialEditing({ ...credentialEditing, name: e.target.value })} /></label>
+                            {[["accessKey", "AWS Access Key ID"], ["secretKey", "AWS Secret Access Key"], ["sessionToken", "Session Token（临时凭据时填写）"]].map(([key, label]) => <label key={key}>{label}<input type={key === "accessKey" ? "text" : "password"} autoComplete="off" disabled={credentialEditing.active_count > 0} required={!credentialEditing.id && key !== "sessionToken"} value={credentialEditing[key]} onChange={e => setCredentialEditing({ ...credentialEditing, [key]: e.target.value })} /></label>)}
+                            <p className="muted">编辑时留空保留原凭据。更新密钥需同时填写 Access Key 和 Secret Key；临时凭据需同时填写 Session Token。凭据不会回显。</p>
+                            {credentialEditing.active_count > 0 && <p role="status">绑定服务器正在执行 IP 操作，当前只能修改密钥名称。</p>}
+                            {credentialEditing.server_count > 1 && <label><input type="checkbox" checked={credentialEditing.confirmSharedUpdate} onChange={e => setCredentialEditing({ ...credentialEditing, confirmSharedUpdate: e.target.checked })} />确认更新这份密钥绑定的全部 {credentialEditing.server_count} 台服务器的凭据</label>}
+                            <button type="submit">{busy ? "保存中…" : "保存 AWS 密钥"}</button>
+                        </fieldset>
+                    </form>
+                </Modal>}
                 {operation && (
                     <Modal
                         title={

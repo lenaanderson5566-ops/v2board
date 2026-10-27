@@ -42,6 +42,8 @@ import { NodeDnsObservation } from "./NodeDnsObservation";
 import { NodeDeployment } from "./NodeDeployment";
 import { NodeConnectionEditor } from "./NodeConnections";
 import { NodeTopology } from "./NodeTopology";
+import { EditorFieldContext } from "../shared/ui";
+import { adminEditorField } from "./admin-editor-fields";
 afterEach(() => {
     cleanup();
     vi.useRealTimers();
@@ -345,12 +347,15 @@ it("creates native routing rules without a backend selector", async () => {
     render(<ResourcePage resource={resources.routes} />);
     fireEvent.click(screen.getByRole("button", { name: "新建" }));
     expect(screen.queryByLabelText("适用内核")).toBeNull();
-    expect(screen.getByRole("combobox", { name: "动作" })).toHaveProperty("value", "sing_box");
+    expect(screen.queryByRole("combobox", { name: "动作" })).toBeNull();
+    expect(screen.getByRole("combobox", { name: /^配置模板/ })).toBeTruthy();
     fireEvent.change(screen.getByLabelText("备注"), { target: { value: "New native rule" } });
+    fireEvent.change(screen.getByRole("combobox", { name: /^配置模板/ }), { target: { value: "domain-block" } });
     fireEvent.click(screen.getByRole("button", { name: "保存" }));
     await waitFor(() => expect(api.request).toHaveBeenCalledWith("test-admin/server/route/save", expect.objectContaining({
-        backend: "v2box", action: "sing_box", remarks: "New native rule", sing_box: { route: { rules: [] } },
+        backend: "v2box", action: "sing_box", remarks: "New native rule", sing_box: { route: { rules: [{action:"sniff"},{domain_suffix:["example.com"],action:"reject"}] } },
     })));
+    expect(api.request.mock.calls.filter(([path])=>path.endsWith("server/route/save")).every(([,body])=>!Object.prototype.hasOwnProperty.call(body,"route_template"))).toBe(true);
 });
 
 
@@ -793,6 +798,38 @@ function unifiedCreationFixture(empty=false) {
         return {data:[]};
     });
 }
+it.each(["new", "reuse"])("uses the same searchable identity fields and name preview for %s creation", async mode => {
+    unifiedCreationFixture();
+    const original = api.request.getMockImplementation()!;
+    api.request.mockImplementation(async (path: string, ...args: any[]) => {
+        const result = await original(path, ...args);
+        return path.includes("console/nodeSchema") ? { data: { ...result.data, region_code: "nullable|string", city_code: "nullable|string", display_label: "nullable|string", tags: "nullable|array" } } : result;
+    });
+    render(<EditorFieldContext.Provider value={adminEditorField}><Nodes /></EditorFieldContext.Provider>);
+    fireEvent.click(screen.getByRole("button", { name: "新增节点" }));
+    if (mode === "reuse") {
+        fireEvent.click(screen.getByText("高级：共用现有节点的服务"));
+        fireEvent.click(screen.getByRole("button", { name: "为现有节点添加连接线路" }));
+        fireEvent.change(await screen.findByLabelText("代理服务"), { target: { value: "v2box:1" } });
+    }
+    const country = await screen.findByRole("combobox", { name: "国家 / 地区" });
+    fireEvent.change(screen.getByLabelText("节点名称"), { target: { value: "Independent name" } });
+    fireEvent.change(country, { target: { value: "United States" } });
+    fireEvent.click(screen.getByRole("option", { name: "美国（US）" }));
+    const city = screen.getByRole("combobox", { name: "州、省或城市" });
+    fireEvent.change(city, { target: { value: "San Jose" } });
+    fireEvent.click(screen.getByRole("option", { name: /圣何塞/ }));
+    fireEvent.change(screen.getByLabelText("线路编号 / 后缀"), { target: { value: "01" } });
+    fireEvent.change(screen.getByRole("combobox", { name: "标签" }), { target: { value: "premium" } });
+    fireEvent.keyDown(screen.getByRole("combobox", { name: "标签" }), { key: "Enter" });
+    expect(within(screen.getByRole("region", { name: "节点名称预览" })).getByText("United States · San Jose · 01")).toBeTruthy();
+    expect(screen.getByRole("button", { name: "移除 premium" })).toBeTruthy();
+    expect(country.closest('[data-field="region_code"]')).toBeTruthy();
+    if (mode === "reuse") {
+        fireEvent.click(screen.getByRole("button", { name: "保存待发布配置" }));
+        await waitFor(() => expect(api.request).toHaveBeenCalledWith("test-admin/server/connections/save", expect.objectContaining({ name: "Independent name", region_code: "US", city_code: "san-jose", display_label: "01", tags: ["premium"] })));
+    }
+});
 it("keeps node creation canonical and links service operations back to it",async()=>{
     unifiedCreationFixture();const view=render(<Nodes/>);
     expect(screen.queryByRole("button",{name:"复用服务新增线路"})).toBeNull();
@@ -1090,18 +1127,23 @@ it("keeps three editor sections in one drawer and lists all nodes affected by a 
 });
 it("defaults a new shared-service node to the exit region while preserving its independent name and manual region selection",async()=>{
  unifiedCreationFixture();const original=api.request.getMockImplementation()!;
- api.request.mockImplementation(async(path:string,...args:any[])=>{const result=await original(path,...args);return path.endsWith("manage/getNodes")?{...result,data:result.data.map((n:any)=>({...n,region_code:"JP",city_code:"JP-13"}))}:result;});
+ api.request.mockImplementation(async(path:string,...args:any[])=>{const result=await original(path,...args);return path.endsWith("manage/getNodes")?{...result,data:result.data.map((n:any)=>({...n,region_code:n.id===1?"JP":"US",city_code:n.id===1?"JP-13":"san-jose"}))}:result;});
  render(<Nodes/>);fireEvent.click(screen.getByRole("button",{name:"新增节点"}));fireEvent.click(screen.getByText("高级：共用现有节点的服务"));fireEvent.click(screen.getByRole("button",{name:"为现有节点添加连接线路"}));
  fireEvent.change(await screen.findByLabelText("节点名称"),{target:{value:"Japan via Hong Kong"}});
  fireEvent.change(screen.getByLabelText("代理服务"),{target:{value:"v2box:1"}});
- expect(screen.getByLabelText("国家 / 地区")).toHaveProperty("value","JP");expect(screen.getByLabelText(/^州、省或城市/)).toHaveProperty("value","JP-13");
+ expect(screen.getByLabelText("国家 / 地区")).toHaveProperty("value","日本（JP）");expect(screen.getByLabelText(/^州、省或城市/)).toHaveProperty("value","JP-13");
+ fireEvent.change(screen.getByLabelText("代理服务"),{target:{value:"v2box:4"}});
+ expect(screen.getByLabelText("国家 / 地区")).toHaveProperty("value","美国（US）");
+ fireEvent.change(screen.getByLabelText("代理服务"),{target:{value:"v2box:1"}});
+ expect(screen.getByLabelText("国家 / 地区")).toHaveProperty("value","日本（JP）");
  expect(screen.getByLabelText("节点名称")).toHaveProperty("value","Japan via Hong Kong");
  fireEvent.change(screen.getByLabelText("国家 / 地区"),{target:{value:"US"}});
+ fireEvent.click(screen.getByRole("option",{name:"美国（US）"}));
  fireEvent.change(screen.getByLabelText("代理服务"),{target:{value:"v2box:4"}});
- expect(screen.getByLabelText("国家 / 地区")).toHaveProperty("value","US");expect(screen.getByLabelText("节点名称")).toHaveProperty("value","Japan via Hong Kong");
- fireEvent.change(screen.getByLabelText("国家 / 地区"),{target:{value:""}});
+ expect(screen.getByLabelText("国家 / 地区")).toHaveProperty("value","美国（US）");expect(screen.getByLabelText("节点名称")).toHaveProperty("value","Japan via Hong Kong");
+ fireEvent.click(screen.getByRole("button",{name:"清空 国家 / 地区"}));
  fireEvent.change(screen.getByLabelText("代理服务"),{target:{value:"v2box:1"}});
- expect(screen.getByLabelText("国家 / 地区")).toHaveProperty("value","");expect(screen.getByLabelText("州、省或城市")).toHaveProperty("value","");
+ expect(screen.getByLabelText("国家 / 地区")).toHaveProperty("value","保留原节点名称");expect(screen.getByLabelText("州、省或城市")).toHaveProperty("value","");
  fireEvent.change(screen.getByLabelText("代理服务"),{target:{value:""}});
  expect(screen.getByLabelText("节点名称")).toHaveProperty("value","Japan via Hong Kong");expect(within(screen.getByRole("group",{name:"权限组"})).queryAllByRole("checkbox")).toHaveLength(0);
  expect(api.request.mock.calls.some(([,body])=>body)).toBe(false);

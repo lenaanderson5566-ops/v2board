@@ -113,6 +113,9 @@ class AdminRoute
             $router->post('/server/route/save', 'V1\\Admin\\Server\\RouteController@save');
             $router->post('/server/route/drop', 'V1\\Admin\\Server\\RouteController@drop');
             $router->get('/server/lightsail/fetch', 'V1\\Admin\\LightsailController@fetch');
+            $router->get('/server/lightsail/credentials', 'V1\\Admin\\LightsailController@credentials');
+            $router->post('/server/lightsail/credentials/save', 'V1\\Admin\\LightsailController@saveCredential');
+            $router->post('/server/lightsail/credentials/drop', 'V1\\Admin\\LightsailController@dropCredential');
             $router->get('/server/lightsail/inspect', 'V1\\Admin\\LightsailController@inspect')->middleware('throttle:20,1');
             $router->post('/server/lightsail/save', 'V1\\Admin\\LightsailController@save');
             $router->post('/server/lightsail/drop', 'V1\\Admin\\LightsailController@drop');

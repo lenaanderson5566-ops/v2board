@@ -2,6 +2,8 @@ import { anytlsPresets } from "./anytls-padding";
 import nodeLocations from "../../../resources/client/node-locations.json";
 import type { Row } from "../shared/api";
 import type { Field } from "../shared/ui";
+import { nodeRoutePresets, routePreset } from "./node-route-presets";
+import { linkNodeLocation } from "./node-line-fields";
 const on = (value: unknown) => Number(value) === 1;
 const dependencies: Record<string, (values: Row) => boolean> = {
     email_host: (v) => (!v.email_provider || v.email_provider === "smtp"),
@@ -107,6 +109,8 @@ export function resourceFields(
             (f) =>
                 kind !== "routes" ||
                 (f.key !== "backend" &&
+                    (f.key !== "action" || Boolean(values.id) && values.action !== "sing_box") &&
+                    (f.key !== "route_template" || values.action === "sing_box") &&
                     (f.key !== "sing_box" || values.action === "sing_box") &&
                     (!["match", "action_value"].includes(f.key) || values.action !== "sing_box") &&
                     (f.key !== "match" || values.action !== "default_out") &&
@@ -122,6 +126,10 @@ export function resourceFields(
                     (f.key !== "value" || Number(values.type) !== 4)),
         )
         .map((f) => {
+            if (kind === "routes" && f.key === "sing_box") {
+                const preset = nodeRoutePresets.find(p => p.id === values.route_template);
+                return { ...f, hint: preset?.description || f.hint };
+            }
             if (kind === "coupons" && f.key === "type") return { ...f, options: (f.options || []).filter(([key]) => key === "2" || Boolean(values.id)) };
             if (kind === "routes" && f.key === "action_value")
                 return {
@@ -178,6 +186,14 @@ export function linkResource(
     values: Row,
 ): Row {
     const result = { ...values, [key]: next };
+    if (kind === "routes" && key === "route_template") {
+        const config = routePreset(next);
+        if (config) result.sing_box = config;
+    }
+    if (kind === "routes" && key === "action" && next === "sing_box") {
+        result.sing_box ||= routePreset("custom");
+        result.route_template = "custom";
+    }
     if (
         ["giftcards", "coupons"].includes(kind) &&
         key === "type" &&
@@ -213,9 +229,7 @@ export function linkNode(key: string, next: unknown, values: Row): Row {
         if (preset) result.padding_scheme = preset.scheme;
     }
     if (key === "region_code") {
-        const city = String(values.city_code ?? "") as keyof typeof nodeLocations.cityRegions;
-        if (next && nodeLocations.cityRegions[city] && nodeLocations.cityRegions[city] !== String(next).toUpperCase())
-            result.city_code = "";
+        Object.assign(result, linkNodeLocation(values, key, next, nodeLocations));
     }
 
     if (key === "setup_family" || key === "setup_entry_id") result.setup_server_id = "";

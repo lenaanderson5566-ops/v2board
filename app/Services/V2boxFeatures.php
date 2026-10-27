@@ -14,9 +14,12 @@ class V2boxFeatures {
             if (is_array($v)) self::walk($v);
         }
     }
-    public static function validate(array $value): void {
+    public static function validate(array $value, bool $complete = false): void {
         if (strlen(json_encode($value)) > 262144) self::fail('Configuration exceeds 256 KiB');
         self::keys($value, ['dns','route','outbounds']);
+        foreach (['dns','route'] as $section) {
+            if (isset($value[$section]) && (!is_array($value[$section]) || ($value[$section] && array_is_list($value[$section])))) self::fail($section.' must be an object');
+        }
         self::walk($value);
         foreach (['outbounds'=> $value['outbounds'] ?? [], 'dns.servers'=>$value['dns']['servers'] ?? [], 'dns.rules'=>$value['dns']['rules'] ?? [], 'route.rules'=>$value['route']['rules'] ?? [], 'route.rule_set'=>$value['route']['rule_set'] ?? []] as $path=>$items) {
             if (!is_array($items) || array_values($items) !== $items) self::fail($path.' must be an array');
@@ -44,6 +47,7 @@ class V2boxFeatures {
                 if ($set['type'] === 'remote' && (parse_url($set['url'] ?? '', PHP_URL_SCHEME) !== 'https' || !parse_url($set['url'] ?? '', PHP_URL_HOST))) self::fail('Remote rule sets require HTTPS');
             }
         }
+        foreach (['route','dns'] as $section) self::rules($value[$section]['rules'] ?? [], $section);
         $seen = ['direct'=>true];
         if (isset($value['outbounds']) && !is_array($value['outbounds'])) self::fail('outbounds must be an array');
         foreach ($value['outbounds'] ?? [] as $out) {
@@ -52,5 +56,58 @@ class V2boxFeatures {
             if (!is_string($tag) || $tag === '' || isset($seen[$tag])) self::fail('Missing or duplicate/reserved outbound tag');
             $seen[$tag]=true;
         }
+        if ($complete) self::references($value);
+    }
+
+    private static function rules(array $rules, string $scope, int $depth = 0): void {
+        if ($depth > 32) self::fail('Rule nesting exceeds 32 levels');
+        foreach ($rules as $rule) {
+            foreach (['geoip','geosite'] as $retired) if (array_key_exists($retired,$rule)) self::fail($retired.' 已退役，请改用 sing-box rule_set');
+            $type=$rule['type']??'default';
+            if (!in_array($type,['default','logical'],true)) self::fail('Unsupported rule type');
+            if ($type==='logical') {
+                if (!in_array($rule['mode']??null,['and','or'],true) || empty($rule['rules']) || !is_array($rule['rules']) || !array_is_list($rule['rules'])) self::fail('Logical rules require mode and/or and a nonempty rules array');
+                foreach ($rule['rules'] as $child) if (!is_array($child) || !$child || array_is_list($child)) self::fail('Logical rule entries must be objects');
+                self::rules($rule['rules'],$scope,$depth+1);
+            }
+            if (isset($rule['action'])) {
+                $allowed=$scope==='dns' ? ['route','route-options','reject','predefined','evaluate','respond'] : ['route','route-options','direct','bypass','reject','hijack-dns','sniff','resolve'];
+                if (!in_array($rule['action'],$allowed,true)) self::fail('Unsupported '.$scope.' rule action');
+            }
+        }
+    }
+
+    /** Validate after all selected catalog fragments have been merged. */
+    private static function references(array $value): void {
+        $outbounds=array_fill_keys(array_merge(['direct'],array_column($value['outbounds']??[],'tag')),true);
+        $dns=$value['dns']??['servers'=>[['type'=>'local','tag'=>'local']],'final'=>'local'];
+        $servers=array_fill_keys(array_column($dns['servers'],'tag'),true);
+        $sets=array_fill_keys(array_column($value['route']['rule_set']??[],'tag'),true);
+        $check=static function($tag,array $known,string $path): void {
+            if (!is_string($tag) || !isset($known[$tag])) self::fail('Unknown configuration reference: '.$path);
+        };
+        $check($value['route']['final']??'direct',$outbounds,'route.final');
+        if (isset($dns['final'])) $check($dns['final'],$servers,'dns.final');
+        $walk=function($items,string $scope='',string $path='')use(&$walk,$check,$outbounds,$servers,$sets): void {
+            if (!is_array($items)) return;
+            foreach ($items as $key=>$item) {
+                $at=$path===''?(string)$key:$path.'.'.$key;
+                if (in_array($key,['outbound','detour','download_detour'],true)) $check($item,$outbounds,$at);
+                elseif ($key==='server' && in_array($scope,['rules','resolver'],true)) $check($item,$servers,$at);
+                elseif ($key==='rule_set' && $scope==='rules') {
+                    foreach (is_array($item)?$item:[$item] as $tag) $check($tag,$sets,$at);
+                    continue;
+                } elseif (in_array($key,['default_domain_resolver','domain_resolver'],true)) {
+                    if (is_string($item)) $check($item,$servers,$at);
+                    elseif (is_array($item) && isset($item['server'])) $walk($item,'resolver',$at);
+                    else self::fail('Invalid DNS resolver: '.$at);
+                    continue;
+                }
+                $walk($item,$key==='rules'?'rules':$scope,$at);
+            }
+        };
+        $walk($dns,'','dns');
+        $walk($value['route']??[],'','route');
+        $walk($value['outbounds']??[],'','outbounds');
     }
 }

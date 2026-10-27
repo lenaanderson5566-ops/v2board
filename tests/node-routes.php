@@ -20,6 +20,17 @@ $request=fn($body)=>Request::create('/','POST',$body);
 DB::beginTransaction();
 try {
     $admin=new RouteController();
+    $reject(fn()=>$admin->save($request(['remarks'=>'retired creation','action'=>'block','match'=>['example.com']])),'New rules require native sing-box configuration');
+    foreach (json_decode(file_get_contents(resource_path('client/node-route-presets.json')),true) as $preset) {
+        App\Services\V2boxFeatures::validate($preset['config'],true);
+        $assert(true,'Native preset valid: '.$preset['id']);
+    }
+    foreach ([['dns'=>'bad'],['route'=>false],['route'=>['rules'=>[['action'=>'block']]]],['route'=>['rules'=>[['geosite'=>['cn'],'action'=>'reject']]]],['route'=>['rules'=>[['type'=>'logical','mode'=>'bad','rules'=>[]]]]]] as $bad) {
+        $reject(fn()=>App\Services\V2boxFeatures::validate($bad,true),'Malformed/retired native syntax rejected');
+    }
+    foreach ([['route'=>['final'=>'missing']],['route'=>['rules'=>[['outbound'=>'missing']]]],['dns'=>['servers'=>[['type'=>'local','tag'=>'local']],'rules'=>[['action'=>'route','server'=>'missing']]]],['route'=>['rules'=>[['rule_set'=>['missing'],'action'=>'reject']]]],['outbounds'=>[['type'=>'socks','tag'=>'proxy','server'=>'example.test','server_port'=>1080,'domain_resolver'=>'missing']]]] as $bad) {
+        $reject(fn()=>App\Services\V2boxFeatures::validate($bad,true),'Unresolved merged configuration reference rejected');
+    }
     $base=['group_id'=>[999998],'name'=>'Route test','host'=>'example.test','port'=>'443','server_port'=>443,'protocol'=>'vless','tls'=>0,'network'=>'tcp','disable_sni'=>0,'zero_rtt_handshake'=>0,'rate'=>'1','up_mbps'=>0,'down_mbps'=>0];
     $old=ServerRoute::create(['remarks'=>'shared before migration','match'=>'["domain:example.test"]','action'=>'block','backend'=>'v2node']);
     $legacy=ServerV2box::create($base+['route_id'=>[$old->id]]);
@@ -37,6 +48,8 @@ try {
     foreach (['v2box'] as $backend) {
         $routes=$admin->fetch(Request::create('/','GET',['backend'=>$backend]))['data'];
         $assert($routes->every(fn($r)=>$r->backend===$backend),'Catalog filtered by backend');
+        $assert($routes->firstWhere('id',$nativeId)->node_count===1,'Catalog counts service references');
+        $assert($routes->firstWhere('id',$clone->id)->node_count===1,'Legacy V2Box references remain visible');
     }
     $reject(fn()=>(new V2boxController())->save($request($base+['id'=>$box->id,'route_id'=>[$old->id]])),'V2Box rejects Xray reference');
     $reject(fn()=>NodeRouteService::selected([2147483647],'v2box'),'Missing route rejected');
@@ -59,6 +72,10 @@ try {
     $assert(count(NodeRouteService::native(collect([$a,$b]))['outbounds'])===1,'Identical outbound tags deduplicated');
     $b->sing_box=['outbounds'=>[array_replace($out,['server_port'=>1081])]];
     $reject(fn()=>NodeRouteService::native(collect([$a,$b])),'Conflicting outbound definitions rejected');
+    $fragment=new ServerRoute(['action'=>'sing_box','sing_box'=>['route'=>['rules'=>[['domain_suffix'=>['example.test'],'action'=>'route','outbound'=>'proxy']]]]]);
+    App\Services\V2boxFeatures::validate($fragment->sing_box);
+    $assert(count(NodeRouteService::native(collect([$a,$fragment]))['outbounds'])===1,'References may resolve across selected fragments');
+    $reject(fn()=>NodeRouteService::native(collect([$fragment])),'Unresolved fragment cannot be assigned alone');
     foreach (['v2box'=>[$box,new V2boxController()]] as $backend=>[$node,$controller]) {
         $controller->save($request(array_replace($base,['id'=>$node->id,'name'=>'stale name '.$backend,'listen_ip'=>'127.0.0.1','route_id'=>$node->route_id])));
         $assert($node->fresh()->name==='Route test' && $node->fresh()->listen_ip==='127.0.0.1','Persisted service technical settings can be edited without changing default line name');

@@ -111,6 +111,7 @@ grep -q 'migrate --path=database/migrations/2026_10_11_000007_create_node_traffi
 grep -q 'migrate --path=database/migrations/2026_10_11_000008_create_server_traffic_budgets.php --force --no-interaction' calls.log
 grep -q 'migrate --path=database/migrations/2026_10_11_000009_create_server_traffic_imports.php --force --no-interaction' calls.log
 grep -q 'migrate --path=database/migrations/2026_10_11_000010_create_lightsail_servers.php --force --no-interaction' calls.log
+grep -q 'migrate --path=database/migrations/2026_10_27_000002_share_lightsail_credentials.php --force --no-interaction' calls.log
 grep -q 'migrate --path=database/migrations/2026_10_12_000001_canonicalize_subscription_clients.php --force --no-interaction' calls.log
 new_site dirty
 echo changed >> composer.json

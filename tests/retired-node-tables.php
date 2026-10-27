@@ -128,6 +128,26 @@ try {
     $assert($db->table('v2_server_route')->where('id',12)->value('backend')==='v2box','Upgrade defaults routes to V2Box');
     try{$retire->down();throw new RuntimeException('Retirement rollback would fabricate lost records');}
     catch(LogicException $e){$checks++;}
+    // Legacy per-server encrypted keys become shared references without changing IP jobs.
+    $schema->drop('v2_lightsail_server');
+    $schema->create('v2_lightsail_server',function(Blueprint $t){$t->increments('id');$t->string('name');$t->text('credentials');$t->string('status');$t->string('phase');});
+    $tables[]='v2_lightsail_credential';
+    $secret=static fn($key)=>Illuminate\Support\Facades\Crypt::encryptString(json_encode(['key'=>$key,'secret'=>'fixture-secret','token'=>'fixture-token']));
+    $db->table('v2_lightsail_server')->insert([
+        ['name'=>'one','credentials'=>$secret('same'),'status'=>'failed','phase'=>'allocate'],
+        ['name'=>'two','credentials'=>$secret('same'),'status'=>'running','phase'=>'attach'],
+        ['name'=>'other','credentials'=>$secret('different'),'status'=>'ready','phase'=>'idle'],
+    ]);
+    $shared=require __DIR__.'/../database/migrations/2026_10_27_000002_share_lightsail_credentials.php';
+    $invalid=$db->table('v2_lightsail_server')->insertGetId(['name'=>'invalid','credentials'=>'broken-ciphertext','status'=>'ready','phase'=>'idle']);
+    try {$shared->up();throw new LogicException('Broken credentials were silently discarded');}
+    catch(RuntimeException $e){$assert(str_contains($e->getMessage(),'original encrypted data retained') && $schema->hasColumn('v2_lightsail_server','credentials') && $db->table('v2_lightsail_credential')->count()===0,'Invalid old ciphertext aborts migration without losing source data or partially migrating references');}
+    $db->table('v2_lightsail_server')->where('id',$invalid)->delete();
+    $shared->up();$shared->up();
+    $rows=$db->table('v2_lightsail_server')->orderBy('id')->get();
+    $assert($db->table('v2_lightsail_credential')->count()===2 && $rows[0]->credential_id===$rows[1]->credential_id && $rows[2]->credential_id!==$rows[0]->credential_id,'Migration deduplicates equal keys despite randomized ciphertexts and can be retried');
+    $assert($rows[0]->status==='failed' && $rows[0]->phase==='allocate' && $rows[1]->status==='running' && $rows[1]->phase==='attach','Credential migration preserves server identity and unfinished operations');
+    $assert(!$schema->hasColumn('v2_lightsail_server','credentials') && str_contains(Illuminate\Support\Facades\Crypt::decryptString($db->table('v2_lightsail_credential')->value('credentials')),'fixture-token'),'Encrypted credentials and temporary tokens retained only in shared credential table');
 }finally{
     foreach($authServices as $authService)$authService->removeAllSession();
     DB::setDefaultConnection($originalConnection);

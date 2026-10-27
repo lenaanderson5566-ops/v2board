@@ -1,8 +1,6 @@
 import { TimeZonePicker } from "../shared/TimeZonePicker";
 import { lazy, Suspense } from "react";
-import { AdminCitySelect } from "./admin-city-select";
-import { NodeNamePreview } from "./NodeNamePreview";
-import { AdminRegionSelect } from "./admin-region-select";
+import { nodeIdentityControl } from "./NodeIdentityFields";
 import { AdminMultiSelect } from "./admin-multiselect";
 import type { EditorFieldRenderer } from "../shared/ui";
 
@@ -23,32 +21,14 @@ export const adminEditorField: EditorFieldRenderer = (
     onChange,
     values,
 ) => {
+    const identity = nodeIdentityControl(field, value, onChange, values);
+    if (identity !== undefined) return identity;
     if (field.key === "system_timezone")
         return (
             <TimeZonePicker
                 label={field.label}
                 value={String(value || "Asia/Shanghai")}
                 zones={field.options?.map((option) => option[0]) || []}
-                onChange={onChange}
-            />
-        );
-    if (field.key === "region_code" && field.type === "select")
-        return (
-            <>
-                <AdminRegionSelect
-                    label={field.label}
-                    value={value}
-                    onChange={onChange}
-                />
-                <NodeNamePreview values={values} />
-            </>
-        );
-    if (field.key === "city_code")
-        return (
-            <AdminCitySelect
-                label={field.label}
-                value={value}
-                region={values.region_code}
                 onChange={onChange}
             />
         );

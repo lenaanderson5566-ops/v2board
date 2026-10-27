@@ -297,13 +297,13 @@ try {
     $assert($response->getStatusCode() === 200 && $tempGroup->refresh()->name === 'console-button-group-edited', 'Group edit failed');
     $response = $call('/api/v1/' . $securePath . '/server/group/drop', ['id' => $tempGroup->id], $token);
     $assert($response->getStatusCode() === 200 && !App\Models\ServerGroup::find($tempGroup->id), 'Group deletion failed');
-    $routeBody = ['remarks' => 'console-button-route', 'action' => 'block', 'match' => ['example.invalid']];
+    $routeBody = ['remarks' => 'console-button-route', 'action' => 'sing_box', 'sing_box' => ['route'=>['rules'=>[['domain_suffix'=>['example.invalid'],'action'=>'reject']]]]];
     $response = $call('/api/v1/' . $securePath . '/server/route/save', $routeBody, $token);
     $tempRoute = App\Models\ServerRoute::where('remarks', $routeBody['remarks'])->first();
     $assert($response->getStatusCode() === 200 && $tempRoute, 'Route creation failed');
-    $routeBody['id'] = $tempRoute->id; $routeBody['action'] = 'dns'; $routeBody['action_value'] = '8.8.8.8';
+    $routeBody['id'] = $tempRoute->id; $routeBody['sing_box'] = ['dns'=>['servers'=>[['type'=>'udp','tag'=>'resolver','server'=>'8.8.8.8']],'final'=>'resolver']];
     $response = $call('/api/v1/' . $securePath . '/server/route/save', $routeBody, $token);
-    $assert($response->getStatusCode() === 200 && $tempRoute->refresh()->action === 'dns', 'Route edit failed');
+    $assert($response->getStatusCode() === 200 && $tempRoute->refresh()->sing_box['dns']['final'] === 'resolver', 'Native route edit failed');
     $response = $call('/api/v1/' . $securePath . '/server/route/drop', ['id' => $tempRoute->id], $token);
     $assert($response->getStatusCode() === 200 && !App\Models\ServerRoute::find($tempRoute->id), 'Route deletion failed');
     $noticeBody = ['title' => 'console-button-notice', 'content' => '<p>notice</p>', 'tags' => ['test-only']];

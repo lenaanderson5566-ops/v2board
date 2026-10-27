@@ -34,14 +34,15 @@ try {
     $config = ['name' => 'AWS test', 'region' => 'ap-southeast-1', 'instance' => 'test-instance', 'node_type' => 'v2box', 'node_id' => $node->id, 'accessKey' => 'test-key', 'secretKey' => 'test-secret'];
     $admin->save(Request::create('/', 'POST', $config));
     $row = DB::table('v2_lightsail_server')->where('node_id', $node->id)->where('node_type', 'v2box')->first();
-    $assert(!str_contains($row->credentials, 'test-secret'), 'Secrets encrypted');
+    $originalCredentials = DB::table('v2_lightsail_credential')->where('id',$row->credential_id)->value('credentials');
+    $assert(!str_contains($originalCredentials, 'test-secret'), 'Secrets encrypted');
     $public = json_decode($admin->fetch()->getContent(), true)['data'];
     $entry = collect($public)->firstWhere('id', $row->id);
     $assert(!isset($entry['credentials']) && !str_contains(json_encode($entry), 'test-secret'), 'No secret in admin response');
     $config['id'] = $row->id;
     unset($config['accessKey'], $config['secretKey']);
     $admin->save(Request::create('/', 'POST', $config));
-    $assert(DB::table('v2_lightsail_server')->find($row->id)->credentials === $row->credentials, 'Blank credentials preserved');
+    $assert(DB::table('v2_lightsail_credential')->where('id',$row->credential_id)->value('credentials') === $originalCredentials, 'Blank credentials preserved');
     $state = (object) ['ips' => ['old' => ['name' => 'old', 'ipAddress' => '8.8.8.8', 'isAttached' => true, 'attachedTo' => 'test-instance']], 'calls' => [], 'fail' => null, 'timeoutAfterAttach' => false];
     $handler = function ($command, $request) use ($state) {
         $name = $command->getName();
@@ -173,7 +174,7 @@ try {
     $changed['accessKey'] = 'replacement';
     $changed['secretKey'] = 'replacement-secret';
     $admin->save(Request::create('/', 'POST', $changed));
-    $assert(str_contains(Crypt::decryptString(DB::table('v2_lightsail_server')->find($row->id)->credentials), 'replacement-secret'), 'Failed operation allows credential repair');
+    $assert(str_contains(Crypt::decryptString(DB::table('v2_lightsail_credential')->where('id',$row->credential_id)->value('credentials')), 'replacement-secret'), 'Failed operation allows credential repair');
     $changed['instance'] = 'another-instance';
     try {
         $admin->save(Request::create('/', 'POST', $changed));
@@ -201,6 +202,74 @@ try {
     DB::table('v2_lightsail_server')->where('id', $row->id)->update(['status' => 'queued', 'operation_at' => time() - 400]);
     $public = json_decode($admin->fetch()->getContent(), true)['data'];
     $assert(collect($public)->firstWhere('id', $row->id)['recoverable'] === true, 'Lost queue dispatch can be resumed after bounded waiting');
+    $reject = function ($fn, $message) use ($assert) {
+        try { $fn(); } catch (Symfony\Component\HttpKernel\Exception\HttpException $e) {
+            $assert($e->getStatusCode() === 409, $message);
+            return;
+        }
+        throw new RuntimeException($message);
+    };
+    foreach (['queued', 'running'] as $status) {
+        DB::table('v2_lightsail_server')->where('id', $row->id)->update(['status' => $status]);
+        $reject(fn() => $admin->drop(Request::create('/', 'POST', ['id' => $row->id, 'abandonOperation' => true])), 'Active or stalled jobs cannot be removed');
+        $reject(fn() => $admin->save(Request::create('/', 'POST', $config + ['abandonOperation' => true])), 'Active jobs cannot be edited or abandoned');
+    }
+    DB::table('v2_lightsail_server')->where('id', $row->id)->update(['status' => 'failed', 'phase' => 'allocate', 'old_name' => 'old', 'new_name' => 'pending-new', 'current_ip' => '8.8.8.8', 'error_code' => 'aws_request_failed']);
+    $public = collect(json_decode($admin->fetch()->getContent(), true)['data'])->firstWhere('id', $row->id);
+    $assert($public['staticIpNames'] === ['old', 'pending-new'], 'Failed resources are visible for manual reconciliation');
+    $reject(fn() => $admin->drop(Request::create('/', 'POST', ['id' => $row->id])), 'Abandoning a failed operation requires acknowledgement');
+    $retarget = array_replace($config, ['instance' => 'replacement-instance', 'abandonOperation' => true]);
+    $lock = LightsailService::operationLock(DB::table('v2_lightsail_server')->find($row->id));
+    $lock->get();
+    try {
+        $reject(fn() => $admin->drop(Request::create('/', 'POST', ['id' => $row->id, 'abandonOperation' => true])), 'Removal respects worker lock');
+        $reject(fn() => $admin->save(Request::create('/', 'POST', $retarget)), 'Retarget respects worker lock');
+    } finally { $lock->release(); }
+    $calls = $state->calls;
+    $credentials = DB::table('v2_lightsail_credential')->where('id',$row->credential_id)->value('credentials');
+    $admin->save(Request::create('/', 'POST', $retarget));
+    $reset = DB::table('v2_lightsail_server')->find($row->id);
+    $assert($reset->instance === 'replacement-instance' && $reset->status === 'ready' && $reset->phase === 'idle' && $reset->old_name === null && $reset->new_name === null && $reset->current_ip === null && $reset->error_code === null && (int) $reset->operation_at === 0, 'Acknowledged retarget resets failed operation state');
+    $assert(DB::table('v2_lightsail_credential')->where('id',$reset->credential_id)->value('credentials') === $credentials, 'Retarget preserves encrypted credentials when blank');
+    $service->run($row->id);
+    $assert($state->calls === $calls, 'Abandon and stale job do not change AWS resources');
+    DB::table('v2_lightsail_server')->where('id', $row->id)->update(['status' => 'failed', 'phase' => 'attach']);
+    $admin->drop(Request::create('/', 'POST', ['id' => $row->id, 'abandonOperation' => true]));
+    $service->run($row->id);
+    $assert(!DB::table('v2_lightsail_server')->where('id', $row->id)->exists() && $node->fresh() && $state->calls === $calls, 'Failed removal and delayed job preserve node and all AWS resources');
+    $other = $node->replicate(); $other->name = 'Second cloud node'; $other->save();
+    $base = array_diff_key($config, ['id'=>true]);
+    $base['credential_id'] = $row->credential_id;
+    $before = DB::table('v2_lightsail_credential')->count();
+    $admin->save(Request::create('/', 'POST', array_replace($base, ['instance'=>'first-shared'])));
+    $admin->save(Request::create('/', 'POST', array_replace($base, ['node_id'=>$other->id, 'instance'=>'second-shared', 'region'=>'eu-west-2'])));
+    $bound = DB::table('v2_lightsail_server')->where('credential_id',$row->credential_id)->get();
+    $assert($bound->count()===2 && DB::table('v2_lightsail_credential')->count()===$before, 'One credential binds multiple servers across regions without copying secrets');
+    $public = collect(json_decode($admin->credentials()->getContent(),true)['data'])->firstWhere('id',$row->credential_id);
+    $assert($public['server_count']===2 && !isset($public['credentials']) && !str_contains(json_encode($public),'replacement-secret'), 'Credential listing exposes usage without secrets');
+    $update = ['id'=>$row->credential_id,'name'=>'Shared account','accessKey'=>'rotated-key','secretKey'=>'rotated-secret'];
+    $reject(fn()=>$admin->saveCredential(Request::create('/','POST',$update)), 'Shared key update requires explicit acknowledgement');
+    $update['confirmSharedUpdate']=true;
+    $lock=LightsailService::operationLock($bound[0]); $lock->get();
+    try { $reject(fn()=>$admin->saveCredential(Request::create('/','POST',$update)), 'Shared rotation respects an exiting worker lock'); }
+    finally { $lock->release(); }
+    $admin->saveCredential(Request::create('/','POST',$update));
+    foreach($bound as $server) {
+        $resolved=(new LightsailService())->client($server)->getCredentials()->wait();
+        $assert($resolved->getAccessKeyId()==='rotated-key' && $resolved->getSecretKey()==='rotated-secret','Every bound server resolves the same updated credential');
+    }
+    $reject(fn()=>$admin->save(Request::create('/','POST',array_replace($base,['id'=>$bound[0]->id,'instance'=>$bound[0]->instance,'accessKey'=>'bypass','secretKey'=>'bypass']))), 'Server edit cannot silently rotate shared credentials');
+    DB::table('v2_lightsail_server')->where('id',$bound[0]->id)->update(['status'=>'queued']);
+    $reject(fn()=>$admin->saveCredential(Request::create('/','POST',$update)), 'Shared secret rotation is blocked while any bound job is active');
+    DB::table('v2_lightsail_server')->where('id',$bound[0]->id)->update(['status'=>'ready']);
+    $reject(fn()=>$admin->dropCredential(Request::create('/','POST',['id'=>$row->credential_id])), 'Bound credentials cannot be removed');
+    $encrypted=DB::table('v2_lightsail_credential')->where('id',$row->credential_id)->value('credentials');
+    $admin->saveCredential(Request::create('/','POST',['id'=>$row->credential_id,'name'=>'Renamed account']));
+    $assert(DB::table('v2_lightsail_credential')->where('id',$row->credential_id)->value('credentials')===$encrypted,'Rename with blank secrets preserves shared encrypted credentials');
+    foreach($bound as $server) $admin->drop(Request::create('/','POST',['id'=>$server->id]));
+    $assert(DB::table('v2_lightsail_credential')->where('id',$row->credential_id)->exists(),'Removing server bindings preserves reusable credential');
+    $admin->dropCredential(Request::create('/','POST',['id'=>$row->credential_id]));
+    $assert(!DB::table('v2_lightsail_credential')->where('id',$row->credential_id)->exists(),'Unused credential can be removed separately');
     echo "Lightsail: {$checks} checks passed\n";
 } finally {
     DB::rollBack();

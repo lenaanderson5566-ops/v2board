@@ -1,4 +1,5 @@
 import { certificateCredentialOptions } from "./node-setup";
+import { routePreset, routeSummary } from "./node-route-presets";
 import { describe, it, expect, vi } from "vitest";
 import type { Field } from "../shared/ui";
 import {
@@ -20,6 +21,13 @@ import {
 const fields = (...keys: string[]): Field[] =>
     keys.map((key) => ({ key, label: key }));
 describe("admin dependency behavior", () => {
+    it("applies independent native presets and summarizes their content", () => {
+        const first = linkResource("routes", [], "route_template", "domain-proxy", { action: "sing_box" });
+        expect(routeSummary(first)).toBe("路由 2 · 出口 1");
+        first.sing_box.outbounds[0].server = "changed.test";
+        expect(routePreset("domain-proxy")?.outbounds[0].server).toBe("proxy.example.com");
+        expect(resourceFields("routes", fields("action", "route_template", "sing_box"), { action: "sing_box" }).map(f => f.key)).toEqual(["route_template", "sing_box"]);
+    });
     it.each([
         ["email_whitelist_enable", "email_whitelist_suffix"],
         ["register_limit_by_ip_enable", "register_limit_count"],
@@ -162,14 +170,14 @@ describe("admin dependency behavior", () => {
             resourceFields(
                 "routes",
                 fields("match", "action", "action_value"),
-                { action: "default_out" },
+                { id: 1, action: "default_out" },
             ).map((f) => f.key),
         ).toEqual(["action", "action_value"]);
         expect(
             resourceFields(
                 "routes",
                 fields("match", "action", "action_value"),
-                { action: "block" },
+                { id: 2, action: "block" },
             ).map((f) => f.key),
         ).toEqual(["match", "action"]);
     });

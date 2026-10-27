@@ -19,7 +19,7 @@ export function nodeDeploymentCommand(node: Row): string {
         );
     return (
         base +
-        " && curl -fSL https://raw.githubusercontent.com/lenaanderson5566-ops/v2box/v1.0.13/script/node-network.py -o node-network.py && python3 node-network.py configure" +
+        " && curl -fSL https://raw.githubusercontent.com/lenaanderson5566-ops/v2box/v1.0.14/script/node-network.py -o node-network.py && python3 node-network.py configure" +
         (domain ? " --domain " + quote(domain) : "") +
         " --family " +
         family

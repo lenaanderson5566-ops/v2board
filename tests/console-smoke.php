@@ -257,7 +257,7 @@ try {
             if (!empty($deploymentNode['service_id'])) continue;
             foreach (['install_command','upgrade_command'] as $commandField) {
                 $command=$deploymentNode[$commandField];
-                $assert(str_contains($command, "'".$expectedHost.'/api/v10/public/node-deployment/bootstrap'."'") && str_contains($command,'--install v1.0.13') && !str_contains($command,'//api/'), 'Install and upgrade commands use the current saved API address and pinned release');
+                $assert(str_contains($command, "'".$expectedHost.'/api/v10/public/node-deployment/bootstrap'."'") && str_contains($command,'--install v1.0.14') && !str_contains($command,'//api/'), 'Install and upgrade commands use the current saved API address and pinned release');
             }
             $assert(str_ends_with($deploymentNode['upgrade_command'],'--update'), 'Changing API address preserves the existing-installation upgrade mode');
         }

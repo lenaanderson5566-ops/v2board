@@ -79,8 +79,8 @@ def run(manifest):
     try:
         # Use the published program/scripts, checking the release digest before execution.
         asset=root/'v2box-linux-amd64.zip'
-        subprocess.run(['curl','-fsSL','--max-time','120','https://github.com/lenaanderson5566-ops/v2box/releases/download/v1.0.13/v2box-linux-amd64.zip','-o',str(asset)],check=True,timeout=130)
-        assert hashlib.sha256(asset.read_bytes()).hexdigest()=='66e201f14e22babe6584956716d722dea17de757b95a5a060197e29208ee1008','Published release digest changed'
+        subprocess.run(['curl','-fsSL','--max-time','120','https://github.com/lenaanderson5566-ops/v2box/releases/download/v1.0.14/v2box-linux-amd64.zip','-o',str(asset)],check=True,timeout=130)
+        assert hashlib.sha256(asset.read_bytes()).hexdigest()=='fb5353695e84952af1d8bad9ad221d6f3e9b14ef3c48b4ee2cb45450df828c7c','Published release digest changed'
         program=Path('/usr/local/lib/v2box');program.mkdir(parents=True,exist_ok=True)
         with zipfile.ZipFile(asset) as archive:
             for name in ['v2box','v2box.sh','install.sh','node-network.py','node-credentials.py']:
@@ -227,27 +227,27 @@ def run(manifest):
         repeat=subprocess.run(b['command'],shell=True,cwd=root,env=env,capture_output=True,timeout=40);assert repeat.returncode==0,'Completed independent deployment was not idempotent'
         assert json.loads(config.read_text())==after and node.poll() is None
         assert not events.exists(),'Independent panel operations restarted or stopped the shared service'
-        # Validate the real panel-generated upgrade command against an existing v1.0.12 binary.
+        # Validate the real panel-generated upgrade command against an existing v1.0.13 binary.
         # Stop the fixture first so the installer must preserve the stopped service state.
         for stream in streams:stream.close()
         os.killpg(node.pid,signal.SIGTERM);node.wait(timeout=15);pid_file.unlink()
         preserved={path:path.read_bytes() for path in [config,network.CONFIG,network.STATE,*node_root.glob('operator-*.pem')]}
         new_binary_hash=hashlib.sha256((program/'v2box').read_bytes()).hexdigest()
-        old_asset=root/'v2box-v1.0.12-linux-amd64.zip'
-        subprocess.run(['curl','-fsSL','--max-time','120','https://github.com/lenaanderson5566-ops/v2box/releases/download/v1.0.12/v2box-linux-amd64.zip','-o',str(old_asset)],check=True,capture_output=True,timeout=130)
-        assert hashlib.sha256(old_asset.read_bytes()).hexdigest()=='7680fe5814e5db0d964932199296510f1faa1e83424971aae7ab6812d8bfd961','Previous release digest changed'
+        old_asset=root/'v2box-v1.0.13-linux-amd64.zip'
+        subprocess.run(['curl','-fsSL','--max-time','120','https://github.com/lenaanderson5566-ops/v2box/releases/download/v1.0.13/v2box-linux-amd64.zip','-o',str(old_asset)],check=True,capture_output=True,timeout=130)
+        assert hashlib.sha256(old_asset.read_bytes()).hexdigest()=='66e201f14e22babe6584956716d722dea17de757b95a5a060197e29208ee1008','Previous release digest changed'
         with zipfile.ZipFile(old_asset) as archive:
             binary=[name for name in archive.namelist() if Path(name).name=='v2box'];assert len(binary)==1
             (program/'v2box').write_bytes(archive.read(binary[0]));(program/'v2box').chmod(0o755)
         previous_hash=hashlib.sha256((program/'v2box').read_bytes()).hexdigest()
         version=subprocess.run([str(program/'v2box'),'version'],capture_output=True,text=True,check=True,timeout=10)
-        assert 'v1.0.12' in version.stdout,'Upgrade fixture is not the real previous release'
+        assert 'v1.0.13' in version.stdout,'Upgrade fixture is not the real previous release'
         upgrade_command=php(b,'echo json_encode((new App\\Services\\ServerService())->getAllV2node("v2box")[0]["upgrade_command"]);')
-        assert '--install v1.0.13' in upgrade_command and upgrade_command.endswith('--update')
+        assert '--install v1.0.14' in upgrade_command and upgrade_command.endswith('--update')
         upgraded=subprocess.run(upgrade_command,shell=True,cwd=root,env=env,capture_output=True,text=True,timeout=220)
         if upgraded.returncode:raise AssertionError('Published release upgrade failed: '+re.sub(r'(?:nk_|nd_|ns_)[a-f0-9.]+','[redacted]',(upgraded.stdout+upgraded.stderr)[-1600:]))
         version=subprocess.run([str(program/'v2box'),'version'],capture_output=True,text=True,check=True,timeout=10)
-        assert 'v1.0.13' in version.stdout and hashlib.sha256((program/'v2box').read_bytes()).hexdigest()==new_binary_hash,'Upgraded binary does not match the published release'
+        assert 'v1.0.14' in version.stdout and hashlib.sha256((program/'v2box').read_bytes()).hexdigest()==new_binary_hash,'Upgraded binary does not match the published release'
         assert hashlib.sha256((program/'v2box.previous').read_bytes()).hexdigest()==previous_hash,'Upgrade did not preserve the previous binary'
         assert not pid_file.exists() and not events.exists(),'Upgrade started the previously stopped shared service'
         for path,content in preserved.items():assert path.read_bytes()==content,'Upgrade changed retained node/certificate/reporting files'
@@ -255,7 +255,7 @@ def run(manifest):
         node=subprocess.Popen([str(program/'v2box'),'server','--config',str(config),'--watch=false'],env=env,stdout=log,stderr=log,start_new_session=True);pid_file.write_text(str(node.pid))
         wait(lambda:listening(new_b),'Upgraded program did not serve the retained panel configuration')
         upgraded_stream=connect(b,new_b,echo.server_address[1],context);streams.append(upgraded_stream);ping(upgraded_stream)
-        result={'independent_databases':2,'different_application_keys':True,'published_program':'v1.0.13','same_node_id':3,'same_server_id':7,'same_user_id':True,'one_click_append':True,'cross_panel_credentials_rejected':True,'existing_tls_stream_and_certificate_preserved':True,'configuration_change_isolated':True,'backend_outage_isolated':True,'ip_reporting_isolated':True,'other_database_user_ban_isolated':True,'direct_dns_and_legacy_reporting_preserved':True,'repeat_command_idempotent':True,'service_restarts':0,'service_manager':'fixture; real V2Box process and HTTPS Laravel backends'}
+        result={'independent_databases':2,'different_application_keys':True,'published_program':'v1.0.14','same_node_id':3,'same_server_id':7,'same_user_id':True,'one_click_append':True,'cross_panel_credentials_rejected':True,'existing_tls_stream_and_certificate_preserved':True,'configuration_change_isolated':True,'backend_outage_isolated':True,'ip_reporting_isolated':True,'other_database_user_ban_isolated':True,'direct_dns_and_legacy_reporting_preserved':True,'repeat_command_idempotent':True,'service_restarts':0,'service_manager':'fixture; real V2Box process and HTTPS Laravel backends'}
         result.update({'port_conflict_rejected_and_scoped_rollback':True,'runtime_readiness_confirmed_without_managed_dns':True,'bootstrap_outage_preserves_existing_services':True,'redemption_outage_then_same_grant_retry':True,'real_previous_release_upgrade':True,'stopped_upgrade_stays_stopped':True,'upgrade_preserves_nodes_certificates_and_reporting':True,'previous_binary_backup_preserved':True,'upgraded_binary_serves_retained_nodes':True})
         Path('/tmp/v2box-independent-result.json').write_text(json.dumps(result,indent=2));print(json.dumps(result))
     finally:

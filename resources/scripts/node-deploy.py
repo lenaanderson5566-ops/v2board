@@ -394,8 +394,8 @@ class Deployment:
         self.shared_listener = self.state.get("sharedListener", "")
         if not isinstance(self.shared_listener, str) or (self.shared_listener and not re.fullmatch(r"[a-zA-Z0-9][a-zA-Z0-9_.-]{0,63}", self.shared_listener)):
             raise DeploymentError("Invalid shared listener group; configuration preserved")
-        if self.shared_listener and (not isinstance(self.flow, dict) or self.flow.get("protocol") not in ("anytls", "vless", "vmess", "trojan", "shadowsocks", "hysteria2", "tuic", "naive") or (self.flow.get("tls") == 1 and self.flow.get("certificateMode") not in ("file", "remote"))):
-            raise DeploymentError("Shared listener requires a supported protocol and compatible file or remote TLS certificate; configuration preserved")
+        if self.shared_listener and (not isinstance(self.flow, dict) or self.flow.get("protocol") not in ("anytls", "vless", "vmess", "trojan", "shadowsocks", "hysteria2", "tuic", "naive") or (self.flow.get("tls") == 1 and self.flow.get("certificateMode") not in ("file", "remote", "http", "dns"))):
+            raise DeploymentError("Shared listener requires a supported protocol and compatible TLS certificate; configuration preserved")
         if self.flow is not None and (
             not isinstance(self.flow, dict)
             or type(self.flow.get("tls")) is not int
@@ -520,6 +520,8 @@ class Deployment:
             write_private(backup, document)
 
     def update_existing_node(self, document, existing, requested):
+        if self.state.get("sharedTLS"):
+            self.require_shared_runtime("shared-acme-v1")
         if self.shared_listener and existing.get("SharedListener", "") != self.shared_listener:
             raise DeploymentError("Existing shared listener selection differs; use v2box share-listener explicitly, credentials preserved")
         if any(existing.get(key) != requested[key] for key in ("ApiKey", "ApiVersion")):
@@ -578,6 +580,10 @@ class Deployment:
             tls = config.get("tlsSettings", {})
             mode = tls.get("certMode")
             fields = ("certFile", "keyFile") if mode == "file" else ("tlsCert", "tlsKey")
+            if mode in ("http", "dns"):
+                if not isinstance(tls.get("serverName"), str) or not tls["serverName"]:
+                    raise DeploymentError("Shared ACME requires a certificate domain; configuration preserved")
+                return
             if mode not in ("file", "remote") or not all(isinstance(tls.get(k), str) and tls[k] for k in fields):
                 raise DeploymentError("Sharing requires explicit file paths or remote certificates; existing certificate settings preserved")
             if mode == "file" and not all(os.path.isabs(tls[k]) for k in fields):
@@ -615,7 +621,7 @@ class Deployment:
         second = right.get("listenAddress") or "0.0.0.0"
         return first == second or first in ("0.0.0.0", "::") or second in ("0.0.0.0", "::")
 
-    def require_shared_runtime(self):
+    def require_shared_runtime(self, required="shared-listener-v1"):
         installed = subprocess.run(["/usr/local/lib/v2box/v2box", "capabilities"],
                                    capture_output=True, text=True, timeout=15)
         try:
@@ -623,12 +629,42 @@ class Deployment:
         except ValueError:
             capabilities = {}
         features = capabilities.get("features") if isinstance(capabilities, dict) else None
-        if installed.returncode or not isinstance(features, list) or "shared-listener-v1" not in features:
-            raise DeploymentError("Installed V2Box lacks shared listener support; configuration preserved")
-        result = subprocess.run(["v2box", "check-runtime", "shared-listener-v1"],
+        if installed.returncode or not isinstance(features, list) or required not in features:
+            raise DeploymentError("Installed V2Box lacks " + required + "; upgrade the node program first. Configuration preserved")
+        result = subprocess.run(["v2box", "check-runtime", required],
                                 capture_output=True, text=True, timeout=15)
-        if result.returncode or result.stdout.strip() != "shared-listener-v1":
+        if result.returncode or result.stdout.strip() != required:
             raise DeploymentError("Port sharing requires an upgraded V2Box program and manager; configuration preserved")
+
+    @staticmethod
+    def listener_configuration(config):
+        result = json.loads(json.dumps(config))
+        if result.get("tls") == 1:
+            tls = result.get("tlsSettings", {})
+            for field in ("serverName", "certMode", "certFile", "keyFile", "tlsCert", "tlsKey", "provider", "dnsEnv"):
+                tls.pop(field, None)
+        return result
+
+    @staticmethod
+    def certificate_paths(node, config):
+        tls = config["tlsSettings"]
+        domain = tls["serverName"]
+        binding = node.get("SharedCertificate")
+        if binding:
+            if binding.get("Domain", "").lower().rstrip(".") != domain.lower().rstrip("."):
+                raise DeploymentError("Shared certificate binding domain changed; configuration preserved")
+            cert, key = binding["CertFile"], binding["KeyFile"]
+        else:
+            namespace = hashlib.sha256(panel_identity(node["ApiHost"]).encode()).hexdigest()[:16]
+            directory = node.get("CertificateDirectory") or "/etc/v2box/panels/" + namespace + "/" + node["NodeType"] + "-" + str(node["NodeID"])
+            cert = tls.get("certFile") or directory + "/" + config["protocol"] + ".cer"
+            key = tls.get("keyFile") or directory + "/" + config["protocol"] + ".key"
+        for path in (cert, key):
+            if not os.path.isabs(path) or "{" in path or "}" in path:
+                raise DeploymentError("Shared certificate paths must be explicit absolute paths; configuration preserved")
+        if os.path.normpath(cert) == os.path.normpath(key):
+            raise DeploymentError("Certificate and key paths must differ; configuration preserved")
+        return cert, key
 
     def prepare_shared_members(self, document, requested):
         config = self.shared_configuration(requested)
@@ -660,19 +696,67 @@ class Deployment:
                for peer in document["Nodes"]):
             raise DeploymentError("Shared listener group name conflict; configuration preserved")
         credentials = self.shared_credentials(requested, config)
+        tls = config.get("tlsSettings", {}) if config.get("tls") == 1 else {}
+        modern_tls = tls.get("certMode") in ("http", "dns")
+        shared_binding = None
+        signature = self.listener_configuration(config)
         for peer, other in candidates:
             self.check_shared_certificate(other)
             landing = peer.get("LandingPage") or {}
-            if other != config or landing.get("Enabled", False) or landing.get("Directory", ""):
+            if self.listener_configuration(other) != signature or landing.get("Enabled", False) or landing.get("Directory", ""):
                 raise DeploymentError("Shared listener configuration conflict; align protocol, port, TLS, transport and routing in both panels. Existing configuration preserved")
             peer_credentials = self.shared_credentials(peer, other)
             if credentials & peer_credentials:
                 raise DeploymentError("Shared listener credential conflict between panels; configuration preserved")
             credentials.update(peer_credentials)
-        if self.state.get("autoShare"):
+            if config.get("tls") == 1:
+                other_tls = other["tlsSettings"]
+                modern_tls = modern_tls or other_tls != tls or other_tls.get("certMode") in ("http", "dns")
+                same_domain = tls.get("serverName", "").lower().rstrip(".") == other_tls.get("serverName", "").lower().rstrip(".")
+                if same_domain and tls.get("certMode") in ("http", "dns"):
+                    # Share only paths, never copy keys or alter either panel's renewal settings.
+                    if any(tls.get(k) != other_tls.get(k) for k in ("certMode", "provider", "dnsEnv")):
+                        raise DeploymentError("Same-domain renewal settings conflict; configuration preserved")
+                    cert, key = self.certificate_paths(peer, other)
+                    candidate = {"Domain": tls["serverName"], "CertFile": cert, "KeyFile": key}
+                    existing_binding = peer.get("SharedCertificate")
+                    if existing_binding:
+                        for field in ("LegacyCertFile", "LegacyKeyFile"):
+                            if existing_binding.get(field):
+                                candidate[field] = existing_binding[field]
+                    elif not other_tls.get("certFile") and not other_tls.get("keyFile"):
+                        # Retain the original owner's adoption/guard provenance,
+                        # including when the stopped service has not migrated yet.
+                        stem = "/etc/v2box/" + other["protocol"] + str(peer["NodeID"])
+                        candidate.update(LegacyCertFile=stem + ".cer", LegacyKeyFile=stem + ".key")
+                    if shared_binding is not None and shared_binding != candidate:
+                        raise DeploymentError("Existing same-domain certificate sources conflict; configuration preserved")
+                    shared_binding = candidate
+                elif same_domain and other_tls != tls:
+                    raise DeploymentError("Same-domain certificate sources conflict; configuration preserved")
+        if config.get("tls") == 1:
+            effective = dict(requested)
+            if shared_binding is not None:
+                effective["SharedCertificate"] = shared_binding
+            path_owners = {}
+            for member, settings in [(effective, config)] + candidates:
+                details = settings["tlsSettings"]
+                if details.get("certMode") == "remote":
+                    continue
+                domain = details.get("serverName", "").lower().rstrip(".")
+                for path in self.certificate_paths(member, settings):
+                    path = os.path.normpath(path)
+                    if path in path_owners and path_owners[path] != domain:
+                        raise DeploymentError("Different certificate domains cannot share certificate/key paths; configuration preserved")
+                    path_owners[path] = domain
+        if modern_tls:
+            self.require_shared_runtime("shared-acme-v1")
+        elif self.state.get("autoShare"):
             self.require_shared_runtime()
         self.shared_listener = group
-        self.save(sharedListener=group)
+        self.save(sharedListener=group, sharedTLS=bool(modern_tls))
+        if shared_binding is not None:
+            requested["SharedCertificate"] = shared_binding
         requested["SharedListener"] = group
         for peer, _ in candidates:
             peer["SharedListener"] = group
@@ -998,12 +1082,12 @@ class Deployment:
                     if (
                         item.get("ApiHost", "").rstrip("/") == self.host
                         and item.get("NodeID") == self.data["nodeId"]
-                        and item.get("CertificateDirectory")
                     ):
-                        cert = str(
-                            Path(item["CertificateDirectory"])
-                            / (self.flow["protocol"] + ".cer")
-                        )
+                        binding = item.get("SharedCertificate")
+                        if binding and binding.get("Domain", "").lower().rstrip(".") == self.flow["certificateDomain"].lower().rstrip("."):
+                            cert = binding["CertFile"]
+                        elif item.get("CertificateDirectory"):
+                            cert = str(Path(item["CertificateDirectory"]) / (self.flow["protocol"] + ".cer"))
             legacy = (
                 "/etc/v2box/"
                 + self.flow["protocol"]

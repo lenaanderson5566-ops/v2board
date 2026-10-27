@@ -92,7 +92,7 @@ def run(manifest):
         # Both real HTTPS panels and the proxy certificate use a private fixture CA.
         ca=root/'ca.pem';key=root/'ca.key';leaf=root/'leaf.pem';leaf_key=root/'leaf.key';csr=root/'leaf.csr';ext=root/'leaf.ext'
         ext.write_text('subjectAltName=DNS:panel-a.test,DNS:panel-b.test,DNS:panel-a-new.test,DNS:node-a.example.test\nbasicConstraints=critical,CA:FALSE\nkeyUsage=critical,digitalSignature,keyEncipherment\nextendedKeyUsage=serverAuth\nsubjectKeyIdentifier=hash\nauthorityKeyIdentifier=keyid,issuer\n')
-        commands=[['openssl','req','-x509','-newkey','rsa:2048','-nodes','-keyout',str(key),'-out',str(ca),'-days','1','-subj','/CN=Independent panel fixture CA','-addext','basicConstraints=critical,CA:TRUE','-addext','keyUsage=critical,keyCertSign,cRLSign'],['openssl','req','-newkey','rsa:2048','-nodes','-keyout',str(leaf_key),'-out',str(csr),'-subj','/CN=panel-a.test'],['openssl','x509','-req','-in',str(csr),'-CA',str(ca),'-CAkey',str(key),'-CAcreateserial','-out',str(leaf),'-days','1','-extfile',str(ext)]]
+        commands=[['openssl','req','-x509','-newkey','rsa:2048','-nodes','-keyout',str(key),'-out',str(ca),'-days','90','-subj','/CN=Independent panel fixture CA','-addext','basicConstraints=critical,CA:TRUE','-addext','keyUsage=critical,keyCertSign,cRLSign'],['openssl','req','-newkey','rsa:2048','-nodes','-keyout',str(leaf_key),'-out',str(csr),'-subj','/CN=panel-a.test'],['openssl','x509','-req','-in',str(csr),'-CA',str(ca),'-CAkey',str(key),'-CAcreateserial','-out',str(leaf),'-days','90','-extfile',str(ext)]]
         for command in commands:subprocess.run(command,check=True,stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL,timeout=30)
         bundle=root/'ca-bundle.pem';bundle.write_bytes(Path('/etc/ssl/certs/ca-certificates.crt').read_bytes()+ca.read_bytes())
         context=ssl.create_default_context(cafile=str(bundle))
@@ -111,6 +111,10 @@ def run(manifest):
                 def do_POST(self):self.relay()
                 def relay(self):
                     if self.path=='/fixture-ip':data=b'8.8.8.8';status=200;headers={'Content-Type':'text/plain'}
+                    elif self.path.startswith('/fixture-dns'):
+                        query=urllib.parse.parse_qs(urllib.parse.urlsplit(self.path).query)
+                        typ=int(query.get('type',['1'])[0]);name=query.get('name',[''])[0]
+                        data=json.dumps({'Status':0,'Answer':[{'name':name,'type':1,'data':'8.8.8.8'}] if typ==1 else []}).encode();status=200;headers={'Content-Type':'application/dns-json'}
                     elif not self.panel['online'] or (self.panel.get('redeemUnavailable') and self.path=='/api/v10/server/enrollments/redeem'):data=b'{}';status=503;headers={'Content-Type':'application/json'}
                     else:
                         connection=http.client.HTTPConnection('127.0.0.1',self.panel['httpPort'],timeout=20)
@@ -119,6 +123,9 @@ def run(manifest):
                             headers={k:v for k,v in self.headers.items() if k.lower() not in ('connection','accept-encoding')}
                             connection.request(self.command,self.path,body=body,headers=headers);response=connection.getresponse();data=response.read();status=response.status
                             headers={k:v for k,v in response.getheaders() if k.lower() not in ('transfer-encoding','connection','content-length')}
+                            if self.panel.get('managedDns') and self.path=='/api/v10/public/node-deployment/bootstrap':
+                                for endpoint in (b'https://dns.google/resolve',b'https://cloudflare-dns.com/dns-query'):
+                                    data=data.replace(endpoint,(self.panel['origin']+'/fixture-dns').encode())
                         finally:connection.close()
                     self.send_response(status)
                     for k,v in headers.items():self.send_header(k,v)
@@ -126,7 +133,7 @@ def run(manifest):
             server=ThreadingHTTPServer(('127.0.0.1',int(p['origin'].rsplit(':',1)[1])),Proxy)
             tls=ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER);tls.load_cert_chain(leaf,leaf_key);server.socket=tls.wrap_socket(server.socket,server_side=True)
             servers.append(server);threading.Thread(target=server.serve_forever,daemon=True).start()
-        # Only the service manager and public-IP discovery source are test doubles.
+        # Service management and public IP/DNS discovery are controlled test doubles.
         # Node binary, both Laravel APIs, databases, keys and report endpoints are real.
         bin_dir=root/'bin';bin_dir.mkdir();pid_file=root/'node.pid';events=root/'service-events.jsonl'
         systemctl=bin_dir/'systemctl'
@@ -260,8 +267,16 @@ def run(manifest):
         upgraded_stream.close()
         os.killpg(node.pid,signal.SIGTERM);node.wait(timeout=15);pid_file.unlink()
         php(a,'Illuminate\\Support\\Facades\\DB::table("v2_user")->where("id",'+str(a['userId'])+')->update(["banned"=>0]); echo "true";')
+        candidate_program=os.environ.get('V2BOX_CANDIDATE_BINARY')
+        if candidate_program:
+            shutil.copy2(candidate_program,program/'v2box');(program/'v2box').chmod(0o755)
+            capabilities=json.loads(subprocess.check_output([str(program/'v2box'),'capabilities'],text=True))
+            assert 'shared-acme-v1' in capabilities['features'],'Candidate lacks shared ACME support'
+            php(a,'$node=App\\Models\\ServerV2box::findOrFail(3); $tls=$node->tls_settings; $tls["cert_mode"]="http"; $node->tls_settings=$tls; $node->save(); echo "true";')
         shared_fields=php(a,'echo json_encode(App\\Models\\ServerV2box::findOrFail(3)->only(["server_port","listen_ip","protocol","tls","network","tls_settings"]));')
         php(b,'$node=App\\Models\\ServerV2box::findOrFail(3); $node->fill(json_decode('+json.dumps(json.dumps(shared_fields))+',true)); $node->save(); echo "true";')
+        if candidate_program:
+            php(b,'$node=App\\Models\\ServerV2box::findOrFail(3); $tls=$node->tls_settings; unset($tls["cert_file"],$tls["key_file"]); $node->tls_settings=$tls; $node->save(); echo "true";')
         config.write_text(json.dumps(configuration));config.chmod(0o600)
         log=open(root/'before-shared-node.log','wb');logs.append(log)
         node=subprocess.Popen([str(program/'v2box'),'server','--config',str(config),'--watch=false'],env=env,stdout=log,stderr=log,start_new_session=True);pid_file.write_text(str(node.pid))
@@ -275,6 +290,11 @@ def run(manifest):
         (program/'node-network.py').chmod(0o755)
         # Complete the earlier fixture's credential rotation before a new enrollment.
         php(b,'foreach (Illuminate\\Support\\Facades\\DB::table("v2_node_credential")->where("node_type","v2box")->where("node_id",3)->whereNotNull("expires_at")->whereNull("revoked_at")->pluck("id") as $key) App\\Services\\NodeCredentials::revoke("v2box",3,$key,'+str(b['actorId'])+'); echo "true";')
+        if candidate_program:
+            # A real managed binding/active record is required by the production
+            # workflow. Only public DNS discovery is replaced by the local proxy.
+            php(b,'$db=Illuminate\\Support\\Facades\\DB::class; $cid=$db::table("v2_ddns_credential")->insertGetId(["name"=>"Managed test DNS","zone_id"=>str_repeat("f",32),"root_domain"=>"example.test","secret"=>Illuminate\\Support\\Facades\\Crypt::encryptString("fixture-only"),"status"=>"ready","next_run"=>time()+3600]); $binding=$db::table("v2_node_ddns")->where("node_type","v2box")->where("node_id",3)->first(); $db::table("v2_node_ddns")->where("id",$binding->id)->update(["managed"=>true,"credential_id"=>$cid,"status"=>"healthy","last_success"=>time(),"next_run"=>time()+3600,"ipv4"=>"8.8.8.8","ipv4_seen_at"=>time(),"published_domain"=>$binding->domain]); $db::table("v2_node_dns_record")->insert(["assignment_id"=>$binding->id,"credential_id"=>$cid,"domain"=>$binding->domain,"type"=>"A","record_id"=>bin2hex(random_bytes(16)),"owner"=>bin2hex(random_bytes(24)),"content"=>"8.8.8.8","status"=>"active","delete_after"=>0]); echo "true";')
+            b['managedDns']=True
         command_shared=php(b,'echo json_encode(App\\Services\\NodeDeployment::create(3,'+str(b['actorId'])+'));')['command']
         assert '--shared-listener' not in command_shared,'Ordinary panel command required a sharing suffix'
         shared_reports=network.CONFIG.read_bytes()
@@ -284,6 +304,10 @@ def run(manifest):
         assert len(shared_nodes)==2 and shared_nodes[0]['SharedListener']==shared_nodes[1]['SharedListener'],'Automatic deployment did not select one shared group'
         assert shared_nodes[0]['ApiKey']==entry['ApiKey'] and shared_nodes[0]['CertificateDirectory']==entry['CertificateDirectory']
         assert cert_before=={p.name:hashlib.sha256(p.read_bytes()).hexdigest() for p in node_root.glob('operator-*.pem')}
+        if candidate_program:
+            binding=shared_nodes[1]['SharedCertificate']
+            assert binding['CertFile']==str(node_root/'operator-cert.pem') and binding['KeyFile']==str(node_root/'operator-key.pem'),'Automatic ACME binding did not preserve the original pair'
+            wait(lambda:(root/'shared-node.log').read_text().count('Start renew cert')==2,'Both panel controllers did not retain automatic renewal')
         assert network.CONFIG.read_bytes()==shared_reports,'Shared conversion changed existing reporting settings'
         b['proxyTls']=True
         shared_a=connect(a,a['port'],echo.server_address[1],context);streams.append(shared_a)
@@ -295,6 +319,7 @@ def run(manifest):
         assert repeated_shared.returncode==0 and config.read_bytes()==shared_before and len(events.read_text().splitlines())==1,'Repeated shared deployment changed configuration or restarted again'
         result={'independent_databases':2,'different_application_keys':True,'published_program':'v1.0.14','same_node_id':3,'same_server_id':7,'same_user_id':True,'one_click_append':True,'cross_panel_credentials_rejected':True,'existing_tls_stream_and_certificate_preserved':True,'configuration_change_isolated':True,'backend_outage_isolated':True,'ip_reporting_isolated':True,'other_database_user_ban_isolated':True,'direct_dns_and_legacy_reporting_preserved':True,'repeat_command_idempotent':True,'service_restarts':1,'service_manager':'fixture; real V2Box process and HTTPS Laravel backends'}
         result.update({'automatic_same_port_without_suffix':True,'automatic_group_selection':True,'automatic_conversion_restarts_once':True,'shared_two_panel_tls_connections':True,'port_conflict_rejected_and_scoped_rollback':True,'runtime_readiness_confirmed_without_managed_dns':True,'bootstrap_outage_preserves_existing_services':True,'redemption_outage_then_same_grant_retry':True,'real_previous_release_upgrade':True,'stopped_upgrade_stays_stopped':True,'upgrade_preserves_nodes_certificates_and_reporting':True,'previous_binary_backup_preserved':True,'upgraded_binary_serves_retained_nodes':True})
+        result.update({'shared_http_automatic_renewal':bool(candidate_program),'existing_acme_pair_reused':bool(candidate_program)})
         Path('/tmp/v2box-independent-result.json').write_text(json.dumps(result,indent=2));print(json.dumps(result))
     finally:
         for stream in streams:

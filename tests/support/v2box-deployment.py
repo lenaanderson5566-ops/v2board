@@ -76,7 +76,7 @@ class WorkflowTests(unittest.TestCase):
             if name == "users":
                 return [{"id": 1, "uuid": "new" if collision or not peer else "old"}]
             config = {"protocol": "anytls", "listenPort": 443, "listenAddress": "0.0.0.0", "tls": 1,
-                      "tlsSettings": {"certMode": "file", "certFile": "/keep/cert.pem", "keyFile": "/keep/key.pem"}}
+                      "tlsSettings": {"certMode": "file", "serverName": "node.example.test", "certFile": "/keep/cert.pem", "keyFile": "/keep/key.pem"}}
             if peer and mismatch:
                 config.update(mismatch)
             return config
@@ -194,7 +194,7 @@ class WorkflowTests(unittest.TestCase):
                 result["listenPort"] = port
             return result
         deploy.shared_resource = for_port
-        deploy.require_shared_runtime = lambda: None
+        deploy.require_shared_runtime = lambda *args: None
         return deploy, original
 
     def test_automatic_legacy_response_keeps_independent_append(self):
@@ -257,6 +257,92 @@ class WorkflowTests(unittest.TestCase):
             deploy.prepare_config()
         self.assertEqual(deploy.config.read_bytes(), before)
 
+    def acme_fixture(self, mode="http", different_domain=False):
+        deploy, original = self.automatic_fixture(20001)
+        original["Nodes"][0]["CertificateDirectory"] = str(self.path.parent / "original-certs")
+        m.write_private(deploy.config, original)
+        resource = deploy.shared_resource
+        def acme(node, name):
+            value = resource(node, name)
+            if name == "configuration":
+                peer = node["ApiHost"] != self.data["apiHost"]
+                value["tlsSettings"] = {"certMode": mode, "serverName": "old.example.test" if peer and different_domain else "node.example.test"}
+            return value
+        deploy.shared_resource = acme
+        calls = []
+        deploy.require_shared_runtime = lambda *args: calls.append(args)
+        return deploy, original, calls
+
+    def test_shared_acme_same_domain_reuses_pair_without_changing_old_settings(self):
+        for mode in ("http", "dns"):
+            with self.subTest(mode=mode):
+                deploy, original, calls = self.acme_fixture(mode)
+                deploy.prepare_config()
+                current = json.loads(deploy.config.read_text())
+                old = dict(current["Nodes"][0]); old.pop("SharedListener")
+                self.assertEqual(old, original["Nodes"][0])
+                binding = current["Nodes"][1]["SharedCertificate"]
+                self.assertEqual(binding, {"Domain": "node.example.test", "CertFile": original["Nodes"][0]["CertificateDirectory"] + "/anytls.cer", "KeyFile": original["Nodes"][0]["CertificateDirectory"] + "/anytls.key", "LegacyCertFile": "/etc/v2box/anytls3.cer", "LegacyKeyFile": "/etc/v2box/anytls3.key"})
+                self.assertEqual(calls, [("shared-acme-v1",)])
+                deploy.rollback_addition()
+                self.assertEqual(json.loads(deploy.config.read_text()), original)
+
+    def test_shared_acme_different_domains_keep_independent_pairs(self):
+        deploy, original, calls = self.acme_fixture(different_domain=True)
+        deploy.prepare_config()
+        current = json.loads(deploy.config.read_text())
+        self.assertNotIn("SharedCertificate", current["Nodes"][1])
+        self.assertEqual(current["Nodes"][0]["CertificateDirectory"], original["Nodes"][0]["CertificateDirectory"])
+        self.assertEqual(calls, [("shared-acme-v1",)])
+
+    def test_shared_acme_capability_failure_leaves_existing_pair_and_config(self):
+        deploy, _, _ = self.acme_fixture()
+        before = deploy.config.read_bytes()
+        def reject(*args):
+            raise m.DeploymentError("Upgrade required: shared-acme-v1")
+        deploy.require_shared_runtime = reject
+        with self.assertRaisesRegex(m.DeploymentError, "shared-acme-v1"):
+            deploy.prepare_config()
+        self.assertEqual(deploy.config.read_bytes(), before)
+
+    def test_shared_acme_does_not_merge_incompatible_renewal_owners(self):
+        deploy, _, _ = self.acme_fixture()
+        resource = deploy.shared_resource
+        def mixed(node, name):
+            value = resource(node, name)
+            if name == "configuration" and node["ApiHost"] != self.data["apiHost"]:
+                value["tlsSettings"]["certMode"] = "dns"
+                value["tlsSettings"]["provider"] = "cloudflare"
+            return value
+        deploy.shared_resource = mixed
+        before = deploy.config.read_bytes()
+        with self.assertRaisesRegex(m.DeploymentError, "renewal settings conflict"):
+            deploy.prepare_config()
+        self.assertEqual(deploy.config.read_bytes(), before)
+
+    def test_shared_acme_cross_domain_paths_cannot_overwrite_existing_pair(self):
+        deploy, _, _ = self.acme_fixture(different_domain=True)
+        resource = deploy.shared_resource
+        def shared_paths(node, name):
+            value = resource(node, name)
+            if name == "configuration":
+                value["tlsSettings"].update(certFile="/retained/cert.pem", keyFile="/retained/key.pem")
+            return value
+        deploy.shared_resource = shared_paths
+        before = deploy.config.read_bytes()
+        with self.assertRaisesRegex(m.DeploymentError, "Different certificate domains"):
+            deploy.prepare_config()
+        self.assertEqual(deploy.config.read_bytes(), before)
+
+    def test_shared_acme_verification_uses_bound_certificate(self):
+        deploy, _, _ = self.acme_fixture()
+        deploy.prepare_config()
+        deploy.flow.update(tls=1, certificateMode="http", certificateDomain="node.example.test", certificateFile="", protocol="anytls", listenAddress="127.0.0.1", listenPort=20001)
+        binding = json.loads(deploy.config.read_text())["Nodes"][1]["SharedCertificate"]
+        with patch.object(m.subprocess, "run", return_value=m.subprocess.CompletedProcess([], 0)) as run, patch.object(m.ssl, "create_default_context"), patch.object(m.socket, "create_connection"):
+            deploy.verify_certificate()
+        self.assertEqual(run.call_args_list[0].args[0][3], binding["CertFile"])
+
     def test_shared_capability_checks_installed_and_running_program(self):
         deploy, _ = self.automatic_fixture()
         completed = m.subprocess.CompletedProcess
@@ -305,6 +391,7 @@ class WorkflowTests(unittest.TestCase):
     def test_shared_listener_refuses_unsupported_protocol_and_existing_selection(self):
         state = json.loads(self.path.read_text())
         state["sharedListener"] = "public-443"
+        state["data"]["deployment"]["certificateMode"] = "self"
         m.write_private(self.path, state)
         with self.assertRaises(m.DeploymentError):
             m.Deployment(self.path)

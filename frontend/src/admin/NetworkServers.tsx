@@ -372,7 +372,7 @@ export function NetworkServers({
                                             onClick={() => {
                                                 if (
                                                     confirm(
-                                                        `删除服务器「${r.name}」？有关联域名时将禁止删除。`,
+                                                        `删除服务器「${r.name}」？未使用的入口域名将一并删除；仍有关联节点时禁止删除。`,
                                                     )
                                                 )
                                                     act("drop", { id: r.id });

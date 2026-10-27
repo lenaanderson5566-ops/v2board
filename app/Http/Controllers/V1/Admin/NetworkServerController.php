@@ -15,7 +15,7 @@ final class NetworkServerController extends Controller {
             $old=isset($v['id'])?DB::table('v2_network_server')->find($v['id']):null;
             abort_if(isset($v['id']) && !$old,404);
             abort_if(!$old && DB::table('v2_network_server')->count()>=1000,422,'最多维护 1000 台服务器');
-            abort_if($old && $old->family!==$v['family'] && DB::table('v2_node_ddns')->where('server_id',$old->id)->exists(),409,'请先调整关联域名，再更改服务器地址类型');
+            abort_if($old && $old->family!==$v['family'] && $v['family']!=='dual' && DB::table('v2_node_ddns')->where('server_id',$old->id)->where('family','!=',$v['family'])->exists(),409,'关联域名仍需要其他地址类型，请先调整关联域名，再缩减服务器地址类型');
             $traffic=$v['traffic']??null;$entry=$v['entry']??null;
             abort_if($entry && ($old || !$v['enabled']),422,'请在启用的新服务器配置入口；已有服务器请在详情管理入口域名');
             unset($v['id'],$v['traffic'],$v['entry']);
@@ -35,13 +35,22 @@ final class NetworkServerController extends Controller {
     }
     public function drop(Request $request) {
         $v=$request->validate(['id'=>'required|integer|min:1']);
-        return NodeDnsLifecycle::locked(function()use($v){
-            abort_if(DB::table('v2_node_ddns')->where('server_id',$v['id'])->exists(),409,'请先解除此服务器关联的域名');
+        return NodeDnsLifecycle::locked(fn()=>DB::transaction(function()use($v){
+            $bindings=DB::table('v2_node_ddns')->where('server_id',$v['id'])->get();
+            foreach($bindings as $binding) {
+                abort_if($binding->purpose!=='entry' || DB::table('v2_node_ddns')->where('entry_id',$binding->id)->exists() || \App\Services\NodeConnection::referencesEntry($binding->id),409,'服务器域名仍被节点使用，请先解除关联线路；未使用的入口域名可随服务器一起删除');
+            }
+            foreach($bindings as $binding) {
+                NodeDnsLifecycle::retire((int)$binding->id);
+                DB::table('v2_node_ddns')->where('id',$binding->id)->delete();
+                \App\Services\NodeDdnsService::event((int)$binding->id,'configuration_removed');
+            }
             DB::table('v2_server_traffic_budget')->where('network_server_id',$v['id'])->update(['network_server_id'=>null]);
             DB::table('v2_network_server')->where('id',$v['id'])->delete();
             return ['data'=>true];
-        });
+        }));
     }
+
     public function enroll(Request $request) {
         $v=$request->validate(['id'=>'required|integer|min:1']);
         return response()->json(['data'=>NodeDeployment::createServer($v['id'],(int)$request->input('user.id'))],200,['Cache-Control'=>'private, no-store']);

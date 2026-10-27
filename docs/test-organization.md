@@ -1100,3 +1100,10 @@ v1.0.15 正式发布验证：节点从 6d2aa4d 发布，正式标签流水线的
 - The worker retains bootstrap/deployment serialization, existing certificate guards and scoped rollback. Managed DNS waits poll for up to 24 hours; foreground fallback retains the 15-minute wait and explicitly asks operators to keep SSH open. This is SSH-disconnect survival, not automatic recovery after a server reboot.
 - Deployment status/logs use `systemctl status v2box-deployment --no-pager` and `journalctl -u v2box-deployment -f`; runtime node logs remain separate. Updated managers add `deploy-status` and `deploy-log`; older managers can use these system commands.
 - Existing `tests/support/v2box-deployment.py` now includes managed handoff, credential exclusion, failed-handoff preservation, non-systemd fallback and late-DNS regression checks. The disposable Linux workflow suite passed 107 tests and all 72 node script tests passed; bootstrap and manager shell syntax passed. Real systemd/SSH-disconnect verification remains required on a test server; the disposable container has no systemd PID 1.
+
+
+### Network server family and unused-entry deletion regression
+
+- IPv4/IPv6 physical servers may widen to dual without rotating reporting credentials or changing domain address choices; narrowing is rejected when a bound domain still requires the removed family.
+- Deleting a server retires unused entry domains and their managed DNS ledger records transactionally, including entries awaiting their first report. Origin bindings and referenced entry domains remain protected.
+- Regression cases were added to `tests/node-ddns.php`. The server management frontend suite passed 11 tests and the TypeScript/Vite production build passed. The isolated MySQL node-ddns and server-traffic-budgets integration suites passed after the disposable Docker environment recovered; no existing application database or Docker service was restarted.

@@ -585,6 +585,22 @@ try {
     $eid=$net->entry($req(['server_id'=>$ingress,'credential_id'=>$cid,'prefix'=>'entry','family'=>'ipv4']))['data']['id'];
     $entry=DB::table('v2_node_ddns')->find($eid);
     $assert($entry->purpose==='entry' && $entry->server_id===$ingress,'entry belongs to physical ingress server');
+    // Widening capability must not deadlock with existing domain requirements.
+    App\Services\NetworkServer::credential($ingress);
+    $serverBefore=DB::table('v2_network_server')->find($ingress);
+    $net->save($req(['id'=>$ingress,'name'=>'Shared ingress','family'=>'dual','enabled'=>true]));
+    $upgraded=DB::table('v2_network_server')->find($ingress);
+    $assert($upgraded->family==='dual' && $upgraded->report_hash===$serverBefore->report_hash && $upgraded->report_secret===$serverBefore->report_secret,'IPv4 server can widen to dual with bound domains without rotating reporting credentials');
+    $assert(DB::table('v2_node_ddns')->find($eid)->family==='ipv4','widening server retains bound domain address selection');
+    $reject(fn()=>$net->save($req(['id'=>$ingress,'name'=>'Shared ingress','family'=>'ipv6','enabled'=>true])),409);
+    $assert(DB::table('v2_network_server')->find($ingress)->family==='dual','incompatible narrowing rolls back');
+    $net->save($req(['id'=>$ingress,'name'=>'Shared ingress','family'=>'ipv4','enabled'=>true]));
+    $assert(DB::table('v2_network_server')->find($ingress)->family==='ipv4','compatible narrowing is permitted when every binding fits');
+    $pendingServer=$server('Never reported');
+    $pendingEntry=$net->entry($req(['server_id'=>$pendingServer,'credential_id'=>$cid,'prefix'=>'unused-pending-entry','family'=>'ipv4']))['data']['id'];
+    $assert(DB::table('v2_node_ddns')->find($pendingEntry)->status==='awaiting_report','new entry awaits first IP report');
+    $net->drop($req(['id'=>$pendingServer]));
+    $assert(!DB::table('v2_network_server')->where('id',$pendingServer)->exists() && !DB::table('v2_node_ddns')->where('id',$pendingEntry)->exists(),'unused server and pending entry can be deleted before IP reporting');
     // New server, quota and optional ingress are created atomically.
     $serverCount=DB::table('v2_network_server')->count();$quotaCount=DB::table('v2_server_traffic_budget')->count();$assignmentCount=DB::table('v2_node_ddns')->count();
     $combined=['name'=>'Combined ingress','family'=>'dual','enabled'=>true,'traffic'=>['limitBytes'=>4096,'countingMode'=>'both','resetDay'=>5],'entry'=>['credential_id'=>$cid,'prefix'=>'combined-entry','family'=>'ipv4']];

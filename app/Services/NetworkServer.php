@@ -19,7 +19,7 @@ final class NetworkServer {
             $id=DB::table('v2_network_server')->insertGetId($data);
         }
         $s=DB::table('v2_network_server')->find($id);
-        abort_unless($s && $s->enabled && ($s->family==='dual' || $s->family===$a->family),422,'服务器地址类型不包含此域名所需的地址');
+        abort_unless($s && $s->enabled && ($s->family==='dual' || $s->family===$a->family),422,'服务器未启用或地址类型不包含此域名所需的地址；请先在服务器设置中启用并改为双栈，再修改域名地址类型');
         $data=['server_id'=>$id];
         if ($a->server_id!=$id) {
             $data+=['report_hash'=>null,'tls_transition'=>null,'tls_transition_state'=>'none','relay_verified_at'=>0];

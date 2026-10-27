@@ -71,7 +71,7 @@ try {
     $assert(count($nodes)===2,'Both types listed with same id');
     foreach ($nodes as $node) if ($node['type']==='v2box') {
         $assert(strpos($node['install_command'],'--node-type v2box')!==false,'Installer selects V2Box');
-        $assert(str_contains($node['install_command'],'--install v1.0.15'),'Installer pins the multi-panel-capable release, not legacy main');
+        $assert(str_contains($node['install_command'],'--install v1.0.16'),'Installer pins the multi-panel-capable release, not legacy main');
         $assert(str_ends_with($node['upgrade_command'],'--update'),'Upgrade requires existing installation and preserves configuration');
         $assert(strpos($node['install_command'],'--prompt-api-key')!==false,'Installer keeps credential input interactive');
     }
@@ -172,7 +172,7 @@ exit "$DNS_REPORT_FAILURE"
 SH,
             ];
             foreach ($mocks as $name=>$script) {file_put_contents($fixture.'/bin/'.$name,$script."\n");chmod($fixture.'/bin/'.$name,0700);}
-            $script=str_replace(['__NODE_DEPLOY_HELPER__','__NODE_MANAGER__','__NODE_INSTALLER__'],[file_get_contents(resource_path('scripts/node-deploy.py')),$mocks['v2box'],"#!/bin/bash\nexit 0\n"],file_get_contents(resource_path('scripts/node-deploy.sh')));
+            $script=str_replace('__NODE_DEPLOY_HELPER__',file_get_contents(resource_path('scripts/node-deploy.py')),file_get_contents(resource_path('scripts/node-deploy.sh')));
             $script=str_replace(['__NODE_PREREQUISITES__','/etc/v2box','/usr/local/lib/v2box','/etc/node-network','/usr/local/bin/v2box'],['',$fixture.'/config',$fixture.'/lib',$fixture.'/network',$fixture.'/bin/v2box'],$script);
             file_put_contents($fixture.'/bootstrap.sh',$script);
             $run=function($failure=null,$nodeId=3,$panelHost='https://panel.example.invalid')use($fixture,$reportFailure,$networkOnly,$serverOnly){

@@ -2428,7 +2428,23 @@ body[data-console="user"] .client-family-header p {
     .minimal-landing-footer > .privacy-footer-links { grid-column: 1 / -1; justify-self: start; justify-content: flex-start; }
 }
 
-.account-deletion-ack { display: flex; flex-direction: row; align-items: flex-start; gap: 10px; margin-block: 16px; }
+.account-deletion-warning { display: flex; align-items: flex-start; gap: 12px; line-height: 1.65; }
+.account-deletion-warning > svg { flex: 0 0 auto; margin-top: 2px; color: var(--danger); }
+.account-deletion-effects { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; margin: 22px 0; }
+.account-deletion-effects > div { min-width: 0; padding: 16px; border-radius: 12px; background: var(--surface-soft); }
+.account-deletion-effects dt { margin-bottom: 8px; font-weight: 600; }
+.account-deletion-effects dd { margin: 0; color: var(--text-secondary); font-size: 13px; line-height: 1.75; overflow-wrap: anywhere; }
+.account-deletion-blockers { padding: 16px; border: 1px solid var(--border); border-radius: 12px; }
+.account-deletion-blockers h3 { margin: 0; font-size: 14px; }
+.account-deletion-blockers ul { margin: 10px 0 0; padding-inline-start: 20px; line-height: 1.75; }
+.account-deletion-footer { display: flex; justify-content: flex-end; flex-wrap: wrap; gap: 12px; margin-top: 22px; padding-top: 18px; border-top: 1px solid var(--border); }
+.account-deletion-confirm > label { margin-top: 18px; }
+.account-deletion-confirm .account-deletion-hint { margin: 6px 0 0; font-size: 12px; }
+.account-deletion-ack { display: flex; flex-direction: row; align-items: flex-start; gap: 10px; margin-block: 16px; line-height: 1.65; }
 .account-deletion-ack input[type="checkbox"] { width: 18px; min-width: 18px; height: 18px; margin: 3px 0 0; }
+@media (max-width: 700px) {
+    .account-deletion-effects { grid-template-columns: minmax(0, 1fr); }
+    .account-deletion-footer > button { flex: 1 1 auto; }
+}
 
 .app.user .billing-current-plan { background: linear-gradient(115deg, var(--brand-soft), var(--surface, #fff) 72%); }

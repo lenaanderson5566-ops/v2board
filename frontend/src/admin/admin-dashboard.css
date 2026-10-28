@@ -1,4 +1,94 @@
 /* Scoped dashboard presentation shared by all four views. */
+body[data-console="admin"] .dashboard-toolbar,
+body[data-console="admin"] .dashboard-trend-toolbar,
+body[data-console="admin"] .dashboard-history figcaption {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 12px;
+}
+body[data-console="admin"] .dashboard-toolbar p {
+    margin: 5px 0 0;
+}
+body[data-console="admin"] .dashboard-toolbar > div {
+    flex: 1 1 240px;
+}
+body[data-console="admin"] .dashboard-todos {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(300px, 100%), 1fr));
+    gap: 12px;
+}
+body[data-console="admin"] .dashboard-todos:empty {
+    display: none;
+}
+body[data-console="admin"] .dashboard-todos .alert {
+    margin: 0;
+}
+body[data-console="admin"] .dashboard-definition,
+body[data-console="admin"] .dashboard-trend-toolbar,
+body[data-console="admin"] .dashboard-history {
+    margin: 0;
+    padding: 16px 20px;
+}
+body[data-console="admin"] .dashboard-definition {
+    border-top: 1px solid var(--line);
+}
+body[data-console="admin"] .dashboard-definition summary,
+body[data-console="admin"] .dashboard-chart-data summary {
+    cursor: pointer;
+    color: var(--muted);
+    font-size: 13px;
+}
+body[data-console="admin"] .dashboard-trend-toolbar {
+    border-top: 1px solid var(--line);
+}
+body[data-console="admin"] .dashboard-trend-toolbar h3 {
+    margin: 0;
+    font-size: 15px;
+    margin-right: auto;
+}
+body[data-console="admin"] .dashboard-history figcaption {
+    font-size: 13px;
+    font-variant-numeric: tabular-nums;
+}
+body[data-console="admin"] .dashboard-chart-scroll {
+    overflow-x: auto;
+}
+body[data-console="admin"] .dashboard-history svg {
+    display: block;
+    width: 100%;
+    min-width: 520px;
+}
+body[data-console="admin"] .dashboard-history svg text {
+    font-size: 13px;
+    fill: var(--muted);
+}
+body[data-console="admin"] .dashboard-chart-grid {
+    stroke: var(--line);
+    stroke-dasharray: 4 4;
+}
+body[data-console="admin"] .dashboard-chart-line {
+    fill: none;
+    stroke: var(--primary, #6255dc);
+    stroke-width: 2.5;
+}
+body[data-console="admin"] .dashboard-chart-point {
+    fill: var(--primary, #6255dc);
+    stroke: #fff;
+    stroke-width: 2;
+    cursor: pointer;
+}
+body[data-console="admin"] .dashboard-chart-point:focus {
+    outline: none;
+    stroke: var(--text, #172033);
+    stroke-width: 3;
+}
+body[data-console="admin"] .dashboard-rank-note {
+    padding: 12px 20px 0;
+    margin: 0;
+    font-size: 12px;
+}
 body[data-console="admin"] .dashboard-workspace {
     --dashboard-gap: 16px;
     min-width: 0;
@@ -40,6 +130,9 @@ body[data-console="admin"] .dashboard-workspace .health-check-grid {
 }
 body[data-console="admin"] .dashboard-workspace .dashboard-core-metrics {
     padding: 20px;
+}
+body[data-console="admin"] .dashboard-workspace .dashboard-finance-metrics {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
 }
 body[data-console="admin"] .dashboard-workspace .metric,
 body[data-console="admin"] .dashboard-workspace .analytics-metrics > div,
@@ -95,14 +188,27 @@ body[data-console="admin"] .dashboard-workspace .muted {
     line-height: 1.65;
 }
 @media (max-width: 760px) {
+    body[data-console="admin"] .dashboard-workspace .dashboard-finance-metrics {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
     body[data-console="admin"] .dashboard-workspace .panel-head,
     body[data-console="admin"] .dashboard-workspace .pad,
     body[data-console="admin"] .dashboard-workspace .panel-body,
     body[data-console="admin"] .dashboard-workspace .dashboard-core-metrics {
         padding: 16px;
     }
+    body[data-console="admin"] .dashboard-history,
+    body[data-console="admin"] .dashboard-definition,
+    body[data-console="admin"] .dashboard-trend-toolbar {
+        padding: 16px;
+    }
     body[data-console="admin"] .dashboard-workspace .legacy-ranks,
     body[data-console="admin"] .dashboard-workspace .split {
+        grid-template-columns: minmax(0, 1fr);
+    }
+}
+@media (max-width: 440px) {
+    body[data-console="admin"] .dashboard-workspace .dashboard-finance-metrics {
         grid-template-columns: minmax(0, 1fr);
     }
 }

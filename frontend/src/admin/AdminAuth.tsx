@@ -88,6 +88,7 @@ export function AdminAuth({
                     {!forget && <PasskeyLogin onMfa={setMfa} onComplete={completeLogin} />}
                     <Editor
                         key={mode}
+                        warnUnsaved={false}
                         fields={fields.map((field) => ({
                             ...field,
                             placeholder: field.label,

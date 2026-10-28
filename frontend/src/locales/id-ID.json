@@ -634,7 +634,21 @@
     "确认删除账户": "Hapus akun permanen",
     "退出未完成，请联网后重试。": "Keluar belum selesai. Sambungkan kembali ke internet dan coba lagi.",
     "确认选择": "Konfirmasi pilihan",
-    "上海": "Shanghai"
+    "上海": "Shanghai",
+    "账户与登录": "Akun dan login",
+    "删除后将无法再登录，所有设备会退出，账户身份资料无法恢复。": "Anda tidak dapat login lagi. Semua perangkat akan keluar dan data identitas akun tidak dapat dipulihkan.",
+    "订阅与权益": "Langganan dan manfaat",
+    "剩余套餐、流量和优惠权益将失效，删除账户不会自动退款。": "Sisa paket, kuota data, dan manfaat promosi akan hangus. Menghapus akun tidak memicu pengembalian dana otomatis.",
+    "数据与记录": "Data dan catatan",
+    "账户身份资料将被清除或匿名化，必要的账务和安全记录仍会按站点规则保留。": "Data identitas akun akan dihapus atau dianonimkan. Catatan tagihan dan keamanan yang diperlukan tetap disimpan sesuai kebijakan situs.",
+    "需要先处理的事项": "Selesaikan hal berikut terlebih dahulu",
+    "处理完成后，请重新检查账户状态。": "Setelah selesai, periksa kembali status akun Anda.",
+    "重新检查": "Periksa kembali",
+    "检查中…": "Memeriksa…",
+    "删除账户无法撤销，请确认不再需要此账户。": "Penghapusan akun tidak dapat dibatalkan. Pastikan Anda tidak lagi memerlukan akun ini.",
+    "为避免误操作，请输入大写 DELETE。": "Untuk mencegah penghapusan yang tidak disengaja, ketik DELETE dengan huruf besar.",
+    "账户已停用，所有登录会话均已结束。": "Akun Anda telah dinonaktifkan dan semua sesi login telah berakhir.",
+    "暂时无法检查账户状态，请稍后重新检查。": "Status akun belum dapat diperiksa. Silakan coba lagi nanti."
   },
   "account": {
     "notificationAutoSave": "Perubahan disimpan secara otomatis",

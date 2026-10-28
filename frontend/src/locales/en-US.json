@@ -634,7 +634,21 @@
     "确认删除账户": "Permanently delete account",
     "退出未完成，请联网后重试。": "Sign-out is incomplete. Reconnect and try again.",
     "确认选择": "Confirm selection",
-    "上海": "Shanghai"
+    "上海": "Shanghai",
+    "账户与登录": "Account and sign-in",
+    "删除后将无法再登录，所有设备会退出，账户身份资料无法恢复。": "You will no longer be able to sign in. All devices will be signed out, and your account identity details cannot be restored.",
+    "订阅与权益": "Subscription and benefits",
+    "剩余套餐、流量和优惠权益将失效，删除账户不会自动退款。": "Your remaining plan, data allowance and promotional benefits will expire. Deleting your account does not issue an automatic refund.",
+    "数据与记录": "Data and records",
+    "账户身份资料将被清除或匿名化，必要的账务和安全记录仍会按站点规则保留。": "Account identity details will be removed or anonymized. Required billing and security records will be retained under the site's policies.",
+    "需要先处理的事项": "Resolve these items first",
+    "处理完成后，请重新检查账户状态。": "Once these items are resolved, check your account status again.",
+    "重新检查": "Check again",
+    "检查中…": "Checking…",
+    "删除账户无法撤销，请确认不再需要此账户。": "Account deletion cannot be undone. Please make sure you no longer need this account.",
+    "为避免误操作，请输入大写 DELETE。": "To prevent accidental deletion, type DELETE in uppercase.",
+    "账户已停用，所有登录会话均已结束。": "Your account has been deactivated and all sign-in sessions have ended.",
+    "暂时无法检查账户状态，请稍后重新检查。": "We cannot check your account status right now. Please try again later."
   },
   "account": {
     "notificationAutoSave": "Changes save automatically",

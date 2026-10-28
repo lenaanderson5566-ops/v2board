@@ -63,6 +63,8 @@ PHP 入口经 `tests/support/run-script.php` 执行，未捕获异常必须以�
 
 ## 验证边界
 
+仪表盘沿用 `dashboard-revenue` 验证币种隔离、支付时间、缓存与排行榜；节点排行先按节点汇总再取前 15 名，相同流量按 ID 稳定排序，只批量查询榜单名称，保留缺失节点历史记录。`node-backends` 继续覆盖 V2Box 节点来源兼容性。
+
 跨面板与节点的公共层回归：`framework-upgrade` 检查任务超时、Horizon 停止上限和队列重投间隔留有余量；`node-traffic-batches` 与 `node-traffic-concurrency` 验证重复领取不会重复计费，调度器可恢复未处理批次。前端 `api.test.ts` 覆盖 CSV 等待响应头、读取正文的超时，禁止自动重放导出操作。V2Box 的 `node/reload_retry_test.go` 用 HTTPS 夹具及真实本地核心验证在线统计失败不丢失用户撤销，以及准备失败后的缓存恢复；全量 Go 竞态与生命周期测试沿用节点仓库 CI 命令。
 
 自动测试、静态分析和构建各自说明不同结果，不能互相替代。工具链或输入不足而跳过的测试，须明确报告原因，不能记为通过。

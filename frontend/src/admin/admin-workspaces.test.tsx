@@ -31,7 +31,7 @@ vi.mock("./PaymentCategoryEditor", () => ({
     PaymentCategoryEditor: () => null,
     paymentCategoryInitial: () => ({}),
 }));
-import { Overview, RankChart } from "./admin-dashboard";
+import { Overview, RankChart, HistoryChart } from "./admin-dashboard";
 import { UsersPage } from "./admin-users";
 import { OrdersPage } from "./admin-orders";
 import { AdminInvitations } from "./AdminInvitations";
@@ -130,6 +130,7 @@ it("shows core income and lazily switches to risk without removed dashboard bloc
         api.request.mock.calls.some(([path]) => path.includes("risk/summary")),
     ).toBe(false);
     fireEvent.mouseDown(screen.getByRole("tab", { name: "风控概览" }), { button: 0, ctrlKey: false });
+    expect(window.location.hash).toBe("#/overview-risk");
     await waitFor(() =>
         expect(
             api.request.mock.calls.some(([path]) =>
@@ -146,10 +147,10 @@ it("renders horizontal bars with full identities available", () => {
         />,
     );
     expect(
-        screen.getByRole("img", { name: "流量排行横向柱状图" }),
+        screen.getByRole("group", { name: "流量排行横向柱状图" }),
     ).toBeTruthy();
     expect(screen.getByTitle(/guest@example.com/)).toBeTruthy();
-    expect(screen.getByText("12.00 GB")).toBeTruthy();
+    expect(screen.getByText("12.00 GiB")).toBeTruthy();
 });
 it("defaults to activity times and toggles optional user columns", async () => {
     render(<UsersPage />);
@@ -235,6 +236,7 @@ it("opens system monitoring only on its dashboard tab", async () => {
         api.request.mock.calls.some(([path]) => path.includes("system/observability")),
     ).toBe(false);
     fireEvent.mouseDown(screen.getByRole("tab", { name: "系统监控" }), { button: 0, ctrlKey: false });
+    expect(window.location.hash).toBe("#/overview-system");
     await screen.findByText("性能与告警");
     expect(
         api.request.mock.calls.some(([path]) => path.includes("system/observability")),
@@ -614,6 +616,55 @@ it("refreshes every overview section from one action", async () => {
     });
 });
 
+it("keeps financial data available when system health cannot be checked", async () => {
+    api.request.mockImplementation(async (path: string) => {
+        if (path.includes("getSystemStatus")) throw new Error("health unavailable");
+        return {data:path.includes("getOverride") ? {financial:{currencies:[{currency:"CNY",today_amount:12345,daily:[]}]}} : []};
+    });
+    render(<Overview />);
+    expect(await screen.findByText("CNY 123.45")).toBeTruthy();
+    expect(await screen.findByRole("alert")).toHaveProperty("textContent", expect.stringContaining("系统状态暂时无法确认"));
+    expect(screen.getByRole("link",{name:"查看系统监控"}).getAttribute("href")).toBe("#/overview-system");
+});
+
+it("switches trend periods and metrics locally and exposes exact daily values", async () => {
+    const daily=Array.from({length:30},(_,i)=>({date:`2026-10-${String(i+1).padStart(2,"0")}`,amount:(i+1)*123,count:i+1}));
+    api.request.mockImplementation(async(path:string)=>({data:path.includes("getOverride")?{financial:{currencies:[{currency:"CNY",daily}]}}:path.includes("Rank")?[]:{horizon:true,schedule:true}}));
+    render(<Overview />);
+    const chart=await screen.findByRole("figure",{name:"订单金额（CNY）"});
+    expect(within(chart).getAllByRole("button")).toHaveLength(30);
+    api.request.mockClear();
+    fireEvent.click(screen.getByRole("button",{name:"近 7 天"}));
+    fireEvent.click(screen.getByRole("button",{name:"订单笔数"}));
+    const counts=screen.getByRole("figure",{name:"支付订单笔数"});
+    expect(within(counts).getAllByRole("button")).toHaveLength(7);
+    expect(within(counts).getByRole("button",{name:"2026-10-30 · 支付订单笔数：30"})).toBeTruthy();
+    fireEvent.click(within(counts).getByText("查看每日数据"));
+    expect(within(counts).getByRole("columnheader",{name:"日期"})).toBeTruthy();
+    expect(api.request).not.toHaveBeenCalled();
+});
+
+it("leaves gaps on the calendar axis instead of inventing zero traffic", () => {
+    const {container}=render(<HistoryChart label="实际流量（GiB）" data={[
+        {date:"2026-10-01",value:0}, {date:"2026-10-02",value:1},
+        {date:"2026-10-03",value:null}, {date:"2026-10-05",value:2},
+    ]} />);
+    expect(container.querySelectorAll("polyline")).toHaveLength(2);
+    const circles=container.querySelectorAll("circle");
+    expect(circles).toHaveLength(3);
+    expect(Number(circles[1].getAttribute("cx"))-Number(circles[0].getAttribute("cx"))).toBe(222.5);
+    expect(screen.getByRole("button",{name:"2026-10-01 · 实际流量（GiB）：0.00"})).toBeTruthy();
+    fireEvent.focus(circles[0]);
+    expect(container.querySelector("figcaption")?.textContent).toContain("2026-10-01 · 0.00");
+    expect(container.innerHTML).not.toContain("NaN");
+});
+
+it("shows an empty trend without drawing invalid values", () => {
+    const {container}=render(<HistoryChart label="订单金额" data={[{date:"2026-10-01",value:Infinity},{date:"invalid",value:4}]} />);
+    expect(screen.getByText("暂无运营记录")).toBeTruthy();
+    expect(container.querySelector("svg")).toBeNull();
+});
+
 it("groups target logs in diagnostics and loads dashboard analytics only on selection", async () => {
     expect(legacyAdminMenu.find(([key]) => key === "log-targets")?.[3]).toBe("日志与诊断");
     expect(legacyAdminMenu.some(([key]) => String(key) === "analytics")).toBe(false);
@@ -623,6 +674,7 @@ it("groups target logs in diagnostics and loads dashboard analytics only on sele
     await screen.findByText("本月已支付订单金额");
     expect(api.request.mock.calls.some(([path]) => path.includes("analytics/report"))).toBe(false);
     fireEvent.mouseDown(screen.getByRole("tab", {name: "访问与转化"}), {button: 0, ctrlKey: false});
+    expect(window.location.hash).toBe("#/overview-analytics");
     await waitFor(() => expect(api.request.mock.calls.some(([path]) => path.includes("analytics/report"))).toBe(true));
 });
 

@@ -632,7 +632,21 @@
     "确认删除账户": "Xóa tài khoản vĩnh viễn",
     "退出未完成，请联网后重试。": "Đăng xuất chưa hoàn tất. Hãy kết nối mạng và thử lại.",
     "确认选择": "Xác nhận lựa chọn",
-    "上海": "Thượng Hải"
+    "上海": "Thượng Hải",
+    "账户与登录": "Tài khoản và đăng nhập",
+    "删除后将无法再登录，所有设备会退出，账户身份资料无法恢复。": "Bạn sẽ không thể đăng nhập nữa. Tất cả thiết bị sẽ bị đăng xuất và thông tin nhận dạng tài khoản không thể khôi phục.",
+    "订阅与权益": "Gói đăng ký và quyền lợi",
+    "剩余套餐、流量和优惠权益将失效，删除账户不会自动退款。": "Gói dịch vụ, dung lượng và quyền lợi khuyến mãi còn lại sẽ hết hiệu lực. Xóa tài khoản không tự động hoàn tiền.",
+    "数据与记录": "Dữ liệu và hồ sơ",
+    "账户身份资料将被清除或匿名化，必要的账务和安全记录仍会按站点规则保留。": "Thông tin nhận dạng tài khoản sẽ bị xóa hoặc ẩn danh. Hồ sơ thanh toán và bảo mật cần thiết vẫn được lưu theo chính sách của trang web.",
+    "需要先处理的事项": "Các việc cần xử lý trước",
+    "处理完成后，请重新检查账户状态。": "Sau khi xử lý xong, hãy kiểm tra lại trạng thái tài khoản.",
+    "重新检查": "Kiểm tra lại",
+    "检查中…": "Đang kiểm tra…",
+    "删除账户无法撤销，请确认不再需要此账户。": "Không thể hoàn tác việc xóa tài khoản. Hãy chắc chắn rằng bạn không còn cần tài khoản này.",
+    "为避免误操作，请输入大写 DELETE。": "Để tránh xóa nhầm, hãy nhập DELETE bằng chữ in hoa.",
+    "账户已停用，所有登录会话均已结束。": "Tài khoản đã bị vô hiệu hóa và mọi phiên đăng nhập đã kết thúc.",
+    "暂时无法检查账户状态，请稍后重新检查。": "Hiện chưa thể kiểm tra trạng thái tài khoản. Vui lòng thử lại sau."
   },
   "account": {
     "notificationAutoSave": "Thay đổi được lưu tự động",

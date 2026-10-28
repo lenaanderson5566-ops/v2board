@@ -92,72 +92,41 @@ class StatController extends Controller
 
     public function getServerLastRank()
     {
-        $servers = [
-            'v2box' => ServerV2box::where('service_id', null)->get()->toArray()
-        ];
-        $startAt = strtotime('-1 day', strtotime(date('Y-m-d')));
         $endAt = strtotime(date('Y-m-d'));
-        $statistics = StatServer::whereIn('server_type', ['v2box'])->select([
-            'server_id',
-            'server_type',
-            'u',
-            'd',
-            DB::raw('(u+d) as total')
-        ])
-            ->where('record_at', '>=', $startAt)
-            ->where('record_at', '<', $endAt)
-            ->where('record_type', 'd')
-            ->limit(15)
-            ->orderBy('total', 'DESC')
-            ->get()
-            ->toArray();
-        foreach ($statistics as $k => $v) {
-            foreach ($servers[$v['server_type']] as $server) {
-                if ($server['id'] === $v['server_id']) {
-                    $statistics[$k]['server_name'] = $server['name'];
-                }
-            }
-            $statistics[$k]['total'] = $statistics[$k]['total'] / 1073741824;
-        }
-        array_multisort(array_column($statistics, 'total'), SORT_DESC, $statistics);
-        return [
-            'data' => $statistics
-        ];
+        return $this->serverRank(strtotime('-1 day', $endAt), $endAt);
     }
 
     public function getServerTodayRank()
     {
-        $servers = [
-            'v2box' => ServerV2box::where('service_id', null)->get()->toArray()
-        ];
-        $startAt = strtotime(date('Y-m-d'));
-        $endAt = time();
-        $statistics = StatServer::whereIn('server_type', ['v2box'])->select([
-            'server_id',
-            'server_type',
-            'u',
-            'd',
-            DB::raw('(u+d) as total')
+        return $this->serverRank(strtotime(date('Y-m-d')), time());
+    }
+
+    private function serverRank(int $startAt, int $endAt): array
+    {
+        $statistics = StatServer::where('server_type', 'v2box')->select([
+            'server_id', 'server_type',
+            DB::raw('SUM(u) as u'), DB::raw('SUM(d) as d'),
+            DB::raw('SUM(u+d) as total'),
         ])
             ->where('record_at', '>=', $startAt)
             ->where('record_at', '<', $endAt)
             ->where('record_type', 'd')
-            ->limit(15)
+            ->groupBy('server_id', 'server_type')
             ->orderBy('total', 'DESC')
-            ->get()
-            ->toArray();
-        foreach ($statistics as $k => $v) {
-            foreach ($servers[$v['server_type']] as $server) {
-                if ($server['id'] === $v['server_id']) {
-                    $statistics[$k]['server_name'] = $server['name'];
-                }
-            }
-            $statistics[$k]['total'] = $statistics[$k]['total'] / 1073741824;
+            ->orderBy('server_id')
+            ->limit(15)
+            ->get()->toArray();
+        // Fetch names only for ranked services, not every node and its configuration.
+        $names = ServerV2box::whereNull('service_id')
+            ->whereIn('id', array_column($statistics, 'server_id'))->pluck('name', 'id');
+        foreach ($statistics as &$row) {
+            $row['server_name'] = $names->get($row['server_id']);
+            $row['u'] = (int) $row['u'];
+            $row['d'] = (int) $row['d'];
+            $row['total'] = $row['total'] / 1073741824;
         }
-        array_multisort(array_column($statistics, 'total'), SORT_DESC, $statistics);
-        return [
-            'data' => $statistics
-        ];
+        unset($row);
+        return ['data' => $statistics];
     }
 
     public function getUserTodayRank()

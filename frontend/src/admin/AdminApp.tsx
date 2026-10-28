@@ -26,6 +26,11 @@ export default function AdminApp() {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState("");
     const loggingOut = useRef(false);
+    const authenticated = useRef(false);
+    function updateUser(next: Row | null) {
+        authenticated.current = next !== null;
+        setUser(next);
+    }
     async function logout() {
         if (loggingOut.current) return;
         loggingOut.current = true;
@@ -34,7 +39,7 @@ export default function AdminApp() {
         } catch (reason) {
             setError(reason instanceof Error ? reason.message : "退出未完成，请联网后重试。");
         } finally {
-            setUser(null);
+            updateUser(null);
             navigate("login");
             loggingOut.current = false;
         }
@@ -53,6 +58,7 @@ export default function AdminApp() {
             if (location.href === acceptedUrl) return;
             if (
                 !expiring &&
+                authenticated.current &&
                 !loggingOut.current &&
                 document.querySelector(
                     '.admin-content [data-saving="true"], .admin-content form[aria-busy="true"]',
@@ -63,6 +69,7 @@ export default function AdminApp() {
             }
             if (
                 !expiring &&
+                authenticated.current &&
                 !loggingOut.current &&
                 document.querySelector('[data-unsaved="true"]') &&
                 !window.confirm("有尚未保存的修改，确认离开当前页面？")
@@ -76,7 +83,7 @@ export default function AdminApp() {
         };
         const expired = () => {
             expiring = true;
-            setUser(null);
+            updateUser(null);
             navigate("login");
         };
         window.addEventListener("hashchange", changed);
@@ -87,7 +94,7 @@ export default function AdminApp() {
                 .then(async (result) => {
                     if (!result) return;
                     await request(`${boot.adminPath}/config/fetch`);
-                    if (live) setUser(result.data);
+                    if (live) updateUser(result.data);
                 })
                 .catch((error) => {
                     if (live) {
@@ -115,7 +122,7 @@ export default function AdminApp() {
         return (
             <>
                 {error && <div className="alert">{error}</div>}
-                <AdminAuth key={path} mode={path} onLogin={setUser} />
+                <AdminAuth key={path} mode={path} onLogin={updateUser} />
             </>
         );
     return <AdminWorkspace path={path} user={user} logout={logout} />;

@@ -66,6 +66,7 @@ export function Editor({
     onBusyChange,
     onValuesChange,
     draftKey,
+    warnUnsaved = boot.mode === "admin",
 }: {
     fields: Field[];
     initial: Row;
@@ -80,6 +81,7 @@ export function Editor({
     onBusyChange?: (busy: boolean) => void;
     onValuesChange?: (values: Row) => void;
     draftKey?: string;
+    warnUnsaved?: boolean;
 }) {
     const renderField = useContext(EditorFieldContext);
     const draftStorageKey = draftKey
@@ -132,14 +134,14 @@ export function Editor({
     const [cleanValue, setCleanValue] = useState(() => JSON.stringify(value));
     const dirty = JSON.stringify(value) !== cleanValue;
     useEffect(() => {
-        if (boot.mode !== "admin" || !dirty) return;
+        if (!warnUnsaved || !dirty) return;
         const warn = (event: BeforeUnloadEvent) => {
             event.preventDefault();
             event.returnValue = "";
         };
         window.addEventListener("beforeunload", warn);
         return () => window.removeEventListener("beforeunload", warn);
-    }, [dirty]);
+    }, [dirty, warnUnsaved]);
     const submitting = useRef(false);
     const activeFields = (
         resolveFields ? resolveFields(fields, value) : fields
@@ -265,7 +267,7 @@ export function Editor({
     return (
         <form
             className="editor"
-            data-unsaved={boot.mode === "admin" && dirty ? "true" : undefined}
+            data-unsaved={warnUnsaved && dirty ? "true" : undefined}
             onSubmit={save}
             onChange={() => setSaved(false)}
             aria-busy={busy}
@@ -587,7 +589,7 @@ export function Editor({
                 </div>
             )}
             <div className="form-bottom">
-                {boot.mode === "admin" && dirty && !saved && (
+                {warnUnsaved && dirty && !saved && (
                     <span className="admin-dirty-note" role="status">
                         {e("adminUnsaved")}
                     </span>

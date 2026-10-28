@@ -634,7 +634,21 @@
     "确认删除账户": "Supprimer définitivement le compte",
     "退出未完成，请联网后重试。": "La déconnexion est incomplète. Reconnectez-vous au réseau et réessayez.",
     "确认选择": "Confirmer la sélection",
-    "上海": "Shanghai"
+    "上海": "Shanghai",
+    "账户与登录": "Compte et connexion",
+    "删除后将无法再登录，所有设备会退出，账户身份资料无法恢复。": "Vous ne pourrez plus vous connecter. Tous les appareils seront déconnectés et les données d’identité du compte ne pourront pas être restaurées.",
+    "订阅与权益": "Abonnement et avantages",
+    "剩余套餐、流量和优惠权益将失效，删除账户不会自动退款。": "Votre forfait, vos données et vos avantages promotionnels restants expireront. La suppression du compte ne déclenche aucun remboursement automatique.",
+    "数据与记录": "Données et historique",
+    "账户身份资料将被清除或匿名化，必要的账务和安全记录仍会按站点规则保留。": "Les données d’identité du compte seront supprimées ou anonymisées. Les données de facturation et de sécurité nécessaires seront conservées selon les règles du site.",
+    "需要先处理的事项": "Points à régler au préalable",
+    "处理完成后，请重新检查账户状态。": "Une fois ces points réglés, vérifiez à nouveau l’état de votre compte.",
+    "重新检查": "Vérifier à nouveau",
+    "检查中…": "Vérification…",
+    "删除账户无法撤销，请确认不再需要此账户。": "La suppression du compte est irréversible. Assurez-vous de ne plus avoir besoin de ce compte.",
+    "为避免误操作，请输入大写 DELETE。": "Pour éviter une suppression accidentelle, saisissez DELETE en majuscules.",
+    "账户已停用，所有登录会话均已结束。": "Votre compte a été désactivé et toutes les sessions ont été fermées.",
+    "暂时无法检查账户状态，请稍后重新检查。": "Impossible de vérifier l’état de votre compte pour le moment. Réessayez plus tard."
   },
   "account": {
     "notificationAutoSave": "Les modifications sont enregistrées automatiquement",

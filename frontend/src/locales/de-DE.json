@@ -634,7 +634,21 @@
     "确认删除账户": "Konto endgültig löschen",
     "退出未完成，请联网后重试。": "Die Abmeldung ist noch nicht abgeschlossen. Stelle die Verbindung wieder her und versuche es erneut.",
     "确认选择": "Auswahl bestätigen",
-    "上海": "Shanghai"
+    "上海": "Shanghai",
+    "账户与登录": "Konto und Anmeldung",
+    "删除后将无法再登录，所有设备会退出，账户身份资料无法恢复。": "Sie können sich danach nicht mehr anmelden. Alle Geräte werden abgemeldet und Ihre Kontoinformationen können nicht wiederhergestellt werden.",
+    "订阅与权益": "Abonnement und Vorteile",
+    "剩余套餐、流量和优惠权益将失效，删除账户不会自动退款。": "Ihr verbleibender Tarif, Ihr Datenvolumen und Ihre Aktionsvorteile verfallen. Die Kontolöschung löst keine automatische Erstattung aus.",
+    "数据与记录": "Daten und Aufzeichnungen",
+    "账户身份资料将被清除或匿名化，必要的账务和安全记录仍会按站点规则保留。": "Identitätsdaten des Kontos werden gelöscht oder anonymisiert. Erforderliche Abrechnungs- und Sicherheitsaufzeichnungen bleiben gemäß den Richtlinien der Website erhalten.",
+    "需要先处理的事项": "Zuerst zu erledigen",
+    "处理完成后，请重新检查账户状态。": "Prüfen Sie Ihren Kontostatus erneut, sobald diese Punkte erledigt sind.",
+    "重新检查": "Erneut prüfen",
+    "检查中…": "Wird geprüft…",
+    "删除账户无法撤销，请确认不再需要此账户。": "Die Kontolöschung kann nicht rückgängig gemacht werden. Stellen Sie sicher, dass Sie dieses Konto nicht mehr benötigen.",
+    "为避免误操作，请输入大写 DELETE。": "Geben Sie DELETE in Großbuchstaben ein, um eine versehentliche Löschung zu vermeiden.",
+    "账户已停用，所有登录会话均已结束。": "Ihr Konto wurde deaktiviert und alle Anmeldesitzungen wurden beendet.",
+    "暂时无法检查账户状态，请稍后重新检查。": "Ihr Kontostatus kann derzeit nicht geprüft werden. Versuchen Sie es später erneut."
   },
   "account": {
     "notificationAutoSave": "Änderungen werden automatisch gespeichert",

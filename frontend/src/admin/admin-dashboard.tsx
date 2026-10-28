@@ -1,9 +1,9 @@
 import "./admin-dashboard.css";
-import { AdminTabs } from "./AdminChoices";
+import { AdminChoiceGroup, AdminTabs } from "./AdminChoices";
 import { adminUserLabel } from "./admin-user-label";
 import { System } from "./admin";
 import { RiskOverview } from "./AdminRisk";
-import { lazy, Suspense, useState } from "react";
+import { lazy, Suspense, useEffect, useState } from "react";
 const AdminAnalytics = lazy(() =>
     import("./AdminAnalytics").then((m) => ({ default: m.AdminAnalytics })),
 );
@@ -20,19 +20,23 @@ function usageBytes(value: unknown) {
     }
     return `${bytes.toLocaleString(undefined, { maximumFractionDigits: 2 })} ${units[i]}`;
 }
-const colors = ["#1890ff", "#2fc25b", "#facc14", "#f04864", "#8543e0"];
 export function Overview({
     initialTab = "income",
 }: {
     initialTab?: "income" | "analytics" | "risk" | "system";
 }) {
     const [tab, setTab] = useState(initialTab);
+    useEffect(() => setTab(initialTab), [initialTab]);
     return (
         <div className="dashboard-workspace">
             <AdminTabs
                 label="仪表盘视图"
                 value={tab}
-                onChange={setTab}
+                onChange={(next) => {
+                    setTab(next);
+                    window.location.hash =
+                        next === "income" ? "/overview" : `/overview-${next}`;
+                }}
                 options={[
                     { value: "income", label: "经营概览" },
                     { value: "analytics", label: "访问与转化" },
@@ -65,6 +69,8 @@ function IncomeOverview() {
     const stat = useData<Row>(admin("stat/getOverride"));
     const health = useData<Row>(admin("system/getSystemStatus"));
     const [currency, setCurrency] = useState("CNY");
+    const [trend, setTrend] = useState("amount");
+    const [days, setDays] = useState("30");
     const todayNodes = useData<Row[]>(admin("stat/getServerTodayRank"));
     const todayUsers = useData<Row[]>(admin("stat/getUserTodayRank"));
     const stats = stat.data || {};
@@ -78,53 +84,72 @@ function IncomeOverview() {
 
     return (
         <>
-            {health.data && (!health.data.horizon || !health.data.schedule) && (
-                <div className="alert">
-                    <a href="#/overview-system">
-                        队列或定时任务异常，查看系统状态
-                    </a>
+            <div className="dashboard-toolbar">
+                <div>
+                    <strong>经营概览</strong>
+                    <p className="muted">
+                        先处理待办，再查看经营与使用趋势。今日数据仍在累计。
+                    </p>
                 </div>
-            )}
-            {Number(stats.ticket_pending_total) > 0 && (
-                <div className="alert">
-                    有 {stats.ticket_pending_total} 条工单等待处理{" "}
-                    <a href="#/tickets?status=0&reply_status=0">立即处理</a>
+                <Reload
+                    loading={[stat, health, todayNodes, todayUsers].some(
+                        (source) => source.loading,
+                    )}
+                    onClick={() => {
+                        [stat, health, todayNodes, todayUsers].forEach(
+                            (source) => source.reload(),
+                        );
+                    }}
+                />
+            </div>
+            {health.error ? (
+                <div className="alert" role="alert">
+                    系统状态暂时无法确认，请刷新重试。{" "}
+                    <a href="#/overview-system">查看系统监控</a>
                 </div>
+            ) : (
+                !health.loading &&
+                health.data &&
+                (!health.data.horizon || !health.data.schedule) && (
+                    <div className="alert" role="alert">
+                        <a href="#/overview-system">
+                            队列或定时任务异常，查看系统状态
+                        </a>
+                    </div>
+                )
             )}
-            {Number(stats.commission_pending_total) > 0 && (
-                <div className="alert">
-                    有 {stats.commission_pending_total} 条佣金等待审核{" "}
-                    <a href="#/invitations?tab=commissions">立即处理</a>
-                </div>
-            )}
+            <div className="dashboard-todos" aria-label="待处理事项">
+                {!stat.error && Number(stats.ticket_pending_total) > 0 && (
+                    <div className="alert">
+                        有 {stats.ticket_pending_total} 条工单等待处理{" "}
+                        <a href="#/tickets?status=0&reply_status=0">立即处理</a>
+                    </div>
+                )}
+                {!stat.error && Number(stats.commission_pending_total) > 0 && (
+                    <div className="alert">
+                        有 {stats.commission_pending_total} 条佣金等待审核{" "}
+                        <a href="#/invitations?tab=commissions">立即处理</a>
+                    </div>
+                )}
+            </div>
             <Panel
                 title="经营核心指标"
                 actions={
-                    <Reload
-                        loading={[stat, health, todayNodes, todayUsers].some(
-                            (source) => source.loading,
-                        )}
-                        onClick={() => {
-                            [stat, health, todayNodes, todayUsers].forEach(
-                                (source) => source.reload(),
-                            );
-                        }}
-                    />
+                    <label className="actions">
+                        统计币种{" "}
+                        <select
+                            aria-label="经营统计币种"
+                            value={currency}
+                            onChange={(e) => setCurrency(e.target.value)}
+                        >
+                            <option>CNY</option>
+                            <option>USD</option>
+                        </select>
+                    </label>
                 }
             >
-                <label className="pad actions">
-                    统计币种{" "}
-                    <select
-                        aria-label="经营统计币种"
-                        value={currency}
-                        onChange={(e) => setCurrency(e.target.value)}
-                    >
-                        <option>CNY</option>
-                        <option>USD</option>
-                    </select>
-                </label>
                 <State {...stat} retry={stat.reload}>
-                    <div className="dashboard-core-metrics">
+                    <div className="dashboard-core-metrics dashboard-finance-metrics">
                         {[
                             [
                                 "今日已支付订单金额",
@@ -154,79 +179,105 @@ function IncomeOverview() {
                             />
                         ))}
                     </div>
-                </State>
-                <p className="pad muted">
-                    按支付时间与订单币种统计（
-                    {stats.financial?.timeZone || "系统时区"}），最多缓存 60
-                    秒。金额为余额抵扣后的订单应付金额，不是渠道结算或净利润；零元订单计入笔数。上月同期按相同日期和时刻比较，月末按上月最后一天截断。
-                </p>
-                {finance && (
-                    <>
-                        <h3 className="pad">业务构成与佣金</h3>
-                        <div className="dashboard-core-metrics">
-                            {[
-                                [
-                                    "本月订阅订单金额",
-                                    amount(finance.subscription_amount),
-                                ],
-                                [
-                                    "本月充值订单金额",
-                                    amount(finance.deposit_amount),
-                                ],
-                                [
-                                    "本月已发放佣金",
-                                    amount(finance.commission_paid),
-                                ],
-                                [
-                                    "待审核佣金",
-                                    amount(finance.commission_pending),
-                                ],
-                            ].map(([label, value]) => (
-                                <Metric
-                                    key={label}
-                                    label={label}
-                                    value={value}
-                                />
-                            ))}
-                        </div>
-                        <p className="pad muted">
-                            充值与订阅金额分别展示，不将充值到账后使用的余额再次计入收款。待审核佣金{" "}
-                            {finance.commission_pending_count} 笔。
+                    <details className="dashboard-definition">
+                        <summary>统计口径与更新延迟</summary>
+                        <p className="muted">
+                            按支付时间与订单币种统计（
+                            {stats.financial?.timeZone || "系统时区"}
+                            ），最多缓存 60
+                            秒。金额为余额抵扣后的订单应付金额，不是渠道结算或净利润；零元订单计入笔数。上月同期按相同日期和时刻比较，月末按上月最后一天截断。
                         </p>
-                        <h3 className="pad">近 30 天订单金额</h3>
-                        <HistoryChart
-                            data={finance.daily.map((r: Row) => ({
-                                date: r.date,
-                                type: `订单金额（${currency}）`,
-                                value: r.amount / 100,
-                            }))}
-                        />
-                        <h3 className="pad">近 30 天支付订单笔数</h3>
-                        <HistoryChart
-                            data={finance.daily.map((r: Row) => ({
-                                date: r.date,
-                                type: "支付订单笔数",
-                                value: r.count,
-                            }))}
-                        />
-                    </>
-                )}
+                    </details>
+                    {finance && (
+                        <>
+                            <h3 className="pad">业务构成与佣金</h3>
+                            <div className="dashboard-core-metrics">
+                                {[
+                                    [
+                                        "本月订阅订单金额",
+                                        amount(finance.subscription_amount),
+                                    ],
+                                    [
+                                        "本月充值订单金额",
+                                        amount(finance.deposit_amount),
+                                    ],
+                                    [
+                                        "本月已发放佣金",
+                                        amount(finance.commission_paid),
+                                    ],
+                                    [
+                                        "待审核佣金",
+                                        amount(finance.commission_pending),
+                                    ],
+                                ].map(([label, value]) => (
+                                    <Metric
+                                        key={label}
+                                        label={label}
+                                        value={value}
+                                    />
+                                ))}
+                            </div>
+                            <p className="pad muted">
+                                充值与订阅金额分别展示，不将充值到账后使用的余额再次计入收款。待审核佣金{" "}
+                                {finance.commission_pending_count} 笔。
+                            </p>
+                            <div className="dashboard-trend-toolbar">
+                                <h3>支付趋势</h3>
+                                <AdminChoiceGroup
+                                    label="支付趋势指标"
+                                    value={trend}
+                                    onChange={setTrend}
+                                    options={[
+                                        { value: "amount", label: "订单金额" },
+                                        { value: "count", label: "订单笔数" },
+                                    ]}
+                                />
+                                <AdminChoiceGroup
+                                    label="支付趋势范围"
+                                    value={days}
+                                    onChange={setDays}
+                                    options={[
+                                        { value: "7", label: "近 7 天" },
+                                        { value: "30", label: "近 30 天" },
+                                    ]}
+                                />
+                            </div>
+                            <HistoryChart
+                                data={(finance.daily || [])
+                                    .slice(-Number(days))
+                                    .map((r: Row) => ({
+                                        date: r.date,
+                                        value:
+                                            trend === "amount"
+                                                ? r.amount / 100
+                                                : r.count,
+                                    }))}
+                                label={
+                                    trend === "amount"
+                                        ? `订单金额（${currency}）`
+                                        : "支付订单笔数"
+                                }
+                                integer={trend === "count"}
+                            />
+                        </>
+                    )}
+                </State>
             </Panel>
             <Panel title="用户活跃与流量">
-                <div className="dashboard-core-metrics">
-                    {[
-                        ["近 10 分钟活跃用户", stats.online_user ?? "—"],
-                        ["今日新增用户", stats.day_register_total ?? "—"],
-                        ["本月新增用户", stats.month_register_total ?? "—"],
-                    ].map(([label, value]) => (
-                        <Metric
-                            key={String(label)}
-                            label={String(label)}
-                            value={value}
-                        />
-                    ))}
-                </div>
                 <State {...stat} retry={stat.reload}>
+                    <div className="dashboard-core-metrics">
+                        {[
+                            ["近 10 分钟活跃用户", stats.online_user ?? "—"],
+                            ["今日新增用户", stats.day_register_total ?? "—"],
+                            ["本月新增用户", stats.month_register_total ?? "—"],
+                        ].map(([label, value]) => (
+                            <Metric
+                                key={String(label)}
+                                label={String(label)}
+                                value={value}
+                            />
+                        ))}
+                    </div>
                     {stats.usage ? (
                         <>
                             <div className="dashboard-usage-grid">
@@ -278,6 +329,7 @@ function IncomeOverview() {
                                 </span>
                             </div>
                             <HistoryChart
+                                label="实际流量（GiB）"
                                 data={(stats.usage.daily as Row[]).map((r) => ({
                                     type: "实际流量（GiB）",
                                     date: r.date,
@@ -300,6 +352,12 @@ function IncomeOverview() {
                     const d = result as typeof todayNodes;
                     return (
                         <Panel key={String(title)} title={String(title)}>
+                            <p className="dashboard-rank-note muted">
+                                {key === "email"
+                                    ? "按计费流量排序（含节点倍率）"
+                                    : "按实际上传＋下载流量排序"}{" "}
+                                · 前 15 名 · 单位 GiB
+                            </p>
                             <State {...d} retry={d.reload}>
                                 <RankChart
                                     data={d.data || []}
@@ -322,7 +380,9 @@ function IncomeOverview() {
                                             ],
                                             [
                                                 "total",
-                                                "流量（GB）",
+                                                key === "email"
+                                                    ? "计费流量（GiB）"
+                                                    : "实际流量（GiB）",
                                                 (r) =>
                                                     Number(r.total).toFixed(2),
                                             ],
@@ -355,7 +415,7 @@ export function RankChart({ data, nameKey }: { data: Row[]; nameKey: string }) {
     return (
         <div
             className="dashboard-rank"
-            role="img"
+            role="group"
             aria-label="流量排行横向柱状图"
         >
             {!data.length && <p className="muted">暂无数据</p>}
@@ -371,8 +431,10 @@ export function RankChart({ data, nameKey }: { data: Row[]; nameKey: string }) {
                         key={`${r.server_type || "user"}-${r.server_id || r.user_id || i}`}
                     >
                         <div className="dashboard-rank-label">
-                            <span title={name}>{name}</span>
-                            <strong>{value.toFixed(2)} GB</strong>
+                            <span title={name}>
+                                {i + 1}. {name}
+                            </span>
+                            <strong>{value.toFixed(2)} GiB</strong>
                         </div>
                         <div className="dashboard-rank-track">
                             <div
@@ -386,118 +448,174 @@ export function RankChart({ data, nameKey }: { data: Row[]; nameKey: string }) {
     );
 }
 
-function HistoryChart({ data }: { data: Row[] }) {
+export function HistoryChart({
+    data,
+    label,
+    integer = false,
+}: {
+    data: Row[];
+    label: string;
+    integer?: boolean;
+}) {
     const [selected, setSelected] = useState("");
-    const types = [...new Set(data.map((r) => String(r.type)))];
-    const dates = [...new Set(data.map((r) => String(r.date)))];
-    const active = types.includes(selected) ? selected : types[0];
-    const shown = data.filter((r) => String(r.type) === active);
-    const maximum = Math.max(1, ...shown.map((r) => Number(r.value) || 0));
+    const dayMs = 86400000;
+    const points = data
+        .map((row) => ({
+            date: String(row.date),
+            value: row.value == null ? NaN : Number(row.value),
+            time: Date.parse(`${row.date}T00:00:00Z`),
+        }))
+        .filter(
+            (row) =>
+                /^\d{4}-\d{2}-\d{2}$/.test(row.date) &&
+                Number.isFinite(row.time),
+        )
+        .sort((a, b) => a.time - b.time);
+    const valid = points.filter(
+        (row) => Number.isFinite(row.value) && row.value >= 0,
+    );
+    const maximum = integer
+        ? Math.max(
+              4,
+              Math.ceil(Math.max(0, ...valid.map((row) => row.value)) / 4) * 4,
+          )
+        : Math.max(0.01, ...valid.map((row) => row.value));
+    const first = points[0]?.time || 0,
+        last = points.at(-1)?.time || first;
+    const x = (time: number) =>
+        first === last ? 515 : 75 + ((time - first) / (last - first)) * 890;
+    const y = (value: number) => 230 - (value / maximum) * 190;
+    const format = (value: number) =>
+        value.toLocaleString(undefined, {
+            minimumFractionDigits: integer ? 0 : 2,
+            maximumFractionDigits: integer ? 0 : 2,
+        });
+    const active = valid.find((row) => row.date === selected) || valid.at(-1);
+    const segments: (typeof valid)[] = [];
+    for (const point of valid) {
+        const segment = segments.at(-1);
+        if (!segment || point.time - segment.at(-1)!.time !== dayMs)
+            segments.push([point]);
+        else segment.push(point);
+    }
     return (
-        <div className="legacy-chart legacy-history">
-            <div className="chart-legend">
-                {types.map((type, i) => (
-                    <button
-                        key={type}
-                        aria-pressed={active === type}
-                        onClick={() => setSelected(type)}
-                    >
-                        <i style={{ background: colors[i % colors.length] }} />
-                        {type}
-                    </button>
-                ))}
-            </div>
-            <svg
-                viewBox="0 0 1000 300"
-                role="img"
-                aria-label={`每日趋势：${types.join("、")}`}
-            >
-                {[0, 1, 2, 3, 4].map((i) => (
-                    <g key={i}>
-                        <line
-                            x1="55"
-                            y1={250 - i * 55}
-                            x2="970"
-                            y2={250 - i * 55}
-                            stroke="#e8e8e8"
-                        />
-                        <text
-                            x="48"
-                            y={254 - i * 55}
-                            textAnchor="end"
-                            fill="#8c8c8c"
-                            fontSize="12"
+        <figure className="dashboard-history" aria-label={label}>
+            <figcaption>
+                <strong>{label}</strong>
+                <span className="muted">
+                    {active
+                        ? `${active.date} · ${format(active.value)}`
+                        : "暂无运营记录"}
+                </span>
+            </figcaption>
+            {valid.length > 0 && (
+                <>
+                    <div className="dashboard-chart-scroll">
+                        <svg
+                            viewBox="0 0 1000 275"
+                            role="group"
+                            aria-label={`每日趋势：${label}`}
                         >
-                            {((maximum * i) / 4).toFixed(1)}
-                        </text>
-                    </g>
-                ))}
-                {dates.map(
-                    (day, i) =>
-                        i % Math.max(1, Math.ceil(dates.length / 10)) === 0 && (
-                            <text
-                                key={day}
-                                x={
-                                    65 +
-                                    (i * 900) / Math.max(1, dates.length - 1)
-                                }
-                                y="280"
-                                textAnchor="middle"
-                                fill="#8c8c8c"
-                                fontSize="12"
-                            >
-                                {day}
-                            </text>
-                        ),
-                )}
-                {types
-                    .filter((t) => t === active)
-                    .map((type) => {
-                        const color =
-                            colors[types.indexOf(type) % colors.length];
-                        const points = dates.map((date, i) => ({
-                            x: 65 + (i * 900) / Math.max(1, dates.length - 1),
-                            value: Number(
-                                data.find(
-                                    (r) => r.type === type && r.date === date,
-                                )?.value || 0,
-                            ),
-                        }));
-                        return (
-                            <g key={type}>
+                            {[0, 1, 2, 3, 4].map((i) => (
+                                <g key={i} aria-hidden="true">
+                                    <line
+                                        x1="75"
+                                        y1={230 - i * 47.5}
+                                        x2="965"
+                                        y2={230 - i * 47.5}
+                                        className="dashboard-chart-grid"
+                                    />
+                                    <text
+                                        x="64"
+                                        y={234 - i * 47.5}
+                                        textAnchor="end"
+                                    >
+                                        {((maximum * i) / 4).toLocaleString(
+                                            undefined,
+                                            {
+                                                notation: "compact",
+                                                maximumFractionDigits: integer
+                                                    ? 0
+                                                    : 2,
+                                            },
+                                        )}
+                                    </text>
+                                </g>
+                            ))}
+                            {points.map(
+                                (point, i) =>
+                                    (i === points.length - 1 ||
+                                        i %
+                                            Math.max(
+                                                1,
+                                                Math.ceil(points.length / 6),
+                                            ) ===
+                                            0) && (
+                                        <text
+                                            key={point.date}
+                                            x={x(point.time)}
+                                            y="262"
+                                            textAnchor="middle"
+                                            aria-hidden="true"
+                                        >
+                                            {point.date.slice(5)}
+                                        </text>
+                                    ),
+                            )}
+                            {segments.map((segment, i) => (
                                 <polyline
-                                    points={points
+                                    key={i}
+                                    points={segment
                                         .map(
-                                            (p) =>
-                                                `${p.x},${250 - (p.value / maximum) * 220}`,
+                                            (point) =>
+                                                `${x(point.time)},${y(point.value)}`,
                                         )
                                         .join(" ")}
-                                    fill="none"
-                                    stroke={color}
-                                    strokeWidth="2"
+                                    className="dashboard-chart-line"
                                 />
-                                {points.map((p, i) => (
-                                    <circle
-                                        key={i}
-                                        cx={p.x}
-                                        cy={250 - (p.value / maximum) * 220}
-                                        r="4"
-                                        fill={color}
-                                    >
-                                        <title>
-                                            {dates[i]} · {type}：{p.value}
-                                        </title>
-                                    </circle>
-                                ))}
-                            </g>
-                        );
-                    })}
-                {!data.length && (
-                    <text x="500" y="140" textAnchor="middle" fill="#bfbfbf">
-                        暂无运营记录
-                    </text>
-                )}
-            </svg>
-        </div>
+                            ))}
+                            {valid.map((point) => (
+                                <circle
+                                    key={point.date}
+                                    cx={x(point.time)}
+                                    cy={y(point.value)}
+                                    r={active?.date === point.date ? 6 : 4}
+                                    className="dashboard-chart-point"
+                                    role="button"
+                                    tabIndex={0}
+                                    aria-label={`${point.date} · ${label}：${format(point.value)}`}
+                                    onFocus={() => setSelected(point.date)}
+                                    onMouseEnter={() => setSelected(point.date)}
+                                    onClick={() => setSelected(point.date)}
+                                    onKeyDown={(event) => {
+                                        if (
+                                            event.key === "Enter" ||
+                                            event.key === " "
+                                        ) {
+                                            event.preventDefault();
+                                            setSelected(point.date);
+                                        }
+                                    }}
+                                >
+                                    <title>
+                                        {point.date} · {format(point.value)}
+                                    </title>
+                                </circle>
+                            ))}
+                        </svg>
+                    </div>
+                    <details className="dashboard-chart-data">
+                        <summary>查看每日数据</summary>
+                        <Table
+                            data={valid}
+                            columns={[
+                                ["date", "日期"],
+                                ["value", label, (row) => format(row.value)],
+                            ]}
+                        />
+                    </details>
+                </>
+            )}
+        </figure>
     );
 }

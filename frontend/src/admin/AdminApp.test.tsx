@@ -9,8 +9,8 @@ vi.mock("./AdminAuth", () => ({ AdminAuth: () => <div>Admin login</div> }));
 vi.mock("./admin-workspace", () => ({ default: ({ logout }: { logout: () => void }) => <div>Admin workspace<button onClick={logout}>Logout</button></div> }));
 import AdminApp from "./AdminApp";
 
-beforeEach(() => { vi.clearAllMocks(); localStorage.clear(); location.hash = ""; mocks.logout.mockResolvedValue(undefined); });
-afterEach(cleanup);
+beforeEach(() => { vi.clearAllMocks(); mocks.navigate.mockReset(); localStorage.clear(); history.replaceState(null,"",location.pathname); mocks.logout.mockResolvedValue(undefined); });
+afterEach(() => {cleanup();vi.restoreAllMocks();});
 it("restores a session only after the backend confirms administrative access", async () => {
     localStorage.setItem("admin-test", "test-session");
     mocks.request.mockResolvedValue({ data: { email: "admin@example.test" } });
@@ -40,4 +40,32 @@ it("clears administrative data and shows a persistent error if offline revocatio
     await screen.findByText("Admin login");
     expect(screen.queryByText("Admin workspace")).toBeNull();
     expect(screen.getByText("退出未完成，请联网后重试。")).toBeTruthy();
+});
+
+it.each(["logout", "expired"])("releases route protection after %s while retaining it for authenticated drafts", async (reason) => {
+    mocks.request.mockResolvedValue({data:{email:"admin@example.test"}});
+    mocks.navigate.mockImplementation((path:string)=>{
+        history.replaceState(null,"",`#/${path}`);
+        fireEvent(window,new HashChangeEvent("hashchange"));
+    });
+    const confirm=vi.spyOn(window,"confirm").mockReturnValue(false);
+    const marker=document.createElement("div");
+    marker.dataset.unsaved="true";
+    render(<AdminApp />);
+    await screen.findByText("Admin workspace");
+    document.body.append(marker);
+    try {
+        history.replaceState(null,"","#/users");
+        fireEvent(window,new HashChangeEvent("hashchange"));
+        expect(confirm).toHaveBeenCalledOnce();
+        expect(location.hash).toBe("");
+        confirm.mockClear();
+        if(reason==="logout") fireEvent.click(screen.getByText("Logout"));
+        else fireEvent(window,new Event("auth-expired"));
+        await screen.findByText("Admin login");
+        history.replaceState(null,"","#/forget");
+        fireEvent(window,new HashChangeEvent("hashchange"));
+        expect(confirm).not.toHaveBeenCalled();
+        expect(location.hash).toBe("#/forget");
+    } finally {marker.remove();}
 });

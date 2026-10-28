@@ -112,6 +112,80 @@ try {
     $start = function (string $new) use ($row) {
         DB::table('v2_lightsail_server')->where('id', $row->id)->update(['status' => 'queued', 'phase' => 'idle', 'operation' => 'rotate', 'new_name' => $new, 'old_name' => null]);
     };
+    // Exercise the real SDK HTTP/error parsers, not only handcrafted AwsExceptions.
+    $httpResponse = function ($request, int $status, array $body) {
+        $response = new GuzzleHttp\Psr7\Response($status, ['Content-Type' => 'application/x-amz-json-1.1'], json_encode($body));
+        return $status < 400 ? GuzzleHttp\Promise\Create::promiseFor($response)
+            : GuzzleHttp\Promise\Create::rejectionFor(['response' => $response, 'exception' => new RuntimeException('simulated_secret_must_not_be_logged')]);
+    };
+    $wireClient = function ($httpHandler) {
+        return new LightsailClient(['version' => 'latest', 'region' => 'ap-southeast-1', 'credentials' => ['key' => 'fake', 'secret' => 'fake'], 'retries' => 0, 'http_handler' => $httpHandler]);
+    };
+    $blockedCalls = [];
+    $blockedClient = $wireClient(function ($request) use (&$blockedCalls, $httpResponse) {
+        $operation = substr(strrchr($request->getHeaderLine('X-Amz-Target'), '.'), 1);
+        $blockedCalls[] = $operation;
+        if ($operation === 'GetStaticIp') return $httpResponse($request, 400, ['message' => 'simulated_secret_must_not_be_logged']);
+        if ($operation === 'GetStaticIps') return $httpResponse($request, 400, ['__type' => 'AccessDeniedException']);
+        throw new RuntimeException('Unexpected write during failed reconciliation');
+    });
+    $blockedService = new class($blockedClient) extends LightsailService {
+        public function __construct(private LightsailClient $fake) {}
+        public function client($row): LightsailClient { return $this->fake; }
+    };
+    $start('blocked-new');
+    DB::table('v2_lightsail_server')->where('id', $row->id)->update(['phase' => 'allocate', 'old_name' => 'old']);
+    $blockedService->run($row->id);
+    $blocked = DB::table('v2_lightsail_server')->find($row->id);
+    $assert($blocked->status === 'failed' && $blocked->phase === 'allocate' && $blocked->error_code === 'aws:list:AccessDeniedException', 'HTTP reconciliation retains actionable list failure without provider text');
+    $assert($blockedCalls === ['GetStaticIp', 'GetStaticIps'] && $state->ips['old']['isAttached'], 'Failed list verification never allocates, detaches or releases');
+    foreach ([
+        'absent' => [[[200, ['staticIps' => [], 'nextPageToken' => 'page-two']], [200, ['staticIps' => []]]], null, null],
+        'present' => [[[200, ['staticIps' => [], 'nextPageToken' => 'page-two']], [200, ['staticIps' => [['name' => 'candidate', 'ipAddress' => '1.1.1.1']]]]], '1.1.1.1', null],
+        'denied' => [[[400, ['__type' => 'AccessDeniedException']]], null, 'AccessDeniedException'],
+        'malformed' => [[[200, []]], null, null],
+        'repeated-token' => [[[200, ['staticIps' => [], 'nextPageToken' => 'repeat']], [200, ['staticIps' => [], 'nextPageToken' => 'repeat']]], null, null],
+    ] as $scenario => [$pages, $expectedIp, $expectedCode]) {
+        $calls = [];
+        $http = $wireClient(function ($request) use (&$pages, &$calls, $httpResponse) {
+            $operation = substr(strrchr($request->getHeaderLine('X-Amz-Target'), '.'), 1);
+            $calls[] = [$operation, json_decode((string)$request->getBody(), true)];
+            if ($operation === 'GetStaticIp') return $httpResponse($request, 400, ['message' => 'simulated_secret_must_not_be_logged']);
+            if ($operation !== 'GetStaticIps' || !$pages) throw new RuntimeException('Unexpected wire request');
+            [$status, $body] = array_shift($pages);
+            return $httpResponse($request, $status, $body);
+        });
+        try {
+            $found = $service->staticIp($http, 'candidate');
+            $assert(in_array($scenario, ['absent', 'present'], true) && ($found['ipAddress'] ?? null) === $expectedIp, 'HTTP 400 reconciliation '.$scenario);
+            $assert($calls[2][1]['pageToken'] === 'page-two', 'Reconciliation follows every list page '.$scenario);
+        } catch (Aws\Exception\AwsException $e) {
+            $assert(!in_array($scenario, ['absent', 'present'], true) && $e->getAwsErrorCode() === $expectedCode, 'Failed reconciliation cannot prove absence '.$scenario);
+        }
+    }
+    // Full rotation including release confirmation must recover missing-resource
+    // HTTP 400 responses without duplicating allocation or releasing early.
+    $http = $wireClient(function ($request) use ($handler, $httpResponse) {
+        $operation = substr(strrchr($request->getHeaderLine('X-Amz-Target'), '.'), 1);
+        $command = new Aws\Command($operation, json_decode((string)$request->getBody(), true));
+        try {
+            $result = $handler($command, $request)->wait();
+            return $httpResponse($request, 200, $result->toArray());
+        } catch (Aws\Exception\AwsException $e) {
+            if ($e->getAwsErrorCode() !== 'NotFoundException') throw $e;
+            return $httpResponse($request, 400, ['message' => 'simulated_secret_must_not_be_logged']);
+        }
+    });
+    $wireService = new class($http) extends LightsailService {
+        public function __construct(private LightsailClient $fake) {}
+        public function client($row): LightsailClient { return $this->fake; }
+    };
+    $start('wire-new');
+    $wireService->run($row->id);
+    $assert(DB::table('v2_lightsail_server')->find($row->id)->status === 'completed' && $state->ips['wire-new']['isAttached'] && !isset($state->ips['old']), 'Real SDK HTTP 400 rotation completes allocation, attachment and verified release');
+    $assert(count(array_filter($state->calls, fn($call) => $call === 'AllocateStaticIp')) === 1, 'HTTP reconciliation allocates exactly once');
+    $state->ips = ['old' => ['name' => 'old', 'ipAddress' => '8.8.8.8', 'isAttached' => true, 'attachedTo' => 'test-instance']];
+    $state->calls = [];
     $start('new');
     $state->fail = 'AllocateStaticIp';
     $service->run($row->id);
@@ -135,7 +209,7 @@ try {
     DB::table('v2_lightsail_server')->where('id', $row->id)->update(['status' => 'queued']);
     $service->run($row->id);
     $assert(DB::table('v2_lightsail_server')->find($row->id)->error_code === 'aws:get:AccessDeniedException', 'Read permission failure distinguished from allocation');
-    foreach ([['http',403,'Http403'], ['http',404,'Http404'], ['http',502,'Http502'], ['curl',60,'Curl60'], ['curl',28,'Curl28'], ['curl',6,'Curl6']] as [$kind,$value,$expected]) {
+    foreach ([['http',400,'Http400'], ['http',403,'Http403'], ['http',404,'Http404'], ['http',502,'Http502'], ['curl',60,'Curl60'], ['curl',28,'Curl28'], ['curl',6,'Curl6']] as [$kind,$value,$expected]) {
         $state->awsCode = 'UnrecognizedSensitiveProviderCode';
         $state->{$kind} = $value;
         $state->calls = [];

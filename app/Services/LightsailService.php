@@ -45,6 +45,26 @@ class LightsailService
             if ($e->getAwsErrorCode() === 'NotFoundException') {
                 return null;
             }
+            // Lightsail also uses HTTP 400 for missing resources. If the SDK
+            // cannot identify the error, reconcile through an independent read;
+            // never infer absence from the HTTP status or provider message.
+            if (!$e->getAwsErrorCode() && $e->getStatusCode() === 400) {
+                $token = null;
+                $seen = [];
+                do {
+                    $page = $client->getStaticIps($token === null ? [] : ['pageToken' => $token]);
+                    if (!is_array($page['staticIps'])) throw $e;
+                    foreach ($page['staticIps'] as $ip) {
+                        if (($ip['name'] ?? null) === $name) return $ip;
+                    }
+                    $token = $page['nextPageToken'] ?? null;
+                    if ($token !== null && $token !== '') {
+                        if (!is_string($token) || isset($seen[$token])) throw $e;
+                        $seen[$token] = true;
+                    }
+                } while ($token !== null && $token !== '');
+                return null;
+            }
             throw $e;
         }
     }

@@ -73,6 +73,7 @@ PHP 入口经 `tests/support/run-script.php` 执行，未捕获异常必须以�
 - `v2box` 普通运行使用模拟传输。`V2BOX_BOOTSTRAP_TEST=1` 启用真实 Shell 夹具，`V2BOX_NETWORK_SCRIPT` 指向隔离复制的节点上报脚本；独立数据库联调用 `V2BOX_INDEPENDENT_DATABASE_SMOKE=1`，仅在可销毁 Linux 容器执行。多后台追加、授权重放、局部回滚、长连接和证书保留由既有模块覆盖。
 - `node-v10` 验证授权边界、配置回执和用户下发；`retired-node-tables` 验证旧数据退役迁移，不能因功能退役而删除其数据保护断言。
 - `lightsail` 与 `AdminLightsail.test.tsx` 覆盖共享凭据、失败恢复、任务锁和错误诊断；只用模拟 AWS。HTTP/cURL 状态不能单独证明真实权限、配额或资源存在性。
+- `lightsail` 同时通过 SDK 的 HTTP 处理器注入响应，验证真实错误解析、无错误码 HTTP 400 的分页列表核验、完整申请/换绑/释放和查询失败时的旧 IP 保护；畸形列表、循环分页与未知 404 不得授权资源变更。
 
 ## 文档与测试清理
 
